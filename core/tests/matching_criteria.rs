@@ -637,6 +637,32 @@ fn a_workload_outside_the_days_per_week_is_a_check() {
     assert_eq!(a.facts.workload_to, Some(100));
 }
 
+/// E16-8: part-time hours without the week (`Teilzeit (20 h)`) are 50 % of a week, below a
+/// minimum of three days: a check, not a met criterion.
+#[test]
+fn e16_8_part_time_hours_without_the_week_are_a_workload() {
+    let profile = limited(&json!({ "auslastung_min_tage": 3 }));
+    for frame in [
+        "- Teilzeit (20 h)",
+        "- Teilzeit mit 20 Stunden",
+        "- Arbeitszeit: 20 Stunden",
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &frame_ad(frame));
+        let state = criterion(&a, CriterionKey::Workload);
+        assert_eq!(
+            state.status,
+            CriterionStatus::Check,
+            "{frame}: {:?}",
+            codes(&a)
+        );
+        assert_eq!(
+            (a.facts.workload_from, a.facts.workload_to),
+            (Some(50), Some(50)),
+            "{frame}"
+        );
+    }
+}
+
 /// An engagement shorter than the minimum is a check (`duration {months, min}`).
 #[test]
 fn an_engagement_shorter_than_the_minimum_is_a_check() {

@@ -680,7 +680,10 @@ TypeScript (`?:`), so a UI that does not send them changes nothing.
 
 **Workload** (`limits.rs`), a share of a five-day week in `KeyFacts.workloadFrom`/`workloadTo`
 (left out when unknown): full-time 100, days x 20 (`3 Tage/Woche`, `drei Tagen pro Woche`),
-hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80), a percentage in a clause with a workload word
+hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80; without the week in a sentence with a workload
+word from 12 hours on, E16-8: `Teilzeit (20 h)`, `Teilzeit mit 20 Stunden`, `Arbeitszeit: 20
+Stunden` 50, never the hours of a day or a month or a clock time: `4 Stunden pro Tag`, `8 Stunden
+täglich`, `40 Stunden im Monat`, `8-17 h`, `12-18 Uhr`), a percentage in a clause with a workload word
 (`Auslastung 80 %`, `80-100 %`), part-time without a number up to 80 with no lower bound,
 part-time as an option (`Vollzeit, Teilzeit möglich`) up to 100. A number of days or a share next
 to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work; after the week the

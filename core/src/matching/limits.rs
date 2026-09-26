@@ -26,6 +26,8 @@ const FULL_WEEK_HOURS: u32 = 40;
 pub(crate) const WORKLOAD_PART: u8 = 80;
 /// Tokens around a number where a place word makes it the place of work.
 const PLACE_REACH: usize = 3;
+/// The fewest hours read as weekly hours without a week (a day has fewer, E16-8).
+const MIN_BARE_HOURS: u32 = 12;
 
 /// A workload in percent of a five-day week: `from` is unknown for part-time without a
 /// number.
@@ -59,7 +61,7 @@ pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Wo
             .filter(|(_, f)| workload_cue(f) == cued)
             .find_map(|(range, f)| {
                 clauses(f)
-                    .find_map(numeric_workload)
+                    .find_map(|c| numeric_workload(c, cued))
                     .map(|w| stated(w, Some(range.clone())))
             })
     };
@@ -199,9 +201,10 @@ fn place_near(tokens: &[&str], from: usize, to: usize) -> bool {
         .any(|w| contains_word(&window, w))
 }
 
-/// A workload with a number: days or hours per week, or a percentage in a clause with a
+/// A workload with a number: days or hours per week, weekly hours without the week in a
+/// sentence with a workload word (`sentence_cue`), or a percentage in a clause with a
 /// workload word.
-fn numeric_workload(clause: &str) -> Option<Workload> {
+fn numeric_workload(clause: &str, sentence_cue: bool) -> Option<Workload> {
     let tokens = tokens(clause);
     let cue = workload_cue(clause);
     for i in 0..tokens.len() {
@@ -241,6 +244,27 @@ fn numeric_workload(clause: &str) -> Option<Workload> {
             return hours(low, high);
         }
         let Some(end) = week_after(&tokens, next + 1) else {
+            // E16-8: hours without the week in a sentence with a workload word are weekly
+            // hours (`Teilzeit (20 h)`, `Arbeitszeit: 20 Stunden`), never the hours of a day
+            // or a month (`4 Stunden pro Tag`, `40 Stunden im Monat`) or a clock time
+            // (`8-17 h`, `12-18 Uhr`).
+            let upper_end = i > 0 && lex::WORKLOAD_RANGE.contains(&tokens[i - 1]);
+            let other_period = tokens
+                .iter()
+                .skip(next + 1)
+                .take(PLACE_REACH)
+                .any(|t| lex::WORKLOAD_OTHER_PERIODS.contains(t));
+            if sentence_cue
+                && !upper_end
+                && low >= MIN_BARE_HOURS
+                && lex::WORKLOAD_HOUR_UNITS.contains(unit)
+                && !other_period
+                && !tokens.iter().any(|t| lex::WORKLOAD_CLOCK.contains(t))
+                && !place(next + 1)
+                && let Some(w) = hours(low, high)
+            {
+                return Some(w);
+            }
             continue;
         };
         if place(end) {
@@ -360,7 +384,7 @@ mod tests {
     fn of(text: &str) -> Option<(Option<u8>, u8)> {
         let folded = fold(text);
         clauses(&folded)
-            .find_map(numeric_workload)
+            .find_map(|c| numeric_workload(c, workload_cue(&folded)))
             .or_else(|| word_workload(&folded))
             .map(|w| (w.from, w.to))
     }
@@ -385,6 +409,41 @@ mod tests {
         assert_eq!(of("Part-time (20 hours/week)"), exact(50));
         assert_eq!(of("Vollzeit, Teilzeit möglich"), Some((None, 100)));
         assert_eq!(of("Voll- oder Teilzeit"), Some((None, 100)));
+    }
+
+    /// E16-8: part-time hours without the week are weekly hours in a sentence with a
+    /// workload word; hours of a day or a month and clock times are none.
+    #[test]
+    fn e16_8_part_time_hours_without_the_week_are_weekly_hours() {
+        let exact = |p: u8| Some((Some(p), p));
+        assert_eq!(of("Teilzeit (20 h)"), exact(50));
+        assert_eq!(
+            of("Teilzeit mit 20 Stunden, Stundensatz 110 €/h"),
+            exact(50)
+        );
+        assert_eq!(of("Arbeitszeit: 20 Stunden"), exact(50));
+        assert_eq!(of("Teilzeit, 20 Stunden"), exact(50));
+        assert_eq!(of("Teilzeit (16-20 Std.)"), Some((Some(40), 50)));
+        assert_eq!(of("Teilzeit (20 h) in Köln"), exact(50));
+        for (text, expected) in [
+            (
+                "Teilzeit mit 4 Stunden pro Tag",
+                Some((None, WORKLOAD_PART)),
+            ),
+            ("Teilzeit mit 4 Stunden am Tag", Some((None, WORKLOAD_PART))),
+            (
+                "Teilzeit, 20 Stunden pro Monat",
+                Some((None, WORKLOAD_PART)),
+            ),
+            ("Arbeitszeit: 8 Stunden täglich", None),
+            ("Arbeitszeit 8-17 h", None),
+            ("Arbeitszeit: 8.00 - 17.00 h", None),
+            ("Arbeitszeit 12-18 Uhr", None),
+            ("Arbeitszeit 40 Stunden im Monat", None),
+            ("Reaktionszeit 20 Stunden", None),
+        ] {
+            assert_eq!(of(text), expected, "{text}");
+        }
     }
 
     /// A number of days or a percentage of the place of work is no workload.

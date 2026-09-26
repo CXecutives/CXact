@@ -1471,6 +1471,29 @@ pub(crate) const WORKLOAD_PER: &[&str] = &[
     "/", "pro", "per", "je", "in", "der", "die", "a", "each", "im", "the",
 ];
 pub(crate) const WORKLOAD_WEEK: &[&str] = &["woche", "week", "wk"];
+/// Periods after hours that make them no weekly hours (`4 Stunden pro Tag`, `8 h täglich`,
+/// `40 Stunden im Monat`).
+pub(crate) const WORKLOAD_OTHER_PERIODS: &[&str] = &[
+    "tag",
+    "tage",
+    "tages",
+    "taglich",
+    "day",
+    "days",
+    "daily",
+    "monat",
+    "monats",
+    "monatlich",
+    "month",
+    "monthly",
+    "jahr",
+    "jahrlich",
+    "year",
+    "yearly",
+    "annually",
+];
+/// A clock time next to hours (`9-17 Uhr`).
+pub(crate) const WORKLOAD_CLOCK: &[&str] = &["uhr"];
 /// Hours per week in one word (`20 Wochenstunden`).
 pub(crate) const WORKLOAD_WEEKLY_HOURS: &[&str] = &["wochenstunden", "weekly hours"];
 /// Small numbers written as words (days per week).
