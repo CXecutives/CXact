@@ -37,6 +37,7 @@
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
   import CheckCheck from '@lucide/svelte/icons/check-check';
+  import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import Undo2 from '@lucide/svelte/icons/undo-2';
   import FileText from '@lucide/svelte/icons/file-text';
@@ -142,6 +143,7 @@
     // Change a stored value (the mailbox, the output folder).
     pencil: Pencil,
     // The Excel file in the day overview, and its HTML overview (it opens in the browser).
+    'file-pen-line': FilePenLine,
     'file-spreadsheet': FileSpreadsheet,
     globe: Globe,
     // Mark all as read; bring a job back from the trash.

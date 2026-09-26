@@ -37,6 +37,35 @@ pub struct Settings {
     /// `None`.
     #[serde(deserialize_with = "known_language")]
     pub language: Option<Language>,
+    /// The colours of the page, the window and the Windows title bar (Einstellungen,
+    /// Darstellung). The report, the Excel file and the icon keep Coast. A name of a newer
+    /// version reads as Coast.
+    #[serde(deserialize_with = "known_palette")]
+    pub palette: Palette,
+}
+
+/// The app's colour palettes (`ui/src/styles/tokens.css`): Coast (cream, coral and navy) by
+/// default, GitHub's light and dark Primer colours.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum Palette {
+    #[default]
+    Coast,
+    Light,
+    Dark,
+}
+
+impl Palette {
+    /// The name of the palette in tokens.css (`:root[data-palette='dark']`) and in the
+    /// generated window colours (`export::palette::WINDOW_PALETTES`).
+    pub fn code(self) -> &'static str {
+        match self {
+            Palette::Coast => "coast",
+            Palette::Light => "light",
+            Palette::Dark => "dark",
+        }
+    }
 }
 
 /// The app's language. German on a German system, English on any other.
@@ -118,6 +147,7 @@ impl Default for Settings {
             language: None,
             auto_archive_days: AUTO_ARCHIVE_DAYS,
             auto_empty_trash_days: AUTO_EMPTY_TRASH_DAYS,
+            palette: Palette::Coast,
         }
     }
 }
@@ -225,6 +255,16 @@ fn known_language<'de, D: Deserializer<'de>>(
 ) -> std::result::Result<Option<Language>, D::Error> {
     let code = Option::<String>::deserialize(deserializer)?;
     Ok(code.and_then(|code| serde_json::from_value(serde_json::Value::String(code)).ok()))
+}
+
+/// A stored palette; one this version does not know is Coast.
+fn known_palette<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<Palette, D::Error> {
+    let name = Option::<String>::deserialize(deserializer)?;
+    Ok(name
+        .and_then(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
+        .unwrap_or_default())
 }
 
 /// Reads the portal switches in today's map form or the list form of earlier versions.
@@ -400,6 +440,35 @@ mod tests {
         let newer = Settings::load(&store).unwrap();
         assert_eq!(newer.auto_archive_days, 0);
         assert_eq!(newer.language, None);
+    }
+
+    /// Coast until one is chosen; the choice survives a restart, and a palette of a newer
+    /// version reads as Coast without costing the other settings.
+    #[test]
+    fn the_palette_is_coast_until_chosen() {
+        let store = Store::in_memory().unwrap();
+        let mut s = Settings::load(&store).unwrap();
+        assert_eq!(s.palette, Palette::Coast);
+        s.palette = Palette::Dark;
+        s.save(&store).unwrap();
+        assert_eq!(Settings::load(&store).unwrap().palette, Palette::Dark);
+        assert!(
+            store
+                .kv_get(KEY)
+                .unwrap()
+                .unwrap()
+                .contains(r#""palette":"dark""#)
+        );
+        store
+            .kv_set(KEY, r#"{"palette":"sepia","autoArchiveDays":0}"#)
+            .unwrap();
+        let newer = Settings::load(&store).unwrap();
+        assert_eq!(newer.palette, Palette::Coast);
+        assert_eq!(newer.auto_archive_days, 0);
+        assert_eq!(
+            [Palette::Coast, Palette::Light, Palette::Dark].map(Palette::code),
+            ["coast", "light", "dark"]
+        );
     }
 
     #[test]

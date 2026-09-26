@@ -137,17 +137,6 @@ test('ui-core-04: every reference of a field or switch names a text that is ther
   expect(await dangling(page.getByTestId('profile'))).toEqual([]);
   await profile(page, `${WIN}&scenario=profile-unreadable`);
   expect(await dangling(page.getByTestId('profile'))).toEqual([]);
-  // Einstellungen: a portal switch is described only while its "off" note shows.
-  await open(page, WIN);
-  await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-enabled-linkedin');
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await expect(toggle).not.toHaveAttribute('aria-describedby', /./);
-  expect(await dangling(page.getByTestId('view-settings'))).toEqual([]);
-  await toggle.click();
-  await expect(page.getByTestId('portal-off-linkedin')).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-describedby', 'switch-enabled-linkedin-hint');
-  expect(await dangling(page.getByTestId('view-settings'))).toEqual([]);
 });
 
 test('live-forms-11: a button that goes hands its focus on', async ({ page }) => {

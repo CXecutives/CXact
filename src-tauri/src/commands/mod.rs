@@ -91,7 +91,11 @@ pub const COMMANDS: [(&str, &str, &str); 41] = [
     ("remove_mailbox", "Record<string, never>", "boolean"),
     ("portal_login", "{ portal: Portal }", "boolean"),
     ("portal_logout", "{ portal: Portal }", "boolean"),
-    ("pick_workspace", "Record<string, never>", "string | null"),
+    (
+        "pick_workspace",
+        "Record<string, never>",
+        "WorkspacePick | null",
+    ),
     ("rewrite_txt", "Record<string, never>", "ExportSummary"),
     ("clear_txt", "Record<string, never>", "ClearedTxt"),
     ("open_target", "{ target: OpenTarget }", "null"),

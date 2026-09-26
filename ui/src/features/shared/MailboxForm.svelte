@@ -7,10 +7,10 @@
   two stay one row) one line says what an app password is and needs, with the two pages in
   the order she needs them: the 2-step verification, then the app password. The fields and
   that line keep the measure of a form; save and cancel follow the OS like the dialogs (save
-  first on Windows, last on macOS), 12 apart. In Einstellungen (`compact`) they are the 28 px
-  buttons of a row and end on the trailing edge of the card; the single "Verbinden" of the
-  first run is its step's main action (32 px) and stays under the fields. A saved change
-  says so where the mailbox is (Einstellungen).
+  first on Windows, last on macOS), 12 apart, as high as the fields (32 px). In Einstellungen
+  (`compact`) they end on the trailing edge of the card; the single "Verbinden" of the first
+  run is its step's main action and stays under the fields. A saved mailbox needs no note:
+  its badge "Verbunden" (Einstellungen) or its ticked step (first run) is the answer.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -40,7 +40,7 @@
      * the app password next to an address that is there.
      */
     autofocus?: boolean;
-    /** A block of Einstellungen: the buttons of a row (28 px) at the end of the card. */
+    /** A block of Einstellungen: the buttons at the end of the card. */
     compact?: boolean;
   }
   let {
@@ -50,7 +50,6 @@
     autofocus = false,
     compact = false,
   }: Props = $props();
-  const size = $derived(compact ? 'sm' : 'field');
 
   const id = $props.id();
   const saveFirst = primaryFirst();
@@ -189,7 +188,7 @@
       {#if oncancel}
         <Button
           variant="secondary"
-          {size}
+          size="field"
           label={t.common.cancel}
           disabled={busy}
           testid="mailbox-cancel"
@@ -200,7 +199,7 @@
     {#if !saveFirst}{@render dismiss()}{/if}
     <Button
       variant="primary"
-      {size}
+      size="field"
       label={saveLabel}
       loading={busy}
       testid="mailbox-save"

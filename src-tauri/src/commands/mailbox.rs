@@ -12,6 +12,9 @@ use tokio_util::sync::CancellationToken;
 use super::app::mailbox;
 use super::{AppState, CmdResult, GmailUser, lock};
 
+/// Key of the time Gmail last accepted the mailbox (`Mailbox.checked_at`; empty: none).
+pub(super) const CHECKED_AT: &str = "mailbox_checked_at";
+
 /// Saves the Gmail access after a real sign-in: a wrong app password, a mailbox that is no
 /// Gmail or no connection say so and nothing is saved; the sign-in also counts the alert
 /// mails of the last 30 days per enabled portal (`Mailbox.check`). Another account starts
@@ -44,6 +47,9 @@ pub async fn save_mailbox(
     vault.save_gmail(&credentials)?;
     *lock(&state.gmail_user) = GmailUser::Known(Some(credentials.user.clone()));
     *lock(&state.mailbox_check) = Some(check);
+    state
+        .store
+        .kv_set(CHECKED_AT, &Timestamp::now().to_string())?;
     if previous.as_deref() != Some(credentials.user.as_str()) {
         state.store.clear_scan_state()?;
     }
@@ -59,6 +65,7 @@ pub async fn remove_mailbox(state: State<'_, AppState>) -> CmdResult<bool> {
     let removed = Vault::app().delete_gmail()?;
     *lock(&state.gmail_user) = GmailUser::Known(None);
     *lock(&state.mailbox_check) = None;
+    state.store.kv_set(CHECKED_AT, "")?;
     state.store.clear_scan_state()?;
     log::info!("mailbox removed");
     Ok(removed)

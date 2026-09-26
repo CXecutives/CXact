@@ -15,4 +15,9 @@ error: ErrorInfo | null,
 /**
  * What "Verbinden" found in the mailbox in this session (the sign-in worked).
  */
-check: MailboxCheck | null, };
+check: MailboxCheck | null, 
+/**
+ * When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
+ * fetch that finished before it is past.
+ */
+checkedAt: string | null, };

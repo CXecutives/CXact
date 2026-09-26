@@ -10,9 +10,12 @@
   off: then no page is fetched. A portal that is off says in one line that the fetch skips
   it. "Details holen" is a switch (what it is for is said once over all portals); a portal
   that offers a sign-in has one row "Anmeldung" with "Anmelden" or "Abmelden": signing in
-  lets the fetch use it, signing out ends that (a sign-in needs the details). A switch moves
-  at once (the state is patched before the save); a failure puts it back and says why here.
-  The switch itself is the answer: no toast.
+  lets the fetch use it, signing out ends that (a sign-in needs the details). A stored
+  sign-in that the fetch does not use looks like none while the portal is on, and "Anmelden"
+  then only lets the fetch use it (no sign-in window); while the portal is off the row keeps
+  "Abmelden" until the sign-in is gone. A run holds the sign-in (both buttons wait with its
+  reason). A switch moves at once (the state is patched before the save); a failure puts it
+  back and says why here. The switch itself is the answer: no toast.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -30,6 +33,7 @@
   import { fade, rise } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { settingsPatch } from './cards';
 
   interface Props {
     portal: PortalState;
@@ -79,10 +83,14 @@
         : t.settings.quota(q.usedDay, q.capDay);
     return { share, text, meter };
   });
+  /** A sign-in is stored (in the session window's profile). */
+  const stored = $derived(portal.signedIn === true);
+  /** Signed in as the fetch sees it: a stored sign-in it does not use counts as none while
+   *  the portal is on; while it is off the stored one shows, so it can be removed. */
+  const signedIn = $derived(stored && (portal.loginEnabled || !portal.enabled));
   /** The row "Anmeldung": where the portal offers one, also for a stored sign-in of a portal
    *  that is off (its Abmelden stays until it is gone). */
-  const signedIn = $derived(portal.signedIn === true);
-  const loginRow = $derived(portal.login === 'optional' && (portal.enabled || signedIn));
+  const loginRow = $derived(portal.login === 'optional' && (portal.enabled || stored));
   const status = $derived(portal.enabled && (health !== null || quota !== null));
   /** The dry run and the demo touch no portal: no sign-in, no sign-out (the backend refuses
    *  them the same way). */
@@ -102,7 +110,7 @@
     if (item) Object.assign(item, patch);
     try {
       const next = await invoke('save_settings', {
-        patch: {
+        patch: settingsPatch({
           portals: [
             {
               portal: portal.portal,
@@ -111,10 +119,7 @@
               loginEnabled: patch.loginEnabled ?? null,
             },
           ],
-          autoArchiveDays: null,
-          autoEmptyTrashDays: null,
-          language: null,
-        },
+        }),
       });
       if (save === saves) app.set(next);
     } catch (failure) {
@@ -123,12 +128,16 @@
     }
   }
 
-  /** Anmelden: the sign-in window, and once signed in the fetch uses it; Abmelden ends both. */
+  /** Anmelden: the sign-in window (unless a sign-in is stored), and once signed in the fetch
+   *  uses it; Abmelden ends both. */
   async function session(on: boolean): Promise<void> {
     error = null;
     busy = true;
     try {
-      const done = await invoke(on ? 'portal_login' : 'portal_logout', { portal: portal.portal });
+      const done =
+        on && stored
+          ? true
+          : await invoke(on ? 'portal_login' : 'portal_logout', { portal: portal.portal });
       if (done && portal.loginEnabled !== on) await change({ loginEnabled: on });
       await app.load();
     } catch (failure) {
@@ -226,8 +235,8 @@
                 icon="log-out"
                 label={t.settings.signOut}
                 loading={busy}
-                disabled={noPortal !== null}
-                disabledReason={noPortal}
+                disabled={run.active || noPortal !== null}
+                disabledReason={noPortal ?? (run.active ? run.busyText : null)}
                 testid="sign-out-{portal.portal}"
                 onclick={() => void session(false)}
               />
@@ -305,10 +314,10 @@
     min-width: 0;
   }
 
-  /* The card's title, above the 15/500 row labels. */
+  /* The card's title, 14/600 like the titles of the Profil's blocks in a card. */
   .name {
     color: var(--text-heading);
-    font: var(--type-title);
+    font: var(--type-tab);
     font-weight: var(--weight-semibold);
   }
 
