@@ -349,7 +349,7 @@ test('the star pins from the list without opening the job', async ({ page }) => 
   await expect(job.locator('.tools')).toHaveCount(0);
   await row(page, key).hover();
   await expect(star).toHaveCSS('opacity', '1');
-  await expect(job.locator('.end')).toHaveCSS('opacity', '0');
+  await expect(job.locator('.date')).toHaveCSS('opacity', '0');
   await pin.click();
   await expect(pin).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('reader')).toHaveCount(0);
@@ -364,7 +364,7 @@ test('the star pins from the list without opening the job', async ({ page }) => 
       [...node.querySelectorAll('.tool')].some((tool) => getComputedStyle(tool).opacity !== '0'),
     );
   await expect.poll(toolShown).toBe(false);
-  await expect(job.locator('.end')).toHaveCSS('opacity', '1');
+  await expect(job.locator('.date')).toHaveCSS('opacity', '1');
   await expect(job.locator('.mark')).toBeVisible();
 });
 
@@ -560,9 +560,7 @@ test('rows and reader say the same in short words; dead ends lead on', async ({ 
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // An excluded row names its reason in short words, the day rate carries its unit.
   await expect(excludedRows(page).first().locator('.foot')).toHaveText('Arbeitnehmerüberlassung');
-  await expect(row(page, 'freelancermap-2801').getByTestId('row-facts')).toContainText(
-    '1.200 €/Tag',
-  );
+  await expect(row(page, 'freelancermap-2801').getByTestId('row-facts')).toContainText('1.200/Tag');
   // The reader's terms: duration and remote share like the row, not the work mode; the date
   // like the row with the exact moment in its tooltip.
   await row(page, 'freelancermap-2801').click();
@@ -1439,9 +1437,9 @@ test('the terms show the ad value and jump to it; wishes stand in their rows; ro
   page,
 }) => {
   await open(page, WIN);
-  // The row's key facts from the ad.
+  // The row's key facts from the ad, in the order of the facts table.
   await expect(row(page, 'freelancermap-2801').getByTestId('row-facts')).toHaveText(
-    /1\.200.*60\s%\sremote.*6 Monate.*ab sofort/,
+    /Interim.*1\.200\/Tag.*ab sofort.*6 Monate.*60\s%\sremote/,
   );
   await row(page, 'freelancermap-2801').click();
   // The wish stands in the row of the rate, beside the minimum.

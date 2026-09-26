@@ -269,7 +269,9 @@ test('Anforderungen: the must line, the optional ones missing, a missing must in
   await expect(page.getByTestId('profile-keywords')).not.toContainText('Branchenerfahrung Energie');
 });
 
-test('Konditionen: fixed rows in a fixed order, verdicts in words, never "genannt"', async ({
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('Konditionen: fixed rows in a fixed order, verdicts in words, never "genannt"', async ({
   page,
 }) => {
   await openJob(page, 'freelancermap-2801');
@@ -294,7 +296,9 @@ test('Konditionen: fixed rows in a fixed order, verdicts in words, never "genann
     'freelancermap-2803',
   ]) {
     await show(page, key);
-    expect(await terms(page).locator('.term-name').allInnerTexts(), key).toEqual(ROWS);
+    // A permanent job that states its salary names its pay row so.
+    const names = key === 'linkedin-4100200303' ? ROWS.with(1, 'Gehalt') : ROWS;
+    expect(await terms(page).locator('.term-name').allInnerTexts(), key).toEqual(names);
     await expect(terms(page)).not.toContainText('genannt');
     for (const cell of await cells(page)) {
       expect(VERDICTS, `${key} ${cell.name}`).toContain(cell.verdict);
@@ -324,7 +328,9 @@ test('Konditionen: fixed rows in a fixed order, verdicts in words, never "genann
   expect(await verdictColour('passt nicht')).toBe(await tokenColour(page, '--danger-strong'));
 });
 
-test('a value with a passage is underlined dotted and jumps; a plain value is plain', async ({
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('a value with a passage is underlined dotted and jumps; a plain value is plain', async ({
   page,
 }) => {
   await openJob(page, 'freelancermap-2801');
@@ -477,7 +483,9 @@ test('unscored bands are muted, not the colour of a low score', async ({ page })
   await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
 });
 
-test('without a profile: the terms without their verdicts, no ring', async ({ page }) => {
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('without a profile: the terms without their verdicts, no ring', async ({ page }) => {
   await open(page, `${WIN}&scenario=no-profile`);
   await show(page, 'freelancermap-2801');
   await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);

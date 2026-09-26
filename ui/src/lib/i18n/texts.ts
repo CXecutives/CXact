@@ -7,8 +7,7 @@
 // never to a raw code.
 
 import { IpcError } from '../ipc/api';
-import type { DetailState, JobView, KeyFacts, Notice, PortalHealth, Reason } from '../ipc/types';
-import { formatDate } from './format';
+import type { DetailState, JobView, Notice, PortalHealth, Reason } from '../ipc/types';
 import {
   textOf,
   type CriterionKey,
@@ -152,77 +151,6 @@ function exclusionWords(note: Notice | null): string {
     return t.list.formalMissing[note.params.class === 'licence' ? 'licence' : 'degree'];
   }
   return t.score.excluded;
-}
-
-/** The start of an ad in words (`now` or an ISO date; `vague` says nothing). */
-function startWords(start: unknown): string | null {
-  if (start === 'now') return t.facts.now;
-  if (start === 'vague') return null;
-  if (typeof start === 'string' && start !== '') return t.facts.from(formatDate(start));
-  return null;
-}
-
-function rateWords(
-  rate: unknown,
-  hourly: unknown,
-  currency: unknown,
-  unit: boolean,
-): string | null {
-  if (typeof rate !== 'number') return null;
-  return t.facts.rate(
-    rate,
-    hourly === true,
-    typeof currency === 'string' && currency !== '' ? currency : null,
-    unit,
-  );
-}
-
-/** The workload an ad states (percent of a five-day week), short for a row ("Vollzeit",
- *  "3 Tage/Woche", "50 %") or long for the reader ("3 Tage pro Woche"); null when it says
- *  nothing. */
-export function workloadWords(
-  facts: Pick<KeyFacts, 'workloadFrom' | 'workloadTo'> | null | undefined,
-  short: boolean,
-): string | null {
-  const to = facts?.workloadTo;
-  if (typeof to !== 'number') return null;
-  return t.facts.workload(facts?.workloadFrom ?? null, to, short);
-}
-
-/**
- * The key facts of an ad for its list row, in this order: rate, remote share, duration,
- * workload, start ("1.100 €/Tag", "60 % remote", "6 Monate", "3 Tage/Woche", "ab sofort").
- * What the ad does not say is left out.
- */
-export function factWords(facts: KeyFacts | null | undefined): string[] {
-  if (!facts) return [];
-  // What a freelancer weighs first comes first: the rate, the remote share, the length, the
-  // days a week, then the start (a fact that does not fit drops out from the end).
-  const out: string[] = [];
-  const terms = termWords(facts);
-  if (terms.minDayRate) out.push(terms.minDayRate);
-  const from = facts.remoteFrom ?? facts.remoteTo;
-  const to = facts.remoteTo ?? facts.remoteFrom;
-  if (from !== null && to !== null) out.push(t.facts.remote(from, to));
-  if (facts.months) out.push(t.facts.months(facts.months));
-  const workload = workloadWords(facts, true);
-  if (workload) out.push(workload);
-  if (terms.availability) out.push(terms.availability);
-  return out;
-}
-
-/** The rate and the start an ad states ("1.100 €/Tag", "ab sofort"), by the criterion they
- *  stand for (the row's facts). */
-export function termWords(
-  facts: KeyFacts | null | undefined,
-): Record<'minDayRate' | 'availability', string | null> {
-  if (!facts) return { minDayRate: null, availability: null };
-  return {
-    minDayRate:
-      rateWords(facts.rate, facts.hourly, facts.currency, true) ??
-      (facts.rateOpen ? t.facts.rateOpen : null),
-    availability: startWords(facts.start),
-  };
 }
 
 export function warningText(notice: Notice): string | null {
