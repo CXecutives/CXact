@@ -17,6 +17,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use jobalert_core::export::palette;
 use jobalert_core::settings::Language;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview, WebviewWindow, WebviewWindowBuilder};
@@ -26,29 +27,30 @@ pub const MAIN: &str = "main";
 
 // ------------------------------------------------------------------ title bar colours
 
-// The colours of the native Windows title bar (Windows 11; DWM). Change them here: each one
-// follows a token of `ui/src/styles/tokens.css`, which `core/tests/ui_contract.rs` checks
-// (`the_title_bar_colours_are_the_tokens`), so a new colour changes the token or the test too.
+// The colours of the native Windows title bar (Windows 11; DWM): tokens of
+// `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates. A new
+// colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the bar at
+// another token is a change here (`core/tests/ui_contract.rs` checks which ones).
 
-/// Background of the bar: `--bg` (`--p-cream`, hsl 32 33% 96%), the cream of the sidebar
-/// below it and the window's `backgroundColor`.
+/// Background of the bar: `--bg`, the cream of the sidebar below it and the window's
+/// `backgroundColor`.
 #[cfg_attr(
     not(windows),
     allow(dead_code, reason = "only Windows colours its title bar")
 )]
-pub const TITLE_BAR_BACKGROUND: Rgb = [0xF8, 0xF5, 0xF1];
-/// Title text of the active window: `--text` (`--p-ink`, hsl 45 7% 17%).
+pub const TITLE_BAR_BACKGROUND: Rgb = palette::BG.rgb;
+/// Title text of the active window: `--text`.
 #[cfg_attr(
     not(windows),
     allow(dead_code, reason = "only Windows colours its title bar")
 )]
-pub const TITLE_BAR_TEXT: Rgb = [0x2E, 0x2D, 0x28];
-/// Title text while the window is inactive: `--text-subtle` (`--p-fg-subtle`, hsl 30 4% 43%).
+pub const TITLE_BAR_TEXT: Rgb = palette::TEXT.rgb;
+/// Title text while the window is inactive: `--text-subtle`.
 #[cfg_attr(
     not(windows),
     allow(dead_code, reason = "only Windows colours its title bar")
 )]
-pub const TITLE_BAR_TEXT_INACTIVE: Rgb = [0x72, 0x6E, 0x69];
+pub const TITLE_BAR_TEXT_INACTIVE: Rgb = palette::TEXT_SUBTLE.rgb;
 
 /// A colour as red, green and blue bytes.
 pub type Rgb = [u8; 3];

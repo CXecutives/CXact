@@ -1,5 +1,6 @@
 /*
- * Design tokens - the only place in the UI where literal values live.
+ * Design tokens - the only place in the UI where literal values live, and the one source of
+ * every colour of the app (docs/CHANGING.md, "Change the look").
  *
  * Light mode only (no theme infrastructure). Two layers:
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
@@ -7,6 +8,12 @@
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
+ *
+ * What is not the page takes its colours from here too: `npm run regen` (tools/tokens.mjs,
+ * then tools/icon.py) writes the colour tokens into core/src/export/palette.rs (the report,
+ * the Excel file, the Windows title bar), tools/palette.json (the app icon) and the window's
+ * backgroundColor (src-tauri/tauri*.conf.json). core/tests/palette.rs and `npm run check`
+ * fail while one of them is stale.
  *
  * Two brand colours (user, 2026-09-24): coral means act, new and where you are - the one
  * primary per view, switches that are on, the unread dot, and (after the A/B preview) the
@@ -76,8 +83,8 @@
   --p-score-low: 30 5% 56%;
   --p-score-low-text: 30 4% 42%;
   /* The ring colour in ten steps by decile of the score (0-9 ... 90-100), red through
-     orange and yellow to green, clean and not neon (computed in OKLCH). The same table is
-     core/src/export/scale.rs (HTML overview, Excel); ui_contract checks they agree. */
+     orange and yellow to green, clean and not neon (computed in OKLCH). The report and the
+     Excel file take the same steps (--score-ring-*, core/src/export/scale.rs). */
   --p-score-0: 4 62% 58%;
   --p-score-1: 13 69% 58%;
   --p-score-2: 19 75% 58%;
@@ -249,6 +256,13 @@
   --score-excluded: var(--text-subtle);
   /* The solid track of an excluded ring (one silhouette for every state). */
   --score-excluded-track: var(--score-track);
+
+  /* ------------------------------------------------------------------- brand */
+  /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
+     and the folder with the check cut out of it. tools/icon.py draws every icon file in
+     these two (through tools/palette.json). */
+  --brand: hsl(var(--p-coral));
+  --brand-glyph: hsl(var(--p-white));
 
   /* --------------------------------------------------------------- gradients */
   /* One, and only for the light of a loading placeholder. No decorative gradients. */
