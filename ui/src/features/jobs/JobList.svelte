@@ -25,7 +25,8 @@
   Back in the Jobs view, the open
   job's row is in view again. A row move that fails says so in the list header. An
   empty inbox says where jobs come from (an alert on each portal, older mails; reading the
-  whole mailbox asks first, as in Einstellungen). Every empty
+  whole mailbox asks first, as in Einstellungen); a filter that leaves nothing says so and
+  takes itself off ("Filter zurücksetzen"). Every empty
   state has exactly one reason and at most one way out (secondary: the header holds the
   view's primary). Without a mailbox one slim note at the top says how to connect one;
   without a usable profile one says that there is no fit without it and leads to the Profil
@@ -53,7 +54,15 @@
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
-  import { isExcluded, jobs, keyOf, placeOf, sameKey, type RowGroup } from '$lib/state/jobs.svelte';
+  import {
+    isExcluded,
+    jobs,
+    keyOf,
+    NO_FILTER,
+    placeOf,
+    sameKey,
+    type RowGroup,
+  } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -121,6 +130,17 @@
       jobs.counts.unread === 0 &&
       jobs.visible.length > 0,
   );
+  /**
+   * The inbox's filter leaves the list empty while the list would hold jobs without it (the
+   * counts over every job): it says so and takes the filter off. Neu with jobs in the
+   * filtered inbox says that nothing is new instead.
+   */
+  const filterEmptied = $derived.by((): boolean => {
+    const all = jobs.overviewCounts ?? jobs.counts;
+    if (!jobs.filtered || all.inbox === 0) return false;
+    if (jobs.facet === 'new') return jobs.counts.inbox === 0;
+    return jobs.facet !== 'favourites' || all.favourites > 0;
+  });
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
@@ -327,12 +347,13 @@
     });
   });
 
-  // Another list, another search or order: the choice starts anew, and a click right away
-  // counts (the guard after a move is for rows that slid under the pointer).
+  // Another list, another search, order or filter: the choice starts anew, and a click right
+  // away counts (the guard after a move is for rows that slid under the pointer).
   $effect(() => {
     void jobs.facet;
     void jobs.search;
     void jobs.sortChoice;
+    void jobs.filterChoice;
     untrack(() => {
       selection.clear();
       disarm();
@@ -394,6 +415,7 @@
   let last = untrack(() => ({
     sort: jobs.sortChoice,
     facet: jobs.facet,
+    filter: jobs.filterChoice,
     active: run.active,
   }));
 
@@ -443,16 +465,18 @@
     }
   }
 
-  // What changed the list: the user's sort or facet (never while a run streams new
+  // What changed the list: the user's sort, facet or filter (never while a run streams new
   // rows in), or the end of a run. A search and live updates arm nothing.
   $effect.pre(() => {
     const now = {
       sort: jobs.sortChoice,
       facet: jobs.facet,
+      filter: jobs.filterChoice,
       active: run.active,
     };
     untrack(() => {
-      const chosen = now.sort !== last.sort || now.facet !== last.facet;
+      const chosen =
+        now.sort !== last.sort || now.facet !== last.facet || now.filter !== last.filter;
       if ((chosen && !now.active) || (last.active && !now.active)) armed = true;
       last = now;
     });
@@ -737,6 +761,14 @@
           tone="neutral"
           text={t.place.empty[place]}
           testid="empty-place-{place}"
+        />
+      {:else if filterEmptied}
+        <EmptyState
+          icon="funnel"
+          tone="neutral"
+          text={t.list.noFilterHit}
+          secondary={{ label: t.toolbar.filterReset, onclick: () => jobs.setFilter(NO_FILTER) }}
+          testid="empty-filter"
         />
       {:else if jobs.facet === 'favourites'}
         <EmptyState

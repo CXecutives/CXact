@@ -685,8 +685,8 @@ test('a run brings new jobs above and re-sorts, the order changes: the bar stays
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await page.waitForTimeout(300);
-  // Another order: the row glides to its new place, the bar with it.
-  await page.getByTestId('sort').click();
+  // Another order (in the funnel's menu): the row glides to its new place, the bar with it.
+  await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-newest').click();
   await page.waitForTimeout(400);
   const samples = await stopSampling(page);

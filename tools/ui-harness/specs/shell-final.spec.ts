@@ -48,14 +48,14 @@ test('a disabled entry that says why stays a Tab stop; its reason shows on focus
 
 test('the focus goes back to the trigger after a menu, a dialog and a toast', async ({ page }) => {
   await open(page, WIN);
-  // A menu opened from the keyboard, closed with Esc.
-  const sort = page.getByTestId('sort');
-  await sort.focus();
+  // A menu opened from the keyboard (the funnel's), closed with Esc.
+  const funnel = page.getByTestId('filter');
+  await funnel.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('menu')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('menu')).toHaveCount(0);
-  await expect(sort).toBeFocused();
+  await expect(funnel).toBeFocused();
   // The card of the keys from the search field.
   const search = page.getByTestId('search');
   await search.focus();

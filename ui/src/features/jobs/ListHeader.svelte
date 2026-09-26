@@ -10,18 +10,23 @@
   when a run starts; the one that comes fades in, the one that goes is gone at once. On
   macOS this row is the list's part of the toolbar row, centred on the traffic lights, and
   its empty parts move the window.
-  Row 2 in the inbox: Neu · Alle · Favoriten with their counts, and at its end "Alle als
-  gelesen markieren" (while the list holds unread jobs; the toast takes it back) and the
-  order, a quiet button that opens the OS's own menu (Nach Passung, Nach Datum; one choice
-  for every list, kept; without a usable profile by date, saying why). In the Archiv and
-  the Papierkorb: how many jobs lie there (during a search, how many it found there), in the
-  Papierkorb "Papierkorb leeren" (asks first), and the order, which keeps the end of the row
-  in every place. While two or more jobs are chosen, the selection bar takes this row, on one
-  line: how many, the place's actions, the × that ends the choice (Esc too). The row keeps
-  one height otherwise: one line in a column wide enough for the segments with four-digit
-  counts and the tools, else always two (the tools on their own line, in every place), so
-  the list never jumps and no label shortens (only as a last resort, with still longer
-  counts). The bottom hairline shows only once the list below is
+  Row 2 in the inbox: Neu · Alle · Favoriten with their counts, and at its end "Alle
+  gelesen" (while the list holds unread jobs; under a search or a filter "Ergebnisse
+  gelesen", which marks only what the list shows; the toast takes it back) and the funnel,
+  a quiet icon button whose menu holds the order and the filter: Nach Passung, Nach Datum
+  (one choice for every list, kept), the portal (Alle Portale, then each enabled one in the
+  app's order), the lowest band (Jede Passung, Ab mittlerer Passung, Nur hohe Passung),
+  "Nur beworbene Jobs", and "Filter zurücksetzen" while a filter is on. Without a usable
+  profile the match order and the bands are off, saying why. While a filter is on, a small
+  dot marks the funnel and its tooltip names the filters. In the Archiv and the Papierkorb
+  (no filter there): how many jobs lie there (during a search, how many it found there), in
+  the Papierkorb "Papierkorb leeren" (asks first), and the order, a quiet button with its
+  menu, which keeps the end of the row. While two or more jobs are chosen, the selection bar
+  takes this row, on one line: how many, the place's actions, the × that ends the choice
+  (Esc too). The row keeps one height otherwise: one line in a column wide enough for the
+  segments with four-digit counts and the tools, else always two (the tools on their own
+  line, in every place), so the list never jumps and no label shortens (only as a last
+  resort, with still longer counts). The bottom hairline shows only once the list below is
   scrolled. Under the rows one sentence says when a job action of the list failed (a move,
   its undo, the star, "all read") or when jobs deleted for good could not leave the Excel
   file; it goes with the next list or the next action that works.
@@ -42,7 +47,15 @@
   import { fade } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
-  import { jobs, keyOf, placeOf, type JobFacet } from '$lib/state/jobs.svelte';
+  import {
+    jobs,
+    keyOf,
+    NO_FILTER,
+    placeOf,
+    type FilterBand,
+    type JobFacet,
+  } from '$lib/state/jobs.svelte';
+  import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
@@ -135,6 +148,100 @@
   const SORTS: readonly JobSort[] = ['match', 'newest'];
   // In the Papierkorb the date is the day a job went there (what its row shows).
   const sorts = $derived(SORTS.map((sort) => ({ id: sort, label: t.toolbar.sortLabel[sort] })));
+
+  /* ---------------------------------------------------------------------- funnel */
+
+  const BANDS: readonly (FilterBand | null)[] = [null, 'mid', 'high'];
+
+  /** The funnel shows while the inbox holds jobs, or while a filter is on (it takes it off
+   *  again, also when it leaves nothing in the list). */
+  const funnel = $derived(
+    inInbox && ((jobs.overviewCounts ?? jobs.counts).inbox > 0 || jobs.filtered),
+  );
+  /** The active filters in words: the second line of the funnel's tooltip. */
+  const filterWords = $derived.by((): string | null => {
+    const filter = jobs.filter;
+    if (!jobs.filtered) return null;
+    const portal = filter.portal === null ? null : t.portal[filter.portal];
+    return t.toolbar.filterOn(portal, filter.minBand, filter.applied);
+  });
+
+  let funnelBox = $state<HTMLElement | null>(null);
+  let funnelOpen = $state(false);
+
+  /**
+   * The funnel's menu below it, its right edge on the button's: the order, the portal, the
+   * band, "Nur beworbene Jobs" and, while a filter is on, the way back. The portals are the
+   * enabled ones in the app's order, and a chosen one switched off since (so it can be seen
+   * and taken off). A second click on the open funnel closes it (the press outside does).
+   */
+  function openFunnel(): void {
+    if (funnelBox === null || menuState.open !== null) return;
+    const filter = jobs.filter;
+    const sort = jobs.sort;
+    const profile = app.hasProfile;
+    const portals = (app.state?.portals ?? [])
+      .filter((line) => line.enabled || line.portal === filter.portal)
+      .map((line) => line.portal);
+    const entries: MenuEntry[] = [
+      ...SORTS.map((id) => ({
+        id,
+        label: t.toolbar.sortLabel[id],
+        checked: sort === id,
+        disabled: id === 'match' && !profile,
+        reason: id === 'match' && !profile ? t.toolbar.sortNoProfile : null,
+        run: () => {
+          if (id !== sort) jobs.setSort(id);
+        },
+      })),
+      { kind: 'separator' },
+      {
+        id: 'portal-all',
+        label: t.toolbar.allPortals,
+        checked: filter.portal === null,
+        run: () => jobs.setFilter({ portal: null }),
+      },
+      ...portals.map((portal) => ({
+        id: `portal-${portal}`,
+        label: t.portal[portal],
+        checked: filter.portal === portal,
+        run: () => jobs.setFilter({ portal }),
+      })),
+      { kind: 'separator' },
+      ...BANDS.map((band) => ({
+        id: `band-${band ?? 'any'}`,
+        label: t.toolbar.band[band ?? 'any'],
+        checked: filter.minBand === band,
+        disabled: !profile,
+        reason: profile ? null : t.toolbar.bandNoProfile,
+        run: () => jobs.setFilter({ minBand: band }),
+      })),
+      { kind: 'separator' },
+      {
+        id: 'applied',
+        label: t.toolbar.appliedOnly,
+        checked: filter.applied,
+        run: () => jobs.setFilter({ applied: !filter.applied }),
+      },
+    ];
+    if (jobs.filtered) {
+      entries.push(
+        { kind: 'separator' },
+        {
+          id: 'filter-reset',
+          label: t.toolbar.filterReset,
+          run: () => jobs.setFilter(NO_FILTER),
+        },
+      );
+    }
+    funnelOpen = true;
+    openMenu({
+      label: t.toolbar.filter,
+      anchor: { kind: 'below', rect: funnelBox.getBoundingClientRect(), align: 'end' },
+      entries,
+      onclose: () => (funnelOpen = false),
+    });
+  }
 
   /** "Alle als gelesen markieren" is on its way: a second click (a double click) waits. */
   let marking = false;
@@ -292,7 +399,7 @@
               variant="ghost"
               size="sm"
               icon="check-check"
-              label={query === '' ? t.actions.allRead : t.actions.hitsRead}
+              label={query === '' && !jobs.filtered ? t.actions.allRead : t.actions.hitsRead}
               testid="mark-all-read"
               onclick={() => void markAllRead()}
             />
@@ -313,7 +420,23 @@
               }}
             />
           {/if}
-          {#if inPlace > 0}
+          {#if funnel}
+            <span class="funnel" bind:this={funnelBox}>
+              <Button
+                variant="ghost"
+                size="sm"
+                iconOnly
+                icon="funnel"
+                label={t.toolbar.filter}
+                hint={filterWords}
+                dot={jobs.filtered}
+                menu
+                expanded={funnelOpen}
+                testid="filter"
+                onclick={openFunnel}
+              />
+            </span>
+          {:else if !inInbox && inPlace > 0}
             <MenuButton
               options={sorts}
               value={app.hasProfile ? jobs.sortChoice : 'newest'}
@@ -426,10 +549,10 @@
   }
 
   /* A column too narrow for the segments with four-digit counts and the tools on one line
-     ("Alle gelesen" and the order: German needs about 600 px): two lines in every state (the segments or the
-     count, then the tools), so the list below stands at one height whatever the row holds
-     and no label shortens when a count grows. */
-  @container (width < 620px) {
+     ("Alle gelesen" and the funnel: German needs about 512 px, English 485): two lines in
+     every state (the segments or the count, then the tools), so the list below stands at
+     one height whatever the row holds and no label shortens when a count grows. */
+  @container (width < 520px) {
     .second:not(.single) {
       flex-wrap: wrap;
       align-content: flex-start;
@@ -458,5 +581,12 @@
     gap: var(--space-2);
     margin-left: auto;
     margin-right: calc(-1 * var(--ghost-inset));
+  }
+
+  /* The funnel's box ends the row where the order ends it in the Archiv and the Papierkorb
+     and the selection bar's × ends it. */
+  .funnel {
+    display: inline-flex;
+    flex: none;
   }
 </style>

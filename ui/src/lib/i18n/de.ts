@@ -851,6 +851,31 @@ export const de = {
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
+    /** The funnel of the inbox (its tooltip and the name of its menu): the order and the
+     *  filter in one menu. */
+    filter: 'Filter',
+    /** The second line of its tooltip while a filter is on: what the list shows (the portal
+     *  by name). */
+    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
+      const parts = [
+        portal === null ? '' : `nur ${portal}`,
+        band === 'mid' ? 'ab mittlerer Passung' : band === 'high' ? 'nur hohe Passung' : '',
+        applied ? 'nur beworbene Jobs' : '',
+      ].filter((part) => part !== '');
+      const text = parts.join(', ');
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    },
+    allPortals: 'Alle Portale',
+    /** The lowest band of the filter (`any`: every job, also one without a score). */
+    band: {
+      any: 'Jede Passung',
+      mid: 'Ab mittlerer Passung',
+      high: 'Nur hohe Passung',
+    } satisfies Record<'any' | 'mid' | 'high', string>,
+    /** Without a usable profile there is no fit to filter by. */
+    bandNoProfile: 'Ohne Profil gibt es keine Passung.',
+    appliedOnly: 'Nur beworbene Jobs',
+    filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst ein Portal ein.',
@@ -986,6 +1011,8 @@ export const de = {
       favourites: (query: string) => `Keine Favoriten zu „${query}“.`,
     },
     searchAll: 'In allen suchen',
+    /** The filter of the inbox leaves nothing in the list. */
+    noFilterHit: 'Kein Job passt zum Filter.',
     showAll: 'Alle zeigen',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
