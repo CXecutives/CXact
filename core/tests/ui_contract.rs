@@ -1335,6 +1335,441 @@ fn the_catalog_formats_every_number() {
     fail(&problems, "numbers in the UI catalogs");
 }
 
+/* ------------------------------------------------------ one pattern per role */
+
+fn source<'a>(all: &'a [Source], path: &str) -> &'a Source {
+    all.iter()
+        .find(|s| s.is(path))
+        .unwrap_or_else(|| panic!("{path} missing"))
+}
+
+/// The attributes of every `<Name ...>` tag of a component in a file (up to its `/>`), with
+/// the line it starts on.
+fn component_tags(code: &str, name: &str) -> Vec<(usize, String)> {
+    let open = format!("<{name}");
+    let mut out = Vec::new();
+    let mut rest = code;
+    let mut offset = 0;
+    while let Some(start) = rest.find(&open) {
+        let after = &rest[start + open.len()..];
+        if !after.starts_with(|c: char| c.is_whitespace() || c == '/' || c == '>') {
+            offset += start + 1;
+            rest = &rest[start + 1..];
+            continue;
+        }
+        let end = after.find("/>").map_or(after.len(), |e| e + 2);
+        let line = code[..offset + start].matches('\n').count() + 1;
+        out.push((line, after[..end].to_string()));
+        offset += start + 1;
+        rest = &rest[start + 1..];
+    }
+    out
+}
+
+/// The icon map of lib/icons.ts: (meaning, glyph) in its order.
+fn icon_map(all: &[Source]) -> Vec<(String, String)> {
+    source(all, "lib/icons.ts")
+        .lines()
+        .filter_map(|(_, line)| {
+            let (meaning, rest) = line.trim().split_once(": '")?;
+            let glyph = rest.strip_suffix("',")?;
+            let word = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric());
+            (word(meaning)
+                && glyph
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
+            .then(|| (meaning.to_string(), glyph.to_string()))
+        })
+        .collect()
+}
+
+/// The string literals of `text` (single or double quoted, on one line).
+fn quoted(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find(['\'', '"']) {
+        let quote = &rest[start..=start];
+        let after = &rest[start + 1..];
+        let Some(end) = after.find(quote) else { break };
+        out.push(&after[..end]);
+        rest = &after[end + 1..];
+    }
+    out
+}
+
+/// Icons by meaning: lib/icons.ts maps each meaning to one Lucide glyph and no glyph to two
+/// meanings; every icon position in the UI names a meaning (`icon="trash"`), never a glyph.
+#[test]
+fn icons_by_meaning() {
+    // The texts (the catalogs, the gallery's words) name no icons.
+    const TEXTS: [&str; 3] = [
+        "lib/i18n/de.ts",
+        "lib/i18n/en.ts",
+        "features/gallery/gallery.ts",
+    ];
+    let all = scanned(MIN_FILES);
+    let map = icon_map(&all);
+    assert!(
+        map.len() >= 50,
+        "only {} icon meanings read from lib/icons.ts",
+        map.len()
+    );
+    let mut problems = Vec::new();
+    let mut glyphs = std::collections::HashMap::new();
+    for (meaning, glyph) in &map {
+        if let Some(other) = glyphs.insert(glyph.as_str(), meaning.as_str()) {
+            problems.push(format!(
+                "lib/icons.ts: {glyph} means both {other} and {meaning}"
+            ));
+        }
+    }
+    let meanings: std::collections::HashSet<&str> = map.iter().map(|(m, _)| m.as_str()).collect();
+    let icon = source(&all, "components/Icon.svelte");
+    for glyph in glyphs.keys() {
+        let key = if glyph.contains('-') {
+            format!("'{glyph}':")
+        } else {
+            format!("{glyph}:")
+        };
+        if !icon.code.contains(&key) {
+            problems.push(format!("Icon.svelte: no import for {glyph}"));
+        }
+    }
+    let mut checked = 0;
+    for source in all.iter().filter(|s| {
+        !s.is("lib/icons.ts")
+            && !s.is("components/Icon.svelte")
+            && !TEXTS.contains(&s.path.as_str())
+    }) {
+        for (n, line) in source.lines() {
+            // icon="x", trailing="x", icon: 'x', icon = 'x', name="x" on an Icon, and every
+            // literal of an icon expression (icon={a ? 'x' : 'y'}) except a compared value.
+            let mut spots: Vec<&str> = Vec::new();
+            for key in ["icon=\"", "trailing=\"", "icon: '", "icon?: '", "icon = '"] {
+                let mut rest = line;
+                while let Some(at) = rest.find(key) {
+                    let after = &rest[at + key.len()..];
+                    let end = after.find(['"', '\'']).unwrap_or(after.len());
+                    spots.push(&after[..end]);
+                    rest = &after[end..];
+                }
+            }
+            if line.contains("<Icon ")
+                && let Some(at) = line.find("name=\"")
+            {
+                let after = &line[at + 6..];
+                spots.push(&after[..after.find('"').unwrap_or(after.len())]);
+            }
+            for key in ["icon={", "name={"] {
+                if key == "name={" && !line.contains("<Icon ") {
+                    continue;
+                }
+                if let Some(at) = line.find(key) {
+                    let expr = &line[at + key.len()..];
+                    let expr = &expr[..expr.find('}').unwrap_or(expr.len())];
+                    let mut rest = expr;
+                    for literal in quoted(expr) {
+                        let at = rest.find(literal).unwrap_or(0);
+                        let before = rest[..at].trim_end_matches(['\'', '"']).trim_end();
+                        if !before.ends_with("===") && !before.ends_with("!==") {
+                            spots.push(literal);
+                        }
+                        rest = &rest[at + literal.len()..];
+                    }
+                }
+            }
+            for spot in spots {
+                checked += 1;
+                if !meanings.contains(spot) {
+                    problems.push(format!("{}:{n}: '{spot}' is no icon meaning", source.path));
+                }
+            }
+        }
+    }
+    assert!(
+        checked >= 100,
+        "only {checked} icon positions found - did the rule move?"
+    );
+    fail(
+        &problems,
+        "icons by meaning (lib/icons.ts): one glyph per meaning, meanings everywhere",
+    );
+}
+
+/// Buttons have two heights, 28 and 32 px (sm, field): no 36 or 40 px button, every glyph
+/// 16 px, one type.
+#[test]
+fn buttons_are_28_or_32_px() {
+    let all = scanned(MIN_FILES);
+    let button = source(&all, "components/Button.svelte");
+    let mut problems = Vec::new();
+    if !button
+        .code
+        .contains("export type ButtonSize = 'sm' | 'field';")
+    {
+        problems.push("Button.svelte: ButtonSize is not exactly 'sm' | 'field'".to_string());
+    }
+    for token in ["--control-md", "--control-lg", "--type-md"] {
+        if button.code.contains(token) {
+            problems.push(format!(
+                "Button.svelte: {token} (buttons are 28 or 32 px, small type)"
+            ));
+        }
+    }
+    for source in all.iter().filter(|s| s.ext == "svelte") {
+        for (line, tag) in component_tags(&source.code, "Button") {
+            for size in ["size=\"md\"", "size=\"lg\"", "size={'md'}", "size={'lg'}"] {
+                if tag.contains(size) {
+                    problems.push(format!("{}:{line}: <Button {size}>", source.path));
+                }
+            }
+        }
+    }
+    fail(&problems, "buttons are 28 px (sm) or 32 px (field)");
+}
+
+/// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only
+/// by components/Toast.svelte from its kinds table; nothing else draws a toast.
+#[test]
+fn toasts_only_through_the_toast_api() {
+    let all = scanned(MIN_FILES);
+    let mut problems = find(&all, &["toasts.items", "TOAST_KINDS", "TOAST_LIFE"], |s| {
+        s.is("lib/state/toasts.svelte.ts") || s.is("components/Toast.svelte")
+    });
+    problems.extend(find(&all, &["data-testid=\"toast\""], |s| {
+        s.is("components/Toast.svelte")
+    }));
+    let state = source(&all, "lib/state/toasts.svelte.ts");
+    for kind in ["success:", "info:", "warning:"] {
+        if !state.code.contains(kind) {
+            problems.push(format!("toasts.svelte.ts: TOAST_KINDS has no {kind}"));
+        }
+    }
+    fail(
+        &problems,
+        "toasts only through lib/state/toasts.svelte.ts and Toast.svelte",
+    );
+}
+
+/// One tooltip: the `tooltip` action feeds the one layer (components/Tooltip.svelte), with
+/// one delay (--delay-tooltip through lib/motion) and one look; no other bubble.
+#[test]
+fn one_tooltip() {
+    let all = scanned(MIN_FILES);
+    let mut problems = find(&all, &["tooltipState"], |s| {
+        s.is("lib/actions/tooltip.ts")
+            || s.is("lib/state/tooltip.svelte.ts")
+            || s.is("components/Tooltip.svelte")
+    });
+    // The attribute (a selector that skips the layer, `[role="tooltip"]`, is no bubble).
+    problems.extend(find(&all, &[" role=\"tooltip\""], |s| {
+        s.is("components/Tooltip.svelte")
+    }));
+    problems.extend(find(&all, &["--delay-tooltip"], |s| {
+        s.is("styles/tokens.css") || s.is("lib/motion/motion.ts")
+    }));
+    fail(&problems, "one tooltip layer, one delay, one look");
+}
+
+/// A success whose result shows nowhere else is a toast, never a lasting note in the view.
+/// The notes below still say one inline; their views move them to a toast.
+#[test]
+fn quiet_successes_are_toasts() {
+    const MOVING: [&str; 3] = [
+        "features/profile/ProfileEditor.svelte",
+        "features/settings/SettingsView.svelte",
+        "features/first-run/FirstRunView.svelte",
+    ];
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    let mut notices = 0;
+    for source in all.iter().filter(|s| {
+        s.ext == "svelte" && !s.under("features/gallery/") && !MOVING.contains(&s.path.as_str())
+    }) {
+        for (line, tag) in component_tags(&source.code, "Notice") {
+            notices += 1;
+            if tag.contains("tone=\"success\"") || tag.contains("'success'") {
+                problems.push(format!("{}:{line}: a success Notice", source.path));
+            }
+        }
+    }
+    assert!(
+        notices >= 10,
+        "only {notices} Notices found - did the rule move?"
+    );
+    fail(
+        &problems,
+        "a quiet success is a toast (toasts.show), not a Notice",
+    );
+}
+
+/// Every control answers by the kind of its surface (tokens.css "one answer per surface
+/// kind"): the components read the kind tokens, not the washes behind them. The files below
+/// belong to views that move to the kind tokens.
+#[test]
+fn one_answer_per_surface_kind() {
+    const MOVING: [&str; 3] = [
+        "components/JobRow.svelte",
+        "components/ReasonItem.svelte",
+        "components/StatTile.svelte",
+    ];
+    let all = scanned(MIN_FILES);
+    let tokens = source(&all, "styles/tokens.css");
+    let mut problems = Vec::new();
+    for kind in [
+        "--quiet-hover:",
+        "--quiet-press:",
+        "--control-hover:",
+        "--control-hover-edge:",
+        "--raised-hover-edge:",
+        "--raised-hover-shadow:",
+        "--raised-press:",
+        "--label-hover:",
+        "--label-press:",
+    ] {
+        if !tokens.code.contains(kind) {
+            problems.push(format!("tokens.css: {kind} missing"));
+        }
+    }
+    problems.extend(find(
+        &all,
+        &[
+            "var(--surface-hover)",
+            "var(--surface-press)",
+            "var(--sh-hover)",
+        ],
+        |s| s.is("styles/tokens.css") || MOVING.contains(&s.path.as_str()),
+    ));
+    fail(&problems, "controls read the kind tokens of their surface");
+}
+
+/// One shortcuts table: lib/input/keys.ts holds every key of the app (the views' keys come
+/// from lib/views.ts); input.ts dispatches from it, the cards list it and the tooltips name
+/// it. No other file writes a key of the app's own, and every row is dispatched.
+#[test]
+fn one_shortcuts_table() {
+    let all = scanned(MIN_FILES);
+    let keys = source(&all, "lib/input/keys.ts");
+    let input = source(&all, "lib/input/input.ts");
+    let mut problems = Vec::new();
+    let actions: Vec<&str> = keys
+        .lines()
+        .filter_map(|(_, line)| {
+            let rest = line.split("action: '").nth(1)?;
+            rest.split('\'').next()
+        })
+        .collect();
+    assert!(
+        actions.len() >= 15,
+        "only {} shortcuts read from keys.ts",
+        actions.len()
+    );
+    // Moving in the list goes by the row's combos (up, down, home, end, esc); Enter opens a
+    // row by the row's own button.
+    for action in actions
+        .iter()
+        .filter(|a| !["step", "edge", "close", "open"].contains(a))
+    {
+        if !input.code.contains(&format!("'{action}'"))
+            && !input.code.contains(&format!("\"{action}\""))
+        {
+            problems.push(format!("input.ts does not dispatch the shortcut {action}"));
+        }
+    }
+    // The key literals the dispatch used to hold, and the combos of the cards and views.
+    for needle in [
+        "'F5'", "Digit", "=== 'z'", "=== 'f'", "=== 'r'", "=== 's'", "'mod+1'",
+    ] {
+        if input.code.contains(needle) {
+            problems.push(format!(
+                "input.ts: {needle} (a key of the app belongs in keys.ts)"
+            ));
+        }
+    }
+    problems.extend(find(
+        &all,
+        &[
+            "'mod+1'", "'mod+2'", "'mod+3'", "'mod+4'", "'mod+f'", "'mod+/'",
+        ],
+        |s| s.is("lib/input/keys.ts") || s.is("lib/views.ts") || s.under("features/gallery/"),
+    ));
+    for path in [
+        "features/shell/KeysHelp.svelte",
+        "features/shared/KeyList.svelte",
+    ] {
+        if source(&all, path).code.contains("keyLabel(") {
+            problems.push(format!(
+                "{path}: names keys itself (the card renders keys.ts)"
+            ));
+        }
+    }
+    fail(&problems, "one shortcuts table (lib/input/keys.ts)");
+}
+
+/// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the
+/// components of that role, so coral cannot creep into a heading, a link or a hover.
+#[test]
+fn coral_only_in_its_roles() {
+    const ROLES: [(&str, &[&str]); 8] = [
+        // The one primary action of a view.
+        ("var(--primary", &["components/Button.svelte"]),
+        // A switch that is on, and the check of a chosen row.
+        (
+            "var(--toggle-on",
+            &["components/Toggle.svelte", "components/JobRow.svelte"],
+        ),
+        // The dot of a job not opened yet, what is new in a place (the tab's count) and the
+        // dot of a filter that is on (the approved design, 2026-09-26).
+        (
+            "var(--unread",
+            &[
+                "components/JobRow.svelte",
+                "components/Tabs.svelte",
+                "components/Button.svelte",
+            ],
+        ),
+        // Where you are: the selected row, its bar and its ring track, the active view.
+        (
+            "var(--surface-selected",
+            &["components/ListRow.svelte", "components/JobRow.svelte"],
+        ),
+        (
+            "var(--selection-bar",
+            &["components/ListRow.svelte", "features/jobs/RowBar.svelte"],
+        ),
+        ("var(--ring-track-selected", &["components/ListRow.svelte"]),
+        ("var(--nav-active-icon", &["components/SideNav.svelte"]),
+        // New: the soft count and the coral tone of a badge, a tile and a stat.
+        (
+            "var(--accent",
+            &[
+                "components/Badge.svelte",
+                "components/IconTile.svelte",
+                "components/StatTile.svelte",
+            ],
+        ),
+    ];
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    for (needle, allowed) in ROLES {
+        problems.extend(find(&all, &[needle], |s| {
+            s.is("styles/tokens.css")
+                || s.under("features/gallery/")
+                || allowed.contains(&s.path.as_str())
+        }));
+    }
+    problems.extend(find(&all, &["var(--count-soft-"], |s| {
+        s.is("styles/tokens.css") || s.is("components/Count.svelte")
+    }));
+    problems.extend(find(&all, &["var(--p-coral"], |s| {
+        s.is("styles/tokens.css")
+    }));
+    fail(
+        &problems,
+        "coral only in its roles (act, new, where you are)",
+    );
+}
+
 /// The release build must not ship the gallery (it is compiled out via `__GALLERY__`).
 #[test]
 fn the_release_build_has_no_gallery() {

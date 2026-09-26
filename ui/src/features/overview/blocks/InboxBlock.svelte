@@ -28,7 +28,7 @@
   <Button
     size="field"
     variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
-    icon="refresh-cw"
+    icon="fetch"
     label={t.toolbar.fetch}
     hint={fetchKeys}
     disabled={run.fetchBlocked !== null}
@@ -43,7 +43,7 @@
   <Button
     size="field"
     variant="secondary"
-    icon="circle-stop"
+    icon="cancel"
     label={t.toolbar.cancel}
     loading={live && run.cancelling}
     wide

@@ -251,7 +251,7 @@ test('first run: a profile that does not count keeps step 2 open and says why', 
   expect(gap).toBe(4);
   const openProfile = page.getByTestId('first-profile');
   await expect(openProfile).toHaveText('Profil öffnen');
-  await expect(openProfile.locator('[data-icon]')).toHaveAttribute('data-icon', 'file-text');
+  await expect(openProfile.locator('[data-icon]')).toHaveAttribute('data-icon', 'document');
 });
 
 test('first run: Einstellungen and Profil open, Jobs leads back to the setup', async ({ page }) => {
@@ -400,7 +400,7 @@ test('reset: a clean one says so once; one that left something warns with the lo
   await expect(page.getByTestId('toast')).toHaveCount(0);
   // What stayed is named in the log.
   const log = report.getByRole('button', { name: 'Protokoll öffnen' });
-  await expect(log.locator('[data-icon]')).toHaveAttribute('data-icon', 'folder-open');
+  await expect(log.locator('[data-icon]')).toHaveAttribute('data-icon', 'folder');
   await log.click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'logDir' } });
   // A folder that does not open says so in its place.
@@ -470,16 +470,16 @@ test('button styles: the row changes its own value in secondary, the rest is qui
   }
   const glyph = (id: string) => page.getByTestId(id).locator('[data-icon]');
   for (const [id, icon] of [
-    ['mailbox-change', 'pencil'],
-    ['mailbox-remove', 'circle-x'],
-    ['full-mailbox', 'refresh-cw'],
-    ['workspace-change', 'pencil'],
-    ['excel-open', 'file-spreadsheet'],
-    ['txt-rewrite', 'file-pen-line'],
-    ['txt-reveal', 'folder-open'],
-    ['txt-clear', 'trash-2'],
-    ['logs-open', 'folder-open'],
-    ['reset', 'rotate-ccw'],
+    ['mailbox-change', 'edit'],
+    ['mailbox-remove', 'purge'],
+    ['full-mailbox', 'fetch'],
+    ['workspace-change', 'edit'],
+    ['excel-open', 'excel'],
+    ['txt-rewrite', 'rewrite'],
+    ['txt-reveal', 'folder'],
+    ['txt-clear', 'trash'],
+    ['logs-open', 'folder'],
+    ['reset', 'reset'],
   ] as const) {
     await expect(glyph(id), id).toHaveAttribute('data-icon', icon);
   }

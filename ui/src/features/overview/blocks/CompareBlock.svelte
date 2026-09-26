@@ -22,7 +22,7 @@
     <Button
       variant="ghost"
       size="sm"
-      icon="copy"
+      icon="prompt"
       label={t.overview.promptTop}
       testid="prompt-top"
       onclick={copy}

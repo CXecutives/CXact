@@ -356,7 +356,7 @@
   const PLACE_ICON: Record<Place, IconName> = {
     inbox: 'inbox',
     archive: 'archive',
-    trash: 'trash-2',
+    trash: 'trash',
   };
   const elsewhere = $derived.by(() => {
     if (!searching) return [];
@@ -657,12 +657,12 @@
   {#if jobs.status === 'error'}
     <div class="empty">
       <EmptyState
-        icon="triangle-alert"
+        icon="warning"
         tone="danger"
         text={t.list.loadFailed}
         secondary={{
           label: t.common.retry,
-          icon: 'refresh-cw',
+          icon: 'retry',
           onclick: () => {
             void jobs.load();
             void jobs.loadOverview();
@@ -694,21 +694,21 @@
             icon="search"
             tone="neutral"
             text={t.list.noHit(jobs.search.trim())}
-            secondary={{ label: t.field.clear, icon: 'x', onclick: () => jobs.setSearch('') }}
+            secondary={{ label: t.field.clear, icon: 'close', onclick: () => jobs.setSearch('') }}
             testid="empty-search"
           />
           {#if elsewhere.length > 0}{@render alsoIn()}{/if}
         </div>
       {:else if place !== 'inbox'}
         <EmptyState
-          icon={place === 'trash' ? 'trash-2' : 'archive'}
+          icon={place === 'trash' ? 'trash' : 'archive'}
           tone="neutral"
           text={t.place.empty[place]}
           testid="empty-place-{place}"
         />
       {:else if filterEmptied}
         <EmptyState
-          icon="funnel"
+          icon="filter"
           tone="neutral"
           text={t.list.noFilterHit}
           secondary={{
@@ -720,25 +720,20 @@
       {:else if run.active || !mailRead}
         <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
         <EmptyState
-          icon="briefcase"
+          icon="jobs"
           tone="neutral"
           text={run.active ? t.list.emptyWhileRun : t.list.emptyAll}
           testid="empty-all"
         />
       {:else}
         <div class="sources">
-          <EmptyState
-            icon="briefcase"
-            tone="neutral"
-            text={t.list.emptyAfterRun}
-            testid="empty-all"
-          />
+          <EmptyState icon="jobs" tone="neutral" text={t.list.emptyAfterRun} testid="empty-all" />
           <div class="sources-actions">
             {#each PORTALS as portal (portal.portal)}
               <Button
                 variant="ghost"
                 size="sm"
-                icon="external-link"
+                icon="external"
                 external
                 label={t.list.createAlert(t.portal[portal.portal])}
                 testid="alert-{portal.portal}"
@@ -749,7 +744,7 @@
               <Button
                 variant="ghost"
                 size="sm"
-                icon="mail"
+                icon="alertMail"
                 label={t.list.readOlder}
                 disabled={run.fetchBlocked !== null}
                 disabledReason={run.fetchBlocked}
@@ -828,7 +823,7 @@
           tone="warning"
           variant="row"
           text={t.list.pageFailed}
-          action={{ label: t.common.retry, icon: 'refresh-cw', onclick: () => void jobs.grow() }}
+          action={{ label: t.common.retry, icon: 'retry', onclick: () => void jobs.grow() }}
           testid="page-error"
         />
       </div>

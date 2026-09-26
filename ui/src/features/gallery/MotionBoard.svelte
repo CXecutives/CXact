@@ -46,7 +46,7 @@
 
 <Section heading={text.sections.motion} id="motion">
   <div class="head">
-    <Button label={text.motion.play} icon="refresh-cw" onclick={playAll} testid="motion-play" />
+    <Button label={text.motion.play} icon="retry" onclick={playAll} testid="motion-play" />
     <span class="state" data-testid="motion-state"
       >{reduced ? text.motion.reduced : text.motion.full}</span
     >
@@ -84,11 +84,11 @@
 
   <h3 class="sub">{m.micro}</h3>
   <div class="micro" data-testid="motion-micro">
-    <Button variant="primary" icon="refresh-cw" label={m.fetch} />
-    <Button icon="external-link" label={m.open} />
-    <Button variant="ghost" icon="download" label={m.save} />
-    <Button variant="ghost" icon="chevron-left" label={m.back} />
-    <Button variant="ghost" icon="trash-2" label={m.remove} />
+    <Button variant="primary" icon="fetch" label={m.fetch} />
+    <Button icon="external" label={m.open} />
+    <Button variant="ghost" icon="details" label={m.save} />
+    <Button variant="ghost" icon="back" label={m.back} />
+    <Button variant="ghost" icon="trash" label={m.remove} />
     <Button
       variant="ghost"
       iconOnly
@@ -101,19 +101,19 @@
     <Button
       variant="ghost"
       iconOnly
-      icon="arrow-up-down"
+      icon="expand"
       label={newest ? m.newest : m.best}
       turned={newest}
       testid="motion-sort"
       onclick={() => (newest = !newest)}
     />
-    <Button variant="link" icon="external-link" external label={m.link} />
+    <Button variant="link" icon="external" external label={m.link} />
   </div>
   <div class="micro">
     <Count value={rolled} />
     <Button size="sm" label={m.more} onclick={() => (rolled += 1)} />
     <Button size="sm" label={m.less} onclick={() => (rolled = Math.max(0, rolled - 1))} />
-    <Button size="sm" icon="refresh-cw" label={m.again} onclick={() => (once += 1)} />
+    <Button size="sm" icon="retry" label={m.again} onclick={() => (once += 1)} />
     {#key once}
       <span class="drawn" aria-hidden="true"><Icon name="check" size="md" /></span>
       <span class="passage">{m.passage}</span>

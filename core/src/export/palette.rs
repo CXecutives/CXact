@@ -192,6 +192,20 @@ pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 /// `--border-focus` (`--p-navy`).
 pub const BORDER_FOCUS: Colour = Colour::new("hsl(212 34% 37%)", [0x3E, 0x5C, 0x7E]);
+/// `--control-hover` (`--surface-muted`, `--p-muted`).
+pub const CONTROL_HOVER: Colour = SURFACE_MUTED;
+/// `--control-hover-edge` (`--border-input`, `--p-border-input`).
+pub const CONTROL_HOVER_EDGE: Colour = BORDER_INPUT;
+/// `--raised-hover-edge` (`--border-navy`, `--p-navy-200`).
+pub const RAISED_HOVER_EDGE: Colour = BORDER_NAVY;
+/// `--raised-press` (`--surface-muted`, `--p-muted`).
+pub const RAISED_PRESS: Colour = SURFACE_MUTED;
+/// `--label-hover` (`--text`, `--p-ink`).
+pub const LABEL_HOVER: Colour = TEXT;
+/// `--label-press` (`--pressed`, `--p-navy-deep`).
+pub const LABEL_PRESS: Colour = PRESSED;
+/// `--label-glyph-hover` (`--icon-accent`, `--p-navy`).
+pub const LABEL_GLYPH_HOVER: Colour = ICON_ACCENT;
 /// `--grip-rest` (`--border-strong`, `--p-border-strong`).
 pub const GRIP_REST: Colour = BORDER_STRONG;
 /// `--grip-drag` (`--text-subtle`, `--p-fg-subtle`).
@@ -215,7 +229,7 @@ pub const SCORE_RING: [Colour; 10] = [
 pub const FONT_SANS: &str = "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /// Every colour constant above by the name of its token (without the dashes).
-pub const TOKENS: [(&str, Colour); 94] = [
+pub const TOKENS: [(&str, Colour); 101] = [
     ("bg", BG),
     ("surface", SURFACE),
     ("surface-muted", SURFACE_MUTED),
@@ -308,6 +322,13 @@ pub const TOKENS: [(&str, Colour); 94] = [
     ("brand", BRAND),
     ("brand-glyph", BRAND_GLYPH),
     ("border-focus", BORDER_FOCUS),
+    ("control-hover", CONTROL_HOVER),
+    ("control-hover-edge", CONTROL_HOVER_EDGE),
+    ("raised-hover-edge", RAISED_HOVER_EDGE),
+    ("raised-press", RAISED_PRESS),
+    ("label-hover", LABEL_HOVER),
+    ("label-press", LABEL_PRESS),
+    ("label-glyph-hover", LABEL_GLYPH_HOVER),
     ("grip-rest", GRIP_REST),
     ("grip-drag", GRIP_DRAG),
 ];

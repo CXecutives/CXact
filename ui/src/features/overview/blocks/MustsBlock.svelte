@@ -23,7 +23,7 @@
         <Button
           variant="secondary"
           size="sm"
-          icon="plus"
+          icon="add"
           label={t.overview.addToProfile}
           testid="add-must"
           onclick={() => addToProfile(must.label)}

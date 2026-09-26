@@ -93,6 +93,13 @@
     "brand":                  { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
     "brand-glyph":            { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "border-focus":           { "css": "hsl(212 34% 37%)", "rgb": [62, 92, 126] },
+    "control-hover":          { "css": "hsl(45 23% 95%)", "rgb": [245, 244, 239] },
+    "control-hover-edge":     { "css": "hsl(40 10% 66%)", "rgb": [177, 171, 160] },
+    "raised-hover-edge":      { "css": "hsl(212 26% 84%)", "rgb": [204, 213, 225] },
+    "raised-press":           { "css": "hsl(45 23% 95%)", "rgb": [245, 244, 239] },
+    "label-hover":            { "css": "hsl(45 7% 17%)", "rgb": [46, 45, 40] },
+    "label-press":            { "css": "hsl(212 30% 26%)", "rgb": [46, 65, 86] },
+    "label-glyph-hover":      { "css": "hsl(212 34% 37%)", "rgb": [62, 92, 126] },
     "grip-rest":              { "css": "hsl(40 12% 78%)", "rgb": [206, 201, 192] },
     "grip-drag":              { "css": "hsl(30 4% 43%)", "rgb": [114, 110, 105] }
   },
