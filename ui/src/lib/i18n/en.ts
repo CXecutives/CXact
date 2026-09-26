@@ -1403,6 +1403,7 @@ export const en: Catalog = {
     mailbox: 'Mailbox',
     automatic: 'Automatic',
     portals: 'Portals',
+    backToJob: 'Back to the job',
     files: 'Files',
     maintenance: 'Maintenance',
     connected: 'Connected',

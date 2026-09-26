@@ -1,12 +1,15 @@
 // The remaining backend pieces and their small UI ends: the excluded jobs counted per place
-// (the section says its number in Archiv and Papierkorb before every page is there) and the
-// app's version in Wartung.
+// (the section says its number in Archiv and Papierkorb before every page is there), the
+// app's version in Wartung and Einstellungen opened at one portal from a job ("Anmeldung
+// einrichten", with the way back).
 
 import type { Page } from '@playwright/test';
 import type { Place, Portal } from '../../../ui/src/lib/ipc/types';
-import { expect, open, test } from './fixtures';
+import { animationsDone, expect, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
+// The open job's stage (the one on its way out has dropped its test id).
+const stage = (page: Page) => page.getByTestId('stage');
 
 /** Put jobs of the stub into another place before the page asks for the app state. */
 async function movedAtStart(
@@ -75,4 +78,31 @@ test('Wartung names the version of the app, to copy', async ({ page }) => {
   const row = page.getByTestId('settings-care').getByTestId('version');
   await expect(row).toContainText('Version');
   await expect(row.locator('[data-copy]')).toHaveText('3.0.0');
+});
+
+test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({
+  page,
+}) => {
+  const title = 'SAP S/4HANA Finance Projektleitung';
+  await open(page, WIN);
+  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
+  await page.getByTestId('job-list').getByTestId('job-row-freelance-900411').click();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
+  await animationsDone(page);
+  await stage(page).getByTestId('set-up-sign-in').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
+  await expect(page.getByTestId('portal-freelance')).toBeInViewport();
+  const back = page.getByTestId('back-to-job');
+  await expect(back).toHaveText('Zurück zum Job');
+  await expect(back).toBeInViewport();
+  await back.click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
+  // Read once: Einstellungen from the sidebar is the plain page again.
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await expect(page.getByTestId('portal-freelance')).toBeVisible();
+  await expect(page.getByTestId('back-to-job')).toHaveCount(0);
+  await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
 });

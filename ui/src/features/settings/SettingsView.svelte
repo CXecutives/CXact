@@ -18,7 +18,8 @@
   copy) stands only at the work folder. Textdateien says what they are (the ads as text for
   an AI); after a change of the folder a note says that they are still in the old one until
   "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them; Wartung ends with
-  the app's version.
+  the app's version. Opened from a job for one portal ("Anmeldung einrichten") the page
+  glides to that portal's card, focuses its sign-in and offers "Zurück zum Job".
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -36,7 +37,9 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { Language, OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { tick } from 'svelte';
@@ -282,6 +285,40 @@
     });
   }
 
+  /**
+   * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
+   * `navigation.focusPortal`, read once and set back): its card glides into view, its sign-in
+   * button (else its switch) takes the focus, and a link leads back to the job, which stays
+   * open in Jobs.
+   */
+  let root = $state<HTMLElement | null>(null);
+  let fromJob = $state(false);
+  const backToJob = $derived(fromJob && jobs.selected !== null);
+
+  /** Back to the job: the way is spent (a quick return may find this page still fading out,
+   *  and it opens as the plain page). */
+  function goBackToJob(): void {
+    fromJob = false;
+    navigation.go('jobs');
+  }
+  $effect(() => {
+    const portal = navigation.focusPortal;
+    if (portal === null || root === null || cfg === null) return;
+    navigation.focusPortal = null;
+    fromJob = jobs.selected !== null;
+    const scope = root;
+    void tick().then(() => {
+      const card = scope.querySelector(`[data-testid="portal-${portal}"]`);
+      if (card === null) return;
+      glideIntoView(card, 'center');
+      const target =
+        card.querySelector<HTMLElement>(
+          `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
+        ) ?? card.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
+      target?.focus({ preventScroll: true });
+    });
+  });
+
   /** On success the app restarts empty; a failure closes the dialog and says why here. */
   function reset(): void {
     void act(
@@ -303,7 +340,7 @@
   {/if}
 {/snippet}
 
-<div class="page" data-testid="settings">
+<div class="page" data-testid="settings" bind:this={root}>
   {#if cfg === null}
     {#if app.slow}
       <Card
@@ -442,7 +479,18 @@
 
     <section class="section" data-testid="settings-portals">
       <div class="title">
-        <h2 class="heading">{t.settings.portals}</h2>
+        <div class="title-row">
+          <h2 class="heading">{t.settings.portals}</h2>
+          {#if backToJob}
+            <Button
+              variant="link"
+              size="sm"
+              label={t.settings.backToJob}
+              testid="back-to-job"
+              onclick={goBackToJob}
+            />
+          {/if}
+        </div>
         <p class="hint" data-testid="portals-hint">{t.settings.portalsHint}</p>
       </div>
       {#each cfg.portals as portal (portal.portal)}
@@ -712,6 +760,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+  }
+
+  /* The heading, and at its end the way back to the job she came from. */
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
   }
 
   .heading {

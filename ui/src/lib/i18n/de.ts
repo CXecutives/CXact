@@ -1588,6 +1588,8 @@ export const de = {
     /** The section of what the app does on its own: archive, empty the trash. */
     automatic: 'Automatisch',
     portals: 'Portale',
+    /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
+    backToJob: 'Zurück zum Job',
     files: 'Dateien',
     maintenance: 'Wartung',
     connected: 'Verbunden',
