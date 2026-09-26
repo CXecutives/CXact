@@ -106,31 +106,31 @@ const readerOnly = (): null => null;
 
 /** THE table: the facts of a job in their order. */
 export const FACTS = [
-  { key: 'contract', icon: 'handshake', format: contract, term: 'contract' },
-  { key: 'money', icon: 'euro', format: (job) => pay(job, 'euro'), term: 'rate', ink: true },
+  { key: 'contract', icon: 'contract', format: contract, term: 'contract' },
+  { key: 'money', icon: 'money', format: (job) => pay(job, 'euro'), term: 'rate', ink: true },
   {
     key: 'foreignMoney',
-    icon: 'banknote',
+    icon: 'otherMoney',
     format: (job) => pay(job, 'other'),
     term: 'rate',
     ink: true,
   },
-  { key: 'start', icon: 'calendar', format: start, term: 'start' },
+  { key: 'start', icon: 'start', format: start, term: 'start' },
   {
     key: 'duration',
-    icon: 'hourglass',
+    icon: 'duration',
     format: (job) => {
       const months = factsOf(job)?.months ?? null;
       return months ? t.facts.months(months) : null;
     },
     term: 'duration',
   },
-  { key: 'workload', icon: 'clock', format: workload, term: 'workload' },
-  { key: 'remote', icon: 'house', format: remote, term: 'remote' },
-  { key: 'mode', icon: 'building-2', format: mode, term: 'remote' },
-  { key: 'place', icon: 'map-pin', format: readerOnly, term: 'place' },
-  { key: 'industry', icon: 'factory', format: readerOnly, term: 'industry' },
-  { key: 'experience', icon: 'award', format: readerOnly, term: 'experience' },
+  { key: 'workload', icon: 'workload', format: workload, term: 'workload' },
+  { key: 'remote', icon: 'remote', format: remote, term: 'remote' },
+  { key: 'mode', icon: 'onsite', format: mode, term: 'remote' },
+  { key: 'place', icon: 'place', format: readerOnly, term: 'place' },
+  { key: 'industry', icon: 'industry', format: readerOnly, term: 'industry' },
+  { key: 'experience', icon: 'experience', format: readerOnly, term: 'experience' },
 ] as const satisfies readonly Fact[];
 
 export type FactKey = (typeof FACTS)[number]['key'];

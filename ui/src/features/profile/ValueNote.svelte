@@ -22,7 +22,7 @@
 
 <div class="note" data-testid={testid ?? undefined}>
   <p class="text" id={id ?? undefined} role="alert">
-    <Icon name="triangle-alert" size="sm" />
+    <Icon name="warning" size="sm" />
     <span>{text}</span>
   </p>
   <span class="action">

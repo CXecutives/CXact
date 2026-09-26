@@ -156,14 +156,25 @@
     transition: background-color var(--dur-base) var(--ease-out);
   }
 
+  /* The quiet kind (tokens.css): a wash on the entry under the pointer or the keys, a
+     deeper one while the left button holds it. */
   .item.active:not([aria-disabled='true']) {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .item:not([aria-disabled='true']):active:hover {
+    background-color: var(--quiet-press);
+    transition-duration: var(--dur-instant);
+  }
+
+  /* Losing something for good: red at rest like its button, on a red wash when active. */
+  .item.danger:not([aria-disabled='true']) {
+    color: var(--danger-strong);
   }
 
   .item.danger.active:not([aria-disabled='true']) {
     background-color: var(--danger-soft);
-    color: var(--danger-strong);
   }
 
   .item[aria-disabled='true'] {
@@ -179,7 +190,7 @@
     color: var(--text-muted);
   }
 
-  .item.danger.active .lead {
+  .item.danger:not([aria-disabled='true']) .lead {
     color: inherit;
   }
 

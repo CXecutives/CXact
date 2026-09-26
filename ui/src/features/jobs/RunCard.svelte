@@ -190,7 +190,7 @@
     if (fix !== null || run.active) return fix;
     return {
       label: t.common.retry,
-      icon: 'refresh-cw' as const,
+      icon: 'retry' as const,
       onclick: () => run.retry(summary),
     };
   });
@@ -206,7 +206,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="x"
+          icon="close"
           label={t.common.hide}
           testid="run-close"
           onclick={() => run.hide()}
@@ -237,7 +237,7 @@
               <span class="step-head">
                 <span class="mark" class:drawn={drawn[step]}>
                   {#if state === 'done'}
-                    <Icon name="circle-check" size="sm" />
+                    <Icon name="success" size="sm" />
                   {:else}
                     <span class="dot" aria-hidden="true"></span>
                   {/if}
@@ -290,7 +290,7 @@
         class:failed={failure !== null}
         class:warned={failure === null && filesText !== null}
       >
-        <Icon name={failure || filesText ? 'triangle-alert' : 'circle-check'} size="sm" />
+        <Icon name={failure || filesText ? 'warning' : 'success'} size="sm" />
         {@render head(title)}
       </div>
       <div class="more">
@@ -365,7 +365,7 @@
             text={filesText}
             action={failure || run.active
               ? null
-              : { label: t.common.retry, icon: 'refresh-cw', onclick: () => run.rewriteFiles() }}
+              : { label: t.common.retry, icon: 'retry', onclick: () => run.rewriteFiles() }}
             testid="export-failed"
           />
         {/if}

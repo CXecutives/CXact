@@ -308,7 +308,7 @@ class OverviewModel {
         tone: 'info',
         heading: null,
         text: t.overview.noDetail(wanted),
-        action: { label: t.overview.fetchDetails, icon: 'download', run: fetchDetails },
+        action: { label: t.overview.fetchDetails, icon: 'details', run: fetchDetails },
       },
     ];
   }
@@ -327,7 +327,7 @@ class OverviewModel {
         tone: 'info',
         heading: null,
         text: t.overview.excludedNew(count),
-        action: { label: t.overview.look, icon: 'ban', run: look },
+        action: { label: t.overview.look, icon: 'excluded', run: look },
       },
     ];
   }
@@ -350,7 +350,7 @@ class OverviewModel {
           ? null
           : {
               label: t.overview.createAlert,
-              icon: 'external-link',
+              icon: 'external',
               run: () => openTarget({ kind: 'portalHome', portal: p.portal }),
             },
       }));
@@ -400,7 +400,7 @@ function portalPoints(
           ? null
           : {
               label: t.reader.mail,
-              icon: 'mail',
+              icon: 'alertMail',
               run: () => openTarget({ kind: 'alertMail', gmailId: mail }),
             },
     });

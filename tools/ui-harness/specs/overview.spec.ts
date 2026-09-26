@@ -320,7 +320,7 @@ test('the files: the report, the Excel file, the folder; one not written yet say
   const glyphs = await files
     .locator('.glyph')
     .evaluateAll((all) => all.map((glyph) => glyph.getAttribute('data-icon')));
-  expect(glyphs).toEqual(['file-text', 'file-spreadsheet', 'folder-open']);
+  expect(glyphs).toEqual(['document', 'excel', 'folder']);
   await files.getByTestId('overview-folder').click();
   await expect
     .poll(async () => (await calls(page, 'open_target')).at(-1)?.[1])

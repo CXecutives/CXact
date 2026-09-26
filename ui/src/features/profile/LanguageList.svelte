@@ -111,7 +111,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="x"
+          icon="close"
           label={words.removeLanguage(row.language.trim())}
           testid="language-remove"
           onclick={(event) => removeByButton(row, event)}
@@ -126,7 +126,7 @@
     <Button
       variant="secondary"
       size="sm"
-      icon="plus"
+      icon="add"
       label={words.addLanguage}
       testid="language-add"
       onclick={() => void add()}

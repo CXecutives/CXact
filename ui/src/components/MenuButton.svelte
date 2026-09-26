@@ -71,7 +71,7 @@
     size="sm"
     label={current?.label ?? ''}
     {icon}
-    trailing="chevron-down"
+    trailing="expand"
     menu
     {expanded}
     {disabled}

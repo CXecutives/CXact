@@ -125,7 +125,7 @@
           <Badge
             label={mailFailure.kind === 'mailAuth' ? t.settings.refused : t.settings.unreachable}
             tone="danger"
-            icon="triangle-alert"
+            icon="warning"
           />
         {:else}
           <Badge label={t.settings.connected} tone="success" icon="check" />
@@ -135,7 +135,7 @@
         <Button
           variant="secondary"
           size="sm"
-          icon="pencil"
+          icon="edit"
           label={t.common.change}
           disabled={locked !== null}
           disabledReason={locked}
@@ -145,7 +145,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="circle-x"
+          icon="purge"
           label={t.common.remove}
           disabled={locked !== null}
           disabledReason={locked}
@@ -162,7 +162,7 @@
       <Button
         variant="secondary"
         size="sm"
-        icon="refresh-cw"
+        icon="fetch"
         label={t.settings.fullMailboxAction}
         disabled={run.fetchBlocked !== null}
         disabledReason={run.fetchBlocked}

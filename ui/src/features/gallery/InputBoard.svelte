@@ -160,7 +160,7 @@
         label={t.password}
         for="gallery-password"
         error={t.passwordError}
-        action={{ label: t.createPassword, icon: 'external-link', onclick: () => undefined }}
+        action={{ label: t.createPassword, icon: 'external', onclick: () => undefined }}
       >
         <TextField
           id="gallery-password"

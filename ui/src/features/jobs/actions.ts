@@ -53,9 +53,9 @@ const TARGET: Record<MoveId, Place> = {
 const ACTIONS: Record<ActionId, { icon: IconName; key: string | null }> = {
   archive: { icon: 'archive', key: LIST_KEYS.archive },
   toInbox: { icon: 'inbox', key: null },
-  trash: { icon: 'trash-2', key: LIST_KEYS.trash },
-  restore: { icon: 'undo-2', key: null },
-  purge: { icon: 'circle-x', key: null },
+  trash: { icon: 'trash', key: LIST_KEYS.trash },
+  restore: { icon: 'undo', key: null },
+  purge: { icon: 'purge', key: null },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -87,12 +87,12 @@ export interface JobMenuItem {
  */
 export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
   [
-    { id: 'open', icon: 'mail-open', key: LIST_KEYS.open, shows: (_job, many) => !many },
-    { id: 'open-ad', icon: 'external-link', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
+    { id: 'open', icon: 'read', key: LIST_KEYS.open, shows: (_job, many) => !many },
+    { id: 'open-ad', icon: 'external', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
   ],
   [{ id: 'star', icon: 'star', key: LIST_KEYS.star, shows: (job) => hasStar(job.place) }],
   [{ id: 'moves', icon: null, key: null, shows: () => true }],
-  [{ id: 'prompt', icon: 'copy', key: null, shows: (job, many) => !many && job.match !== null }],
+  [{ id: 'prompt', icon: 'prompt', key: null, shows: (job, many) => !many && job.match !== null }],
 ];
 
 /** A favourite never lies in the trash: the star is there in the inbox and the archive. */

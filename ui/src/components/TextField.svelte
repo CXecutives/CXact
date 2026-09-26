@@ -206,7 +206,7 @@
         variant="ghost"
         size="sm"
         iconOnly
-        icon={revealed ? 'eye-off' : 'eye'}
+        icon={revealed ? 'conceal' : 'reveal'}
         label={revealed ? t.field.conceal : t.field.reveal}
         inField
         onclick={() => void reveal()}
@@ -218,7 +218,7 @@
         variant="ghost"
         size="sm"
         iconOnly
-        icon="x"
+        icon="close"
         label={t.field.clear}
         inField
         onclick={clear}
@@ -241,7 +241,7 @@
   }
 
   .field:hover {
-    border-color: var(--border-input);
+    border-color: var(--control-hover-edge);
     transition-duration: var(--dur-hover);
   }
 
