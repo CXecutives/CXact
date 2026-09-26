@@ -8,8 +8,8 @@
 //! marks of the ad (closed, offline, preview, details missing), its date and a mark for a job
 //! the last fetch brought. Without a usable profile: the app's sentence and the new jobs by
 //! date. Never the full text. Everything from mails and portals is HTML-escaped; the page
-//! loads nothing from outside. The visual language is the app's: its font stack, its colours
-//! (copied from `ui/src/styles/tokens.css`) and its rings.
+//! loads nothing from outside. The visual language is the app's: its font stack, its colour
+//! tokens (`ui/src/styles/tokens.css` through the generated `palette.rs`) and its rings.
 
 use std::collections::HashSet;
 use std::fmt::Write as _;
@@ -17,6 +17,7 @@ use std::path::Path;
 
 use jiff::Timestamp;
 
+use super::palette::{self, Colour};
 use super::scale::{SCORE_SCALE, score_step};
 use super::texts::{PROGRAM_NAME, Texts};
 use crate::error::Result;
@@ -28,23 +29,47 @@ use crate::store::matches::OverviewJobs;
 use crate::text::split_company_location;
 use crate::view::DetailState;
 
-/// The app's colours (tokens of the interface): ink text, navy for the favourite's star,
-/// coral only for the dot of a job the last fetch brought (coral means new), the band colours
-/// of the reader, the danger red for an exclusion.
+/// The app's colour tokens the report draws with, by their names in tokens.css: the ink text,
+/// the navy of the favourite's star (`--icon-accent`), the coral dot of a job the last fetch
+/// brought (`--unread`: coral means new), the band colours of the reader and the danger red of
+/// an exclusion. The font is the app's `--font-sans`.
+const COLOURS: [(&str, Colour); 19] = [
+    ("bg", palette::BG),
+    ("surface", palette::SURFACE),
+    ("surface-muted", palette::SURFACE_MUTED),
+    ("text", palette::TEXT),
+    ("text-muted", palette::TEXT_MUTED),
+    ("text-subtle", palette::TEXT_SUBTLE),
+    ("border", palette::BORDER),
+    ("icon-accent", palette::ICON_ACCENT),
+    ("unread", palette::UNREAD),
+    ("score-high-text", palette::SCORE_HIGH_TEXT),
+    ("score-high-surface", palette::SCORE_HIGH_SURFACE),
+    ("score-mid-text", palette::SCORE_MID_TEXT),
+    ("score-mid-surface", palette::SCORE_MID_SURFACE),
+    ("score-low-text", palette::SCORE_LOW_TEXT),
+    ("score-low-surface", palette::SCORE_LOW_SURFACE),
+    ("score-track", palette::SCORE_TRACK),
+    ("danger", palette::DANGER),
+    ("danger-strong", palette::DANGER_STRONG),
+    ("danger-soft", palette::DANGER_SOFT),
+];
+
+/// The tokens of [`COLOURS`] and the font as the page's custom properties.
+fn root_style() -> String {
+    let mut css = String::from("\n:root { color-scheme: light;");
+    for (name, colour) in COLOURS {
+        let _ = write!(css, " --{name}: {};", colour.css);
+    }
+    let _ = write!(css, " --font-sans: {}; }}", palette::FONT_SANS);
+    css
+}
+
+/// The page's rules, in the tokens of [`root_style`].
 const STYLE: &str = "
-:root { color-scheme: light;
-  --bg: hsl(32 33% 96%); --surface: hsl(0 0% 100%); --text: hsl(45 7% 17%);
-  --text-muted: hsl(30 4% 35%); --text-subtle: hsl(30 4% 43%); --border: hsl(45 22% 90%);
-  --navy: hsl(212 34% 37%); --coral: hsl(13 73% 63%);
-  --high: hsl(152 50% 31%); --high-soft: hsl(150 27% 93%);
-  --mid: hsl(38 70% 34%); --mid-soft: hsl(45 76% 93%);
-  --low: hsl(30 4% 42%); --low-soft: hsl(45 23% 95%);
-  --danger: hsl(4 55% 45%); --danger-soft: hsl(4 51% 95%);
-  --danger-track: hsl(4 51% 56% / 0.25); --track: hsl(45 22% 90%);
-  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
-  font: 400 15px/22px var(--font); -webkit-text-size-adjust: 100%; }
+  font: 400 15px/22px var(--font-sans); -webkit-text-size-adjust: 100%; }
 main { max-width: 760px; margin: 0 auto; padding: 32px 24px 48px; }
 h1 { font-size: 26px; line-height: 34px; font-weight: 600; margin: 0; }
 h2 { font-size: 17px; line-height: 24px; font-weight: 600; margin: 0 0 12px; }
@@ -63,29 +88,29 @@ ol { list-style: none; margin: 0; padding: 0; }
 .body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .title a { color: var(--text); text-decoration: none; }
 .title a:hover { text-decoration: underline; }
-.star { color: var(--navy); margin-left: 6px; }
+.star { color: var(--icon-accent); margin-left: 6px; }
 .new { display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%;
-  background: var(--coral); vertical-align: middle; }
+  background: var(--unread); vertical-align: middle; }
 .sub, .date { margin: 2px 0 0; color: var(--text-muted); font-size: 13px; line-height: 20px; }
 .date { color: var(--text-subtle); }
 .facts, .verdict, .check, .why { margin: 6px 0 0; font-size: 13px; line-height: 20px; }
 .check { color: var(--text-muted); }
-.why { color: var(--danger); }
+.why { color: var(--danger-strong); }
 .band { display: inline-block; margin: 0 8px 0 0; padding: 0 8px; border-radius: 10px;
   font-size: 12px; font-weight: 600; }
-.band.high { background: var(--high-soft); color: var(--high); }
-.band.mid { background: var(--mid-soft); color: var(--mid); }
-.band.low, .band.none { background: var(--low-soft); color: var(--low); }
-.band.out { background: var(--danger-soft); color: var(--danger); }
+.band.high { background: var(--score-high-surface); color: var(--score-high-text); }
+.band.mid { background: var(--score-mid-surface); color: var(--score-mid-text); }
+.band.low, .band.none { background: var(--score-low-surface); color: var(--score-low-text); }
+.band.out { background: var(--danger-soft); color: var(--danger-strong); }
 .points { margin: 6px 0 0; padding: 0; list-style: none; font-size: 13px; line-height: 20px; }
 .points li { position: relative; padding-left: 18px; }
 .points li::before { position: absolute; left: 0; }
-.points .met::before { content: '\\2713'; color: var(--high); }
-.points .open::before { content: '\\25CB'; color: var(--low); }
+.points .met::before { content: '\\2713'; color: var(--score-high-text); }
+.points .open::before { content: '\\25CB'; color: var(--score-low-text); }
 .marks { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 8px 0 0; padding: 0;
   list-style: none; }
 .mark { padding: 0 8px; border-radius: 10px; font-size: 12px; line-height: 20px;
-  background: var(--low-soft); color: var(--text-muted); }
+  background: var(--surface-muted); color: var(--text-muted); }
 .note, .empty, .more, .low-line { margin: 0 0 12px; color: var(--text-muted); font-size: 13px;
   line-height: 20px; }
 footer { margin-top: 32px; color: var(--text-subtle); font-size: 12px; }
@@ -93,11 +118,11 @@ footer { margin-top: 32px; color: var(--text-subtle); font-size: 12px; }
   place-items: center; font-weight: 600; color: var(--text); }
 .ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ring circle { fill: none; stroke-width: 3; }
-.track { stroke: var(--track); }
+.track { stroke: var(--score-track); }
 .value { stroke-linecap: round; }
-.none, .unscorable { color: var(--low); }
-.out { color: var(--danger); }
-.out .track { stroke: var(--danger-track); }
+.none, .unscorable { color: var(--score-low-text); }
+.out { color: var(--danger-strong); }
+.out .track { stroke: var(--danger); stroke-opacity: 0.25; }
 .ban { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2;
   stroke-linecap: round; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
@@ -113,7 +138,7 @@ footer { margin-top: 32px; color: var(--text-subtle); font-size: 12px; }
   * { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
   body { background: var(--surface); }
   main { max-width: none; padding: 0; }
-  .job { border-color: var(--track); }
+  .job { border-color: var(--score-track); }
 }
 ";
 
@@ -145,7 +170,7 @@ const STEP_CLASS: [&str; 10] = ["s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7", 
 fn scale_style() -> String {
     let mut css = String::new();
     for (class, colour) in STEP_CLASS.iter().zip(SCORE_SCALE) {
-        let _ = writeln!(css, ".{class} .value {{ stroke: {}; }}", colour.css());
+        let _ = writeln!(css, ".{class} .value {{ stroke: {}; }}", colour.css);
     }
     for (class, from) in [
         ("high", crate::model::HIGH_FROM),
@@ -154,7 +179,7 @@ fn scale_style() -> String {
         let _ = writeln!(
             css,
             ".swatch.{class} {{ border-color: {}; }}",
-            SCORE_SCALE[score_step(from)].css()
+            SCORE_SCALE[score_step(from)].css
         );
     }
     css
@@ -181,10 +206,11 @@ fn render(jobs: &OverviewJobs, now: Timestamp, texts: &Texts) -> String {
         out,
         "<!doctype html>\n<html lang=\"{}\"><head><meta charset=\"utf-8\">\
          <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\
-         <title>{}</title><style>{STYLE}{}</style></head>\n<body><main>\
+         <title>{}</title><style>{}{STYLE}{}</style></head>\n<body><main>\
          <header><h1>{}</h1>",
         texts.language.code(),
         esc(texts.html_title),
+        root_style(),
         scale_style(),
         esc(texts.html_title),
     );
@@ -631,7 +657,10 @@ mod tests {
         assert!(html.contains("Muster &lt;GmbH&gt;") && html.contains("SAP &lt;FI&gt;"));
         assert!(html.contains("class=\"score s8\"") && html.contains(">83<"));
         assert!(
-            html.contains(".s8 .value { stroke: hsl(96 35% 50%); }"),
+            html.contains(&format!(
+                ".s8 .value {{ stroke: {}; }}",
+                palette::SCORE_RING_8.css
+            )),
             "the shared scale"
         );
         assert!(!html.contains("Betreff"), "no mail data beyond the listing");
@@ -642,8 +671,7 @@ mod tests {
     }
 
     /// The head: title, a summary line of the new matches, when it was made and a legend of
-    /// the bands, the star and the dot; the app's font stack and colours, a phone width and a
-    /// print page.
+    /// the bands, the star and the dot; a phone width and a print page.
     #[test]
     fn the_head_sums_up_and_explains() {
         let at: Timestamp = "2026-09-19T12:05:00Z".parse().unwrap();
@@ -669,19 +697,36 @@ mod tests {
         ] {
             assert!(html.contains(legend), "{legend}");
         }
-        assert!(
-            STYLE.contains("--font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;")
-        );
         assert!(STYLE.contains("@media (max-width: 480px)") && STYLE.contains("@page { size: A4;"));
-        assert!(
-            STYLE.contains("--text: hsl(45 7% 17%)") && STYLE.contains("--navy: hsl(212 34% 37%)")
-        );
         assert!(html.contains("<footer>CXact</footer>"));
         assert_eq!(texts::html_summary(1, 0), "1 neuer passender Job.");
         assert_eq!(
             texts::en::html_summary(1234, 2),
             "1,234 new matching jobs, 2 a high match."
         );
+    }
+
+    /// The page speaks the app's tokens: each colour is the token of its name, the font is the
+    /// app's font stack, and every custom property a rule reads is declared.
+    #[test]
+    fn the_style_is_the_apps_tokens() {
+        for (name, colour) in COLOURS {
+            assert!(
+                palette::TOKENS.contains(&(name, colour)),
+                "--{name} is not that token"
+            );
+        }
+        let root = root_style();
+        assert!(root.contains(&format!("--text: {};", palette::TEXT.css)));
+        assert!(root.contains(&format!("--font-sans: {};", palette::FONT_SANS)));
+        let rules = format!("{STYLE}{}", scale_style());
+        for used in rules.split("var(--").skip(1) {
+            let name = &used[..used.find(')').expect("closing parenthesis")];
+            assert!(
+                root.contains(&format!("--{name}: ")),
+                "--{name} is not declared"
+            );
+        }
     }
 
     /// The new matches by band: the high ones, then the medium ones, the low ones as one count

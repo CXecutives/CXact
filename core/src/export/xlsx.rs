@@ -8,6 +8,7 @@ use rust_xlsxwriter::{
     Color, Format, FormatBorder, FormatUnderline, Url, Workbook, Worksheet, XlsxError,
 };
 
+use super::palette::{self, Colour};
 use super::scale::{SCORE_SCALE, score_step};
 use super::texts::Texts;
 use crate::error::Result;
@@ -29,9 +30,10 @@ const WIDTHS: [f64; 23] = [
     50.0, 11.0, 16.0, 48.0, 30.0, 22.0, 12.0, 20.0, 13.0, 12.0, 13.0, 16.0, 16.0, 17.0, 11.0, 15.0,
     40.0, 11.0, 28.0, 17.0, 16.0, 19.0, 24.0,
 ];
-/// Grey of the header row and of excluded jobs.
-const HEADER_GREY: u32 = 0x00E7_E6E6;
-const EXCLUDED_GREY: u32 = 0x0080_8080;
+/// The fill of the header row: the app's muted surface.
+const HEADER_FILL: Colour = palette::SURFACE_MUTED;
+/// The text of an excluded job's row: the grey of an excluded ring in the app.
+const EXCLUDED_GREY: Colour = palette::SCORE_EXCLUDED;
 
 /// The columns by their place in `COLUMNS`.
 mod col {
@@ -121,7 +123,7 @@ struct Formats {
 
 impl Formats {
     fn new(texts: &Texts) -> Formats {
-        let grey = Format::new().set_font_color(Color::RGB(EXCLUDED_GREY));
+        let grey = Format::new().set_font_color(Color::RGB(EXCLUDED_GREY.rgb_u32()));
         let pair = |number: &str| -> [Format; 2] {
             [
                 Format::new().set_num_format(number),
@@ -131,7 +133,7 @@ impl Formats {
         Formats {
             header: Format::new()
                 .set_bold()
-                .set_background_color(Color::RGB(HEADER_GREY))
+                .set_background_color(Color::RGB(HEADER_FILL.rgb_u32()))
                 .set_border_bottom(FormatBorder::Thin),
             // A link of an excluded job stays a link, in the grey of its row.
             link: [
@@ -141,7 +143,7 @@ impl Formats {
             steps: SCORE_SCALE.map(|colour| {
                 Format::new()
                     .set_num_format(texts.excel_score)
-                    .set_background_color(Color::RGB(colour.rgb()))
+                    .set_background_color(Color::RGB(colour.rgb_u32()))
             }),
             score_grey: grey.clone().set_num_format(texts.excel_score),
             rate: pair(texts.excel_rate),
@@ -647,7 +649,7 @@ mod tests {
         );
         assert_eq!(second[8].to_string(), "ab sofort");
         let xlsx = std::fs::read(&path).unwrap();
-        let grey = format!("{EXCLUDED_GREY:06X}");
+        let grey = EXCLUDED_GREY.hex()[1..].to_string();
         for cell in ["U2", "V2"] {
             let font = font_of(&xlsx, cell);
             assert!(
