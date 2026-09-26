@@ -111,21 +111,23 @@ export function formatDate(iso: string): string {
   return Number.isNaN(date.getTime()) ? '' : formats().dayMonthYear.format(date);
 }
 
-/** The day of a moment in words while it is recent: `gestern`, `vorgestern` (`yesterday`,
- *  `2 days ago`), the weekday up to a week back (`Mo`), then the date; null for today. */
+/** The day of a moment in words while it is near: `gestern`, `vorgestern` (`yesterday`,
+ *  `2 days ago`) and ahead `morgen`, `übermorgen` (`tomorrow`, `in 2 days`), the weekday up
+ *  to a week away (`Mo`), then the date; null for today. A time alone always means today. */
 function dayOf(date: Date, now: Date): string | null {
   const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
-  if (days <= 0) return null;
+  if (days === 0) return null;
   const { relative, weekday, dayMonth } = formats();
-  if (days <= RELATIVE_DAYS) return relative.format(-days, 'day');
-  if (days < 7) return weekday.format(date).replace(/\.$/, '');
+  if (Math.abs(days) <= RELATIVE_DAYS) return relative.format(-days, 'day');
+  if (Math.abs(days) < 7) return weekday.format(date).replace(/\.$/, '');
   return dayMonth.format(date);
 }
 
 /**
  * `14:05` today, `gestern 14:05`, `vorgestern 14:05`, `Mo 14:05` up to a week back, then
- * `25.09. 14:05` (`25/09 14:05`); one unit a line never breaks (a sentence wraps before the
- * day, not between day and time).
+ * `25.09. 14:05` (`25/09 14:05`); ahead the same (`morgen 09:30`, so "ab 09:30" never means
+ * tomorrow); one unit a line never breaks (a sentence wraps before the day, not between day
+ * and time).
  */
 export function formatMoment(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
