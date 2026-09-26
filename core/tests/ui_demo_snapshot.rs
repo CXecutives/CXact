@@ -84,8 +84,6 @@ struct Ad {
     /// `inbox` (default) or `archive`.
     #[serde(default = "inbox")]
     place: String,
-    applied_hours_ago: Option<f64>,
-    note: Option<String>,
     /// Another portal's announcement of the same ad (`portal:id`): the list shows it as
     /// `alsoOn` of that job.
     duplicate_of: Option<String>,
@@ -230,14 +228,6 @@ fn marks(store: &Store, ad: &Ad, key: &JobKey) {
         }
         place => panic!("{key}: place {place}"),
     }
-    if let Some(hours) = ad.applied_hours_ago {
-        store
-            .set_applied(std::slice::from_ref(key), true, ago(hours))
-            .unwrap();
-    }
-    if let Some(note) = &ad.note {
-        store.set_note(key, Some(note)).unwrap();
-    }
 }
 
 fn detail_of(store: &Store, matcher: &LocalMatcher, key: &JobKey) -> view::JobDetail {
@@ -266,7 +256,6 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
             search: None,
             portal: None,
             min_band: None,
-            applied: false,
             limit: view::MAX_PAGE,
             offset: 0,
         };

@@ -21,6 +21,37 @@
     { "sprache": "Deutsch", "niveau": "Muttersprache" },
     { "sprache": "Englisch", "niveau": "B2" }
   ],
+  "stationen": [
+    {
+      "zeitraum": "01/2022 bis heute",
+      "rolle": "Interim CFO",
+      "schwerpunkte": [
+        "Konzernabschluss nach HGB",
+        "Carve-out einer Sparte",
+        "Cash Management",
+        "Bankenkommunikation"
+      ]
+    },
+    {
+      "zeitraum": "03/2016 bis 12/2021",
+      "rolle": "Head of Group Controlling",
+      "schwerpunkte": [
+        "Konzernreporting",
+        "Budgetierung und Forecast",
+        "Konsolidierung mit LucaNet",
+        "Führung von Finanzteams"
+      ]
+    },
+    {
+      "zeitraum": "10/2006 bis 02/2016",
+      "rolle": "Leiterin Rechnungswesen",
+      "schwerpunkte": [
+        "Jahresabschluss nach HGB",
+        "Einführung von SAP S/4HANA",
+        "Aufbau eines Shared Service Centers"
+      ]
+    }
+  ],
   "schwerpunkte": ["Controlling", "Konzernrechnungslegung nach IFRS"],
   "wunschrollen": ["Interim CFO"],
   "einsatzpraeferenzen": {
@@ -33,6 +64,7 @@
     "laender": ["DE", "AT"],
     "ausgeschlossene_vertragsarten": ["anue"],
     "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "01.09.2026",
     "zielprofil_min_jahre": 15,
     "auslastung_min_tage": 3,
     "auslastung_max_tage": 5,
