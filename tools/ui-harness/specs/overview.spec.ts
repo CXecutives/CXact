@@ -194,6 +194,10 @@ test('"Details holen" counts and asks for only the ads it can still fetch', asyn
   await open(page, OVERVIEW);
   const point = page.getByTestId('issue-details');
   await expect(point).toContainText('2 Jobs ohne ganze Anzeige');
+  // What each ad was before the click (the run the click starts fetches them).
+  const before = await stubList(page);
+  const detail = (key: JobKey): string | undefined =>
+    before.jobs.find((job) => job.key.portal === key.portal && job.key.id === key.id)?.detail.kind;
   await point.getByRole('button', { name: 'Details holen' }).click();
   await expect.poll(async () => (await calls(page, 'start_run')).length).toBe(1);
   const request = (await calls(page, 'start_run'))[0]![1] as { request: RunRequest };
@@ -201,9 +205,8 @@ test('"Details holen" counts and asks for only the ads it can still fetch', asyn
   const keys = (request.request as { keys: JobKey[] }).keys;
   expect(keys).toHaveLength(2);
   for (const key of keys) {
-    const job = await page.evaluate((k) => window.__harness.job(k), key);
     // Not fetched yet or failed so far; never a teaser without the sign-in, a gone ad.
-    expect(['pending', 'onRequest', 'failed']).toContain(job?.detail.kind);
+    expect(['pending', 'onRequest', 'failed']).toContain(detail(key));
   }
 });
 
