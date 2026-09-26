@@ -663,6 +663,39 @@ fn e16_8_part_time_hours_without_the_week_are_a_workload() {
     }
 }
 
+/// E16-6: a lead time or a notice period before the duration is no duration; the Laufzeit
+/// decides, with its sentence as the passage.
+#[test]
+fn e16_6_a_lead_time_is_no_duration() {
+    let profile = limited(&json!({ "min_laufzeit_monate": 6 }));
+    for frame in [
+        "- Start: in 2 Wochen\n- Laufzeit: 12 Monate",
+        "- Start ab sofort, Kündigungsfrist 2 Wochen\n- Laufzeit: 12 Monate",
+    ] {
+        let text = frame_ad(frame);
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &text);
+        let state = criterion(&a, CriterionKey::Duration);
+        assert_eq!(
+            state.status,
+            CriterionStatus::Ok,
+            "{frame}: {:?}",
+            codes(&a)
+        );
+        assert!(passage(&text, state).contains("12 Monate"), "{frame}");
+        assert_eq!(a.facts.months, Some(12), "{frame}");
+    }
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Sie haben 5 Jahre Erfahrung in einem Start-up.\n- Laufzeit: 2 Monate"),
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Duration).status,
+        CriterionStatus::Check
+    );
+    assert_eq!(a.facts.months, Some(2));
+}
+
 /// An engagement shorter than the minimum is a check (`duration {months, min}`).
 #[test]
 fn an_engagement_shorter_than_the_minimum_is_a_check() {

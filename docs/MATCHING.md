@@ -701,7 +701,17 @@ strip key `c:workload` is met with the ad's share inside the days.
 
 **Duration**: an engagement whose months are known and shorter than `min_laufzeit_monate` is the
 check `duration {months, min}`; the strip key `c:duration` is met at or above the minimum and not
-set for a permanent role.
+set for a permanent role. Only a real duration statement sets the months (E16-6; key fact
+`months`): the page's duration field, then the first sentence with a duration word
+(`lexicon::DURATION_TERMS`: `Laufzeit`, `Projektdauer`, `Einsatzdauer`, `Zeitraum`,
+`befristet`, `Duration`; not `Einarbeitungsdauer`), then the first duration phrase of any
+sentence (`für 6 Monate`, `for 9 months`, `befristet auf 12 Monate`, `6+ Monate`, `ein
+6-monatiges Projekt`, `12 months` as a clause of its own: `Start October 2026, 12 months`). A
+lead time, a notice period, a trial period or years of experience are never a duration (`Start:
+in 2 Wochen`, `nach 4 Wochen Vorlauf`, `Kündigungsfrist 2 Wochen`, `within 4 weeks`, `5 Jahre
+Erfahrung in einem Start-up`). An end date (`bis Ende März 2027`, `Dauer: bis 31.03.2027`, `bis
+Ende Q2 2027`) counts from the stated start date, else from the posting date, a started month
+counted whole; an application deadline (`Bewerbungen bis ...`) is none.
 
 **Exclusion words** (`exclusion.rs`): a word excludes where it names the job itself,
 `exclusionWord {word}` (as the profile writes it) with the deciding sentences highlighted; strip

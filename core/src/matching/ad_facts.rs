@@ -4,6 +4,7 @@
 
 use std::ops::Range;
 
+use jiff::civil::Date;
 use serde_json::Value;
 
 use super::atoms::fold;
@@ -19,6 +20,8 @@ use super::wishes::remote_share;
 
 /// Longest duration read (ten years).
 const MAX_MONTHS: u64 = 120;
+/// Words after an end marker where the end date stands (`bis Ende März 2027`).
+const END_DATE_WORDS: usize = 4;
 
 /// A value the ad states, with the byte range of the sentence (`None` for a page fact).
 #[derive(Debug, Clone)]
@@ -82,11 +85,17 @@ pub(crate) fn read(
         .to_owned();
     let contract_fact = fact(job.facts, super::fact_key::CONTRACT).is_some();
     let contract_span = contract.spans.first().cloned();
+    let start = start(job, segments);
+    // An end date counts from the stated start, else from the posting date.
+    let reference = match start.as_ref().map(|s| s.value) {
+        Some(Start::Date(date)) => Some(date),
+        _ => job.posted,
+    };
     AdFacts {
         rate,
         rate_open,
-        start: start(job, segments),
-        months: months(job, segments),
+        months: months(job, segments, reference),
+        start,
         remote: remote_share(job, segments, folded),
         location,
         contract: contract.kind,
@@ -121,54 +130,196 @@ fn start(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Start>> {
     })
 }
 
-/// The duration: the page fact, else the first sentence about duration or start that
-/// names months, weeks or years.
-fn months(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<u16>> {
+/// The duration (E16-6): only a real duration statement sets months. The page fact first,
+/// then the first sentence with a duration word (`Laufzeit`, `Projektdauer`, `befristet`,
+/// `lexicon::DURATION_TERMS`; not `Einarbeitungsdauer`), then the first duration phrase of
+/// any sentence (`für 6 Monate`, `6+ Monate`, `ein 6-monatiges Projekt`, `12 months` as a
+/// clause of its own). A lead time, a notice period or years of experience are never a
+/// duration (`Start in 2 Wochen`, `Kündigungsfrist 2 Wochen`,
+/// `5 Jahre Erfahrung in einem Start-up`); an end date (`bis Ende März 2027`) counts from
+/// `reference`, the stated start or the posting date.
+fn months(
+    job: &JobFacts<'_>,
+    segments: &[Segment],
+    reference: Option<Date>,
+) -> Option<Stated<u16>> {
     let from_fact = fact(job.facts, super::fact_key::DURATION)
         .and_then(Value::as_str)
-        .and_then(|s| parse_months(&fold(s)))
+        .and_then(|s| duration_months(&fold(s), true, reference))
         .map(|m| stated(m, None));
-    from_fact.or_else(|| {
+    let pass = |term: bool| {
         segments
             .iter()
-            .filter(|(_, f)| {
-                lex::DURATION_WORDS
-                    .iter()
-                    .chain(lex::START_WORDS)
-                    .any(|w| f.contains(w))
+            .filter(|(_, f)| !term || duration_term(f))
+            .find_map(|(range, f)| {
+                duration_months(f, term, reference).map(|m| stated(m, Some(range.clone())))
             })
-            .find_map(|(range, f)| parse_months(f).map(|m| stated(m, Some(range.clone()))))
+    };
+    from_fact.or_else(|| pass(true)).or_else(|| pass(false))
+}
+
+/// Does a sentence hold a word of `lexicon::DURATION_TERMS` (with a plural ending)?
+fn duration_term(folded: &str) -> bool {
+    folded.split(|c: char| !c.is_alphanumeric()).any(|w| {
+        lex::DURATION_TERMS.iter().any(|t| {
+            w.strip_prefix(t)
+                .is_some_and(|rest| ["", "en", "s", "e"].contains(&rest))
+        })
     })
 }
 
-/// Months of a duration statement (`6 Monate`, `3-6 months`, `12+ Monate`, `1 Jahr`,
-/// `8 Wochen`): the largest amount before a unit; weeks round up to months.
-pub(crate) fn parse_months(folded: &str) -> Option<u16> {
-    let words: Vec<&str> = folded
+/// The months a sentence states (`term`: a sentence with a duration word, where every
+/// amount of time counts; else only duration phrases), or its end date counted from
+/// `reference`.
+fn duration_months(folded: &str, term: bool, reference: Option<Date>) -> Option<u16> {
+    let amounts = folded
+        .split(lex::DURATION_CLAUSE_BREAKS)
+        .filter_map(|clause| clause_months(clause, term))
+        .max();
+    amounts
+        .and_then(|m| u16::try_from(m).ok())
+        .or_else(|| end_months(folded, term, reference?))
+}
+
+/// The largest duration amount of a clause.
+fn clause_months(clause: &str, term: bool) -> Option<u64> {
+    let words: Vec<&str> = clause
         .split(|c: char| !c.is_ascii_alphanumeric())
         .filter(|w| !w.is_empty())
         .collect();
+    let is_number = |w: &str| w.parse::<u64>().is_ok();
+    let any_part = |w: &str, parts: &[&str]| parts.iter().any(|p| w.contains(p));
+    // A clause of its own (`Start October 2026, 12 months`, `6 Monate mit Option`).
+    let bare = words.iter().all(|w| {
+        is_number(w)
+            || lex::MONTH_UNITS
+                .iter()
+                .chain(lex::WEEK_UNITS)
+                .any(|u| w.starts_with(u))
+            || lex::DURATION_FILLERS.contains(w)
+    });
     let mut best: Option<u64> = None;
-    for pair in words.windows(2) {
+    for (i, pair) in words.windows(2).enumerate() {
         let Ok(amount) = pair[0].parse::<u64>() else {
             continue;
         };
         let unit = pair[1];
         let is = |units: &[&str]| units.iter().any(|u| unit.starts_with(u));
-        let months = if is(lex::MONTH_UNITS) {
-            amount
+        let (months, short_unit) = if is(lex::MONTH_UNITS) {
+            (amount, true)
         } else if is(lex::YEAR_UNITS) {
-            amount.saturating_mul(12)
-        } else if is(lex::WEEK_UNITS) {
-            amount.div_ceil(4)
+            (amount.saturating_mul(12), false)
+        } else if is(lex::WEEK_UNITS) || unit.starts_with("wochig") {
+            (amount.div_ceil(4), true)
         } else {
             continue;
         };
-        if (1..=MAX_MONTHS).contains(&months) {
+        // The word before the amount, past a range and its qualifiers (`für ca. 3-6 Monate`).
+        let head = words[..i]
+            .iter()
+            .rev()
+            .find(|w| !is_number(w) && !lex::DURATION_QUALIFIERS.contains(w))
+            .copied()
+            .unwrap_or("");
+        let after = &words[(i + 2).min(words.len())..(i + 4).min(words.len())];
+        let lead = lex::DURATION_LEAD_WORDS.contains(&head)
+            || any_part(head, lex::DURATION_LEAD_PARTS)
+            || after.iter().any(|w| any_part(w, lex::DURATION_LEAD_PARTS));
+        let experience = after.iter().any(|w| any_part(w, lex::DURATION_EXPERIENCE));
+        if lead || experience {
+            continue;
+        }
+        let phrase = lex::DURATION_FOR.contains(&head)
+            || lex::DURATION_ADJECTIVES.iter().any(|a| unit.starts_with(a))
+            || (short_unit && (bare || plus_before(clause, pair[0])));
+        if (term || phrase) && (1..=MAX_MONTHS).contains(&months) {
             best = best.max(Some(months));
         }
     }
-    best.and_then(|m| u16::try_from(m).ok())
+    best
+}
+
+/// `6+ Monate`: a plus right after the amount.
+fn plus_before(clause: &str, amount: &str) -> bool {
+    clause.match_indices(amount).any(|(at, _)| {
+        clause[..at]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !c.is_ascii_digit())
+            && clause[at + amount.len()..].trim_start().starts_with('+')
+    })
+}
+
+/// Months up to an end date (`bis Ende März 2027`, `bis 31.03.2027`; in a sentence without a
+/// duration word only `bis Ende`), counted from `reference`, a started month counted whole.
+/// An application deadline is none.
+fn end_months(folded: &str, term: bool, reference: Date) -> Option<u16> {
+    if lex::DEADLINE_WORDS.iter().any(|w| folded.contains(w)) {
+        return None;
+    }
+    let markers: &[&str] = if term {
+        lex::DURATION_END_MARKERS
+    } else {
+        lex::DURATION_END_PHRASES
+    };
+    let padded = format!(" {folded} ");
+    let end = markers.iter().find_map(|m| {
+        let (_, after) = padded.split_once(m)?;
+        end_date(after)
+    })?;
+    if end <= reference {
+        return None;
+    }
+    let month_index = |d: Date| i64::from(d.year()) * 12 + i64::from(d.month());
+    let whole = month_index(end) - month_index(reference) + i64::from(end.day() >= reference.day());
+    u64::try_from(whole)
+        .ok()
+        .filter(|m| (1..=MAX_MONTHS).contains(m))
+        .and_then(|m| u16::try_from(m).ok())
+}
+
+/// The last day an end statement names: a date (`31.03.2027`), a month (`03/2027`,
+/// `März 2027`), a quarter (`Q2 2027`) or a year (`2027`).
+fn end_date(after: &str) -> Option<Date> {
+    let words: Vec<&str> = after
+        .split(|c: char| c.is_whitespace() || matches!(c, ',' | '(' | ')' | ':'))
+        .map(|w| w.trim_end_matches('.'))
+        .filter(|w| !w.is_empty())
+        .take(END_DATE_WORDS)
+        .collect();
+    let year = |s: &str| s.parse::<i16>().ok().filter(|y| s.len() == 4 && *y > 2000);
+    let small = |s: &str| s.parse::<i8>().ok().filter(|_| s.len() <= 2);
+    let last_of = |y: i16, m: i8| Date::new(y, m, 1).ok().map(Date::last_of_month);
+    for (i, word) in words.iter().enumerate() {
+        let parts: Vec<&str> = word.split(['.', '/']).collect();
+        let found = match parts.as_slice() {
+            [d, m, y] => year(y)
+                .zip(small(m))
+                .zip(small(d))
+                .and_then(|((y, m), d)| Date::new(y, m, d).ok()),
+            [m, y] => year(y).zip(small(m)).and_then(|(y, m)| last_of(y, m)),
+            [y] => year(y).and_then(|y| Date::new(y, 12, 31).ok()),
+            _ => None,
+        };
+        if found.is_some() {
+            return found;
+        }
+        let next_year = words.get(i + 1).and_then(|w| year(w));
+        if let Some(&(_, month)) = lex::MONTHS.iter().find(|(name, _)| name == word)
+            && let Some(y) = next_year
+        {
+            return last_of(y, month);
+        }
+        if let Some(quarter) = word
+            .strip_prefix('q')
+            .and_then(|q| q.parse::<i8>().ok())
+            .filter(|q| (1..=4).contains(q))
+            && let Some(y) = next_year
+        {
+            return last_of(y, 3 * quarter);
+        }
+    }
+    None
 }
 
 /// The most years a requirement line asks for, with the line.
@@ -255,7 +406,8 @@ mod tests {
 
     #[test]
     fn durations_in_months() {
-        let m = |s: &str| parse_months(&fold(s));
+        // A duration statement (a page's duration field, a sentence with a duration word).
+        let m = |s: &str| duration_months(&fold(s), true, None);
         assert_eq!(m("Laufzeit: 6 Monate"), Some(6));
         assert_eq!(m("Duration 3-6 months, extension possible"), Some(6));
         assert_eq!(m("12+ Monate"), Some(12));
@@ -264,5 +416,96 @@ mod tests {
         assert_eq!(m("Start ab sofort"), None);
         assert_eq!(m("Laufzeit bis 31.12.2026"), None);
         assert_eq!(m("Laufzeit 999 Monate"), None);
+    }
+
+    fn date(y: i16, m: i8, d: i8) -> Date {
+        Date::new(y, m, d).expect("date")
+    }
+
+    /// The months of an ad's text (`reference`: the start or the posting date).
+    fn text_months(text: &str, reference: Option<Date>) -> Option<(u16, String)> {
+        let job = JobFacts {
+            title: "Interim Controller (m/w/d)",
+            text,
+            location: "",
+            portal: crate::portal::Portal::LinkedIn,
+            facts: None,
+            posted: None,
+        };
+        months(&job, &facts::segments(text), reference).map(|s| {
+            let passage = s.span.map(|r| text[r].to_owned()).unwrap_or_default();
+            (s.value, passage)
+        })
+    }
+
+    /// E16-6: only a real duration statement sets months: a lead time, a notice period,
+    /// `Einarbeitungsdauer` and the years of a `Start-up` never do.
+    #[test]
+    fn e16_6_only_a_duration_statement_sets_months() {
+        for (text, expected) in [
+            ("Start: in 2 Wochen\nLaufzeit: 12 Monate", 12),
+            ("Projektstart nach 4 Wochen Vorlauf\nLaufzeit: 2 Monate", 2),
+            (
+                "Start ab sofort, Kündigungsfrist 2 Wochen\nLaufzeit: 12 Monate",
+                12,
+            ),
+            (
+                "Sie haben 5 Jahre Erfahrung in einem Start-up oder Scale-up.\nLaufzeit: 2 Monate",
+                2,
+            ),
+            ("Start: within 4 weeks\nDuration: 12 months", 12),
+            ("Laufzeit: 12 Monate, Kündigungsfrist 4 Wochen", 12),
+            // Real duration phrases without a duration word.
+            ("Start October 2026, 12 months", 12),
+            ("B2B contract for 9 months, start in October 2026", 9),
+            ("Start: 01.11.2026 für 6 Monate", 6),
+            ("Laufzeit 3 Monate mit Option auf Verlängerung", 3),
+            ("Dauer: 6+ Monate", 6),
+            ("Remote, 6+ Monate, 90 €/h", 6),
+            ("Das Projekt ist befristet auf 12 Monate.", 12),
+            ("Wir suchen Sie für ein 6-monatiges Projekt.", 6),
+        ] {
+            assert_eq!(
+                text_months(text, None).map(|(m, _)| m),
+                Some(expected),
+                "{text}"
+            );
+        }
+        for text in [
+            "Einarbeitungsdauer ca. 2 Wochen",
+            "Start: in 2 Wochen",
+            "Kündigungsfrist 3 Monate",
+            "Sie haben 5 Jahre Erfahrung in einem Start-up oder Scale-up.",
+            "Wir suchen ab sofort einen SAP FI/CO Berater mit mindestens 5 Jahren \
+             Projekterfahrung.",
+            "2-3 Jahre Erfahrung im Controlling ODER FP&A, gern E-Com / Start-up",
+            "Die Probezeit beträgt 6 Monate.",
+        ] {
+            assert_eq!(text_months(text, None), None, "{text}");
+        }
+        // The passage is the duration statement, not the start line before it.
+        assert_eq!(
+            text_months("Start: in 2 Wochen\nLaufzeit: 12 Monate", None),
+            Some((12, "Laufzeit: 12 Monate".to_owned()))
+        );
+        // An end date counts from the start or the posting date.
+        let november = Some(date(2026, 11, 1));
+        assert_eq!(
+            text_months("Laufzeit bis Ende März 2027", november).map(|(m, _)| m),
+            Some(5)
+        );
+        assert_eq!(
+            text_months("Einsatz bis Ende Q2 2027 in Hamburg", november).map(|(m, _)| m),
+            Some(8)
+        );
+        assert_eq!(
+            text_months("Dauer: bis 31.03.2027", Some(date(2026, 9, 23))).map(|(m, _)| m),
+            Some(7)
+        );
+        assert_eq!(text_months("Laufzeit bis Ende März 2027", None), None);
+        assert_eq!(
+            text_months("Bewerbungen bis Ende Oktober 2026", Some(date(2026, 9, 1))),
+            None
+        );
     }
 }

@@ -1362,16 +1362,175 @@ pub(crate) const RATE_OPEN: &[&str] = &[
     "to be agreed",
     "tbd",
 ];
-/// Sentences that state a duration, and the units of one.
-pub(crate) const DURATION_WORDS: &[&str] = &[
+/// Words of a sentence that states a duration: whole words (with a plural ending), no other
+/// compounds (`Einarbeitungsdauer`, `Anfahrtsdauer` and `dauerhaft` state none).
+pub(crate) const DURATION_TERMS: &[&str] = &[
     "laufzeit",
+    "projektlaufzeit",
+    "vertragslaufzeit",
+    "mindestlaufzeit",
+    "gesamtlaufzeit",
+    "einsatzlaufzeit",
     "dauer",
-    "duration",
+    "projektdauer",
+    "einsatzdauer",
+    "vertragsdauer",
+    "auftragsdauer",
+    "mandatsdauer",
+    "gesamtdauer",
     "zeitraum",
     "einsatzzeitraum",
+    "projektzeitraum",
+    "befristet",
+    "befristung",
+    "duration",
     "length",
 ];
 pub(crate) const MONTH_UNITS: &[&str] = &["monat", "month"];
+/// Separators of the clauses of a duration sentence (`Start October 2026, 12 months`).
+pub(crate) const DURATION_CLAUSE_BREAKS: &[char] = &[',', ';', '|', '·', '(', ')'];
+/// Words of a clause that is only a duration (`6 Monate mit Option auf Verlängerung`).
+pub(crate) const DURATION_FILLERS: &[&str] = &[
+    "ca",
+    "circa",
+    "rund",
+    "etwa",
+    "zunachst",
+    "vorerst",
+    "voraussichtlich",
+    "mindestens",
+    "min",
+    "max",
+    "approx",
+    "initially",
+    "initial",
+    "mit",
+    "with",
+    "option",
+    "optional",
+    "auf",
+    "plus",
+    "verlangerung",
+    "verlangerungsoption",
+    "verlangerbar",
+    "extension",
+    "extendable",
+    "possible",
+    "moglich",
+    "und",
+    "and",
+    "oder",
+    "or",
+    "bis",
+    "to",
+    "zu",
+    "geplant",
+    "planned",
+    "weitere",
+    "further",
+];
+/// Words between a duration phrase's head and its amount (`für ca. 3-6 Monate`).
+pub(crate) const DURATION_QUALIFIERS: &[&str] = &[
+    "ca",
+    "circa",
+    "rund",
+    "etwa",
+    "zunachst",
+    "vorerst",
+    "voraussichtlich",
+    "insgesamt",
+    "mindestens",
+    "min",
+    "max",
+    "maximal",
+    "approx",
+    "approximately",
+    "initially",
+    "about",
+    "around",
+    "at",
+    "least",
+    "bis",
+    "zu",
+    "to",
+    "oder",
+    "or",
+    "und",
+    "and",
+];
+/// Words before an amount that make it a lead time (`Start in 2 Wochen`, `nach 4 Wochen`,
+/// `within 4 weeks`), never a duration.
+pub(crate) const DURATION_LEAD_WORDS: &[&str] = &[
+    "in",
+    "innerhalb",
+    "binnen",
+    "nach",
+    "within",
+    "after",
+    "vor",
+    "seit",
+    "since",
+    "ago",
+    "alle",
+    "every",
+    "each",
+    "jede",
+    "jeden",
+    "jedes",
+    "spatestens",
+    "fruhestens",
+];
+/// Parts of the word before an amount or of the two after its unit that make it a notice
+/// period, a lead time or another span (`Kündigungsfrist 2 Wochen`, `4 Wochen Vorlauf`,
+/// `Probezeit 6 Monate`, `2 Wochen Einarbeitung`), never the duration.
+pub(crate) const DURATION_LEAD_PARTS: &[&str] = &[
+    "frist",
+    "notice",
+    "vorlauf",
+    "kundigung",
+    "probezeit",
+    "urlaub",
+    "vacation",
+    "einarbeitung",
+    "onboarding",
+];
+/// Parts of the two words after a unit that make the amount years of experience.
+pub(crate) const DURATION_EXPERIENCE: &[&str] = &["erfahrung", "experience", "praxis"];
+/// Words right before an amount (past its qualifiers) that make a duration phrase
+/// (`für 6 Monate`, `for 9 months`, `über 12 Monate`, `auf 6 Monate angelegt`).
+pub(crate) const DURATION_FOR: &[&str] = &["fur", "for", "uber", "over", "auf"];
+/// A duration as an adjective (`ein 6-monatiges Projekt`); years as an adjective are mostly
+/// experience or a degree, so they are none.
+pub(crate) const DURATION_ADJECTIVES: &[&str] = &["monatig", "wochig"];
+/// Where an end date is an application deadline, not the end of the engagement.
+pub(crate) const DEADLINE_WORDS: &[&str] = &[
+    "bewerb",
+    "apply",
+    "application",
+    "deadline",
+    "einsendeschluss",
+];
+/// End markers in a sentence with a duration word (`Laufzeit bis 31.03.2027`), padded with
+/// spaces, longest first.
+pub(crate) const DURATION_END_MARKERS: &[&str] = &[
+    " bis zum ende ",
+    " bis ende ",
+    " bis zum ",
+    " bis ",
+    " until the end of ",
+    " until end of ",
+    " until ",
+    " end of ",
+    " ende ",
+];
+/// End markers in any sentence (`Einsatz bis Ende März 2027`), padded with spaces.
+pub(crate) const DURATION_END_PHRASES: &[&str] = &[
+    " bis zum ende ",
+    " bis ende ",
+    " until the end of ",
+    " until end of ",
+    " till the end of ",
+];
 /// Workload (share of a five-day week). Words that make a percentage a workload
 /// (`Auslastung 80 %`), substrings.
 pub(crate) const WORKLOAD_CUES: &[&str] = &[
