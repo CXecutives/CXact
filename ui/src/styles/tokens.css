@@ -297,6 +297,30 @@
   --focus-ring-inset: inset 0 0 0 var(--focus-width) hsl(var(--p-navy));
   --border-focus: hsl(var(--p-navy));
 
+  /* ------------------------------------------- one answer per surface kind */
+  /* Every control answers the pointer by the kind of its surface, the same way everywhere
+     (change a kind here and every control of it follows):
+     - quiet: no fill at rest (ghost button, list row, reason, sidebar entry, run status,
+       segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
+     - control: a white box with an edge (secondary button, field): a muted fill and a
+       darker edge under the pointer and while pressed (a button also gives a little).
+     - raised: a white tile or card (stat tile, interactive card): a navy edge and a soft
+       shadow under the pointer; pressed it darkens like a control and drops the shadow.
+     - label: text without a box (disclosure, divider, tab): ink under the pointer, its
+       chevron navy, and --pressed while pressed.
+     Keyboard focus is one navy ring: around a control (--focus-ring), inside a row or an
+     entry that fills its line (--focus-ring-inset). */
+  --quiet-hover: var(--surface-hover);
+  --quiet-press: var(--surface-press);
+  --control-hover: var(--surface-muted);
+  --control-hover-edge: var(--border-input);
+  --raised-hover-edge: var(--border-navy);
+  --raised-hover-shadow: var(--sh-hover);
+  --raised-press: var(--surface-muted);
+  --label-hover: var(--text);
+  --label-press: var(--pressed);
+  --label-glyph-hover: var(--icon-accent);
+
   /* ------------------------------------------------------------------- radii */
   --radius-xs: 6px;
   --radius-sm: 8px;
@@ -533,15 +557,18 @@
   /* The text in fields. */
   --font-field: 14px;
   --leading-field: 20px;
-  --font-md: 15px;
-  --leading-md: 22px;
-  /* List titles: 15 px on a tighter 20 px line, so two lines stay one block. */
+  /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
+  --font-md: 14px;
+  --leading-md: 20px;
+  /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
+  --font-title: 15px;
   --leading-title: 20px;
   /* The sidebar entries (14/20, weight 500). */
   --font-tab: 14px;
   --leading-tab: 20px;
-  --font-body: 15px;
-  --leading-body: 24px;
+  /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
+  --font-body: 14px;
+  --leading-body: 22px;
   --font-lg: 17px;
   --leading-lg: 24px;
   --font-xl: 20px;
@@ -555,7 +582,7 @@
   --type-sm: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --type-field: var(--weight-regular) var(--font-field) / var(--leading-field) var(--font-sans);
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
-  --type-title: var(--weight-medium) var(--font-md) / var(--leading-title) var(--font-sans);
+  --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
   --type-tab: var(--weight-medium) var(--font-tab) / var(--leading-tab) var(--font-sans);
   --type-body: var(--weight-regular) var(--font-body) / var(--leading-body) var(--font-sans);
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);

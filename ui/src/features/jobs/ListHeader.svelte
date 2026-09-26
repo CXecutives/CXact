@@ -222,7 +222,7 @@
   <Button
     size="field"
     variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
-    icon="refresh-cw"
+    icon="fetch"
     label={t.toolbar.fetch}
     disabled={run.fetchBlocked !== null}
     disabledReason={run.fetchBlocked}
@@ -236,7 +236,7 @@
   <Button
     size="field"
     variant="secondary"
-    icon="circle-stop"
+    icon="cancel"
     label={t.toolbar.cancel}
     loading={live && run.cancelling}
     wide
@@ -280,7 +280,7 @@
             variant="secondary"
             size="field"
             iconOnly
-            icon="funnel"
+            icon="filter"
             label={t.toolbar.filter}
             dot={jobs.filtered}
             menu
@@ -335,7 +335,7 @@
           <Button
             variant="ghost"
             size="sm"
-            icon="circle-x"
+            icon="purge"
             label={t.actions.emptyTrash}
             disabled={run.active}
             disabledReason={run.busyText}

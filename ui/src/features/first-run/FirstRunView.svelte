@@ -162,7 +162,7 @@
 {#snippet problem(text: string, testid: string)}
   <!-- In the place and size of the hint, with the glyph and tone of a warning. -->
   <p class="hint problem" data-testid={testid}>
-    <Icon name="triangle-alert" size="sm" /><span>{text}</span>
+    <Icon name="warning" size="sm" /><span>{text}</span>
   </p>
 {/snippet}
 
@@ -189,7 +189,7 @@
               <Button
                 variant="link"
                 size="sm"
-                icon="external-link"
+                icon="external"
                 external
                 label={t.firstRun.createAlert}
                 testid="first-alert-{portal.portal}"
@@ -244,7 +244,7 @@
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
           size="field"
-          icon="file-text"
+          icon="document"
           label={t.list.openProfile}
           testid="first-profile"
           onclick={openProfile}
@@ -253,7 +253,7 @@
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
           size="field"
-          icon="clipboard-paste"
+          icon="paste"
           label={t.profile.fromCv}
           testid="first-profile"
           onclick={fromCv}
@@ -283,7 +283,7 @@
     <Button
       variant={current === 'fetch' ? 'primary' : 'secondary'}
       size="field"
-      icon="refresh-cw"
+      icon="fetch"
       label={t.toolbar.fetch}
       disabled={run.fetchBlocked !== null}
       disabledReason={run.fetchBlocked}
@@ -325,7 +325,7 @@
         <h1 class="title">{t.app.name}</h1>
       </div>
       <p class="benefit">{t.firstRun.benefit}</p>
-      <p class="privacy"><Icon name="shield" size="sm" />{t.firstRun.privacy}</p>
+      <p class="privacy"><Icon name="privacy" size="sm" />{t.firstRun.privacy}</p>
     </header>
 
     {#if resetLeft && reset}
@@ -334,7 +334,7 @@
         text={t.settings.resetPartly(reset.failed)}
         action={{
           label: t.common.openLog,
-          icon: 'folder-open',
+          icon: 'folder',
           onclick: () => open('mailbox', { kind: 'logDir' }),
         }}
         testid="first-reset-report"

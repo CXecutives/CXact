@@ -480,21 +480,21 @@
   const MORE: readonly MoreItem[] = [
     {
       id: 'mail',
-      icon: 'mail',
+      icon: 'alertMail',
       label: () => t.reader.mail,
       off: () => (detail.mail.gmailUrl ? null : t.reader.noMail),
       run: () => openTarget({ kind: 'gmail', key: job.key }),
     },
     {
       id: 'prompt',
-      icon: 'copy',
+      icon: 'prompt',
       label: () => t.reader.prompt,
       off: () => promptOff,
       run: () => void copyPrompt(),
     },
     {
       id: 'trash',
-      icon: 'trash-2',
+      icon: 'trash',
       label: () => t.actions.trash,
       key: LIST_KEYS.trash,
       apart: true,
@@ -733,7 +733,7 @@
               <Button
                 variant="secondary"
                 size="sm"
-                icon="plus"
+                icon="add"
                 label={t.reader.addToProfile}
                 testid="add-to-profile"
                 onclick={() => void add(words)}
@@ -786,7 +786,7 @@
         variant="ghost"
         size="sm"
         iconOnly
-        icon="x"
+        icon="close"
         label={t.reader.close}
         hint={keyOfAction('close')}
         testid="{prefix}close"
@@ -864,7 +864,7 @@
     <Button
       variant="secondary"
       size="field"
-      icon="external-link"
+      icon="external"
       label={t.reader.open}
       hint={keyOfAction('open')}
       testid="open-ad"
@@ -903,7 +903,7 @@
       <Button
         variant="ghost"
         size="sm"
-        icon="ellipsis"
+        icon="more"
         iconOnly
         label={t.reader.more}
         menu
@@ -1043,7 +1043,7 @@
           <Button
             variant="secondary"
             size="sm"
-            icon="log-in"
+            icon="signIn"
             label={t.reader.setUpSignIn}
             testid="set-up-sign-in"
             onclick={setUpSignIn}
@@ -1053,7 +1053,7 @@
           <Button
             variant="secondary"
             size="sm"
-            icon="download"
+            icon="details"
             label={t.reader.fetchDetails}
             disabled={run.active}
             disabledReason={run.busyText}
@@ -1107,7 +1107,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="external-link"
+          icon="external"
           label={t.reader.open}
           hint={keyOfAction('open')}
           testid="compact-open"

@@ -35,7 +35,7 @@
     <div class="help" class:acts={action !== null}>
       {#if error}
         <p class="error" id="{control}-message" role="alert">
-          <Icon name="triangle-alert" size="sm" />
+          <Icon name="warning" size="sm" />
           <span>{error}</span>
         </p>
       {:else if hint}
@@ -47,7 +47,7 @@
             variant="link"
             size="sm"
             icon={action.icon ?? null}
-            external={action.icon === 'external-link'}
+            external={action.icon === 'external'}
             label={action.label}
             testid={action.testid ?? null}
             onclick={action.onclick}

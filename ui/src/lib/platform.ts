@@ -110,6 +110,16 @@ export interface KeyConventions {
   /** The key that goes back where a view has a way back: Alt+Left on Windows (Explorer),
    *  Cmd+[ or Cmd+Left on macOS (Finder, Safari). */
   back: 'alt' | 'command';
+  /** The same as combos (lib/input/keys.ts), the one the OS names first. */
+  backKeys: readonly string[];
+  /** Fetch like a mail app's "get mail": F5 on Windows (Outlook, Explorer), Cmd+R on macOS
+   *  (Mail); the other works too. */
+  fetchKeys: readonly string[];
+  /** The keys that throw a job away (KeyboardEvent.key): Entf on Windows; on macOS the
+   *  delete key (Backspace) or the forward delete. */
+  deleteKeys: readonly string[];
+  /** Ctrl+, opens Einstellungen (Windows); on macOS the app menu's Cmd+, does. */
+  settingsKey: boolean;
 }
 
 /** A middle click over a scroll area starts the OS autoscroll, which runs until the next
@@ -128,6 +138,10 @@ export function keyConventions(): KeyConventions {
     systemMenuKey: !mac,
     contextMenuKey: !mac,
     back: mac ? 'command' : 'alt',
+    backKeys: mac ? ['mod+[', 'mod+left'] : ['alt+left'],
+    fetchKeys: mac ? ['mod+r', 'f5'] : ['f5', 'mod+r'],
+    deleteKeys: mac ? ['Backspace', 'Delete'] : ['Delete'],
+    settingsKey: !mac,
   };
 }
 

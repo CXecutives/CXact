@@ -602,7 +602,7 @@
             <Button
               variant="secondary"
               size="sm"
-              icon="plus"
+              icon="add"
               label={words.dach}
               testid="profile-dach"
               onclick={(event) => void addDach(event)}
@@ -979,7 +979,7 @@
           <Button
             variant="secondary"
             size="field"
-            icon="arrow-right"
+            icon="next"
             label={t.profile.next}
             testid="profile-next"
             onclick={onnext}

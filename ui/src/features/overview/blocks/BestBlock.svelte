@@ -19,7 +19,7 @@
       tone="danger"
       variant="row"
       text={t.list.loadFailed}
-      action={{ label: t.common.retry, icon: 'refresh-cw', onclick: () => overview.retry() }}
+      action={{ label: t.common.retry, icon: 'retry', onclick: () => overview.retry() }}
       testid="overview-load-failed"
     />
   </Block>

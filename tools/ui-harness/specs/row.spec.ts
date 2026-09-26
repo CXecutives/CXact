@@ -7,6 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
+import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { withSalary } from './demo';
 import { animationsDone, expect, open, test } from './fixtures';
@@ -24,6 +25,8 @@ const TABLE = readFileSync(new URL('../../../ui/src/lib/facts.ts', import.meta.u
     term: /term: '(\w+)'/.exec(entry)?.[1] ?? null,
   }));
 const entry = (key: string) => TABLE.find((fact) => fact.key === key);
+/** The class of the Lucide glyph a fact's icon meaning draws (lib/icons.ts). */
+const lucide = (key: string) => `lucide-${ICONS[entry(key)!.icon as IconMeaning]}`;
 
 /** The facts a row shows are these (in any order), and they come in the table's order. */
 function inTableOrder(keys: string[], members: string[]): void {
@@ -182,7 +185,7 @@ test('the pay stands in ink, the other facts are muted; a permanent job its sala
   );
   const salary = permanent.find((fact) => fact.key === 'money')!;
   expect(salary.text).toMatch(/^95\.000\/Jahr$/);
-  expect(salary.icon).toBe(`lucide-${entry('money')!.icon}`);
+  expect(salary.icon).toBe(lucide('money'));
 });
 
 test('an ad that names nothing shows its contract and work mode, a row without any keeps its height', async ({
@@ -253,7 +256,7 @@ test('a fact the ad names in other ways: an hourly rate, another currency, the w
     ['contract', 'foreignMoney', 'remote'],
   );
   expect(of(foreign, 'foreignMoney').text).toMatch(/^1\.000\sCHF\/Tag$/);
-  expect(of(foreign, 'foreignMoney').icon).not.toBe(`lucide-${entry('money')!.icon}`);
+  expect(of(foreign, 'foreignMoney').icon).not.toBe(lucide('money'));
   await emit({
     rate: 95,
     hourly: true,

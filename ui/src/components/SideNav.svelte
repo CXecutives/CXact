@@ -243,7 +243,7 @@
           }}
           onclick={toggle}
         >
-          <span class="chevron"><Icon name="chevron-down" size={collapsed ? 'xs' : 'sm'} /></span>
+          <span class="chevron"><Icon name="expand" size={collapsed ? 'xs' : 'sm'} /></span>
         </button>
       </div>
       <div class="group" id={groupId} role="group" aria-label={item.label} hidden={!inFlow}>
@@ -333,7 +333,7 @@
      not over an arrow that waits (nothing there reacts to a click). */
   .item:not([aria-current='page'], [aria-disabled='true']):hover,
   .parent:hover:not(:has(.fold[aria-disabled='true']:hover)) > .item:not([aria-current='page']) {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     color: var(--text);
     transition-duration: var(--dur-hover);
     --nav-glyph: var(--nav-active-icon);
@@ -346,7 +346,7 @@
 
   :global(:where(:root:not([data-aux-press])))
     .item:not([aria-current='page'], [aria-disabled='true']):active:hover {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 
@@ -450,13 +450,13 @@
   }
 
   .fold:not([aria-disabled='true']):hover {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     color: var(--text);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .fold:not([aria-disabled='true']):active:hover {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 

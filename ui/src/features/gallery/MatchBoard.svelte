@@ -17,10 +17,10 @@
   const t = text.match;
   const CHIP_ICON: Record<ChipState, IconName> = {
     met: 'check',
-    unknown: 'circle-help',
-    violated: 'x',
-    unset: 'minus',
-    plain: 'file-text',
+    unknown: 'unclear',
+    violated: 'excluded',
+    unset: 'unstated',
+    plain: 'document',
   };
   const now = new Date();
   let jobs = $state(sampleJobs(now));
@@ -112,7 +112,7 @@
 
 <Section heading={t.rows} id="rows">
   <div class="actions">
-    <Button label={t.shuffle} icon="refresh-cw" onclick={shuffle} testid="rows-shuffle" />
+    <Button label={t.shuffle} icon="retry" onclick={shuffle} testid="rows-shuffle" />
     <Button label={t.replay} variant="ghost" onclick={() => (run += 1)} />
   </div>
   <div class="bar-slot">
@@ -121,7 +121,7 @@
         count={chosen.length}
         actions={[
           { icon: 'archive', label: t.archive, testid: 'bulk-archive', onclick: () => undefined },
-          { icon: 'trash-2', label: t.delete, testid: 'bulk-delete', onclick: () => undefined },
+          { icon: 'trash', label: t.delete, testid: 'bulk-delete', onclick: () => undefined },
         ]}
         onclear={() => (chosen = chosen.slice(-1))}
         testid="selection-bar"

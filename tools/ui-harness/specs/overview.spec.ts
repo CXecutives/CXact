@@ -5,8 +5,18 @@
 // requirements the profile lacks most often go in at once; the market of 30 days; 480 px.
 
 import type { Page } from '@playwright/test';
-import type { JobKey, JobQuery, RunRequest } from '../../../ui/src/lib/ipc/types';
+import type { JobKey, RunRequest } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, test } from './fixtures';
+import {
+  excludedRows,
+  filterLine,
+  filterWordsOf,
+  funnel,
+  lastQuery,
+  listed,
+  rows,
+  stubList,
+} from './helpers';
 
 const OVERVIEW = '?platform=windows&view=overview';
 
@@ -22,20 +32,6 @@ function blocks(page: Page): Promise<string[]> {
 async function tile(page: Page, id: string): Promise<number> {
   return Number((await page.getByTestId(id).locator('.digits').innerText()).replace(/\D/g, ''));
 }
-
-/** The query of the last list load (not a counts-only one). */
-async function lastQuery(page: Page): Promise<JobQuery | undefined> {
-  return (await calls(page, 'list_jobs'))
-    .map(([, args]) => (args as { query: JobQuery }).query)
-    .filter((query) => query.limit > 0)
-    .at(-1);
-}
-
-/** The rows of the list outside the folded excluded section. */
-const listRows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
-
-const facet = (page: Page, name: string) =>
-  page.getByTestId('facet').getByRole('radio', { name: new RegExp(name) });
 
 test('the blocks stand in their order, each only with content', async ({ page }) => {
   await open(page, OVERVIEW);
@@ -61,7 +57,9 @@ test('the blocks stand in their order, each only with content', async ({ page })
   await expect.poll(() => blocks(page)).toEqual(['since', 'issues', 'files']);
 });
 
-test('Neu opens exactly the unopened jobs, the kept order untouched', async ({ page }) => {
+test('Neu opens the Eingang without a filter, its unopened jobs dotted, the kept order untouched', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     localStorage.setItem('jobs-sort', 'newest');
     localStorage.setItem('jobs-filter', JSON.stringify({ portal: 'linkedin' }));
@@ -70,8 +68,8 @@ test('Neu opens exactly the unopened jobs, the kept order untouched', async ({ p
   const count = await tile(page, 'tile-new');
   expect(count).toBe(6);
   await page.getByTestId('tile-new').click();
-  await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
-  await expect(listRows(page)).toHaveCount(count);
+  await expect(filterLine(page)).toHaveCount(0);
+  await expect.poll(() => listed(page)).toEqual((await stubList(page, { sort: 'newest' })).active);
   await expect(page.getByTestId('job-rows').locator('.dot')).toHaveCount(count);
   expect(await lastQuery(page)).toMatchObject({ sort: 'newest', portal: null, minBand: null });
 });
@@ -82,22 +80,24 @@ test('Hohe Passung opens the high band of the inbox, read or not', async ({ page
   const count = await tile(page, 'tile-high');
   expect(count).toBe(2);
   await page.getByTestId('tile-high').click();
-  await expect(facet(page, 'Alle')).toHaveAttribute('aria-checked', 'true');
-  await expect(page.getByTestId('filter').getByTestId('button-dot')).toBeVisible();
-  await expect(listRows(page)).toHaveCount(count);
+  await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('band-high'));
+  await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
+  await expect(rows(page)).toHaveCount(count);
   expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: 'high', unread: false });
 });
 
-test('the excluded jobs not opened yet: the new ones with their section open', async ({ page }) => {
+test('the excluded jobs not opened yet: the Eingang with its excluded section open and in view', async ({
+  page,
+}) => {
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '0'));
   await open(page, OVERVIEW);
   const point = page.getByTestId('issue-excluded');
   await expect(point).toContainText('1 neuer Job ausgeschlossen');
   await point.getByRole('button', { name: 'Ansehen' }).click();
-  await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
-  const excluded = page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]');
-  await expect(excluded).toHaveCount(1);
-  await expect(excluded.first()).toBeInViewport();
+  await expect(filterLine(page)).toHaveCount(0);
+  await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
+  await expect(excludedRows(page)).toHaveCount((await stubList(page)).excluded.length);
+  await expect(page.getByTestId('excluded-divider')).toBeInViewport();
 });
 
 test('a job opens in the Eingang, whatever list and search Jobs had', async ({ page }) => {
@@ -195,6 +195,10 @@ test('"Details holen" counts and asks for only the ads it can still fetch', asyn
   await open(page, OVERVIEW);
   const point = page.getByTestId('issue-details');
   await expect(point).toContainText('2 Jobs ohne ganze Anzeige');
+  // What each ad was before the click (the run the click starts fetches them).
+  const before = await stubList(page);
+  const detail = (key: JobKey): string | undefined =>
+    before.jobs.find((job) => job.key.portal === key.portal && job.key.id === key.id)?.detail.kind;
   await point.getByRole('button', { name: 'Details holen' }).click();
   await expect.poll(async () => (await calls(page, 'start_run')).length).toBe(1);
   const request = (await calls(page, 'start_run'))[0]![1] as { request: RunRequest };
@@ -202,9 +206,8 @@ test('"Details holen" counts and asks for only the ads it can still fetch', asyn
   const keys = (request.request as { keys: JobKey[] }).keys;
   expect(keys).toHaveLength(2);
   for (const key of keys) {
-    const job = await page.evaluate((k) => window.__harness.job(k), key);
     // Not fetched yet or failed so far; never a teaser without the sign-in, a gone ad.
-    expect(['pending', 'onRequest', 'failed']).toContain(job?.detail.kind);
+    expect(['pending', 'onRequest', 'failed']).toContain(detail(key));
   }
 });
 
@@ -255,13 +258,9 @@ test('"Heute ansehen" rows stand one height apart, whatever a row shows', async 
 test('a favourite shows once; more of them lead to all in Jobs', async ({ page }) => {
   // Favourites beyond the best: a dozen jobs chosen in Jobs (none opened), starred at once.
   await open(page, '?platform=windows');
-  await facet(page, 'Alle').click();
   // The rows mount chunk by chunk.
-  await expect.poll(() => listRows(page).count()).toBeGreaterThanOrEqual(12);
-  const ids = await listRows(page).evaluateAll((items) =>
-    items.map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
-  );
-  for (const id of ids.slice(0, 12)) {
+  await expect.poll(() => rows(page).count()).toBeGreaterThanOrEqual(12);
+  for (const id of (await listed(page)).slice(0, 12)) {
     await page.getByTestId(`job-row-${id}`).click({ modifiers: ['Control'] });
   }
   await page.getByTestId('pane-star').click();
@@ -280,8 +279,8 @@ test('a favourite shows once; more of them lead to all in Jobs', async ({ page }
   await expect(all).toHaveText(/Alle \d+ Favoriten/);
   const count = Number((await all.innerText()).replace(/\D/g, ''));
   await all.click();
-  await expect(facet(page, 'Favoriten')).toHaveAttribute('aria-checked', 'true');
-  await expect(listRows(page)).toHaveCount(count);
+  await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('favourites'));
+  await expect(rows(page)).toHaveCount(count);
 });
 
 test('an open must goes into the profile at once and comes out with the undo', async ({ page }) => {
@@ -325,7 +324,7 @@ test('the files: the report, the Excel file, the folder; one not written yet say
   const glyphs = await files
     .locator('.glyph')
     .evaluateAll((all) => all.map((glyph) => glyph.getAttribute('data-icon')));
-  expect(glyphs).toEqual(['file-text', 'file-spreadsheet', 'folder-open']);
+  expect(glyphs).toEqual(['document', 'excel', 'folder']);
   await files.getByTestId('overview-folder').click();
   await expect
     .poll(async () => (await calls(page, 'open_target')).at(-1)?.[1])

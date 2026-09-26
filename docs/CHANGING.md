@@ -129,8 +129,32 @@ ask which palette is on.
   needs its field in `Settings` (`core/src/settings.rs`) and `SettingsPatch` (`view.rs`).
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
-- A key of the app is one entry in `ui/src/lib/input/keys.ts`; the card of the keys and
-  Einstellungen both show it. Its handling lives in `ui/src/lib/input/input.ts`.
+- A key of the app is one row of `ui/src/lib/input/keys.ts` (what it does, where it works,
+  its name, its keys per OS): `ui/src/lib/input/input.ts` dispatches from it, the card of the
+  keys and Einstellungen show it, and a button that does the same names it (`keys` on
+  `Button`). What differs between Windows and macOS is `keyConventions()` in
+  `ui/src/lib/platform.ts`; the views' keys are `ui/src/lib/views.ts`.
+
+## Change a role of the controls
+
+Each role of the UI has one pattern, decided in one place; the components only read it, and
+`core/tests/ui_contract.rs` fails when a copy appears elsewhere.
+
+- **An icon**: `ui/src/lib/icons.ts` maps each meaning (`trash`, `purge`, `external`,
+  `prompt`, `fetch`, `retry`, ...) to one Lucide glyph; components and views pass the
+  meaning. Another glyph for a meaning is one edit there (a new glyph also gets its import in
+  `ui/src/components/Icon.svelte`, a type error says so). One glyph means one thing: a new
+  meaning needs a glyph no other meaning has.
+- **A view in the sidebar** (name, icon, key): `ui/src/lib/views.ts`.
+- **A toast**: `TOAST_KINDS` (glyph, colour) and `TOAST_LIFE` (how long, by its button) in
+  `ui/src/lib/state/toasts.svelte.ts`; a quiet success is always a toast (`toasts.show`),
+  never a note that stays in the view.
+- **Hover, press and focus**: one answer per surface kind (quiet, control, raised, label) in
+  `ui/src/styles/tokens.css` ("one answer per surface kind").
+- **Buttons**: two heights, `sm` (28 px, in rows and tools) and `field` (32 px, the default);
+  a button that loses something for good is `warns` (red at rest).
+- **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
+  `tools/ui-harness/specs/shell.spec.ts`, `input.spec.ts` and `gallery.spec.ts` in Chromium.
 
 ## What the backend generates for the UI
 

@@ -142,7 +142,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="target"
+          icon="focus"
           label={starred(row.name) ? words.unstar : words.star}
           pressed={starred(row.name)}
           disabled={row.name.trim() === '' || (!starred(row.name) && focus.length >= MAX_FOCUS)}
@@ -185,7 +185,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="x"
+          icon="close"
           label={words.removeCompetence(row.name.trim())}
           testid="competence-remove"
           onclick={(event) => removeByButton(row, event)}
@@ -200,7 +200,7 @@
     <Button
       variant="secondary"
       size="sm"
-      icon="plus"
+      icon="add"
       label={words.addCompetence}
       testid="competence-add"
       onclick={() => void add()}

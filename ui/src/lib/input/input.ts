@@ -52,7 +52,9 @@
 //   last) by a page, like a native window; with the focus nowhere the arrows scroll the
 //   pane clicked last by a line and Home/End to its top and end (Einstellungen, Profil).
 //   Key scrolling glides in one short tween (lib/motion/scroll.ts), never the engine's
-//   smooth scroll. Ctrl+/ (Cmd+/ on macOS) opens the card of the keys (`help`).
+//   smooth scroll. Ctrl+/ (Cmd+/ on macOS) opens the card of the keys (`help`). Every
+//   shortcut of the app is a row of lib/input/keys.ts: the dispatch below asks the table
+//   which row a key is (`is`, `matched`), so the keys, the card and the tooltips agree.
 //   Everything else, including every WebView shortcut (reload, find, print, zoom,
 //   devtools, caret browsing, Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
@@ -76,7 +78,7 @@ import {
   type KeyConventions,
 } from '../platform';
 import { help } from '../state/help.svelte';
-import { navigation, VIEW_IDS, type ViewId } from '../state/navigation.svelte';
+import { navigation, type ViewId } from '../state/navigation.svelte';
 import {
   chooseEntry,
   closeMenu,
@@ -87,6 +89,8 @@ import {
   type MenuEntry,
 } from '../state/menu.svelte';
 import { tokenMs, tokenPx } from '../tokens';
+import { VIEWS } from '../views';
+import { combo, keysOf, matched, type ShortcutAction } from './keys';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
@@ -144,6 +148,15 @@ const MAC_MENU_KEYS = new Set(['q', 'w', 'm', 'h', ',']);
 
 /** The nearest match from `target` up (a text node - the target of selectstart - counts
  *  as its parent element). */
+/** The first key of a shortcut of the list (the same on both OS). */
+function listKey(action: ShortcutAction): string {
+  return keysOf(action, keyConventions()) ?? '';
+}
+
+/** Whether `event` is a key of the shortcut `action` on this OS (lib/input/keys.ts). */
+const is = (event: KeyboardEvent, action: ShortcutAction): boolean =>
+  combo(event, action, keyConventions()) !== null;
+
 function closest(target: EventTarget | null, selector: string): Element | null {
   const element = target instanceof Text ? target.parentElement : target;
   return element instanceof Element ? element.closest(selector) : null;
@@ -218,12 +231,7 @@ function typesWithAltGraph(event: KeyboardEvent, os: KeyConventions): boolean {
 }
 
 /** Shift+F10 alone or the Menu key: the context menu (Windows; a Mac keyboard has neither). */
-function isContextMenuKey(event: KeyboardEvent): boolean {
-  if (!keyConventions().contextMenuKey || hasModifier(event)) return false;
-  return (
-    (event.key === 'F10' && event.shiftKey) || (event.key === 'ContextMenu' && !event.shiftKey)
-  );
-}
+const isContextMenuKey = (event: KeyboardEvent): boolean => is(event, 'menu');
 
 function allowedInField(event: KeyboardEvent): boolean {
   if (isContextMenuKey(event)) return true;
@@ -284,14 +292,7 @@ function handlerFor(target: EventTarget | null, key: keyof FormKeyHandlers): (()
 }
 
 /** Ctrl+S or Cmd+S (the command key of the OS), without Alt or Shift. */
-function isSaveShortcut(event: KeyboardEvent): boolean {
-  return (
-    event[keyConventions().command] &&
-    !event.altKey &&
-    !event.shiftKey &&
-    event.key.toLowerCase() === 's'
-  );
-}
+const isSaveShortcut = (event: KeyboardEvent): boolean => is(event, 'save');
 
 /** Enter and Esc for the nearest form that handles them; `true` if one did. */
 function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = event.target): boolean {
@@ -334,41 +335,31 @@ export interface ListKeyHandlers {
 }
 
 /**
- * The single keys of the job list, one table, as keyLabel writes them: this handler, the
- * job's actions and its menu (their key hints), the card of the keys and Einstellungen all
- * read it; another key is a change here only. `del` is Entf on Windows, Backspace or Delete
- * on macOS; Enter opens a row by the row's own button (the handler leaves it alone).
+ * The single keys of the job list as keyLabel writes them, read from the shortcuts table
+ * (lib/input/keys.ts): the job's actions and its menu name them in their hints. `del` is Entf
+ * on Windows, Backspace or Delete on macOS; Enter opens a row by the row's own button (the
+ * handler leaves it alone).
  */
 export const LIST_KEYS = {
-  open: 'enter',
-  archive: 'e',
-  trash: 'del',
-  star: 's',
-  openAd: 'o',
-} as const;
+  open: listKey('open'),
+  archive: listKey('archive'),
+  trash: listKey('trash'),
+  star: listKey('star'),
+  openAd: listKey('openAd'),
+};
 
 export type ListAction = Exclude<keyof typeof LIST_KEYS, 'open'>;
 
-/** The letter keys of LIST_KEYS (lower case, no modifier) and what they do. */
-const LETTER_ACTIONS: ReadonlyMap<string, ListAction> = new Map(
-  (Object.entries(LIST_KEYS) as [keyof typeof LIST_KEYS, string][]).flatMap(([action, key]) =>
-    action !== 'open' && key.length === 1 ? [[key, action] as const] : [],
-  ),
-);
+/** The shortcuts that act on the open item of a list (the other rows of the list move in it). */
+const LIST_ACTIONS: ReadonlySet<ShortcutAction> = new Set<ListAction>([
+  'archive',
+  'trash',
+  'star',
+  'openAd',
+]);
 
-/** Entf on Windows, Backspace or Delete on macOS (the Mac's delete key is Backspace). */
-function isTrashKey(event: KeyboardEvent): boolean {
-  if (keyConventions().command === 'metaKey')
-    return event.key === 'Backspace' || event.key === 'Delete';
-  return event.key === 'Delete';
-}
-
-/** F5, Ctrl+R (Windows) or Cmd+R (macOS): fetch, like a mail app's "get mail". */
-function isFetchKey(event: KeyboardEvent): boolean {
-  if (event.key === 'F5' && !hasModifier(event) && !event.shiftKey) return true;
-  const os = keyConventions();
-  return event[os.command] && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'r';
-}
+/** The fetch of the app (lib/input/keys.ts: F5 or Ctrl+R on Windows, Cmd+R or F5 on macOS). */
+const isFetchKey = (event: KeyboardEvent): boolean => is(event, 'fetch');
 
 let fetchHandler: (() => void) | null = null;
 
@@ -422,14 +413,7 @@ function listFor(target: EventTarget | null): ListKeyHandlers | null {
 }
 
 /** Ctrl+F or Cmd+F (the command key of the OS), without Alt or Shift. */
-function isFindShortcut(event: KeyboardEvent): boolean {
-  return (
-    event[keyConventions().command] &&
-    !event.altKey &&
-    !event.shiftKey &&
-    event.key.toLowerCase() === 'f'
-  );
-}
+const isFindShortcut = (event: KeyboardEvent): boolean => is(event, 'search');
 
 /** The keys that move in a list, a radio group or a pane. */
 const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
@@ -446,29 +430,29 @@ function dispatchListKey(event: KeyboardEvent): boolean {
   }
   const list = listFor(event.target);
   if (list === null) return false;
-  if (!event.shiftKey && list.act !== undefined) {
-    const action = isTrashKey(event) ? 'trash' : LETTER_ACTIONS.get(event.key.toLowerCase());
-    if (action !== undefined && event.key.length <= 9) {
-      list.act(action);
-      return true;
-    }
+  const hit = matched(event, 'list', keyConventions());
+  if (hit !== null && LIST_ACTIONS.has(hit.action)) {
+    if (list.act === undefined) return false;
+    list.act(hit.action as ListAction);
+    return true;
   }
-  if (event.shiftKey) return extendList(list, event.key);
+  if (hit?.action === 'extend') return extendList(list, hit.combo);
+  if (event.shiftKey) return false;
   if (readsReader(event, list)) return true;
-  switch (event.key) {
-    case 'ArrowUp':
+  switch (hit?.combo) {
+    case 'up':
       list.step(-1);
       return true;
-    case 'ArrowDown':
+    case 'down':
       list.step(1);
       return true;
-    case 'Home':
+    case 'home':
       list.edge(false);
       return true;
-    case 'End':
+    case 'end':
       list.edge(true);
       return true;
-    case 'Escape':
+    case 'esc':
       list.close();
       return true;
     default:
@@ -477,18 +461,19 @@ function dispatchListKey(event: KeyboardEvent): boolean {
 }
 
 /** Shift with ArrowUp/ArrowDown, Home or End: the list's choice reaches further. */
-function extendList(list: ListKeyHandlers, key: string): boolean {
-  const to = EXTEND_TO[key];
+function extendList(list: ListKeyHandlers, keys: string): boolean {
+  const to = EXTEND_TO[keys];
   if (to === undefined || list.extend === undefined) return false;
   list.extend(to);
   return true;
 }
 
+/** The combos of the row "extend" (lib/input/keys.ts) and how far each reaches. */
 const EXTEND_TO: Record<string, -1 | 1 | 'first' | 'last'> = {
-  ArrowUp: -1,
-  ArrowDown: 1,
-  Home: 'first',
-  End: 'last',
+  'shift+up': -1,
+  'shift+down': 1,
+  'shift+home': 'first',
+  'shift+end': 'last',
 };
 
 /**
@@ -951,13 +936,7 @@ function goBack(): boolean {
 }
 
 /** The back key of the OS: Alt+Left on Windows; Cmd+[ or Cmd+Left on macOS. */
-function isBackKey(event: KeyboardEvent): boolean {
-  if (event.shiftKey) return false;
-  if (keyConventions().back === 'alt') {
-    return event.altKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowLeft';
-  }
-  return event.metaKey && !event.ctrlKey && (event.key === '[' || event.key === 'ArrowLeft');
-}
+const isBackKey = (event: KeyboardEvent): boolean => is(event, 'back');
 
 /** Alt+Right (Windows), Cmd+] or Cmd+Right (macOS): forward, which the app has not. */
 function isForwardKey(event: KeyboardEvent): boolean {
@@ -970,20 +949,10 @@ function isForwardKey(event: KeyboardEvent): boolean {
 
 /** Ctrl+/ or Cmd+/ (any layout: the key that types a slash, or the one on the number pad):
  *  the card of the keys. */
-function isHelpKey(event: KeyboardEvent): boolean {
-  if (!event[keyConventions().command] || event.altKey) return false;
-  return event.key === '/' || event.code === 'NumpadDivide' || event.code === 'Slash';
-}
+const isHelpKey = (event: KeyboardEvent): boolean => is(event, 'help');
 
 /** Ctrl+Z or Cmd+Z (the command key of the OS), without Alt or Shift. */
-function isUndo(event: KeyboardEvent): boolean {
-  return (
-    event[keyConventions().command] &&
-    !event.altKey &&
-    !event.shiftKey &&
-    event.key.toLowerCase() === 'z'
-  );
-}
+const isUndo = (event: KeyboardEvent): boolean => is(event, 'undo');
 
 /** What Esc clears outside fields and dialogs; the newest first. */
 const escapes: (() => void)[] = [];
@@ -1058,7 +1027,7 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
         {
           id: 'undo',
           label: t.edit.undo,
-          icon: 'undo-2',
+          icon: 'undo',
           keys: keyLabel('mod+z'),
           // The engine keeps one undo history for the page.
           disabled: !(editable && canUndo()),
@@ -1091,7 +1060,7 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
     {
       id: 'cut',
       label: t.edit.cut,
-      icon: 'scissors',
+      icon: 'cut',
       keys: keyLabel('mod+x'),
       disabled: !(editable && selected && !hidden),
       run: () => {
@@ -1115,7 +1084,7 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
     {
       id: 'paste',
       label: t.edit.paste,
-      icon: 'clipboard-paste',
+      icon: 'paste',
       keys: keyLabel('mod+v'),
       disabled: !editable,
       run: () => {
@@ -1132,7 +1101,7 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
     {
       id: 'select-all',
       label: t.edit.selectAll,
-      icon: 'text-select',
+      icon: 'selectAll',
       keys: keyLabel('mod+a'),
       disabled: field.value === '',
       run: () => {
@@ -1311,15 +1280,13 @@ function openMenuByKey(target: EventTarget | null): void {
   if (host !== null) openHostMenu(host, null);
 }
 
-/** Ctrl/Cmd+1 to 4: the views in the sidebar's order; Ctrl+, the settings on Windows (the
- *  macOS menu has Cmd+, itself). Matched by the key's code, so every layout works. */
+/** Ctrl/Cmd+1 to 4: the views in the sidebar's order (lib/views.ts); Ctrl+, the settings on
+ *  Windows (the macOS menu has Cmd+, itself). Digits by their place, so every layout works. */
 function viewShortcut(event: KeyboardEvent): ViewId | null {
   const os = keyConventions();
-  if (!event[os.command] || event.altKey || event.shiftKey) return null;
-  const digit = /^Digit([1-4])$/.exec(event.code)?.[1];
-  if (digit !== undefined) return VIEW_IDS[Number(digit) - 1] ?? null;
-  if (event.key === ',' && os.command === 'ctrlKey') return 'settings';
-  return null;
+  const view = VIEWS.find((each) => combo(event, 'views', os) === each.keys);
+  if (view !== undefined) return view.id;
+  return is(event, 'settings') ? 'settings' : null;
 }
 
 /** Letters typed quickly one after the other pick the entry that starts with them. */
