@@ -22,8 +22,7 @@
   a tool has the keyboard focus) star and date fade out and the tools (archive or bring back,
   delete, the star) fade in (100 ms); the portal's tile stays, just before them, so its tooltip
   (the other portals of a "+1") can be reached; the title line keeps their room free. A pinned job
-  shows its star there (not in the Papierkorb, where no job is a favourite). The list is one
-  Tab stop (the row the list names with `tabbable`; the arrows move in it): the tools are
+  shows its star there (not in the Papierkorb, where no job is a favourite). The tools are
   for the pointer and stay out of the Tab order, the reader offers the same actions.
   The tools are siblings of the row button, so they never select the row;
   the row keeps its hover while the pointer is on them. They exist only while the pointer
@@ -33,21 +32,13 @@
   them. An excluded row is muted as a whole, its dot and tools too. When a job is read
   while its row is on screen the dot shrinks away; only the inbox has dots, an excluded row
   none. Relative dates follow the page's clock (they move on while the app stays open). A
-  right click opens the job's menu (`menu`, the app's own). Over the ring a round checkbox
-  shows on hover (and stays, ticked, while the row is among several chosen): a click takes
-  the row in or out of the choice like Ctrl+click (`onchoose`), so choosing several jobs is
-  found without a key, also in one column. A score from a
+  right click opens the job's menu (`menu`, the app's own). A score from a
   teaser rings like any other (its badge says that only a teaser was read). Layout stays
   inside the row (containment); like the row, its hover rests while the list scrolls
   (`data-still`, see ListRow).
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
-  /** How a click on a row selects: alone, toggled into a selection, or as a range. */
-  export interface SelectHow {
-    toggle: boolean;
-    range: boolean;
-  }
 
   /** A tool of the row (the job's actions where it is: archive, delete, restore ...). */
   export interface RowTool {
@@ -74,7 +65,6 @@
   import { duration } from '$lib/motion/motion';
   import { dotOut, toolsIn } from '$lib/motion/transitions';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
-  import { keyConventions } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import Badge, { type BadgeTone } from './Badge.svelte';
   import Button from './Button.svelte';
@@ -97,9 +87,8 @@
     /** Days after which the Papierkorb empties itself (0: never): a row there says how long
      *  it has left instead of its date. */
     trashDays?: number;
-    /** A click on the row; `how` says whether it toggles the job in a selection
-     *  (Ctrl on Windows, Cmd on macOS) or selects the range up to it (Shift). */
-    onselect?: ((job: JobView, how: SelectHow) => void) | null;
+    /** A click on the row. */
+    onselect?: ((job: JobView) => void) | null;
     /** Pin or unpin from the row; without it a pinned job only shows the star. */
     onpin?: ((job: JobView) => void) | null;
     /** Archive (or bring back an archived job) from the row. */
@@ -109,14 +98,8 @@
     tools?: readonly RowTool[];
     /** The job's menu on a right click (null: none). */
     menu?: (() => ContextMenu | null) | null;
-    /** The row is among several chosen (its checkbox shows, ticked). */
-    chosen?: boolean;
-    /** The checkbox over the ring takes the row in or out of the choice (null: none). */
-    onchoose?: ((job: JobView) => void) | null;
     /** The row's test id (another list of the same jobs needs its own). */
     testid?: string | null;
-    /** The list's one Tab stop is this row (the others are reached with the arrows). */
-    tabbable?: boolean;
   }
 
   let {
@@ -132,16 +115,8 @@
     onarchive = null,
     tools = [],
     menu = null,
-    chosen = false,
-    onchoose = null,
     testid = null,
-    tabbable = true,
   }: Props = $props();
-
-  /** How a click selects, by the modifiers of the OS (like a mail app). */
-  function how(event: MouseEvent): SelectHow {
-    return { toggle: event[keyConventions().command], range: event.shiftKey };
-  }
 
   const excluded = $derived(job.match?.status === 'excluded');
   /** In the Papierkorb the moment the job went there (the date the trash sorts by). */
@@ -234,8 +209,7 @@
     {selected}
     {bar}
     muted={excluded}
-    {tabbable}
-    onclick={onselect ? (event) => onselect?.(job, how(event)) : null}
+    onclick={onselect ? () => onselect?.(job) : null}
     testid={rowId}
   >
     <span class="head">
@@ -303,21 +277,6 @@
           />{/if}
       </span>{/if}
   </ListRow>
-  {#if onchoose && ring}
-    <button
-      type="button"
-      class="check"
-      class:on={chosen}
-      role="checkbox"
-      aria-checked={chosen}
-      aria-label={t.job.choose}
-      tabindex="-1"
-      data-testid="check-{job.key.portal}-{job.key.id}"
-      onclick={() => onchoose?.(job)}
-    >
-      <span class="box"><Icon name="check" size="xs" /></span>
-    </button>
-  {/if}
   {#if job.unread && !excluded && job.place === 'inbox'}<span
       class="dot"
       role="img"
@@ -387,58 +346,6 @@
 
   .job:hover:where(:not([data-still])) :global(.row.selected:not(:active)) {
     background-color: var(--surface-selected-hover);
-  }
-
-  /* The checkbox over the ring: unseen until the pointer is on it or the row is among several
-     chosen; the ring gives it its place meanwhile. */
-  .check {
-    position: absolute;
-    top: var(--space-12);
-    left: var(--pane-padding);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--ring-sm);
-    height: var(--ring-sm);
-    border-radius: var(--radius-full);
-    opacity: 0;
-    transition: opacity var(--dur-fast) var(--ease-standard);
-  }
-
-  .check:hover,
-  .check.on {
-    opacity: 1;
-    transition-duration: var(--dur-hover);
-  }
-
-  .job:has(.check:is(:hover, .on)) :global(.leading) {
-    opacity: 0;
-  }
-
-  .box {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--row-check);
-    height: var(--row-check);
-    border: var(--row-check-border) solid var(--border-strong);
-    border-radius: var(--radius-full);
-    background-color: var(--surface);
-    color: transparent;
-    transition:
-      background-color var(--dur-fast) var(--ease-standard),
-      border-color var(--dur-fast) var(--ease-standard);
-  }
-
-  .check:hover .box {
-    border-color: var(--border-input);
-  }
-
-  .on .box,
-  .on:hover .box {
-    border-color: var(--toggle-on);
-    background-color: var(--toggle-on);
-    color: var(--text-on-accent);
   }
 
   /* The unread dot: centred in the pane padding, on the axis of the ring. */

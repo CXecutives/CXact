@@ -77,30 +77,6 @@ test('fetching every alert mail has one name: in the list, the settings and the 
   await runFinished(page);
 });
 
-test('the selection bar counts with a thousands separator, like the pane beside it', async ({
-  page,
-}) => {
-  // A thousand rows come in windows of 60: more time than a usual test.
-  test.setTimeout(60_000);
-  await open(page, `${WIN}&scenario=many`);
-  const rows = page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
-  await rows.first().click();
-  // The list shows its rows in windows: scroll until more than a thousand are there.
-  const list = page.getByTestId('list-scroll');
-  await expect
-    .poll(
-      async () => {
-        await list.evaluate((node) => node.scrollTo({ top: node.scrollHeight }));
-        return rows.count();
-      },
-      { intervals: [50], timeout: 40_000 },
-    )
-    .toBeGreaterThan(1000);
-  await rows.nth(1000).click({ modifiers: ['Shift'] });
-  await expect(page.getByTestId('selection-count')).toHaveText('1.001 ausgewählt');
-  await expect(page.getByTestId('reader-pane')).toContainText('1.001 Jobs ausgewählt');
-});
-
 test('an empty list during a fetch says the jobs come in as it goes, not at its end', async ({
   page,
 }) => {

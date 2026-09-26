@@ -15,9 +15,8 @@
   rests (`data-rests`), and the rows the pointer passes during a scroll carry `data-still`
   (input.ts) until it is over, so only those rows restyle. A mark on :root or a property that
   inherits (pointer-events) would restyle every row twice per scroll, a long task with a few
-  hundred rows. A list is one Tab stop: only its `tabbable` row takes Tab, the arrows move
-  within. Under the keyboard focus ring the coral bar steps inside it (navy and coral touch,
-  never blend).
+  hundred rows. Every row is a button and a Tab stop. Under the keyboard focus ring the coral
+  bar steps inside it (navy and coral touch, never blend).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -30,8 +29,6 @@
     muted?: boolean;
     /** The click (its modifiers say whether it extends a selection). */
     onclick?: ((event: MouseEvent) => void) | null;
-    /** Tab stops here (a list has one such row; the others are reached with the arrows). */
-    tabbable?: boolean;
     testid?: string | null;
     leading?: Snippet | null;
     trailing?: Snippet | null;
@@ -43,7 +40,6 @@
     bar = true,
     muted = false,
     onclick = null,
-    tabbable = true,
     testid = null,
     leading = null,
     trailing = null,
@@ -58,7 +54,6 @@
   class:bar
   class:muted
   aria-current={selected ? 'true' : undefined}
-  tabindex={tabbable ? undefined : -1}
   data-rests=""
   data-testid={testid ?? undefined}
   onclick={(event) => onclick?.(event)}

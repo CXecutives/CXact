@@ -2,8 +2,8 @@
   The header of the list column: the places as tabs (Eingang with the number of its unopened
   jobs in coral, nothing at 0; Archiv, Papierkorb; another place starts without the search,
   like a folder of a mail app), then one toolbar row: the search, whose placeholder names what
-  it searches ("Jobs durchsuchen", "Archiv durchsuchen", "Papierkorb durchsuchen"; Enter or
-  ArrowDown open its first hit, the focus on its row), in the Eingang the funnel, and
+  it searches ("Jobs durchsuchen", "Archiv durchsuchen", "Papierkorb durchsuchen"), in the
+  Eingang the funnel, and
   "Abrufen", the one primary of the Jobs view, which fills the inbox ("Abbrechen" in its place
   while a fetch or details run goes; locked while the app scores the jobs anew, and without a
   mailbox, saying why). The action slot is as wide as the wider of the two and both fill it,
@@ -18,10 +18,8 @@
   ("Zurücksetzen").
   The Archiv and the Papierkorb (no filter there) keep a second row: how many jobs lie there
   (during a search, how many it found there), in the Papierkorb "Papierkorb leeren" (asks
-  first), and the order, a quiet button with its menu. While jobs are chosen, the selection
-  bar takes the toolbar row, on one line (how many, the place's actions, the × that ends the
-  choice, Esc too), so nothing below moves. The bottom hairline shows only once the list below
-  is scrolled. Under the rows one sentence says when a job action of the list failed (a move,
+  first), and the order, a quiet button with its menu. The bottom hairline shows only once
+  the list below is scrolled. Under the rows one sentence says when a job action of the list failed (a move,
   its undo, the star) or when jobs deleted for good could not leave the Excel file; it goes
   with the next list or the next action that works.
 -->
@@ -31,11 +29,9 @@
   import Dialog from '$components/Dialog.svelte';
   import MenuButton from '$components/MenuButton.svelte';
   import Notice from '$components/Notice.svelte';
-  import SelectionBar from '$components/SelectionBar.svelte';
   import Tabs from '$components/Tabs.svelte';
   import TextField from '$components/TextField.svelte';
   import { tooltip } from '$lib/actions/tooltip';
-  import { chipKeys } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import type { Place } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
@@ -47,29 +43,12 @@
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
-  import { bulk } from './bulk.svelte';
-  import { selection } from './selection.svelte';
 
   interface Props {
     /** The list below is scrolled away from its top. */
     scrolled?: boolean;
-    /** Enter or ArrowDown in the search: the list opens its first hit (`true` if it had
-     *  one; the focus goes to its row). */
-    onopen?: () => boolean;
   }
-  let { scrolled = false, onopen }: Props = $props();
-
-  /**
-   * The search's own keys (lib/input/input.ts): Enter and ArrowDown open the first hit, like
-   * the search of a mail app; Backspace and Esc stay the field's (Esc clears it). The keys of
-   * a field with suggestions are the hook input.ts offers for a field.
-   */
-  const searchKeys = {
-    commit: (): boolean => onopen?.() ?? false,
-    removeLast: (): boolean => false,
-    clear: (): boolean => false,
-    step: (by: -1 | 1): boolean => (by === 1 ? (onopen?.() ?? false) : false),
-  };
+  let { scrolled = false }: Props = $props();
 
   const place = $derived(jobs.place);
   const inInbox = $derived(place === 'inbox');
@@ -97,18 +76,6 @@
   );
 
   let searchBox = $state<HTMLElement | null>(null);
-
-  /** Ctrl+F (Cmd+F on macOS, lib/input/input.ts): into the search, its text selected (a
-   *  choice of jobs, which holds the row, ends first). */
-  export async function find(): Promise<void> {
-    if (bulk.active) {
-      selection.clear();
-      await tick();
-    }
-    const input = searchBox?.querySelector('input');
-    input?.focus();
-    input?.select();
-  }
 
   // The orders of the filter table; in the Papierkorb the date is the day a job went there
   // (what its row shows).
@@ -256,51 +223,42 @@
     />
   </div>
   <div class="top" data-tauri-drag-region={dragBands() ? '' : undefined}>
-    {#if bulk.active}
-      <SelectionBar
-        count={bulk.chosen.length}
-        actions={bulk.actions}
-        onclear={() => selection.clear()}
-        testid="selection-bar"
+    <span class="search" bind:this={searchBox}>
+      <TextField
+        kind="search"
+        value={jobs.search}
+        label={t.place.search[place]}
+        placeholder={t.place.search[place]}
+        testid="search"
+        oninput={(value) => jobs.setSearch(value)}
       />
-    {:else}
-      <span class="search" bind:this={searchBox} use:chipKeys={searchKeys}>
-        <TextField
-          kind="search"
-          value={jobs.search}
-          label={t.place.search[place]}
-          placeholder={t.place.search[place]}
-          testid="search"
-          oninput={(value) => jobs.setSearch(value)}
+    </span>
+    {#if funnel}
+      <span class="funnel" bind:this={funnelBox}>
+        <Button
+          variant="secondary"
+          size="field"
+          iconOnly
+          icon="filter"
+          label={t.toolbar.filter}
+          dot={jobs.filtered}
+          menu
+          expanded={funnelOpen}
+          testid="filter"
+          onclick={openFunnel}
         />
       </span>
-      {#if funnel}
-        <span class="funnel" bind:this={funnelBox}>
-          <Button
-            variant="secondary"
-            size="field"
-            iconOnly
-            icon="filter"
-            label={t.toolbar.filter}
-            dot={jobs.filtered}
-            menu
-            expanded={funnelOpen}
-            testid="filter"
-            onclick={openFunnel}
-          />
-        </span>
-      {/if}
-      <!-- The other button stands invisible in the same cell and only keeps the width. -->
-      <span class="action">
-        {#if run.fetching}
-          <span class="live" in:fade>{@render cancelButton(true)}</span>
-          <span class="spare" aria-hidden="true" inert>{@render fetchButton(false)}</span>
-        {:else}
-          <span class="live" in:fade>{@render fetchButton(true)}</span>
-          <span class="spare" aria-hidden="true" inert>{@render cancelButton(false)}</span>
-        {/if}
-      </span>
     {/if}
+    <!-- The other button stands invisible in the same cell and only keeps the width. -->
+    <span class="action">
+      {#if run.fetching}
+        <span class="live" in:fade>{@render cancelButton(true)}</span>
+        <span class="spare" aria-hidden="true" inert>{@render fetchButton(false)}</span>
+      {:else}
+        <span class="live" in:fade>{@render fetchButton(true)}</span>
+        <span class="spare" aria-hidden="true" inert>{@render cancelButton(false)}</span>
+      {/if}
+    </span>
   </div>
   {#if activeWords.length > 0}
     <div class="filter-line" data-testid="filter-line">
@@ -380,18 +338,6 @@
   onconfirm={() => void emptyTrash()}
 />
 
-<Dialog
-  bind:open={bulk.confirmPurge}
-  variant="danger"
-  heading={t.actions.purgeHeading(bulk.chosen.length)}
-  text={t.actions.purgeText}
-  confirmLabel={t.actions.purgeConfirm}
-  busy={bulk.purging}
-  error={bulk.purgeError}
-  testid="dialog-purge-chosen"
-  onconfirm={() => void bulk.purgeChosen()}
-/>
-
 <style>
   .header {
     display: flex;
@@ -416,7 +362,7 @@
     padding: 0 var(--pane-padding);
   }
 
-  /* One height whatever it holds (the search and its tools, or the selection bar). */
+  /* One height whatever it holds. */
   .top {
     display: flex;
     align-items: center;

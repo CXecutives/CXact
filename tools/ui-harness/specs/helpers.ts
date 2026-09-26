@@ -49,13 +49,6 @@ export function mountedKeys(page: Page): Promise<string[]> {
     .evaluateAll((items) => items.map((item) => (item as HTMLElement).dataset.key ?? ''));
 }
 
-/** The rows the list highlights (`portal:id`). */
-export function highlighted(page: Page): Promise<string[]> {
-  return list(page)
-    .locator('[data-key]:has(.row.selected)')
-    .evaluateAll((items) => items.map((item) => (item as HTMLElement).dataset.key ?? ''));
-}
-
 /** The open job's reader (the one on its way out has dropped its test id). */
 export const stage = (page: Page): Locator => page.getByTestId('stage');
 

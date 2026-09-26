@@ -4,8 +4,7 @@
   import Button from '$components/Button.svelte';
   import Chip, { CHIP_STATES, type ChipState } from '$components/Chip.svelte';
   import type { IconName } from '$components/Icon.svelte';
-  import JobRow, { type SelectHow } from '$components/JobRow.svelte';
-  import SelectionBar from '$components/SelectionBar.svelte';
+  import JobRow from '$components/JobRow.svelte';
   import ListRow from '$components/ListRow.svelte';
   import ReasonItem, { REASON_KINDS, REASON_WEIGHTS } from '$components/ReasonItem.svelte';
   import type { JobView } from '$lib/ipc/types';
@@ -24,24 +23,11 @@
   };
   const now = new Date();
   let jobs = $state(sampleJobs(now));
-  /** The selected jobs (ids) and where a Shift range starts. */
-  let chosen = $state<string[]>(['1001']);
-  let anchor = '1001';
+  /** The selected job (its id). */
+  let chosen = $state('1001');
 
-  function choose(job: JobView, how: SelectHow): void {
-    const id = job.key.id;
-    if (how.range) {
-      const ids = jobs.map((j) => j.key.id);
-      const [from, to] = [ids.indexOf(anchor), ids.indexOf(id)].sort((a, b) => a - b);
-      chosen = ids.slice(from, (to ?? from ?? 0) + 1);
-      return;
-    }
-    chosen = how.toggle
-      ? chosen.includes(id)
-        ? chosen.filter((other) => other !== id)
-        : [...chosen, id]
-      : [id];
-    anchor = id;
+  function choose(job: JobView): void {
+    chosen = job.key.id;
   }
   let active = $state<string | null>(null);
   let run = $state(0);
@@ -115,19 +101,6 @@
     <Button label={t.shuffle} icon="retry" onclick={shuffle} testid="rows-shuffle" />
     <Button label={t.replay} variant="ghost" onclick={() => (run += 1)} />
   </div>
-  <div class="bar-slot">
-    {#if chosen.length >= 2}
-      <SelectionBar
-        count={chosen.length}
-        actions={[
-          { icon: 'archive', label: t.archive, testid: 'bulk-archive', onclick: () => undefined },
-          { icon: 'trash', label: t.delete, testid: 'bulk-delete', onclick: () => undefined },
-        ]}
-        onclear={() => (chosen = chosen.slice(-1))}
-        testid="selection-bar"
-      />
-    {/if}
-  </div>
   {#key run}
     <div class="list" data-testid="job-list">
       {#each jobs as job (job.key.id)}
@@ -139,7 +112,7 @@
           <JobRow
             {job}
             {now}
-            selected={chosen.includes(job.key.id)}
+            selected={chosen === job.key.id}
             onselect={choose}
             onpin={(j) => toggle(j, 'pinned')}
             onarchive={archive}
@@ -172,11 +145,6 @@
   .actions {
     display: flex;
     gap: var(--space-12);
-  }
-
-  .bar-slot {
-    max-width: var(--list-first-max);
-    min-height: var(--control-sm);
   }
 
   .list {

@@ -6,10 +6,9 @@
   (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps
   440 px; the limits follow the window and the sidebar, and never shrink while the window
   grows (also across the rail's breakpoint). Below 900 px one column: the list
-  under its pinned header (choosing rows keeps it, the header's bar acts on them), or the
-  reader with a back button. The run card rises in above the list and fades out when it is
-  closed (the list moves up without animation). Closing a job from inside the reader hands
-  the focus to its row.
+  under its pinned header, or the reader with a back button (the mouse's back button too).
+  The run card rises in above the list and fades out when it is closed (the list moves up
+  without animation). Closing a job from inside the reader hands the focus to its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps what it shows (the overview or the previous job), so it
@@ -18,13 +17,9 @@
   stage is the real one on its way out (nothing is copied or laid out again); it answers no
   pointer and drops its test ids. The close button in the reader head, Esc and a search
   that no longer finds the job go back to the day overview.
-  The keys of a mail app (lib/input/input.ts): ArrowUp/ArrowDown open the previous/next job,
-  Home/End the first/last, with Shift they choose from the open job on; Space on the open
-  job's row pages through the reader, and after a click into the reader the arrows, Home and
-  End scroll it; Ctrl+F (Cmd+F on macOS) goes to the search.
 -->
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import DragBand from '$components/DragBand.svelte';
   import Splitter, { cappedLimits, splitLimits } from '$components/Splitter.svelte';
@@ -34,11 +29,7 @@
   import { t } from '$lib/i18n/t';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { listKeys, onBack, type ListAction } from '$lib/input/input';
-  import { errorText } from '$lib/i18n/texts';
-  import { invoke } from '$lib/ipc/api';
-  import type { JobView } from '$lib/ipc/types';
-  import { move, toggleStar } from './actions';
+  import { onBack } from '$lib/input/input';
   import { dragBands } from '$lib/platform';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
@@ -49,11 +40,8 @@
   import Reader from './Reader.svelte';
   import ListHeader from './ListHeader.svelte';
   import RunCard from './RunCard.svelte';
-  import SelectionPane from './SelectionPane.svelte';
-  import { bulk } from './bulk.svelte';
 
   const OVERVIEW = 'overview';
-  const CHOSEN = 'chosen';
   const ERROR = 'error';
   const WAITING = 'waiting';
 
@@ -74,8 +62,7 @@
   const stage = $derived.by((): { what: string; turn: number } => {
     const selected = jobs.selected !== null;
     let next = shown;
-    if (bulk.active) next = CHOSEN;
-    else if (selected && jobs.detailStatus === 'error') next = ERROR;
+    if (selected && jobs.detailStatus === 'error') next = ERROR;
     else if (jobs.detail !== null) next = keyOf(jobs.detail.job.key);
     else if (selected && jobs.detailSlow) next = WAITING;
     else if (!selected) next = OVERVIEW;
@@ -85,9 +72,8 @@
     }
     return { what: shown, turn: turns };
   });
-  // One column shows the list or the reader. Choosing rows is no reading: the list stays and
-  // its header's selection bar acts on the chosen rows.
-  const reading = $derived(stage.what !== OVERVIEW && !(stage.what === CHOSEN && viewport.narrow));
+  // One column shows the list or the reader.
+  const reading = $derived(stage.what !== OVERVIEW);
   // One column: a job in place of the list hides the run card too (the sidebar says the run).
   $effect(() => {
     shell.listHidden = reading && viewport.narrow;
@@ -96,41 +82,6 @@
     };
   });
   const place = $derived(jobs.place);
-
-  /** The jobs a single key acts on: the chosen ones, else the open one. */
-  function targets(): JobView[] {
-    if (bulk.active) return bulk.chosen;
-    const open = jobs.rows.find((row) => jobs.selected !== null && sameKey(row.key, jobs.selected));
-    return open === undefined ? [] : [open];
-  }
-
-  /** The single keys of the list (lib/input/input.ts): what the row tools and the reader do. */
-  function act(action: ListAction): void {
-    const list = targets();
-    const first = list[0];
-    if (first === undefined) return;
-    const report = (error: string | null): void => {
-      if (error !== null) jobs.actionError = error;
-    };
-    switch (action) {
-      case 'archive':
-        if (place === 'inbox') void move(list, 'archive').then(report);
-        return;
-      case 'trash':
-        if (place !== 'trash') void move(list, 'trash').then(report);
-        return;
-      case 'star':
-        if (place !== 'trash') toggleStar(list);
-        return;
-      case 'openAd':
-        if (list.length === 1) {
-          invoke('open_target', { target: { kind: 'jobUrl', key: first.key } }).catch(
-            (error: unknown) => report(errorText(error)),
-          );
-        }
-        return;
-    }
-  }
   const trashDays = $derived(app.state?.autoEmptyTrashDays ?? 0);
   /** The place holds nothing (no search): the list says it, the reader adds no second tile. */
   const placeEmpty = $derived(
@@ -172,7 +123,7 @@
     const focused = document.activeElement;
     const inReader = right !== null && focused !== null && right.contains(focused);
     // In one column the list comes back: at the open job's row, which gets the focus unless
-    // the pointer was elsewhere (the keys stepped through jobs the list never showed).
+    // the pointer was elsewhere.
     const lost = focused === null || focused === document.body;
     jobs.clearSelection();
     if (open === null || !(inReader || (viewport.narrow && lost))) return;
@@ -181,8 +132,8 @@
     }
   }
 
-  // The mouse's back button and Alt+Left (Cmd+[ on macOS) go back to the list where the
-  // reader stands alone in one column; elsewhere they do nothing (lib/input/input.ts).
+  // The mouse's back button goes back to the list where the reader stands alone in one
+  // column; elsewhere it does nothing (lib/input/input.ts).
   $effect(() =>
     onBack(() => {
       if (!shell.listHidden) return false;
@@ -192,7 +143,6 @@
   );
 
   let header = $state<ListHeader | null>(null);
-  let list = $state<JobList | null>(null);
 
   // A search that no longer finds the open job closes it (the list shows what it found);
   // only a change of the search does, never a job opened from elsewhere (the overview).
@@ -242,37 +192,13 @@
   }
 </script>
 
-<div
-  class="jobs"
-  class:reading
-  data-testid="jobs"
-  use:listKeys={{
-    step: (by) => list?.step(by),
-    edge: (last) => list?.edge(last),
-    extend: (to) => list?.extend(to),
-    close,
-    // In one column the search sits in the hidden list: the open job closes first.
-    find: () => {
-      if (viewport.narrow && jobs.selected !== null) {
-        close();
-        void tick().then(() => header?.find());
-      } else void header?.find();
-    },
-    // The stage on screen: the one on its way out has dropped its test ids.
-    reader: () => right?.querySelector<HTMLElement>('[data-testid="stage"]') ?? null,
-    act,
-  }}
->
+<div class="jobs" class:reading data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
       <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
       <span class="top" use:inView={(place) => (columnScrolled = place === 'above')}></span>
       <div class="head">
-        <ListHeader
-          bind:this={header}
-          scrolled={scrolled || columnScrolled}
-          onopen={() => list?.openFirst() ?? false}
-        />
+        <ListHeader bind:this={header} scrolled={scrolled || columnScrolled} />
       </div>
       <div class="scroll" data-testid="list-scroll">
         <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
@@ -281,7 +207,7 @@
             <RunCard />
           </div>
         {/if}
-        <JobList bind:this={list} onresetfilter={() => void header?.resetFilter()} />
+        <JobList onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
     <span class="split"
@@ -299,9 +225,7 @@
         <div class="stage" data-testid="stage" in:enter={stage.what !== OVERVIEW} out:leave>
           {#if dragBands()}<DragBand sheet />{/if}
           <div class="column">
-            {#if stage.what === CHOSEN}
-              <SelectionPane />
-            {:else if stage.what === OVERVIEW}
+            {#if stage.what === OVERVIEW}
               <!-- No job open: what lies here, quietly (the day's overview is a place of its
                    own). Beside an empty list, which shows its own empty state, only the
                    sentence. -->

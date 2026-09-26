@@ -51,9 +51,7 @@ const LARGE = {
   'ui/src/features/first-run/FirstRunView.svelte': [600, 'known large: one file per step'],
   'ui/src/features/profile/ProfileView.svelte': [600, 'known large: paste and save apart'],
   'ui/src/lib/state/profile.svelte.ts': [600, 'known large: the draft apart from the form'],
-  'ui/src/features/jobs/JobsView.svelte': [600, 'known large: the one-column mode apart'],
   'ui/src/lib/state/run.svelte.ts': [600, 'known large: the history apart from the run'],
-  'ui/src/features/jobs/ListHeader.svelte': [600, 'known large: the filter menu apart'],
 };
 
 /** lib modules that are UI helpers by design and may import a component (none today). */

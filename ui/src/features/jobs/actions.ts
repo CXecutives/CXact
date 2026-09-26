@@ -1,12 +1,12 @@
-// What a job can do where it is, with one name, icon, key and order on a row, in the reader,
-// in its menu and in the selection bar (the star, a flag of its own, comes last where there
-// is one), from the tables below (ACTIONS, OF_PLACE, JOB_MENU):
+// What a job can do where it is, with one name, icon and order on a row, in the reader and in
+// its menu (the star, a flag of its own, comes last where there is one), from the tables
+// below (ACTIONS, OF_PLACE, JOB_MENU):
 //   Eingang: Archivieren, Löschen · Archiv: In den Eingang, Löschen · Papierkorb:
 //   Wiederherstellen, Endgültig löschen (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
 // next job when the open one left (its row in view, with the focus when the focus was on the
-// row that left), and says so in a toast that merges ("2 Jobs archiviert.") with one undo
-// (Ctrl/Cmd+Z too, while the toast is up). The undo brings every job back to where it was,
+// row that left), and says so in a toast that merges ("2 Jobs archiviert.") with one undo.
+// The undo brings every job back to where it was,
 // its row too, and opens the job again that was open when it left. A click within GUARD_MS
 // after the list or the pane changed is ignored, so a double click never moves the job that
 // slid under the pointer. The job the app opens by itself counts as read only once it has
@@ -24,8 +24,6 @@ import { app } from '$lib/state/app.svelte';
 import { inList, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText } from '$lib/state/run.svelte';
-import { LIST_KEYS, onUndo } from '$lib/input/input';
-import { commandKey } from '$lib/platform';
 import { toasts } from '$lib/state/toasts.svelte';
 
 export type MoveId = 'archive' | 'toInbox' | 'trash' | 'restore';
@@ -34,8 +32,6 @@ export type ActionId = MoveId | 'purge';
 export interface JobAction {
   id: ActionId;
   icon: IconName;
-  /** Its single key in the list (lib/input/input.ts, as keyLabel writes it), if any. */
-  key: string | null;
   label: string;
 }
 
@@ -49,13 +45,13 @@ const TARGET: Record<MoveId, Place> = {
 };
 
 /** One icon per meaning: the place a job goes to (docs/PLAN.md, icons by meaning); deleting
- *  for good never looks like the trash. The key is the list's single key (input.ts). */
-const ACTIONS: Record<ActionId, { icon: IconName; key: string | null }> = {
-  archive: { icon: 'archive', key: LIST_KEYS.archive },
-  toInbox: { icon: 'inbox', key: null },
-  trash: { icon: 'trash', key: LIST_KEYS.trash },
-  restore: { icon: 'undo', key: null },
-  purge: { icon: 'purge', key: null },
+ *  for good never looks like the trash. */
+const ACTIONS: Record<ActionId, { icon: IconName }> = {
+  archive: { icon: 'archive' },
+  toInbox: { icon: 'inbox' },
+  trash: { icon: 'trash' },
+  restore: { icon: 'undo' },
+  purge: { icon: 'purge' },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -74,25 +70,23 @@ export function actionsOf(place: Place): JobAction[] {
 export interface JobMenuItem {
   id: 'open' | 'open-ad' | 'star' | 'moves' | 'prompt';
   icon: IconName | null;
-  /** Its single key (as keyLabel writes it), if any. */
-  key: string | null;
-  /** Shown for this job; `many`: the menu acts on several chosen jobs. */
-  shows: (job: JobView, many: boolean) => boolean;
+  /** Shown for this job. */
+  shows: (job: JobView) => boolean;
 }
 
 /**
  * The job's menu (a right click on its row), group by group in its order, a line between the
- * groups: open it and its ad (one job only), the star, the moves of its place, the prompt
- * for an AI chat (one scored job only).
+ * groups: open it and its ad, the star, the moves of its place, the prompt for an AI chat
+ * (a scored job only).
  */
 export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
   [
-    { id: 'open', icon: 'read', key: LIST_KEYS.open, shows: (_job, many) => !many },
-    { id: 'open-ad', icon: 'external', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
+    { id: 'open', icon: 'read', shows: () => true },
+    { id: 'open-ad', icon: 'external', shows: () => true },
   ],
-  [{ id: 'star', icon: 'star', key: LIST_KEYS.star, shows: (job) => hasStar(job.place) }],
-  [{ id: 'moves', icon: null, key: null, shows: () => true }],
-  [{ id: 'prompt', icon: 'prompt', key: null, shows: (job, many) => !many && job.match !== null }],
+  [{ id: 'star', icon: 'star', shows: (job) => hasStar(job.place) }],
+  [{ id: 'moves', icon: null, shows: () => true }],
+  [{ id: 'prompt', icon: 'prompt', shows: (job) => job.match !== null }],
 ];
 
 /** A favourite never lies in the trash: the star is there in the inbox and the archive. */
@@ -100,9 +94,6 @@ export const hasStar = (place: Place): boolean => place !== 'trash';
 
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
-
-// Ctrl/Cmd+Z takes back the newest move while its toast is up.
-onUndo(() => toasts.undoLast());
 
 const GUARD_MS = 500;
 let guardUntil = 0;
@@ -245,38 +236,9 @@ function deletedFor(deleted: Deleted): void {
   jobs.exportNote = exportText(deleted.exportError);
 }
 
-/** Single moves in this session; after the third one a tip says several go at once. */
-let singles = 0;
-const TIP_KEY = 'jobs-tip-choose';
-const TIP_AFTER = 3;
-
-function tipOnce(): void {
-  singles += 1;
-  if (singles !== TIP_AFTER) return;
-  try {
-    if (localStorage.getItem(TIP_KEY) !== null) return;
-    localStorage.setItem(TIP_KEY, '1');
-  } catch {
-    // Without a store the tip would come every session: better not at all.
-    return;
-  }
-  toasts.show(t.selection.tip(t.selection.commandKey[commandKey()]), 'info');
-}
-
-/** Two or more jobs chosen and moved at once: the tip about choosing is known. */
-function tipKnown(): void {
-  try {
-    localStorage.setItem(TIP_KEY, '1');
-  } catch {
-    // Without a store the tip may still come once this session.
-    return;
-  }
-}
-
 /**
- * Moves jobs (the row's, the reader's or the selection's). Resolves with the error text,
- * which the caller shows where the move was asked (the list header for a row or the chosen
- * jobs, the reader for its own).
+ * Moves jobs (the row's or the reader's). Resolves with the error text, which the caller
+ * shows where the move was asked (the list header for a row, the reader for its own).
  */
 export async function move(all: readonly JobView[], action: MoveId): Promise<string | null> {
   const to = TARGET[action];
@@ -333,8 +295,6 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
     void jobs.load(true);
   }
   void jobs.loadOverview();
-  if (list.length === 1) tipOnce();
-  else tipKnown();
   // A toast and its undo only for the jobs that really moved.
   const moved = new Set(result.moved.map(keyOf));
   const undone = back.filter((entry) => moved.has(keyOf(entry.job.key)));
@@ -383,18 +343,8 @@ export function trashEmptied(deleted: Deleted): void {
 }
 
 /**
- * The actions for chosen jobs: those of their place; chosen from several places (a job that
- * moved meanwhile) only what fits every one of them.
- */
-export function actionsFor(list: readonly JobView[]): JobAction[] {
-  const places = [...new Set(list.map((job) => job.place))];
-  if (places.length === 1 && places[0]) return actionsOf(places[0]);
-  return actionsOf('inbox').filter((action) => action.id === 'trash');
-}
-
-/**
- * The full ad of this job can still be fetched (the reader's "Details holen"): its text is
- * missing and its portal fetches details (a teaser only with the portal's sign-in).
+ * The full ad of this job can still be fetched ("Details holen"): its text is missing and its
+ * portal fetches details (a teaser only with the portal's sign-in).
  */
 export function detailsWanted(job: JobView): boolean {
   const kind = job.detail.kind;

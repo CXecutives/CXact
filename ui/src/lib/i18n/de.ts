@@ -64,13 +64,6 @@ const n = (value: number): string => formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
-/** A macOS key name is a symbol (⌘, ⇧); a click with it held is written with a hyphen
- *  ("⌘-Klick"), a Windows key name with a plus ("Strg+Klick"). */
-const isSymbolKey = (key: string): boolean => /^[⌘⇧⌥⌃]$/u.test(key);
-const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : `${key}+Klick`);
-/** Shift in the same writing as the command key it stands beside. */
-const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
-
 /** The portals by their web address, everywhere (a sentence never starts with one); the
  *  names come from the portal registry, no catalog translates them. */
 const portalName = PORTAL_LABEL;
@@ -681,23 +674,6 @@ export const de = {
     tip: 'Breite ändern',
     reset: 'Doppelklick setzt zurück',
   },
-  /** The bar that replaces the list's second row while several jobs are selected. */
-  selection: {
-    count: (value: number) => `${n(value)} ausgewählt`,
-    clear: 'Auswahl aufheben',
-    /** The reader while several jobs are chosen. */
-    chosen: (value: number) => `${count(value, 'Job', 'Jobs')} ausgewählt`,
-    /** The key that takes a row in or out, by OS (macOS writes its symbol). */
-    commandKey: { ctrl: 'Strg', cmd: '⌘' } satisfies Record<'ctrl' | 'cmd', string>,
-    hint: (key: string) =>
-      `${clickWith(key)} nimmt einen Job dazu oder heraus, ${clickWith(shiftBeside(key))} einen ganzen Bereich.`,
-    /** Once, after a few single moves: several jobs can go at once. */
-    tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${clickWith(key)}.`,
-    /** The pane names the chosen jobs, the first few, then how many more. */
-    more: (value: number) => `+${n(value)}`,
-    /** The pane's and the bar's word for the star. */
-    pin: 'Favorit',
-  },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
@@ -794,39 +770,6 @@ export const de = {
     delete: 'Löschen',
     selectAll: 'Alles auswählen',
   },
-  /** Key names of Windows in shortcuts (macOS writes symbols, platform.ts). */
-  keys: {
-    ctrl: 'Strg',
-    shift: 'Umschalt',
-    del: 'Entf',
-    enter: 'Eingabe',
-    home: 'Pos1',
-    end: 'Ende',
-  },
-  /** The card of the keys (Ctrl+/ or Cmd+/): what a key does, in a few words each. */
-  keysHelp: {
-    heading: 'Tastenkürzel',
-    close: 'Schließen',
-    everywhere: 'Überall',
-    list: 'In der Jobliste',
-    /** Ctrl+1 to Ctrl+4: the two keys around the word. */
-    range: (first: string, last: string) => `${first} bis ${last}`,
-    views: 'Bereich wählen',
-    search: 'Suchen',
-    fetch: 'Abrufen',
-    undo: 'Rückgängig',
-    menu: 'Menü öffnen',
-    back: 'Zurück',
-    help: 'Tastenkürzel zeigen',
-    step: 'Voriger oder nächster Job',
-    edge: 'Erster oder letzter Job',
-    extend: 'Mehrere Jobs wählen',
-    archive: 'Archivieren',
-    trash: 'In den Papierkorb',
-    star: 'Favorit',
-    openAd: 'Anzeige öffnen',
-    closeJob: 'Job schließen',
-  },
   field: {
     reveal: 'Passwort zeigen',
     conceal: 'Passwort verbergen',
@@ -875,8 +818,6 @@ export const de = {
     code: reasonCode,
   },
   job: {
-    /** The round checkbox over a row's ring (it takes the row into the choice). */
-    choose: 'Auswählen',
     /** An excluded job the user counts anyway (its row's quiet badge). */
     included: 'Einbezogen',
     workMode: {

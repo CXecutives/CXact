@@ -473,33 +473,16 @@ test("a menu button opens the app's menu of choices below it; a choice applies",
   await expect(page.getByRole('tooltip')).toHaveText('Ohne Profil nur nach Datum.');
 });
 
-for (const [os, toggle] of [
-  ['windows', 'Control'],
-  ['macos', 'Meta'],
-] as const) {
-  test(`a mail app's selection on ${os}: toggle, range, the bar, Esc clears`, async ({ page }) => {
-    await open(page, `?gallery&platform=${os}`);
-    const list = page.getByTestId('job-list');
-    await list.scrollIntoViewIfNeeded();
-    const row = (id: string) => page.getByTestId(`job-row-freelancermap-${id}`);
-    const bar = page.getByTestId('selection-bar');
-    await expect(bar).toHaveCount(0);
-    await page.getByTestId('job-row-linkedin-1002').click({ modifiers: [toggle] });
-    await expect(page.getByTestId('selection-count')).toHaveText('2 ausgewählt');
-    await expect(row('1001')).toHaveAttribute('aria-current', 'true');
-    // Shift+click: the range from the last toggled row (1002) to 1005.
-    await row('1005').click({ modifiers: ['Shift'] });
-    await expect(page.getByTestId('selection-count')).toHaveText('4 ausgewählt');
-    await expect(row('1001')).not.toHaveAttribute('aria-current', 'true');
-    await expect(bar.getByTestId('bulk-archive')).toHaveAttribute('aria-label', 'Archivieren');
-    // Esc (outside fields) clears the selection; the bar goes.
-    await page.keyboard.press('Escape');
-    await expect(bar).toHaveCount(0);
-    // A plain click selects one job again.
-    await row('1004').click();
-    await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
-  });
-}
+test('a click selects one job of the list; Ctrl+click chooses no more', async ({ page }) => {
+  await open(page, '?gallery&platform=windows');
+  const list = page.getByTestId('job-list');
+  await list.scrollIntoViewIfNeeded();
+  await page.getByTestId('job-row-linkedin-1002').click({ modifiers: ['Control'] });
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
+  await expect(page.getByTestId('job-row-linkedin-1002')).toHaveAttribute('aria-current', 'true');
+  await page.getByTestId('job-row-freelancermap-1004').click({ modifiers: ['Shift'] });
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
+});
 
 test('moving jobs out: the row folds away, one toast merges them, one undo brings all back', async ({
   page,

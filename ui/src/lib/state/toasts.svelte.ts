@@ -10,9 +10,8 @@
 // plain one never pushes an undo out, and a new one never pushes itself out). A toast waits
 // while the pointer is on it, and every toast waits while the window is in the back or a
 // modal dialog is open (`hold`): its time only runs while the user can act on it. Results of
-// the same kind in quick succession merge into one toast with one undo (`undoable`).
-// Ctrl/Cmd+Z takes back the newest result, also when it merged into a toast that came up
-// earlier. An undo names the jobs it concerns: when they are deleted for good, it goes
+// the same kind in quick succession merge into one toast with one undo (`undoable`). An
+// undo names the jobs it concerns: when they are deleted for good, it goes
 // (`forget`). An undo that fails keeps its toast: it turns into a warning with the reason
 // and offers to try again.
 
@@ -33,8 +32,8 @@ export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconMeaning; draws:
   warning: { icon: 'warning', draws: false },
 };
 
-/** What the toast's button does: nothing (no button), an undo (Rückgängig, Ctrl/Cmd+Z), or
- *  the way to what it tells of (Zeigen). */
+/** What the toast's button does: nothing (no button), an undo (Rückgängig), or the way to
+ *  what it tells of (Zeigen). */
 export type ToastActionKind = 'none' | 'undo' | 'show';
 
 /** How long a toast stays by its button: a plain one --dur-toast (4 s), one with a button
@@ -50,11 +49,11 @@ export const TOAST_LIFE: Readonly<Record<ToastActionKind, `--${string}`>> = {
 export interface ToastAction {
   label: string;
   onclick: () => void;
-  /** Ctrl/Cmd+Z takes it back (its tooltip names the key); false: it only shows something. */
+  /** It takes something back; false: it only shows something. */
   undo?: boolean;
 }
 
-/** An action that Ctrl/Cmd+Z runs (every action is an undo unless it says otherwise). */
+/** An action that takes something back (every action is an undo unless it says otherwise). */
 export const isUndo = (action: ToastAction | null): action is ToastAction =>
   action !== null && action.undo !== false;
 
@@ -119,9 +118,6 @@ class Toasts {
   #merged = new Map<number, Merged>();
   /** Toasts under the pointer. */
   #hovered = new Set<number>();
-  /** When each toast last got a result (a counter): Ctrl/Cmd+Z takes back the newest. */
-  #latest = new Map<number, number>();
-  #results = 0;
   /** The jobs (keyOf) each undo of a toast concerns. */
   #keys = new Map<number, Set<string>>();
   /** Why the toasts wait; each hold is released on its own. */
@@ -145,14 +141,13 @@ class Toasts {
       this.dismiss((plain ?? this.items[0]!).id);
     }
     this.#timers.set(id, { timer: null, left: lifetime(action), since: 0 });
-    this.#latest.set(id, ++this.#results);
     if (keys.length > 0) this.#keys.set(id, new Set(keys));
     this.#start(id);
     return id;
   }
 
   /**
-   * The button of toast `id` (its own button or Ctrl/Cmd+Z): its action runs and the toast
+   * The button of toast `id`: its action runs and the toast
    * goes. An undo of results (`undoable`) takes them back, the last first; one that fails
    * brings the toast back as a warning with the reason and "Erneut versuchen", which tries
    * the rest again.
@@ -223,7 +218,6 @@ class Toasts {
     merged.count += count;
     merged.undos.push(undo);
     merged.at = now;
-    this.#latest.set(id, ++this.#results);
     const known = new Set([...(this.#keys.get(id) ?? []), ...keys]);
     if (known.size > 0) this.#keys.set(id, known);
     this.items = this.items.map((item) =>
@@ -239,27 +233,11 @@ class Toasts {
     }
   }
 
-  /** Ctrl/Cmd+Z (lib/input/input.ts): the newest undo that is still up runs, as its button
-   *  would; `true` if there was one. */
-  undoLast(): boolean {
-    const latest = (item: ToastItem): number => this.#latest.get(item.id) ?? 0;
-    const newest = this.items
-      .filter((item) => isUndo(item.action))
-      .reduce<ToastItem | null>(
-        (best, item) => (best === null || latest(item) > latest(best) ? item : best),
-        null,
-      );
-    if (!newest?.action) return false;
-    this.act(newest.id);
-    return true;
-  }
-
   dismiss(id: number): void {
     this.#stop(id);
     this.#timers.delete(id);
     this.#merged.delete(id);
     this.#hovered.delete(id);
-    this.#latest.delete(id);
     this.#keys.delete(id);
     this.items = this.items.filter((item) => item.id !== id);
   }

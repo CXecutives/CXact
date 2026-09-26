@@ -8,15 +8,14 @@
 //   - scrollbars: slim styled ones on Windows, the native overlay scrollbars on macOS
 //     (base.css keys them off `:root[data-platform]`, like the font smoothing),
 //   - words that name OS things (Explorer / Finder, the password store),
-//   - the editing keys of text fields and the command key of the app's few shortcuts
-//     (`keyConventions()`, applied by lib/input/input.ts: Ctrl+F/Z on Windows, Cmd on
-//     macOS), and how the key is named (Strg, Cmd; `commandKey()`).
+//   - the editing keys of text fields and the context menu key (`keyConventions()`,
+//     applied by lib/input/input.ts: Ctrl on Windows, Cmd on macOS); the app has no
+//     shortcuts of its own.
 // Components ask here (`dragBands()`, `primaryFirst()`, `keyConventions()`, `platform()`),
 // never compare OS names themselves. The window's focus state is the same on both:
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
 // grey out against it as in Mail and Explorer.
 
-import { t } from './i18n/t';
 import { onWindowFocus } from './ipc/api';
 
 export type Platform = 'windows' | 'macos';
@@ -79,12 +78,6 @@ export function fieldMenuUndoDelete(): boolean {
   return platform() === 'windows';
 }
 
-/** The name of the command key on the keyboard (Ctrl on Windows, Cmd on macOS), for texts
- *  that say which key to hold ("Strg+Klick") or name a shortcut (Strg+F, ⌘F). */
-export function commandKey(): 'ctrl' | 'cmd' {
-  return platform() === 'macos' ? 'cmd' : 'ctrl';
-}
-
 /** The file manager of the OS, for the words that name it ("Im Explorer zeigen", "Im Finder
  *  zeigen"); the backend shows the file the same way (`platform::show_in_folder`). */
 export function fileManager(): 'explorer' | 'finder' {
@@ -107,19 +100,6 @@ export interface KeyConventions {
   /** Shift+F10 opens the context menu of a field or a selection, like the Menu key
    *  (Windows; a Mac keyboard has neither). */
   contextMenuKey: boolean;
-  /** The key that goes back where a view has a way back: Alt+Left on Windows (Explorer),
-   *  Cmd+[ or Cmd+Left on macOS (Finder, Safari). */
-  back: 'alt' | 'command';
-  /** The same as combos (lib/input/keys.ts), the one the OS names first. */
-  backKeys: readonly string[];
-  /** Fetch like a mail app's "get mail": F5 on Windows (Outlook, Explorer), Cmd+R on macOS
-   *  (Mail); the other works too. */
-  fetchKeys: readonly string[];
-  /** The keys that throw a job away (KeyboardEvent.key): Entf on Windows; on macOS the
-   *  delete key (Backspace) or the forward delete. */
-  deleteKeys: readonly string[];
-  /** Ctrl+, opens Einstellungen (Windows); on macOS the app menu's Cmd+, does. */
-  settingsKey: boolean;
 }
 
 /** A middle click over a scroll area starts the OS autoscroll, which runs until the next
@@ -137,68 +117,5 @@ export function keyConventions(): KeyConventions {
     controlEdits: mac,
     systemMenuKey: !mac,
     contextMenuKey: !mac,
-    back: mac ? 'command' : 'alt',
-    backKeys: mac ? ['mod+[', 'mod+left'] : ['alt+left'],
-    fetchKeys: mac ? ['mod+r', 'f5'] : ['f5', 'mod+r'],
-    deleteKeys: mac ? ['Backspace', 'Delete'] : ['Delete'],
-    settingsKey: !mac,
   };
-}
-
-/** Keys whose name is the same arrow on both OS. */
-const ARROWS: Readonly<Record<string, string>> = {
-  up: '↑',
-  down: '↓',
-  left: '←',
-  right: '→',
-};
-
-/** The name of one key (no modifier) as the OS writes it. */
-function keyName(key: string, mac: boolean): string {
-  const arrow = ARROWS[key];
-  if (arrow !== undefined) return arrow;
-  switch (key) {
-    case 'del':
-      return mac ? '⌫' : t.keys.del;
-    case 'enter':
-      return mac ? '↩' : t.keys.enter;
-    case 'home':
-      return mac ? '↖' : t.keys.home;
-    case 'end':
-      return mac ? '↘' : t.keys.end;
-    case 'esc':
-      return 'Esc';
-    default:
-      return key.toUpperCase();
-  }
-}
-
-/**
- * A shortcut as the OS writes it, for menus, tooltips and the card of the keys: `mod` is the
- * command key (Ctrl on Windows, Cmd on macOS), `del` the key that deletes (Entf on Windows,
- * ⌫ on macOS), `up`, `down`, `left`, `right`, `home`, `end` and `esc` name those keys.
- * Windows: "Strg+Umschalt+Z", "Entf", "F5", "Alt+←"; macOS: symbols in Apple's order, "⇧⌘Z",
- * "⌫".
- */
-export function keyLabel(combo: string): string {
-  const mac = platform() === 'macos';
-  const parts = combo.toLowerCase().split('+');
-  const key = parts.pop() ?? '';
-  const mods = new Set(parts);
-  const name = keyName(key, mac);
-  if (mac) {
-    const symbols = [
-      mods.has('ctrl') ? '⌃' : '',
-      mods.has('alt') ? '⌥' : '',
-      mods.has('shift') ? '⇧' : '',
-      mods.has('mod') ? '⌘' : '',
-    ];
-    return symbols.join('') + name;
-  }
-  const words = [
-    ...(mods.has('mod') || mods.has('ctrl') ? [t.keys.ctrl] : []),
-    ...(mods.has('alt') ? ['Alt'] : []),
-    ...(mods.has('shift') ? [t.keys.shift] : []),
-  ];
-  return [...words, name].join('+');
 }

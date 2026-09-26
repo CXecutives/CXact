@@ -63,13 +63,6 @@ const n = (value: number): string => formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
-/** A macOS key name is a symbol (⌘, ⇧); a click with it held is written with a hyphen
- *  ("⌘-click"), a Windows key name with a plus ("Ctrl+click"). */
-const isSymbolKey = (key: string): boolean => /^[⌘⇧⌥⌃]$/u.test(key);
-const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-click` : `${key}+click`);
-/** Shift in the same writing as the command key it stands beside. */
-const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Shift');
-
 const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
@@ -668,17 +661,6 @@ export const en: Catalog = {
     tip: 'Resize',
     reset: 'Double-click to reset',
   },
-  selection: {
-    count: (value: number) => `${n(value)} selected`,
-    clear: 'Clear selection',
-    chosen: (value: number) => `${count(value, 'job', 'jobs')} selected`,
-    commandKey: { ctrl: 'Ctrl', cmd: '⌘' },
-    hint: (key: string) =>
-      `${clickWith(key)} adds or removes a job, ${clickWith(shiftBeside(key))} a whole range.`,
-    tip: (key: string) => `Choose several jobs at once with ${clickWith(key)}.`,
-    more: (value: number) => `+${n(value)}`,
-    pin: 'Favourite',
-  },
   place: {
     tabs: 'Locations',
     inbox: 'Inbox',
@@ -756,36 +738,6 @@ export const en: Catalog = {
     delete: 'Delete',
     selectAll: 'Select all',
   },
-  keys: {
-    ctrl: 'Ctrl',
-    shift: 'Shift',
-    del: 'Del',
-    enter: 'Enter',
-    home: 'Home',
-    end: 'End',
-  },
-  keysHelp: {
-    heading: 'Keyboard shortcuts',
-    close: 'Close',
-    everywhere: 'Everywhere',
-    list: 'In the job list',
-    range: (first: string, last: string) => `${first} to ${last}`,
-    views: 'Choose a view',
-    search: 'Search',
-    fetch: 'Fetch',
-    undo: 'Undo',
-    menu: 'Open the menu',
-    back: 'Back',
-    help: 'Show keyboard shortcuts',
-    step: 'Previous or next job',
-    edge: 'First or last job',
-    extend: 'Choose several jobs',
-    archive: 'Archive',
-    trash: 'Move to the trash',
-    star: 'Favourite',
-    openAd: 'Open the ad',
-    closeJob: 'Close the job',
-  },
   field: {
     reveal: 'Show password',
     conceal: 'Hide password',
@@ -829,7 +781,6 @@ export const en: Catalog = {
     code: reasonCode,
   },
   job: {
-    choose: 'Select',
     included: 'Included',
     workMode: {
       remote: 'Remote',

@@ -199,12 +199,12 @@ export interface ValueRow {
 
 export type Row = SwitchRow | ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow | ValueRow;
 
-/** A card: its rows, or a block of its own (the mailbox, the portals, the keys). */
+/** A card: its rows, or a block of its own (the mailbox, the portals). */
 export interface CardSpec {
   id: string;
   heading: Text | null;
   hint?: Text;
-  body: readonly Row[] | 'mailbox' | 'portals' | 'keys';
+  body: readonly Row[] | 'mailbox' | 'portals';
 }
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
@@ -309,7 +309,6 @@ export const CARDS: readonly CardSpec[] = [
     ],
   },
   { id: 'look', heading: (t) => t.settings.look, body: [palette, language] },
-  { id: 'keys', heading: (t) => t.settings.keys, body: 'keys' },
   {
     id: 'care',
     heading: (t) => t.settings.maintenance,

@@ -2,8 +2,8 @@
 // its unopened jobs), Archiv, Papierkorb; one toolbar row (the search, the funnel, Abrufen);
 // the funnel's menu from the filter table and the line that names an active filter; one list
 // per place in the chosen order with the excluded jobs folded at its end; the empty states;
-// the search and its hits elsewhere; choosing several jobs; the keys of a mail app; moves and
-// their undo; the run card; the open row's bar; the sidebar; the smallest window.
+// the search and its hits elsewhere; moves and their undo; the run card; the open row's bar;
+// the sidebar; the smallest window.
 // Texts come from the catalog (T) and the filter table, the demo data from the stub
 // (stubList), not typed again.
 
@@ -32,7 +32,6 @@ import {
   filterMenu,
   filterWordsOf,
   funnel,
-  highlighted,
   inboxCount,
   lastQuery,
   list,
@@ -81,11 +80,6 @@ function ghostInset(page: Page): Promise<number> {
     probe.remove();
     return width;
   });
-}
-
-/** Where the list starts (px from the top of the window). */
-function listTop(page: Page): Promise<number> {
-  return page.getByTestId('list-scroll').evaluate((node) => node.getBoundingClientRect().top);
 }
 
 /* ======================================================================= header */
@@ -589,9 +583,6 @@ test.describe('one list', () => {
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     const last = (await rows(page).last().boundingBox())!;
     expect((await divider.boundingBox())!.y).toBeGreaterThanOrEqual(last.y + last.height);
-    // The keys stay above a folded section: End opens the last row before it.
-    await page.keyboard.press('End');
-    await expect(row(page, active.at(-1)!)).toHaveAttribute('aria-current', 'true');
     await divider.click();
     await expect(excludedRows(page)).toHaveCount(out.length);
     await expect(excludedRows(page).first().locator('.foot')).toHaveText(
@@ -912,9 +903,7 @@ test.describe('rows', () => {
     await expect(job.locator('.mark')).toBeVisible();
   });
 
-  test('the menu of a row: its entries, no unread; with several chosen it acts on all', async ({
-    page,
-  }) => {
+  test('the menu of a row: its entries, no unread', async ({ page }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2802').click({ button: 'right' });
     const menu = page.getByTestId('menu');
@@ -927,13 +916,6 @@ test.describe('rows', () => {
       T.reader.prompt,
     ]);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
-    await page.keyboard.press('Escape');
-    await openJob(page, 'freelancermap-2802');
-    await row(page, 'freelancermap-2803').click({ modifiers: ['Control'] });
-    await row(page, 'freelancermap-2803').click({ button: 'right' });
-    await expect(menuItem(page, 'open')).toHaveCount(0);
-    await menuItem(page, 'archive').click();
-    await expect(page.getByTestId('toast').last()).toContainText(T.toast.archivedMany(2));
   });
 
   test('a list ring that waits breathes on its solid track', async ({ page }) => {
@@ -965,23 +947,6 @@ test.describe('search', () => {
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await page.getByTestId('empty-search').getByRole('button').click();
     await expect(rows(page).first()).toBeVisible();
-  });
-
-  test('Enter or ArrowDown in the search open the first hit, its row takes the focus', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const search = page.getByTestId('search');
-    await search.fill('Interim');
-    await expect(rows(page)).toHaveCount(3);
-    await search.press('Enter');
-    await expect(rows(page).first()).toBeFocused();
-    await expect(rows(page).first()).toHaveAttribute('aria-current', 'true');
-    await page.keyboard.press('Escape');
-    await search.click();
-    await page.keyboard.press('ArrowDown');
-    await expect(rows(page).first()).toBeFocused();
-    await expect(page.getByTestId('reader-title')).toBeVisible();
   });
 
   test('hits elsewhere are a button that goes there, centred under an empty search', async ({
@@ -1018,304 +983,6 @@ test.describe('search', () => {
     await expect(row(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
     await page.getByTestId('search').fill('Kernfusion');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-  });
-});
-
-/* ============================================================= choosing several */
-
-test.describe('choosing several', () => {
-  test('Ctrl+click and Shift+click choose; the bar takes the toolbar row, the list stays', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const all = await inbox(page);
-    const top = await listTop(page);
-    const end = await rightOf(page, 'fetch');
-    await openJob(page, 'freelancermap-2801');
-    await row(page, 'linkedin-4100200301').click({ modifiers: ['Control'] });
-    const bar = page.getByTestId('selection-bar');
-    await expect(bar).toContainText(T.selection.count(2));
-    await expect(page.getByTestId('search')).toHaveCount(0);
-    expect(await listTop(page)).toBe(top);
-    expect(await rightOf(page, 'selection-clear')).toBe(end + (await ghostInset(page)));
-    await expect(page.getByTestId('selection-clear')).toHaveAttribute(
-      'aria-label',
-      T.selection.clear,
-    );
-    // Esc clears the choice; the open job stays open.
-    await page.keyboard.press('Escape');
-    await expect(bar).toHaveCount(0);
-    await expect(page.getByTestId('reader')).toBeVisible();
-    // Shift+click takes the range; the bar archives them in one move.
-    await row(page, 'freelance-900411').click({ modifiers: ['Shift'] });
-    await expect(bar).toContainText(T.selection.count(3));
-    await bar.getByTestId('selection-archive').click();
-    await expect(rows(page)).toHaveCount(all.length - 3);
-    await expect(page.getByTestId('toast').last()).toContainText(T.toast.archivedMany(3));
-    // Ctrl+F during a choice ends it and goes to the search.
-    await rows(page).nth(0).click();
-    await rows(page)
-      .nth(1)
-      .click({ modifiers: ['Control'] });
-    await page.keyboard.press('Control+f');
-    await expect(page.getByTestId('search')).toBeFocused();
-  });
-
-  test('the pane names the chosen jobs and offers what fits them, in words', async ({ page }) => {
-    await open(page, WIN);
-    await openJob(page, 'freelancermap-2805');
-    await row(page, 'linkedin-4100200302').click({ modifiers: ['Control'] });
-    const pane = page.getByTestId('selection-pane');
-    await expect(pane).toContainText(T.selection.chosen(2));
-    await expect(pane).toContainText(T.selection.hint(T.selection.commandKey.ctrl));
-    await expect(pane.getByTestId('selection-titles')).toContainText('Projektcontroller Bau');
-    await expect(pane.getByTestId('selection-actions').getByRole('button')).toHaveText([
-      T.actions.archive,
-      T.actions.trash,
-      T.selection.pin,
-      T.reader.fetchDetails,
-    ]);
-    await pane.getByTestId('pane-details').click();
-    expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
-      request: { kind: 'details' },
-    });
-    await runFinished(page);
-    // Many chosen (the list as the run left it): eight titles, then how many more.
-    await page.keyboard.press('Escape');
-    const all = await inbox(page);
-    await expect.poll(() => listed(page)).toEqual(all);
-    await openJob(page, all[0]!);
-    await page.keyboard.press('Shift+End');
-    await expect(pane).toContainText(T.selection.chosen(all.length));
-    await expect(pane.getByTestId('selection-titles').locator('li')).toHaveCount(9);
-    await expect(pane.getByTestId('selection-more')).toHaveText(T.selection.more(all.length - 8));
-  });
-
-  test('the highlight shows exactly the chosen rows; Ctrl+click on the open job closes it', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openJob(page, 'freelancermap-2801');
-    await row(page, 'linkedin-4100200301').click({ modifiers: ['Control'] });
-    await row(page, 'freelancermap-2802').click({ modifiers: ['Shift'] });
-    expect(await highlighted(page)).toEqual([
-      'linkedin:4100200301',
-      'freelance:900411',
-      'freelancermap:2802',
-    ]);
-    await row(page, 'freelance-900411').click({ modifiers: ['Control'] });
-    expect(await highlighted(page)).not.toContain('freelance:900411');
-    await page.keyboard.press('Escape');
-    await openJob(page, 'freelancermap-2803');
-    await row(page, 'freelancermap-2803').click({ modifiers: ['Control'] });
-    await expect(page.getByTestId('reader')).toHaveCount(0);
-    expect(await highlighted(page)).toEqual([]);
-  });
-
-  test('a range starts from the job the app opened; one chosen row left by a move opens', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openJob(page, 'freelancermap-2802');
-    await page.getByTestId('reader-archive').click();
-    await expect(page.getByTestId('reader-title')).toHaveText(/Kaufmännische Leitung/);
-    await settleMoves(page);
-    await row(page, 'freelancermap-2804').click({ modifiers: ['Shift'] });
-    expect(await highlighted(page)).toEqual([
-      'freelancermap:2803',
-      'linkedin:4100200303',
-      'freelancermap:2804',
-    ]);
-    // Two chosen, one of them moved: the other opens alone.
-    await page.keyboard.press('Escape');
-    await openJob(page, 'freelancermap-2801');
-    await row(page, 'freelance-900411').click({ modifiers: ['Control'] });
-    await row(page, 'freelancermap-2803').click({ modifiers: ['Shift'] });
-    expect(await highlighted(page)).toEqual(['freelance:900411', 'freelancermap:2803']);
-    await settleMoves(page);
-    await tool(page, 'archive', 'freelancermap-2803');
-    await expect(page.getByTestId('selection-bar')).toHaveCount(0);
-    await expect(page.getByTestId('reader-title')).toHaveText('SAP S/4HANA Finance Projektleitung');
-  });
-
-  test('the checkbox over the ring chooses; one column chooses without opening', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openJob(page, 'freelancermap-2801');
-    const check = list(page).getByTestId('check-linkedin-4100200301');
-    await check.hover();
-    await expect(check).toHaveCSS('opacity', '1');
-    await check.click();
-    await expect(page.getByTestId('selection-pane')).toContainText(T.selection.chosen(2));
-    await check.click();
-    await expect(page.getByTestId('selection-pane')).toHaveCount(0);
-    await expect(page.getByTestId('reader-title')).toBeVisible();
-    // One column: a Ctrl+click keeps the list, the bar acts on one row; two columns open it.
-    await page.setViewportSize({ width: 800, height: 700 });
-    await open(page, WIN);
-    await row(page, 'freelancermap-2802').click({ modifiers: ['Control'] });
-    await expect(page.getByTestId('selection-count')).toHaveText(T.selection.count(1));
-    await expect(page.getByTestId('reader')).toHaveCount(0);
-    expect(await calls(page, 'job_detail')).toEqual([]);
-    await page.setViewportSize({ width: 1280, height: 700 });
-    await expect(page.getByTestId('selection-bar')).toHaveCount(0);
-    await expect(row(page, 'freelancermap-2802')).toHaveAttribute('aria-current', 'true');
-  });
-});
-
-/* ========================================================================= keys */
-
-test.describe('keys', () => {
-  test('like a mail app: the arrows, Home and End, Esc, Ctrl+F and the reader after a click', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const titles = await rows(page).locator('.title').allInnerTexts();
-    const reader = page.getByTestId('reader-title');
-    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
-    await page.keyboard.press('ArrowDown');
-    await expect(reader).toHaveText(titles[0]!);
-    await page.keyboard.press('ArrowDown');
-    await expect(rows(page).nth(1)).toBeFocused();
-    await page.keyboard.press('ArrowUp');
-    await expect(reader).toHaveText(titles[0]!);
-    await page.keyboard.press('End');
-    await expect(reader).toHaveText(titles.at(-1)!);
-    await page.keyboard.press('Home');
-    await expect(reader).toHaveText(titles[0]!);
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('place-reader')).toBeVisible();
-    // A click into the reader's text gives it the arrows; a click on a row gives them back.
-    await rows(page).nth(2).click();
-    await page.getByTestId('reader-title').click();
-    await page.keyboard.press('ArrowDown');
-    await page.waitForTimeout(200);
-    await expect(reader).toHaveText(titles[2]!);
-    await rows(page).nth(2).click();
-    await page.keyboard.press('ArrowDown');
-    await expect(reader).toHaveText(titles[3]!);
-    // Ctrl+F to the search; Esc clears it, then closes the job; the arrows move its caret.
-    await page.keyboard.press('Control+f');
-    const search = page.getByTestId('search');
-    await expect(search).toBeFocused();
-    await page.keyboard.type('Finance');
-    await search.press('ArrowLeft');
-    await expect(reader).toHaveText(titles[3]!);
-    await page.keyboard.press('Escape');
-    await expect(search).toHaveValue('');
-    await page.keyboard.press('Escape');
-    await expect(page.getByTestId('place-reader')).toBeVisible();
-  });
-
-  test('Cmd+F is the find key on macOS, Ctrl+F is not', async ({ page }) => {
-    await open(page, MAC);
-    await page.keyboard.press('Control+f');
-    await expect(page.getByTestId('search')).not.toBeFocused();
-    await page.keyboard.press('Meta+f');
-    await expect(page.getByTestId('search')).toBeFocused();
-  });
-
-  test('E, Entf, S, O act on the open job, the next job opens; U and B do nothing', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openJob(page, 'freelancermap-2802');
-    await page.keyboard.press('s');
-    await expect.poll(async () => (await stubJob(page, 'freelancermap', '2802')).pinned).toBe(true);
-    await page.keyboard.press('o');
-    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
-      target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2802' } },
-    });
-    await page.keyboard.press('u');
-    await page.keyboard.press('b');
-    expect(await calls(page, 'mark_unread')).toEqual([]);
-    expect(await calls(page, 'set_applied')).toEqual([]);
-    await page.keyboard.press('e');
-    await expect(page.getByTestId('reader-title')).toHaveText(
-      'Kaufmännische Leitung Projektgeschäft',
-    );
-    await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
-    await settleMoves(page);
-    await page.keyboard.press('Delete');
-    await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
-    expect((await calls(page, 'move_jobs')).map(([, args]) => (args as { to: string }).to)).toEqual(
-      ['archive', 'trash'],
-    );
-    // Enter on a focused row opens it.
-    await rows(page).first().focus();
-    await page.keyboard.press('Enter');
-    await expect(rows(page).first()).toHaveAttribute('aria-current', 'true');
-  });
-
-  test('F5 and Ctrl+R fetch like Abrufen; the keys card lists the keys of the list', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&tick=15`);
-    await page.keyboard.press('F5');
-    await runFinished(page);
-    await page.keyboard.press('Control+r');
-    await runFinished(page);
-    expect(await calls(page, 'start_run')).toHaveLength(2);
-    await page.keyboard.press('Control+/');
-    const card = page.getByTestId('keys-help');
-    await expect(card).toBeVisible();
-    await expect(card.getByTestId('key-archive')).toContainText(T.keysHelp.archive);
-    await expect(card.getByTestId('key-star')).toContainText(T.keysHelp.star);
-    await expect(card.getByTestId('key-unread')).toHaveCount(0);
-  });
-
-  test('the whole list: End and ArrowUp reach the last job, a re-sort keeps the open one', async ({
-    page,
-  }) => {
-    // End walks 2000 jobs window by window: WebKit on a busy machine takes its time.
-    test.setTimeout(240_000);
-    await open(page, `${WIN}&scenario=many`);
-    const lastIsOpen = async (): Promise<boolean> => {
-      const keys = await mountedKeys(page);
-      return keys.length > 120 && (await highlighted(page))[0] === keys.at(-1);
-    };
-    await page.keyboard.press('End');
-    await expect.poll(lastIsOpen, { timeout: 90_000 }).toBe(true);
-    await expect(list(page).locator('.sentinel')).toHaveCount(0);
-    await open(page, `${WIN}&scenario=many`);
-    await page.keyboard.press('ArrowUp');
-    await expect.poll(lastIsOpen, { timeout: 90_000 }).toBe(true);
-    // A re-sort keeps the open job in view, and the arrows go on from it.
-    await open(page, `${WIN}&scenario=many`);
-    await rows(page).nth(39).click();
-    const key = (await highlighted(page))[0] ?? '';
-    await chooseFilter(page, 'newest');
-    await expect.poll(async () => (await lastQuery(page))?.sort).toBe('newest');
-    const target = list(page).locator(`[data-key="${key}"] .row`);
-    await expect(target).toHaveClass(/selected/);
-    await expect(target).toBeInViewport();
-    const keys = await mountedKeys(page);
-    await page.keyboard.press('ArrowDown');
-    await expect.poll(() => highlighted(page)).toEqual([keys[keys.indexOf(key) + 1]]);
-  });
-
-  test('the list is one Tab stop: Tab leaves from the open row, Shift+Tab comes back', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await openJob(page, 'linkedin-4100200301');
-    await expect(list(page).locator('.row:not([tabindex="-1"])')).toHaveCount(1);
-    await row(page, 'linkedin-4100200301').focus();
-    await page.keyboard.press('Tab');
-    await expect(page.getByTestId('excluded-divider')).toBeFocused();
-    await page.keyboard.press('Tab');
-    expect(
-      await page.evaluate(
-        () => document.activeElement?.closest('[data-testid="job-list"]') != null,
-      ),
-    ).toBe(false);
-    await page.keyboard.press('Shift+Tab');
-    await page.keyboard.press('Shift+Tab');
-    await expect(row(page, 'linkedin-4100200301')).toBeFocused();
-    await page.keyboard.press('ArrowDown');
-    await expect(row(page, 'freelance-900411')).toBeFocused();
-    await expect(row(page, 'linkedin-4100200301')).toHaveAttribute('tabindex', '-1');
   });
 });
 
@@ -1449,9 +1116,7 @@ test.describe('moves and undo', () => {
     await expect.poll(read).toBe(true);
   });
 
-  test('Ctrl+Z takes back the newest move while its toast is up, which stays longer', async ({
-    page,
-  }) => {
+  test('an undo toast stays longer and takes back the moves merged into it', async ({ page }) => {
     await open(page, WIN);
     await tool(page, 'archive', 'freelancermap-2803');
     await settleMoves(page);
@@ -1461,10 +1126,14 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('toast-text').filter({ hasText: '2 Jobs' })).toBeVisible();
     // Still up after the 4 s of a plain toast.
     await page.waitForTimeout(4500);
-    await page.keyboard.press('Control+z');
+    await page
+      .getByTestId('toast')
+      .filter({ hasText: '2 Jobs' })
+      .getByTestId('toast-action')
+      .click();
     await expect(row(page, 'linkedin-4100200302')).toBeVisible();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
-    // The trash came later, but its move was not the newest: it stays.
+    // The trash has a toast of its own: it stays.
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
     await expect(page.getByTestId('toast-action')).toHaveCount(1);
   });
@@ -1477,7 +1146,7 @@ test.describe('moves and undo', () => {
     await page.getByTestId('reader-more').click();
     await menuItem(page, 'trash').click();
     await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
-    await page.keyboard.press('Control+z');
+    await page.getByTestId('toast-action').click();
     await expect(row(page, 'linkedin-4100200301')).toBeVisible();
     await expect(page.getByTestId('reader-title')).toContainText(
       'Head of Controlling Transformation',
@@ -1487,7 +1156,7 @@ test.describe('moves and undo', () => {
     await page.getByTestId('reader-close').click();
     await settleMoves(page);
     await tool(page, 'archive', 'freelancermap-2803');
-    await page.keyboard.press('Control+z');
+    await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
     await page.waitForTimeout(300);
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
@@ -1521,7 +1190,7 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('toast-text').filter({ hasText: 'gelöscht' })).toBeVisible();
     await expect(page.getByTestId('toast-action')).toHaveCount(1);
     await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
-    await page.keyboard.press('Control+z');
+    await page.getByTestId('toast-action').click();
     await expect(page.getByTestId('toast-action')).toHaveCount(0);
     await openPlace(page, 'inbox');
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
@@ -1782,7 +1451,7 @@ async function resting(page: Page): Promise<Sample> {
 }
 
 test.describe("the open row's bar", () => {
-  test('it slides to the clicked row like the sidebar pill; Home and End place it', async ({
+  test('it slides to the clicked row like the sidebar pill; grey on an excluded row', async ({
     page,
   }) => {
     await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
@@ -1804,24 +1473,18 @@ test.describe("the open row's bar", () => {
       return value;
     });
     expect([...new Set(samples.flatMap((sample) => sample.moves))]).toEqual([`180 ${emphasized}`]);
-    // End, further than the list is high: simply there, grey on the excluded row.
-    await page.keyboard.press('Home');
-    await resting(page);
-    await startSampling(page);
-    await page.keyboard.press('End');
+    // Grey on the excluded row.
+    await row(page, 'linkedin-4100200305').click();
     await expect(row(page, 'linkedin-4100200305')).toHaveAttribute('aria-current', 'true');
-    await page.waitForTimeout(300);
-    expect((await stopSampling(page)).flatMap((sample) => sample.moves)).not.toContainEqual(
-      expect.stringMatching(/^180 /),
-    );
     expect((await resting(page)).opacity).toBe(0.6);
-    await page.keyboard.press('Home');
+    await rows(page).first().click();
     expect((await resting(page)).top).toBe(INSET);
     // Under reduced motion it never slides: it is simply at the next row.
+    const order = await listed(page);
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await startSampling(page);
     await row(page, 'freelancermap-2803').click();
-    await page.keyboard.press('ArrowDown');
+    await row(page, order[order.indexOf('freelancermap-2803') + 1]!).click();
     await page.waitForTimeout(300);
     for (const sample of await stopSampling(page)) {
       expect(sample.moves, JSON.stringify(sample)).toEqual([]);
@@ -1943,27 +1606,22 @@ test.describe("the open row's bar", () => {
     await page.getByTestId('reader-archive').click();
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await page.waitForTimeout(400);
-    let samples = await stopSampling(page);
+    const samples = await stopSampling(page);
     expect(samples.at(-1)!.key).toBe('freelancermap:2803');
     for (const sample of samples) expect(sample.top, JSON.stringify(sample)).toBe(slot.top);
     await page.getByTestId('toast').last().getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2802')).toHaveAttribute('aria-current', 'true');
     expect((await resting(page)).top).toBe(slot.top);
-    // Several chosen rows mark themselves; the list's bar stays still on the open one.
-    await startSampling(page);
-    await row(page, 'freelancermap-2803').click({ modifiers: ['Control'] });
-    await expect(page.getByTestId('selection-bar')).toContainText(T.selection.count(2));
-    await page.waitForTimeout(200);
-    samples = await stopSampling(page);
-    expect(samples.flatMap((sample) => sample.moves)).toEqual([]);
   });
 
   test('it steps inside the focus ring and greys with the inactive window', async ({ page }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2801').click();
     expect((await resting(page)).left).toBe(0);
-    await page.keyboard.press('ArrowDown');
-    await expect(row(page, 'linkedin-4100200301')).toBeFocused();
+    // The keyboard focus on the open row (Shift+Tab from the next one).
+    await row(page, 'linkedin-4100200301').focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(row(page, 'freelancermap-2801')).toBeFocused();
     await expect.poll(async () => (await resting(page)).left).toBe(2);
     const colour = (): Promise<string> =>
       page.getByTestId('row-bar').evaluate((bar) => getComputedStyle(bar).backgroundColor);
@@ -1975,7 +1633,7 @@ test.describe("the open row's bar", () => {
 /* ====================================================================== sidebar */
 
 test.describe('sidebar', () => {
-  test('four views, no counts; the app starts in the Übersicht; Ctrl+1 to 4 choose', async ({
+  test('four views, no counts; the app starts in the Übersicht; no keys of their own', async ({
     page,
   }) => {
     await open(page, `${WIN}&view=start`);
@@ -1988,14 +1646,11 @@ test.describe('sidebar', () => {
       T.nav.settings,
     ]);
     await expect(sidebar.locator('nav .count, nav .dot')).toHaveCount(0);
+    // Only the keys of the OS: Ctrl+2 and Ctrl+, choose nothing.
     await page.keyboard.press('Control+2');
-    await expect(page.getByTestId('view-jobs')).toBeVisible();
-    await page.keyboard.press('Control+4');
-    await expect(page.getByTestId('view-settings')).toBeVisible();
     await page.keyboard.press('Control+,');
-    await expect(page.getByTestId('view-settings')).toBeVisible();
-    await page.getByTestId('nav-jobs').hover();
-    await expect(page.getByRole('tooltip')).toContainText('Strg+2');
+    await page.waitForTimeout(200);
+    await expect(page.getByTestId('view-overview')).toBeVisible();
     // It folds only by the window width: no edge to drag, Ctrl+B and Cmd+B change nothing.
     const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
     await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);

@@ -94,7 +94,7 @@ test('a decimal number is cut to a whole one, never joined', async ({ page }) =>
   expect(sent.save.after.competences[0]!.years).toBe(2);
 });
 
-test('text typed into a chip field is a change: Ctrl+S takes it, closing asks', async ({
+test('text typed into a chip field is a change: Speichern takes it, closing asks', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -105,13 +105,16 @@ test('text typed into a chip field is a change: Ctrl+S takes it, closing asks', 
   // Typed, not yet a chip: Speichern waits no more, and the backend knows it is unsaved.
   await expect(save).not.toHaveAttribute('aria-disabled', 'true');
   await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
-  await page.keyboard.press('Control+s');
   const saves = async () =>
     (await page.evaluate(() => window.__harness.calls)).filter(([name]) => name === 'save_profile');
+  // Ctrl+S is no key of the app: only the button saves.
+  await page.keyboard.press('Control+s');
+  await page.waitForTimeout(200);
+  expect(await saves()).toHaveLength(0);
+  await save.click();
   await expect.poll(async () => (await saves()).length).toBe(1);
   const sent = (await saves()).at(-1)![1] as { save: { after: { tools: string[] } } };
   expect(sent.save.after.tools).toContain('Miro');
-  await expect(tools).toBeFocused();
   await expect(tools).toHaveValue('');
 
   // Closing the window with typed text asks first.
@@ -164,37 +167,27 @@ test('a failed save from the leave dialog leaves the caret in the refused field'
   await expect(rate).toBeFocused();
 });
 
-test('the arrow keys follow the order on screen after an exclusion changes in place', async ({
-  page,
-}) => {
+test('a row whose exclusion changes in place stands with the scored rows', async ({ page }) => {
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await row(page, 'linkedin-4100200305').click();
   await stage(page).getByTestId('override').click();
-  const openKey = () =>
-    list(page).locator('[data-open]').getAttribute('data-key', { timeout: 2_000 });
   const drawn = async () =>
     list(page)
       .locator('[data-key]')
       .evaluateAll((all) => all.map((item) => (item as HTMLElement).dataset.key ?? ''));
-  // The counted row now stands above the divider; the keys walk the rows as drawn (read once
-  // the list is drawn again, the rows after it included).
-  let order: string[] = [];
+  // The counted row now stands above the divider, among the scored rows.
   await expect
     .poll(async () => {
-      order = await drawn();
+      const order = await drawn();
       const index = order.indexOf('linkedin:4100200305');
       return index > 0 && index < order.length - 1;
     })
     .toBe(true);
-  const at = order.indexOf('linkedin:4100200305');
-  await row(page, 'linkedin-4100200305').focus();
-  await page.keyboard.press('ArrowDown');
-  await expect.poll(openKey).toBe(order[at + 1]);
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await expect.poll(openKey).toBe(order[at - 1]);
+  await expect(
+    page.getByTestId('job-rows').getByTestId('job-row-linkedin-4100200305'),
+  ).toBeVisible();
 });
 
 test('deleting the open job for good opens the next one', async ({ page }) => {
@@ -215,21 +208,15 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
 });
 
-test('one column: back after the arrow keys shows the open row, and Ctrl+F reaches the search', async ({
-  page,
-}) => {
+test('one column: back shows the open row again, with the focus', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 600 });
   await open(page, WIN);
-  await rows(page).first().click();
-  for (let step = 0; step < 6; step += 1) await page.keyboard.press('ArrowDown');
+  await rows(page).nth(6).click();
   const key = await list(page).locator('[data-open]').getAttribute('data-key');
-  await page.keyboard.press('Escape');
+  await page.getByTestId('back').click();
   const item = list(page).locator(`[data-key="${key}"]`);
   await expect(item).toBeInViewport();
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
-  await rows(page).first().click();
-  await page.keyboard.press('Control+f');
-  await expect(page.getByTestId('search')).toBeFocused();
 });
 
 test('a new form and the steps from a CV put the caret where the work starts', async ({ page }) => {

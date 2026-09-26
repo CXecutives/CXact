@@ -61,8 +61,7 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatDate, formatRelative, formatTime } from '$lib/i18n/format';
-  import { contentMoving, LIST_KEYS } from '$lib/input/input';
-  import { keyLabel } from '$lib/platform';
+  import { contentMoving } from '$lib/input/input';
   import { clock } from '$lib/state/clock.svelte';
   import {
     DETAIL_WARNS,
@@ -356,20 +355,6 @@
     };
   });
 
-  /** The keys the list takes for the open job, named in the tooltips: the one key table
-   *  (input.ts LIST_KEYS; "open" here is the ad), plus Esc that closes the job. */
-  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', string>> = {
-    open: LIST_KEYS.openAd,
-    star: LIST_KEYS.star,
-    archive: LIST_KEYS.archive,
-    trash: LIST_KEYS.trash,
-    close: 'esc',
-  };
-  const keyOfAction = (id: keyof typeof KEYS): string | null => {
-    const key = KEYS[id];
-    return key === undefined ? null : keyLabel(key);
-  };
-
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
   const promptOff = $derived(
     !app.hasProfile ? t.reader.promptNoProfile : detail.text ? null : t.reader.promptNoText,
@@ -467,8 +452,6 @@
     id: string;
     icon: IconName;
     label: () => string;
-    /** The key that does it for the open job (input.ts). */
-    key?: string;
     /** Why it cannot be chosen now, else null. */
     off?: () => string | null;
     /** Whether it is offered for this job (always without). */
@@ -496,7 +479,6 @@
       id: 'trash',
       icon: 'trash',
       label: () => t.actions.trash,
-      key: LIST_KEYS.trash,
       apart: true,
       when: () => tools.some((tool) => tool.id === 'trash'),
       run: () => act('trash'),
@@ -510,7 +492,6 @@
         id: item.id,
         label: item.label(),
         icon: item.icon,
-        keys: item.key === undefined ? null : keyLabel(item.key),
         disabled: off !== null,
         reason: off,
         run: item.run,
@@ -756,7 +737,6 @@
       iconOnly
       icon={tool.icon}
       label={tool.label}
-      hint={keyOfAction(tool.id)}
       disabled={tool.id === 'purge' && run.active}
       disabledReason={run.busyText}
       testid="{prefix}{tool.id}"
@@ -770,7 +750,6 @@
       iconOnly
       icon="star"
       label={job.pinned ? t.reader.unpin : t.reader.pin}
-      hint={keyOfAction('star')}
       pressed={job.pinned}
       testid="{prefix}pin"
       onclick={star}
@@ -788,7 +767,6 @@
         iconOnly
         icon="close"
         label={t.reader.close}
-        hint={keyOfAction('close')}
         testid="{prefix}close"
         onclick={onclose}
       />
@@ -866,7 +844,6 @@
       size="field"
       icon="external"
       label={t.reader.open}
-      hint={keyOfAction('open')}
       testid="open-ad"
       onclick={openAd}
     />
@@ -877,7 +854,6 @@
         icon="star"
         iconOnly={iconsOnly}
         label={iconsOnly ? (job.pinned ? t.reader.unpin : t.reader.pin) : t.reader.favourite}
-        hint={keyOfAction('star')}
         pressed={job.pinned}
         testid="reader-pin"
         onclick={star}
@@ -891,7 +867,6 @@
         icon={tool.icon}
         iconOnly={iconsOnly}
         label={tool.label}
-        hint={keyOfAction(tool.id)}
         warns={tool.id === 'purge'}
         disabled={tool.id === 'purge' && run.active}
         disabledReason={run.busyText}
@@ -1109,7 +1084,6 @@
           iconOnly
           icon="external"
           label={t.reader.open}
-          hint={keyOfAction('open')}
           testid="compact-open"
           onclick={openAd}
         />

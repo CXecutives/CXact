@@ -20,7 +20,7 @@
   import { t } from '$lib/i18n/t';
   import { settled } from '$lib/motion/settled.svelte';
   import { fade } from '$lib/motion/transitions';
-  import { dragBands, keyLabel } from '$lib/platform';
+  import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
@@ -38,7 +38,6 @@
       label: t.nav[view.label],
       icon: view.icon,
       testid: `nav-${view.id}`,
-      hint: keyLabel(view.keys),
       disabled: setup && view.id === 'overview' ? t.nav.overviewLater : null,
     })),
   );

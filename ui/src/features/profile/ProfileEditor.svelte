@@ -16,8 +16,7 @@
   change) and "Verwerfen"; without a change both say why they wait. While it shows, the
   toasts rise above it (the toast stack measures it). An untouched new form goes back to the
   ways in with "Verwerfen" or Esc. Enter in a field saves, as in every form (in the row lists
-  it goes to the next row, in a chip field it adds what was typed), and Ctrl/Cmd+S saves from
-  anywhere in the form.
+  it goes to the next row, in a chip field it adds what was typed).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -283,7 +282,7 @@
 <div
   class="editor"
   bind:this={root}
-  use:formKeys={untouched ? { save, shortcut: save, cancel: ondiscard } : { save, shortcut: save }}
+  use:formKeys={untouched ? { save, cancel: ondiscard } : { save }}
   onfocusin={keepClear}
   data-testid="profile-form"
 >
