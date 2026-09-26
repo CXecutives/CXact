@@ -60,8 +60,10 @@ test('Sprache switches the whole app to English and back at once', async ({ page
   await expect(page.getByTestId('list-header')).toContainText('Fetch');
   await expect(page.getByTestId('reader-ring')).toHaveAttribute('aria-label', /^Match 91%/);
   await expect(page.getByTestId('band')).toHaveText('High match');
-  await expect(page.getByTestId('prompt')).toContainText('AI prompt');
   await expect(page.getByTestId('reader')).not.toContainText('Passung');
+  await page.getByTestId('reader-more').click();
+  await expect(page.getByTestId('menu-item-prompt')).toContainText('AI prompt');
+  await page.keyboard.press('Escape');
 
   // Back to German, the same way.
   await page.getByTestId('nav-settings').click();

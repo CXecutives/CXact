@@ -151,7 +151,10 @@ test.describe('toasts and their undo', () => {
     await expect(page.getByTestId('reader-title')).toContainText(
       'Head of Controlling Transformation',
     );
-    await page.getByTestId('reader-trash').click();
+    // The trash is in the reader's "…" menu (opened once the new job has settled).
+    await page.waitForTimeout(500);
+    await page.getByTestId('reader-more').click();
+    await page.getByTestId('menu-item-trash').click();
     await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
     await page.keyboard.press('Control+z');
     await expect(row(page, 'linkedin-4100200301')).toBeVisible();

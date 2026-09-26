@@ -637,8 +637,10 @@ export const de = {
     /** The quiet line under the title of a job that is not in the inbox. */
     inArchive: 'Im Archiv',
     inTrash: 'Im Papierkorb',
-    inTrashLeft: (days: number) => `Im Papierkorb, wird in ${count(days, 'Tag', 'Tagen')} gelöscht`,
-    inTrashSoon: 'Im Papierkorb, wird bald gelöscht',
+    /** The same words as the trash's own sentence (`trashFor`): "endgültig gelöscht". */
+    inTrashLeft: (days: number) =>
+      `Im Papierkorb, wird in ${count(days, 'Tag', 'Tagen')} endgültig gelöscht`,
+    inTrashSoon: 'Im Papierkorb, wird bald endgültig gelöscht',
     empty: {
       inbox: 'Keine Jobs.',
       archive: 'Das Archiv ist leer.',
@@ -721,7 +723,7 @@ export const de = {
       partial: 'Teilweise erfüllt',
       open: 'Nicht im Profil',
       violation: 'Ausschlussgrund',
-      check: 'Zu prüfen',
+      check: 'Prüfen',
     } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Pflicht',
@@ -931,7 +933,6 @@ export const de = {
   facts: {
     now: 'ab sofort',
     from: (date: string) => `ab ${date}`,
-    vague: 'Start offen',
     months: (value: number) => count(value, 'Monat', 'Monate'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'voll remote';
@@ -946,23 +947,75 @@ export const de = {
       return hourly ? `${money}/Std.` : unit ? `${money}/Tag` : money;
     },
     rateOpen: 'Satz nach Absprache',
-    salary: (amount: number) => `${formatEuro(amount)} im Jahr`,
-    years: (value: number) => `${count(value, 'Jahr', 'Jahre')} Erfahrung`,
     fullRemote: 'voll remote',
-    contract,
-    /** A criterion the ad does not mention. */
-    notMentioned: (label: string) => `${label} nicht genannt`,
   },
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
-      `${n(met)} von ${n(total)} Pflichtpunkten erfüllt` +
+      `${n(met)} von ${n(total)} Pflicht erfüllt` +
       (partial > 0 ? `, ${n(partial)} teilweise` : ''),
     noMust: 'Keine Pflichtanforderungen erkannt',
-    /** The label of the strip of hard criteria next to the score. */
+    /** The block "Anforderungen": the must line, then how many optional ones are missing. */
+    requirements: 'Anforderungen',
+    requirementsLine: (must: string, niceMissing: number) =>
+      niceMissing > 0
+        ? `${must} · ${n(niceMissing)} optional ${niceMissing === 1 ? 'fehlt' : 'fehlen'}`
+        : must,
+    /** A must requirement the profile lacks: the term goes into the profile's keywords. */
+    addToProfile: 'Zum Profil hinzufügen',
+    added: 'Hinzugefügt',
+    addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
+    /** The label of the table of the ad's terms. */
     frame: 'Konditionen',
-    /** The value of a term the ad names without a value, and of one it leaves out. */
-    stated: 'genannt',
-    notStated: 'nicht genannt',
+    /** The rows of the terms table, in their order (features/jobs/terms.ts). */
+    term: {
+      contract: 'Vertragsart',
+      rate: 'Tagessatz',
+      start: 'Start',
+      duration: 'Laufzeit',
+      remote: 'Remote',
+      place: 'Ort',
+      experience: 'Erfahrung',
+    },
+    /** The value of a term the ad does not state. */
+    termOpen: 'offen',
+    /** The contract type in the row "Vertragsart" (it carries the verdicts on temporary
+     *  agency work and permanent jobs; a check without a type says "unklar"). */
+    contractKind: {
+      interim: 'Interim',
+      freelance: 'Freiberuflich',
+      permanent: 'Festanstellung',
+      anue: 'Zeitarbeit',
+      unclear: 'unklar',
+    },
+    rateOpen: 'nach Absprache',
+    years: (min: number, max: number | null) =>
+      max !== null && max > min
+        ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
+        : count(min, 'Jahr', 'Jahre'),
+    /** Quiet after a value: required years no passage backs, a contract type the engine
+     *  infers. */
+    estimated: 'geschätzt',
+    assumed: 'vermutet',
+    /** The profile's side of a row, quiet under the ad's value (its wishes merged in). */
+    profileSide: {
+      rate: (min: number | null, wish: number | null) =>
+        [
+          min === null ? '' : `Minimum ${formatEuro(min)}`,
+          wish === null ? '' : `Wunsch ${formatEuro(wish)}`,
+        ]
+          .filter((part) => part !== '')
+          .join(', '),
+      start: (date: string | null) =>
+        date === null ? 'Verfügbar ab sofort' : `Verfügbar ab ${date}`,
+      remote: (level: RemoteWish) => `Wunsch ${REMOTE_LEVEL[level] ?? level}`,
+      place: (countries: string, regions: readonly string[]) =>
+        [
+          countries === '' ? '' : countryNames(countries),
+          regions.length === 0 ? '' : `Wunsch ${joined([...regions])}`,
+        ]
+          .filter((part) => part !== '')
+          .join(', '),
+    },
     /** Whether a term of the ad fits the profile, in a word (the table's third column). */
     verdict: {
       met: 'passt',
@@ -970,41 +1023,37 @@ export const de = {
       unknown: 'prüfen',
       unset: 'offen',
     } satisfies Record<CriterionState, string>,
-    /** Why the temporary agency criterion needs a look. */
-    anueCheck: 'Ob der Job über Arbeitnehmerüberlassung läuft, steht nicht fest.',
-    contractLabel: 'Vertragsart',
+    /** A marked passage of the ad under the pointer: its state and weight ("Erfüllt ·
+     *  Pflicht"), or the row of the terms and its verdict. */
+    markHint: (what: string, state: string) => `${what} · ${state}`,
     criterion: criteria,
-    /** The tooltip of a criterion chip that shows the ad's value: the criterion and its
-     *  state in one phrase. `open`: the ad names it without a fixed value (a rate by
-     *  arrangement, a vague start). */
-    criterionHint: {
-      met: (name: string) => `${name} erfüllt`,
-      violated: (name: string) => `${name} nicht erfüllt`,
-      unknown: (name: string) => `${name} zu prüfen`,
-      unset: (name: string) => `${name} nicht genannt`,
-      open: (name: string) => `${name} offen`,
-    } satisfies Record<CriterionState | 'open', (name: string) => string>,
     note,
     open: 'Anzeige öffnen',
     close: 'Schließen',
+    /** The star as a labelled button (its state is its pressed look). */
+    favourite: 'Favorit',
     pin: 'Als Favorit markieren',
     unpin: 'Favorit entfernen',
     archive: 'Archivieren',
     restore: 'Wiederherstellen',
-    /** An excluded job the user counts anyway, and back. */
+    /** The "…" button and its menu. */
+    more: 'Weitere Aktionen',
+    markUnread: 'Als ungelesen markieren',
+    /** An excluded job: its passage, counting it anyway, and back. */
+    showInAd: 'In der Anzeige zeigen',
     override: 'Trotzdem einbeziehen',
     overrideUndo: 'Rückgängig',
     overridden: 'Manuell einbezogen',
     prompt: 'KI-Prompt kopieren',
-    promptShort: 'Prompt kopieren',
-    promptHint: 'Kopiert Anzeige und Profil als Prompt für eine KI.',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
-    /** Under the band of a score that comes from a teaser only. */
+    /** Under the band of a score that comes from a preview only. */
     preliminary: 'Vorläufig, nur Vorschau',
+    /** The band of a job whose ad is still to come. */
+    scoredLater: 'Wird bewertet, sobald die Anzeige da ist',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
-    /** The teaser note names the portal; the sign-in is set up in Einstellungen. */
+    /** The preview note names the portal; the sign-in is set up in Einstellungen. */
     teaserOf: (portal: string) => `Ohne Anmeldung zeigt ${portal} nur eine Vorschau.`,
     setUpSignIn: 'Anmeldung einrichten',
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
@@ -1012,8 +1061,9 @@ export const de = {
     /** The exact moment of the mail, in the tooltip of its date. */
     mailAt: (date: string, time: string) => `Alert-Mail vom ${date} um ${time}`,
     fetchDetails: 'Details holen',
-    why: 'Warum',
-    wishes: 'Wünsche',
+    /** The ad of a job whose details are still to come. */
+    fetchNow: 'Jetzt holen',
+    why: 'Anforderungen im Detail',
     met: 'Erfüllt',
     partial: 'Teilweise erfüllt',
     missing: 'Nicht im Profil',
@@ -1022,14 +1072,16 @@ export const de = {
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
     detail: {
-      pending: 'Die Details folgen beim nächsten Abruf.',
+      pending: 'Die Anzeige fehlt noch.',
       teaser: detailSays.teaser,
       failed: 'Die Details ließen sich nicht holen.',
       unfetchable: detailSays.unfetchable,
       gone: detailSays.gone,
       onRequest: detailSays.onRequest,
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    closed: 'Die Anzeige nimmt keine Bewerbungen mehr an.',
+    /** A closed or vanished ad, since the app saw it so (when it knows). */
+    offline: 'Anzeige offline',
+    offlineSince: (date: string) => `Anzeige offline seit ${date}`,
     detailsOff: '„Details holen“ ist für dieses Portal aus.',
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',

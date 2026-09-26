@@ -247,10 +247,11 @@ test('English names agency work and the preferred rate one way everywhere', asyn
   await expect(
     page.getByTestId('excluded-rows').getByTestId('job-row-freelance-900412').locator('.foot'),
   ).toHaveText('Temporary agency work');
-  // The field is "Preferred day rate"; "target" is the word of the target roles.
+  // The field is "Preferred day rate"; "target" is the word of the target roles. The
+  // preference stands in the row of the rate, beside the minimum.
   await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader')).toContainText(
-    'The day rate of €1,200 meets your preferred rate of €1,200.',
+  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText(
+    'Minimum €1,100, preferred €1,200',
   );
 });
 

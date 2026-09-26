@@ -388,12 +388,12 @@ for (const { width, height } of [
     await expect
       .poll(async () => {
         const ad = await top('open-ad');
-        return ad >= 0 && (await top('open-mail')) === ad && (await top('prompt')) === ad;
+        return ad >= 0 && (await top('reader-archive')) === ad && (await top('reader-more')) === ad;
       })
       .toBe(true);
-    // The mail action is an icon then: its tooltip names it.
-    await page.getByTestId('open-mail').hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Alert-Mail öffnen');
+    // An icon button names itself in its tooltip ("…" always, the others where they shrink).
+    await page.getByTestId('reader-more').hover();
+    await expect(page.getByRole('tooltip')).toHaveText('Weitere Aktionen');
   });
 }
 
@@ -461,17 +461,17 @@ test('the trash says in how many days a job goes, following the clock', async ({
   await settle(page);
   await row(page, 'freelancermap-2803').click();
   const line = page.getByTestId('place-line');
-  await expect(line).toHaveText('Im Papierkorb, wird in 30 Tagen gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird in 30 Tagen endgültig gelöscht');
   const later = async (days: number): Promise<void> => {
     await page.clock.setFixedTime(new Date(NOW.getTime() + days * DAY));
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   };
   await later(27);
-  await expect(line).toHaveText('Im Papierkorb, wird in 3 Tagen gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird in 3 Tagen endgültig gelöscht');
   await later(29.5);
-  await expect(line).toHaveText('Im Papierkorb, wird in 1 Tag gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird in 1 Tag endgültig gelöscht');
   await later(30);
-  await expect(line).toHaveText('Im Papierkorb, wird bald gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird bald endgültig gelöscht');
 });
 
 test('a copy of the facts starts with the first fact', async ({ page }) => {

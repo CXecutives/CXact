@@ -699,7 +699,7 @@ export const en: Catalog = {
       partial: 'Partly met',
       open: 'Not in the profile',
       violation: 'Reason to exclude',
-      check: 'To check',
+      check: 'Check',
     } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Must-have',
@@ -873,7 +873,6 @@ export const en: Catalog = {
   facts: {
     now: 'starts now',
     from: (date: string) => `from ${date}`,
-    vague: 'Start date open',
     months: (value: number) => count(value, 'month', 'months'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'fully remote';
@@ -887,45 +886,85 @@ export const en: Catalog = {
       return hourly ? `${money}/hr` : unit ? `${money}/day` : money;
     },
     rateOpen: 'Rate negotiable',
-    salary: (amount: number) => `${formatEuro(amount)} a year`,
-    years: (value: number) => `${count(value, 'year', 'years')} of experience`,
     fullRemote: 'fully remote',
-    contract,
-    notMentioned: (label: string) => `${label} not mentioned`,
   },
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
       `${n(met)} of ${n(total)} must-haves met` + (partial > 0 ? `, ${n(partial)} partly` : ''),
     noMust: 'No must-have requirements found',
+    requirements: 'Requirements',
+    requirementsLine: (must: string, niceMissing: number) =>
+      niceMissing > 0 ? `${must} · ${n(niceMissing)} optional missing` : must,
+    addToProfile: 'Add to profile',
+    added: 'Added',
+    addedToProfile: (term: string) => `“${term}” added to the profile.`,
     frame: 'Conditions',
-    stated: 'stated',
-    notStated: 'not stated',
-    verdict: { met: 'fits', violated: 'does not fit', unknown: 'check', unset: 'open' },
-    anueCheck: 'It is not certain whether the job is temporary agency work.',
-    contractLabel: 'Contract type',
+    term: {
+      contract: 'Contract type',
+      rate: 'Day rate',
+      start: 'Start',
+      duration: 'Duration',
+      remote: 'Remote',
+      place: 'Location',
+      experience: 'Experience',
+    },
+    termOpen: 'open',
+    contractKind: {
+      interim: 'Interim',
+      freelance: 'Freelance',
+      permanent: 'Permanent',
+      anue: 'Temporary agency work',
+      unclear: 'unclear',
+    },
+    rateOpen: 'negotiable',
+    years: (min: number, max: number | null) =>
+      max !== null && max > min
+        ? `${n(min)} to ${count(max, 'year', 'years')}`
+        : count(min, 'year', 'years'),
+    estimated: 'estimated',
+    assumed: 'assumed',
+    profileSide: {
+      rate: (min: number | null, wish: number | null) => {
+        const preferred = wish === null ? '' : formatEuro(wish);
+        if (min === null) return preferred === '' ? '' : `Preferred ${preferred}`;
+        const minimum = `Minimum ${formatEuro(min)}`;
+        return preferred === '' ? minimum : `${minimum}, preferred ${preferred}`;
+      },
+      start: (date: string | null) => (date === null ? 'Available now' : `Available from ${date}`),
+      remote: (level: RemoteWish) => `Preferred ${REMOTE_LEVEL[level] ?? level}`,
+      place: (countries: string, regions: readonly string[]) => {
+        const where = countries === '' ? '' : countryNames(countries);
+        const preferred = joined([...regions]);
+        if (preferred === '') return where;
+        return where === '' ? `Preferred ${preferred}` : `${where}, preferred ${preferred}`;
+      },
+    },
+    verdict: {
+      met: 'fits',
+      violated: 'does not fit',
+      unknown: 'check',
+      unset: 'open',
+    } satisfies Record<CriterionState, string>,
+    markHint: (what: string, state: string) => `${what} · ${state}`,
     criterion: criteria,
-    criterionHint: {
-      met: (name: string) => `${name} met`,
-      violated: (name: string) => `${name} not met`,
-      unknown: (name: string) => `${name} to check`,
-      unset: (name: string) => `${name} not mentioned`,
-      open: (name: string) => `${name} open`,
-    } satisfies Record<CriterionState | 'open', (name: string) => string>,
     note,
     open: 'Open ad',
     close: 'Close',
+    favourite: 'Favourite',
     pin: 'Mark as favourite',
     unpin: 'Remove favourite',
     archive: 'Archive',
     restore: 'Restore',
+    more: 'More actions',
+    markUnread: 'Mark as unread',
+    showInAd: 'Show in the ad',
     override: 'Include anyway',
     overrideUndo: 'Undo',
     overridden: 'Included by you',
     prompt: 'Copy AI prompt',
-    promptShort: 'Copy prompt',
-    promptHint: 'Copies the ad and the profile as a prompt for an AI.',
     promptNotCopied: 'The prompt could not be copied.',
     preliminary: 'Provisional, preview only',
+    scoredLater: 'Scored once the ad is in',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
     teaserOf: (portal: string) => `Without a sign-in, ${portal} shows only a preview.`,
@@ -934,8 +973,8 @@ export const en: Catalog = {
     promptNoText: 'The text of the ad is still missing.',
     mailAt: (date: string, time: string) => `Alert email from ${date} at ${time}`,
     fetchDetails: 'Fetch details',
-    why: 'Why',
-    wishes: 'Preferences',
+    fetchNow: 'Fetch now',
+    why: 'Requirements in detail',
     met: 'Met',
     partial: 'Partly met',
     missing: 'Not in the profile',
@@ -944,14 +983,15 @@ export const en: Catalog = {
     noReasons: 'The ad names no clear requirements.',
     ad: 'Ad',
     detail: {
-      pending: 'The details come with the next fetch.',
+      pending: 'The ad is still missing.',
       teaser: detailSays.teaser,
       failed: 'The details could not be fetched.',
       unfetchable: detailSays.unfetchable,
       gone: detailSays.gone,
       onRequest: detailSays.onRequest,
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    closed: 'The ad no longer takes applications.',
+    offline: 'Ad offline',
+    offlineSince: (date: string) => `Ad offline since ${date}`,
     detailsOff: '“Fetch details” is off for this portal.',
     short: SHORT_TEXT,
     loadFailed: 'The job could not be loaded.',

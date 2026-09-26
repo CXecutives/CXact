@@ -6,6 +6,7 @@
 // Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';
+import type { Portal } from '../ipc/types';
 
 export type ViewId = 'overview' | 'jobs' | 'profile' | 'settings';
 
@@ -26,6 +27,13 @@ export type LeaveGuard = (next: ViewId) => boolean;
 
 class Navigation {
   current = $state<ViewId>(firstView());
+  /**
+   * The portal whose card Einstellungen should show (scrolled into view) when it opens: set
+   * together with `go('settings')` by a way that leads there for one portal (the reader's
+   * "Anmeldung einrichten"), so the view never opens at its top without context. The
+   * settings view reads it once it is shown and sets it back to null.
+   */
+  focusPortal = $state<Portal | null>(null);
   #installed = false;
   #guard: LeaveGuard | null = null;
   /** What waits for a switch the guard kept (it runs once that switch happens). */

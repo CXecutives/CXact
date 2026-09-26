@@ -602,7 +602,8 @@ test('archive, trash and undo: the bar ends on the job that opens, never at a st
   for (const sample of samples) expect(sample.top, JSON.stringify(sample)).toBe(slot.top);
   // The trash: the same with the next job.
   await page.waitForTimeout(600);
-  await page.getByTestId('reader-trash').click();
+  await page.getByTestId('reader-more').click();
+  await page.getByTestId('menu-item-trash').click();
   await expect(rowOf(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
   const after = await resting(page);
   expect(after.top).toBe(slot.top);
