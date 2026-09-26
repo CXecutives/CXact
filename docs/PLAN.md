@@ -568,3 +568,8 @@ as the parts land on `main`.
   minimum duration as checks (engine 16); an hourly wage for employees or agency work is
   employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
   updates, an application-letter prompt, snooze, radius, direct client vs agency.
+- [x] Engine 16 review fixes before the release (E16-1 to E16-8, still `ENGINE_VERSION` 16, see
+      `docs/MATCHING.md` "Review fixes"): exclusion words only where they name the job itself,
+      whole-word generated forms, wage words as words, ANÜ a topic only under a governing cue and
+      read in the title, no home office, site or travel days as workload, part-time hours
+      without the week, months only from a real duration statement. Both reports unchanged.

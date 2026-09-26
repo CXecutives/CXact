@@ -820,6 +820,20 @@ changed only by its version line; `V3_ROWS_DIGEST` unchanged). All sets at versi
 | heldout8 | 0.938 | 0.943 | 0.776 | 0.829 | 0.767 | 1 | 0.980 / 0.850 |
 | heldout9 | 0.876 | 0.867 | 0.636 | 0.717 | 0.680 | 0 | 0.989 / 0.962 |
 
+**Review fixes before the release (E16-1 to E16-8, still engine 16).** An adversarial review of
+engine 16 found eight defects; each rule above carries its fix and a regression test named
+after the finding (`e16_1_...` to `e16_8_...` in `exclusion.rs`, `facts.rs`, `limits.rs`,
+`ad_facts.rs` and `core/tests/matching_criteria.rs`). None of them moves a number: both reports
+are byte-identical before and after (every table above, every floor), the golden digest and
+`V3_ROWS_DIGEST` are unchanged, and set 9 keeps every exclusion by its profiles' words. The
+held-out ads hold no sentence the fixes read differently: the wage and ANÜ fixes need a
+wage-like word or a topic cue in the one sentence that states the rate or ANÜ, the workload and
+duration fixes change only checks and key facts of profiles with the new keys, and the
+exclusion words of set 9 are condition words in condition sentences or position words in
+titles. With `Werkstudent`, `Praktikum`, `Junior` and `Ausbildung` in every profile of every
+set, no exclusion word hits a relevant pair (grade 2 or 3, kept by the labels) any more; before
+the fix six such pairs were excluded.
+
 Test profiles for the user: `tools/test-profiles/` (five invented profiles with the new keys;
 `the_test_profiles_load_and_score` loads each the way the file picker does).
 
