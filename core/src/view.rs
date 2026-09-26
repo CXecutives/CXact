@@ -1177,13 +1177,16 @@ pub struct Mailbox {
     pub vault: VaultKind,
     /// The vault could not be read.
     pub error: Option<ErrorInfo>,
-    /// What "Verbinden" found in the mailbox in this session (the sign-in worked).
+    /// What "Verbinden" found in the mailbox in this session (the sign-in worked). `null`
+    /// before a "Verbinden", and when it signed in but could not count (too slow, or Gmail
+    /// failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
+    /// and the next fetch reads the alert mails anyway.
     pub check: Option<MailboxCheck>,
 }
 
 /// "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals
 /// lie in the mailbox from the last `days` days (`mail::check::check_mailbox`; its errors
-/// are the mail error codes).
+/// are `invalid` for the shape of the input and the mail error codes of the sign-in).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]

@@ -120,11 +120,9 @@ const countryNames = (value: unknown): string =>
 const INTERNAL = 'An internal error occurred, and the log has the details.';
 
 /** What holds the app (as de.ts). */
-type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files';
-const busyOf = (value: unknown): Busy =>
-  value === 'details' || value === 'rescore' || value === 'session' || value === 'files'
-    ? value
-    : 'fetch';
+type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
+const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
+const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
   fetch: 'A fetch is running already.',
@@ -132,6 +130,7 @@ const busy: Record<Busy, string> = {
   rescore: 'The jobs are being scored again.',
   session: 'A sign-in is running.',
   files: 'The app is writing its files.',
+  mailbox: 'The mailbox is being checked.',
 };
 
 const closing: Record<Busy, string> = {
@@ -140,6 +139,7 @@ const closing: Record<Busy, string> = {
   rescore: 'Scoring is stopping, and then the app closes.',
   session: 'The sign-in is stopping, and then the app closes.',
   files: 'The app is finishing its files, and then it closes.',
+  mailbox: 'The mailbox check is stopping, and then the app closes.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -1559,6 +1559,7 @@ export const en: Catalog = {
     twoStepAction: 'Turn on 2-Step Verification',
     connect: 'Connect',
     mailboxSaved: 'Mailbox connected.',
+    mailboxNotCounted: 'Mailbox connected, the next fetch counts the alert emails.',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
     autoArchive: 'Archive jobs after 30 days',

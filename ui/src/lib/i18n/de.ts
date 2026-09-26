@@ -80,13 +80,11 @@ const portalOf = (value: unknown): string =>
 const INTERNAL = 'Ein interner Fehler, mehr steht im Protokoll.';
 
 /** What holds the app (the backend's `activity`: a run by its kind, a sign-in, a file
- *  command), for the busy error and the closing note. Reading the whole mailbox is a fetch,
- *  and so is what the backend does not name. */
-type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files';
-const busyOf = (value: unknown): Busy =>
-  value === 'details' || value === 'rescore' || value === 'session' || value === 'files'
-    ? value
-    : 'fetch';
+ *  command, the mailbox check of Verbinden), for the busy error and the closing note.
+ *  Reading the whole mailbox is a fetch, and so is what the backend does not name. */
+type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
+const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
+const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
   fetch: 'Gerade läuft schon ein Abruf.',
@@ -94,6 +92,7 @@ const busy: Record<Busy, string> = {
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
   files: 'Die App schreibt gerade ihre Dateien.',
+  mailbox: 'Gerade wird das Postfach geprüft.',
 };
 
 const closing: Record<Busy, string> = {
@@ -102,6 +101,7 @@ const closing: Record<Busy, string> = {
   rescore: 'Das Bewerten wird beendet, dann schließt die App.',
   session: 'Die Anmeldung wird beendet, dann schließt die App.',
   files: 'Die App schreibt ihre Dateien fertig, dann schließt sie.',
+  mailbox: 'Die Prüfung des Postfachs wird beendet, dann schließt die App.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -1777,6 +1777,8 @@ export const de = {
     connect: 'Verbinden',
     /** A changed mailbox is saved (said under its row). */
     mailboxSaved: 'Postfach verbunden.',
+    /** Saved after the sign-in, but the alert mails were not counted in time. */
+    mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
     autoArchive: 'Jobs nach 30 Tagen archivieren',
