@@ -683,8 +683,15 @@ TypeScript (`?:`), so a UI that does not send them changes nothing.
 hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80), a percentage in a clause with a workload word
 (`Auslastung 80 %`, `80-100 %`), part-time without a number up to 80 with no lower bound,
 part-time as an option (`Vollzeit, Teilzeit möglich`) up to 100. A number of days or a share next
-to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work. The first sentence
-with a number wins, then the page's employment type (LinkedIn `Vollzeit`), then the words. Outside
+to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work; after the week the
+place may stand anywhere up to the next number (E16-5: `2 Tage pro Woche sind im Home Office
+möglich`, `2 Tage die Woche von zu Hause`, `2 Tage pro Woche am Standort Frankfurt`,
+`Reisebereitschaft 1-2 Tage pro Woche`, `2 days per week on-site`, `3 Tage/Woche vor-Ort`;
+`4 Tage pro Woche mit 1 Tag remote` stays 80). An explicit statement wins over any other number
+(E16-5): the first sentence with a workload word and a number (`Auslastung: 100 %`), then the
+first sentence that says full-time or part-time, then any other number of days or hours per
+week, and last the page's employment type (LinkedIn's `Vollzeit` is its default, so `Einsatz an
+drei Tagen pro Woche` stays 60). Outside
 the profile's days (the ad asks for more than the maximum or offers less than the minimum) it is
 the check `workload {from?, to, minDays?, maxDays?}` (percent, days), never an exclusion; the
 strip key `c:workload` is met with the ad's share inside the days.

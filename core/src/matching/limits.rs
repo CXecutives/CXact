@@ -46,31 +46,46 @@ impl Workload {
     }
 }
 
-/// The workload the ad states: the first sentence with a number (days, hours or a
-/// percentage with a workload word), else the page's employment type, else the first
-/// sentence that says full-time or part-time.
+/// The workload the ad states (E16-5): an explicit statement first, the first clause with a
+/// workload word and a number (`Auslastung: 100 %`, `Teilzeit (20 h/Woche)`), then the first
+/// sentence that says full-time or part-time; only then any other number of days or hours
+/// per week, and last the page's employment type (LinkedIn's `Vollzeit` is its default, so a
+/// stated `drei Tage pro Woche` beats it). A day count of home office, on-site work or travel
+/// is never the workload.
 pub(crate) fn read(job: &JobFacts<'_>, segments: &[Segment]) -> Option<Stated<Workload>> {
-    let numeric = segments.iter().find_map(|(range, f)| {
-        clauses(f)
-            .find_map(numeric_workload)
-            .map(|w| stated(w, Some(range.clone())))
-    });
-    numeric
+    let numeric = |cued: bool| {
+        segments
+            .iter()
+            .filter(|(_, f)| workload_cue(f) == cued)
+            .find_map(|(range, f)| {
+                clauses(f)
+                    .find_map(numeric_workload)
+                    .map(|w| stated(w, Some(range.clone())))
+            })
+    };
+    numeric(true)
+        .or_else(|| {
+            segments
+                .iter()
+                .find_map(|(range, f)| word_workload(f).map(|w| stated(w, Some(range.clone()))))
+        })
+        .or_else(|| numeric(false))
         .or_else(|| {
             fact(job.facts, super::fact_key::CONTRACT)
                 .and_then(Value::as_str)
                 .and_then(|value| word_workload(&super::atoms::fold(value)))
                 .map(|w| stated(w, None))
         })
-        .or_else(|| {
-            segments
-                .iter()
-                .find_map(|(range, f)| word_workload(f).map(|w| stated(w, Some(range.clone()))))
-        })
 }
 
 fn stated(value: Workload, span: Option<Range<usize>>) -> Stated<Workload> {
     Stated { value, span }
+}
+
+/// Does a sentence or clause hold a workload word (`Auslastung`, `Arbeitszeit`, `Vollzeit`,
+/// `Teilzeit`)?
+fn workload_cue(folded: &str) -> bool {
+    lex::WORKLOAD_CUES.iter().any(|w| folded.contains(w))
 }
 
 /// Clauses of a sentence at `;` and at a comma that is no decimal comma (`38,5 Stunden`); a
@@ -174,9 +189,11 @@ fn week_after(tokens: &[&str], mut at: usize) -> Option<usize> {
     None
 }
 
-/// Does a place word stand in `tokens[from..to]`?
+/// Does a place word stand in `tokens[from..to]`? A hyphen joins its words again
+/// (`on-site`, `vor-Ort`).
 fn place_near(tokens: &[&str], from: usize, to: usize) -> bool {
-    let window = tokens[from..to.min(tokens.len())].join(" ");
+    let to = to.min(tokens.len());
+    let window = tokens[from.min(to)..to].join(" ").replace(" - ", "-");
     lex::WORKLOAD_PLACE_WORDS
         .iter()
         .any(|w| contains_word(&window, w))
@@ -186,7 +203,7 @@ fn place_near(tokens: &[&str], from: usize, to: usize) -> bool {
 /// workload word.
 fn numeric_workload(clause: &str) -> Option<Workload> {
     let tokens = tokens(clause);
-    let cue = lex::WORKLOAD_CUES.iter().any(|w| clause.contains(w));
+    let cue = workload_cue(clause);
     for i in 0..tokens.len() {
         let Some((low, high, next)) = range_at(&tokens, i) else {
             continue;
@@ -211,8 +228,14 @@ fn numeric_workload(clause: &str) -> Option<Workload> {
             }
             continue;
         }
+        // After the unit and the week the place of work may follow anywhere up to the next
+        // number (`2 Tage pro Woche sind im Home Office möglich`; `4 Tage pro Woche mit 1 Tag
+        // remote` keeps its 4 days).
         let place = |end: usize| {
-            place_near(&tokens, before, i) || place_near(&tokens, end, end + PLACE_REACH)
+            let stop = (end..tokens.len())
+                .find(|&k| number(tokens[k]).is_some())
+                .unwrap_or(tokens.len());
+            place_near(&tokens, before, i) || place_near(&tokens, end, stop)
         };
         if lex::WORKLOAD_WEEKLY_HOURS.contains(unit) && !place(next + 1) {
             return hours(low, high);
@@ -387,6 +410,76 @@ mod tests {
         assert_eq!(
             of("4 Tage pro Woche, davon 2 Tage vor Ort"),
             Some((Some(80), 80))
+        );
+    }
+
+    /// E16-5: a day count of home office, on-site work or travel is never the workload, also
+    /// where the place follows further after the week or is written with a hyphen.
+    #[test]
+    fn e16_5_home_office_site_and_travel_days_are_no_workload() {
+        for text in [
+            "- 2 Tage pro Woche sind im Home Office möglich",
+            "Sie arbeiten 2 Tage die Woche von zu Hause.",
+            "2 Tage pro Woche am Standort Frankfurt",
+            "Reisebereitschaft 1-2 Tage pro Woche",
+            "2 days per week on-site",
+            "3 Tage/Woche vor-Ort",
+            "2 days a week working from home",
+        ] {
+            assert_eq!(of(text), None, "{text}");
+        }
+        // A place after a later number belongs to that number.
+        assert_eq!(
+            of("4 Tage pro Woche (davon 2 remote)"),
+            Some((Some(80), 80))
+        );
+        assert_eq!(
+            of("4 Tage pro Woche mit 1 Tag remote"),
+            Some((Some(80), 80))
+        );
+    }
+
+    /// E16-5: an explicit workload statement (`Auslastung`, `Vollzeit`) wins over any other
+    /// number of days; a stated number of days beats the page's employment type.
+    #[test]
+    fn e16_5_an_explicit_workload_wins_over_other_numbers() {
+        let read_with = |fact: Option<&str>, text: &str| {
+            let facts = fact.map(|c| json!({ "contract": c }));
+            let job = JobFacts {
+                title: "Interim Controller (m/w/d)",
+                text,
+                location: "",
+                portal: crate::portal::Portal::LinkedIn,
+                facts: facts.as_ref(),
+                posted: None,
+            };
+            read(&job, &crate::matching::facts::segments(text)).map(|w| (w.value.from, w.value.to))
+        };
+        let full = Some((Some(100), 100));
+        assert_eq!(
+            read_with(
+                None,
+                "In den ersten 4 Wochen 2 Tage pro Woche Workshops.\nAuslastung: 100 %"
+            ),
+            full
+        );
+        assert_eq!(
+            read_with(
+                Some("Vollzeit"),
+                "- 2 Tage pro Woche sind im Home Office möglich"
+            ),
+            full
+        );
+        for text in [
+            "Sie arbeiten in Vollzeit. Sie arbeiten 2 Tage die Woche von zu Hause.",
+            "Sie arbeiten 2 Tage die Woche von zu Hause. Sie arbeiten in Vollzeit.",
+            "Workshops an 2 Tagen pro Woche. Die Stelle ist in Vollzeit zu besetzen.",
+        ] {
+            assert_eq!(read_with(None, text), full, "{text}");
+        }
+        assert_eq!(
+            read_with(Some("Vollzeit"), "Einsatz an drei Tagen pro Woche"),
+            Some((Some(60), 60))
         );
     }
 

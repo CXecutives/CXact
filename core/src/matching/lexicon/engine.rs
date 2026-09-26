@@ -1432,6 +1432,12 @@ pub(crate) const WORKLOAD_PART_OPTION: &[&str] = &[
 /// workload (`3 Tage/Woche vor Ort`, `remote 2 Tage`, `80 % remote`): whole words or phrases.
 pub(crate) const WORKLOAD_PLACE_WORDS: &[&str] = &[
     "vor ort",
+    "vor-ort",
+    "standort",
+    "zu hause",
+    "zuhause",
+    "from home",
+    "reisebereitschaft",
     "onsite",
     "on-site",
     "on site",
