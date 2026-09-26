@@ -19,7 +19,7 @@
 import { t } from '../i18n/t';
 import { errorText } from '../i18n/texts';
 import { tokenMs } from '../tokens';
-import type { IconName } from '../../components/Icon.svelte';
+import type { IconMeaning } from '../icons';
 
 /** What a toast says: a success of the user's own action, a note, or a warning (an undo
  *  that failed). */
@@ -27,7 +27,7 @@ export type ToastKind = 'success' | 'info' | 'warning';
 
 /** How each kind looks: its glyph (the success's check draws itself once as it appears);
  *  the colour is the kind's status colour (Toast.svelte, by class). */
-export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconName; draws: boolean }>> = {
+export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconMeaning; draws: boolean }>> = {
   success: { icon: 'success', draws: true },
   info: { icon: 'info', draws: false },
   warning: { icon: 'warning', draws: false },

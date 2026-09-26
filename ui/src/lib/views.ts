@@ -2,7 +2,7 @@
 // (features/shell/Sidebar.svelte), the order of the navigation (VIEW_IDS) and the keys that
 // choose them (Ctrl/Cmd+1 to 4, lib/input/keys.ts). Change a view's name, icon or key here.
 
-import type { IconName } from '../components/Icon.svelte';
+import type { IconMeaning } from './icons';
 import type { Catalog } from './i18n/de';
 
 export type ViewId = 'overview' | 'jobs' | 'profile' | 'settings';
@@ -12,7 +12,7 @@ export interface ViewEntry {
   /** Its name in the catalog (t.nav). */
   label: keyof Catalog['nav'];
   /** Its icon meaning (lib/icons.ts). */
-  icon: IconName;
+  icon: IconMeaning;
   /** The key that chooses it from anywhere (a combo of platform.ts keyLabel). */
   keys: string;
 }

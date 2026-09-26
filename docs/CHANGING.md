@@ -1,6 +1,7 @@
 # Changing CXact
 
-How to make the usual changes fast and without leaving a copy behind.
+How to make the usual changes fast and without leaving a copy behind. The layers, the source
+of each decision and the checks that hold them: `docs/ARCHITECTURE.md`.
 
 ## Change the look
 
@@ -260,3 +261,76 @@ score, a reason or a prompt into the stub by hand.
 - Specs read engine values (a score, a reason, a count) from the snapshot
   (`tools/ui-harness/specs/demo.ts`), never as literals, so a regenerated snapshot keeps them
   green.
+
+## Add words to the engine
+
+The engine's words live in `core/src/matching/lexicon/` (German and English wording of ads
+and profiles: an external contract, never translated):
+
+- `engine.rs`: the core's lists for every profile: fillers, generic words, `CORE_CONCEPTS`
+  (phrase to concept: the synonyms), soft skills, language names and levels. Sorted tables
+  stay sorted (`binary_search`).
+- `domains/<field>.rs`: a domain pack. `triggers` switch it on from the profile's
+  competences, `concepts` map a phrase to a concept, `generic` holds words too broad to meet
+  a requirement alone. The head of `domains/mod.rs` says how a key is written (folded words,
+  single spaces).
+- `wishes.rs`: the wishes and industries. `tables.rs` is generated from the old engine
+  (`core/tests/fixtures/matching/legacy_lexicon.json`): never edit it.
+
+1. **A term or synonym**: one `(phrase, concept)` pair in the pack of its field, or in
+   `CORE_CONCEPTS` when every field uses it. A false friend gets a concept of its own. The
+   pack's unit tests get a paraphrase that meets it and a false friend that does not.
+2. **A pack**: a file in `domains/` and one line in `DOMAINS`.
+3. Run `cargo test -p jobalert-core` (the pack tests and the gates of the corpus and the
+   held-out sets, whose floors stand in `core/tests/matching_heldout.rs`; a floor is never
+   lowered to let a change pass), then both reports:
+   `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` and
+   `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`.
+4. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
+   scores the stored jobs again) and gets its section in `docs/MATCHING.md` with the numbers
+   before and after.
+
+## Release a version
+
+1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer and Einstellungen >
+   Wartung read it) and in `package.json`; the lock files follow (`cargo check`,
+   `npm install --package-lock-only`). The harness stub keeps its own demo version.
+2. **Data of the old version**: a new field of `Settings` came with its file of the new
+   version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
+   of the schema chain (`core/src/store/schema.rs`, with its `schema_vN.sql` fixture). The
+   store copies the database to `backups/` before it migrates.
+3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
+   and the full harness in both engines once.
+4. **Build**: `npx tauri build` writes
+   `target/release/bundle/nsis/CXact_<version>_x64-setup.exe`; the macOS dmg comes from the
+   `macos-latest` CI job (workflow artifacts; nothing is published).
+5. **Install over the old version**: the user starts the setup from the Explorer (an agent's
+   sandbox redirects AppData, so its install is not the real one). The setup replaces the
+   program only: the data folder (`%LOCALAPPDATA%\de.cxecutives.job-alert-monitor\`, on macOS
+   `~/Library/Application Support/de.cxecutives.job-alert-monitor/`: the database with the
+   settings, `backups/`, the log), the work folder and the keychain entry stay. It removes an
+   install of the old name Job-Alert-Monitor silently (`src-tauri/windows/hooks.nsh`,
+   `core/tests/installer_hooks.rs`). The identifier `de.cxecutives.job-alert-monitor` never
+   changes: it names the data folder and the keychain entry.
+6. **Check**: the new version under Wartung, the jobs, marks and profile still there, a
+   fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+
+## Where a new rule goes
+
+A rule is a check that fails a gate, never a sentence alone. Its message names the rule and
+the fix; its exceptions stand in it with a reason. Then one row in the guardrail table of
+`docs/ARCHITECTURE.md`.
+
+- **One file, one construct** (an import, a syntax, a value in TypeScript or Svelte):
+  `eslint.config.js`, as an import door or a `SYNTAX` entry opened for the one file that may.
+  CSS values: `stylelint.config.js`.
+- **The import graph, file size, dead code**: `tools/architecture.mjs` (`LIB_UI_HELPERS`,
+  `FEATURE_PUBLIC`, `LARGE`, `ENTRIES`). A finding accepted for a while goes to `TEMPORARY`
+  with a TODO; the check fails once the finding is gone, so the entry goes too.
+- **Across files, or a promise no linter sees** (the gallery shows every component, texts
+  only from the catalog, per-OS markup): `core/tests/ui_contract.rs`, which runs without Node.
+- **The backend and its data**: a Rust test in `core/tests/` (`contract.rs` for commands,
+  `settings_compat.rs` and `existing_data.rs` for stored data, `architecture.rs` for the
+  shell).
+- **Behaviour in a browser**: a harness spec in `tools/ui-harness/specs/`, reading its texts
+  from the catalog through the shared helpers.

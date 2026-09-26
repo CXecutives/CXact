@@ -4,7 +4,7 @@
 // different on every OS). Keys, the press outside, the window's blur, resizing and scrolling
 // are handled in input.ts, which closes the menu through `closeMenu`.
 
-import type { IconName } from '$components/Icon.svelte';
+import type { IconMeaning } from '$lib/icons';
 
 /** One entry of a menu: an action, a thin line between groups, or a group's small heading
  *  (muted, never active: the arrows and the type-ahead pass over it). */
@@ -20,7 +20,7 @@ export interface MenuItem {
   /** Stable id (test ids `menu-item-<id>`, the type-ahead reads the label). */
   id: string;
   label: string;
-  icon?: IconName | null;
+  icon?: IconMeaning | null;
   /** The shortcut as the OS writes it ("Strg+C", "⌘C"), right-aligned and quiet. */
   keys?: string | null;
   /** A choice of a group (the sort): a check mark before the chosen one (a radio item). */

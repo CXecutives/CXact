@@ -13,7 +13,7 @@
 //   followed. A rescore opens no run card and brings no fetch news; only when it failed or
 //   could not write the files the card says so.
 
-import type { IconName } from '$components/Icon.svelte';
+import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
 import { errorText } from '../i18n/texts';
 import { invoke, IpcError, onRun } from '../ipc/api';
@@ -434,7 +434,7 @@ export function needsAction(health: PortalHealth): boolean {
 export interface FailureAction {
   label: string;
   /** The glyph the action has everywhere (a retry loads again, like Abrufen). */
-  icon?: IconName;
+  icon?: IconMeaning;
   onclick: () => void;
 }
 

@@ -156,14 +156,6 @@ export function formatStamp(iso: string, now: Date = new Date()): string {
   return dayOf(date, now) ?? formats().clock.format(date);
 }
 
-/** `18 KB`, `1,2 MB` (`1.2 MB`) */
-export function formatBytes(bytes: number): string {
-  const { integer, oneDecimal } = formats();
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${integer.format(Math.max(1, Math.round(kb)))}${NARROW_NBSP}KB`;
-  return `${oneDecimal.format(kb / 1024)}${NARROW_NBSP}MB`;
-}
-
 /** `1.200 €` in German, `€1,200` in English. */
 export function formatEuro(value: number | string | boolean | null | undefined): string {
   const number = typeof value === 'number' ? value : Number(value);
