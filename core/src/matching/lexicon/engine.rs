@@ -2357,3 +2357,6 @@ pub(crate) const CLOSING_WORDS: &[&str] = &[
 pub(crate) const EXTRA_BULLETS: &[char] = &[
     '▪', '■', '●', '◦', '✅', '✔', '✓', '➡', '→', '👉', '➤', '\u{fe0f}',
 ];
+/// Exclusion words of one family: a profile word in it matches the others too (`Praktikum`,
+/// `Praktikant`, `Praktikantin`, `Praktikanten` name the same kind of position).
+pub(crate) const EXCLUSION_WORD_FAMILIES: &[&[&str]] = &[&["praktikum", "praktikant"]];

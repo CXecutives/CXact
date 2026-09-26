@@ -679,10 +679,15 @@ set for a permanent role.
 `c:exclusionWords`, shown only when violated. Case-insensitive whole words with their German
 forms: inflections and the compounds a word starts (`Werkstudent`: `Werkstudentin`,
 `Werkstudenten-Job`, `Werkstudentenstelle`), from eight letters also the compounds it ends
-(`Pflichtpraktikum`), the participle of an `-ent` noun from seven letters (`Werkstudierende`, not
-`agierend` for `Agent`), `-mann` as `-frau`/`-leute`, `-um` as `-a`; a female form in the
-profile matches the male one; a phrase matches word by word or as one word (`Call Center`,
-`Callcenter`). Words under four letters match only whole (`IT`).
+(`Pflichtpraktikum`, `Pflichtpraktikums`); a female form in the profile matches the male one; a
+phrase matches word by word or as one word (`Call Center`, `Callcenter`). Words under four
+letters match only whole (`IT`). Generated forms match only as whole words with their
+inflections, never as the start of another word (E16-2): the participle of an `-ent` noun from
+seven letters (`Werkstudierende`, not `agierend` for `Agent`), `-mann` as `-frau`/`-leute`
+(`Kauffrauen`), `-um` as `-a` (`Praktika`, but not `praktikable` or `Praktikabilität`, and
+`Zentrum` never `zentral`). `Praktikum` and `Praktikant` are one family
+(`lexicon::EXCLUSION_WORD_FAMILIES`): either word matches `Praktikum`, `Praktika`,
+`Praktikant`, `Praktikantin` and `Praktikanten`.
 
 **Rules from set 9** (one correction round, general rules only, each with a unit test):
 the job's own place on site makes other countries of the same sentence second sites (a check:

@@ -2,10 +2,14 @@
 //! own text excludes the ad (decided). Whole words, case-insensitive, with the forms German
 //! gives them: a word matches its inflections and the compounds it starts (`Werkstudent`:
 //! `Werkstudentin`, `Werkstudenten`, `Werkstudentenstelle`), a long word also the compounds
-//! it ends (`Praktikum`: `Pflichtpraktikum`), the participle of an `-ent` noun
-//! (`Werkstudierende`), `-mann` as `-frau` and `-leute`, `-um` as `-a` (`Praktika`); a female
-//! form in the profile (`Werkstudentin`) matches the male one too. A phrase matches word by
-//! word or written as one word (`Call Center`, `Callcenter`).
+//! it ends (`Pflichtpraktikum`, `Pflichtpraktikums`); a female form in the profile
+//! (`Werkstudentin`) matches the male one too. Generated forms match as whole words with
+//! their inflections only, never as the start of another word: the participle of an `-ent`
+//! noun (`Werkstudierende`), `-mann` as `-frau` and `-leute` (`Kauffrauen`), `-um` as `-a`
+//! (`Praktika`, not `praktikable` or `Praktikabilität`; `Zentrum` never `zentral`). The words
+//! of one family match each other (`lexicon::EXCLUSION_WORD_FAMILIES`: `Praktikum` and
+//! `Praktikant`). A phrase matches word by word or written as one word (`Call Center`,
+//! `Callcenter`).
 
 use std::ops::Range;
 
@@ -13,9 +17,10 @@ use serde_json::json;
 
 use super::atoms::fold;
 use super::facts::{Finding, HardCriteria, Segment};
+use super::lexicon::engine as lex;
 use super::types::{CriterionKey, ReasonCode};
 
-/// Shortest form that also matches as the start of a longer word.
+/// Shortest form that also matches as the start of a longer word or with an inflection.
 const PREFIX_MIN: usize = 4;
 /// Shortest form that also matches as the end of a compound.
 const SUFFIX_MIN: usize = 8;
@@ -25,11 +30,23 @@ const PARTICIPLE_MIN: usize = 7;
 const SPANS_MAX: usize = 3;
 /// Endings of an agent noun before a female ending (`Berater-in`, `Praktikant-in`).
 const AGENT_ENDINGS: &[&str] = &["ent", "ant", "er", "or", "eur", "ist"];
+/// Endings of a German inflection after a form (`Werkstudenten`, `Kauffrauen`, `Praktikums`).
+const INFLECTIONS: &[&str] = &["e", "n", "s", "en", "er", "es", "em", "in", "innen"];
 
-/// One exclusion word with its folded forms (each a list of words).
+/// One form of an exclusion word: its folded words; the last one carries the inflections.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Form {
+    words: Vec<String>,
+    /// The last word also matches the compounds it starts (`Werkstudentenstelle`). A
+    /// generated form matches only as a word with its inflections (`Praktika`, never
+    /// `praktikable`).
+    open: bool,
+}
+
+/// One exclusion word with its forms.
 struct Word<'a> {
     text: &'a str,
-    forms: Vec<Vec<String>>,
+    forms: Vec<Form>,
 }
 
 fn words(folded: &str) -> Vec<&str> {
@@ -39,7 +56,8 @@ fn words(folded: &str) -> Vec<&str> {
         .collect()
 }
 
-/// The word itself and the male form of a female or participle form.
+/// The word itself, the male form of a female or participle form and the other words of
+/// its family.
 fn bases(word: &str) -> Vec<String> {
     let mut out = vec![word.to_owned()];
     for ending in ["innen", "in"] {
@@ -59,65 +77,119 @@ fn bases(word: &str) -> Vec<String> {
             break;
         }
     }
+    for family in lex::EXCLUSION_WORD_FAMILIES {
+        if out.iter().any(|b| family.contains(&b.as_str())) {
+            for member in *family {
+                if !out.iter().any(|b| b == member) {
+                    out.push((*member).to_owned());
+                }
+            }
+        }
+    }
     out
 }
 
-/// A base with its other forms.
-fn variants(base: &str) -> Vec<String> {
-    let mut out = vec![base.to_owned()];
+/// A base (open) with its generated forms (closed).
+fn variants(base: &str) -> Vec<(String, bool)> {
+    let mut out = vec![(base.to_owned(), true)];
     if base.chars().count() >= PARTICIPLE_MIN
         && let Some(stem) = base.strip_suffix("ent")
     {
-        out.push(format!("{stem}ierend"));
+        out.push((format!("{stem}ierend"), false));
     }
     if let Some(stem) = base.strip_suffix("mann") {
-        out.push(format!("{stem}frau"));
-        out.push(format!("{stem}leute"));
+        out.push((format!("{stem}frau"), false));
+        out.push((format!("{stem}leute"), false));
     }
     if base.chars().count() > 5
         && let Some(stem) = base.strip_suffix("um")
     {
-        out.push(format!("{stem}a"));
+        out.push((format!("{stem}a"), false));
     }
     out
 }
 
-fn forms(word: &str) -> Vec<Vec<String>> {
+fn forms(word: &str) -> Vec<Form> {
     let folded = fold(word);
     let parts = words(&folded);
     let Some((last, head)) = parts.split_last() else {
         return Vec::new();
     };
-    let mut out: Vec<Vec<String>> = Vec::new();
+    let mut out: Vec<Form> = Vec::new();
     for base in bases(last) {
-        for form in variants(&base) {
+        for (variant, open) in variants(&base) {
             let mut phrase: Vec<String> = head.iter().map(|w| (*w).to_owned()).collect();
-            phrase.push(form);
-            if !out.contains(&phrase) {
-                out.push(phrase);
+            phrase.push(variant);
+            if !out.iter().any(|f| f.words == phrase) {
+                out.push(Form {
+                    words: phrase,
+                    open,
+                });
             }
         }
     }
     if parts.len() > 1 {
-        out.push(vec![parts.concat()]);
+        out.push(Form {
+            words: vec![parts.concat()],
+            open: true,
+        });
     }
     out
 }
 
-/// Does a word of the text match one word of a form?
-fn matches(text: &str, form: &str) -> bool {
+/// How a word of the text holds a word of a form.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Fit<'t> {
+    /// The word itself, with an inflection or a female ending (`Werkstudenten`): the rest.
+    Word(&'t str),
+    /// A compound the word ends (`Pflichtpraktikum`, `Pflichtpraktikums`): the inflection.
+    Head(&'t str),
+    /// A compound the word starts (`Werkstudentenstelle`): the rest.
+    Modifier(&'t str),
+}
+
+/// Does a word of the text match a word of a form (`open`: also as the start of a compound)?
+fn fit<'t>(text: &'t str, form: &str, open: bool) -> Option<Fit<'t>> {
     let len = form.chars().count();
-    text == form
-        || (len >= PREFIX_MIN && text.starts_with(form))
-        || (len >= SUFFIX_MIN && text.ends_with(form))
+    if text == form {
+        return Some(Fit::Word(""));
+    }
+    if len >= PREFIX_MIN
+        && let Some(rest) = text.strip_prefix(form)
+    {
+        if INFLECTIONS.contains(&rest) {
+            return Some(Fit::Word(rest));
+        }
+        if open {
+            return Some(Fit::Modifier(rest));
+        }
+    }
+    if len >= SUFFIX_MIN {
+        for ending in std::iter::once("").chain(INFLECTIONS.iter().copied()) {
+            if let Some(stem) = text.strip_suffix(ending)
+                && stem.len() > form.len()
+                && stem.ends_with(form)
+            {
+                return Some(Fit::Head(ending));
+            }
+        }
+    }
+    None
 }
 
 /// Does the folded text contain the word in one of its forms?
 fn found(folded: &str, word: &Word<'_>) -> bool {
     let text = words(folded);
     word.forms.iter().any(|form| {
-        text.windows(form.len())
-            .any(|window| window.iter().zip(form).all(|(t, f)| matches(t, f)))
+        // The words before the last one of a phrase match as before, as prefixes.
+        let open = |i: usize| form.open || i + 1 < form.words.len();
+        text.windows(form.words.len()).any(|window| {
+            window
+                .iter()
+                .zip(&form.words)
+                .enumerate()
+                .all(|(i, (t, f))| fit(t, f, open(i)).is_some())
+        })
     })
 }
 
@@ -204,5 +276,46 @@ mod tests {
         assert!(!hit("Pflege", "Stammdatenpflege in SAP"));
         assert!(!hit("IT", "Wir bieten Zeit für Weiterbildung"));
         assert!(hit("IT", "IT-Leiter (m/w/d)"));
+    }
+
+    /// E16-2: a generated form (`-um` as `-a`, the participle, `-frau`, `-leute`) matches
+    /// only as a word with its inflections, never as the start of another word; `Praktikum`
+    /// and `Praktikant` are one family.
+    #[test]
+    fn e16_2_generated_forms_are_whole_words() {
+        for (word, text) in [
+            (
+                "Praktikum",
+                "Sie entwickeln pragmatische und praktikable Lösungen",
+            ),
+            (
+                "Praktikum",
+                "Bewertung der Maßnahmen auf Wirkung und Praktikabilität",
+            ),
+            ("Praktikum", "ein praktikabel umsetzbares Konzept"),
+            ("Zentrum", "Sie übernehmen eine zentrale Rolle"),
+            ("Zentrum", "Zentralisierung der Buchhaltung"),
+            ("Ministerium", "ministeriale Abstimmung"),
+        ] {
+            assert!(!hit(word, text), "{word}: {text}");
+        }
+        for (word, text) in [
+            ("Praktikum", "Praktikant (m/w/d) im Controlling"),
+            ("Praktikum", "Praktikantin Controlling"),
+            ("Praktikum", "Wir suchen Praktikanten"),
+            ("Praktikum", "Praktikantenstelle im Einkauf"),
+            ("Praktikum", "mehrere Pflichtpraktika"),
+            ("Praktikum", "im Rahmen eines Pflichtpraktikums"),
+            ("Praktikum", "Praktika im Ausland"),
+            ("Praktikant", "Praktikum (m/w/d) im Controlling"),
+            ("Praktikantin", "Pflichtpraktikum im Finanzbereich"),
+            ("Kaufmann", "Kauffrauen und Kaufleuten"),
+            ("Werkstudent", "Wir suchen Werkstudierende"),
+            ("Werkstudent", "Werkstudierenden-Stelle"),
+            ("Aushilfe", "Wir suchen Aushilfen"),
+            ("Zentrum", "im Zentrum der Stadt"),
+        ] {
+            assert!(hit(word, text), "{word}: {text}");
+        }
     }
 }
