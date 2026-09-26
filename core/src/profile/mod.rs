@@ -1080,6 +1080,46 @@ mod tests {
         assert_eq!(keywords(dir.path()), ["IFRS", "SAP"]);
     }
 
+    /// DS-3: a Profil save on an older copy keeps what the user did to the list, not only
+    /// what it added and removed: a term typed again in capitals (a double click on its chip
+    /// moves it to the end) and a new order stay, and the term that came in between stays
+    /// after the term it follows in the file. A term the save did not touch keeps the
+    /// spelling the file has now.
+    #[test]
+    fn ds_3_a_new_order_or_spelling_on_an_older_copy_is_kept() {
+        let dir = workspace();
+        store(
+            dir.path(),
+            r#"{"name": "Erika", "keywords": ["sap", "IFRS", "Controlling"]}"#,
+        );
+        let p0 = stored_form(dir.path()).unwrap();
+        // Meanwhile a term comes in from the reader.
+        let p1 = with_keywords(&p0, &["sap", "IFRS", "Controlling", "Konsolidierung"]);
+        save_form(dir.path(), None, &p0, &p1, &[]).unwrap();
+        // The editor still holds p0: "Controlling" moves first, "sap" becomes "SAP".
+        let edited = with_keywords(&p0, &["Controlling", "IFRS", "SAP"]);
+        save_form(dir.path(), None, &p0, &edited, &[]).unwrap();
+        assert_eq!(
+            keywords(dir.path()),
+            ["Controlling", "Konsolidierung", "IFRS", "SAP"]
+        );
+
+        // Meanwhile "IFRS" is spelled "Ifrs"; a save on the older copy that only adds a
+        // term leaves that spelling as it is.
+        let p2 = stored_form(dir.path()).unwrap();
+        let respelled = with_keywords(&p2, &["Controlling", "Konsolidierung", "Ifrs", "SAP"]);
+        save_form(dir.path(), None, &p2, &respelled, &[]).unwrap();
+        let added = with_keywords(
+            &p2,
+            &["Controlling", "Konsolidierung", "IFRS", "SAP", "Treasury"],
+        );
+        save_form(dir.path(), None, &p2, &added, &[]).unwrap();
+        assert_eq!(
+            keywords(dir.path()),
+            ["Controlling", "Konsolidierung", "Ifrs", "SAP", "Treasury"]
+        );
+    }
+
     /// DS-3: saves close together each read what the other wrote: eight terms added at once,
     /// each on the same older copy, are all in the file.
     #[test]

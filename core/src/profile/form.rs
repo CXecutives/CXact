@@ -938,37 +938,46 @@ pub(crate) fn merge(
     // The keywords also change one term at a time from the reader and the overview (adding
     // a missing term to the profile, and its undo), each on the copy of the form it was
     // shown, several close together. A change made on a copy the file no longer matches is
-    // applied as what it adds and removes, so it never drops or brings back a term another
+    // applied to what the file holds now, so it never drops or brings back a term another
     // change made.
     if after.keywords != before.keywords {
         let now = clean(&read_list(doc, KEY_KEYWORDS));
-        let keywords = if now == before.keywords {
-            after.keywords.clone()
-        } else {
-            rebase(&now, &before.keywords, &after.keywords)
-        };
-        write_list(doc, KEY_KEYWORDS, &keywords);
+        write_list(
+            doc,
+            KEY_KEYWORDS,
+            &rebase(&now, &before.keywords, &after.keywords),
+        );
     }
     write_wishes(doc, &before.wishes, &after.wishes);
     write_criteria(doc, &before.criteria, &after.criteria);
 }
 
-/// `now` changed as `before` became `after`: what `after` dropped from `before` goes, what it
-/// added follows at the end, everything else of `now` stays in its order (texts compared as
-/// [`clean`] compares them).
+/// The list `after` made of `before`, applied to `now` (the file's list, which may have
+/// changed since `before` was read; on an unchanged file this is `after` as it is). The
+/// terms of `after` in its order and spelling, without a term the file dropped meanwhile;
+/// a term `after` took over unchanged keeps the spelling the file has now. A term the file
+/// gained meanwhile stays, after the term it follows in the file. Texts compare as
+/// [`clean`] compares them. `ui-harness/stub.ts` (`mergeKeywords`) does the same.
 fn rebase(now: &[String], before: &[String], after: &[String]) -> Vec<String> {
-    let has = |list: &[String], text: &str| {
-        list.iter()
-            .any(|item| item.to_lowercase() == text.to_lowercase())
+    let find = |list: &[String], text: &str| {
+        let text = text.to_lowercase();
+        list.iter().position(|item| item.to_lowercase() == text)
     };
-    let mut out: Vec<String> = now
-        .iter()
-        .filter(|text| has(after, text) || !has(before, text))
-        .cloned()
-        .collect();
+    let mut out: Vec<String> = Vec::new();
     for text in after {
-        if !has(before, text) && !has(&out, text) {
-            out.push(text.clone());
+        match (find(before, text), find(now, text)) {
+            (Some(_), None) => {}
+            (Some(old), Some(current)) if before[old] == *text => out.push(now[current].clone()),
+            _ => out.push(text.clone()),
+        }
+    }
+    let mut at = 0;
+    for text in now {
+        if let Some(found) = find(&out, text) {
+            at = found + 1;
+        } else if find(before, text).is_none() {
+            out.insert(at, text.clone());
+            at += 1;
         }
     }
     out
