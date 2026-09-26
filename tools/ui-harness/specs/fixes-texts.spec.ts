@@ -16,7 +16,8 @@ test('the English reader counts the must-have requirements, as the German one do
   page,
 }) => {
   await open(page, `${WIN}&lang=en`);
-  await page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first().click();
+  // The best scored job (by match the first row is one still without a score).
+  await page.getByTestId('job-row-freelancermap-2801').click();
   // German counts Pflichtanforderungen; the English AI prompt says "must-have requirements".
   await expect(page.getByTestId('must')).toHaveText(/^\d+ of \d+ must-haves met/);
 });
@@ -27,7 +28,6 @@ test('an excluded row names a missing degree or licence in short words, never a 
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const excluded = page.getByTestId('excluded-rows');
   // A country outside the profile says what does not fit, like its neighbours.
   await expect(excluded.getByTestId('job-row-linkedin-4100200305').locator('.foot')).toHaveText(
@@ -83,7 +83,6 @@ test('the selection bar counts with a thousands separator, like the pane beside 
   // A thousand rows come in windows of 60: more time than a usual test.
   test.setTimeout(60_000);
   await open(page, `${WIN}&scenario=many`);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const rows = page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
   await rows.first().click();
   // The list shows its rows in windows: scroll until more than a thousand are there.
@@ -128,10 +127,8 @@ test.fixme('a result file nothing wrote yet cannot be opened and says why', asyn
   await expect(overview).not.toContainText('nicht vorhanden');
 });
 
-test('one word per thing: the view switch, the Excel file', async ({ page }) => {
+test('one word per thing: the Excel file', async ({ page }) => {
   await open(page, WIN);
-  // "Auswahl" is the word of the multi-selection ("3 ausgewählt", "Auswahl aufheben").
-  await expect(page.getByTestId('facet')).toHaveAttribute('aria-label', 'Ansicht');
   // The glossary's Excel-Datei, as in Einstellungen ("Excel öffnen" read as "start Excel").
   await page.getByTestId('nav-overview').click();
   await expect(page.getByTestId('overview-excel')).toHaveText('Excel-Datei öffnen');
@@ -140,7 +137,6 @@ test('one word per thing: the view switch, the Excel file', async ({ page }) => 
 test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async ({ page }) => {
   // The clock stands on Thursday 24.09.2026, 09:30.
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const date = (key: string) =>
     page.getByTestId('job-rows').getByTestId(`job-row-${key}`).locator('.date');
   // Two days back still reads as a word, earlier days by weekday and date.
@@ -163,7 +159,6 @@ test('an archived job is brought back with a verb, not a way back to Jobs', asyn
 
 test('an ad that could not be fetched says so with the one verb for details', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const key = { portal: 'freelancermap', id: '2805' } as const;
   const job = await page.evaluate((k) => window.__harness.job(k), key);
   await page.evaluate((base) => {
@@ -200,7 +195,6 @@ test('English names agency work and the preferred rate one way everywhere', asyn
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, `${WIN}&lang=en`);
-  await page.getByTestId('facet').getByRole('radio', { name: /All/ }).click();
   // Short "Agency work" read like any work through an agency, common for freelancers.
   await expect(
     page.getByTestId('excluded-rows').getByTestId('job-row-freelance-900412').locator('.foot'),

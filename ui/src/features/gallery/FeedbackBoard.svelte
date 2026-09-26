@@ -5,6 +5,7 @@
   import Dialog from '$components/Dialog.svelte';
   import Notice, { NOTICE_TONES } from '$components/Notice.svelte';
   import ScoreRing, { type RingState } from '$components/ScoreRing.svelte';
+  import { bandOf } from '$lib/ipc/types/bands';
   import StatTile from '$components/StatTile.svelte';
   import Section from './Section.svelte';
   import { text } from './gallery';
@@ -18,7 +19,7 @@
     state: {
       status: 'scored',
       score,
-      band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+      band: bandOf(score),
     } satisfies RingState,
   }));
 

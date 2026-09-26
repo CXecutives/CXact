@@ -15,6 +15,7 @@
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
 //   window.__harness.form()         a copy of the stored profile's form (null: no profile)
+//   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
 //
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
@@ -51,7 +52,6 @@
 
 import type {
   AppState,
-  Band,
   Commands,
   Deleted,
   ErrorInfo,
@@ -68,7 +68,6 @@ import type {
   OverviewStats,
   Palette,
   Place,
-  Portal,
   PortalState,
   ProfileDraft,
   ProfileForm,
@@ -79,6 +78,18 @@ import type {
   RunRequest,
   RunSummary,
 } from '../../ui/src/lib/ipc/types';
+import { BAND_FROM, bandOf, HIGH_FROM, MID_FROM } from '../../ui/src/lib/ipc/types/bands';
+import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
+import {
+  MAX_FOCUS,
+  MAX_ITEMS,
+  MAX_TEXT,
+  MAX_YEARS,
+  NUMBER_CRITERIA,
+  WORD_CRITERIA,
+  type NumberCriterion,
+  type WordCriterion,
+} from '../../ui/src/lib/ipc/types/profile';
 
 interface Harness {
   calls: [string, unknown][];
@@ -98,6 +109,9 @@ interface Harness {
   job: (key: JobKey) => JobView | null;
   /** A copy of the stored profile's form (null without a profile). */
   form: () => ProfileForm | null;
+  /** What `list_jobs` returns for a query (the inbox by match unless it says otherwise),
+   *  without recording a call: the specs read the demo data here instead of copying it. */
+  list: (query: Partial<JobQuery>) => { jobs: JobView[]; counts: JobCounts };
   /** The text `clipboard_text` returns (null: the browser's clipboard, if it allows it). */
   clipboard: string | null;
   /** The page holds unsaved changes (its last `set_unsaved`). */
@@ -232,8 +246,6 @@ const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The palette as the backend says it (`palette=light|dark`; Coast by default). */
 const PALETTE: Palette =
   params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'coast';
-/** The order of the backend (`Portal::ALL`), on every screen. */
-const PORTALS: readonly Portal[] = ['linkedin', 'freelance', 'freelancermap'];
 
 const NOW = new Date('2026-09-24T09:30:00+02:00').getTime();
 const HOUR = 3_600_000;
@@ -276,7 +288,7 @@ const SALARIED = {
 
 const scored = (score: number, top: string[], mustMet = 3, mustTotal = 4): Match => ({
   score,
-  band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+  band: bandOf(score),
   status: 'scored',
   note: null,
   mustMet,
@@ -294,7 +306,7 @@ const excludedBy = (
   params: Record<string, string | number> = {},
 ): Match => ({
   score,
-  band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+  band: bandOf(score),
   status: 'excluded',
   note: { code, params },
   mustMet: 2,
@@ -366,16 +378,13 @@ function job(
     place: 'inbox',
     trashedAt: null,
     overridden: false,
-    appliedAt: null,
-    note: null,
     ...extra,
     match: contracted(extra.match ?? null, id),
   };
 }
 
 /** When the last fetch (`lastRun`, 1.2 to 1 hours ago) first saw its new jobs: the three
- *  best unread jobs came with it, the other unread ones are older (the two sections of the
- *  list's Neu). */
+ *  best unread jobs came with it, the other unread ones are older. */
 const LAST_FETCH_SAW = at(1.1);
 
 function sampleJobs(): JobView[] {
@@ -496,11 +505,7 @@ function sampleJobs(): JobView[] {
       'Contoso Services GmbH',
       'Frankfurt am Main',
       27,
-      {
-        match: { ...scored(58, ['Konzernberichtswesen'], 2, 4), facts: SALARIED },
-        appliedAt: at(20),
-        note: 'Rückruf der Personalberatung am Montag',
-      },
+      { match: { ...scored(58, ['Konzernberichtswesen'], 2, 4), facts: SALARIED } },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
       match: {
@@ -508,7 +513,6 @@ function sampleJobs(): JobView[] {
         // Three days a week for a year: both within the profile.
         facts: { ...NO_FACTS, start: 'vague', months: 12, workloadFrom: 60, workloadTo: 60 },
       },
-      appliedAt: at(26),
     }),
     // Archived: in no list but the archive and in no count but its own.
     job(
@@ -1405,7 +1409,7 @@ function initial(): void {
 
 /**
  * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; a favourite counts until it goes to the trash; the excluded ones
+ * excluded, per portal too; a favourite counts while it is in the inbox; the excluded ones
  * of the archive and the trash each in their place.
  */
 function countsOf(list: JobView[]): JobCounts {
@@ -1424,7 +1428,7 @@ function countsOf(list: JobView[]): JobCounts {
   };
   for (const j of list) {
     const out = j.match?.status === 'excluded';
-    if (j.pinned && j.place !== 'trash') c.favourites += 1;
+    if (j.pinned && j.place === 'inbox') c.favourites += 1;
     if (j.place === 'archive') c.archive += 1;
     if (j.place === 'trash') c.trash += 1;
     if (out && j.place === 'archive') c.excludedArchive += 1;
@@ -1434,7 +1438,7 @@ function countsOf(list: JobView[]): JobCounts {
     c.inbox += 1;
     c.unread += isNew ? 1 : 0;
     c.excluded += out ? 1 : 0;
-    c.high += j.match?.status === 'scored' && j.match.score >= 80 ? 1 : 0;
+    c.high += j.match?.status === 'scored' && j.match.score >= HIGH_FROM ? 1 : 0;
     c.noDetail += j.detail.kind !== 'ok' ? 1 : 0;
     const line = c.newByPortal.find((p) => p.portal === j.portal);
     if (line && isNew) line.new += 1;
@@ -1452,18 +1456,15 @@ const tombstones = new Set<string>();
 const overridden = new Map<string, Match>();
 const markKey = (key: JobKey): string => `${key.portal}:${key.id}`;
 
-/** The list of a query (store::job_page): a place, the favourites, only the unread ones. */
+/** The list of a query (store::job_page): a place, the favourites of the inbox, only the
+ *  unread ones. */
 function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favourites'>): boolean {
-  const where = query.favourites ? j.pinned && j.place !== 'trash' : j.place === query.place;
+  const where = query.favourites ? j.pinned && j.place === 'inbox' : j.place === query.place;
   return where && (!query.unread || j.unread);
 }
 
-const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
-
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
- *  jobs marked "Beworben". */
-function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand' | 'applied'>): boolean {
-  if (query.applied === true && j.appliedAt === null) return false;
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
+function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -1495,7 +1496,7 @@ function overviewStats(): OverviewStats {
     .slice(0, 5)
     .map(([label, count]) => ({ label, count }));
   const rates = scoredJobs
-    .filter((j) => (j.match?.score ?? 0) >= 40 && j.match?.facts.rate !== null)
+    .filter((j) => (j.match?.score ?? 0) >= MID_FROM && j.match?.facts.rate !== null)
     .map((j) => {
       const f = j.match!.facts;
       return f.hourly === true ? f.rate! * 8 : f.rate!;
@@ -1620,13 +1621,6 @@ const fold = (text: string): string =>
     .toLocaleLowerCase('de')
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
-
-/** The portals' names as the store's search column holds them (`Portal::label`). */
-const PORTAL_LABEL: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
 
 /** Like store::search_words: every word of a search (at most 8) is in the portal's name, the
  *  title, the company or the location, in any order; an empty search matches everything. */
@@ -2725,57 +2719,12 @@ const handlers: Handlers = {
   move_jobs: ({ keys, to }) => moveJobs(keys, to),
   move_back: ({ jobs: back }) => moveBack(back),
   restore_jobs: ({ keys }) => restoreJobs(keys),
-  // What the list shows: with a search only its hits, with the filter only its jobs
-  // (store::mark_all_read_filtered).
-  mark_all_read: ({ place, search, portal, minBand, applied }) => {
-    const marked = jobs.filter(
-      (j) =>
-        j.unread &&
-        j.place === place &&
-        matchesSearch(j, search) &&
-        inFilter(j, { portal, minBand, applied }),
-    );
-    for (const j of marked) j.unread = false;
-    refresh();
-    return marked.map((j) => structuredClone(j.key));
-  },
-  // "Beworben" with its time; never archives the job (store::set_applied).
-  set_applied: ({ keys, on }) => {
-    const changed: JobKey[] = [];
-    for (const key of keys) {
-      const j = find(key);
-      if (j === undefined || (j.appliedAt !== null) === on) continue;
-      j.appliedAt = on ? new Date(Date.now()).toISOString() : null;
-      changed.push(structuredClone(j.key));
-    }
-    refresh();
-    return changed;
-  },
-  set_note: ({ key, note }) => {
-    const j = find(key);
-    const next = note === null || note.trim() === '' ? null : note.trim().slice(0, 2000);
-    if (j === undefined || j.note === next) return false;
-    j.note = next;
-    refresh();
-    return true;
-  },
   overview_stats: () => structuredClone(overviewStats()),
   company_count: ({ company, days }) => {
     const since = Date.now() - days * DAY_MS;
     return jobs.filter(
       (j) => j.company === company && Date.parse(j.firstSeenAt) >= since && j.place !== 'trash',
     ).length;
-  },
-  mark_unread: ({ keys }) => {
-    let changed = 0;
-    for (const key of keys) {
-      const j = find(key);
-      if (j === undefined || j.unread) continue;
-      j.unread = true;
-      changed += 1;
-    }
-    refresh();
-    return changed;
   },
   // "Fits anyway": scored with its fit score and the note `userOverride`; taken back, the
   // engine's verdict again (store::set_override, view::JobView).
@@ -2813,23 +2762,23 @@ const handlers: Handlers = {
     const refuse = (field: string, max: number | null, row: number | null = null): never => {
       throw fail('invalid', { reason: 'profileValue', field, row, max });
     };
-    if ((after.criteria.minDayRate ?? 0) > 100_000) refuse('minDayRate', 100_000);
-    // Hidden or not, like core's validation.
-    if ((after.criteria.permanentRemoteMin ?? 0) > 100) refuse('permanentRemoteMin', 100);
-    const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > 70);
-    if (tooLong >= 0) refuse('competences', 70, tooLong);
-    if (after.focus.length > 5) refuse('focus', 5);
-    // Engine 16 (core form::validate_limits): at most five days a week, the second day not
-    // below the first, at most 120 months, and words within what a profile holds.
+    const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > MAX_YEARS);
+    if (tooLong >= 0) refuse('competences', MAX_YEARS, tooLong);
+    if (after.focus.length > MAX_FOCUS) refuse('focus', MAX_FOCUS);
+    // Like core (form::validate_criteria, the limits of types/profile.ts), hidden or not:
+    // every number up to its limit, words within what a profile holds, the second day of the
+    // workload not below the first.
     const c = after.criteria;
-    const minDays = c.workloadMinDays ?? null;
-    const maxDays = c.workloadMaxDays ?? null;
-    if ((minDays ?? 0) > 5) refuse('workloadMinDays', 5);
-    if ((maxDays ?? 0) > 5) refuse('workloadMaxDays', 5);
+    for (const key of Object.keys(NUMBER_CRITERIA) as NumberCriterion[]) {
+      const { max } = NUMBER_CRITERIA[key];
+      if ((c[key] ?? 0) > max) refuse(key, max);
+    }
+    for (const key of Object.keys(WORD_CRITERIA) as WordCriterion[]) {
+      const words = c[key];
+      if (words.length > MAX_ITEMS || words.some((w) => w.length > MAX_TEXT)) refuse(key, null);
+    }
+    const [minDays, maxDays] = [c.workloadMinDays, c.workloadMaxDays];
     if (minDays !== null && maxDays !== null && maxDays < minDays) refuse('workloadMaxDays', null);
-    if ((c.minMonths ?? 0) > 120) refuse('minMonths', 120);
-    const words = c.exclusionWords ?? [];
-    if (words.length > 300 || words.some((w) => w.length > 1000)) refuse('exclusionWords', null);
     const form = savedForm(after);
     // The keywords like core's merge: an unchanged list keeps the stored one, a changed one
     // is applied to it (a term added from the reader and its undo, each on its own copy).
@@ -3042,6 +2991,22 @@ const harness: Harness = {
   },
   form() {
     return state.profile?.form ? structuredClone(state.profile.form) : null;
+  },
+  list(query) {
+    return structuredClone(
+      listJobs({
+        place: 'inbox',
+        unread: false,
+        favourites: false,
+        sort: 'match',
+        search: null,
+        portal: null,
+        minBand: null,
+        limit: 500,
+        offset: 0,
+        ...query,
+      }),
+    );
   },
 };
 window.__harness = harness;

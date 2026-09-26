@@ -61,7 +61,7 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatDate, formatRelative, formatTime } from '$lib/i18n/format';
-  import { contentMoving } from '$lib/input/input';
+  import { contentMoving, LIST_KEYS } from '$lib/input/input';
   import { keyLabel } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import {
@@ -356,12 +356,13 @@
     };
   });
 
-  /** The keys the list takes for the open job (input.ts), named in the tooltips. */
+  /** The keys the list takes for the open job, named in the tooltips: the one key table
+   *  (input.ts LIST_KEYS; "open" here is the ad), plus Esc that closes the job. */
   const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', string>> = {
-    open: 'o',
-    star: 's',
-    archive: 'e',
-    trash: 'del',
+    open: LIST_KEYS.openAd,
+    star: LIST_KEYS.star,
+    archive: LIST_KEYS.archive,
+    trash: LIST_KEYS.trash,
     close: 'esc',
   };
   const keyOfAction = (id: keyof typeof KEYS): string | null => {
@@ -495,7 +496,7 @@
       id: 'trash',
       icon: 'trash-2',
       label: () => t.actions.trash,
-      key: 'del',
+      key: LIST_KEYS.trash,
       apart: true,
       when: () => tools.some((tool) => tool.id === 'trash'),
       run: () => act('trash'),

@@ -42,7 +42,7 @@
   import { dragBands } from '$lib/platform';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
-  import { jobs, keyOf, placeOf, sameKey } from '$lib/state/jobs.svelte';
+  import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { RAIL_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
@@ -95,7 +95,7 @@
       shell.listHidden = false;
     };
   });
-  const place = $derived(placeOf(jobs.facet));
+  const place = $derived(jobs.place);
 
   /** The jobs a single key acts on: the chosen ones, else the open one. */
   function targets(): JobView[] {
@@ -122,20 +122,12 @@
       case 'star':
         if (place !== 'trash') toggleStar(list);
         return;
-      case 'unread':
-        // Unread again: the job leaves the reader, so the dwell does not read it once more.
-        if (!bulk.active) close();
-        void jobs.markUnread(list.map((job) => job.key)).then(report);
-        return;
       case 'openAd':
         if (list.length === 1) {
           invoke('open_target', { target: { kind: 'jobUrl', key: first.key } }).catch(
             (error: unknown) => report(errorText(error)),
           );
         }
-        return;
-      case 'applied':
-        // Beworben arrives with the backend's applied mark (docs/PLAN.md, A8).
         return;
     }
   }
@@ -217,14 +209,6 @@
     });
   });
 
-  // Back to the Jobs view: Neu is entered again, so the jobs read meanwhile leave it (like
-  // Mail); the open one stays until another opens.
-  $effect(() => {
-    untrack(() => {
-      if (jobs.status === 'ready' && jobs.facet === 'new') void jobs.load(true, false);
-    });
-  });
-
   /** A job rises in (4 px, 150 ms); the overview and the placeholders only fade (100 ms). */
   function enter(node: Element, job: boolean): ReturnType<typeof fade> {
     return job
@@ -262,7 +246,7 @@
       if (viewport.narrow && jobs.selected !== null) {
         close();
         void tick().then(() => header?.find());
-      } else header?.find();
+      } else void header?.find();
     },
     // The stage on screen: the one on its way out has dropped its test ids.
     reader: () => right?.querySelector<HTMLElement>('[data-testid="stage"]') ?? null,
@@ -287,7 +271,7 @@
             <RunCard />
           </div>
         {/if}
-        <JobList bind:this={list} />
+        <JobList bind:this={list} onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
     <span class="split"

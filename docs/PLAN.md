@@ -105,10 +105,9 @@ taken back, the job is assessed again at once.
 A list is a place (or the favourites of inbox and archive) plus an `unread` filter ("Neu", no day window) and a sort
 (by match, or by date: the mail's, in the trash the day it went there); the counts per place (inbox, unread,
 favourites, archive, trash) come from the same statement and follow the search, so the page can say "Auch im Archiv
-(n)". The inbox adds the funnel's filter (`portal`, `minBand` mid|high, `applied`; kept, off in the archive and
-the trash), which narrows the list and all its counts like the search. "Alle als gelesen markieren" is
-`mark_all_read(place, search, portal, minBand, applied)` (with a search or a filter only what the list shows) with
-`mark_unread(keys)` as its undo.
+(n)". The inbox adds the funnel's filter (`portal`, `minBand` mid|high; kept, off in the archive and the trash),
+which narrows the list and all its counts like the search. A job is read when it is opened (`mark_read`); there is no
+"all read" and no "unread again" (removed 2026-09-26).
 `top_matches.json` is schema 2 (`appStatus` "saved" for a favourite, the first sighting per job; the unread or
 favourite inbox matches of the last 14 days). The first mailbox scan reads 30 days.
 Whether the user has to act comes from the backend: `actionNeeded` in `PortalState` and in the `PortalHealth` event
@@ -121,9 +120,9 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands: `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore | fullMailbox})` · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, portal?, minBand?, applied, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, portal?, minBand?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
 (list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only) ·
-`job_detail(key)` · `mark_read(key) -> bool` · `mark_all_read(place, search?, portal?, minBand?, applied) -> JobKey[]` · `mark_unread(keys) -> number` ·
+`job_detail(key)` · `mark_read(key) -> bool` ·
 `set_pinned(key, on)` · `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·
 `purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
@@ -131,7 +130,7 @@ Commands: `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | res
 `parse_profile(text, update) -> ProfileDraft` · `profile_prompt(update)` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
 `remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
 `pick_workspace` · `rewrite_txt` · `clear_txt` · `open_target({jobUrl|gmail|workspace|profileDir|excel|excelInFolder|excelBackupInFolder{name}|overview|logDir})` (a Gmail link names the mailbox's account; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu) · `set_applied(keys, on)` · `set_note(key, note)` · `overview_stats` · `company_count(company, days)`.
+`save_settings(SettingsPatch)` · `reset_all` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu) · `overview_stats` · `company_count(company, days)`.
 Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
 without a usable matcher) and the auto fetch (setting on, mailbox connected, last fetch > 6 h).
 Events on channel `run` (struct variants, each < 8 KB): `Started{kind}` (first event of every run, also of the runs Rust
@@ -243,16 +242,18 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   does not fit shows at the limit and comes back once there is room. Only this handle resizes (the sidebar has none). No line: on hover a
   grey 4 x 44 px grip (`--grip-width`, `--grip-height`) in the middle of the gap, darker while dragging, like Claude's; the
   tooltip "Breite ändern" over "Doppelklick setzt zurück"; a double click sets the first width back.
-- Jobs: list header, row 1 search + Abrufen (the primary; Abbrechen during a run), row 2 Neu n · Alle n · Favoriten n,
-  "Alle als gelesen markieren" and the order (a quiet MenuButton with the OS menu: Nach Passung, Nach Datum) · left
+- Jobs: list header (the approved design of 2026-09-26): the tabs Eingang (its unopened jobs in coral, none at 0),
+  Archiv, Papierkorb; one toolbar row: the search, the funnel (inbox only) and Abrufen (the primary; Abbrechen
+  during a run); an active filter named in one quiet line under it with "Zurücksetzen"; the Archiv and the
+  Papierkorb keep a second row with their count, "Papierkorb leeren" and the order · left
   column run card + list (86 px rows, 106 with a two-line title: ring 40, title with unread dot, meta, reason line,
   date, status badge only on deviation; excluded grey behind the divider; duplicates as one row) · reader unboxed on
   the sheet, at most 720 px (ring 56 counting up, band word, n of m must, the "Rahmen" chips for contract type and hard
   criteria plus the ad's rate and start where no criterion covers them, reasons met/partial/open/check/violations;
   hover lights the passage, click scrolls to it) · day overview when nothing is selected (Neu und passend with the
   comparison prompt, Offene Punkte, Dateien; no counts; the blocks stand in the DOM as on screen).
-  Neu keeps the jobs opened in this visit through a reload that keeps the list (the end of a run, a sort), where the
-  list's order puts them; entering Neu again drops them. The keys count rows in the order the list draws them.
+  One list per place in the chosen order (no segments, no sections but the folded "Ausgeschlossen (n)" at the
+  end); an unopened job keeps its dot until it is opened. The keys count rows in the order the list draws them.
   Wave 1 (2026-09-25): a placeholder waits once (the list or the job that takes
   `--delay-placeholder` shows it, then at once; until then the pane keeps what it showed); the
   selected row darkens one more warm step while pressed (`--surface-selected-press`, 93 %); a
@@ -560,18 +561,26 @@ as the parts land on `main`.
 - No fetch at app start (the switch is gone); F5 or Ctrl/Cmd+R and "Abrufen" fetch.
 - The app starts in the **Übersicht**, a view of its own (sidebar: Übersicht, Jobs, Profil,
   Einstellungen; the settings as a gear). Archiv and Papierkorb are tabs of Jobs (Eingang,
-  Archiv, Papierkorb); Neu, Alle and Favoriten exist in the inbox only, Favoriten are the
-  favourites of the inbox. Ctrl/Cmd+1 to 4 choose the views.
+  Archiv, Papierkorb). The inbox is one list (user, 2026-09-26): no Neu, Alle, Favoriten
+  segments, no "Alle gelesen"; the Eingang tab counts the unopened jobs. Ctrl/Cmd+1 to 4
+  choose the views.
 - Menus: the app draws every menu itself (field menu, the job's menu on a right click, the
   sort, "…" menus); no OS popup (the Tauri menu API and its permissions are gone). OS file and
   folder pickers, the start failure box, the macOS menu bar and the freelance.de sign-in
   window stay native. Paste reads the clipboard through `clipboard_text`.
 - Filter: one funnel in the inbox's header holds the order and the filter (portal, band from
-  mid or high only, "Nur beworbene Jobs", reset); a dot and its tooltip say when it is on,
-  "Ergebnisse gelesen" marks only what it shows; the archive and the trash keep their order
-  button and have no filter.
+  mid or high only, reset); a dot and its tooltip say when it is on; the archive and the
+  trash keep their order button and have no filter.
+- Filter: one funnel in the inbox's toolbar row holds the order and the filter under small
+  headings (Sortierung; Nur Favoriten, a switch; Portal; Passung from mid or high only;
+  "Filter zurücksetzen"), one table (`ui/src/lib/state/filter.ts`) that the menu, the line
+  under the toolbar, the reset and the harness read; a coral dot on the funnel and the line
+  say when it is on; the archive and the trash keep their order button and have no filter.
 - Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
-  S favourite, U unread, B applied, O open the ad; shown in tooltips and menus.
+  S favourite, O open the ad; shown in tooltips and menus (U and B went with "Als ungelesen"
+  and "Beworben", 2026-09-26). One table holds these keys (`LIST_KEYS` in
+  `ui/src/lib/input/input.ts`): the handler, the job's actions and menu, the card of the keys
+  and Einstellungen read it; the orders of every menu come from the filter table's `SORTS`.
 - Rows (approved row, user 2026-09-26): line 1 the title with, together at its end, the star
   of a favourite, the portal's tile ("+1" for other portals, named in its tooltip; the tile
   stays beside the hover tools) and the date; line 2 company · place; line 3 the ad's facts
@@ -585,10 +594,16 @@ as the parts land on `main`.
   sent, only the stub has it now), a `freelance` contract kind (core sends interim, permanent,
   anue; the stub shows Freiberuflich), and the contract of an inferred type (core sends none,
   the stub shows it).
+  S favourite, O open the ad; shown in tooltips and menus.
+- Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions
+  only (rate first), an excluded row names why and keeps its fit as a grey number with a ban
+  mark, "Einbezogen" for a job counted anyway, dots only in the inbox.
 - Colours: coral means new and the one main action (and stays where it was); navy carries the
   structure (section headings, active labels of the sidebar, tabs and segments, links, "prüfen").
 - Time: days in words up to a week everywhere ("gestern 08:30", "vorgestern", "Mo").
-- New features: "Beworben" with date and note; exclusion words in the profile; workload and
+- New features: exclusion words in the profile; workload and
+- New features: ("Beworben" with date and note left the UI again, 2026-09-26; the backend
+  follows); exclusion words in the profile; workload and
   minimum duration as checks (engine 16); an hourly wage for employees or agency work is
   employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
   updates, an application-letter prompt, snooze, radius, direct client vs agency.

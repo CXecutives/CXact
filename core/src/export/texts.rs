@@ -21,37 +21,6 @@ pub const JOBS_SHEET: &str = "Job-Alerts";
 /// Name of the sheet with the run information.
 pub const INFO_SHEET: &str = "Info";
 
-/// Column headers of the Excel file: what decides first (title, match, musts, exclusion),
-/// then who and where, the terms in the app's words, the user's marks, the dates, the links
-/// and the job's key last. Unlike the text files nobody reads it by machine - so it says
-/// "Portal" like the interface, not "Quelle" like the skill contract; "Ablage" is the place
-/// (Jobs or Archiv).
-pub const COLUMNS: [&str; 23] = [
-    "Titel",
-    "Passung",
-    "Pflicht erfüllt",
-    "Ausschluss",
-    "Unternehmen",
-    "Ort",
-    "Tagessatz",
-    "Satz laut Anzeige",
-    "Start",
-    "Laufzeit",
-    "Auslastung",
-    "Remote",
-    "Vertragsart",
-    "Portal",
-    "Ablage",
-    "Beworben am",
-    "Notiz",
-    "Favorit",
-    "Details",
-    "Datum",
-    "Anzeige",
-    "Alert-Mail",
-    "Job-ID",
-];
-
 /// The link cells' words, the places of the sheet and the contract types (the reader's).
 pub const LINK_AD: &str = "Anzeige öffnen";
 pub const LINK_MAIL: &str = "Alert-Mail öffnen";
@@ -309,32 +278,6 @@ pub mod en {
 
     pub const JOBS_SHEET: &str = "Job alerts";
     pub const INFO_SHEET: &str = "Info";
-
-    pub const COLUMNS: [&str; super::COLUMNS.len()] = [
-        "Title",
-        "Match",
-        "Must-haves met",
-        "Exclusion",
-        "Company",
-        "Location",
-        "Day rate",
-        "Rate in the ad",
-        "Start",
-        "Duration",
-        "Workload",
-        "Remote",
-        "Contract type",
-        "Portal",
-        "Place",
-        "Applied on",
-        "Note",
-        "Favourite",
-        "Details",
-        "Date",
-        "Ad",
-        "Alert email",
-        "Job ID",
-    ];
 
     pub const LINK_AD: &str = "Open ad";
     pub const LINK_MAIL: &str = "Open alert email";
@@ -594,7 +537,6 @@ pub struct Texts {
     pub language: Language,
     pub jobs_sheet: &'static str,
     pub info_sheet: &'static str,
-    pub columns: [&'static str; COLUMNS.len()],
     pub link_ad: &'static str,
     pub link_mail: &'static str,
     pub place_inbox: &'static str,
@@ -685,7 +627,6 @@ pub const DE: Texts = Texts {
     language: Language::De,
     jobs_sheet: JOBS_SHEET,
     info_sheet: INFO_SHEET,
-    columns: COLUMNS,
     link_ad: LINK_AD,
     link_mail: LINK_MAIL,
     place_inbox: PLACE_INBOX,
@@ -764,7 +705,6 @@ pub const EN: Texts = Texts {
     language: Language::En,
     jobs_sheet: en::JOBS_SHEET,
     info_sheet: en::INFO_SHEET,
-    columns: en::COLUMNS,
     link_ad: en::LINK_AD,
     link_mail: en::LINK_MAIL,
     place_inbox: en::PLACE_INBOX,
@@ -1098,12 +1038,6 @@ mod tests {
             Some(en::INFO_LAST_SCAN)
         );
         assert_eq!(EN.from_german("Alle"), Some(en::SCOPE_ALL));
-        for (de, en) in DE.columns.iter().zip(EN.columns) {
-            // Product and loan words are the same in both.
-            if !["Portal", "Details", "Start", "Remote"].contains(de) {
-                assert_ne!(*de, en);
-            }
-        }
         let ts: jiff::Timestamp = "2026-09-19T12:05:00Z".parse().unwrap();
         assert_eq!(DE.moment(ts), "19.09.2026 14:05");
         assert_eq!(EN.moment(ts), "19/09/2026 14:05");

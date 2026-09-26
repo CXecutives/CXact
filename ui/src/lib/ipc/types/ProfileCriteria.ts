@@ -48,16 +48,16 @@ permanentRemoteMin: number | null,
 /**
  * `auslastung_min_tage`, days per week (1 to 5).
  */
-workloadMinDays?: number | null, 
+workloadMinDays: number | null, 
 /**
  * `auslastung_max_tage`, days per week (1 to 5).
  */
-workloadMaxDays?: number | null, 
+workloadMaxDays: number | null, 
 /**
  * `min_laufzeit_monate`, the minimum duration of an engagement in months.
  */
-minMonths?: number | null, 
+minMonths: number | null, 
 /**
  * `ausschlusswoerter`, words that exclude an ad.
  */
-exclusionWords?: Array<string>, };
+exclusionWords: Array<string>, };

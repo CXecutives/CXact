@@ -9,7 +9,8 @@
   import Button, { BUTTON_SIZES, BUTTON_VARIANTS } from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Icon, { ICON_NAMES } from '$components/Icon.svelte';
-  import IconTile, { PORTAL_MONOGRAM, TILE_TONES } from '$components/IconTile.svelte';
+  import IconTile, { TILE_TONES } from '$components/IconTile.svelte';
+  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import SideNav, { type SideNavFold } from '$components/SideNav.svelte';
   import StatusLine from '$components/StatusLine.svelte';
   import Spinner from '$components/Spinner.svelte';

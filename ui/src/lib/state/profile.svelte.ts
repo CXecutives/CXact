@@ -8,6 +8,9 @@
 // Values of the file the engine could not read are said at their field (`fieldProblems`);
 // "Wert entfernen" clears one (`clear`), saving then removes its keys. Quality and the empty
 // sections follow the form while typing (`localQuality`, with the engine's thresholds).
+//
+// The criteria, their limits and the empty form come from core (`types/profile.ts`, written
+// from `core/src/profile/form.rs`): a new number or word criterion needs nothing here.
 
 import { language } from '../i18n/language.svelte';
 import { invoke } from '../ipc/api';
@@ -15,6 +18,7 @@ import { app } from './app.svelte';
 import type {
   Notice,
   ProfileCompetence,
+  ProfileCriteria,
   ProfileDraft,
   ProfileForm,
   ProfileInfo,
@@ -23,14 +27,22 @@ import type {
   ProfileUnderstanding,
   UnreadableField,
 } from '../ipc/types';
+import {
+  EMPTY_FORM,
+  MAX_FOCUS,
+  NUMBER_CRITERIA,
+  UNREADABLE_FIELDS,
+  WORD_CRITERIA,
+  type NumberCriterion,
+  type WordCriterion,
+} from '../ipc/types/profile';
 import { TypedText } from './typed.svelte';
+
+export { MAX_FOCUS };
 
 /** Where the form in the editor came from: the stored profile, a new one, a chosen file, an
  *  AI's answer for a new profile, or an answer that updates the stored profile. */
 export type DraftOrigin = 'stored' | 'new' | 'file' | 'answer' | 'update';
-
-/** At most this many competences are Schwerpunkte (the backend refuses more). */
-export const MAX_FOCUS = 5;
 
 /** Fewer terms than this make a thin profile (the engine's `THIN_BELOW`). */
 const THIN_BELOW = 5;
@@ -38,41 +50,16 @@ const THIN_BELOW = 5;
 /** The JSON a new profile is written into. */
 const NEW_SOURCE = '{}';
 
+/** The empty form of the backend (`ProfileForm::default()`; "remote outside" is allowed,
+ *  as the engine reads a missing value). */
 export function emptyForm(): ProfileForm {
-  return {
-    name: '',
-    title: '',
-    competences: [],
-    strengths: [],
-    keywords: [],
-    years: null,
-    degrees: [],
-    industries: [],
-    tools: [],
-    certificates: [],
-    languages: [],
-    focus: [],
-    roles: [],
-    wishes: { dayRate: null, remote: null, regions: [], industries: [] },
-    criteria: {
-      minDayRate: null,
-      countries: [],
-      noAnue: false,
-      noPermanent: false,
-      available: { kind: 'unset' },
-      // Missing in the file means allowed, as the engine reads it.
-      remoteOutside: true,
-      targetYears: null,
-      minSalary: null,
-      permanentPlaces: [],
-      permanentRemoteMin: null,
-      workloadMinDays: null,
-      workloadMaxDays: null,
-      minMonths: null,
-      exclusionWords: [],
-    },
-  };
+  return structuredClone(EMPTY_FORM);
 }
+
+const NUMBER_KEYS = Object.keys(NUMBER_CRITERIA) as NumberCriterion[];
+const WORD_KEYS = Object.keys(WORD_CRITERIA) as WordCriterion[];
+const isCriterion = (field: UnreadableField): field is NumberCriterion | WordCriterion =>
+  field in NUMBER_CRITERIA || field in WORD_CRITERIA;
 
 const same = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
@@ -89,9 +76,27 @@ export function cleanList(items: readonly string[]): string[] {
 const positive = (value: number | null | undefined): number | null =>
   value !== null && value !== undefined && value > 0 ? value : null;
 
+/** The criteria the way the backend compares them (`ProfileCriteria::normalized`): numbers of
+ *  zero as none, words trimmed and each once, in the backend's order of the keys. */
+function normalizedCriteria(c: ProfileCriteria): ProfileCriteria {
+  const out: ProfileCriteria = {
+    ...EMPTY_FORM.criteria,
+    noAnue: c.noAnue,
+    noPermanent: c.noPermanent,
+    available:
+      c.available.kind === 'from' ? { kind: 'from', date: c.available.date.trim() } : c.available,
+    remoteOutside: c.remoteOutside,
+  };
+  for (const key of NUMBER_KEYS) out[key] = positive(c[key]);
+  for (const key of WORD_KEYS) {
+    const words = WORD_CRITERIA[key].upper ? c[key].map((word) => word.toUpperCase()) : c[key];
+    out[key] = cleanList(words);
+  }
+  return out;
+}
+
 /** The form the way the backend compares it (trimmed, empty rows and entries gone). */
 export function normalized(form: ProfileForm): ProfileForm {
-  const c = form.criteria;
   const competences: ProfileCompetence[] = form.competences
     .filter((row) => row.name.trim() !== '')
     .map((row) => ({ ...row, name: row.name.trim(), aliases: cleanList(row.aliases) }));
@@ -118,24 +123,7 @@ export function normalized(form: ProfileForm): ProfileForm {
       regions: cleanList(form.wishes.regions),
       industries: cleanList(form.wishes.industries),
     },
-    criteria: {
-      minDayRate: positive(c.minDayRate),
-      countries: cleanList(c.countries.map((code) => code.toUpperCase())),
-      noAnue: c.noAnue,
-      noPermanent: c.noPermanent,
-      available:
-        c.available.kind === 'from' ? { kind: 'from', date: c.available.date.trim() } : c.available,
-      remoteOutside: c.remoteOutside,
-      targetYears: positive(c.targetYears),
-      minSalary: positive(c.minSalary),
-      permanentPlaces: cleanList(c.permanentPlaces),
-      permanentRemoteMin: positive(c.permanentRemoteMin),
-      // Engine 16: a profile of an older backend has none of them (the same as none set).
-      workloadMinDays: positive(c.workloadMinDays),
-      workloadMaxDays: positive(c.workloadMaxDays),
-      minMonths: positive(c.minMonths),
-      exclusionWords: cleanList(c.exclusionWords ?? []),
-    },
+    criteria: normalizedCriteria(form.criteria),
   };
 }
 
@@ -202,54 +190,22 @@ export interface FieldProblem {
   entry: boolean;
 }
 
-const FIELDS: readonly UnreadableField[] = [
-  'minDayRate',
-  'countries',
-  'contracts',
-  'remoteOutside',
-  'available',
-  'targetYears',
-  'minSalary',
-  'permanentPlaces',
-  'permanentRemoteMin',
-  'focus',
-  'roles',
-  'wishDayRate',
-  'remote',
-  'regions',
-  'wishIndustries',
-  'workloadMinDays',
-  'workloadMaxDays',
-  'minMonths',
-  'exclusionWords',
-];
-
 const isField = (value: unknown): value is UnreadableField =>
-  typeof value === 'string' && (FIELDS as readonly string[]).includes(value);
+  typeof value === 'string' && (UNREADABLE_FIELDS as readonly string[]).includes(value);
 
-/** The value of a field of the form, to see whether the user changed it. */
+/** The value of a field of the form, to see whether the user changed it: a number or word
+ *  criterion by its key, the others by hand. */
 function fieldValue(form: ProfileForm, field: UnreadableField): unknown {
   const c = form.criteria;
   const w = form.wishes;
+  if (isCriterion(field)) return c[field];
   switch (field) {
-    case 'minDayRate':
-      return c.minDayRate;
-    case 'countries':
-      return c.countries;
     case 'contracts':
       return [c.noAnue, c.noPermanent];
     case 'remoteOutside':
       return c.remoteOutside;
     case 'available':
       return c.available;
-    case 'targetYears':
-      return c.targetYears;
-    case 'minSalary':
-      return c.minSalary;
-    case 'permanentPlaces':
-      return c.permanentPlaces;
-    case 'permanentRemoteMin':
-      return c.permanentRemoteMin;
     case 'focus':
       return form.focus;
     case 'roles':
@@ -262,14 +218,6 @@ function fieldValue(form: ProfileForm, field: UnreadableField): unknown {
       return w.regions;
     case 'wishIndustries':
       return w.industries;
-    case 'workloadMinDays':
-      return c.workloadMinDays ?? null;
-    case 'workloadMaxDays':
-      return c.workloadMaxDays ?? null;
-    case 'minMonths':
-      return c.minMonths ?? null;
-    case 'exclusionWords':
-      return c.exclusionWords ?? [];
   }
 }
 

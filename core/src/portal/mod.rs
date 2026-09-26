@@ -106,6 +106,8 @@ pub trait PortalAdapter: Send + Sync {
     /// Display name: the portal's web address (`linkedin.com`, `freelance.de`), as the
     /// interface names it (Excel, HTML overview, prompts).
     fn label(&self) -> &'static str;
+    /// The portal's two-letter mark in the interface (brand-neutral, no logo).
+    fn monogram(&self) -> &'static str;
     /// Tag in the file name of the job details (without ".de") - part of the contract with
     /// the matching skill, which also shows it in the `Quelle:` header line.
     fn file_tag(&self) -> &'static str;
@@ -267,6 +269,10 @@ impl Portal {
 
     pub fn label(self) -> &'static str {
         self.adapter().label()
+    }
+
+    pub fn monogram(self) -> &'static str {
+        self.adapter().monogram()
     }
 
     pub fn file_tag(self) -> &'static str {

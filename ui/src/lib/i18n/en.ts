@@ -40,6 +40,7 @@ import type {
   WorkMode,
 } from '../ipc/types';
 import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
+import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
   formatCountdown,
@@ -69,11 +70,7 @@ const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-click` : 
 /** Shift in the same writing as the command key it stands beside. */
 const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Shift');
 
-const portalName: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
+const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 const joined = (items: string[]): string =>
@@ -689,7 +686,6 @@ export const en: Catalog = {
     tip: (key: string) => `Choose several jobs at once with ${clickWith(key)}.`,
     more: (value: number) => `+${n(value)}`,
     pin: 'Favourite',
-    read: 'Mark read',
   },
   place: {
     tabs: 'Locations',
@@ -754,14 +750,10 @@ export const en: Catalog = {
       value === 1
         ? 'The job is deleted forever and never comes back.'
         : `The ${n(value)} jobs are deleted forever and never come back.`,
-    markAllRead: 'Mark all as read',
-    allRead: 'All read',
-    hitsRead: 'Results read',
   },
   menu: {
     job: 'Job',
     open: 'Open',
-    unread: 'Mark as unread',
   },
   edit: {
     menu: 'Edit',
@@ -799,7 +791,6 @@ export const en: Catalog = {
     archive: 'Archive',
     trash: 'Move to the trash',
     star: 'Favourite',
-    unread: 'Mark as unread',
     openAd: 'Open the ad',
     closeJob: 'Close the job',
   },
@@ -882,10 +873,6 @@ export const en: Catalog = {
     fetch: 'Fetch',
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
-    facet: 'View',
-    facetNew: 'New',
-    facetAll: 'All',
-    facetSaved: 'Favourites',
     sortMenu: 'Sort',
     sortLabel: {
       match: 'By match',
@@ -893,15 +880,9 @@ export const en: Catalog = {
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Filter',
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
-      const parts = [
-        portal === null ? '' : `only ${portal}`,
-        band === 'mid' ? 'medium or high match' : band === 'high' ? 'only high match' : '',
-        applied ? 'only applied jobs' : '',
-      ].filter((part) => part !== '');
-      const text = parts.join(', ');
-      return text.charAt(0).toUpperCase() + text.slice(1);
-    },
+    favouritesOnly: 'Favourites only',
+    portalHeading: 'Portal',
+    bandHeading: 'Match',
     allPortals: 'All portals',
     band: {
       any: 'Any match',
@@ -909,8 +890,9 @@ export const en: Catalog = {
       high: 'High match only',
     } satisfies Record<'any' | 'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
-    appliedOnly: 'Applied jobs only',
     filterReset: 'Reset filter',
+    filterLine: (parts: readonly string[]) => parts.join(' · '),
+    filterLineReset: 'Reset',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
   },
@@ -998,9 +980,6 @@ export const en: Catalog = {
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
-    pendingSection: 'No match yet',
-    freshSection: 'Since the last fetch',
-    olderSection: 'Earlier',
     formalMissing: {
       degree: 'Degree missing',
       licence: 'Licence missing',
@@ -1008,18 +987,10 @@ export const en: Catalog = {
     emptyWhileRun: 'The jobs show up here as the fetch goes on.',
     createAlert: (portal: string) => `Create an alert on ${portal}`,
     readOlder: FULL_MAILBOX,
-    emptyNew: 'No new jobs.',
-    emptyFavourites: 'No favourites yet.',
     emptyAll: 'After the first fetch, the jobs show up here.',
     emptyAfterRun: 'The alert emails have had no jobs so far.',
     noHit: (query: string) => `No jobs for “${query}”.`,
-    noHitIn: {
-      new: (query: string) => `No new jobs for “${query}”.`,
-      favourites: (query: string) => `No favourites for “${query}”.`,
-    },
-    searchAll: 'Search all',
     noFilterHit: 'No job fits the filter.',
-    showAll: 'Show all',
     loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',
     createProfile: 'Create profile',
@@ -1181,14 +1152,6 @@ export const en: Catalog = {
     files: 'Files',
     emptyAlerts: emptyMails,
     lastRun: 'Last fetch',
-    applied: 'Applied',
-    appliedWhen: (days: number) =>
-      days === 0
-        ? 'Applied today'
-        : days === 1
-          ? 'Applied yesterday'
-          : `Applied ${n(days)} days ago`,
-    adClosed: 'Ad closed',
     openMusts: 'Often required, not in the profile',
     inJobs: (value: number) => `in ${n(value)} jobs`,
     addToProfile: 'Add to profile',
@@ -1543,9 +1506,9 @@ export const en: Catalog = {
     mailboxNotCounted: 'Mailbox connected, the next fetch counts the alert emails.',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
-    autoArchive: 'Archive jobs after 30 days',
+    autoArchive: (days: number) => `Archive jobs after ${n(days)} days`,
     autoArchiveHint: 'Favourites are never archived.',
-    autoEmptyTrash: 'Empty the trash after 30 days',
+    autoEmptyTrash: (days: number) => `Empty the trash after ${n(days)} days`,
     autoEmptyTrashHint: 'Jobs in the trash are then deleted forever.',
     active: 'Active',
     details: 'Fetch details',
@@ -1661,7 +1624,6 @@ export const en: Catalog = {
     inboxOne: (name: string) => `“${name}” is back in Jobs.`,
     inboxMany: (value: number) => `${n(value)} jobs are back in Jobs.`,
     restoredMany: (value: number) => `${n(value)} jobs restored.`,
-    allRead: 'All marked as read.',
     archivedMany: (value: number) => `${n(value)} jobs archived.`,
     restored: (name: string) => `“${name}” restored.`,
     deletedOne: (name: string) => `“${name}” deleted forever.`,

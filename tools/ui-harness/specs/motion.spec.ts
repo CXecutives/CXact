@@ -88,8 +88,10 @@ test('the reader ring fills from empty the first time a job opens, once', async 
   const fills = (): Promise<string[]> =>
     page.evaluate(() => [...(window as unknown as { __fills: string[] }).__fills]);
   await open(page, '?platform=windows');
-  const rows = page.locator('[data-testid^="job-row-"]');
-  await rows.first().click();
+  // Two scored jobs (by match the first row is one still without a score, no fill).
+  const best = page.getByTestId('job-row-freelancermap-2801');
+  const next = page.getByTestId('job-row-linkedin-4100200301');
+  await best.click();
   const ring = page.getByTestId('reader-ring');
   await expect(ring).toBeVisible();
   // One Web Animation on the arc, starting from empty (stroke-dashoffset 100).
@@ -99,11 +101,11 @@ test('the reader ring fills from empty the first time a job opens, once', async 
     .poll(() => ring.evaluate((node) => node.querySelector('.value')!.getAnimations().length))
     .toBe(0);
   // Once: another job fills its own ring, the first one back is simply there.
-  await rows.nth(1).click();
+  await next.click();
   await expect.poll(fills).toEqual(['100', '100']);
-  await rows.first().click();
+  await best.click();
   await expect(page.getByTestId('reader-title')).toHaveText(
-    await rows.first().locator('.title').innerText(),
+    await best.locator('.title').innerText(),
   );
   await settle(page);
   expect(await fills()).toEqual(['100', '100']);
@@ -170,7 +172,6 @@ test('under reduced motion nothing scales, pops or shakes', async ({ page }) => 
 
 test('hover rests while a list scrolls', async ({ page }) => {
   await open(page, '?platform=windows');
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // The window mounts a few rows per frame: scroll once the list can.
   await expect
     .poll(() =>

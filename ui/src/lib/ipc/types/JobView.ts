@@ -42,14 +42,4 @@ trashedAt: string | null,
  * The user marked the job as fitting although the engine excludes it ("Trotzdem
  * passend"): it counts as scored with its fit score, its note is `userOverride`.
  */
-overridden: boolean, 
-/**
- * When the user marked that she applied ("Beworben"); a flag of its own beside the
- * favourite.
- */
-appliedAt: string | null, 
-/**
- * The user's note (at most 2,000 characters; a run's `jobUpdated` event carries only
- * its first [`MAX_EVENT_NOTE_CHARS`], `job_detail` and `list_jobs` all of it).
- */
-note: string | null, };
+overridden: boolean, };

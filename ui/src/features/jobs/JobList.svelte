@@ -1,39 +1,35 @@
 <!--
-  The job list: rows in windows of 60 (a sentinel at the end shows the next window), a new
-  job of a run fades in where it lands (the rows below simply make room). Rows move only for
-  the user's own change and for the re-sort at the end of a run: after the sort switch, Neu |
-  Alle or a filter the rows on screen glide to their new place (150 ms); rows off screen and
-  new rows are simply there. A search and live updates never move anything. The list stands
-  in sections (the store's RowGroup): by match the jobs still waiting for their score on top
-  ("Noch ohne Passung"), under Neu the jobs first seen in the last fetch before the older
-  unread ones ("Seit dem letzten Abruf", "Früher", only while both are there), and at the end
-  of every place the excluded jobs, grey, in one section "Ausgeschlossen (n)" that is folded
-  by default (the choice is kept; the count where the list knows it; the arrows skip a
-  folded section, and it opens when its job is opened from elsewhere). Under Neu with nothing
-  new left ("Alle gelesen") a line says so and leads to Alle. A page that
-  fails to load while scrolling says so at the end of the list, with a retry. A search looks
-  in the list's place; under its hits a button names each other place with hits
-  ("Im Archiv (2)") and goes there with the search; Enter or ArrowDown in the search open
-  its first hit. Each row's tools are the job's actions where it is (Archivieren, Löschen,
-  the star; in the Papierkorb Wiederherstellen, Endgültig löschen); a row the user moves
-  out folds away. Rows are chosen like in a mail app: a click opens one, Ctrl+click (Cmd on
-  macOS) or the checkbox over its ring takes one in or out, Shift+click a range; the
-  highlight shows what is chosen, and in one column choosing never opens a job. One coral
-  bar marks the open job's row and slides from row to row (RowBar); the other chosen rows
-  mark themselves. The list is one Tab stop: the open row (else the row last focused, else
-  the first) takes Tab, the arrows move from there; the row tools are for the pointer.
-  Back in the Jobs view, the open
-  job's row is in view again. A row move that fails says so in the list header. An
-  empty inbox says where jobs come from (an alert on each portal, older mails; reading the
-  whole mailbox asks first, as in Einstellungen); a filter that leaves nothing says so and
-  takes itself off ("Filter zurücksetzen"). Every empty
-  state has exactly one reason and at most one way out (secondary: the header holds the
-  view's primary). Without a mailbox one slim note at the top says how to connect one;
-  without a usable profile one says that there is no fit without it and leads to the Profil
-  view (the rings stay, empty); a thin profile one calm line that the fit stays rough. A list
-  that fails to load says only that, with a retry (the header hides its counts and tools).
-  Every empty state of the list is one pattern: an icon, one sentence, at most one way out,
-  centred.
+  The job list: one list per place in the chosen order, rows in windows of 60 (a sentinel at
+  the end shows the next window), a new job of a run fades in where it lands (the rows below
+  simply make room). Rows move only for the user's own change and for the re-sort at the end
+  of a run: after the order, another place or a filter the rows on screen glide to their new
+  place (150 ms); rows off screen and new rows are simply there. A search and live updates
+  never move anything. An unopened job carries the coral dot until it is opened. At the end of
+  every place the excluded jobs, grey, in one section "Ausgeschlossen (n)" that is folded by
+  default (the choice is kept; the count where the list knows it; the arrows skip a folded
+  section, and it opens when its job is opened from elsewhere). A page that fails to load
+  while scrolling says so at the end of the list, with a retry. A search looks in the list's
+  place; under its hits a button names each other place with hits ("Im Archiv (2)", counted
+  without the inbox's filter) and goes there with the search; Enter or ArrowDown in the search
+  open its first hit. Each row's tools are the job's actions where it is (Archivieren,
+  Löschen, the star; in the Papierkorb Wiederherstellen, Endgültig löschen); a row the user
+  moves out folds away. Its menu (a right click) is the table JOB_MENU of actions.ts. Rows
+  are chosen like in a mail app: a click opens one, Ctrl+click (Cmd on macOS) or the checkbox
+  over its ring takes one in or out, Shift+click a range; the highlight shows what is chosen,
+  and in one column choosing never opens a job. One coral bar marks the open job's row and
+  slides from row to row (RowBar); the other chosen rows mark themselves. The list is one Tab
+  stop: the open row (else the row last focused, else the first) takes Tab, the arrows move
+  from there; the row tools are for the pointer. Back in the Jobs view, the open job's row is
+  in view again. A row move that fails says so in the list header. An empty inbox says where
+  jobs come from (an alert on each portal, older mails; reading the whole mailbox asks first,
+  as in Einstellungen); a filter that leaves nothing says so and takes itself off ("Filter
+  zurücksetzen"). Every empty state has exactly one reason and at most one way out
+  (secondary: the header holds the view's primary). Without a mailbox one slim note at the top
+  says how to connect one; without a usable profile one says that there is no fit without it
+  and leads to the Profil view (the rings stay, empty); a thin profile one calm line that the
+  fit stays rough. A list that fails to load says only that, with a retry (the header hides
+  its counts and tools). Every empty state of the list is one pattern: an icon, one sentence,
+  at most one way out, centred.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -54,15 +50,8 @@
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
-  import {
-    isExcluded,
-    jobs,
-    keyOf,
-    NO_FILTER,
-    placeOf,
-    sameKey,
-    type RowGroup,
-  } from '$lib/state/jobs.svelte';
+  import { NO_FILTER } from '$lib/state/filter';
+  import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -70,33 +59,44 @@
   import type { ContextMenu } from '$lib/input/input';
   import type { MenuEntry } from '$lib/state/menu.svelte';
   import { keyLabel } from '$lib/platform';
-  import { actionsOf, disarm, guarded, hasStar, move, moving, purge, toggleStar } from './actions';
+  import {
+    actionsOf,
+    disarm,
+    guarded,
+    hasStar,
+    JOB_MENU,
+    type JobMenuItem,
+    move,
+    moving,
+    purge,
+    toggleStar,
+  } from './actions';
   import { bulk } from './bulk.svelte';
   import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
   import { selection } from './selection.svelte';
 
+  interface Props {
+    /** "Filter zurücksetzen" of a filter that leaves nothing: the header takes the filter off
+     *  and keeps the keyboard focus (the button goes with the empty state). */
+    onresetfilter?: () => void;
+  }
+  let { onresetfilter }: Props = $props();
+
   const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
 
   const shown = $derived(jobs.shown);
   const searching = $derived(jobs.search.trim() !== '');
-  /** The rows of each section as far as the window reaches, in the store's order. */
-  const sections = $derived.by(() => {
-    const out: Record<RowGroup, JobView[]> = { pending: [], fresh: [], rest: [], excluded: [] };
-    for (const job of shown) out[jobs.groupOf(job)].push(job);
-    return out;
-  });
-  const excluded = $derived(sections.excluded);
-  /** Under Neu the jobs of the last fetch stand apart from the older ones (both there). */
-  const split = $derived(
-    jobs.facet === 'new' && sections.fresh.length > 0 && sections.rest.length > 0,
-  );
-  // How many excluded jobs the list holds: Alle, Archiv and Papierkorb know it (with the
-  // search, like the facet), the other lists once every page is there.
+  /** The rows as far as the window reaches: the active ones, then the excluded ones. */
+  const active = $derived(shown.filter((job) => !isExcluded(job)));
+  const excluded = $derived(shown.filter(isExcluded));
+  // How many excluded jobs the list holds: the counts of each place know it (with the search
+  // and the filter, like the list; the favourites narrow only the list), the favourites once
+  // every page is there.
   const excludedCount = $derived.by((): number | null => {
-    if (jobs.facet === 'all') return jobs.counts.excluded;
-    if (jobs.facet === 'archived') return jobs.counts.excludedArchive;
-    if (jobs.facet === 'trash') return jobs.counts.excludedTrash;
+    if (jobs.place === 'inbox' && !jobs.filter.favourites) return jobs.counts.excluded;
+    if (jobs.place === 'archive') return jobs.counts.excludedArchive;
+    if (jobs.place === 'trash') return jobs.counts.excludedTrash;
     if (jobs.rows.length < jobs.total) return null;
     return jobs.visible.filter(isExcluded).length;
   });
@@ -124,25 +124,11 @@
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
-  /** Neu with nothing new left ("Alle gelesen"): a line says so instead of a silent list. */
-  const caughtUp = $derived(
-    jobs.facet === 'new' &&
-      jobs.status === 'ready' &&
-      !searching &&
-      jobs.counts.unread === 0 &&
-      jobs.visible.length > 0,
-  );
   /**
-   * The inbox's filter leaves the list empty while the list would hold jobs without it (the
-   * counts over every job): it says so and takes the filter off. Neu with jobs in the
-   * filtered inbox says that nothing is new instead.
+   * The inbox's filter leaves the list empty while the inbox holds jobs (the counts over
+   * every job): it says so and takes the filter off.
    */
-  const filterEmptied = $derived.by((): boolean => {
-    const all = jobs.overviewCounts ?? jobs.counts;
-    if (!jobs.filtered || all.inbox === 0) return false;
-    if (jobs.facet === 'new') return jobs.counts.inbox === 0;
-    return jobs.facet !== 'favourites' || all.favourites > 0;
-  });
+  const filterEmptied = $derived(jobs.filtered && (jobs.overviewCounts ?? jobs.counts).inbox > 0);
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
@@ -352,7 +338,7 @@
   // Another list, another search, order or filter: the choice starts anew, and a click right
   // away counts (the guard after a move is for rows that slid under the pointer).
   $effect(() => {
-    void jobs.facet;
+    void jobs.place;
     void jobs.search;
     void jobs.sortChoice;
     void jobs.filterChoice;
@@ -362,35 +348,23 @@
     });
   });
 
-  // A search looks in the list's place; the other places with hits are named under them (the
-  // favourites are of the inbox and the archive, so only the trash is elsewhere).
-  const place = $derived(placeOf(jobs.facet));
+  // A search looks in the list's place; the other places with hits are named under them,
+  // counted without the inbox's filter (the store's hitCounts).
+  const place = $derived(jobs.place);
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
-  const COUNT_OF: Record<Place, 'inbox' | 'archive' | 'trash'> = {
-    inbox: 'inbox',
-    archive: 'archive',
-    trash: 'trash',
-  };
   /** The glyph of each place (the tabs' meaning: the inbox, the archive, the trash). */
   const PLACE_ICON: Record<Place, IconName> = {
     inbox: 'inbox',
     archive: 'archive',
     trash: 'trash-2',
   };
-  const FACET_OF: Record<Place, 'all' | 'archived' | 'trash'> = {
-    inbox: 'all',
-    archive: 'archived',
-    trash: 'trash',
-  };
-  const elsewhere = $derived(
-    searching
-      ? PLACES.filter((other) =>
-          jobs.facet === 'favourites' ? other === 'trash' : other !== place,
-        )
-          .map((other) => ({ place: other, count: jobs.counts[COUNT_OF[other]] }))
-          .filter((hit) => hit.count > 0)
-      : [],
-  );
+  const elsewhere = $derived.by(() => {
+    if (!searching) return [];
+    const counts = jobs.hitCounts ?? jobs.counts;
+    return PLACES.filter((other) => other !== place)
+      .map((other) => ({ place: other, count: counts[other] }))
+      .filter((hit) => hit.count > 0);
+  });
   const PORTALS = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
   /** A portal's page that did not open (said under the links). */
   let portalError = $state<string | null>(null);
@@ -409,14 +383,14 @@
   /** The rows of the list (both groups and the divider), which the bar follows. */
   let groups = $state<HTMLElement | null>(null);
   let rowBar = $state<RowBar | null>(null);
-  /** The next new rows come from the user's own change (sort, facet, filter) or from the
+  /** The next new rows come from the user's own change (sort, place, filter) or from the
    *  re-sort at the end of a run: the rows on screen glide to their new place. */
   let armed = false;
   /** Top edges of the rows before such a change, until the DOM has the new rows. */
   let before: Map<string, number> | null = null;
   let last = untrack(() => ({
     sort: jobs.sortChoice,
-    facet: jobs.facet,
+    place: jobs.place,
     filter: jobs.filterChoice,
     active: run.active,
   }));
@@ -467,18 +441,18 @@
     }
   }
 
-  // What changed the list: the user's sort, facet or filter (never while a run streams new
+  // What changed the list: the user's sort, place or filter (never while a run streams new
   // rows in), or the end of a run. A search and live updates arm nothing.
   $effect.pre(() => {
     const now = {
       sort: jobs.sortChoice,
-      facet: jobs.facet,
+      place: jobs.place,
       filter: jobs.filterChoice,
       active: run.active,
     };
     untrack(() => {
       const chosen =
-        now.sort !== last.sort || now.facet !== last.facet || now.filter !== last.filter;
+        now.sort !== last.sort || now.place !== last.place || now.filter !== last.filter;
       if ((chosen && !now.active) || (last.active && !now.active)) armed = true;
       last = now;
     });
@@ -541,12 +515,10 @@
     }));
   }
 
-  /** A key that the menu shows for an action (the list's single keys, input.ts). */
-  const KEYS: Partial<Record<string, string>> = { archive: 'e', trash: 'del' };
-
   /**
-   * The job's menu on a right click: open it, its ad, the star, unread, its moves and the
-   * prompt. On a chosen row with others chosen too, the moves and the star take them all.
+   * The job's menu on a right click (the table JOB_MENU of actions.ts): open it, its ad, the
+   * star, its moves and the prompt. On a chosen row with others chosen too, the moves and the
+   * star take them all.
    */
   function menuOf(job: JobView): ContextMenu {
     const many = bulk.active && bulk.chosen.some((chosen) => sameKey(chosen.key, job.key));
@@ -554,80 +526,61 @@
     const report = (error: string | null): void => {
       if (error !== null) jobs.actionError = error;
     };
+    type Own = Exclude<JobMenuItem['id'], 'moves'>;
+    const runs: Record<Own, () => void> = {
+      open: () => select(job, { toggle: false, range: false }),
+      'open-ad': () => {
+        invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
+          (error: unknown) => report(errorText(error)),
+        );
+      },
+      star: () => toggleStar(list),
+      prompt: () => void copyJobPrompt(job.key).then(report),
+    };
+    const labels: Record<Own, string> = {
+      open: t.menu.open,
+      'open-ad': t.reader.open,
+      star: list.some((chosen) => !chosen.pinned) ? t.reader.pin : t.reader.unpin,
+      prompt: t.reader.prompt,
+    };
     const entries: MenuEntry[] = [];
-    if (!many) {
-      entries.push(
-        {
-          id: 'open',
-          label: t.menu.open,
-          icon: 'mail-open',
-          keys: keyLabel('enter'),
-          run: () => select(job, { toggle: false, range: false }),
-        },
-        {
-          id: 'open-ad',
-          label: t.reader.open,
-          icon: 'external-link',
-          keys: keyLabel('o'),
-          run: () => {
-            invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
-              (error: unknown) => report(errorText(error)),
-            );
-          },
-        },
-        { kind: 'separator' },
-      );
-    }
-    if (hasStar(job.place)) {
-      const on = list.some((chosen) => !chosen.pinned);
-      entries.push({
-        id: 'star',
-        label: on ? t.reader.pin : t.reader.unpin,
-        icon: 'star',
-        keys: keyLabel('s'),
-        run: () => toggleStar(list),
-      });
-    }
-    if (job.place === 'inbox') {
-      entries.push({
-        id: 'unread',
-        label: t.menu.unread,
-        icon: 'mail',
-        keys: keyLabel('u'),
-        run: () => void jobs.markUnread(list.map((chosen) => chosen.key)).then(report),
-      });
-    }
-    entries.push({ kind: 'separator' });
-    for (const action of actionsOf(job.place)) {
-      const keys = KEYS[action.id];
-      entries.push({
-        id: action.id,
-        label: action.label,
-        icon: action.icon,
-        keys: keys === undefined ? null : keyLabel(keys),
-        danger: action.id === 'purge',
-        disabled: action.id === 'purge' && run.active,
-        reason: action.id === 'purge' ? run.busyText : null,
-        run: () => {
-          if (action.id === 'purge') {
-            purgeError = null;
-            purging = job;
-          } else {
-            void move(list, action.id).then(report);
-          }
-        },
-      });
-    }
-    if (!many && job.match !== null) {
-      entries.push(
-        { kind: 'separator' },
-        {
-          id: 'prompt',
-          label: t.reader.prompt,
-          icon: 'copy',
-          run: () => void copyJobPrompt(job.key).then(report),
-        },
-      );
+    for (const group of JOB_MENU) {
+      const items: MenuEntry[] = [];
+      for (const item of group) {
+        if (!item.shows(job, many)) continue;
+        if (item.id !== 'moves') {
+          items.push({
+            id: item.id,
+            label: labels[item.id],
+            icon: item.icon,
+            keys: item.key === null ? null : keyLabel(item.key),
+            run: runs[item.id],
+          });
+          continue;
+        }
+        for (const action of actionsOf(job.place)) {
+          items.push({
+            id: action.id,
+            label: action.label,
+            icon: action.icon,
+            keys: action.key === null ? null : keyLabel(action.key),
+            danger: action.id === 'purge',
+            disabled: action.id === 'purge' && run.active,
+            reason: action.id === 'purge' ? run.busyText : null,
+            run: () => {
+              if (action.id === 'purge') {
+                purgeError = null;
+                purging = job;
+              } else {
+                void move(list, action.id).then(report);
+              }
+            },
+          });
+        }
+      }
+      if (items.length === 0) continue;
+      if (entries.length > 0) entries.push({ kind: 'separator' });
+      entries.push(...items);
     }
     return { label: t.menu.job, entries };
   }
@@ -650,7 +603,7 @@
         icon={PLACE_ICON[hit.place]}
         label={t.place.hitsIn[hit.place](hit.count)}
         testid="also-{hit.place}"
-        onclick={() => jobs.setFacet(FACET_OF[hit.place])}
+        onclick={() => jobs.setPlace(hit.place)}
       />
     {/each}
   </div>
@@ -737,24 +690,13 @@
     <div class="empty">
       {#if searching}
         <div class="stack">
-          <!-- Under Neu or Favoriten a search that Alle would find says so and goes there. -->
-          {#if (jobs.facet === 'new' || jobs.facet === 'favourites') && jobs.counts.inbox > 0}
-            <EmptyState
-              icon="search"
-              tone="neutral"
-              text={t.list.noHitIn[jobs.facet](jobs.search.trim())}
-              secondary={{ label: t.list.searchAll, onclick: () => jobs.setFacet('all') }}
-              testid="empty-search"
-            />
-          {:else}
-            <EmptyState
-              icon="search"
-              tone="neutral"
-              text={t.list.noHit(jobs.search.trim())}
-              secondary={{ label: t.field.clear, icon: 'x', onclick: () => jobs.setSearch('') }}
-              testid="empty-search"
-            />
-          {/if}
+          <EmptyState
+            icon="search"
+            tone="neutral"
+            text={t.list.noHit(jobs.search.trim())}
+            secondary={{ label: t.field.clear, icon: 'x', onclick: () => jobs.setSearch('') }}
+            testid="empty-search"
+          />
           {#if elsewhere.length > 0}{@render alsoIn()}{/if}
         </div>
       {:else if place !== 'inbox'}
@@ -769,23 +711,11 @@
           icon="funnel"
           tone="neutral"
           text={t.list.noFilterHit}
-          secondary={{ label: t.toolbar.filterReset, onclick: () => jobs.setFilter(NO_FILTER) }}
+          secondary={{
+            label: t.toolbar.filterReset,
+            onclick: () => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER)),
+          }}
           testid="empty-filter"
-        />
-      {:else if jobs.facet === 'favourites'}
-        <EmptyState
-          icon="star"
-          tone="neutral"
-          text={t.list.emptyFavourites}
-          testid="empty-favourites"
-        />
-      {:else if jobs.facet === 'new' && jobs.counts.inbox > 0}
-        <EmptyState
-          icon="check"
-          tone="success"
-          text={t.list.emptyNew}
-          secondary={{ label: t.list.showAll, onclick: () => jobs.setFacet('all') }}
-          testid="empty-new"
         />
       {:else if run.active || !mailRead}
         <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
@@ -869,40 +799,11 @@
         </div>
       {/each}
     {/snippet}
-    {#if caughtUp}
-      <div class="caught-up" data-testid="caught-up">
-        <span class="caught-up-text">{t.list.emptyNew}</span>
-        <Button
-          variant="link"
-          size="sm"
-          label={t.list.showAll}
-          testid="caught-up-all"
-          onclick={() => jobs.setFacet('all')}
-        />
-      </div>
-    {/if}
     <div class="groups" bind:this={groups}>
-      <!-- Another list is built anew: its old rows leave as one piece, not row by row. Each
-           section keeps its box whether its heading shows or not, so a heading that comes
-           or goes never builds the rows anew. -->
+      <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
       {#key jobs.generation}
-        {#if sections.pending.length > 0}
-          <ListDivider label={t.list.pendingSection} thin testid="pending-divider" />
-        {/if}
-        <div class="rows" data-testid="job-rows" data-group="pending">
-          {@render group(sections.pending)}
-        </div>
-        {#if split}
-          <ListDivider label={t.list.freshSection} thin testid="fresh-divider" />
-        {/if}
-        <div class="rows" data-testid="job-rows" data-group="fresh">
-          {@render group(sections.fresh)}
-        </div>
-        {#if split}
-          <ListDivider label={t.list.olderSection} thin testid="older-divider" />
-        {/if}
-        <div class="rows" data-testid="job-rows" data-group="rest">
-          {@render group(sections.rest)}
+        <div class="rows" data-testid="job-rows">
+          {@render group(active)}
         </div>
         {#if excluded.length > 0}
           <ListDivider
@@ -1009,21 +910,6 @@
   .groups,
   .rows {
     display: block;
-  }
-
-  /* Neu with nothing new left: one quiet line and the way to Alle, above the rows read. */
-  .caught-up {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-4) var(--space-12);
-    padding: var(--space-12) var(--pane-padding);
-    border-bottom: var(--border-width) solid var(--border);
-  }
-
-  .caught-up-text {
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   .stack {

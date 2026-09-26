@@ -76,7 +76,6 @@ const LIST: readonly Entry[] = [
   { id: 'archive', label: (k) => k.archive, keys: () => 'E' },
   { id: 'trash', label: (k) => k.trash, keys: () => keyLabel('del') },
   { id: 'star', label: (k) => k.star, keys: () => 'S' },
-  { id: 'unread', label: (k) => k.unread, keys: () => 'U' },
   { id: 'openAd', label: (k) => k.openAd, keys: () => 'O' },
   { id: 'close', label: (k) => k.closeJob, keys: () => keyLabel('esc') },
 ];

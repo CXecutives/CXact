@@ -40,6 +40,7 @@ import type {
   VaultKind,
   WorkMode,
 } from '../ipc/types';
+import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
   formatCountdown,
@@ -69,12 +70,9 @@ const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : 
 /** Shift in the same writing as the command key it stands beside. */
 const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
 
-/** The portals by their web address, everywhere (a sentence never starts with one). */
-const portalName: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
+/** The portals by their web address, everywhere (a sentence never starts with one); the
+ *  names come from the portal registry, no catalog translates them. */
+const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
@@ -703,9 +701,8 @@ export const de = {
     tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${clickWith(key)}.`,
     /** The pane names the chosen jobs, the first few, then how many more. */
     more: (value: number) => `+${n(value)}`,
-    /** The pane's and the bar's words for the star and for reading. */
+    /** The pane's and the bar's word for the star. */
     pin: 'Favorit',
-    read: 'Als gelesen',
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
@@ -786,16 +783,11 @@ export const de = {
       value === 1
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
-    markAllRead: 'Alle als gelesen markieren',
-    /** The text button of the list header (during a search: its hits). */
-    allRead: 'Alle gelesen',
-    hitsRead: 'Ergebnisse gelesen',
   },
   /** The app's own menus (their accessible names and the entries of the job's menu). */
   menu: {
     job: 'Job',
     open: 'Öffnen',
-    unread: 'Als ungelesen markieren',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -838,7 +830,6 @@ export const de = {
     archive: 'Archivieren',
     trash: 'In den Papierkorb',
     star: 'Favorit',
-    unread: 'Als ungelesen markieren',
     openAd: 'Anzeige öffnen',
     closeJob: 'Job schließen',
   },
@@ -932,12 +923,8 @@ export const de = {
     fetch: 'Abrufen',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
-    /** The switch Neu, Alle, Favoriten ("Auswahl" is the multi-selection's word). */
-    facet: 'Ansicht',
-    facetNew: 'Neu',
-    facetAll: 'Alle',
-    facetSaved: 'Favoriten',
-    /** The menu of the sort button (its accessible name). */
+    /** The menu of the sort button (its accessible name), the order's heading in the
+     *  funnel's menu. */
     sortMenu: 'Sortierung',
     /** The order of the list in words (the sort button). */
     sortLabel: {
@@ -947,19 +934,11 @@ export const de = {
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
     /** The funnel of the inbox (its tooltip and the name of its menu): the order and the
-     *  filter in one menu. */
+     *  filter in one menu (lib/state/filter.ts), its groups under small headings. */
     filter: 'Filter',
-    /** The second line of its tooltip while a filter is on: what the list shows (the portal
-     *  by name). */
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
-      const parts = [
-        portal === null ? '' : `nur ${portal}`,
-        band === 'mid' ? 'ab mittlerer Passung' : band === 'high' ? 'nur hohe Passung' : '',
-        applied ? 'nur beworbene Jobs' : '',
-      ].filter((part) => part !== '');
-      const text = parts.join(', ');
-      return text.charAt(0).toUpperCase() + text.slice(1);
-    },
+    favouritesOnly: 'Nur Favoriten',
+    portalHeading: 'Portal',
+    bandHeading: 'Passung',
     allPortals: 'Alle Portale',
     /** The lowest band of the filter (`any`: every job, also one without a score). */
     band: {
@@ -969,8 +948,11 @@ export const de = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     /** Without a usable profile there is no fit to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Passung.',
-    appliedOnly: 'Nur beworbene Jobs',
     filterReset: 'Filter zurücksetzen',
+    /** The quiet line under the toolbar while a filter is on: its choices in the menu's
+     *  words, then the way back. */
+    filterLine: (parts: readonly string[]) => parts.join(' · '),
+    filterLineReset: 'Zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst ein Portal ein.',
@@ -1079,11 +1061,6 @@ export const de = {
     label: 'Jobs',
     /** The folding section at the end of every place (its count in brackets where known). */
     excluded: 'Ausgeschlossen',
-    /** By match: the jobs still waiting for their score, a small group on top. */
-    pendingSection: 'Noch ohne Passung',
-    /** Under Neu: the jobs first seen in the last fetch, then the older unread ones. */
-    freshSection: 'Seit dem letzten Abruf',
-    olderSection: 'Früher',
     /** A row excluded by a formal requirement the ad makes mandatory (`formalOpen` with its
      *  `class`), in the short words of the criteria. */
     formalMissing: {
@@ -1095,20 +1072,11 @@ export const de = {
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
     createAlert: (portal: string) => `Alert auf ${portal} anlegen`,
     readOlder: FULL_MAILBOX,
-    emptyNew: 'Keine neuen Jobs.',
-    emptyFavourites: 'Noch keine Favoriten.',
     emptyAll: 'Nach dem ersten Abruf stehen die Jobs hier.',
     emptyAfterRun: 'Die Alert-Mails enthielten bisher keine Jobs.',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
-    /** A search under Neu or Favoriten that Alle would find. */
-    noHitIn: {
-      new: (query: string) => `Keine neuen Jobs zu „${query}“.`,
-      favourites: (query: string) => `Keine Favoriten zu „${query}“.`,
-    },
-    searchAll: 'In allen suchen',
     /** The filter of the inbox leaves nothing in the list. */
     noFilterHit: 'Kein Job passt zum Filter.',
-    showAll: 'Alle zeigen',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',
@@ -1321,15 +1289,6 @@ export const de = {
      *  that opens the mail. */
     emptyAlerts: emptyMails,
     lastRun: 'Letzter Abruf',
-    /** The jobs marked "Beworben", with when and the note. */
-    applied: 'Beworben',
-    appliedWhen: (days: number) =>
-      days === 0
-        ? 'Beworben heute'
-        : days === 1
-          ? 'Beworben gestern'
-          : `Beworben vor ${n(days)} Tagen`,
-    adClosed: 'Anzeige geschlossen',
     /** The musts the profile lacks most often (30 days). */
     openMusts: 'Oft verlangt, nicht im Profil',
     inJobs: (value: number) => `in ${n(value)} Jobs`,
@@ -1766,9 +1725,9 @@ export const de = {
     mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoArchive: 'Jobs nach 30 Tagen archivieren',
+    autoArchive: (days: number) => `Jobs nach ${n(days)} Tagen archivieren`,
     autoArchiveHint: 'Favoriten werden nie archiviert.',
-    autoEmptyTrash: 'Papierkorb nach 30 Tagen leeren',
+    autoEmptyTrash: (days: number) => `Papierkorb nach ${n(days)} Tagen leeren`,
     autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
     active: 'Aktiv',
     details: 'Details holen',
@@ -1909,7 +1868,6 @@ export const de = {
     inboxOne: (name: string) => `„${name}“ zurückgeholt.`,
     inboxMany: (value: number) => `${n(value)} Jobs zurückgeholt.`,
     restoredMany: (value: number) => `${n(value)} Jobs wiederhergestellt.`,
-    allRead: 'Alle als gelesen markiert.',
     archivedMany: (value: number) => `${n(value)} Jobs archiviert.`,
     restored: (name: string) => `„${name}“ wiederhergestellt.`,
     /** Only a deletion for good says "endgültig". */
