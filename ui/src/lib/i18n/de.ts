@@ -227,7 +227,7 @@ const PROFILE_UNREADABLE = 'Profil nicht lesbar';
 
 /** The run that reads every alert mail (`fullMailbox`): one name in the list, the run card
  *  and the settings. */
-const FULL_MAILBOX = 'Ganzes Postfach lesen';
+const FULL_MAILBOX = 'Alle Alert-Mails abrufen';
 
 const ANUE = 'Die Anzeige nennt Arbeitnehmerüberlassung.';
 const LOW_TEXT = 'Die Anzeige hat wenig Text.';
@@ -1421,7 +1421,7 @@ export const de = {
   },
   settings: {
     mailbox: 'Postfach',
-    /** The section of what the app does on its own: fetch at start, archive, empty the trash. */
+    /** The section of what the app does on its own: archive, empty the trash. */
     automatic: 'Automatisch',
     portals: 'Portale',
     files: 'Dateien',
@@ -1444,37 +1444,31 @@ export const de = {
     twoStep: 'Ein App-Passwort hat 16 Buchstaben und braucht die Bestätigung in zwei Schritten.',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
-    twoStepAction: 'Bestätigung einschalten',
+    /** Google's own words for its 2-step verification. */
+    twoStepAction: 'Bestätigung in zwei Schritten einschalten',
     connect: 'Verbinden',
     /** A changed mailbox is saved (said under its row). */
     mailboxSaved: 'Postfach verbunden.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoFetch: 'Beim Start abrufen',
-    autoFetchHint: 'Wenn der letzte Abruf mehr als sechs Stunden her ist.',
     autoArchive: 'Jobs nach 30 Tagen archivieren',
     autoArchiveHint: 'Favoriten werden nie archiviert.',
     autoEmptyTrash: 'Papierkorb nach 30 Tagen leeren',
     autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
     active: 'Aktiv',
     details: 'Details holen',
+    /** Once at the top of the portals: what "Details holen" is for. */
+    portalsHint: 'Ohne „Details holen“ bekommen die Jobs eines Portals keine Passung.',
     needsDetails: 'Schalte erst „Details holen“ ein.',
-    login: 'Mit Anmeldung',
-    loginHint: 'Zeigt ganze Anzeigen statt eines Anrisses.',
-    /** Details holen is on: what it does. */
-    detailsOn: 'Holt die ganze Anzeige, in ruhigem Takt und mit Tageslimit.',
-    /** "Details holen" is off: what that changes. */
-    detailsOff: 'Ohne Details bekommen die Jobs dieses Portals keine Passung.',
+    /** The sign-in row of a portal that offers one. */
+    loginHint: 'Zeigt ganze Anzeigen.',
     quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Seiten`,
     quotaHour: (used: number, cap: number) => `Diese Stunde ${n(used)} von ${n(cap)} Seiten`,
     /** The sign-in row of a portal: its label, and its state. */
     session: 'Anmeldung',
     signedIn: 'Angemeldet',
-    notSignedIn: 'Nicht angemeldet.',
     /** A portal that is off. */
     portalOff: 'Wird beim Abruf übersprungen.',
-    /** A sign-in still stored while the portal or its sign-in is switched off. */
-    sessionLeft: 'Die Anmeldung ist noch gespeichert.',
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
@@ -1483,7 +1477,8 @@ export const de = {
     workspaceDefault: 'Standard',
     excel: 'Excel-Datei',
     excelMissing: 'Die Excel-Datei entsteht beim ersten Abruf.',
-    overview: 'Übersicht',
+    /** The HTML file of the favourites and new matches. */
+    overview: 'Bericht',
     txt: 'Textdateien',
     /** What the text files are (one per ad) and what they are for, with their number. */
     txtCount: (value: number) =>
@@ -1501,11 +1496,11 @@ export const de = {
     txtClearText: 'Nur „Neu schreiben“ holt sie zurück.',
     fullMailbox: FULL_MAILBOX,
     fullMailboxHint: 'Liest alle Alert-Mails, nicht nur die neuen.',
-    fullMailboxAction: 'Postfach lesen',
-    fullMailboxConfirm: 'Lesen',
-    fullMailboxHeading: 'Ganzes Postfach lesen?',
+    fullMailboxAction: 'Abrufen',
+    fullMailboxConfirm: 'Abrufen',
+    fullMailboxHeading: 'Alle Alert-Mails abrufen?',
     fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
-    logs: 'Protokolle',
+    logs: 'Protokoll',
     data: 'Daten der App',
     reset: 'Alles zurücksetzen',
     /** Everything core's reset deletes: the database, the profile, the keychain entry, the
@@ -1513,8 +1508,15 @@ export const de = {
     resetHint: 'Löscht Jobs, Einstellungen, Profil, App-Passwort und Anmeldungen.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
-    resetText:
-      'Die App startet neu und löscht auch Excel-Datei, Übersicht und Textdateien im Arbeitsordner.',
+    resetText: 'Die App startet danach neu und löscht',
+    /** Everything the reset deletes, one item each (the dialog's list). */
+    resetItems: [
+      'die Jobs und die Einstellungen',
+      'das Profil',
+      'das App-Passwort',
+      'die Anmeldungen bei den Portalen',
+      'Excel-Datei, Bericht und Textdateien im Arbeitsordner',
+    ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
     resetPartly: (value: number) =>
@@ -1522,14 +1524,30 @@ export const de = {
     running: 'Ein Abruf läuft gerade.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     language: 'Sprache',
-    languageLabel: 'Sprache der App',
-    /** Excel file and overview are written at the next fetch (the text files stay German). */
-    languageHint: 'Excel-Datei und Übersicht folgen beim nächsten Abruf.',
+    /** Excel file and report are written at the next fetch (the text files stay German). */
+    languageHint: 'Excel-Datei und Bericht folgen beim nächsten Abruf.',
     /** Each language in its own words, the same in both catalogs. */
     languageName: {
       de: 'Deutsch',
       en: 'English',
     } satisfies Record<Language, string>,
+    /** The card of the app's keys (their names follow the OS, platform.ts keyLabel). */
+    keys: {
+      heading: 'Tastenkürzel',
+      overview: 'Übersicht',
+      jobs: 'Jobs',
+      profile: 'Profil',
+      settings: 'Einstellungen',
+      search: 'Suchen',
+      undo: 'Rückgängig',
+      archive: 'Archivieren',
+      trash: 'In den Papierkorb',
+      favourite: 'Favorit',
+      unread: 'Gelesen oder ungelesen',
+      applied: 'Beworben',
+      openAd: 'Anzeige öffnen',
+      fetch: 'Abrufen',
+    },
   },
   firstRun: {
     benefit: 'Die App liest die Alert-Mails aus Gmail und zeigt, welche Jobs zum Profil passen.',

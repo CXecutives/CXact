@@ -2,15 +2,17 @@
   One portal in the settings, the same skeleton on every card: the header (the portal by its
   web address, the portal in the browser, its switch Aktiv; the name names the switch but, like
   every text next to a switch, does not switch it),
-  then the switch rows, then the status under its own divider (the portal's problem in one
-  sentence that says whether she has to act, with "Alert-Mail öffnen" when alert mails came
-  without jobs, and the pages used today, the meter only from 80 % or while paused). What
-  concerns only the pages (a pause, the limit, the sign-in) goes while details are off:
-  then no page is fetched. A portal that is off says in one line that the fetch skips it.
-  Each switch says in one sentence what it does (no risk grades). Sign-in exists only while details and
-  sign-in are both on; a stored sign-in the switches no longer show keeps its Abmelden.
-  A switch moves at once (the state is patched before the save); a failure puts it back and
-  says why here. The switch itself is the answer: no toast.
+  then the rows, then the status under its own divider (the portal's problem in one sentence
+  that says whether she has to act, naming the time and the reason where it has them, with
+  "Alert-Mail öffnen" when alert mails came without jobs, and on every portal the pages
+  used today, the hour instead only while it binds near its limit; the meter from 80 % or
+  while paused). What concerns only the pages (a pause, the limit) goes while details are
+  off: then no page is fetched. A portal that is off says in one line that the fetch skips
+  it. "Details holen" is a switch (what it is for is said once over all portals); a portal
+  that offers a sign-in has one row "Anmeldung" with "Anmelden" or "Abmelden": signing in
+  lets the fetch use it, signing out ends that (a sign-in needs the details). A switch moves
+  at once (the state is patched before the save); a failure puts it back and says why here.
+  The switch itself is the answer: no toast.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -60,8 +62,9 @@
         )?.gmailId ?? null)
       : null,
   );
-  /** The pages used: the fuller window's numbers; the meter only near the limit. Only while
-   *  details are fetched: without them no page counts. */
+  /** The pages used today on every portal; the hour's numbers instead only while the hour
+   *  binds near its limit (the meter shows then). Only while details are fetched: without
+   *  them no page counts. */
   const quota = $derived.by(() => {
     const q = portal.quota;
     if (q === null || !portal.fetchDetails) return null;
@@ -69,16 +72,17 @@
     const hour = q.usedHour / Math.max(q.capHour, 1);
     const paused = portal.health.kind === 'paused' || portal.health.kind === 'quotaReached';
     const share = Math.max(day, hour);
+    const meter = share >= QUOTA_SHOWN || paused;
     const text =
-      hour > day
+      meter && hour > day
         ? t.settings.quotaHour(q.usedHour, q.capHour)
         : t.settings.quota(q.usedDay, q.capDay);
-    return { share, text, meter: share >= QUOTA_SHOWN || paused };
+    return { share, text, meter };
   });
-  /** Sign-in only matters while details are fetched. */
-  const signIn = $derived(portal.fetchDetails && portal.loginEnabled);
-  /** A stored sign-in the switches no longer show: its Abmelden stays until it is gone. */
-  const leftover = $derived(portal.signedIn === true && !(portal.enabled && signIn));
+  /** The row "Anmeldung": where the portal offers one, also for a stored sign-in of a portal
+   *  that is off (its Abmelden stays until it is gone). */
+  const signedIn = $derived(portal.signedIn === true);
+  const loginRow = $derived(portal.login === 'optional' && (portal.enabled || signedIn));
   const status = $derived(portal.enabled && (health !== null || quota !== null));
   const dryRun = $derived(app.state?.dryRun ?? false);
   const dryRunReason = $derived(t.error.text('dryRun', {}));
@@ -113,11 +117,13 @@
     }
   }
 
+  /** Anmelden: the sign-in window, and once signed in the fetch uses it; Abmelden ends both. */
   async function session(on: boolean): Promise<void> {
     error = null;
     busy = true;
     try {
-      await invoke(on ? 'portal_login' : 'portal_logout', { portal: portal.portal });
+      const done = await invoke(on ? 'portal_login' : 'portal_logout', { portal: portal.portal });
+      if (done && portal.loginEnabled !== on) await change({ loginEnabled: on });
       await app.load();
     } catch (failure) {
       error = () => errorText(failure);
@@ -139,20 +145,6 @@
     );
   }
 </script>
-
-{#snippet signOut()}
-  <Button
-    variant="secondary"
-    size="sm"
-    icon="log-out"
-    label={t.settings.signOut}
-    loading={busy}
-    disabled={dryRun}
-    disabledReason={dryRunReason}
-    testid="sign-out-{portal.portal}"
-    onclick={() => void session(false)}
-  />
-{/snippet}
 
 <Card padding="none" testid="portal-{portal.portal}">
   <div class="head">
@@ -190,13 +182,12 @@
     </div>
   </div>
   <!-- Switching the portal on, its rows rise in; off, they fade (no height animation). -->
-  {#if portal.enabled || error || leftover}
+  {#if portal.enabled || error || loginRow}
     <div class="body" in:rise={{ distance: 'sm' }} out:fade>
       <div class="rows">
         {#if portal.enabled}
           <SettingRow
             label={t.settings.details}
-            hint={portal.fetchDetails ? t.settings.detailsOn : t.settings.detailsOff}
             for="switch-details-{portal.portal}"
             testid="details-{portal.portal}"
           >
@@ -208,42 +199,32 @@
               onchange={(on) => change({ fetchDetails: on })}
             />
           </SettingRow>
-          {#if portal.login === 'optional'}
-            <SettingRow
-              label={t.settings.login}
-              hint={t.settings.loginHint}
-              for="switch-login-{portal.portal}"
-              testid="login-{portal.portal}"
-            >
-              <Toggle
-                id="switch-login-{portal.portal}"
-                checked={signIn}
-                label={t.settings.login}
-                disabled={!portal.fetchDetails}
-                disabledReason={t.settings.needsDetails}
-                testid="toggle-login-{portal.portal}"
-                onchange={(on) => change({ loginEnabled: on })}
-              />
-            </SettingRow>
-          {/if}
         {/if}
-        {#if portal.enabled && signIn}
+        {#if loginRow}
           <SettingRow
             label={t.settings.session}
             hint={run.loginNeeded === portal.portal
               ? t.settings.signInWaiting
-              : portal.signedIn
-                ? null
-                : t.settings.notSignedIn}
+              : t.settings.loginHint}
             testid="session-{portal.portal}"
           >
             {#snippet badges()}
-              {#if portal.signedIn}
+              {#if signedIn}
                 <Badge label={t.settings.signedIn} tone="success" icon="check" />
               {/if}
             {/snippet}
-            {#if portal.signedIn}
-              {@render signOut()}
+            {#if signedIn}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="log-out"
+                label={t.settings.signOut}
+                loading={busy}
+                disabled={dryRun}
+                disabledReason={dryRunReason}
+                testid="sign-out-{portal.portal}"
+                onclick={() => void session(false)}
+              />
             {:else}
               <Button
                 variant="secondary"
@@ -251,23 +232,16 @@
                 icon="log-in"
                 label={t.settings.signIn}
                 loading={busy}
-                disabled={run.active || dryRun}
-                disabledReason={dryRun ? dryRunReason : run.busyText}
+                disabled={run.active || dryRun || !portal.fetchDetails}
+                disabledReason={dryRun
+                  ? dryRunReason
+                  : run.active
+                    ? run.busyText
+                    : t.settings.needsDetails}
                 testid="sign-in-{portal.portal}"
                 onclick={() => void session(true)}
               />
             {/if}
-          </SettingRow>
-        {:else if leftover}
-          <SettingRow
-            label={t.settings.session}
-            hint={t.settings.sessionLeft}
-            testid="session-{portal.portal}"
-          >
-            {#snippet badges()}
-              <Badge label={t.settings.signedIn} tone="success" icon="check" />
-            {/snippet}
-            {@render signOut()}
           </SettingRow>
         {/if}
       </div>

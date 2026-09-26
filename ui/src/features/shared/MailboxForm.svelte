@@ -5,10 +5,12 @@
   stands above the button. The password never leaves this form except to save_mailbox (it
   goes straight into the OS keychain). Under both fields (none has a hint of its own, so the
   two stay one row) one line says what an app password is and needs, with the two pages in
-  the order she needs them: the 2-step verification, then the app password. The fields and that line keep the measure of a form; save and cancel follow
-  the OS like the dialogs (save first on Windows, last on macOS), 12 apart, and end on the
-  trailing edge of the card like every save/cancel pair; the single "Verbinden" of the first
-  run stays under the fields. A saved change says so where the mailbox is (Einstellungen).
+  the order she needs them: the 2-step verification, then the app password. The fields and
+  that line keep the measure of a form; save and cancel follow the OS like the dialogs (save
+  first on Windows, last on macOS), 12 apart. In Einstellungen (`compact`) they are the 28 px
+  buttons of a row and end on the trailing edge of the card; the single "Verbinden" of the
+  first run is its step's main action (32 px) and stays under the fields. A saved change
+  says so where the mailbox is (Einstellungen).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -38,8 +40,17 @@
      * the app password next to an address that is there.
      */
     autofocus?: boolean;
+    /** A block of Einstellungen: the buttons of a row (28 px) at the end of the card. */
+    compact?: boolean;
   }
-  let { saveLabel, oncancel = null, onsaved = null, autofocus = false }: Props = $props();
+  let {
+    saveLabel,
+    oncancel = null,
+    onsaved = null,
+    autofocus = false,
+    compact = false,
+  }: Props = $props();
+  const size = $derived(compact ? 'sm' : 'field');
 
   const id = $props.id();
   const saveFirst = primaryFirst();
@@ -173,11 +184,12 @@
   {#if formError}
     <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
   {/if}
-  <div class="actions" class:pair={oncancel !== null}>
+  <div class="actions" class:end={compact || oncancel !== null}>
     {#snippet dismiss()}
       {#if oncancel}
         <Button
           variant="secondary"
+          {size}
           label={t.common.cancel}
           disabled={busy}
           testid="mailbox-cancel"
@@ -188,6 +200,7 @@
     {#if !saveFirst}{@render dismiss()}{/if}
     <Button
       variant="primary"
+      {size}
       label={saveLabel}
       loading={busy}
       testid="mailbox-save"
@@ -247,8 +260,8 @@
   }
 
   /* Save and cancel on the card's trailing edge, 12 apart, like the profile's save bar and
-     every dialog. */
-  .pair {
+     every dialog; in Einstellungen a single "Verbinden" too. */
+  .end {
     justify-content: flex-end;
   }
 </style>
