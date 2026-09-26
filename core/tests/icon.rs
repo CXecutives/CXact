@@ -7,6 +7,18 @@
 //! included (colour bleed): the Windows shell scales a stage without premultiplying when it has
 //! no stage of the wanted size, and a transparent black pixel then becomes a dark fringe around
 //! the plate on the desktop.
+//!
+//! The plate's geometry is pinned by a reference written down here, independent of the
+//! generator: Apple's continuous corner, the radius as a share of the plate and an exact
+//! area-coverage rasterizer. Every stage's alpha must match it within one level.
+
+// Pixel coordinates and levels: small non-negative numbers (at most 1024 and 255).
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap
+)]
 
 use std::io::Read;
 use std::path::Path;
@@ -404,4 +416,223 @@ fn ui_brand_mark_is_the_generated_vector() {
         2,
         "plate and folder with check"
     );
+}
+
+// ------------------------------------------------------------------- reference geometry
+
+/// Apple's continuous corner as `UIKit` draws it (the path dumped by Liam Rosenfeld, 2021): the
+/// curve leaves the incoming edge `CORNER_START` radii before the corner and reaches the
+/// outgoing edge as far after it, in three cubics. Points are (back along the incoming edge,
+/// forward along the outgoing edge) in radii; the curve is symmetric about the diagonal.
+const CORNER_START: f64 = 1.528_664_98;
+const CORNER: [[(f64, f64); 3]; 3] = [
+    [
+        (1.088_492_96, 0.0),
+        (0.868_406_94, 0.0),
+        (0.631_493_79, 0.074_911_39),
+    ],
+    [
+        (0.372_823_83, 0.169_059_56),
+        (0.169_059_56, 0.372_823_83),
+        (0.074_911_39, 0.631_493_79),
+    ],
+    [
+        (0.0, 0.868_406_94),
+        (0.0, 1.088_492_96),
+        (0.0, CORNER_START),
+    ],
+];
+
+/// The plate's corner radius as a share of its side: Mike Swanson's fit to Apple's own
+/// `AppIconMask` (34 of 152). Apple publishes no number.
+const PLATE_RADIUS: f64 = 0.2237;
+
+/// The plate (left, top)..(right, bottom) as a polygon, clockwise on screen: straight sides
+/// and the continuous corner, each cubic flattened into 256 chords (far below a level at 1024).
+fn plate_outline(left: f64, top: f64, right: f64, bottom: f64) -> Vec<(f64, f64)> {
+    let radius = PLATE_RADIUS * (right - left);
+    // Corner, incoming direction, outgoing direction.
+    let corners = [
+        ((right, top), (1.0, 0.0), (0.0, 1.0)),
+        ((right, bottom), (0.0, 1.0), (-1.0, 0.0)),
+        ((left, bottom), (-1.0, 0.0), (0.0, -1.0)),
+        ((left, top), (0.0, -1.0), (1.0, 0.0)),
+    ];
+    let mut out = Vec::new();
+    for (corner, incoming, outgoing) in corners {
+        let at = |(back, forward): (f64, f64)| {
+            (
+                corner.0 - back * radius * incoming.0 + forward * radius * outgoing.0,
+                corner.1 - back * radius * incoming.1 + forward * radius * outgoing.1,
+            )
+        };
+        let mut start = at((CORNER_START, 0.0));
+        out.push(start);
+        for [first, second, end] in CORNER {
+            let control = [start, at(first), at(second), at(end)];
+            for step in 1..=256 {
+                let t = f64::from(step) / 256.0;
+                let rest = 1.0 - t;
+                let weights = [
+                    rest * rest * rest,
+                    3.0 * rest * rest * t,
+                    3.0 * rest * t * t,
+                    t * t * t,
+                ];
+                let point = control
+                    .iter()
+                    .zip(weights)
+                    .fold((0.0, 0.0), |sum, (point, weight)| {
+                        (sum.0 + weight * point.0, sum.1 + weight * point.1)
+                    });
+                out.push(point);
+            }
+            start = control[3];
+        }
+    }
+    out
+}
+
+/// Exact area coverage (0..1) of a polygon on a size x size grid, top row first: every edge
+/// adds the signed area between itself and the right side of each cell it crosses (the
+/// accumulation of font-rs); a running sum along the row gives each pixel's covered share.
+/// The polygon must stay within 0..size horizontally.
+fn coverage(outline: &[(f64, f64)], size: usize) -> Vec<f64> {
+    use std::cmp::Ordering;
+    let stride = size + 2;
+    let mut acc = vec![0.0f64; size * stride + 2];
+    for (index, &from) in outline.iter().enumerate() {
+        let to = outline[(index + 1) % outline.len()];
+        // Downwards edges count +1, upwards -1; a horizontal edge adds nothing.
+        let (sign, upper, lower) = match from.1.partial_cmp(&to.1) {
+            Some(Ordering::Less) => (1.0, from, to),
+            Some(Ordering::Greater) => (-1.0, to, from),
+            _ => continue,
+        };
+        let dxdy = (lower.0 - upper.0) / (lower.1 - upper.1);
+        let mut x = upper.0;
+        if upper.1 < 0.0 {
+            x -= upper.1 * dxdy;
+        }
+        let first = upper.1.max(0.0).floor() as usize;
+        let last = (lower.1.ceil().max(0.0) as usize).min(size);
+        for y in first..last {
+            let row = y * stride;
+            let height = ((y + 1) as f64).min(lower.1) - (y as f64).max(upper.1);
+            let next = x + dxdy * height;
+            let area = height * sign;
+            let (low, high) = if x < next { (x, next) } else { (next, x) };
+            let cell = low.max(0.0).floor();
+            let (start, end) = (cell as usize, high.ceil() as usize);
+            if end <= start + 1 {
+                let middle = 0.5 * (x + next) - cell;
+                acc[row + start] += area - area * middle;
+                acc[row + start + 1] += area * middle;
+            } else {
+                let slope = 1.0 / (high - low);
+                let head = low - cell;
+                let first_share = 0.5 * slope * (1.0 - head) * (1.0 - head);
+                let tail = high - high.ceil() + 1.0;
+                let last_share = 0.5 * slope * tail * tail;
+                acc[row + start] += area * first_share;
+                if end == start + 2 {
+                    acc[row + start + 1] += area * (1.0 - first_share - last_share);
+                } else {
+                    let second = slope * (1.5 - head);
+                    acc[row + start + 1] += area * (second - first_share);
+                    for value in &mut acc[row + start + 2..row + end - 1] {
+                        *value += area * slope;
+                    }
+                    let before_last = second + (end - start - 3) as f64 * slope;
+                    acc[row + end - 1] += area * (1.0 - before_last - last_share);
+                }
+                acc[row + end] += area * last_share;
+            }
+            x = next;
+        }
+    }
+    let mut out = Vec::with_capacity(size * size);
+    for y in 0..size {
+        let mut run = 0.0;
+        for cell in &acc[y * stride..y * stride + size] {
+            run += cell;
+            out.push(run.abs().min(1.0));
+        }
+    }
+    out
+}
+
+/// A share 0..1 as an 8 bit level.
+fn level(share: f64) -> i32 {
+    (share * 255.0).round() as i32
+}
+
+/// The reference rasterizer itself: a rectangle with fractional sides covers each pixel by the
+/// product of its overlaps, and a plate's coverage sums to its area.
+#[test]
+fn reference_rasterizer_is_exact() {
+    let (left, top, right, bottom) = (1.25, 0.5, 3.75, 2.2);
+    let rect = coverage(
+        &[(left, top), (right, top), (right, bottom), (left, bottom)],
+        5,
+    );
+    let overlap = |from: f64, to: f64, pixel: usize| {
+        (to.min(pixel as f64 + 1.0) - from.max(pixel as f64)).max(0.0)
+    };
+    for y in 0..5 {
+        for x in 0..5 {
+            let expected = overlap(left, right, x) * overlap(top, bottom, y);
+            assert!(
+                (rect[y * 5 + x] - expected).abs() < 1e-12,
+                "pixel {x},{y}: {} instead of {expected}",
+                rect[y * 5 + x]
+            );
+        }
+    }
+    let outline = plate_outline(0.3, 0.7, 40.3, 40.7);
+    let shoelace = outline
+        .iter()
+        .zip(outline.iter().cycle().skip(1))
+        .map(|(from, to)| from.0 * to.1 - to.0 * from.1)
+        .sum::<f64>()
+        / 2.0;
+    let sum: f64 = coverage(&outline, 42).iter().sum();
+    assert!(
+        (sum - shoelace.abs()).abs() < 1e-9,
+        "coverage {sum} vs area {shoelace}"
+    );
+}
+
+/// Every ICO stage is the plate filling its square with Apple's corner: each alpha within one
+/// level of the exact coverage, the four mirror images alike, nothing outside the plate.
+#[test]
+fn ico_plate_is_exact() {
+    let bytes = std::fs::read(repo("src-tauri/icons/icon.ico")).unwrap();
+    for stage in read_ico(&bytes) {
+        let size = stage.width as usize;
+        let exact = coverage(&plate_outline(0.0, 0.0, size as f64, size as f64), size);
+        let alpha = |x: usize, y: usize| i32::from(stage.pixels[y * size + x][3]);
+        for y in 0..size {
+            for x in 0..size {
+                let (value, share) = (alpha(x, y), exact[y * size + x]);
+                assert!(
+                    (value - level(share)).abs() <= 1,
+                    "stage {size}: alpha {value} at {x},{y}, the exact plate has {}",
+                    level(share)
+                );
+                if share < 1e-9 {
+                    assert_eq!(value, 0, "stage {size}: spill at {x},{y} outside the plate");
+                }
+                let mirrors = [(size - 1 - x, y), (x, size - 1 - y), (y, x)];
+                for (mirror_x, mirror_y) in mirrors {
+                    let other = alpha(mirror_x, mirror_y);
+                    assert!(
+                        (value - other).abs() <= 1,
+                        "stage {size}: not symmetric, {x},{y} has {value}, \
+                         {mirror_x},{mirror_y} has {other}"
+                    );
+                }
+            }
+        }
+    }
 }

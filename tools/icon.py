@@ -12,11 +12,14 @@ One geometry, every output:
                               Windows takes every size from icon.ico
   ui/src/assets/app-icon.svg  the same paths as a vector (brand mark in the title bar)
 
-Edges, in every raster output: colour and coverage are rendered apart, so a partly covered
-pixel carries the plate colour under it (straight alpha), and every fully transparent pixel
-takes the colour of its nearest visible neighbours (colour bleed). A scaler that filters
-without premultiplying - the Windows shell whenever it has no stage of the wanted size - then
-mixes plate colour into the edge instead of black: no dark fringe on any background.
+Edges, in every raster output: coverage is exact - the share of each pixel inside the outline,
+from the curves flattened far below a level (see `coverage`), not a supersampled polygon - so
+an edge pixel is neither too light nor too dark and the outline stays symmetric. Colour and
+coverage are rendered apart, so a partly covered pixel carries the plate colour under it
+(straight alpha), and every fully transparent pixel takes the colour of its nearest visible
+neighbours (colour bleed). A scaler that filters without premultiplying - the Windows shell
+whenever it has no stage of the wanted size - then mixes plate colour into the edge instead of
+black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
 - Plate 0..1024 (full bleed: the desktop and the taskbar show it exactly as large as the
@@ -50,6 +53,7 @@ import math
 import struct
 import sys
 from io import BytesIO
+from itertools import accumulate
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -97,7 +101,9 @@ FRINGE_TOLERANCE = 2
 # iconutil writes them; PNG types only (macOS draws 16 from ic11 = 16@2x).
 ICNS_ENTRIES = [('ic11', 32), ('ic12', 64), ('ic07', 128), ('ic13', 256),
                 ('ic08', 256), ('ic14', 512), ('ic09', 512), ('ic10', 1024)]
-SS = 16  # supersampling of the raster stages
+# Flattening of the curves for the exact coverage (see Path2.points).
+CHORDS = 256
+ARC_STEP = math.radians(0.25)
 
 
 # ----------------------------------------------------------------------------- paths
@@ -140,6 +146,9 @@ class Path2:
         return ''.join(out) + 'Z'
 
     def points(self):
+        """The outline as a polygon: CHORDS chords per cubic, one chord per ARC_STEP of an arc.
+        The chords stay less than 0.001 px inside the curve at 1024, far below one level of
+        coverage."""
         pts = [self.start]
         pos = self.start
         for seg in self.segs:
@@ -147,14 +156,14 @@ class Path2:
                 pts.append(seg[1])
             elif seg[0] == 'C':
                 (x0, y0), (x1, y1), (x2, y2), (x3, y3) = pos, *seg[1:]
-                for i in range(1, 49):
-                    t = i / 48
+                for i in range(1, CHORDS + 1):
+                    t = i / CHORDS
                     u = 1 - t
                     pts.append((u**3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t**3 * x3,
                                 u**3 * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t**3 * y3))
             else:
                 _, (cx, cy), r, a0, a1, _ = seg
-                n = max(2, math.ceil(abs(a1 - a0) / math.radians(1.5)))
+                n = max(2, math.ceil(abs(a1 - a0) / ARC_STEP))
                 for i in range(1, n + 1):
                     a = a0 + (a1 - a0) * i / n
                     pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
@@ -371,28 +380,97 @@ def layout(s, mac=False):
 
 # --------------------------------------------------------------------------- raster
 
-def render(s, mac=False, ss=None):
+def coverage(s, shapes):
+    """Exact area coverage of every pixel of an s x s canvas: [(points, weight), ...] summed
+    per pixel, row by row, as floats. Each polygon counts with its weight whatever its
+    orientation, so a cut-out that lies inside its shape is `(cut, -1)`.
+
+    Signed-area accumulation (as font-rs): every edge adds, to each cell it crosses in a row,
+    the signed area between itself and the cell's right side; a running sum along the row then
+    gives the covered share of each pixel. Exact for polygons - no supersampling, no rounding
+    before the end, so an edge pixel is neither too light nor too dark and the outline stays
+    symmetric."""
+    stride = s + 2
+    acc = [0.0] * (s * stride + 2)
+    for pts, weight in shapes:
+        xs = [x for x, _ in pts]
+        assert min(xs) > -1e-9 and max(xs) < s + 1e-9, 'shape leaves the canvas sideways'
+        pts = [(min(max(x, 0.0), float(s)), y) for x, y in pts]
+        n = len(pts)
+        area = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
+                   for i in range(n))
+        # A clockwise outline on screen (positive shoelace area, y down) sums to -1 inside.
+        orient = -weight if area > 0 else weight
+        for i in range(n):
+            (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % n]
+            if y0 == y1:
+                continue
+            sign = orient
+            if y0 > y1:
+                x0, y0, x1, y1, sign = x1, y1, x0, y0, -orient
+            dxdy = (x1 - x0) / (y1 - y0)
+            x = x0 - (y0 * dxdy if y0 < 0 else 0)
+            for y in range(max(0, math.floor(y0)), min(s, math.ceil(y1))):
+                row = y * stride
+                dy = min(y + 1.0, y1) - max(float(y), y0)
+                xn = x + dxdy * dy
+                d = dy * sign
+                xa, xb = (x, xn) if x < xn else (xn, x)
+                fa = math.floor(xa)
+                ia, ib = int(fa), int(math.ceil(xb))
+                if ib <= ia + 1:
+                    m = 0.5 * (x + xn) - fa
+                    acc[row + ia] += d - d * m
+                    acc[row + ia + 1] += d * m
+                else:
+                    inv = 1.0 / (xb - xa)
+                    f0 = xa - fa
+                    a0 = 0.5 * inv * (1 - f0) ** 2
+                    f1 = xb - ib + 1
+                    am = 0.5 * inv * f1 * f1
+                    acc[row + ia] += d * a0
+                    if ib == ia + 2:
+                        acc[row + ia + 1] += d * (1 - a0 - am)
+                    else:
+                        a1 = inv * (1.5 - f0)
+                        acc[row + ia + 1] += d * (a1 - a0)
+                        for xi in range(ia + 2, ib - 1):
+                            acc[row + xi] += d * inv
+                        acc[row + ib - 1] += d * (1 - (a1 + (ib - ia - 3) * inv) - am)
+                    acc[row + ib] += d * am
+                x = xn
+    out = []
+    for y in range(s):
+        out.extend(accumulate(acc[y * stride:y * stride + s]))
+    return out
+
+
+def level(v):
+    """A share 0..1 as an 8 bit value."""
+    return 0 if v <= 0 else 255 if v >= 1 else int(v * 255 + 0.5)
+
+
+def glyph_colour(w):
+    """The coral mixed with white by the glyph's coverage w."""
+    if w <= 0:
+        return CORAL
+    if w >= 1:
+        return WHITE
+    return tuple(int(c + (h - c) * w + 0.5) for c, h in zip(CORAL, WHITE))
+
+
+def render(s, mac=False):
     """One stage as straight (not premultiplied) RGBA. Colour and coverage are rendered apart:
-    the colour layer is opaque everywhere (the coral over the whole canvas, the folder in
-    white), so a partly covered edge pixel gets the plate colour under it, never a mix with the
-    black of an empty canvas. Transparent pixels are coloured by `bleed`. macOS differs only by
-    Apple's margin; neither OS gets a shadow."""
-    ss = ss or min(SS, max(4, 4096 // s))
+    the colour is the coral, mixed with white by the glyph's exact coverage (folder minus the
+    check), everywhere on the canvas; the alpha is the plate's exact coverage. A partly
+    covered edge pixel therefore carries the plate colour, never a mix with the black of an
+    empty canvas. Transparent pixels are coloured by `bleed`."""
     g = layout(s, mac)
-    S = s * ss
-    scale = lambda pts: [(x * ss, y * ss) for x, y in pts]
-    plate_mask = Image.new('L', (S, S), 0)
-    ImageDraw.Draw(plate_mask).polygon(scale(squircle(*g['plate'], g['plate_r']).points()), fill=255)
-    folder_mask = Image.new('L', (S, S), 0)
-    draw = ImageDraw.Draw(folder_mask)
-    draw.polygon(scale(folder(g).points()), fill=255)
-    draw.polygon(scale(check(g).points()), fill=0)
-    colour = Image.new('RGB', (S, S), CORAL)
-    colour.paste(Image.new('RGB', (S, S), WHITE), (0, 0), folder_mask)
-    rgb = colour.resize((s, s), Image.BOX)
-    cover = plate_mask.resize((s, s), Image.BOX)
-    img = rgb.convert('RGBA')
-    img.putalpha(cover)
+    plate = coverage(s, [(squircle(*g['plate'], g['plate_r']).points(), 1)])
+    glyph = coverage(s, [(folder(g).points(), 1), (check(g).points(), -1)])
+    data = [(*glyph_colour(w), level(c)) for c, w in zip(plate, glyph)]
+    img = Image.new('RGBA', (s, s))
+    img.putdata(data)
     return bleed(img)
 
 
@@ -634,16 +712,15 @@ def compare(out, old_generator):
     small = [16, 24, 32, 48]
     gap = 24
 
-    def stages(mod, new):
+    def stages(mod):
         imgs = [mod.render(s) for s in small]
         imgs += [i.resize((i.width * 4, i.width * 4), Image.NEAREST) for i in imgs]
         imgs.append(mod.render(256))
-        big_mac = mod.render(1024, mac=True, ss=4) if new else mod.mac_stage(1024)
-        imgs += [mod.render(1024, ss=4).resize((512, 512), Image.LANCZOS),
-                 big_mac.resize((512, 512), Image.LANCZOS)]
+        imgs += [mod.render(1024).resize((512, 512), Image.LANCZOS),
+                 mod.render(1024, mac=True).resize((512, 512), Image.LANCZOS)]
         return imgs
 
-    rows = [('old', stages(old, False)), ('new', stages(sys.modules[__name__], True))]
+    rows = [('old', stages(old)), ('new', stages(sys.modules[__name__]))]
     width = gap + sum(i.width + gap for i in rows[0][1])
     row_h = 512 + 2 * gap
     sheet = Image.new('RGB', (width, 4 * row_h), WHITE)
