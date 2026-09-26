@@ -159,7 +159,7 @@
           toggle: group.toggle,
           disabled: reason !== null,
           reason,
-          run: () => jobs.choose(entry.pick(jobs.choice)),
+          run: () => jobs.choose(entry.pick(choice)),
         });
       }
     }

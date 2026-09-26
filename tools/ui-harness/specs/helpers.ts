@@ -132,7 +132,12 @@ export function filterWordsOf(...ids: string[]): string {
   let choice: ListChoice = { sort: 'match', filter: NO_FILTER };
   for (const group of FILTER_GROUPS) {
     for (const entry of group.entries(PORTALS)) {
-      if (ids.includes(entry.id)) choice = entry.pick(choice);
+      if (!ids.includes(entry.id)) continue;
+      const change = entry.pick(choice);
+      choice = {
+        sort: change.sort ?? choice.sort,
+        filter: { ...choice.filter, ...change.filter },
+      };
     }
   }
   return T.toolbar.filterLine(filterWords(choice.filter, PORTALS, T));

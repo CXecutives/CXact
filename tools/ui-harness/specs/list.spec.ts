@@ -441,12 +441,17 @@ test.describe('filter', () => {
     await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.bandNoProfile);
     await menuItem(page, 'band-high').click({ force: true });
     await expect(page.getByTestId('menu')).toBeVisible();
-    // The portals and the favourites still filter.
+    // The portals and the favourites still filter; the kept band waits for the profile.
+    const kept = (): Promise<unknown> =>
+      page.evaluate(() => JSON.parse(localStorage.getItem('jobs-filter') ?? 'null') as unknown);
     await menuItem(page, 'portal-freelance').click();
     expect(await lastQuery(page)).toMatchObject({ portal: 'freelance', minBand: null });
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
+    expect(await kept()).toEqual({ favourites: false, portal: 'freelance', minBand: 'high' });
+    await chooseFilter(page, 'favourites');
+    expect(await kept()).toEqual({ favourites: true, portal: 'freelance', minBand: 'high' });
   });
 
   test('a filter that leaves nothing says so once and takes itself off', async ({ page }) => {

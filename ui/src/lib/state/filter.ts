@@ -30,14 +30,22 @@ export interface ListChoice {
   filter: ListFilter;
 }
 
+/** What picking an entry changes: another order, or only the parts of the filter it names
+ *  (a part it does not name stays as chosen, also one that does not apply at the moment,
+ *  such as a band without a profile). */
+export interface ListChange {
+  sort?: JobSort;
+  filter?: Partial<ListFilter>;
+}
+
 export interface FilterEntry {
   /** Stable id: the test id of the menu entry (`menu-item-<id>`). */
   id: string;
   label: (words: Catalog) => string;
   /** The chosen entry of its group (a switch: on). */
   on: (choice: ListChoice) => boolean;
-  /** The choice after picking it (a switch turns off again). */
-  pick: (choice: ListChoice) => ListChoice;
+  /** What picking it changes (a switch turns off again). */
+  pick: (choice: ListChoice) => ListChange;
   /** Without a usable profile there is no fit: the entry is off and says why. */
   needsProfile: ((words: Catalog) => string) | null;
 }
@@ -57,11 +65,6 @@ export interface FilterGroup {
 const SORTS: readonly JobSort[] = ['match', 'newest'];
 const BANDS: readonly (FilterBand | null)[] = [null, 'mid', 'high'];
 
-const withFilter = (choice: ListChoice, change: Partial<ListFilter>): ListChoice => ({
-  ...choice,
-  filter: { ...choice.filter, ...change },
-});
-
 export const FILTER_GROUPS: readonly FilterGroup[] = [
   {
     id: 'sort',
@@ -73,7 +76,7 @@ export const FILTER_GROUPS: readonly FilterGroup[] = [
         id: sort,
         label: (w) => w.toolbar.sortLabel[sort],
         on: (choice) => choice.sort === sort,
-        pick: (choice) => ({ ...choice, sort }),
+        pick: () => ({ sort }),
         needsProfile: sort === 'match' ? (w) => w.toolbar.sortNoProfile : null,
       })),
   },
@@ -87,7 +90,7 @@ export const FILTER_GROUPS: readonly FilterGroup[] = [
         id: 'favourites',
         label: (w) => w.toolbar.favouritesOnly,
         on: (choice) => choice.filter.favourites,
-        pick: (choice) => withFilter(choice, { favourites: !choice.filter.favourites }),
+        pick: (choice) => ({ filter: { favourites: !choice.filter.favourites } }),
         needsProfile: null,
       },
     ],
@@ -102,7 +105,7 @@ export const FILTER_GROUPS: readonly FilterGroup[] = [
         id: `portal-${portal ?? 'all'}`,
         label: (w) => (portal === null ? w.toolbar.allPortals : w.portal[portal]),
         on: (choice) => choice.filter.portal === portal,
-        pick: (choice) => withFilter(choice, { portal }),
+        pick: () => ({ filter: { portal } }),
         needsProfile: null,
       })),
   },
@@ -116,7 +119,7 @@ export const FILTER_GROUPS: readonly FilterGroup[] = [
         id: `band-${band ?? 'any'}`,
         label: (w) => w.toolbar.band[band ?? 'any'],
         on: (choice) => choice.filter.minBand === band,
-        pick: (choice) => withFilter(choice, { minBand: band }),
+        pick: () => ({ filter: { minBand: band } }),
         needsProfile: (w) => w.toolbar.bandNoProfile,
       })),
   },

@@ -52,6 +52,7 @@ import {
   NO_FILTER,
   parseFilter,
   passesFilter,
+  type ListChange,
   type ListChoice,
   type ListFilter,
 } from './filter';
@@ -346,10 +347,11 @@ class JobsStore {
     return { sort: this.sort, filter: this.filter };
   }
 
-  /** The funnel's menu picked an entry: another order or another filter. */
-  choose(next: ListChoice): void {
-    if (next.sort !== this.sort) this.setSort(next.sort);
-    else this.setFilter(next.filter);
+  /** The funnel's menu picked an entry: another order, or the parts of the filter it names
+   *  (the other parts stay as chosen). */
+  choose(change: ListChange): void {
+    if (change.sort !== undefined && change.sort !== this.sort) this.setSort(change.sort);
+    if (change.filter !== undefined) this.setFilter(change.filter);
   }
 
   /** A job belongs to the list: its place and the filter (the backend's rule). */
