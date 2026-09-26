@@ -660,6 +660,10 @@ test('switching jobs: never blank, the old text stays put, the new job starts at
   await open(page, WIN);
   await rows(page).first().click();
   await expect(page.getByTestId('reader-ring')).toContainText('91');
+  // The number stands at once: wait until the day overview's stage has left too.
+  await expect(page.locator('[data-testid="reader-pane"] .stage[aria-hidden="true"]')).toHaveCount(
+    0,
+  );
   const top = await page.getByTestId('stage').evaluate((node) => {
     node.scrollTo({ top: 400 });
     return node.scrollTop;
@@ -681,7 +685,11 @@ test('switching jobs: never blank, the old text stays put, the new job starts at
       ]);
       if (w.__frames.length < 40) requestAnimationFrame(sample);
     };
-    requestAnimationFrame(sample);
+    // From the press on (a busy machine may take a while before the click comes).
+    document.addEventListener('pointerdown', () => requestAnimationFrame(sample), {
+      capture: true,
+      once: true,
+    });
   });
   const next = rows(page).nth(1);
   await next.click();
