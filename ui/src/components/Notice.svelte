@@ -36,9 +36,9 @@
 
   const ICONS: Record<NoticeTone, IconName> = {
     info: 'info',
-    success: 'check',
-    warning: 'triangle-alert',
-    danger: 'triangle-alert',
+    success: 'success',
+    warning: 'warning',
+    danger: 'warning',
   };
 </script>
 

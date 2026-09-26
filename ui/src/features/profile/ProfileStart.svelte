@@ -38,12 +38,12 @@
 </script>
 
 <div class="start" data-testid="profile-empty">
-  <EmptyState icon="file-text" {heading} {text} />
+  <EmptyState icon="document" {heading} {text} />
   <div class="ways">
     <Button
       variant="primary"
       size="field"
-      icon="plus"
+      icon="add"
       label={t.profile.create}
       testid="profile-create"
       onclick={oncreate}
@@ -51,7 +51,7 @@
     <Button
       variant="secondary"
       size="field"
-      icon="clipboard-paste"
+      icon="paste"
       label={t.profile.fromCv}
       testid="profile-from-cv"
       onclick={onfromcv}
@@ -59,7 +59,7 @@
     <Button
       variant="secondary"
       size="field"
-      icon="file-up"
+      icon="pickFile"
       label={t.profile.pick}
       loading={picking}
       testid="profile-pick"
@@ -69,7 +69,7 @@
   {#if unreadable && onopenfolder}
     <Button
       variant="link"
-      icon="folder-open"
+      icon="folder"
       label={t.common.openFolder}
       testid="profile-folder"
       onclick={onopenfolder}

@@ -1365,6 +1365,139 @@ fn component_tags(code: &str, name: &str) -> Vec<(usize, String)> {
     out
 }
 
+/// The icon map of lib/icons.ts: (meaning, glyph) in its order.
+fn icon_map(all: &[Source]) -> Vec<(String, String)> {
+    source(all, "lib/icons.ts")
+        .lines()
+        .filter_map(|(_, line)| {
+            let (meaning, rest) = line.trim().split_once(": '")?;
+            let glyph = rest.strip_suffix("',")?;
+            let word = |s: &str| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric());
+            (word(meaning)
+                && glyph
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'))
+            .then(|| (meaning.to_string(), glyph.to_string()))
+        })
+        .collect()
+}
+
+/// The string literals of `text` (single or double quoted, on one line).
+fn quoted(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut rest = text;
+    while let Some(start) = rest.find(['\'', '"']) {
+        let quote = &rest[start..=start];
+        let after = &rest[start + 1..];
+        let Some(end) = after.find(quote) else { break };
+        out.push(&after[..end]);
+        rest = &after[end + 1..];
+    }
+    out
+}
+
+/// Icons by meaning: lib/icons.ts maps each meaning to one Lucide glyph and no glyph to two
+/// meanings; every icon position in the UI names a meaning (`icon="trash"`), never a glyph.
+#[test]
+fn icons_by_meaning() {
+    // The field menu of input.ts still names glyphs until it moves to meanings; the texts
+    // (the catalogs, the gallery's words) name no icons.
+    const MOVING: [&str; 1] = ["lib/input/input.ts"];
+    const TEXTS: [&str; 3] = [
+        "lib/i18n/de.ts",
+        "lib/i18n/en.ts",
+        "features/gallery/gallery.ts",
+    ];
+    let all = scanned(MIN_FILES);
+    let map = icon_map(&all);
+    assert!(
+        map.len() >= 50,
+        "only {} icon meanings read from lib/icons.ts",
+        map.len()
+    );
+    let mut problems = Vec::new();
+    let mut glyphs = std::collections::HashMap::new();
+    for (meaning, glyph) in &map {
+        if let Some(other) = glyphs.insert(glyph.as_str(), meaning.as_str()) {
+            problems.push(format!(
+                "lib/icons.ts: {glyph} means both {other} and {meaning}"
+            ));
+        }
+    }
+    let meanings: std::collections::HashSet<&str> = map.iter().map(|(m, _)| m.as_str()).collect();
+    let icon = source(&all, "components/Icon.svelte");
+    for glyph in glyphs.keys() {
+        let key = if glyph.contains('-') {
+            format!("'{glyph}':")
+        } else {
+            format!("{glyph}:")
+        };
+        if !icon.code.contains(&key) {
+            problems.push(format!("Icon.svelte: no import for {glyph}"));
+        }
+    }
+    let mut checked = 0;
+    for source in all.iter().filter(|s| {
+        !s.is("lib/icons.ts")
+            && !s.is("components/Icon.svelte")
+            && !MOVING.contains(&s.path.as_str())
+            && !TEXTS.contains(&s.path.as_str())
+    }) {
+        for (n, line) in source.lines() {
+            // icon="x", trailing="x", icon: 'x', icon = 'x', name="x" on an Icon, and every
+            // literal of an icon expression (icon={a ? 'x' : 'y'}) except a compared value.
+            let mut spots: Vec<&str> = Vec::new();
+            for key in ["icon=\"", "trailing=\"", "icon: '", "icon?: '", "icon = '"] {
+                let mut rest = line;
+                while let Some(at) = rest.find(key) {
+                    let after = &rest[at + key.len()..];
+                    let end = after.find(['"', '\'']).unwrap_or(after.len());
+                    spots.push(&after[..end]);
+                    rest = &after[end..];
+                }
+            }
+            if line.contains("<Icon ") {
+                if let Some(at) = line.find("name=\"") {
+                    let after = &line[at + 6..];
+                    spots.push(&after[..after.find('"').unwrap_or(after.len())]);
+                }
+            }
+            for key in ["icon={", "name={"] {
+                if key == "name={" && !line.contains("<Icon ") {
+                    continue;
+                }
+                if let Some(at) = line.find(key) {
+                    let expr = &line[at + key.len()..];
+                    let expr = &expr[..expr.find('}').unwrap_or(expr.len())];
+                    let mut rest = expr;
+                    for literal in quoted(expr) {
+                        let at = rest.find(literal).unwrap_or(0);
+                        let before = rest[..at].trim_end_matches(['\'', '"']).trim_end();
+                        if !before.ends_with("===") && !before.ends_with("!==") {
+                            spots.push(literal);
+                        }
+                        rest = &rest[at + literal.len()..];
+                    }
+                }
+            }
+            for spot in spots {
+                checked += 1;
+                if !meanings.contains(spot) {
+                    problems.push(format!("{}:{n}: '{spot}' is no icon meaning", source.path));
+                }
+            }
+        }
+    }
+    assert!(
+        checked >= 100,
+        "only {checked} icon positions found - did the rule move?"
+    );
+    fail(
+        &problems,
+        "icons by meaning (lib/icons.ts): one glyph per meaning, meanings everywhere",
+    );
+}
+
 /// Buttons have two heights, 28 and 32 px (sm, field): no 36 or 40 px button, every glyph
 /// 16 px, one type.
 #[test]

@@ -28,9 +28,9 @@ export type ToastKind = 'success' | 'info' | 'warning';
 /** How each kind looks: its glyph (the success's check draws itself once as it appears);
  *  the colour is the kind's status colour (Toast.svelte, by class). */
 export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconName; draws: boolean }>> = {
-  success: { icon: 'circle-check', draws: true },
+  success: { icon: 'success', draws: true },
   info: { icon: 'info', draws: false },
-  warning: { icon: 'triangle-alert', draws: false },
+  warning: { icon: 'warning', draws: false },
 };
 
 /** What the toast's button does: nothing (no button), an undo (Rückgängig, Ctrl/Cmd+Z), or

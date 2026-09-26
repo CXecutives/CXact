@@ -243,7 +243,7 @@
           }}
           onclick={toggle}
         >
-          <span class="chevron"><Icon name="chevron-down" size={collapsed ? 'xs' : 'sm'} /></span>
+          <span class="chevron"><Icon name="expand" size={collapsed ? 'xs' : 'sm'} /></span>
         </button>
       </div>
       <div class="group" id={groupId} role="group" aria-label={item.label} hidden={!inFlow}>

@@ -274,7 +274,7 @@
       <Button
         variant="ghost"
         size="sm"
-        icon="x"
+        icon="close"
         iconOnly
         label={t.common.hide}
         onclick={() => act(() => toasts.dismiss(toast.id))}

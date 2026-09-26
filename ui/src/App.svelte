@@ -70,12 +70,12 @@
           {#if band}<DragBand sheet />{/if}
           <div class="center">
             <EmptyState
-              icon="triangle-alert"
+              icon="warning"
               tone="danger"
               text={t.shell.loadFailed}
               action={{
                 label: t.common.retry,
-                icon: 'refresh-cw',
+                icon: 'retry',
                 onclick: () => void app.load(),
               }}
             />

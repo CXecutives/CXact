@@ -372,7 +372,7 @@
     <Button
       variant="ghost"
       size="sm"
-      icon="copy"
+      icon="prompt"
       label={t.overview.promptTop}
       testid="prompt-top"
       onclick={() => void copyTopPrompt().then((error) => (actionError = error))}
@@ -389,7 +389,7 @@
           <Button
             variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
             size="sm"
-            icon="refresh-cw"
+            icon="fetch"
             label={t.toolbar.fetch}
             disabled={run.fetchBlocked !== null}
             disabledReason={run.fetchBlocked}
@@ -434,7 +434,7 @@
         tone="warning"
         variant="row"
         text={topError}
-        action={{ label: t.common.retry, icon: 'refresh-cw', onclick: loadTop }}
+        action={{ label: t.common.retry, icon: 'retry', onclick: loadTop }}
       />
     </section>
   {:else if best.length > 0}
@@ -496,7 +496,7 @@
             testid="applied-{job.key.portal}-{job.key.id}"
             onclick={() => navigation.go('jobs', false, () => void jobs.select(job, true))}
           >
-            {#snippet leading()}<span class="applied-icon"><Icon name="send" size="sm" /></span
+            {#snippet leading()}<span class="applied-icon"><Icon name="applied" size="sm" /></span
               >{/snippet}
             <span class="applied-title">{displayTitle(job.title)}</span>
             <span class="quiet">{appliedLine(job)}</span>
@@ -524,7 +524,7 @@
               <Button
                 variant="secondary"
                 size="sm"
-                icon="plus"
+                icon="add"
                 label={t.overview.addToProfile}
                 testid="add-must"
                 onclick={() => addToProfile(must.label)}
@@ -547,7 +547,7 @@
             text={t.overview.noDetail(noDetail)}
             action={{
               label: t.overview.fetchDetails,
-              icon: 'download',
+              icon: 'details',
               onclick: () => void fetchMissing(),
             }}
             testid="decide-details"
@@ -558,7 +558,7 @@
             tone="info"
             variant="row"
             text={t.overview.excludedCheck(counts.excluded)}
-            action={{ label: t.overview.look, icon: 'ban', onclick: () => toList('all') }}
+            action={{ label: t.overview.look, icon: 'excluded', onclick: () => toList('all') }}
             testid="decide-excluded"
           />
         {/if}
@@ -589,7 +589,7 @@
             action={issue.mail
               ? {
                   label: t.reader.mail,
-                  icon: 'mail',
+                  icon: 'alertMail',
                   onclick: () => open({ kind: 'alertMail', gmailId: issue.mail ?? '' }),
                 }
               : null}
@@ -651,7 +651,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="globe"
+          icon="document"
           label={t.run.openOverview}
           disabled={noFiles && (dryRun || run.active)}
           disabledReason={dryRun ? dryRunReason : run.busyText}
@@ -661,7 +661,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="file-spreadsheet"
+          icon="excel"
           label={t.overview.excel}
           disabled={noFiles}
           disabledReason={dryRun ? dryRunReason : t.settings.excelMissing}
@@ -671,7 +671,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="folder-open"
+          icon="folder"
           label={t.common.openFolder}
           testid="overview-folder"
           onclick={() => open({ kind: 'excelInFolder' })}

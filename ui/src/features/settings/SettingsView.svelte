@@ -378,7 +378,7 @@
                     ? t.settings.refused
                     : t.settings.unreachable}
                   tone="danger"
-                  icon="triangle-alert"
+                  icon="warning"
                 />
               {:else}
                 <Badge label={t.settings.connected} tone="success" icon="check" />
@@ -388,7 +388,7 @@
               <Button
                 variant="secondary"
                 size="sm"
-                icon="pencil"
+                icon="edit"
                 label={t.common.change}
                 disabled={run.active || ownOnly}
                 disabledReason={ownOnlyReason}
@@ -401,7 +401,7 @@
               <Button
                 variant="ghost"
                 size="sm"
-                icon="trash-2"
+                icon="trash"
                 label={t.common.remove}
                 disabled={run.active || ownOnly}
                 disabledReason={ownOnlyReason}
@@ -416,7 +416,7 @@
             <Button
               variant="secondary"
               size="sm"
-              icon="mail"
+              icon="alertMail"
               label={t.settings.fullMailboxAction}
               disabled={run.fetchBlocked !== null}
               disabledReason={run.fetchBlocked}
@@ -525,7 +525,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="pencil"
+              icon="edit"
               label={t.common.change}
               loading={busy === 'workspace'}
               disabled={run.active || ownOnly}
@@ -536,7 +536,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="folder-open"
+              icon="folder"
               label={t.common.openFolder}
               testid="workspace-open"
               onclick={() => open({ kind: 'workspace' }, setFiles)}
@@ -550,7 +550,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="file-spreadsheet"
+              icon="excel"
               label={t.common.open}
               disabled={!cfg.settings.excelExists}
               disabledReason={t.settings.excelMissing}
@@ -560,7 +560,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="folder-open"
+              icon="folder"
               label={t.common.openFolder}
               testid="excel-reveal"
               onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
@@ -574,7 +574,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="file-text"
+              icon="document"
               label={t.common.open}
               disabled={!cfg.settings.excelExists && (dryRun || run.active)}
               disabledReason={lockedReason}
@@ -584,7 +584,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="folder-open"
+              icon="folder"
               label={t.common.openFolder}
               testid="overview-reveal"
               onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
@@ -596,7 +596,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="refresh-cw"
+              icon="rewrite"
               label={t.settings.txtRewrite}
               loading={busy === 'rewrite'}
               disabled={run.active || dryRun}
@@ -607,7 +607,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="trash-2"
+              icon="trash"
               label={t.settings.txtClear}
               disabled={run.active || dryRun || cfg.settings.txtFiles === 0}
               disabledReason={run.active || dryRun ? lockedReason : t.settings.txtNone}
@@ -658,7 +658,7 @@
           <Button
             variant="ghost"
             size="sm"
-            icon="file-text"
+            icon="document"
             label={t.common.openLog}
             testid="logs-open"
             onclick={() => open({ kind: 'logDir' }, setCare)}
@@ -668,7 +668,7 @@
           <Button
             variant="ghost"
             size="sm"
-            icon="folder-open"
+            icon="folder"
             label={t.common.openFolder}
             testid="data-open"
             onclick={() => open({ kind: 'dataDir' }, setCare)}
@@ -697,7 +697,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="rotate-ccw"
+          icon="reset"
           label={t.settings.resetAction}
           warns
           disabled={run.active || ownOnly}

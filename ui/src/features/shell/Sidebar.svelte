@@ -109,7 +109,7 @@
       <StatusLine
         text={status}
         label={t.shell.showRun}
-        icon={failed ? 'triangle-alert' : 'history'}
+        icon={failed ? 'warning' : 'lastRun'}
         tone={failed ? 'danger' : 'neutral'}
         busy={run.active}
         progress={run.active && !viewport.rail ? run.fraction : undefined}

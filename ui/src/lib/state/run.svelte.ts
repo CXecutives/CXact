@@ -457,11 +457,11 @@ export function failureAction(
     case 'secretStore':
       return { label: t.run.checkMailbox, onclick: () => navigation.go('settings') };
     case 'internal':
-      return { label: t.common.openLog, icon: 'folder-open', onclick: openLog };
+      return { label: t.common.openLog, icon: 'folder', onclick: openLog };
     default:
       if (run.active) return null;
       if (summary !== null && isFetch(summary.kind) && app.hasMailbox) return null;
-      return { label: t.common.retry, icon: 'refresh-cw', onclick: () => run.retry(summary) };
+      return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
 }
 

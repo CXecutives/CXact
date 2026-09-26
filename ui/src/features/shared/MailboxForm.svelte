@@ -164,7 +164,7 @@
       <Button
         variant="link"
         size="sm"
-        icon="external-link"
+        icon="external"
         external
         label={t.settings.twoStepAction}
         testid="two-step"
@@ -173,7 +173,7 @@
       <Button
         variant="link"
         size="sm"
-        icon="external-link"
+        icon="external"
         external
         label={t.settings.createPassword}
         testid="create-password"

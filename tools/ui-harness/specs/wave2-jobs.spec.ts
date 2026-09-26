@@ -97,6 +97,6 @@ test.fixme('the day overview opens its HTML page under the globe, one glyph per 
   const glyphs = await files
     .locator('.glyph')
     .evaluateAll((all) => all.map((glyph) => glyph.getAttribute('data-icon')));
-  // The page opens in the browser; "file-text" stays the profile's and the contract's.
-  expect(glyphs).toEqual(['globe', 'file-spreadsheet', 'folder-open']);
+  // The Bericht is a document like the profile file and the log (lib/icons.ts).
+  expect(glyphs).toEqual(['document', 'excel', 'folder']);
 });

@@ -68,7 +68,7 @@
       variant="ghost"
       size="sm"
       iconOnly
-      icon="x"
+      icon="close"
       label={t.selection.clear}
       testid="selection-clear"
       onclick={onclear}

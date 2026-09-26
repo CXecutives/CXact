@@ -332,7 +332,7 @@
                   <p class="place-note" data-testid="place-reader">{text}</p>
                 {:else}
                   <EmptyState
-                    icon={place === 'trash' ? 'trash-2' : place === 'archive' ? 'archive' : 'inbox'}
+                    icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
                     tone="neutral"
                     {text}
                     testid="place-reader"
@@ -344,7 +344,7 @@
                 <Button
                   variant="ghost"
                   size="sm"
-                  icon="chevron-left"
+                  icon="back"
                   label={t.common.back}
                   testid="back"
                   onclick={close}
@@ -352,12 +352,12 @@
               </div>
               {#if stage.what === ERROR}
                 <EmptyState
-                  icon="triangle-alert"
+                  icon="warning"
                   tone="danger"
                   text={jobs.detailError ?? t.reader.loadFailed}
                   secondary={{
                     label: t.common.retry,
-                    icon: 'refresh-cw',
+                    icon: 'retry',
                     onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
                   }}
                   testid="reader-error"

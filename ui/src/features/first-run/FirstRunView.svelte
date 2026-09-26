@@ -159,7 +159,7 @@
         <h1 class="title">{t.app.name}</h1>
       </div>
       <p class="benefit">{t.firstRun.benefit}</p>
-      <p class="privacy"><Icon name="shield" size="sm" />{t.firstRun.privacy}</p>
+      <p class="privacy"><Icon name="privacy" size="sm" />{t.firstRun.privacy}</p>
     </header>
 
     <!-- Until the setup goes on; a file left behind can be found in the app's folder. -->
@@ -168,7 +168,7 @@
         tone={reset.failed > 0 ? 'warning' : 'success'}
         text={reset.failed > 0 ? t.settings.resetPartly(reset.failed) : t.settings.resetDone}
         action={reset.failed > 0
-          ? { label: t.common.openFolder, icon: 'folder-open', onclick: openDataDir }
+          ? { label: t.common.openFolder, icon: 'folder', onclick: openDataDir }
           : null}
         testid="first-reset-report"
       />
@@ -201,7 +201,7 @@
                     <Button
                       variant="link"
                       size="sm"
-                      icon="external-link"
+                      icon="external"
                       external
                       label={t.firstRun.createAlert}
                       testid="first-alert-{portal.portal}"
@@ -236,7 +236,7 @@
               {#if profileProblem}
                 <!-- In the place and size of the hint, with the glyph and tone of a warning. -->
                 <p class="hint problem" data-testid="first-profile-problem">
-                  <Icon name="triangle-alert" size="sm" /><span>{profileProblem}</span>
+                  <Icon name="warning" size="sm" /><span>{profileProblem}</span>
                 </p>
               {:else}
                 <p class="hint">{t.firstRun.profileText}</p>
@@ -248,7 +248,7 @@
                   <Button
                     variant={current === 2 ? 'primary' : 'secondary'}
                     size="field"
-                    icon="file-text"
+                    icon="document"
                     label={t.list.openProfile}
                     testid="first-profile"
                     onclick={openProfile}
@@ -257,7 +257,7 @@
                   <Button
                     variant={current === 2 ? 'primary' : 'secondary'}
                     size="field"
-                    icon="clipboard-paste"
+                    icon="paste"
                     label={t.profile.fromCv}
                     testid="first-profile"
                     onclick={fromCv}
@@ -284,7 +284,7 @@
               <Button
                 variant={current === 3 ? 'primary' : 'secondary'}
                 size="field"
-                icon="refresh-cw"
+                icon="fetch"
                 label={t.toolbar.fetch}
                 disabled={run.fetchBlocked !== null}
                 disabledReason={run.fetchBlocked}

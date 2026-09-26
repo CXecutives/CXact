@@ -31,7 +31,7 @@
     onclick={() => (open = !open)}
   >
     <span class="label">{label}</span>
-    <span class="chevron"><Icon name="chevron-down" size="sm" /></span>
+    <span class="chevron"><Icon name="expand" size="sm" /></span>
   </button>
   <div class="panel" id="{id}-panel" role="region">
     {#if open}

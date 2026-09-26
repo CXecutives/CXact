@@ -67,18 +67,12 @@
   <div class="row">
     <StatTile label={t.statNew} value={12} icon="inbox" hint={t.statHint} onclick={noop} />
     <StatTile label={t.statHigh} value={3} icon="star" tone="success" />
-    <StatTile
-      label={t.statIssues}
-      value={1248}
-      icon="triangle-alert"
-      tone="warning"
-      onclick={noop}
-    />
+    <StatTile label={t.statIssues} value={1248} icon="warning" tone="warning" onclick={noop} />
     <!-- A chosen filter (navy) and an empty tile (static, quiet). -->
     <StatTile
       label={t.statFilter}
       value={4}
-      icon="circle-dashed"
+      icon="unstated"
       active={filtered}
       onclick={() => (filtered = !filtered)}
       testid="tile-filter"
@@ -116,7 +110,7 @@
     <Button label={t.confirmOpen} onclick={() => (confirmOpen = true)} testid="open-confirm" />
     <Button
       label={t.dangerOpen}
-      icon="rotate-ccw"
+      icon="reset"
       onclick={() => (dangerOpen = true)}
       testid="open-danger"
     />

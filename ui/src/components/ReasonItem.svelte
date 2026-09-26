@@ -24,11 +24,11 @@
 
   const ICON: Record<ReasonKind, IconName> = {
     met: 'check',
-    partial: 'circle-half',
-    open: 'circle-dashed',
-    violation: 'ban',
+    partial: 'partial',
+    open: 'unstated',
+    violation: 'excluded',
     // To check: the question mark of the criteria chip, in info navy everywhere.
-    check: 'circle-help',
+    check: 'unclear',
   };
 
   // Muss and Kann are plain facts, never alarms: both neutral. Only a decided exclusion is red.
@@ -117,7 +117,7 @@
     onclick={() => onselect?.()}
   >
     <span class="face">{@render body()}</span>
-    <span class="jump" aria-hidden="true"><Icon name="arrow-down" size="xs" /></span>
+    <span class="jump" aria-hidden="true"><Icon name="jump" size="xs" /></span>
   </button>
 {:else}
   <span class="reason {kind} {emphasis ?? ''}" class:compact use:tooltip={hint}

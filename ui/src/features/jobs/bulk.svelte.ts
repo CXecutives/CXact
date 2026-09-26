@@ -72,7 +72,7 @@ class Bulk {
     const out = [...this.actions];
     if (chosen.some((job) => job.unread)) {
       out.push({
-        icon: 'mail-open',
+        icon: 'markUnread',
         label: t.selection.read,
         testid: 'selection-read',
         onclick: () => {
@@ -82,7 +82,7 @@ class Bulk {
     }
     if (chosen.length > 0 && chosen.every(detailsWanted)) {
       out.push({
-        icon: 'download',
+        icon: 'details',
         label: t.reader.fetchDetails,
         testid: 'selection-details',
         disabled: run.detailsBlocked !== null,

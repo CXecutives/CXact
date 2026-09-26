@@ -18,8 +18,8 @@ export interface ViewEntry {
 }
 
 export const VIEWS: readonly ViewEntry[] = [
-  { id: 'overview', label: 'overview', icon: 'layout-dashboard', keys: 'mod+1' },
-  { id: 'jobs', label: 'jobs', icon: 'briefcase', keys: 'mod+2' },
-  { id: 'profile', label: 'profile', icon: 'user-round', keys: 'mod+3' },
+  { id: 'overview', label: 'overview', icon: 'overview', keys: 'mod+1' },
+  { id: 'jobs', label: 'jobs', icon: 'jobs', keys: 'mod+2' },
+  { id: 'profile', label: 'profile', icon: 'profile', keys: 'mod+3' },
   { id: 'settings', label: 'settings', icon: 'settings', keys: 'mod+4' },
 ];

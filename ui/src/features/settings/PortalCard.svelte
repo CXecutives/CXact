@@ -172,7 +172,7 @@
         variant="ghost"
         size="sm"
         iconOnly
-        icon="external-link"
+        icon="external"
         label={t.settings.openPortal}
         testid="open-portal-{portal.portal}"
         onclick={openPortal}
@@ -223,7 +223,7 @@
               <Button
                 variant="secondary"
                 size="sm"
-                icon="log-out"
+                icon="signOut"
                 label={t.settings.signOut}
                 loading={busy}
                 disabled={noPortal !== null}
@@ -235,7 +235,7 @@
               <Button
                 variant="secondary"
                 size="sm"
-                icon="log-in"
+                icon="signIn"
                 label={t.settings.signIn}
                 loading={busy}
                 disabled={run.active || noPortal !== null || !portal.fetchDetails}
@@ -255,7 +255,7 @@
               variant="inline"
               text={health}
               action={alertMail
-                ? { label: t.reader.mail, icon: 'mail', onclick: () => openMail(alertMail) }
+                ? { label: t.reader.mail, icon: 'alertMail', onclick: () => openMail(alertMail) }
                 : null}
               testid="health-{portal.portal}"
             />

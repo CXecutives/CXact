@@ -406,7 +406,7 @@
       {
         id: 'mail',
         label: t.reader.mail,
-        icon: 'mail-open',
+        icon: 'markUnread',
         disabled: !detail.mail.gmailUrl,
         reason: t.reader.noMail,
         run: () => openTarget({ kind: 'gmail', key: job.key }),
@@ -414,7 +414,7 @@
       {
         id: 'prompt',
         label: t.reader.prompt,
-        icon: 'copy',
+        icon: 'prompt',
         disabled: promptOff !== null,
         reason: promptOff,
         run: () => void copyPrompt(),
@@ -424,7 +424,7 @@
       entries.push({
         id: 'unread',
         label: t.reader.markUnread,
-        icon: 'mail',
+        icon: 'alertMail',
         keys: keyLabel('u'),
         disabled: job.unread,
         run: markUnread,
@@ -436,7 +436,7 @@
         {
           id: 'trash',
           label: t.actions.trash,
-          icon: 'trash-2',
+          icon: 'trash',
           keys: keyLabel('del'),
           run: () => act('trash'),
         },
@@ -698,7 +698,7 @@
         variant="ghost"
         size="sm"
         iconOnly
-        icon="x"
+        icon="close"
         label={t.reader.close}
         testid="{prefix}close"
         onclick={onclose}
@@ -741,7 +741,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="external-link"
+          icon="external"
           label={t.reader.open}
           testid="compact-open"
           onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
@@ -879,7 +879,7 @@
   <div class="actions" bind:this={actions} data-testid="reader-actions">
     <Button
       variant="secondary"
-      icon="external-link"
+      icon="external"
       label={t.reader.open}
       testid="open-ad"
       onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
@@ -913,7 +913,7 @@
     <span class="more" bind:this={moreAnchor}>
       <Button
         variant="ghost"
-        icon="ellipsis"
+        icon="more"
         iconOnly
         label={t.reader.more}
         menu
@@ -1065,7 +1065,7 @@
           <Button
             variant="secondary"
             size="sm"
-            icon="log-in"
+            icon="signIn"
             label={t.reader.setUpSignIn}
             testid="set-up-sign-in"
             onclick={setUpSignIn}
@@ -1075,7 +1075,7 @@
           <Button
             variant="secondary"
             size="sm"
-            icon="download"
+            icon="details"
             label={detailKind === 'pending' ? t.reader.fetchNow : t.reader.fetchDetails}
             disabled={run.active}
             disabledReason={run.busyText}

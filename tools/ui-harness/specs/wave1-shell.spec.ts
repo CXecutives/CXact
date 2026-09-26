@@ -566,11 +566,11 @@ test('a notice banner shares the inset of the cards and draws no line of its own
 test('one glyph per action: retries load again, the reset keeps its own', async ({ page }) => {
   await open(page, `${WIN}&scenario=list-error`);
   const retry = page.getByTestId('list-error').getByRole('button');
-  await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'refresh-cw');
+  await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'retry');
   await settings(page);
   await expect(page.getByTestId('reset').locator('[data-icon]')).toHaveAttribute(
     'data-icon',
-    'rotate-ccw',
+    'reset',
   );
   // Jobs has one glyph: in the sidebar, on "Zurückholen" and on its empty list.
   await page.getByTestId('nav-jobs').click();

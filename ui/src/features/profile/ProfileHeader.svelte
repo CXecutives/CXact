@@ -131,7 +131,7 @@
     const pick: MenuEntry = {
       id: 'pick',
       label: stored ? t.profile.pickOther : t.profile.pick,
-      icon: 'file-up',
+      icon: 'pickFile',
       disabled: dirty,
       reason: dirty ? t.profile.saveFirst : null,
       run: onpick,
@@ -139,7 +139,7 @@
     const folder: MenuEntry = {
       id: 'folder',
       label: t.common.openFolder,
-      icon: 'folder-open',
+      icon: 'folder',
       run: onopenfolder,
     };
     if (!stored) return replaces ? [pick, folder] : [pick];
@@ -147,7 +147,7 @@
       pick,
       folder,
       { kind: 'separator' },
-      { id: 'remove', label: t.profile.remove, icon: 'trash-2', danger: true, run: onremove },
+      { id: 'remove', label: t.profile.remove, icon: 'trash', danger: true, run: onremove },
     ];
   });
 
@@ -165,9 +165,9 @@
 </script>
 
 <Card padding="md" testid="profile-file">
-  <div class="head" data-first-row>
-    <div class="file">
-      <IconTile tone="navy" icon="file-text" size="md" />
+  <div class="head">
+    <div class="file" data-first-row>
+      <IconTile tone="navy" icon="document" size="md" />
       <div class="facts">
         {#if stored && profile}
           <h2 class="name" data-copy use:tooltip={profile.fileName}>
@@ -193,7 +193,7 @@
           <Button
             variant="ghost"
             size="sm"
-            icon="triangle-alert"
+            icon="warning"
             label={t.profile.check(checks.length)}
             testid="profile-check"
             onclick={oncheck}
@@ -225,7 +225,7 @@
         <Button
           variant="secondary"
           size="field"
-          icon="clipboard-paste"
+          icon="paste"
           label={stored ? t.profile.updateFromCv : t.profile.fromCv}
           disabled={dirty}
           disabledReason={t.profile.saveFirst}
@@ -237,7 +237,7 @@
             variant="secondary"
             size="field"
             iconOnly
-            icon="ellipsis"
+            icon="more"
             label={t.profile.more}
             menu
             {expanded}

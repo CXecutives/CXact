@@ -28,16 +28,16 @@
   import TokenBoards from './TokenBoards.svelte';
   import { text } from './gallery';
 
-  const NAV_ICONS = ['briefcase', 'user-round', 'sliders-horizontal'] as const;
+  const NAV_ICONS = ['jobs', 'profile', 'settings'] as const;
   /** Jobs carries its places (Archiv, Papierkorb) as quieter sub-entries. */
   const places = [
     { id: 'archive', label: text.navigation.places[0], icon: 'archive', testid: 'gnav-archive' },
-    { id: 'trash', label: text.navigation.places[1], icon: 'trash-2', testid: 'gnav-trash' },
+    { id: 'trash', label: text.navigation.places[1], icon: 'trash', testid: 'gnav-trash' },
   ] as const;
   const tabs = text.navigation.tabs.map((label, index) => ({
     id: String(index),
     label,
-    icon: NAV_ICONS[index] ?? 'briefcase',
+    icon: NAV_ICONS[index] ?? 'jobs',
     testid: `gnav-${index}`,
     children: index === 0 ? places : [],
   }));
@@ -96,14 +96,14 @@
         {#each BUTTON_SIZES as size (size)}
           <div class="button-row" data-testid="buttons-{variant}-{size}">
             <Button {variant} {size} label={text.buttons.fetch} onclick={noop} />
-            <Button {variant} {size} label={text.buttons.save} icon="download" onclick={noop} />
+            <Button {variant} {size} label={text.buttons.save} icon="details" onclick={noop} />
             <Button {variant} {size} label={text.buttons.pin} icon="star" iconOnly onclick={noop} />
-            <Button {variant} {size} label={text.buttons.fetch} icon="refresh-cw" loading />
+            <Button {variant} {size} label={text.buttons.fetch} icon="fetch" loading />
             <Button
               {variant}
               {size}
               label={text.buttons.remove}
-              icon="trash-2"
+              icon="trash"
               disabled
               disabledReason={text.buttons.busy}
             />
@@ -129,11 +129,11 @@
         onclick={noop}
       />
       <!-- A stored value changes; a reset warns on hover before its dialog asks. -->
-      <Button size="sm" label={text.buttons.change} icon="pencil" onclick={noop} />
+      <Button size="sm" label={text.buttons.change} icon="edit" onclick={noop} />
       <Button
         size="sm"
         label={text.buttons.reset}
-        icon="rotate-ccw"
+        icon="reset"
         warns
         testid="button-warns"
         onclick={noop}
@@ -201,10 +201,10 @@
   <Section heading={text.sections.empty} id="empty">
     <div class="empty">
       <EmptyState
-        icon="mail"
+        icon="alertMail"
         heading={text.empty.heading}
         text={text.empty.text}
-        action={{ label: text.empty.action, icon: 'refresh-cw', onclick: noop }}
+        action={{ label: text.empty.action, icon: 'fetch', onclick: noop }}
         secondary={{ label: text.empty.secondary, onclick: noop }}
       />
     </div>

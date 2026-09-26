@@ -32,7 +32,7 @@
   let {
     text,
     label,
-    icon = 'history',
+    icon = 'lastRun',
     busy = false,
     progress,
     progressLabel = label,

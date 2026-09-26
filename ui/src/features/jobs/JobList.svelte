@@ -375,7 +375,7 @@
   const PLACE_ICON: Record<Place, IconName> = {
     inbox: 'inbox',
     archive: 'archive',
-    trash: 'trash-2',
+    trash: 'trash',
   };
   const FACET_OF: Record<Place, 'all' | 'archived' | 'trash'> = {
     inbox: 'all',
@@ -560,14 +560,14 @@
         {
           id: 'open',
           label: t.menu.open,
-          icon: 'mail-open',
+          icon: 'markUnread',
           keys: keyLabel('enter'),
           run: () => select(job, { toggle: false, range: false }),
         },
         {
           id: 'open-ad',
           label: t.reader.open,
-          icon: 'external-link',
+          icon: 'external',
           keys: keyLabel('o'),
           run: () => {
             invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
@@ -592,7 +592,7 @@
       entries.push({
         id: 'unread',
         label: t.menu.unread,
-        icon: 'mail',
+        icon: 'alertMail',
         keys: keyLabel('u'),
         run: () => void jobs.markUnread(list.map((chosen) => chosen.key)).then(report),
       });
@@ -624,7 +624,7 @@
         {
           id: 'prompt',
           label: t.reader.prompt,
-          icon: 'copy',
+          icon: 'prompt',
           run: () => void copyJobPrompt(job.key).then(report),
         },
       );
@@ -704,12 +704,12 @@
   {#if jobs.status === 'error'}
     <div class="empty">
       <EmptyState
-        icon="triangle-alert"
+        icon="warning"
         tone="danger"
         text={t.list.loadFailed}
         secondary={{
           label: t.common.retry,
-          icon: 'refresh-cw',
+          icon: 'retry',
           onclick: () => {
             void jobs.load();
             void jobs.loadOverview();
@@ -751,7 +751,7 @@
               icon="search"
               tone="neutral"
               text={t.list.noHit(jobs.search.trim())}
-              secondary={{ label: t.field.clear, icon: 'x', onclick: () => jobs.setSearch('') }}
+              secondary={{ label: t.field.clear, icon: 'close', onclick: () => jobs.setSearch('') }}
               testid="empty-search"
             />
           {/if}
@@ -759,14 +759,14 @@
         </div>
       {:else if place !== 'inbox'}
         <EmptyState
-          icon={place === 'trash' ? 'trash-2' : 'archive'}
+          icon={place === 'trash' ? 'trash' : 'archive'}
           tone="neutral"
           text={t.place.empty[place]}
           testid="empty-place-{place}"
         />
       {:else if filterEmptied}
         <EmptyState
-          icon="funnel"
+          icon="filter"
           tone="neutral"
           text={t.list.noFilterHit}
           secondary={{ label: t.toolbar.filterReset, onclick: () => jobs.setFilter(NO_FILTER) }}
@@ -790,25 +790,20 @@
       {:else if run.active || !mailRead}
         <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
         <EmptyState
-          icon="briefcase"
+          icon="jobs"
           tone="neutral"
           text={run.active ? t.list.emptyWhileRun : t.list.emptyAll}
           testid="empty-all"
         />
       {:else}
         <div class="sources">
-          <EmptyState
-            icon="briefcase"
-            tone="neutral"
-            text={t.list.emptyAfterRun}
-            testid="empty-all"
-          />
+          <EmptyState icon="jobs" tone="neutral" text={t.list.emptyAfterRun} testid="empty-all" />
           <div class="sources-actions">
             {#each PORTALS as portal (portal.portal)}
               <Button
                 variant="ghost"
                 size="sm"
-                icon="external-link"
+                icon="external"
                 external
                 label={t.list.createAlert(t.portal[portal.portal])}
                 testid="alert-{portal.portal}"
@@ -819,7 +814,7 @@
               <Button
                 variant="ghost"
                 size="sm"
-                icon="mail"
+                icon="alertMail"
                 label={t.list.readOlder}
                 disabled={run.fetchBlocked !== null}
                 disabledReason={run.fetchBlocked}
@@ -927,7 +922,7 @@
           tone="warning"
           variant="row"
           text={t.list.pageFailed}
-          action={{ label: t.common.retry, icon: 'refresh-cw', onclick: () => void jobs.grow() }}
+          action={{ label: t.common.retry, icon: 'retry', onclick: () => void jobs.grow() }}
           testid="page-error"
         />
       </div>

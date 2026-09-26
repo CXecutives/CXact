@@ -50,9 +50,9 @@ const TARGET: Record<MoveId, Place> = {
 const ICON: Record<ActionId, IconName> = {
   archive: 'archive',
   toInbox: 'inbox',
-  trash: 'trash-2',
-  restore: 'undo-2',
-  purge: 'circle-x',
+  trash: 'trash',
+  restore: 'undo',
+  purge: 'purge',
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {

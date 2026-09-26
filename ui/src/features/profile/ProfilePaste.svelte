@@ -69,7 +69,7 @@
         <Button
           variant="ghost"
           size="sm"
-          icon="copy"
+          icon="prompt"
           label={copied ? words.copyAgain : words.copy}
           testid="paste-copy"
           onclick={oncopy}

@@ -31,7 +31,7 @@
   <span class="label">{text}</span>
   <span class="rule" aria-hidden="true"></span>
   {#if open !== null}
-    <span class="chevron" class:turned={open}><Icon name="chevron-down" size="sm" /></span>
+    <span class="chevron" class:turned={open}><Icon name="expand" size="sm" /></span>
   {/if}
 {/snippet}
 

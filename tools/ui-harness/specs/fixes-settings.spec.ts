@@ -48,11 +48,11 @@ test('one glyph per file and per action: Excel, Ändern, and a reset that warns'
   await settings(page);
   const glyph = (id: string) => page.getByTestId(id).locator('[data-icon]');
   // The Excel file has the spreadsheet glyph, as in the day overview ("Excel öffnen").
-  await expect(glyph('excel-open')).toHaveAttribute('data-icon', 'file-spreadsheet');
+  await expect(glyph('excel-open')).toHaveAttribute('data-icon', 'excel');
   // A stored value changes with the pencil (the mailbox, the work folder).
-  await expect(glyph('mailbox-change')).toHaveAttribute('data-icon', 'pencil');
-  await expect(glyph('workspace-change')).toHaveAttribute('data-icon', 'pencil');
-  // "Zurücksetzen" warns on hover like every milder button that removes something.
+  await expect(glyph('mailbox-change')).toHaveAttribute('data-icon', 'edit');
+  await expect(glyph('workspace-change')).toHaveAttribute('data-icon', 'edit');
+  // "Zurücksetzen" is red at rest like every milder button that loses something for good.
   const danger = await page.evaluate(() => {
     const probe = document.body.appendChild(document.createElement('span'));
     probe.style.color = 'var(--danger-strong)';
@@ -62,7 +62,7 @@ test('one glyph per file and per action: Excel, Ändern, and a reset that warns'
   });
   for (const id of ['mailbox-remove', 'reset']) {
     const button = page.getByTestId(id);
-    await expect(button).not.toHaveCSS('color', danger);
+    await expect(button).toHaveCSS('color', danger);
     await button.hover();
     await expect(button).toHaveCSS('color', danger);
   }
@@ -286,7 +286,7 @@ test('first run: a profile that does not count says so in the place of the hint'
   // An existing profile is opened: its glyph is the file.
   const openProfile = page.getByTestId('first-profile');
   await expect(openProfile).toHaveText('Profil öffnen');
-  await expect(openProfile.locator('[data-icon]')).toHaveAttribute('data-icon', 'file-text');
+  await expect(openProfile.locator('[data-icon]')).toHaveAttribute('data-icon', 'document');
 });
 
 test('the first run opens at its top, the caret waiting in the address', async ({ page }) => {
