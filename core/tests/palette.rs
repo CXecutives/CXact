@@ -3,7 +3,7 @@
 //! report, the Excel file, the Windows title bar), `tools/palette.json` (the app icon) and the
 //! window's `backgroundColor` in `src-tauri/tauri*.conf.json`. These tests read tokens.css on
 //! their own (their own parser, their own conversion to RGB) and fail while a generated file
-//! is stale (`npm run regen` writes them anew).
+//! is stale (`npm run regen` writes them anew) or a colour is written anywhere else.
 
 use std::path::{Path, PathBuf};
 
@@ -192,4 +192,75 @@ fn the_window_is_the_page_background() {
             "{file} {REGEN}"
         );
     }
+}
+
+/// Every source file of the program and its tools, with the files the generator writes and
+/// the ones that only carry other people's colours (test mails) left out.
+fn scanned() -> Vec<PathBuf> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.extension().is_some_and(|e| {
+                ["rs", "py", "mjs", "js", "yml", "json"]
+                    .iter()
+                    .any(|x| e == *x)
+            }) {
+                out.push(path);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for dir in ["core/src", "src-tauri/src", ".github"] {
+        walk(&repo(dir), &mut out);
+    }
+    for file in ["tools/icon.py", "tools/tokens.mjs", "tools/third-party.mjs"] {
+        out.push(repo(file));
+    }
+    out.retain(|p| !p.ends_with("core/src/export/palette.rs"));
+    out
+}
+
+/// No colour is written outside tokens.css and the generated files: no hex colour, no
+/// `hsl()`, `rgb()` or byte colour, and the window's configuration holds only the generated
+/// `backgroundColor`.
+#[test]
+fn no_colour_is_written_twice() {
+    let literal = Regex::new(
+        r"#[0-9A-Fa-f]{6}\b|\b(hsla?|rgba?)\(\s*\d|Rgb = \[0x|\(0x[0-9A-Fa-f]{2}, 0x|0x00[0-9A-Fa-f]{2}_[0-9A-Fa-f]{4}\b",
+    )
+    .unwrap();
+    let files = scanned();
+    assert!(files.len() >= 100, "only {} files scanned", files.len());
+    let mut problems = Vec::new();
+    for path in files {
+        let text = std::fs::read_to_string(&path).unwrap();
+        for (n, line) in text.lines().enumerate() {
+            if let Some(found) = literal.find(line) {
+                problems.push(format!("{}:{}: {}", path.display(), n + 1, found.as_str()));
+            }
+        }
+    }
+    let hex = Regex::new(r"#[0-9A-Fa-f]{6}\b").unwrap();
+    for file in [
+        "src-tauri/tauri.conf.json",
+        "src-tauri/tauri.macos.conf.json",
+        "src-tauri/tauri.windows.conf.json",
+    ] {
+        let text = read(file);
+        let generated = palette::BG.hex();
+        for found in hex.find_iter(&text) {
+            if !found.as_str().eq_ignore_ascii_case(&generated)
+                || !text.contains(&format!("\"backgroundColor\": \"{}\"", found.as_str()))
+            {
+                problems.push(format!("{file}: {}", found.as_str()));
+            }
+        }
+    }
+    assert!(
+        problems.is_empty(),
+        "colours belong in ui/src/styles/tokens.css (docs/CHANGING.md):\n{}",
+        problems.join("\n")
+    );
 }
