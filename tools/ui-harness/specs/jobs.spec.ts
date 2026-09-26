@@ -64,7 +64,7 @@ test('core workflow: fetch, rings fill, open the best job, reasons light the ad'
   await top.click();
   await expect(page.getByTestId('reader')).toBeVisible();
   await expect(page.getByTestId('band')).toHaveText('Hohe Passung');
-  await expect(page.getByTestId('must')).toHaveText('4 von 4 Pflicht erfüllt');
+  await expect(page.getByTestId('must')).toHaveText('4 von 4 Pflichtpunkten erfüllt');
   // Its ad states every criterion of the profile, and meets it: one quiet line with the terms.
   await expect(page.getByTestId('criteria')).toBeVisible();
   await expect(page.getByTestId('criteria')).toContainText('Interim');
@@ -189,11 +189,11 @@ test('excluded jobs sit grey behind the divider and explain themselves', async (
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const excludedRow = excludedRows(page).first();
-  await expect(excludedRow).toContainText('Arbeitnehmerüberlassung');
+  await expect(excludedRow).toContainText('Zeitarbeit');
   await excludedRow.click();
-  // The reason stands in the box under the band, said once (no repeated violation).
+  // The reasons stand in the box under the band, each said once (no repeated violation).
   await expect(page.getByTestId('band')).toHaveText('Ausgeschlossen');
-  const because = await page.getByTestId('exclusion').innerText();
+  const because = await page.getByTestId('exclusion').first().innerText();
   await expect(page.getByTestId('reader').getByText(because, { exact: true })).toHaveCount(1);
   // The one contract row carries the verdict on the agency work, no row is named after it.
   const contract = page.getByTestId('criteria').getByTestId('term-contract');
@@ -559,7 +559,7 @@ test('rows and reader say the same in short words; dead ends lead on', async ({ 
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // An excluded row names its reason in short words, the day rate carries its unit.
-  await expect(excludedRows(page).first().locator('.foot')).toHaveText('Arbeitnehmerüberlassung');
+  await expect(excludedRows(page).first().locator('.foot')).toHaveText('Zeitarbeit');
   await expect(row(page, 'freelancermap-2801').getByTestId('row-facts')).toContainText('1.200/Tag');
   // The reader's terms: duration and remote share like the row, not the work mode; the date
   // like the row with the exact moment in its tooltip.
@@ -940,10 +940,17 @@ test('the reader: one row of actions, archive opens the next job, undo, a prompt
   await expect(actions.locator('.btn.secondary')).toHaveCount(1);
   await expect(page.getByTestId('applied')).toHaveCount(0);
   await expect(page.getByTestId('note')).toHaveCount(0);
-  // The action row stays one line, the labels whole in the usual reader.
+  // The action row stays one line (one axis: the buttons differ in height), the labels whole
+  // in the usual reader.
   const actionTops = async (): Promise<number> =>
     actions.evaluate(
-      (row) => new Set([...row.children].map((child) => child.getBoundingClientRect().top)).size,
+      (row) =>
+        new Set(
+          [...row.children].map((child) => {
+            const box = child.getBoundingClientRect();
+            return Math.round(box.top + box.height / 2);
+          }),
+        ).size,
     );
   expect(await actionTops()).toBe(1);
   await expect(page.getByTestId('reader-archive')).toHaveText('Archivieren');
@@ -1327,7 +1334,9 @@ test('PageDown, Space and PageUp scroll the reader after a click in its text', a
   await page.getByTestId('reader-title').click();
   await page.keyboard.press('PageDown');
   await expect.poll(top).toBeGreaterThan(200);
-  const after = await top();
+  // Once the glide has come to rest.
+  let after = -1;
+  await expect.poll(async () => after === (after = await top())).toBe(true);
   await page.keyboard.press(' ');
   await expect.poll(top).toBeGreaterThan(after);
   await page.keyboard.press('PageUp');
@@ -1442,10 +1451,11 @@ test('the terms show the ad value and jump to it; wishes stand in their rows; ro
     /Interim.*1\.200\/Tag.*ab sofort.*6 Monate.*60\s%\sremote/,
   );
   await row(page, 'freelancermap-2801').click();
-  // The wish stands in the row of the rate, beside the minimum.
-  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText(
-    'Wunsch 1.200 €',
-  );
+  // The wish is the verdict's reason, no profile line stands in the row.
+  await expect(page.getByTestId('criteria').getByTestId('term-rate')).not.toContainText('Wunsch');
+  await expect(
+    page.getByTestId('criteria').getByTestId('term-rate').locator('.verdict'),
+  ).toHaveText('passt');
   await expect(page.getByTestId('wishes')).toHaveCount(0);
   // An ad that leaves the rate and the start open.
   await row(page, 'freelancermap-2802').click();
