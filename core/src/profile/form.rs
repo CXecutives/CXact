@@ -354,6 +354,14 @@ pub enum UnreadableField {
     Remote,
     Regions,
     WishIndustries,
+    /// `auslastung_min_tage` (days per week, 1 to 5).
+    WorkloadMinDays,
+    /// `auslastung_max_tage` (days per week, 1 to 5, not below the minimum).
+    WorkloadMaxDays,
+    /// `min_laufzeit_monate`.
+    MinMonths,
+    /// `ausschlusswoerter`.
+    ExclusionWords,
 }
 
 /// Where the keys of a field live.
@@ -369,7 +377,7 @@ enum Place {
 }
 
 impl UnreadableField {
-    const ALL: [UnreadableField; 15] = [
+    const ALL: [UnreadableField; 19] = [
         UnreadableField::MinDayRate,
         UnreadableField::Countries,
         UnreadableField::Contracts,
@@ -385,6 +393,10 @@ impl UnreadableField {
         UnreadableField::Remote,
         UnreadableField::Regions,
         UnreadableField::WishIndustries,
+        UnreadableField::WorkloadMinDays,
+        UnreadableField::WorkloadMaxDays,
+        UnreadableField::MinMonths,
+        UnreadableField::ExclusionWords,
     ];
 
     fn place(self) -> Place {
@@ -404,6 +416,10 @@ impl UnreadableField {
             UnreadableField::Remote => Place::Preferences(lexicon::KEYS_REMOTE_WISH),
             UnreadableField::Regions => Place::Preferences(lexicon::KEYS_REGIONS),
             UnreadableField::WishIndustries => Place::Preferences(lexicon::KEYS_INDUSTRIES),
+            UnreadableField::WorkloadMinDays => Place::Criteria(lexicon::KEYS_WORKLOAD_MIN),
+            UnreadableField::WorkloadMaxDays => Place::Criteria(lexicon::KEYS_WORKLOAD_MAX),
+            UnreadableField::MinMonths => Place::Criteria(lexicon::KEYS_MIN_MONTHS),
+            UnreadableField::ExclusionWords => Place::Criteria(lexicon::KEYS_EXCLUSION_WORDS),
         }
     }
 
@@ -1697,7 +1713,11 @@ mod tests {
                 "remote_ausserhalb_erlaubt": "vielleicht",
                 "zielprofil_min_jahre": "senior",
                 "festanstellung_orte": [],
-                "festanstellung_remote_min": "viel"
+                "festanstellung_remote_min": "viel",
+                "auslastung_min_tage": "viel",
+                "auslastung_max_tage": 9,
+                "min_laufzeit_monate": "lang",
+                "ausschlusswoerter": 5
             },
             "hard_criteria": {"min_salary": "hoch"},
             "einsatzpraeferenzen": {
@@ -1750,6 +1770,16 @@ mod tests {
             "{left:?}"
         );
         assert_eq!(UnreadableField::of_key("hobbys"), None);
+        // The English keys and the spelling with an umlaut name the same fields.
+        for (key, field) in [
+            ("workload_min_days", UnreadableField::WorkloadMinDays),
+            ("workload_max_days", UnreadableField::WorkloadMaxDays),
+            ("min_duration_months", UnreadableField::MinMonths),
+            ("exclusion_words", UnreadableField::ExclusionWords),
+            ("ausschlusswörter", UnreadableField::ExclusionWords),
+        ] {
+            assert_eq!(UnreadableField::of_key(key), Some(field), "{key}");
+        }
     }
 
     /// Of more than five Schwerpunkte the form takes the first five, as the engine does, and
