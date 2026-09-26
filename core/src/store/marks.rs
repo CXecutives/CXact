@@ -285,9 +285,14 @@ impl Store {
                     "dup_of IS NULL AND read_at IS NULL AND {} AND {} AND {}",
                     place_condition(place),
                     super::jobs::matches_words("?1"),
-                    super::jobs::filter_condition("?2", "?3"),
+                    super::jobs::filter_condition("?2", "?3", "?4"),
                 ),
-                params![words, filter.portal.map(Portal::key), filter.min_score()],
+                params![
+                    words,
+                    filter.portal.map(Portal::key),
+                    filter.min_score(),
+                    filter.applied
+                ],
             )?;
             let mut mark = conn
                 .prepare_cached("UPDATE job SET read_at = ?3 WHERE portal = ?1 AND job_id = ?2")?;

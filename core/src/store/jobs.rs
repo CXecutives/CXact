@@ -105,6 +105,8 @@ pub struct ListFilter {
     /// Only jobs scored in this band or better (`Mid` = mid and high); unscored and excluded
     /// jobs pass only without it.
     pub min_band: Option<Band>,
+    /// Only jobs the user marked as applied ("Beworben").
+    pub applied: bool,
 }
 
 impl ListFilter {
@@ -163,10 +165,11 @@ fn per_portal_columns(new: &str) -> (String, String) {
 
 /// The condition of a [`ListFilter`] on the `job` table: `portal` binds its key, `score` the
 /// lowest score (each `NULL` for no filter).
-pub(super) fn filter_condition(portal: &str, score: &str) -> String {
+pub(super) fn filter_condition(portal: &str, score: &str, applied: &str) -> String {
     format!(
         "({portal} IS NULL OR portal = {portal})
-         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))"
+         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))
+         AND (NOT {applied} OR applied_at IS NOT NULL)"
     )
 }
 
@@ -426,7 +429,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition("?5", "?6"),
+            filter = filter_condition("?5", "?6", "?7"),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -445,7 +448,8 @@ impl Store {
             query.offset,
             HIGH_FROM,
             portal,
-            min
+            min,
+            query.filter.applied
         ])?;
         while let Some(row) = rows.next()? {
             let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());

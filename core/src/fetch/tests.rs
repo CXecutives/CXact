@@ -1614,6 +1614,7 @@ async fn the_same_job_on_two_portals_is_one_row() {
             search: None,
             portal: None,
             min_band: None,
+            applied: false,
             limit: 50,
             offset: 0,
         },

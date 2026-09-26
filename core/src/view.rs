@@ -803,6 +803,9 @@ pub struct JobQuery {
     /// high only); unscored and excluded jobs pass only with `null`.
     #[serde(default)]
     pub min_band: Option<Band>,
+    /// The filter: only the jobs marked "Beworben".
+    #[serde(default)]
+    pub applied: bool,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
@@ -814,6 +817,7 @@ impl JobQuery {
         ListFilter {
             portal: self.portal,
             min_band: self.min_band,
+            applied: self.applied,
         }
     }
 }
@@ -1990,9 +1994,37 @@ mod tests {
             search: None,
             portal: None,
             min_band: None,
+            applied: false,
             limit,
             offset,
         }
+    }
+
+    /// "Beworben" as a filter: only the jobs marked applied, in their place; a mark taken
+    /// back leaves the filter again.
+    #[test]
+    fn the_applied_filter_lists_the_applied_jobs() {
+        let store = four_jobs();
+        let all = job_page(&store, &query(Place::Inbox, false, JobSort::Newest, 50, 0)).unwrap();
+        let b = all
+            .jobs
+            .iter()
+            .find(|j| j.title == "B")
+            .unwrap()
+            .key
+            .clone();
+        store
+            .set_applied(&[b.clone()], true, Timestamp::now())
+            .unwrap();
+        let applied = JobQuery {
+            applied: true,
+            ..query(Place::Inbox, false, JobSort::Newest, 50, 0)
+        };
+        let page = job_page(&store, &applied).unwrap();
+        assert_eq!(titles(&page), ["B"]);
+        assert!(page.jobs[0].applied_at.is_some());
+        store.set_applied(&[b], false, Timestamp::now()).unwrap();
+        assert!(job_page(&store, &applied).unwrap().jobs.is_empty());
     }
 
     /// The filter narrows the list and every count like the search: one portal's jobs, or
@@ -2277,6 +2309,7 @@ mod tests {
         ListFilter {
             portal: Some(Portal::Freelancermap),
             min_band: None,
+            applied: false,
         }
     }
 
@@ -2478,6 +2511,7 @@ mod tests {
                     search: search.map(str::to_owned),
                     portal: None,
                     min_band: None,
+                    applied: false,
                     limit: 0,
                     offset: 0,
                 },

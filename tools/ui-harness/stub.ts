@@ -1212,8 +1212,10 @@ function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favouri
 
 const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
 
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
-function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
+ *  jobs marked "Beworben". */
+function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand' | 'applied'>): boolean {
+  if (query.applied === true && j.appliedAt === null) return false;
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }

@@ -32,6 +32,10 @@ portal: Portal | null,
  */
 minBand: Band | null, 
 /**
+ * The filter: only the jobs marked "Beworben".
+ */
+applied: boolean, 
+/**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */
 limit: number, offset: number, };

@@ -523,6 +523,7 @@ class JobsStore {
       search: this.search.trim() === '' ? null : this.search.trim(),
       portal: null,
       minBand: null,
+      applied: false,
       limit,
       offset,
     };
@@ -610,6 +611,7 @@ class JobsStore {
           search: null,
           portal: null,
           minBand: null,
+          applied: false,
           limit: 0,
           offset: 0,
         },
