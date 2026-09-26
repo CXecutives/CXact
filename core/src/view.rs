@@ -193,6 +193,28 @@ pub struct JobView {
     /// The user marked the job as fitting although the engine excludes it ("Trotzdem
     /// passend"): it counts as scored with its fit score, its note is `userOverride`.
     pub overridden: bool,
+    /// When the user marked that she applied ("Beworben"); a flag of its own beside the
+    /// favourite.
+    pub applied_at: Option<Timestamp>,
+    /// The user's note (at most 2,000 characters; a run's `jobUpdated` event carries only
+    /// its first [`MAX_EVENT_NOTE_CHARS`], `job_detail` and `list_jobs` all of it).
+    pub note: Option<String>,
+}
+
+/// Most characters of the user's note a `jobUpdated` event carries (events stay below 8 KB).
+pub const MAX_EVENT_NOTE_CHARS: usize = 280;
+
+impl JobView {
+    /// The row as a run event carries it: the note cut to [`MAX_EVENT_NOTE_CHARS`].
+    #[must_use]
+    pub fn for_event(mut self) -> JobView {
+        if let Some(note) = self.note.as_mut()
+            && note.chars().count() > MAX_EVENT_NOTE_CHARS
+        {
+            *note = note.chars().take(MAX_EVENT_NOTE_CHARS).collect();
+        }
+        self
+    }
 }
 
 impl From<&JobRow> for JobView {
@@ -227,6 +249,8 @@ impl From<&JobRow> for JobView {
             place: job.place(),
             trashed_at: job.trashed_at,
             overridden: job.override_include,
+            applied_at: job.applied_at,
+            note: job.note.clone(),
         }
     }
 }
@@ -1439,6 +1463,48 @@ mod tests {
         assert_eq!(
             detail.mail.gmail_url.as_deref(),
             Some("https://mail.google.com/mail/u/0/#all/1a2b")
+        );
+    }
+
+    /// The row carries "Beworben" and the note; a run's event carries only the start of a
+    /// long note (events stay below 8 KB), the row itself all of it.
+    #[test]
+    fn a_row_carries_applied_and_the_note() {
+        let (store, key) = store_with(
+            "https://www.linkedin.com/jobs/view/4123456789/",
+            "Controller",
+            "Muster GmbH",
+            "Köln",
+        );
+        let json = serde_json::to_value(JobView::from(&store.job(&key).unwrap().unwrap())).unwrap();
+        assert_eq!(
+            (&json["appliedAt"], &json["note"]),
+            (&serde_json::Value::Null, &serde_json::Value::Null)
+        );
+        let now = Timestamp::now();
+        store
+            .set_applied(std::slice::from_ref(&key), true, now)
+            .unwrap();
+        let note = "Ü".repeat(crate::store::marks::MAX_NOTE_CHARS);
+        store.set_note(&key, Some(&note)).unwrap();
+        let view = JobView::from(&store.job(&key).unwrap().unwrap());
+        assert_eq!(
+            view.applied_at.map(Timestamp::as_second),
+            Some(now.as_second())
+        );
+        assert_eq!(view.note.as_deref(), Some(note.as_str()));
+        let event = crate::pipeline::RunEvent::JobUpdated {
+            job: Box::new(view.for_event()),
+            fresh: false,
+        };
+        let size = serde_json::to_vec(&event).unwrap().len();
+        assert!(size < 4 * 1024, "{size} bytes");
+        let crate::pipeline::RunEvent::JobUpdated { job, .. } = event else {
+            unreachable!()
+        };
+        assert_eq!(
+            job.note.map(|n| n.chars().count()),
+            Some(MAX_EVENT_NOTE_CHARS)
         );
     }
 

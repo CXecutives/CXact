@@ -8,11 +8,14 @@ use std::fmt::Write as _;
 
 use rusqlite::Connection;
 
-use super::marks::{SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS};
+use super::marks::{
+    SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS, SCHEMA_6_EXTRA,
+    SCHEMA_6_JOB_COLUMNS,
+};
 use super::matches::SCHEMA_3_JOB_COLUMNS;
 use crate::error::{Error, Result};
 
-pub(super) const SCHEMA_VERSION: i64 = 5;
+pub(super) const SCHEMA_VERSION: i64 = 6;
 
 /// Schema 2, the base of every fresh database. Frozen: later changes are migration steps.
 /// The same layout lies in `core/tests/fixtures/schema_v2.sql` for the migration tests.
@@ -114,6 +117,18 @@ fn migrate_4_to_5() -> String {
     sql
 }
 
+/// From schema 5 to 6: the application mark (a column of its own beside the favourite) and
+/// the indexes of the overview; the note column of schema 4 is used again as it is.
+fn migrate_5_to_6() -> String {
+    let mut sql = String::new();
+    for (name, sql_type) in SCHEMA_6_JOB_COLUMNS {
+        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
+    }
+    sql.push_str(SCHEMA_6_EXTRA);
+    sql.push('\n');
+    sql
+}
+
 /// One step per version: `steps()[v - 1]` leads from `v` to `v + 1`.
 fn steps() -> Vec<String> {
     vec![
@@ -121,6 +136,7 @@ fn steps() -> Vec<String> {
         migrate_2_to_3(),
         migrate_3_to_4(),
         migrate_4_to_5(),
+        migrate_5_to_6(),
     ]
 }
 
@@ -177,6 +193,8 @@ mod tests {
     const FIXTURE_V3: &str = include_str!("../../tests/fixtures/schema_v3.sql");
     /// The frozen schema 4 - the database before stages, archive and deleted jobs.
     const FIXTURE_V4: &str = include_str!("../../tests/fixtures/schema_v4.sql");
+    /// The frozen schema 5 - the database before the application mark.
+    const FIXTURE_V5: &str = include_str!("../../tests/fixtures/schema_v5.sql");
 
     fn columns(conn: &Connection, table: &str) -> Vec<(String, String, bool)> {
         let mut stmt = conn
@@ -245,6 +263,75 @@ mod tests {
             assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
         }
         assert_eq!(indexes(&fixture), indexes(&code));
+    }
+
+    /// The frozen schema 5 is what the chain made of schema 4.
+    #[test]
+    fn the_fixture_is_schema_5() {
+        let fixture = Connection::open_in_memory().unwrap();
+        fixture.execute_batch(FIXTURE_V5).unwrap();
+        let code = Connection::open_in_memory().unwrap();
+        code.execute_batch(&format!(
+            "{SCHEMA_2}{}{}{}",
+            migrate_2_to_3(),
+            migrate_3_to_4(),
+            migrate_4_to_5()
+        ))
+        .unwrap();
+        for table in ["job", "alert_mail", "kv", "tombstone"] {
+            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
+        }
+        assert_eq!(indexes(&fixture), indexes(&code));
+    }
+
+    /// Schema 5 with data: the favourite, the places and a note written in schema 4 stay; no
+    /// job is applied for; the new mark and the note work, and a job can be a favourite and
+    /// applied at once.
+    #[test]
+    fn a_schema_5_database_is_migrated_and_keeps_its_marks() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jobs.db");
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch(&format!(
+            "{FIXTURE_V5}
+             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
+                              first_seen_at, first_seen_run, last_seen_run, search,
+                              app_status, app_status_at, note, archived_at, trashed_at)
+             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
+                     'A', '', '', 'x', 100, 1, 1, 'a', 'saved', 160, 'Rückruf Montag', NULL,
+                     NULL),
+                    ('linkedin', '4000000002', 'https://www.linkedin.com/jobs/view/4000000002/',
+                     'B', '', '', 'x', 100, 1, 1, 'b', NULL, NULL, NULL, 170, 180);
+             INSERT INTO tombstone (portal, job_id, deleted_at)
+             VALUES ('linkedin', '4000000009', 190);
+             PRAGMA user_version = 5;"
+        ))
+        .unwrap();
+        drop(old);
+        let store = Store::open(&path).unwrap();
+        assert_eq!(version(&store.conn()), SCHEMA_VERSION);
+        let copy = dir.path().join("backups").join("jobs.pre-v5.db");
+        assert_eq!(version(&Connection::open(&copy).unwrap()), 5);
+        let key = |id: &str| {
+            crate::portal::job_link(&format!("https://www.linkedin.com/jobs/view/{id}/"))
+                .unwrap()
+                .key
+        };
+        let a = store.job(&key("4000000001")).unwrap().unwrap();
+        assert_eq!(a.pinned_at, crate::time::from_db(160));
+        assert_eq!(a.note.as_deref(), Some("Rückruf Montag"));
+        assert_eq!(a.applied_at, None);
+        let b = store.job(&key("4000000002")).unwrap().unwrap();
+        assert_eq!(b.place(), crate::model::Place::Trash);
+        assert!(store.is_deleted(&key("4000000009")).unwrap());
+        // Favourite and applied at once.
+        let one = std::slice::from_ref(&a.key);
+        assert_eq!(store.set_applied(one, true, now()).unwrap(), one);
+        let a = store.job(&a.key).unwrap().unwrap();
+        assert_eq!(
+            (a.pinned_at, a.applied_at),
+            (crate::time::from_db(160), Some(now()))
+        );
     }
 
     /// Schema 4 with data: "hidden" is "archived", a pinned job and an application status
@@ -493,6 +580,7 @@ mod tests {
             .iter()
             .chain(SCHEMA_4_JOB_COLUMNS)
             .chain(SCHEMA_5_JOB_COLUMNS)
+            .chain(SCHEMA_6_JOB_COLUMNS)
         {
             let column = if *column == "hidden_at" {
                 "archived_at"
@@ -501,8 +589,14 @@ mod tests {
             };
             assert!(names.iter().any(|n| n == column), "{column}");
         }
-        // The same from the frozen schemas 3 and 4.
-        for (version, fixture) in [(3, FIXTURE_V3), (4, FIXTURE_V4)] {
+        assert!(
+            indexes(&fresh.conn())
+                .iter()
+                .any(|name| name == "job_by_date"),
+            "the overview's date window has its index"
+        );
+        // The same from the frozen schemas 3, 4 and 5.
+        for (version, fixture) in [(3, FIXTURE_V3), (4, FIXTURE_V4), (5, FIXTURE_V5)] {
             let path = dir.path().join(format!("v{version}.db"));
             let old = Connection::open(&path).unwrap();
             old.execute_batch(&format!("{fixture} PRAGMA user_version = {version};"))
@@ -516,6 +610,7 @@ mod tests {
                     "{table} from schema {version}"
                 );
             }
+            assert_eq!(indexes(&migrated.conn()), indexes(&fresh.conn()));
         }
     }
 

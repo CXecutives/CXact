@@ -222,6 +222,8 @@ fn read_db(conn: &Connection) -> Res<(Vec<DbJob>, usize)> {
                 archived_at: None,
                 trashed_at: None,
                 override_include: false,
+                applied_at: None,
+                note: None,
             },
             text: r.get(11)?,
             facts,

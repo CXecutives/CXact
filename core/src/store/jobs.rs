@@ -74,6 +74,10 @@ pub struct JobRow {
     pub trashed_at: Option<Timestamp>,
     /// The user marked the job as fitting although the engine excludes it.
     pub override_include: bool,
+    /// When the user marked that she applied for the job ("Beworben"); `None` = not.
+    pub applied_at: Option<Timestamp>,
+    /// The user's note (trimmed, at most `marks::MAX_NOTE_CHARS` characters).
+    pub note: Option<String>,
 }
 
 impl JobRow {
@@ -760,8 +764,8 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
     desc_facts, CASE WHEN app_status IS NOT NULL THEN COALESCE(app_status_at, first_seen_at) END,
-    archived_at, trashed_at, override_include";
-pub(super) const JOB_COLUMN_COUNT: usize = 30;
+    archived_at, trashed_at, override_include, applied_at, note";
+pub(super) const JOB_COLUMN_COUNT: usize = 32;
 
 /// The jobs whose details the app fetches by itself: what the lists show as active - the
 /// inbox and the favourites in the archive - never the trash and never a duplicate (its
@@ -849,6 +853,8 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         archived_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
         trashed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
         override_include: r.get::<_, Option<i64>>(col(29))?.is_some(),
+        applied_at: r.get::<_, Option<i64>>(col(30))?.and_then(from_db),
+        note: r.get(col(31))?,
     }))
 }
 

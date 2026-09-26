@@ -980,7 +980,7 @@ async fn fetch_step<B: Backends>(
                             .map(|mut views| views.pop())
                 {
                     emit(RunEvent::JobUpdated {
-                        job: Box::new(view),
+                        job: Box::new(view.for_event()),
                         fresh: job.first_seen_run == run,
                     });
                 }
