@@ -71,3 +71,21 @@ Commit them together with tokens.css.
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
 - The TXT files have no colours.
+
+## Change the Übersicht
+
+The Übersicht is a list of blocks, `ui/src/features/overview/blocks.ts`: each entry names its
+component (`ui/src/features/overview/blocks/`) and the rule for when it shows.
+
+- **Reorder, hide or add a block**: one entry in `BLOCKS`. A new block renders its content inside
+  `blocks/Block.svelte` (heading, hairline, spacing, the row list with hairlines or the job rows,
+  its own error at its end), so it looks like the others without a style of its own.
+- **What a block shows or when**: `ui/src/features/overview/model.svelte.ts`, the one place for
+  the Übersicht's data and rules (the order of "Offene Punkte" is its `points`, by weight).
+- **Where a tile or a point leads**: `ui/src/features/overview/lead.ts`; each opens exactly the
+  set its count names, through the list's public setters.
+- **A new number**: `overview_stats` in `core/src/view.rs` (`OverviewStats`), mirrored in
+  `tools/ui-harness/stub.ts`; `cargo test -p jobalert-core ipc_types_are_generated_and_committed`
+  writes the TypeScript type.
+- **Texts**: the `overview` section of `ui/src/lib/i18n/de.ts` and `en.ts`.
+- **Check**: `tools/ui-harness/specs/overview.spec.ts` in Chromium.

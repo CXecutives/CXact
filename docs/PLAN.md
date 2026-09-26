@@ -602,3 +602,13 @@ as the parts land on `main`.
   Wartung shows the version; by match the jobs without a score come first; the excluded
   jobs of Archiv and Papierkorb are counted in their place; "Anmeldung einrichten" opens
   Einstellungen at that portal's sign-in with "Zurück zum Job".
+- Übersicht (2026-09-26, audit OV-*): one ordered list of blocks (`features/overview/blocks.ts`,
+  docs/CHANGING.md): Eingang (Abrufen, Abbrechen during a run; the tiles Neu and Hohe Passung,
+  each opening exactly what it counts; a failed fetch or start as one danger note under them,
+  never "Abgerufen"), Heute ansehen (the best unopened jobs; a failed job query in its place
+  with "Erneut versuchen"), Favoriten (without those Heute ansehen shows; "Alle n Favoriten"),
+  KI-Prompt kopieren, Offene Punkte by weight (no usable profile, portal problems to act on,
+  "Details holen" for the ads that can still be fetched, new excluded jobs with the Eingang's
+  excluded section open, what resolves itself, quiet portals with "Alert anlegen"), Oft
+  verlangt, Markt der letzten 30 Tage, Dateien. No Ausgeschlossen tile, no "Alle n neuen", no
+  "Braucht eine Entscheidung"; each block says its own errors.

@@ -16,4 +16,15 @@ openMusts: Array<OpenMust>, market: Market,
 /**
  * Every enabled portal (in the order of `Portal::ALL`) with its last alert mail.
  */
-quietPortals: Array<QuietPortal>, };
+quietPortals: Array<QuietPortal>, 
+/**
+ * Jobs of the inbox whose full ad "Details holen" can still fetch: not fetched yet or
+ * failed so far, of an enabled portal with its details switched on; one with only the
+ * teaser where the sign-in is switched on too. Ads that are gone or given up on are
+ * none of them.
+ */
+detailsWanted: number, 
+/**
+ * Excluded jobs of the inbox not opened yet.
+ */
+excludedNew: number, };

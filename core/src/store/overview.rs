@@ -22,6 +22,17 @@ pub struct BandCounts {
     pub high: u32,
 }
 
+/// What one portal's jobs in the inbox (no duplicate) still leave open.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct InboxOpen {
+    /// Without their full ad and not given up on: not fetched yet, or failed so far.
+    pub no_ad: u32,
+    /// With only the teaser a guest sees.
+    pub teaser: u32,
+    /// Excluded and not opened yet.
+    pub excluded_unread: u32,
+}
+
 impl Store {
     /// The jobs whose alert mail (else first sighting) is at most `since` old, not in the
     /// trash, no duplicate (its original stands for it), newest first.
@@ -116,6 +127,37 @@ impl Store {
             |r| Ok((r.get(0)?, r.get(1)?)),
         )?;
         Ok(BandCounts { excluded, high })
+    }
+
+    /// Per portal what its jobs in the inbox (no duplicate) leave open ([`InboxOpen`]); a
+    /// portal without jobs there is left out.
+    pub fn inbox_open(&self) -> Result<Vec<(Portal, InboxOpen)>> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare_cached(&format!(
+            "SELECT portal,
+                    COALESCE(SUM(desc_status IN ('missing', 'failed')), 0),
+                    COALESCE(SUM(desc_status = 'teaser'), 0),
+                    COALESCE(SUM(read_at IS NULL AND match_status IS 'excluded'), 0)
+             FROM job WHERE {INBOX} AND dup_of IS NULL GROUP BY portal ORDER BY portal"
+        ))?;
+        let rows = stmt.query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                InboxOpen {
+                    no_ad: r.get(1)?,
+                    teaser: r.get(2)?,
+                    excluded_unread: r.get(3)?,
+                },
+            ))
+        })?;
+        let mut out = Vec::new();
+        for row in rows {
+            let (portal, open) = row?;
+            if let Some(portal) = Portal::from_key(&portal) {
+                out.push((portal, open));
+            }
+        }
+        Ok(out)
     }
 }
 
