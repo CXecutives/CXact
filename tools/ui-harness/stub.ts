@@ -101,6 +101,9 @@ interface Harness {
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
    *  (`close-requested`) while it holds unsaved changes, else the window closes. */
   requestClose: () => void;
+  /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
+   *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
+  text: (path: string, ...args: unknown[]) => Promise<string>;
 }
 
 declare global {
@@ -2915,6 +2918,14 @@ const harness: Harness = {
   job(key) {
     const found = find(key);
     return found === undefined ? null : structuredClone(found);
+  },
+  async text(path, ...args) {
+    const { t } = await import('../../ui/src/lib/i18n/t');
+    let value: unknown = t;
+    for (const part of path.split('.')) value = (value as Record<string, unknown>)[part];
+    return String(
+      typeof value === 'function' ? (value as (...a: unknown[]) => unknown)(...args) : value,
+    );
   },
 };
 window.__harness = harness;
