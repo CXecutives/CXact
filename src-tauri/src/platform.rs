@@ -17,7 +17,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-#[cfg(target_os = "macos")]
 use jobalert_core::settings::Language;
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview, WebviewWindow, WebviewWindowBuilder};
@@ -143,9 +142,9 @@ const fn major_after(haystack: &str, marker: &str) -> u32 {
 // ------------------------------------------------------------------ language
 
 /// The language of the OS (macOS: the first of Language & Region), German only when it is
-/// German. Only the macOS menu follows it, as Mac menus do; the app's own language starts
-/// German (`Language::DEFAULT`) until the user picks one.
-#[cfg(target_os = "macos")]
+/// German. The macOS menu and the startup dialog follow it, as the OS's own menus and
+/// dialogs do; the app's own language starts German (`Language::DEFAULT`) until the user
+/// picks one.
 pub fn system_language() -> Language {
     Language::from_locale(sys_locale::get_locale().as_deref())
 }
@@ -725,6 +724,12 @@ mod macos {
     const SETTINGS_ID: &str = "settings";
     /// The event that asks the page for a view (`ui/src/lib/ipc/api.ts`, `onNavigate`).
     const NAVIGATE: &str = "navigate";
+    /// Id of Edit > Undo: the page takes back what Cmd+Z would, in a field the field's own
+    /// edit and elsewhere the app's last list action (the standard item only reached the
+    /// web view's editing undo).
+    const UNDO_ID: &str = "undo";
+    /// The event that asks the page to undo (`ui/src/lib/ipc/api.ts`, `onMenuUndo`).
+    const MENU_UNDO: &str = "menu-undo";
 
     // User-facing text, German by product decision.
     const ABOUT: &str = "Über CXact";
@@ -808,7 +813,7 @@ mod macos {
             w(EDIT, en::EDIT),
             true,
             &[
-                &PredefinedMenuItem::undo(app, Some(w(UNDO, en::UNDO)))?,
+                &MenuItem::with_id(app, UNDO_ID, w(UNDO, en::UNDO), true, Some("CmdOrCtrl+Z"))?,
                 &PredefinedMenuItem::redo(app, Some(w(REDO, en::REDO)))?,
                 &PredefinedMenuItem::separator(app)?,
                 &PredefinedMenuItem::cut(app, Some(w(CUT, en::CUT)))?,
@@ -841,6 +846,14 @@ mod macos {
         reason = "the signature of Tauri's menu event handler"
     )]
     pub fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
+        if event.id() == UNDO_ID {
+            if let Some(window) = app.get_webview_window(super::MAIN)
+                && let Err(e) = window.emit(MENU_UNDO, ())
+            {
+                log::warn!("undo item: page not reached ({e})");
+            }
+            return;
+        }
         if event.id() == SETTINGS_ID {
             if let Some(window) = app.get_webview_window(super::MAIN) {
                 let _ = window.set_focus();
@@ -930,14 +943,23 @@ pub const LOG_DIR_HINT: &str = if cfg!(target_os = "macos") {
 };
 
 // User-facing text, German by product decision.
-/// What helps when the window cannot open: on Windows the WebView2 runtime is usually
-/// missing; macOS brings its engine along.
-pub const WINDOW_HINT: Option<&str> = if cfg!(windows) {
-    Some(
-        "Fehlt die Microsoft-Edge-WebView2-Laufzeit, hilft deren Installation \
-         (https://developer.microsoft.com/microsoft-edge/webview2/).",
-    )
-} else {
-    None
-};
+const WINDOW_HINT_DE: &str = "Fehlt die Microsoft-Edge-WebView2-Laufzeit, installiere sie \
+    (https://developer.microsoft.com/microsoft-edge/webview2/).";
 // end of user-facing text
+
+// User-facing text, English.
+const WINDOW_HINT_EN: &str = "If the Microsoft Edge WebView2 runtime is missing, install it \
+    (https://developer.microsoft.com/microsoft-edge/webview2/).";
+// end of user-facing text
+
+/// What helps when the window cannot open, in the startup dialog's language: on Windows the
+/// WebView2 runtime is usually missing; macOS brings its engine along.
+pub fn window_hint(language: Language) -> Option<&'static str> {
+    if !cfg!(windows) {
+        return None;
+    }
+    Some(match language {
+        Language::De => WINDOW_HINT_DE,
+        Language::En => WINDOW_HINT_EN,
+    })
+}
