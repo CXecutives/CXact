@@ -49,7 +49,8 @@ test('score rings show their value, an excluded one in grey with its ban mark; u
     new RegExp(`Passung 91${String.fromCharCode(0x202f)}% · Hohe Passung`),
   );
   await expect(page.getByTestId('ring-excluded-lg')).toContainText('72');
-  await expect(page.getByTestId('ring-excluded-lg').locator('.ban')).toHaveCount(1);
+  // No ban mark on the ring: the reason line beside it carries it.
+  await expect(page.getByTestId('ring-excluded-lg').locator('svg')).toHaveCount(1);
   await expect(page.getByTestId('ring-unscorable-lg')).toHaveText('–');
 });
 

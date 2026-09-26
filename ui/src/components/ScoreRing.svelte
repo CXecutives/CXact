@@ -12,7 +12,8 @@
   provisional (a score from a teaser only) looks exactly like a scored ring, the row's
   badge and the reader say that it is not final (its name says it too). none: not scored
   yet: the track with an empty centre. excluded: the ring and its number in grey (the fit is
-  kept, so a wrong exclusion shows at once) with a small ban mark at its lower right.
+  kept, so a wrong exclusion shows at once); the ban mark belongs to the reason line beside
+  it, not to the ring (user decision 2026-09-26).
   unscorable, and off (no usable profile, so no match at all): the track and a dash.
   pending: in the reader a quarter arc turns on the track; in the list (sm, where many
   turning arcs would cost frames and a still arc looks like a frozen spinner) the track
@@ -65,7 +66,6 @@
   import { formatPercent } from '$lib/i18n/format';
   import { duration, isReducedMotion, play } from '$lib/motion/motion';
   import { countUp } from '$lib/motion/transitions';
-  import Icon from './Icon.svelte';
 
   interface Props {
     ring: RingState;
@@ -208,9 +208,6 @@
       –
     {/if}
   </span>
-  {#if ring.status === 'excluded'}<span class="ban" aria-hidden="true"
-      ><Icon name="ban" size="xs" /></span
-    >{/if}
 </span>
 
 <style>
@@ -252,17 +249,6 @@
 
   .excluded .value {
     stroke: var(--score-excluded);
-  }
-
-  /* The small ban mark of an excluded ring, on its lower right edge. */
-  .ban {
-    position: absolute;
-    right: calc(-1 * var(--space-2));
-    bottom: calc(-1 * var(--space-2));
-    display: inline-flex;
-    border-radius: var(--radius-full);
-    background-color: var(--surface);
-    color: var(--danger-strong);
   }
 
   /* Pending: a quarter arc over the track (25 of the 100 units), from 12 o'clock. */
