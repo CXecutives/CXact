@@ -213,8 +213,8 @@ pub enum StatusCode {
 )]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum RunEvent {
-    /// The first event of every run: its kind (the auto fetch and the rescores the app starts
-    /// by itself included).
+    /// The first event of every run: its kind (the rescores the app starts by itself
+    /// included).
     Started { kind: RunKindName },
     Progress {
         step: Step,
@@ -489,8 +489,6 @@ const LEGACY_INFO: [(&str, &str); 5] = [
     ("Doppelt in mehreren Mails (letzter Lauf)", texts::INFO_DUP),
     ("Neu seit letztem Lauf", texts::SCOPE_NEW),
 ];
-/// The app fetches by itself at the start when the last fetch is older than this.
-pub const AUTO_FETCH_AFTER: jiff::SignedDuration = jiff::SignedDuration::from_hours(6);
 
 /// What a run kind does.
 struct Plan<'a> {
@@ -1529,22 +1527,6 @@ pub fn last_fetch_at(store: &Store) -> Option<Timestamp> {
         .flatten()
         .and_then(|v| v.parse().ok())
         .and_then(time::from_db)
-}
-
-/// Should the app start a fetch run by itself? Only when switched on, with a portal to read
-/// and a mailbox, and when the last successful mailbox scan is older than
-/// [`AUTO_FETCH_AFTER`] (or never was). With every portal switched off (a state the user may
-/// choose, and broken settings leave) a fetch could only fail: it waits for a portal.
-pub fn auto_fetch_due(
-    store: &Store,
-    settings: &crate::settings::Settings,
-    mailbox_connected: bool,
-    now: Timestamp,
-) -> bool {
-    settings.auto_fetch_on_start
-        && !settings.enabled_portals().is_empty()
-        && mailbox_connected
-        && last_fetch_at(store).is_none_or(|at| now.duration_since(at) > AUTO_FETCH_AFTER)
 }
 
 /// Sheet "Info" of the Excel file (last mailbox fetch, when the file was written, counters,

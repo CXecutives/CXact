@@ -12,8 +12,9 @@ use crate::store::Store;
 const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
-/// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`) are
-/// skipped silently - serde only refuses unknown fields with `deny_unknown_fields`.
+/// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
+/// `autoFetchOnStart`) are skipped silently - serde only refuses unknown fields with
+/// `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -24,8 +25,6 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// Start a fetch run at app start (mailbox connected, last fetch older than 6 hours).
-    pub auto_fetch_on_start: bool,
     /// Move inbox jobs that are no favourite to the archive this many days after they were
     /// first seen, at the end of every run; 0 = never.
     pub auto_archive_days: u32,
@@ -116,7 +115,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            auto_fetch_on_start: true,
             language: None,
             auto_archive_days: AUTO_ARCHIVE_DAYS,
             auto_empty_trash_days: AUTO_EMPTY_TRASH_DAYS,
@@ -278,7 +276,7 @@ mod tests {
                 login_enabled: true,
             },
         );
-        s.auto_fetch_on_start = false;
+        s.auto_archive_days = 0;
         s.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
         assert_eq!(
@@ -290,7 +288,7 @@ mod tests {
                 login_enabled: false,
             }
         );
-        assert!(!back.auto_fetch_on_start);
+        assert_eq!(back.auto_archive_days, 0);
         assert_eq!(
             back.enabled_portals(),
             [Portal::FreelanceDe, Portal::Freelancermap]
@@ -303,7 +301,7 @@ mod tests {
         assert!(partial.portal(Portal::FreelanceDe).login_enabled);
         assert!(partial.portal(Portal::FreelanceDe).fetch_details);
         assert!(partial.portal(Portal::LinkedIn).enabled);
-        assert!(partial.auto_fetch_on_start);
+        assert_eq!(partial.auto_archive_days, AUTO_ARCHIVE_DAYS);
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:
@@ -335,21 +333,26 @@ mod tests {
     }
 
     /// A file of an earlier version carries fields that no longer exist and the list form of
-    /// the portal choice: it loads, and the choice survives as the `enabled` switch.
+    /// the portal choice: it loads, and the choice survives as the `enabled` switch. The
+    /// switch of the fetch at the start (gone: the app fetches only when asked) is skipped,
+    /// and saving drops it.
     #[test]
     fn settings_of_an_older_version_still_load() {
         let store = Store::in_memory().unwrap();
         store
             .kv_set(
                 KEY,
-                r#"{"workspace":null,"format":"xlsx","scope":"week","portals":["linkedin"],"sessionPortals":["freelance"],"firstRunSeen":true}"#,
+                r#"{"workspace":null,"format":"xlsx","scope":"week","portals":["linkedin"],"sessionPortals":["freelance"],"firstRunSeen":true,"autoFetchOnStart":true,"autoArchiveDays":7}"#,
             )
             .unwrap();
         let back = Settings::load(&store).unwrap();
         assert_eq!(back.enabled_portals(), [Portal::LinkedIn]);
         assert_eq!(back.fetch_portals(), [Portal::LinkedIn]);
         assert_eq!(back.workspace, None);
-        assert!(back.auto_fetch_on_start);
+        assert_eq!(back.auto_archive_days, 7, "the fields around it stay");
+        back.save(&store).unwrap();
+        let saved = store.kv_get(KEY).unwrap().unwrap();
+        assert!(!saved.contains("autoFetchOnStart"), "{saved}");
         store.kv_set(KEY, r#"{"portals":[]}"#).unwrap();
         assert!(Settings::load(&store).unwrap().enabled_portals().is_empty());
     }
@@ -392,10 +395,10 @@ mod tests {
         );
         // A language of a newer version: the settings stay, the language follows the OS.
         store
-            .kv_set(KEY, r#"{"language":"fr","autoFetchOnStart":false}"#)
+            .kv_set(KEY, r#"{"language":"fr","autoArchiveDays":0}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
-        assert!(!newer.auto_fetch_on_start);
+        assert_eq!(newer.auto_archive_days, 0);
         assert_eq!(newer.language, None);
     }
 

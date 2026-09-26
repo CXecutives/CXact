@@ -1400,44 +1400,6 @@ async fn txt_is_blind_to_the_match() {
     assert_eq!(strip(&a), strip(&b));
 }
 
-/// The auto fetch at the start: switched on, with a mailbox, last fetch older than 6 hours.
-#[tokio::test(start_paused = true)]
-async fn the_auto_fetch_waits_six_hours() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let now = c();
-    let on = crate::settings::Settings::default();
-    let off = crate::settings::Settings {
-        auto_fetch_on_start: false,
-        ..on.clone()
-    };
-    let mut no_portal = on.clone();
-    for switches in no_portal.portals.values_mut() {
-        switches.enabled = false;
-    }
-    assert!(auto_fetch_due(&store, &on, true, now), "never fetched");
-    assert!(!auto_fetch_due(&store, &off, true, now), "switched off");
-    assert!(!auto_fetch_due(&store, &on, false, now), "no mailbox");
-    assert!(
-        !auto_fetch_due(&store, &no_portal, true, now),
-        "no portal to read: no fetch that can only fail"
-    );
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &scan_only(dir.path()),
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    let fetched = last_fetch_at(&store).unwrap();
-    let after = |hours| fetched + SignedDuration::from_hours(hours);
-    assert!(!auto_fetch_due(&store, &on, true, after(5)));
-    assert!(auto_fetch_due(&store, &on, true, after(7)));
-}
-
 /// The request JSON is flat, and every kind round-trips.
 #[test]
 fn run_requests_are_flat_json() {
@@ -1680,8 +1642,7 @@ async fn a_portal_switched_off_during_the_run_stops_at_once() {
 }
 
 /// Every run begins with exactly one `Started` naming its kind: the page also follows the
-/// runs it did not start itself (the auto fetch, a rescore after a profile change) as what
-/// they are.
+/// runs it did not start itself (a rescore after a profile change) as what they are.
 #[tokio::test(start_paused = true)]
 async fn every_run_starts_with_its_kind() {
     let c = clock();

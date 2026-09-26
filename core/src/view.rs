@@ -909,7 +909,6 @@ pub struct SettingsView {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    pub auto_fetch_on_start: Option<bool>,
     /// Days after which old jobs archive themselves; 0 = never (`null` = unchanged).
     pub auto_archive_days: Option<u32>,
     /// Days after which the trash empties itself; 0 = never (`null` = unchanged).
@@ -941,9 +940,6 @@ impl SettingsPatch {
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
-        }
-        if let Some(on) = self.auto_fetch_on_start {
-            settings.auto_fetch_on_start = on;
         }
         if let Some(days) = self.auto_archive_days {
             settings.auto_archive_days = days;
@@ -1295,7 +1291,6 @@ pub struct AppState {
     pub mailbox: Mailbox,
     pub profile: Option<ProfileInfo>,
     pub portals: Vec<PortalState>,
-    pub auto_fetch_on_start: bool,
     /// Days after which old inbox jobs that are no favourite archive themselves; 0 = never.
     pub auto_archive_days: u32,
     /// Days after which the trash empties itself; 0 = never.
