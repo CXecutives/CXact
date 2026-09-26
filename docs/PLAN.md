@@ -568,3 +568,9 @@ as the parts land on `main`.
   minimum duration as checks (engine 16); an hourly wage for employees or agency work is
   employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
   updates, an application-letter prompt, snooze, radius, direct client vs agency.
+- Engine 16 in the UI: Konditionen hold, after "Verfügbar ab", Auslastung (von, bis, 1 to 5
+  Tage pro Woche, either may stay empty), Mindestlaufzeit (Monate) and Ausschlusswörter; each
+  value of the file that does not read has "Wert entfernen" (`UnreadableField`); the reader's
+  row Auslastung follows Laufzeit, both a check outside the profile ("prüfen") and "passt"
+  within; a list row's facts read Tagessatz · Remote · Laufzeit · Auslastung · Start; an
+  exclusion word says itself in the exclusion box, the HTML report and the Excel file.
