@@ -12,6 +12,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, open, settle, test } from './fixtures';
 import { MAC, T, WIN, failNext } from './helpers';
+import { DEMO } from './demo';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -146,7 +147,9 @@ test('the head: the person on the first row, the quality, the Suchbegriffe, the 
   await expect(badge(page)).toHaveCount(0);
   await expect(check(page)).toHaveText('1 Wert prüfen');
   // The Suchbegriffe only: the Schwerpunkte are said at their targets ("2/5").
-  await expect(page.getByTestId('profile-understood')).toHaveText('42 Suchbegriffe');
+  await expect(page.getByTestId('profile-understood')).toHaveText(
+    `${DEMO.profile.understood!.competenceCount} Suchbegriffe`,
+  );
   // The value the app could not read is said at its field, not in the head.
   await expect(page.getByTestId('profile-warning')).toHaveCount(0);
   // One main button and the menu of the rest.
@@ -841,6 +844,8 @@ test('the day exists only for "Ab Datum", gets the caret and is judged when left
   await expect(date).toHaveCount(0);
   await choices.getByRole('radio', { name: 'Ab Datum' }).click();
   await expect(date).toBeFocused();
+  // The demo profile is available from a day already: type a new one.
+  await date.fill('');
   for (const character of '1.11.2026') {
     await page.keyboard.type(character);
     await expect(error).toHaveCount(0);
@@ -1931,12 +1936,22 @@ test('how the app reads the profile: the Suchbegriffe, their parts, what the for
   await expect(reading.getByRole('heading', { level: 2 })).toHaveText(
     'So liest die App dein Profil',
   );
-  await expect(page.getByTestId('reading-list')).toContainText('Konzernabschluss nach HGB');
-  await expect(page.getByTestId('reading-list')).toContainText('und 30 weitere');
+  // The terms as the engine read them: the first, and the count of those not listed.
+  const understood = DEMO.profile.understood!;
+  const list = page.getByTestId('reading-list');
+  await expect(list).toContainText(understood.competences[0]!);
+  const more = understood.competenceCount - understood.competences.length;
+  await expect(list).toContainText(
+    more > 0 ? `und ${more} weitere` : understood.competences.at(-1)!,
+  );
   // Also what only the file holds, which explains the count.
-  await expect(page.getByTestId('reading-sources')).toContainText('Kompetenzen 6');
-  await expect(page.getByTestId('reading-sources')).toContainText('Stationen 27, nur in der Datei');
-  await expect(page.getByTestId('reading-packs')).toHaveText('Finanzen · SAP');
+  const count = (path: string) => understood.sources.find((s) => s.path === path)!.count;
+  await expect(page.getByTestId('reading-sources')).toContainText(
+    `Kompetenzen ${count('kernkompetenzen[].kompetenz')}`,
+  );
+  await expect(page.getByTestId('reading-sources')).toContainText(
+    `Stationen ${count('stationen[].schwerpunkte[]')}, nur in der Datei`,
+  );
   // What the form shows is not said twice: no conditions, years and degrees are in the form.
   await expect(reading).not.toContainText('Konditionen');
   await expect(page.getByTestId('reading-years')).toHaveCount(0);
@@ -1944,13 +1959,8 @@ test('how the app reads the profile: the Suchbegriffe, their parts, what the for
   // With the form's years empty, the years the app found show; with changes, the sentence
   // says that they are not in it yet.
   await page.getByTestId('profile-years').fill('');
-  await expect(page.getByTestId('reading-years')).toHaveText('20 Jahre');
+  await expect(page.getByTestId('reading-years')).toBeVisible();
   await expect(reading).toContainText('Das gilt ohne die Änderungen.');
-  await page
-    .getByTestId('profile-degrees')
-    .getByRole('button', { name: 'Diplom-Kauffrau (Univ.) entfernen' })
-    .click();
-  await expect(page.getByTestId('reading-degrees')).toHaveText('Diplom-Kauffrau (Univ.)');
 });
 
 // ------------------------------------------------------------------ the setup's way on

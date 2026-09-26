@@ -1,7 +1,10 @@
 // Typed stand-in for @tauri-apps/api in the harness build (`vite build --mode harness`
 // aliases every `@tauri-apps/api/*` import to this file). It answers every IPC command
-// (typed by the generated `Commands` map) from a small in-memory store with realistic,
-// invented sample data, records the calls and lets a test push run events:
+// (typed by the generated `Commands` map) from a small in-memory store, records the calls and
+// lets a test push run events. Everything the engine computes (scores, reasons, passages, the
+// Übersicht's numbers, the profile as understood, the prompts) comes from demo/snapshot.json,
+// which core/tests/ui_demo_snapshot.rs writes from the invented ads of demo/ads.json; the stub
+// only keeps state (docs/CHANGING.md, "The preview's demo data"):
 //
 //   window.__harness.calls          [command, args][]
 //   window.__harness.emit(event)    send a RunEvent the way Rust does (the run's channel,
@@ -55,7 +58,6 @@ import type {
   Commands,
   Deleted,
   ErrorInfo,
-  Highlight,
   JobCounts,
   JobDetail,
   JobKey,
@@ -78,7 +80,7 @@ import type {
   RunRequest,
   RunSummary,
 } from '../../ui/src/lib/ipc/types';
-import { BAND_FROM, bandOf, HIGH_FROM, MID_FROM } from '../../ui/src/lib/ipc/types/bands';
+import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 import {
   MAX_FOCUS,
@@ -90,6 +92,8 @@ import {
   type NumberCriterion,
   type WordCriterion,
 } from '../../ui/src/lib/ipc/types/profile';
+import snapshot from './demo/snapshot.json';
+import type { Snapshot } from './snapshot';
 
 interface Harness {
   calls: [string, unknown][];
@@ -259,442 +263,56 @@ const later = (minutes: number): string => new Date(NOW + minutes * 60_000).toIS
 
 type Match = NonNullable<JobView['match']>;
 
-/** Requirements the sample profile does not name (no competence, tool or keyword of it). */
-const OPEN_MUSTS = [
-  'Branchenerfahrung Energie',
-  'Erfahrung mit SAP Analytics Cloud',
-  'Kenntnisse in Anaplan',
-];
+/** What the engine computed for the demo (snapshot.ts): the stub never scores, explains or
+ *  writes a prompt itself. */
+const DEMO = snapshot as unknown as Snapshot;
 
-/** A job whose ad states no key facts. */
-const NO_FACTS = {
-  rate: null,
-  hourly: null,
-  currency: null,
-  rateOpen: null,
-  start: null,
-  months: null,
-  remoteFrom: null,
-  remoteTo: null,
-  contract: null,
-};
+/** The demo job (`portal:id`) whose reader and prompts a job of the scenario `many` shows. */
+const SOURCE = new Map<string, string>();
+const sourceOf = (key: JobKey): string => SOURCE.get(markKey(key)) ?? markKey(key);
 
-/** A permanent job's facts: its annual salary (`salary`, beside the backend's key facts; open
- *  in docs/PLAN.md), a start date and a remote share. */
-const SALARIED = {
-  ...NO_FACTS,
-  salary: 95_000,
-  start: '2026-11-01',
-  remoteFrom: 40,
-  remoteTo: 40,
-};
-
-const scored = (score: number, top: string[], mustMet = 3, mustTotal = 4): Match => ({
-  score,
-  band: bandOf(score),
-  status: 'scored',
-  note: null,
-  mustMet,
-  mustTotal,
-  top,
-  // The reader's open musts (detailOf): one partial first when two or more are missing.
-  open: OPEN_MUSTS.slice(0, Math.min(2, mustTotal - mustMet - (mustTotal - mustMet >= 2 ? 1 : 0))),
-  facts: NO_FACTS,
-});
-
-/** Excluded by a hard criterion: the engine names the first violation's reason code. */
-const excludedBy = (
-  code: string,
-  score: number,
-  params: Record<string, string | number> = {},
-): Match => ({
-  score,
-  band: bandOf(score),
-  status: 'excluded',
-  note: { code, params },
-  mustMet: 2,
-  mustTotal: 4,
-  top: [],
-  open: [],
-  facts: NO_FACTS,
-});
-
-/** Contract type per stub ad, as the engine reads it (`contractType` params): interim unless
- *  listed; a permanent job the engine only infers from the words of the ad. The one source of
- *  a demo job's contract: its facts (the row), its reader and its ad say this type. */
-const CONTRACTS: Record<string, { type: string; inferred: boolean }> = {
-  '4100200304': { type: 'permanent', inferred: false },
-  '4100200305': { type: 'permanent', inferred: false },
-  '4100200306': { type: 'permanent', inferred: false },
-  '4100200303': { type: 'permanent', inferred: true },
-  '900412': { type: 'anue', inferred: false },
-  '900411': { type: 'freelance', inferred: false },
-  '2803': { type: 'freelance', inferred: false },
-  '2805': { type: 'freelance', inferred: false },
-  '900413': { type: 'freelance', inferred: false },
-  '2806': { type: 'unclear', inferred: false },
-  '900499': { type: 'anue', inferred: false },
-};
-
-function contractOf(j: JobView): { type: string; inferred: boolean } {
-  return CONTRACTS[j.key.id] ?? { type: 'interim', inferred: false };
-}
-
-/** A match whose facts name the contract of its ad (CONTRACTS; none while it is unclear). */
-function contracted(match: Match | null, id: string): Match | null {
-  if (match === null) return null;
-  const type = CONTRACTS[id]?.type ?? 'interim';
-  return { ...match, facts: { ...match.facts, contract: type === 'unclear' ? null : type } };
-}
-
-/** The annual salary among a permanent job's facts (the backend's KeyFacts does not carry it
- *  yet; the row shows it as soon as it does). */
-function salaryOf(facts: Match['facts']): number | null {
-  const value = (facts as { salary?: unknown }).salary;
-  return typeof value === 'number' ? value : null;
-}
-
-function job(
-  portal: JobView['portal'],
-  id: string,
-  title: string,
-  company: string,
-  location: string,
-  hoursAgo: number,
-  extra: Partial<JobView> = {},
-): JobView {
-  return {
-    key: { portal, id },
-    portal,
-    title,
-    company,
-    location,
-    workMode: 'hybrid',
-    mailDate: at(hoursAgo),
-    firstSeenAt: at(hoursAgo),
-    unread: false,
-    pinned: false,
-    detail: { kind: 'ok' },
-    short: false,
-    closed: false,
-    alsoOn: [],
-    place: 'inbox',
-    trashedAt: null,
-    overridden: false,
-    ...extra,
-    match: contracted(extra.match ?? null, id),
-  };
-}
-
-/** When the last fetch (`lastRun`, 1.2 to 1 hours ago) first saw its new jobs: the three
- *  best unread jobs came with it, the other unread ones are older. */
-const LAST_FETCH_SAW = at(1.1);
-
+/** The demo's jobs as the engine left them. */
 function sampleJobs(): JobView[] {
-  return [
-    job(
-      'freelancermap',
-      '2801',
-      'Interim CFO (m/w/d) für Familienunternehmen',
-      'Hanseatic Holding GmbH',
-      'Hamburg',
-      2,
-      {
-        unread: true,
-        pinned: true,
-        alsoOn: ['linkedin'],
-        firstSeenAt: LAST_FETCH_SAW,
-        match: {
-          ...scored(91, ['Interim-Management im Mittelstand', 'Konzernabschluss nach HGB'], 4, 4),
-          facts: {
-            ...NO_FACTS,
-            rate: 1200,
-            start: 'now',
-            months: 6,
-            remoteFrom: 60,
-            remoteTo: 60,
-          },
-        },
-      },
-    ),
-    job(
-      'linkedin',
-      '4100200301',
-      'Head of Controlling Transformation',
-      'Nordlicht Energie AG',
-      'Bremen',
-      3,
-      {
-        unread: true,
-        firstSeenAt: LAST_FETCH_SAW,
-        workMode: 'remote',
-        match: {
-          ...scored(84, ['Controlling mit SAP S/4HANA', 'Aufbau Reporting'], 4, 5),
-          facts: {
-            ...NO_FACTS,
-            rate: 1250,
-            start: 'now',
-            remoteFrom: 100,
-            remoteTo: 100,
-          },
-        },
-      },
-    ),
-    job(
-      'freelance',
-      '900411',
-      'SAP S/4HANA Finance Projektleitung',
-      'Datenwerk Süd GmbH',
-      'München',
-      5,
-      {
-        unread: true,
-        firstSeenAt: LAST_FETCH_SAW,
-        detail: { kind: 'teaser' },
-        match: scored(76, ['Projektleitung SAP Finance'], 2, 3),
-      },
-    ),
-    job('freelancermap', '2802', 'Interim Head of Finance', 'Grünwerk Mobility GmbH', 'Berlin', 6, {
-      unread: true,
-      workMode: 'remote',
-      match: {
-        ...scored(72, ['Finanzplanung und Liquidität'], 3, 4),
-        // Three months, shorter than the profile's six: a check of the duration.
-        facts: { ...NO_FACTS, rateOpen: true, months: 3, workloadFrom: 100, workloadTo: 100 },
-      },
-    }),
-    job(
-      'freelancermap',
-      '2803',
-      'Kaufmännische Leitung Projektgeschäft',
-      'Werft 7 GmbH',
-      'Kiel',
-      9,
-      {
-        unread: true,
-        workMode: 'onsite',
-        match: scored(66, ['Projektcontrolling'], 2, 4),
-      },
-    ),
-    job(
-      'linkedin',
-      '4100200302',
-      'Finance Business Partner Shared Service',
-      'Alpenblick Logistik AG',
-      'Leipzig',
-      11,
-      {
-        unread: true,
-        detail: { kind: 'pending', retryAt: null },
-      },
-    ),
-    job(
-      'freelance',
-      '900412',
-      'Buchhaltung über Personaldienstleister',
-      'Musterpersonal GmbH',
-      'Berlin',
-      12,
-      {
-        unread: true,
-        workMode: null,
-        match: excludedBy('anue', 55),
-      },
-    ),
-    job(
-      'linkedin',
-      '4100200303',
-      'Controller Konzernberichtswesen',
-      'Contoso Services GmbH',
-      'Frankfurt am Main',
-      27,
-      { match: { ...scored(58, ['Konzernberichtswesen'], 2, 4), facts: SALARIED } },
-    ),
-    job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
-      match: {
-        ...scored(47, ['Liquiditätsplanung'], 1, 3),
-        // Three days a week for a year: both within the profile.
-        facts: { ...NO_FACTS, start: 'vague', months: 12, workloadFrom: 60, workloadTo: 60 },
-      },
-    }),
-    // Archived: in no list but the archive and in no count but its own.
-    job(
-      'linkedin',
-      '4100200306',
-      'Sachbearbeitung Kreditoren',
-      'Nordhafen Logistik GmbH',
-      'Bremen',
-      40,
-      {
-        match: scored(18, [], 0, 4),
-        place: 'archive',
-      },
-    ),
-    job(
-      'linkedin',
-      '4100200304',
-      'Leitung Rechnungswesen',
-      'Stadtwerke Nordheide',
-      'Buchholz',
-      50,
-      {
-        workMode: 'onsite',
-        // Its page takes no applications any more (the reader says since when).
-        closed: true,
-        match: scored(45, ['Jahresabschluss nach HGB'], 2, 4),
-      },
-    ),
-    job('freelance', '900413', 'SAP FI Berater Migration', 'Datenwerk Süd GmbH', 'München', 55, {
-      workMode: 'onsite',
-      match: {
-        ...scored(32, ['SAP FI'], 1, 4),
-        // Two days a week, fewer than the profile's three: a check of the workload.
-        facts: {
-          ...NO_FACTS,
-          rate: 1150,
-          start: '2026-11-01',
-          months: 12,
-          workloadFrom: 40,
-          workloadTo: 40,
-        },
-      },
-    }),
-    job(
-      'freelancermap',
-      '2805',
-      'Projektcontroller Bau',
-      'Baufeld Projekte GmbH',
-      'Stuttgart',
-      70,
-      {
-        detail: { kind: 'failed', attempts: 3, retryAt: null },
-        match: scored(24, [], 0, 3),
-      },
-    ),
-    job('linkedin', '4100200305', 'Payroll Specialist', 'Lakeside Payroll AG', 'Zürich', 80, {
-      match: excludedBy('country', 38, { allowed: 'DE, AT' }),
-    }),
-    // A word of the profile's exclusion words in the title (engine 16); read, older than the
-    // week of the overview's market.
-    job(
-      'freelancermap',
-      '2807',
-      'Werkstudent Controlling (m/w/d)',
-      'Elbufer Handel GmbH',
-      'Hamburg',
-      200,
-      {
-        workMode: null,
-        match: excludedBy('exclusionWord', 41, { word: 'Werkstudent' }),
-      },
-    ),
-    job('freelancermap', '2806', 'Reporting Analyst', 'Hafenkontor GmbH', 'Hamburg', 96, {
-      short: true,
-      match: {
-        score: 0,
-        band: 'low',
-        status: 'unscorable',
-        note: { code: 'shortText', params: {} },
-        mustMet: 0,
-        mustTotal: 0,
-        top: [],
-        open: [],
-        facts: NO_FACTS,
-      },
-    }),
-  ];
+  return structuredClone(DEMO.jobs);
 }
 
-const COMPANIES = [
-  'Nordlicht Energie AG',
-  'Werft 7 GmbH',
-  'Contoso Services GmbH',
-  'Alpenblick Logistik AG',
-];
-const TITLES = [
-  'Interim Controller',
-  'SAP FI/CO Berater',
-  'Finance Manager',
-  'Projektleitung Finance',
-];
-const CITIES = ['Hamburg', 'Berlin', 'München', 'Köln', 'Leipzig'];
+/** The scenario `many`: four demo jobs in turn under new ids (100000 on), their titles
+ *  numbered: one the engine could not score (100000 sorts far down), a high, a mid and an
+ *  excluded one (every fourth from the fourth); the portals in turn, every third one unread,
+ *  a quarter of an hour apart. */
+const MANY = ['freelancermap:2806', 'freelancermap:2801', 'freelancermap:2802', 'freelance:900412'];
 
 function manyJobs(count: number): JobView[] {
-  const out: JobView[] = [];
-  const portals = PORTALS;
-  for (let i = 0; i < count; i += 1) {
-    const score = (i * 37) % 100;
-    out.push(
-      job(
-        portals[i % 3]!,
-        String(100000 + i),
-        `${TITLES[i % TITLES.length]} ${i + 1}`,
-        COMPANIES[i % COMPANIES.length]!,
-        CITIES[i % CITIES.length]!,
-        i / 4,
-        {
-          unread: i % 3 === 0,
-          match:
-            i % 17 === 5
-              ? excludedBy('dayRate', score, { rate: 700, min: 1100 })
-              : scored(score, ['Controlling im Konzern']),
-        },
-      ),
-    );
-  }
-  return out;
+  const base = MANY.map((key) => DEMO.jobs.find((j) => markKey(j.key) === key)!);
+  return Array.from({ length: count }, (_, i) => {
+    const from = base[i % base.length]!;
+    const portal = PORTALS[i % PORTALS.length]!;
+    const key = { portal, id: String(100000 + i) };
+    SOURCE.set(markKey(key), markKey(from.key));
+    return {
+      ...structuredClone(from),
+      key,
+      portal,
+      title: `${from.title} ${i + 1}`,
+      mailDate: at(i / 4),
+      firstSeenAt: at(i / 4),
+      unread: i % 3 === 0,
+      pinned: false,
+      alsoOn: [],
+    };
+  });
 }
 
-/** The invented sample profile of the fixtures (core/tests/fixtures/matching/sample_profile.json). */
+/** A competence row of a form (a chosen file's, a scenario's). */
 const row = (name: string, years: number | null, aliases: string[], origin: number) => ({
   name,
   years,
   aliases,
   origin,
 });
-const PROFILE_FORM: ProfileForm = {
-  name: 'Erika Beispiel',
-  title: 'Interim Managerin Finanzen',
-  competences: [
-    row('Interim Management', 12, [], 0),
-    row('Controlling', 18, ['Financial Controlling', 'FP&A'], 1),
-    row('Konzernrechnungslegung nach IFRS', 14, [], 2),
-    row('Konsolidierung', 11, [], 3),
-    row('Liquiditätsplanung', 10, [], 4),
-    row('Restrukturierung', 8, ['Sanierung'], 5),
-  ],
-  strengths: ['Aufbau von Konzernreportings in weniger als 100 Tagen'],
-  keywords: ['IFRS', 'HGB', 'Konzernabschluss'],
-  years: 20,
-  degrees: ['Diplom-Kauffrau (Univ.)'],
-  industries: ['Maschinenbau', 'Automotive', 'Chemie'],
-  tools: ['SAP S/4HANA', 'LucaNet', 'Power BI'],
-  certificates: ['Certified Interim Manager (DDIM)'],
-  languages: [
-    { language: 'Deutsch', level: 'native', origin: 0 },
-    { language: 'Englisch', level: 'b2', origin: 1 },
-  ],
-  focus: ['Controlling', 'Konzernrechnungslegung nach IFRS'],
-  roles: ['Interim CFO'],
-  wishes: { dayRate: 1200, remote: 'mostly', regions: ['Hamburg'], industries: [] },
-  criteria: {
-    minDayRate: 1100,
-    countries: ['DE', 'AT'],
-    noAnue: true,
-    noPermanent: false,
-    available: { kind: 'unset' },
-    remoteOutside: true,
-    targetYears: 15,
-    minSalary: null,
-    permanentPlaces: [],
-    permanentRemoteMin: null,
-    // Engine 16: three to five days a week, at least six months, two words that exclude.
-    workloadMinDays: 3,
-    workloadMaxDays: 5,
-    minMonths: 6,
-    exclusionWords: ['Werkstudent', 'Praktikum'],
-  },
-};
+/** The sample profile (demo/profile.json) with what the engine understood of it. */
+const PROFILE: ProfileInfo = DEMO.profile;
+const PROFILE_FORM: ProfileForm = PROFILE.form!;
 
 /** The profile's criteria as the engine reads them (`ProfileUnderstanding.criteria`, the
  *  params flat like core's view: a list is one text). */
@@ -788,66 +406,6 @@ const FILE_DRAFT: ProfileDraft = {
       params: { key: 'min_tagessatz', value: '"ab 900"', field: 'minDayRate' },
     },
   ]),
-};
-
-const PROFILE: ProfileInfo = {
-  fileName: 'profil-interim-finance.json',
-  bytes: 18_422,
-  savedAt: at(72),
-  quality: 'good',
-  understood: {
-    competenceCount: 42,
-    packs: ['finance', 'sap'],
-    years: 20,
-    degrees: ['Diplom-Kauffrau (Univ.)'],
-    competences: [
-      'Interim-Management',
-      'Konzernabschluss nach HGB',
-      'Controlling',
-      'SAP S/4HANA Finance',
-      'Liquiditätsplanung',
-      'Restrukturierung',
-      'M&A Integration',
-      'Reporting',
-      'Treasury',
-      'Budgetierung',
-      'IFRS',
-      'Führung von Finanzteams',
-    ],
-    sources: [
-      { path: 'kernkompetenzen[].kompetenz', count: 6 },
-      { path: 'keywords[]', count: 3 },
-      { path: 'methoden_tools[].name', count: 3 },
-      { path: 'branchen[].branche', count: 3 },
-      { path: 'stationen[].schwerpunkte[]', count: 27 },
-    ],
-    criteria: [
-      { code: 'minDayRate', params: { set: true, min: '1100' } },
-      { code: 'countries', params: { set: true, countries: 'DE, AT' } },
-      { code: 'noAnue', params: { set: true } },
-      { code: 'noPermanent', params: { set: false } },
-      { code: 'availability', params: { set: false, from: null } },
-      { code: 'minSalary', params: { set: false, min: null } },
-      { code: 'permanentRegion', params: { set: false, places: null, remoteMin: null } },
-      { code: 'targetYears', params: { set: true, min: 15 } },
-      { code: 'workload', params: { set: true, minDays: 3, maxDays: 5 } },
-      { code: 'duration', params: { set: true, min: 6 } },
-      { code: 'exclusionWords', params: { set: true, words: 'Werkstudent, Praktikum' } },
-    ],
-    warnings: [
-      {
-        code: 'criterionNotUnderstood',
-        params: { key: 'festanstellung_remote_min', value: '"viel"', field: 'permanentRemoteMin' },
-      },
-    ],
-    focus: PROFILE_FORM.focus,
-    roles: PROFILE_FORM.roles,
-    wishes: PROFILE_FORM.wishes,
-  },
-  scoredAt: at(1),
-  pending: 0,
-  parseError: null,
-  form: PROFILE_FORM,
 };
 
 /** A chosen file with seven Schwerpunkte: the form takes the first five (core's form::read),
@@ -1117,6 +675,23 @@ const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): 
   ...extra,
 });
 
+/** What the scoring of the last fetch found: the demo's jobs as the engine judged them, the
+ *  one whose page is still to come pending. */
+function demoScoring(): RunSummary['score'] {
+  const judged = DEMO.jobs.filter((j) => j.detail.kind !== 'pending').map((j) => j.match);
+  const count = (status: Match['status']): number =>
+    judged.filter((m) => m?.status === status).length;
+  const scores = judged.flatMap((m) => (m?.status === 'scored' ? [m.score] : []));
+  return {
+    scored: count('scored'),
+    excluded: count('excluded'),
+    unscorable: count('unscorable'),
+    pending: DEMO.jobs.length - judged.length,
+    best: scores.length === 0 ? null : Math.max(...scores),
+    delta: null,
+  };
+}
+
 function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSummary {
   return {
     run: 41,
@@ -1173,7 +748,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     ],
     // Seven new, one of them excluded; two of the others fit well.
     newJobs: { count: 6, high: 2 },
-    score: { scored: 10, excluded: 2, unscorable: 1, pending: 1, best: 91, delta: null },
+    score: demoScoring(),
     export: {
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
       overviewHtml: 'C:/Users/demo/Jobs/Uebersicht.html',
@@ -1203,6 +778,9 @@ let backupProfile: ProfileInfo | null = null;
 
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
+  // The last fetch brought a job whose page is still to come: the stub holds it before the
+  // catch-up scores it (the list's jobs without a score stand first).
+  for (const j of jobs) if (j.detail.kind === 'pending') j.match = null;
   state = {
     platform: MAC ? 'macos' : 'windows',
     // The app's version (src-tauri's CARGO_PKG_VERSION, the workspace's).
@@ -1482,52 +1060,18 @@ function refresh(): void {
 
 const DAY_MS = 24 * HOUR;
 
-/** The Übersicht's numbers (view::overview_stats): open musts of 30 days in the inbox, the
- *  market of 30 days, the enabled portals with their last alert mail, what the inbox leaves
- *  open (ads "Details holen" can still fetch, excluded jobs not opened yet). */
+/** The Übersicht's numbers (view::overview_stats): the open musts and the market as the
+ *  engine counted them (of the demo, of the demo without a profile, of an empty database),
+ *  the enabled portals with their last alert mail, and what the inbox leaves open as the stub
+ *  holds it now (store::inbox_open with the portal's switches: ads "Details holen" can still
+ *  fetch, excluded jobs not opened yet). */
 function overviewStats(): OverviewStats {
-  const month = NOW - 30 * DAY_MS;
-  const week = NOW - 7 * DAY_MS;
-  const recent = jobs.filter((j) => Date.parse(j.mailDate ?? j.firstSeenAt) >= month);
-  const scoredJobs = recent.filter((j) => j.match?.status === 'scored');
-  const open = new Map<string, number>();
-  for (const j of scoredJobs.filter((x) => x.place === 'inbox')) {
-    for (const label of j.match?.open ?? []) open.set(label, (open.get(label) ?? 0) + 1);
-  }
-  const openMusts = [...open.entries()]
-    .filter(([, n]) => n >= 2)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([label, count]) => ({ label, count }));
-  const rates = scoredJobs
-    .filter((j) => (j.match?.score ?? 0) >= MID_FROM && j.match?.facts.rate !== null)
-    .map((j) => {
-      const f = j.match!.facts;
-      return f.hourly === true ? f.rate! * 8 : f.rate!;
-    })
-    .sort((a, b) => a - b);
-  const mid = rates.length >> 1;
-  const median =
-    rates.length === 0
-      ? null
-      : rates.length % 2 === 1
-        ? rates[mid]!
-        : Math.floor((rates[mid - 1]! + rates[mid]!) / 2);
-  const remote = recent
-    .map((j) => {
-      const f = j.match?.facts;
-      const from = f?.remoteFrom ?? f?.remoteTo ?? null;
-      if (from !== null) return from >= 50;
-      return j.workMode === null ? null : j.workMode === 'remote';
-    })
-    .filter((r): r is boolean => r !== null);
-  const newByPortal = PORTALS.map((portal) => ({
-    portal,
-    count: jobs.filter(
-      (j) => j.key.portal === portal && Date.parse(j.mailDate ?? j.firstSeenAt) >= month,
-    ).length,
-  }));
-  // store::inbox_open with the portal's switches (the UI's detailsWanted).
+  const engine =
+    jobs.length === 0
+      ? DEMO.overviewEmpty
+      : state.profile === null
+        ? DEMO.overviewWithoutProfile
+        : DEMO.overview;
   const inbox = jobs.filter((j) => j.place === 'inbox');
   const detailsWanted = inbox.filter((j) => {
     const switches = state.portals.find((p) => p.portal === j.key.portal);
@@ -1537,29 +1081,10 @@ function overviewStats(): OverviewStats {
     return kind === 'pending' || kind === 'onRequest' || kind === 'failed';
   }).length;
   const excludedNew = inbox.filter((j) => j.unread && j.match?.status === 'excluded').length;
-  const quietPortals = state.portals
-    .filter((p) => p.enabled)
-    .map((p) => {
-      const last = jobs
-        .filter((j) => j.key.portal === p.portal && j.mailDate !== null)
-        .map((j) => Date.parse(j.mailDate!))
-        .sort((a, b) => b - a)[0];
-      const lastAlert = last === undefined ? null : new Date(last).toISOString();
-      return { portal: p.portal, lastAlert, quiet: last === undefined || last < week };
-    });
+  const enabled = new Set(state.portals.filter((p) => p.enabled).map((p) => p.portal));
   return {
-    openMusts,
-    market: {
-      newByPortal,
-      medianDayRate: median,
-      rateCount: rates.length,
-      remoteShare:
-        remote.length === 0
-          ? null
-          : Math.floor((remote.filter(Boolean).length * 100) / remote.length),
-      remoteKnown: remote.length,
-    },
-    quietPortals,
+    ...structuredClone(engine),
+    quietPortals: engine.quietPortals.filter((p) => enabled.has(p.portal)),
     detailsWanted,
     excludedNew,
   };
@@ -1686,607 +1211,93 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 
 /* ------------------------------------------------------------------- detail */
 
-const AD_INTRO = (j: JobView): string =>
-  `Für ${j.company} suchen wir Unterstützung als ${j.title} in ${j.location || 'Deutschland'}.\n\n`;
-
-/** How each contract type reads in an ad (the passage of the row "Vertragsart"). */
-function contractWords(contract: { type: string; inferred: boolean }): string {
-  switch (contract.type) {
-    // No workload here: an ad states it in its frame, where its facts say so (frameOf).
-    case 'interim':
-      return 'Interim-Mandat';
-    case 'freelance':
-      return 'Freiberufliche Mitarbeit im Projekt';
-    case 'permanent':
-      return contract.inferred ? 'Unbefristete Position' : 'Festanstellung';
-    case 'anue':
-      return 'Einsatz über Arbeitnehmerüberlassung';
-    default:
-      return '';
+/** The engine's score of a job: the demo's, or the one once its page came. */
+function demoMatch(j: JobView): Match | null {
+  const key = sourceOf(j.key);
+  const page = DEMO.fetched[key]?.job;
+  if (page !== undefined && j.detail.kind === 'ok' && page.detail.kind === 'ok') {
+    return structuredClone(page.match);
   }
+  const listed = DEMO.jobs.find((d) => markKey(d.key) === key);
+  return structuredClone(listed?.match ?? page?.match ?? null);
 }
 
-/** The experience an ad asks for: stated in its text (a passage), or the engine's estimate
- *  from the title and the tasks. The profile aims at 15 years (`zielprofil_min_jahre`). */
-const YEARS: Record<string, { years: number; stated: boolean }> = {
-  '2801': { years: 15, stated: true },
-  '4100200301': { years: 12, stated: true },
-  '900411': { years: 10, stated: false },
-  '2802': { years: 10, stated: true },
-  '2803': { years: 8, stated: false },
-  '900412': { years: 3, stated: true },
-  '4100200303': { years: 5, stated: false },
-  '2804': { years: 7, stated: false },
-  '4100200306': { years: 2, stated: false },
-  '4100200304': { years: 10, stated: true },
-  '900413': { years: 6, stated: false },
-  '2805': { years: 5, stated: false },
-  '4100200305': { years: 4, stated: false },
-};
-
-function yearsOf(j: JobView): { years: number; stated: boolean } {
-  return YEARS[j.key.id] ?? { years: 5 + (Number(j.key.id) % 11), stated: false };
-}
-
-/** The passages of an ad's frame, as its facts say them (the engine reads the facts from
- *  them): a job's row, its reader and its prompt say the same, and what the facts leave out
- *  the ad does not say. */
-function frameOf(
-  facts: Match['facts'],
-  contract: string,
-): { start: string; rate: string; remote: string; months: string; workload: string; text: string } {
-  const start =
-    facts.start === 'now'
-      ? 'Start ab sofort'
-      : facts.start === 'vague'
-        ? 'Start nach Absprache'
-        : facts.start === null
-          ? ''
-          : `Start zum ${new Date(facts.start).toLocaleDateString('de-DE')}`;
-  const salary = salaryOf(facts);
-  const rate =
-    facts.rate !== null
-      ? `Tagessatz ${facts.rate.toLocaleString('de-DE')} €`
-      : facts.rateOpen === true
-        ? 'Tagessatz nach Absprache'
-        : salary !== null
-          ? `Jahresgehalt bis ${salary.toLocaleString('de-DE')} €`
-          : '';
-  const months =
-    facts.months === null ? '' : `Laufzeit ${facts.months} Monate mit Option auf Verlängerung`;
-  const load = facts.workloadTo;
-  const workload =
-    load === undefined
-      ? ''
-      : load >= 100
-        ? 'Einsatz in Vollzeit'
-        : `Einsatz an ${load / 20} Tagen pro Woche`;
-  const remote =
-    facts.remoteFrom === null
-      ? ''
-      : facts.remoteFrom >= 100
-        ? 'vollständig remote'
-        : `Einsatz zu ${facts.remoteFrom} Prozent remote`;
-  const sentences = [
-    contract,
-    [start, months].filter((part) => part !== '').join(', '),
-    [rate, workload, remote].filter((part) => part !== '').join(', '),
-  ].filter((sentence) => sentence !== '');
-  // An ad that states no frame has no block for it.
-  if (sentences.length === 0)
-    return { start: '', rate: '', remote: '', months: '', workload: '', text: '' };
+/** A job once a details run brought its page: the engine's row of then with the job's own
+ *  place, star and read state (unchanged if the demo has no page for it). */
+function pageOf(j: JobView): JobView {
+  const page = DEMO.fetched[sourceOf(j.key)]?.job;
+  if (page === undefined) return j;
   return {
-    start,
-    rate,
-    remote,
-    months,
-    workload,
-    text: `\nRahmen\n${sentences.map((sentence) => `${sentence}.`).join(' ')}\n`,
+    ...j,
+    detail: page.detail,
+    short: page.short,
+    closed: page.closed,
+    match: state.profile === null ? null : structuredClone(page.match),
   };
 }
-
-/** The profile's days a week against an ad's workload, as core's matching::limits decides:
- *  more days than the maximum or fewer than the minimum is a check. */
-function workloadFits(facts: Match['facts'], min: number | null, max: number | null): boolean {
-  const to = facts.workloadTo ?? 0;
-  const from = facts.workloadFrom;
-  const above = from !== undefined && max !== null && from > max * 20;
-  const below = min !== null && to < min * 20;
-  return !above && !below;
-}
-
-/** The profile's wishes next to an ad's facts, in the engine's states (met, near, missed). */
-function wishesOf(facts: Match['facts']): {
-  rate: { state: string; rate: number; wish: number } | null;
-  remote: { state: string; share: number; level: string } | null;
-} {
-  const wish = PROFILE_FORM.wishes;
-  const rateState = (rate: number, target: number): string =>
-    rate >= target ? 'met' : rate * 1000 >= target * 950 ? 'near' : 'missed';
-  const minShare: Record<string, number> = { full: 100, mostly: 60, partly: 20 };
-  const share = facts.remoteFrom;
-  const min = wish.remote === null ? undefined : minShare[wish.remote];
-  return {
-    rate:
-      facts.rate === null || wish.dayRate === null
-        ? null
-        : { state: rateState(facts.rate, wish.dayRate), rate: facts.rate, wish: wish.dayRate },
-    remote:
-      share === null || wish.remote === null || min === undefined
-        ? null
-        : {
-            state: share >= min ? 'met' : share + 30 >= min ? 'near' : 'missed',
-            share,
-            level: wish.remote,
-          },
-  };
-}
-
-/** A wish state as the reader groups it (met, met in part, open). */
-const wishKind = (state: string): Reason['kind'] =>
-  state === 'met' ? 'met' : state === 'near' ? 'partial' : 'open';
-
-/** Requirements the stub ads ask for, beyond the job's own top reasons; all of them in the
- *  sample profile (a competence, a keyword, a tool or a language). */
-const MORE_MUSTS = [
-  'Reporting nach IFRS',
-  'Erfahrung in der Konsolidierung',
-  'Restrukturierung und Sanierung',
-  'Verhandlungssicheres Deutsch',
-];
-const PARTIAL_MUST = 'Aufbau und Weiterentwicklung des Reportings';
-const NICE_MET = 'Konzernabschluss nach HGB';
-const NICE_OPEN = 'Französisch in Wort und Schrift';
-
-/** Full texts that name few clear requirements (the engine's lowEvidence). */
-const LOW_EVIDENCE: ReadonlySet<string> = new Set(['2804']);
-
-/** The profile's words behind a met requirement (the reason's evidence), by the ad's words. */
-const EVIDENCE: Record<string, string> = {
-  'Interim-Management im Mittelstand': 'Interim Management',
-  'Controlling mit SAP S/4HANA': 'SAP S/4HANA',
-  'Projektleitung SAP Finance': 'SAP S/4HANA',
-  'Finanzplanung und Liquidität': 'Liquiditätsplanung',
-  Projektcontrolling: 'Controlling',
-  Konzernberichtswesen: 'Konsolidierung',
-  Liquiditätsplanung: 'Liquiditätsplanung',
-  'Jahresabschluss nach HGB': 'HGB',
-  'SAP FI': 'SAP S/4HANA',
-  'Controlling im Konzern': 'Financial Controlling',
-  'Reporting nach IFRS': 'Konzernrechnungslegung nach IFRS',
-  'Erfahrung in der Konsolidierung': 'Konsolidierung',
-  'Restrukturierung und Sanierung': 'Restrukturierung',
-  'Verhandlungssicheres Deutsch': 'Deutsch',
-  [PARTIAL_MUST]: 'Aufbau von Konzernreportings in weniger als 100 Tagen',
-  [NICE_MET]: 'Konzernabschluss',
-};
 
 /**
- * The detail of a job. Its reasons agree with the list numbers: exactly `mustMet` met must
- * requirements, and `mustTotal - mustMet` that are not met (the first of two or more is
- * partial, the rest open), plus one met and one open nice-to-have. The terms follow the
- * engine's verdict, also for a job included by hand ("Trotzdem einbeziehen" keeps what the
- * engine found: a violation stays a violation, core view::overridden).
+ * The reader of a job as the engine wrote it (view::job_detail): the demo's, or the one once
+ * its page came (a details run, the scripted fetch), with the job as the stub holds it now.
+ * Without a profile there is no match. A job included by hand counts as scored, the user's
+ * word first and the engine's findings kept (view::overridden).
  */
 function detailOf(j: JobView): JobDetail {
-  const m = j.match;
-  // The engine's own verdict, before the user counted the job anyway.
-  const engine = overridden.get(markKey(j.key)) ?? m;
-  const excludedBy = engine?.status === 'excluded' ? (engine.note?.code ?? null) : null;
-  const notes = engine?.note?.params ?? {};
-  const mustMet = m?.mustMet ?? 0;
-  const missing = Math.max(0, (m?.mustTotal ?? 0) - mustMet);
-  const metMusts = [...(m?.top.slice(0, 1) ?? []), ...MORE_MUSTS].slice(0, mustMet);
-  const partial = missing >= 2 ? [PARTIAL_MUST] : [];
-  const openMusts = OPEN_MUSTS.slice(0, missing - partial.length);
-  const tasks = ['Führung eines Teams von sechs Personen', 'Monatsabschluss und Forecast'];
-  const contract = contractOf(j);
-  const years = yearsOf(j);
-  const yearsWords = `Mindestens ${years.years} Jahre Berufserfahrung in Finanzfunktionen`;
-
-  // A day rate that excludes the job is one the ad states.
-  const facts: Match['facts'] = {
-    ...(m?.facts ?? NO_FACTS),
-    ...(excludedBy === 'dayRate' && typeof notes.rate === 'number' ? { rate: notes.rate } : {}),
-  };
-  const frame = frameOf(facts, contractWords(contract));
-  const parts: string[] = [AD_INTRO(j), 'Ihre Aufgaben\n'];
-  for (const t of [...tasks, ...partial]) parts.push(`• ${t}\n`);
-  parts.push('\nIhr Profil\n');
-  if (years.stated) parts.push(`• ${yearsWords}\n`);
-  for (const r of [...metMusts, NICE_MET, ...openMusts, NICE_OPEN]) parts.push(`• ${r}\n`);
-  parts.push(frame.text);
-  const text = parts.join('');
-  // The text the reader gets: all of it, the start of a preview, or none yet.
-  const ok = j.detail.kind === 'ok';
-  const shown = ok ? text : j.detail.kind === 'teaser' ? AD_INTRO(j).trim() : null;
-  /** The first range of words in the text shown (none for no words, words it lacks or words
-   *  past the end of a preview). */
-  const rangeOf = (words: string, from = 0): { start: number; end: number }[] => {
-    const start = words === '' || shown === null ? -1 : text.indexOf(words, from);
-    const end = start + words.length;
-    return start >= 0 && end <= (shown?.length ?? 0) ? [{ start, end }] : [];
-  };
-  // The place as the intro says it ("… in Hamburg.").
-  const placeAt = text.indexOf(` in ${j.location}`);
-  const place = placeAt >= 0 && j.location !== '' ? rangeOf(j.location, placeAt) : [];
-
-  const reasons: Reason[] = [];
-  const highlights: Highlight[] = [];
-  const add = (
-    kind: Reason['kind'],
-    weight: Reason['weight'],
-    code: string,
-    label: string,
-    extra: Record<string, string | number | boolean | null> = {},
-    ranges = rangeOf(label),
-  ): void => {
-    const id = String(reasons.length);
-    for (const r of ranges) {
-      highlights.push({
-        id: String(highlights.length),
-        start: r.start,
-        end: r.end,
-        kind,
-        reason: id,
-      });
-    }
-    const profile = EVIDENCE[label];
-    reasons.push({
-      id,
-      kind,
-      weight,
-      code,
-      label,
-      evidence:
-        profile && (kind === 'met' || kind === 'partial')
-          ? { profile, path: 'kernkompetenzen[2].kompetenz', via: 'synonym', quote: label }
-          : null,
-      params: extra,
-      ranges,
-    });
-  };
-  // Included by hand: the user's word comes first (core view::overridden); no words of its own.
-  if (j.overridden) add('met', 'info', 'userOverride', '', {}, []);
-  const contractRange = rangeOf(contractWords(contract));
-  add(
-    contract.inferred || contract.type === 'unclear' ? 'check' : 'met',
-    'info',
-    'contractType',
-    '',
-    contract,
-    contractRange,
-  );
-  for (const r of metMusts) add('met', 'must', 'requirement', r);
-  for (const r of partial) add('partial', 'must', 'requirement', r);
-  for (const r of openMusts) add('open', 'must', 'requirement', r);
-  add('met', 'nice', 'requirement', NICE_MET);
-  add('open', 'nice', 'requirement', NICE_OPEN);
-  const vagueReason = facts.start === 'vague' ? String(reasons.length) : null;
-  if (vagueReason !== null) add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
-  // A full text that names few clear requirements (the reader's head says it once).
-  if (ok && LOW_EVIDENCE.has(j.key.id)) add('check', 'info', 'lowEvidence', '', {}, []);
-  // The engine's violation, where the ad says it.
-  const min = PROFILE_FORM.criteria.minDayRate ?? 0;
-  if (excludedBy === 'anue') add('violation', 'hard', 'anue', '', {}, contractRange);
-  if (excludedBy === 'country') {
-    add('violation', 'hard', 'country', '', { allowed: 'DE, AT', location: j.location }, place);
+  const key = sourceOf(j.key);
+  const listed = DEMO.details[key];
+  const page = DEMO.fetched[key]?.detail;
+  const came = j.detail.kind === 'ok' && (listed === undefined || listed.text === null);
+  const base = came ? (page ?? listed) : (listed ?? page);
+  if (base === undefined) throw fail('notFound', { what: 'job' });
+  const detail = structuredClone(base);
+  if (listed === undefined && !came) {
+    // A job of the scripted fetch as its mail announced it: the page is still to come.
+    detail.text = null;
+    detail.fetchedAt = null;
+    detail.match = null;
   }
-  if (excludedBy === 'dayRate') {
-    add('violation', 'hard', 'dayRate', '', { rate: facts.rate, min }, rangeOf(frame.rate));
+  detail.job = structuredClone(j);
+  if (state.profile === null || j.match === null) detail.match = null;
+  const match = detail.match;
+  if (match !== null && j.overridden) {
+    match.status = 'scored';
+    match.summary = { code: 'userOverride', params: {} };
+    const own: Reason = {
+      id: 'userOverride',
+      kind: 'met',
+      weight: 'info',
+      code: 'userOverride',
+      label: '',
+      evidence: null,
+      params: {},
+      ranges: [],
+    };
+    match.reasons = [own, ...match.reasons].slice(0, 40);
   }
-  // An exclusion word of the profile, where the title or the ad says it (engine 16). Like
-  // core matching::exclusion the sentence that names it is marked, not the word; every
-  // sentence of a stub ad is a line of its own (a point without its bullet).
-  const word = excludedBy === 'exclusionWord' ? String(notes.word ?? '') : null;
-  const sentenceOf = (words: string): { start: number; end: number }[] => {
-    const found = text.indexOf(words);
-    if (words === '' || found < 0) return [];
-    const from = text.lastIndexOf('\n', found) + 1;
-    const to = text.indexOf('\n', found);
-    const line = text
-      .slice(from, to < 0 ? text.length : to)
-      .replace(/^•\s*/, '')
-      .trim();
-    return rangeOf(line, from);
-  };
-  const wordRange = word === null ? [] : sentenceOf(word);
-  const wordReason = word === null ? null : String(reasons.length);
-  if (word !== null) add('violation', 'hard', 'exclusionWord', '', { word }, wordRange);
-  // The profile's days a week and minimum duration (engine 16) are checks, never an
-  // exclusion; a permanent job has no end.
-  const limits = state.profile?.form?.criteria ?? PROFILE_FORM.criteria;
-  const minDays = limits.workloadMinDays ?? null;
-  const maxDays = limits.workloadMaxDays ?? null;
-  const minMonths = limits.minMonths ?? null;
-  const days: Record<string, number> = {
-    ...(minDays === null ? {} : { minDays }),
-    ...(maxDays === null ? {} : { maxDays }),
-  };
-  const stated: Record<string, number> =
-    facts.workloadTo === undefined
-      ? {}
-      : {
-          ...(facts.workloadFrom === undefined ? {} : { from: facts.workloadFrom }),
-          to: facts.workloadTo,
-        };
-  const workloadSet = minDays !== null || maxDays !== null;
-  const workloadRange = rangeOf(frame.workload);
-  const workloadReason =
-    workloadSet && facts.workloadTo !== undefined && !workloadFits(facts, minDays, maxDays)
-      ? String(reasons.length)
-      : null;
-  if (workloadReason !== null) {
-    add('check', 'info', 'workload', '', { ...stated, ...days }, workloadRange);
-  }
-  const durationSet = minMonths !== null && contract.type !== 'permanent';
-  const monthsRange = rangeOf(frame.months);
-  let durationReason: string | null = null;
-  if (durationSet && minMonths !== null && facts.months !== null && facts.months < minMonths) {
-    durationReason = String(reasons.length);
-    add('check', 'info', 'duration', '', { months: facts.months, min: minMonths }, monthsRange);
-  }
-  // The experience against the profile's target of 15 years: enough, or a senior title that
-  // asks for fewer (the profile brings more); an estimate below it is a point to check, and
-  // stated below it for a junior role it excludes.
-  const target = PROFILE_FORM.criteria.targetYears ?? 0;
-  const senior = /Head|Leitung|Leiter|CFO|Manager/.test(j.title);
-  const yearsRange = years.stated ? rangeOf(yearsWords) : [];
-  const yearsKind: Reason['kind'] =
-    years.years >= target ? 'met' : !years.stated ? 'check' : senior ? 'partial' : 'violation';
-  if (yearsKind === 'partial') {
-    add('partial', 'info', 'overqualified', '', { years: years.years, target }, yearsRange);
-  } else if (yearsKind === 'violation') {
-    add('violation', 'hard', 'tooJunior', '', { years: years.years, target }, yearsRange);
-  }
-  // Wishes of the profile (engine v4), next to what the ad states.
-  const wishes = wishesOf(facts);
-  if (wishes.rate !== null) {
-    add(wishKind(wishes.rate.state), 'info', 'dayRateWish', '', wishes.rate, rangeOf(frame.rate));
-  }
-  if (wishes.remote !== null) {
-    add(
-      wishKind(wishes.remote.state),
-      'info',
-      'remoteWish',
-      '',
-      { ...wishes.remote },
-      rangeOf(frame.remote),
+  // The profile of `no-minimum` sets neither a minimum day rate nor a start: its strip leaves
+  // those criteria out.
+  if (match !== null && scenario === 'no-minimum') {
+    match.criteria = match.criteria.filter(
+      (c) => c.code !== 'minDayRate' && c.code !== 'availability',
     );
   }
-  // The terms show the criteria the profile sets (the engine leaves out the others), with
-  // the ad's value and the passage that states it; `open` = the ad does not say.
-  const criterion = (
-    id: string,
-    kind: Reason['kind'],
-    code: string,
-    params: Record<string, string | number | boolean> = {},
-    ranges: { start: number; end: number }[] = [],
-  ): Reason => ({
-    id,
-    kind,
-    weight: 'hard',
-    code,
-    label: '',
-    evidence: null,
-    params,
-    ranges,
-  });
-  // The contract says whether it is temporary agency work: stated as another type it is not;
-  // inferred or unclear it is a point to check.
-  const agency: Reason['kind'] =
-    excludedBy === 'anue'
-      ? 'violation'
-      : contract.inferred || contract.type === 'unclear'
-        ? 'check'
-        : 'met';
-  const criteria: Reason[] = [
-    facts.rate === null
-      ? criterion(
-          'c:minDayRate',
-          'open',
-          'minDayRate',
-          facts.rateOpen === true ? { rateOpen: true, min } : { min },
-          rangeOf(frame.rate),
-        )
-      : criterion(
-          'c:minDayRate',
-          facts.rate >= min ? 'met' : 'violation',
-          'minDayRate',
-          { rate: facts.rate, min },
-          rangeOf(frame.rate),
-        ),
-    criterion(
-      'c:countries',
-      excludedBy === 'country' ? 'violation' : 'met',
-      'countries',
-      { location: j.location, countries: 'DE, AT' },
-      place,
-    ),
-    criterion(
-      'c:noAnue',
-      agency,
-      'noAnue',
-      agency === 'check' ? {} : { contract: contract.type },
-      contractRange,
-    ),
-    facts.start === null || facts.start === 'vague'
-      ? criterion(
-          'c:availability',
-          // A start to be agreed is a check the engine links to its reason.
-          facts.start === null ? 'open' : 'check',
-          'availability',
-          facts.start === null ? {} : { start: 'vague', reason: vagueReason ?? '' },
-          rangeOf(frame.start),
-        )
-      : criterion(
-          'c:availability',
-          'met',
-          'availability',
-          { start: facts.start },
-          rangeOf(frame.start),
-        ),
-    criterion(
-      'c:targetYears',
-      yearsKind,
-      'targetYears',
-      { years: years.years, target },
-      yearsRange,
-    ),
-  ].filter(
-    // Like the engine, a criterion the profile does not set is left out (the sample profile's
-    // start counts as set, except in no-minimum).
-    // Employment pay (a permanent job, temporary agency work) has no day rate to judge.
-    (c) =>
-      (c.code !== 'minDayRate' ||
-        (state.profile?.form?.criteria.minDayRate !== null &&
-          contract.type !== 'permanent' &&
-          contract.type !== 'anue')) &&
-      (c.code !== 'availability' || scenario !== 'no-minimum'),
-  );
-  // Engine 16: the profile's values, the ad's and the reason that decided it (core
-  // view::criteria_strip); the exclusion words show only where one excludes the job.
-  const linked = (id: string | null): Record<string, string> => (id === null ? {} : { reason: id });
-  if (workloadSet) {
-    const kind =
-      facts.workloadTo === undefined ? 'open' : workloadReason === null ? 'met' : 'check';
-    criteria.push(
-      criterion(
-        'c:workload',
-        kind,
-        'workload',
-        { ...days, ...stated, ...linked(workloadReason) },
-        workloadRange,
-      ),
-    );
-  }
-  if (durationSet && minMonths !== null) {
-    const kind = facts.months === null ? 'open' : durationReason === null ? 'met' : 'check';
-    const months: Record<string, number> = facts.months === null ? {} : { months: facts.months };
-    criteria.push(
-      criterion(
-        'c:duration',
-        kind,
-        'duration',
-        { min: minMonths, ...months, ...linked(durationReason) },
-        monthsRange,
-      ),
-    );
-  }
-  if (word !== null) {
-    const words = (limits.exclusionWords ?? []).join(', ');
-    criteria.push(
-      criterion(
-        'c:exclusionWords',
-        'violation',
-        'exclusionWords',
-        { words, word, ...linked(wordReason) },
-        wordRange,
-      ),
-    );
-  }
-  // A closed ad was last fetched when its page said so.
-  const fetchedAt = ok ? (j.closed ? at(20) : j.firstSeenAt) : null;
-  return {
-    job: j,
-    text: shown,
-    url: `https://example.com/${j.portal}/${j.key.id}`,
-    fetchedAt,
-    mail: {
-      subject: 'Neue Jobs für Ihr Profil',
-      gmailUrl: 'https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a3',
-    },
-    match:
-      m === null || state.profile === null
-        ? null
-        : {
-            score: m.score,
-            status: m.status,
-            band: m.band,
-            rev: '0123456789abcdef',
-            at: at(1),
-            summary: m.note,
-            reasons: m.status === 'unscorable' ? [] : reasons,
-            highlights,
-            criteria,
-          },
-  };
+  return detail;
 }
 
-/** The profile part of the prompts (core leaves out name and contact data the same way). */
-const PROMPT_PROFILE = [
-  'Mein Profil (JSON, ohne Name und Kontaktdaten)',
-  '```json',
-  JSON.stringify(
-    {
-      titel: PROFILE_FORM.title,
-      kernkompetenzen: PROFILE.understood?.competences ?? [],
-      schwerpunkte: PROFILE_FORM.focus,
-      wunschrollen: PROFILE_FORM.roles,
-      harte_kriterien: {
-        min_tagessatz: PROFILE_FORM.criteria.minDayRate,
-        laender: PROFILE_FORM.criteria.countries,
-      },
-      einsatzpraeferenzen: {
-        tagessatz_wunsch: PROFILE_FORM.wishes.dayRate,
-        remote: PROFILE_FORM.wishes.remote,
-      },
-    },
-    null,
-    2,
-  ),
-  '```',
-];
-
-/** The facts and text of one ad in a prompt. */
-function adOf(j: JobView): string[] {
-  const d = detailOf(j);
-  return [
-    `Titel: ${j.title}`,
-    `Unternehmen: ${j.company}`,
-    `Ort: ${j.location}`,
-    `Link: ${d.url}`,
-    ...(j.match ? [`Passung laut App: ${j.match.score} von 100`] : []),
-    '',
-    d.text ?? 'Den vollständigen Anzeigentext hat die App noch nicht.',
-  ];
-}
-
-/** A prompt like core's export::ai_prompt: the rubric in short, the profile, the ad. */
+/** The prompt of a job for an AI chat (export::ai_prompt) in the app's language. */
 function promptOf(j: JobView): string {
-  return [
-    'Du unterstützt mich als KI-Assistent bei der Auswahl von Projekten. Bitte prüfe gründlich, wie gut diese Stellenanzeige zu meinem Beraterprofil passt.',
-    '',
-    ...PROMPT_PROFILE,
-    '',
-    'Die Anzeige',
-    ...adOf(j),
-  ].join('\n');
+  const prompt = DEMO.prompts[state.language][sourceOf(j.key)];
+  if (prompt === undefined) throw fail('notFound', { what: 'job' });
+  return prompt;
 }
 
-/**
- * Like core's export::ai_prompt_top: the best current matches (3 to 5; favourites first, then
- * by score; only the inbox, never excluded or gone), compared in one prompt.
- */
-function promptTopOf(limit: number): string {
-  const best = jobs
-    .filter((j) => j.match?.status === 'scored' && j.place === 'inbox' && j.detail.kind !== 'gone')
-    .sort(
-      (a, b) =>
-        Number(b.pinned) - Number(a.pinned) ||
-        (b.match?.score ?? 0) - (a.match?.score ?? 0) ||
-        b.firstSeenAt.localeCompare(a.firstSeenAt),
-    )
-    .slice(0, Math.min(5, Math.max(3, limit)));
-  if (best.length === 0) throw fail('notFound', { what: 'jobs' });
-  return [
-    'Du unterstützt mich als KI-Assistent bei der Auswahl von Projekten. Bitte vergleiche die besten aktuellen Jobs aus meiner Job-Alert-App mit meinem Beraterprofil und bring sie in eine Reihenfolge.',
-    '',
-    ...PROMPT_PROFILE,
-    '',
-    'Die Jobs',
-    ...best.flatMap((j, i) => ['', `Job ${i + 1}`, ...adOf(j)]),
-  ].join('\n');
+/** The comparison of the best current matches (export::ai_prompt_top); none without a scored
+ *  job in the inbox. */
+function promptTopOf(): string {
+  if (!jobs.some((j) => j.match?.status === 'scored' && j.place === 'inbox')) {
+    throw fail('notFound', { what: 'jobs' });
+  }
+  return DEMO.prompts[state.language].top!;
 }
 
 /* --------------------------------------------------------------------- runs */
@@ -2323,35 +1334,10 @@ function endRun(): void {
   runSender = null;
 }
 
-const NEW_JOBS: JobView[] = [
-  job(
-    'linkedin',
-    '4100200399',
-    'Interim CFO Carve-out',
-    'Brückenwerk Industrie AG',
-    'Hannover',
-    0.1,
-    { unread: true, detail: { kind: 'pending', retryAt: null } },
-  ),
-  job(
-    'freelancermap',
-    '2899',
-    'Controlling Lead Post-Merger',
-    'Elbufer Medien GmbH',
-    'Hamburg',
-    0.1,
-    { unread: true, detail: { kind: 'pending', retryAt: null } },
-  ),
-  job(
-    'freelance',
-    '900499',
-    'Buchhalter im Kundeneinsatz',
-    'Personalwerk Nord GmbH',
-    'Bremen',
-    0.1,
-    { unread: true, workMode: null, detail: { kind: 'pending', retryAt: null } },
-  ),
-];
+/** The scripted fetch's new jobs once their page came and the engine scored them. */
+function arrived(): JobView[] {
+  return DEMO.announced.map((j) => structuredClone(DEMO.fetched[markKey(j.key)]!.job));
+}
 
 /** What the export of a run reports (`?export=locked`: the Excel file is open elsewhere). */
 function exported(): RunSummary['export'] {
@@ -2400,11 +1386,16 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       gmailId: 'a3',
     },
     { type: 'progress', step: 'scan', portal: null, done: 3, total: 3 },
-    ...NEW_JOBS.map((j): RunEvent => ({ type: 'jobUpdated', job: j, fresh: true })),
+    ...DEMO.announced.map((j): RunEvent => ({
+      type: 'jobUpdated',
+      job: structuredClone(j),
+      fresh: true,
+    })),
     { type: 'status', code: 'fetchingDetails', portal: 'linkedin', until: null },
-    { type: 'progress', step: 'fetch', portal: null, done: 0, total: 2 },
-    { type: 'progress', step: 'fetch', portal: null, done: 1, total: 2 },
-    { type: 'progress', step: 'fetch', portal: null, done: 2, total: 2 },
+    { type: 'progress', step: 'fetch', portal: null, done: 0, total: 3 },
+    { type: 'progress', step: 'fetch', portal: null, done: 1, total: 3 },
+    { type: 'progress', step: 'fetch', portal: null, done: 2, total: 3 },
+    { type: 'progress', step: 'fetch', portal: null, done: 3, total: 3 },
     {
       type: 'portalHealth',
       portal: 'freelance',
@@ -2415,21 +1406,13 @@ function script(kind: RunSummary['kind']): RunEvent[] {
     { type: 'status', code: 'scoring', portal: null, until: null },
     { type: 'progress', step: 'score', portal: null, done: 0, total: 3 },
   ];
-  // Without a profile nothing is scored (the backend has no matcher then).
+  // Their pages and scores; without a profile nothing is scored (the backend has no matcher).
   const profiled = state.profile !== null;
-  const results: Match[] = [
-    scored(88, ['Carve-out Erfahrung', 'Konzernabschluss nach HGB'], 4, 4),
-    scored(61, ['Post-Merger-Integration'], 2, 4),
-    excludedBy('anue', 49),
-  ];
-  NEW_JOBS.forEach((j, i) => {
+  const done = arrived();
+  done.forEach((j, i) => {
     events.push({
       type: 'jobUpdated',
-      job: {
-        ...j,
-        detail: i === 2 ? j.detail : { kind: 'ok' },
-        match: profiled ? contracted(results[i]!, j.key.id) : null,
-      },
+      job: { ...j, match: profiled ? j.match : null },
       fresh: true,
     });
     events.push({ type: 'progress', step: 'score', portal: null, done: i + 1, total: 3 });
@@ -2460,10 +1443,10 @@ function script(kind: RunSummary['kind']): RunEvent[] {
           new: 1,
           known: 0,
           dup: 0,
-          fetched: 0,
+          fetched: 1,
           failed: 0,
           gone: 0,
-          skipped: 1,
+          skipped: 0,
           stopped: { kind: 'paused', until: later(15), reason: 'throttled' },
         },
         {
@@ -2478,9 +1461,14 @@ function script(kind: RunSummary['kind']): RunEvent[] {
           stopped: null,
         },
       ],
-      // Three new jobs, the excluded one is none; the 88 fits well (without a profile none
-      // is excluded and none fits well).
-      newJobs: profiled ? { count: 2, high: 1 } : { count: 3, high: 0 },
+      // The new jobs as store::new_jobs counts them: the excluded ones are none, the high
+      // ones apart (without a profile none is excluded and none is high).
+      newJobs: {
+        count: done.filter((j) => !profiled || j.match?.status !== 'excluded').length,
+        high: profiled
+          ? done.filter((j) => j.match?.status === 'scored' && j.match.band === 'high').length
+          : 0,
+      },
       export: exported(),
       emptyAlerts: [],
     },
@@ -2499,14 +1487,7 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
   targets.forEach((j, i) => {
     events.push({
       type: 'jobUpdated',
-      job: {
-        ...j,
-        detail: { kind: 'ok' },
-        match:
-          state.profile === null
-            ? null
-            : (j.match ?? contracted(scored(62, ['Controlling'], 2, 3), j.key.id)),
-      },
+      job: pageOf(j),
       fresh: false,
     });
     events.push({
@@ -2754,9 +1735,9 @@ const handlers: Handlers = {
     if (state.profile === null) throw fail('notFound', { what: 'profile' });
     return promptOf(j);
   },
-  ai_prompt_top: ({ limit }) => {
+  ai_prompt_top: () => {
     if (state.profile === null) throw fail('notFound', { what: 'profile' });
-    return promptTopOf(limit);
+    return promptTopOf();
   },
   pick_profile: () => structuredClone(params.get('file') === 'focus' ? FOCUS_DRAFT : FILE_DRAFT),
   parse_profile: ({ text, update }) => answerDraft(text, update),
@@ -2818,9 +1799,9 @@ const handlers: Handlers = {
       },
       form,
     };
+    // Scored with the profile: the engine's scores of the demo.
     if (jobs.every((j) => j.match === null)) {
-      const sample = sampleJobs();
-      for (const j of jobs) j.match = sample.find((s) => s.key.id === j.key.id)?.match ?? null;
+      for (const j of jobs) j.match = demoMatch(j);
     }
     refresh();
     return structuredClone(state.profile);

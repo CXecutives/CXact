@@ -252,6 +252,27 @@ checks the headers like every export text.
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
 
+## The preview's demo data
+
+The browser preview (`tools/ui-preview.cmd`, `npm run harness`) runs the page against a stub
+(`tools/ui-harness/stub.ts`) instead of the backend. Everything the engine computes comes from
+one generated file, `tools/ui-harness/demo/snapshot.json`: the list rows, the reader with its
+reasons and passages, the jobs once their page came ("Details holen", the scripted fetch), the
+Übersicht's numbers, the profile as the app understood it and the AI prompts. Never write a
+score, a reason or a prompt into the stub by hand.
+
+- An engine, view or prompt change: run `cargo test -p jobalert-core --test ui_demo_snapshot`.
+  It rewrites the snapshot and fails while the committed one differs; run it again and commit
+  the file with the change. CI fails while it is stale.
+- Another demo job, other ad words, another demo state (read, favourite, archive, a duplicate,
+  details pending or failed, a job of the scripted fetch): edit
+  `tools/ui-harness/demo/ads.json`, then regenerate. The sample profile is
+  `tools/ui-harness/demo/profile.json`.
+- The stub keeps only state: moving, starring, reading, deleting, runs, scenarios and errors.
+- Specs read engine values (a score, a reason, a count) from the snapshot
+  (`tools/ui-harness/specs/demo.ts`), never as literals, so a regenerated snapshot keeps them
+  green.
+
 ## Add words to the engine
 
 The engine's words live in `core/src/matching/lexicon/` (German and English wording of ads
