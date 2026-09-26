@@ -407,10 +407,13 @@ function sampleJobs(): JobView[] {
       27,
       {
         match: scored(58, ['Konzernberichtswesen'], 2, 4),
+        appliedAt: at(20),
+        note: 'Rückruf der Personalberatung am Montag',
       },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
       match: scored(47, ['Liquiditätsplanung'], 1, 3),
+      appliedAt: at(26),
     }),
     // Archived: in no list but the archive and in no count but its own.
     job(

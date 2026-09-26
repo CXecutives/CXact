@@ -1087,6 +1087,33 @@ export const de = {
      *  that opens the mail. */
     emptyAlerts: emptyMails,
     lastRun: 'Letzter Abruf',
+    /** The jobs marked "Beworben", with when and the note. */
+    applied: 'Beworben',
+    appliedWhen: (days: number) =>
+      days === 0
+        ? 'Beworben heute'
+        : days === 1
+          ? 'Beworben gestern'
+          : `Beworben vor ${n(days)} Tagen`,
+    adClosed: 'Anzeige geschlossen',
+    /** The musts the profile lacks most often (30 days). */
+    openMusts: 'Oft verlangt, nicht im Profil',
+    inJobs: (value: number) => `in ${n(value)} Jobs`,
+    addToProfile: 'Zum Profil hinzufügen',
+    added: (term: string) => `„${term}“ steht jetzt im Profil.`,
+    /** The market of the last seven days. */
+    market: 'Markt',
+    marketNew: 'Neu in 7 Tagen',
+    marketRate: 'Tagessatz passender Jobs',
+    marketRateValue: (median: string, jobs: number) =>
+      `${median} im Mittel aus ${count(jobs, 'Job', 'Jobs')}`,
+    marketMin: (value: string) => `dein Minimum ${value}`,
+    marketRemote: 'Überwiegend remote',
+    marketRemoteValue: (share: number, known: number) =>
+      `${formatPercent(share)} von ${count(known, 'Job', 'Jobs')}`,
+    /** A portal whose alert mails stopped (none for a week). */
+    quietSince: (when: string) => `Seit ${when} keine Alert-Mail.`,
+    quietNever: 'Noch keine Alert-Mail angekommen.',
   },
   health: {
     /** A portal problem in one sentence that says whether to act, the same in the run card,

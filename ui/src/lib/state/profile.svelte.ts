@@ -11,6 +11,7 @@
 
 import { language } from '../i18n/language.svelte';
 import { invoke } from '../ipc/api';
+import { app } from './app.svelte';
 import type {
   Notice,
   ProfileCompetence,
@@ -555,3 +556,25 @@ class ProfileEditor {
 }
 
 export const editor = new ProfileEditor();
+
+/**
+ * "Zum Profil hinzufügen": a requirement the ads name becomes a search term of the stored
+ * profile, saved at once like a save of the form (the previous file is the backup, every job
+ * is scored again). Returns its undo; null when the term is in the profile already or there
+ * is no profile. Refused while the form holds unsaved changes (they come first).
+ */
+export async function addToProfile(term: string): Promise<(() => Promise<void>) | null> {
+  const stored = app.state?.profile?.form ?? null;
+  if (stored === null || editor.dirty) return null;
+  const before = copy(stored);
+  const after = normalized({ ...copy(stored), keywords: cleanList([...stored.keywords, term]) });
+  if (sameForm(after, before)) return null;
+  await invoke('save_profile', { save: { before, after, source: null, clear: [] } });
+  await app.load();
+  return async () => {
+    await invoke('save_profile', {
+      save: { before: after, after: before, source: null, clear: [] },
+    });
+    await app.load();
+  };
+}

@@ -996,6 +996,29 @@ export const en: Catalog = {
     files: 'Files',
     emptyAlerts: emptyMails,
     lastRun: 'Last fetch',
+    applied: 'Applied',
+    appliedWhen: (days: number) =>
+      days === 0
+        ? 'Applied today'
+        : days === 1
+          ? 'Applied yesterday'
+          : `Applied ${n(days)} days ago`,
+    adClosed: 'Ad closed',
+    openMusts: 'Often required, not in the profile',
+    inJobs: (value: number) => `in ${n(value)} jobs`,
+    addToProfile: 'Add to profile',
+    added: (term: string) => `“${term}” is in the profile now.`,
+    market: 'Market',
+    marketNew: 'New in 7 days',
+    marketRate: 'Day rate of fitting jobs',
+    marketRateValue: (median: string, jobs: number) =>
+      `${median} median of ${count(jobs, 'job', 'jobs')}`,
+    marketMin: (value: string) => `your minimum ${value}`,
+    marketRemote: 'Mostly remote',
+    marketRemoteValue: (share: number, known: number) =>
+      `${formatPercent(share)} of ${count(known, 'job', 'jobs')}`,
+    quietSince: (when: string) => `No alert email since ${when}.`,
+    quietNever: 'No alert email has arrived yet.',
   },
   health: {
     advice: {

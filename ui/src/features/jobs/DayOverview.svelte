@@ -22,16 +22,27 @@
   import JobRow, { type RowTool } from '$components/JobRow.svelte';
   import Notice from '$components/Notice.svelte';
   import StatTile from '$components/StatTile.svelte';
-  import { formatMoment } from '$lib/i18n/format';
+  import Icon from '$components/Icon.svelte';
+  import ListRow from '$components/ListRow.svelte';
+  import { displayTitle, formatEuro, formatMoment, formatRelative } from '$lib/i18n/format';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { EmptyAlert, JobView, OpenTarget, Portal, PortalState } from '$lib/ipc/types';
+  import type {
+    EmptyAlert,
+    JobView,
+    OpenTarget,
+    OverviewStats,
+    Portal,
+    PortalState,
+  } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
+  import { addToProfile, editor } from '$lib/state/profile.svelte';
   import { failureAction, run } from '$lib/state/run.svelte';
+  import { toasts } from '$lib/state/toasts.svelte';
   import { actionsOf, guarded, move, toggleStar } from './actions';
   import { copyTopPrompt } from './prompt';
 
@@ -100,12 +111,93 @@
       .catch(() => (saved = []));
   }
 
+  /** The jobs marked "Beworben" in the inbox, newest first. */
+  const APPLIED = 5;
+  let appliedRows = $state.raw<JobView[]>([]);
+  function loadApplied(): void {
+    invoke('list_jobs', {
+      query: {
+        place: 'inbox',
+        unread: false,
+        favourites: false,
+        sort: 'newest',
+        search: null,
+        portal: null,
+        minBand: null,
+        applied: true,
+        limit: APPLIED,
+        offset: 0,
+      },
+    })
+      .then((page) => (appliedRows = page.jobs))
+      .catch(() => (appliedRows = []));
+  }
+
+  /** The open musts, the market and the portals' last alert mails (one call). */
+  let stats = $state.raw<OverviewStats | null>(null);
+  function loadStats(): void {
+    invoke('overview_stats', {})
+      .then((next) => (stats = next))
+      .catch(() => (stats = null));
+  }
+
   $effect(() => {
     void jobs.overviewCounts;
     void app.hasProfile;
+    void app.state?.profile?.savedAt;
     untrack(loadTop);
     untrack(loadSaved);
+    untrack(loadApplied);
+    untrack(loadStats);
   });
+  /** Whole days since a moment, by the calendar (0 = today). */
+  function daysSince(iso: string): number {
+    const day = (date: Date): number =>
+      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+    return Math.max(0, Math.round((day(new Date()) - day(new Date(iso))) / 86_400_000));
+  }
+  const applied = $derived(
+    appliedRows.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
+  );
+
+  /** "Zum Profil hinzufügen": saved at once, with an undo in the toast. */
+  let adding = $state<string | null>(null);
+  async function addTerm(term: string): Promise<void> {
+    if (editor.dirty) {
+      actionError = t.profile.saveFirst;
+      return;
+    }
+    adding = term;
+    actionError = null;
+    try {
+      const undo = await addToProfile(term);
+      if (undo !== null) {
+        toasts.show(t.overview.added(term), 'success', {
+          label: t.common.undo,
+          onclick: () => void undo().catch((error: unknown) => (actionError = errorText(error))),
+        });
+      }
+      loadStats();
+    } catch (error) {
+      actionError = errorText(error);
+    } finally {
+      adding = null;
+    }
+  }
+
+  // The market: new jobs per portal this week, the median day rate of fitting jobs beside
+  // the profile's minimum, the share of mostly remote jobs.
+  const market = $derived(stats?.market ?? null);
+  const newThisWeek = $derived(
+    (market?.newByPortal ?? []).filter((p) => portals.includes(p.portal)),
+  );
+  const minRate = $derived(app.state?.profile?.form?.criteria.minDayRate ?? null);
+  const showMarket = $derived(
+    market !== null &&
+      (newThisWeek.some((p) => p.count > 0) ||
+        market.medianDayRate !== null ||
+        market.remoteShare !== null),
+  );
   const favourites = $derived(
     saved.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
   );
@@ -223,7 +315,16 @@
     }
     return previous.outcome.error;
   });
-  const hasIssues = $derived(portalIssues.length > 0 || lastFailure !== null);
+  // Portals whose alert mails stopped for a week (only once a fetch has read the mailbox,
+  // and not twice for a portal that has an open point already).
+  const quiet = $derived(
+    (run.summary ?? app.state?.lastRun ?? null) === null
+      ? []
+      : (stats?.quietPortals ?? []).filter(
+          (p) => p.quiet && !portalIssues.some((issue) => issue.portal === p.portal),
+        ),
+  );
+  const hasIssues = $derived(portalIssues.length > 0 || lastFailure !== null || quiet.length > 0);
   const fetchedOnce = $derived((run.summary ?? app.state?.lastRun ?? null) !== null);
   let actionError = $state<string | null>(null);
 
@@ -393,6 +494,56 @@
     </section>
   {/if}
 
+  {#if applied.length > 0}
+    <section class="block" data-testid="applied">
+      <h2 class="heading">{t.overview.applied}</h2>
+      <div class="best applied">
+        {#each applied as job (keyOf(job.key))}
+          <ListRow
+            testid="applied-{job.key.portal}-{job.key.id}"
+            onclick={() => navigation.go('jobs', false, () => void jobs.select(job, true))}
+          >
+            {#snippet leading()}<span class="applied-icon"><Icon name="send" size="sm" /></span
+              >{/snippet}
+            <span class="applied-title">{displayTitle(job.title)}</span>
+            <span class="quiet"
+              >{job.company}{#if job.appliedAt}{' · '}{t.overview.appliedWhen(
+                  daysSince(job.appliedAt),
+                )}{/if}{#if job.closed}{' · '}<span class="closed">{t.overview.adClosed}</span
+                >{/if}</span
+            >
+            {#if job.note}<span class="note" data-copy>{job.note}</span>{/if}
+          </ListRow>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
+  {#if app.hasProfile && (stats?.openMusts.length ?? 0) > 0}
+    <section class="block" data-testid="open-musts">
+      <h2 class="heading">{t.overview.openMusts}</h2>
+      <div class="rows">
+        {#each stats?.openMusts ?? [] as must (must.label)}
+          <div class="must" data-testid="open-must">
+            <span class="must-text"
+              ><span class="must-label" data-copy>{must.label}</span>
+              <span class="quiet">{t.overview.inJobs(must.count)}</span></span
+            >
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="plus"
+              label={t.overview.addToProfile}
+              loading={adding === must.label}
+              testid="add-must"
+              onclick={() => void addTerm(must.label)}
+            />
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   {#if counts !== null && (counts.noDetail > 0 || (app.hasProfile && counts.excluded > 0))}
     <section class="block" data-testid="decide">
       <h2 class="heading">{t.overview.decide}</h2>
@@ -453,6 +604,17 @@
             testid="issue-{issue.id}"
           />
         {/each}
+        {#each quiet as portal (portal.portal)}
+          <Notice
+            tone="info"
+            variant="row"
+            heading={t.portal[portal.portal]}
+            text={portal.lastAlert
+              ? t.overview.quietSince(formatRelative(portal.lastAlert))
+              : t.overview.quietNever}
+            testid="quiet-{portal.portal}"
+          />
+        {/each}
       </div>
     </section>
   {/if}
@@ -462,6 +624,35 @@
     <div class="block" data-testid="compare">
       <span class="compare">{@render comparePrompt()}</span>
     </div>
+  {/if}
+
+  {#if showMarket && market !== null}
+    <section class="block" data-testid="market">
+      <h2 class="heading">{t.overview.market}</h2>
+      <dl class="terms">
+        {#if newThisWeek.some((p) => p.count > 0)}
+          <dt>{t.overview.marketNew}</dt>
+          <dd data-testid="market-new">
+            {newThisWeek.map((p) => `${t.portal[p.portal]} ${p.count}`).join(' · ')}
+          </dd>
+        {/if}
+        {#if market.medianDayRate !== null}
+          <dt>{t.overview.marketRate}</dt>
+          <dd data-testid="market-rate">
+            {t.overview.marketRateValue(
+              formatEuro(market.medianDayRate),
+              market.rateCount,
+            )}{#if minRate !== null}{' · '}{t.overview.marketMin(formatEuro(minRate))}{/if}
+          </dd>
+        {/if}
+        {#if market.remoteShare !== null}
+          <dt>{t.overview.marketRemote}</dt>
+          <dd data-testid="market-remote">
+            {t.overview.marketRemoteValue(market.remoteShare, market.remoteKnown)}
+          </dd>
+        {/if}
+      </dl>
+    </section>
   {/if}
 
   {#if fetchedOnce}
@@ -600,6 +791,73 @@
   .rows {
     display: flex;
     flex-direction: column;
+  }
+
+  /* Applied rows are as tall as their lines (a note makes three). */
+  .applied {
+    --row-height: 0;
+  }
+
+  .applied-icon {
+    display: flex;
+    align-items: center;
+    height: var(--leading-md);
+    color: var(--text-heading);
+  }
+
+  .applied-title {
+    overflow: hidden;
+    font: var(--type-title);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .closed {
+    color: var(--danger-fg);
+  }
+
+  .note {
+    overflow: hidden;
+    font: var(--type-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* An open must: its words and how often, the action at the end of the row. */
+  .must {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
+  .must-text {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .must-label {
+    font: var(--type-md);
+  }
+
+  /* The market like the reader's terms: the name, its value. */
+  .terms {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--space-8) var(--space-16);
+    margin: 0;
+    font: var(--type-md);
+  }
+
+  .terms dt {
+    color: var(--text-muted);
+  }
+
+  .terms dd {
+    margin: 0;
   }
 
   /* Rows apart by a hairline with room on both sides; the block's own gap and the next
