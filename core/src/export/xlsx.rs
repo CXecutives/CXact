@@ -59,12 +59,12 @@ impl Column {
 // User-facing text, German and English.
 
 /// The columns of the job sheet in their order: what decides first (title, match, musts,
-/// exclusion), then who and where, the terms in the app's words, the favourite, the dates,
-/// the links and the job's key last. Unlike the text files nobody reads it by machine - so
+/// exclusion), then who and where, the terms in the app's words, the dates, the links and
+/// the job's key last. Unlike the text files nobody reads it by machine - so
 /// it says "Portal" like the interface, not "Quelle" like the skill contract; "Ablage" is the
 /// place (Jobs or Archiv). The widths fit the longest values: the exclusion holds a sentence,
 /// the details column its longest state "Keine Bewerbung mehr möglich".
-const COLUMNS: [Column; 21] = [
+const COLUMNS: [Column; 20] = [
     Column {
         key: "title",
         de: "Titel",
@@ -192,16 +192,6 @@ const COLUMNS: [Column; 21] = [
         cell: |c| match c.job.place() {
             Place::Archive => c.text(c.texts.place_archive),
             Place::Inbox | Place::Trash => c.text(c.texts.place_inbox),
-        },
-    },
-    Column {
-        key: "favourite",
-        de: "Favorit",
-        en: "Favourite",
-        width: 11.0,
-        cell: |c| match c.job.pinned_at {
-            Some(_) => c.text(c.texts.cell_yes),
-            None => Ok(()),
         },
     },
     Column {
@@ -344,7 +334,7 @@ fn exclusion_cell(c: &mut Cell<'_>) -> Result<(), XlsxError> {
         .note
         .as_ref()
         .and_then(|n| c.texts.exclusion_reason(&n.code, &n.params))
-        .unwrap_or(c.texts.html_excluded);
+        .unwrap_or(c.texts.excluded);
     if c.job.override_include {
         c.text(&format!("{}. {why}", c.texts.overridden))
     } else if m.status == MatchStatus::Excluded {
@@ -602,7 +592,6 @@ mod tests {
             match_open: Vec::new(),
             match_rev: None,
             facts: None,
-            pinned_at: None,
             archived_at: None,
             trashed_at: None,
             override_include: false,
@@ -678,7 +667,6 @@ mod tests {
             "Interim Controller",
             DescStatus::Ok,
         );
-        job.pinned_at = Some("2026-09-19T09:00:00Z".parse().unwrap());
         job.archived_at = Some("2026-09-21T09:00:00Z".parse().unwrap());
         let mut record = record(MatchStatus::Scored, 83);
         record.facts = KeyFacts {
@@ -724,7 +712,6 @@ mod tests {
         assert_eq!(first[at("contract")].to_string(), "Interim");
         assert_eq!(first[at("portal")].to_string(), "linkedin.com");
         assert_eq!(first[at("place")].to_string(), "Archiv");
-        assert_eq!(first[at("favourite")].to_string(), "Ja");
         assert_eq!(first[at("details")].to_string(), "Vorhanden");
         assert!(
             matches!(first[at("date")], Data::DateTime(_)),

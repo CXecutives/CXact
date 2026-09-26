@@ -95,8 +95,8 @@ export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
   [{ id: 'prompt', icon: 'prompt', key: null, shows: (job, many) => !many && job.match !== null }],
 ];
 
-/** A favourite never lies in the trash: the star is there in the inbox and the archive. */
-export const hasStar = (place: Place): boolean => place !== 'trash';
+/** The favourites went: no place shows the star any more. */
+export const hasStar = (_place: Place): boolean => false;
 
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
@@ -402,19 +402,14 @@ export function detailsWanted(job: JobView): boolean {
     return false;
   }
   const portal = app.state?.portals.find((state) => state.portal === job.portal);
-  return (
-    portal?.enabled === true && portal.fetchDetails && (kind !== 'teaser' || portal.loginEnabled)
-  );
+  return portal?.enabled === true && (kind !== 'teaser' || portal.loginEnabled);
 }
 
-/** The star: a favourite, or not any more (one that fails says so in the list header). */
+/** The star of earlier versions: the favourites went, it changes nothing. */
 export function toggleStar(list: readonly JobView[]): void {
-  const on = list.some((job) => !job.pinned);
   for (const job of list) {
-    if (job.pinned !== on) {
-      void jobs.pin(job.key, on).then((error) => {
-        if (error !== null) jobs.actionError = error;
-      });
-    }
+    void jobs.pin(job.key, true).then((error) => {
+      if (error !== null) jobs.actionError = error;
+    });
   }
 }

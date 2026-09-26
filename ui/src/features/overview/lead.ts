@@ -32,11 +32,6 @@ export function toExcluded(): void {
   show(NO_FILTER, true);
 }
 
-/** "Alle n Favoriten": the Eingang with "Nur Favoriten". */
-export function toFavourites(): void {
-  show({ ...NO_FILTER, favourites: true });
-}
-
 /** A job of the Übersicht, open in Jobs: in the Eingang, without a search or a filter that
  *  would hide it. */
 export function openJob(job: JobView): void {

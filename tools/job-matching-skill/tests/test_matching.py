@@ -147,7 +147,8 @@ class Brief(Base):
         self.assertNotIn("NOTE unknown schema", out)
         self.assertIn("TOP FILE schema 3", out)
         self.assertIn("JOB 1 key freelancermap:2801", out)
-        self.assertIn("stage: saved", out)
+        # The app keeps no stage any more (appStatus is null).
+        self.assertNotIn("stage:", out)
         self.assertIn("first seen: 2026-09-20T07:30:00Z", out)
         self.assertIn("open: Power BI", out)
         self.assertIn("details: ok", out)

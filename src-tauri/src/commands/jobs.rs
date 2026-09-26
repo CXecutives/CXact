@@ -35,25 +35,10 @@ pub async fn job_detail(state: State<'_, AppState>, key: JobKey) -> CmdResult<Jo
 }
 
 /// Marks a job as read - only on a real click in the list; `false` = it was read already.
-/// The HTML overview and the skill's list follow (they hold unread jobs).
+/// The skill's list and the Excel file follow.
 #[tauri::command]
 pub async fn mark_read(app: AppHandle, state: State<'_, AppState>, key: JobKey) -> CmdResult<bool> {
     let changed = state.store.mark_read(&key, Timestamp::now())?;
-    if changed {
-        files::marked(&app);
-    }
-    Ok(changed)
-}
-
-/// Sets or clears the favourite (the star); `false` = nothing changed.
-#[tauri::command]
-pub async fn set_pinned(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    key: JobKey,
-    on: bool,
-) -> CmdResult<bool> {
-    let changed = state.store.set_pinned(&key, on, Timestamp::now())?;
     if changed {
         files::marked(&app);
     }
@@ -161,7 +146,7 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
     let _files = state.claim_files(app)?;
     let keys = match keys {
         Some(keys) => keys.to_vec(),
-        None => state.store.trashed_keys(None)?,
+        None => state.store.trashed_keys()?,
     };
     let workspace = if state.dry_run {
         None
@@ -199,43 +184,6 @@ pub async fn ai_prompt(state: State<'_, AppState>, key: JobKey) -> CmdResult<Str
     let matcher = state.matcher();
     let source = export::PromptSource::load(&state.store, matcher.as_deref(), &row)?;
     Ok(export::ai_prompt(&profile, source.job(), state.language()?))
-}
-
-/// One prompt that compares the best current matches (3 to 5; saved first, then the best
-/// open ones; never excluded, archived or in an application) with the profile, a ranking
-/// first.
-#[tauri::command]
-pub async fn ai_prompt_top(state: State<'_, AppState>, limit: u32) -> CmdResult<String> {
-    let profile = prompt_profile(&state)?;
-    let limit = usize::try_from(limit)
-        .unwrap_or(usize::MAX)
-        .clamp(*export::TOP_LIMITS.start(), *export::TOP_LIMITS.end());
-    let rows = state
-        .store
-        .best_matches(u32::try_from(limit).unwrap_or(u32::MAX))?;
-    if rows.is_empty() {
-        return Err(not_found("jobs"));
-    }
-    // Each job assessed afresh from its stored text with the current profile.
-    let matcher = state.matcher();
-    let sources = rows
-        .iter()
-        .map(|row| export::PromptSource::load(&state.store, matcher.as_deref(), row))
-        .collect::<jobalert_core::Result<Vec<_>>>()?;
-    let items: Vec<export::PromptJob<'_>> = sources.iter().map(export::PromptSource::job).collect();
-    Ok(export::ai_prompt_top(&profile, &items, state.language()?))
-}
-
-/// The numbers of the Übersicht: the requirements the profile lacks most often, the market of
-/// the last days, the portals whose alerts went quiet.
-#[tauri::command]
-pub async fn overview_stats(state: State<'_, AppState>) -> CmdResult<view::OverviewStats> {
-    let settings = state.settings()?;
-    Ok(view::overview_stats(
-        &state.store,
-        &settings,
-        Timestamp::now(),
-    )?)
 }
 
 /// How many jobs of this company came in the last `days` days (the reader's line).

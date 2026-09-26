@@ -36,7 +36,7 @@
   function pin(job: JobView): void {
     if (guarded()) return;
     onerror(null);
-    void jobs.pin(job.key, !job.pinned).then(onerror);
+    void jobs.pin(job.key, true).then(onerror);
   }
 </script>
 

@@ -41,7 +41,7 @@
   }
   let { portal }: Props = $props();
 
-  type Switches = Partial<Pick<PortalState, 'enabled' | 'fetchDetails' | 'loginEnabled'>>;
+  type Switches = Partial<Pick<PortalState, 'enabled' | 'loginEnabled'>>;
 
   const QUOTA_SHOWN = 0.8;
   /** Why the last action failed, said when it shows (so in the language of the moment). */
@@ -54,11 +54,8 @@
   const emptyMails = $derived(
     portal.health.kind === 'layoutSuspect' ? portal.health.emptyMails : 0,
   );
-  /** Its problem in one sentence; `portal.actionNeeded` says whether she has to act. Without
-   *  details only the alert mails can have one (no page is fetched). */
-  const health = $derived(
-    portal.fetchDetails || emptyMails > 0 ? healthAdvice(portal.health) : null,
-  );
+  /** Its problem in one sentence; `portal.actionNeeded` says whether she has to act. */
+  const health = $derived(healthAdvice(portal.health));
   /** One of those mails to look at in Gmail (from the last fetch), as the day overview does. */
   const alertMail = $derived(
     emptyMails > 0
@@ -68,11 +65,10 @@
       : null,
   );
   /** The pages used today on every portal; the hour's numbers instead only while the hour
-   *  binds near its limit (the meter shows then). Only while details are fetched: without
-   *  them no page counts. */
+   *  binds near its limit (the meter shows then). */
   const quota = $derived.by(() => {
     const q = portal.quota;
-    if (q === null || !portal.fetchDetails) return null;
+    if (q === null) return null;
     const day = q.usedDay / Math.max(q.capDay, 1);
     const hour = q.usedHour / Math.max(q.capHour, 1);
     const paused = portal.health.kind === 'paused' || portal.health.kind === 'quotaReached';
@@ -116,7 +112,6 @@
             {
               portal: portal.portal,
               enabled: patch.enabled ?? null,
-              fetchDetails: patch.fetchDetails ?? null,
               loginEnabled: patch.loginEnabled ?? null,
             },
           ],
@@ -201,21 +196,6 @@
   {#if portal.enabled || error || loginRow}
     <div class="body" in:rise={{ distance: 'sm' }} out:fade>
       <div class="rows">
-        {#if portal.enabled}
-          <SettingRow
-            label={t.settings.details}
-            for="switch-details-{portal.portal}"
-            testid="details-{portal.portal}"
-          >
-            <Toggle
-              id="switch-details-{portal.portal}"
-              checked={portal.fetchDetails}
-              label={t.settings.details}
-              testid="toggle-details-{portal.portal}"
-              onchange={(on) => change({ fetchDetails: on })}
-            />
-          </SettingRow>
-        {/if}
         {#if loginRow}
           <SettingRow
             label={t.settings.session}
@@ -248,8 +228,8 @@
                 icon="signIn"
                 label={t.settings.signIn}
                 loading={busy}
-                disabled={run.active || noPortal !== null || !portal.fetchDetails}
-                disabledReason={noPortal ?? (run.active ? run.busyText : t.settings.needsDetails)}
+                disabled={run.active || noPortal !== null}
+                disabledReason={noPortal ?? (run.active ? run.busyText : null)}
                 testid="sign-in-{portal.portal}"
                 onclick={() => void session(true)}
               />

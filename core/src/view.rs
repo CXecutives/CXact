@@ -27,7 +27,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{Language, Palette, PortalSwitches, Settings};
+use crate::settings::{FetchRange, Language, Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -97,8 +97,7 @@ pub enum DetailState {
     /// Given up after several failed attempts at this one ad.
     Unfetchable,
     /// Not fetched, and the automatic fetch does not reach it (its mail is older than 30
-    /// days, or it lies in the trash or, no favourite, in the archive): the details come only
-    /// on request ("Details holen").
+    /// days, or it lies in the archive or the trash): the ad comes only on request.
     OnRequest,
 }
 
@@ -125,12 +124,7 @@ impl DetailState {
     /// it looks back, or a place it leaves out, see `store::jobs::FETCHABLE`) is never
     /// promised for "the next fetch" - it waits for a request.
     pub fn at(job: &JobRow, now: Timestamp) -> DetailState {
-        let listed = match job.place() {
-            Place::Inbox => true,
-            Place::Archive => job.pinned_at.is_some(),
-            Place::Trash => false,
-        };
-        let automatic = listed
+        let automatic = job.place() == Place::Inbox
             && job.mail_date.unwrap_or(job.first_seen_at)
                 >= now.saturating_sub(MAX_AGE).unwrap_or(Timestamp::MIN);
         match job.desc_status {
@@ -191,8 +185,6 @@ pub struct JobView {
     pub mail_date: Option<Timestamp>,
     pub first_seen_at: Timestamp,
     pub unread: bool,
-    /// The favourite (the star, stored as `app_status` 'saved').
-    pub pinned: bool,
     pub detail: DetailState,
     /// The full text is short (verified, but under 100 characters).
     pub short: bool,
@@ -225,7 +217,6 @@ impl From<&JobRow> for JobView {
             mail_date: job.mail_date,
             first_seen_at: job.first_seen_at,
             unread: job.read_at.is_none(),
-            pinned: job.pinned_at.is_some(),
             detail: DetailState::of(job),
             short: job.desc_status == DescStatus::Ok && job.desc_short,
             closed: job.desc_status == DescStatus::Ok && job.desc_closed,
@@ -267,8 +258,7 @@ impl JobMatch {
 
 /// The stored title, or - if it is unusable - one read from the slug of a link. A portal's
 /// mark for an ended project ("Archiviertes Projekt - ") is no part of it (also in titles
-/// stored before the parser dropped it). The app, the Excel file and the HTML overview show
-/// this one title.
+/// stored before the parser dropped it). The app and the Excel file show this one title.
 pub(crate) fn display_title(job: &JobRow) -> String {
     if is_usable_title(&job.title) {
         return crate::portal::without_archive_mark(&job.title).to_owned();
@@ -766,9 +756,6 @@ pub struct JobQuery {
     pub place: Place,
     /// Only the unread jobs (the excluded ones last, uncounted).
     pub unread: bool,
-    /// Only the favourites of the inbox (with `place` inbox; an archived favourite keeps its
-    /// star and is listed in the archive).
-    pub favourites: bool,
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
     pub search: Option<String>,
@@ -806,8 +793,6 @@ pub struct JobCounts {
     pub inbox: u32,
     /// Unread in the inbox, not excluded.
     pub unread: u32,
-    /// Favourites (the star) in the inbox.
-    pub favourites: u32,
     pub archive: u32,
     /// In the trash ("Papierkorb").
     pub trash: u32,
@@ -849,7 +834,6 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
     let (rows, counts) = store.job_page(&PageQuery {
         place: query.place,
         unread: query.unread,
-        favourites: query.favourites,
         by_match: query.sort == JobSort::Match,
         search: query.search.clone(),
         filter: query.filter(),
@@ -861,7 +845,6 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
         counts: JobCounts {
             inbox: counts.inbox,
             unread: counts.unread,
-            favourites: counts.favourites,
             archive: counts.archive,
             trash: counts.trash,
             excluded: counts.excluded,
@@ -878,192 +861,6 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
     })
 }
 
-// ---------------------------------------------------------------------- Overview page
-
-/// Days the overview's open points and market numbers look back.
-pub const OVERVIEW_DAYS: i64 = 30;
-/// Days after which a portal without an alert mail counts as quiet.
-pub const RECENT_DAYS: i64 = 7;
-/// Most open points the overview names; each is open in at least two jobs.
-const MAX_OPEN_MUSTS: usize = 5;
-
-/// The numbers of the "Übersicht" page, from one call ([`overview_stats`]).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct OverviewStats {
-    /// The must requirements most often open in the scored jobs of the inbox of the last
-    /// [`OVERVIEW_DAYS`] days: at most five, each open in at least two jobs, the most
-    /// frequent first (the ad's words of the first one seen).
-    pub open_musts: Vec<OpenMust>,
-    pub market: Market,
-    /// Every enabled portal (in the order of `Portal::ALL`) with its last alert mail.
-    pub quiet_portals: Vec<QuietPortal>,
-    /// Jobs of the inbox whose full ad "Details holen" can still fetch: not fetched yet or
-    /// failed so far, of an enabled portal with its details switched on; one with only the
-    /// teaser where the sign-in is switched on too. Ads that are gone or given up on are
-    /// none of them.
-    pub details_wanted: u32,
-    /// Excluded jobs of the inbox not opened yet.
-    pub excluded_new: u32,
-}
-
-/// A must requirement open in `count` jobs.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct OpenMust {
-    pub label: String,
-    pub count: u32,
-}
-
-/// What the market brings.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct Market {
-    /// New jobs per portal of the last [`OVERVIEW_DAYS`] days, the window of the rate and
-    /// the remote share (by the alert mail's date, else the first sighting; a job two
-    /// portals announced counts for each), every portal in the order of `Portal::ALL`.
-    pub new_by_portal: Vec<PortalCount>,
-    /// The median day rate in euros of the jobs scored high or medium in the last
-    /// [`OVERVIEW_DAYS`] days whose ad states one (an hourly rate x 8, other currencies
-    /// left out); `null` without any.
-    pub median_day_rate: Option<u32>,
-    /// How many rates the median is taken from.
-    pub rate_count: u32,
-    /// Of the jobs of the last [`OVERVIEW_DAYS`] days whose remote share is known (the ad's
-    /// share, else the location's work mode), the percentage that are at least half remote;
-    /// `null` without any.
-    pub remote_share: Option<u8>,
-    /// How many jobs the remote share is taken from.
-    pub remote_known: u32,
-}
-
-/// A portal and its last alert mail; `quiet` when there was none in the last
-/// [`RECENT_DAYS`] days (or never).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct QuietPortal {
-    pub portal: Portal,
-    pub last_alert: Option<Timestamp>,
-    pub quiet: bool,
-}
-
-/// The numbers of the "Übersicht" page at `now`: the most frequent open must requirements,
-/// the market (new jobs per portal, median day rate, remote share), the enabled portals
-/// with their last alert mail and what the inbox leaves open (ads to fetch, excluded jobs
-/// not opened). The jobs of the window come from one indexed query.
-pub fn overview_stats(
-    store: &Store,
-    settings: &Settings,
-    now: Timestamp,
-) -> crate::Result<OverviewStats> {
-    let days_ago = |days: i64| {
-        now.checked_sub(jiff::SignedDuration::from_hours(24 * days))
-            .unwrap_or(Timestamp::UNIX_EPOCH)
-    };
-    let (month, week) = (days_ago(OVERVIEW_DAYS), days_ago(RECENT_DAYS));
-    let jobs = store.jobs_since(month)?;
-    let scored = |job: &&JobRow| {
-        job.match_
-            .as_ref()
-            .is_some_and(|m| m.status == MatchStatus::Scored)
-    };
-    let count = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
-    // Open points: the ad's words differ in case and punctuation only.
-    let mut open: Vec<(String, String, u32)> = Vec::new();
-    for job in jobs
-        .iter()
-        .filter(scored)
-        .filter(|j| j.place() == Place::Inbox)
-    {
-        for label in &job.match_open {
-            let key = open_key(label);
-            match open.iter_mut().find(|(k, ..)| *k == key) {
-                Some((_, _, n)) => *n += 1,
-                None => open.push((key, label.clone(), 1)),
-            }
-        }
-    }
-    open.retain(|(key, _, n)| *n >= 2 && !key.is_empty());
-    open.sort_by_key(|entry| std::cmp::Reverse(entry.2));
-    let open_musts = open
-        .into_iter()
-        .take(MAX_OPEN_MUSTS)
-        .map(|(_, label, count)| OpenMust { label, count })
-        .collect();
-    let recent = store.new_per_portal(month)?;
-    let new_by_portal = Portal::ALL
-        .into_iter()
-        .map(|portal| PortalCount {
-            portal,
-            count: recent
-                .iter()
-                .find(|(p, _)| *p == portal)
-                .map_or(0, |(_, n)| *n),
-        })
-        .collect();
-    let mut rates: Vec<u32> = jobs
-        .iter()
-        .filter(scored)
-        .filter_map(|job| job.match_.as_ref())
-        .filter(|m| band(m.score) != Band::Low)
-        .filter_map(|m| day_rate(&m.facts))
-        .collect();
-    rates.sort_unstable();
-    let remote: Vec<bool> = jobs.iter().filter_map(mostly_remote).collect();
-    let remote_yes = remote.iter().filter(|r| **r).count();
-    let last = store.last_alerts()?;
-    let quiet_portals = settings
-        .enabled_portals()
-        .into_iter()
-        .map(|portal| {
-            let last_alert = last
-                .iter()
-                .find(|(p, _)| *p == portal)
-                .and_then(|(_, at)| *at);
-            QuietPortal {
-                portal,
-                last_alert,
-                quiet: last_alert.is_none_or(|at| at < week),
-            }
-        })
-        .collect();
-    // The rule of the UI's `detailsWanted` (features/jobs/actions.ts), per portal.
-    let open = store.inbox_open()?;
-    let details_wanted = open
-        .iter()
-        .map(|(portal, open)| {
-            let switches = settings.portal(*portal);
-            match (
-                switches.enabled && switches.fetch_details,
-                switches.login_enabled,
-            ) {
-                (false, _) => 0,
-                (true, false) => open.no_ad,
-                (true, true) => open.no_ad + open.teaser,
-            }
-        })
-        .sum();
-    let excluded_new = open.iter().map(|(_, open)| open.excluded_unread).sum();
-    Ok(OverviewStats {
-        open_musts,
-        market: Market {
-            new_by_portal,
-            median_day_rate: median(&rates),
-            rate_count: count(rates.len()),
-            remote_share: (!remote.is_empty())
-                .then(|| u8::try_from(remote_yes * 100 / remote.len()).unwrap_or(100)),
-            remote_known: count(remote.len()),
-        },
-        quiet_portals,
-        details_wanted,
-        excluded_new,
-    })
-}
-
 /// The jobs of the company a job names (its `company` as the list shows it) whose alert mail
 /// came in the last `days` days, the job itself included; the trash and duplicates left
 /// out, the name compared without case, punctuation and legal forms ("GmbH").
@@ -1077,49 +874,6 @@ pub fn company_count(
         .checked_sub(jiff::SignedDuration::from_hours(24 * i64::from(days)))
         .unwrap_or(Timestamp::UNIX_EPOCH);
     store.company_count(company, since)
-}
-
-/// An open point for comparing: lower case, words only.
-fn open_key(label: &str) -> String {
-    label
-        .to_lowercase()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|w| !w.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// A day rate in euros from an ad's facts (an hourly rate x 8); `None` for another
-/// currency or none.
-fn day_rate(facts: &KeyFacts) -> Option<u32> {
-    let rate = facts.rate?;
-    if facts.currency.as_deref().is_some_and(|c| c != "EUR") {
-        return None;
-    }
-    Some(if facts.hourly == Some(true) {
-        rate.saturating_mul(8)
-    } else {
-        rate
-    })
-}
-
-/// Is a job at least half remote? From the ad's stated share (its lower bound), else from
-/// the location's work mode; `None` when neither says.
-fn mostly_remote(job: &JobRow) -> Option<bool> {
-    let facts = job.match_.as_ref().map(|m| &m.facts);
-    if let Some(from) = facts.and_then(|f| f.remote_from.or(f.remote_to)) {
-        return Some(from >= 50);
-    }
-    work_mode(&job.location).map(|mode| mode == WorkMode::Remote)
-}
-
-/// The median of sorted values (the lower middle of an even count, a whole euro).
-fn median(sorted: &[u32]) -> Option<u32> {
-    match sorted.len() {
-        0 => None,
-        n if n % 2 == 1 => Some(sorted[n / 2]),
-        n => Some(u32::midpoint(sorted[n / 2 - 1], sorted[n / 2])),
-    }
 }
 
 /// An alert mail of a run without recognised jobs.
@@ -1215,10 +969,9 @@ pub struct SettingsView {
     /// Effective workspace (chosen or default).
     pub workspace: PathBuf,
     pub workspace_is_default: bool,
-    /// Number of the app's text files - exactly what "delete text files" removes.
-    pub txt_files: usize,
     /// The Excel file of the overview, where it is or will be written.
     pub excel_path: PathBuf,
+    /// The Excel file is there to open: written (`exportExcel` on) and on disk.
     pub excel_exists: bool,
 }
 
@@ -1251,10 +1004,15 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// Days after which old jobs archive themselves; 0 = never (`null` = unchanged).
-    pub auto_archive_days: Option<u32>,
-    /// Days after which the trash empties itself; 0 = never (`null` = unchanged).
-    pub auto_empty_trash_days: Option<u32>,
+    /// Which alert mails "Postfach abrufen" reads.
+    #[serde(default)]
+    pub fetch_range: Option<FetchRange>,
+    /// Write the Excel file with every export.
+    #[serde(default)]
+    pub export_excel: Option<bool>,
+    /// Write the CSV file with every export.
+    #[serde(default)]
+    pub export_csv: Option<bool>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
     /// The palette the user chose (Einstellungen, Darstellung).
@@ -1267,7 +1025,6 @@ pub struct SettingsPatch {
 pub struct PortalPatch {
     pub portal: Portal,
     pub enabled: Option<bool>,
-    pub fetch_details: Option<bool>,
     pub login_enabled: Option<bool>,
 }
 
@@ -1278,18 +1035,18 @@ impl SettingsPatch {
             if let Some(on) = patch.enabled {
                 switches.enabled = on;
             }
-            if let Some(on) = patch.fetch_details {
-                switches.fetch_details = on;
-            }
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
         }
-        if let Some(days) = self.auto_archive_days {
-            settings.auto_archive_days = days;
+        if let Some(range) = self.fetch_range {
+            settings.fetch_range = range;
         }
-        if let Some(days) = self.auto_empty_trash_days {
-            settings.auto_empty_trash_days = days;
+        if let Some(on) = self.export_excel {
+            settings.export_excel = on;
+        }
+        if let Some(on) = self.export_csv {
+            settings.export_csv = on;
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
@@ -1323,14 +1080,10 @@ pub struct Quota {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent switches and states of the portal, as the settings show them"
-)]
 pub struct PortalState {
     pub portal: Portal,
+    /// Its alert mails are read and its ads fetched.
     pub enabled: bool,
-    pub fetch_details: bool,
     pub login: PortalLogin,
     pub login_enabled: bool,
     /// `null` = unknown (or no sign-in), `false` = sign-in needed.
@@ -1373,7 +1126,6 @@ pub fn portal_states(
             PortalState {
                 portal,
                 enabled: switches.enabled,
-                fetch_details: switches.fetch_details,
                 login,
                 login_enabled: switches.login_enabled,
                 signed_in,
@@ -1650,15 +1402,17 @@ pub struct AppState {
     pub mailbox: Mailbox,
     pub profile: Option<ProfileInfo>,
     pub portals: Vec<PortalState>,
-    /// Days after which old inbox jobs that are no favourite archive themselves; 0 = never.
-    pub auto_archive_days: u32,
-    /// Days after which the trash empties itself; 0 = never.
-    pub auto_empty_trash_days: u32,
+    /// Which alert mails "Postfach abrufen" reads.
+    pub fetch_range: FetchRange,
+    /// The Excel file is written with every export.
+    pub export_excel: bool,
+    /// The CSV file is written with every export.
+    pub export_csv: bool,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
-    /// The colours of the page and the window (the report, Excel and the icon keep Coast).
+    /// The colours of the page and the window (Excel and the icon keep Coast).
     pub palette: Palette,
-    /// The last fetch (fetch or whole mailbox) - a rescore or a details run is none.
+    /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
     pub counts: JobCounts,
     pub match_pending: u32,
@@ -1703,6 +1457,8 @@ pub enum OpenTarget {
     /// The folder of the profile file in the workspace (`profil`).
     ProfileDir,
     Excel,
+    /// The CSV file (`exportCsv`); not found while none is written.
+    Csv,
     /// The Excel file shown selected in its folder (Explorer, Finder); the workspace while
     /// there is none yet.
     ExcelInFolder,
@@ -1711,9 +1467,6 @@ pub enum OpenTarget {
     ExcelBackupInFolder {
         name: String,
     },
-    Overview,
-    /// The report shown selected in its folder; the workspace while there is none yet.
-    OverviewInFolder,
     /// The folder of the text files (`auswertung/beschreibungen_txt`).
     TxtDir,
     LogDir,
@@ -1727,7 +1480,7 @@ pub struct MoveBack {
     pub key: JobKey,
     pub to: Place,
     /// When the job went to the trash ([`JobView::trashed_at`]): back in the trash it keeps
-    /// its date and its days until the trash empties itself.
+    /// its date.
     pub trashed_at: Option<Timestamp>,
 }
 
@@ -1742,19 +1495,9 @@ pub struct Deleted {
     /// The keys of every row that went, duplicates included: the page drops them from lists,
     /// the reader and pending undos.
     pub keys: Vec<JobKey>,
-    /// The overview could not be written again (e.g. open in Excel); `params.target` names
+    /// The Excel file could not be written again (e.g. open in Excel); `params.target` names
     /// what failed. The jobs are deleted anyway.
     pub export_error: Option<ErrorInfo>,
-}
-
-/// Result of "delete text files".
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ClearedTxt {
-    pub removed: usize,
-    /// File names that could not be deleted (open right now).
-    pub failed: Vec<String>,
 }
 
 #[cfg(test)]
@@ -1871,8 +1614,8 @@ mod tests {
         );
     }
 
-    /// The automatic fetch leaves the trash and the archive out (a favourite there stays):
-    /// their jobs wait for a request instead of a promise for the next fetch.
+    /// The automatic fetch leaves the trash and the archive out: their jobs wait for a
+    /// request instead of a promise for the next fetch.
     #[test]
     fn a_job_the_queue_leaves_out_waits_for_a_request() {
         let (store, key) = store_with(
@@ -1888,12 +1631,6 @@ mod tests {
         assert_eq!(state(), pending);
         store.move_jobs(one, Place::Archive, now).unwrap();
         assert_eq!(state(), DetailState::OnRequest);
-        store.set_pinned(&key, true, now).unwrap();
-        assert_eq!(
-            state(),
-            pending,
-            "a favourite in the archive is still fetched"
-        );
         store.move_jobs(one, Place::Trash, now).unwrap();
         assert_eq!(state(), DetailState::OnRequest);
         store.move_jobs(one, Place::Inbox, now).unwrap();
@@ -2001,7 +1738,6 @@ mod tests {
         JobQuery {
             place,
             unread,
-            favourites: false,
             sort,
             search: None,
             portal: None,
@@ -2066,11 +1802,11 @@ mod tests {
             ["B", "A"]
         );
         // The fields may be missing (an older page): no filter.
-        let json = r#"{"place":"inbox","unread":false,"favourites":false,"sort":"match",
+        let json = r#"{"place":"inbox","unread":false,"sort":"match",
                        "search":null,"limit":10,"offset":0}"#;
         let old: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(old.filter(), ListFilter::default());
-        let json = r#"{"place":"inbox","unread":false,"favourites":false,"sort":"match",
+        let json = r#"{"place":"inbox","unread":false,"sort":"match",
                        "search":null,"portal":"freelance","minBand":"high","limit":10,"offset":0}"#;
         let new: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(
@@ -2079,289 +1815,37 @@ mod tests {
         );
     }
 
-    /// One job of the overview's test: its link, how many days ago its mail came, its score,
-    /// its day rate (per hour with `true`), its open musts and its location.
-    struct Seeded(
-        &'static str,
-        i64,
-        u8,
-        u32,
-        bool,
-        &'static [&'static str],
-        &'static str,
-    );
-
-    /// The jobs of the overview's test, and alert mails of two portals.
-    fn overview_store(now: Timestamp) -> Store {
-        let store = Store::in_memory().unwrap();
-        let days = |n: i64| now - jiff::SignedDuration::from_hours(24 * n);
-        let run = store.begin_run().unwrap();
-        let li = "https://www.linkedin.com/jobs/view/";
-        let fm = "https://www.freelancermap.de/nproj/";
-        let jobs = [
-            Seeded(
-                "4000000001/",
-                1,
-                85,
-                1000,
-                false,
-                &["Power BI", "SAP"],
-                "Remote",
-            ),
-            Seeded("4000000002/", 3, 60, 100, true, &["power bi!"], "Köln"),
-            Seeded(
-                "4000000003/",
-                10,
-                45,
-                1200,
-                false,
-                &["SAP", "Power BI"],
-                "Hamburg (Hybrid)",
-            ),
-            Seeded("12345.html", 2, 20, 500, false, &["Excel"], "Berlin"),
-            Seeded("12346.html", 40, 90, 2000, false, &["Power BI"], "Remote"),
-        ];
-        for Seeded(path, ago, score, rate, hourly, open, location) in jobs {
-            let base = if path.contains(".html") { fm } else { li };
-            let link = job_link(&format!("{base}{path}")).unwrap();
-            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", location);
-            let mail = MailRef {
-                subject: "x",
-                date: Some(days(ago)),
-                gmail_id: None,
-            };
-            store
-                .upsert_posting(run, &posting, mail, days(ago))
-                .unwrap();
-            let mut scored = record(MatchStatus::Scored, score);
-            scored.facts.rate = Some(rate);
-            scored.facts.hourly = Some(hourly);
-            let judged = crate::store::Judgement {
-                record: scored,
-                open: open.iter().map(|s| (*s).to_owned()).collect(),
-            };
-            store
-                .save_judgements(&[(link.key, judged)], "r", now)
-                .unwrap();
-        }
-        for (portal, ago) in [(Portal::LinkedIn, 1), (Portal::Freelancermap, 10)] {
-            let alert = crate::model::AlertMail {
-                key: format!("m{ago}"),
-                portal,
-                subject: "Neue Jobs".into(),
-                sender: String::new(),
-                date: Some(days(ago)),
-                gmail_id: None,
-                postings: Vec::new(),
-            };
-            store.record_alert(run, &alert, now).unwrap();
-        }
-        store
-    }
-
-    /// The overview's numbers: open points over the scored inbox jobs of 30 days (in two jobs
-    /// at least, however written, most frequent first), new jobs per portal of 30 days, the
-    /// median day rate of the high and medium ones (hourly x 8), the remote share where it is
-    /// known, and the enabled portals with their last alert mail (quiet after 7 days).
+    /// The jobs of a company however a mail wrote it, in its window only; at 2,000 jobs it
+    /// takes moments, not seconds.
     #[test]
-    fn the_overview_counts_the_last_days() {
-        let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
-        let days = |n: i64| now - jiff::SignedDuration::from_hours(24 * n);
-        let store = overview_store(now);
-        let stats = overview_stats(&store, &Settings::default(), now).unwrap();
-        assert_eq!(
-            stats.open_musts,
-            [
-                OpenMust {
-                    label: "Power BI".into(),
-                    count: 3
-                },
-                OpenMust {
-                    label: "SAP".into(),
-                    count: 2
-                },
-            ]
-        );
-        let new: Vec<(Portal, u32)> = stats
-            .market
-            .new_by_portal
-            .iter()
-            .map(|p| (p.portal, p.count))
-            .collect();
-        assert_eq!(
-            new,
-            [
-                (Portal::LinkedIn, 3),
-                (Portal::FreelanceDe, 0),
-                (Portal::Freelancermap, 1)
-            ]
-        );
-        assert_eq!(
-            (stats.market.median_day_rate, stats.market.rate_count),
-            (Some(1000), 3)
-        );
-        assert_eq!(
-            (stats.market.remote_share, stats.market.remote_known),
-            (Some(50), 2)
-        );
-        let quiet: Vec<(Portal, bool)> = stats
-            .quiet_portals
-            .iter()
-            .map(|q| (q.portal, q.quiet))
-            .collect();
-        assert_eq!(
-            quiet,
-            [
-                (Portal::LinkedIn, false),
-                (Portal::FreelanceDe, true),
-                (Portal::Freelancermap, true)
-            ]
-        );
-        assert_eq!(stats.quiet_portals[0].last_alert, Some(days(1)));
-        assert_eq!(stats.quiet_portals[1].last_alert, None);
-        let json = serde_json::to_value(&stats).unwrap();
-        assert!(json["market"]["medianDayRate"].is_number() && json["quietPortals"].is_array());
-        // A switched-off portal is none of the quiet ones.
-        let mut settings = Settings::default();
-        settings
-            .portals
-            .get_mut(&Portal::FreelanceDe)
-            .unwrap()
-            .enabled = false;
-        let stats = overview_stats(&store, &settings, now).unwrap();
-        assert_eq!(stats.quiet_portals.len(), 2);
-        // The same company however written, in its window.
-        assert_eq!(company_count(&store, "Firma", 30, now).unwrap(), 4);
-        assert_eq!(company_count(&store, "FIRMA GmbH", 60, now).unwrap(), 5);
-        assert_eq!(median(&[1, 2, 3, 4]), Some(2));
-        assert_eq!(median(&[]), None);
-    }
-
-    /// "Details holen" counts only the ads it can still fetch, by the portal's switches (the
-    /// UI's `detailsWanted`), and the excluded jobs count while they are not opened.
-    #[test]
-    fn the_overview_counts_what_the_inbox_leaves_open() {
+    fn the_company_count_is_quick_at_2000_jobs() {
         let store = Store::in_memory().unwrap();
         let now = Timestamp::now();
         let run = store.begin_run().unwrap();
-        let add = |url: &str| {
-            let link = job_link(url).unwrap();
-            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
-            let mail = MailRef {
-                subject: "x",
-                date: Some(now),
-                gmail_id: None,
-            };
-            store.upsert_posting(run, &posting, mail, now).unwrap();
-            link.key
-        };
-        let li = "https://www.linkedin.com/jobs/view/";
-        let _missing = add(&format!("{li}4200000001/"));
-        let failed = add(&format!("{li}4200000002/"));
-        let gone = add(&format!("{li}4200000003/"));
-        let fetched = add(&format!("{li}4200000004/"));
-        let archived = add(&format!("{li}4200000005/"));
-        let teaser = add("https://www.freelance.de/project/index.php?id=1255067");
-        let excluded = add("https://www.freelancermap.de/nproj/22001.html");
-        let seen = add("https://www.freelancermap.de/nproj/22002.html");
-        store.record_failed(&failed, "no text", now).unwrap();
-        store.record_gone(&gone, now).unwrap();
-        store
-            .record_text(&fetched, "Der ganze Text", false, false, now)
-            .unwrap();
-        store.record_teaser(&teaser, "Nur ein Anriss", now).unwrap();
-        store
-            .move_jobs(std::slice::from_ref(&archived), Place::Archive, now)
-            .unwrap();
-        let out = |key: &JobKey| {
-            (
-                key.clone(),
-                crate::store::Judgement {
-                    record: record(MatchStatus::Excluded, 70),
-                    open: Vec::new(),
-                },
-            )
-        };
-        store
-            .save_judgements(&[out(&excluded), out(&seen)], "r", now)
-            .unwrap();
-        store.mark_read(&seen, now).unwrap();
-
-        let stats = overview_stats(&store, &Settings::default(), now).unwrap();
-        // Not fetched yet and failed so far, the two freelancermap jobs too; never the gone,
-        // the fetched or the archived ad, nor the teaser without a sign-in.
-        assert_eq!(stats.details_wanted, 4);
-        assert_eq!(stats.excluded_new, 1);
-
-        let mut settings = Settings::default();
-        settings
-            .portals
-            .get_mut(&Portal::FreelanceDe)
-            .unwrap()
-            .login_enabled = true;
-        let stats = overview_stats(&store, &settings, now).unwrap();
-        assert_eq!(stats.details_wanted, 5, "the teaser, with the sign-in on");
-        settings
-            .portals
-            .get_mut(&Portal::LinkedIn)
-            .unwrap()
-            .fetch_details = false;
-        settings
-            .portals
-            .get_mut(&Portal::Freelancermap)
-            .unwrap()
-            .enabled = false;
-        let stats = overview_stats(&store, &settings, now).unwrap();
-        assert_eq!(
-            stats.details_wanted, 1,
-            "only the portal that still fetches"
-        );
-        assert_eq!(stats.excluded_new, 1, "the inbox's, whatever the switches");
-    }
-
-    /// At 2,000 jobs the overview's numbers and a company count take moments, not seconds.
-    #[test]
-    fn the_overview_is_quick_at_2000_jobs() {
-        let store = Store::in_memory().unwrap();
-        let now = Timestamp::now();
-        let run = store.begin_run().unwrap();
-        let mut judged = Vec::new();
         for i in 0..2000_i64 {
             let link = job_link(&format!(
                 "https://www.linkedin.com/jobs/view/{}/",
                 4_100_000_000 + i
             ))
             .unwrap();
-            let posting = Posting::new(
-                link.key.clone(),
-                link.url,
-                "Rolle",
-                &format!("Firma {}", i % 97),
-                "Remote",
-            );
+            let company = if i % 2 == 0 {
+                format!("FIRMA {} GmbH", i % 97)
+            } else {
+                format!("Firma {}", i % 97)
+            };
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", &company, "Remote");
             let mail = MailRef {
                 subject: "x",
                 date: Some(now - jiff::SignedDuration::from_hours(i % 60 * 24)),
                 gmail_id: None,
             };
             store.upsert_posting(run, &posting, mail, now).unwrap();
-            let mut record = record(MatchStatus::Scored, u8::try_from(i % 100).unwrap());
-            record.facts.rate = Some(900 + u32::try_from(i % 400).unwrap());
-            judged.push((
-                link.key,
-                crate::store::Judgement {
-                    record,
-                    open: vec![format!("Punkt {}", i % 7), "Power BI".into()],
-                },
-            ));
         }
-        store.save_judgements(&judged, "r", now).unwrap();
         let started = std::time::Instant::now();
-        let stats = overview_stats(&store, &Settings::default(), now).unwrap();
-        let count = company_count(&store, "Firma 3", 30, now).unwrap();
+        let month = company_count(&store, "Firma 3", 30, now).unwrap();
         let took = started.elapsed();
-        assert_eq!(stats.open_musts[0].label, "Power BI");
-        assert!(count > 0);
+        let longer = company_count(&store, "Firma 3", 90, now).unwrap();
+        assert!(month > 0 && longer > month, "{month} {longer}");
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
 
@@ -2371,7 +1855,6 @@ mod tests {
         let expected = JobCounts {
             inbox: 4,
             unread: 2,
-            favourites: 0,
             archive: 0,
             trash: 0,
             excluded: 1,
@@ -2430,10 +1913,8 @@ mod tests {
         assert_eq!((found.jobs.len(), found.counts.inbox), (1, 1));
     }
 
-    /// A job is in one place: inbox, archive or trash, each with its list and count; the
-    /// favourite is a flag of its own (the favourites filter lists and counts only the
-    /// inbox's; an archived one keeps its star in the archive). List and counts agree for
-    /// every place.
+    /// A job is in one place: inbox, archive or trash, each with its list and count. List and
+    /// counts agree for every place.
     #[test]
     fn every_place_has_its_list_and_its_count() {
         let store = four_jobs();
@@ -2444,25 +1925,17 @@ mod tests {
         };
         let at = Timestamp::now();
         let later = at + jiff::SignedDuration::from_mins(5);
-        // C (excluded) archived and a favourite, D (unscored, unread) in the trash later,
-        // A a favourite in the inbox.
-        store.set_pinned(&key(3), true, at).unwrap();
+        // C (excluded) archived, D (unscored, unread) in the trash later.
         store.move_jobs(&[key(3)], Place::Archive, at).unwrap();
         store.move_jobs(&[key(4)], Place::Trash, later).unwrap();
-        store.set_pinned(&key(1), true, at).unwrap();
         let page = |place| job_page(&store, &query(place, false, JobSort::Match, 50, 0)).unwrap();
         let inbox = page(Place::Inbox);
         assert_eq!(titles(&inbox), ["B", "A"]);
         let counts = &inbox.counts;
         assert_eq!(
-            (
-                counts.inbox,
-                counts.unread,
-                counts.excluded,
-                counts.favourites
-            ),
-            (2, 1, 0, 1),
-            "archive and trash in no inbox count, the archived favourite neither"
+            (counts.inbox, counts.unread, counts.excluded),
+            (2, 1, 0),
+            "archive and trash in no inbox count"
         );
         assert_eq!((counts.archive, counts.trash), (1, 1));
         assert_eq!(
@@ -2473,7 +1946,6 @@ mod tests {
         let archive = page(Place::Archive);
         assert_eq!(titles(&archive), ["C"]);
         assert_eq!(archive.jobs[0].place, Place::Archive);
-        assert!(archive.jobs[0].pinned);
         let trash = page(Place::Trash);
         assert_eq!(titles(&trash), ["D"]);
         assert_eq!(trash.counts, inbox.counts, "the counts ignore the place");
@@ -2486,7 +1958,7 @@ mod tests {
         assert_eq!(u32::try_from(inbox.jobs.len()).unwrap(), counts.inbox);
         assert_eq!(u32::try_from(archive.jobs.len()).unwrap(), counts.archive);
         assert_eq!(u32::try_from(trash.jobs.len()).unwrap(), counts.trash);
-        // A favourite in the trash no longer counts; by date the latest trashed first.
+        // By date the latest trashed first.
         store.move_jobs(&[key(1)], Place::Trash, at).unwrap();
         let after = job_page(&store, &query(Place::Trash, false, JobSort::Newest, 50, 0)).unwrap();
         assert_eq!(titles(&after), ["D", "A"]);
@@ -2495,26 +1967,9 @@ mod tests {
             ["D", "A"],
             "by match the one without a score first"
         );
-        assert_eq!((after.counts.favourites, after.counts.trash), (0, 2));
+        assert_eq!(after.counts.trash, 2);
         let json = serde_json::to_value(&after.jobs[1]).unwrap();
         assert_eq!(json["place"], "trash");
-        assert_eq!(json["pinned"], true);
-        // The favourites filter: starred jobs of the inbox only; the archived one keeps its
-        // star in the archive.
-        store.set_pinned(&key(2), true, at).unwrap();
-        let mut favourites = query(Place::Inbox, false, JobSort::Match, 50, 0);
-        favourites.favourites = true;
-        let starred = job_page(&store, &favourites).unwrap();
-        assert_eq!(titles(&starred), ["B"], "no archive, no trash");
-        assert_eq!(starred.counts.favourites, 1);
-        let archive = page(Place::Archive);
-        assert_eq!(titles(&archive), ["C"]);
-        assert!(archive.jobs[0].pinned, "the star stays in the archive");
-        // Back in the inbox, it counts again.
-        store.move_jobs(&[key(3)], Place::Inbox, later).unwrap();
-        let starred = job_page(&store, &favourites).unwrap();
-        assert_eq!(titles(&starred), ["B", "C"], "the excluded one last");
-        assert_eq!(starred.counts.favourites, 2);
         // In the trash, the excluded one counts there.
         store.move_jobs(&[key(3)], Place::Trash, later).unwrap();
         let counts = page(Place::Trash).counts;
@@ -2528,11 +1983,10 @@ mod tests {
         );
     }
 
-    /// The new jobs per portal and the pinned ones come with every page, from the same
-    /// statement: every portal in the order of `Portal::ALL` (one order on every screen), read
+    /// The new jobs per portal come with every page, from the same statement: every portal in the order of `Portal::ALL` (one order on every screen), read
     /// or excluded jobs are no new ones, the search narrows them like the other counts.
     #[test]
-    fn new_per_portal_and_pinned_come_with_the_counts() {
+    fn new_per_portal_come_with_the_counts() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         let add = |url: &str, title: &str| {
@@ -2548,7 +2002,7 @@ mod tests {
                 .unwrap();
             link.key
         };
-        let map_new = add(
+        add(
             "https://www.freelancermap.de/nproj/12345.html",
             "Controlling",
         );
@@ -2569,15 +2023,12 @@ mod tests {
         store
             .save_matches(&[(map_out, record(MatchStatus::Excluded, 90))], "r", now)
             .unwrap();
-        store.set_pinned(&map_new, true, now).unwrap();
-        store.set_pinned(&li_read, true, now).unwrap();
         let counts = |search: Option<&str>| {
             job_page(
                 &store,
                 &JobQuery {
                     place: Place::Inbox,
                     unread: true,
-                    favourites: false,
                     sort: JobSort::Match,
                     search: search.map(str::to_owned),
                     portal: None,
@@ -2609,7 +2060,6 @@ mod tests {
             all.new_by_portal.iter().map(|p| p.new).sum::<u32>(),
             all.unread
         );
-        assert_eq!(all.favourites, 2);
         let found = counts(Some("interim"));
         assert_eq!(
             per_portal(&found),
@@ -2619,7 +2069,6 @@ mod tests {
                 (Portal::Freelancermap, 0)
             ]
         );
-        assert_eq!(found.favourites, 0);
     }
 
     #[test]

@@ -42,8 +42,9 @@ async function saved(page: Page): Promise<SettingsPatch[]> {
 /** A whole patch from what changes (the rest unchanged, as the page sends it). */
 const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  autoArchiveDays: null,
-  autoEmptyTrashDays: null,
+  fetchRange: null,
+  exportExcel: null,
+  exportCsv: null,
   language: null,
   palette: null,
   ...change,
@@ -609,30 +610,6 @@ test('mailbox: fetching every alert mail asks first, then shows the run', async 
   expect((started[0]?.[1] as { request: unknown }).request).toEqual({ kind: 'fullMailbox' });
 });
 
-test('switches: they move at once, save alone and are their own answer', async ({ page }) => {
-  await settings(page);
-  const archive = page.getByTestId('toggle-auto-archive');
-  const trash = page.getByTestId('toggle-auto-empty-trash');
-  const fetch = page.getByTestId('settings-fetch');
-  await expect(fetch).toContainText('Jobs nach 30 Tagen archivieren');
-  await expect(fetch).toContainText('Favoriten werden nie archiviert.');
-  await expect(fetch).toContainText('Papierkorb nach 30 Tagen leeren');
-  await expect(fetch).toContainText('Jobs im Papierkorb werden dann endgültig gelöscht.');
-  await expect(fetch.getByRole('switch')).toHaveCount(2);
-  await archive.click();
-  await expect(archive).toHaveAttribute('aria-checked', 'false');
-  await archive.click();
-  await expect(archive).toHaveAttribute('aria-checked', 'true');
-  await trash.click();
-  await expect(trash).toHaveAttribute('aria-checked', 'false');
-  expect(await saved(page)).toEqual([
-    patch({ autoArchiveDays: 0 }),
-    patch({ autoArchiveDays: 30 }),
-    patch({ autoEmptyTrashDays: 0 }),
-  ]);
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-});
-
 test('switches: only the switch switches, like the system settings; its text names it', async ({
   page,
 }) => {
@@ -687,7 +664,7 @@ test('portals: the switches save at once; an inactive portal says so and hides i
   await expect(page.getByTestId('toast')).toHaveCount(0);
   expect(await saved(page)).toEqual([
     patch({
-      portals: [{ portal: 'linkedin', enabled: false, fetchDetails: null, loginEnabled: null }],
+      portals: [{ portal: 'linkedin', enabled: false, loginEnabled: null }],
     }),
   ]);
 });

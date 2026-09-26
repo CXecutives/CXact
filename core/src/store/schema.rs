@@ -211,6 +211,22 @@ mod tests {
             .unwrap()
     }
 
+    /// When a job became a favourite (`app_status_at` of a set `app_status`): the migrations
+    /// keep the mark of earlier versions, which the app no longer reads.
+    fn favourite_at(store: &Store, key: &crate::portal::JobKey) -> Option<jiff::Timestamp> {
+        store
+            .conn()
+            .query_row(
+                "SELECT app_status_at FROM job
+                 WHERE portal = ?1 AND job_id = ?2 AND app_status IS NOT NULL",
+                rusqlite::params![key.portal.key(), key.id],
+                |r| r.get::<_, Option<i64>>(0),
+            )
+            .ok()
+            .flatten()
+            .and_then(crate::time::from_db)
+    }
+
     #[test]
     fn the_fixture_is_schema_2() {
         let fixture = Connection::open_in_memory().unwrap();
@@ -305,8 +321,10 @@ mod tests {
                 .unwrap()
                 .key
         };
-        let a = store.job(&key("4000000001")).unwrap().unwrap();
-        assert_eq!(a.pinned_at, crate::time::from_db(160));
+        assert_eq!(
+            favourite_at(&store, &key("4000000001")),
+            crate::time::from_db(160)
+        );
         let b = store.job(&key("4000000002")).unwrap().unwrap();
         assert_eq!(b.place(), crate::model::Place::Trash);
         assert!(store.is_deleted(&key("4000000009")).unwrap());
@@ -357,14 +375,14 @@ mod tests {
         };
         let a = store.job(&key("4000000001")).unwrap().unwrap();
         assert_eq!(
-            (a.pinned_at, a.archived_at, a.trashed_at),
+            (favourite_at(&store, &a.key), a.archived_at, a.trashed_at),
             (crate::time::from_db(160), crate::time::from_db(170), None)
         );
         assert_eq!(a.place(), crate::model::Place::Archive);
         assert!(!a.override_include);
         let b = store.job(&key("4000000002")).unwrap().unwrap();
         assert_eq!(
-            (b.pinned_at, b.place()),
+            (favourite_at(&store, &b.key), b.place()),
             (crate::time::from_db(180), crate::model::Place::Inbox)
         );
         assert_eq!(
@@ -407,10 +425,9 @@ mod tests {
         assert_eq!(job.match_.as_ref().map(|m| m.score), Some(84));
         assert!(job.read_at.is_some());
         // The pinned job is a favourite now, since it was pinned.
-        assert_eq!(job.pinned_at, crate::time::from_db(160));
+        assert_eq!(favourite_at(&store, &key), crate::time::from_db(160));
         assert_eq!(job.place(), crate::model::Place::Inbox);
         // The new marks work on the migrated database.
-        assert!(store.set_pinned(&key, false, now()).unwrap());
         let trash = crate::model::Place::Trash;
         assert_eq!(
             store

@@ -6,7 +6,7 @@
 //!
 //! `schema` creates and migrates the tables, `jobs` holds the job, alert mail, job detail
 //! and text file methods, `matches` the match and read columns of schema 3, `marks` the
-//! user's marks: the favourite, the place (inbox, archive, trash) and "fits anyway".
+//! user's marks: the place (inbox, archive, trash) and "fits anyway".
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -30,8 +30,8 @@ mod schema;
 
 pub use backup::{BACKUP_DIR, Backup, BackupKind, backup_dir};
 pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
-pub use matches::{Judgement, NewFitting, OverviewJobs};
-pub use overview::{BandCounts, InboxOpen};
+pub use matches::Judgement;
+pub use overview::BandCounts;
 
 /// Key of the Gmail address whose mails the last mailbox scan read: the files link the
 /// alert mails in that account (`model::gmail_url_for`). Never a password.

@@ -1,5 +1,5 @@
 // The Übersicht's data, for its blocks (blocks.ts): what it loads itself (the best unopened
-// jobs, the favourites, its numbers from `overview_stats`) and what follows from them and
+// jobs; the backend sends no numbers of its own any more, the page goes) and what follows from them and
 // from the app's state: the open points in their order, the failure of the last fetch, what
 // can be compared. One instance; the page loads it again whenever the counts move. The
 // blocks only render what this says; a rule of the Übersicht lives here once.
@@ -15,7 +15,6 @@ import type {
   JobQuery,
   JobView,
   OpenTarget,
-  OverviewStats,
   Portal,
   PortalState,
 } from '$lib/ipc/types';
@@ -26,6 +25,21 @@ import { editor } from '$lib/state/profile.svelte';
 import { failureAction, isFetch, run, type FailureAction } from '$lib/state/run.svelte';
 import { detailsWanted } from '../jobs/actions';
 import { toExcluded } from './lead';
+
+/** The numbers the backend no longer sends (the Übersicht goes): always none. */
+interface OverviewStats {
+  openMusts: { label: string; count: number }[];
+  market: {
+    newByPortal: { portal: Portal; count: number }[];
+    medianDayRate: number | null;
+    rateCount: number;
+    remoteShare: number | null;
+    remoteKnown: number;
+  };
+  quietPortals: { portal: Portal; lastAlert: string | null; quiet: boolean }[];
+  detailsWanted: number;
+  excludedNew: number;
+}
 
 /** How many jobs "Heute ansehen" and "Favoriten" show. */
 export const BEST = 5;
@@ -53,7 +67,6 @@ function inboxQuery(change: Partial<JobQuery>): JobQuery {
   return {
     place: 'inbox',
     unread: false,
-    favourites: false,
     sort: 'newest',
     search: null,
     portal: null,
@@ -87,8 +100,6 @@ class OverviewModel {
   /** The open musts, the market, the portals' last alert mails, what the inbox leaves open. */
   stats = $state.raw<OverviewStats | null>(null);
   #topRequest = 0;
-  #savedRequest = 0;
-  #statsRequest = 0;
 
   /** Everything the page loads itself, again. */
   refresh(): void {
@@ -126,32 +137,15 @@ class OverviewModel {
     );
   }
 
+  /** No favourites any more. */
   #loadSaved(): void {
-    const request = ++this.#savedRequest;
-    invoke('list_jobs', {
-      query: inboxQuery({ favourites: true, limit: FAVOURITES + BEST }),
-    }).then(
-      (page) => {
-        if (request !== this.#savedRequest) return;
-        this.#saved = page.jobs;
-        this.#savedFailed = false;
-      },
-      () => {
-        if (request === this.#savedRequest) this.#savedFailed = true;
-      },
-    );
+    this.#saved = [];
+    this.#savedFailed = false;
   }
 
+  /** No numbers any more. */
   #loadStats(): void {
-    const request = ++this.#statsRequest;
-    invoke('overview_stats', {}).then(
-      (next) => {
-        if (request === this.#statsRequest) this.stats = next;
-      },
-      () => {
-        if (request === this.#statsRequest) this.stats = null;
-      },
-    );
+    this.stats = null;
   }
 
   /** The counts over every job of the inbox (null until they are known). */
@@ -174,23 +168,17 @@ class OverviewModel {
     const best = this.best;
     return this.#saved
       .map(current)
-      .filter((job) => job.pinned && !best.some((row) => sameKey(row.key, job.key)))
+      .filter((job) => !best.some((row) => sameKey(row.key, job.key)))
       .slice(0, FAVOURITES);
   });
 
   /** Favourites neither block shows: "Alle n Favoriten" leads to them (0: none). */
-  readonly moreFavourites = $derived.by((): number => {
-    const all = this.counts?.favourites ?? 0;
-    const shown = this.favourites.length + this.best.filter((job) => job.pinned).length;
-    return all > shown ? all : 0;
-  });
+  readonly moreFavourites = $derived.by((): number => 0);
 
   /** The comparison prompt takes the favourites first, then the best scored jobs of the
    *  inbox, read or not: it is there as long as there is something to compare. */
   readonly canCompare = $derived(
-    app.hasProfile &&
-      this.counts !== null &&
-      (this.counts.favourites > 0 || this.counts.inbox > this.counts.excluded),
+    app.hasProfile && this.counts !== null && this.counts.inbox > this.counts.excluded,
   );
 
   /** The last fetch (of this session, else the stored one), or null. */

@@ -1,5 +1,4 @@
-//! Result files: rewrite and delete text files, open checked targets, and the small files
-//! that follow the user's marks.
+//! Result files: open checked targets, and the files that follow the user's marks.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -9,8 +8,8 @@ use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::export::{self, RESULT_DIR};
 use jobalert_core::model::gmail_url_for;
-use jobalert_core::pipeline::{self, ExportSummary, Matcher};
-use jobalert_core::view::{ClearedTxt, OpenTarget};
+use jobalert_core::pipeline::{self, Matcher};
+use jobalert_core::view::OpenTarget;
 use tauri::{AppHandle, Manager, State};
 
 use super::app::existing;
@@ -25,8 +24,8 @@ const SETTLE: Duration = Duration::from_secs(2);
 /// How often a waiting refresh looks whether the app is idle again.
 const IDLE_POLL: Duration = Duration::from_millis(500);
 
-/// The small files a mark changes - the HTML overview and the skill's `top_matches.json`
-/// (`pipeline::refresh_exports`) - follow the user's marks a moment after the last one:
+/// The files a mark changes - the skill's `top_matches.json` (`pipeline::refresh_exports`)
+/// and the Excel file - follow the user's marks a moment after the last one:
 /// never while a run, a sign-in or a file command holds the app (a run writes them at its
 /// end, a refresh then follows), never in the dry run. Marks of the last moments before the
 /// app ends are written when it ends ([`flush_marks`]).
@@ -57,7 +56,7 @@ impl Refresh {
     }
 }
 
-/// A mark changed (moved, starred, "fits anyway", read or unread): the files follow shortly.
+/// A mark changed (moved, "fits anyway", read or unread): the files follow shortly.
 pub(super) fn marked(app: &AppHandle) {
     let state = app.state::<AppState>();
     if state.dry_run {
@@ -102,37 +101,9 @@ fn refresh(state: &AppState) {
         &workspace,
         matcher.as_deref().map(|m| m as &dyn Matcher),
         Timestamp::now(),
-        language,
     );
     // The Excel file follows the marks too (it is rewritten only when something changed).
     let _ = pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
-}
-
-/// Rewrites all text files (e.g. after a change of folder). The names stay. It holds the app
-/// meanwhile: no run and no "Textdateien löschen" touch the folder.
-#[tauri::command]
-pub async fn rewrite_txt(app: AppHandle, state: State<'_, AppState>) -> CmdResult<ExportSummary> {
-    state.ensure_real()?;
-    let _files = state.claim_files(&app)?;
-    Ok(pipeline::rewrite_txt(
-        &state.store,
-        &state.workspace()?,
-        Timestamp::now(),
-    ))
-}
-
-/// Deletes only the app's text files; the Excel overview and the database stay (no fetch
-/// again). It holds the app meanwhile: a run's text files never lose their temporary files.
-#[tauri::command]
-pub async fn clear_txt(app: AppHandle, state: State<'_, AppState>) -> CmdResult<ClearedTxt> {
-    state.ensure_real()?;
-    let _files = state.claim_files(&app)?;
-    let (removed, failed) = pipeline::clear_txt(&state.store, &state.workspace()?)?;
-    log::info!(
-        "text files deleted: {removed}, not deleted: {}",
-        failed.len()
-    );
-    Ok(ClearedTxt { removed, failed })
 }
 
 /// Opens a checked target in the browser, the mail client or the file manager.
@@ -171,16 +142,27 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             "folder",
         )?,
         OpenTarget::Excel => {
-            // Fresh before it opens: the marks since the last write are in it.
             let settings = state.settings()?;
             let workspace = state.workspace()?;
+            let excel = export::overview_path(&workspace.join(RESULT_DIR));
+            // Switched off, the app writes none: an old file is no file of the app's now.
+            if !settings.export_excel {
+                return Err(ErrorInfo::new(ErrorKind::NotFound)
+                    .with("what", "file")
+                    .with("path", excel.display().to_string()));
+            }
+            // Fresh before it opens: the marks since the last write are in it.
             if !state.dry_run && !state.busy() {
                 let language = settings.language_or(state.system_language);
                 let _ =
                     pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
             }
-            existing(export::overview_path(&workspace.join(RESULT_DIR)), "file")?
+            existing(excel, "file")?
         }
+        OpenTarget::Csv => existing(
+            export::csv_path(&state.workspace()?.join(RESULT_DIR)),
+            "file",
+        )?,
         OpenTarget::ExcelInFolder => {
             let workspace = state.workspace()?;
             let excel = export::overview_path(&workspace.join(RESULT_DIR));
@@ -197,34 +179,6 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             let path = state.workspace()?.join(RESULT_DIR).join(name);
             existing(path.clone(), "file")?;
             return show_in_folder(&path);
-        }
-        OpenTarget::Overview => {
-            let workspace = state.workspace()?;
-            // Opened as the jobs are now (a run writes it itself at its end).
-            if !state.dry_run
-                && !state.busy()
-                && let Err(e) = pipeline::refresh_overview(
-                    &state.store,
-                    &workspace,
-                    Timestamp::now(),
-                    state.language()?,
-                )
-            {
-                log::warn!("overview not written before opening: {e}");
-            }
-            existing(
-                export::overview_html_path(&workspace.join(RESULT_DIR)),
-                "file",
-            )?
-        }
-        OpenTarget::OverviewInFolder => {
-            let workspace = state.workspace()?;
-            let report = export::overview_html_path(&workspace.join(RESULT_DIR));
-            if report.is_file() {
-                return show_in_folder(&report);
-            }
-            // No report yet (before the first fetch): the work folder it will be in.
-            existing(workspace, "folder")?
         }
         OpenTarget::TxtDir => existing(
             state.workspace()?.join(RESULT_DIR).join(export::TXT_DIR),

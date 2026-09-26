@@ -918,7 +918,6 @@ export const en: Catalog = {
       fetch: 'Fetch',
       details: 'Fetch details',
       rescore: 'Score again',
-      fullMailbox: FULL_MAILBOX,
     } satisfies Record<RunKindName, string>,
     done: 'Fetch done',
     rescored: 'Scored again',

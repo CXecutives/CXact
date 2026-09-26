@@ -92,10 +92,9 @@
   const active = $derived(shown.filter((job) => !isExcluded(job)));
   const excluded = $derived(shown.filter(isExcluded));
   // How many excluded jobs the list holds: the counts of each place know it (with the search
-  // and the filter, like the list; the favourites narrow only the list), the favourites once
-  // every page is there.
+  // and the filter, like the list).
   const excludedCount = $derived.by((): number | null => {
-    if (jobs.place === 'inbox' && !jobs.filter.favourites) return jobs.counts.excluded;
+    if (jobs.place === 'inbox') return jobs.counts.excluded;
     if (jobs.place === 'archive') return jobs.counts.excludedArchive;
     if (jobs.place === 'trash') return jobs.counts.excludedTrash;
     if (jobs.rows.length < jobs.total) return null;
@@ -554,7 +553,7 @@
     const labels: Record<Own, string> = {
       open: t.menu.open,
       'open-ad': t.reader.open,
-      star: list.some((chosen) => !chosen.pinned) ? t.reader.pin : t.reader.unpin,
+      star: t.reader.pin,
       prompt: t.reader.prompt,
     };
     const entries: MenuEntry[] = [];
@@ -790,7 +789,6 @@
         tools={toolsOf(job)}
         menu={() => menuOf(job)}
         chosen={selection.size > 0 && selection.has(job) && (bulk.active || viewport.narrow)}
-        trashDays={app.state?.autoEmptyTrashDays ?? 0}
         onchoose={choose}
       />
     {/snippet}
@@ -871,7 +869,7 @@
   testid="dialog-read-older"
   onconfirm={() => {
     confirmOlder = false;
-    void run.start({ kind: 'fullMailbox' });
+    void run.start({ kind: 'fetch' });
   }}
 />
 

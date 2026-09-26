@@ -208,8 +208,7 @@ fn run_context(
             .into_iter()
             .filter(|&p| settings.fetch_path(p) == Some(FetchPath::Session))
             .collect(),
-        auto_archive_days: settings.auto_archive_days,
-        auto_empty_trash_days: settings.auto_empty_trash_days,
+        fetch_range: settings.fetch_range,
         language: settings.language_or(state.system_language),
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
     };

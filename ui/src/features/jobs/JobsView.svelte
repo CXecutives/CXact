@@ -133,7 +133,6 @@
         return;
     }
   }
-  const trashDays = $derived(app.state?.autoEmptyTrashDays ?? 0);
   /** The place holds nothing (no search): the list says it, the reader adds no second tile. */
   const placeEmpty = $derived(
     jobs.status === 'ready' && jobs.total === 0 && jobs.search.trim() === '',
@@ -309,12 +308,7 @@
               <!-- No job open: what lies here, quietly (the day's overview is a place of its
                    own). Beside an empty list, which shows its own empty state, only the
                    sentence. -->
-              {@const text =
-                place === 'inbox'
-                  ? t.place.pickJob
-                  : place === 'trash' && trashDays > 0
-                    ? t.place.trashFor(trashDays)
-                    : t.place.reader[place]}
+              {@const text = place === 'inbox' ? t.place.pickJob : t.place.reader[place]}
               <div class="place-reader">
                 {#if placeEmpty && place === 'inbox'}
                   <!-- An empty inbox: its list says it all, nothing to choose. -->

@@ -211,7 +211,6 @@ function sample(
     mailDate: at,
     firstSeenAt: at,
     unread: false,
-    pinned: false,
     detail: { kind: 'ok' },
     short: false,
     closed: false,
@@ -261,7 +260,6 @@ export function sampleJobs(now: Date): JobView[] {
       2,
       {
         unread: true,
-        pinned: true,
         match: {
           ...scored(91, 'Interim-Management im Mittelstand')!,
           // The key facts of the ad: the row shows them in place of the best requirement.

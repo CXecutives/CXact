@@ -89,7 +89,6 @@ mod tests {
             match_open: Vec::new(),
             match_rev: None,
             facts: None,
-            pinned_at: None,
             archived_at: None,
             trashed_at: None,
             override_include: false,
@@ -122,13 +121,13 @@ mod tests {
         );
     }
 
-    /// The user's marks (application status, archived) never reach the text file: its bytes
-    /// are the contract with the skill.
+    /// The user's marks (archived, trashed, "fits anyway") never reach the text file: its
+    /// bytes are the contract with the skill.
     #[test]
     fn the_user_marks_never_change_a_text_file() {
         let plain = job("Interim CFO", "Muster GmbH", "Hamburg", None);
         let mut marked = plain.clone();
-        marked.pinned_at = Some("2026-09-20T10:00:00Z".parse().unwrap());
+        marked.override_include = true;
         marked.archived_at = Some("2026-09-21T10:00:00Z".parse().unwrap());
         marked.trashed_at = Some("2026-09-22T10:00:00Z".parse().unwrap());
         let at = plain.desc_fetched_at.unwrap();

@@ -5,8 +5,6 @@
 import type { Component } from 'svelte';
 import { app } from '$lib/state/app.svelte';
 import BestBlock from './blocks/BestBlock.svelte';
-import CompareBlock from './blocks/CompareBlock.svelte';
-import FavouritesBlock from './blocks/FavouritesBlock.svelte';
 import FilesBlock from './blocks/FilesBlock.svelte';
 import InboxBlock from './blocks/InboxBlock.svelte';
 import MarketBlock from './blocks/MarketBlock.svelte';
@@ -26,12 +24,6 @@ export const BLOCKS: readonly OverviewBlock[] = [
   { id: 'inbox', component: InboxBlock, visible: () => true },
   // "Heute ansehen", or in its place that the jobs did not load.
   { id: 'best', component: BestBlock, visible: () => overview.failed || overview.best.length > 0 },
-  {
-    id: 'favourites',
-    component: FavouritesBlock,
-    visible: () => !overview.failed && overview.favourites.length > 0,
-  },
-  { id: 'compare', component: CompareBlock, visible: () => overview.canCompare },
   { id: 'open', component: OpenPointsBlock, visible: () => overview.points.length > 0 },
   { id: 'musts', component: MustsBlock, visible: () => overview.openMusts.length > 0 },
   { id: 'market', component: MarketBlock, visible: () => overview.showMarket },

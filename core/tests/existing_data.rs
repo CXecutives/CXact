@@ -110,7 +110,7 @@ fn settings_policy_and_database_of_an_earlier_version_keep_working() {
         settings.enabled_portals(),
         [Portal::LinkedIn, Portal::FreelanceDe]
     );
-    assert!(settings.portal(Portal::LinkedIn).fetch_details);
+    assert!(settings.fetch_path(Portal::LinkedIn).is_some());
     assert!(!settings.portal(Portal::FreelanceDe).login_enabled);
     assert_eq!(settings.workspace, None);
     settings.save(&store).unwrap();

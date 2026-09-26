@@ -54,10 +54,9 @@ class Bulk {
       },
     }));
     if (chosen.every((job) => hasStar(job.place))) {
-      const on = chosen.some((job) => !job.pinned);
       out.push({
         icon: 'star',
-        label: on ? t.selection.pin : t.reader.unpin,
+        label: t.selection.pin,
         testid: 'selection-star',
         onclick: () => toggleStar(this.chosen),
       });

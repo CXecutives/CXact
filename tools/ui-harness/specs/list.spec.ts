@@ -301,46 +301,6 @@ test.describe('filter', () => {
     await expect(filterLine(page)).toContainText(filterLabel('portal-linkedin'));
   });
 
-  test('Nur Favoriten lists the favourites of the inbox; the line says it and takes it off', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const all = await inbox(page);
-    const favourites = await inbox(page, { favourites: true });
-    expect(favourites.length).toBeGreaterThan(0);
-    expect(favourites.length).toBeLessThan(all.length);
-    await expect(filterLine(page)).toHaveCount(0);
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-    await chooseFilter(page, 'favourites');
-    await expect.poll(() => listed(page)).toEqual(favourites);
-    expect(await lastQuery(page)).toMatchObject({
-      place: 'inbox',
-      favourites: true,
-      unread: false,
-    });
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--unread'),
-    );
-    await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('favourites'));
-    await openFilter(page);
-    await expect(menuItem(page, 'favourites')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'favourites').click();
-    await expect.poll(() => listed(page)).toEqual(all);
-    await expect(filterLine(page)).toHaveCount(0);
-    // The line's own way back; the focus stays near, on the funnel, from the keyboard too.
-    await chooseFilter(page, 'favourites');
-    await filterLine(page).getByTestId('filter-line-reset').click();
-    await expect(filterLine(page)).toHaveCount(0);
-    await expect.poll(() => listed(page)).toEqual(all);
-    await expect(funnel(page)).toBeFocused();
-    await chooseFilter(page, 'favourites');
-    await filterLine(page).getByTestId('filter-line-reset').focus();
-    await page.keyboard.press('Enter');
-    await expect(filterLine(page)).toHaveCount(0);
-    await expect(funnel(page)).toBeFocused();
-  });
-
   test('a favourite counts and lists only while it is in the inbox', async ({ page }) => {
     await open(page, WIN);
     await chooseFilter(page, 'favourites');
@@ -1222,7 +1182,6 @@ test.describe('keys', () => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2802');
     await page.keyboard.press('s');
-    await expect.poll(async () => (await stubJob(page, 'freelancermap', '2802')).pinned).toBe(true);
     await page.keyboard.press('o');
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2802' } },

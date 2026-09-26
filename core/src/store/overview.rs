@@ -1,13 +1,11 @@
-//! The queries of the "Übersicht" page: the jobs of a date window (the index `job_by_date`
-//! of schema 6 finds them at once; the numbers are taken from them), the last alert mail per
-//! portal (index `alert_by_portal`), the jobs of one company, and the counts a rescore
-//! compares before and after.
+//! Queries over all jobs: the last alert mail per portal (index `alert_by_portal` of schema
+//! 6), the jobs of one company in a date window (index `job_by_date`), and the counts a
+//! rescore compares before and after.
 
 use jiff::Timestamp;
 use rusqlite::params;
 
 use super::Store;
-use super::jobs::{JOB_COLUMNS, JobRow, job_row};
 use super::marks::INBOX;
 use crate::error::Result;
 use crate::model::HIGH_FROM;
@@ -22,53 +20,7 @@ pub struct BandCounts {
     pub high: u32,
 }
 
-/// What one portal's jobs in the inbox (no duplicate) still leave open.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct InboxOpen {
-    /// Without their full ad and not given up on: not fetched yet, or failed so far.
-    pub no_ad: u32,
-    /// With only the teaser a guest sees.
-    pub teaser: u32,
-    /// Excluded and not opened yet.
-    pub excluded_unread: u32,
-}
-
 impl Store {
-    /// The jobs whose alert mail (else first sighting) is at most `since` old, not in the
-    /// trash, no duplicate (its original stands for it), newest first.
-    pub fn jobs_since(&self, since: Timestamp) -> Result<Vec<JobRow>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job INDEXED BY job_by_date
-             WHERE COALESCE(mail_date, first_seen_at) >= ?1 AND trashed_at IS NULL
-               AND dup_of IS NULL
-             ORDER BY COALESCE(mail_date, first_seen_at) DESC, portal, job_id"
-        ))?;
-        let rows = stmt.query_map([to_db(since)], job_row)?;
-        rows.map(|r| r?).collect()
-    }
-
-    /// The jobs per portal whose alert mail (else first sighting) is at most `since` old,
-    /// wherever they lie now; a job two portals announced counts for each.
-    pub fn new_per_portal(&self, since: Timestamp) -> Result<Vec<(Portal, u32)>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(
-            "SELECT portal, COUNT(*) FROM job INDEXED BY job_by_date
-             WHERE COALESCE(mail_date, first_seen_at) >= ?1 GROUP BY portal",
-        )?;
-        let rows = stmt.query_map([to_db(since)], |r| {
-            Ok((r.get::<_, String>(0)?, r.get::<_, u32>(1)?))
-        })?;
-        let mut out = Vec::new();
-        for row in rows {
-            let (portal, count) = row?;
-            if let Some(portal) = Portal::from_key(&portal) {
-                out.push((portal, count));
-            }
-        }
-        Ok(out)
-    }
-
     /// The date of the last alert mail of every portal that ever sent one.
     pub fn last_alerts(&self) -> Result<Vec<(Portal, Option<Timestamp>)>> {
         let conn = self.conn();
@@ -128,37 +80,6 @@ impl Store {
         )?;
         Ok(BandCounts { excluded, high })
     }
-
-    /// Per portal what its jobs in the inbox (no duplicate) leave open ([`InboxOpen`]); a
-    /// portal without jobs there is left out.
-    pub fn inbox_open(&self) -> Result<Vec<(Portal, InboxOpen)>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT portal,
-                    COALESCE(SUM(desc_status IN ('missing', 'failed')), 0),
-                    COALESCE(SUM(desc_status = 'teaser'), 0),
-                    COALESCE(SUM(read_at IS NULL AND match_status IS 'excluded'), 0)
-             FROM job WHERE {INBOX} AND dup_of IS NULL GROUP BY portal ORDER BY portal"
-        ))?;
-        let rows = stmt.query_map([], |r| {
-            Ok((
-                r.get::<_, String>(0)?,
-                InboxOpen {
-                    no_ad: r.get(1)?,
-                    teaser: r.get(2)?,
-                    excluded_unread: r.get(3)?,
-                },
-            ))
-        })?;
-        let mut out = Vec::new();
-        for row in rows {
-            let (portal, open) = row?;
-            if let Some(portal) = Portal::from_key(&portal) {
-                out.push((portal, open));
-            }
-        }
-        Ok(out)
-    }
 }
 
 /// A company's name for comparing: cleaned like the list shows it, then without case,
@@ -173,10 +94,10 @@ mod tests {
     use super::*;
     use crate::store::test_support::{mail, now, posting};
 
-    /// The overview's queries go through their indexes, whatever number of jobs: the date
-    /// window through `job_by_date`, the last alert mails through `alert_by_portal`.
+    /// The queries go through their indexes, whatever number of jobs: the date window through
+    /// `job_by_date`, the last alert mails through `alert_by_portal`.
     #[test]
-    fn the_overview_queries_use_their_indexes() {
+    fn the_queries_use_their_indexes() {
         let store = Store::in_memory().unwrap();
         let plan = |sql: &str| -> String {
             let conn = store.conn();
@@ -192,11 +113,6 @@ mod tests {
              AND trashed_at IS NULL AND dup_of IS NULL",
         );
         assert!(window.contains("job_by_date"), "{window}");
-        let per_portal = plan(
-            "SELECT portal, COUNT(*) FROM job INDEXED BY job_by_date
-             WHERE COALESCE(mail_date, first_seen_at) >= ?1 GROUP BY portal",
-        );
-        assert!(per_portal.contains("job_by_date"), "{per_portal}");
         let alerts = plan(
             "SELECT portal, MAX(mail_date) FROM alert_mail INDEXED BY alert_by_portal WHERE ?1 = ?1 GROUP BY portal",
         );

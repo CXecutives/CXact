@@ -7,10 +7,6 @@ export type ExportSummary = {
  */
 overviewXlsx: string | null, 
 /**
- * Written HTML overview (if written in this run).
- */
-overviewHtml: string | null, 
-/**
  * A foreign overview at the same path was backed up here.
  */
 backup: string | null, txtWritten: number, 

@@ -14,15 +14,13 @@ export type FilterBand = Exclude<Band, 'low'>;
 
 /** The filter of the inbox (kept per user like the order). */
 export interface ListFilter {
-  /** Only the favourites (the star) of the inbox. */
-  favourites: boolean;
   /** Only this portal's jobs; null = every portal. */
   portal: Portal | null;
   /** Only jobs scored in this band or better; null = every job (unscored, excluded too). */
   minBand: FilterBand | null;
 }
 
-export const NO_FILTER: ListFilter = { favourites: false, portal: null, minBand: null };
+export const NO_FILTER: ListFilter = { portal: null, minBand: null };
 
 /** What the menu sets: the order of every list and the filter of the inbox. */
 export interface ListChoice {
@@ -51,7 +49,7 @@ export interface FilterEntry {
 }
 
 export interface FilterGroup {
-  id: 'sort' | 'favourites' | 'portal' | 'band';
+  id: 'sort' | 'portal' | 'band';
   /** The small heading above the group (none for a lone switch). */
   heading: ((words: Catalog) => string) | null;
   /** One switch (a checkbox entry) instead of one choice of several. */
@@ -81,21 +79,6 @@ export const FILTER_GROUPS: readonly FilterGroup[] = [
         pick: () => ({ sort }),
         needsProfile: sort === 'match' ? (w) => w.toolbar.sortNoProfile : null,
       })),
-  },
-  {
-    id: 'favourites',
-    heading: null,
-    toggle: true,
-    filters: true,
-    entries: () => [
-      {
-        id: 'favourites',
-        label: (w) => w.toolbar.favouritesOnly,
-        on: (choice) => choice.filter.favourites,
-        pick: (choice) => ({ filter: { favourites: !choice.filter.favourites } }),
-        needsProfile: null,
-      },
-    ],
   },
   {
     id: 'portal',
@@ -136,7 +119,7 @@ export function isFiltered(filter: ListFilter): boolean {
 
 /**
  * The active filter in words, group by group: the chosen entry of each filtering group that
- * is not its default ("Nur Favoriten", "linkedin.com", "Ab mittlerer Passung").
+ * is not its default ("linkedin.com", "Ab mittlerer Passung").
  */
 export function filterWords(
   filter: ListFilter,
@@ -157,7 +140,7 @@ const BAND_FROM: Record<FilterBand, Band[]> = { mid: ['mid', 'high'], high: ['hi
 
 /**
  * Does a job pass what narrows the counts too (the backend's store::filter_condition): the
- * portal and the band. The favourites narrow only the list (store::job_page).
+ * portal and the band.
  */
 export function passesFilter(job: JobView, filter: ListFilter): boolean {
   if (filter.portal !== null && job.key.portal !== filter.portal) return false;
@@ -170,15 +153,14 @@ export function passesFilter(job: JobView, filter: ListFilter): boolean {
 
 /** Does a job of the inbox belong to the filtered list? */
 export function inListFilter(job: JobView, filter: ListFilter): boolean {
-  return passesFilter(job, filter) && (!filter.favourites || job.pinned);
+  return passesFilter(job, filter);
 }
 
 /** A kept filter (localStorage), or none when it holds something else. */
 export function parseFilter(kept: unknown): ListFilter {
   if (typeof kept !== 'object' || kept === null) return NO_FILTER;
-  const { favourites, portal, minBand } = kept as Record<string, unknown>;
+  const { portal, minBand } = kept as Record<string, unknown>;
   return {
-    favourites: favourites === true,
     portal: typeof portal === 'string' ? (portal as Portal) : null,
     minBand: minBand === 'mid' || minBand === 'high' ? minBand : null,
   };

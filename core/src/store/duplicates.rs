@@ -31,7 +31,7 @@ impl Store {
     /// and the teaser (with anything that pointed to it) points to it; the original keeps what
     /// the user and the files already had of the job ([`inherit`]).
     ///
-    /// A job the user marked (a favourite, moved out of the inbox, "fits anyway") is never
+    /// A job the user marked (moved out of the inbox, "fits anyway") is never
     /// linked: a duplicate leaves every list, and her marks must not leave with it. An
     /// archived, trashed or closed job is never the original either - the fresh, open
     /// announcement would vanish behind it.
@@ -160,7 +160,7 @@ struct Row {
     /// Only a guest's teaser, not the full text.
     teaser: bool,
     closed: bool,
-    /// The user marked it (a favourite, moved out of the inbox, "fits anyway").
+    /// The user marked it (moved out of the inbox, "fits anyway").
     marked: bool,
 }
 
@@ -170,8 +170,8 @@ fn row(conn: &rusqlite::Connection, portal: &str, id: &str, open: bool) -> Resul
     Ok(conn
         .query_row(
             "SELECT title, company, desc_text, desc_status = 'teaser', desc_closed,
-                    app_status IS NOT NULL OR archived_at IS NOT NULL
-                      OR trashed_at IS NOT NULL OR override_include IS NOT NULL
+                    archived_at IS NOT NULL OR trashed_at IS NOT NULL
+                      OR override_include IS NOT NULL
              FROM job
              WHERE portal = ?1 AND job_id = ?2 AND desc_text IS NOT NULL
                AND (NOT ?3 OR (desc_status IN ('ok', 'teaser') AND dup_of IS NULL))",
@@ -478,15 +478,11 @@ mod tests {
             jobs.into_iter().map(|j| j.key).collect()
         };
         let top = keys(store.best_matches(10).unwrap());
-        assert_eq!(top, std::slice::from_ref(&first.key));
-        let overview = store.overview_jobs(20).unwrap();
-        assert!(overview.favourites.is_empty());
-        assert_eq!(keys(overview.new.jobs), [first.key]);
-        assert_eq!(overview.new.total, 1);
+        assert_eq!(top, [first.key]);
     }
 
     /// A job the user marked stays a job of its own: linked as a duplicate it would leave
-    /// every list with its favourite, its place or "fits anyway".
+    /// every list with its place or "fits anyway".
     #[test]
     fn a_marked_job_is_never_hidden_as_a_duplicate() {
         use crate::model::Place;
@@ -505,7 +501,7 @@ mod tests {
         store
             .record_text(&original.key, TEXT, false, false, now())
             .unwrap();
-        let marks: [(&str, Mark<'_>); 4] = [
+        let marks: [(&str, Mark<'_>); 3] = [
             ("4000000001", &|key| {
                 store.set_override(key, true).unwrap();
             }),
@@ -518,9 +514,6 @@ mod tests {
                 store
                     .move_jobs(std::slice::from_ref(key), Place::Archive, now())
                     .unwrap();
-            }),
-            ("4000000004", &|key| {
-                store.set_pinned(key, true, now()).unwrap();
             }),
         ];
         for (id, mark) in marks {
@@ -678,7 +671,7 @@ mod tests {
     }
 
     /// A teaser the user brought back into the inbox keeps her choice when its full text
-    /// takes its place: the new original is not archived for the teaser's age.
+    /// takes its place: the new original stands in the inbox.
     #[test]
     fn the_new_original_keeps_a_move_back_into_the_inbox() {
         use crate::model::Place;
@@ -711,7 +704,6 @@ mod tests {
         let full = add("https://www.linkedin.com/jobs/view/4000000009/", run, now());
         store.record_text(&full, TEXT, false, false, now()).unwrap();
         assert_eq!(store.link_duplicate(&full).unwrap(), Some(full.clone()));
-        assert_eq!(store.auto_archive(days(30), now()).unwrap(), 0);
         assert_eq!(store.job(&full).unwrap().unwrap().place(), Place::Inbox);
     }
 

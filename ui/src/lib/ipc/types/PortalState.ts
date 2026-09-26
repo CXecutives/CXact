@@ -7,7 +7,11 @@ import type { Quota } from "./Quota";
 /**
  * A portal in the settings.
  */
-export type PortalState = { portal: Portal, enabled: boolean, fetchDetails: boolean, login: PortalLogin, loginEnabled: boolean, 
+export type PortalState = { portal: Portal, 
+/**
+ * Its alert mails are read and its ads fetched.
+ */
+enabled: boolean, login: PortalLogin, loginEnabled: boolean, 
 /**
  * `null` = unknown (or no sign-in), `false` = sign-in needed.
  */

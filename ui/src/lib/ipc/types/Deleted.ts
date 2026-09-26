@@ -17,7 +17,7 @@ count: number,
  */
 keys: Array<JobKey>, 
 /**
- * The overview could not be written again (e.g. open in Excel); `params.target` names
+ * The Excel file could not be written again (e.g. open in Excel); `params.target` names
  * what failed. The jobs are deleted anyway.
  */
 exportError: ErrorInfo | null, };

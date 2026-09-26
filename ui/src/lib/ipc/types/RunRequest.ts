@@ -4,4 +4,4 @@ import type { JobKey } from "./JobKey";
 /**
  * What the interface starts. The JSON is flat: `{ "kind": "details", "keys": [...] }`.
  */
-export type RunRequest = { "kind": "fetch" } | { "kind": "details", keys: Array<JobKey>, } | { "kind": "rescore" } | { "kind": "fullMailbox" };
+export type RunRequest = { "kind": "fetch" } | { "kind": "details", keys: Array<JobKey>, } | { "kind": "rescore" };

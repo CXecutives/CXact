@@ -74,7 +74,6 @@ type Status = 'idle' | 'loading' | 'ready' | 'error';
 const ZERO: JobCounts = {
   inbox: 0,
   unread: 0,
-  favourites: 0,
   archive: 0,
   trash: 0,
   excluded: 0,
@@ -121,7 +120,6 @@ function add(
   return {
     inbox: counts.inbox + shown,
     unread: counts.unread + isNew,
-    favourites: counts.favourites + (job.pinned && job.place === 'inbox' ? sign : 0),
     archive: counts.archive + (job.place === 'archive' ? sign : 0),
     trash: counts.trash + (job.place === 'trash' ? sign : 0),
     excluded: counts.excluded + (out ? shown : 0),
@@ -331,7 +329,6 @@ class JobsStore {
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
     return {
-      favourites: chosen.favourites,
       portal:
         chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
           ? chosen.portal
@@ -559,9 +556,8 @@ class JobsStore {
     return end;
   }
 
-  /** Rows the query has (the favourites of the filter are counted on their own). */
+  /** Rows the query has. */
   private countOf(counts: JobCounts): number {
-    if (this.place === 'inbox' && this.filter.favourites) return counts.favourites;
     return counts[this.place];
   }
 
@@ -569,7 +565,6 @@ class JobsStore {
     return {
       place: this.place,
       unread: false,
-      favourites: filter.favourites,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
       portal: filter.portal,
@@ -675,7 +670,6 @@ class JobsStore {
         query: {
           place: 'inbox',
           unread: false,
-          favourites: false,
           sort: 'newest',
           search: null,
           portal: null,
@@ -775,19 +769,9 @@ class JobsStore {
     }
   }
 
-  /** The favourite (the star), a flag of its own whatever the place. Resolves with the
-   *  error text (the star goes back), or null. */
-  async pin(key: JobKey, on: boolean): Promise<string | null> {
-    const before = this.held(key);
-    if (before === null || before.pinned === on) return null;
-    this.patch(key, { pinned: on });
-    try {
-      await invoke('set_pinned', { key, on });
-      return null;
-    } catch (error) {
-      this.patch(key, { pinned: before.pinned });
-      return errorText(error);
-    }
+  /** The favourites went (the backend keeps none): nothing to pin, never an error. */
+  pin(_key: JobKey, _on: boolean): Promise<string | null> {
+    return Promise.resolve(null);
   }
 
   /** The job as the page holds it (a row or the reader). */
@@ -947,11 +931,6 @@ class JobsStore {
   /** The prompt for a deep analysis of a job in any AI chat. */
   async aiPrompt(key: JobKey): Promise<string> {
     return invoke('ai_prompt', { key });
-  }
-
-  /** One prompt that compares the best current matches (3 to 5) in any AI chat. */
-  async aiPromptTop(limit: number): Promise<string> {
-    return invoke('ai_prompt_top', { limit });
   }
 
   /** A listed row that no longer belongs to the list leaves it (`patch` has counted it out

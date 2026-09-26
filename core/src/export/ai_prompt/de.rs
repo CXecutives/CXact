@@ -18,10 +18,6 @@ const INTRO: &str = "Du bist ein erfahrener Recruiter für Interim-Mandate, Proj
 
 Unten stehen mein Profil, die Anzeige und die Vorbewertung der App, danach die Arbeitsweise, die Bewertungsregel und das Antwortformat.";
 
-const TOP_INTRO: &str = "Du bist ein erfahrener Recruiter für Interim-Mandate, Projekte und Festanstellungen. Vergleiche für mich die besten aktuellen Jobs aus meiner Job-Alert-App und sag, auf welche sich eine Bewerbung lohnt und womit ich anfange. Miss jeden Job streng an meinem Profil, belege jede Aussage und benenne klar, was fehlt oder unklar ist. Die App hat jeden Job schon maschinell vorbewertet; prüfe diese Ergebnisse, statt sie zu übernehmen.
-
-Unten stehen mein Profil und die Jobs mit Eckdaten, Anzeigentext und Vorbewertung, danach die Arbeitsweise, die Bewertungsregel und das Antwortformat.";
-
 const GLOSSARY: &[(&str, &str)] = &[
     (
         "harte_kriterien",
@@ -121,49 +117,10 @@ Zwei bis vier Punkte: die stärksten Belege aus dem Profil für die Kernanforder
 ## Nachricht
 Nur bei Bewerben oder Erst klären: ein Entwurf an Kunde oder Agentur in drei bis fünf Sätzen, mit den stärksten Belegen und den wichtigsten offenen Fragen.";
 
-const TOP_ANSWER: &str = "Antworte auf Deutsch, schlicht, konkret und kurz: keine Floskeln, keine Wiederholung der Anzeigen, keine Gedankenstriche als Trenner, keine Ausrufezeichen, kein Emoji. Zitate bleiben in der Sprache der Anzeige. Halte genau diesen Aufbau ein.
-
-## Rangfolge
-| Platz | Job | Punktzahl | Empfehlung | Warum |
-|---|---|---|---|---|
-
-Sortiert nach Punktzahl, bei Gleichstand Interim vor Festanstellung, dann weniger offene Muss-Anforderungen. Job ist die Nummer aus der Liste oben mit dem Titel, Empfehlung Bewerben, Erst klären oder Nicht bewerben, Warum ein Satz. Ein ausgeschlossener Job steht am Ende mit **Ausgeschlossen** statt einer Punktzahl. Darunter ein Satz, mit welchem Job ich anfangen soll und warum.
-
-## Platz 1 · Job 3 · Titel
-Danach jeder Job in der Reihenfolge der Rangfolge unter einer solchen Überschrift, mit diesen Abschnitten, je Job knapp.
-
-### Ergebnis
-**X von 10** und die Empfehlung, darunter ein Satz: was trägt, was fehlt, was als Nächstes zu tun ist. Ein ausgeschlossener Job mit dem Kriterium und dem Zitat, dahinter die fachliche Punktzahl ohne den Ausschluss.
-
-### Begründung
-Bis drei Punkte: Stufe und Obergrenze der Bewertungsregel, Schwerpunkte, Wunschrolle und Wünsche, und wo du von der Vorbewertung der App abweichst.
-
-### Anforderungen
-| Anforderung | Gewicht | Stand | Anzeige | Profil |
-|---|---|---|---|---|
-
-Eine Zeile je Anforderung, Muss vor Kann. Gewicht Muss, Kann oder Formal; Stand erfüllt, teilweise, fehlt oder unklar; Anzeige ein wörtliches Zitat; Profil der Eintrag mit Jahren oder die konkrete Lücke.
-
-### Harte Kriterien
-| Kriterium | Profil | Anzeige | Ergebnis |
-|---|---|---|---|
-
-Vertragsart, Vergütung, Seniorität, Verfügbarkeit, Einsatzort und jedes weitere Ausschlusskriterium des Profils; Ergebnis erfüllt, teilweise, verletzt oder nicht angegeben.
-
-### Risiken und offene Fragen
-Bis vier Punkte: Warnsignale aus Anzeige oder Profil und die Fragen an Kunde oder Agentur, die über die Bewerbung entscheiden.
-
-### Vergütung und Konditionen
-Ein bis zwei Sätze: Vergütung gegen `min_tagessatz` und `tagessatz_wunsch` (bei einer Festanstellung gegen `min_jahresgehalt`), Dauer, Remote-Anteil und Start; fehlt die Vergütung, eine Schätzung, als solche markiert.
-
-### Für die Bewerbung
-Zwei bis drei Punkte: die stärksten Belege aus dem Profil und höchstens ein Punkt, den ich offen ansprechen sollte.";
-
 static WORDS: Words = Words {
     rubric: include_str!("../ai_rubric.de.md"),
     task_heading: "Auftrag",
     intro: INTRO,
-    top_intro: TOP_INTRO,
     profile_heading: "Mein Profil",
     profile_note: "Als JSON, ohne Name und Kontaktdaten.",
     glossary_intro: "Die Schlüssel gehören zum Profilformat meiner App:",
@@ -184,8 +141,6 @@ static WORDS: Words = Words {
     method: METHOD,
     answer_heading: "Antwortformat",
     answer: ANSWER,
-    top_answer: TOP_ANSWER,
-    jobs_heading: "Die Jobs",
     cut: "[gekürzt]",
     untitled: "(ohne Titel)",
     unknown: "nicht erkannt",
@@ -205,7 +160,6 @@ static WORDS: Words = Words {
         industries: "Branchen",
         skills: "Skills",
         mail: "Datum der Alert-Mail",
-        pinned: "Mein Favorit",
         status: "Status",
         link: "Link",
         closed: "Die Portalseite nimmt keine Bewerbungen mehr an.",
@@ -317,26 +271,6 @@ impl Wording for German {
             WorkMode::Hybrid => "hybrid",
             WorkMode::Onsite => "vor Ort",
         }
-    }
-
-    fn job_heading(&self, n: usize, title: &str) -> String {
-        format!("Job {n} · {title}")
-    }
-
-    fn top_note(&self, jobs: usize, pinned: usize) -> String {
-        let count = if jobs == 1 {
-            "Ein Job".to_owned()
-        } else {
-            format!("{jobs} Jobs")
-        };
-        let order = match pinned {
-            0 => "die besten nach der Vorbewertung".to_owned(),
-            1 => "zuerst mein Favorit, dann die besten nach der Vorbewertung".to_owned(),
-            n => format!("zuerst meine {n} Favoriten, dann die besten nach der Vorbewertung"),
-        };
-        format!(
-            "{count} aus meiner App, {order}. Die Vorbewertung ist je Job ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil."
-        )
     }
 
     fn text_cut(&self, max: usize) -> String {

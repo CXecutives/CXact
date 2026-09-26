@@ -11,7 +11,6 @@
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
 import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
-import { AUTO_ARCHIVE_DAYS, AUTO_EMPTY_TRASH_DAYS } from '$lib/ipc/types/settings';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -50,10 +49,6 @@ const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
         ? busyText
         : null;
 
-/** The dry run writes no file, and a run holds them. */
-const filesHeld = ({ state, t, running, busyText }: Lock): string | null =>
-  state.dryRun ? t.error.text('dryRun', {}) : running ? busyText : null;
-
 export const ACTIONS = {
   workspaceChange: {
     label: (t) => t.common.change,
@@ -79,46 +74,6 @@ export const ACTIONS = {
     icon: 'folder',
     variant: 'ghost',
     open: { kind: 'excelInFolder' },
-  },
-  // Opening writes the report first, except in the dry run and while a run holds the files.
-  overviewOpen: {
-    label: (t) => t.common.open,
-    icon: 'document',
-    variant: 'ghost',
-    open: { kind: 'overview' },
-    locked: (lock) =>
-      lock.beforeFirstFetch
-        ? lock.t.settings.overviewLater
-        : lock.state.settings.excelExists
-          ? null
-          : filesHeld(lock),
-  },
-  overviewReveal: {
-    label: (t) => t.common.openFolder,
-    icon: 'folder',
-    variant: 'ghost',
-    open: { kind: 'overviewInFolder' },
-  },
-  txtRewrite: {
-    label: (t) => t.settings.txtRewrite,
-    icon: 'rewrite',
-    variant: 'ghost',
-    locked: (lock) => (lock.beforeFirstFetch ? lock.t.settings.txtLater : filesHeld(lock)),
-  },
-  txtReveal: {
-    label: (t) => t.common.openFolder,
-    icon: 'folder',
-    variant: 'ghost',
-    open: { kind: 'txtDir' },
-    locked: ({ state, t }) => (state.settings.txtFiles > 0 ? null : t.settings.txtNone),
-  },
-  // Can be undone (its toast writes them again): no dialog, no warning colour.
-  txtClear: {
-    label: (t) => t.settings.txtClear,
-    icon: 'trash',
-    variant: 'ghost',
-    locked: (lock) =>
-      filesHeld(lock) ?? (lock.state.settings.txtFiles > 0 ? null : lock.t.settings.txtNone),
   },
   logsOpen: {
     label: (t) => t.common.openFolder,
@@ -150,7 +105,7 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'workspaceChange' | 'txtRewrite' | 'txtClear' | 'backupRestore' | 'reset';
+export type CommandId = 'workspaceChange' | 'backupRestore' | 'reset';
 
 /** A switch: on or off at once (the state is patched before the save). */
 export interface SwitchRow {
@@ -210,14 +165,13 @@ export interface CardSpec {
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  autoArchiveDays: null,
-  autoEmptyTrashDays: null,
+  fetchRange: null,
+  exportExcel: null,
+  exportCsv: null,
   language: null,
   palette: null,
   ...change,
 });
-
-/** Days after which old jobs archive themselves, and the trash empties itself, when on. */
 
 const palette: ChoiceRow<Palette> = {
   kind: 'choice',
@@ -244,30 +198,6 @@ const language: ChoiceRow<Language> = {
 export const CARDS: readonly CardSpec[] = [
   { id: 'mailbox', heading: (t) => t.settings.mailbox, body: 'mailbox' },
   {
-    id: 'fetch',
-    heading: (t) => t.settings.automatic,
-    body: [
-      {
-        kind: 'switch',
-        id: 'auto-archive',
-        label: (t) => t.settings.autoArchive(AUTO_ARCHIVE_DAYS),
-        hint: (t) => t.settings.autoArchiveHint,
-        on: (state) => state.autoArchiveDays > 0,
-        patch: (on) => ({ autoArchiveDays: on ? AUTO_ARCHIVE_DAYS : 0 }),
-        set: (state, on) => void (state.autoArchiveDays = on ? AUTO_ARCHIVE_DAYS : 0),
-      },
-      {
-        kind: 'switch',
-        id: 'auto-empty-trash',
-        label: (t) => t.settings.autoEmptyTrash(AUTO_EMPTY_TRASH_DAYS),
-        hint: (t) => t.settings.autoEmptyTrashHint,
-        on: (state) => state.autoEmptyTrashDays > 0,
-        patch: (on) => ({ autoEmptyTrashDays: on ? AUTO_EMPTY_TRASH_DAYS : 0 }),
-        set: (state, on) => void (state.autoEmptyTrashDays = on ? AUTO_EMPTY_TRASH_DAYS : 0),
-      },
-    ],
-  },
-  {
     id: 'portals',
     heading: (t) => t.settings.portals,
     hint: (t) => t.settings.portalsHint,
@@ -292,19 +222,6 @@ export const CARDS: readonly CardSpec[] = [
         id: 'excel',
         label: (t) => t.settings.excel,
         actions: ['excelOpen', 'excelReveal'],
-      },
-      {
-        kind: 'actions',
-        id: 'overview',
-        label: (t) => t.settings.overview,
-        actions: ['overviewOpen', 'overviewReveal'],
-      },
-      {
-        kind: 'actions',
-        id: 'txt',
-        label: (t) => t.settings.txt,
-        hint: (t, state) => t.settings.txtCount(state.settings.txtFiles),
-        actions: ['txtRewrite', 'txtReveal', 'txtClear'],
       },
     ],
   },

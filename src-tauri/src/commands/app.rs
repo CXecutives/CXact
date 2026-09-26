@@ -126,7 +126,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         &JobQuery {
             place: Place::Inbox,
             unread: false,
-            favourites: false,
             sort: JobSort::Newest,
             search: None,
             limit: 0,
@@ -138,8 +137,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     .counts;
     let last_run = pipeline::last_run(&state.store)?;
     let result_dir = workspace.join(RESULT_DIR);
-    // Only the app's own text files - exactly those "delete text files" would remove.
-    let txt_files = export::txt_files(&result_dir, &state.store.txt_names()?).len();
     let running = match &*lock(&state.activity) {
         Activity::Run(run) => Some(run.snapshot()),
         _ => None,
@@ -159,16 +156,16 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
-            txt_files,
             excel_path: export::overview_path(&result_dir),
-            excel_exists: export::overview_path(&result_dir).is_file(),
+            excel_exists: settings.export_excel && export::overview_path(&result_dir).is_file(),
             workspace: workspace.clone(),
         },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, now),
-        auto_archive_days: settings.auto_archive_days,
-        auto_empty_trash_days: settings.auto_empty_trash_days,
+        fetch_range: settings.fetch_range,
+        export_excel: settings.export_excel,
+        export_csv: settings.export_csv,
         language: settings.language_or(state.system_language),
         palette: settings.palette,
         last_run,
@@ -242,9 +239,10 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// Saves portal switches, the automatic archive and trash, the language and the palette. The
-/// workspace only changes through the dialog. Another language rewrites the Excel file and
-/// the report a moment later (like a mark); another palette dresses the window at once.
+/// Saves portal switches, the fetch range, which files the export writes, the language and
+/// the palette. The workspace only changes through the dialog. Another language or the Excel
+/// file switched on writes the Excel file a moment later (like a mark); another palette
+/// dresses the window at once.
 #[tauri::command]
 pub async fn save_settings(
     app: AppHandle,
@@ -253,13 +251,17 @@ pub async fn save_settings(
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
-    let language = settings.language_or(state.system_language);
+    let (language, excel) = (
+        settings.language_or(state.system_language),
+        settings.export_excel,
+    );
     patch.apply(&mut settings);
     settings.save(&state.store)?;
     if patch.palette.is_some() {
         crate::platform::dress(&window, settings.palette);
     }
-    if settings.language_or(state.system_language) != language {
+    if settings.language_or(state.system_language) != language || (settings.export_excel && !excel)
+    {
         super::files::marked(&app);
     }
     build_state(&state)
@@ -267,8 +269,8 @@ pub async fn save_settings(
 
 /// Folder dialog for the workspace; `None` if cancelled. The work moves along (user decision
 /// 2026-09-26): a folder without a profile gets a copy of the old folder's `profil/`, one
-/// with a profile of its own keeps it and the app uses it from now on; the Excel file, the
-/// report and the text files are written in the new folder at once. The app is held
+/// with a profile of its own keeps it and the app uses it from now on; the Excel file and the
+/// text files are written in the new folder at once. The app is held
 /// meanwhile, like a file command.
 #[tauri::command]
 pub async fn pick_workspace(
@@ -346,8 +348,8 @@ fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
     Ok(WorkspaceProfile::Copied)
 }
 
-/// The Excel file, the report and the text files in the (new) work folder, now; a file that
-/// cannot be written says so in the log and is written by the next fetch.
+/// The Excel file, the skill's list and the text files in the (new) work folder, now; a file
+/// that cannot be written says so in the log and is written by the next fetch.
 fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::settings::Language) {
     let now = Timestamp::now();
     let txt = pipeline::rewrite_txt(&state.store, workspace, now);
@@ -357,7 +359,6 @@ fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::sett
         workspace,
         matcher.as_deref().map(|m| m as &dyn pipeline::Matcher),
         now,
-        language,
     );
     let excel = pipeline::refresh_excel(&state.store, workspace, now, language);
     log::info!(
