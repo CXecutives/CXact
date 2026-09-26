@@ -37,7 +37,6 @@
     {#each bulk.paneActions as action (action.label)}
       <Button
         variant="secondary"
-        size="md"
         icon={action.icon}
         label={action.label}
         disabled={action.disabled ?? false}

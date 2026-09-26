@@ -35,12 +35,12 @@
     options: readonly SegmentedOption<Id>[];
     value: Id;
     label: string;
-    size?: 'sm' | 'md';
+    size?: 'sm' | 'field';
     testid?: string | null;
     onchange: (id: Id) => void;
   }
 
-  let { options, value, label, size = 'md', testid = null, onchange }: Props = $props();
+  let { options, value, label, size = 'field', testid = null, onchange }: Props = $props();
 
   /** The count each option showed last: a count that goes keeps its room with it. */
   const kept = $state<Record<string, number>>({});
@@ -184,7 +184,7 @@
     z-index: var(--z-below);
     inset: 0;
     border-radius: inherit;
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     opacity: 0;
     transition:
       opacity var(--dur-fast) var(--ease-standard),
@@ -202,7 +202,7 @@
   }
 
   :global(:where(:root:not([data-aux-press]))) .option[aria-checked='false']:active:hover .pill {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
   }
 
   .option[aria-checked='true'] {
@@ -229,13 +229,14 @@
     box-shadow: var(--focus-ring-inset);
   }
 
+  /* A choice reads like a field (14 px) at either height (28 or 32 px, like the buttons). */
   .sm {
     --seg-height: var(--control-sm);
-    --seg-type: var(--type-sm);
+    --seg-type: var(--type-field);
   }
 
-  .md {
-    --seg-height: var(--control-md);
-    --seg-type: var(--type-md);
+  .field {
+    --seg-height: var(--control-field);
+    --seg-type: var(--type-field);
   }
 </style>

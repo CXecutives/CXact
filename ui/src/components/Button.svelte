@@ -1,12 +1,15 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link × sm | md | lg | field. Native
+  The button of the app: primary | secondary | ghost | danger | link × sm | field. Native
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press lets the button
   give a little, uniformly (0.98, 60 ms), and it settles back in 150 ms. Nothing stretches; no lift, no glow, no bounce.
-  - Trailing actions inside a row are sm, action bars are md; a choice beside fields, and a
-    button in a row of fields, is field (as tall as a field, with the small type).
+  - Two heights only (core/tests/ui_contract.rs): sm (28 px) for trailing actions inside a
+    row and tools; field (32 px, the default) for everything else: action bars, dialogs,
+    empty states, a button in a row of fields. Both use the small type; every glyph is 16 px.
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip.
+  - keys: the shortcut that does the same (a combo of platform.ts keyLabel: 'mod+f', 'e');
+    the tooltip names it under the label, for labelled and icon-only buttons alike.
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
@@ -15,7 +18,8 @@
   - A ghost toggle (the pin star) pops once when it is switched on by a click.
   - radio: an option of a group with one choice (profile/ChoiceButtons, a radiogroup): it
     looks like a secondary toggle, is chosen while `checked`, and only the group's one Tab
-    stop (`stop`) is in the Tab order; the arrows move between the options (input.ts).
+    stop (`stop`) is in the Tab order; the arrows move between the options (input.ts). A
+    choice reads like a field: 14 px text.
   - turned: the glyph stands half a turn; it turns in 180 ms.
   - dot: a small navy dot at the glyph's corner says that something of it is on (the
     funnel of the list while a filter narrows it); `hint` adds a second, smaller line to
@@ -25,14 +29,14 @@
     ones: not in the Tab order, and a click leaves the caret in the field.
   - isDefault: the default of a dialog, the one Enter presses; the dialog marks it.
   - warns: a quiet (secondary or ghost) button whose action loses something for good
-    (empty the trash, delete for good, remove the mailbox, delete the text files): it turns
-    red on hover, before the dialog asks. Moving a job to the trash can be undone and does
-    not warn; no icon warns by itself.
+    (empty the trash, delete for good, remove the mailbox, reset the app): its text and
+    glyph are red at rest, before the dialog asks. Moving a job to the trash can be undone
+    and does not warn; no icon warns by itself.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
   export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
-  export type ButtonSize = 'sm' | 'md' | 'lg' | 'field';
+  export type ButtonSize = 'sm' | 'field';
   export const BUTTON_VARIANTS: readonly ButtonVariant[] = [
     'primary',
     'secondary',
@@ -40,13 +44,14 @@
     'danger',
     'link',
   ];
-  export const BUTTON_SIZES: readonly ButtonSize[] = ['sm', 'md', 'lg', 'field'];
+  export const BUTTON_SIZES: readonly ButtonSize[] = ['sm', 'field'];
 </script>
 
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
   import { fade, pulseOnce } from '$lib/motion/transitions';
-  import Icon, { type IconName, type IconSize } from './Icon.svelte';
+  import { keyLabel } from '$lib/platform';
+  import Icon, { type IconName } from './Icon.svelte';
   import Spinner from './Spinner.svelte';
 
   interface Props {
@@ -70,6 +75,8 @@
     dot?: boolean;
     /** A second, smaller line of the tooltip (what is on). */
     hint?: string | null;
+    /** The shortcut that does the same ('mod+f', 'e'): named in the tooltip. */
+    keys?: string | null;
     /** Opens something outside the app (a link shows the hand then). */
     external?: boolean;
     /** Fill the width of the container. */
@@ -93,7 +100,7 @@
   let {
     label,
     variant = 'secondary',
-    size = 'md',
+    size = 'field',
     icon = null,
     iconOnly = false,
     loading = false,
@@ -105,6 +112,7 @@
     turned = false,
     dot = false,
     hint = null,
+    keys = null,
     external = false,
     wide = false,
     inField = false,
@@ -117,20 +125,14 @@
     onclick,
   }: Props = $props();
 
-  const ICON_SIZE: Record<ButtonSize, IconSize> = { sm: 'sm', md: 'sm', lg: 'md', field: 'sm' };
-  const ICON_ONLY_SIZE: Record<ButtonSize, IconSize> = {
-    sm: 'sm',
-    md: 'md',
-    lg: 'lg',
-    field: 'md',
-  };
-
   const inactive = $derived(disabled || loading);
+  /** The second line of the tooltip: what is on, else the shortcut. */
+  const second = $derived(hint ?? (keys ? keyLabel(keys) : null));
   const tip = $derived(
     disabled && disabledReason
       ? disabledReason
-      : iconOnly
-        ? { text: label, hint: hint ?? null }
+      : iconOnly || second !== null
+        ? { text: label, hint: second }
         : null,
   );
 
@@ -179,11 +181,7 @@
   <span class="content">
     {#if icon}
       <span class="glyph" data-icon={icon} bind:this={glyph}>
-        <Icon
-          name={icon}
-          size={iconOnly ? ICON_ONLY_SIZE[size] : ICON_SIZE[size]}
-          filled={pressed === true}
-        />
+        <Icon name={icon} size="sm" filled={pressed === true} />
         {#if dot}<span class="dot" aria-hidden="true" data-testid="button-dot"></span>{/if}
       </span>
     {/if}
@@ -323,13 +321,14 @@
     --btn-shadow: var(--sh-primary);
   }
 
+  /* The control kind (tokens.css): a muted fill and a darker edge under the pointer. */
   .secondary {
     --btn-bg: var(--surface);
-    --btn-bg-hover: var(--surface-muted);
-    --btn-bg-active: var(--surface-muted);
+    --btn-bg-hover: var(--control-hover);
+    --btn-bg-active: var(--control-hover);
     --btn-border: var(--border-strong);
-    --btn-border-hover: var(--border-input);
-    --btn-border-active: var(--border-input);
+    --btn-border-hover: var(--control-hover-edge);
+    --btn-border-active: var(--control-hover-edge);
     --btn-fg: var(--text);
     --btn-fg-hover: var(--text);
     --btn-shadow: var(--sh-xs);
@@ -349,10 +348,11 @@
     --btn-fg-hover: var(--active-text);
   }
 
+  /* The quiet kind (tokens.css): a wash under the pointer, a deeper one pressed. */
   .ghost {
     --btn-bg: transparent;
-    --btn-bg-hover: var(--surface-hover);
-    --btn-bg-active: var(--surface-press);
+    --btn-bg-hover: var(--quiet-hover);
+    --btn-bg-active: var(--quiet-press);
     --btn-border: transparent;
     --btn-border-hover: transparent;
     --btn-border-active: transparent;
@@ -361,9 +361,11 @@
     --btn-shadow: none;
   }
 
-  /* Removing or resetting something: a quiet warning on hover, before the dialog asks. */
+  /* Losing something for good: red at rest, before the dialog asks (ghost or secondary in
+     the danger colour; the filled danger is the dialog's confirm). */
   .ghost.warns,
   .secondary.warns {
+    --btn-fg: var(--danger-strong);
     --btn-fg-hover: var(--danger-strong);
   }
 
@@ -436,18 +438,12 @@
   }
 
   /* --------------------------------------------------------------- sizes */
+  /* Two heights, one type: 28 px in rows and tools, 32 px everywhere else. */
   .sm {
     --btn-height: var(--control-sm);
     --btn-pad: var(--space-12);
     --btn-gap: var(--space-6);
     --btn-type: var(--type-sm);
-  }
-
-  .md {
-    --btn-height: var(--control-md);
-    --btn-pad: var(--space-16);
-    --btn-gap: var(--space-8);
-    --btn-type: var(--type-md);
   }
 
   .field {
@@ -457,11 +453,9 @@
     --btn-type: var(--type-sm);
   }
 
-  .lg {
-    --btn-height: var(--control-lg);
-    --btn-pad: var(--space-20);
-    --btn-gap: var(--space-8);
-    --btn-type: var(--type-md);
+  /* A choice reads like the field beside it: 14 px text. */
+  .btn[role='radio'] {
+    --btn-type: var(--type-field);
   }
 
   .icon-only {
