@@ -337,6 +337,22 @@ pub struct ScoreSummary {
     /// Jobs still waiting for a score.
     pub pending: usize,
     pub best: Option<u8>,
+    /// A rescore (after the profile was saved) only: the excluded and the high-band jobs of
+    /// the inbox before and after it.
+    #[serde(default)]
+    pub delta: Option<ScoreDelta>,
+}
+
+/// What a rescore changed: the excluded and the high-band jobs of the inbox (no duplicate)
+/// before and after it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct ScoreDelta {
+    pub excluded_before: u32,
+    pub excluded_after: u32,
+    pub high_before: u32,
+    pub high_after: u32,
 }
 
 /// The jobs a mailbox run brought - the "neue Jobs" of the run card: first seen in the run
@@ -638,6 +654,10 @@ pub async fn run<B: Backends>(
         summary.fetch = Some(fetched);
     }
     summary.per_portal = per_portal(store, run, &postings, summary.fetch.as_ref());
+    // A rescore says what it changed (after the profile was saved).
+    let before = (request.kind == RunKind::Rescore)
+        .then(|| store.band_counts().ok())
+        .flatten();
     if let Some(matcher) = &matcher {
         score_step(
             store,
@@ -648,6 +668,17 @@ pub async fn run<B: Backends>(
             &mut summary,
             &mut emit,
         );
+    }
+    if let Some(before) = before
+        && let Ok(after) = store.band_counts()
+    {
+        let totals = summary.score.get_or_insert_with(ScoreSummary::default);
+        totals.delta = Some(ScoreDelta {
+            excluded_before: before.excluded,
+            excluded_after: after.excluded,
+            high_before: before.high,
+            high_after: after.high,
+        });
     }
 
     if summary.scan.is_some() {

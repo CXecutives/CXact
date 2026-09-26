@@ -65,6 +65,7 @@ impl Tally {
             unscorable: self.unscorable,
             pending,
             best: self.best,
+            delta: None,
         }
     }
 }

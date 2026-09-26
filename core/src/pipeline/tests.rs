@@ -142,8 +142,10 @@ async fn one_click_run_writes_everything_and_finishes_once() {
             excluded: 1,
             unscorable: 1,
             pending: 0,
-            best: Some(100)
-        })
+            best: Some(100),
+            delta: None,
+        }),
+        "a fetch has no delta"
     );
     assert!(
         events.iter().any(|e| matches!(
@@ -1435,6 +1437,52 @@ async fn txt_is_blind_to_the_match() {
             .collect()
     };
     assert_eq!(strip(&a), strip(&b));
+}
+
+/// A rescore (after the profile was saved) says what it changed: the excluded and the high
+/// jobs of the inbox before and after it.
+#[tokio::test(start_paused = true)]
+async fn a_rescore_says_what_it_changed() {
+    let c = clock();
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::in_memory().unwrap();
+    let fetch = ctx(dir.path(), true);
+    go(
+        &mut DemoBackends,
+        &store,
+        &request(),
+        &fetch,
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    let scored = store.band_counts().unwrap();
+    assert_eq!((scored.excluded, scored.high), (1, 1));
+    // As if the profile had changed: no score is left.
+    store.clear_matches().unwrap();
+    let rescore = RunRequest {
+        kind: RunKind::Rescore,
+    };
+    let (s, _) = go(
+        &mut DemoBackends,
+        &store,
+        &rescore,
+        &fetch,
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    assert_eq!(
+        s.score.unwrap().delta,
+        Some(ScoreDelta {
+            excluded_before: 0,
+            excluded_after: 1,
+            high_before: 0,
+            high_after: 1,
+        })
+    );
+    let json = serde_json::to_value(s.finished_event()).unwrap();
+    assert_eq!(json["summary"]["score"]["delta"]["highAfter"], 1);
 }
 
 /// A run keeps up to two open must requirements per job next to the met ones: the list row
