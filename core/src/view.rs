@@ -775,8 +775,8 @@ pub struct JobQuery {
     pub place: Place,
     /// Only the unread jobs (the excluded ones last, uncounted).
     pub unread: bool,
-    /// The favourites of the inbox and the archive instead of the place (each row keeps its
-    /// place).
+    /// Only the favourites of the inbox (with `place` inbox; an archived favourite keeps its
+    /// star and is listed in the archive).
     pub favourites: bool,
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
@@ -797,7 +797,7 @@ pub struct JobCounts {
     pub inbox: u32,
     /// Unread in the inbox, not excluded.
     pub unread: u32,
-    /// Favourites (the star), in the inbox or the archive.
+    /// Favourites (the star) in the inbox.
     pub favourites: u32,
     pub archive: u32,
     /// In the trash ("Papierkorb").
@@ -1779,7 +1779,8 @@ mod tests {
     }
 
     /// A job is in one place: inbox, archive or trash, each with its list and count; the
-    /// favourite is a flag of its own (counted until the trash). List and counts agree for
+    /// favourite is a flag of its own (the favourites filter lists and counts only the
+    /// inbox's; an archived one keeps its star in the archive). List and counts agree for
     /// every place.
     #[test]
     fn every_place_has_its_list_and_its_count() {
@@ -1808,8 +1809,8 @@ mod tests {
                 counts.excluded,
                 counts.favourites
             ),
-            (2, 1, 0, 2),
-            "archive and trash in no inbox count"
+            (2, 1, 0, 1),
+            "archive and trash in no inbox count, the archived favourite neither"
         );
         assert_eq!((counts.archive, counts.trash), (1, 1));
         let archive = page(Place::Archive);
@@ -1837,21 +1838,25 @@ mod tests {
             ["A", "D"],
             "by match the scored first"
         );
-        assert_eq!((after.counts.favourites, after.counts.trash), (1, 2));
+        assert_eq!((after.counts.favourites, after.counts.trash), (0, 2));
         let json = serde_json::to_value(&after.jobs[1]).unwrap();
         assert_eq!(json["place"], "trash");
         assert_eq!(json["pinned"], true);
-        // The favourites view: starred jobs of the inbox and the archive, each in its place.
+        // The favourites filter: starred jobs of the inbox only; the archived one keeps its
+        // star in the archive.
         store.set_pinned(&key(2), true, at).unwrap();
         let mut favourites = query(Place::Inbox, false, JobSort::Match, 50, 0);
         favourites.favourites = true;
         let starred = job_page(&store, &favourites).unwrap();
-        assert_eq!(
-            titles(&starred),
-            ["B", "C"],
-            "the excluded one last, no trash"
-        );
-        assert_eq!(starred.jobs[1].place, Place::Archive);
+        assert_eq!(titles(&starred), ["B"], "no archive, no trash");
+        assert_eq!(starred.counts.favourites, 1);
+        let archive = page(Place::Archive);
+        assert_eq!(titles(&archive), ["C"]);
+        assert!(archive.jobs[0].pinned, "the star stays in the archive");
+        // Back in the inbox, it counts again.
+        store.move_jobs(&[key(3)], Place::Inbox, later).unwrap();
+        let starred = job_page(&store, &favourites).unwrap();
+        assert_eq!(titles(&starred), ["B", "C"], "the excluded one last");
         assert_eq!(starred.counts.favourites, 2);
     }
 

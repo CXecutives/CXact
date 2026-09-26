@@ -11,8 +11,8 @@ export type JobQuery = { place: Place,
  */
 unread: boolean, 
 /**
- * The favourites of the inbox and the archive instead of the place (each row keeps its
- * place).
+ * Only the favourites of the inbox (with `place` inbox; an archived favourite keeps its
+ * star and is listed in the archive).
  */
 favourites: boolean, 
 /**

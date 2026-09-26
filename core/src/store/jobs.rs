@@ -114,7 +114,7 @@ pub struct PageQuery {
     pub place: Place,
     /// Only unread jobs (the excluded ones last, uncounted).
     pub unread: bool,
-    /// The favourites of the inbox and the archive instead of a place (each keeps its place).
+    /// Only the favourites of the inbox (an archived favourite is found in the archive).
     pub favourites: bool,
     /// Best match first; otherwise by date: the alert mail's, in the trash the day it went
     /// there; excluded jobs last either way.
@@ -136,7 +136,7 @@ pub struct PageCounts {
     pub inbox: u32,
     /// Unread in the inbox and not excluded.
     pub unread: u32,
-    /// Favourites (the star), in the inbox or the archive.
+    /// Favourites (the star) in the inbox.
     pub favourites: u32,
     pub archive: u32,
     pub trash: u32,
@@ -343,7 +343,7 @@ impl Store {
         };
         // The counts of the inbox leave the archive and the trash out. The unread filter lists
         // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. A favourite counts until it goes to the trash.
+        // out. A favourite counts while it is in the inbox.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
         let place = if query.favourites {
@@ -770,8 +770,9 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     archived_at, trashed_at, override_include, applied_at, note";
 pub(super) const JOB_COLUMN_COUNT: usize = 32;
 
-/// The jobs whose details the app fetches by itself: what the lists show as active - the
-/// inbox and the favourites in the archive - never the trash and never a duplicate (its
+/// The jobs whose details the app fetches by itself: the inbox and the starred jobs of the
+/// archive (she kept the star, so she may still read them; the favourites filter lists only
+/// the inbox's, the archive the rest) - never the trash and never a duplicate (its
 /// original's row stands for it; a merged guest teaser would cost a signed-in request). The
 /// portals' caps are small, so every request belongs to a job the user may still read.
 /// "Details holen" asks for chosen jobs wherever they lie.
