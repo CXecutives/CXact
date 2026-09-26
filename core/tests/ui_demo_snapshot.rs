@@ -86,9 +86,6 @@ struct Ad {
     place: String,
     applied_hours_ago: Option<f64>,
     note: Option<String>,
-    /// `false`: not scored yet (the job came after the last scoring).
-    #[serde(default = "yes")]
-    scored: bool,
     /// Another portal's announcement of the same ad (`portal:id`): the list shows it as
     /// `alsoOn` of that job.
     duplicate_of: Option<String>,
@@ -103,10 +100,6 @@ fn ok() -> String {
 
 fn inbox() -> String {
     "inbox".into()
-}
-
-fn yes() -> bool {
-    true
 }
 
 /// A job after its page came and the engine scored it.
@@ -134,12 +127,14 @@ struct Snapshot {
     /// Jobs once their page came and the engine scored them (`portal:id`): those whose
     /// details were still missing ("Details holen") and the scripted fetch's.
     fetched: BTreeMap<String, Fetched>,
-    /// The Übersicht's numbers with the profile, and after it was removed.
+    /// The Übersicht's numbers with the profile, after it was removed, and without any job.
     overview: view::OverviewStats,
     overview_without_profile: view::OverviewStats,
+    overview_empty: view::OverviewStats,
     /// The stored profile with what the engine understood of it.
     profile: view::ProfileInfo,
-    /// The AI prompts per language: every job's (`portal:id`) and the comparison (`top`).
+    /// The AI prompts per language: every job's (`portal:id`, the scripted fetch's once their
+    /// page came) and the comparison of the best ones before the fetch (`top`).
     prompts: BTreeMap<&'static str, BTreeMap<String, String>>,
 }
 
@@ -282,32 +277,42 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
     rows
 }
 
-fn prompts(
+/// The languages of the prompts, as the snapshot names them.
+const LANGUAGES: [(&str, Language); 2] = [("de", Language::De), ("en", Language::En)];
+
+/// The AI prompt of each job (`portal:id`) in a language.
+fn job_prompts(
     store: &Store,
     matcher: &LocalMatcher,
     profile: &Value,
     keys: &[JobKey],
-) -> BTreeMap<&'static str, BTreeMap<String, String>> {
-    let mut out = BTreeMap::new();
-    for (name, language) in [("de", Language::De), ("en", Language::En)] {
-        let mut texts = BTreeMap::new();
-        for key in keys {
+    language: Language,
+) -> BTreeMap<String, String> {
+    keys.iter()
+        .map(|key| {
             let row = store.job(key).unwrap().unwrap();
             let source = PromptSource::load(store, Some(matcher), &row).unwrap();
-            texts.insert(key.to_string(), ai_prompt(profile, source.job(), language));
-        }
-        let best = store.best_matches(TOP).unwrap();
-        let sources: Vec<PromptSource> = best
-            .iter()
-            .map(|row| PromptSource::load(store, Some(matcher), row).unwrap())
-            .collect();
-        let items: Vec<_> = sources.iter().map(PromptSource::job).collect();
-        texts.insert("top".into(), ai_prompt_top(profile, &items, language));
-        out.insert(name, texts);
-    }
-    out
+            (key.to_string(), ai_prompt(profile, source.job(), language))
+        })
+        .collect()
 }
 
+/// The prompt that compares the best current matches.
+fn top_prompt(
+    store: &Store,
+    matcher: &LocalMatcher,
+    profile: &Value,
+    language: Language,
+) -> String {
+    let sources: Vec<PromptSource> = store
+        .best_matches(TOP)
+        .unwrap()
+        .iter()
+        .map(|row| PromptSource::load(store, Some(matcher), row).unwrap())
+        .collect();
+    let items: Vec<_> = sources.iter().map(PromptSource::job).collect();
+    ai_prompt_top(profile, &items, language)
+}
 /// The demo's fixtures, its database and the engine with its profile.
 struct Demo {
     ads: Vec<Ad>,
@@ -368,12 +373,8 @@ impl Demo {
                 keys.push((ad, key));
             }
         }
-        let scored: Vec<JobKey> = keys
-            .iter()
-            .filter(|(ad, _)| ad.scored)
-            .map(|(_, key)| key.clone())
-            .collect();
-        score(&self.store, &self.matcher, &scored, ago(SCORED_HOURS_AGO));
+        let every: Vec<JobKey> = keys.iter().map(|(_, key)| key.clone()).collect();
+        score(&self.store, &self.matcher, &every, ago(SCORED_HOURS_AGO));
         for (ad, key) in &keys {
             marks(&self.store, ad, key);
         }
@@ -445,13 +446,28 @@ fn snapshot() -> Snapshot {
         .map(|key| (key.to_string(), detail_of(store, matcher, key)))
         .collect();
     let overview = view::overview_stats(store, &Settings::default(), now()).unwrap();
-    let prompts = prompts(store, matcher, &demo.profile, &keys);
+    let mut prompts = BTreeMap::new();
+    for (name, language) in LANGUAGES {
+        let mut texts = job_prompts(store, matcher, &demo.profile, &keys, language);
+        texts.insert(
+            "top".into(),
+            top_prompt(store, matcher, &demo.profile, language),
+        );
+        prompts.insert(name, texts);
+    }
     let profile = demo.profile_info();
     let (announced, fetched) = demo.fetch(&listed);
+    let arrived: Vec<JobKey> = announced.iter().map(|job| job.key.clone()).collect();
+    for (name, language) in LANGUAGES {
+        let texts = job_prompts(store, matcher, &demo.profile, &arrived, language);
+        prompts.entry(name).or_default().extend(texts);
+    }
     // Without a profile the scores go (`remove_profile`).
     store.clear_matches().unwrap();
     let overview_without_profile =
         view::overview_stats(store, &Settings::default(), now()).unwrap();
+    let nothing = Store::in_memory().unwrap();
+    let overview_empty = view::overview_stats(&nothing, &Settings::default(), now()).unwrap();
     Snapshot {
         generated_by: "cargo test -p jobalert-core --test ui_demo_snapshot",
         now: now(),
@@ -461,6 +477,7 @@ fn snapshot() -> Snapshot {
         fetched,
         overview,
         overview_without_profile,
+        overview_empty,
         profile,
         prompts,
     }
