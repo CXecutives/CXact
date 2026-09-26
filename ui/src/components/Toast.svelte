@@ -1,7 +1,9 @@
 <!--
-  The toast stack, bottom right (mounted once in App and the gallery): short confirmations
-  that rise in (150 ms) and slide out sideways (100 ms), at most three, the stack moving up
-  as one leaves. A plain toast stays 4 s, one with an undo 10 s. A 2 px navy line at the
+  The toast stack, bottom right (mounted once in App and the gallery), the only place that
+  draws a toast: short confirmations that rise in (150 ms) and slide out sideways (100 ms),
+  at most three, the stack moving up as one leaves. Each kind's glyph and each toast's time
+  come from the tables of lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain
+  toast stays 4 s, one with a button 10 s. A 2 px navy line at the
   bottom drains over that time and stops while the toast is hovered (so does its timer),
   and every toast waits while the window is in the back or a modal dialog is open; under
   reduced motion there is no line. The stack lies below a dialog's scrim: dimmed, and its
@@ -111,13 +113,12 @@
 </script>
 
 <script lang="ts">
-  import { px, setVars } from '$lib/actions/cssVars';
+  import { cssVars, px, setVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
-  import { keyLabel } from '$lib/platform';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { isUndo, toasts } from '$lib/state/toasts.svelte';
+  import { actionKind, isUndo, TOAST_KINDS, TOAST_LIFE, toasts } from '$lib/state/toasts.svelte';
   import { tokenPx } from '$lib/tokens';
   import { tick } from 'svelte';
   import Button from './Button.svelte';
@@ -232,12 +233,15 @@
   onfocusin={focusIn}
 >
   {#each toasts.items as toast (toast.id)}
+    {@const look = TOAST_KINDS[toast.kind]}
     <div
-      class="toast {toast.tone}"
+      class="toast {toast.kind}"
       class:paused={hovered === toast.id}
-      class:lasting={toast.action !== null}
+      class:draws={look.draws}
       role="group"
       data-testid="toast"
+      data-kind={toast.kind}
+      use:cssVars={{ 'toast-life': `var(${TOAST_LIFE[actionKind(toast.action)]})` }}
       animate:flip
       in:toastIn
       out:toastOut
@@ -250,28 +254,20 @@
         toasts.resume(toast.id);
       }}
     >
-      <span class="icon"
-        ><Icon name={toast.tone === 'success' ? 'circle-check' : 'info'} size="sm" /></span
-      >
+      <span class="icon"><Icon name={look.icon} size="sm" /></span>
       {#key toast.text}<span class="text" data-testid="toast-text" in:fade
           >{@render sentence(toast.text)}</span
         >{/key}
       {#if toast.action}
         {@const action = toast.action}
-        <span
-          class="action"
-          use:tooltip={isUndo(action) ? { text: action.label, hint: keyLabel('mod+z') } : null}
-        >
+        <span class="action">
           <Button
             variant="ghost"
             size="sm"
             label={action.label}
+            keys={isUndo(action) ? 'mod+z' : null}
             testid="toast-action"
-            onclick={() =>
-              act(() => {
-                action.onclick();
-                toasts.dismiss(toast.id);
-              })}
+            onclick={() => act(() => toasts.act(toast.id))}
           />
         </span>
       {/if}
@@ -326,18 +322,23 @@
     flex: none;
   }
 
+  /* Each kind in its status colour (the glyph comes from TOAST_KINDS). */
   .success .icon {
     color: var(--success-strong);
   }
 
-  /* The check draws itself once when the toast appears. */
-  .success .icon :global(path) {
-    stroke-dasharray: var(--draw-length);
-    animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
-  }
-
   .info .icon {
     color: var(--info);
+  }
+
+  .warning .icon {
+    color: var(--warning-strong);
+  }
+
+  /* The check draws itself once when the toast appears. */
+  .draws .icon :global(path) {
+    stroke-dasharray: var(--draw-length);
+    animation: draw var(--dur-slow) var(--ease-out) var(--dur-instant) both;
   }
 
   /* One or two lines with room above and below (10 px to the edge with the padding). */
@@ -372,11 +373,7 @@
     height: var(--focus-width);
     background-color: var(--toast-bar);
     transform-origin: left center;
-    animation: drain var(--dur-toast) linear forwards;
-  }
-
-  .lasting .life {
-    animation-duration: var(--dur-toast-action);
+    animation: drain var(--toast-life) linear forwards;
   }
 
   .paused .life,
