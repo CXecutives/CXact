@@ -344,7 +344,7 @@ test("the app's menu from the keyboard: Shift+F10, arrows, Enter, Esc, a letter"
   ).toEqual([0, 11]);
 });
 
-test('a press outside closes the menu and does nothing else; so do a scroll and the window', async ({
+test('a press outside closes the menu and does nothing else; so do the wheel and the window', async ({
   page,
 }) => {
   const menu = page.getByTestId('menu');
@@ -364,6 +364,21 @@ test('a press outside closes the menu and does nothing else; so do a scroll and 
   await search.click({ button: 'right' });
   await expect(menu).toBeVisible();
   await page.setViewportSize({ width: 1300, height: 800 });
+  await expect(menu).toHaveCount(0);
+  // A scroll the app makes itself (the list keeping the open row in view) leaves it open; the
+  // user's wheel outside it closes it.
+  await search.fill('');
+  await page.setViewportSize({ width: 1300, height: 480 });
+  await search.click({ button: 'right' });
+  await expect(menu).toBeVisible();
+  const scroller = page.getByTestId('list-scroll');
+  await scroller.evaluate((node) => node.scrollBy(0, 200));
+  await expect.poll(() => scroller.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+  await page.waitForTimeout(200);
+  await expect(menu).toBeVisible();
+  const box = (await scroller.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 200);
   await expect(menu).toHaveCount(0);
 });
 

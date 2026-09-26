@@ -178,7 +178,7 @@ const PROBE: &str = r#"(() => { try {
       // The sidebar's entries come with the app state (nothing is guessed before it).
       ready: shown(q('shell')) && shown(q('sidebar')) && q('nav-jobs') !== null,
       tabs: document.querySelectorAll('[data-testid^="nav-"]').length,
-      named: ['nav-jobs', 'nav-archive', 'nav-trash', 'nav-profile', 'nav-settings'].every((id) => !!q(id)),
+      named: ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings'].every((id) => !!q(id)),
       tauri: '__TAURI_INTERNALS__' in window,
       csp: window.__smokeCsp ?? null,
     });
@@ -236,8 +236,8 @@ pub fn attach<R: Runtime, M: Manager<R>>(
 }
 
 fn check_shell<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
-    // Jobs with its two places (Archiv, Papierkorb), Profil, Einstellungen.
-    let ok = value["tabs"] == 5
+    // The four views of the sidebar.
+    let ok = value["tabs"] == 4
         && value["named"] == true
         && value["tauri"] == true
         && no_csp_violation(value);

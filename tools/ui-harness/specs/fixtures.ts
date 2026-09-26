@@ -187,7 +187,7 @@ export async function motionSettled(page: Page): Promise<void> {
 /**
  * Wait until no animation runs (a view or the reader fading in, the ring filling). While one
  * runs, Playwright's hover and click may find their target covered and scroll the pane to
- * try again (a real pointer never scrolls): a menu opened then closes with that scroll.
+ * try again (a real pointer never scrolls).
  */
 export async function animationsDone(page: Page): Promise<void> {
   await page.waitForFunction(() =>

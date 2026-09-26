@@ -178,9 +178,16 @@ test('the arrow keys follow the order on screen after an exclusion changes in pl
     list(page)
       .locator('[data-key]')
       .evaluateAll((all) => all.map((item) => (item as HTMLElement).dataset.key ?? ''));
-  // The counted row now stands above the divider; the keys walk the rows as drawn.
-  await expect.poll(async () => (await drawn()).indexOf('linkedin:4100200305')).toBeGreaterThan(0);
-  const order = await drawn();
+  // The counted row now stands above the divider; the keys walk the rows as drawn (read once
+  // the list is drawn again, the rows after it included).
+  let order: string[] = [];
+  await expect
+    .poll(async () => {
+      order = await drawn();
+      const index = order.indexOf('linkedin:4100200305');
+      return index > 0 && index < order.length - 1;
+    })
+    .toBe(true);
   const at = order.indexOf('linkedin:4100200305');
   await row(page, 'linkedin-4100200305').focus();
   await page.keyboard.press('ArrowDown');

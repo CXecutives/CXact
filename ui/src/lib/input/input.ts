@@ -1431,12 +1431,16 @@ function scrollsInside(event: WheelEvent, layer: Element): boolean {
   return false;
 }
 
-/** An open menu: the wheel over it scrolls only the menu; outside it the page scrolls (and
- *  the scroll closes the menu, onScroll). */
+/** An open menu: the wheel over it scrolls only the menu. A wheel outside it is the user
+ *  scrolling the page, which closes the menu; a scroll the app makes itself (the list keeping
+ *  the open row in view) leaves it open. A press on a scrollbar closes it as any press outside. */
 function holdMenuWheel(event: WheelEvent): void {
+  if (closest(event.target, MENU_LAYER) === null) {
+    closeMenu(false);
+    return;
+  }
   const menu = closest(event.target, '[role="menu"]');
-  if (menu === null) return;
-  if (!scrollsInside(event, menu)) event.preventDefault();
+  if (menu !== null && !scrollsInside(event, menu)) event.preventDefault();
 }
 
 /**
@@ -1486,9 +1490,7 @@ function scrollOver(): void {
   resting.clear();
 }
 
-function onScroll(event: Event): void {
-  // A scroll outside the open menu closes it (the menu's own list scrolls inside it).
-  if (menuState.open !== null && closest(event.target, MENU_LAYER) === null) closeMenu(false);
+function onScroll(): void {
   scrollIdleMs ??= tokenMs('--scroll-idle');
   if (!scrolling) {
     scrolling = true;

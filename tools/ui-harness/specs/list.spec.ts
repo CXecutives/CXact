@@ -1872,8 +1872,8 @@ test.describe("the open row's bar", () => {
     await startSampling(page);
     await page.getByTestId('fetch').click();
     await runFinished(page);
-    // The re-sort keeps the open row in view by scrolling the list; a menu opened while it
-    // scrolls closes with it: wait until the list is sorted and stands still.
+    // The re-sort keeps the open row in view by scrolling the list: wait until the list is
+    // sorted and stands still.
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     const scroller = page.getByTestId('list-scroll');
     await expect
