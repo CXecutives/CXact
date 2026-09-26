@@ -58,6 +58,8 @@ test('the English reader counts the must-have requirements, as the German one do
 test('an excluded row names a missing degree or licence in short words, never a sentence', async ({
   page,
 }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const excluded = page.getByTestId('excluded-rows');
@@ -244,6 +246,8 @@ test('the teaser badge says what "Anriss" is', async ({ page }) => {
 });
 
 test('English names agency work and the preferred rate one way everywhere', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, `${WIN}&lang=en`);
   await page.getByTestId('facet').getByRole('radio', { name: /All/ }).click();
   // Short "Agency work" read like any work through an agency, common for freelancers.

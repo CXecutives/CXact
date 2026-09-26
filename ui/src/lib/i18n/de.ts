@@ -597,6 +597,11 @@ export const de = {
       `${key}+Klick nimmt einen Job dazu oder heraus, Umschalt+Klick einen ganzen Bereich.`,
     /** Once, after a few single moves: several jobs can go at once. */
     tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${key}+Klick.`,
+    /** The pane names the chosen jobs, the first few, then how many more. */
+    more: (value: number) => `+${n(value)}`,
+    /** The pane's and the bar's words for the star and for reading. */
+    pin: 'Favorit',
+    read: 'Als gelesen',
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
@@ -628,11 +633,11 @@ export const de = {
       trash: (value: number, query: string) =>
         `${count(value, 'Job', 'Jobs')} zu „${query}“ im Papierkorb`,
     } satisfies Record<Place, (value: number, query: string) => string>,
-    /** Search hits in another place, under the results. */
-    alsoIn: {
-      inbox: (value: number) => `Auch unter Jobs (${n(value)})`,
-      archive: (value: number) => `Auch im Archiv (${n(value)})`,
-      trash: (value: number) => `Auch im Papierkorb (${n(value)})`,
+    /** Search hits in another place: a button under the results that goes there. */
+    hitsIn: {
+      inbox: (value: number) => `Im Eingang (${n(value)})`,
+      archive: (value: number) => `Im Archiv (${n(value)})`,
+      trash: (value: number) => `Im Papierkorb (${n(value)})`,
     } satisfies Record<Place, (value: number) => string>,
     /** The quiet line under the title of a job that is not in the inbox. */
     inArchive: 'Im Archiv',
@@ -752,6 +757,8 @@ export const de = {
     code: reasonCode,
   },
   job: {
+    /** The round checkbox over a row's ring (it takes the row into the choice). */
+    choose: 'Auswählen',
     /** An excluded job the user counts anyway (its row's quiet badge). */
     included: 'Einbezogen',
     workMode: {
@@ -782,6 +789,9 @@ export const de = {
     closedHint: 'Die Anzeige ist noch lesbar, nimmt aber keine Bewerbungen mehr an.',
     unread: 'Neu',
     pinned: 'Favorit',
+    /** The date column of a row in the Papierkorb: how long until it empties itself. */
+    trashLeft: (days: number) => `noch ${count(days, 'Tag', 'Tage')}`,
+    trashSoon: 'bald gelöscht',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
   },
@@ -901,16 +911,19 @@ export const de = {
   },
   list: {
     label: 'Jobs',
-    /** The divider (its count is a pill of its own, left out where the rows are a part). */
+    /** The folding section at the end of every place (its count in brackets where known). */
     excluded: 'Ausgeschlossen',
+    /** By match: the jobs still waiting for their score, a small group on top. */
+    pendingSection: 'Noch ohne Passung',
+    /** Under Neu: the jobs first seen in the last fetch, then the older unread ones. */
+    freshSection: 'Seit dem letzten Abruf',
+    olderSection: 'Früher',
     /** A row excluded by a formal requirement the ad makes mandatory (`formalOpen` with its
      *  `class`), in the short words of the criteria. */
     formalMissing: {
       degree: 'Abschluss fehlt',
       licence: 'Zulassung fehlt',
     },
-    /** The empty list says where jobs come from and how to get more. */
-    emptySources: 'Ein Alert pro Portal bringt neue Jobs.',
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
@@ -928,7 +941,7 @@ export const de = {
     },
     searchAll: 'In allen suchen',
     showAll: 'Alle zeigen',
-    loadFailed: 'Die Liste ließ sich nicht laden.',
+    loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',
     openProfile: 'Profil öffnen',
@@ -938,6 +951,8 @@ export const de = {
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil ohne Kompetenzen',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Passung.',
+    /** A profile the app understands little of: one calm line on top of the list. */
+    thinProfile: 'Wenig Inhalt im Profil, die Passung bleibt grob.',
     connectMailbox: 'Postfach verbinden',
   },
   /** The key facts of an ad in short words (list row, criteria chips). */

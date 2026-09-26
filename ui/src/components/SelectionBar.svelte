@@ -1,7 +1,8 @@
 <!--
   The slim bar that replaces the list header's second row while two or more jobs are
-  selected: "3 ausgewählt", the place's actions as icon buttons (the same icons, names and
-  order as on a row and in the reader), and "Auswahl aufheben" at the end. Esc clears the
+  selected, on one line: "3 ausgewählt", the place's actions as icon buttons (the same icons,
+  names and order as on a row and in the reader), and the × that ends the choice ("Auswahl
+  aufheben" its tooltip). Esc clears the
   selection too (outside fields), like in a mail app. It fades in (100 ms) when the second
   job joins the selection and is gone at once when the selection ends.
 -->
@@ -66,6 +67,7 @@
     <Button
       variant="ghost"
       size="sm"
+      iconOnly
       icon="x"
       label={t.selection.clear}
       testid="selection-clear"
@@ -75,7 +77,7 @@
 </div>
 
 <style>
-  /* As wide as the row it takes, so "Auswahl aufheben" ends on its edge. */
+  /* As wide as the row it takes, so the × ends on its edge. */
   .bar {
     display: flex;
     flex: 1;

@@ -19,6 +19,7 @@ import { displayTitle } from '$lib/i18n/format';
 import { t } from '$lib/i18n/t';
 import type { Deleted, JobKey, JobView, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
+import { app } from '$lib/state/app.svelte';
 import { inFacet, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText } from '$lib/state/run.svelte';
@@ -360,6 +361,21 @@ export function actionsFor(list: readonly JobView[]): JobAction[] {
   const places = [...new Set(list.map((job) => job.place))];
   if (places.length === 1 && places[0]) return actionsOf(places[0]);
   return actionsOf('inbox').filter((action) => action.id === 'trash');
+}
+
+/**
+ * The full ad of this job can still be fetched (the reader's "Details holen"): its text is
+ * missing and its portal fetches details (a teaser only with the portal's sign-in).
+ */
+export function detailsWanted(job: JobView): boolean {
+  const kind = job.detail.kind;
+  if (kind !== 'pending' && kind !== 'onRequest' && kind !== 'failed' && kind !== 'teaser') {
+    return false;
+  }
+  const portal = app.state?.portals.find((state) => state.portal === job.portal);
+  return (
+    portal?.enabled === true && portal.fetchDetails && (kind !== 'teaser' || portal.loginEnabled)
+  );
 }
 
 /** The star: a favourite, or not any more (one that fails says so in the list header). */

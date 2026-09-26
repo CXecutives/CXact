@@ -94,16 +94,18 @@ test('core workflow: fetch, rings fill, open the best job, reasons light the ad'
 });
 
 test('counts equal the list, with and without search', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   expect(await rows(page).count()).toBe(await segmentCount(page, 'Neu'));
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('excluded-count')).toBeVisible();
+  await expect(page.getByTestId('excluded-divider')).toHaveText(/Ausgeschlossen \(\d+\)/);
   // The list of Alle arrives from the backend and builds a few rows per frame.
   const listed = async (): Promise<number> =>
     (await rows(page).count()) + (await excludedRows(page).count());
   await expect.poll(listed).toBe(await segmentCount(page, 'Alle'));
   await expect(page.getByTestId('excluded-divider')).toHaveText(
-    `Ausgeschlossen ${await excludedRows(page).count()}`,
+    `Ausgeschlossen (${await excludedRows(page).count()})`,
   );
 
   await page.getByTestId('search').fill('Interim');
@@ -116,9 +118,11 @@ test('counts equal the list, with and without search', async ({ page }) => {
 });
 
 test('a hidden job is in no list and no count', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('excluded-count')).toBeVisible();
+  await expect(page.getByTestId('excluded-divider')).toHaveText(/Ausgeschlossen \(\d+\)/);
   // The list of Alle arrives from the backend and builds a few rows per frame.
   const listed = async (): Promise<number> =>
     (await rows(page).count()) + (await excludedRows(page).count());
@@ -180,6 +184,8 @@ test('the order menu reorders the list and keeps the selection', async ({ page }
 });
 
 test('excluded jobs sit grey behind the divider and explain themselves', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const excludedRow = excludedRows(page).first();
@@ -542,6 +548,8 @@ test('loading takes a moment: skeletons, then the list', async ({ page }) => {
 });
 
 test('rows and reader say the same in short words; dead ends lead on', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // An excluded row names its reason in short words, the day rate carries its unit.
@@ -592,7 +600,7 @@ test('a search under Neu that Alle would find says so and goes there', async ({ 
 
 test('a failing list offers a retry', async ({ page }) => {
   await open(page, `${WIN}&scenario=list-error`);
-  await expect(page.getByTestId('list-error')).toContainText('Die Datenbank meldet einen Fehler.');
+  await expect(page.getByTestId('list-error')).toContainText('Die Jobliste ließ sich nicht laden.');
 });
 
 test('details and pins: teaser note, fetch details, pin star', async ({ page }) => {
@@ -1231,7 +1239,8 @@ test('Ctrl+Z takes back the last move while its toast is up; an undo toast stays
   // Still up after the 4 s of a plain toast.
   await page.waitForTimeout(4500);
   await expect(page.getByTestId('toast')).toHaveCount(1);
-  await page.getByTestId('reader-pane').click({ position: { x: 5, y: 5 } });
+  // Beside the handle's strip, which lies over the reader's padding.
+  await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
   await page.keyboard.press('Control+z');
   await expect(row(page, key)).toHaveCount(1);
   await expect(page.getByTestId('toast')).toHaveCount(0);
@@ -1280,8 +1289,8 @@ test('two or more chosen: the reader says how many, the bar acts on all of them'
   await expect(pane).toContainText('2 Jobs ausgewählt');
   await expect(pane).toContainText('Strg+Klick');
   await expect(page.getByTestId('reader')).toHaveCount(0);
-  // The actions are said once, in the list header's bar.
-  await expect(pane.getByRole('button')).toHaveCount(0);
+  // The pane names what can be done with them, with words.
+  await expect(pane.getByRole('button', { name: 'Archivieren' })).toBeVisible();
   const before = await rows(page).count();
   await page.getByTestId('selection-bar').getByTestId('selection-archive').click();
   await expect(rows(page)).toHaveCount(before - 2);
@@ -1305,7 +1314,9 @@ test('PageDown, Space and PageUp scroll the reader after a click in its text', a
   await expect.poll(top).toBeLessThan(after + 10);
 });
 
-test('the list header keeps one height in every state of a narrow column', async ({ page }) => {
+test('the list header keeps one height in a narrow column; the choice bar is one line', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, WIN);
   const listTop = (): Promise<number> =>
@@ -1322,7 +1333,8 @@ test('the list header keeps one height in every state of a narrow column', async
     .nth(1)
     .click({ modifiers: ['Control'] });
   await expect(page.getByTestId('selection-bar')).toBeVisible();
-  expect(await listTop()).toBe(neu);
+  // The bar and its × are one line, without an empty second one (28 px and its gap).
+  expect(await listTop()).toBe(neu - 36);
   await page.keyboard.press('Escape');
   await page.getByTestId('place-archive').click();
   expect(await listTop()).toBe(neu);
@@ -1378,7 +1390,7 @@ test('a search looks in its place and names the hits elsewhere, keeping the sear
   await row(page, key).hover();
   await page.getByTestId(`archive-${key}`).click();
   await page.getByTestId('search').fill(title);
-  await expect(page.getByTestId('also-archive')).toHaveText('Auch im Archiv (1)');
+  await expect(page.getByTestId('also-archive')).toHaveText('Im Archiv (1)');
   await page.getByTestId('also-archive').click();
   await expect(page.getByTestId('search')).toHaveValue(title);
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');

@@ -3,15 +3,21 @@
   job of a run fades in where it lands (the rows below simply make room). Rows move only for
   the user's own change and for the re-sort at the end of a run: after the sort switch, Neu |
   Alle or a filter the rows on screen glide to their new place (150 ms); rows off screen and
-  new rows are simply there. A search and live updates never move anything. Excluded jobs
-  sit grey behind the divider "Ausgeschlossen" with a soft count (under Neu or a filter too,
-  there without the count: the rows below are only a part of the excluded jobs). A page that
+  new rows are simply there. A search and live updates never move anything. The list stands
+  in sections (the store's RowGroup): by match the jobs still waiting for their score on top
+  ("Noch ohne Passung"), under Neu the jobs first seen in the last fetch before the older
+  unread ones ("Seit dem letzten Abruf", "Früher", only while both are there), and at the end
+  of every place the excluded jobs, grey, in one section "Ausgeschlossen (n)" that is folded
+  by default (the choice is kept; the count where the list knows it; the arrows skip a
+  folded section, and it opens when its job is opened from elsewhere). Under Neu with nothing
+  new left ("Alle gelesen") a line says so and leads to Alle. A page that
   fails to load while scrolling says so at the end of the list, with a retry. A search looks
-  in the list's place; under its hits a quiet link names each other place with hits ("Auch
-  im Archiv (2)"), which keeps the search. Each row's tools are the job's actions where it
-  is (Archivieren, Löschen, the star; in the Papierkorb Wiederherstellen, Endgültig
-  löschen); a row the user moves out folds away. Rows are chosen like in a mail app: a
-  click opens one, Ctrl+click (Cmd on macOS) takes one in or out, Shift+click a range; the
+  in the list's place; under its hits a button names each other place with hits
+  ("Im Archiv (2)") and goes there with the search; Enter or ArrowDown in the search open
+  its first hit. Each row's tools are the job's actions where it is (Archivieren, Löschen,
+  the star; in the Papierkorb Wiederherstellen, Endgültig löschen); a row the user moves
+  out folds away. Rows are chosen like in a mail app: a click opens one, Ctrl+click (Cmd on
+  macOS) or the checkbox over its ring takes one in or out, Shift+click a range; the
   highlight shows what is chosen, and in one column choosing never opens a job. One coral
   bar marks the open job's row and slides from row to row (RowBar); the other chosen rows
   mark themselves. The list is one Tab stop: the open row (else the row last focused, else
@@ -23,15 +29,19 @@
   state has exactly one reason and at most one way out (secondary: the header holds the
   view's primary). Without a mailbox one slim note at the top says how to connect one;
   without a usable profile one says that there is no fit without it and leads to the Profil
-  view (the rings stay, empty).
+  view (the rings stay, empty); a thin profile one calm line that the fit stays rough. A list
+  that fails to load says only that, with a retry (the header hides its counts and tools).
+  Every empty state of the list is one pattern: an icon, one sentence, at most one way out,
+  centred.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
-  import Count from '$components/Count.svelte';
   import EmptyState from '$components/EmptyState.svelte';
+  import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
   import JobRow, { type RowTool, type SelectHow } from '$components/JobRow.svelte';
+  import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import { nearEnd } from '$lib/actions/nearEnd';
@@ -43,7 +53,7 @@
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
-  import { isExcluded, jobs, keyOf, placeOf, sameKey } from '$lib/state/jobs.svelte';
+  import { isExcluded, jobs, keyOf, placeOf, sameKey, type RowGroup } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -60,15 +70,60 @@
   const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
 
   const shown = $derived(jobs.shown);
-  const active = $derived(shown.filter((job) => !isExcluded(job)));
-  const excluded = $derived(shown.filter(isExcluded));
-  // The number only where the divider heads every excluded job of the list (its count, like
-  // the facet's, follows the search).
-  const excludedCount = $derived(jobs.facet === 'all' ? jobs.counts.excluded : null);
+  const searching = $derived(jobs.search.trim() !== '');
+  /** The rows of each section as far as the window reaches, in the store's order. */
+  const sections = $derived.by(() => {
+    const out: Record<RowGroup, JobView[]> = { pending: [], fresh: [], rest: [], excluded: [] };
+    for (const job of shown) out[jobs.groupOf(job)].push(job);
+    return out;
+  });
+  const excluded = $derived(sections.excluded);
+  /** Under Neu the jobs of the last fetch stand apart from the older ones (both there). */
+  const split = $derived(
+    jobs.facet === 'new' && sections.fresh.length > 0 && sections.rest.length > 0,
+  );
+  // How many excluded jobs the list holds: Alle knows it (with the search, like the facet),
+  // the other lists once every page is there.
+  const excludedCount = $derived.by((): number | null => {
+    if (jobs.facet === 'all') return jobs.counts.excluded;
+    if (jobs.rows.length < jobs.total) return null;
+    return jobs.visible.filter(isExcluded).length;
+  });
+
+  /** The excluded section is open (folded by default; the choice is kept like the order). */
+  const EXCLUDED_KEY = 'jobs-excluded-open';
+  function keptOpen(): boolean {
+    try {
+      return localStorage.getItem(EXCLUDED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+  let excludedOpen = $state(keptOpen());
+  function toggleExcluded(): void {
+    excludedOpen = !excludedOpen;
+    try {
+      localStorage.setItem(EXCLUDED_KEY, excludedOpen ? '1' : '0');
+    } catch {
+      // Without a store the choice lasts for this session only.
+      return;
+    }
+  }
+  /** The folded section ends the list: every other row is loaded (the backend lists the
+   *  excluded jobs last), so no more pages are fetched until it opens. */
+  const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
+  const more = $derived(jobs.more && !foldedEnd);
+  /** Neu with nothing new left ("Alle gelesen"): a line says so instead of a silent list. */
+  const caughtUp = $derived(
+    jobs.facet === 'new' &&
+      jobs.status === 'ready' &&
+      !searching &&
+      jobs.counts.unread === 0 &&
+      jobs.visible.length > 0,
+  );
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
-  const searching = $derived(jobs.search.trim() !== '');
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
   // No profile: the fit needs one. One that is there but cannot be used is named.
   const profileNote = $derived.by(() => {
@@ -89,11 +144,12 @@
     navigation.go('profile');
   }
   const mailboxMissing = $derived(app.state !== null && !app.hasMailbox);
+  /** A profile the app understands little of: the fit is rough, said once on top. */
+  const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
   // Jobs without a match get one soon while a run goes or a rescore is pending.
-  const pending = $derived(app.hasProfile && (run.active || (app.state?.matchPending ?? 0) > 0));
+  const pending = $derived(jobs.scoring);
 
-  /** The rows in the order they stand: the active ones, then the excluded ones (the store's
-   *  order). */
+  /** The rows in the order they stand, section by section (the store's order). */
   const order = $derived(shown);
   /** The rows the list shows (a row on the page that is not among them is leaving). */
   const listed = $derived(new Set(shown.map((job) => keyOf(job.key))));
@@ -113,17 +169,50 @@
    * view and takes the focus.
    */
   async function openAt(target: number | 'last'): Promise<void> {
-    const job = await jobs.reach(target, true);
+    const job = await reachable(target);
     if (job === null) return;
     selection.only(job);
     if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
   }
+
+  /**
+   * The row at `target` of the whole list (jobs.reach) that the keys can reach: while the
+   * excluded section is folded, the last row before it instead of an excluded one.
+   */
+  async function reachable(target: number | 'last'): Promise<JobView | null> {
+    const job = await jobs.reach(target, true);
+    if (job === null || excludedOpen || !isExcluded(job)) return job;
+    const last = jobs.visible.findLastIndex((row) => !isExcluded(row));
+    if (last >= 0) return jobs.reach(last, true);
+    jobs.reveal = null;
+    return null;
+  }
+
+  // A job opened from elsewhere (the Übersicht, an undo) whose row is folded away: its
+  // section opens (for now; the kept choice stays).
+  let lastMarked: string | null = null;
+  $effect(() => {
+    const key = marked;
+    const out = markedExcluded;
+    untrack(() => {
+      if (key !== lastMarked && out && !excludedOpen) excludedOpen = true;
+      lastMarked = key;
+    });
+  });
 
   /** ArrowUp / ArrowDown (lib/input/input.ts): the previous or next job opens; with none
    *  open, the first (down) or the last of the list (up). */
   export function step(by: -1 | 1): void {
     const at = jobs.visible.findIndex((job) => sameKey(jobs.selected, job.key));
     void openAt(at === -1 ? (by === 1 ? 0 : 'last') : Math.max(0, at + by));
+  }
+
+  /** Enter or ArrowDown in the search: its first hit opens, its row takes the focus; `false`
+   *  when the list has no row. */
+  export function openFirst(): boolean {
+    if (jobs.visible.length === 0) return false;
+    void openAt(0);
+    return true;
   }
 
   /** Home / End: the first or the last job of the list. */
@@ -143,7 +232,7 @@
     let target: number | 'last' = to === 1 ? 0 : 'last';
     if (to === 'first') target = 0;
     else if (at !== -1 && to !== 'last') target = Math.max(0, at + to);
-    void jobs.reach(target, true).then((job) => {
+    void reachable(target).then((job) => {
       if (job === null) return;
       selection.range(job, jobs.visible);
       settle(true);
@@ -202,6 +291,11 @@
     settle(true);
   }
 
+  /** The checkbox over a row's ring: the row in or out of the choice, like Ctrl+click. */
+  function choose(job: JobView): void {
+    select(job, { toggle: true, range: false });
+  }
+
   /**
    * One chosen row is no selection: that job simply opens (like a mail app), and a Ctrl+click
    * that took the open job out of the choice closes it. In one column choosing never opens a
@@ -253,6 +347,12 @@
     inbox: 'inbox',
     archive: 'archive',
     trash: 'trash',
+  };
+  /** The glyph of each place (the tabs' meaning: the inbox, the archive, the trash). */
+  const PLACE_ICON: Record<Place, IconName> = {
+    inbox: 'inbox',
+    archive: 'archive',
+    trash: 'trash-2',
   };
   const FACET_OF: Record<Place, 'all' | 'archived' | 'trash'> = {
     inbox: 'all',
@@ -519,9 +619,10 @@
   <div class="also" data-testid="also-in">
     {#each elsewhere as hit (hit.place)}
       <Button
-        variant="link"
+        variant="secondary"
         size="sm"
-        label={t.place.alsoIn[hit.place](hit.count)}
+        icon={PLACE_ICON[hit.place]}
+        label={t.place.hitsIn[hit.place](hit.count)}
         testid="also-{hit.place}"
         onclick={() => jobs.setFacet(FACET_OF[hit.place])}
       />
@@ -562,12 +663,24 @@
     </div>
   {/if}
 
+  {#if profileThin}
+    <div class="note">
+      <Notice
+        tone="info"
+        variant="row"
+        text={t.list.thinProfile}
+        action={{ label: t.list.openProfile, onclick: () => navigation.go('profile') }}
+        testid="thin-profile"
+      />
+    </div>
+  {/if}
+
   {#if jobs.status === 'error'}
     <div class="empty">
       <EmptyState
         icon="triangle-alert"
         tone="danger"
-        text={jobs.error ?? t.list.loadFailed}
+        text={t.list.loadFailed}
         secondary={{
           label: t.common.retry,
           icon: 'refresh-cw',
@@ -656,7 +769,6 @@
             text={t.list.emptyAfterRun}
             testid="empty-all"
           />
-          <p class="sources-text">{t.list.emptySources}</p>
           <div class="sources-actions">
             {#each PORTALS as portal (portal.portal)}
               <Button
@@ -704,6 +816,9 @@
         onpin={hasStar(job.place) ? pin : null}
         tools={toolsOf(job)}
         menu={() => menuOf(job)}
+        chosen={selection.size > 0 && selection.has(job) && (bulk.active || viewport.narrow)}
+        trashDays={app.state?.autoEmptyTrashDays ?? 0}
+        onchoose={choose}
       />
     {/snippet}
     {#snippet group(items: JobView[])}
@@ -720,28 +835,58 @@
         </div>
       {/each}
     {/snippet}
+    {#if caughtUp}
+      <div class="caught-up" data-testid="caught-up">
+        <span class="caught-up-text">{t.list.emptyNew}</span>
+        <Button
+          variant="link"
+          size="sm"
+          label={t.list.showAll}
+          testid="caught-up-all"
+          onclick={() => jobs.setFacet('all')}
+        />
+      </div>
+    {/if}
     <div class="groups" bind:this={groups}>
-      <!-- Another list is built anew: its old rows leave as one piece, not row by row. -->
+      <!-- Another list is built anew: its old rows leave as one piece, not row by row. Each
+           section keeps its box whether its heading shows or not, so a heading that comes
+           or goes never builds the rows anew. -->
       {#key jobs.generation}
-        <div class="rows" data-testid="job-rows">
-          {@render group(active)}
+        {#if sections.pending.length > 0}
+          <ListDivider label={t.list.pendingSection} thin testid="pending-divider" />
+        {/if}
+        <div class="rows" data-testid="job-rows" data-group="pending">
+          {@render group(sections.pending)}
+        </div>
+        {#if split}
+          <ListDivider label={t.list.freshSection} thin testid="fresh-divider" />
+        {/if}
+        <div class="rows" data-testid="job-rows" data-group="fresh">
+          {@render group(sections.fresh)}
+        </div>
+        {#if split}
+          <ListDivider label={t.list.olderSection} thin testid="older-divider" />
+        {/if}
+        <div class="rows" data-testid="job-rows" data-group="rest">
+          {@render group(sections.rest)}
         </div>
         {#if excluded.length > 0}
-          <div class="divider" data-testid="excluded-divider">
-            <span class="divider-label">{t.list.excluded}</span>
-            {#if excludedCount !== null}<Count
-                value={excludedCount}
-                tone="plain"
-                testid="excluded-count"
-              />{/if}
-          </div>
-          <div class="rows" data-testid="excluded-rows">
-            {@render group(excluded)}
-          </div>
+          <ListDivider
+            label={t.list.excluded}
+            count={excludedCount}
+            open={excludedOpen}
+            ontoggle={toggleExcluded}
+            testid="excluded-divider"
+          />
+          {#if excludedOpen}
+            <div class="rows" data-testid="excluded-rows">
+              {@render group(excluded)}
+            </div>
+          {/if}
         {/if}
       {/key}
     </div>
-    {#if elsewhere.length > 0 && !jobs.more}{@render alsoIn()}{/if}
+    {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
     {#if jobs.pageError}
       <div class="page-error">
         <Notice
@@ -752,7 +897,7 @@
           testid="page-error"
         />
       </div>
-    {:else if jobs.more}
+    {:else if more}
       {#key shown.length}
         <div class="sentinel" use:nearEnd={() => void jobs.grow()}>
           <Skeleton width={60} late />
@@ -813,7 +958,7 @@
     border-bottom: var(--border-width) solid var(--border);
   }
 
-  /* Search hits in the other places, quiet links under the hits of this one. */
+  /* Search hits in the other places: buttons under the hits of this one. */
   .also {
     display: flex;
     flex-wrap: wrap;
@@ -832,23 +977,19 @@
     display: block;
   }
 
-  /* A navy sub-label with its soft count, then the hairline. */
-  .divider {
+  /* Neu with nothing new left: one quiet line and the way to Alle, above the rows read. */
+  .caught-up {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-24) var(--pane-padding) var(--space-8);
-    color: var(--text-label);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
+    gap: var(--space-4) var(--space-12);
+    padding: var(--space-12) var(--pane-padding);
+    border-bottom: var(--border-width) solid var(--border);
   }
 
-  .divider::after {
-    margin-left: var(--space-4);
-    flex: 1;
-    height: var(--border-width);
-    background-color: var(--border);
-    content: '';
+  .caught-up-text {
+    color: var(--text-muted);
+    font: var(--type-sm);
   }
 
   .stack {
@@ -864,19 +1005,14 @@
     padding-inline: 0;
   }
 
-  /* The empty list says where jobs come from: the portals' alerts, older mails. */
+  /* The empty list says where jobs come from, like every empty state (an icon, one
+     sentence), and its ways out are the portals' alerts and the older mails. */
   .sources {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--space-12);
     max-width: var(--list-min);
-  }
-
-  .sources-text {
-    color: var(--text-muted);
-    font: var(--type-sm);
-    text-align: center;
   }
 
   /* The block is centred, its links start on one line (their icons on one axis). */

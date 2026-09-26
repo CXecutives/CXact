@@ -282,7 +282,11 @@
       <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
       <span class="top" use:inView={(place) => (columnScrolled = place === 'above')}></span>
       <div class="head">
-        <ListHeader bind:this={header} scrolled={scrolled || columnScrolled} />
+        <ListHeader
+          bind:this={header}
+          scrolled={scrolled || columnScrolled}
+          onopen={() => list?.openFirst() ?? false}
+        />
       </div>
       <div class="scroll" data-testid="list-scroll">
         <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>

@@ -594,6 +594,9 @@ export const en: Catalog = {
     commandKey: { ctrl: 'Ctrl', cmd: 'Cmd' },
     hint: (key: string) => `${key}+click adds or removes a job, Shift+click a whole range.`,
     tip: (key: string) => `Choose several jobs at once with ${key}+click.`,
+    more: (value: number) => `+${n(value)}`,
+    pin: 'Favourite',
+    read: 'Mark read',
   },
   place: {
     tabs: 'Places',
@@ -619,10 +622,10 @@ export const en: Catalog = {
       trash: (value: number, query: string) =>
         `${count(value, 'job', 'jobs')} for “${query}” in the trash`,
     } satisfies Record<Place, (value: number, query: string) => string>,
-    alsoIn: {
-      inbox: (value: number) => `Also in Jobs (${n(value)})`,
-      archive: (value: number) => `Also in the archive (${n(value)})`,
-      trash: (value: number) => `Also in the trash (${n(value)})`,
+    hitsIn: {
+      inbox: (value: number) => `In the inbox (${n(value)})`,
+      archive: (value: number) => `In the archive (${n(value)})`,
+      trash: (value: number) => `In the trash (${n(value)})`,
     } satisfies Record<Place, (value: number) => string>,
     inArchive: 'In the archive',
     inTrash: 'In the trash',
@@ -725,6 +728,7 @@ export const en: Catalog = {
     code: reasonCode,
   },
   job: {
+    choose: 'Select',
     included: 'Included',
     workMode: {
       remote: 'Remote',
@@ -751,6 +755,8 @@ export const en: Catalog = {
     closedHint: 'The ad can still be read but no longer takes applications.',
     unread: 'New',
     pinned: 'Favourite',
+    trashLeft: (days: number) => `${count(days, 'day', 'days')} left`,
+    trashSoon: 'deleted soon',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
   },
@@ -849,11 +855,13 @@ export const en: Catalog = {
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
+    pendingSection: 'No match yet',
+    freshSection: 'Since the last fetch',
+    olderSection: 'Earlier',
     formalMissing: {
       degree: 'Degree missing',
       licence: 'Licence missing',
     },
-    emptySources: 'One job alert per portal brings in new jobs.',
     emptyWhileRun: 'The jobs show up here as the fetch goes on.',
     createAlert: (portal: string) => `Create an alert on ${portal}`,
     readOlder: FULL_MAILBOX,
@@ -868,7 +876,7 @@ export const en: Catalog = {
     },
     searchAll: 'Search all',
     showAll: 'Show all',
-    loadFailed: 'The list could not be loaded.',
+    loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',
     createProfile: 'Create profile',
     openProfile: 'Open profile',
@@ -877,6 +885,7 @@ export const en: Catalog = {
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profile without skills',
     profileBrokenText: 'That is why the jobs show no match.',
+    thinProfile: 'Little in the profile, so the match stays rough.',
     connectMailbox: 'Connect mailbox',
   },
   facts: {

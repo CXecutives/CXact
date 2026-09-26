@@ -43,7 +43,7 @@ test('the search matches every word in any field and the portal name', async ({ 
   await expect(rows(page)).toHaveCount(0);
   // The portal's name narrows to its jobs, and the count of the archive follows.
   await search.fill('linkedin bremen');
-  await expect(page.getByTestId('also-archive')).toHaveText('Auch im Archiv (1)');
+  await expect(page.getByTestId('also-archive')).toHaveText('Im Archiv (1)');
   const keys = await rows(page).evaluateAll((all) => all.map((r) => r.dataset.testid ?? ''));
   expect(keys.length).toBeGreaterThan(0);
   expect(keys.every((key) => key.startsWith('job-row-linkedin-'))).toBe(true);
@@ -168,6 +168,8 @@ test('a failed save from the leave dialog leaves the caret in the refused field'
 test('the arrow keys follow the order on screen after an exclusion changes in place', async ({
   page,
 }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'linkedin-4100200305').click();

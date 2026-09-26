@@ -343,6 +343,9 @@
   --tabs-line: 2px;
   /* The portal's small tile at the start of a row's company line. */
   --portal-tile: 16px;
+  /* The round checkbox that takes a row's ring's place on hover (choosing several jobs). */
+  --row-check: 20px;
+  --row-check-border: 1.5px;
   /* The white sheet meets the title bar with a hairline and a rounded corner on Windows; on
      macOS it runs up to the window edge. */
   --sheet-top-edge: var(--border-width);

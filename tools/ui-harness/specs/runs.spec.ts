@@ -258,17 +258,19 @@ test('a page that fails while scrolling says so and loads on retry', async ({ pa
     .toBeGreaterThan(mounted);
 });
 
-test('the divider under Neu names no number; under Alle the one of every excluded job', async ({
+test('the excluded section names its count: under Neu once the list is whole, under Alle every one', async ({
   page,
 }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await expect(page.getByTestId('facet').getByRole('radio', { name: /Neu/ })).toHaveAttribute(
     'aria-checked',
     'true',
   );
-  await expect(page.getByTestId('excluded-divider')).toHaveText('Ausgeschlossen');
+  await expect(page.getByTestId('excluded-divider')).toHaveText('Ausgeschlossen (1)');
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('excluded-count')).toBeVisible();
+  await expect(page.getByTestId('excluded-divider')).toHaveText(/Ausgeschlossen \(\d+\)/);
   // The list of Alle arrives from the backend and builds a few rows per frame: then the
   // divider names every excluded row of it.
   const divider = page.getByTestId('excluded-divider');
@@ -276,7 +278,7 @@ test('the divider under Neu names no number; under Alle the one of every exclude
   const named = async (): Promise<boolean> => {
     const count = await excluded.count();
     const text = (await divider.innerText()).replace(/\s+/g, ' ').trim();
-    return count > 0 && text === `Ausgeschlossen ${count}`;
+    return count > 0 && text === `Ausgeschlossen (${count})`;
   };
   await expect.poll(named).toBe(true);
 });

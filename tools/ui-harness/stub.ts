@@ -269,6 +269,11 @@ function job(
   };
 }
 
+/** When the last fetch (`lastRun`, 1.2 to 1 hours ago) first saw its new jobs: the three
+ *  best unread jobs came with it, the other unread ones are older (the two sections of the
+ *  list's Neu). */
+const LAST_FETCH_SAW = at(1.1);
+
 function sampleJobs(): JobView[] {
   return [
     job(
@@ -282,6 +287,7 @@ function sampleJobs(): JobView[] {
         unread: true,
         pinned: true,
         alsoOn: ['linkedin'],
+        firstSeenAt: LAST_FETCH_SAW,
         match: {
           ...scored(91, ['Interim-Management im Mittelstand', 'Konzernabschluss nach HGB'], 4, 4),
           facts: {
@@ -305,6 +311,7 @@ function sampleJobs(): JobView[] {
       3,
       {
         unread: true,
+        firstSeenAt: LAST_FETCH_SAW,
         workMode: 'remote',
         match: {
           ...scored(84, ['Controlling mit SAP S/4HANA', 'Aufbau Reporting'], 4, 5),
@@ -328,6 +335,7 @@ function sampleJobs(): JobView[] {
       5,
       {
         unread: true,
+        firstSeenAt: LAST_FETCH_SAW,
         detail: { kind: 'teaser' },
         match: scored(76, ['Projektleitung SAP Finance'], 2, 3),
       },
