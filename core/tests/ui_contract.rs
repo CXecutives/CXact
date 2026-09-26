@@ -835,100 +835,31 @@ fn the_macos_toolbar_row_matches_the_traffic_lights() {
     }
 }
 
-/// `--p-*` HSL triplet of tokens.css as 8-bit RGB (rounded like a browser).
-fn palette_rgb(tokens: &str, name: &str) -> [u8; 3] {
-    let line = tokens
-        .lines()
-        .find(|l| l.trim_start().starts_with(&format!("--p-{name}:")))
-        .unwrap_or_else(|| panic!("--p-{name} missing in tokens.css"));
-    let value = line
-        .split(':')
-        .nth(1)
-        .expect("value")
-        .trim()
-        .trim_end_matches(';');
-    let parts: Vec<f64> = value
-        .split_whitespace()
-        .map(|p| p.trim_end_matches('%').parse().expect("hsl number"))
-        .collect();
-    let (hue, saturation, lightness) = (parts[0], parts[1] / 100.0, parts[2] / 100.0);
-    let chroma = (1.0 - (2.0 * lightness - 1.0).abs()) * saturation;
-    let second = chroma * (1.0 - ((hue / 60.0) % 2.0 - 1.0).abs());
-    let base = lightness - chroma / 2.0;
-    let (red, green, blue) = match hue {
-        h if h < 60.0 => (chroma, second, 0.0),
-        h if h < 120.0 => (second, chroma, 0.0),
-        h if h < 180.0 => (0.0, chroma, second),
-        h if h < 240.0 => (0.0, second, chroma),
-        h if h < 300.0 => (second, 0.0, chroma),
-        _ => (chroma, 0.0, second),
-    };
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "0..=255 by construction"
-    )]
-    let byte = |channel: f64| ((channel + base) * 255.0).round() as u8;
-    [byte(red), byte(green), byte(blue)]
-}
-
-/// A `pub const NAME: Rgb = [0x.., 0x.., 0x..];` of src-tauri/src/platform.rs.
-fn platform_rgb(source: &str, name: &str) -> [u8; 3] {
-    let line = source
-        .lines()
-        .find(|l| {
-            l.trim_start()
-                .starts_with(&format!("pub const {name}: Rgb"))
-        })
-        .unwrap_or_else(|| panic!("{name} missing in platform.rs"));
-    let list = line
-        .split('[')
-        .nth(1)
-        .expect("array")
-        .split(']')
-        .next()
-        .expect("end");
-    let bytes: Vec<u8> = list
-        .split(',')
-        .map(|b| u8::from_str_radix(b.trim().trim_start_matches("0x"), 16).expect("hex byte"))
-        .collect();
-    [bytes[0], bytes[1], bytes[2]]
-}
-
 /// The native Windows title bar wears the app's colours (platform.rs, DWM): its caption is
-/// the cream of the sidebar below it, which is also the window's `backgroundColor` (no flash
-/// before the first paint), its title the ink of the text, dimmed to the subtle text.
+/// the cream of the sidebar below it (`--bg`, which is also the window's `backgroundColor`, so
+/// nothing flashes before the first paint), its title the ink of the text, dimmed to the
+/// subtle text. platform.rs names the tokens and writes no colour of its own; the generated
+/// palette follows tokens.css (core/tests/palette.rs).
 #[test]
 fn the_title_bar_colours_are_the_tokens() {
-    let tokens = std::fs::read_to_string(repo("ui/src/styles/tokens.css")).expect("tokens.css");
     let platform = std::fs::read_to_string(repo("src-tauri/src/platform.rs")).expect("platform.rs");
-    let cream = palette_rgb(&tokens, "cream");
-    assert!(
-        tokens.contains("--bg: hsl(var(--p-cream));"),
-        "--bg is the cream"
-    );
-    assert_eq!(
-        platform_rgb(&platform, "TITLE_BAR_BACKGROUND"),
-        cream,
-        "caption = --bg"
-    );
-    assert_eq!(
-        platform_rgb(&platform, "TITLE_BAR_TEXT"),
-        palette_rgb(&tokens, "ink"),
-        "title = --text"
-    );
-    assert_eq!(
-        platform_rgb(&platform, "TITLE_BAR_TEXT_INACTIVE"),
-        palette_rgb(&tokens, "fg-subtle"),
-        "inactive title = --text-subtle"
-    );
+    for (constant, token) in [
+        ("TITLE_BAR_BACKGROUND", "BG"),
+        ("TITLE_BAR_TEXT", "TEXT"),
+        ("TITLE_BAR_TEXT_INACTIVE", "TEXT_SUBTLE"),
+    ] {
+        assert!(
+            platform.contains(&format!(
+                "pub const {constant}: Rgb = palette::{token}.rgb;"
+            )),
+            "{constant} is palette::{token} (--{})",
+            token.to_ascii_lowercase().replace('_', "-")
+        );
+    }
     let shared = config("tauri.conf.json");
-    let background = shared["app"]["windows"][0]["backgroundColor"]
-        .as_str()
-        .expect("backgroundColor");
     assert_eq!(
-        background.to_ascii_uppercase(),
-        format!("#{:02X}{:02X}{:02X}", cream[0], cream[1], cream[2]),
+        shared["app"]["windows"][0]["backgroundColor"],
+        jobalert_core::export::palette::BG.hex().as_str(),
         "backgroundColor = --bg"
     );
 }
