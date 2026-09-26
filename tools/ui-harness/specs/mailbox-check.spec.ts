@@ -3,6 +3,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -63,20 +64,21 @@ test('CRED-1: a fetch waits while the mailbox is checked, and says why', async (
   await expect(page.getByTestId('run-running')).toBeVisible();
 });
 
-test('CRED-3: signed in but not counted is connected, and says the fetch counts', async ({
+test('CRED-3: signed in but not counted is connected, and a toast says the fetch counts', async ({
   page,
 }) => {
   await changeMailbox(page, `${WIN}&mail=uncounted`);
   await page.getByTestId('mailbox-save').click();
-  await expect(page.getByTestId('mailbox-note')).toHaveText(
-    'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
-  );
+  await expect(page.getByTestId('toast-text')).toHaveText(T.settings.mailboxNotCounted);
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
-  await expect(page.getByTestId('settings-mailbox')).toContainText('Verbunden');
-  // With the count there, the note stays short.
+  await expect(page.getByTestId('settings-mailbox')).toContainText(T.settings.connected);
+  // With the count there, the badge is the answer: no note, no toast.
   await changeMailbox(page);
   await page.getByTestId('mailbox-save').click();
-  await expect(page.getByTestId('mailbox-note')).toHaveText('Postfach verbunden.');
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(page.getByTestId('settings-mailbox')).toContainText(T.settings.connected);
+  await expect(page.getByTestId('mailbox-note')).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 
 test('CRED-2: a mistyped app password is named at once, also while a fetch runs', async ({
