@@ -219,6 +219,7 @@ fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
         system_language: jobalert_core::settings::Language::DEFAULT,
         reset_report: Mutex::new(reset_report),
         gmail_user: Mutex::new(GmailUser::Unread),
+        mailbox_check: Mutex::new(None),
         activity: Mutex::new(Activity::Idle),
         scoring: Scoring::default(),
         refresh: Refresh::default(),

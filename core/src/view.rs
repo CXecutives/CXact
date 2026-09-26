@@ -1166,6 +1166,8 @@ pub struct Mailbox {
     pub vault: VaultKind,
     /// The vault could not be read.
     pub error: Option<ErrorInfo>,
+    /// What "Verbinden" found in the mailbox in this session (the sign-in worked).
+    pub check: Option<MailboxCheck>,
 }
 
 /// "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals

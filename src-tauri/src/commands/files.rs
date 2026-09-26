@@ -95,13 +95,17 @@ fn refresh(state: &AppState) {
         return;
     };
     let matcher = state.matcher();
+    let workspace = settings.workspace_or(&state.default_workspace);
+    let language = settings.language_or(state.system_language);
     pipeline::refresh_exports(
         &state.store,
-        &settings.workspace_or(&state.default_workspace),
+        &workspace,
         matcher.as_deref().map(|m| m as &dyn Matcher),
         Timestamp::now(),
-        settings.language_or(state.system_language),
+        language,
     );
+    // The Excel file follows the marks too (it is rewritten only when something changed).
+    let _ = pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
 }
 
 /// Rewrites all text files (e.g. after a change of folder). The names stay. It holds the app
@@ -166,10 +170,17 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),
             "folder",
         )?,
-        OpenTarget::Excel => existing(
-            export::overview_path(&state.workspace()?.join(RESULT_DIR)),
-            "file",
-        )?,
+        OpenTarget::Excel => {
+            // Fresh before it opens: the marks since the last write are in it.
+            let settings = state.settings()?;
+            let workspace = state.workspace()?;
+            if !state.dry_run && !state.busy() {
+                let language = settings.language_or(state.system_language);
+                let _ =
+                    pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
+            }
+            existing(export::overview_path(&workspace.join(RESULT_DIR)), "file")?
+        }
         OpenTarget::ExcelInFolder => {
             let workspace = state.workspace()?;
             let excel = export::overview_path(&workspace.join(RESULT_DIR));

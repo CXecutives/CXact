@@ -521,6 +521,8 @@ class JobsStore {
       favourites: this.facet === 'favourites',
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
+      portal: null,
+      minBand: null,
       limit,
       offset,
     };
@@ -606,6 +608,8 @@ class JobsStore {
           favourites: false,
           sort: 'newest',
           search: null,
+          portal: null,
+          minBand: null,
           limit: 0,
           offset: 0,
         },

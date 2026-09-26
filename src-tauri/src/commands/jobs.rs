@@ -257,3 +257,61 @@ pub async fn mark_unread(
     }
     Ok(u32::try_from(changed).unwrap_or(u32::MAX))
 }
+
+/// "Beworben": marks jobs as applied (with the time) or takes the mark back; returns the keys
+/// that changed. An applied job never archives itself.
+#[tauri::command]
+pub async fn set_applied(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    keys: Vec<JobKey>,
+    on: bool,
+) -> CmdResult<Vec<JobKey>> {
+    let changed = state.store.set_applied(&keys, on, Timestamp::now())?;
+    if !changed.is_empty() {
+        files::marked(&app);
+    }
+    Ok(changed)
+}
+
+/// The user's note of a job (trimmed; null or empty removes it). Whether it changed.
+#[tauri::command]
+pub async fn set_note(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    key: JobKey,
+    note: Option<String>,
+) -> CmdResult<bool> {
+    let changed = state.store.set_note(&key, note.as_deref())?;
+    if changed {
+        files::marked(&app);
+    }
+    Ok(changed)
+}
+
+/// The numbers of the Übersicht: the requirements the profile lacks most often, the market of
+/// the last days, the portals whose alerts went quiet.
+#[tauri::command]
+pub async fn overview_stats(state: State<'_, AppState>) -> CmdResult<view::OverviewStats> {
+    let settings = state.settings()?;
+    Ok(view::overview_stats(
+        &state.store,
+        &settings,
+        Timestamp::now(),
+    )?)
+}
+
+/// How many jobs of this company came in the last `days` days (the reader's line).
+#[tauri::command]
+pub async fn company_count(
+    state: State<'_, AppState>,
+    company: String,
+    days: u32,
+) -> CmdResult<u32> {
+    Ok(view::company_count(
+        &state.store,
+        &company,
+        days,
+        Timestamp::now(),
+    )?)
+}

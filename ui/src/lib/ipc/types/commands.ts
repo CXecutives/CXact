@@ -11,6 +11,7 @@ import type { JobQuery } from "./JobQuery";
 import type { Mailbox } from "./Mailbox";
 import type { MoveBack } from "./MoveBack";
 import type { OpenTarget } from "./OpenTarget";
+import type { OverviewStats } from "./OverviewStats";
 import type { Place } from "./Place";
 import type { Portal } from "./Portal";
 import type { ProfileDraft } from "./ProfileDraft";
@@ -59,4 +60,8 @@ export type Commands = {
   reset_all: { args: Record<string, never>; result: null };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
   clipboard_text: { args: Record<string, never>; result: string | null };
+  set_applied: { args: { on: boolean; keys: JobKey[] }; result: JobKey[] };
+  set_note: { args: { key: JobKey; note: string | null }; result: boolean };
+  overview_stats: { args: Record<string, never>; result: OverviewStats };
+  company_count: { args: { company: string; days: number }; result: number };
 };

@@ -51,6 +51,7 @@ pub(super) fn mailbox(state: &AppState) -> Mailbox {
         user,
         vault: crate::platform::vault_kind(),
         error,
+        check: lock(&state.mailbox_check).clone(),
     }
 }
 
@@ -115,6 +116,8 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             search: None,
             limit: 0,
             offset: 0,
+            portal: None,
+            min_band: None,
         },
     )?
     .counts;
@@ -130,10 +133,12 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         platform: crate::platform::platform(),
         dry_run: state.dry_run,
         // The dry run is a demo with a mailbox and a sample profile: it starts in the app itself,
-        // never on the first-run page (the smoke probe on a fresh CI machine relies on it).
+        // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
+        // first-run page stays until a fetch has read the mailbox, also after a failed one.
         first_run: !state.dry_run
-            && last_run.is_none()
+            && !pipeline::has_completed_fetch(&state.store)
             && counts.inbox + counts.archive + counts.trash == 0,
+        setup_done: state.dry_run || pipeline::has_completed_fetch(&state.store),
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
@@ -145,7 +150,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, now),
-        auto_fetch_on_start: settings.auto_fetch_on_start,
         auto_archive_days: settings.auto_archive_days,
         auto_empty_trash_days: settings.auto_empty_trash_days,
         language: settings.language_or(state.system_language),
@@ -174,16 +178,15 @@ pub async fn app_state(
     if let Activity::Run(run) = &*lock(&state.activity) {
         run.attach(channel.clone());
     }
-    state.scoring.set_page(channel.clone());
-    at_start(&app, &state, channel);
+    state.scoring.set_page(channel);
+    at_start(&app, &state);
     build_state(&state)
 }
 
-/// Once per app start, on the first page load: the auto fetch if it is due, else a rescore
-/// if jobs wait for a score (new profile, engine update). A fetch scores them too. In the
-/// background: the auto fetch reads the keychain, which can wait for a prompt (macOS), and
-/// the first page load never waits for it - the page follows the run by its events.
-fn at_start(app: &AppHandle, state: &AppState, channel: Channel<RunEvent>) {
+/// Once per app start, on the first page load: a rescore if jobs wait for a score (new
+/// profile, engine update), in the background. The app never fetches by itself at the start
+/// (user decision 2026-09-26): only "Abrufen" and its keys do.
+fn at_start(app: &AppHandle, state: &AppState) {
     static CHECKED: AtomicBool = AtomicBool::new(false);
     if CHECKED.swap(true, Ordering::SeqCst) {
         return;
@@ -195,9 +198,7 @@ fn at_start(app: &AppHandle, state: &AppState, channel: Channel<RunEvent>) {
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
-        if !auto_fetch(&app, &state, channel) {
-            scoring::rescore_if_pending(&app, &state);
-        }
+        scoring::rescore_if_pending(&app, &state);
     });
 }
 
@@ -220,31 +221,8 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// The auto fetch: switched on, mailbox connected, last fetch older than 6 hours. Never in
-/// the dry run. `true` if it started.
-fn auto_fetch(app: &AppHandle, state: &AppState, channel: Channel<RunEvent>) -> bool {
-    if state.dry_run {
-        return false;
-    }
-    let Ok(settings) = state.settings() else {
-        return false;
-    };
-    let connected = state.gmail_user().0.is_some();
-    let due = pipeline::auto_fetch_due(&state.store, &settings, connected, Timestamp::now());
-    if due {
-        log::info!("auto fetch at the start");
-        let request = pipeline::RunRequest {
-            kind: pipeline::RunKind::Fetch,
-        };
-        match super::run::launch(app, state, request, channel) {
-            Ok(()) => return true,
-            Err(e) => log::warn!("auto fetch not started: {:?}", e.kind),
-        }
-    }
-    false
-}
-
-/// Saves portal switches and the auto fetch. The workspace only changes through the dialog.
+/// Saves portal switches, the automatic archive and trash, and the language. The workspace
+/// only changes through the dialog.
 #[tauri::command]
 pub async fn save_settings(
     state: State<'_, AppState>,

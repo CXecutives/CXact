@@ -100,7 +100,6 @@
               loginEnabled: patch.loginEnabled ?? null,
             },
           ],
-          autoFetchOnStart: null,
           autoArchiveDays: null,
           autoEmptyTrashDays: null,
           language: null,

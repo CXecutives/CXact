@@ -1,2 +1,2 @@
 # Proper names that count as words in doc comments (".." keeps clippy's default list).
-doc-valid-idents = ["WebView2", "WebView", "LinkedIn", "GmbH", ".."]
+doc-valid-idents = ["WebView2", "WebView", "LinkedIn", "GmbH", "CXact", ".."]

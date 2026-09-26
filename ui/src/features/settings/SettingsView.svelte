@@ -155,22 +155,10 @@
   const AUTO_ARCHIVE_DAYS = 30;
   const AUTO_EMPTY_TRASH_DAYS = 30;
 
-  /** The switch moves at once; a failure puts it back (reload) and says why below it. */
-  function autoFetch(on: boolean): Promise<void> {
-    if (app.state) app.state.autoFetchOnStart = on;
-    return saveFetch({
-      autoFetchOnStart: on,
-      autoArchiveDays: null,
-      autoEmptyTrashDays: null,
-      language: null,
-    });
-  }
-
   function autoArchive(on: boolean): Promise<void> {
     const days = on ? AUTO_ARCHIVE_DAYS : 0;
     if (app.state) app.state.autoArchiveDays = days;
     return saveFetch({
-      autoFetchOnStart: null,
       autoArchiveDays: days,
       autoEmptyTrashDays: null,
       language: null,
@@ -181,7 +169,6 @@
     const days = on ? AUTO_EMPTY_TRASH_DAYS : 0;
     if (app.state) app.state.autoEmptyTrashDays = days;
     return saveFetch({
-      autoFetchOnStart: null,
       autoArchiveDays: null,
       autoEmptyTrashDays: days,
       language: null,
@@ -198,7 +185,7 @@
     language.set(next);
     if (app.state) app.state.language = next;
     return saveFetch(
-      { autoFetchOnStart: null, autoArchiveDays: null, autoEmptyTrashDays: null, language: next },
+      { autoArchiveDays: null, autoEmptyTrashDays: null, language: next },
       setLanguageNote,
       () => language.set(before),
     );
@@ -385,19 +372,6 @@
     <section class="section" data-testid="settings-fetch">
       <h2 class="heading">{t.settings.automatic}</h2>
       <Card padding="rows">
-        <SettingRow
-          label={t.settings.autoFetch}
-          hint={t.settings.autoFetchHint}
-          for="switch-auto-fetch"
-        >
-          <Toggle
-            id="switch-auto-fetch"
-            checked={cfg.autoFetchOnStart}
-            label={t.settings.autoFetch}
-            testid="toggle-auto-fetch"
-            onchange={autoFetch}
-          />
-        </SettingRow>
         <SettingRow
           label={t.settings.autoArchive}
           hint={t.settings.autoArchiveHint}

@@ -37,6 +37,7 @@
 
 import type {
   AppState,
+  Band,
   Commands,
   Deleted,
   ErrorInfo,
@@ -47,8 +48,10 @@ import type {
   JobQuery,
   JobView,
   Language,
+  MailboxCheck,
   MoveBack,
   Notice,
+  OverviewStats,
   Place,
   Portal,
   PortalState,
@@ -175,6 +178,17 @@ const scenario = params.get('scenario') ?? 'default';
 /** `?platform=macos` shows the demo as a Mac shows it: keychain and Mac paths. */
 const MAC = params.get('platform') === 'macos';
 const VAULT = MAC ? 'macosKeychain' : 'windowsCredentialManager';
+
+/** What "Verbinden" finds in the demo mailbox (mail::check::check_mailbox). */
+const DEMO_CHECK: MailboxCheck = {
+  days: 30,
+  total: 34,
+  perPortal: [
+    { portal: 'linkedin', count: 20 },
+    { portal: 'freelancermap', count: 14 },
+    { portal: 'freelance', count: 0 },
+  ],
+};
 const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
 const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
@@ -197,6 +211,8 @@ const later = (minutes: number): string => new Date(NOW + minutes * 60_000).toIS
 
 type Match = NonNullable<JobView['match']>;
 
+const OPEN_MUSTS = ['Erfahrung mit Power BI', 'Kenntnisse in LucaNet', 'Branchenerfahrung Energie'];
+
 /** A job whose ad states no key facts. */
 const NO_FACTS = {
   rate: null,
@@ -218,6 +234,8 @@ const scored = (score: number, top: string[], mustMet = 3, mustTotal = 4): Match
   mustMet,
   mustTotal,
   top,
+  // The reader's open musts (detailOf): one partial first when two or more are missing.
+  open: OPEN_MUSTS.slice(0, Math.min(2, mustTotal - mustMet - (mustTotal - mustMet >= 2 ? 1 : 0))),
   facts: NO_FACTS,
 });
 
@@ -234,6 +252,7 @@ const excludedBy = (
   mustMet: 2,
   mustTotal: 4,
   top: [],
+  open: [],
   facts: NO_FACTS,
 });
 
@@ -265,6 +284,8 @@ function job(
     place: 'inbox',
     trashedAt: null,
     overridden: false,
+    appliedAt: null,
+    note: null,
     ...extra,
   };
 }
@@ -443,6 +464,7 @@ function sampleJobs(): JobView[] {
         mustMet: 0,
         mustTotal: 0,
         top: [],
+        open: [],
         facts: NO_FACTS,
       },
     }),
@@ -933,7 +955,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     ],
     // Seven new, one of them excluded; two of the others fit well.
     newJobs: { count: 6, high: 2 },
-    score: { scored: 10, excluded: 2, unscorable: 1, pending: 1, best: 91 },
+    score: { scored: 10, excluded: 2, unscorable: 1, pending: 1, best: 91, delta: null },
     export: {
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
       overviewHtml: 'C:/Users/demo/Jobs/Uebersicht.html',
@@ -974,14 +996,14 @@ function initial(): void {
       excelPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.xlsx`,
       excelExists: true,
     },
-    mailbox: { user: 'alerts.demo@gmail.com', vault: VAULT, error: null },
+    mailbox: { user: 'alerts.demo@gmail.com', vault: VAULT, error: null, check: null },
     profile: PROFILE,
     portals: [
       portal('linkedin'),
       portal('freelance'),
       portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
     ],
-    autoFetchOnStart: true,
+    setupDone: true,
     autoArchiveDays: 30,
     autoEmptyTrashDays: 30,
     language: LANGUAGE,
@@ -996,7 +1018,7 @@ function initial(): void {
     case 'first-run':
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null };
+      state.mailbox = { user: null, vault: VAULT, error: null, check: null };
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
@@ -1054,7 +1076,7 @@ function initial(): void {
       // After "reset everything" the app starts empty: the first-run page, with the report.
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null };
+      state.mailbox = { user: null, vault: VAULT, error: null, check: null };
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
@@ -1071,6 +1093,7 @@ function initial(): void {
         user: 'probelauf@example.org',
         vault: VAULT,
         error: null,
+        check: null,
       };
       break;
     case 'profile-broken':
@@ -1187,8 +1210,91 @@ function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favouri
   return where && (!query.unread || j.unread);
 }
 
+const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
+
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
+function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
+  if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
+    return false;
+  }
+  if (query.minBand === null || query.minBand === undefined) return true;
+  return j.match?.status === 'scored' && j.match.score >= BAND_FROM[query.minBand];
+}
+
 function refresh(): void {
   state.counts = countsOf(jobs);
+}
+
+const DAY_MS = 24 * HOUR;
+
+/** The Übersicht's numbers (view::overview_stats): open musts of 30 days in the inbox, the
+ *  market of 7 days, the enabled portals with their last alert mail. */
+function overviewStats(): OverviewStats {
+  const month = NOW - 30 * DAY_MS;
+  const week = NOW - 7 * DAY_MS;
+  const recent = jobs.filter((j) => Date.parse(j.mailDate ?? j.firstSeenAt) >= month);
+  const scoredJobs = recent.filter((j) => j.match?.status === 'scored');
+  const open = new Map<string, number>();
+  for (const j of scoredJobs.filter((x) => x.place === 'inbox')) {
+    for (const label of j.match?.open ?? []) open.set(label, (open.get(label) ?? 0) + 1);
+  }
+  const openMusts = [...open.entries()]
+    .filter(([, n]) => n >= 2)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([label, count]) => ({ label, count }));
+  const rates = scoredJobs
+    .filter((j) => (j.match?.score ?? 0) >= 40 && j.match?.facts.rate !== null)
+    .map((j) => {
+      const f = j.match!.facts;
+      return f.hourly === true ? f.rate! * 8 : f.rate!;
+    })
+    .sort((a, b) => a - b);
+  const mid = rates.length >> 1;
+  const median =
+    rates.length === 0
+      ? null
+      : rates.length % 2 === 1
+        ? rates[mid]!
+        : Math.floor((rates[mid - 1]! + rates[mid]!) / 2);
+  const remote = recent
+    .map((j) => {
+      const f = j.match?.facts;
+      const from = f?.remoteFrom ?? f?.remoteTo ?? null;
+      if (from !== null) return from >= 50;
+      return j.workMode === null ? null : j.workMode === 'remote';
+    })
+    .filter((r): r is boolean => r !== null);
+  const newByPortal = PORTALS.map((portal) => ({
+    portal,
+    count: jobs.filter(
+      (j) => j.key.portal === portal && Date.parse(j.firstSeenAt) >= week && j.place !== 'trash',
+    ).length,
+  }));
+  const quietPortals = state.portals
+    .filter((p) => p.enabled)
+    .map((p) => {
+      const last = jobs
+        .filter((j) => j.key.portal === p.portal && j.mailDate !== null)
+        .map((j) => Date.parse(j.mailDate!))
+        .sort((a, b) => b - a)[0];
+      const lastAlert = last === undefined ? null : new Date(last).toISOString();
+      return { portal: p.portal, lastAlert, quiet: last === undefined || last < week };
+    });
+  return {
+    openMusts,
+    market: {
+      newByPortal,
+      medianDayRate: median,
+      rateCount: rates.length,
+      remoteShare:
+        remote.length === 0
+          ? null
+          : Math.floor((remote.filter(Boolean).length * 100) / remote.length),
+      remoteKnown: remote.length,
+    },
+    quietPortals,
+  };
 }
 
 /** Moves jobs to a place; returns how many moved. */
@@ -1277,7 +1383,7 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
     harness.failPages -= 1;
     throw fail('db');
   }
-  const base = jobs.filter((j) => matchesSearch(j, query.search));
+  const base = jobs.filter((j) => matchesSearch(j, query.search) && inFilter(j, query));
   // The unread filter lists every unread job, excluded ones too (grey behind the divider);
   // only the count leaves them out (store::job_page). By date: the mail's, in the trash
   // the day the job went there.
@@ -1371,7 +1477,6 @@ const MORE_MUSTS = [
   'Reporting nach IFRS',
   'Verhandlungssicheres Deutsch',
 ];
-const OPEN_MUSTS = ['Erfahrung mit Power BI', 'Kenntnisse in LucaNet', 'Branchenerfahrung Energie'];
 const PARTIAL_MUST = 'Aufbau und Weiterentwicklung des Reportings';
 const NICE_MET = 'Konzernabschluss nach HGB';
 const NICE_OPEN = 'Verhandlungssicheres Englisch';
@@ -2052,6 +2157,33 @@ const handlers: Handlers = {
     refresh();
     return marked.map((j) => structuredClone(j.key));
   },
+  // "Beworben" with its time; never archives the job (store::set_applied).
+  set_applied: ({ keys, on }) => {
+    const changed: JobKey[] = [];
+    for (const key of keys) {
+      const j = find(key);
+      if (j === undefined || (j.appliedAt !== null) === on) continue;
+      j.appliedAt = on ? new Date(Date.now()).toISOString() : null;
+      changed.push(structuredClone(j.key));
+    }
+    refresh();
+    return changed;
+  },
+  set_note: ({ key, note }) => {
+    const j = find(key);
+    const next = note === null || note.trim() === '' ? null : note.trim().slice(0, 2000);
+    if (j === undefined || j.note === next) return false;
+    j.note = next;
+    refresh();
+    return true;
+  },
+  overview_stats: () => structuredClone(overviewStats()),
+  company_count: ({ company, days }) => {
+    const since = Date.now() - days * DAY_MS;
+    return jobs.filter(
+      (j) => j.company === company && Date.parse(j.firstSeenAt) >= since && j.place !== 'trash',
+    ).length;
+  },
   mark_unread: ({ keys }) => {
     let changed = 0;
     for (const key of keys) {
@@ -2163,11 +2295,11 @@ const handlers: Handlers = {
       throw fail('invalid', { reason: 'appPassword' });
     }
     if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
-    state.mailbox = { user, vault: VAULT, error: null };
+    state.mailbox = { user, vault: VAULT, error: null, check: DEMO_CHECK };
     return state.mailbox;
   },
   remove_mailbox: () => {
-    state.mailbox = { user: null, vault: VAULT, error: null };
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null };
     return true;
   },
   portal_login: ({ portal: name }) => {
@@ -2224,7 +2356,6 @@ const handlers: Handlers = {
       if (change.loginEnabled !== null) p.loginEnabled = change.loginEnabled;
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
-    if (patch.autoFetchOnStart !== null) state.autoFetchOnStart = patch.autoFetchOnStart;
     if (patch.autoArchiveDays !== null) state.autoArchiveDays = patch.autoArchiveDays;
     if (patch.autoEmptyTrashDays !== null) state.autoEmptyTrashDays = patch.autoEmptyTrashDays;
     if (patch.language !== null) state.language = patch.language;

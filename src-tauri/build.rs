@@ -48,6 +48,10 @@ fn main() {
             "reset_all",
             "report_ui_error",
             "clipboard_text",
+            "set_applied",
+            "set_note",
+            "overview_stats",
+            "company_count",
         ]),
     ))
     .expect("tauri-build failed");

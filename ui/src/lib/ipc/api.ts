@@ -61,6 +61,10 @@ export const COMMAND_NAMES = [
   'reset_all',
   'report_ui_error',
   'clipboard_text',
+  'set_applied',
+  'set_note',
+  'overview_stats',
+  'company_count',
 ] as const satisfies readonly CommandName[];
 
 /** Commands that receive the run channel as `channel` argument. */

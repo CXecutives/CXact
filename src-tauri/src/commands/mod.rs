@@ -37,7 +37,7 @@ pub use scoring::Scoring;
     dead_code,
     reason = "read by core/tests/contract.rs, which generates the TypeScript command map"
 )]
-pub const COMMANDS: [(&str, &str, &str); 37] = [
+pub const COMMANDS: [(&str, &str, &str); 41] = [
     ("app_state", "{ channel: Channel<RunEvent> }", "AppState"),
     (
         "start_run",
@@ -103,6 +103,18 @@ pub const COMMANDS: [(&str, &str, &str); 37] = [
         "null",
     ),
     ("clipboard_text", "Record<string, never>", "string | null"),
+    ("set_applied", "{ on: boolean; keys: JobKey[] }", "JobKey[]"),
+    (
+        "set_note",
+        "{ key: JobKey; note: string | null }",
+        "boolean",
+    ),
+    ("overview_stats", "Record<string, never>", "OverviewStats"),
+    (
+        "company_count",
+        "{ company: string; days: number }",
+        "number",
+    ),
 ];
 
 /// The command handler for `tauri::Builder::invoke_handler`.
@@ -145,6 +157,10 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::reset_all,
         app::report_ui_error,
         app::clipboard_text,
+        jobs::set_applied,
+        jobs::set_note,
+        jobs::overview_stats,
+        jobs::company_count,
     ]
 }
 
@@ -203,6 +219,8 @@ pub struct AppState {
     pub scoring: Scoring,
     /// The small files that follow the user's marks without a run.
     pub refresh: Refresh,
+    /// What the last "Verbinden" found in the mailbox (this session only; never the password).
+    pub mailbox_check: Mutex<Option<jobalert_core::view::MailboxCheck>>,
     /// Unsaved changes of the page keep the window from closing until the page has asked.
     pub close_guard: CloseGuard,
 }
