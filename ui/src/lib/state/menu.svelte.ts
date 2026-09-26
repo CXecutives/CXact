@@ -6,8 +6,14 @@
 
 import type { IconName } from '$components/Icon.svelte';
 
-/** One entry of a menu: an action, or a thin line between groups. */
-export type MenuEntry = MenuItem | { kind: 'separator' };
+/** One entry of a menu: an action, a thin line between groups, or a group's small heading
+ *  (muted, never active: the arrows and the type-ahead pass over it). */
+export type MenuEntry = MenuItem | { kind: 'separator' } | MenuHeading;
+
+export interface MenuHeading {
+  kind: 'heading';
+  label: string;
+}
 
 export interface MenuItem {
   kind?: 'item';
@@ -17,8 +23,10 @@ export interface MenuItem {
   icon?: IconName | null;
   /** The shortcut as the OS writes it ("Strg+C", "⌘C"), right-aligned and quiet. */
   keys?: string | null;
-  /** A choice of a group (the sort): a check mark before the chosen one. */
+  /** A choice of a group (the sort): a check mark before the chosen one (a radio item). */
   checked?: boolean | null;
+  /** A switch of its own (Nur Favoriten): a checkbox item, the check mark while `checked`. */
+  toggle?: boolean;
   disabled?: boolean;
   /** Why a disabled entry cannot be chosen (its tooltip). */
   reason?: string | null;
@@ -53,7 +61,8 @@ export const menuState: MenuState = $state({ open: null, active: -1 });
 
 let nextId = 1;
 
-export const isItem = (entry: MenuEntry): entry is MenuItem => entry.kind !== 'separator';
+export const isItem = (entry: MenuEntry): entry is MenuItem =>
+  entry.kind !== 'separator' && entry.kind !== 'heading';
 
 /** Open a menu (a menu already open closes first, without giving its focus back). */
 export function openMenu(spec: MenuSpec): void {
