@@ -35,7 +35,7 @@ test('first run: three steps that tick themselves, fetch locked until a mailbox'
   await expect(page.getByTestId('mailbox-user')).toBeFocused();
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'Die Alert-Mails von linkedin.com, freelance.de und freelancermap.de gehören hierher.',
+    'Die Alerts von linkedin.com, freelance.de und freelancermap.de müssen an diese Gmail-Adresse gehen.',
   );
   await page.getByTestId('two-step').click();
   expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
@@ -66,12 +66,22 @@ test('first run: three steps that tick themselves, fetch locked until a mailbox'
   await expect(page.getByTestId('step-mailbox').locator('.marker')).toHaveClass(/drawn/);
   await expect(page.getByTestId('step-mailbox')).not.toHaveAttribute('aria-current', 'step');
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-  // The connect form is gone; the focus waits on the next step's action.
+  // The connect form is gone; the focus waits on the next step's action. Each portal has its
+  // page to set up an alert.
   await expect(page.getByTestId('first-profile')).toBeFocused();
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText([
+    'Alert anlegen',
+    'Alert anlegen',
+    'Alert anlegen',
+  ]);
+  await page.getByTestId('first-alert-freelance').click();
+  expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+    target: { kind: 'portalHome', portal: 'freelance' },
+  });
 
-  // "Profil anlegen" opens the empty form in one click; after saving, a button leads on to
-  // the first fetch and the step is done with the person's name.
-  await page.getByTestId('first-profile').click();
+  // "Selbst ausfüllen" opens the empty form in one click; after saving, a button starts the
+  // first fetch.
+  await page.getByTestId('first-profile-form').click();
   await expect(page.getByTestId('profile-form')).toBeVisible();
   await expect(page.getByTestId('profile-name')).toHaveText('Neues Profil');
   await page.getByTestId('profile-name-field').fill('Erika Beispiel');
@@ -84,14 +94,15 @@ test('first run: three steps that tick themselves, fetch locked until a mailbox'
   await expect(next).toHaveText('Weiter zum ersten Abruf');
   await expect(page.getByTestId('profile-understood')).not.toContainText('SAP');
   await expect(next).toBeInViewport();
+  await page.evaluate(() => (window.__harness.holdAfter = 1));
   await next.click();
-  await expect(page.getByTestId('step-profile')).toHaveAttribute('data-done', 'true');
-  await expect(page.getByTestId('step-profile')).toContainText('Erika Beispiel');
-  expect(await visibleCount(page, '.btn.primary')).toBe(1);
-
-  await fetch.click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('run-running')).toBeVisible();
+  const started = (await calls(page, 'start_run')).map(
+    ([, args]) => (args as { request: unknown }).request,
+  );
+  expect(started).toEqual([{ kind: 'fetch' }]);
+  await page.evaluate(() => (window.__harness.holdAfter = null));
 });
 
 test('first run: a step done before the page opened is simply there', async ({ page }) => {
@@ -209,8 +220,8 @@ test('old jobs archive themselves unless switched off', async ({ page }) => {
 test('a stored sign-in can be removed whatever the switches say', async ({ page }) => {
   await settings(page, `${WIN}&scenario=session-left`);
   const card = page.getByTestId('portal-freelance');
-  await expect(card).toContainText('Die Anmeldung ist noch gespeichert.');
   await expect(card.getByTestId('session-freelance')).toContainText('Anmeldung');
+  await expect(card.getByTestId('session-freelance').locator('.badge')).toHaveText('Angemeldet');
   // The portal switched off: the row stays until the sign-in is gone.
   await page.getByTestId('toggle-enabled-freelance').click();
   await expect(card.getByTestId('sign-out-freelance')).toBeVisible();
@@ -219,10 +230,8 @@ test('a stored sign-in can be removed whatever the switches say', async ({ page 
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
 
-test('auto fetch and portal switches save at once', async ({ page }) => {
+test('portal switches save at once', async ({ page }) => {
   await settings(page);
-  await page.getByTestId('toggle-auto-fetch').click();
-  await expect(page.getByTestId('toggle-auto-fetch')).toHaveAttribute('aria-checked', 'false');
   await page.getByTestId('toggle-enabled-linkedin').click();
   await expect(page.getByTestId('toggle-enabled-linkedin')).toHaveAttribute(
     'aria-checked',
@@ -240,15 +249,6 @@ test('auto fetch and portal switches save at once', async ({ page }) => {
   expect(saved).toEqual([
     {
       patch: {
-        portals: [],
-        autoFetchOnStart: false,
-        autoArchiveDays: null,
-        autoEmptyTrashDays: null,
-        language: null,
-      },
-    },
-    {
-      patch: {
         portals: [{ portal: 'linkedin', enabled: false, fetchDetails: null, loginEnabled: null }],
         autoFetchOnStart: null,
         autoArchiveDays: null,
@@ -261,69 +261,61 @@ test('auto fetch and portal switches save at once', async ({ page }) => {
 
 test('only the switch switches, like the system settings; its text names it', async ({ page }) => {
   await settings(page);
-  const auto = page.getByTestId('toggle-auto-fetch');
+  const auto = page.getByTestId('toggle-auto-archive');
   await expect(auto).toHaveAttribute('aria-checked', 'true');
   // The label and the hint of the row are no click target.
-  await page.getByTestId('settings-fetch').getByText('Beim Start abrufen').click();
-  await page
-    .getByTestId('settings-fetch')
-    .getByText('Wenn der letzte Abruf mehr als sechs Stunden her ist.')
-    .click();
+  await page.getByTestId('settings-fetch').getByText('Jobs nach 30 Tagen archivieren').click();
+  await page.getByTestId('settings-fetch').getByText('Favoriten werden nie archiviert.').click();
   await expect(auto).toHaveAttribute('aria-checked', 'true');
   const details = page.getByTestId('toggle-details-linkedin');
-  await page
-    .getByTestId('details-linkedin')
-    .getByText('Holt die ganze Anzeige, in ruhigem Takt und mit Tageslimit.')
-    .click();
+  await page.getByTestId('details-linkedin').getByText('Details holen').click();
   await expect(details).toHaveAttribute('aria-checked', 'true');
   // The portal's name does not switch the portal either.
   await page.getByTestId('portal-linkedin').getByText('linkedin.com').click();
   await expect(page.getByTestId('toggle-enabled-linkedin')).toHaveAttribute('aria-checked', 'true');
   // The text still names and describes the switch.
-  await expect(page.getByRole('switch', { name: 'Beim Start abrufen' })).toHaveCount(1);
-  await expect(auto).toHaveAccessibleDescription(
-    'Wenn der letzte Abruf mehr als sechs Stunden her ist.',
-  );
+  await expect(page.getByRole('switch', { name: 'Jobs nach 30 Tagen archivieren' })).toHaveCount(1);
+  await expect(auto).toHaveAccessibleDescription('Favoriten werden nie archiviert.');
   await expect(page.getByRole('switch', { name: 'linkedin.com' })).toHaveCount(1);
   // The switch itself switches.
   await details.click();
   await expect(details).toHaveAttribute('aria-checked', 'false');
-  // Off, the row says what that changes instead of the risk of the requests.
-  await expect(page.getByTestId('details-linkedin')).toContainText(
-    'Ohne Details bekommen die Jobs dieses Portals keine Passung.',
+  // What "Details holen" is for is said once, over all portals.
+  await expect(page.getByTestId('portals-hint')).toHaveText(
+    'Ohne „Details holen“ bekommen die Jobs eines Portals keine Passung.',
   );
+  await expect(page.getByTestId('details-linkedin').locator('.hint')).toHaveCount(0);
   // No label element anywhere on the page: no text is a click target of a switch.
   await expect(page.getByTestId('settings').locator('label')).toHaveCount(0);
 });
 
-test('each switch says what it does, no risk grades; freelance.de sign in and out', async ({
-  page,
-}) => {
+test('one sign-in row, no risk grades; freelance.de signs in and out', async ({ page }) => {
   await settings(page);
-  await expect(page.getByTestId('details-freelance')).toContainText(
-    'Holt die ganze Anzeige, in ruhigem Takt und mit Tageslimit.',
-  );
-  await expect(page.getByTestId('login-freelance')).toContainText(
-    'Zeigt ganze Anzeigen statt eines Anrisses.',
-  );
+  // No switch "Mit Anmeldung": one row "Anmeldung" with what it gives and its button.
+  await expect(page.getByTestId('toggle-login-freelance')).toHaveCount(0);
+  const session = page.getByTestId('session-freelance');
+  await expect(session).toContainText('Anmeldung');
+  await expect(session).toContainText('Zeigt ganze Anzeigen.');
   // No risk words and no shield badges on the switch rows.
   for (const word of ['Graubereich', 'Kontorisiko', 'Geringes Risiko']) {
     await expect(page.getByTestId('settings-portals')).not.toContainText(word);
   }
-  await page.getByTestId('toggle-login-freelance').click();
-  // The sign-in row is named for what it is; its state is the badge or the hint.
-  const session = page.getByTestId('session-freelance');
-  await expect(session).toContainText('Anmeldung');
-  await expect(session).toContainText('Nicht angemeldet.');
+  // Signing in lets the fetch use it; signing out ends both.
   await page.getByTestId('sign-in-freelance').click();
   await expect(session.locator('.badge')).toHaveText('Angemeldet');
   await page.getByTestId('sign-out-freelance').click();
-  await expect(session).toContainText('Nicht angemeldet.');
-  // Details off: no request, so no risk badge, sign-in shown off, no sign-in row.
+  await expect(session.locator('.badge')).toHaveCount(0);
+  const logins = (await calls(page, 'save_settings')).map(
+    ([, args]) => (args as { patch: { portals: { loginEnabled: boolean | null }[] } }).patch,
+  );
+  expect(logins.map((patch) => patch.portals[0]?.loginEnabled)).toEqual([true, false]);
+  // Details off: no page is fetched, so signing in waits and says why.
   await page.getByTestId('toggle-details-freelance').click();
   await expect(page.getByTestId('details-freelance').locator('.badge')).toHaveCount(0);
-  await expect(page.getByTestId('toggle-login-freelance')).toHaveAttribute('aria-checked', 'false');
-  await expect(session).toHaveCount(0);
+  const signIn = page.getByTestId('sign-in-freelance');
+  await expect(signIn).toHaveAttribute('aria-disabled', 'true');
+  await signIn.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Schalte erst „Details holen“ ein.');
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
 
@@ -332,6 +324,9 @@ test('quota only from 80 %, pauses with reason and end', async ({ page }) => {
   const freelancermap = page.getByTestId('quota-freelancermap');
   await expect(freelancermap).toContainText('Heute 86 von 100 Seiten');
   await expect(freelancermap.getByRole('progressbar')).toBeVisible();
+  // Every portal counts its pages of the day, the meter only near the limit.
+  await expect(page.getByTestId('quota-linkedin')).toHaveText('Heute 23 von 80 Seiten');
+  await expect(page.getByTestId('quota-linkedin').getByRole('progressbar')).toHaveCount(0);
   // The status is the last part of the card, under the switches, with its own divider.
   const order = await page
     .getByTestId('portal-freelancermap')
@@ -366,24 +361,32 @@ test('first run: a profile that names nothing to score keeps step two open', asy
   await expect(page.getByTestId('first-fetch')).not.toHaveClass(/primary/);
 });
 
-test('every path row works the same: the path as text, the folder or file opens', async ({
+test('every file row works the same: Öffnen, Ordner öffnen; the path at the work folder', async ({
   page,
 }) => {
   await settings(page);
-  const row = page.getByTestId('excel');
-  await expect(row).toContainText('C:/Users/demo/Documents/Job-Alerts/auswertung/JobAlerts.xlsx');
-  await expect(row.locator('[data-copy]')).toHaveCount(1);
-  await page.getByTestId('excel-open').click();
-  expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({ target: { kind: 'excel' } });
+  const files = page.getByTestId('settings-files');
+  // The path only once, at the work folder, as text to copy.
+  await expect(files.locator('[data-copy]')).toHaveCount(1);
+  await expect(files.locator('[data-copy]')).toHaveText('C:/Users/demo/Documents/Job-Alerts');
+  await expect(page.getByTestId('excel')).not.toContainText('JobAlerts.xlsx');
+  for (const row of ['excel', 'overview']) {
+    await expect(page.getByTestId(row).getByRole('button')).toHaveText(['Öffnen', 'Ordner öffnen']);
+  }
+  await expect(page.getByTestId('overview')).toContainText('Bericht');
   for (const [id, kind] of [
+    ['excel-open', 'excel'],
+    ['excel-reveal', 'excelInFolder'],
+    ['overview-open', 'overview'],
+    ['overview-reveal', 'excelInFolder'],
     ['workspace-open', 'workspace'],
     ['logs-open', 'logDir'],
     ['data-open', 'dataDir'],
   ] as const) {
-    await expect(page.getByTestId(id)).toHaveText('Ordner öffnen');
     await page.getByTestId(id).click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({ target: { kind } });
   }
+  await expect(page.getByTestId('logs-open')).toHaveText('Protokoll öffnen');
   await expect(page.getByText('Pfad kopieren')).toHaveCount(0);
 });
 
@@ -418,7 +421,9 @@ test('the mailbox says when the last fetch could not reach Gmail', async ({ page
 test('the macOS demo shows the keychain and Mac paths', async ({ page }) => {
   await settings(page, '?platform=macos');
   await expect(page.getByTestId('settings-mailbox')).toContainText('macOS-Schlüsselbund');
-  await expect(page.getByTestId('excel')).toContainText('/Users/demo/Documents/Job-Alerts');
+  await expect(page.getByTestId('settings-files')).toContainText(
+    '/Users/demo/Documents/Job-Alerts',
+  );
   await expect(page.getByTestId('settings')).not.toContainText('C:/');
 });
 
@@ -434,12 +439,12 @@ test('files: rewrite and delete the text files where they are', async ({ page })
   await expect(page.getByTestId('txt-clear')).toHaveAttribute('aria-disabled', 'true');
 });
 
-test('reading the whole mailbox asks first, then shows the run', async ({ page }) => {
+test('fetching every alert mail asks first, then shows the run', async ({ page }) => {
   await settings(page);
   await page.getByTestId('full-mailbox').click();
   await page
     .getByTestId('dialog-full-mailbox')
-    .getByRole('button', { name: 'Lesen', exact: true })
+    .getByRole('button', { name: 'Abrufen', exact: true })
     .click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   const started = await calls(page, 'start_run');
@@ -517,15 +522,14 @@ test('locked buttons explain themselves', async ({ page }) => {
   const excel = page.getByTestId('excel-open');
   await excel.hover();
   await expect(page.getByRole('tooltip')).toHaveText('Die Excel-Datei entsteht beim ersten Abruf.');
-  // Without a mailbox reading the whole mailbox is locked.
+  // Without a mailbox there is nothing to fetch every alert mail from: the row goes.
   await page.getByTestId('mailbox-remove').click();
   await page
     .getByTestId('dialog-remove-mailbox')
     .getByRole('button', { name: 'Entfernen' })
     .click();
   await expect(page.getByTestId('mailbox-form')).toBeVisible();
-  await page.getByTestId('full-mailbox').hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Verbinde erst ein Postfach.');
+  await expect(page.getByTestId('full-mailbox')).toHaveCount(0);
 });
 
 test('first run: Einstellungen opens from the sidebar, Jobs leads back to the setup', async ({

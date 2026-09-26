@@ -297,12 +297,12 @@ test('controls react to the left button only', async ({ page }) => {
   await expect(page.getByTestId('reader')).toHaveCount(0);
   expect(await focused()).toBeNull();
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-fetch');
+  const toggle = page.getByTestId('toggle-auto-archive');
   await toggle.click({ button: 'right' });
   await toggle.click({ button: 'middle' });
   await page.waitForTimeout(300);
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  expect(await focused()).not.toBe('toggle-auto-fetch');
+  expect(await focused()).not.toBe('toggle-auto-archive');
   const calls = await page.evaluate(() => window.__harness.calls.map(([name]) => name));
   expect(calls).not.toContain('save_settings');
   // Over a scroll area the middle click started the autoscroll of the engine (Windows
@@ -404,7 +404,7 @@ test('Tab from a field goes on through the controls, Enter and Space press them'
   await page.getByTestId('nav-settings').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  const toggle = page.getByTestId('toggle-auto-fetch');
+  const toggle = page.getByTestId('toggle-auto-archive');
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Space');

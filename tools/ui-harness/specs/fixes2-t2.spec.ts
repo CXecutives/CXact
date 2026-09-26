@@ -31,12 +31,8 @@ test('profile switches: only the switch switches, its text names and describes i
   await profile(page);
   const criteria = page.getByTestId('section-criteria');
   const cases = [
-    {
-      id: 'profile-remote-outside',
-      label: 'Remote-Jobs im Ausland zulassen',
-      hint: 'Ausgeschaltet markiert die App ganz remote Jobs mit Sitz im Ausland zum Prüfen.',
-    },
-    { id: 'profile-no-anue', label: 'Arbeitnehmerüberlassung ausschließen', hint: null },
+    { id: 'profile-remote-outside', label: 'Remote-Jobs im Ausland ausschließen', hint: null },
+    { id: 'profile-no-anue', label: 'Zeitarbeit ausschließen', hint: null },
     {
       id: 'profile-no-permanent',
       label: 'Festanstellung ausschließen',
@@ -68,12 +64,11 @@ test('the profile in its logical order, each block with its sentence', async ({ 
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
   expect(sections).toEqual([
     'section-person',
+    'section-criteria',
     'section-competences',
     'section-experience',
     'section-languages',
     'section-wishes',
-    'section-criteria',
-    'section-availability',
     'section-understood',
   ]);
   const sentences: [string, string][] = [
@@ -121,11 +116,11 @@ test('every control of a block has the height of a field', async ({ page }) => {
     if (section === 'section-understood') continue;
     expect(set, section).toEqual([32]);
   }
-  // The choice buttons take the small type of chips and segments, not the larger button type.
+  // The choice buttons read like the fields beside them: their 14 px.
   const types = await page
     .locator('[data-testid^="section-"] [role="radiogroup"] .btn')
     .evaluateAll((buttons) => [...new Set(buttons.map((b) => getComputedStyle(b).fontSize))]);
-  expect(types).toEqual(['13px']);
+  expect(types).toEqual(['14px']);
   // Every number field has one width; the day of "Ab Datum" too.
   const widths = await Promise.all(
     [

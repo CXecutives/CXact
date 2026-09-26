@@ -1,4 +1,4 @@
-// The Profil view against the stub: the profile as a form in its nine blocks, the three ways
+// The Profil view against the stub: the profile as a form in its seven blocks, the three ways
 // in, saving, discarding, leaving and closing the window with unsaved changes, an AI's answer,
 // the chip and number fields, values of the file that do not read, refused values, removing
 // with undo and what the app reads in the file.
@@ -17,6 +17,20 @@ const save = (page: Page): Locator => page.getByTestId('profile-save');
 const discard = (page: Page): Locator => page.getByTestId('profile-discard');
 const chips = (field: Locator): Locator => field.locator('.chip .text');
 const badge = (page: Page): Locator => page.getByTestId('profile-quality');
+const check = (page: Page): Locator => page.getByTestId('profile-check');
+
+/** The competences marked as Schwerpunkt (their target pressed), in the order of the rows. */
+async function marked(page: Page): Promise<string[]> {
+  return page
+    .getByTestId('competence-row')
+    .evaluateAll((rows) =>
+      rows
+        .filter((row) => row.querySelector('[data-testid="competence-star"][aria-pressed="true"]'))
+        .map(
+          (row) => row.querySelector<HTMLInputElement>('[data-testid="competence-name"]')!.value,
+        ),
+    );
+}
 
 async function lastSave(page: Page): Promise<ProfileSave> {
   const all = await calls(page, 'save_profile');
@@ -49,14 +63,13 @@ test('the profile is a form, filled from the stored profile', async ({ page }) =
   await expect(page.getByTestId('profile-saved-at')).toHaveText('Gespeichert 21.09. 09:30');
   const head = page.getByTestId('profile-file');
   await expect(head).not.toContainText('KB');
-  // Well filled, but something to check: the badge says so, its tooltip names it.
-  await expect(badge(page)).toHaveText('Etwas prüfen');
-  expect(await tooltipOf(page, badge(page).locator('.badge'))).toBe(
-    '„Mindest-Remote-Anteil“ ist nicht lesbar.',
-  );
-  // What the app reads: terms for the match, the Schwerpunkte, its specialist vocabulary.
+  // Well filled, but a value to check: said in place of "Vollständig", its tooltip names it.
+  await expect(badge(page)).toHaveCount(0);
+  await expect(check(page)).toHaveText('1 Wert prüfen');
+  expect(await tooltipOf(page, check(page))).toBe('„Mindest-Remote-Anteil“ ist nicht lesbar.');
+  // What the app reads: the Suchbegriffe and the Schwerpunkte.
   await expect(page.getByTestId('profile-understood')).toHaveText(
-    '42 Begriffe für die Passung · 2 Schwerpunkte · Fachwortschatz für Finanzen und SAP',
+    '42 Suchbegriffe · 2 Schwerpunkte',
   );
   // The value the app could not read is said at its field, not in the head.
   await expect(page.getByTestId('profile-warning')).toHaveCount(0);
@@ -71,12 +84,11 @@ test('the profile is a form, filled from the stored profile', async ({ page }) =
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
   expect(sections).toEqual([
     'section-person',
+    'section-criteria',
     'section-competences',
     'section-experience',
     'section-languages',
     'section-wishes',
-    'section-criteria',
-    'section-availability',
     'section-understood',
   ]);
   // Wishes say what they do: they nudge, they never exclude.
@@ -93,16 +105,17 @@ test('the profile is a form, filled from the stored profile', async ({ page }) =
     'Financial Controlling',
     'FP&A',
   ]);
-  // Schwerpunkte are starred, listed under the competences, and the star explains itself.
+  // Schwerpunkte are marked by their target, counted over the targets, which explain it.
   await expect(rows.nth(1).getByTestId('competence-star')).toHaveAttribute('aria-pressed', 'true');
   await expect(rows.nth(0).getByTestId('competence-star')).toHaveAttribute('aria-pressed', 'false');
-  await expect(chips(page.getByTestId('focus'))).toHaveText([
-    'Controlling',
-    'Konzernrechnungslegung nach IFRS',
-  ]);
-  await expect(page.getByTestId('focus')).toContainText(
-    'Kompetenzen mit Stern zählen doppelt, höchstens fünf.',
+  await expect
+    .poll(() => marked(page))
+    .toEqual(['Controlling', 'Konzernrechnungslegung nach IFRS']);
+  await expect(page.getByTestId('focus-count')).toHaveText('2/5');
+  expect(await tooltipOf(page, page.getByTestId('focus-count'))).toBe(
+    'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
   );
+  await expect(page.getByTestId('focus')).toHaveCount(0);
   const english = page.getByTestId('language-row').nth(1);
   await expect(english.getByRole('radio', { name: 'B2' })).toHaveAttribute('aria-checked', 'true');
   await expect(
@@ -129,9 +142,9 @@ test('one name per field: the labels, their hints and neutral examples', async (
     'Ab zehn Jahren bewertet die App Jobs für Einsteiger niedrig.',
     'Ohne Niveau rechnet die App mit B2.',
     'Remote-Anteil',
-    'Den Mindest-Tagessatz legen die Ausschlusskriterien fest.',
+    'Den Mindest-Tagessatz legen die Konditionen fest.',
     'Mindest-Tagessatz',
-    'Mindest-Erfahrung des Jobs',
+    'Jobs ab',
     'Mindest-Jahresgehalt',
     'Mindest-Remote-Anteil',
   ]) {
@@ -142,20 +155,27 @@ test('one name per field: the labels, their hints and neutral examples', async (
     ['profile-years', 'Jahre'],
     ['profile-wish-rate', '€'],
     ['profile-min-rate', '€'],
-    ['profile-target-years', 'Jahre'],
+    ['profile-target-years', 'Jahren Erfahrung'],
     ['profile-min-salary', '€'],
     ['profile-remote-min', '%'],
   ] as const) {
     await expect(page.getByTestId(id)).toHaveAccessibleDescription(new RegExp(`${unit}$`));
   }
   await expect(form).not.toContainText('(€)');
-  for (const gone of ['Auch genannt', 'Arbeitsort', 'Stellen ab so viel Erfahrung', 'Anderswo']) {
+  for (const gone of [
+    'Auch genannt',
+    'Arbeitsort',
+    'Stellen ab so viel Erfahrung',
+    'Anderswo',
+    'Mindest-Erfahrung des Jobs',
+    'Jobs für deutlich weniger Erfahrung',
+  ]) {
     await expect(form).not.toContainText(gone);
   }
   // The column heads explain themselves.
   const head = page.getByTestId('competences').locator('.head');
-  expect(await tooltipOf(page, head.getByText('Andere Begriffe'))).toBe(
-    'Synonyme oder englische Begriffe.',
+  expect(await tooltipOf(page, head.getByText('Synonyme'))).toBe(
+    'Andere Wörter für dieselbe Kompetenz, auch englische.',
   );
   // A level says what it means.
   const levels = page.getByTestId('language-row').first().getByTestId('language-level');
@@ -214,8 +234,8 @@ test('the head and the first section keep the rhythm of all sections', async ({ 
   await profile(page);
   const head = (await page.getByTestId('profile-file').boundingBox())!;
   const person = (await page.getByTestId('section-person').boundingBox())!;
-  const competences = (await page.getByTestId('section-competences').boundingBox())!;
-  expect(person.y - (head.y + head.height)).toBe(competences.y - (person.y + person.height));
+  const criteria = (await page.getByTestId('section-criteria').boundingBox())!;
+  expect(person.y - (head.y + head.height)).toBe(criteria.y - (person.y + person.height));
 });
 
 test('the save bar says what is unsaved and what was saved, once', async ({ page }) => {
@@ -352,8 +372,9 @@ test('leaving with unsaved changes asks once; cancel stays, discard leaves', asy
   await name.fill('Erika Muster');
   await page.getByTestId('nav-jobs').click();
   const dialog = page.getByTestId('dialog-leave-profile');
+  // The heading says it: no sentence repeats it.
   await expect(dialog).toContainText('Änderungen speichern?');
-  await expect(dialog).toContainText('Die Änderungen am Profil sind nicht gespeichert.');
+  await expect(dialog.locator('p')).toHaveCount(0);
   await expect(dialog.getByRole('button')).toHaveText(['Speichern', 'Verwerfen', 'Abbrechen']);
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(dialog).toHaveCount(0);
@@ -418,14 +439,14 @@ test('closing the window can save the changes first', async ({ page }) => {
   expect((await lastSave(page)).after.title).toBe('Interim CFO');
 });
 
-test('at most five Schwerpunkte: a sixth star is disabled and says why', async ({ page }) => {
+test('at most five Schwerpunkte: a sixth target is disabled and says why', async ({ page }) => {
   await profile(page);
   const stars = page.getByTestId('competence-star');
-  await expect(page.getByTestId('focus-count')).toHaveText('Schwerpunkte 2 von 5');
+  await expect(page.getByTestId('focus-count')).toHaveText('2/5');
   for (const index of [0, 3, 4]) await stars.nth(index).click();
-  await expect(chips(page.getByTestId('focus'))).toHaveCount(5);
-  await expect(page.getByTestId('focus-count')).toHaveText('Schwerpunkte 5 von 5');
-  // The sixth star is off, its tooltip says why right at the pointer.
+  await expect.poll(() => marked(page)).toHaveLength(5);
+  await expect(page.getByTestId('focus-count')).toHaveText('5/5');
+  // The sixth target is off, its tooltip says why right at the pointer.
   await expect(stars.nth(5)).toHaveAttribute('aria-disabled', 'true');
   await stars.nth(5).hover();
   await expect(page.getByRole('tooltip')).toHaveText('Höchstens fünf Schwerpunkte.');
@@ -435,17 +456,18 @@ test('at most five Schwerpunkte: a sixth star is disabled and says why', async (
   await stars.nth(0).click();
   await expect(stars.nth(5)).not.toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('competence-name').nth(1).fill('Konzerncontrolling');
-  await expect(chips(page.getByTestId('focus')).first()).toHaveText('Konzerncontrolling');
+  await expect.poll(async () => (await marked(page))[0]).toBe('Konzerncontrolling');
+  await expect(page.getByTestId('focus-count')).toHaveText('4/5');
 });
 
 test('a file with seven Schwerpunkte: the first five are taken, saving works', async ({ page }) => {
   await profile(page, 'no-profile', '&file=focus');
   await page.getByTestId('profile-pick').click();
-  await expect(chips(page.getByTestId('focus'))).toHaveCount(5);
+  await expect.poll(() => marked(page)).toHaveLength(5);
   await expect(page.getByTestId('focus-trimmed')).toHaveText(
     'Die Datei nennt 7 Schwerpunkte, übernommen sind die ersten fünf.',
   );
-  await expect(page.getByTestId('focus-count')).toHaveText('Schwerpunkte 5 von 5');
+  await expect(page.getByTestId('focus-count')).toHaveText('5/5');
   await save(page).click();
   await expect(page.getByTestId('profile-saved')).toBeVisible();
   expect((await lastSave(page)).after.focus).toHaveLength(5);
@@ -608,9 +630,15 @@ test('a new form starts with one row each; the add buttons are buttons', async (
     await page.getByTestId('competences').boundingBox(),
   ];
   expect(Math.abs(add!.x - list!.x)).toBeLessThanOrEqual(1);
-  // The other two ways in stay at hand in a new form; nothing is read yet.
+  // The other two ways in stay at hand in a new form (the file in the menu); nothing is read
+  // yet.
   await expect(page.getByTestId('profile-from-cv')).toBeVisible();
-  await expect(page.getByTestId('profile-pick')).toBeVisible();
+  // In view first: scrolling closes a menu, like the OS's.
+  await page.getByTestId('profile-more').scrollIntoViewIfNeeded();
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(null))));
+  await page.getByTestId('profile-more').click();
+  await expect(page.getByTestId('menu').getByRole('menuitem')).toHaveText(['Profildatei wählen']);
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('section-understood')).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
 });
@@ -623,7 +651,7 @@ test('no profile: one sentence and the three ways in', async ({ page }) => {
   await expect(empty.getByRole('button')).toHaveText([
     'Profil anlegen',
     'Aus Lebenslauf anlegen',
-    'Datei wählen',
+    'Profildatei wählen',
   ]);
   await expect(empty.locator('.btn.primary')).toHaveText('Profil anlegen');
 });
@@ -640,7 +668,8 @@ test('create from the empty form and save; the quality follows while typing', as
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('competence-years').fill('18');
   await expect(badge(page)).toHaveText('Wenig Inhalt');
-  await expect(page.getByTestId('section-competences')).toContainText(
+  // The thin profile is said once, in the head (the badge's tooltip says why).
+  await expect(page.getByTestId('section-competences')).not.toContainText(
     'Wenige Kompetenzen, die Passung bleibt grob.',
   );
   // An added row takes the caret; an empty one is not saved.
@@ -766,7 +795,7 @@ test('from a CV: the request is copied, the pasted answer fills the form', async
   await expect(page.getByTestId('profile-name')).toHaveText('Profil aus dem Lebenslauf');
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Carla Exempel');
   await expect(page.getByTestId('competence-name')).toHaveCount(2);
-  await expect(chips(page.getByTestId('focus'))).toHaveText(['Controlling']);
+  await expect.poll(() => marked(page)).toEqual(['Controlling']);
   expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({
     text: ANSWER,
     update: false,
@@ -800,10 +829,9 @@ test('from a CV for the stored profile: the answer updates it for review', async
   await expect(page.getByTestId('competence-name')).toHaveCount(7);
   await expect(page.getByTestId('competence-name').last()).toHaveValue('Treasury');
   await expect(page.getByTestId('profile-min-rate')).toHaveValue('1.100');
-  await expect(chips(page.getByTestId('focus'))).toHaveText([
-    'Controlling',
-    'Konzernrechnungslegung nach IFRS',
-  ]);
+  await expect
+    .poll(() => marked(page))
+    .toEqual(['Controlling', 'Konzernrechnungslegung nach IFRS']);
   // Nothing is saved by itself; saving writes into the stored profile, which now has the
   // career stations of the answer.
   expect(await calls(page, 'save_profile')).toHaveLength(0);
@@ -843,14 +871,16 @@ test('from a CV: when the prompt could not be copied, the step says so and copie
 test('a thin profile marks its empty sections, and they follow the form', async ({ page }) => {
   await profile(page, 'profile-thin');
   await expect(badge(page)).toHaveText('Wenig Inhalt');
-  // The quality is said once, where it helps: at the competences.
-  await expect(page.getByTestId('section-competences')).toContainText(
+  // The quality is said once, in the head: the badge, its tooltip why.
+  expect(await tooltipOf(page, badge(page).locator('.badge'))).toBe(
     'Wenige Kompetenzen, die Passung bleibt grob.',
   );
-  await expect(page.getByText('Wenige Kompetenzen, die Passung bleibt grob.')).toHaveCount(1);
+  await expect(page.getByTestId('section-competences')).not.toContainText('Wenige Kompetenzen');
   await expect(page.getByText('Das Profil nennt nur wenige Kompetenzen.')).toHaveCount(0);
   const experience = page.getByTestId('section-experience');
   await expect(experience).toContainText('Noch leer');
+  // An empty optional block says so quietly (neutral, not amber).
+  await expect(experience.locator('.badge')).toHaveClass(/neutral/);
   await expect(page.getByTestId('section-competences')).not.toContainText('Noch leer');
   // Filled while typing, the section is no longer empty; enough terms and it is complete.
   await page.getByTestId('profile-years').fill('12');
@@ -859,9 +889,6 @@ test('a thin profile marks its empty sections, and they follow the form', async 
   await tools.fill('SAP, Excel');
   await tools.press('Enter');
   await expect(badge(page)).toHaveText('Vollständig');
-  await expect(page.getByTestId('section-competences')).not.toContainText(
-    'Wenige Kompetenzen, die Passung bleibt grob.',
-  );
 });
 
 test('a profile edited into broken JSON says so and where, with its folder', async ({ page }) => {
@@ -869,7 +896,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toContainText('Profil nicht lesbar');
   await expect(empty).toContainText(
-    'Die Datei ist kein gültiges JSON, Zeile 12. Ein neues Profil ersetzt die Datei.',
+    'Die Datei ist beschädigt (Zeile 12). Ein neues Profil ersetzt die Datei.',
   );
   await empty.getByTestId('profile-folder').click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
@@ -877,34 +904,34 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   });
 });
 
-test('the head offers the folder, an update from a CV and remove', async ({ page }) => {
+test('the head offers an update from a CV, the rest in its menu', async ({ page }) => {
   await profile(page);
-  const head = page.getByTestId('profile-file');
-  await expect(head.getByRole('button')).toHaveText([
+  await expect(page.getByTestId('profile-update-cv')).toHaveText('Aus Lebenslauf aktualisieren');
+  await page.getByTestId('profile-more').click();
+  await expect(page.getByTestId('menu').getByRole('menuitem')).toHaveText([
     'Andere Datei wählen',
-    'Aus Lebenslauf aktualisieren',
     'Ordner öffnen',
     'Entfernen',
   ]);
-  await page.getByTestId('profile-folder').click();
+  await page.getByTestId('menu-item-folder').click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },
   });
-  // With changes another file or an answer would replace them: the buttons wait.
+  // With changes another file or an answer would replace them: they wait and say why.
   await page.getByTestId('profile-title').fill('CFO');
-  await expect(page.getByTestId('profile-update-cv')).toHaveAttribute('aria-disabled', 'true');
+  const update = page.getByTestId('profile-update-cv');
+  await expect(update).toHaveAttribute('aria-disabled', 'true');
+  expect(await tooltipOf(page, update)).toBe('Erst speichern oder verwerfen.');
+  await page.getByTestId('profile-more').click();
+  await expect(page.getByTestId('menu-item-pick')).toHaveAttribute('aria-disabled', 'true');
 });
 
-test('remove asks first, says what happens and can be taken back', async ({ page }) => {
+test('remove goes at once and can be taken back', async ({ page }) => {
   await profile(page);
-  await page.getByTestId('profile-remove').click();
-  const dialog = page.getByTestId('dialog-remove-profile');
-  await expect(dialog).toContainText(
-    'Die Jobs zeigen danach keine Passung, die Datei bleibt als Sicherung im Profilordner.',
-  );
-  await dialog.getByRole('button', { name: 'Entfernen' }).click();
+  await page.getByTestId('profile-more').click();
+  await page.getByTestId('menu-item-remove').click();
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('dialog-remove-profile')).toHaveCount(0);
   expect(await calls(page, 'remove_profile')).toHaveLength(1);
   // A moment to take it back.
   const toast = page.getByTestId('toast');
@@ -916,8 +943,8 @@ test('remove asks first, says what happens and can be taken back', async ({ page
 
 test('every value that does not read is said at its field and can be removed', async ({ page }) => {
   await profile(page, 'profile-unreadable');
-  await expect(badge(page)).toHaveText('Etwas prüfen');
-  const reasons = await tooltipOf(page, badge(page).locator('.badge'));
+  await expect(check(page)).toHaveText(/\d+ Werte prüfen/);
+  const reasons = await tooltipOf(page, check(page));
   expect(reasons).toContain('„Mindest-Tagessatz“ ist nicht lesbar.');
   expect(reasons).toContain('„Treasury“ steht nicht bei den Kompetenzen.');
   // A key the app does not read at all is named in the head, as it is written in the file.
@@ -935,7 +962,7 @@ test('every value that does not read is said at its field and can be removed', a
     'In der Datei stand „[]“, das kann die App nicht lesen.',
     'In der Datei stand „bald“, das ist kein Datum.',
     '„Treasury“ steht nicht bei den Kompetenzen.',
-    '„Head of“ nennt kein Fachgebiet.',
+    '„Head of“ ist keine Rolle, die die App kennt.',
     'In der Datei stand „egal“, das kann die App nicht lesen.',
     'In der Datei stand „{}“, das kann die App nicht lesen.',
   ]) {
@@ -946,7 +973,7 @@ test('every value that does not read is said at its field and can be removed', a
   await expect(removes).toHaveCount(15);
   // A Schwerpunkt and a target role that do not count go from their list at once.
   await page.getByTestId('focus-unread').getByTestId('value-remove').click();
-  await expect(chips(page.getByTestId('focus'))).toHaveText(['Controlling']);
+  await expect.poll(() => marked(page)).toEqual(['Controlling']);
   await page.getByTestId('roles-unread').getByTestId('value-remove').click();
   await expect(chips(page.getByTestId('profile-roles'))).toHaveText(['Interim CFO']);
   // A new value fixes a field as well.
@@ -954,6 +981,7 @@ test('every value that does not read is said at its field and can be removed', a
   await expect(form).not.toContainText('In der Datei stand „teuer“, das ist keine Zahl.');
   // The others go with "Wert entfernen"; then nothing is left to check.
   while ((await removes.count()) > 0) await removes.first().click();
+  await expect(check(page)).toHaveCount(0);
   await expect(badge(page)).toHaveText('Vollständig');
   await save(page).click();
   const sent = await lastSave(page);
@@ -978,7 +1006,7 @@ test('every value that does not read is said at its field and can be removed', a
   expect(sent.after.criteria.minDayRate).toBe(1000);
 });
 
-test('the remote switch sits under the countries and needs one', async ({ page }) => {
+test('the remote switch excludes, sits under the countries and needs one', async ({ page }) => {
   await profile(page);
   const countries = page.getByTestId('profile-countries');
   const toggle = page.getByTestId('profile-remote-outside');
@@ -990,9 +1018,11 @@ test('the remote switch sits under the countries and needs one', async ({ page }
   expect(toggleBox.y).toBeGreaterThan(countriesBox.y);
   expect(toggleBox.y).toBeLessThan(anueBox.y);
   await expect(page.getByTestId('section-criteria')).toContainText(
-    'Ausgeschaltet markiert die App ganz remote Jobs mit Sitz im Ausland zum Prüfen.',
+    'Remote-Jobs im Ausland ausschließen',
   );
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('section-criteria')).not.toContainText('Ausgeschaltet markiert');
+  // The file allows them: the switch that excludes is off.
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
   // Without countries it has nothing to do: disabled, its tooltip says why.
   for (const name of ['Deutschland', 'Österreich']) {
     await countries.getByRole('button', { name: `${name} entfernen` }).click();
@@ -1020,31 +1050,32 @@ test('permanent roles can be excluded next to temporary agency work', async ({ p
   expect(sent.after.criteria.noAnue).toBe(true);
 });
 
-test('availability is a block of its own that only marks', async ({ page }) => {
+test('Verfügbar ab is a row of Konditionen that only marks', async ({ page }) => {
   await profile(page);
-  const block = page.getByTestId('section-availability');
-  await expect(block).toContainText('Verfügbarkeit');
+  const block = page.getByTestId('section-criteria');
+  await expect(page.getByTestId('section-availability')).toHaveCount(0);
+  await expect(block).toContainText('Verfügbar ab');
   await expect(block).toContainText('Beginnt ein Job früher, markiert die App ihn zum Prüfen.');
   await expect(block.getByTestId('profile-available')).toBeVisible();
-  await expect(page.getByTestId('section-criteria').getByTestId('profile-available')).toHaveCount(
-    0,
-  );
 });
 
-test('how the app reads the profile: closed at first, then the terms and where they come from', async ({
+test('how the app reads the profile: a section of its own, the Suchbegriffe and their parts', async ({
   page,
 }) => {
   await profile(page);
-  const reading = page.getByTestId('profile-reading');
-  await expect(page.getByTestId('reading-terms')).toHaveCount(0);
-  await reading.getByRole('button', { name: 'So liest die App dein Profil' }).click();
-  await expect(page.getByTestId('reading-terms')).toHaveText('42 Begriffe zählen für die Passung.');
+  const reading = page.getByTestId('section-understood');
+  await expect(reading.getByRole('heading', { level: 2 })).toHaveText(
+    'So liest die App dein Profil',
+  );
+  await expect(reading).toContainText('Suchbegriffe');
+  await expect(reading).not.toContainText('für die Passung');
   await expect(page.getByTestId('reading-list')).toContainText('Konzernabschluss nach HGB');
   await expect(page.getByTestId('reading-list')).toContainText('und 30 weitere');
   // Also what only the file holds, which explains the count.
   await expect(page.getByTestId('reading-sources')).toContainText('Kompetenzen 6');
   await expect(page.getByTestId('reading-sources')).toContainText('Stationen 27, nur in der Datei');
   await expect(page.getByTestId('reading-criteria')).toContainText('Tagessatz ab 1.100 €');
+  await expect(page.getByTestId('reading-criteria')).toContainText('Jobs ab 15 Jahren Erfahrung');
   await expect(page.getByTestId('reading-criteria')).toContainText(
     'Einsatzländer Deutschland, Österreich',
   );

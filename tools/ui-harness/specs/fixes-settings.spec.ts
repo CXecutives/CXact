@@ -20,8 +20,7 @@ async function profile(page: Page, query = WIN): Promise<void> {
 
 test('a rescore locks the settings with its own reason, not a fetch', async ({ page }) => {
   await settings(page);
-  // The sign-in row exists only with "Mit Anmeldung" on.
-  await page.getByTestId('toggle-login-freelance').click();
+  // The sign-in row of a portal that offers one.
   await expect(page.getByTestId('sign-in-freelance')).toBeVisible();
   // The profile changed: the app scores every job anew by itself and holds the settings.
   await page.evaluate(() => {
@@ -123,7 +122,7 @@ test('the changed mailbox: save and cancel end on the edge like every control', 
         end: buttons.at(-1)!.right,
         gap: buttons[1]!.left - buttons[0]!.right,
         // A switch of the next card ends on the content edge of the column.
-        edge: box('[data-testid="toggle-auto-fetch"]').right,
+        edge: box('[data-testid="toggle-auto-archive"]').right,
         fields: box('[data-testid="mailbox-form"] .fields').width,
       };
     });
@@ -237,7 +236,7 @@ test('the first run card lines up with the cards of the views it leads to', asyn
   }
 });
 
-test('first run: a new profile with the plus, named like the Profil view names it', async ({
+test('first run: "Selbst ausfüllen" makes a profile, named like the Profil view names it', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
@@ -246,15 +245,14 @@ test('first run: a new profile with the plus, named like the Profil view names i
     'data-copy',
     '',
   );
-  // Making a profile has the plus, as in the Profil view.
-  const create = page.getByTestId('first-profile');
-  await expect(create).toHaveText('Profil anlegen');
-  await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'plus');
+  // The empty form is the second way, beside the CV.
+  const create = page.getByTestId('first-profile-form');
+  await expect(create).toHaveText('Selbst ausfüllen');
   await create.click();
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('profile-save').click();
   await expect(page.getByTestId('profile-name')).toHaveText('Profil ohne Namen');
-  await page.getByTestId('profile-next').click();
+  await page.getByTestId('nav-jobs').click();
   // The same state has one name, not the file's.
   const step = page.getByTestId('step-profile');
   await expect(step).toHaveAttribute('data-done', 'true');
