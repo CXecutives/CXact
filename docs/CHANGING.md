@@ -212,5 +212,8 @@ checks the headers like every export text.
 - The profile's limits: the `MAX_...` constants in `core/src/profile/form.rs` (the backend
   refuses above them; `profile.ts` carries them to the stub and the editor).
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
+- The copies of the database live in `backups/` next to `jobs.db` in the data folder
+  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
+  Einstellungen > Wartung lists and restores them (`list_backups`, `restore_backup`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
