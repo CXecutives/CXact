@@ -5,6 +5,7 @@
 !/tools/ui-harness/**
 !/tools/third-party.mjs
 !/tools/tokens.mjs
+!/tools/architecture.mjs
 !/package.json
 !/eslint.config.js
 !/stylelint.config.js
