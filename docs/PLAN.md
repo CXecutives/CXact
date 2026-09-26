@@ -531,3 +531,36 @@ last confirmed findings of the ship audit. Left for later, each needing the user
 tools are ready, see Phase 5); one freelance.de guest page for a real-structure fixture at the next allowed live run;
 the contrast of the primary label (about 2.8:1, the documented exception) and of the subtle text for dates and hints
 (4.2:1 on white, 3.9:1 on cream, below AA), both a choice of colour.
+
+## Final round 2026-09-26 (the last plan; decisions of the user, binding)
+The whole round is one plan (Parts A to L, kept by the integrator); the boxes below are ticked
+as the parts land on `main`.
+- Name: the app is shown as **CXact** (read "exact", like cxpertise and CXecutives). Only the
+  visible name changes: identifier `de.cxecutives.job-alert-monitor`, binary, data and work
+  folders (`Documents\Job-Alert-Monitor`), keychain service and the TXT contract stay. The
+  NSIS installer speaks German and English and first removes an install named
+  Job-Alert-Monitor silently (its data stays).
+- Icon: one flat coral, no gradient, no shadow; on Windows the plate fills the square (48 of
+  48 px, like Claude and Roblox) with Apple's continuous corner; macOS keeps Apple's grid
+  (824 of 1024); macOS 26 gets the Icon Composer format through the macOS CI (actool).
+- No fetch at app start (the switch is gone); F5 or Ctrl/Cmd+R and "Abrufen" fetch.
+- The app starts in the **Übersicht**, a view of its own (sidebar: Übersicht, Jobs, Profil,
+  Einstellungen; the settings as a gear). Archiv and Papierkorb are tabs of Jobs (Eingang,
+  Archiv, Papierkorb); Neu, Alle and Favoriten exist in the inbox only, Favoriten are the
+  favourites of the inbox. Ctrl/Cmd+1 to 4 choose the views.
+- Menus: the app draws every menu itself (field menu, the job's menu on a right click, the
+  sort, "…" menus); no OS popup (the Tauri menu API and its permissions are gone). OS file and
+  folder pickers, the start failure box, the macOS menu bar and the freelance.de sign-in
+  window stay native. Paste reads the clipboard through `clipboard_text`.
+- Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
+  S favourite, U unread, B applied, O open the ad; shown in tooltips and menus.
+- Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions
+  only (rate first), an excluded row names why and keeps its fit as a grey number with a ban
+  mark, "Einbezogen" for a job counted anyway, dots only in the inbox.
+- Colours: coral means new and the one main action (and stays where it was); navy carries the
+  structure (section headings, active labels of the sidebar, tabs and segments, links, "prüfen").
+- Time: days in words up to a week everywhere ("gestern 08:30", "vorgestern", "Mo").
+- New features: "Beworben" with date and note; exclusion words in the profile; workload and
+  minimum duration as checks (engine 16); an hourly wage for employees or agency work is
+  employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
+  updates, an application-letter prompt, snooze, radius, direct client vs agency.
