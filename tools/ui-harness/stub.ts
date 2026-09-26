@@ -14,6 +14,7 @@
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
+//   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
@@ -85,6 +86,8 @@ interface Harness {
   holdAfter: number | null;
   /** A copy of a job as the stub holds it (null if unknown). */
   job: (key: JobKey) => JobView | null;
+  /** A copy of the stored profile's form (null without a profile). */
+  form: () => ProfileForm | null;
   /** The text `clipboard_text` returns (null: the browser's clipboard, if it allows it). */
   clipboard: string | null;
   /** The page holds unsaved changes (its last `set_unsaved`). */
@@ -897,6 +900,33 @@ function packsOf(form: ProfileForm): string[] {
 }
 
 /** A saved form: trimmed, empty rows gone, origins as the backend reads them back. */
+/**
+ * The keywords a save makes of `before` (the copy the view showed) as `after`, applied to the
+ * stored list `now`, like core's `profile::form::rebase`: the terms of `after` in its order
+ * and spelling, without a term the store dropped meanwhile (an untouched term keeps the
+ * stored spelling); a term the store gained meanwhile stays after the term it follows there.
+ */
+function mergeKeywords(now: string[], before: string[], after: string[]): string[] {
+  const find = (list: string[], text: string): number => {
+    const key = text.toLowerCase();
+    return list.findIndex((item) => item.toLowerCase() === key);
+  };
+  const out: string[] = [];
+  for (const text of after) {
+    const old = find(before, text);
+    const current = find(now, text);
+    if (old >= 0 && current < 0) continue;
+    out.push(old >= 0 && before[old] === text ? now[current]! : text);
+  }
+  let at = 0;
+  for (const text of now) {
+    const found = find(out, text);
+    if (found >= 0) at = found + 1;
+    else if (find(before, text) < 0) out.splice(at++, 0, text);
+  }
+  return out;
+}
+
 function savedForm(form: ProfileForm): ProfileForm {
   const clean = (items: string[]): string[] => items.map((t) => t.trim()).filter((t) => t !== '');
   return {
@@ -2444,6 +2474,17 @@ const handlers: Handlers = {
     if (tooLong >= 0) refuse('competences', 70, tooLong);
     if (after.focus.length > 5) refuse('focus', 5);
     const form = savedForm(after);
+    // The keywords like core's merge: an unchanged list keeps the stored one, a changed one
+    // is applied to it (a term added from the reader and its undo, each on its own copy).
+    const stored = save.source === null ? (state.profile?.form ?? null) : null;
+    if (stored !== null) {
+      const { keywords } = save.before;
+      form.keywords =
+        keywords.length === after.keywords.length &&
+        keywords.every((term, index) => term === after.keywords[index])
+          ? [...stored.keywords]
+          : mergeKeywords(stored.keywords, keywords, form.keywords);
+    }
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
     state.profile = {
@@ -2624,6 +2665,9 @@ const harness: Harness = {
   job(key) {
     const found = find(key);
     return found === undefined ? null : structuredClone(found);
+  },
+  form() {
+    return state.profile?.form ? structuredClone(state.profile.form) : null;
   },
 };
 window.__harness = harness;
