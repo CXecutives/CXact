@@ -1,4 +1,4 @@
-# Job-Alert-Monitor
+# CXact (formerly Job-Alert-Monitor)
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelancermap,
 freelance.de) from Gmail, fetches the job pages, **scores every job against a consultant profile**, and

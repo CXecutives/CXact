@@ -18,7 +18,7 @@ use tauri::Manager;
 
 // ------------------------------------------------------------------ startup error texts
 // User-facing text, German by product decision. The start dialog is the only prose here.
-const TEXT_DIALOG_TITLE: &str = "Job-Alert-Monitor";
+const TEXT_DIALOG_TITLE: &str = "CXact";
 const TEXT_START_FAILED: &str = "Die App konnte nicht starten.";
 /// Followed by the log folder and a period.
 const TEXT_SEE_LOG: &str = "Details stehen im Protokoll unter";

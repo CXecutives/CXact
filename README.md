@@ -1,4 +1,4 @@
-# Job-Alert-Monitor
+# CXact
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that turns job alert mails into a scored,
 searchable list of postings.

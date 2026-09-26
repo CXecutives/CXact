@@ -2,7 +2,7 @@
   "name": "job-alert-monitor-ui",
   "version": "3.0.0",
   "private": true,
-  "description": "User interface of the Job-Alert-Monitor desktop app (Svelte 5, Vite, TypeScript).",
+  "description": "User interface of the CXact desktop app (Svelte 5, Vite, TypeScript).",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {

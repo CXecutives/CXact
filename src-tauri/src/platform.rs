@@ -727,11 +727,11 @@ mod macos {
     const NAVIGATE: &str = "navigate";
 
     // User-facing text, German by product decision.
-    const ABOUT: &str = "Über Job-Alert-Monitor";
+    const ABOUT: &str = "Über CXact";
     const SETTINGS: &str = "Einstellungen …";
-    const HIDE: &str = "Job-Alert-Monitor ausblenden";
+    const HIDE: &str = "CXact ausblenden";
     const HIDE_OTHERS: &str = "Andere ausblenden";
-    const QUIT: &str = "Job-Alert-Monitor beenden";
+    const QUIT: &str = "CXact beenden";
     const EDIT: &str = "Bearbeiten";
     const UNDO: &str = "Widerrufen";
     const REDO: &str = "Wiederholen";
@@ -747,11 +747,11 @@ mod macos {
     /// The menu on an English (any non-German) Mac, in the words of macOS.
     mod en {
         // User-facing text, English.
-        pub(super) const ABOUT: &str = "About Job-Alert-Monitor";
+        pub(super) const ABOUT: &str = "About CXact";
         pub(super) const SETTINGS: &str = "Settings…";
-        pub(super) const HIDE: &str = "Hide Job-Alert-Monitor";
+        pub(super) const HIDE: &str = "Hide CXact";
         pub(super) const HIDE_OTHERS: &str = "Hide Others";
-        pub(super) const QUIT: &str = "Quit Job-Alert-Monitor";
+        pub(super) const QUIT: &str = "Quit CXact";
         pub(super) const EDIT: &str = "Edit";
         pub(super) const UNDO: &str = "Undo";
         pub(super) const REDO: &str = "Redo";

@@ -549,7 +549,7 @@ const warning = {
 
 export const en: Catalog = {
   app: {
-    name: 'Job-Alert-Monitor',
+    name: 'CXact',
   },
   nav: {
     label: 'Sections',

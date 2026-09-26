@@ -1,11 +1,12 @@
 """App icon: coral plate, white folder, check cut out of the folder.
 
 One geometry, every output:
-  src-tauri/icons/icon.ico    Windows only: Windows layout, no shadow. One stage for every size
-                              the shell asks for at 100 to 200 % (see SIZES), 48 first: Tauri
-                              takes the first entry as the window icon
-  src-tauri/icons/icon.icns   macOS: plate 824 of 1024 with margin and a soft drop shadow, as
-                              the system icons
+  src-tauri/icons/icon.ico    Windows only: the plate fills the whole square, like the other
+                              apps on the desktop and in the taskbar (48 of 48 px). One stage
+                              for every size the shell asks for at 100 to 200 % (see SIZES),
+                              48 first: Tauri takes the first entry as the window icon
+  src-tauri/icons/icon.icns   macOS: plate 824 of 1024 with Apple's margin, no shadow (macOS
+                              draws depth itself)
   src-tauri/icons/icon.png    the 1024 macOS entry (macOS bundle icon, window and Dock icon of
                               `tauri dev`). Deliberately macOS only: no Windows config lists it,
                               Windows takes every size from icon.ico
@@ -18,11 +19,12 @@ without premultiplying - the Windows shell whenever it has no stage of the wante
 mixes plate colour into the edge instead of black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
-- Plate 16..1008 (nearly full bleed: the taskbar and desktop show it as large as the
-  other apps), corner radius 222 with 60 % corner smoothing (as iOS and Figma): the curve
-  leaves the straight edge at 1.6 r with zero curvature, the circular middle keeps radius r.
-  The 45 degree point therefore stays where the plain rounded square had it and the outline
-  lies inside the plain one - softer, never boxier.
+- Plate 0..1024 (full bleed: the desktop and the taskbar show it exactly as large as the
+  other apps, measured against Claude and Roblox at 48 px), corner radius 22.37 % of the plate
+  with 60 % corner smoothing (Apple's continuous corner, as iOS and Figma): the curve leaves
+  the straight edge at 1.6 r with zero curvature, the circular middle keeps radius r.
+- The glyph is drawn on the grid of a 16..1008 plate (GRID) and scales with the plate, so it
+  keeps its share of the plate and its optical centre.
 - Folder 181..843 wide; tab 216..290 (45 degree slope 425 -> 499), body 290..768. One radius
   (69) everywhere: the body and tab corners with the same smoothing, the slope with two
   circular fillets. Lifted 20 above the old position: its mass centre sits at the optical
@@ -30,7 +32,7 @@ Geometry on the 1024 grid (Windows layout; macOS scales everything with its smal
 - Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
-- One flat colour: the app's coral hsl(13 73% 63%) (#E67A5C), no gradient.
+- One flat colour: the app's coral hsl(13 73% 63%) (#E67A5C), no gradient, no shadow.
 
 Small stages are hinted: straight edges on whole pixels (proportional positions, rounded
 symmetrically), check vertices on half pixels, the check bolder up to 40 px.
@@ -49,22 +51,22 @@ import sys
 from io import BytesIO
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
-# One flat colour, the app's coral token --p-coral hsl(13 73% 63%): no gradient (user, 2026-09-25).
+# One flat colour, the app's coral token --p-coral hsl(13 73% 63%): no gradient, no shadow
+# (user, 2026-09-25 and 2026-09-26). core/tests/icon.rs reads CORAL as a tuple.
 CORAL = (0xE6, 0x7A, 0x5C)
-# The gradient code stays with both ends on the coral, so the plate is flat (written out:
-# core/tests/icon.rs reads VARIANT as a tuple).
-GLOW = (0xE6, 0x7A, 0x5C)
-VARIANT = (0xE6, 0x7A, 0x5C)
 WHITE = (255, 255, 255)
 SMOOTHING = 0.6
 # The plate has the macOS app-icon shape: straight sides and Apple's continuous corners
 # (see `apple_corner`) with a radius of 22.37 % of the plate.
 PLATE_SMOOTHING = 0.6  # used by the folder corners only
 
-# 1024 grid, Windows layout.
-PLATE, PLATE_R = 16, round(0.2237 * (1024 - 2 * 16))
+# 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID;
+# the Windows plate itself runs from PLATE (0: full bleed) to 1024 - PLATE.
+GRID = 16
+PLATE = 0
+PLATE_R = 0.2237 * (1024 - 2 * PLATE)
 FOLDER_X0, FOLDER_X1 = 181, 843
 TAB_Y, BODY_Y0, BODY_Y1 = 216, 290, 768
 SLOPE_X0, SLOPE_X1 = 425, 499
@@ -326,10 +328,10 @@ def layout(s, mac=False):
     # taskbar); macOS keeps Apple's margin.
     margin = (max(1, round(inset * k)) if mac else round(inset * k)) if s < 1024 else inset
     plate = s - 2 * margin
-    unit_ = plate / (1024 - 2 * PLATE)  # one grid unit of the Windows plate
+    unit_ = plate / (1024 - 2 * GRID)  # one unit of the glyph's grid on this plate
 
     def pos(v):
-        return margin + (v - PLATE) * unit_
+        return margin + (v - GRID) * unit_
 
     def snap(v):
         return round(pos(v)) if s <= 256 else pos(v)
@@ -368,24 +370,12 @@ def layout(s, mac=False):
 
 # --------------------------------------------------------------------------- raster
 
-def gradient(size, box):
-    """Diagonal gradient over the plate box (the colour depends on x+y only)."""
-    x0, y0, x1, _ = box
-    span = 2 * (x1 - x0)
-    ramp = Image.new('RGB', (2 * size, 1))
-    ramp.putdata([tuple(round(a + (b - a) * min(1, max(0, (i + 1 - x0 - y0) / span)))
-                        for a, b in zip(GLOW, VARIANT)) for i in range(2 * size)])
-    g = Image.new('RGB', (size, size))
-    for y in range(size):
-        g.paste(ramp.crop((y, 0, y + size, 1)), (0, y))
-    return g
-
-
 def render(s, mac=False, ss=None):
     """One stage as straight (not premultiplied) RGBA. Colour and coverage are rendered apart:
-    the colour layer is opaque everywhere (the plate gradient over the whole canvas, the folder
-    in white), so a partly covered edge pixel gets the plate colour under it, never a mix with
-    the black of an empty canvas. Transparent pixels are coloured by `bleed`."""
+    the colour layer is opaque everywhere (the coral over the whole canvas, the folder in
+    white), so a partly covered edge pixel gets the plate colour under it, never a mix with the
+    black of an empty canvas. Transparent pixels are coloured by `bleed`. macOS differs only by
+    Apple's margin; neither OS gets a shadow."""
     ss = ss or min(SS, max(4, 4096 // s))
     g = layout(s, mac)
     S = s * ss
@@ -396,25 +386,12 @@ def render(s, mac=False, ss=None):
     draw = ImageDraw.Draw(folder_mask)
     draw.polygon(scale(folder(g).points()), fill=255)
     draw.polygon(scale(check(g).points()), fill=0)
-    colour = gradient(S, tuple(v * ss for v in g['plate']))
+    colour = Image.new('RGB', (S, S), CORAL)
     colour.paste(Image.new('RGB', (S, S), WHITE), (0, 0), folder_mask)
     rgb = colour.resize((s, s), Image.BOX)
     cover = plate_mask.resize((s, s), Image.BOX)
-    if not mac:
-        img = rgb.convert('RGBA')
-        img.putalpha(cover)
-        return bleed(img)
-    # macOS icons carry a soft drop shadow inside their canvas, like the Dock's icons: black at
-    # 28 %, blurred and moved down by about 1 % of the canvas. The plate mask is binary, so
-    # plate over shadow covers the lighter of the two.
-    shadow = plate_mask.point(lambda a: a * 0.28).filter(ImageFilter.GaussianBlur(S * 0.0098))
-    moved = Image.new('L', (S, S), 0)
-    moved.paste(shadow, (0, round(S * 0.0098)))
-    alpha = ImageChops.lighter(plate_mask, moved).resize((s, s), Image.BOX)
-    # Straight colour of the plate over a black shadow: the plate's share of the coverage.
-    img = Image.new('RGBA', (s, s))
-    img.putdata([(round(r * c / a), round(g_ * c / a), round(b * c / a), a) if a else (r, g_, b, 0)
-                 for (r, g_, b), c, a in zip(pixels(rgb), pixels(cover), pixels(alpha))])
+    img = rgb.convert('RGBA')
+    img.putalpha(cover)
     return bleed(img)
 
 
@@ -526,10 +503,10 @@ def read_ico(path):
 
 
 def dark_pixels(img, visible_only=False):
-    """Pixels darker than the plate's darkest colour (any channel below VARIANT by more than
+    """Pixels darker than the plate's colour (any channel below CORAL by more than
     FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - gradient, white and
-    their mixes - lies at or above VARIANT in each channel."""
-    floor = [v - FRINGE_TOLERANCE for v in VARIANT]
+    their mixes - lies at or above CORAL in each channel."""
+    floor = [v - FRINGE_TOLERANCE for v in CORAL]
     s = img.width
     return [(i % s, i // s, p) for i, p in enumerate(pixels(img))
             if (p[3] or not visible_only) and any(p[k] < floor[k] for k in range(3))]
@@ -637,13 +614,7 @@ def build_svg(out):
     out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {x1 - x0} {y1 - y0}" width="{x1 - x0}" height="{y1 - y0}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
        icon.ico, icon.icns and icon.png; the check is cut out of the folder (even-odd). -->
-  <defs>
-    <linearGradient id="plate" x1="{x0}" y1="{y0}" x2="{x1}" y2="{y1}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="{hexa(GLOW)}"/>
-      <stop offset="1" stop-color="{hexa(VARIANT)}"/>
-    </linearGradient>
-  </defs>
-  <path fill="url(#plate)" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
+  <path fill="{hexa(CORAL)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
   <path fill="{hexa(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')

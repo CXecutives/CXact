@@ -261,12 +261,12 @@ jobs:
           if [ -n "$dmg" ]; then
             hdiutil attach "$dmg" -nobrowse -readonly -noautoopen -mountpoint "$mnt"
             mounted=1
-            ditto "$mnt/Job-Alert-Monitor.app" "$apps/Job-Alert-Monitor.app"
+            ditto "$mnt/CXact.app" "$apps/CXact.app"
           else
             echo "::warning::no dmg - probing the .app from the build folder instead."
-            ditto "$bundle/macos/Job-Alert-Monitor.app" "$apps/Job-Alert-Monitor.app"
+            ditto "$bundle/macos/CXact.app" "$apps/CXact.app"
           fi
-          app="$apps/Job-Alert-Monitor.app"
+          app="$apps/CXact.app"
           exe=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")
           codesign -dv "$app" 2>&1 | grep -E 'Signature|Identifier' || true
           lipo -archs "$app/Contents/MacOS/$exe" || true
@@ -299,9 +299,9 @@ jobs:
               || echo "no setup.exe"
           else
             bundle=target/aarch64-apple-darwin/release/bundle
-            if [ -d "$bundle/macos/Job-Alert-Monitor.app" ]; then
-              ditto -c -k --keepParent "$bundle/macos/Job-Alert-Monitor.app" \
-                artifacts/bundles/Job-Alert-Monitor.app.zip
+            if [ -d "$bundle/macos/CXact.app" ]; then
+              ditto -c -k --keepParent "$bundle/macos/CXact.app" \
+                artifacts/bundles/CXact.app.zip
             else
               echo "no .app"
             fi

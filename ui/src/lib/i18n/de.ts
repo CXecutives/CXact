@@ -544,7 +544,7 @@ export type ProfileWarning = keyof typeof warning;
 
 export const de = {
   app: {
-    name: 'Job-Alert-Monitor',
+    name: 'CXact',
   },
   nav: {
     label: 'Bereiche',

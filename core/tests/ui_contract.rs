@@ -1231,7 +1231,7 @@ fn the_open_tables_have_the_same_keys() {
 }
 
 /// The English catalog is English: no umlaut or sharp s and no German word in anything the
-/// user reads. Product and portal names (Job-Alert-Monitor, freelance.de) and the name of
+/// user reads. Product and portal names (CXact, freelance.de) and the name of
 /// the German language (Deutsch) are no German words.
 #[test]
 fn the_english_catalog_has_no_german() {
