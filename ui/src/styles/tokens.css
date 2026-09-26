@@ -349,13 +349,15 @@
   --sheet-corner: var(--radius-card);
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
-     first width is 40 % of the content, at most --list-first-max. */
+     first width is 40 % of the content, at least --list-first-min (where the reader keeps
+     its room) and at most --list-first-max. */
   --list-min: 320px;
-  --list-first-max: 460px;
+  --list-first-min: 520px;
+  --list-first-max: 600px;
   --reader-min: 440px;
   --reader-width: 720px;
-  /* The column handle: the strip that catches the pointer, the line it shows on hover and
-     the small grip centred on that line. */
+  /* The column handle: the strip that catches the pointer (over the reader's padding, never
+     over the list's scrollbar) and the small grip centred on the border. */
   --splitter-hit: 8px;
   /* How far ArrowUp/ArrowDown scroll a pane (a line of text and its gap, like the OS). */
   --scroll-line: 40px;

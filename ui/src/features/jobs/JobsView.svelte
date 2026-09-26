@@ -4,7 +4,8 @@
   with nothing selected its empty state, the day overview. Nothing floats: no cards, no
   shadows. Both columns start at the same line; the handle between them resizes the list
   (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps
-  440 px; the limits follow the window and the sidebar. Below 900 px one column: the list
+  440 px; the limits follow the window and the sidebar, and never shrink while the window
+  grows (also across the rail's breakpoint). Below 900 px one column: the list
   under its pinned header (choosing rows keeps it, the header's bar acts on them), or the
   reader with a back button. The run card rises in above the list and fades out when it is
   closed (the list moves up without animation). Closing a job from inside the reader hands
@@ -26,7 +27,7 @@
   import { tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import DragBand from '$components/DragBand.svelte';
-  import Splitter, { splitLimits } from '$components/Splitter.svelte';
+  import Splitter, { cappedLimits, splitLimits } from '$components/Splitter.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
   import Skeleton from '$components/Skeleton.svelte';
@@ -44,7 +45,7 @@
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, placeOf, sameKey } from '$lib/state/jobs.svelte';
   import { shell } from '$lib/state/shell.svelte';
-  import { viewport } from '$lib/state/viewport.svelte';
+  import { RAIL_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ListHeader from './ListHeader.svelte';
@@ -164,7 +165,16 @@
       tokenPx(viewport.rail ? '--rail-width' : '--sidebar-width') -
       tokenPx('--border-width'),
   );
-  const limits = $derived(splitLimits(content));
+  /** The list never gets narrower while the window grows: beside the rail it takes at most
+   *  what it has beside the full sidebar at the rail's breakpoint. */
+  const limits = $derived(
+    viewport.rail
+      ? cappedLimits(
+          splitLimits(content),
+          splitLimits(RAIL_BELOW - tokenPx('--sidebar-width') - tokenPx('--border-width')),
+        )
+      : splitLimits(content),
+  );
 
   let right = $state<HTMLElement | null>(null);
 
@@ -383,7 +393,7 @@
     display: flex;
     flex: none;
     flex-direction: column;
-    width: var(--list-width, clamp(var(--list-min), 40%, var(--list-first-max)));
+    width: var(--list-width, clamp(var(--list-first-min), 40%, var(--list-first-max)));
     min-height: 0;
     border-right: var(--border-width) solid var(--border);
   }
