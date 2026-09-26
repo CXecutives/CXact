@@ -11,16 +11,21 @@
 // agency work.
 
 import type { Locator, Page } from '@playwright/test';
-import { animationsDone, calls, expect, open, runFinished, settle, test } from './fixtures';
+import { calls, expect, open, runFinished, settle, test } from './fixtures';
+import {
+  chooseFilter,
+  lastQuery,
+  openJob,
+  openPlace,
+  row,
+  rows,
+  settleMoves,
+  stage,
+  tokenColour,
+  tool,
+  WIN,
+} from './helpers';
 
-const WIN = '?platform=windows';
-const list = (page: Page) => page.getByTestId('job-list');
-const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
-const row = (page: Page, key: string) => list(page).getByTestId(`job-row-${key}`);
-const facet = (page: Page, name: string) =>
-  page.getByTestId('facet').getByRole('radio', { name: new RegExp(name) });
-// The open job's stage (the one on its way out has dropped its test id).
-const stage = (page: Page) => page.getByTestId('stage');
 const terms = (page: Page) => stage(page).getByTestId('criteria');
 const term = (page: Page, key: string) => terms(page).getByTestId(`term-${key}`);
 
@@ -37,33 +42,10 @@ const ROWS = [
 ];
 const VERDICTS = ['', 'passt', 'passt teilweise', 'passt nicht', 'prüfen', 'offen'];
 
-/** Opens a job from "Alle" and waits until the reader shows it. */
-async function show(page: Page, key: string): Promise<void> {
-  const target = row(page, key);
-  // An excluded job lies in the folded section at the end of the list.
-  if ((await target.count()) === 0) await page.getByTestId('excluded-divider').click();
-  await target.click();
-  await expect(stage(page).getByTestId('reader-title')).toHaveText(
-    await target.locator('.title').innerText(),
-  );
-  await animationsDone(page);
-}
-
-async function openJob(page: Page, key: string, query = WIN): Promise<void> {
+/** Start the app and open a job of the one list. */
+async function openAt(page: Page, key: string, query = WIN): Promise<void> {
   await open(page, query);
-  await facet(page, 'Alle|All').click();
-  await show(page, key);
-}
-
-async function tokenColour(page: Page, name: string): Promise<string> {
-  return page.evaluate((token) => {
-    const probe = document.createElement('span');
-    probe.style.setProperty('color', `var(${token})`);
-    document.body.append(probe);
-    const value = getComputedStyle(probe).color;
-    probe.remove();
-    return value;
-  }, name);
+  await openJob(page, key);
 }
 
 const words = (text: string | null): string => (text ?? '').replace(/\s+/g, ' ').trim();
@@ -100,7 +82,7 @@ test.describe('the head and the match', () => {
   test('title, company and place, portal and time, the other portal as plain words', async ({
     page,
   }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('reader-facts')).toHaveText(
       'Hanseatic Holding GmbH · Hamburg',
     );
@@ -132,7 +114,6 @@ test.describe('the head and the match', () => {
 
   test('opening a job fills the ring, its number stands at once', async ({ page }) => {
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await settle(page);
     // Every number the reader's ring shows, frame by frame, from before the click on.
     await page.evaluate(() => {
@@ -157,7 +138,7 @@ test.describe('the head and the match', () => {
 
   test('the text is said once: a preview, few requirements, a text too short', async ({ page }) => {
     // A score from a preview: one quiet line; the way to the sign-in stands with the ad's note.
-    await openJob(page, 'freelance-900411');
+    await openAt(page, 'freelance-900411');
     await expect(stage(page).getByTestId('preliminary')).toHaveText('Vorläufig, nur Vorschau');
     await expect(stage(page).getByTestId('set-up-sign-in')).toHaveCount(1);
     await expect(stage(page).getByTestId('detail-note')).toHaveText(
@@ -165,13 +146,13 @@ test.describe('the head and the match', () => {
     );
     await expect(stage(page).getByTestId('reader')).not.toContainText('Anriss');
     // A full text with few clear requirements: the head says it, the lists do not.
-    await show(page, 'freelancermap-2804');
+    await openJob(page, 'freelancermap-2804');
     await expect(stage(page).getByTestId('low-evidence')).toHaveText(
       'Die Anzeige nennt wenige klare Anforderungen, die Passung bleibt grob.',
     );
     await expect(stage(page).getByTestId('why')).not.toContainText('wenige klare');
     // Too little text to score: muted, not the colour of a low score, and why.
-    await show(page, 'freelancermap-2806');
+    await openJob(page, 'freelancermap-2806');
     const band = stage(page).getByTestId('band');
     await expect(band).toHaveText('Nicht bewertbar');
     await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
@@ -179,7 +160,7 @@ test.describe('the head and the match', () => {
       'Zu wenig Text für eine Bewertung.',
     );
     // The preview's note leads to the sign-in in Einstellungen.
-    await show(page, 'freelance-900411');
+    await openJob(page, 'freelance-900411');
     await stage(page).getByTestId('set-up-sign-in').click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
@@ -187,7 +168,7 @@ test.describe('the head and the match', () => {
   test('an ad the app never read: scored once it is there, no Konditionen, "Details holen"', async ({
     page,
   }) => {
-    await openJob(page, 'linkedin-4100200302');
+    await openAt(page, 'linkedin-4100200302');
     const band = stage(page).getByTestId('band');
     await expect(band).toHaveText('Wird bewertet, sobald die Anzeige da ist');
     await expect(band).toHaveCSS('color', await tokenColour(page, '--text-muted'));
@@ -203,24 +184,22 @@ test.describe('the head and the match', () => {
       keys: [{ portal: 'linkedin', id: '4100200302' }],
     });
     // Details that could not be fetched: no table either.
-    await show(page, 'freelancermap-2805');
+    await openJob(page, 'freelancermap-2805');
     await expect(stage(page).getByTestId('terms')).toHaveCount(0);
   });
 
   test('a closed ad says so like its badge, when the app last looked in the tooltip', async ({
     page,
   }) => {
-    await openJob(page, 'linkedin-4100200304');
+    await openAt(page, 'linkedin-4100200304');
     const line = stage(page).getByTestId('offline-line');
     await expect(line).toHaveText('Keine Bewerbung mehr möglich');
     expect(await tip(page, line.locator('span'))).toMatch(/^Zuletzt geprüft /);
     // The trash says what the trash says; its own actions stay named, the menu has no trash.
-    await row(page, 'freelancermap-2803').hover();
-    await page.getByTestId('trash-freelancermap-2803').click();
-    await page.waitForTimeout(550);
-    await page.getByTestId('place-trash').click();
-    await settle(page);
-    await show(page, 'freelancermap-2803');
+    await tool(page, 'trash', 'freelancermap-2803');
+    await settleMoves(page);
+    await openPlace(page, 'trash');
+    await openJob(page, 'freelancermap-2803');
     await expect(stage(page).getByTestId('place-line')).toHaveText(
       'Im Papierkorb, wird in 30 Tagen endgültig gelöscht',
     );
@@ -237,7 +216,7 @@ test.describe('the head and the match', () => {
 
 test.describe('the actions', () => {
   test('the ad strongest, Favorit and Archivieren labelled, the rest in "…"', async ({ page }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     const actions = stage(page).getByTestId('reader-actions');
     expect(
       await actions
@@ -317,7 +296,6 @@ test.describe('the actions', () => {
     test(`the action row stays one line at ${width} px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await open(page, WIN);
-      await facet(page, 'Alle').click();
       await rows(page).first().click();
       // The buttons differ in height: one line is one axis.
       const middle = async (id: string): Promise<number> => {
@@ -331,7 +309,7 @@ test.describe('the actions', () => {
   }
 
   test('icon-only buttons draw 16 px glyphs and their tooltips name the key', async ({ page }) => {
-    await openJob(page, 'freelancermap-2802');
+    await openAt(page, 'freelancermap-2802');
     // Close names Esc (beside the list, where the reader has its close).
     expect(await tooltipOf(page, stage(page).getByTestId('reader-close'))).toEqual([
       'Schließen',
@@ -355,7 +333,6 @@ test.describe('the actions', () => {
 
   test('closing a job from the reader hands the focus to its row', async ({ page }) => {
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await row(page, 'freelancermap-2801').click();
     await page.getByTestId('reader-close').focus();
     await page.keyboard.press('Enter');
@@ -372,7 +349,6 @@ test.describe('the actions', () => {
     page,
   }) => {
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await rows(page).first().click();
     const first = await page.getByTestId('reader-title').textContent();
     await page.getByTestId('reader-archive').focus();
@@ -384,7 +360,7 @@ test.describe('the actions', () => {
 
 test.describe('the exclusion', () => {
   test('a calm box with every reason, its passage, include anyway and back', async ({ page }) => {
-    await openJob(page, 'freelance-900412');
+    await openAt(page, 'freelance-900412');
     const box = stage(page).getByTestId('exclusion-box');
     // Every violation once, in its own words: the agency work and the junior role.
     await expect(box.getByTestId('exclusion')).toHaveText([
@@ -432,7 +408,7 @@ test.describe('the exclusion', () => {
   });
 
   test('an exclusion word says the word and shows the sentence that names it', async ({ page }) => {
-    await openJob(page, 'freelancermap-2807');
+    await openAt(page, 'freelancermap-2807');
     await expect(row(page, 'freelancermap-2807')).toContainText('Ausschlusswort');
     const box = stage(page).getByTestId('exclusion-box');
     await expect(box.getByTestId('exclusion')).toHaveText(
@@ -455,7 +431,7 @@ test.describe('Konditionen', () => {
   test('the rows of the facts table with their icons, the ad side only, verdicts in words', async ({
     page,
   }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('terms').locator('h2')).toHaveText('Konditionen');
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(ROWS);
     // Each row has the icon of its fact, the same as in the list row.
@@ -495,7 +471,7 @@ test.describe('Konditionen', () => {
       'freelancermap-2804',
       'freelance-900413',
     ]) {
-      await show(page, key);
+      await openJob(page, key);
       await expect(terms(page)).not.toContainText('genannt');
       for (const each of await terms(page).locator('.term').all()) {
         const verdict = words(await each.locator('.verdict').textContent());
@@ -508,7 +484,7 @@ test.describe('Konditionen', () => {
   });
 
   test('a permanent job: its salary, no end, a type the engine only infers', async ({ page }) => {
-    await openJob(page, 'linkedin-4100200303');
+    await openAt(page, 'linkedin-4100200303');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names[1]).toBe('Gehalt');
     expect((await cell(page, 'rate'))[0]).toMatch(/^95\.000 €\/Jahr$/);
@@ -523,7 +499,7 @@ test.describe('Konditionen', () => {
   }) => {
     // Three months against the profile's six; ten years for a senior role (the profile brings
     // more); a day rate the ad leaves open.
-    await openJob(page, 'freelancermap-2802');
+    await openAt(page, 'freelancermap-2802');
     expect(await cell(page, 'duration')).toEqual(['3 Monate', 'passt teilweise']);
     expect(await tip(page, term(page, 'duration').locator('.verdict'))).toBe(
       'Die Laufzeit von 3 Monaten liegt unter dem Minimum von 6 Monaten.',
@@ -542,7 +518,7 @@ test.describe('Konditionen', () => {
     const passage = page.getByTestId('ad-text').locator('mark', { hasText: 'Laufzeit 3 Monate' });
     expect(await tip(page, passage)).toBe('Laufzeit · passt teilweise');
     // Two days a week against three to five; a day rate just under the wish.
-    await show(page, 'freelance-900413');
+    await openJob(page, 'freelance-900413');
     expect(await cell(page, 'workload')).toEqual(['2 Tage pro Woche', 'passt teilweise']);
     expect(await tip(page, term(page, 'workload').locator('.verdict'))).toBe(
       'Die Anzeige nennt 2 Tage pro Woche, das Profil sucht mindestens 3 Tage pro Woche.',
@@ -554,7 +530,7 @@ test.describe('Konditionen', () => {
     await expect(page.locator('mark.active').first()).toContainText('Einsatz an 2 Tagen pro Woche');
     await expect(stage(page).getByTestId('why')).not.toContainText('Tage pro Woche');
     // Within the profile: a fit. A start to be agreed is unclear: to check.
-    await show(page, 'freelancermap-2804');
+    await openJob(page, 'freelancermap-2804');
     expect(await cell(page, 'workload')).toEqual(['3 Tage pro Woche', 'passt']);
     expect(await cell(page, 'duration')).toEqual(['12 Monate', 'passt']);
     expect(await cell(page, 'start')).toEqual(['nach Absprache', 'prüfen']);
@@ -566,16 +542,16 @@ test.describe('Konditionen', () => {
         .evaluate((node) => getComputedStyle(node).color);
     expect(await colour('prüfen')).toBe(await tokenColour(page, '--info'));
     expect(await colour('passt')).toBe(await tokenColour(page, '--success-strong'));
-    await show(page, 'freelance-900413');
+    await openJob(page, 'freelance-900413');
     expect(await colour('passt teilweise')).toBe(await tokenColour(page, '--score-mid-text'));
-    await show(page, 'freelance-900412');
+    await openJob(page, 'freelance-900412');
     expect(await colour('passt nicht')).toBe(await tokenColour(page, '--danger-strong'));
   });
 
   test('a value with a passage is underlined dotted and jumps; a plain value is plain', async ({
     page,
   }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     const rate = term(page, 'rate');
     await expect(rate.locator('button.chip .chip-label')).toHaveCSS(
       'text-decoration-style',
@@ -594,7 +570,7 @@ test.describe('Konditionen', () => {
     page,
   }) => {
     await open(page, `${WIN}&scenario=no-profile`);
-    await show(page, 'freelancermap-2801');
+    await openJob(page, 'freelancermap-2801');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual(ROWS);
     await expect(terms(page).locator('.verdict')).toHaveCount(0);
@@ -606,7 +582,7 @@ test.describe('Konditionen', () => {
   });
 
   test('in English: the row Workload and its verdict', async ({ page }) => {
-    await openJob(page, 'freelance-900413', `${WIN}&lang=en`);
+    await openAt(page, 'freelance-900413', `${WIN}&lang=en`);
     expect(await terms(page).locator('.term-name').allInnerTexts()).toContain('Workload');
     expect(await cell(page, 'workload')).toEqual(['2 days a week', 'partly fits']);
   });
@@ -614,7 +590,7 @@ test.describe('Konditionen', () => {
 
 test.describe('Anforderungen and the ad', () => {
   test('a missing must once, in its group, into the profile and back', async ({ page }) => {
-    await openJob(page, 'freelancermap-2802');
+    await openAt(page, 'freelancermap-2802');
     const why = stage(page).getByTestId('why');
     await expect(why.locator('h2')).toHaveText('Anforderungen');
     // The groups carry no counts; the must count stands in the head only.
@@ -647,7 +623,7 @@ test.describe('Anforderungen and the ad', () => {
   test('only Optional tagged, a missing must stands out, every mark says its state', async ({
     page,
   }) => {
-    await openJob(page, 'freelancermap-2803');
+    await openAt(page, 'freelancermap-2803');
     const why = stage(page).getByTestId('why');
     // Untagged is Pflicht: the only tag is "Optional".
     expect(new Set(await why.locator('.badge').allInnerTexts())).toEqual(new Set(['Optional']));
@@ -673,7 +649,7 @@ test.describe('Anforderungen and the ad', () => {
       expect(await tip(page, mark)).toBe(word);
     }
     // "Passt zu" only where the profile's words differ from the requirement's own.
-    await show(page, 'freelancermap-2801');
+    await openJob(page, 'freelancermap-2801');
     const met = stage(page).getByTestId('reasons-met');
     await expect(
       met.locator('li', { hasText: 'Interim-Management im Mittelstand' }),
@@ -686,7 +662,7 @@ test.describe('Anforderungen and the ad', () => {
   test('the ad and its reasons link both ways: tooltips on passages, hover lights, click scrolls', async ({
     page,
   }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     const text = page.getByTestId('ad-text');
     const mark = text.locator('mark', { hasText: 'Reporting nach IFRS' });
     await mark.scrollIntoViewIfNeeded();
@@ -724,7 +700,7 @@ test.describe('Anforderungen and the ad', () => {
     await expect(page.locator('mark.active').first()).toContainText('Reporting nach IFRS');
     await expect(page.locator('mark.active').first()).toBeInViewport();
     // An ad that names the rate only as to be agreed: open, and the place fits.
-    await show(page, 'freelancermap-2802');
+    await openJob(page, 'freelancermap-2802');
     expect(await tip(page, text.locator('mark', { hasText: 'Tagessatz nach Absprache' }))).toBe(
       'Tagessatz · offen',
     );
@@ -732,7 +708,7 @@ test.describe('Anforderungen and the ad', () => {
   });
 
   test('the facts copy as one line with their dots', async ({ page }) => {
-    await openJob(page, 'freelancermap-2801');
+    await openAt(page, 'freelancermap-2801');
     const copied = await stage(page)
       .locator('.head .facts')
       .evaluate((line) => {
@@ -753,7 +729,6 @@ test.describe('around the reader', () => {
   }) => {
     await page.setViewportSize({ width: 683, height: 700 });
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await rows(page)
       .nth(0)
       .click({ modifiers: ['Control'] });
@@ -776,7 +751,6 @@ test.describe('around the reader', () => {
   test('one column: the header stays on top while the list scrolls', async ({ page }) => {
     await page.setViewportSize({ width: 780, height: 560 });
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await page
       .getByTestId('list-scroll')
       .evaluate((node) => node.parentElement?.scrollTo({ top: 400 }));
@@ -788,17 +762,13 @@ test.describe('around the reader', () => {
 
   test('a search keeps the open job that is a hit beyond the loaded rows', async ({ page }) => {
     await open(page, `${WIN}&scenario=many`);
-    await facet(page, 'Alle').click();
     // The order is in the funnel's menu.
-    await page.getByTestId('filter').click();
-    await page.getByTestId('menu-item-newest').click();
+    await chooseFilter(page, 'newest');
     await row(page, 'linkedin-100006').click();
     await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
-    await page.getByTestId('filter').click();
-    await page.getByTestId('menu-item-match').click();
-    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await chooseFilter(page, 'match');
     await page.getByTestId('search').fill('Finance Manager');
-    await expect(facet(page, 'Alle')).toContainText('500');
+    await expect.poll(async () => (await lastQuery(page))?.search).toBe('Finance Manager');
     await page.waitForTimeout(400);
     await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
   });

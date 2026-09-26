@@ -56,11 +56,23 @@ export function highlighted(page: Page): Promise<string[]> {
     .evaluateAll((items) => items.map((item) => (item as HTMLElement).dataset.key ?? ''));
 }
 
-/** Open a job by its row and wait until the reader shows it and has settled. */
+/** The open job's reader (the one on its way out has dropped its test id). */
+export const stage = (page: Page): Locator => page.getByTestId('stage');
+
+/** Open the folded section of the excluded jobs (it stays open when it is). */
+export async function unfoldExcluded(page: Page): Promise<void> {
+  const divider = page.getByTestId('excluded-divider');
+  if ((await divider.getAttribute('aria-expanded')) === 'false') await divider.click();
+}
+
+/** Open a job of the one list by its row (an excluded one in the fold at the end, which
+ *  opens for it) and wait until the reader shows it and has settled. */
 export async function openJob(page: Page, key: string): Promise<void> {
+  const [portal, id] = key.split(/-(.*)/) as [Portal, string];
+  if ((await stubJob(page, portal, id)).match?.status === 'excluded') await unfoldExcluded(page);
   const target = row(page, key);
   await target.click();
-  await expect(page.getByTestId('reader-title')).toHaveText(
+  await expect(stage(page).getByTestId('reader-title')).toHaveText(
     await target.locator('.title').innerText(),
   );
   await animationsDone(page);
