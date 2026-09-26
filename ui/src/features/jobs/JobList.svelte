@@ -10,8 +10,8 @@
   section, and it opens when its job is opened from elsewhere). A page that fails to load
   while scrolling says so at the end of the list, with a retry. A search looks in the list's
   place; under its hits a button names each other place with hits ("Im Archiv (2)", counted
-  without the inbox's filter) and goes there with the search. Each row's tools are the job's
-  actions where it is (Archivieren, Löschen, the star; in the Papierkorb Wiederherstellen,
+  with the same filter) and goes there with the search. Each row's tools are the job's
+  actions where it is (Archivieren, Löschen; in the Papierkorb Wiederherstellen,
   Endgültig löschen); a row the user moves out folds away. Its menu (a right click) is the
   table JOB_MENU of actions.ts. A click opens a job; one coral bar marks the open job's row
   and slides from row to row (RowBar). Back in the Jobs view, the open job's row is
@@ -52,18 +52,7 @@
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import type { MenuEntry } from '$lib/state/menu.svelte';
-  import {
-    actionsOf,
-    disarm,
-    guarded,
-    hasStar,
-    JOB_MENU,
-    type JobMenuItem,
-    move,
-    moving,
-    purge,
-    toggleStar,
-  } from './actions';
+  import { actionsOf, disarm, JOB_MENU, type JobMenuItem, move, moving, purge } from './actions';
   import { glideIntoView } from '$lib/motion/scroll';
   import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
@@ -83,15 +72,14 @@
   const active = $derived(shown.filter((job) => !isExcluded(job)));
   const excluded = $derived(shown.filter(isExcluded));
   // How many excluded jobs the list holds: the counts of each place know it (with the search
-  // and the filter, like the list; the favourites narrow only the list), the favourites once
-  // every page is there.
-  const excludedCount = $derived.by((): number | null => {
-    if (jobs.place === 'inbox' && !jobs.filter.favourites) return jobs.counts.excluded;
-    if (jobs.place === 'archive') return jobs.counts.excludedArchive;
-    if (jobs.place === 'trash') return jobs.counts.excludedTrash;
-    if (jobs.rows.length < jobs.total) return null;
-    return jobs.visible.filter(isExcluded).length;
-  });
+  // and the filter, like the list).
+  const excludedCount = $derived(
+    jobs.place === 'inbox'
+      ? jobs.counts.excluded
+      : jobs.place === 'archive'
+        ? jobs.counts.excludedArchive
+        : jobs.counts.excludedTrash,
+  );
 
   /** The excluded section is open (folded by default; the choice is kept like the order). */
   const EXCLUDED_KEY = 'jobs-excluded-open';
@@ -130,10 +118,12 @@
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
   /**
-   * The inbox's filter leaves the list empty while the inbox holds jobs (the counts over
-   * every job): it says so and takes the filter off.
+   * The filter leaves the list empty while the place holds jobs (the counts over every job):
+   * it says so and takes the filter off.
    */
-  const filterEmptied = $derived(jobs.filtered && (jobs.overviewCounts ?? jobs.counts).inbox > 0);
+  const filterEmptied = $derived(
+    jobs.filtered && (jobs.overviewCounts ?? jobs.counts)[jobs.place] > 0,
+  );
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
@@ -226,7 +216,7 @@
   });
 
   // A search looks in the list's place; the other places with hits are named under them,
-  // counted without the inbox's filter (the store's hitCounts).
+  // counted with the same filter (the counts of the list cover every place).
   const place = $derived(jobs.place);
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
   /** The glyph of each place (the tabs' meaning: the inbox, the archive, the trash). */
@@ -237,7 +227,7 @@
   };
   const elsewhere = $derived.by(() => {
     if (!searching) return [];
-    const counts = jobs.hitCounts ?? jobs.counts;
+    const counts = jobs.counts;
     return PLACES.filter((other) => other !== place)
       .map((other) => ({ place: other, count: counts[other] }))
       .filter((hit) => hit.count > 0);
@@ -363,10 +353,6 @@
     });
   });
 
-  function pin(job: JobView): void {
-    if (!guarded()) toggleStar([job]);
-  }
-
   /** Ends with "Endgültig löschen" of a row: the dialog asks first. */
   let purging = $state<JobView | null>(null);
   let purgeBusy = $state(false);
@@ -393,8 +379,8 @@
   }
 
   /**
-   * The job's menu on a right click (the table JOB_MENU of actions.ts): open it, its ad, the
-   * star, its moves and the prompt.
+   * The job's menu on a right click (the table JOB_MENU of actions.ts): open it, its ad, its
+   * moves and the prompt.
    */
   function menuOf(job: JobView): ContextMenu {
     const list = [job];
@@ -409,13 +395,11 @@
           (error: unknown) => report(errorText(error)),
         );
       },
-      star: () => toggleStar(list),
       prompt: () => void copyJobPrompt(job.key).then(report),
     };
     const labels: Record<Own, string> = {
       open: t.menu.open,
       'open-ad': t.reader.open,
-      star: list.some((chosen) => !chosen.pinned) ? t.reader.pin : t.reader.unpin,
       prompt: t.reader.prompt,
     };
     const entries: MenuEntry[] = [];
@@ -561,23 +545,16 @@
   {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
     <div class="empty">
       {#if searching}
+        <!-- The search's × clears it; the other places' hits are the way on. -->
         <div class="stack">
           <EmptyState
             icon="search"
             tone="neutral"
             text={t.list.noHit(jobs.search.trim())}
-            secondary={{ label: t.field.clear, icon: 'close', onclick: () => jobs.setSearch('') }}
             testid="empty-search"
           />
           {#if elsewhere.length > 0}{@render alsoIn()}{/if}
         </div>
-      {:else if place !== 'inbox'}
-        <EmptyState
-          icon={place === 'trash' ? 'trash' : 'archive'}
-          tone="neutral"
-          text={t.place.empty[place]}
-          testid="empty-place-{place}"
-        />
       {:else if filterEmptied}
         <EmptyState
           icon="filter"
@@ -588,6 +565,13 @@
             onclick: () => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER)),
           }}
           testid="empty-filter"
+        />
+      {:else if place !== 'inbox'}
+        <EmptyState
+          icon={place === 'trash' ? 'trash' : 'archive'}
+          tone="neutral"
+          text={t.place.empty[place]}
+          testid="empty-place-{place}"
         />
       {:else if run.active || !mailRead}
         <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
@@ -641,7 +625,6 @@
         selected={open}
         bar={false}
         onselect={select}
-        onpin={hasStar(job.place) ? pin : null}
         tools={toolsOf(job)}
         menu={() => menuOf(job)}
         trashDays={app.state?.autoEmptyTrashDays ?? 0}

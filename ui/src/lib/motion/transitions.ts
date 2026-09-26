@@ -1,8 +1,9 @@
 // Token-bound wrappers of svelte/transition, svelte/animate and svelte/motion.
 // This folder is the only place allowed to import them (eslint + ui_contract.rs).
 //
-// Rules: only transform and opacity move (and the height of a folding row and of the job
-// list's selection bar, each one small box); end values are whole pixels; at most
+// Rules: only transform and opacity move (and the height of a folding row, of a line that
+// unfolds under the list header and of the job list's selection bar, each one small box); end
+// values are whole pixels; at most
 // --stagger-max list rows animate at once, and only rows that arrive while the list is on
 // screen. Nothing staggers, nothing bounces. Under reduced motion every movement is dropped
 // and what remains is a cross-fade of --dur-crossfade.
@@ -215,6 +216,23 @@ export function rowCollapse(node: Element, { on }: CollapseParams): TransitionCo
   return {
     duration: duration('base'),
     easing: easing('in'),
+    css: (t) => `overflow: hidden; height: ${Math.round(t * height)}px; opacity: ${t}`,
+  };
+}
+
+/**
+ * A slim line that comes and goes under the list header (the filter chips, the progress of a
+ * run): it unfolds to its height while it fades in (150 ms, ease-out) and folds away while it
+ * fades out (100 ms, ease-in), so the list below glides instead of jumping. A cross-fade
+ * under reduced motion. `transition:unfold` on the line.
+ */
+export function unfold(node: Element, params: MotionParams = {}): TransitionConfig {
+  if (params.on === false) return {};
+  if (isReducedMotion()) return crossfade(node);
+  const height = node.getBoundingClientRect().height;
+  return {
+    duration: duration('base'),
+    easing: easing('out'),
     css: (t) => `overflow: hidden; height: ${Math.round(t * height)}px; opacity: ${t}`,
   };
 }

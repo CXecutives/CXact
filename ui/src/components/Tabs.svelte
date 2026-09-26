@@ -1,16 +1,16 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels in a row, the
-  chosen one in ink with a thin line under it that slides to the next choice like the
-  sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and a
-  change of size never slide). A tab may carry a small coral number after its label (the
-  inbox's unopened jobs; none at 0). An unchosen tab darkens on hover. Like native tabs the
-  row is one Tab stop and the left and right arrows choose (lib/input/input.ts).
+  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 14 px in a row
+  40 px high, the chosen one in ink with a thin line under it that slides to the next choice
+  like the sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and
+  a change of size never slide). A tab may carry a quiet number after its label (how many
+  jobs lie there; none at 0). An unchosen tab darkens on hover. Like native tabs the row is
+  one Tab stop and the left and right arrows choose (lib/input/input.ts).
 -->
 <script lang="ts" module>
   export interface TabOption<Id extends string = string> {
     id: Id;
     label: string;
-    /** A number after the label (what is new there); null or absent: none. */
+    /** A quiet number after the label (how many lie there); null, absent or 0: none. */
     count?: number | null;
     testid?: string;
   }
@@ -117,7 +117,7 @@
     border: none;
     background: none;
     color: var(--text-muted);
-    font: var(--type-sm);
+    font: var(--type-md);
     font-weight: var(--weight-medium);
     white-space: nowrap;
     cursor: default;
@@ -133,12 +133,11 @@
     color: var(--nav-active-fg);
   }
 
-  /* Coral like the unread dot: what is new there. */
+  /* Quiet: how many lie there (what is new is the rows' dot). */
   .count {
     margin-inline-start: var(--space-6);
-    color: var(--unread);
-    font: var(--type-xs);
-    font-weight: var(--weight-medium);
+    color: var(--text-subtle);
+    font: var(--type-sm);
     font-variant-numeric: var(--numeric);
   }
 

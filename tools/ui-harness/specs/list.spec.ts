@@ -23,16 +23,16 @@ import {
   visibleCount,
 } from './fixtures';
 import {
-  atStart,
+  chip,
+  chips,
+  chipWordsOf,
   chooseFilter,
+  chooseSort,
   excludedRows,
   failNext,
   filterLabel,
-  filterLine,
   filterMenu,
-  filterWordsOf,
   funnel,
-  inboxCount,
   lastQuery,
   list,
   listed,
@@ -45,9 +45,9 @@ import {
   row,
   rows,
   settleMoves,
-  stubJob,
   stubList,
   T,
+  tabCount,
   tokenColour,
   tool,
   WIN,
@@ -69,81 +69,88 @@ async function rightOf(page: Page, testid: string): Promise<number> {
   return Math.round((box?.x ?? 0) + (box?.width ?? 0));
 }
 
-/** How far a ghost button's box hangs out past the text it lines up with (--ghost-inset). */
-function ghostInset(page: Page): Promise<number> {
-  return page.evaluate(() => {
-    const probe = document.createElement('span');
-    probe.style.setProperty('width', 'var(--ghost-inset)');
-    probe.style.setProperty('position', 'absolute');
-    document.body.append(probe);
-    const width = probe.getBoundingClientRect().width;
-    probe.remove();
-    return width;
-  });
-}
-
 /* ======================================================================= header */
 
+/** The vertical middle of an element (px from the top of the window). */
+async function middleOf(page: Page, testid: string): Promise<number> {
+  const box = (await page.getByTestId(testid).boundingBox())!;
+  return box.y + box.height / 2;
+}
+
 test.describe('header', () => {
-  test('the Eingang tab counts the unopened jobs, not the excluded ones, and none at 0', async ({
+  test('each tab counts the jobs of its place, quietly; the Eingang waits for the run to end', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&tick=60`);
+    const { counts } = await stubList(page);
+    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
+    expect(await tabCount(page, 'archive')).toBe(counts.archive);
+    await expect(page.getByTestId('place-trash-count')).toHaveCount(0);
+    await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--text-subtle'),
+    );
+    // 40 px high, 14 px labels.
+    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(40);
+    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '14px');
+    // A search or a filter does not change them.
+    await page.getByTestId('search').fill('Interim');
+    await expect(rows(page)).toHaveCount(3);
+    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
+    await page.getByTestId('search').fill('');
+    // A fetch brings new jobs: the Eingang's number moves on once it has ended.
+    const before = await listed(page);
+    await page.getByTestId('fetch').click();
+    await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
+    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
+    await runFinished(page);
+    const after = (await stubList(page)).counts.inbox;
+    expect(after).toBeGreaterThan(counts.inbox);
+    await expect.poll(() => tabCount(page, 'inbox')).toBe(after);
+  });
+
+  test('one header in the three places: the tabs with the action, the search, order, funnel', async ({
     page,
   }) => {
     await open(page, WIN);
-    // The unread jobs of the inbox less the excluded ones (the demo has one of those).
-    const { jobs } = await stubList(page);
-    expect(jobs.some((job) => job.unread && excluded(job))).toBe(true);
-    const unread = jobs.filter((job) => job.unread && !excluded(job)).length;
-    await expect(page.getByTestId('place-inbox-count')).toHaveText(String(unread));
-    await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--unread'),
-    );
-    await expect(page.getByTestId('place-archive-count')).toHaveCount(0);
-    await expect(page.getByTestId('place-trash-count')).toHaveCount(0);
-    // A search or a filter does not change it.
-    await page.getByTestId('search').fill('Interim');
-    await expect(rows(page)).toHaveCount(3);
-    expect(await inboxCount(page)).toBe(unread);
-    await page.getByTestId('search').fill('');
-    // Opening a job counts down; with nothing unopened the tab shows no number.
-    await openJob(page, 'linkedin-4100200301');
-    await expect.poll(() => inboxCount(page)).toBe(unread - 1);
-    await atStart(page, 'unread', { unread: false });
-    await open(page, WIN);
-    await expect(page.getByTestId('places').getByRole('tab', { name: T.place.inbox })).toHaveText(
-      T.place.inbox,
-    );
-    await expect(page.getByTestId('place-inbox-count')).toHaveCount(0);
-  });
-
-  test('one toolbar row: the search, the funnel in the inbox only, Abrufen', async ({ page }) => {
-    await open(page, WIN);
-    const middle = async (id: string): Promise<number> => {
-      const box = (await page.getByTestId(id).boundingBox())!;
-      return box.y + box.height / 2;
-    };
-    const search = await middle('search');
-    expect(Math.abs((await middle('filter')) - search)).toBeLessThanOrEqual(1);
-    expect(Math.abs((await middle('fetch')) - search)).toBeLessThanOrEqual(1);
-    // Left to right, and nothing else in the inbox's header: no segments, no mark-all.
-    expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
-    expect(await rightOf(page, 'filter')).toBeLessThan(await rightOf(page, 'fetch'));
+    // Eingang: "Postfach abrufen" at the end of the tabs' row.
+    await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
+    const tabs = await middleOf(page, 'places');
+    expect(Math.abs((await middleOf(page, 'fetch')) - tabs)).toBeLessThanOrEqual(1);
+    expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
+    // The toolbar row: search, order, funnel on one line, left to right.
+    const line = await middleOf(page, 'search');
+    for (const id of ['sort', 'filter']) {
+      expect(Math.abs((await middleOf(page, id)) - line), id).toBeLessThanOrEqual(1);
+    }
+    expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'sort'));
+    expect(await rightOf(page, 'sort')).toBeLessThan(await rightOf(page, 'filter'));
+    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.match);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
-    await expect(page.getByTestId('facet')).toHaveCount(0);
-    await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
-    await expect(page.getByTestId('sort')).toHaveCount(0);
-    await expect(page.getByTestId('list-header').locator('.second')).toHaveCount(0);
-    // The archive and the trash: the same row without the funnel, their count and order below.
+    const top = (await page.getByTestId('search').boundingBox())!.y;
+    // Archiv: the same row, no action.
     await openPlace(page, 'archive');
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
-    await expect(funnel(page)).toHaveCount(0);
-    await expect(page.getByTestId('place-count')).toHaveText(T.place.count.archive(1));
-    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.match);
+    for (const id of ['sort', 'filter']) await expect(page.getByTestId(id)).toBeVisible();
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+    expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
+    // Papierkorb: "Papierkorb leeren", red, in the action's place.
     await openPlace(page, 'inbox');
-    await expect(funnel(page)).toBeVisible();
+    for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
+      await tool(page, 'trash', key);
+      await settleMoves(page);
+    }
+    await openPlace(page, 'trash');
+    const empty = page.getByTestId('empty-trash');
+    await expect(empty).toHaveText(T.actions.emptyTrash);
+    await expect(empty).toHaveClass(/warns/);
+    expect(await rightOf(page, 'empty-trash')).toBe(await rightOf(page, 'filter'));
+    expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
+    // No second row, no count line.
+    await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('Abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
+  test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
     page,
   }) => {
     await open(page, `${WIN}&tick=200`);
@@ -191,38 +198,23 @@ test.describe('header', () => {
     expect((await calls(page, 'list_jobs')).length).toBe(loads);
   });
 
-  test('the Papierkorb row: its count, Papierkorb leeren, the order at the end', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const end = await rightOf(page, 'fetch');
-    for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
-      await tool(page, 'trash', key);
-      await settleMoves(page);
-    }
-    await openPlace(page, 'trash');
-    await expect(page.getByTestId('place-count')).toHaveText(T.place.count.trash(2));
-    // A ghost button's box hangs out by its inset: its label ends where Abrufen ends.
-    expect(await rightOf(page, 'sort')).toBe(end + (await ghostInset(page)));
-    const empty = (await page.getByTestId('empty-trash').boundingBox())!;
-    expect(empty.x).toBeLessThan((await page.getByTestId('sort').boundingBox())!.x);
-    // During a search the count says what it found there.
-    await page.getByTestId('search').fill('Treasury');
-    await expect(page.getByTestId('place-count')).toHaveText(T.place.found.trash(1, 'Treasury'));
-  });
-
-  test('an empty place has no second row, and the open inbox job closes there', async ({
+  test('an empty place has nothing to search, order or filter; the open inbox job closes there', async ({
     page,
   }) => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
+    const top = (await page.getByTestId('list-scroll').boundingBox())!.y;
     await openPlace(page, 'trash');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
     await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
-    await expect(page.getByTestId('list-header').locator('.second')).toHaveCount(0);
+    for (const id of ['search', 'sort', 'filter', 'place-action']) {
+      await expect(page.getByTestId(id), id).toHaveCount(0);
+    }
+    // The row stays: the list starts where it starts in the other places.
+    expect((await page.getByTestId('list-scroll').boundingBox())!.y).toBe(top);
   });
 
-  test('a list that did not load says so with a retry; the header has no funnel', async ({
+  test('a list that did not load says so with a retry; the header has no tools', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=list-error`);
@@ -230,14 +222,14 @@ test.describe('header', () => {
     await expect(error).toContainText(T.list.loadFailed);
     await expect(error.getByRole('button', { name: T.common.retry })).toBeVisible();
     await expect(funnel(page)).toHaveCount(0);
-    await expect(page.getByTestId('best-error')).toHaveCount(0);
+    await expect(page.getByTestId('sort')).toHaveCount(0);
   });
 });
 
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('the menu is the table: small headings, its entries, the defaults checked', async ({
+  test('the menu is the table: small headings, its entries, none chosen at first', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -245,25 +237,41 @@ test.describe('filter', () => {
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'true');
     await expect(menu).toHaveAttribute('aria-label', T.toolbar.filter);
     const table = filterMenu();
-    await expect(menu.getByTestId('menu-heading')).toHaveText(
-      table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
-    );
+    await expect(menu.getByTestId('menu-heading')).toHaveText(table.map((group) => group.heading));
     await expect(menu.locator('[role^="menuitem"]')).toHaveText(
       table.flatMap((group) => group.entries),
     );
     await expect(menu.getByRole('separator')).toHaveCount(table.length - 1);
-    for (const id of ['match', 'portal-all', 'band-any']) {
+    for (const id of ['portal-all', 'band-any']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
     }
-    // Nur Favoriten is a switch of its own; there is no applied filter any more.
-    await expect(menuItem(page, 'favourites')).toHaveAttribute('role', 'menuitemcheckbox');
-    await expect(menuItem(page, 'favourites')).toHaveAttribute('aria-checked', 'false');
-    await expect(menuItem(page, 'applied')).toHaveCount(0);
+    // The order is no part of the filter: it has its own button.
+    await expect(menuItem(page, 'match')).toHaveCount(0);
     await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');
+    await expect(chips(page)).toHaveCount(0);
+  });
+
+  test('the order is a button of its own in every place, kept for every list', async ({ page }) => {
+    await open(page, WIN);
+    const sort = page.getByTestId('sort');
+    await sort.click();
+    const menu = page.getByTestId('menu');
+    await expect(menu).toHaveAttribute('aria-label', T.toolbar.sortMenu);
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
+      T.toolbar.sortLabel.match,
+      T.toolbar.sortLabel.newest,
+    ]);
+    await expect(menuItem(page, 'match')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'newest').click();
+    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'newest' }));
+    await openPlace(page, 'archive');
+    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
+    expect(await lastQuery(page)).toMatchObject({ place: 'archive', sort: 'newest' });
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
@@ -278,90 +286,35 @@ test.describe('filter', () => {
         const id = menu?.getAttribute('aria-activedescendant');
         return id ? (document.getElementById(id)?.dataset['testid'] ?? null) : null;
       });
-    await expect.poll(active).toBe('menu-item-match');
+    await expect.poll(active).toBe('menu-item-portal-all');
     await page.keyboard.press('ArrowUp');
     await expect.poll(active).toBe('menu-item-band-high');
     await page.keyboard.press('Home');
-    await expect.poll(active).toBe('menu-item-match');
-    await page.keyboard.press('ArrowDown');
-    await page.keyboard.press('ArrowDown');
-    await expect.poll(active).toBe('menu-item-favourites');
-    await page.keyboard.press('ArrowDown');
     await expect.poll(active).toBe('menu-item-portal-all');
+    await page.keyboard.press('End');
+    await expect.poll(active).toBe('menu-item-band-high');
     // A heading's word is no entry: typing it finds the entry that starts with it instead.
     await page.keyboard.type(filterLabel('portal-linkedin').slice(0, 4).toLowerCase());
     await expect.poll(active).toBe('menu-item-portal-linkedin');
     await page.keyboard.press('Enter');
-    await expect(filterLine(page)).toContainText(filterLabel('portal-linkedin'));
+    await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-linkedin'));
   });
 
-  test('Nur Favoriten lists the favourites of the inbox; the line says it and takes it off', async ({
+  test('the portal and the band narrow the list; each stands as a chip with its ×', async ({
     page,
   }) => {
     await open(page, WIN);
-    const all = await inbox(page);
-    const favourites = await inbox(page, { favourites: true });
-    expect(favourites.length).toBeGreaterThan(0);
-    expect(favourites.length).toBeLessThan(all.length);
-    await expect(filterLine(page)).toHaveCount(0);
+    const { jobs, active: all } = await stubList(page);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-    await chooseFilter(page, 'favourites');
-    await expect.poll(() => listed(page)).toEqual(favourites);
-    expect(await lastQuery(page)).toMatchObject({
-      place: 'inbox',
-      favourites: true,
-      unread: false,
-    });
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--unread'),
-    );
-    await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('favourites'));
-    await openFilter(page);
-    await expect(menuItem(page, 'favourites')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'favourites').click();
-    await expect.poll(() => listed(page)).toEqual(all);
-    await expect(filterLine(page)).toHaveCount(0);
-    // The line's own way back; the focus stays near, on the funnel, from the keyboard too.
-    await chooseFilter(page, 'favourites');
-    await filterLine(page).getByTestId('filter-line-reset').click();
-    await expect(filterLine(page)).toHaveCount(0);
-    await expect.poll(() => listed(page)).toEqual(all);
-    await expect(funnel(page)).toBeFocused();
-    await chooseFilter(page, 'favourites');
-    await filterLine(page).getByTestId('filter-line-reset').focus();
-    await page.keyboard.press('Enter');
-    await expect(filterLine(page)).toHaveCount(0);
-    await expect(funnel(page)).toBeFocused();
-  });
-
-  test('a favourite counts and lists only while it is in the inbox', async ({ page }) => {
-    await open(page, WIN);
-    await chooseFilter(page, 'favourites');
-    await expect(rows(page)).toHaveCount(1);
-    // Archived, the favourite keeps its star but leaves the filtered inbox.
-    await tool(page, 'archive', 'freelancermap-2801');
-    await expect(rows(page)).toHaveCount(0);
-    await expect(page.getByTestId('empty-filter')).toBeVisible();
-    expect(await stubJob(page, 'freelancermap', '2801')).toMatchObject({
-      pinned: true,
-      place: 'archive',
-    });
-    // The archive lists it with its star.
-    await openPlace(page, 'archive');
-    await expect(row(page, 'freelancermap-2801')).toBeVisible();
-  });
-
-  test('the portal and the band narrow the list; the line names them in the menu words', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const { jobs } = await stubList(page);
     await chooseFilter(page, 'portal-linkedin');
     const linkedin = await inbox(page, { portal: 'linkedin' });
     expect(linkedin.every((key) => key.startsWith('linkedin-'))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(linkedin);
     expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', minBand: null });
+    await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
+      'background-color',
+      await tokenColour(page, '--unread'),
+    );
     await chooseFilter(page, 'band-mid');
     await expect
       .poll(() => listed(page))
@@ -371,28 +324,26 @@ test.describe('filter', () => {
     expect(unscored.length).toBeGreaterThan(0);
     for (const key of unscored) expect(await listed(page)).not.toContain(key);
     await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
-    await chooseFilter(page, 'favourites');
-    await expect(page.getByTestId('filter-words')).toHaveText(
-      filterWordsOf('favourites', 'portal-linkedin', 'band-mid'),
+    // The chips in the menu's words, in the table's order.
+    await expect(chips(page).getByRole('button')).toHaveText(
+      chipWordsOf('portal-linkedin', 'band-mid'),
     );
-    expect(await lastQuery(page)).toMatchObject({
-      favourites: true,
-      portal: 'linkedin',
-      minBand: 'mid',
-    });
-    // Only the high band, every portal again.
-    await chooseFilter(page, 'favourites');
-    await chooseFilter(page, 'portal-all');
-    await chooseFilter(page, 'band-high');
-    await expect.poll(() => listed(page)).toEqual(await inbox(page, { minBand: 'high' }));
-    await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('band-high'));
+    // A chip's × takes its part off; the last one hands the focus to the funnel.
+    await chip(page, 'minBand').click();
+    await expect.poll(() => listed(page)).toEqual(linkedin);
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
+    await chip(page, 'portal').click();
+    await expect(chips(page)).toHaveCount(0);
+    await expect.poll(() => listed(page)).toEqual(all);
+    await expect(funnel(page)).toBeFocused();
+    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
-  test('Filter zurücksetzen takes it all off; the filter is kept, the archive ignores it', async ({
+  test('the filter is the same in every place and kept; Filter zurücksetzen takes it off', async ({
     page,
   }) => {
     await open(page, WIN);
-    const { active: all, counts } = await stubList(page);
+    const all = await inbox(page);
     await chooseFilter(page, 'portal-freelancermap');
     await chooseFilter(page, 'band-mid');
     await expect
@@ -400,27 +351,25 @@ test.describe('filter', () => {
       .toEqual(await inbox(page, { portal: 'freelancermap', minBand: 'mid' }));
     // The app starts again: the same filter.
     await open(page, WIN);
-    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
+    await expect(chips(page).getByRole('button')).toHaveText(
+      chipWordsOf('portal-freelancermap', 'band-mid'),
+    );
     expect(await lastQuery(page)).toMatchObject({ portal: 'freelancermap', minBand: 'mid' });
-    // The archive has no filter: its query carries none.
+    // The archive lists with it too.
     await openPlace(page, 'archive');
     expect(await lastQuery(page)).toMatchObject({
       place: 'archive',
-      favourites: false,
-      portal: null,
-      minBand: null,
+      portal: 'freelancermap',
+      minBand: 'mid',
     });
+    await expect(chips(page).getByRole('button')).toHaveCount(2);
     await openPlace(page, 'inbox');
     await openFilter(page);
     await expect(menuItem(page, 'filter-reset')).toHaveText(T.toolbar.filterReset);
     await menuItem(page, 'filter-reset').click();
-    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
+    await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
     expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBeNull();
-    // The Übersicht never follows it.
-    await chooseFilter(page, 'portal-linkedin');
-    await page.getByTestId('nav-overview').click();
-    await expect(page.getByTestId('tile-new').locator('.digits')).toHaveText(String(counts.unread));
   });
 
   test('without a profile the bands and the match order are off and say why', async ({ page }) => {
@@ -430,9 +379,13 @@ test.describe('filter', () => {
     await open(page, `${WIN}&scenario=no-profile`);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: null });
+    const sort = page.getByTestId('sort');
+    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
+    await expect(sort).toHaveAttribute('aria-disabled', 'true');
+    await sort.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.sortNoProfile);
+    await page.mouse.move(0, 0);
     await openFilter(page);
-    await expect(menuItem(page, 'newest')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'match')).toHaveAttribute('aria-disabled', 'true');
     for (const id of ['band-any', 'band-mid', 'band-high']) {
       await expect(menuItem(page, id)).toHaveAttribute('aria-disabled', 'true');
     }
@@ -440,7 +393,7 @@ test.describe('filter', () => {
     await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.bandNoProfile);
     await menuItem(page, 'band-high').click({ force: true });
     await expect(page.getByTestId('menu')).toBeVisible();
-    // The portals and the favourites still filter; the kept band waits for the profile.
+    // The portals still filter; the kept band waits for the profile.
     const kept = (): Promise<unknown> =>
       page.evaluate(() => JSON.parse(localStorage.getItem('jobs-filter') ?? 'null') as unknown);
     await menuItem(page, 'portal-freelance').click();
@@ -448,21 +401,27 @@ test.describe('filter', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
-    expect(await kept()).toEqual({ favourites: false, portal: 'freelance', minBand: 'high' });
-    await chooseFilter(page, 'favourites');
-    expect(await kept()).toEqual({ favourites: true, portal: 'freelance', minBand: 'high' });
+    expect(await kept()).toEqual({ portal: 'freelance', minBand: 'high' });
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
   });
 
   test('a filter that leaves nothing says so once and takes itself off', async ({ page }) => {
     await open(page, WIN);
-    await chooseFilter(page, 'portal-freelance');
-    await chooseFilter(page, 'favourites');
-    const empty = page.getByTestId('empty-filter');
-    await expect(empty).toContainText(T.list.noFilterHit);
+    // A portal whose inbox has no job of the high band.
+    let empty: string | null = null;
+    for (const portal of ['freelance', 'freelancermap', 'linkedin'] as const) {
+      const { active, excluded: out } = await stubList(page, { portal, minBand: 'high' });
+      if (active.length + out.length === 0) empty = `portal-${portal}`;
+    }
+    expect(empty).not.toBeNull();
+    await chooseFilter(page, empty!);
+    await chooseFilter(page, 'band-high');
+    const state = page.getByTestId('empty-filter');
+    await expect(state).toContainText(T.list.noFilterHit);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(funnel(page)).toBeVisible();
-    await empty.getByRole('button', { name: T.toolbar.filterReset }).click();
-    await expect(empty).toHaveCount(0);
+    await state.getByRole('button', { name: T.toolbar.filterReset }).click();
+    await expect(state).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     await expect(funnel(page)).toBeFocused();
   });
@@ -481,32 +440,12 @@ test.describe('filter', () => {
     expect(await listed(page)).toEqual(await inbox(page, { minBand: 'high', portal: 'linkedin' }));
   });
 
-  test('the run card opens the inbox with its filter; the Übersicht with exactly its own', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    await chooseFilter(page, 'portal-linkedin');
-    await openPlace(page, 'archive');
-    await page.getByTestId('run-status').click();
-    await page.getByTestId('last-top').click();
-    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('portal-linkedin'));
-    expect(await lastQuery(page)).toMatchObject({ place: 'inbox', sort: 'match' });
-    await page.getByTestId('search').fill('Controller');
-    await page.getByTestId('nav-overview').click();
-    await page.getByTestId('tile-new').click();
-    await expect(page.getByTestId('view-jobs')).toBeVisible();
-    await expect(page.getByTestId('search')).toHaveValue('');
-    // "Neu" counts the unopened jobs of every portal: its list has no filter.
-    await expect(filterLine(page)).toHaveCount(0);
-    expect(await lastQuery(page)).toMatchObject({ place: 'inbox', portal: null });
-  });
-
-  test('macOS: the same funnel and menu', async ({ page }) => {
+  test('macOS: the same funnel, menu and chips', async ({ page }) => {
     await open(page, MAC);
     await chooseFilter(page, 'portal-linkedin');
     await expect(rows(page)).toHaveCount((await inbox(page, { portal: 'linkedin' })).length);
     await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
+    await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-linkedin'));
   });
 });
 
@@ -603,7 +542,7 @@ test.describe('one list', () => {
   test('the order is kept for every list and keeps the open job', async ({ page }) => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2803');
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     const newest = await inbox(page, { sort: 'newest' });
     expect(newest).not.toEqual(await inbox(page));
     await expect.poll(() => listed(page)).toEqual(newest);
@@ -665,7 +604,7 @@ test.describe('one list', () => {
     await expect(rows(page)).toHaveCount(all);
     await motionSettled(page);
     await watch(120);
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     expect(await glides()).toBeGreaterThan(0);
   });
 
@@ -879,28 +818,19 @@ test.describe('rows', () => {
     await page.mouse.move(4, 4);
   });
 
-  test('a row shows its tools under the pointer; the star pins without opening', async ({
-    page,
-  }) => {
+  test('a row shows its tools under the pointer, without a star', async ({ page }) => {
     await open(page, WIN);
     const key = 'linkedin-4100200301';
     const job = list(page).locator('.job', { has: page.getByTestId(`job-row-${key}`) });
     await expect(job.locator('.tools')).toHaveCount(0);
     await row(page, key).hover();
-    await expect(job.locator('.tools .btn')).toHaveCount(3);
+    await expect(job.locator('.tools .btn')).toHaveCount(2);
     expect(
       await job
         .locator('.tools .btn')
         .evaluateAll((items) => items.map((item) => item.getAttribute('aria-label'))),
-    ).toEqual([T.actions.archive, T.actions.trash, T.reader.pin]);
-    await page.getByTestId(`pin-${key}`).click();
-    await expect(page.getByTestId(`pin-${key}`)).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByTestId('reader')).toHaveCount(0);
-    expect((await calls(page, 'set_pinned')).map(([, args]) => args)).toEqual([
-      { key: { portal: 'linkedin', id: '4100200301' }, on: true },
-    ]);
-    await page.mouse.move(0, 0);
-    await expect(job.locator('.mark')).toBeVisible();
+    ).toEqual([T.actions.archive, T.actions.trash]);
+    await expect(page.getByTestId(`pin-${key}`)).toHaveCount(0);
   });
 
   test('the menu of a row: its entries, no unread', async ({ page }) => {
@@ -910,7 +840,6 @@ test.describe('rows', () => {
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
       T.menu.open,
       T.reader.open,
-      T.reader.pin,
       T.actions.archive,
       T.actions.trash,
       T.reader.prompt,
@@ -940,12 +869,13 @@ test.describe('rows', () => {
 /* ======================================================================= search */
 
 test.describe('search', () => {
-  test('no hit: one empty state with a way back', async ({ page }) => {
+  test('no hit: one empty state; the search clears by its ×', async ({ page }) => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kernfusion');
     await expect(page.getByTestId('empty-search')).toContainText(T.list.noHit('Kernfusion'));
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
-    await page.getByTestId('empty-search').getByRole('button').click();
+    await expect(page.getByTestId('empty-search').getByRole('button')).toHaveCount(0);
+    await page.getByRole('button', { name: T.field.clear }).click();
     await expect(rows(page).first()).toBeVisible();
   });
 
@@ -964,11 +894,16 @@ test.describe('search', () => {
     await expect(rows(page)).toHaveCount(1);
   });
 
-  test('the hits elsewhere count without the inbox filter', async ({ page }) => {
+  test('the hits elsewhere count with the filter, as the other place lists them', async ({
+    page,
+  }) => {
     await open(page, WIN);
+    // The archived job is a linkedin one: another portal's filter hides it there too.
     await chooseFilter(page, 'portal-freelance');
     await page.getByTestId('search').fill('Kreditoren');
-    // The archived job is a linkedin one: the filter of the inbox does not hide it there.
+    await expect(page.getByTestId('empty-search')).toBeVisible();
+    await expect(page.getByTestId('also-archive')).toHaveCount(0);
+    await chooseFilter(page, 'portal-linkedin');
     await expect(page.getByTestId('also-archive')).toHaveText(T.place.hitsIn.archive(1));
     await page.getByTestId('also-archive').click();
     await expect(row(page, 'linkedin-4100200306')).toBeVisible();
@@ -1055,7 +990,7 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('dialog-empty-trash')).toContainText(T.actions.emptyTrashText(2));
     await page
       .getByTestId('dialog-empty-trash')
-      .getByRole('button', { name: T.actions.emptyTrashConfirm, exact: true })
+      .getByRole('button', { name: T.actions.emptyTrash, exact: true })
       .click();
     await expect(page.getByTestId('dialog-empty-trash')).toBeHidden();
     await page.getByTestId('search').fill('');
@@ -1076,13 +1011,10 @@ test.describe('moves and undo', () => {
     await page.clock.setFixedTime(new Date(NOW.getTime() + DAY + 60_000));
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect(left).toHaveText(T.job.trashLeft(29));
-    await expect(
-      list(page)
-        .locator('.job', { has: page.getByTestId('job-row-freelancermap-2801') })
-        .locator('.mark'),
-    ).toHaveCount(0);
     await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await openPlace(page, 'inbox');
     await page.getByTestId('fetch').click();
+    await openPlace(page, 'trash');
     await row(page, 'linkedin-4100200303').hover();
     await expect(page.getByTestId('purge-linkedin-4100200303')).toHaveAttribute(
       'aria-disabled',
@@ -1162,7 +1094,7 @@ test.describe('moves and undo', () => {
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
   });
 
-  test('a move, an undo or a star that fails says so in the header until the next list', async ({
+  test('a move or an undo that fails says so in the header until the next list', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1174,8 +1106,8 @@ test.describe('moves and undo', () => {
     await openPlace(page, 'archive');
     await expect(error).toHaveCount(0);
     await openPlace(page, 'inbox');
-    await failNext(page, 'set_pinned');
-    await tool(page, 'pin', 'linkedin-4100200301');
+    await failNext(page, 'move_jobs');
+    await tool(page, 'archive', 'linkedin-4100200301');
     await expect(error).toHaveText(T.error.text('db', {}));
   });
 
@@ -1226,16 +1158,14 @@ test.describe('run card', () => {
 
   test('the counts of the last fetch lead to the inbox, the good ones first', async ({ page }) => {
     await open(page, WIN);
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     await openPlace(page, 'archive');
     await page.getByTestId('run-status').click();
     const linkedin = page.getByTestId('portal-line-linkedin');
     await expect(linkedin).toContainText('2 neu, 1 doppelt, 1 ohne Details');
     await page.getByTestId('last-top').click();
     await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-    await openFilter(page);
-    await expect(menuItem(page, 'match')).toHaveAttribute('aria-checked', 'true');
-    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.match);
     await openPlace(page, 'trash');
     await page.getByTestId('last-new').click();
     await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
@@ -1529,7 +1459,7 @@ test.describe("the open row's bar", () => {
     still(await stopSampling(page));
     // A run lands new jobs above the open one and re-sorts at its end, then another order:
     // the row moves or glides, the bar with it, always on its row.
-    await filterLine(page).getByTestId('filter-line-reset').click();
+    await chip(page, 'portal').click();
     await row(page, 'freelancermap-2804').click();
     await resting(page);
     await startSampling(page);
@@ -1546,7 +1476,7 @@ test.describe("the open row's bar", () => {
         return top === (await scroller.evaluate((node) => node.scrollTop));
       })
       .toBe(true);
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     await page.waitForTimeout(400);
     const moved = await stopSampling(page);
     expect(
@@ -1734,11 +1664,11 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
     last = await listWidth();
   }
   expect(last).toBeGreaterThanOrEqual(520);
-  // The smallest window: the toolbar and the filter line stay in it; below 900 px one column.
+  // The smallest window: the header and the chips stay in it; below 900 px one column.
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await chooseFilter(page, 'portal-linkedin');
-  for (const id of ['search', 'filter', 'fetch', 'filter-line']) {
+  for (const id of ['search', 'sort', 'filter', 'fetch', 'chip-portal']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(box.x + box.width, id).toBeLessThanOrEqual(480);
   }

@@ -1,5 +1,5 @@
-<!-- Gallery: reason items and the job list with its entry and FLIP reordering, and a mail
-     app's selection (Ctrl/Cmd+click toggles, Shift+click a range, the selection bar). -->
+<!-- Gallery: reason items and the job list with its entry and FLIP reordering; a click
+     selects one job. -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Chip, { CHIP_STATES, type ChipState } from '$components/Chip.svelte';
@@ -34,15 +34,6 @@
 
   function shuffle(): void {
     jobs = [...jobs.slice(1), jobs[0]!];
-  }
-
-  /** The row tools of the gallery: pin a sample job. */
-  function toggle(job: JobView, field: 'pinned' | 'archived'): void {
-    jobs = jobs.map((j) => {
-      if (j.key.id !== job.key.id) return j;
-      if (field === 'pinned') return { ...j, pinned: !j.pinned };
-      return { ...j, place: j.place === 'archive' ? 'inbox' : 'archive' };
-    });
   }
 
   /** Jobs the user moves out of the list: their rows fold away (a filter's would not). */
@@ -114,7 +105,6 @@
             {now}
             selected={chosen === job.key.id}
             onselect={choose}
-            onpin={(j) => toggle(j, 'pinned')}
             onarchive={archive}
           />
         </div>

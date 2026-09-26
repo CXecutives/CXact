@@ -1,7 +1,7 @@
 <!--
-  The Jobs view on the white sheet of the shell: left the list column with its header
-  (search, "Abrufen", filters), the run panel and the list; a hairline; right the reader, or
-  with nothing selected its empty state, the day overview. Nothing floats: no cards, no
+  The Jobs view on the white sheet of the shell: left the list column with its header (the
+  places, "Postfach abrufen", the search, the order and the filter), the run panel and the
+  list; a hairline; right the reader, or with nothing selected its empty state. Nothing floats: no cards, no
   shadows. Both columns start at the same line; the handle between them resizes the list
   (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps
   440 px; the limits follow the window and the sidebar, and never shrink while the window
@@ -317,7 +317,7 @@
      the list a query container made every layout of the view half as long again (the
      reader's ring fill lays the view out in each of its frames).
      It keeps the room of the list's scrollbar beside it, empty (a scroller that never
-     scrolls): its search, Abrufen and tools end where the rows' text ends, with the engine's
+     scrolls): its tabs, search and tools end where the rows' text ends, with the engine's
      own scrollbar width (Windows 8 px, overlay scrollbars none). */
   .head {
     flex: none;
@@ -417,7 +417,7 @@
 
   @media (width < 900px) {
     /* One column scrolls as a whole, so the run card never squeezes the list; the header
-       (search, Abrufen, on macOS the toolbar row that moves the window) stays on top, and a
+       (the tabs, the search and the tools, on macOS the toolbar row that moves the window) stays on top, and a
        row brought into view stops below it (the header at its tallest, two lines). */
     .left {
       width: 100%;
@@ -425,8 +425,8 @@
       overflow-y: scroll;
       border-right: 0;
       scroll-padding-top: calc(
-        var(--list-header-top) + var(--list-toolbar) + var(--space-12) + 2 * var(--control-sm) +
-          var(--space-8) + var(--pane-padding)
+        var(--list-header-top) + var(--tabs-height) + var(--space-12) + var(--list-toolbar) +
+          var(--space-8) + var(--control-sm) + var(--pane-padding)
       );
     }
 

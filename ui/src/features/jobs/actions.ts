@@ -1,6 +1,5 @@
 // What a job can do where it is, with one name, icon and order on a row, in the reader and in
-// its menu (the star, a flag of its own, comes last where there is one), from the tables
-// below (ACTIONS, OF_PLACE, JOB_MENU):
+// its menu, from the tables below (ACTIONS, OF_PLACE, JOB_MENU):
 //   Eingang: Archivieren, Löschen · Archiv: In den Eingang, Löschen · Papierkorb:
 //   Wiederherstellen, Endgültig löschen (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
@@ -11,7 +10,7 @@
 // after the list or the pane changed is ignored, so a double click never moves the job that
 // slid under the pointer. The job the app opens by itself counts as read only once it has
 // been looked at (DWELL_MS on screen in the Jobs view, or a click in the reader). A job that
-// is already where it goes is no move. A move, its undo or the star that fails says so in
+// is already where it goes is no move. A move or its undo that fails says so in
 // the list header (`jobs.actionError`).
 
 import type { IconName } from '$components/Icon.svelte';
@@ -60,7 +59,7 @@ const OF_PLACE: Record<Place, readonly ActionId[]> = {
   trash: ['restore', 'purge'],
 };
 
-/** The actions of a job in this place, in their one order (the star is not one of them). */
+/** The actions of a job in this place, in their one order. */
 export function actionsOf(place: Place): JobAction[] {
   return OF_PLACE[place].map((id) => ({ id, ...ACTIONS[id], label: t.actions[id] }));
 }
@@ -68,7 +67,7 @@ export function actionsOf(place: Place): JobAction[] {
 /** An entry of the job's menu (its id is the menu's test id `menu-item-<id>`): `moves`
  *  stands for the job's actions where it is. */
 export interface JobMenuItem {
-  id: 'open' | 'open-ad' | 'star' | 'moves' | 'prompt';
+  id: 'open' | 'open-ad' | 'moves' | 'prompt';
   icon: IconName | null;
   /** Shown for this job. */
   shows: (job: JobView) => boolean;
@@ -76,21 +75,17 @@ export interface JobMenuItem {
 
 /**
  * The job's menu (a right click on its row), group by group in its order, a line between the
- * groups: open it and its ad, the star, the moves of its place, the prompt for an AI chat
- * (a scored job only).
+ * groups: open it and its ad, the moves of its place, the prompt for an AI chat (a scored
+ * job only).
  */
 export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
   [
     { id: 'open', icon: 'read', shows: () => true },
     { id: 'open-ad', icon: 'external', shows: () => true },
   ],
-  [{ id: 'star', icon: 'star', shows: (job) => hasStar(job.place) }],
   [{ id: 'moves', icon: null, shows: () => true }],
   [{ id: 'prompt', icon: 'prompt', shows: (job) => job.match !== null }],
 ];
-
-/** A favourite never lies in the trash: the star is there in the inbox and the archive. */
-export const hasStar = (place: Place): boolean => place !== 'trash';
 
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
@@ -355,16 +350,4 @@ export function detailsWanted(job: JobView): boolean {
   return (
     portal?.enabled === true && portal.fetchDetails && (kind !== 'teaser' || portal.loginEnabled)
   );
-}
-
-/** The star: a favourite, or not any more (one that fails says so in the list header). */
-export function toggleStar(list: readonly JobView[]): void {
-  const on = list.some((job) => !job.pinned);
-  for (const job of list) {
-    if (job.pinned !== on) {
-      void jobs.pin(job.key, on).then((error) => {
-        if (error !== null) jobs.actionError = error;
-      });
-    }
-  }
 }

@@ -381,8 +381,9 @@
      padding, on macOS centred in the toolbar row next to the traffic lights. */
   --list-header-top: var(--pane-padding);
   --list-toolbar: var(--control-md);
-  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs, a thin line. */
-  --tabs-height: var(--list-toolbar);
+  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 40 px high with
+     14 px labels, a thin line; on macOS the whole toolbar row next to the traffic lights. */
+  --tabs-height: max(var(--control-lg), var(--list-toolbar));
   --tabs-line: 2px;
   /* The portal's small tile at the start of a row's company line. */
   --portal-tile: 16px;

@@ -7,9 +7,9 @@ import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
 import type { JobCounts, JobQuery, JobView, Portal } from '../../../ui/src/lib/ipc/types';
 import {
+  activeFilters,
   FILTER_GROUPS,
-  filterWords,
-  type ListChoice,
+  type ListFilter,
   NO_FILTER,
 } from '../../../ui/src/lib/state/filter';
 import { animationsDone, calls, expect, settle } from './fixtures';
@@ -88,17 +88,22 @@ export async function openPlace(page: Page, place: 'inbox' | 'archive' | 'trash'
   await settle(page);
 }
 
-/** The number on the Eingang tab (0 when it shows none). */
-export async function inboxCount(page: Page): Promise<number> {
-  const count = page.getByTestId('place-inbox-count');
-  return (await count.count()) === 0 ? 0 : Number(await count.innerText());
+/** The number on a place's tab (0 when it shows none; "2.001" is 2001). */
+export async function tabCount(
+  page: Page,
+  place: 'inbox' | 'archive' | 'trash' = 'inbox',
+): Promise<number> {
+  const count = page.getByTestId(`place-${place}-count`);
+  return (await count.count()) === 0 ? 0 : Number((await count.innerText()).replace(/\D/g, ''));
 }
 
 /* ------------------------------------------------------------------- filter */
 
 export const funnel = (page: Page): Locator => page.getByTestId('filter');
 export const menuItem = (page: Page, id: string): Locator => page.getByTestId(`menu-item-${id}`);
-export const filterLine = (page: Page): Locator => page.getByTestId('filter-line');
+/** The chips of the chosen filter under the toolbar. */
+export const chips = (page: Page): Locator => page.getByTestId('filter-chips');
+export const chip = (page: Page, key: keyof ListFilter): Locator => page.getByTestId(`chip-${key}`);
 
 /** Open the funnel's menu. */
 export async function openFilter(page: Page): Promise<Locator> {
@@ -116,9 +121,9 @@ export async function chooseFilter(page: Page, id: string): Promise<void> {
 }
 
 /** The menu as the table says it: per group its heading and entries (the stub's portals). */
-export function filterMenu(): { heading: string | null; entries: string[] }[] {
+export function filterMenu(): { heading: string; entries: string[] }[] {
   return FILTER_GROUPS.map((group) => ({
-    heading: group.heading?.(T) ?? null,
+    heading: group.heading(T),
     entries: group.entries(PORTALS).map((entry) => entry.label(T)),
   }));
 }
@@ -132,20 +137,22 @@ export function filterLabel(id: string): string {
   throw new Error(`no filter entry ${id}`);
 }
 
-/** The words of the line under the toolbar once these entries are picked. */
-export function filterWordsOf(...ids: string[]): string {
-  let choice: ListChoice = { sort: 'match', filter: NO_FILTER };
+/** Pick an order with the sort button ('match', 'newest'); the menu closes. */
+export async function chooseSort(page: Page, id: 'match' | 'newest'): Promise<void> {
+  await page.getByTestId('sort').click();
+  await menuItem(page, id).click();
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+}
+
+/** The words of the chips once these entries are picked, in their order. */
+export function chipWordsOf(...ids: string[]): string[] {
+  const filter: Record<string, unknown> = { ...NO_FILTER };
   for (const group of FILTER_GROUPS) {
     for (const entry of group.entries(PORTALS)) {
-      if (!ids.includes(entry.id)) continue;
-      const change = entry.pick(choice);
-      choice = {
-        sort: change.sort ?? choice.sort,
-        filter: { ...choice.filter, ...change.filter },
-      };
+      if (ids.includes(entry.id)) filter[group.key] = entry.value;
     }
   }
-  return T.toolbar.filterLine(filterWords(choice.filter, PORTALS, T));
+  return activeFilters(filter as unknown as ListFilter, PORTALS, T).map((part) => part.label);
 }
 
 /* ---------------------------------------------------------------------- stub */
@@ -203,42 +210,6 @@ export async function failNext(page: Page, command: string): Promise<void> {
       return push(...items);
     };
   }, command);
-}
-
-/** Change jobs of the stub before the page asks for the app state (read, pinned): these
- *  keys, or every unread job of the inbox. */
-export async function atStart(
-  page: Page,
-  keys: readonly (readonly [Portal, string])[] | 'unread',
-  change: Partial<JobView>,
-): Promise<void> {
-  await page.addInitScript(
-    ({ keys, change }) => {
-      let harness: Window['__harness'] | undefined;
-      Object.defineProperty(window, '__harness', {
-        configurable: true,
-        get: () => harness,
-        set: (value: Window['__harness']) => {
-          harness = value;
-          // After the stub has built its jobs (the rest of its module), before app_state.
-          queueMicrotask(() => {
-            const chosen =
-              keys === 'unread'
-                ? value
-                    .list({})
-                    .jobs.filter((job) => job.unread)
-                    .map((job) => [job.key.portal, job.key.id] as const)
-                : keys;
-            for (const [portal, id] of chosen) {
-              const job = value.job({ portal, id });
-              if (job) value.emit({ type: 'jobUpdated', job: { ...job, ...change }, fresh: false });
-            }
-          });
-        },
-      });
-    },
-    { keys, change },
-  );
 }
 
 /** A colour token as the engine computes it. */

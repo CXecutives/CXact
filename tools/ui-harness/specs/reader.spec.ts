@@ -14,7 +14,7 @@ import type { Locator, Page } from '@playwright/test';
 import { demoMustLine, demoReasons, demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
-  chooseFilter,
+  chooseSort,
   lastQuery,
   openJob,
   openPlace,
@@ -784,12 +784,12 @@ test.describe('around the reader', () => {
   test('a search keeps the open job that is a hit beyond the loaded rows', async ({ page }) => {
     await open(page, `${WIN}&scenario=many`);
     // The order is in the funnel's menu.
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     const key = { portal: 'linkedin', id: '100006' } as const;
     const title = (await page.evaluate((k) => window.__harness.job(k), key))!.title;
     await row(page, 'linkedin-100006').click();
     await expect(page.getByTestId('reader-title')).toHaveText(title);
-    await chooseFilter(page, 'match');
+    await chooseSort(page, 'match');
     // Its title without the number: every fourth job of the scenario is a hit.
     const search = title.replace(/ \d+$/, '');
     await page.getByTestId('search').fill(search);

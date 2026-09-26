@@ -234,7 +234,7 @@ test('job rows: tools, status, aged date, provisional ring, no dot on excluded',
     'aria-label',
     'Archivieren',
   );
-  // No stage badges: a favourite has only its star.
+  // No stage badges.
   await expect(job('linkedin-1002')).not.toContainText('Beworben');
   await expect(job('freelancermap-1001')).not.toContainText('Gemerkt');
   // A score from a teaser is provisional (named so, drawn like any score); an excluded unread
@@ -252,24 +252,20 @@ test('a row: the date ends the title line, the tools take its place on hover', a
   const box = async (selector: string) => (await job.locator(selector).first().boundingBox())!;
   const title = await box('.title');
   const date = await box('.date');
-  const mark = await box('.mark');
-  // The date on the first title line, the small pinned star just left of it.
+  // The date on the first title line.
   expect(Math.abs(date.y + date.height / 2 - (title.y + 10))).toBeLessThan(2);
-  expect(mark.x + mark.width).toBeLessThanOrEqual(date.x);
-  expect(mark.width).toBe(16);
   // Company, place and facts use the full width, up to the date's right edge.
   const meta = await box('.meta');
   const foot = await box('.foot');
   expect(meta.x + meta.width).toBeGreaterThan(date.x + date.width - 1);
   expect(foot.x + foot.width).toBeGreaterThan(date.x + date.width - 1);
-  // On hover the date and its star give way to the tools, which sit over them; the portal's
+  // On hover the date gives way to the tools, which sit over it; the portal's
   // tile stays, just before them.
   const end = job.locator('.date');
   const tools = job.locator('.tools');
   await expect(end).toHaveCSS('opacity', '1');
   await job.hover({ position: { x: 120, y: 30 } });
   await expect(end).toHaveCSS('opacity', '0');
-  await expect(job.locator('.mark')).toHaveCSS('opacity', '0');
   await expect(job.locator('.portal')).toHaveCSS('opacity', '1');
   await expect(tools.locator('.tool').last()).toHaveCSS('opacity', '1');
   const over = (await tools.boundingBox())!;

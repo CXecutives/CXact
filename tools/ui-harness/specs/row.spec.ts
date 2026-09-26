@@ -373,23 +373,21 @@ test('an excluded row says why with the ban icon instead of its facts', async ({
   await expect(excluded.locator('.ring svg.lucide-ban, .ring .lucide-ban')).toHaveCount(0);
 });
 
-test('the title line ends with star, portal tile and date; company and place below', async ({
+test('the title line ends with the portal tile and the date; company and place below', async ({
   page,
 }) => {
   await open(page, WIN);
   const job = row(page, 'freelancermap-2801');
   const box = async (selector: string) => (await job.locator(selector).first().boundingBox())!;
   const title = await box('.title');
-  const star = await box('.mark');
   const tile = await box('.portal');
   const date = await box('.date');
-  expect(star.x + star.width).toBeLessThanOrEqual(tile.x);
   expect(tile.x + tile.width).toBeLessThanOrEqual(date.x);
-  for (const part of [star, tile, date]) {
+  for (const part of [tile, date]) {
     expect(Math.abs(part.y + part.height / 2 - (title.y + title.height / 2))).toBeLessThan(2);
   }
   await expect(job.locator('.portal')).toContainText('+1');
-  // On hover the tools take the place of star and date; the tile stays before them and names
+  // On hover the tools take the place of the date; the tile stays before them and names
   // the other portals in its tooltip.
   await job.hover();
   const tool = page.getByTestId('archive-freelancermap-2801');

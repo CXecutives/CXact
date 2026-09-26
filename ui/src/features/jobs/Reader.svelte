@@ -83,16 +83,7 @@
   import AdText from './AdText.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyText } from './prompt';
-  import {
-    actionsOf,
-    guarded,
-    hasStar,
-    move,
-    purge,
-    seen,
-    toggleStar,
-    type ActionId,
-  } from './actions';
+  import { actionsOf, guarded, move, purge, seen, type ActionId } from './actions';
   import { READER_SECTIONS, REQUIREMENT_GROUPS } from './reader-sections';
   import { rowOf, termRows, type TermRow } from './terms';
 
@@ -437,10 +428,6 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  function star(): void {
-    if (!guarded()) toggleStar([job]);
-  }
-
   /** A missing must into the profile; a failure says itself on the reader's error line. */
   async function add(term: string): Promise<void> {
     actionError = null;
@@ -743,18 +730,6 @@
       onclick={() => act(tool.id)}
     />
   {/each}
-  {#if hasStar(job.place)}
-    <Button
-      variant="ghost"
-      size="sm"
-      iconOnly
-      icon="star"
-      label={job.pinned ? t.reader.unpin : t.reader.pin}
-      pressed={job.pinned}
-      testid="{prefix}pin"
-      onclick={star}
-    />
-  {/if}
   {@render closeButton(prefix)}
 {/snippet}
 
@@ -847,18 +822,6 @@
       testid="open-ad"
       onclick={openAd}
     />
-    {#if hasStar(job.place)}
-      <Button
-        variant="ghost"
-        size="sm"
-        icon="star"
-        iconOnly={iconsOnly}
-        label={iconsOnly ? (job.pinned ? t.reader.unpin : t.reader.pin) : t.reader.favourite}
-        pressed={job.pinned}
-        testid="reader-pin"
-        onclick={star}
-      />
-    {/if}
     <!-- Deleting for good waits for a run, like on the row (the backend refuses meanwhile). -->
     {#each moves as tool (tool.id)}
       <Button

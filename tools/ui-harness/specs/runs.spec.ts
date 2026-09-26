@@ -5,7 +5,7 @@
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
-import { inboxCount, listed } from './helpers';
+import { tabCount, listed } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -196,7 +196,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await open(page, `${WIN}&scenario=many`);
   await expect(rows(page).first()).toBeVisible();
   const first = await rows(page).first().getAttribute('data-testid');
-  const newBefore = await inboxCount(page);
+  const newBefore = await tabCount(page);
   // Job 100000 scores 0 and sorts far beyond the first page of 500.
   const far = await jobOf(page, 'linkedin', '100000');
   await emit(page, {
@@ -208,7 +208,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await settle(page);
   await expect(rows(page).first()).toHaveAttribute('data-testid', first!);
   await expect(page.getByTestId('job-row-linkedin-100000')).toHaveCount(0);
-  expect(await inboxCount(page)).toBe(newBefore);
+  expect(await tabCount(page)).toBe(newBefore);
 
   // A job new in the run comes in at the top, and the counts follow the backend.
   await emit(page, {
@@ -217,7 +217,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
     fresh: true,
   });
   await expect(rows(page).first()).toHaveAttribute('data-testid', 'job-row-linkedin-999999');
-  await expect.poll(() => inboxCount(page)).toBe(newBefore + 1);
+  await expect.poll(() => tabCount(page)).toBe(newBefore + 1);
 });
 
 test('a page that fails while scrolling says so and loads on retry', async ({ page }) => {

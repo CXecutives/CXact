@@ -8,7 +8,7 @@
   import type { JobView } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
-  import { actionsOf, guarded, move } from '../../jobs/actions';
+  import { actionsOf, move } from '../../jobs/actions';
   import { openJob } from '../lead';
 
   interface Props {
@@ -32,12 +32,6 @@
       },
     }));
   }
-
-  function pin(job: JobView): void {
-    if (guarded()) return;
-    onerror(null);
-    void jobs.pin(job.key, !job.pinned).then(onerror);
-  }
 </script>
 
 {#each list as job (keyOf(job.key))}
@@ -47,7 +41,6 @@
     pending={jobs.scoring && job.match === null}
     testid="{prefix}-{job.key.portal}-{job.key.id}"
     onselect={openJob}
-    onpin={pin}
     tools={toolsOf(job)}
   />
 {/each}

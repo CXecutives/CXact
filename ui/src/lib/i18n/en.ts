@@ -672,19 +672,6 @@ export const en: Catalog = {
       archive: 'Search the archive',
       trash: 'Search the trash',
     } satisfies Record<Place, string>,
-    count: {
-      inbox: (value: number) => `${count(value, 'job', 'jobs')} in Jobs`,
-      archive: (value: number) => `${count(value, 'job', 'jobs')} in the archive`,
-      trash: (value: number) => `${count(value, 'job', 'jobs')} in the trash`,
-    } satisfies Record<Place, (value: number) => string>,
-    found: {
-      inbox: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in Jobs`,
-      archive: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in the archive`,
-      trash: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in the trash`,
-    } satisfies Record<Place, (value: number, query: string) => string>,
     hitsIn: {
       inbox: (value: number) => `In the inbox (${n(value)})`,
       archive: (value: number) => `In the archive (${n(value)})`,
@@ -718,7 +705,6 @@ export const en: Catalog = {
     purgeOne: (name: string) => `Delete “${name}” forever?`,
     purgeText: 'Jobs deleted forever never come back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
-    emptyTrashConfirm: 'Empty',
     emptyTrashHeading: 'Empty the trash?',
     emptyTrashText: (value: number) =>
       value === 1
@@ -806,14 +792,13 @@ export const en: Catalog = {
     closed: 'No longer taking applications',
     closedHint: 'The ad can still be read but no longer takes applications.',
     unread: 'New',
-    pinned: 'Favourite',
     trashLeft: (days: number) => `${count(days, 'day', 'days')} left`,
     trashSoon: 'deleted soon',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
   },
   toolbar: {
-    fetch: 'Fetch',
+    fetch: 'Check mailbox',
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
     sortMenu: 'Sort',
@@ -823,7 +808,6 @@ export const en: Catalog = {
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Filter',
-    favouritesOnly: 'Favourites only',
     portalHeading: 'Portal',
     bandHeading: 'Match',
     allPortals: 'All portals',
@@ -834,8 +818,6 @@ export const en: Catalog = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
     filterReset: 'Reset filter',
-    filterLine: (parts: readonly string[]) => parts.join(' · '),
-    filterLineReset: 'Reset',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
   },

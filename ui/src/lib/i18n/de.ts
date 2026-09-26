@@ -689,21 +689,6 @@ export const de = {
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** The second header row of the archive and the trash. */
-    count: {
-      inbox: (value: number) => `${count(value, 'Job', 'Jobs')} unter Jobs`,
-      archive: (value: number) => `${count(value, 'Job', 'Jobs')} im Archiv`,
-      trash: (value: number) => `${count(value, 'Job', 'Jobs')} im Papierkorb`,
-    } satisfies Record<Place, (value: number) => string>,
-    /** The same row during a search: what it found there, not how many jobs lie there. */
-    found: {
-      inbox: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ unter Jobs`,
-      archive: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ im Archiv`,
-      trash: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ im Papierkorb`,
-    } satisfies Record<Place, (value: number, query: string) => string>,
     /** Search hits in another place: a button under the results that goes there. */
     hitsIn: {
       inbox: (value: number) => `Im Eingang (${n(value)})`,
@@ -747,7 +732,6 @@ export const de = {
     purgeOne: (name: string) => `„${name}“ endgültig löschen?`,
     purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
-    emptyTrashConfirm: 'Leeren',
     emptyTrashHeading: 'Papierkorb leeren?',
     emptyTrashText: (value: number) =>
       value === 1
@@ -847,7 +831,6 @@ export const de = {
     closed: 'Keine Bewerbung mehr möglich',
     closedHint: 'Die Anzeige ist noch lesbar, nimmt aber keine Bewerbungen mehr an.',
     unread: 'Neu',
-    pinned: 'Favorit',
     /** The date column of a row in the Papierkorb: how long until it empties itself. */
     trashLeft: (days: number) => `noch ${count(days, 'Tag', 'Tage')}`,
     trashSoon: 'bald gelöscht',
@@ -855,39 +838,34 @@ export const de = {
     untitled: 'Job ohne Titel',
   },
   toolbar: {
-    fetch: 'Abrufen',
+    fetch: 'Postfach abrufen',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
-    /** The menu of the sort button (its accessible name), the order's heading in the
-     *  funnel's menu. */
+    /** The menu of the sort button (its accessible name). */
     sortMenu: 'Sortierung',
     /** The order of the list in words (the sort button). */
     sortLabel: {
-      match: 'Nach Passung',
+      match: 'Nach Übereinstimmung',
       newest: 'Nach Datum',
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
-    /** The funnel of the inbox (its tooltip and the name of its menu): the order and the
-     *  filter in one menu (lib/state/filter.ts), its groups under small headings. */
+    /** The funnel (its tooltip and the name of its menu): the filter of the list
+     *  (lib/state/filter.ts), its groups under small headings; the chosen parts stand as
+     *  chips under the toolbar in the same words. */
     filter: 'Filter',
-    favouritesOnly: 'Nur Favoriten',
     portalHeading: 'Portal',
-    bandHeading: 'Passung',
+    bandHeading: 'Übereinstimmung',
     allPortals: 'Alle Portale',
     /** The lowest band of the filter (`any`: every job, also one without a score). */
     band: {
-      any: 'Jede Passung',
-      mid: 'Ab mittlerer Passung',
-      high: 'Nur hohe Passung',
+      any: 'Jede Übereinstimmung',
+      mid: 'Ab mittlerer Übereinstimmung',
+      high: 'Nur hohe Übereinstimmung',
     } satisfies Record<'any' | 'mid' | 'high', string>,
-    /** Without a usable profile there is no fit to filter by. */
-    bandNoProfile: 'Ohne Profil gibt es keine Passung.',
+    /** Without a usable profile there is no match to filter by. */
+    bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     filterReset: 'Filter zurücksetzen',
-    /** The quiet line under the toolbar while a filter is on: its choices in the menu's
-     *  words, then the way back. */
-    filterLine: (parts: readonly string[]) => parts.join(' · '),
-    filterLineReset: 'Zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst ein Portal ein.',

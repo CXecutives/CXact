@@ -5,7 +5,7 @@
   2026-09-26):
   1. the title on one line (every row one height; a cut title shows in full in a tooltip; an
      unread title is drawn heavier without getting wider, so reading a job never moves it),
-     and at its end, together, the star of a favourite, the portal's small tile ("+1" when
+     and at its end, together, the portal's small tile ("+1" when
      another portal announced the job too, named in its tooltip) and the relative date on the
      title's baseline (in the Papierkorb how long it has left before the trash empties
      itself, "noch 29 Tage", or without that the day the job went there);
@@ -21,8 +21,7 @@
   Like Mail and Gmail, the row's tools sit over the end of the title line: on hover (or when
   a tool has the keyboard focus) star and date fade out and the tools (archive or bring back,
   delete, the star) fade in (100 ms); the portal's tile stays, just before them, so its tooltip
-  (the other portals of a "+1") can be reached; the title line keeps their room free. A pinned job
-  shows its star there (not in the Papierkorb, where no job is a favourite). The tools are
+  (the other portals of a "+1") can be reached; the title line keeps their room free. The tools are
   for the pointer and stay out of the Tab order, the reader offers the same actions.
   The tools are siblings of the row button, so they never select the row;
   the row keeps its hover while the pointer is on them. They exist only while the pointer
@@ -89,8 +88,6 @@
     trashDays?: number;
     /** A click on the row. */
     onselect?: ((job: JobView) => void) | null;
-    /** Pin or unpin from the row; without it a pinned job only shows the star. */
-    onpin?: ((job: JobView) => void) | null;
     /** Archive (or bring back an archived job) from the row. */
     onarchive?: ((job: JobView) => void) | null;
     /** The job's actions where it is, in their one order, before the star (in place of
@@ -111,7 +108,6 @@
     now,
     trashDays = 0,
     onselect = null,
-    onpin = null,
     onarchive = null,
     tools = [],
     menu = null,
@@ -134,7 +130,7 @@
   });
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   /** How many tools the row has on hover (their room stays free on the title line). */
-  const toolCount = $derived(tools.length + (onpin ? 1 : 0) + (onarchive ? 1 : 0));
+  const toolCount = $derived(tools.length + (onarchive ? 1 : 0));
 
   /** The tools exist while the pointer is on the row or the focus is in it, and for their
    *  fade-out (--dur-fast) after both have left. */
@@ -222,11 +218,6 @@
         class:two={toolCount === 2}
         class:three={toolCount >= 3}
       >
-        {#if job.pinned && job.place !== 'trash'}<span
-            class="mark"
-            role="img"
-            aria-label={t.job.pinned}><Icon name="star" size="sm" filled /></span
-          >{/if}
         <span
           class="portal"
           role="img"
@@ -313,20 +304,6 @@
           />
         </span>
       {/if}
-      {#if onpin}
-        <span class="tool" use:untabbed>
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon="star"
-            label={job.pinned ? t.reader.unpin : t.reader.pin}
-            pressed={job.pinned}
-            testid="pin-{job.key.portal}-{job.key.id}"
-            onclick={() => onpin?.(job)}
-          />
-        </span>
-      {/if}
     </span>
   {/if}
 </div>
@@ -360,8 +337,8 @@
     pointer-events: none;
   }
 
-  /* The title line: the title, and at the end of its first line the date (with a pinned
-     star before it), in a room as wide as the tools that replace it on hover. */
+  /* The title line: the title, and at the end of its first line the date, in a room as wide
+     as the tools that replace it on hover. */
   .head {
     display: flex;
     align-items: flex-start;
@@ -455,14 +432,6 @@
   .tooled:hover:where(:not([data-still])) .end.three,
   .tooled:has(.tool :global(:focus-visible)) .end.three {
     padding-inline-end: calc(3 * var(--control-sm) + 2 * var(--space-2) + var(--space-6));
-  }
-
-  /* A pinned job: a small star before the portal's tile and the date. */
-  .mark {
-    display: inline-flex;
-    align-items: center;
-    color: var(--pressed);
-    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
   /* The relative date at the end of the title line; it steps up from subtle to muted on
@@ -575,10 +544,10 @@
     min-height: var(--row-height);
   }
 
-  /* Star and date leave the line under the tools and fade out there (the tile keeps its
-     place before the tools). */
-  .tooled:hover:where(:not([data-still])) :is(.mark, .date),
-  .tooled:has(.tool :global(:focus-visible)) :is(.mark, .date) {
+  /* The date leaves the line under the tools and fades out there (the tile keeps its place
+     before the tools). */
+  .tooled:hover:where(:not([data-still])) .date,
+  .tooled:has(.tool :global(:focus-visible)) .date {
     position: absolute;
     inset-block: 0;
     right: 0;

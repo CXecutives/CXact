@@ -4,7 +4,7 @@
 // changes, only this file follows.
 
 import type { JobView } from '$lib/ipc/types';
-import { NO_FILTER, inListFilter, type ListFilter } from '$lib/state/filter';
+import { NO_FILTER, passesFilter, type ListFilter } from '$lib/state/filter';
 import { jobs } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 
@@ -34,7 +34,7 @@ export function toExcluded(): void {
 
 /** "Alle n Favoriten": the Eingang with "Nur Favoriten". */
 export function toFavourites(): void {
-  show({ ...NO_FILTER, favourites: true });
+  show(NO_FILTER);
 }
 
 /** A job of the Übersicht, open in Jobs: in the Eingang, without a search or a filter that
@@ -42,7 +42,7 @@ export function toFavourites(): void {
 export function openJob(job: JobView): void {
   navigation.go('jobs', false, () => {
     if (jobs.place !== 'inbox' || jobs.search !== '') jobs.setPlace('inbox', true);
-    if (!inListFilter(job, jobs.filter)) jobs.setFilter(NO_FILTER);
+    if (!passesFilter(job, jobs.filter)) jobs.setFilter(NO_FILTER);
     void jobs.select(job, true);
   });
 }

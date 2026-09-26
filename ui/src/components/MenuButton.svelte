@@ -1,8 +1,9 @@
 <!--
-  A quiet button that names the current choice, with a chevron, and opens the app's own menu
-  of the choices right below it (the current one checked): the sort control of the list
-  ("Nach Passung" / "Nach Datum"). Left click only, like every control; disabled it stays
-  hoverable so the tooltip can say why. While its menu is open the button looks pressed.
+  A button that names the current choice, with a chevron, and opens the app's own menu of the
+  choices right below it (the current one checked): the order of the list ("Nach
+  Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; in a toolbar of fields it
+  takes their height and look (`field`). Left click only, like every control; disabled it
+  stays hoverable so the tooltip can say why. While its menu is open the button looks pressed.
 -->
 <script lang="ts" module>
   export interface MenuOption<Id extends string = string> {
@@ -23,6 +24,8 @@
     icon?: IconName | null;
     disabled?: boolean;
     disabledReason?: string | null;
+    /** In a toolbar of fields: secondary, as high as a field. */
+    field?: boolean;
     testid?: string | null;
     /** The accessible name of the menu ("Sortierung"). */
     menuLabel: string;
@@ -35,6 +38,7 @@
     icon = null,
     disabled = false,
     disabledReason = null,
+    field = false,
     testid = null,
     menuLabel,
     onchange,
@@ -67,8 +71,8 @@
 
 <span class="menu-button" bind:this={anchor}>
   <Button
-    variant="ghost"
-    size="sm"
+    variant={field ? 'secondary' : 'ghost'}
+    size={field ? 'field' : 'sm'}
     label={current?.label ?? ''}
     {icon}
     trailing="expand"
