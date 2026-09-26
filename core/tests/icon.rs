@@ -197,6 +197,25 @@ fn generator_list<'a>(source: &'a str, name: &str) -> &'a str {
     &source[start..end]
 }
 
+/// The entries of an ICNS file (`icns`, total length, then per entry its type, its length
+/// including these 8 bytes and its data): type and data, here a PNG each.
+fn icns_entries(icns: &[u8]) -> Vec<(String, &[u8])> {
+    assert_eq!(&icns[0..4], b"icns");
+    let be = |at: usize| {
+        u32::from_be_bytes([icns[at], icns[at + 1], icns[at + 2], icns[at + 3]]) as usize
+    };
+    assert_eq!(be(4), icns.len(), "ICNS length field");
+    let mut entries = Vec::new();
+    let mut at = 8;
+    while at < icns.len() {
+        let ostype = String::from_utf8_lossy(&icns[at..at + 4]).into_owned();
+        let len = be(at + 4);
+        entries.push((ostype, &icns[at + 8..at + len]));
+        at += len;
+    }
+    entries
+}
+
 /// Width and height of a PNG (IHDR).
 fn png_size(png: &[u8]) -> (u32, u32) {
     assert!(png.starts_with(&[0x89, b'P', b'N', b'G']), "not a PNG");
@@ -319,7 +338,8 @@ fn ico_stages_have_no_dark_fringe() {
     }
 }
 
-/// icon.png is the macOS 1024 with its drop shadow; Windows takes everything from icon.ico.
+/// icon.png is the macOS 1024 entry (Apple's margin and template shadow); Windows takes
+/// everything from icon.ico.
 #[test]
 fn windows_uses_only_the_ico() {
     for config in [
@@ -365,24 +385,15 @@ fn mac_icons_match_generator() {
         .collect();
     assert_eq!(expected.len(), 8, "{expected:?}");
     let icns = std::fs::read(repo("src-tauri/icons/icon.icns")).unwrap();
-    assert_eq!(&icns[0..4], b"icns");
-    let total = u32::from_be_bytes([icns[4], icns[5], icns[6], icns[7]]) as usize;
-    assert_eq!(total, icns.len(), "ICNS length field");
-    let mut at = 8;
     let mut found = Vec::new();
     let mut largest = &icns[0..0];
-    while at < icns.len() {
-        let ostype = String::from_utf8_lossy(&icns[at..at + 4]).into_owned();
-        let len =
-            u32::from_be_bytes([icns[at + 4], icns[at + 5], icns[at + 6], icns[at + 7]]) as usize;
-        let png = &icns[at + 8..at + len];
+    for (ostype, png) in icns_entries(&icns) {
         let (w, h) = png_size(png);
         assert_eq!(w, h, "{ostype} is not square");
         if w == 1024 {
             largest = png;
         }
         found.push((ostype, w));
-        at += len;
     }
     assert_eq!(found, expected, "icon.icns does not match tools/icon.py");
     let png = std::fs::read(repo("src-tauri/icons/icon.png")).unwrap();
@@ -635,4 +646,135 @@ fn ico_plate_is_exact() {
             }
         }
     }
+}
+
+/// Apple's template shadow of macOS 11 to 15 on the 1024 grid, as iccir reverse-engineered it
+/// from Apple's own templates (206 plate on 256: opacity 0.3, offset 3, `CIGaussianBlur`
+/// radius 3): the plate in black at 30 %, 12 down, blurred with a standard deviation of 12.
+const SHADOW_OPACITY: f64 = 0.3;
+const SHADOW_OFFSET: f64 = 12.0;
+const SHADOW_BLUR: f64 = 12.0;
+
+/// The standard normal distribution function (Abramowitz and Stegun 7.1.26, error below 1e-6).
+fn normal(z: f64) -> f64 {
+    let x = z.abs() / std::f64::consts::SQRT_2;
+    let t = 1.0 / (1.0 + 0.327_591_1 * x);
+    let poly = t
+        * (0.254_829_592
+            + t * (-0.284_496_736
+                + t * (1.421_413_741 + t * (-1.453_152_027 + t * 1.061_405_429))));
+    let erf = 1.0 - poly * (-x * x).exp();
+    if z >= 0.0 {
+        0.5 * (1.0 + erf)
+    } else {
+        0.5 * (1.0 - erf)
+    }
+}
+
+/// Every macOS entry is the same icon scaled: the plate on Apple's grid (its edges at 100 of
+/// 1024, fractional below 1024) in the flat coral, over Apple's template shadow, which falls
+/// below the plate and stays inside the canvas.
+#[test]
+fn mac_entries_follow_apples_grid_and_shadow() {
+    let source = std::fs::read_to_string(repo("tools/icon.py")).unwrap();
+    let coral = generator_colour(&source, "CORAL");
+    let icns = std::fs::read(repo("src-tauri/icons/icon.icns")).unwrap();
+    let mut seen = Vec::new();
+    for (ostype, png) in icns_entries(&icns) {
+        let size = png_size(png).0 as usize;
+        if seen.contains(&size) {
+            continue;
+        }
+        seen.push(size);
+        let pixels = decode_png(png);
+        let scale = size as f64 / 1024.0;
+        let (near, far) = (100.0 * scale, size as f64 - 100.0 * scale);
+        let exact = coverage(&plate_outline(near, near, far, far), size);
+        let at = |x: usize, y: usize| pixels[y * size + x];
+
+        // Where the plate covers less than a whole pixel, the premultiplied colour is its
+        // coverage times the coral (the shadow is black): the edge sits at 100 of 1024.
+        for (index, (pixel, share)) in pixels.iter().zip(&exact).enumerate() {
+            if *share > 1.0 - 1e-9 {
+                continue;
+            }
+            for channel in 0..3 {
+                let premultiplied = f64::from(pixel[3]) * f64::from(pixel[channel]) / 255.0;
+                let expected = share * f64::from(coral[channel]);
+                assert!(
+                    (premultiplied - expected).abs() <= 1.0,
+                    "{ostype} {size}: pixel {},{} channel {channel} is {premultiplied:.2} \
+                     premultiplied, the exact plate over a black shadow gives {expected:.2}",
+                    index % size,
+                    index / size
+                );
+            }
+        }
+
+        // The plate is the flat coral.
+        let mut counts = std::collections::HashMap::new();
+        for pixel in pixels.iter().filter(|p| p[3] == 255) {
+            *counts.entry([pixel[0], pixel[1], pixel[2]]).or_insert(0) += 1;
+        }
+        let main = counts.iter().max_by_key(|(_, n)| **n).map(|(c, _)| *c);
+        assert_eq!(
+            main,
+            Some(coral),
+            "{ostype} {size}: the plate is not the coral"
+        );
+
+        // Left and right mirror each other.
+        for y in 0..size {
+            for x in 0..size / 2 {
+                let (left, right) = (at(x, y)[3], at(size - 1 - x, y)[3]);
+                assert!(
+                    left.abs_diff(right) <= 1,
+                    "{ostype} {size}: {x},{y} has {left}, its mirror {right}"
+                );
+            }
+        }
+
+        // The shadow along the middle column outside the plate: the Gaussian profile of the
+        // moved plate (Pillow's box-approximated blur stays within 3 levels of it).
+        let (sigma, offset) = (SHADOW_BLUR * scale, SHADOW_OFFSET * scale);
+        let middle = size / 2;
+        let (mut above, mut below) = (0.0, 0.0);
+        for y in 0..size {
+            if exact[y * size + middle] > 1e-9 {
+                continue;
+            }
+            let centre = y as f64 + 0.5;
+            let expected = SHADOW_OPACITY
+                * 255.0
+                * (normal((centre - near - offset) / sigma)
+                    - normal((centre - far - offset) / sigma));
+            let alpha = f64::from(at(middle, y)[3]);
+            assert!(
+                (alpha - expected).abs() <= 3.0,
+                "{ostype} {size}: shadow alpha {alpha} at row {y}, the template gives {expected:.1}"
+            );
+            if centre < near {
+                above += alpha;
+            } else {
+                below += alpha;
+            }
+        }
+        assert!(
+            below > 0.0 && below > 3.0 * above,
+            "{ostype} {size}: the shadow must fall below the plate ({below} below, {above} above)"
+        );
+
+        // Inside the canvas: the outermost 40 of 1024 on every side stay empty.
+        let ring = (40.0 * scale) as usize;
+        for y in 0..size {
+            for x in 0..size {
+                let outer = x.min(y).min(size - 1 - x).min(size - 1 - y) < ring;
+                assert!(
+                    !outer || at(x, y)[3] == 0,
+                    "{ostype} {size}: the shadow reaches {x},{y}, near the edge of the canvas"
+                );
+            }
+        }
+    }
+    assert_eq!(seen, [32, 64, 128, 256, 512, 1024]);
 }
