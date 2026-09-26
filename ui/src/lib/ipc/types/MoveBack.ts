@@ -8,6 +8,6 @@ import type { Place } from "./Place";
 export type MoveBack = { key: JobKey, to: Place, 
 /**
  * When the job went to the trash ([`JobView::trashed_at`]): back in the trash it keeps
- * its date and its days until the trash empties itself.
+ * its date.
  */
 trashedAt: string | null, };

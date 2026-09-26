@@ -41,7 +41,7 @@ pub struct Settings {
     #[serde(deserialize_with = "known_language")]
     pub language: Option<Language>,
     /// The colours of the page, the window and the Windows title bar (Einstellungen,
-    /// Darstellung). The report, the Excel file and the icon keep Coast. A name of a newer
+    /// Darstellung). The Excel file and the icon keep Coast. A name of a newer
     /// version reads as Coast.
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
