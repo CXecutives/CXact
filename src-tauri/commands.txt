@@ -1,0 +1,44 @@
+# The app's commands: the one list of their names, with their arguments and their result in
+# TypeScript (`{}` = no arguments). build.rs reads it for the app manifest and writes
+# capabilities/main.json from it; core/tests/contract.rs writes ui/src/lib/ipc/types/commands.ts
+# from it and checks it against `generate_handler!` in src/commands/mod.rs, both ways.
+# A new command: its handler, one line here, one entry in generate_handler! (docs/CHANGING.md).
+#
+# name            arguments                                                          result
+app_state         { channel: Channel<RunEvent> }                                     -> AppState
+start_run         { request: RunRequest; channel: Channel<RunEvent> }                -> null
+cancel_run        {}                                                                 -> null
+list_jobs         { query: JobQuery }                                                -> JobPage
+job_detail        { key: JobKey }                                                    -> JobDetail
+mark_read         { key: JobKey }                                                    -> boolean
+set_pinned        { key: JobKey; on: boolean }                                       -> boolean
+move_jobs         { to: Place; keys: JobKey[] }                                      -> JobKey[]
+move_back         { jobs: MoveBack[] }                                               -> JobKey[]
+restore_jobs      { keys: JobKey[] }                                                 -> JobKey[]
+set_override      { key: JobKey; include: boolean }                                  -> boolean
+purge_jobs        { keys: JobKey[] }                                                 -> Deleted
+empty_trash       {}                                                                 -> Deleted
+ai_prompt         { key: JobKey }                                                    -> string
+ai_prompt_top     { limit: number }                                                  -> string
+pick_profile      {}                                                                 -> ProfileDraft | null
+parse_profile     { text: string; update: boolean }                                  -> ProfileDraft
+profile_prompt    { update: boolean }                                                -> string
+save_profile      { save: ProfileSave }                                              -> ProfileInfo
+remove_profile    {}                                                                 -> boolean
+restore_profile   {}                                                                 -> boolean
+set_unsaved       { on: boolean }                                                    -> null
+close_window      {}                                                                 -> null
+save_mailbox      { user: string; password: string }                                 -> Mailbox
+remove_mailbox    {}                                                                 -> boolean
+portal_login      { portal: Portal }                                                 -> boolean
+portal_logout     { portal: Portal }                                                 -> boolean
+pick_workspace    {}                                                                 -> string | null
+rewrite_txt       {}                                                                 -> ExportSummary
+clear_txt         {}                                                                 -> ClearedTxt
+open_target       { target: OpenTarget }                                             -> null
+save_settings     { patch: SettingsPatch }                                           -> AppState
+reset_all         {}                                                                 -> null
+report_ui_error   { message: string; source: string | null; line: number | null }    -> null
+clipboard_text    {}                                                                 -> string | null
+overview_stats    {}                                                                 -> OverviewStats
+company_count     { company: string; days: number }                                  -> number

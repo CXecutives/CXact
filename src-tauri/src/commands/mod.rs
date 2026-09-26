@@ -3,9 +3,11 @@
 //! in a dialog, and only what was checked here is opened (`open_target`). Errors reach the
 //! page as `ErrorInfo` (`{kind, params}`); their English text goes to the log.
 //!
-//! Command names live in four places that `core/tests/contract.rs` keeps in agreement: the
-//! manifest in `build.rs`, `generate_handler!` below, `capabilities/main.json` and the
-//! TypeScript command map generated from [`COMMANDS`].
+//! Every command is a line of `src-tauri/commands.txt` (name, arguments and result in
+//! TypeScript): `build.rs` builds the app manifest and `capabilities/main.json` from it,
+//! `core/tests/contract.rs` the TypeScript command map, and checks the table against
+//! `generate_handler!` below (both ways). A new command: its handler, a line in the table and
+//! its entry below.
 
 mod app;
 mod files;
@@ -31,81 +33,7 @@ pub use files::{Refresh, flush_marks};
 pub use run::RunHandle;
 pub use scoring::Scoring;
 
-/// Every command: name, arguments and result in TypeScript. `core/tests/contract.rs`
-/// writes `ui/src/lib/ipc/types/commands.ts` from this table.
-#[expect(
-    dead_code,
-    reason = "read by core/tests/contract.rs, which generates the TypeScript command map"
-)]
-pub const COMMANDS: [(&str, &str, &str); 37] = [
-    ("app_state", "{ channel: Channel<RunEvent> }", "AppState"),
-    (
-        "start_run",
-        "{ request: RunRequest; channel: Channel<RunEvent> }",
-        "null",
-    ),
-    ("cancel_run", "Record<string, never>", "null"),
-    ("list_jobs", "{ query: JobQuery }", "JobPage"),
-    ("job_detail", "{ key: JobKey }", "JobDetail"),
-    ("mark_read", "{ key: JobKey }", "boolean"),
-    ("set_pinned", "{ key: JobKey; on: boolean }", "boolean"),
-    ("move_jobs", "{ to: Place; keys: JobKey[] }", "JobKey[]"),
-    ("move_back", "{ jobs: MoveBack[] }", "JobKey[]"),
-    ("restore_jobs", "{ keys: JobKey[] }", "JobKey[]"),
-    (
-        "set_override",
-        "{ key: JobKey; include: boolean }",
-        "boolean",
-    ),
-    ("purge_jobs", "{ keys: JobKey[] }", "Deleted"),
-    ("empty_trash", "Record<string, never>", "Deleted"),
-    ("ai_prompt", "{ key: JobKey }", "string"),
-    ("ai_prompt_top", "{ limit: number }", "string"),
-    (
-        "pick_profile",
-        "Record<string, never>",
-        "ProfileDraft | null",
-    ),
-    (
-        "parse_profile",
-        "{ text: string; update: boolean }",
-        "ProfileDraft",
-    ),
-    ("profile_prompt", "{ update: boolean }", "string"),
-    ("save_profile", "{ save: ProfileSave }", "ProfileInfo"),
-    ("remove_profile", "Record<string, never>", "boolean"),
-    ("restore_profile", "Record<string, never>", "boolean"),
-    ("set_unsaved", "{ on: boolean }", "null"),
-    ("close_window", "Record<string, never>", "null"),
-    (
-        "save_mailbox",
-        "{ user: string; password: string }",
-        "Mailbox",
-    ),
-    ("remove_mailbox", "Record<string, never>", "boolean"),
-    ("portal_login", "{ portal: Portal }", "boolean"),
-    ("portal_logout", "{ portal: Portal }", "boolean"),
-    ("pick_workspace", "Record<string, never>", "string | null"),
-    ("rewrite_txt", "Record<string, never>", "ExportSummary"),
-    ("clear_txt", "Record<string, never>", "ClearedTxt"),
-    ("open_target", "{ target: OpenTarget }", "null"),
-    ("save_settings", "{ patch: SettingsPatch }", "AppState"),
-    ("reset_all", "Record<string, never>", "null"),
-    (
-        "report_ui_error",
-        "{ message: string; source: string | null; line: number | null }",
-        "null",
-    ),
-    ("clipboard_text", "Record<string, never>", "string | null"),
-    ("overview_stats", "Record<string, never>", "OverviewStats"),
-    (
-        "company_count",
-        "{ company: string; days: number }",
-        "number",
-    ),
-];
-
-/// The command handler for `tauri::Builder::invoke_handler`.
+/// The command handler for `tauri::Builder::invoke_handler`: every command of `commands.txt`.
 pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         app::app_state,
