@@ -49,3 +49,12 @@ test.describe('widths', () => {
     expect(Math.abs(grip.x + grip.width / 2 - hit.x)).toBeLessThanOrEqual(1);
   });
 });
+
+test('Neu, Alle and Favoriten keep their widths when a count goes', async ({ page }) => {
+  await open(page, WIN);
+  const neu = page.getByTestId('facet').getByRole('radio', { name: /Neu/ });
+  const before = (await neu.boundingBox())!.width;
+  await page.getByTestId('mark-all-read').click();
+  await expect(neu.locator('.spare')).toHaveCount(1);
+  expect((await neu.boundingBox())!.width).toBe(before);
+});
