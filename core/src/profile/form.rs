@@ -932,16 +932,46 @@ pub(crate) fn merge(
     if after.languages != before.languages {
         write_languages(doc, &before.languages, &after.languages);
     }
-    for (key, old, new) in [
-        (KEY_STRENGTHS, &before.strengths, &after.strengths),
-        (KEY_KEYWORDS, &before.keywords, &after.keywords),
-    ] {
-        if new != old {
-            write_list(doc, key, new);
-        }
+    if after.strengths != before.strengths {
+        write_list(doc, KEY_STRENGTHS, &after.strengths);
+    }
+    // The keywords also change one term at a time from the reader and the overview (adding
+    // a missing term to the profile, and its undo), each on the copy of the form it was
+    // shown, several close together. A change made on a copy the file no longer matches is
+    // applied as what it adds and removes, so it never drops or brings back a term another
+    // change made.
+    if after.keywords != before.keywords {
+        let now = clean(&read_list(doc, KEY_KEYWORDS));
+        let keywords = if now == before.keywords {
+            after.keywords.clone()
+        } else {
+            rebase(&now, &before.keywords, &after.keywords)
+        };
+        write_list(doc, KEY_KEYWORDS, &keywords);
     }
     write_wishes(doc, &before.wishes, &after.wishes);
     write_criteria(doc, &before.criteria, &after.criteria);
+}
+
+/// `now` changed as `before` became `after`: what `after` dropped from `before` goes, what it
+/// added follows at the end, everything else of `now` stays in its order (texts compared as
+/// [`clean`] compares them).
+fn rebase(now: &[String], before: &[String], after: &[String]) -> Vec<String> {
+    let has = |list: &[String], text: &str| {
+        list.iter()
+            .any(|item| item.to_lowercase() == text.to_lowercase())
+    };
+    let mut out: Vec<String> = now
+        .iter()
+        .filter(|text| has(after, text) || !has(before, text))
+        .cloned()
+        .collect();
+    for text in after {
+        if !has(before, text) && !has(&out, text) {
+            out.push(text.clone());
+        }
+    }
+    out
 }
 
 /// Removes every key behind the fields, in every section the engine reads it from.
