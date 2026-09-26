@@ -138,6 +138,19 @@
   let funnelOpen = $state(false);
 
   /**
+   * Takes the whole filter off ("Zurücksetzen" of the line, "Filter zurücksetzen" of a filter
+   * that leaves nothing). The button goes with what it stood in: the keyboard focus goes to
+   * the funnel (the search when there is none), not to the top of the window.
+   */
+  export async function resetFilter(): Promise<void> {
+    jobs.setFilter(NO_FILTER);
+    await tick();
+    const target =
+      funnelBox?.querySelector<HTMLElement>('button') ?? searchBox?.querySelector('input');
+    target?.focus();
+  }
+
+  /**
    * The funnel's menu below it, its right edge on the button's: the table's groups in their
    * order, each under its heading, the chosen entry checked; while a filter is on, the way
    * back. A second click on the open funnel closes it (the press outside does). Opened from
@@ -302,7 +315,7 @@
         size="sm"
         label={t.toolbar.filterLineReset}
         testid="filter-line-reset"
-        onclick={() => jobs.setFilter(NO_FILTER)}
+        onclick={() => void resetFilter()}
       />
     </div>
   {/if}

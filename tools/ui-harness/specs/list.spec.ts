@@ -329,11 +329,17 @@ test.describe('filter', () => {
     await menuItem(page, 'favourites').click();
     await expect.poll(() => listed(page)).toEqual(all);
     await expect(filterLine(page)).toHaveCount(0);
-    // The line's own way back.
+    // The line's own way back; the focus stays near, on the funnel, from the keyboard too.
     await chooseFilter(page, 'favourites');
     await filterLine(page).getByTestId('filter-line-reset').click();
     await expect(filterLine(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
+    await expect(funnel(page)).toBeFocused();
+    await chooseFilter(page, 'favourites');
+    await filterLine(page).getByTestId('filter-line-reset').focus();
+    await page.keyboard.press('Enter');
+    await expect(filterLine(page)).toHaveCount(0);
+    await expect(funnel(page)).toBeFocused();
   });
 
   test('a favourite counts and lists only while it is in the inbox', async ({ page }) => {
@@ -465,6 +471,7 @@ test.describe('filter', () => {
     await empty.getByRole('button', { name: T.toolbar.filterReset }).click();
     await expect(empty).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
+    await expect(funnel(page)).toBeFocused();
   });
 
   test('the open job stays while the filter lists it, else it closes', async ({ page }) => {

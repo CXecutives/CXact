@@ -76,6 +76,13 @@
   import RowBar from './RowBar.svelte';
   import { selection } from './selection.svelte';
 
+  interface Props {
+    /** "Filter zurücksetzen" of a filter that leaves nothing: the header takes the filter off
+     *  and keeps the keyboard focus (the button goes with the empty state). */
+    onresetfilter?: () => void;
+  }
+  let { onresetfilter }: Props = $props();
+
   const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
 
   const shown = $derived(jobs.shown);
@@ -704,7 +711,10 @@
           icon="funnel"
           tone="neutral"
           text={t.list.noFilterHit}
-          secondary={{ label: t.toolbar.filterReset, onclick: () => jobs.setFilter(NO_FILTER) }}
+          secondary={{
+            label: t.toolbar.filterReset,
+            onclick: () => (onresetfilter ? onresetfilter() : jobs.setFilter(NO_FILTER)),
+          }}
           testid="empty-filter"
         />
       {:else if run.active || !mailRead}

@@ -279,7 +279,7 @@
             <RunCard />
           </div>
         {/if}
-        <JobList bind:this={list} />
+        <JobList bind:this={list} onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
     <span class="split"
