@@ -2,8 +2,7 @@
 // stopped, and a sign-in whose count did not finish is still a connected mailbox.
 
 import type { Page } from '@playwright/test';
-import { calls, expect, open, test } from './fixtures';
-import { T } from './helpers';
+import { calls, expect, open, test, text } from './fixtures';
 
 const WIN = '?platform=windows';
 
@@ -69,14 +68,17 @@ test('CRED-3: signed in but not counted is connected, and a toast says the fetch
 }) => {
   await changeMailbox(page, `${WIN}&mail=uncounted`);
   await page.getByTestId('mailbox-save').click();
-  await expect(page.getByTestId('toast-text')).toHaveText(T.settings.mailboxNotCounted);
+  await expect(page.getByTestId('toast-text')).toHaveText(
+    await text(page, 'settings.mailboxNotCounted'),
+  );
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
-  await expect(page.getByTestId('settings-mailbox')).toContainText(T.settings.connected);
+  const connected = await text(page, 'settings.connected');
+  await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
   // With the count there, the badge is the answer: no note, no toast.
   await changeMailbox(page);
   await page.getByTestId('mailbox-save').click();
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
-  await expect(page.getByTestId('settings-mailbox')).toContainText(T.settings.connected);
+  await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
   await expect(page.getByTestId('mailbox-note')).toHaveCount(0);
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
