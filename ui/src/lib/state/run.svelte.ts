@@ -30,9 +30,11 @@ import type {
   Step,
 } from '../ipc/types';
 import { app } from './app.svelte';
+import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
 import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
+import { viewport } from './viewport.svelte';
 
 export const STEPS: readonly Step[] = ['scan', 'fetch', 'score'];
 const ORDER: readonly Step[] = ['scan', 'fetch', 'score', 'export'];
@@ -235,6 +237,16 @@ class RunStore {
     });
   }
 
+  /** The run card in the Jobs view, from anywhere (the sidebar's status, the "Zeigen" of a
+   *  toast); an unsaved Profil may keep the view and ask first. */
+  show(): void {
+    navigation.go('jobs', false, () => {
+      this.panel = 'open';
+      // In one column an open job hides the list and its run card: back to the list.
+      if (viewport.narrow) jobs.clearSelection();
+    });
+  }
+
   /** Close the run card (and the note of a failed start with it). */
   hide(): void {
     this.panel = 'hidden';
@@ -385,9 +397,11 @@ class RunStore {
     if (summary.outcome.kind === 'completed' && !cardShown) {
       if (isFetch(kind)) {
         // Files that could not be written are no success: a calm note, the card has the way.
+        // Its "Zeigen" opens the run card in the Jobs view.
+        const show = { label: t.toast.show, onclick: () => this.show(), undo: false };
         if (exportError(summary) === null)
-          toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0));
-        else toasts.show(t.toast.runDoneFilesOld, 'info');
+          toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), 'success', show);
+        else toasts.show(t.toast.runDoneFilesOld, 'info', show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }

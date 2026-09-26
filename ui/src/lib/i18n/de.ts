@@ -61,6 +61,13 @@ const n = (value: number): string => formatNumber(value);
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
 
+/** A macOS key name is a symbol (⌘, ⇧); a click with it held is written with a hyphen
+ *  ("⌘-Klick"), a Windows key name with a plus ("Strg+Klick"). */
+const isSymbolKey = (key: string): boolean => /^[⌘⇧⌥⌃]$/u.test(key);
+const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : `${key}+Klick`);
+/** Shift in the same writing as the command key it stands beside. */
+const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
+
 /** The portals by their web address, everywhere (a sentence never starts with one). */
 const portalName: Record<Portal, string> = {
   linkedin: 'linkedin.com',
@@ -591,12 +598,12 @@ export const de = {
     clear: 'Auswahl aufheben',
     /** The reader while several jobs are chosen. */
     chosen: (value: number) => `${count(value, 'Job', 'Jobs')} ausgewählt`,
-    /** The key that takes a row in or out, by OS. */
-    commandKey: { ctrl: 'Strg', cmd: 'Cmd' } satisfies Record<'ctrl' | 'cmd', string>,
+    /** The key that takes a row in or out, by OS (macOS writes its symbol). */
+    commandKey: { ctrl: 'Strg', cmd: '⌘' } satisfies Record<'ctrl' | 'cmd', string>,
     hint: (key: string) =>
-      `${key}+Klick nimmt einen Job dazu oder heraus, Umschalt+Klick einen ganzen Bereich.`,
+      `${clickWith(key)} nimmt einen Job dazu oder heraus, ${clickWith(shiftBeside(key))} einen ganzen Bereich.`,
     /** Once, after a few single moves: several jobs can go at once. */
-    tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${key}+Klick.`,
+    tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${clickWith(key)}.`,
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
@@ -703,6 +710,33 @@ export const de = {
     shift: 'Umschalt',
     del: 'Entf',
     enter: 'Eingabe',
+    home: 'Pos1',
+    end: 'Ende',
+  },
+  /** The card of the keys (Ctrl+/ or Cmd+/): what a key does, in a few words each. */
+  keysHelp: {
+    heading: 'Tastenkürzel',
+    close: 'Schließen',
+    everywhere: 'Überall',
+    list: 'In der Jobliste',
+    /** Ctrl+1 to Ctrl+4: the two keys around the word. */
+    range: (first: string, last: string) => `${first} bis ${last}`,
+    views: 'Bereich wählen',
+    search: 'Suchen',
+    fetch: 'Abrufen',
+    undo: 'Rückgängig',
+    menu: 'Menü öffnen',
+    back: 'Zurück',
+    help: 'Tastenkürzel zeigen',
+    step: 'Voriger oder nächster Job',
+    edge: 'Erster oder letzter Job',
+    extend: 'Mehrere Jobs wählen',
+    archive: 'Archivieren',
+    trash: 'In den Papierkorb',
+    star: 'Favorit',
+    unread: 'Als ungelesen markieren',
+    openAd: 'Anzeige öffnen',
+    closeJob: 'Job schließen',
   },
   field: {
     reveal: 'Passwort zeigen',
@@ -1567,6 +1601,8 @@ export const de = {
         ? 'Abruf fertig, nichts Neues.'
         : `Abruf fertig, ${count(value, 'neuer Job', 'neue Jobs')}.`,
     runDoneFilesOld: 'Abruf fertig, die Dateien sind nicht aktuell.',
+    /** The way from a toast to what it tells of (the finished fetch in the Jobs view). */
+    show: 'Zeigen',
   },
   error: {
     text: (kind: ErrorKind | 'unknown', params: Params): string => {

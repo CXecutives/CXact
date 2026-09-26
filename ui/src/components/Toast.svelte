@@ -12,8 +12,15 @@
   the text, since CSS would leave the rest of the box blank before the quote), the rest
   of the sentence follows it.
   The check of a success draws itself once as the toast appears. Closable; an undo of what
-  the user just did sits before the close button. A merged toast ("2 Jobs archiviert.")
-  cross-fades its sentence (100 ms) and starts its line again.
+  the user just did sits before the close button, its key (Strg+Z, ⌘Z) in its tooltip; a
+  toast about something that happened in another view (a fetch that finished) may carry
+  the way to it instead ("Zeigen"). A merged toast ("2 Jobs archiviert.") cross-fades its
+  sentence (100 ms) and starts its line again.
+  A press on a toast never takes the focus (like a notification of the OS: the list keeps
+  its keys); a toast the keyboard reached gives the focus back to where it came from when
+  it goes by its buttons. The stack lies above a bar that sticks to the bottom of the view
+  (the Profil's save bar): it measures what lies under its column at the window's bottom
+  edge whenever a toast comes or the view changes, and rises by it (--toast-bottom).
 -->
 <script lang="ts" module>
   import type { Action } from 'svelte/action';
@@ -104,14 +111,82 @@
 </script>
 
 <script lang="ts">
+  import { px, setVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
-  import { toasts } from '$lib/state/toasts.svelte';
+  import { keyLabel } from '$lib/platform';
+  import { navigation } from '$lib/state/navigation.svelte';
+  import { isUndo, toasts } from '$lib/state/toasts.svelte';
+  import { tokenPx } from '$lib/tokens';
+  import { tick } from 'svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
 
   let hovered = $state<number | null>(null);
+  let stack = $state<HTMLElement | null>(null);
+  /** Where the focus was before the keyboard brought it into the stack. */
+  let cameFrom: HTMLElement | null = null;
+
+  function focusIn(event: FocusEvent): void {
+    const from = event.relatedTarget;
+    if (from instanceof HTMLElement && stack !== null && !stack.contains(from)) cameFrom = from;
+  }
+
+  /** Run what a toast's button does; a focus inside the stack goes back where it came from. */
+  function act(run: () => void): void {
+    const inside = stack?.contains(document.activeElement) ?? false;
+    run();
+    if (!inside) return;
+    const back = cameFrom;
+    cameFrom = null;
+    void tick().then(() => {
+      if (back?.isConnected) back.focus({ preventScroll: true });
+    });
+  }
+
+  /** How high a bar stuck to the window's bottom edge reaches under the stack's column (the
+   *  Profil's save bar): the stack rises above it. Hits in the app's own layers do not
+   *  count. */
+  function barRoom(node: HTMLElement): number {
+    const root = document.documentElement;
+    const bottom = root.clientHeight - 1;
+    const right = root.clientWidth - tokenPx('--space-24');
+    const left = Math.max(0, right - tokenPx('--toast-width'));
+    const step = tokenPx('--space-24');
+    let room = 0;
+    for (let x = left; x <= right; x += step) {
+      for (const hit of document.elementsFromPoint(x, bottom)) {
+        if (node.contains(hit) || hit.closest('[data-menu-layer], [role="tooltip"]')) continue;
+        const bar = stuck(hit, bottom);
+        if (bar !== null)
+          room = Math.max(room, root.clientHeight - bar.getBoundingClientRect().top);
+        break;
+      }
+    }
+    return room;
+  }
+
+  /** The sticky or fixed bar at `hit` or around it that touches the bottom edge (a layer
+   *  over the whole window, a dialog's scrim, is no bar). */
+  function stuck(hit: Element, bottom: number): Element | null {
+    for (let at: Element | null = hit; at !== null && at !== document.body; at = at.parentElement) {
+      const position = getComputedStyle(at).position;
+      if (position !== 'sticky' && position !== 'fixed') continue;
+      const box = at.getBoundingClientRect();
+      return box.bottom >= bottom && box.height < bottom / 2 ? at : null;
+    }
+    return null;
+  }
+
+  // A toast comes or the view changes: the stack rises above a bar at the bottom.
+  $effect(() => {
+    void navigation.current;
+    const count = toasts.items.length;
+    const node = stack;
+    if (node === null || count === 0) return;
+    void tick().then(() => setVars(node, { 'toast-bottom': px(barRoom(node)) }));
+  });
 
   // The window in the back: every toast waits until it is in front again.
   $effect(() => {
@@ -138,7 +213,24 @@
     >{split.after}{:else}{text}{/if}
 {/snippet}
 
-<div class="stack" class:held={toasts.held} role="status" aria-live="polite" data-testid="toasts">
+<svelte:window
+  onresize={() => {
+    if (stack !== null && toasts.items.length > 0) {
+      setVars(stack, { 'toast-bottom': px(barRoom(stack)) });
+    }
+  }}
+/>
+
+<div
+  class="stack"
+  class:held={toasts.held}
+  role="status"
+  aria-live="polite"
+  data-testid="toasts"
+  data-press-only
+  bind:this={stack}
+  onfocusin={focusIn}
+>
   {#each toasts.items as toast (toast.id)}
     <div
       class="toast {toast.tone}"
@@ -166,16 +258,22 @@
         >{/key}
       {#if toast.action}
         {@const action = toast.action}
-        <Button
-          variant="ghost"
-          size="sm"
-          label={action.label}
-          testid="toast-action"
-          onclick={() => {
-            action.onclick();
-            toasts.dismiss(toast.id);
-          }}
-        />
+        <span
+          class="action"
+          use:tooltip={isUndo(action) ? { text: action.label, hint: keyLabel('mod+z') } : null}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            label={action.label}
+            testid="toast-action"
+            onclick={() =>
+              act(() => {
+                action.onclick();
+                toasts.dismiss(toast.id);
+              })}
+          />
+        </span>
       {/if}
       <Button
         variant="ghost"
@@ -183,7 +281,7 @@
         icon="x"
         iconOnly
         label={t.common.hide}
-        onclick={() => toasts.dismiss(toast.id)}
+        onclick={() => act(() => toasts.dismiss(toast.id))}
       />
       {#key toast.round}<span class="life" aria-hidden="true"></span>{/key}
     </div>
@@ -195,7 +293,7 @@
   .stack {
     position: fixed;
     right: var(--space-24);
-    bottom: var(--space-24);
+    bottom: calc(var(--space-24) + var(--toast-bottom));
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;
@@ -222,7 +320,8 @@
     pointer-events: auto;
   }
 
-  .icon {
+  .icon,
+  .action {
     display: inline-flex;
     flex: none;
   }

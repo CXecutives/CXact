@@ -196,6 +196,14 @@ export function onNavigate(handler: (view: string) => void): () => void {
 }
 
 /**
+ * Edit > Undo of the macOS menu bar (src-tauri/src/platform.rs sends `menu-undo`): the page
+ * takes back what Cmd+Z would (lib/input/input.ts). Returns an unsubscribe function.
+ */
+export function onMenuUndo(handler: () => void): () => void {
+  return subscribe(() => listen('menu-undo', () => handler()));
+}
+
+/**
  * The text on the clipboard (the Paste entry of the app's own field menu), read by the
  * backend: the page may not read the clipboard without a prompt of the engine (WebView2 asks,
  * WKWebView shows its own Paste button). Null when there is no text or reading failed.

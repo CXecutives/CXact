@@ -5,17 +5,23 @@
   nothing animates and the app shows useful content at once: the first-run page while
   nothing was ever fetched, otherwise the Jobs view with the last results. Closing while the
   app is busy keeps the window until that has stopped; a calm note says what it waits for
-  (a fetch, a rescore, a sign-in, the files).
+  (a fetch, a rescore, a sign-in, the files). Profil and Einstellungen keep where they were
+  scrolled to while the app runs (a return finds the same place); on macOS their name
+  stands small in the toolbar row. A start whose data cannot load says so and offers to try
+  again, the log and the data folder. Ctrl+/ (Cmd+/) shows the card of the keys.
 -->
 <script lang="ts">
+  import Button from '$components/Button.svelte';
   import DragBand from '$components/DragBand.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Menu from '$components/Menu.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
   import Tooltip from '$components/Tooltip.svelte';
+  import { keepScroll } from '$lib/actions/keepScroll';
   import { t } from '$lib/i18n/t';
-  import { onClosing } from '$lib/ipc/api';
+  import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
+  import type { OpenTarget } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
@@ -28,6 +34,7 @@
   import OverviewView from './features/overview/OverviewView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
+  import KeysHelp from './features/shell/KeysHelp.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
 
   run.install();
@@ -45,6 +52,13 @@
   /** Closing while the app is busy: what the window waits for (null: not closing). */
   let closing = $state<{ activity: string | null } | null>(null);
   $effect(() => onClosing((activity) => (closing = { activity })));
+
+  /** The log or the data folder, after a start that could not load its data. */
+  function openFolder(target: OpenTarget): void {
+    invoke('open_target', { target }).catch((error: unknown) => {
+      reportUiError(`open ${target.kind}: ${String(error)}`, null, null);
+    });
+  }
 </script>
 
 <div class="shell" data-testid="shell">
@@ -52,18 +66,44 @@
     <Sidebar />
     <main class="views">
       {#if app.error !== null && app.state === null}
-        <section class="view center" data-testid="view-error">
-          <EmptyState
-            icon="triangle-alert"
-            tone="danger"
-            text={t.shell.loadFailed}
-            action={{ label: t.common.retry, icon: 'refresh-cw', onclick: () => void app.load() }}
-          />
+        <section class="view fixed stage" data-testid="view-error">
+          {#if band}<DragBand sheet />{/if}
+          <div class="center">
+            <EmptyState
+              icon="triangle-alert"
+              tone="danger"
+              text={t.shell.loadFailed}
+              action={{
+                label: t.common.retry,
+                icon: 'refresh-cw',
+                onclick: () => void app.load(),
+              }}
+            />
+            <div class="ways">
+              <Button
+                variant="link"
+                size="sm"
+                label={t.common.openLog}
+                testid="open-log"
+                onclick={() => openFolder({ kind: 'logDir' })}
+              />
+              <Button
+                variant="link"
+                size="sm"
+                label={t.common.openFolder}
+                testid="open-data"
+                onclick={() => openFolder({ kind: 'dataDir' })}
+              />
+            </div>
+          </div>
         </section>
       {:else if app.state === null}
         <!-- Until the state is known nothing is guessed (no jobs view flashing before the first run). -->
-        <section class="view center" data-testid="view-loading">
-          {#if app.slow}<Spinner size="lg" />{/if}
+        <section class="view fixed stage" data-testid="view-loading">
+          {#if band}<DragBand sheet />{/if}
+          <div class="center">
+            {#if app.slow}<Spinner size="lg" />{/if}
+          </div>
         </section>
       {:else}
         <!-- The four views are the branches of one block: a switch between them cross-fades
@@ -83,13 +123,23 @@
             <JobsView />
           </section>
         {:else if navigation.current === 'profile'}
-          <section class="view" data-testid="view-profile" transition:fade>
-            {#if band}<DragBand sheet />{/if}
+          <section
+            class="view"
+            data-testid="view-profile"
+            transition:fade
+            use:keepScroll={'profile'}
+          >
+            {#if band}<DragBand sheet name={t.nav.profile} />{/if}
             <ProfileView />
           </section>
         {:else}
-          <section class="view" data-testid="view-settings" transition:fade>
-            {#if band}<DragBand sheet />{/if}
+          <section
+            class="view"
+            data-testid="view-settings"
+            transition:fade
+            use:keepScroll={'settings'}
+          >
+            {#if band}<DragBand sheet name={t.nav.settings} />{/if}
             <SettingsView />
           </section>
         {/if}
@@ -104,6 +154,7 @@
     {/if}
   </div>
   <Toast />
+  <KeysHelp />
   <Menu />
   <Tooltip />
 </div>
@@ -182,9 +233,25 @@
     overflow: hidden;
   }
 
+  /* The loading and the failed start: the toolbar row on top (macOS), the rest centred. */
+  .stage {
+    display: flex;
+    flex-direction: column;
+  }
+
   .center {
     display: flex;
+    flex: 1;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: var(--space-12);
+    min-height: 0;
+  }
+
+  /* The quieter ways on after a failed start: the log and the data folder. */
+  .ways {
+    display: flex;
+    gap: var(--space-16);
   }
 </style>

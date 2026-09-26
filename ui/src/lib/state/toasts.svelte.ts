@@ -3,8 +3,9 @@
 // with an undo stays --dur-toast-action (10 s), long enough to read and reach it. A toast
 // waits while the pointer is on it, and every toast waits while the window is in the back
 // or a modal dialog is open (`hold`): its time only runs while the user can act on it.
-// Anything that needs an action stays inline where it belongs; the one exception is an
-// undo of what the user just did (a job moved), which the toast may carry; results of the
+// Anything that needs an action stays inline where it belongs; the exceptions are an undo
+// of what the user just did (a job moved), which the toast may carry, and the way to a
+// result that came while another view was shown ("Zeigen" on a finished fetch); results of the
 // same kind in quick succession merge into one toast with one undo (`undoable`). Ctrl/Cmd+Z
 // takes back the newest result, also when it merged into a toast that came up earlier. An
 // undo names the jobs it concerns: when they are deleted for good, it goes (`forget`).
@@ -13,11 +14,18 @@ import { tokenMs } from '../tokens';
 
 export type ToastTone = 'success' | 'info';
 
-/** An undo of what the user just did; clicking it also closes the toast. */
+/** An undo of what the user just did, or (`undo: false`) the way to what the toast tells of
+ *  ("Zeigen" on a fetch that finished in another view); clicking it also closes the toast. */
 export interface ToastAction {
   label: string;
   onclick: () => void;
+  /** Ctrl/Cmd+Z takes it back (its tooltip names the key); false: it only shows something. */
+  undo?: boolean;
 }
+
+/** An action that Ctrl/Cmd+Z runs (every action is an undo unless it says otherwise). */
+export const isUndo = (action: ToastAction | null): action is ToastAction =>
+  action !== null && action.undo !== false;
 
 export interface ToastItem {
   id: number;
@@ -160,7 +168,7 @@ class Toasts {
   undoLast(): boolean {
     const latest = (item: ToastItem): number => this.#latest.get(item.id) ?? 0;
     const newest = this.items
-      .filter((item) => item.action !== null)
+      .filter((item) => isUndo(item.action))
       .reduce<ToastItem | null>(
         (best, item) => (best === null || latest(item) > latest(best) ? item : best),
         null,

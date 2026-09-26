@@ -389,6 +389,11 @@
   /* The one inner padding of every content column: list header, list rows, reader, overview,
      and the left edge of the top strip, so their edges line up. */
   --pane-padding: var(--space-16);
+  /* The first line of every view, one row this high below the pane padding: the sidebar's
+     first entry, the list's tabs, the first heading of the Übersicht, Profil and
+     Einstellungen are centred in it (a heading takes `data-first-row`, base.css), so their
+     middles lie on one line across the window. */
+  --first-row: var(--control-md);
   /* The sides of the reader column (a document, a little more air than the list). */
   --reader-padding: var(--space-24);
   --ring-sm: 40px;
@@ -451,6 +456,10 @@
   /* Room for a usual job title (about 40 characters) on the first line of a toast with an
      undo; a longer one ends in an ellipsis. */
   --toast-width: 520px;
+  /* How far the toast stack rises above the bottom edge of the window beside its gap: the
+     height of a bar that sticks to the bottom of the view under it (the Profil's save bar;
+     components/Toast.svelte measures it and sets this on the stack). */
+  --toast-bottom: 0px;
   /* One step of the sliding nav pill: an item plus the 2 px gap (full and rail). */
   --nav-step: calc(var(--control-md) + var(--space-2));
   /* A sub-entry's icon stands where the parent's label starts (12 + 20 + 12). */

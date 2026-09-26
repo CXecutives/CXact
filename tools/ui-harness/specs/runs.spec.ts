@@ -102,7 +102,7 @@ test('a fetch that cannot write the Excel file says so once, and the toast too',
   // Elsewhere a toast brings the news, not "done" alone.
   await page.getByTestId('nav-settings').click();
   await runFinished(page);
-  await expect(page.getByTestId('toast')).toHaveText(
+  await expect(page.getByTestId('toast-text')).toHaveText(
     'Abruf fertig, die Dateien sind nicht aktuell.',
   );
   await page.getByTestId('nav-jobs').click();

@@ -156,10 +156,11 @@ test('dialog: Esc cancels, a press that ends on the scrim keeps it open', async 
   const box = (await dialog.boundingBox())!;
   await page.mouse.move(box.x + 20, box.y + 20);
   await page.mouse.down();
-  await page.mouse.move(5, 5);
+  await page.mouse.move(5, 100);
   await page.mouse.up();
   await expect(dialog).toBeVisible();
-  await page.mouse.click(5, 5);
+  // Below the toolbar row (macOS keeps it for moving the window while a dialog is open).
+  await page.mouse.click(5, 100);
   await expect(dialog).toHaveCount(0);
 });
 
