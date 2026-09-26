@@ -11,7 +11,11 @@
 // agency work.
 
 import type { Locator, Page } from '@playwright/test';
+import { demoMustLine, demoReasons, demoScore, withSalary } from './demo';
 import { animationsDone, calls, expect, open, runFinished, settle, test } from './fixtures';
+
+/** The score of the best job, the first row of the list (freelancermap-2801). */
+const BEST = String(demoScore('freelancermap-2801'));
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -118,7 +122,7 @@ test.describe('the head and the match', () => {
     await expect(source.getByRole('button')).toHaveCount(0);
     // The ring stands beside the band line, the must count beside the band, once.
     await expect(stage(page).getByTestId('band')).toHaveText('Hohe Passung');
-    await expect(stage(page).getByTestId('must')).toHaveText('4 von 4 Pflichtpunkten erfüllt');
+    await expect(stage(page).getByTestId('must')).toHaveText(demoMustLine('freelancermap-2801'));
     const text = (await stage(page).getByTestId('reader').innerText()) ?? '';
     expect(text.split('Pflichtpunkten erfüllt').length - 1).toBe(1);
     await expect(stage(page).getByTestId('requirements')).toHaveCount(0);
@@ -148,11 +152,11 @@ test.describe('the head and the match', () => {
       requestAnimationFrame(look);
     });
     await row(page, 'freelancermap-2801').click();
-    await expect(stage(page).getByTestId('reader-ring')).toContainText('91');
+    await expect(stage(page).getByTestId('reader-ring')).toContainText(BEST);
     await page.waitForTimeout(600);
     const seen = await page.evaluate(() => (window as unknown as { __ring: string[] }).__ring);
     expect(seen.length).toBeGreaterThan(0);
-    expect(new Set(seen)).toEqual(new Set(['91']));
+    expect(new Set(seen)).toEqual(new Set([BEST]));
   });
 
   test('the text is said once: a preview, few requirements, a text too short', async ({ page }) => {
@@ -508,14 +512,17 @@ test.describe('Konditionen', () => {
   });
 
   test('a permanent job: its salary, no end, a type the engine only infers', async ({ page }) => {
-    await openJob(page, 'linkedin-4100200303');
+    await open(page, WIN);
+    await facet(page, 'Alle').click();
+    await withSalary(page);
+    await show(page, 'linkedin-4100200303');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names[1]).toBe('Gehalt');
     expect((await cell(page, 'rate'))[0]).toMatch(/^95\.000 €\/Jahr$/);
     expect(await cell(page, 'duration')).toEqual(['unbefristet', '']);
     expect(await cell(page, 'contract')).toEqual(['Festanstellung vermutet', 'prüfen']);
-    // Required years without a passage are an estimate.
-    expect(await cell(page, 'experience')).toEqual(['5 Jahre geschätzt', 'prüfen']);
+    // The ad asks for no years: open, and no verdict repeats it.
+    expect(await cell(page, 'experience')).toEqual(['offen', '']);
   });
 
   test('"passt teilweise" for a limit or a wish missed, in amber, with its reason', async ({
@@ -534,8 +541,8 @@ test.describe('Konditionen', () => {
     );
     expect(await cell(page, 'rate')).toEqual(['nach Absprache', 'offen']);
     expect(await cell(page, 'workload')).toEqual(['Vollzeit', 'passt']);
-    // No share stated: the work mode in the words of a share.
-    expect(await cell(page, 'remote')).toEqual(['voll remote', '']);
+    // Fully remote: the wish of mostly remote is met.
+    expect(await cell(page, 'remote')).toEqual(['voll remote', 'passt']);
     // Said in the row, not again among the points to check.
     await expect(stage(page).getByTestId('why')).not.toContainText('liegt unter dem Minimum');
     // The passage says the same.
@@ -637,7 +644,7 @@ test.describe('Anforderungen and the ad', () => {
     // The toast takes it back.
     await page.getByTestId('nav-jobs').click();
     await page.getByTestId('toast').last().getByTestId('toast-action').click();
-    await expect(stage(page).getByTestId('add-to-profile')).toBeVisible();
+    await expect(missing.getByTestId('add-to-profile')).toBeVisible();
     await page.getByTestId('nav-profile').click();
     await expect(page.getByTestId('profile-keywords')).not.toContainText(
       'Branchenerfahrung Energie',
@@ -675,11 +682,14 @@ test.describe('Anforderungen and the ad', () => {
     // "Passt zu" only where the profile's words differ from the requirement's own.
     await show(page, 'freelancermap-2801');
     const met = stage(page).getByTestId('reasons-met');
-    await expect(
-      met.locator('li', { hasText: 'Interim-Management im Mittelstand' }),
-    ).not.toContainText('im Profil');
-    await expect(met.locator('li', { hasText: 'Reporting nach IFRS' })).toContainText(
-      'Passt zu „Konzernrechnungslegung nach IFRS“ im Profil.',
+    const backed = demoReasons('freelancermap-2801').filter(
+      (r) => r.kind === 'met' && r.weight === 'must' && r.evidence !== null,
+    );
+    const own = backed.find((r) => r.label.includes(r.evidence!.profile))!;
+    const other = backed.find((r) => !r.label.includes(r.evidence!.profile))!;
+    await expect(met.locator('li', { hasText: own.label })).not.toContainText('im Profil');
+    await expect(met.locator('li', { hasText: other.label })).toContainText(
+      `Passt zu „${other.evidence!.profile}“ im Profil.`,
     );
   });
 
@@ -723,12 +733,14 @@ test.describe('Anforderungen and the ad', () => {
     await page.mouse.move(0, 0);
     await expect(page.locator('mark.active').first()).toContainText('Reporting nach IFRS');
     await expect(page.locator('mark.active').first()).toBeInViewport();
-    // An ad that names the rate only as to be agreed: open, and the place fits.
+    // An ad that names the rate only as to be agreed: open, and the contract fits.
     await show(page, 'freelancermap-2802');
     expect(await tip(page, text.locator('mark', { hasText: 'Tagessatz nach Absprache' }))).toBe(
       'Tagessatz · offen',
     );
-    expect(await tip(page, text.locator('mark', { hasText: 'Berlin' }))).toBe('Ort · passt');
+    expect(await tip(page, text.locator('mark', { hasText: 'Interim-Mandat' }))).toBe(
+      'Vertragsart · passt',
+    );
   });
 
   test('the facts copy as one line with their dots', async ({ page }) => {
@@ -792,15 +804,18 @@ test.describe('around the reader', () => {
     // The order is in the funnel's menu.
     await page.getByTestId('filter').click();
     await page.getByTestId('menu-item-newest').click();
+    const key = { portal: 'linkedin', id: '100006' } as const;
+    const title = (await page.evaluate((k) => window.__harness.job(k), key))!.title;
     await row(page, 'linkedin-100006').click();
-    await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
+    await expect(page.getByTestId('reader-title')).toHaveText(title);
     await page.getByTestId('filter').click();
     await page.getByTestId('menu-item-match').click();
     await expect(page.getByTestId('menu')).toHaveCount(0);
-    await page.getByTestId('search').fill('Finance Manager');
+    // Its title without the number: every fourth job of the scenario is a hit.
+    await page.getByTestId('search').fill(title.replace(/ \d+$/, ''));
     await expect(facet(page, 'Alle')).toContainText('500');
     await page.waitForTimeout(400);
-    await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
+    await expect(page.getByTestId('reader-title')).toHaveText(title);
   });
 
   test('an empty trash shows one empty state, the reader only its sentence', async ({ page }) => {

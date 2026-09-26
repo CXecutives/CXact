@@ -52,7 +52,7 @@ function movedAtStart(
 }
 
 /**
- * Jobs of `?scenario=many` (stub.ts manyJobs, every 17th from the 6th excluded): all 118
+ * Jobs of `?scenario=many` (stub.ts manyJobs, every fourth from the fourth excluded): all 500
  * excluded ones and the first ten others. A page of 120 then holds the ten and 110 of the
  * excluded ones: the folded section ends the list before its last page.
  */
@@ -61,7 +61,7 @@ function excludedAndTen(): [Portal, string][] {
   const keys: [Portal, string][] = [];
   let others = 0;
   for (let i = 0; i < 2000; i += 1) {
-    const excluded = i % 17 === 5;
+    const excluded = i % 4 === 3;
     if (!excluded && others >= 10) continue;
     if (!excluded) others += 1;
     keys.push([portals[i % 3]!, String(100000 + i)]);
@@ -80,7 +80,7 @@ for (const [place, tab] of [
     await open(page, `${WIN}&scenario=many`);
     await page.getByTestId(tab).click();
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider).toHaveText('Ausgeschlossen (118)');
+    await expect(divider).toHaveText('Ausgeschlossen (500)');
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
   });
 }

@@ -5,6 +5,10 @@
 
 import type { Page } from '@playwright/test';
 import { animationsDone, calls, expect, expectShot, open, test } from './fixtures';
+import { demoScore } from './demo';
+
+/** The score of the best job, the first row of the list (freelancermap-2801). */
+const BEST = String(demoScore('freelancermap-2801'));
 
 const WIN = '?platform=windows';
 const EN = `${WIN}&lang=en`;
@@ -19,9 +23,9 @@ async function settings(page: Page, query = WIN): Promise<void> {
 
 async function readFirst(page: Page): Promise<void> {
   await page.getByTestId('nav-jobs').click();
-  // The best scored job (by match the first row is one still without a score).
+  // The best scored job.
   await page.getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader-ring')).toContainText('91');
+  await expect(page.getByTestId('reader-ring')).toContainText(BEST);
   await animationsDone(page);
 }
 
@@ -61,7 +65,10 @@ test('Sprache switches the whole app to English and back at once', async ({ page
   // The Jobs view in English: the list header, the reader, its numbers and words.
   await readFirst(page);
   await expect(page.getByTestId('list-header')).toContainText('Fetch');
-  await expect(page.getByTestId('reader-ring')).toHaveAttribute('aria-label', /^Match 91%/);
+  await expect(page.getByTestId('reader-ring')).toHaveAttribute(
+    'aria-label',
+    new RegExp(`^Match ${BEST}%`),
+  );
   await expect(page.getByTestId('band')).toHaveText('High match');
   await expect(page.getByTestId('reader')).not.toContainText('Passung');
   await page.getByTestId('reader-more').click();
@@ -77,7 +84,10 @@ test('Sprache switches the whole app to English and back at once', async ({ page
   await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('band')).toHaveText('Hohe Passung');
   // German puts a narrow no-break space before the percent sign.
-  await expect(page.getByTestId('reader-ring')).toHaveAttribute('aria-label', /^Passung 91\s%/);
+  await expect(page.getByTestId('reader-ring')).toHaveAttribute(
+    'aria-label',
+    new RegExp(`^Passung ${BEST}\\s%`),
+  );
   await expect(page.getByTestId('list-header')).toContainText('Abrufen');
 });
 
@@ -116,9 +126,9 @@ test('an exclusion by country names the countries in words, in both languages', 
 
 test('baseline: jobs with the reader in English', async ({ page }) => {
   await open(page, EN);
-  // The best scored job (by match the first row is one still without a score).
+  // The best scored job.
   await page.getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader-ring')).toContainText('91');
+  await expect(page.getByTestId('reader-ring')).toContainText(BEST);
   await expectShot(page, 'jobs-reader-en');
 });
 

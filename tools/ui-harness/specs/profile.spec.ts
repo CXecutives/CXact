@@ -6,6 +6,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { calls, expect, expectShot, open, settle, test } from './fixtures';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
+import { DEMO } from './demo';
 
 async function profile(page: Page, scenario = 'default', extra = ''): Promise<void> {
   await open(page, `?platform=windows&scenario=${scenario}${extra}`);
@@ -68,8 +69,9 @@ test('the profile is a form, filled from the stored profile', async ({ page }) =
   await expect(check(page)).toHaveText('1 Wert prüfen');
   expect(await tooltipOf(page, check(page))).toBe('„Mindest-Remote-Anteil“ ist nicht lesbar.');
   // What the app reads: the Suchbegriffe and the Schwerpunkte.
+  const understood = DEMO.profile.understood!;
   await expect(page.getByTestId('profile-understood')).toHaveText(
-    '42 Suchbegriffe · 2 Schwerpunkte',
+    `${understood.competenceCount} Suchbegriffe · ${understood.focus.length} Schwerpunkte`,
   );
   // The value the app could not read is said at its field, not in the head.
   await expect(page.getByTestId('profile-warning')).toHaveCount(0);
@@ -1076,11 +1078,22 @@ test('how the app reads the profile: a section of its own, the Suchbegriffe and 
   );
   await expect(reading).toContainText('Suchbegriffe');
   await expect(reading).not.toContainText('für die Passung');
-  await expect(page.getByTestId('reading-list')).toContainText('Konzernabschluss nach HGB');
-  await expect(page.getByTestId('reading-list')).toContainText('und 30 weitere');
+  // The terms as the engine read them: the first, and the count of those not listed.
+  const understood = DEMO.profile.understood!;
+  const list = page.getByTestId('reading-list');
+  await expect(list).toContainText(understood.competences[0]!);
+  const more = understood.competenceCount - understood.competences.length;
+  await expect(list).toContainText(
+    more > 0 ? `und ${more} weitere` : understood.competences.at(-1)!,
+  );
   // Also what only the file holds, which explains the count.
-  await expect(page.getByTestId('reading-sources')).toContainText('Kompetenzen 6');
-  await expect(page.getByTestId('reading-sources')).toContainText('Stationen 27, nur in der Datei');
+  const count = (path: string) => understood.sources.find((s) => s.path === path)!.count;
+  await expect(page.getByTestId('reading-sources')).toContainText(
+    `Kompetenzen ${count('kernkompetenzen[].kompetenz')}`,
+  );
+  await expect(page.getByTestId('reading-sources')).toContainText(
+    `Stationen ${count('stationen[].schwerpunkte[]')}, nur in der Datei`,
+  );
   await expect(page.getByTestId('reading-criteria')).toContainText('Tagessatz ab 1.100 €');
   await expect(page.getByTestId('reading-criteria')).toContainText('Jobs ab 15 Jahren Erfahrung');
   await expect(page.getByTestId('reading-criteria')).toContainText(

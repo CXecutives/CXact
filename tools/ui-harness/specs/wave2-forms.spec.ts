@@ -186,10 +186,14 @@ test('live-forms-12: the day is judged when it is left or saved, never while typ
   page,
 }) => {
   await profile(page);
-  await page.getByTestId('profile-available').getByRole('radio', { name: 'Ab Datum' }).click();
+  // The demo profile names a day: another choice first, then "Ab Datum" anew.
+  const available = page.getByTestId('profile-available');
+  await available.getByRole('radio', { name: 'Sofort' }).click();
+  await available.getByRole('radio', { name: 'Ab Datum' }).click();
   const date = page.getByTestId('profile-date');
   const error = page.getByTestId('profile-date-error');
   await expect(date).toBeFocused();
+  await date.fill('');
   for (const character of '1.11.2026') {
     await page.keyboard.type(character);
     await expect(error).toHaveCount(0);
@@ -221,8 +225,11 @@ test('live-forms-12: the day is judged when it is left or saved, never while typ
   await page.getByTestId('profile-name-field').focus();
   await expect(error).toBeVisible();
   await page.getByTestId('profile-discard').click();
+  // The stored day is back, unjudged; another choice takes the field away.
+  await expect(error).toHaveCount(0);
+  await available.getByRole('radio', { name: 'Sofort' }).click();
   await expect(date).toHaveCount(0);
-  await page.getByTestId('profile-available').getByRole('radio', { name: 'Ab Datum' }).click();
+  await available.getByRole('radio', { name: 'Ab Datum' }).click();
   await expect(date).toBeFocused();
   await expect(error).toHaveCount(0);
   // In English.
