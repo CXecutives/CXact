@@ -683,26 +683,95 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     }
 }
 
-/// Characters at the start of a sentence where a cue of `ANUE_TOPIC` makes the whole
-/// sentence a requirement (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
-const ANUE_TOPIC_HEAD: usize = 24;
+/// Words at the start of a sentence where a cue of `ANUE_TOPIC` governs a list that names
+/// the contract form (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
+const ANUE_TOPIC_HEAD: usize = 3;
+/// Words before an ANÜ mention in which a cue governs it (`Erfahrung im Einsatz von ANÜ`).
+const ANUE_TOPIC_REACH: usize = 4;
 
-/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form: a cue of
-/// `ANUE_TOPIC` in the clause that names it, or at the start of the sentence.
+/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form (E16-4):
+/// only where a cue governs the mention (`Erfahrung mit Arbeitnehmerüberlassung`,
+/// `Kenntnisse des AÜG`, `Steuerung der Arbeitnehmerüberlassung`, `... von Vorteil`), or a
+/// cue at the start of the sentence governs a list that names it and no clause that names
+/// it places the job in it. A clause that offers the contract
+/// (`Einsatz über Arbeitnehmerüberlassung`, `im Rahmen der ANÜ`, `ANUE_CONTRACT`) stays
+/// the contract even with a cue elsewhere in it (`... einen Controller mit Berufserfahrung`).
+/// ANÜ as the business of the hiring company is no contract form either.
 fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
-    let cue = |s: &str| lex::ANUE_TOPIC.iter().any(|w| s.contains(w));
     let hidden = |s: &str| lex::ANUE_HIDDEN.iter().any(|w| contains_word(s, w));
-    let head: String = folded.trim_start().chars().take(ANUE_TOPIC_HEAD).collect();
     let mentions = |s: &str| named(s) || hidden(s);
+    if !mentions(folded) {
+        return false;
+    }
     // The business of a company (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`).
-    let business = lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w))
-        && !lex::ANUE_CONTRACT.iter().any(|w| contains_word(folded, w));
-    mentions(folded)
-        && (cue(&head)
-            || business
-            || folded
-                .split([',', ';'])
-                .any(|clause| mentions(clause) && cue(clause)))
+    let placed = |s: &str| lex::ANUE_CONTRACT.iter().any(|w| contains_word(s, w));
+    if lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w)) && !placed(folded) {
+        return true;
+    }
+    let clauses: Vec<&str> = folded.split([',', ';']).filter(|c| mentions(c)).collect();
+    if clauses.iter().any(|c| anue_governed(c)) {
+        return true;
+    }
+    let head = folded
+        .split_whitespace()
+        .take(ANUE_TOPIC_HEAD)
+        .any(topic_cue);
+    head && !clauses.iter().any(|c| placed(c))
+}
+
+/// A word that starts with a cue of `ANUE_TOPIC` (`Kenntnisse`, not `SAP-Kenntnisse`).
+fn topic_cue(word: &str) -> bool {
+    let word = word.trim_start_matches(|c: char| !c.is_alphanumeric());
+    lex::ANUE_TOPIC.iter().any(|w| word.starts_with(w))
+}
+
+/// Does a cue govern the first ANÜ mention of the clause: in its own word (`ANÜ-Erfahrung`),
+/// before it with only linking words between (`Erfahrung im Einsatz von`), or a requirement
+/// right after it (`Arbeitnehmerüberlassung von Vorteil`)?
+fn anue_governed(clause: &str) -> bool {
+    let word_at = |w: &str| {
+        clause.match_indices(w).map(|(at, _)| at).find(|&at| {
+            clause[..at]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_alphanumeric())
+                && clause[at + w.len()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|c| !c.is_alphanumeric())
+        })
+    };
+    let parts = lex::ANUE_PARTS.iter().filter_map(|p| clause.find(p));
+    let words = lex::ANUE_WORDS
+        .iter()
+        .chain(lex::ANUE_HIDDEN)
+        .filter_map(|w| word_at(w));
+    let Some(at) = parts.chain(words).min() else {
+        return false;
+    };
+    let tokens: Vec<(usize, &str)> = clause
+        .split_whitespace()
+        .map(|w| (w.as_ptr() as usize - clause.as_ptr() as usize, w))
+        .collect();
+    let Some(m) = tokens.iter().rposition(|&(start, _)| start <= at) else {
+        return false;
+    };
+    let link = |w: &str| {
+        let w = w.trim_matches(|c: char| !c.is_alphanumeric());
+        lex::ANUE_TOPIC_LINKS.contains(&w)
+    };
+    let own = lex::ANUE_TOPIC.iter().any(|w| tokens[m].1.contains(w));
+    let before = (m.saturating_sub(ANUE_TOPIC_REACH)..m)
+        .any(|j| topic_cue(tokens[j].1) && tokens[j + 1..m].iter().all(|(_, w)| link(w)));
+    let next: Vec<&str> = tokens[m + 1..]
+        .iter()
+        .take(ANUE_TOPIC_REACH)
+        .map(|(_, w)| *w)
+        .collect();
+    let after = lex::ANUE_TOPIC_AFTER
+        .iter()
+        .any(|w| next.join(" ").contains(w));
+    own || before || after
 }
 
 /// Countries named in a folded text (names and cities).
@@ -1548,6 +1617,48 @@ mod tests {
             "Arbeitnehmerüberlassung, 6 Monate, Erfahrung mit SAP FI erforderlich",
         ] {
             assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+    }
+
+    /// E16-4: a sentence that offers the contract through ANÜ stays the contract even with a
+    /// cue elsewhere in its clause or at its start; ANÜ is a topic only where the cue
+    /// governs it.
+    #[test]
+    fn e16_4_anue_is_a_topic_only_where_a_cue_governs_it() {
+        for text in [
+            "Erfahrung im Controlling erforderlich, die Anstellung erfolgt über \
+             Arbeitnehmerüberlassung.",
+            "Idealerweise Start zum 01.11., der Einsatz erfolgt in Arbeitnehmerüberlassung.",
+            "Für unseren Kunden suchen wir im Rahmen der Arbeitnehmerüberlassung einen \
+             Controller mit Berufserfahrung in der Konsolidierung.",
+            "Wir suchen im Rahmen der Arbeitnehmerüberlassung einen Controller (m/w/d) für die \
+             Unternehmenssteuerung.",
+            "Wir suchen im Wege der Arbeitnehmerüberlassung einen Controller mit fundierten \
+             SAP-Kenntnissen.",
+            "Ihre Expertise ist gefragt: Einsatz im Rahmen der Arbeitnehmerüberlassung.",
+            "Profitieren Sie von unserer Erfahrung: Wir besetzen die Position im Rahmen der \
+             Arbeitnehmerüberlassung.",
+            "Im Rahmen der Arbeitnehmerüberlassung suchen wir einen Referent Konzernsteuerung \
+             (m/w/d).",
+            "We are looking for an experienced SAP FI/CO consultant via temporary agency work.",
+            "For our client we are looking for a controller with SAP knowledge on a temporary \
+             agency basis.",
+            "Controller mit SAP-Kenntnissen in Arbeitnehmerüberlassung",
+            "Anstellung bei unserem Partner, Überlassung an den Kunden, Erfahrung mit SAP \
+             erforderlich.",
+        ] {
+            assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+        for text in [
+            "Sie haben Erfahrung im Einsatz von Arbeitnehmerüberlassung.",
+            "Sie verantworten die Steuerung der Arbeitnehmerüberlassung und den Einsatz von \
+             Fremdpersonal.",
+            "Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und im Tarifrecht",
+            "Erfahrung mit SAP und Arbeitnehmerüberlassung",
+            "Personalwesen und Arbeitnehmerüberlassung von Vorteil",
+            "ANÜ-Erfahrung wünschenswert",
+        ] {
+            assert!(anue_codes(text).is_empty(), "{text}");
         }
     }
 

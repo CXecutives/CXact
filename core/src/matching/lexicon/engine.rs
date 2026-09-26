@@ -1847,9 +1847,11 @@ pub(crate) const ANUE_NEGATION_PARTS: &[&str] = &[
     "excluded",
     "ruled out",
 ];
-/// ANÜ as a topic of the requirements, not the contract form (experience with it, knowledge
-/// of the law, managing temporary staff): substrings in the clause that names it or at the
-/// start of the sentence.
+/// ANÜ as a topic of the requirements, not the contract form: a cue that governs it
+/// (experience with it, knowledge of the law, managing temporary staff). Cues before the
+/// mention: the start of a word (`Erfahrung`, `Kenntnisse`; not `SAP-Kenntnisse`, whose
+/// object is SAP) with only `ANUE_TOPIC_LINKS` between it and the mention, or a part of the
+/// mention's own word (`ANÜ-Erfahrung`).
 pub(crate) const ANUE_TOPIC: &[&str] = &[
     "erfahrung",
     "kenntnis",
@@ -1859,18 +1861,72 @@ pub(crate) const ANUE_TOPIC: &[&str] = &[
     "versiert",
     "expertise",
     "fachwissen",
-    "von vorteil",
-    "wunschenswert",
     "idealerweise",
     "steuerung",
     "experience",
     "knowledge",
     "familiar",
+    "managing",
+    "management",
+];
+/// Words between a cue of `ANUE_TOPIC` and the ANÜ it governs (`Erfahrung im Einsatz von`,
+/// `Kenntnisse des`, `Steuerung der`, `experience with`, `knowledge of`).
+pub(crate) const ANUE_TOPIC_LINKS: &[&str] = &[
+    "mit",
+    "im",
+    "in",
+    "der",
+    "des",
+    "dem",
+    "den",
+    "die",
+    "das",
+    "von",
+    "vom",
+    "zur",
+    "zum",
+    "bei",
+    "rund",
+    "um",
+    "fur",
+    "zu",
+    "und",
+    "sowie",
+    "oder",
+    "bzw",
+    "einsatz",
+    "umgang",
+    "rahmen",
+    "bereich",
+    "thema",
+    "themen",
+    "fragen",
+    "regelungen",
+    "abwicklung",
+    "gestaltung",
+    "with",
+    "of",
+    "the",
+    "a",
+    "an",
+    "about",
+    "around",
+    "regarding",
+    "and",
+    "or",
+    "handling",
+    "use",
+];
+/// A requirement after the ANÜ it names (`Arbeitnehmerüberlassung von Vorteil`, `... is a
+/// plus`): substrings of the next four words.
+pub(crate) const ANUE_TOPIC_AFTER: &[&str] = &[
+    "von vorteil",
+    "wunschenswert",
+    "erwunscht",
+    "vorteilhaft",
     "nice to have",
     "a plus",
     "an advantage",
-    "managing",
-    "management of",
 ];
 /// ANÜ only one option: whole words, then substrings.
 pub(crate) const ANUE_OPTION: &[&str] = &[

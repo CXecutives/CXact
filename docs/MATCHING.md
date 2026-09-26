@@ -626,10 +626,19 @@ scores every stored job again after the update.
 One bump for all of it; the app scores every stored job again (revision `e16.5:{fingerprint}`,
 `INPUTS` 5: the stored key facts carry the workload).
 
-**ANÜ as a topic.** ANÜ named with an experience, knowledge or management cue in its clause
-(`Erfahrung mit Arbeitnehmerüberlassung von Vorteil`, `Kenntnisse des AÜG`, `Steuerung der
-Arbeitnehmerüberlassung`), or with such a cue at the start of the sentence, is a requirement,
-not the contract form (`lexicon::ANUE_TOPIC`). So is ANÜ as the business of the hiring company
+**ANÜ as a topic.** ANÜ is a requirement, not the contract form, only where an experience,
+knowledge or management cue governs it (E16-4): a word that starts with the cue before the
+mention with only linking words between (`Erfahrung mit Arbeitnehmerüberlassung`, `Kenntnisse
+des AÜG`, `Steuerung der Arbeitnehmerüberlassung`, `Erfahrung im Einsatz von ANÜ`; not
+`SAP-Kenntnisse`, whose object is SAP), the mention's own word (`ANÜ-Erfahrung`), a
+requirement right after it (`Arbeitnehmerüberlassung von Vorteil`), or a cue at the start of a
+sentence that lists it (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`) while no
+clause that names ANÜ places the job in it (`lexicon::ANUE_TOPIC`, `ANUE_TOPIC_LINKS`,
+`ANUE_TOPIC_AFTER`). A sentence that offers the contract through ANÜ stays the contract even
+with other words in its clause (`Wir suchen im Rahmen der Arbeitnehmerüberlassung einen
+Controller mit Berufserfahrung`, `Erfahrung im Controlling erforderlich, die Anstellung erfolgt
+über Arbeitnehmerüberlassung`, `Ihre Expertise ist gefragt: Einsatz im Rahmen der ANÜ`). ANÜ
+as the business of the hiring company is no contract form either
 (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`, `ANUE_BUSINESS`) unless the sentence also
 places the job in it (`im Rahmen`, `Einsatz`, `suchen wir`, `ANUE_CONTRACT`). `möglich` offers
 ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not).
