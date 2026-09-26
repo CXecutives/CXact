@@ -1401,9 +1401,7 @@ fn quoted(text: &str) -> Vec<&str> {
 /// meanings; every icon position in the UI names a meaning (`icon="trash"`), never a glyph.
 #[test]
 fn icons_by_meaning() {
-    // The field menu of input.ts still names glyphs until it moves to meanings; the texts
-    // (the catalogs, the gallery's words) name no icons.
-    const MOVING: [&str; 1] = ["lib/input/input.ts"];
+    // The texts (the catalogs, the gallery's words) name no icons.
     const TEXTS: [&str; 3] = [
         "lib/i18n/de.ts",
         "lib/i18n/en.ts",
@@ -1441,7 +1439,6 @@ fn icons_by_meaning() {
     for source in all.iter().filter(|s| {
         !s.is("lib/icons.ts")
             && !s.is("components/Icon.svelte")
-            && !MOVING.contains(&s.path.as_str())
             && !TEXTS.contains(&s.path.as_str())
     }) {
         for (n, line) in source.lines() {
@@ -1611,11 +1608,10 @@ fn quiet_successes_are_toasts() {
 /// belong to views that move to the kind tokens.
 #[test]
 fn one_answer_per_surface_kind() {
-    const MOVING: [&str; 4] = [
+    const MOVING: [&str; 3] = [
         "components/JobRow.svelte",
         "components/ReasonItem.svelte",
         "components/StatTile.svelte",
-        "components/Menu.svelte",
     ];
     let all = scanned(MIN_FILES);
     let tokens = source(&all, "styles/tokens.css");
@@ -1645,6 +1641,69 @@ fn one_answer_per_surface_kind() {
         |s| s.is("styles/tokens.css") || MOVING.contains(&s.path.as_str()),
     ));
     fail(&problems, "controls read the kind tokens of their surface");
+}
+
+/// One shortcuts table: lib/input/keys.ts holds every key of the app (the views' keys come
+/// from lib/views.ts); input.ts dispatches from it, the cards list it and the tooltips name
+/// it. No other file writes a key of the app's own, and every row is dispatched.
+#[test]
+fn one_shortcuts_table() {
+    let all = scanned(MIN_FILES);
+    let keys = source(&all, "lib/input/keys.ts");
+    let input = source(&all, "lib/input/input.ts");
+    let mut problems = Vec::new();
+    let actions: Vec<&str> = keys
+        .lines()
+        .filter_map(|(_, line)| {
+            let rest = line.split("action: '").nth(1)?;
+            rest.split('\'').next()
+        })
+        .collect();
+    assert!(
+        actions.len() >= 15,
+        "only {} shortcuts read from keys.ts",
+        actions.len()
+    );
+    // Moving in the list goes by the row's combos (up, down, home, end, esc); Enter opens a
+    // row by the row's own button.
+    for action in actions
+        .iter()
+        .filter(|a| !["step", "edge", "close", "open"].contains(a))
+    {
+        if !input.code.contains(&format!("'{action}'"))
+            && !input.code.contains(&format!("\"{action}\""))
+        {
+            problems.push(format!("input.ts does not dispatch the shortcut {action}"));
+        }
+    }
+    // The key literals the dispatch used to hold, and the combos of the cards and views.
+    for needle in [
+        "'F5'", "Digit", "=== 'z'", "=== 'f'", "=== 'r'", "=== 's'", "'mod+1'",
+    ] {
+        if input.code.contains(needle) {
+            problems.push(format!(
+                "input.ts: {needle} (a key of the app belongs in keys.ts)"
+            ));
+        }
+    }
+    problems.extend(find(
+        &all,
+        &[
+            "'mod+1'", "'mod+2'", "'mod+3'", "'mod+4'", "'mod+f'", "'mod+/'",
+        ],
+        |s| s.is("lib/input/keys.ts") || s.is("lib/views.ts") || s.under("features/gallery/"),
+    ));
+    for path in [
+        "features/shell/KeysHelp.svelte",
+        "features/shared/KeyList.svelte",
+    ] {
+        if source(&all, path).code.contains("keyLabel(") {
+            problems.push(format!(
+                "{path}: names keys itself (the card renders keys.ts)"
+            ));
+        }
+    }
+    fail(&problems, "one shortcuts table (lib/input/keys.ts)");
 }
 
 /// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the

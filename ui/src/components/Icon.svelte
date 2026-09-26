@@ -150,11 +150,8 @@
     x: X,
   } satisfies Record<Glyph, Component<Record<string, unknown>>>;
 
-  /** Glyph names the field menu of lib/input/input.ts still passes until it names meanings. */
-  type Pending = 'scissors' | 'clipboard-paste' | 'undo-2' | 'text-select';
-
   /** What an icon says (lib/icons.ts): the name every component and view passes. */
-  export type IconName = IconMeaning | Pending;
+  export type IconName = IconMeaning;
   export type IconSize = 'xs' | 'sm' | 'md' | 'lg';
   export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
@@ -163,7 +160,7 @@
 
   /** A copy of the glyph of `name`, drawn by its Lucide component the first time. */
   function glyph(name: IconName): SVGSVGElement {
-    const shape: Glyph = name in ICONS ? ICONS[name as IconMeaning] : (name as Pending);
+    const shape = ICONS[name];
     let svg = drawn[shape];
     if (svg === undefined) {
       const host = document.createElement('span');

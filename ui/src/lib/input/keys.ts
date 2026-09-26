@@ -22,6 +22,7 @@ export type ShortcutAction =
   | 'save'
   | 'fetch'
   | 'search'
+  | 'open'
   | 'step'
   | 'edge'
   | 'extend'
@@ -130,6 +131,8 @@ export const SHORTCUTS: readonly Shortcut[] = [
     keys: () => ['shift+up', 'shift+down', 'shift+home', 'shift+end'],
     shows: 'pair',
   },
+  // Enter opens a row by the row's own button; its menu names the key.
+  { action: 'open', scope: 'list', label: null, keys: () => ['enter'], shows: 'first' },
   {
     action: 'archive',
     scope: 'list',
