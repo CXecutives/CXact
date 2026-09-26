@@ -1,10 +1,12 @@
-<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, disclosure and setting rows. -->
+<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, a radio list, disclosure
+     and setting rows. -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import Disclosure from '$components/Disclosure.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Field from '$components/Field.svelte';
   import MenuButton from '$components/MenuButton.svelte';
+  import RadioList from '$components/RadioList.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Tabs from '$components/Tabs.svelte';
@@ -14,6 +16,7 @@
   import Section from './Section.svelte';
   import { text } from './gallery';
   import { t as app } from '$lib/i18n/t';
+  import { formatBytes, formatDayTime } from '$lib/i18n/format';
 
   const t = text.inputs;
 
@@ -49,6 +52,22 @@
   let industries = $state<string[]>([]);
   let focus = $state([...t.chipsShownValues]);
   let answer = $state('');
+  /** The copies of "Sicherung wiederherstellen": a day, the day before, one before an update. */
+  const copies = $derived(
+    (
+      [
+        ['today', 0, 'daily', 13_002_342],
+        ['yesterday', 24, 'daily', 12_845_056],
+        ['update', 140, 'update', 11_796_480],
+      ] as const
+    ).map(([id, hours, kind, bytes]) => ({
+      id,
+      label: formatDayTime(new Date(Date.now() - hours * 3_600_000).toISOString()),
+      note: app.settings.backupKind[kind],
+      detail: formatBytes(bytes),
+    })),
+  );
+  let copy = $state<string>('today');
 
   /** A save that fails after a round trip (the dry run refuses it). */
   const failingSave = (): Promise<void> =>
@@ -194,6 +213,14 @@
       <Field label={t.area} for="gallery-area">
         <TextArea id="gallery-area" bind:value={answer} rows={4} />
       </Field>
+      <!-- One of a few rows, like native radio buttons: the arrows choose. -->
+      <RadioList
+        options={copies}
+        value={copy}
+        label={app.settings.backup}
+        testid="gallery-radio-list"
+        onchange={(id) => (copy = id)}
+      />
     </div>
   </div>
 

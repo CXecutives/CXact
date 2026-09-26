@@ -17,6 +17,7 @@
 // `Record<Code, ...>`, so a new code without a text is a type error.
 
 import type {
+  BackupKind,
   Band,
   DetailState,
   ErrorKind,
@@ -108,7 +109,8 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   fileLocked: 'Eine Datei ist gerade in einem anderen Programm geöffnet.',
   io: 'Eine Datei ließ sich nicht lesen oder schreiben.',
   xlsx: 'Die Excel-Datei ließ sich nicht schreiben.',
-  corrupt: 'Die Daten der App sind beschädigt.',
+  corrupt: (p) =>
+    p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten der App sind beschädigt.',
   newerSchema: 'Die Daten stammen von einer neueren Version der App.',
   invalid: 'Die Eingabe passt nicht.',
   busy: (p) => busy[busyOf(p.activity)],
@@ -119,7 +121,9 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
       ? 'Die Datei ist nicht vorhanden.'
       : p.what === 'folder'
         ? 'Der Ordner ist nicht vorhanden.'
-        : 'Das gibt es nicht mehr.',
+        : p.what === 'backup'
+          ? 'Die Sicherung gibt es nicht mehr.'
+          : 'Das gibt es nicht mehr.',
   dryRun: 'Im Probelauf geht das nicht.',
   demo: 'In der Demo geht das nicht.',
   mailMissing: 'Es ist kein Postfach verbunden.',
@@ -1782,6 +1786,24 @@ export const de = {
     data: 'Daten der App',
     /** The row of the app's version in Wartung. */
     version: 'Version',
+    /** The row of the database's copies in Wartung, and its dialog. */
+    backup: 'Sicherung wiederherstellen',
+    backupHint: 'Die App sichert die Jobs einmal am Tag.',
+    backupAction: 'Wiederherstellen',
+    backupNone: 'Es gibt noch keine Sicherung.',
+    /** After a copy's day and time: why it is there (the copy of a day says nothing). */
+    backupKind: {
+      daily: null,
+      update: 'vor einem Update',
+      restore: 'vor dem Wiederherstellen',
+    } satisfies Record<BackupKind, string | null>,
+    /** The question before a restore names the copy's date and time. */
+    backupConfirm: (date: string, time: string) =>
+      `Sicherung vom ${date} um ${time} wiederherstellen?`,
+    backupConfirmText: 'Der jetzige Stand wird vorher gesichert.',
+    backupRestored: 'Sicherung wiederhergestellt.',
+    /** Its undo brought the state before it back. */
+    backupUndone: 'Der vorherige Stand ist zurück.',
     reset: 'Alles zurücksetzen',
     /** Everything core's reset deletes: the database, the profile, the keychain entry, the
      *  portal sign-ins; the dialog adds the app's files in the work folder. */

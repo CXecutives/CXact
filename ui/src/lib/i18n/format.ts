@@ -144,6 +144,20 @@ export function formatMoment(iso: string, now: Date = new Date()): string {
 }
 
 /**
+ * `Heute 14:05`, `Gestern 14:05`, `Vorgestern 14:05`, `Mo 14:05` up to a week back, then
+ * `25.09. 14:05` (`Today 14:05`, `Yesterday 14:05`, ...): a moment at the start of a line in
+ * a list of days, today named too.
+ */
+export function formatDayTime(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const { clock, relative } = formats();
+  const day = dayOf(date, now) ?? relative.format(0, 'day');
+  const text = `${day} ${clock.format(date)}`.replace(/ /g, NBSP);
+  return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
+}
+
+/**
  * `08:30` today, `gestern`, `vorgestern`, `Mo` up to a week back, then `24.09.` (`24/09`):
  * when something happened, in the fewest characters (the sidebar's run status keeps to one
  * line; the run card has the time).

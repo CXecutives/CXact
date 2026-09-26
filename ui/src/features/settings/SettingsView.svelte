@@ -8,8 +8,10 @@
   answer; Darstellung switches the colours and the language of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
   toast (files written or deleted, another work folder); errors and warnings stay a note at
-  the end of their card. Only "Alles zurücksetzen" and "Postfach entfernen" ask first; a
-  dialog whose action fails stays open and says why inside. The dry run changes nothing, and
+  the end of their card. Only "Alles zurücksetzen", "Postfach entfernen" and a restore of a
+  backup ask first; a dialog whose action fails stays open and says why inside. "Sicherung
+  wiederherstellen" lists the copies by day, asks with the copy's date and restores; the
+  whole page loads again and a toast offers the undo (the copy of the state it replaced). The dry run changes nothing, and
   a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder and
   the files, so what they cannot do is locked with the reason of that run instead of
   failing. The demo keeps to its own folders: mailbox, work folder and reset are locked with
@@ -22,16 +24,19 @@
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
+  import RadioList from '$components/RadioList.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import Toggle from '$components/Toggle.svelte';
+  import { formatBytes, formatDate, formatDayTime, formatTime } from '$lib/i18n/format';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import type { Backup, OpenTarget, SettingsPatch } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
+  import { clock } from '$lib/state/clock.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -77,6 +82,14 @@
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
+  /** "Sicherung wiederherstellen": its dialog, the copies, the chosen one, whether the
+   *  question before the restore shows, and why the restore failed. */
+  let backupOpen = $state(false);
+  let backups = $state.raw<Backup[]>([]);
+  let chosenBackup = $state<string | null>(null);
+  let confirmBackup = $state(false);
+  let backupError = $state<(() => string) | null>(null);
+  const chosen = $derived(backups.find((backup) => backup.id === chosenBackup) ?? null);
   /** Only the answer to the latest save may replace the state (quick double flips). */
   let saves = 0;
 
@@ -182,6 +195,60 @@
       });
     });
 
+  /** The copies, newest first and chosen, in the dialog; none is a note in the card. */
+  const openBackups = (card: string): Promise<void> =>
+    command(card, 'backupRestore', async () => {
+      const found = await invoke('list_backups');
+      if (found.length === 0) {
+        note(card, { tone: 'info', text: () => t.settings.backupNone });
+        return;
+      }
+      backups = found;
+      chosenBackup = found[0]!.id;
+      confirmBackup = false;
+      backupError = null;
+      backupOpen = true;
+    });
+
+  /** The database changed under the page: the undos of before go (their jobs may be gone),
+   *  the app state, the list and the counts load again. */
+  async function reloadAll(): Promise<void> {
+    for (const item of [...toasts.items]) toasts.dismiss(item.id);
+    await Promise.all([app.load(), jobs.reload()]);
+  }
+
+  /** The dialog's button: first the question with the copy's date, then the restore. A
+   *  failure stays in the dialog; the toast's undo restores the copy of the state before. */
+  async function restoreBackup(card: string): Promise<void> {
+    if (chosen === null) return;
+    if (!confirmBackup) {
+      confirmBackup = true;
+      return;
+    }
+    busy = 'backupRestore';
+    backupError = null;
+    try {
+      const before = await invoke('restore_backup', { id: chosen.id });
+      backupOpen = false;
+      await reloadAll();
+      toasts.show(t.settings.backupRestored, 'success', {
+        label: t.common.undo,
+        onclick: () => void undoRestore(card, before.id),
+      });
+    } catch (error) {
+      backupError = () => errorText(error);
+    } finally {
+      busy = null;
+    }
+  }
+
+  const undoRestore = (card: string, id: string): Promise<void> =>
+    command(card, 'backupRestore', async () => {
+      await invoke('restore_backup', { id });
+      await reloadAll();
+      toasts.show(t.settings.backupUndone);
+    });
+
   /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
   async function reset(): Promise<void> {
     busy = 'reset';
@@ -206,6 +273,7 @@
       workspaceChange: () => void pickWorkspace(card),
       txtRewrite: () => void rewrite(card),
       txtClear: () => void clear(card),
+      backupRestore: () => void openBackups(card),
       reset: () => {
         resetError = null;
         confirmReset = true;
@@ -400,6 +468,34 @@
   testid="dialog-reset"
   onconfirm={() => void reset()}
 />
+
+<Dialog
+  bind:open={backupOpen}
+  heading={confirmBackup && chosen !== null
+    ? t.settings.backupConfirm(formatDate(chosen.at), formatTime(chosen.at))
+    : t.settings.backup}
+  text={confirmBackup ? t.settings.backupConfirmText : null}
+  confirmLabel={t.settings.backupAction}
+  busy={busy === 'backupRestore'}
+  error={backupError?.() ?? null}
+  testid="dialog-backup"
+  onconfirm={() => void restoreBackup('care')}
+>
+  {#if !confirmBackup}
+    <RadioList
+      options={backups.map((backup) => ({
+        id: backup.id,
+        label: formatDayTime(backup.at, clock.now),
+        note: t.settings.backupKind[backup.kind],
+        detail: formatBytes(backup.bytes),
+      }))}
+      value={chosenBackup}
+      label={t.settings.backup}
+      testid="backup-list"
+      onchange={(id) => (chosenBackup = id)}
+    />
+  {/if}
+</Dialog>
 
 <style>
   .page {

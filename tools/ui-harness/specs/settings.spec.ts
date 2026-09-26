@@ -1087,6 +1087,77 @@ test('the macOS demo shows the keychain and Mac paths', async ({ page }) => {
   await expect(page.getByTestId('settings')).not.toContainText('C:/');
 });
 
+test('backups: chosen by their day, restored after a question, then undone from the toast', async ({
+  page,
+}) => {
+  await settings(page);
+  const row = page.getByTestId('settings-care').getByTestId('backup');
+  await expect(row).toContainText('Sicherung wiederherstellen');
+  await expect(row).toContainText('Die App sichert die Jobs einmal am Tag.');
+  const button = page.getByTestId('backup-restore');
+  await expect(button).toHaveClass(/ghost/);
+  await button.click();
+  const dialog = page.getByTestId('dialog-backup');
+  const rows = dialog.getByTestId('backup-list').getByRole('radio');
+  // Newest first and chosen, by day in the app's words, the size at the end; a copy from
+  // before an update says so.
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'true');
+  for (const [index, text] of [
+    [0, 'Heute 08:05'],
+    [0, '12,4 MB'],
+    [1, 'Gestern 08:41'],
+    [2, 'Vorgestern 09:12'],
+    [3, 'Fr 10:20'],
+    [3, 'vor einem Update'],
+  ] as const) {
+    await expect(rows.nth(index)).toContainText(text);
+  }
+  // The arrows choose like native radio buttons; the question names the date.
+  await rows.nth(0).focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog.getByRole('heading')).toHaveText(
+    'Sicherung vom 23.09.2026 um 08:41 wiederherstellen?',
+  );
+  await expect(dialog).toContainText('Der jetzige Stand wird vorher gesichert.');
+  expect(await calls(page, 'restore_backup')).toHaveLength(0);
+  // A failure stays in the dialog, which tries again.
+  await failNext(page, 'restore_backup');
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');
+  const loads = (await calls(page, 'app_state')).length;
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toBeHidden();
+  // Everything loads again, and the toast offers the undo: the copy of the state before.
+  const toast = page.getByTestId('toast').filter({ hasText: 'Sicherung wiederhergestellt.' });
+  await expect(toast).toBeVisible();
+  expect((await calls(page, 'app_state')).length).toBeGreaterThan(loads);
+  await toast.getByTestId('toast-action').click();
+  await expect(
+    page.getByTestId('toast').filter({ hasText: 'Der vorherige Stand ist zurück.' }),
+  ).toBeVisible();
+  const restored = (await calls(page, 'restore_backup')).map(
+    ([, args]) => (args as { id: string }).id,
+  );
+  expect(restored).toEqual([
+    'jobs-2026-09-23.db',
+    'jobs-2026-09-23.db',
+    'jobs.before-restore-20260924-073000-000.db',
+  ]);
+  // Both copies of a state before a restore are in the list now, newest first.
+  await button.click();
+  await expect(rows).toHaveCount(6);
+  await expect(rows.nth(0)).toContainText('Heute 09:30');
+  await expect(rows.nth(0)).toContainText('vor dem Wiederherstellen');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  // The demo restores nothing and says why.
+  await settings(page, `${WIN}&scenario=demo`);
+  expect(await reason(page, 'backup-restore')).toBe('In der Demo geht das nicht.');
+});
+
 test('reset: asks with a danger dialog; a failure stays in it, no report in Einstellungen', async ({
   page,
 }) => {
