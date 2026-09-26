@@ -1,12 +1,10 @@
 //! Generated files in the workspace: `JobAlerts.xlsx` (the jobs of the inbox and the archive),
-//! `JobAlerts.html` (the report), `top_matches.json` and one text file per job for the
-//! matching. Everything is generated from the database and written atomically - an open Excel
+//! `top_matches.json` and one text file per job for the matching. Everything is generated from the database and written atomically - an open Excel
 //! file or a crash never leaves half a file behind.
 
 mod ai_prompt;
 mod colour;
 mod job_txt;
-mod overview_html;
 pub mod palette;
 pub mod personal;
 pub mod scale;
@@ -20,12 +18,8 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 
-pub use ai_prompt::{
-    MAX_AD_CHARS, MAX_PROFILE_CHARS, MAX_TOP_AD_CHARS, PromptJob, PromptSource, TOP_LIMITS,
-    ai_prompt, ai_prompt_top,
-};
+pub use ai_prompt::{MAX_AD_CHARS, MAX_PROFILE_CHARS, PromptJob, PromptSource, ai_prompt};
 pub use job_txt::{TXT_DIR, write_job_txt};
-pub use overview_html::write_overview_html;
 pub use texts::{Texts, details_label};
 pub use top_matches::{
     Found, TOP_MATCHES_MAX, TOP_MATCHES_NAME, TOP_MATCHES_SCHEMA, TopMatch, TopMatches, findings,
@@ -36,13 +30,13 @@ pub use xlsx::{InfoValue, write_xlsx};
 /// File and folder names below are a contract with the user's workspace and the matching
 /// skill - do not translate.
 pub const XLSX_NAME: &str = "JobAlerts.xlsx";
-/// The HTML overview next to the Excel file.
-pub const HTML_NAME: &str = "JobAlerts.html";
 /// Name part of an Excel file of the old program the app renamed before its first write
 /// (`JobAlerts.alt-20260925-093000.xlsx`, next to its own).
 pub const XLSX_BACKUP_PREFIX: &str = "JobAlerts.alt-";
 /// Overview of earlier versions; only kept so that "reset everything" takes it along.
 const LEGACY_CSV_NAME: &str = "JobAlerts.csv";
+/// The HTML report of earlier versions; only kept so that "reset everything" takes it along.
+const LEGACY_HTML_NAME: &str = "JobAlerts.html";
 /// Subfolder of the workspace for results (as before).
 pub const RESULT_DIR: &str = "auswertung";
 /// Temporary files of [`write_atomic`] - only left behind after a crash in the middle of
@@ -53,11 +47,6 @@ const TMP_SUFFIX: &str = ".tmp";
 /// Path of the overview file in the result folder.
 pub fn overview_path(result_dir: &Path) -> PathBuf {
     result_dir.join(XLSX_NAME)
-}
-
-/// Path of the HTML overview in the result folder.
-pub fn overview_html_path(result_dir: &Path) -> PathBuf {
-    result_dir.join(HTML_NAME)
 }
 
 /// Writes `bytes` atomically to `path`: first into a temporary file in the same folder, then
@@ -113,7 +102,7 @@ fn long_path(path: &Path) -> PathBuf {
 pub fn app_files(result_dir: &Path, txt_names: &[String]) -> Vec<PathBuf> {
     let mut files = files_in(result_dir, |name| {
         name.eq_ignore_ascii_case(XLSX_NAME)
-            || name.eq_ignore_ascii_case(HTML_NAME)
+            || name.eq_ignore_ascii_case(LEGACY_HTML_NAME)
             || name.eq_ignore_ascii_case(TOP_MATCHES_NAME)
             || name.eq_ignore_ascii_case(LEGACY_CSV_NAME)
             || is_tmp(name)
@@ -282,6 +271,8 @@ mod tests {
         std::fs::create_dir_all(root.join("beschreibungen_matching")).unwrap();
         for (path, body) in [
             (root.join(XLSX_NAME), "x"),
+            // The report of earlier versions: a reset still takes it along.
+            (root.join(LEGACY_HTML_NAME), "alt"),
             (
                 root.join("beschreibungen_matching")
                     .join("20260919_1200_matching.html"),
@@ -301,7 +292,7 @@ mod tests {
             "missing.txt".to_string(),
         ];
         // Counted is exactly what gets deleted.
-        assert_eq!(app_files(root, &names).len(), 3);
+        assert_eq!(app_files(root, &names).len(), 4);
         assert_eq!(txt_files(root, &names).len(), 2);
         let (removed, failed) = clear_txt_files(root, &names);
         assert_eq!(removed, 2);

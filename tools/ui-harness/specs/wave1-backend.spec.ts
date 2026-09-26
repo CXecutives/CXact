@@ -28,7 +28,6 @@ function finished(files: Partial<ExportSummary>): RunEvent {
       score: null,
       export: {
         overviewXlsx: null,
-        overviewHtml: null,
         backup: null,
         txtWritten: 0,
         txtFailed: 0,

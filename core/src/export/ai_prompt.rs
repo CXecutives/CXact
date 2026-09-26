@@ -1,8 +1,7 @@
-//! The prompts for any AI chat the user likes: a deep analysis of one job, or one comparison
-//! of the best current matches. The app sends nothing itself and needs no API key; for normal
-//! use they replace the optional job-matching skill and give the assistant everything its
-//! brief gives and more. They address the assistant as "du" without naming a product and
-//! carry, in this order:
+//! The prompt for any AI chat the user likes: a deep analysis of one job. The app sends
+//! nothing itself and needs no API key; for normal use it replaces the optional job-matching
+//! skill and gives the assistant everything its brief gives and more. It addresses the
+//! assistant as "du" without naming a product and carries, in this order:
 //!
 //! 1. the task (role and goal),
 //! 2. the profile without the consultant's name and contact data (the filter shared with the
@@ -17,7 +16,7 @@
 //! 6. the one scoring rubric of the app and the skill (`ai_rubric.de.md`),
 //! 7. a fixed answer format for a consultant who decides whether to apply.
 //!
-//! Their text is content for the assistant, not interface prose, in the app's language: the
+//! Its text is content for the assistant, not interface prose, in the app's language: the
 //! German words ([`de`]) are an external contract - do not translate; [`en`] says the same in
 //! English with the English rubric (`ai_rubric.en.md`, the same bands and caps,
 //! `core/tests/rubric.rs`). The profile keys stay German in both: they are the profile's own.
@@ -30,7 +29,6 @@ mod en;
 mod tests;
 
 use std::collections::BTreeSet;
-use std::ops::RangeInclusive;
 
 use jiff::civil::Date;
 use serde_json::{Map, Value};
@@ -52,10 +50,6 @@ use crate::view::{DetailState, JobView, WorkMode};
 pub const MAX_PROFILE_CHARS: usize = 8_000;
 /// Most characters of the ad text in the prompt (the skill reads as much).
 pub const MAX_AD_CHARS: usize = 12_000;
-/// Most characters of each ad text in the comparison of the best matches.
-pub const MAX_TOP_AD_CHARS: usize = 6_000;
-/// How many jobs the comparison takes (fewer or more are brought into this range).
-pub const TOP_LIMITS: RangeInclusive<usize> = 3..=5;
 /// Longest passage of the ad the pre-assessment quotes.
 const MAX_PASSAGE_CHARS: usize = 160;
 /// Places of a permanent role the pre-assessment names before "and n more".
@@ -120,7 +114,7 @@ pub fn ai_prompt(profile: &Value, item: PromptJob<'_>, language: Language) -> St
     let w = wording(language);
     let t = w.words();
     let consultant = Consultant::new(profile);
-    let ad = ad_parts(w, item, MAX_AD_CHARS, false);
+    let ad = ad_parts(w, item, MAX_AD_CHARS);
     let blocks = [
         section(1, t.task_heading, t.intro),
         profile_block(w, profile),
@@ -136,41 +130,6 @@ pub fn ai_prompt(profile: &Value, item: PromptJob<'_>, language: Language) -> St
         t.rubric.trim_end().to_owned(),
         section(1, t.answer_heading, t.answer),
     ];
-    finish(&blocks)
-}
-
-/// One prompt that compares the best current matches (the favourites first) in the app's
-/// language: every job with its key facts, its text (at most [`MAX_TOP_AD_CHARS`]; the prompt
-/// says when a text was cut) and the app's pre-assessment, then one method, the rubric and an
-/// answer format with a ranking first.
-pub fn ai_prompt_top(profile: &Value, jobs: &[PromptJob<'_>], language: Language) -> String {
-    let w = wording(language);
-    let t = w.words();
-    let consultant = Consultant::new(profile);
-    let mut blocks = vec![
-        section(1, t.task_heading, t.top_intro),
-        profile_block(w, profile),
-    ];
-    let mut job_blocks = Vec::with_capacity(jobs.len());
-    for (n, item) in jobs.iter().enumerate() {
-        let ad = ad_parts(w, *item, MAX_TOP_AD_CHARS, true);
-        job_blocks.push(
-            [
-                format!("## {}", w.job_heading(n + 1, title_of(item.job, t))),
-                section(3, t.facts_heading, &ad.facts),
-                section(3, t.text_heading, &ad.text),
-                section(3, t.pre_heading, &pre_assessment(w, *item, &consultant)),
-            ]
-            .join("\n\n"),
-        );
-    }
-    let pinned = jobs.iter().filter(|j| j.job.pinned).count();
-    let note = format!("{} {}", w.top_note(jobs.len(), pinned), t.facts_note);
-    blocks.push(section(1, t.jobs_heading, &note));
-    blocks.extend(job_blocks);
-    blocks.push(section(1, t.method_heading, t.method));
-    blocks.push(t.rubric.trim_end().to_owned());
-    blocks.push(section(1, t.answer_heading, t.top_answer));
     finish(&blocks)
 }
 
@@ -203,7 +162,6 @@ struct Words {
     rubric: &'static str,
     task_heading: &'static str,
     intro: &'static str,
-    top_intro: &'static str,
     profile_heading: &'static str,
     profile_note: &'static str,
     glossary_intro: &'static str,
@@ -226,8 +184,6 @@ struct Words {
     method: &'static str,
     answer_heading: &'static str,
     answer: &'static str,
-    top_answer: &'static str,
-    jobs_heading: &'static str,
     /// What marks a cut profile or ad.
     cut: &'static str,
     untitled: &'static str,
@@ -254,7 +210,6 @@ struct Labels {
     industries: &'static str,
     skills: &'static str,
     mail: &'static str,
-    pinned: &'static str,
     status: &'static str,
     link: &'static str,
     /// The page says the ad takes no more applications.
@@ -312,8 +267,6 @@ trait Wording: Sync {
     fn months(&self, months: u16) -> String;
     fn remote(&self, from: u8, to: u8) -> String;
     fn work_mode(&self, mode: WorkMode) -> &'static str;
-    fn job_heading(&self, n: usize, title: &str) -> String;
-    fn top_note(&self, jobs: usize, pinned: usize) -> String;
     fn text_cut(&self, max: usize) -> String;
     fn scored(&self, score: u8, band: Band) -> String;
     fn excluded(&self, score: u8) -> String;
@@ -335,56 +288,6 @@ fn wording(language: Language) -> &'static dyn Wording {
         Language::De => &de::German,
         Language::En => &en::English,
     }
-}
-
-/// Every reason code whose sentence a stored note can ask for by its name (the codes of
-/// `matching::ReasonCode`; a new one is said by its sentence once it is listed here).
-const REASON_CODES: [ReasonCode; 31] = [
-    ReasonCode::Requirement,
-    ReasonCode::Term,
-    ReasonCode::Anue,
-    ReasonCode::DayRate,
-    ReasonCode::Availability,
-    ReasonCode::Country,
-    ReasonCode::AnueOptional,
-    ReasonCode::AnueHidden,
-    ReasonCode::CountryUnclear,
-    ReasonCode::DayRateCurrency,
-    ReasonCode::AvailabilityGap,
-    ReasonCode::StartVague,
-    ReasonCode::Permanent,
-    ReasonCode::FormalOpen,
-    ReasonCode::LowEvidence,
-    ReasonCode::ShortText,
-    ReasonCode::Salary,
-    ReasonCode::SalaryUnknown,
-    ReasonCode::PermanentRegion,
-    ReasonCode::PermanentRegionUnclear,
-    ReasonCode::TooJunior,
-    ReasonCode::SeniorityUnclear,
-    ReasonCode::Overqualified,
-    ReasonCode::ContractType,
-    ReasonCode::AnueRisk,
-    ReasonCode::Focus,
-    ReasonCode::TargetRole,
-    ReasonCode::DayRateWish,
-    ReasonCode::RemoteWish,
-    ReasonCode::RegionWish,
-    ReasonCode::IndustryWish,
-];
-
-/// The sentence of a reason by the name of its code (`anueOptional`, the note of a list row)
-/// in the words of the prompts: the report says a job's first point to check with it. `None`
-/// for requirements, terms and a code this version does not know.
-pub(crate) fn reason_sentence(
-    language: Language,
-    code: &str,
-    params: &Map<String, Value>,
-) -> Option<String> {
-    let code = REASON_CODES
-        .into_iter()
-        .find(|c| crate::pipeline::local::code_name(c) == code)?;
-    wording(language).reason(code, params)
 }
 
 // ------------------------------------------------------------------------- the profile
@@ -501,7 +404,7 @@ struct AdParts {
     text: String,
 }
 
-fn ad_parts(w: &dyn Wording, item: PromptJob<'_>, max: usize, top: bool) -> AdParts {
+fn ad_parts(w: &dyn Wording, item: PromptJob<'_>, max: usize) -> AdParts {
     let t = w.words();
     let text = item.text.map(str::trim).filter(|s| !s.is_empty());
     let cut_now = text.is_some_and(|s| s.chars().count() > max);
@@ -525,12 +428,7 @@ fn ad_parts(w: &dyn Wording, item: PromptJob<'_>, max: usize, top: bool) -> AdPa
         None => status.to_owned(),
     };
     AdParts {
-        // The comparison says it once for all jobs.
-        facts: if top {
-            key_facts(w, item, top)
-        } else {
-            format!("{}\n\n{}", t.facts_note, key_facts(w, item, top))
-        },
+        facts: format!("{}\n\n{}", t.facts_note, key_facts(w, item)),
         text: body,
     }
 }
@@ -552,7 +450,7 @@ fn fence_for(text: &str) -> String {
 
 /// The key facts: the app's reading (the page facts first, then the text), the page's own
 /// words where the app read nothing, and "not found" for what neither gave.
-fn key_facts(w: &dyn Wording, item: PromptJob<'_>, top: bool) -> String {
+fn key_facts(w: &dyn Wording, item: PromptJob<'_>) -> String {
     let t = w.words();
     let l = &t.labels;
     let job = item.job;
@@ -587,9 +485,6 @@ fn key_facts(w: &dyn Wording, item: PromptJob<'_>, top: bool) -> String {
     }
     if let Some(day) = job.mail_date {
         lines.push(line(l.mail, &w.date(crate::time::local_date(day))));
-    }
-    if top && job.pinned {
-        lines.push(format!("- {}", l.pinned));
     }
     if job.closed {
         lines.push(line(l.status, l.closed));

@@ -42,7 +42,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::list_jobs,
         jobs::job_detail,
         jobs::mark_read,
-        jobs::set_pinned,
         jobs::move_jobs,
         jobs::move_back,
         jobs::restore_jobs,
@@ -50,7 +49,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::purge_jobs,
         jobs::empty_trash,
         jobs::ai_prompt,
-        jobs::ai_prompt_top,
         profile::pick_profile,
         profile::parse_profile,
         profile::profile_prompt,
@@ -64,8 +62,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         portals::portal_login,
         portals::portal_logout,
         app::pick_workspace,
-        files::rewrite_txt,
-        files::clear_txt,
         files::open_target,
         app::save_settings,
         app::reset_all,
@@ -73,7 +69,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::restore_backup,
         app::report_ui_error,
         app::clipboard_text,
-        jobs::overview_stats,
         jobs::company_count,
     ]
 }

@@ -27,14 +27,14 @@ use crate::portal::{JobKey, Portal};
 use crate::settings::{Language, Palette};
 use crate::store::{Backup, BackupKind};
 use crate::view::{
-    AppState, ClearedTxt, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
-    JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
-    MailboxCheck, Market, MatchDetail, MoveBack, OpenMust, OpenTarget, OverviewStats, Platform,
-    PortalCount, PortalLogin, PortalNew, PortalPatch, PortalState, ProfileAvailability,
-    ProfileCompetence, ProfileCriteria, ProfileDraft, ProfileForm, ProfileInfo, ProfileLanguage,
-    ProfileQuality, ProfileSave, ProfileSource, ProfileUnderstanding, ProfileWishes, QuietPortal,
-    Quota, Reason, ReasonKind, ReasonWeight, RemoteWish, ResetSummary, SettingsPatch, SettingsView,
-    TextRange, UnreadableField, VaultKind, WorkMode, WorkspacePick, WorkspaceProfile,
+    AppState, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts, JobDetail, JobMail,
+    JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox, MailboxCheck,
+    MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin, PortalNew, PortalPatch,
+    PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileDraft,
+    ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave, ProfileSource,
+    ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight, RemoteWish,
+    ResetSummary, SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind, WorkMode,
+    WorkspacePick, WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -193,10 +193,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Mailbox>();
     f.add::<PortalCount>();
     f.add::<MailboxCheck>();
-    f.add::<OpenMust>();
-    f.add::<Market>();
-    f.add::<QuietPortal>();
-    f.add::<OverviewStats>();
     f.add::<SettingsView>();
     f.add::<SettingsPatch>();
     f.add::<WorkspacePick>();
@@ -225,7 +221,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Backup>();
     f.add::<AppState>();
     f.add::<OpenTarget>();
-    f.add::<ClearedTxt>();
     f.add::<MoveBack>();
     f.add::<Deleted>();
     f.add::<RunRequest>();

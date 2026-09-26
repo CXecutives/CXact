@@ -7,7 +7,7 @@ use jiff::{SignedDuration, Timestamp};
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 use url::Url;
 
-use super::marks::{FAVOURITES, INBOX, place_condition};
+use super::marks::{INBOX, place_condition};
 use super::{Store, bump, kv_get_i64, kv_set};
 use crate::error::{Error, Result};
 use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
@@ -69,8 +69,6 @@ pub struct JobRow {
     pub match_rev: Option<String>,
     /// The facts the job page stated (unreadable JSON counts as none).
     pub facts: Option<Facts>,
-    /// Since when the job is a favourite (the star); `None` = none.
-    pub pinned_at: Option<Timestamp>,
     /// When the job went to the archive (by the user or by age).
     pub archived_at: Option<Timestamp>,
     /// When the job went to the trash (it wins over the archive).
@@ -116,7 +114,7 @@ impl ListFilter {
 /// "newest" the latest first sighting. The trash lists the latest trashed first.
 fn page_order(query: &PageQuery, p: &str) -> String {
     // "By date": the date of the alert mail; in the trash the day it went there.
-    let date = if query.place == Place::Trash && !query.favourites {
+    let date = if query.place == Place::Trash {
         format!("{p}trashed_at")
     } else {
         format!("COALESCE({p}mail_date, {p}first_seen_at)")
@@ -171,8 +169,6 @@ pub struct PageQuery {
     pub place: Place,
     /// Only unread jobs (the excluded ones last, uncounted).
     pub unread: bool,
-    /// Only the favourites of the inbox (an archived favourite is found in the archive).
-    pub favourites: bool,
     /// The jobs without a score first, then the best match; otherwise by date: the alert
     /// mail's, in the trash the day it went there; excluded jobs last either way.
     pub by_match: bool,
@@ -186,7 +182,7 @@ pub struct PageQuery {
 }
 
 /// Column of the first per-portal count in the statement of [`Store::job_page`].
-const PER_PORTAL_AT: usize = 10;
+const PER_PORTAL_AT: usize = 9;
 
 /// Counts that belong to a page of the job list: per place, and within the inbox.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -195,8 +191,6 @@ pub struct PageCounts {
     pub inbox: u32,
     /// Unread in the inbox and not excluded.
     pub unread: u32,
-    /// Favourites (the star) in the inbox.
-    pub favourites: u32,
     pub archive: u32,
     pub trash: u32,
     /// Excluded, in the inbox.
@@ -382,15 +376,11 @@ impl Store {
         let order = |p: &str| page_order(query, p);
         // The counts of the inbox leave the archive and the trash out. The unread filter lists
         // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. A favourite counts while it is in the inbox. The excluded jobs are counted per
-        // place, so the list's section says its number before every page is there.
+        // out. The excluded jobs are counted per place, so the list's section says its number
+        // before every page is there.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
-        let place = if query.favourites {
-            FAVOURITES
-        } else {
-            place_condition(query.place)
-        };
+        let place = place_condition(query.place);
         let facet = if query.unread {
             format!("{place} AND read_at IS NULL")
         } else {
@@ -407,7 +397,6 @@ impl Store {
                         COALESCE(SUM({shown} AND match_status IS 'scored'
                                      AND match_score >= ?4), 0) AS n_high,
                         COALESCE(SUM({shown} AND desc_status <> 'ok'), 0) AS n_no_detail,
-                        COALESCE(SUM({FAVOURITES}), 0) AS n_favourites,
                         COALESCE(SUM({archive}), 0) AS n_archive,
                         COALESCE(SUM({trash}), 0) AS n_trash,
                         COALESCE(SUM({archive} AND match_status IS 'excluded'), 0)
@@ -422,7 +411,7 @@ impl Store {
                  LIMIT ?2 OFFSET ?3
              )
              SELECT counts.n_inbox, counts.n_unread, counts.n_excluded, counts.n_high,
-                    counts.n_no_detail, counts.n_favourites, counts.n_archive,
+                    counts.n_no_detail, counts.n_archive,
                     counts.n_trash, counts.n_excluded_archive,
                     counts.n_excluded_trash{per_portal_out}, page.*
              FROM counts LEFT JOIN page
@@ -462,11 +451,10 @@ impl Store {
                 excluded: row.get(2)?,
                 high: row.get(3)?,
                 no_detail: row.get(4)?,
-                favourites: row.get(5)?,
-                archive: row.get(6)?,
-                trash: row.get(7)?,
-                excluded_archive: row.get(8)?,
-                excluded_trash: row.get(9)?,
+                archive: row.get(5)?,
+                trash: row.get(6)?,
+                excluded_archive: row.get(7)?,
+                excluded_trash: row.get(8)?,
                 new_by_portal,
             };
             if row.get::<_, Option<String>>(first)?.is_some() {
@@ -814,18 +802,14 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     mail_subject, gmail_id, first_seen_at, first_seen_run, desc_status, desc_short, desc_closed,
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
-    desc_facts, CASE WHEN app_status IS NOT NULL THEN COALESCE(app_status_at, first_seen_at) END,
-    archived_at, trashed_at, override_include";
-pub(super) const JOB_COLUMN_COUNT: usize = 30;
+    desc_facts, archived_at, trashed_at, override_include";
+pub(super) const JOB_COLUMN_COUNT: usize = 29;
 
-/// The jobs whose details the app fetches by itself: the inbox and the starred jobs of the
-/// archive (she kept the star, so she may still read them; the favourites filter lists only
-/// the inbox's, the archive the rest) - never the trash and never a duplicate (its
-/// original's row stands for it; a merged guest teaser would cost a signed-in request). The
-/// portals' caps are small, so every request belongs to a job the user may still read.
-/// "Details holen" asks for chosen jobs wherever they lie.
-pub(super) const FETCHABLE: &str =
-    "dup_of IS NULL AND trashed_at IS NULL AND (archived_at IS NULL OR app_status IS NOT NULL)";
+/// The jobs whose ads the app fetches by itself: the inbox - never the archive, the trash or
+/// a duplicate (its original's row stands for it; a merged guest teaser would cost a
+/// signed-in request). The portals' caps are small, so every request belongs to a job the
+/// user still reads. "Anzeige laden" asks for chosen jobs wherever they lie.
+pub(super) const FETCHABLE: &str = "dup_of IS NULL AND archived_at IS NULL AND trashed_at IS NULL";
 
 /// Due for a fetch (of a [`FETCHABLE`] job): open or failed (at the earliest `?2` after the
 /// last attempt), or a teaser (right away, after a failed attempt like a failure, at most
@@ -906,10 +890,9 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         facts: r
             .get::<_, Option<String>>(col(25))?
             .and_then(|json| serde_json::from_str(&json).ok()),
-        pinned_at: r.get::<_, Option<i64>>(col(26))?.and_then(from_db),
-        archived_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
-        trashed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
-        override_include: r.get::<_, Option<i64>>(col(29))?.is_some(),
+        archived_at: r.get::<_, Option<i64>>(col(26))?.and_then(from_db),
+        trashed_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
+        override_include: r.get::<_, Option<i64>>(col(28))?.is_some(),
     }))
 }
 
@@ -1685,7 +1668,7 @@ mod tests {
     }
 
     /// The portals' caps are small: the automatic queue spends them only on jobs the lists
-    /// show as active - never the trash, the archive (a favourite there stays) or a duplicate
+    /// show as active - never the trash, the archive or a duplicate
     /// merged into another portal's job (a guest teaser would cost a signed-in request).
     #[test]
     fn the_queue_leaves_out_what_the_lists_do_not_show() {
@@ -1697,24 +1680,14 @@ mod tests {
             store.upsert_posting(run, &p, mail(), now()).unwrap();
             p.key
         };
-        let (inbox, trashed, archived, favourite) = (
-            add("4000000001"),
-            add("4000000002"),
-            add("4000000003"),
-            add("4000000004"),
-        );
+        let (inbox, trashed, archived) = (add("4000000001"), add("4000000002"), add("4000000003"));
         let (_, teaser) = full_text_and_its_teaser(&store, run);
         store
             .move_jobs(std::slice::from_ref(&trashed), Place::Trash, now())
             .unwrap();
         store
-            .move_jobs(
-                &[archived.clone(), favourite.clone()],
-                Place::Archive,
-                now(),
-            )
+            .move_jobs(std::slice::from_ref(&archived), Place::Archive, now())
             .unwrap();
-        store.set_pinned(&favourite, true, now()).unwrap();
         let queue = || -> Vec<JobKey> {
             let mut keys: Vec<JobKey> = store
                 .fetch_queue(now(), MAX_AGE, RETRY_AFTER)
@@ -1725,9 +1698,7 @@ mod tests {
             keys.sort();
             keys
         };
-        let mut expected = vec![inbox.clone(), favourite.clone()];
-        expected.sort();
-        assert_eq!(queue(), expected);
+        assert_eq!(queue(), std::slice::from_ref(&inbox));
         assert!(!queue().contains(&teaser));
         // Back in the inbox, a job is due again.
         store

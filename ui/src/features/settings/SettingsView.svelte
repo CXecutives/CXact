@@ -146,44 +146,6 @@
       else toasts.show(t.settings.workspaceFiles);
     });
 
-  /** Writes the text files again; a file another program holds open stays a note. */
-  async function writeTxt(card: string): Promise<boolean> {
-    const { error, txtFailed, txtWritten } = await invoke('rewrite_txt');
-    await app.load();
-    if (error) {
-      note(card, { tone: 'danger', text: () => t.error.text(error.kind, error.params) });
-      return false;
-    }
-    if (txtFailed > 0) {
-      note(card, { tone: 'warning', text: () => t.settings.txtFailed(txtFailed) });
-      return false;
-    }
-    return txtWritten > 0;
-  }
-
-  const rewrite = (card: string): Promise<void> =>
-    command(card, 'txtRewrite', async () => {
-      if (await writeTxt(card)) toasts.show(t.settings.txtRewritten);
-      else if (notes[card] === null || notes[card] === undefined) {
-        toasts.show(t.settings.txtNothing, 'info');
-      }
-    });
-
-  /** Deletes the text files; the toast's undo writes them again. */
-  const clear = (card: string): Promise<void> =>
-    command(card, 'txtClear', async () => {
-      const { failed: open } = await invoke('clear_txt');
-      await app.load();
-      if (open.length > 0) {
-        note(card, { tone: 'warning', text: () => t.settings.txtFailed(open.length) });
-        return;
-      }
-      toasts.show(t.settings.txtCleared, 'success', {
-        label: t.common.undo,
-        onclick: () => void command(card, 'txtRewrite', async () => void (await writeTxt(card))),
-      });
-    });
-
   /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
   async function reset(): Promise<void> {
     busy = 'reset';
@@ -206,8 +168,6 @@
     }
     const commands: Record<CommandId, () => void> = {
       workspaceChange: () => void pickWorkspace(card),
-      txtRewrite: () => void rewrite(card),
-      txtClear: () => void clear(card),
       backupRestore: () =>
         void backupDialog?.show(
           (work) => command(card, 'backupRestore', work),

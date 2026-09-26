@@ -104,7 +104,7 @@ pub trait PortalAdapter: Send + Sync {
     /// Key for store, settings and interface.
     fn key(&self) -> &'static str;
     /// Display name: the portal's web address (`linkedin.com`, `freelance.de`), as the
-    /// interface names it (Excel, HTML overview, prompts).
+    /// interface names it (Excel, prompts).
     fn label(&self) -> &'static str;
     /// The portal's two-letter mark in the interface (brand-neutral, no logo).
     fn monogram(&self) -> &'static str;

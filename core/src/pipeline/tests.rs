@@ -166,10 +166,6 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     let export = s.export.as_ref().unwrap();
     assert_eq!(export.txt_written, 4);
     assert!(export.overview_xlsx.as_ref().unwrap().exists());
-    // The HTML overview: the unread scored jobs, the excluded one not.
-    let html = std::fs::read_to_string(export.overview_html.as_ref().unwrap()).unwrap();
-    assert!(html.contains("Interim CFO") && !html.contains("Projektleiter S/4HANA"));
-    assert!(!html.contains("Beispielanzeige"), "never the full text");
     assert_eq!(txt_files(dir.path()), 4);
     assert_eq!(finished(&events), 1);
     assert_small(&events);
@@ -619,7 +615,6 @@ fn the_largest_summary_is_a_small_event() {
     summary.score = Some(ScoreSummary::default());
     summary.export = Some(ExportSummary {
         overview_xlsx: Some(PathBuf::from("y".repeat(400))),
-        overview_html: Some(PathBuf::from("y".repeat(400))),
         backup: Some(PathBuf::from("y".repeat(400))),
         error: Some(ErrorInfo::new(ErrorKind::FileLocked).with("path", "z".repeat(400))),
         ..ExportSummary::default()
@@ -943,7 +938,7 @@ async fn the_info_sheet_says_what_the_app_says() {
         "the sheet's rows: the archive in, the trash out"
     );
     let (created, scanned) = (
-        value(&rows, texts::HTML_CREATED),
+        value(&rows, texts::CREATED),
         value(&rows, texts::INFO_LAST_SCAN),
     );
     assert!(matches!(created, Data::DateTime(_)) && matches!(scanned, Data::DateTime(_)));
@@ -1002,7 +997,7 @@ fn info_rows_of_an_earlier_version_use_todays_words() {
             texts::INFO_NEW,
             texts::INFO_KNOWN,
             texts::INFO_DUP,
-            texts::HTML_CREATED,
+            texts::CREATED,
             texts::INFO_JOBS_TOTAL,
             texts::INFO_PROGRAM
         ]
@@ -1087,7 +1082,7 @@ fn an_unreachable_work_folder_is_one_clear_error() {
     let target = |s: &ExportSummary| s.error.as_ref().unwrap().params["target"].clone();
     assert_eq!(target(&s), "workspace");
     assert_eq!((s.txt_written, s.txt_failed), (0, 0));
-    assert_eq!((s.overview_xlsx, s.overview_html), (None, None));
+    assert_eq!(s.overview_xlsx, None);
     assert_eq!(store.txt_jobs(false).unwrap().len(), 2, "the files wait");
     assert_eq!(target(&rewrite_txt(&store, &gone, now)), "workspace");
     // Emptied from the trash meanwhile: the name waits for the folder.
@@ -1097,8 +1092,7 @@ fn an_unreachable_work_folder_is_one_clear_error() {
     let deleted = delete_jobs(&store, Some(&gone), None, one, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 1);
     assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"]);
-    let (removed, _) = clear_txt(&store, &gone).unwrap();
-    assert_eq!(removed, 0);
+    export_all(&store, &gone, &[], 2, now, Language::De);
     assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"], "still waiting");
 }
 
@@ -1273,7 +1267,6 @@ fn the_finished_event_always_fits_the_channel() {
         .insert("target".into(), long.display().to_string().into());
     summary.export = Some(ExportSummary {
         overview_xlsx: Some(long.join("a.xlsx")),
-        overview_html: Some(long.join("a.html")),
         backup: Some(long.join("b.xlsx")),
         txt_written: 3,
         txt_failed: 0,
@@ -1297,7 +1290,7 @@ fn the_finished_event_always_fits_the_channel() {
     // Absurd paths go too.
     let huge = PathBuf::from("C:/".to_owned() + &"verzeichnis/".repeat(400));
     let export = summary.export.as_mut().unwrap();
-    export.overview_html = Some(huge.clone());
+    export.backup = Some(huge.clone());
     export.overview_xlsx = Some(huge);
     assert_small(&[summary.finished_event()]);
     let small = RunSummary::new(RunKindName::Fetch, false, Timestamp::now());
@@ -1984,13 +1977,15 @@ fn an_older_stored_summary_still_reads() {
 }
 
 /// A failed export does not fail the run, but the summary names it as a code with its
-/// target - the page says it (the HTML overview cannot be written where a folder sits).
+/// target - the page says it (the text files cannot be written where a file sits in place
+/// of their folder).
 #[tokio::test(start_paused = true)]
 async fn a_failed_export_is_reported_as_a_code() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
-    let html = export::overview_html_path(&dir.path().join(RESULT_DIR));
-    std::fs::create_dir_all(html.join("blocked")).unwrap();
+    let result_dir = dir.path().join(RESULT_DIR);
+    std::fs::create_dir_all(&result_dir).unwrap();
+    std::fs::write(result_dir.join(TXT_DIR), b"a file instead of the folder").unwrap();
     let (store, _) = store_with_texts();
     let (s, events) = go(
         &mut DemoBackends,
@@ -2009,8 +2004,8 @@ async fn a_failed_export_is_reported_as_a_code() {
         "the export never fails the run"
     );
     let error = s.export.as_ref().unwrap().error.as_ref().unwrap();
-    assert_eq!(error.params["target"], "overviewHtml");
-    assert_eq!(error.params["name"], export::HTML_NAME, "the base name");
+    assert_eq!(error.params["target"], "txtFolder");
+    assert_eq!(error.params["name"], TXT_DIR, "the base name");
     assert!(
         matches!(error.kind, ErrorKind::Io | ErrorKind::FileLocked),
         "{error:?}"
@@ -2078,7 +2073,7 @@ async fn an_open_excel_file_is_reported_as_locked() {
 }
 
 /// The Excel file follows the user's marks when asked: nothing changed, nothing is written;
-/// a favourite or a move writes it (and the report) anew, the run of the last write
+/// a move writes it anew, the run of the last write
 /// kept; the Gmail links name the account the last scan read. Open in Excel (Windows), it
 /// stays as it is and the error names the file.
 #[tokio::test(start_paused = true)]
@@ -2104,18 +2099,18 @@ async fn the_excel_file_follows_the_marks_when_asked() {
     assert_eq!(unchanged.error, None);
     assert_eq!(std::fs::read(&xlsx).unwrap(), before);
     let key = store.jobs(&JobFilter::default()).unwrap()[0].key.clone();
-    assert!(store.set_pinned(&key, true, c()).unwrap());
+    let one = std::slice::from_ref(&key);
+    assert_eq!(store.move_jobs(one, Place::Archive, c()).unwrap(), one);
     let written = refresh_excel(&store, dir.path(), c(), Language::De);
     assert_eq!(written.overview_xlsx.as_deref(), Some(xlsx.as_path()));
-    assert!(written.overview_html.is_some(), "the report with it");
     {
         use calamine::{Reader, Xlsx, open_workbook};
         let mut book: Xlsx<_> = open_workbook(&xlsx).unwrap();
         let range = book.worksheet_range(texts::JOBS_SHEET).unwrap();
         let mut rows = range.rows();
         let header = rows.next().unwrap();
-        let favourite = header.iter().position(|h| *h == "Favorit").unwrap();
-        assert!(rows.any(|r| r[favourite] == "Ja"));
+        let place = header.iter().position(|h| *h == "Ablage").unwrap();
+        assert!(rows.any(|r| r[place] == texts::PLACE_ARCHIVE));
     }
     assert_eq!(
         gmail_account(&store).as_deref(),
@@ -2131,7 +2126,7 @@ async fn the_excel_file_follows_the_marks_when_asked() {
     {
         use std::os::windows::fs::OpenOptionsExt;
         store
-            .move_jobs(std::slice::from_ref(&key), Place::Archive, c())
+            .move_jobs(std::slice::from_ref(&key), Place::Inbox, c())
             .unwrap();
         let lock = std::fs::OpenOptions::new()
             .read(true)
@@ -2236,8 +2231,7 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     assert!(!file.exists());
 }
 
-/// At the end of a run old jobs without a stage archive themselves (by the days in the
-/// settings; 0 = never); a saved one stays.
+/// At the end of a run old jobs archive themselves (by the days in the settings; 0 = never).
 #[tokio::test(start_paused = true)]
 async fn a_run_archives_old_jobs_without_a_stage() {
     let c = clock();
@@ -2265,9 +2259,6 @@ async fn a_run_archives_old_jobs_without_a_stage() {
             .count()
     };
     assert_eq!(archived(&store), 0, "young jobs stay");
-    let jobs = store.jobs(&JobFilter::default()).unwrap();
-    let saved = jobs[0].key.clone();
-    store.set_pinned(&saved, true, c()).unwrap();
     let later = move || c() + SignedDuration::from_hours(24 * 40);
     let off = RunContext {
         auto_archive_days: 0,
@@ -2295,7 +2286,7 @@ async fn a_run_archives_old_jobs_without_a_stage() {
     let jobs = store.jobs(&JobFilter::default()).unwrap();
     assert!(jobs.len() > 1);
     for job in &jobs {
-        assert_eq!(job.archived_at.is_none(), job.key == saved, "{}", job.key);
+        assert!(job.archived_at.is_some(), "{}", job.key);
     }
 }
 
@@ -2395,43 +2386,10 @@ async fn a_run_empties_an_old_trash() {
     assert_eq!(store.job(&young).unwrap().unwrap().place(), Place::Trash);
 }
 
-/// A fetch that brings nothing new keeps the unread matches in the HTML overview: it lists
-/// the app's "Neu und passend", whatever run brought them, until they are read.
+/// A mark changes the skill's list without a run: a job moved to the trash leaves
+/// `top_matches.json` at once; the Excel file waits until it is asked for.
 #[tokio::test(start_paused = true)]
-async fn the_overview_keeps_the_unread_matches_of_earlier_fetches() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let fetch = ctx(dir.path(), false);
-    let html_path = export::overview_html_path(&dir.path().join(RESULT_DIR));
-    let html = || std::fs::read_to_string(&html_path).unwrap();
-    let cancel = CancellationToken::new();
-    go(&mut DemoBackends, &store, &request(), &fetch, &cancel, &c).await;
-    assert!(html().contains("Interim CFO"));
-    let (s, _) = go(&mut DemoBackends, &store, &request(), &fetch, &cancel, &c).await;
-    assert_eq!(s.new_jobs.unwrap().count, 0, "nothing new");
-    assert!(
-        s.scan.unwrap().mails_checked > 0,
-        "the mails were read again"
-    );
-    assert!(html().contains("Interim CFO"), "still unread, still listed");
-    assert!(!html().contains(texts::HTML_EMPTY));
-    let cfo = store
-        .jobs(&JobFilter::default())
-        .unwrap()
-        .into_iter()
-        .find(|job| job.title.starts_with("Interim CFO"))
-        .unwrap();
-    store.mark_read(&cfo.key, c()).unwrap();
-    export_all(&store, dir.path(), &[], 3, c(), Language::De);
-    assert!(!html().contains("Interim CFO"), "read, it leaves");
-}
-
-/// A mark changes the small files without a run: a job moved to the trash leaves the HTML
-/// overview and the skill's `top_matches.json` at once, a new favourite shows; the Excel
-/// file waits for the next run.
-#[tokio::test(start_paused = true)]
-async fn a_mark_refreshes_the_overview_and_the_top_matches() {
+async fn a_mark_refreshes_the_top_matches() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
@@ -2446,7 +2404,6 @@ async fn a_mark_refreshes_the_overview_and_the_top_matches() {
     )
     .await;
     let result_dir = dir.path().join(RESULT_DIR);
-    let html = || std::fs::read_to_string(export::overview_html_path(&result_dir)).unwrap();
     let top = || std::fs::read_to_string(result_dir.join(export::TOP_MATCHES_NAME)).unwrap();
     let xlsx = || std::fs::read(export::overview_path(&result_dir)).unwrap();
     let excel = xlsx();
@@ -2455,43 +2412,17 @@ async fn a_mark_refreshes_the_overview_and_the_top_matches() {
         .iter()
         .find(|job| job.title.starts_with("Interim CFO"))
         .unwrap();
-    assert!(html().contains("Interim CFO") && top().contains("Interim CFO"));
+    assert!(top().contains("Interim CFO"));
     let matcher = demo::matcher();
-    let refresh = || {
-        refresh_exports(
-            &store,
-            dir.path(),
-            Some(&*matcher as &dyn Matcher),
-            c(),
-            Language::De,
-        );
-    };
     store
         .move_jobs(std::slice::from_ref(&cfo.key), Place::Trash, c())
         .unwrap();
-    refresh();
+    refresh_exports(&store, dir.path(), Some(&*matcher as &dyn Matcher), c());
     assert!(
-        !html().contains("Interim CFO"),
-        "the trash leaves the overview"
+        !top().contains("Interim CFO"),
+        "the trash leaves the skill's list"
     );
-    assert!(!top().contains("Interim CFO"), "and the skill's list");
-    assert_eq!(xlsx(), excel, "the Excel file waits for the next run");
-    let controlling = jobs
-        .iter()
-        .find(|job| job.title.starts_with("Leiter Controlling"))
-        .unwrap();
-    store.set_pinned(&controlling.key, true, c()).unwrap();
-    refresh();
-    assert!(
-        html().contains("<span class=\"star\" title=\"Favorit\">"),
-        "the new favourite shows its star in its band"
-    );
-    assert!(
-        html().contains(&texts::html_low(1)) && !html().contains("SAP FI/CO Berater"),
-        "and the low match stays counted beside it"
-    );
-    let path = refresh_overview(&store, dir.path(), c(), Language::De).unwrap();
-    assert_eq!(path, export::overview_html_path(&result_dir));
+    assert_eq!(xlsx(), excel, "the Excel file waits");
 }
 
 /// One job two portals announced, as the list shows it: the freelancermap row with the
@@ -2558,7 +2489,7 @@ fn a_purge_counts_the_rows_it_deleted() {
 }
 
 /// The text file of a job deleted for good that could not be removed is not forgotten with
-/// its row: "Textdateien löschen" and a reset still find it, and the next export removes it.
+/// its row: a reset still finds it, and the next export removes it.
 #[test]
 fn a_text_file_that_stayed_is_removed_later() {
     let dir = tempfile::tempdir().unwrap();
@@ -2586,15 +2517,6 @@ fn a_text_file_that_stayed_is_removed_later() {
         "removed with the next export"
     );
     assert!(store.txt_leftovers().unwrap().is_empty(), "and forgotten");
-    // "Textdateien löschen" takes such a file along as well.
-    std::fs::write(txt_dir.join(&stayed), b"alt").unwrap();
-    store
-        .set_txt_leftovers(std::slice::from_ref(&stayed))
-        .unwrap();
-    let (removed, failed) = clear_txt(&store, dir.path()).unwrap();
-    assert!(failed.is_empty() && removed >= 1);
-    assert!(!txt_dir.join(&stayed).exists());
-    assert!(store.txt_leftovers().unwrap().is_empty());
 }
 
 /// A text file open in another program (Windows: without delete sharing, as Word holds it)

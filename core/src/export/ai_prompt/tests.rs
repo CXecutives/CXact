@@ -102,7 +102,6 @@ fn view() -> JobView {
         mail_date: Some("2026-09-20T07:30:00Z".parse().unwrap()),
         first_seen_at: Timestamp::UNIX_EPOCH,
         unread: true,
-        pinned: false,
         detail: DetailState::Ok,
         short: false,
         closed: false,
@@ -432,9 +431,7 @@ fn both(check: impl Fn(Language, &str)) {
     let a = assessment();
     for language in [Language::De, Language::En] {
         let one = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), language);
-        let all = ai_prompt_top(&profile(), &[item(&view, Some(AD), Some(&a))], language);
         check(language, &one);
-        check(language, &all);
     }
 }
 
@@ -508,68 +505,6 @@ fn every_section_of_one_job_in_order() {
             "## Message\n",
         ],
     );
-}
-
-#[test]
-fn every_section_of_the_comparison_in_order() {
-    let view = view();
-    let a = assessment();
-    let jobs = [item(&view, Some(AD), Some(&a)), item(&view, None, None)];
-    let top_de = ai_prompt_top(&profile(), &jobs, Language::De);
-    in_order(
-        &top_de,
-        &[
-            "# Auftrag\n",
-            "# Mein Profil\n",
-            "# Die Jobs\n",
-            "## Job 1 · Interim CFO (m/w/d)\n",
-            "### Eckdaten\n",
-            "### Anzeigentext\n",
-            "### Vorbewertung der App\n",
-            "## Job 2 · Interim CFO (m/w/d)\n",
-            "### Eckdaten\n",
-            "# Arbeitsweise\n",
-            "# Bewertungsregel\n",
-            "# Antwortformat\n",
-            "## Rangfolge\n",
-            "| Platz | Job | Punktzahl | Empfehlung | Warum |",
-            "## Platz 1 · Job 3 · Titel\n",
-            "### Ergebnis\n",
-            "### Anforderungen\n",
-            "### Harte Kriterien\n",
-            "### Risiken und offene Fragen\n",
-            "### Vergütung und Konditionen\n",
-            "### Für die Bewerbung\n",
-        ],
-    );
-    let top_en = ai_prompt_top(&profile(), &jobs, Language::En);
-    in_order(
-        &top_en,
-        &[
-            "# Task\n",
-            "# My profile\n",
-            "# The jobs\n",
-            "## Job 1 · Interim CFO (m/w/d)\n",
-            "### Key facts\n",
-            "### Ad text\n",
-            "### The app's pre-assessment\n",
-            "## Job 2 · Interim CFO (m/w/d)\n",
-            "# How to work\n",
-            "# Scoring rule\n",
-            "# Answer format\n",
-            "## Ranking\n",
-            "| Place | Job | Score | Recommendation | Why |",
-            "### Result\n",
-            "### Requirements\n",
-            "### Hard criteria\n",
-            "### Risks and open questions\n",
-            "### Pay and conditions\n",
-            "### For the application\n",
-        ],
-    );
-    // The comparison says the pre-assessment note and the facts note once, not per job.
-    assert_eq!(top_de.matches(de_words().facts_note).count(), 1);
-    assert!(!top_de.contains("## Nachricht"), "no message per job");
 }
 
 #[test]
@@ -1125,77 +1060,16 @@ fn no_engine_code_reaches_a_prompt() {
     let raw_words = regex::Regex::new(r"\b(exact|stem|vocabulary)\b").unwrap();
     let view = view();
     for language in [Language::De, Language::En] {
-        let one = ai_prompt(&rich, item(&view, Some(AD), Some(&every)), language);
-        let all = ai_prompt_top(&rich, &[item(&view, Some(AD), Some(&every))], language);
-        for prompt in [one, all] {
-            let prose = outside_fences(&prompt);
-            let codes: Vec<&str> = camel.find_iter(&prose).map(|m| m.as_str()).collect();
-            assert!(codes.is_empty(), "engine codes {codes:?} in:\n{prose}");
-            assert!(!path.is_match(&prose), "a JSON path in:\n{prose}");
-            assert!(!raw_words.is_match(&prose), "a raw param in:\n{prose}");
-            for raw in ["\"type\"", "{", "}"] {
-                assert!(!prose.contains(raw), "{raw} in:\n{prose}");
-            }
+        let prompt = ai_prompt(&rich, item(&view, Some(AD), Some(&every)), language);
+        let prose = outside_fences(&prompt);
+        let codes: Vec<&str> = camel.find_iter(&prose).map(|m| m.as_str()).collect();
+        assert!(codes.is_empty(), "engine codes {codes:?} in:\n{prose}");
+        assert!(!path.is_match(&prose), "a JSON path in:\n{prose}");
+        assert!(!raw_words.is_match(&prose), "a raw param in:\n{prose}");
+        for raw in ["\"type\"", "{", "}"] {
+            assert!(!prose.contains(raw), "{raw} in:\n{prose}");
         }
     }
-}
-
-// ------------------------------------------------------------------------- the comparison
-
-#[test]
-fn the_comparison_of_the_best_matches() {
-    let job = |id: &str, title: &str, pinned: bool| {
-        let mut v = view();
-        v.key.id = id.into();
-        v.title = title.into();
-        v.pinned = pinned;
-        v
-    };
-    let jobs = [
-        job("1", "Interim CFO", true),
-        job("2", "Head of Controlling", false),
-        job("3", "Finance Business Partner", false),
-    ];
-    let a = assessment();
-    let long = "Anforderung ".repeat(4_000);
-    let items = [
-        item(&jobs[0], Some(AD), Some(&a)),
-        item(&jobs[1], Some(long.as_str()), Some(&a)),
-        item(&jobs[2], None, None),
-    ];
-    let prompt = ai_prompt_top(&profile(), &items, Language::De);
-    for private in PRIVATE {
-        assert!(!prompt.contains(private), "{private} leaked");
-    }
-    in_order(
-        &prompt,
-        &[
-            "3 Jobs aus meiner App, zuerst mein Favorit, dann die besten nach der Vorbewertung.",
-            "## Job 1 · Interim CFO\n",
-            "- Mein Favorit",
-            "## Job 2 · Head of Controlling\n",
-            "Der Text ist nach 6.000 Zeichen gekürzt",
-            "## Job 3 · Finance Business Partner\n",
-            "Den Text der Anzeige hat die App nicht.",
-            de_words().no_assessment,
-            "## Rangfolge",
-        ],
-    );
-    assert_eq!(prompt.matches("- Mein Favorit").count(), 1);
-    // The app's word for the star, as the list says it.
-    assert!(!prompt.to_lowercase().contains("gemerkt"));
-    assert_eq!(
-        prompt.matches("- Ergebnis: 68 von 100").count(),
-        2,
-        "each job with its pre-assessment"
-    );
-    assert!(prompt.chars().count() < 3 * MAX_TOP_AD_CHARS + MAX_PROFILE_CHARS + 30_000);
-    let en = ai_prompt_top(&profile(), &items, Language::En);
-    assert!(
-        en.contains("3 jobs from my app, first my favourite, then the best by the pre-assessment.")
-    );
-    assert!(en.contains("- My favourite"));
-    assert!(!en.to_lowercase().contains("saved"));
 }
 
 #[test]

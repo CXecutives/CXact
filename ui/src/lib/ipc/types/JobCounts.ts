@@ -14,11 +14,7 @@ inbox: number,
 /**
  * Unread in the inbox, not excluded.
  */
-unread: number, 
-/**
- * Favourites (the star) in the inbox.
- */
-favourites: number, archive: number, 
+unread: number, archive: number, 
 /**
  * In the trash ("Papierkorb").
  */

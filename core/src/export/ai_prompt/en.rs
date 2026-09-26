@@ -18,10 +18,6 @@ const INTRO: &str = "You are an experienced recruiter for interim assignments, p
 
 Below are my profile, the ad and the app's pre-assessment, then how to work, the scoring rule and the answer format.";
 
-const TOP_INTRO: &str = "You are an experienced recruiter for interim assignments, projects and permanent positions. Compare for me the best current jobs from my job alert app and tell me which are worth applying for and where to start. Measure each job strictly against my profile, back every statement with evidence and say clearly what is missing or unclear. The app has already pre-assessed each job by machine; check those results instead of adopting them.
-
-Below are my profile and the jobs with key facts, ad text and pre-assessment, then how to work, the scoring rule and the answer format.";
-
 const GLOSSARY: &[(&str, &str)] = &[
     (
         "harte_kriterien",
@@ -138,49 +134,10 @@ Two to four points: the strongest evidence from the profile for the core require
 ## Message
 Only for Apply or Clarify first: a draft to the client or agency in three to five sentences, with the strongest evidence and the most important open questions.";
 
-const TOP_ANSWER: &str = "Answer in English, plain, concrete and short: no filler, no retelling of the ads, no dashes as separators, no exclamation marks, no emoji. Quotes stay in the language of the ad. Keep exactly this structure.
-
-## Ranking
-| Place | Job | Score | Recommendation | Why |
-|---|---|---|---|---|
-
-Sorted by score; on a tie interim before permanent, then fewer open must-haves. Job is the number from the list above with the title, recommendation Apply, Clarify first or Do not apply, Why one sentence. An excluded job comes last with **Excluded** instead of a score. Below the table one sentence on which job I should start with and why.
-
-## Place 1 · Job 3 · Title
-Then every job in the order of the ranking under such a heading, with these sections, short for each job.
-
-### Result
-**X of 10** and the recommendation, below it one sentence: what carries, what is missing, what to do next. An excluded job with the criterion and the quote, followed by the score on the merits without the exclusion.
-
-### Reasons
-Up to three points: level and cap of the scoring rule, focus areas, target role and preferences, and where you differ from the app's pre-assessment.
-
-### Requirements
-| Requirement | Weight | Status | Ad | Profile |
-|---|---|---|---|---|
-
-One row per requirement, must before nice. Weight must, nice or formal; status met, partly, missing or unclear; Ad a verbatim quote; Profile the entry with years or the concrete gap.
-
-### Hard criteria
-| Criterion | Profile | Ad | Result |
-|---|---|---|---|
-
-Contract type, pay, seniority, availability, location and every other exclusion criterion of the profile; result met, partly, violated or not stated.
-
-### Risks and open questions
-Up to four points: red flags from the ad or the profile and the questions to the client or agency that decide the application.
-
-### Pay and conditions
-One or two sentences: pay against `min_tagessatz` and `tagessatz_wunsch` (for a permanent role against `min_jahresgehalt`), duration, remote share and start; if the pay is missing, an estimate, marked as such.
-
-### For the application
-Two to three points: the strongest evidence from the profile and at most one point I should address openly.";
-
 static WORDS: Words = Words {
     rubric: include_str!("../ai_rubric.en.md"),
     task_heading: "Task",
     intro: INTRO,
-    top_intro: TOP_INTRO,
     profile_heading: "My profile",
     profile_note: "As JSON, without name and contact details.",
     glossary_intro: "The keys belong to my app's profile format and are German:",
@@ -201,8 +158,6 @@ static WORDS: Words = Words {
     method: METHOD,
     answer_heading: "Answer format",
     answer: ANSWER,
-    top_answer: TOP_ANSWER,
-    jobs_heading: "The jobs",
     cut: "[cut]",
     untitled: "(untitled)",
     unknown: "not found",
@@ -222,7 +177,6 @@ static WORDS: Words = Words {
         industries: "Industries",
         skills: "Skills",
         mail: "Date of the alert email",
-        pinned: "My favourite",
         status: "Status",
         link: "Link",
         closed: "The portal page takes no more applications.",
@@ -333,26 +287,6 @@ impl Wording for English {
             WorkMode::Hybrid => "hybrid",
             WorkMode::Onsite => "on site",
         }
-    }
-
-    fn job_heading(&self, n: usize, title: &str) -> String {
-        format!("Job {n} · {title}")
-    }
-
-    fn top_note(&self, jobs: usize, pinned: usize) -> String {
-        let count = if jobs == 1 {
-            "One job".to_owned()
-        } else {
-            format!("{jobs} jobs")
-        };
-        let order = match pinned {
-            0 => "the best by the pre-assessment".to_owned(),
-            1 => "first my favourite, then the best by the pre-assessment".to_owned(),
-            n => format!("first my {n} favourites, then the best by the pre-assessment"),
-        };
-        format!(
-            "{count} from my app, {order}. Each job's pre-assessment is a machine word match between the ad and the profile, not a verdict."
-        )
     }
 
     fn text_cut(&self, max: usize) -> String {

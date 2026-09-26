@@ -1,9 +1,9 @@
 //! `top_matches.json` in the result folder: the best current matches with what the engine
-//! found, for the external matching skill (an optional second stage) - the jobs the
-//! comparison prompt takes too (`Store::best_matches`, "Beste zum Vergleich"): counted as
-//! scored (or counted anyway by the user, "Trotzdem passend"), in the inbox, the ad still
-//! online and open, the favourites first. It does not depend on the last run, so a fetch
-//! without new jobs keeps the list; every run (a rescore too) writes it anew.
+//! found, for the external matching skill (an optional second stage) - the best matches
+//! (`Store::best_matches`, "Beste zum Vergleich"): counted as scored (or counted anyway by
+//! the user, "Trotzdem bewerten"), in the inbox, the ad still online and open, best first. It
+//! does not depend on the last run, so a fetch without new jobs keeps the list; every run (a
+//! rescore too) writes it anew.
 //! The file name and the English keys are a contract with the skill - do not rename.
 
 use jiff::Timestamp;
@@ -22,10 +22,9 @@ pub const TOP_MATCHES_NAME: &str = "top_matches.json";
 /// Most jobs in the file.
 pub const TOP_MATCHES_MAX: u32 = 10;
 /// Version of the file layout (2: `appStatus` and `firstSeenAt` per job; 3: `detail` and
-/// `facts` per job, the jobs of the comparison prompt).
+/// `facts` per job). `appStatus` is always `null` since the favourites went; the key stays,
+/// the skill reads `null` as no stage.
 pub const TOP_MATCHES_SCHEMA: u32 = 3;
-/// The `appStatus` of a favourite (the only mark there is).
-const SAVED: &str = "saved";
 
 /// The file.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -58,7 +57,8 @@ pub struct TopMatch {
     pub band: Band,
     pub must_met: u16,
     pub must_total: u16,
-    /// `saved` for a favourite (the star), `null` for none (the key of schema 2 stays).
+    /// Always `null`: the stage of earlier versions (the favourite was `saved`); the key of
+    /// schema 2 stays for the skill.
     pub app_status: Option<String>,
     /// When the app first saw the job.
     pub first_seen_at: Timestamp,
@@ -116,8 +116,8 @@ pub fn top_matches(
             jobs.push(entry.top);
         }
     }
-    // The order of the comparison: the favourites first, then the (fresh) score.
-    jobs.sort_by_key(|j| (j.app_status.is_none(), std::cmp::Reverse(j.score)));
+    // Best first by the (fresh) score.
+    jobs.sort_by_key(|j| std::cmp::Reverse(j.score));
     jobs.truncate(TOP_MATCHES_MAX as usize);
     Ok(TopMatches {
         schema: TOP_MATCHES_SCHEMA,
@@ -221,7 +221,7 @@ fn entry(job: &JobRow, explained: Option<&Assessment>) -> Option<Found> {
         band: band(current.score),
         must_met: current.must_met,
         must_total: current.must_total,
-        app_status: job.pinned_at.map(|_| SAVED.to_owned()),
+        app_status: None,
         first_seen_at: job.first_seen_at,
         met: labels(ReasonKind::Met),
         partial: labels(ReasonKind::Partial),
@@ -331,7 +331,7 @@ Rahmenbedingungen:
     #[test]
     fn the_skill_reads_what_the_app_writes() {
         let at = |s: &str| s.parse::<Timestamp>().unwrap();
-        let job = |key: &str, title: &str, score: u8, app_status| TopMatch {
+        let job = |key: &str, title: &str, score: u8| TopMatch {
             key: key.into(),
             title: title.into(),
             company: "Hanseatic Holding GmbH".into(),
@@ -343,7 +343,7 @@ Rahmenbedingungen:
             band: band(score),
             must_met: 3,
             must_total: 4,
-            app_status,
+            app_status: None,
             first_seen_at: at("2026-09-20T07:30:00Z"),
             met: vec!["Konzernabschluss nach HGB".into()],
             partial: vec!["Reporting nach IFRS".into()],
@@ -366,13 +366,8 @@ Rahmenbedingungen:
             generated_at: at("2026-09-24T07:30:00Z"),
             rev: Some("e3:test".into()),
             jobs: vec![
-                job(
-                    "freelancermap:2801",
-                    "Interim CFO",
-                    91,
-                    Some(SAVED.to_owned()),
-                ),
-                job("linkedin:4100200301", "Head of Controlling", 84, None),
+                job("freelancermap:2801", "Interim CFO", 91),
+                job("linkedin:4100200301", "Head of Controlling", 84),
             ],
         };
         let json = format!("{}\n", serde_json::to_string_pretty(&top).unwrap());
@@ -382,7 +377,7 @@ Rahmenbedingungen:
             std::fs::write(&path, &json).unwrap();
             panic!("regenerated {} - commit it", path.display());
         }
-        assert!(json.contains("\"appStatus\": \"saved\"") && json.contains("\"firstSeenAt\""));
+        assert!(json.contains("\"appStatus\": null") && json.contains("\"firstSeenAt\""));
         assert!(json.contains("\"detail\": \"ok\"") && json.contains("\"remoteFrom\": 60"));
     }
 }

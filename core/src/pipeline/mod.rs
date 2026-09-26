@@ -121,7 +121,7 @@ pub struct RunContext {
     /// The trash empties itself of jobs that lie there this long, at the end of the run;
     /// 0 = never (settings).
     pub auto_empty_trash_days: u32,
-    /// Language of the Excel file and the HTML overview (the text files stay German).
+    /// Language of the Excel file (the text files stay German).
     pub language: Language,
     /// The Gmail address the run reads (`None` without a mailbox step or in the dry run):
     /// after a successful scan the files link the alert mails in its account.
@@ -372,8 +372,6 @@ pub struct NewJobs {
 pub struct ExportSummary {
     /// Written Excel overview (if written in this run).
     pub overview_xlsx: Option<PathBuf>,
-    /// Written HTML overview (if written in this run).
-    pub overview_html: Option<PathBuf>,
     /// A foreign overview at the same path was backed up here.
     pub backup: Option<PathBuf>,
     pub txt_written: usize,
@@ -456,10 +454,7 @@ impl RunSummary {
                 && !error.params.is_empty()
             {
                 error.params.clear();
-            } else if export.backup.take().is_none()
-                && export.overview_html.take().is_none()
-                && export.overview_xlsx.take().is_none()
-            {
+            } else if export.backup.take().is_none() && export.overview_xlsx.take().is_none() {
                 break;
             }
         }
@@ -1116,8 +1111,6 @@ enum Target {
     Overview,
     /// Backing up a foreign overview.
     Backup,
-    /// The HTML overview.
-    OverviewHtml,
 }
 
 impl Target {
@@ -1128,7 +1121,6 @@ impl Target {
             Target::Txt => "txt",
             Target::Overview => "overview",
             Target::Backup => "backup",
-            Target::OverviewHtml => "overviewHtml",
         }
     }
 
@@ -1137,7 +1129,6 @@ impl Target {
     const fn file_name(self) -> Option<&'static str> {
         match self {
             Target::Overview | Target::Backup => Some(export::XLSX_NAME),
-            Target::OverviewHtml => Some(export::HTML_NAME),
             Target::TxtFolder => Some(TXT_DIR),
             Target::Workspace | Target::Txt => None,
         }
@@ -1174,17 +1165,11 @@ pub fn export_all(
         now,
         &mut summary,
     );
-    // The HTML overview is small and never locked by a browser: written on every export.
-    match write_html_overview(store, &result_dir, now, language) {
-        Ok(path) => summary.overview_html = Some(path),
-        Err(e) => note_error(&mut summary, &e, Target::OverviewHtml),
-    }
     summary
 }
 
-/// The Excel file and the report written anew when the user's marks (a move, the star,
-/// "Beworben", a note, "fits anyway", a delete) changed them since the Excel file was last
-/// written - the stamp of the last write says so - and when the file is missing: call it
+/// The Excel file written anew when the user's marks (a move, "fits anyway", a delete)
+/// changed it since it was last written - the stamp of the last write says so - and when the file is missing: call it
 /// after marks and right before "open Excel". A run writes both by itself. An Excel file
 /// open in Excel stays as it is: the summary's error is `fileLocked` with `target`
 /// `overview`, `path` and `name` (`JobAlerts.xlsx`); `overviewXlsx` names the file when it
@@ -1211,57 +1196,19 @@ pub fn refresh_excel(
         .unwrap_or_else(|| last_scan_run(store).unwrap_or(0));
     let info = info_rows(store, now, Texts::of(language));
     write_overview(store, &path, &info, (run, language), now, &mut summary);
-    if summary.overview_xlsx.is_some() {
-        match write_html_overview(store, &result_dir, now, language) {
-            Ok(html) => summary.overview_html = Some(html),
-            Err(e) => note_error(&mut summary, &e, Target::OverviewHtml),
-        }
-    }
     summary
 }
 
-/// Most new matches the HTML overview lists, best first (the app lists them all).
-pub const OVERVIEW_NEW_MAX: u32 = 20;
-
-/// Writes `JobAlerts.html` from the jobs as they are now (in `language`): the favourites of
-/// the inbox and the best new matches. Returns its path.
-fn write_html_overview(
-    store: &Store,
-    result_dir: &Path,
-    now: Timestamp,
-    language: Language,
-) -> crate::Result<PathBuf> {
-    let path = export::overview_html_path(result_dir);
-    let overview = store.overview_jobs(OVERVIEW_NEW_MAX)?;
-    export::write_overview_html(&path, &overview, now, language)?;
-    Ok(path)
-}
-
-/// The files a mark changes (a move, the star, "fits anyway", read or unread), written anew
-/// without a run: the HTML overview and `top_matches.json` - both small, so the skill never
-/// reads a job the user threw away. The Excel file waits for the next run (its Info sheet
-/// says the app rewrites it). A failure only goes to the log.
+/// The file a mark changes (a move, "fits anyway", read or unread), written anew without a
+/// run: `top_matches.json` - small, so the skill never reads a job the user threw away. The
+/// Excel file follows through [`refresh_excel`]. A failure only goes to the log.
 pub fn refresh_exports(
     store: &Store,
     workspace: &Path,
     matcher: Option<&dyn Matcher>,
     now: Timestamp,
-    language: Language,
 ) {
-    if let Err(e) = refresh_overview(store, workspace, now, language) {
-        log::warn!("{} not written: {e}", export::HTML_NAME);
-    }
     write_top_matches(store, workspace, matcher, now);
-}
-
-/// Writes the HTML overview as the jobs are now (before it is opened, say); returns its path.
-pub fn refresh_overview(
-    store: &Store,
-    workspace: &Path,
-    now: Timestamp,
-    language: Language,
-) -> crate::Result<PathBuf> {
-    write_html_overview(store, &workspace.join(RESULT_DIR), now, language)
 }
 
 /// `top_matches.json` for the matching skill; a failure only goes to the log (the file is an
@@ -1317,7 +1264,7 @@ pub fn delete_jobs(
 
 /// Removes the text files of jobs deleted for good. A file that stays (open in another
 /// program, or the work folder on a drive that is gone) is remembered - its job's row is
-/// gone - so the next export, "Textdateien löschen" or a reset removes it
+/// gone - so the next export or a reset removes it
 /// ([`Store::txt_leftovers`]); the user needs no word about it.
 fn remove_deleted_txt(store: &Store, workspace: &Path, names: &[String]) {
     let failed = if workspace.is_dir() {
@@ -1361,24 +1308,6 @@ fn retry_txt_leftovers(store: &Store, result_dir: &Path) {
     }
 }
 
-/// "Delete text files": removes the app's text files (with those of deleted jobs that stayed
-/// earlier) and returns how many went and the names of the files that stayed (open right
-/// now); of the deleted jobs' files only those stay remembered - all of them while the work
-/// folder is gone.
-pub fn clear_txt(store: &Store, workspace: &Path) -> crate::Result<(usize, Vec<String>)> {
-    let (removed, failed) =
-        export::clear_txt_files(&workspace.join(RESULT_DIR), &store.txt_names()?);
-    if workspace.is_dir() {
-        let still: Vec<String> = store
-            .txt_leftovers()?
-            .into_iter()
-            .filter(|n| failed.contains(n))
-            .collect();
-        store.set_txt_leftovers(&still)?;
-    }
-    Ok((removed, failed))
-}
-
 /// "Rewrite text files" (e.g. after a change of folder): all jobs with a full text, the
 /// names stay. What cannot be written keeps its mark - the next run therefore does not
 /// recreate a file deleted on purpose by itself.
@@ -1396,7 +1325,7 @@ pub fn rewrite_txt(store: &Store, workspace: &Path, now: Timestamp) -> ExportSum
 
 /// Is the work folder there? A deleted local folder is simply made again; one on a drive
 /// that is gone (a network share, a stick) is one clear error naming the work folder - not
-/// a text folder, an Excel file and an overview that each could not be written - and the
+/// a text folder and an Excel file that each could not be written - and the
 /// export is skipped: the files follow once the folder is back.
 fn reachable(workspace: &Path, summary: &mut ExportSummary) -> bool {
     match export::ensure_dir(workspace) {
@@ -1743,8 +1672,8 @@ fn info_rows(store: &Store, written: Timestamp, words: &Texts) -> Vec<(String, I
             })
             .collect(),
     };
-    // "Erstellt am" / "Created on", the HTML overview's word for the same thing.
-    rows.push((words.html_created.into(), InfoValue::Moment(written)));
+    // "Erstellt am" / "Created on".
+    rows.push((words.created.into(), InfoValue::Moment(written)));
     rows.push((
         words.info_jobs_total.into(),
         InfoValue::Number(store.sheet_count().unwrap_or(0)),

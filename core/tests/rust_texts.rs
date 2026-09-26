@@ -1,5 +1,5 @@
 //! The texts on the Rust side follow the rules of the interface's catalogs (CLAUDE.md,
-//! glossary in docs/PLAN.md): the export texts (Excel, HTML overview), the startup dialog,
+//! glossary in docs/PLAN.md): the export texts (Excel), the startup dialog,
 //! the sign-in window title, the file dialogs and the macOS menu. Each block starts at a line
 //! naming "User-facing text, German" (or "User-facing text, English") and ends at "end of
 //! user-facing text"; every string literal in it is checked, the German ones against the
@@ -61,7 +61,7 @@ const GERMAN_WORDS: [&str; 14] = [
 ];
 
 /// Old words and the glossary word the texts use instead.
-const GLOSSARY: [(&str, &str); 11] = [
+const GLOSSARY: [(&str, &str); 10] = [
     ("Quelle", "Portal"),
     ("Eintrag", "Job"),
     ("Volltext", "Details"),
@@ -71,8 +71,6 @@ const GLOSSARY: [(&str, &str); 11] = [
     ("Mailbox", "Postfach"),
     ("Lauf", "Abruf"),
     ("Kurzfassung", "Anriss"),
-    // The star is the favourite ("Gemerkte" too).
-    ("Gemerkt", "Favorit"),
     ("Beraterprofil", "Profil"),
 ];
 

@@ -6,10 +6,6 @@ export type SettingsView = {
  */
 workspace: string, workspaceIsDefault: boolean, 
 /**
- * Number of the app's text files - exactly what "delete text files" removes.
- */
-txtFiles: number, 
-/**
  * The Excel file of the overview, where it is or will be written.
  */
 excelPath: string, excelExists: boolean, };

@@ -2,7 +2,7 @@
 // aliases every `@tauri-apps/api/*` import to this file). It answers every IPC command
 // (typed by the generated `Commands` map) from a small in-memory store, records the calls and
 // lets a test push run events. Everything the engine computes (scores, reasons, passages, the
-// Übersicht's numbers, the profile as understood, the prompts) comes from demo/snapshot.json,
+// profile as understood, the prompts) comes from demo/snapshot.json,
 // which core/tests/ui_demo_snapshot.rs writes from the invented ads of demo/ads.json; the stub
 // only keeps state (docs/CHANGING.md, "The preview's demo data"):
 //
@@ -68,7 +68,6 @@ import type {
   MailboxCheck,
   MoveBack,
   Notice,
-  OverviewStats,
   Palette,
   Place,
   PortalState,
@@ -237,8 +236,6 @@ const NO_ALERTS: MailboxCheck = {
   total: 0,
   perPortal: DEMO_CHECK.perPortal.map((count) => ({ ...count, count: 0 })),
 };
-/** The text files of the demo's jobs with a full text. */
-const TXT_FILES = 38;
 const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
 const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
@@ -298,7 +295,6 @@ function manyJobs(count: number): JobView[] {
       mailDate: at(i / 4),
       firstSeenAt: at(i / 4),
       unread: i % 3 === 0,
-      pinned: false,
       alsoOn: [],
     };
   });
@@ -752,7 +748,6 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     score: demoScoring(),
     export: {
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
-      overviewHtml: 'C:/Users/demo/Jobs/Uebersicht.html',
       backup: null,
       txtWritten: 7,
       txtFailed: 0,
@@ -814,7 +809,6 @@ function initial(): void {
     settings: {
       workspace: `${HOME}/Documents/Job-Alerts`,
       workspaceIsDefault: true,
-      txtFiles: TXT_FILES,
       excelPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.xlsx`,
       excelExists: true,
     },
@@ -852,12 +846,10 @@ function initial(): void {
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
-      state.settings.txtFiles = 0;
       break;
     case 'no-files':
       // A connected mailbox, but nothing written to the workspace yet.
       state.settings.excelExists = false;
-      state.settings.txtFiles = 0;
       break;
     case 'mailbox-only':
       jobs = [];
@@ -916,7 +908,6 @@ function initial(): void {
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
-      state.settings.txtFiles = 0;
       state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
       break;
     case 'session-left':
@@ -1013,14 +1004,12 @@ function initial(): void {
 
 /**
  * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; a favourite counts while it is in the inbox; the excluded ones
- * of the archive and the trash each in their place.
+ * excluded, per portal too; the excluded ones of the archive and the trash each in their place.
  */
 function countsOf(list: JobView[]): JobCounts {
   const c: JobCounts = {
     inbox: 0,
     unread: 0,
-    favourites: 0,
     archive: 0,
     trash: 0,
     excluded: 0,
@@ -1032,7 +1021,6 @@ function countsOf(list: JobView[]): JobCounts {
   };
   for (const j of list) {
     const out = j.match?.status === 'excluded';
-    if (j.pinned && j.place === 'inbox') c.favourites += 1;
     if (j.place === 'archive') c.archive += 1;
     if (j.place === 'trash') c.trash += 1;
     if (out && j.place === 'archive') c.excludedArchive += 1;
@@ -1060,11 +1048,9 @@ const tombstones = new Set<string>();
 const overridden = new Map<string, Match>();
 const markKey = (key: JobKey): string => `${key.portal}:${key.id}`;
 
-/** The list of a query (store::job_page): a place, the favourites of the inbox, only the
- *  unread ones. */
-function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favourites'>): boolean {
-  const where = query.favourites ? j.pinned && j.place === 'inbox' : j.place === query.place;
-  return where && (!query.unread || j.unread);
+/** The list of a query (store::job_page): a place, only the unread ones. */
+function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread'>): boolean {
+  return j.place === query.place && (!query.unread || j.unread);
 }
 
 /** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
@@ -1081,36 +1067,6 @@ function refresh(): void {
 }
 
 const DAY_MS = 24 * HOUR;
-
-/** The Übersicht's numbers (view::overview_stats): the open musts and the market as the
- *  engine counted them (of the demo, of the demo without a profile, of an empty database),
- *  the enabled portals with their last alert mail, and what the inbox leaves open as the stub
- *  holds it now (store::inbox_open with the portal's switches: ads "Details holen" can still
- *  fetch, excluded jobs not opened yet). */
-function overviewStats(): OverviewStats {
-  const engine =
-    jobs.length === 0
-      ? DEMO.overviewEmpty
-      : state.profile === null
-        ? DEMO.overviewWithoutProfile
-        : DEMO.overview;
-  const inbox = jobs.filter((j) => j.place === 'inbox');
-  const detailsWanted = inbox.filter((j) => {
-    const switches = state.portals.find((p) => p.portal === j.key.portal);
-    if (switches === undefined || !switches.enabled || !switches.fetchDetails) return false;
-    const kind = j.detail.kind;
-    if (kind === 'teaser') return switches.loginEnabled;
-    return kind === 'pending' || kind === 'onRequest' || kind === 'failed';
-  }).length;
-  const excludedNew = inbox.filter((j) => j.unread && j.match?.status === 'excluded').length;
-  const enabled = new Set(state.portals.filter((p) => p.enabled).map((p) => p.portal));
-  return {
-    ...structuredClone(engine),
-    quietPortals: engine.quietPortals.filter((p) => enabled.has(p.portal)),
-    detailsWanted,
-    excludedNew,
-  };
-}
 
 /** Moves jobs to a place; returns how many moved. */
 /** Moves jobs to a place; returns the keys that really moved (store::move_jobs). */
@@ -1196,9 +1152,7 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   // only the count leaves them out (store::job_page). By date: the mail's, in the trash
   // the day the job went there.
   const date = (j: JobView): string =>
-    query.place === 'trash' && !query.favourites
-      ? (trashedAt.get(markKey(j.key)) ?? '')
-      : (j.mailDate ?? j.firstSeenAt);
+    query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
   // store::page_order: the excluded last; by match the jobs without a score first (the list's
   // "Noch ohne Passung" on top, so every page is complete); a closed ad after the open ones;
   // then the best score.
@@ -1311,15 +1265,6 @@ function promptOf(j: JobView): string {
   const prompt = DEMO.prompts[state.language][sourceOf(j.key)];
   if (prompt === undefined) throw fail('notFound', { what: 'job' });
   return prompt;
-}
-
-/** The comparison of the best current matches (export::ai_prompt_top); none without a scored
- *  job in the inbox. */
-function promptTopOf(): string {
-  if (!jobs.some((j) => j.match?.status === 'scored' && j.place === 'inbox')) {
-    throw fail('notFound', { what: 'jobs' });
-  }
-  return DEMO.prompts[state.language].top!;
 }
 
 /* --------------------------------------------------------------------- runs */
@@ -1715,18 +1660,9 @@ const handlers: Handlers = {
     refresh();
     return true;
   },
-  // The favourite, a flag of its own whatever the place (store::set_pinned).
-  set_pinned: ({ key, on }) => {
-    const j = find(key);
-    if (j === undefined || j.pinned === on) return false;
-    j.pinned = on;
-    refresh();
-    return true;
-  },
   move_jobs: ({ keys, to }) => moveJobs(keys, to),
   move_back: ({ jobs: back }) => moveBack(back),
   restore_jobs: ({ keys }) => restoreJobs(keys),
-  overview_stats: () => structuredClone(overviewStats()),
   company_count: ({ company, days }) => {
     const since = Date.now() - days * DAY_MS;
     return jobs.filter(
@@ -1756,10 +1692,6 @@ const handlers: Handlers = {
     if (j === undefined) throw fail('notFound', { what: 'job' });
     if (state.profile === null) throw fail('notFound', { what: 'profile' });
     return promptOf(j);
-  },
-  ai_prompt_top: () => {
-    if (state.profile === null) throw fail('notFound', { what: 'profile' });
-    return promptTopOf();
   },
   pick_profile: () => structuredClone(params.get('file') === 'focus' ? FOCUS_DRAFT : FILE_DRAFT),
   parse_profile: ({ text, update }) => answerDraft(text, update),
@@ -1905,29 +1837,9 @@ const handlers: Handlers = {
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };
   },
-  // Every job with its full text gets its file again (none before the first fetch).
-  rewrite_txt: () => {
-    const written = state.lastRun === null || jobs.length === 0 ? 0 : TXT_FILES;
-    state.settings.txtFiles = written;
-    return {
-      overviewXlsx: null,
-      overviewHtml: null,
-      backup: null,
-      txtWritten: written,
-      txtFailed: 0,
-      error: null,
-    };
-  },
-  clear_txt: () => {
-    const removed = state.settings.txtFiles;
-    state.settings.txtFiles = 0;
-    return { removed, failed: [] };
-  },
-  // Like `existing` (commands/app.rs): a result file nothing wrote yet is not found (the
-  // HTML overview is written before it opens, except in the dry run).
+  // Like `existing` (commands/app.rs): a result file nothing wrote yet is not found.
   open_target: ({ target }) => {
-    const file = target.kind === 'excel' || (target.kind === 'overview' && state.dryRun);
-    if (file && !state.settings.excelExists) {
+    if (target.kind === 'excel' && !state.settings.excelExists) {
       throw fail('notFound', { what: 'file', path: state.settings.excelPath });
     }
     return null;
@@ -2039,7 +1951,6 @@ const harness: Harness = {
       listJobs({
         place: 'inbox',
         unread: false,
-        favourites: false,
         sort: 'match',
         search: null,
         portal: null,
@@ -2091,8 +2002,6 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'remove_mailbox',
   'portal_login',
   'portal_logout',
-  'rewrite_txt',
-  'clear_txt',
   'reset_all',
   'restore_backup',
 ]);

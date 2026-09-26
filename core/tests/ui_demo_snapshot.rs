@@ -1,8 +1,8 @@
 //! The browser preview's demo data, computed by the real engine. The preview (`npm run
 //! harness`, `tools/ui-preview.cmd`) answers the app's commands from a stub
 //! (`tools/ui-harness/stub.ts`); everything the engine computes there - list rows, the reader
-//! with its reasons and passages, the Übersicht's numbers, what the app understood of the
-//! profile, the AI prompts - comes from `tools/ui-harness/demo/snapshot.json`, which this test
+//! with its reasons and passages, what the app understood of the profile, the AI prompts -
+//! comes from `tools/ui-harness/demo/snapshot.json`, which this test
 //! writes from the invented ads of `demo/ads.json` and the invented profile of
 //! `demo/profile.json`. So an engine change reaches the preview without mirroring it by hand.
 //!
@@ -14,11 +14,11 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use jiff::{SignedDuration, Timestamp};
-use jobalert_core::export::{PromptSource, ai_prompt, ai_prompt_top};
+use jobalert_core::export::{PromptSource, ai_prompt};
 use jobalert_core::model::{AlertMail, Place, Posting};
 use jobalert_core::pipeline::{LocalMatcher, Matcher};
 use jobalert_core::portal::{JobKey, Portal};
-use jobalert_core::settings::{Language, Settings};
+use jobalert_core::settings::Language;
 use jobalert_core::store::Store;
 use jobalert_core::view::{self, JobQuery, JobSort, JobView};
 use serde::{Deserialize, Serialize};
@@ -36,8 +36,6 @@ const PROFILE_FILE_NAME: &str = "profil-interim-finance.json";
 const SUBJECT: &str = "Neue Jobs für Ihr Profil";
 /// The Gmail id of the first alert mail (the others count up from it).
 const GMAIL_ID: u64 = 0x18c2_f0a9_d1e4_b7a3;
-/// Most jobs of the comparison prompt (the Übersicht asks for five).
-const TOP: u32 = 5;
 
 fn demo_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../tools/ui-harness/demo")
@@ -79,8 +77,6 @@ struct Ad {
     closed: bool,
     #[serde(default)]
     read: bool,
-    #[serde(default)]
-    pinned: bool,
     /// `inbox` (default) or `archive`.
     #[serde(default = "inbox")]
     place: String,
@@ -122,17 +118,13 @@ struct Snapshot {
     details: BTreeMap<String, view::JobDetail>,
     /// The scripted fetch's new jobs as their alert mails announce them.
     announced: Vec<JobView>,
-    /// Jobs once their page came and the engine scored them (`portal:id`): those whose
-    /// details were still missing ("Details holen") and the scripted fetch's.
+    /// Jobs once their page came and the engine scored them (`portal:id`): those whose ad
+    /// was still missing ("Anzeige laden") and the scripted fetch's.
     fetched: BTreeMap<String, Fetched>,
-    /// The Übersicht's numbers with the profile, after it was removed, and without any job.
-    overview: view::OverviewStats,
-    overview_without_profile: view::OverviewStats,
-    overview_empty: view::OverviewStats,
     /// The stored profile with what the engine understood of it.
     profile: view::ProfileInfo,
     /// The AI prompts per language: every job's (`portal:id`, the scripted fetch's once their
-    /// page came) and the comparison of the best ones before the fetch (`top`).
+    /// page came).
     prompts: BTreeMap<&'static str, BTreeMap<String, String>>,
 }
 
@@ -216,9 +208,6 @@ fn marks(store: &Store, ad: &Ad, key: &JobKey) {
     if ad.read {
         store.mark_read(key, seen).unwrap();
     }
-    if ad.pinned {
-        store.set_pinned(key, true, seen).unwrap();
-    }
     match ad.place.as_str() {
         "inbox" => {}
         "archive" => {
@@ -251,7 +240,6 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
         let query = JobQuery {
             place,
             unread: false,
-            favourites: false,
             sort: JobSort::Newest,
             search: None,
             portal: None,
@@ -286,22 +274,6 @@ fn job_prompts(
         .collect()
 }
 
-/// The prompt that compares the best current matches.
-fn top_prompt(
-    store: &Store,
-    matcher: &LocalMatcher,
-    profile: &Value,
-    language: Language,
-) -> String {
-    let sources: Vec<PromptSource> = store
-        .best_matches(TOP)
-        .unwrap()
-        .iter()
-        .map(|row| PromptSource::load(store, Some(matcher), row).unwrap())
-        .collect();
-    let items: Vec<_> = sources.iter().map(PromptSource::job).collect();
-    ai_prompt_top(profile, &items, language)
-}
 /// The demo's fixtures, its database and the engine with its profile.
 struct Demo {
     ads: Vec<Ad>,
@@ -434,14 +406,9 @@ fn snapshot() -> Snapshot {
         .iter()
         .map(|key| (key.to_string(), detail_of(store, matcher, key)))
         .collect();
-    let overview = view::overview_stats(store, &Settings::default(), now()).unwrap();
     let mut prompts = BTreeMap::new();
     for (name, language) in LANGUAGES {
-        let mut texts = job_prompts(store, matcher, &demo.profile, &keys, language);
-        texts.insert(
-            "top".into(),
-            top_prompt(store, matcher, &demo.profile, language),
-        );
+        let texts = job_prompts(store, matcher, &demo.profile, &keys, language);
         prompts.insert(name, texts);
     }
     let profile = demo.profile_info();
@@ -451,12 +418,6 @@ fn snapshot() -> Snapshot {
         let texts = job_prompts(store, matcher, &demo.profile, &arrived, language);
         prompts.entry(name).or_default().extend(texts);
     }
-    // Without a profile the scores go (`remove_profile`).
-    store.clear_matches().unwrap();
-    let overview_without_profile =
-        view::overview_stats(store, &Settings::default(), now()).unwrap();
-    let nothing = Store::in_memory().unwrap();
-    let overview_empty = view::overview_stats(&nothing, &Settings::default(), now()).unwrap();
     Snapshot {
         generated_by: "cargo test -p jobalert-core --test ui_demo_snapshot",
         now: now(),
@@ -464,9 +425,6 @@ fn snapshot() -> Snapshot {
         details,
         announced,
         fetched,
-        overview,
-        overview_without_profile,
-        overview_empty,
         profile,
         prompts,
     }

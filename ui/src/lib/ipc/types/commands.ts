@@ -2,9 +2,7 @@
 import type { Channel } from "@tauri-apps/api/core";
 import type { AppState } from "./AppState";
 import type { Backup } from "./Backup";
-import type { ClearedTxt } from "./ClearedTxt";
 import type { Deleted } from "./Deleted";
-import type { ExportSummary } from "./ExportSummary";
 import type { JobDetail } from "./JobDetail";
 import type { JobKey } from "./JobKey";
 import type { JobPage } from "./JobPage";
@@ -12,7 +10,6 @@ import type { JobQuery } from "./JobQuery";
 import type { Mailbox } from "./Mailbox";
 import type { MoveBack } from "./MoveBack";
 import type { OpenTarget } from "./OpenTarget";
-import type { OverviewStats } from "./OverviewStats";
 import type { Place } from "./Place";
 import type { Portal } from "./Portal";
 import type { ProfileDraft } from "./ProfileDraft";
@@ -31,7 +28,6 @@ export type Commands = {
   list_jobs: { args: { query: JobQuery }; result: JobPage };
   job_detail: { args: { key: JobKey }; result: JobDetail };
   mark_read: { args: { key: JobKey }; result: boolean };
-  set_pinned: { args: { key: JobKey; on: boolean }; result: boolean };
   move_jobs: { args: { to: Place; keys: JobKey[] }; result: JobKey[] };
   move_back: { args: { jobs: MoveBack[] }; result: JobKey[] };
   restore_jobs: { args: { keys: JobKey[] }; result: JobKey[] };
@@ -39,7 +35,6 @@ export type Commands = {
   purge_jobs: { args: { keys: JobKey[] }; result: Deleted };
   empty_trash: { args: Record<string, never>; result: Deleted };
   ai_prompt: { args: { key: JobKey }; result: string };
-  ai_prompt_top: { args: { limit: number }; result: string };
   pick_profile: { args: Record<string, never>; result: ProfileDraft | null };
   parse_profile: { args: { text: string; update: boolean }; result: ProfileDraft };
   profile_prompt: { args: { update: boolean }; result: string };
@@ -53,8 +48,6 @@ export type Commands = {
   portal_login: { args: { portal: Portal }; result: boolean };
   portal_logout: { args: { portal: Portal }; result: boolean };
   pick_workspace: { args: Record<string, never>; result: WorkspacePick | null };
-  rewrite_txt: { args: Record<string, never>; result: ExportSummary };
-  clear_txt: { args: Record<string, never>; result: ClearedTxt };
   open_target: { args: { target: OpenTarget }; result: null };
   save_settings: { args: { patch: SettingsPatch }; result: AppState };
   reset_all: { args: Record<string, never>; result: null };
@@ -62,6 +55,5 @@ export type Commands = {
   restore_backup: { args: { id: string }; result: Backup };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
   clipboard_text: { args: Record<string, never>; result: string | null };
-  overview_stats: { args: Record<string, never>; result: OverviewStats };
   company_count: { args: { company: string; days: number }; result: number };
 };

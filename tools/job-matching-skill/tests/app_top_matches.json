@@ -15,7 +15,7 @@
       "band": "high",
       "mustMet": 3,
       "mustTotal": 4,
-      "appStatus": "saved",
+      "appStatus": null,
       "firstSeenAt": "2026-09-20T07:30:00Z",
       "met": [
         "Konzernabschluss nach HGB"

@@ -1,8 +1,8 @@
 //! What the user keeps about a job: its place - the inbox ("Eingang"), the archive or the
-//! trash ("Papierkorb"), like a mail - the favourite (the star, a flag of its own, with the
-//! time it was set) and "fits anyway"; plus deleting for good from the trash (a tombstone
-//! stays). Runs never touch these columns, except that old jobs archive
-//! themselves and an old trash empties itself (settings).
+//! trash ("Papierkorb"), like a mail - and "fits anyway"; plus deleting for good from the
+//! trash (a tombstone stays). Runs never touch these columns, except that old jobs archive
+//! themselves and an old trash empties itself (settings). The favourite of earlier versions
+//! (`app_status`) is neither read nor written any more; its columns stay.
 //!
 //! Every column is nullable, so the migrations (in `schema`) add them with
 //! `ALTER TABLE job ADD COLUMN`: schema 4 the first marks, schema 5 the rest.
@@ -19,10 +19,10 @@ use crate::time::to_db;
 /// The nullable columns schema 4 added to the `job` table, as `(name, sql_type)` pairs.
 /// Frozen: schema 5 renamed `hidden_at` to `archived_at`.
 ///
-/// - `app_status`: `saved` = the favourite since schema 5 (schema 4 also stored `applied`,
-///   `interview`, `offer` and `rejected`, which schema 5 turns into favourites); `NULL` =
-///   none.
-/// - `app_status_at`: when the favourite was set (Unix seconds).
+/// - `app_status`: `saved` = the favourite from schema 5 on (schema 4 also stored
+///   `applied`, `interview`, `offer` and `rejected`, which schema 5 turns into favourites);
+///   `NULL` = none. Unused since the favourites went (neither read nor written).
+/// - `app_status_at`: when the favourite was set (Unix seconds). Unused likewise.
 /// - `note`: unused since schema 5 (neither read nor written).
 /// - `hidden_at`, now `archived_at`: when the job went to the archive (by the user or by
 ///   age); `NULL` = not archived.
@@ -75,12 +75,6 @@ pub const USER_OVERRIDE: &str = "userOverride";
 /// trash's).
 pub(crate) const INBOX: &str = "archived_at IS NULL AND trashed_at IS NULL";
 
-/// The favourites filter: starred jobs in the inbox. An archived favourite keeps its star
-/// and lies in the archive (user decision 2026-09-26: Neu, Alle and Favoriten filter the
-/// inbox only); none in the trash.
-pub(crate) const FAVOURITES: &str =
-    "app_status IS NOT NULL AND archived_at IS NULL AND trashed_at IS NULL";
-
 /// The condition of a place on the `job` table.
 pub(crate) const fn place_condition(place: Place) -> &'static str {
     match place {
@@ -91,23 +85,6 @@ pub(crate) const fn place_condition(place: Place) -> &'static str {
 }
 
 impl Store {
-    /// The favourite (the star), a flag of its own whatever the place; `true` if it changed.
-    /// Set, it keeps the time it was set.
-    pub fn set_pinned(&self, key: &JobKey, on: bool, now: Timestamp) -> Result<bool> {
-        self.write(|conn| {
-            let changed = conn.execute(
-                "UPDATE job SET app_status = CASE WHEN ?3 THEN 'saved' END,
-                                app_status_at = CASE WHEN ?3 THEN ?4 END
-                 WHERE portal = ?1 AND job_id = ?2 AND (app_status IS NULL) = ?3",
-                params![key.portal.key(), key.id, on, to_db(now)],
-            )? > 0;
-            if changed {
-                bump(conn)?;
-            }
-            Ok(changed)
-        })
-    }
-
     /// Moves jobs to a place: the inbox (out of archive and trash; the time of the move is
     /// kept for the age that archives old jobs), the archive (out of the trash too) or the
     /// trash (the archive time stays for the way back). A job keeps the time it first went to
@@ -198,7 +175,7 @@ impl Store {
         })
     }
 
-    /// Moves the inbox jobs that are no favourite to the archive when they are older than
+    /// Moves the inbox jobs to the archive when they are older than
     /// `before` - counted from their first sighting, or from when the user last moved them
     /// into the inbox (her choice stands) - "old jobs archive themselves" at the end of a
     /// run; returns how many.
@@ -207,7 +184,7 @@ impl Store {
             let archived = conn.execute(
                 &format!(
                     "UPDATE job SET archived_at = ?2
-                     WHERE {INBOX} AND app_status IS NULL
+                     WHERE {INBOX}
                        AND COALESCE(inbox_at, first_seen_at) < ?1"
                 ),
                 params![to_db(before), to_db(now)],
@@ -397,28 +374,6 @@ mod tests {
         store.job(key).unwrap().unwrap().place()
     }
 
-    /// The favourite keeps the time it was set and is a flag of its own: moving the job
-    /// keeps it.
-    #[test]
-    fn the_favourite_keeps_its_time_and_follows_the_job() {
-        let (store, keys) = store_with_jobs(1);
-        let key = &keys[0];
-        let rev = store.data_rev().unwrap();
-        let at = now();
-        assert!(store.set_pinned(key, true, at).unwrap());
-        assert!(store.data_rev().unwrap() > rev, "the overview shows it");
-        let later = at + jiff::SignedDuration::from_hours(1);
-        assert!(!store.set_pinned(key, true, later).unwrap());
-        assert_eq!(store.job(key).unwrap().unwrap().pinned_at, Some(at));
-        store
-            .move_jobs(std::slice::from_ref(key), Place::Archive, later)
-            .unwrap();
-        assert_eq!(store.job(key).unwrap().unwrap().pinned_at, Some(at));
-        assert!(store.set_pinned(key, false, later).unwrap());
-        assert_eq!(store.job(key).unwrap().unwrap().pinned_at, None);
-        assert!(!store.set_pinned(key, false, later).unwrap());
-    }
-
     /// A job is in exactly one place; moving counts only real moves and keeps the first time
     /// a job went to a place.
     #[test]
@@ -526,10 +481,9 @@ mod tests {
         assert_eq!(place(&store, &keys[1]), Place::Inbox);
     }
 
-    /// Archive and trash leave the HTML overview and the skill's top matches; back in the
-    /// inbox, the job is back.
+    /// Archive and trash leave the skill's top matches; back in the inbox, the job is back.
     #[test]
-    fn only_inbox_jobs_reach_the_overview_and_the_top_matches() {
+    fn only_inbox_jobs_reach_the_top_matches() {
         let (store, keys) = store_with_jobs(1);
         let key = &keys[0];
         let scored = crate::model::MatchRecord {
@@ -549,27 +503,19 @@ mod tests {
             jobs.into_iter().map(|j| j.key).collect()
         };
         let one = std::slice::from_ref(key);
-        let overview = || store.overview_jobs(20).unwrap();
         assert_eq!(listed(store.best_matches(5).unwrap()), one);
-        assert_eq!(listed(overview().new.jobs), one);
         for away in [Place::Archive, Place::Trash] {
             store.move_jobs(one, away, now()).unwrap();
             assert!(store.best_matches(5).unwrap().is_empty());
-            assert!(overview().new.jobs.is_empty());
-            // A favourite away from the inbox is none of the overview's either.
-            store.set_pinned(key, true, now()).unwrap();
-            assert!(overview().favourites.is_empty());
-            assert_eq!(overview().new, super::super::matches::NewFitting::default());
-            store.set_pinned(key, false, now()).unwrap();
             store.move_jobs(one, Place::Inbox, now()).unwrap();
-            assert_eq!(listed(overview().new.jobs), one);
+            assert_eq!(listed(store.best_matches(5).unwrap()), one);
         }
     }
 
-    /// The best matches for an AI chat: favourites first, then the best by score; never
-    /// excluded, archived, trashed, unscored or gone.
+    /// The best matches for the matching skill: the best by score; never excluded, archived,
+    /// trashed, unscored or gone.
     #[test]
-    fn the_best_matches_put_the_favourites_first_and_leave_out_the_rest() {
+    fn the_best_matches_leave_out_the_rest() {
         let (store, keys) = store_with_jobs(7);
         let record = |status, score| crate::model::MatchRecord {
             status,
@@ -595,14 +541,13 @@ mod tests {
                 now(),
             )
             .unwrap();
-        // Job 6 has no score; job 4 is archived; job 7 is in the trash; job 1 a favourite.
+        // Job 6 has no score; job 4 is archived; job 7 is in the trash.
         store
             .move_jobs(std::slice::from_ref(&keys[3]), Place::Archive, now())
             .unwrap();
         store
             .move_jobs(std::slice::from_ref(&keys[6]), Place::Trash, now())
             .unwrap();
-        store.set_pinned(&keys[0], true, now()).unwrap();
         let titles = |limit| -> Vec<String> {
             store
                 .best_matches(limit)
@@ -611,12 +556,12 @@ mod tests {
                 .map(|j| j.title)
                 .collect()
         };
-        assert_eq!(titles(5), ["Job 1", "Job 2", "Job 5"]);
-        assert_eq!(titles(2), ["Job 1", "Job 2"]);
+        assert_eq!(titles(5), ["Job 2", "Job 5", "Job 1"]);
+        assert_eq!(titles(2), ["Job 2", "Job 5"]);
         store.record_gone(&keys[1], now()).unwrap();
         assert_eq!(
             titles(5),
-            ["Job 1", "Job 5"],
+            ["Job 5", "Job 1"],
             "an ad no longer online is out"
         );
     }
@@ -683,10 +628,10 @@ mod tests {
         assert_eq!(store.trashed_keys(None).unwrap().len(), 2);
     }
 
-    /// Old inbox jobs archive themselves unless they are favourites; the young, the archived
-    /// and the trashed stay where they are.
+    /// Old inbox jobs archive themselves; the young, the archived and the trashed stay where
+    /// they are.
     #[test]
-    fn old_jobs_archive_themselves_except_the_favourites() {
+    fn old_jobs_archive_themselves() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         let old = now() - jiff::SignedDuration::from_hours(24 * 40);
@@ -701,13 +646,13 @@ mod tests {
             store.upsert_posting(run, &p, mail(), seen).unwrap();
             keys.push(p.key);
         }
-        store.set_pinned(&keys[1], true, now()).unwrap();
         store
             .move_jobs(std::slice::from_ref(&keys[2]), Place::Trash, now())
             .unwrap();
         let before = now() - jiff::SignedDuration::from_hours(24 * 30);
-        assert_eq!(store.auto_archive(before, now()).unwrap(), 1);
+        assert_eq!(store.auto_archive(before, now()).unwrap(), 2);
         assert_eq!(place(&store, &keys[0]), Place::Archive);
+        assert_eq!(place(&store, &keys[1]), Place::Archive);
         assert_eq!(place(&store, &keys[2]), Place::Trash);
         assert_eq!(store.auto_archive(before, now()).unwrap(), 0);
         // Taken back into the inbox (from the archive or the trash): her choice stands, the
@@ -719,9 +664,9 @@ mod tests {
         assert_eq!(place(&store, &keys[0]), Place::Inbox);
         let later = now() + jiff::SignedDuration::from_hours(24 * 31);
         let later_before = later - jiff::SignedDuration::from_hours(24 * 30);
-        // A month after the move the two go, with job 4 (young then, old now); the favourite stays.
+        // A month after the move the two go, with job 4 (young then, old now).
         assert_eq!(store.auto_archive(later_before, later).unwrap(), 3);
-        assert_eq!(place(&store, &keys[1]), Place::Inbox);
+        assert_eq!(place(&store, &keys[3]), Place::Archive);
     }
 
     /// "Fits anyway" turns an excluded job into a scored one with its fit score; a rescore
@@ -779,7 +724,6 @@ mod tests {
             .unwrap()
             .key;
         let one = std::slice::from_ref(&other);
-        assert!(!store.set_pinned(&other, true, now()).unwrap());
         assert!(
             store
                 .move_jobs(one, Place::Trash, now())

@@ -1,14 +1,12 @@
 <!--
-  The files of the work folder: the report (written with the Excel file by every export;
-  opening it writes it first, except in the dry run and while a run holds the files), the
-  Excel file and the folder. A file that is not there yet cannot be opened and says why.
+  The files of the work folder: the Excel file and the folder. A file that is not there yet
+  cannot be opened and says why.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
   import type { OpenTarget } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
-  import { run } from '$lib/state/run.svelte';
   import { openTarget } from '../model.svelte';
   import Block from './Block.svelte';
 
@@ -25,16 +23,6 @@
 
 <Block testid="files" heading={t.overview.files} {error}>
   <div class="files" data-testid="overview-files">
-    <Button
-      variant="ghost"
-      size="sm"
-      icon="document"
-      label={t.run.openOverview}
-      disabled={noFiles && (dryRun || run.active)}
-      disabledReason={dryRun ? dryRunReason : run.busyText}
-      testid="overview-open"
-      onclick={() => open({ kind: 'overview' })}
-    />
     <Button
       variant="ghost"
       size="sm"

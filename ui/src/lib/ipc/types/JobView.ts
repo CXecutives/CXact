@@ -13,11 +13,7 @@ export type JobView = { key: JobKey, portal: Portal,
 /**
  * Empty when neither the mail nor the link carries a usable title.
  */
-title: string, company: string, location: string, workMode: WorkMode | null, mailDate: string | null, firstSeenAt: string, unread: boolean, 
-/**
- * The favourite (the star, stored as `app_status` 'saved').
- */
-pinned: boolean, detail: DetailState, 
+title: string, company: string, location: string, workMode: WorkMode | null, mailDate: string | null, firstSeenAt: string, unread: boolean, detail: DetailState, 
 /**
  * The full text is short (verified, but under 100 characters).
  */

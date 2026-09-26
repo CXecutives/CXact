@@ -1,5 +1,5 @@
 //! User-facing text of the exported files in the app's two languages: every word the Excel
-//! file and the HTML overview show. The interface has its own catalogs; these texts only end
+//! file shows. The interface has its own catalogs; these texts only end
 //! up in files the user opens. They use the interface's words (glossary in `docs/PLAN.md`)
 //! and its style rules - `core/tests/rust_texts.rs` checks both languages. The German words
 //! stand at the top level, the English ones in [`en`] under the same names; [`Texts::of`]
@@ -74,92 +74,10 @@ pub const PROGRAM_NAME: &str = "CXact";
 pub const SCOPE_NEW: &str = "Neu seit dem letzten Abruf";
 pub const SCOPE_ALL: &str = "Ganzes Postfach";
 
-/// Words of the report (`JobAlerts.html`, "Bericht" in the app): the new matches by band
-/// ("Neu und passend" like the day overview), the low ones as a count, then the favourites.
-pub const HTML_TITLE: &str = "Bericht";
-pub const HTML_PINNED: &str = "Favoriten";
-pub const HTML_HIGH: &str = "Hohe Passung";
-pub const HTML_MID: &str = "Mittlere Passung";
-/// The low band's word (the report lists no low band; a favourite may be one).
-pub const HTML_LOW_BAND: &str = "Geringe Passung";
-/// The heading of the unread jobs by date, when no profile scores them.
-pub const HTML_NEW_JOBS: &str = "Neue Jobs";
-pub const HTML_CREATED: &str = "Erstellt am";
-pub const HTML_EMPTY: &str = "Keine neuen passenden Jobs.";
-pub const HTML_EMPTY_NEW: &str = "Keine neuen Jobs.";
-/// Without a usable profile: the list's sentence in the app.
-pub const HTML_NO_PROFILE: &str = "Ohne Profil gibt es keine Passung.";
-
-/// The summary line: the new matches and how many of them fit well.
-pub fn html_summary(total: usize, high: usize) -> String {
-    let jobs = if total == 1 {
-        "1 neuer passender Job".to_owned()
-    } else {
-        format!("{} neue passende Jobs", group(total, '.'))
-    };
-    if high == 0 {
-        format!("{jobs}.")
-    } else {
-        format!("{jobs}, {} mit hoher Passung.", group(high, '.'))
-    }
-}
-
-/// The legend of the bands: from which score a ring counts as high or medium.
-pub fn html_legend_band(high: bool) -> String {
-    if high {
-        format!("Hohe Passung ab {}", crate::model::HIGH_FROM)
-    } else {
-        format!("Mittlere Passung ab {}", crate::model::MID_FROM)
-    }
-}
-
-/// Under the bands: the new jobs with a low match, as a count.
-pub fn html_low(count: usize) -> String {
-    if count == 1 {
-        "1 Job mit geringer Passung steht in der App.".to_owned()
-    } else {
-        format!(
-            "{} Jobs mit geringer Passung stehen in der App.",
-            group(count, '.')
-        )
-    }
-}
-
-/// Under a cut list of new matches: how many more the app lists.
-pub fn html_more(count: usize) -> String {
-    if count == 1 {
-        "1 weiterer Job in der App.".to_owned()
-    } else {
-        format!("{} weitere Jobs in der App.", group(count, '.'))
-    }
-}
-
-/// The must requirements a job meets, as the reader's head says it.
-pub fn html_musts(met: u16, total: u16) -> String {
-    if total == 0 {
-        "Keine Pflichtanforderungen erkannt".to_owned()
-    } else {
-        format!("{met} von {total} Pflichtpunkten erfüllt")
-    }
-}
-pub const HTML_MATCH: &str = "Passung";
-pub const HTML_MET: &str = "Erfüllt";
-pub const HTML_OPEN: &str = "Offen";
-pub const HTML_EXCLUDED: &str = "Ausgeschlossen";
-/// A job the user counts although the engine excludes it, like the reader says it.
-pub const HTML_OVERRIDDEN: &str = "Manuell einbezogen";
-pub const HTML_FAVOURITE: &str = "Favorit";
-/// The mark of a job the last fetch brought.
-pub const HTML_SINCE: &str = "Seit dem letzten Abruf";
-/// Marks of the ad: it takes no applications, it is gone, only its start was readable, its
-/// details are not there.
-pub const HTML_CLOSED: &str = "Keine Bewerbung mehr möglich";
-pub const HTML_GONE: &str = "Nicht mehr online";
-pub const HTML_TEASER: &str = "Vorschau";
-pub const HTML_NO_DETAILS: &str = "Details fehlen";
-pub const HTML_UNSCORABLE: &str = "Nicht bewertbar";
-/// A job not scored yet (also one that waits for its details), like the app's ring.
-pub const HTML_NONE: &str = "Noch nicht bewertet";
+/// When the file was written (a row of the info sheet).
+pub const CREATED: &str = "Erstellt am";
+/// Why a job is excluded when its reason has no words (never the engine's code).
+pub const EXCLUDED: &str = "Ausgeschlossen";
 
 /// The key facts of an ad in the app's words: `1.100 €/Tag`, `95 €/Std.`, `1.000 CHF/Tag`.
 pub fn rate_words(amount: u32, hourly: bool, currency: Option<&str>) -> String {
@@ -229,8 +147,8 @@ pub fn workload_words(from: Option<u8>, to: u8) -> String {
 }
 
 /// Why a job is excluded, by the code of its first violation (the list's `note`), in the
-/// words of the interface's criteria. `None` for a code without a text: the overview then
-/// says only "Ausgeschlossen" - never the code itself.
+/// words of the interface's criteria. `None` for a code without a text: the file then says
+/// only "Ausgeschlossen" - never the code itself.
 pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'static str> {
     Some(match code {
         "dayRate" => "Der Tagessatz liegt unter dem Minimum im Profil.",
@@ -323,77 +241,8 @@ pub mod en {
     pub const SCOPE_NEW: &str = "New since the last fetch";
     pub const SCOPE_ALL: &str = "Whole mailbox";
 
-    pub const HTML_TITLE: &str = "Report";
-    pub const HTML_PINNED: &str = "Favourites";
-    pub const HTML_HIGH: &str = "High match";
-    pub const HTML_MID: &str = "Medium match";
-    pub const HTML_LOW_BAND: &str = "Low match";
-    pub const HTML_NEW_JOBS: &str = "New jobs";
-    pub const HTML_CREATED: &str = "Created on";
-    pub const HTML_EMPTY: &str = "No new matching jobs.";
-    pub const HTML_EMPTY_NEW: &str = "No new jobs.";
-    pub const HTML_NO_PROFILE: &str = "Without a profile, there is no match.";
-
-    pub fn html_summary(total: usize, high: usize) -> String {
-        let jobs = if total == 1 {
-            "1 new matching job".to_owned()
-        } else {
-            format!("{} new matching jobs", super::group(total, ','))
-        };
-        if high == 0 {
-            format!("{jobs}.")
-        } else {
-            format!("{jobs}, {} a high match.", super::group(high, ','))
-        }
-    }
-
-    pub fn html_legend_band(high: bool) -> String {
-        if high {
-            format!("High match from {}", crate::model::HIGH_FROM)
-        } else {
-            format!("Medium match from {}", crate::model::MID_FROM)
-        }
-    }
-
-    pub fn html_low(count: usize) -> String {
-        if count == 1 {
-            "1 job with a low match is in the app.".to_owned()
-        } else {
-            format!(
-                "{} jobs with a low match are in the app.",
-                super::group(count, ',')
-            )
-        }
-    }
-
-    pub fn html_more(count: usize) -> String {
-        if count == 1 {
-            "1 more job in the app.".to_owned()
-        } else {
-            format!("{} more jobs in the app.", super::group(count, ','))
-        }
-    }
-
-    pub fn html_musts(met: u16, total: u16) -> String {
-        if total == 0 {
-            "No must-have requirements found".to_owned()
-        } else {
-            format!("{met} of {total} must-haves met")
-        }
-    }
-    pub const HTML_MATCH: &str = "Match";
-    pub const HTML_MET: &str = "Met";
-    pub const HTML_OPEN: &str = "Open";
-    pub const HTML_EXCLUDED: &str = "Excluded";
-    pub const HTML_OVERRIDDEN: &str = "Included by you";
-    pub const HTML_FAVOURITE: &str = "Favourite";
-    pub const HTML_SINCE: &str = "Since the last fetch";
-    pub const HTML_CLOSED: &str = "No longer taking applications";
-    pub const HTML_GONE: &str = "No longer online";
-    pub const HTML_TEASER: &str = "Preview";
-    pub const HTML_NO_DETAILS: &str = "Details missing";
-    pub const HTML_UNSCORABLE: &str = "Not scorable";
-    pub const HTML_NONE: &str = "Not scored yet";
+    pub const CREATED: &str = "Created on";
+    pub const EXCLUDED: &str = "Excluded";
 
     pub fn rate_words(amount: u32, hourly: bool, currency: Option<&str>) -> String {
         let money = match currency.filter(|c| *c != "EUR") {
@@ -570,39 +419,8 @@ pub struct Texts {
     pub info_program: &'static str,
     pub scope_new: &'static str,
     pub scope_all: &'static str,
-    pub html_title: &'static str,
-    pub html_pinned: &'static str,
-    pub html_high: &'static str,
-    pub html_mid: &'static str,
-    pub html_low_band: &'static str,
-    pub html_new_jobs: &'static str,
-    pub html_created: &'static str,
-    pub html_empty: &'static str,
-    pub html_empty_new: &'static str,
-    pub html_no_profile: &'static str,
-    /// The summary line (all new matches, the high ones).
-    pub html_summary: fn(usize, usize) -> String,
-    /// The legend of a band (`true`: high).
-    pub html_legend_band: fn(bool) -> String,
-    /// The new jobs with a low match, as a count.
-    pub html_low: fn(usize) -> String,
-    /// Under a cut list of new matches: how many more the app lists.
-    pub html_more: fn(usize) -> String,
-    /// The must requirements met (met, total).
-    pub html_musts: fn(u16, u16) -> String,
-    pub html_match: &'static str,
-    pub html_met: &'static str,
-    pub html_open: &'static str,
-    pub html_excluded: &'static str,
-    pub html_overridden: &'static str,
-    pub html_favourite: &'static str,
-    pub html_since: &'static str,
-    pub html_closed: &'static str,
-    pub html_gone: &'static str,
-    pub html_teaser: &'static str,
-    pub html_no_details: &'static str,
-    pub html_unscorable: &'static str,
-    pub html_none: &'static str,
+    pub created: &'static str,
+    pub excluded: &'static str,
     /// The key facts in the app's words.
     rate_words: fn(u32, bool, Option<&str>) -> String,
     pub rate_open: &'static str,
@@ -616,8 +434,7 @@ pub struct Texts {
     pub day: &'static str,
     /// The number format of the date cells in Excel.
     pub excel_moment: &'static str,
-    /// The Excel cells of a favourite and of an ad's start (`now`, `vague`).
-    pub cell_yes: &'static str,
+    /// The Excel cells of an ad's start (`now`, `vague`).
     pub start_now: &'static str,
     pub start_open: &'static str,
     exclusion: fn(&str, &Map<String, Value>) -> Option<&'static str>,
@@ -663,34 +480,8 @@ pub const DE: Texts = Texts {
     info_program: INFO_PROGRAM,
     scope_new: SCOPE_NEW,
     scope_all: SCOPE_ALL,
-    html_title: HTML_TITLE,
-    html_pinned: HTML_PINNED,
-    html_high: HTML_HIGH,
-    html_mid: HTML_MID,
-    html_low_band: HTML_LOW_BAND,
-    html_new_jobs: HTML_NEW_JOBS,
-    html_created: HTML_CREATED,
-    html_empty: HTML_EMPTY,
-    html_empty_new: HTML_EMPTY_NEW,
-    html_no_profile: HTML_NO_PROFILE,
-    html_summary,
-    html_legend_band,
-    html_low,
-    html_more,
-    html_musts,
-    html_match: HTML_MATCH,
-    html_met: HTML_MET,
-    html_open: HTML_OPEN,
-    html_excluded: HTML_EXCLUDED,
-    html_overridden: HTML_OVERRIDDEN,
-    html_favourite: HTML_FAVOURITE,
-    html_since: HTML_SINCE,
-    html_closed: HTML_CLOSED,
-    html_gone: HTML_GONE,
-    html_teaser: HTML_TEASER,
-    html_no_details: HTML_NO_DETAILS,
-    html_unscorable: HTML_UNSCORABLE,
-    html_none: HTML_NONE,
+    created: CREATED,
+    excluded: EXCLUDED,
     rate_words,
     rate_open: RATE_OPEN,
     remote_words,
@@ -700,7 +491,6 @@ pub const DE: Texts = Texts {
     moment: "%d.%m.%Y %H:%M",
     day: "%d.%m.%Y",
     excel_moment: "dd.mm.yyyy hh:mm",
-    cell_yes: "Ja",
     start_now: "ab sofort",
     start_open: "offen",
     exclusion: exclusion_reason,
@@ -746,34 +536,8 @@ pub const EN: Texts = Texts {
     info_program: en::INFO_PROGRAM,
     scope_new: en::SCOPE_NEW,
     scope_all: en::SCOPE_ALL,
-    html_title: en::HTML_TITLE,
-    html_pinned: en::HTML_PINNED,
-    html_high: en::HTML_HIGH,
-    html_mid: en::HTML_MID,
-    html_low_band: en::HTML_LOW_BAND,
-    html_new_jobs: en::HTML_NEW_JOBS,
-    html_created: en::HTML_CREATED,
-    html_empty: en::HTML_EMPTY,
-    html_empty_new: en::HTML_EMPTY_NEW,
-    html_no_profile: en::HTML_NO_PROFILE,
-    html_summary: en::html_summary,
-    html_legend_band: en::html_legend_band,
-    html_low: en::html_low,
-    html_more: en::html_more,
-    html_musts: en::html_musts,
-    html_match: en::HTML_MATCH,
-    html_met: en::HTML_MET,
-    html_open: en::HTML_OPEN,
-    html_excluded: en::HTML_EXCLUDED,
-    html_overridden: en::HTML_OVERRIDDEN,
-    html_favourite: en::HTML_FAVOURITE,
-    html_since: en::HTML_SINCE,
-    html_closed: en::HTML_CLOSED,
-    html_gone: en::HTML_GONE,
-    html_teaser: en::HTML_TEASER,
-    html_no_details: en::HTML_NO_DETAILS,
-    html_unscorable: en::HTML_UNSCORABLE,
-    html_none: en::HTML_NONE,
+    created: en::CREATED,
+    excluded: en::EXCLUDED,
     rate_words: en::rate_words,
     rate_open: en::RATE_OPEN,
     remote_words: en::remote_words,
@@ -783,7 +547,6 @@ pub const EN: Texts = Texts {
     moment: "%d/%m/%Y %H:%M",
     day: "%d/%m/%Y",
     excel_moment: "dd/mm/yyyy hh:mm",
-    cell_yes: "Yes",
     start_now: "starts now",
     start_open: "open",
     exclusion: en::exclusion_reason,
@@ -959,7 +722,7 @@ mod tests {
     use crate::pipeline::local::code_name;
 
     /// Every code that can exclude a job (a decided violation) has a text in both languages:
-    /// the overview never shows an engine code.
+    /// the Excel file never shows an engine code.
     #[test]
     fn every_exclusion_code_has_a_text() {
         let none = Map::new();

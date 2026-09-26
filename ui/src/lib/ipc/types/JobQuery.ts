@@ -13,11 +13,6 @@ export type JobQuery = { place: Place,
  */
 unread: boolean, 
 /**
- * Only the favourites of the inbox (with `place` inbox; an archived favourite keeps its
- * star and is listed in the archive).
- */
-favourites: boolean, 
-/**
  * By match, or by date: the alert mail's, in the trash the day the job went there.
  */
 sort: JobSort, search: string | null, 

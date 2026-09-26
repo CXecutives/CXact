@@ -769,9 +769,9 @@
       size="sm"
       iconOnly
       icon="star"
-      label={job.pinned ? t.reader.unpin : t.reader.pin}
+      label={t.reader.pin}
       hint={keyOfAction('star')}
-      pressed={job.pinned}
+      pressed={false}
       testid="{prefix}pin"
       onclick={star}
     />
@@ -876,9 +876,9 @@
         size="sm"
         icon="star"
         iconOnly={iconsOnly}
-        label={iconsOnly ? (job.pinned ? t.reader.unpin : t.reader.pin) : t.reader.favourite}
+        label={iconsOnly ? t.reader.pin : t.reader.favourite}
         hint={keyOfAction('star')}
-        pressed={job.pinned}
+        pressed={false}
         testid="reader-pin"
         onclick={star}
       />
