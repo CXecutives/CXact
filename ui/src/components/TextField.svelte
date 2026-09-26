@@ -5,14 +5,15 @@
   caret in the field; a search clears on Esc, and a click on its magnifier lands in it.
   Focus turns the edge navy (100 ms), one calm edge and no ring around it; the magnifier
   turns navy. The clear button pops in with the first character and leaves at
-  once. `shake()` shakes the field once (a wrong password; never under reduced motion).
+  once. A wrong value (a password Gmail refused) shows as the red edge (`invalid`) and the
+  one sentence of its Field; nothing shakes (`shake()` stays for its callers and only
+  keeps the field in view).
 -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { FIELD_ATTRIBUTES, formKeys } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import { describedBy } from '$lib/state/described';
-  import { move, play } from '$lib/motion/motion';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
@@ -81,26 +82,10 @@
 
   let box = $state<HTMLElement | null>(null);
 
-  /** Shake the field once (180 ms): the answer to a wrong password, where it was typed. */
+  /** The answer to a wrong value where it was typed: the red edge and the sentence say it,
+   *  nothing moves (a shake read as a toy); the field is brought into view. */
   export function shake(): void {
-    if (box === null) return;
-    const far = move('md');
-    const near = move('sm');
-    const animation = play(
-      box,
-      [
-        { transform: 'none' },
-        { transform: `translateX(${-far}px)`, offset: 0.25 },
-        { transform: `translateX(${far}px)`, offset: 0.6 },
-        { transform: `translateX(${-near}px)`, offset: 0.85 },
-        { transform: 'none' },
-      ],
-      { duration: 'slow', easing: 'standard' },
-    );
-    void animation?.finished.then(
-      () => animation.cancel(),
-      () => undefined,
-    );
+    box?.scrollIntoView({ block: 'nearest' });
   }
 </script>
 
