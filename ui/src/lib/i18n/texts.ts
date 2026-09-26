@@ -52,29 +52,7 @@ export function reasonText(reason: Reason): string {
   return textOf(t.reason.code[code as ReasonCode], reason.params) || reason.label;
 }
 
-/** Wishes of the profile: their sentence names the wish already. */
-const WISH_CODES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish', 'industryWish'];
-/** Words only, folded ("Interim-Management" reads like "interim management"). */
-const plain = (text: string): string =>
-  text
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-/** The requirement's own words hold the profile's phrase already (whole words). */
-const within = (profile: string, words: string): boolean =>
-  plain(profile) !== '' && ` ${plain(words)} `.includes(` ${plain(profile)} `);
-
-/** The line under a reason: the profile's side of its evidence; null without one, for a wish
- *  and when the profile's phrase is no other than the requirement's own words ("Passt zu
- *  „HGB“ im Profil" under "Konzernabschluss nach HGB" says nothing new). */
-export function reasonEvidence(reason: Reason): string | null {
-  const profile = reason.evidence?.profile;
-  if (!profile || WISH_CODES.includes(reason.code)) return null;
-  if (within(profile, reason.label) || within(profile, reason.evidence?.quote ?? '')) return null;
-  return t.reason.evidenceLine(profile, reason.kind === 'partial');
-}
-
-/** Tooltip of a reason: quote and profile evidence, or that the profile lacks it. */
+/** Why a requirement decides: quote and profile evidence, or that the profile lacks it. */
 export function reasonHint(reason: Reason): string | null {
   if (reason.evidence) {
     return t.reason.evidence(

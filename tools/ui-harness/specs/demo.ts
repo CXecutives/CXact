@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'node:fs';
 
-import type { JobDetail, JobView, Reason } from '../../../ui/src/lib/ipc/types';
+import type { JobView } from '../../../ui/src/lib/ipc/types';
 import type { Snapshot } from '../snapshot';
 
 export const DEMO = JSON.parse(
@@ -21,30 +21,9 @@ export function demoJob(key: string): JobView {
   return job;
 }
 
-/** A demo job's reader. */
-export function demoDetail(key: string): JobDetail {
-  const detail = DEMO.details[keyOf(key)];
-  if (detail === undefined) throw new Error(`no demo detail ${key}`);
-  return detail;
-}
-
 /** The score of a demo job (its ring). */
 export function demoScore(key: string): number {
   const match = demoJob(key).match;
   if (match === null) throw new Error(`demo job ${key} has no score`);
   return match.score;
-}
-
-/** The reasons of a demo job's reader. */
-export function demoReasons(key: string): Reason[] {
-  return demoDetail(key).match?.reasons ?? [];
-}
-
-/** The must line of a demo job's reader, from the counts the engine found (the words of the
- *  German catalog's `reader.mustMet`): "4 von 6 Pflichtpunkten erfüllt, 2 teilweise". */
-export function demoMustLine(key: string): string {
-  const params = demoDetail(key).match?.summary?.params ?? {};
-  const [met, total, partial] = [params.mustMet, params.mustTotal, params.mustPartial].map(Number);
-  const points = total === 1 ? 'Pflichtpunkt' : 'Pflichtpunkten';
-  return `${met} von ${total} ${points} erfüllt${partial! > 0 ? `, ${partial} teilweise` : ''}`;
 }

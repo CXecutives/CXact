@@ -16,8 +16,8 @@
   never goes blank. The new stage rises in over the old one, which keeps its own scroll
   position and fades: the new job starts at the top and the old text never jumps. The old
   stage is the real one on its way out (nothing is copied or laid out again); it answers no
-  pointer and drops its test ids. The close button in the reader head, Esc and a search
-  that no longer finds the job go back to the day overview.
+  pointer and drops its test ids. The close "×" in the reader head (at every width), Esc and a
+  search that no longer finds the job go back to the day overview.
   The keys of a mail app (lib/input/input.ts): ArrowUp/ArrowDown open the previous/next job,
   Home/End the first/last, with Shift they choose from the open job on; Space on the open
   job's row pages through the reader, and after a click into the reader the arrows, Home and
@@ -326,16 +326,19 @@
                 {/if}
               </div>
             {:else}
-              <div class="back">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon="back"
-                  label={t.common.back}
-                  testid="back"
-                  onclick={close}
-                />
-              </div>
+              <!-- One column: the way back while no job stands (the reader has its "×"). -->
+              {#if stage.what === ERROR || stage.what === WAITING}
+                <div class="back">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon="back"
+                    label={t.common.back}
+                    testid="back"
+                    onclick={close}
+                  />
+                </div>
+              {/if}
               {#if stage.what === ERROR}
                 <EmptyState
                   icon="warning"
@@ -441,14 +444,14 @@
   }
 
   /* Each stage scrolls on its own; the sheet colour lets the next one cover the last. The
-     keyboard focus stops below the macOS toolbar row and the reader's compact bar. */
+     keyboard focus stops below the macOS toolbar row. */
   .stage {
     grid-area: 1 / 1;
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
     background-color: var(--surface);
-    scroll-padding-top: calc(var(--window-top) + var(--compact-header));
+    scroll-padding-top: var(--window-top);
   }
 
   /* Centred on a whole pixel (rounded down to the step of a hairline): an odd pane width

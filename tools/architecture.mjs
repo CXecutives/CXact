@@ -41,7 +41,7 @@ const LARGE = {
   'ui/src/lib/input/input.ts': [1800, 'the one place of all input handling (CLAUDE.md)'],
   'ui/src/features/gallery/gallery.ts': [600, 'the samples of the gallery, one table'],
   // Known large files: split along their parts when next touched.
-  'ui/src/features/jobs/Reader.svelte': [1700, 'known large: its sections become files'],
+  'ui/src/features/jobs/Reader.svelte': [1000, 'known large: its sections become files'],
   'ui/src/features/profile/ProfileEditor.svelte': [1200, 'known large: one file per section'],
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],

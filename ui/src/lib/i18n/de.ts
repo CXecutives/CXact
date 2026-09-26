@@ -251,6 +251,10 @@ const SHORT_TEXT = 'Die Anzeige ist sehr kurz.';
 const WORKLOAD = 'Die Auslastung passt nicht zum Profil.';
 const DURATION = 'Die Laufzeit liegt unter dem Minimum im Profil.';
 
+/** What an amount of pay is per (`facts.pay`). */
+type Per = 'day' | 'hour' | 'year';
+const PER: Record<Per, string> = { day: 'Tag', hour: 'Std.', year: 'Jahr' };
+
 /** Days in a week: "3 Tage pro Woche", short "3 Tage/Woche". */
 const weekDays = (days: number, short: boolean): string =>
   short ? `${count(days, 'Tag', 'Tage')}/Woche` : `${count(days, 'Tag', 'Tage')} pro Woche`;
@@ -539,9 +543,9 @@ const criteria = {
 } satisfies Record<string, CriterionText>;
 export type CriterionKey = keyof typeof criteria;
 
-/** How a row of the reader's Konditionen fits the profile (features/jobs/terms.ts): fits, fits
- *  in part (a wish or a limit missed, never an exclusion), does not fit, unclear in the ad
- *  (check), not stated. */
+/** How a row of the reader's Jobdetails fits the profile (features/jobs/terms.ts): met, met in
+ *  part (a wish or a limit missed, never an exclusion), not met, unclear in the ad (check),
+ *  nothing to judge (no icon). */
 export type TermVerdict = 'met' | 'partial' | 'violated' | 'unknown' | 'unset';
 
 /** `JobMatch.note` / `MatchDetail.summary` codes. */
@@ -833,29 +837,29 @@ export const de = {
     clear: 'Suche leeren',
   },
   score: {
-    /** `Passung 87 %` - the number comes formatted from format.ts. */
-    value: (percent: string) => `Passung ${percent}`,
+    /** The name of a scored ring: its band and its number ("Hohe Übereinstimmung, 87 %"; the
+     *  number comes formatted from format.ts). */
+    value: (band: string, percent: string) => `${band}, ${percent}`,
     excluded: 'Ausgeschlossen',
-    /** Aria label part of a ring whose score comes from a teaser only. */
-    provisional: 'vorläufig',
-    unscorable: 'Nicht bewertbar',
-    pending: 'Wird bewertet',
+    /** Every ring without a score is one state: not scored yet, being scored, not scorable. */
     none: 'Noch nicht bewertet',
+    unscorable: 'Noch nicht bewertet',
     /** A ring without a usable profile. */
-    off: 'Ohne Profil keine Passung',
+    off: 'Ohne Profil keine Übereinstimmung',
     band: {
-      high: 'Hohe Passung',
-      mid: 'Mittlere Passung',
-      low: 'Geringe Passung',
+      high: 'Hohe Übereinstimmung',
+      mid: 'Mittlere Übereinstimmung',
+      low: 'Geringe Übereinstimmung',
     } satisfies Record<Band, string>,
   },
   reason: {
+    /** The state of a reason, in the words of the groups of the reader's Anforderungen. */
     kind: {
       met: 'Erfüllt',
       partial: 'Teilweise erfüllt',
-      open: 'Nicht im Profil',
+      open: 'Nicht erfüllt',
       violation: 'Ausschlussgrund',
-      check: 'Prüfen',
+      check: 'Unklar',
     } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Pflicht',
@@ -863,10 +867,8 @@ export const de = {
       hard: 'Ausschluss',
       info: 'Hinweis',
     } satisfies Record<ReasonWeight, string>,
-    /** The line under a reason: only the profile's side (the ad's words stand above it). */
-    evidenceLine: (profile: string, partial: boolean) =>
-      partial ? `Passt teilweise zu „${profile}“ im Profil.` : `Passt zu „${profile}“ im Profil.`,
-    /** Tooltip of a reason: the ad's words and what the profile says. */
+    /** Why a requirement decides a row of the Jobdetails (its verdict's tooltip): the ad's
+     *  words and what the profile says. */
     evidence: (quote: string, profile: string, partial: boolean) =>
       partial
         ? `„${quote}“ passt teilweise zu „${profile}“ im Profil.`
@@ -1085,68 +1087,70 @@ export const de = {
     thinProfile: 'Wenig Inhalt im Profil, die Passung bleibt grob.',
     connectMailbox: 'Postfach verbinden',
   },
-  /** The key facts of an ad in short words (the list row, the reader's Konditionen; which
-   *  fact goes where is the table of lib/facts.ts). */
+  /** The facts of a job in their one form each (the reader's Jobdetails, the list row; the
+   *  order and the icons are the table of lib/facts.ts): a date "24.09.", a start "ab 01.11.",
+   *  money "1.200 €/Tag" and "95.000 €/Jahr", a workload "3 Tage/Woche", the work mode "voll
+   *  remote", "60 % remote", "Hybrid" or "Vor Ort". */
   facts: {
     now: 'ab sofort',
     from: (date: string) => `ab ${date}`,
-    /** A start still to be agreed (the engine's `vague`: "nach Absprache", "flexibel",
+    /** A start or a rate to be agreed (the engine's `vague`: "nach Absprache", "flexibel",
      *  "zeitnah"). */
-    soon: 'nach Absprache',
+    agreed: 'nach Absprache',
     months: (value: number) => count(value, 'Monat', 'Monate'),
+    /** The duration of a permanent job. */
+    unlimited: 'unbefristet',
+    /** The remote share the ad states (from and to, in percent). */
     remote: (from: number, to: number) => {
       if (from >= 100) return 'voll remote';
-      if (to <= 0) return 'vor Ort';
+      if (to <= 0) return 'Vor Ort';
       return from === to
         ? `${formatPercent(from)} remote`
         : `${n(from)} bis ${formatPercent(to)} remote`;
     },
-    /** `1.100 €`, with the unit `1.100 €/Tag`, per hour `95 €/Std.`, `1.000 CHF/Tag`. */
-    rate: (amount: number, hourly: boolean, currency: string | null, unit: boolean) => {
-      const money = formatMoney(amount, currency);
-      return hourly ? `${money}/Std.` : unit ? `${money}/Tag` : money;
-    },
-    /** The pay in a list row, beside its euro icon: `1.200/Tag`, `95/Std.`, `95.000/Jahr`;
-     *  another currency names its code (`1.000 CHF/Tag`). */
-    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
-      const money =
-        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
-      return `${money}/${{ day: 'Tag', hour: 'Std.', year: 'Jahr' }[per]}`;
-    },
-    fullRemote: 'voll remote',
-    /** The workload (percent of a five-day week): "Vollzeit", "3 Tage/Woche", "50 %"; the
-     *  reader's long form "3 Tage pro Woche". */
-    workload: (from: number | null, to: number, short = true) => workloadWords(from, to, short),
+    /** The work mode of an ad that states no share. */
+    mode: {
+      remote: 'voll remote',
+      hybrid: 'Hybrid',
+      onsite: 'Vor Ort',
+    } satisfies Record<WorkMode, string>,
+    /** Pay per day, hour or year in its currency: `1.200 €/Tag`, `95 €/Std.`, `95.000 €/Jahr`,
+     *  `1.000 CHF/Tag`; `lowerBound`: the ad names only its lower end ("ab 95.000 €/Jahr"). */
+    pay: (amount: number, per: Per, currency: string | null, lowerBound = false) =>
+      `${lowerBound ? 'ab ' : ''}${formatMoney(amount, currency)}/${PER[per]}`,
+    /** The workload (percent of a five-day week): "Vollzeit", "3 Tage/Woche", "50 %". */
+    workload: (from: number | null, to: number) => workloadWords(from, to, true),
+    years: (min: number, max: number | null) =>
+      max !== null && max > min
+        ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
+        : count(min, 'Jahr', 'Jahre'),
   },
   reader: {
-    /** The must count beside the band, said once in the reader ("4 von 5 Pflichtpunkten
-     *  erfüllt, 1 teilweise"). */
-    mustMet: (met: number, total: number, partial = 0) =>
-      `${n(met)} von ${n(total)} ${total === 1 ? 'Pflichtpunkt' : 'Pflichtpunkten'} erfüllt` +
-      (partial > 0 ? `, ${n(partial)} teilweise` : ''),
-    noMust: 'Keine Pflichtpunkte erkannt',
     /** A must requirement the profile lacks: the term goes into the profile's keywords. */
     addToProfile: 'Zum Profil hinzufügen',
     added: 'Hinzugefügt',
     addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
-    /** The label of the table of the ad's terms. */
-    frame: 'Konditionen',
-    /** The rows of the terms table (their order is the facts table, lib/facts.ts). */
+    /** The table of the job's facts (features/jobs/terms.ts, in the order of lib/facts.ts). */
+    details: 'Jobdetails',
     term: {
+      company: 'Unternehmen',
+      place: 'Ort',
+      mode: 'Arbeitsort',
       contract: 'Vertragsart',
       rate: 'Tagessatz',
       start: 'Start',
       duration: 'Laufzeit',
       workload: 'Auslastung',
-      remote: 'Remote',
-      place: 'Ort',
-      industry: 'Branche',
       experience: 'Erfahrung',
+      industry: 'Branche',
+      portal: 'Portal',
+      received: 'Eingegangen',
     },
-    /** The value of a term the ad does not state. */
-    termOpen: 'offen',
-    /** The contract type in the row "Vertragsart" (it carries the verdicts on temporary
-     *  agency work and permanent jobs; a check without a type says "unklar"). */
+    /** The pay row of a permanent job or temporary agency work (an annual salary). */
+    salaryName: 'Gehalt',
+    /** A value the ad does not state. */
+    missing: '/',
+    /** The contract type in the row "Vertragsart". */
     contractKind: {
       interim: 'Interim',
       freelance: 'Freiberuflich',
@@ -1154,97 +1158,58 @@ export const de = {
       anue: 'Zeitarbeit',
       unclear: 'unklar',
     },
-    /** A rate the ad leaves to be agreed (a start to be agreed says `facts.soon`). */
-    rateOpen: 'nach Absprache',
-    startNow: 'ab sofort',
-    /** The pay row of a permanent job or temporary agency work (an annual salary, no day
-     *  rate); `lowerBound`: the ad names only its lower end. */
-    salaryName: 'Gehalt',
-    salary: (amount: number, lowerBound: boolean) =>
-      lowerBound ? `ab ${formatEuro(amount)}/Jahr` : `${formatEuro(amount)}/Jahr`,
-    /** The duration of a permanent job. */
-    unlimited: 'unbefristet',
-    /** The work mode of an ad that states no remote share. */
-    workMode: {
-      remote: 'voll remote',
-      hybrid: 'teilweise remote',
-      onsite: 'vor Ort',
-    } satisfies Record<WorkMode, string>,
-    years: (min: number, max: number | null) =>
-      max !== null && max > min
-        ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
-        : count(min, 'Jahr', 'Jahre'),
     /** Quiet after a value: required years no passage backs, a contract type the engine
      *  infers. */
     estimated: 'geschätzt',
     assumed: 'vermutet',
-    /** Whether a term of the ad fits the profile, in a word (the table's third column); its
-     *  tooltip is the sentence of the reason that decided it. */
+    /** How a row of the Jobdetails and a requirement fit the profile: the name of the
+     *  verdict's icon, and the groups of the Anforderungen. */
     verdict: {
-      met: 'passt',
-      partial: 'passt teilweise',
-      violated: 'passt nicht',
-      unknown: 'prüfen',
-      unset: 'offen',
-    } satisfies Record<TermVerdict, string>,
-    /** A marked passage of the ad under the pointer: its state and weight ("Erfüllt ·
-     *  Pflicht"), or the row of the terms and its verdict. */
-    markHint: (what: string, state: string) => `${what} · ${state}`,
+      met: 'Erfüllt',
+      partial: 'Teilweise erfüllt',
+      violated: 'Nicht erfüllt',
+      unknown: 'Unklar',
+    } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
     open: 'Anzeige öffnen',
     close: 'Schließen',
-    /** The star as a labelled button (its state is its pressed look). */
-    favourite: 'Favorit',
+    /** The list row's star and moves (their tooltips). */
     pin: 'Als Favorit markieren',
     unpin: 'Favorit entfernen',
     archive: 'Archivieren',
     restore: 'Wiederherstellen',
-    /** The "…" button and its menu. */
+    /** The "…" button and its menu: the moves of the place, and for an excluded job its
+     *  score anyway or back to the exclusion (with their toasts). */
     more: 'Weitere Aktionen',
-    /** An excluded job: its passages, counting it anyway, and back. */
-    showInAd: 'In der Anzeige zeigen',
-    override: 'Trotzdem einbeziehen',
-    overrideUndo: 'Rückgängig',
-    overridden: 'Manuell einbezogen',
+    delete: 'Löschen',
+    override: 'Trotzdem bewerten',
+    exclude: 'Wieder ausschließen',
+    overridden: 'Trotzdem bewertet.',
+    excludedAgain: 'Wieder ausgeschlossen.',
     prompt: 'KI-Prompt kopieren',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
-    /** Under the band of a score that comes from a preview only. */
-    preliminary: 'Vorläufig, nur Vorschau',
-    /** Under the band of a score from a full text that names few requirements. */
-    lowEvidence: 'Die Anzeige nennt wenige klare Anforderungen, die Passung bleibt grob.',
-    /** The band of a job whose ad is still to come. */
-    scoredLater: 'Wird bewertet, sobald die Anzeige da ist',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
-    /** The preview note names the portal; the sign-in is set up in Einstellungen. */
-    teaserOf: (portal: string) => `Ohne Anmeldung zeigt ${portal} nur eine Vorschau.`,
     setUpSignIn: 'Anmeldung einrichten',
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
-    /** The exact moment of the mail, in the tooltip of its date. */
-    mailAt: (date: string, time: string) => `Alert-Mail vom ${date} um ${time}`,
-    fetchDetails: 'Details holen',
+    /** Loads the whole ad (a preview, a missing one). */
+    fetchDetails: 'Anzeige laden',
     why: 'Anforderungen',
-    met: 'Erfüllt',
-    partial: 'Teilweise erfüllt',
-    missing: 'Nicht im Profil',
-    check: 'Zu prüfen',
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
-    detail: {
-      pending: 'Die Anzeige fehlt noch.',
-      teaser: detailSays.teaser,
-      failed: 'Die Details ließen sich nicht holen.',
-      unfetchable: detailSays.unfetchable,
-      gone: detailSays.gone,
-      onRequest: detailSays.onRequest,
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** A closed or vanished ad: when the app last looked at it (the tooltip of its line; the
-     *  day it closed is not known). */
-    checkedAt: (when: string) => `Zuletzt geprüft ${when}`,
-    detailsOff: '„Details holen“ ist für dieses Portal aus.',
+    /** The note of the ad section where its text is not all there: a preview, an ad still
+     *  to come or being loaded, one the app cannot reach, gone or closed. */
+    adNote: {
+      teaser: 'Nur eine Vorschau',
+      missing: 'Anzeige fehlt',
+      loading: 'Anzeige wird geladen',
+      unfetchable: 'Anzeige nicht erreichbar',
+      gone: 'Nicht mehr online',
+      closed: 'Keine Bewerbung mehr möglich',
+    },
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',
   },

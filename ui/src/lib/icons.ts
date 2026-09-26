@@ -17,7 +17,7 @@ export const ICONS = {
   archive: 'archive',
   trash: 'trash-2',
   /** Delete for good (and empty the trash): never looks like the trash. */
-  purge: 'circle-x',
+  purge: 'octagon-x',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',
   star: 'star',
@@ -120,6 +120,14 @@ export const ICONS = {
   place: 'map-pin',
   industry: 'factory',
   experience: 'award',
+
+  // The reader (features/jobs/Reader.svelte): its head and its Jobdetails.
+  /** The company of a job. */
+  company: 'building',
+  /** The portal that announced a job. */
+  portal: 'globe',
+  /** Not met: a requirement the profile lacks, a term of the ad that does not fit. */
+  unmet: 'circle-x',
 } as const;
 
 /** What an icon says (the name every component and view uses). */

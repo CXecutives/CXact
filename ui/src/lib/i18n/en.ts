@@ -283,6 +283,10 @@ const SHORT_TEXT = 'The ad is very short.';
 const WORKLOAD = 'The workload does not fit the profile.';
 const DURATION = 'The duration is below the minimum in the profile.';
 
+/** What an amount of pay is per (`facts.pay`). */
+type Per = 'day' | 'hour' | 'year';
+const PER: Record<Per, string> = { day: 'day', hour: 'hr', year: 'year' };
+
 /** Days in a week: "3 days a week", short "3 days/week". */
 const weekDays = (days: number, short: boolean): string =>
   short ? `${count(days, 'day', 'days')}/week` : `${count(days, 'day', 'days')} a week`;
@@ -792,12 +796,10 @@ export const en: Catalog = {
     clear: 'Clear search',
   },
   score: {
-    value: (percent: string) => `Match ${percent}`,
+    value: (band: string, percent: string) => `${band}, ${percent}`,
     excluded: 'Excluded',
-    provisional: 'provisional',
-    unscorable: 'Not scorable',
-    pending: 'Being scored',
     none: 'Not scored yet',
+    unscorable: 'Not scored yet',
     off: 'No match without a profile',
     band: {
       high: 'High match',
@@ -809,9 +811,9 @@ export const en: Catalog = {
     kind: {
       met: 'Met',
       partial: 'Partly met',
-      open: 'Not in the profile',
+      open: 'Not met',
       violation: 'Reason to exclude',
-      check: 'Check',
+      check: 'Unclear',
     } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Must-have',
@@ -819,8 +821,6 @@ export const en: Catalog = {
       hard: 'Exclusion',
       info: 'Note',
     } satisfies Record<ReasonWeight, string>,
-    evidenceLine: (profile: string, partial: boolean) =>
-      partial ? `Partly fits “${profile}” in the profile.` : `Fits “${profile}” in the profile.`,
     evidence: (quote: string, profile: string, partial: boolean) =>
       partial
         ? `“${quote}” partly fits “${profile}” in the profile.`
@@ -998,48 +998,50 @@ export const en: Catalog = {
   facts: {
     now: 'starts now',
     from: (date: string) => `from ${date}`,
-    soon: 'to be agreed',
+    agreed: 'to be agreed',
     months: (value: number) => count(value, 'month', 'months'),
+    unlimited: 'open-ended',
     remote: (from: number, to: number) => {
       if (from >= 100) return 'fully remote';
-      if (to <= 0) return 'on site';
+      if (to <= 0) return 'On site';
       return from === to
         ? `${formatPercent(from)} remote`
         : `${n(from)} to ${formatPercent(to)} remote`;
     },
-    rate: (amount: number, hourly: boolean, currency: string | null, unit: boolean) => {
-      const money = formatMoney(amount, currency);
-      return hourly ? `${money}/hr` : unit ? `${money}/day` : money;
-    },
-    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
-      const money =
-        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
-      return `${money}/${{ day: 'day', hour: 'hr', year: 'year' }[per]}`;
-    },
-
-    fullRemote: 'fully remote',
-    workload: (from: number | null, to: number, short = true) => workloadWords(from, to, short),
+    mode: {
+      remote: 'fully remote',
+      hybrid: 'Hybrid',
+      onsite: 'On site',
+    } satisfies Record<WorkMode, string>,
+    pay: (amount: number, per: Per, currency: string | null, lowerBound = false) =>
+      `${lowerBound ? 'from ' : ''}${formatMoney(amount, currency)}/${PER[per]}`,
+    workload: (from: number | null, to: number) => workloadWords(from, to, true),
+    years: (min: number, max: number | null) =>
+      max !== null && max > min
+        ? `${n(min)} to ${count(max, 'year', 'years')}`
+        : count(min, 'year', 'years'),
   },
   reader: {
-    mustMet: (met: number, total: number, partial = 0) =>
-      `${n(met)} of ${n(total)} must-haves met` + (partial > 0 ? `, ${n(partial)} partly` : ''),
-    noMust: 'No must-haves found',
     addToProfile: 'Add to profile',
     added: 'Added',
     addedToProfile: (term: string) => `“${term}” added to the profile.`,
-    frame: 'Conditions',
+    details: 'Job details',
     term: {
+      company: 'Company',
+      place: 'Location',
+      mode: 'Work mode',
       contract: 'Contract type',
       rate: 'Day rate',
       start: 'Start',
       duration: 'Duration',
       workload: 'Workload',
-      remote: 'Remote',
-      place: 'Location',
-      industry: 'Industry',
       experience: 'Experience',
+      industry: 'Industry',
+      portal: 'Portal',
+      received: 'Received',
     },
-    termOpen: 'open',
+    salaryName: 'Salary',
+    missing: '/',
     contractKind: {
       interim: 'Interim',
       freelance: 'Freelance',
@@ -1047,75 +1049,47 @@ export const en: Catalog = {
       anue: 'Temporary agency work',
       unclear: 'unclear',
     },
-    rateOpen: 'negotiable',
-    startNow: 'immediately',
-    salaryName: 'Salary',
-    salary: (amount: number, lowerBound: boolean) =>
-      lowerBound ? `from ${formatEuro(amount)}/year` : `${formatEuro(amount)}/year`,
-    unlimited: 'open-ended',
-    workMode: {
-      remote: 'fully remote',
-      hybrid: 'partly remote',
-      onsite: 'on site',
-    } satisfies Record<WorkMode, string>,
-    years: (min: number, max: number | null) =>
-      max !== null && max > min
-        ? `${n(min)} to ${count(max, 'year', 'years')}`
-        : count(min, 'year', 'years'),
     estimated: 'estimated',
     assumed: 'assumed',
     verdict: {
-      met: 'fits',
-      partial: 'partly fits',
-      violated: 'does not fit',
-      unknown: 'check',
-      unset: 'open',
-    } satisfies Record<TermVerdict, string>,
-    markHint: (what: string, state: string) => `${what} · ${state}`,
+      met: 'Met',
+      partial: 'Partly met',
+      violated: 'Not met',
+      unknown: 'Unclear',
+    } satisfies Record<Exclude<TermVerdict, 'unset'>, string>,
     criterion: criteria,
     note,
     open: 'Open ad',
     close: 'Close',
-    favourite: 'Favourite',
     pin: 'Mark as favourite',
     unpin: 'Remove favourite',
     archive: 'Archive',
     restore: 'Restore',
     more: 'More actions',
-    showInAd: 'Show in the ad',
-    override: 'Include anyway',
-    overrideUndo: 'Undo',
-    overridden: 'Included by you',
+    delete: 'Delete',
+    override: 'Score anyway',
+    exclude: 'Exclude again',
+    overridden: 'Scored anyway.',
+    excludedAgain: 'Excluded again.',
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
-    preliminary: 'Provisional, preview only',
-    lowEvidence: 'The ad names few clear requirements, so the match stays rough.',
-    scoredLater: 'Scored once the ad is in',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
-    teaserOf: (portal: string) => `Without a sign-in, ${portal} shows only a preview.`,
     setUpSignIn: 'Set up sign-in',
     promptNoProfile: 'Without a profile, there is nothing to assess.',
     promptNoText: 'The text of the ad is still missing.',
-    mailAt: (date: string, time: string) => `Alert email from ${date} at ${time}`,
-    fetchDetails: 'Fetch details',
+    fetchDetails: 'Load ad',
     why: 'Requirements',
-    met: 'Met',
-    partial: 'Partly met',
-    missing: 'Not in the profile',
-    check: 'To check',
     noReasons: 'The ad names no clear requirements.',
     ad: 'Ad',
-    detail: {
-      pending: 'The ad is still missing.',
-      teaser: detailSays.teaser,
-      failed: 'The details could not be fetched.',
-      unfetchable: detailSays.unfetchable,
-      gone: detailSays.gone,
-      onRequest: detailSays.onRequest,
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    checkedAt: (when: string) => `Last checked ${when}`,
-    detailsOff: '“Fetch details” is off for this portal.',
+    adNote: {
+      teaser: 'Only a preview',
+      missing: 'Ad missing',
+      loading: 'Loading the ad',
+      unfetchable: 'Ad cannot be reached',
+      gone: 'No longer online',
+      closed: 'No longer taking applications',
+    },
     short: SHORT_TEXT,
     loadFailed: 'The job could not be loaded.',
   },

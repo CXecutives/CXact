@@ -19,7 +19,6 @@ interface Formats {
   dayMonth: Intl.DateTimeFormat;
   weekday: Intl.DateTimeFormat;
   dayMonthYear: Intl.DateTimeFormat;
-  dayMonthShort: Intl.DateTimeFormat;
   clock: Intl.DateTimeFormat;
 }
 
@@ -43,7 +42,6 @@ function formats(): Formats {
         month: '2-digit',
         year: 'numeric',
       }),
-      dayMonthShort: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }),
       clock: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }),
     };
     built.set(current, found);
@@ -113,10 +111,13 @@ export function formatDate(iso: string): string {
   return Number.isNaN(date.getTime()) ? '' : formats().dayMonthYear.format(date);
 }
 
-/** `1. Nov.`, `1 Nov`: a day of the coming months in few letters (a list row's start). */
-export function formatShortDate(iso: string): string {
+/** `24.09.`, `24/09`, with the year when it is not this one (`24.09.2025`): the one date of a
+ *  job's facts (the day of its alert mail, a start "ab 01.11."). */
+export function formatDay(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : formats().dayMonthShort.format(date);
+  if (Number.isNaN(date.getTime())) return '';
+  const { dayMonth, dayMonthYear } = formats();
+  return (date.getFullYear() === now.getFullYear() ? dayMonth : dayMonthYear).format(date);
 }
 
 /** The day of a moment in words while it is near: `gestern`, `vorgestern` (`yesterday`,
