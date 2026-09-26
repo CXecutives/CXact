@@ -33,7 +33,8 @@
 // `ensure_not_demo`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads).
-// `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no).
+// `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
+// with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
 // a competence with more than 70 years (with its row), more than five days a week, a second
@@ -43,7 +44,8 @@
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
 // `?tick=ms` sets the pace of a scripted run (default 40); `?export=locked` lets the export
 // of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail;
-// `?folder=other` lets `pick_workspace` choose another, empty folder.
+// `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
+// comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette.
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
 // come in the order of the backend (`Portal::ALL`).
 
@@ -64,6 +66,7 @@ import type {
   MoveBack,
   Notice,
   OverviewStats,
+  Palette,
   Place,
   Portal,
   PortalState,
@@ -206,6 +209,14 @@ const DEMO_CHECK: MailboxCheck = {
     { portal: 'freelance', count: 0 },
   ],
 };
+/** `alerts=none`: "Verbinden" finds no alert mail of any portal. */
+const NO_ALERTS: MailboxCheck = {
+  days: 30,
+  total: 0,
+  perPortal: DEMO_CHECK.perPortal.map((count) => ({ ...count, count: 0 })),
+};
+/** The text files of the demo's jobs with a full text. */
+const TXT_FILES = 38;
 const HOME = MAC ? '/Users/demo' : 'C:/Users/demo';
 const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
@@ -218,6 +229,9 @@ const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
+/** The palette as the backend says it (`palette=light|dark`; Coast by default). */
+const PALETTE: Palette =
+  params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'coast';
 /** The order of the backend (`Portal::ALL`), on every screen. */
 const PORTALS: readonly Portal[] = ['linkedin', 'freelance', 'freelancermap'];
 
@@ -1192,11 +1206,17 @@ function initial(): void {
     settings: {
       workspace: `${HOME}/Documents/Job-Alerts`,
       workspaceIsDefault: true,
-      txtFiles: 38,
+      txtFiles: TXT_FILES,
       excelPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.xlsx`,
       excelExists: true,
     },
-    mailbox: { user: 'alerts.demo@gmail.com', vault: VAULT, error: null, check: null },
+    mailbox: {
+      user: 'alerts.demo@gmail.com',
+      vault: VAULT,
+      error: null,
+      check: null,
+      checkedAt: null,
+    },
     profile: PROFILE,
     // Every portal counts its pages (the backend sends the numbers of each).
     portals: [
@@ -1208,6 +1228,7 @@ function initial(): void {
     autoArchiveDays: 30,
     autoEmptyTrashDays: 30,
     language: LANGUAGE,
+    palette: PALETTE,
     lastRun: lastRun(),
     counts: countsOf([]),
     matchPending: 0,
@@ -1219,7 +1240,7 @@ function initial(): void {
     case 'first-run':
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null };
+      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
@@ -1283,12 +1304,12 @@ function initial(): void {
       // After "reset everything" the app starts empty: the first-run page, with the report.
       jobs = [];
       state.firstRun = true;
-      state.mailbox = { user: null, vault: VAULT, error: null, check: null };
+      state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
       state.profile = null;
       state.lastRun = null;
       state.settings.excelExists = false;
       state.settings.txtFiles = 0;
-      state.resetReport = { removed: 12, failed: 1 };
+      state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
       break;
     case 'session-left':
       // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
@@ -1298,7 +1319,13 @@ function initial(): void {
       // Like `create_demo_data` without a profile: nothing scored, until she picks a test
       // profile in Profil.
       state.demo = true;
-      state.mailbox = { user: 'demo@example.org', vault: VAULT, error: null, check: null };
+      state.mailbox = {
+        user: 'demo@example.org',
+        vault: VAULT,
+        error: null,
+        check: null,
+        checkedAt: null,
+      };
       state.profile = null;
       for (const j of jobs) j.match = null;
       break;
@@ -1309,6 +1336,7 @@ function initial(): void {
         vault: VAULT,
         error: null,
         check: null,
+        checkedAt: null,
       };
       break;
     case 'profile-broken':
@@ -2878,13 +2906,19 @@ const handlers: Handlers = {
     if (harness.holdMailbox) await checking();
     if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
     // A count that does not finish never throws the sign-in away: `check` is then null.
-    state.mailbox = { user, vault: VAULT, error: null, check: MAIL_UNCOUNTED ? null : DEMO_CHECK };
+    state.mailbox = {
+      user,
+      vault: VAULT,
+      error: null,
+      check: MAIL_UNCOUNTED ? null : params.get('alerts') === 'none' ? NO_ALERTS : DEMO_CHECK,
+      checkedAt: new Date().toISOString(),
+    };
     return state.mailbox;
   },
   remove_mailbox: () => {
     if (running) throw fail('busy');
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
-    state.mailbox = { user: null, vault: VAULT, error: null, check: null };
+    state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
     return true;
   },
   portal_login: ({ portal: name }) => {
@@ -2897,27 +2931,35 @@ const handlers: Handlers = {
     if (p) p.signedIn = false;
     return true;
   },
+  // Like core: the profile comes along into a folder without one (`folder=other`), a folder
+  // with its own keeps it (`folder=own`); the files are written there at once.
   pick_workspace: () => {
-    if (params.get('folder') !== 'other') return null;
-    // Nothing is written there yet: the text files stay in the old folder.
+    const kind = params.get('folder');
+    if (kind !== 'other' && kind !== 'own') return null;
     const folder = `${HOME}/Documents/Jobs`;
     state.settings = {
+      ...state.settings,
       workspace: folder,
       workspaceIsDefault: false,
-      txtFiles: 0,
       excelPath: `${folder}/auswertung/JobAlerts.xlsx`,
-      excelExists: false,
+      excelExists: state.lastRun !== null,
     };
-    return folder;
+    const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
+    return { folder, profile };
   },
-  rewrite_txt: () => ({
-    overviewXlsx: null,
-    overviewHtml: null,
-    backup: null,
-    txtWritten: state.settings.txtFiles,
-    txtFailed: 0,
-    error: null,
-  }),
+  // Every job with its full text gets its file again (none before the first fetch).
+  rewrite_txt: () => {
+    const written = state.lastRun === null || jobs.length === 0 ? 0 : TXT_FILES;
+    state.settings.txtFiles = written;
+    return {
+      overviewXlsx: null,
+      overviewHtml: null,
+      backup: null,
+      txtWritten: written,
+      txtFailed: 0,
+      error: null,
+    };
+  },
   clear_txt: () => {
     const removed = state.settings.txtFiles;
     state.settings.txtFiles = 0;
@@ -2944,6 +2986,7 @@ const handlers: Handlers = {
     if (patch.autoArchiveDays !== null) state.autoArchiveDays = patch.autoArchiveDays;
     if (patch.autoEmptyTrashDays !== null) state.autoEmptyTrashDays = patch.autoEmptyTrashDays;
     if (patch.language !== null) state.language = patch.language;
+    if (patch.palette !== null) state.palette = patch.palette;
     return structuredClone(state);
   },
   reset_all: () => null,

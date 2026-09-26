@@ -1,26 +1,20 @@
 <!--
-  Einstellungen (centred 720): Postfach (with "Alle Alert-Mails abrufen"), Automatisch,
-  Portale (one sentence on "Details holen" for all of them), Dateien, Sprache, Tastenkürzel,
-  Wartung - each a card of setting rows - and "Alles zurücksetzen" alone on the last card,
-  apart from the harmless rows; its dialog lists everything it deletes. The buttons of a row
-  are 28 px (sm), 12 apart at its end; what deletes is quiet and turns red (ghost, `warns`).
-  Sprache switches the whole app at once (Deutsch, English). Every action
-  answers where it happened (a note rises in there, and fades when it goes); dialogs only to
-  confirm, and a confirmed action that fails closes its dialog so the note beside the action
-  can say why.
-  Switches move at once and are their own answer (no toast). The dry run changes nothing,
-  and a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder
-  and the files, so what they cannot do is locked with the reason of that run instead of
-  failing. The Postfach says when the last fetch could not reach Gmail or Gmail refused the
-  password, instead of "Verbunden": a red badge like the sidebar's status, and a sentence
-  under the row only where it adds the cause or the next step.
-  Every file row works the same: "Öffnen" and "Ordner öffnen"; the path (text to select and
-  copy) stands only at the work folder. Textdateien says what they are (the ads as text for
-  an AI); after a change of the folder a note says that they are still in the old one until
-  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them; Wartung ends with
-  the app's version. Opened from a job for one portal ("Anmeldung einrichten") the page
-  glides to that portal's card, focuses its sign-in and offers "Zurück zum Job". The demo
-  keeps to its own folders: mailbox, work folder and reset are locked with its reason.
+  Einstellungen (centred 720): the cards of cards.ts in their order, each a heading and a
+  card of setting rows (Postfach, Portale and Tastenkürzel are blocks of their own), and
+  "Alles zurücksetzen" alone on the last card. This file only renders the list and runs its
+  commands; what a row is, says and does is one entry in cards.ts.
+
+  A switch or a choice moves at once (the state is patched before the save) and is its own
+  answer; Darstellung switches the colours and the language of the whole app at once, and
+  the backend follows with the window and the files. A success that shows nowhere else is a
+  toast (files written or deleted, another work folder); errors and warnings stay a note at
+  the end of their card. Only "Alles zurücksetzen" and "Postfach entfernen" ask first; a
+  dialog whose action fails stays open and says why inside. The dry run changes nothing, and
+  a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder and
+  the files, so what they cannot do is locked with the reason of that run instead of
+  failing. The demo keeps to its own folders: mailbox, work folder and reset are locked with
+  its reason. Opened from a job for one portal ("Anmeldung einrichten") the page glides to
+  that portal's card, focuses its sign-in and offers "Zurück zum Job".
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -32,264 +26,195 @@
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import Toggle from '$components/Toggle.svelte';
-  import { language } from '$lib/i18n/language.svelte';
-  import { keyLabel } from '$lib/platform';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { Language, OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
-  import MailboxForm from '../shared/MailboxForm.svelte';
+  import KeyList from '../shared/KeyList.svelte';
+  import {
+    ACTIONS,
+    CARDS,
+    settingsPatch,
+    type Action,
+    type ActionId,
+    type ChoiceRow,
+    type CommandId,
+    type Lock,
+    type Row,
+    type SwitchRow,
+  } from './cards';
+  import MailboxCard from './MailboxCard.svelte';
   import PortalCard from './PortalCard.svelte';
 
   /** A note keeps what happened and says it when it shows, so it follows a switch of the
    *  language (a sentence made at once would stay in the old one). */
-  type Feedback = { tone: NoticeTone; text: () => string } | null;
-
-  /** The app's languages, named in the language of the app. */
-  const LANGUAGES: readonly Language[] = ['de', 'en'];
-
-  /** The app's keys in the order of the app: the views, the list, a job, the fetch. */
-  const SHORTCUTS: readonly {
-    name: Exclude<keyof typeof t.settings.keys, 'heading'>;
-    combo: string;
-  }[] = [
-    { name: 'overview', combo: 'mod+1' },
-    { name: 'jobs', combo: 'mod+2' },
-    { name: 'profile', combo: 'mod+3' },
-    { name: 'settings', combo: 'mod+4' },
-    { name: 'search', combo: 'mod+f' },
-    { name: 'undo', combo: 'mod+z' },
-    { name: 'archive', combo: 'e' },
-    { name: 'trash', combo: 'del' },
-    { name: 'favourite', combo: 's' },
-    { name: 'unread', combo: 'u' },
-    { name: 'applied', combo: 'b' },
-    { name: 'openAd', combo: 'o' },
-    { name: 'fetch', combo: 'f5' },
-  ];
+  type Feedback = { tone: NoticeTone; text: () => string };
 
   const cfg = $derived(app.state);
-  let editing = $state(false);
-  let mailboxNote = $state<Feedback>(null);
-  let fetchNote = $state<Feedback>(null);
-  let filesNote = $state<Feedback>(null);
-  let languageNote = $state<Feedback>(null);
-  let careNote = $state<Feedback>(null);
-  let resetNote = $state<Feedback>(null);
-  let confirmRemove = $state(false);
-  let confirmClear = $state(false);
-  let confirmFull = $state(false);
+  /** What a locked button asks (null until the state is there). */
+  const lock = $derived<Lock | null>(
+    cfg === null
+      ? null
+      : {
+          state: cfg,
+          t,
+          running: run.active,
+          busyText: run.busyText,
+          beforeFirstFetch: cfg.lastRun === null,
+        },
+  );
+  /** The mailbox is outside the demo's and the dry run's own data, and a run holds it. */
+  const mailboxLocked = $derived(lock === null ? null : ACTIONS.workspaceChange.locked(lock));
+  let busy = $state<CommandId | null>(null);
+  /** The note at the end of each card, by card id. */
+  let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
-  let busy = $state<string | null>(null);
+  let resetError = $state<(() => string) | null>(null);
   /** Only the answer to the latest save may replace the state (quick double flips). */
   let saves = 0;
-  /** What the dry run cannot do, and why (the backend would refuse it). */
-  const dryRun = $derived(cfg?.dryRun ?? false);
-  const dryRunReason = $derived(t.error.text('dryRun', {}));
-  /** Why a locked action waits: the dry run, or the run in progress (a fetch or a rescore). */
-  const lockedReason = $derived(dryRun ? dryRunReason : run.busyText);
-  /** The demo keeps to its own folders: no mailbox, no other work folder, no reset (the
-   *  backend refuses them with `demo`). */
-  const demo = $derived(cfg?.demo ?? false);
-  const ownOnly = $derived(dryRun || demo);
-  const ownOnlyReason = $derived(demo ? t.error.text('demo', {}) : lockedReason);
 
-  /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
-  const MAIL_FAILURES: readonly string[] = [
-    'mailConnect',
-    'mailAuth',
-    'mailTimeout',
-    'mailLost',
-    'mailNotGmail',
-    'mailServer',
-  ];
-  /** A mailbox saved here was just checked against Gmail: the old failure is past. */
-  let mailboxSaved = $state(false);
-  const mailFailure = $derived.by(() => {
-    const outcome = cfg?.lastRun?.outcome;
-    if (mailboxSaved || outcome?.kind !== 'failed') return null;
-    return MAIL_FAILURES.includes(outcome.error.kind) ? outcome.error : null;
-  });
-  /** The sentence under the row: what to do when Gmail refused the password, else the cause
-   *  where it says more than the badge ("Gmail ist nicht erreichbar" is the badge itself). */
-  const mailFailureText = $derived(
-    mailFailure === null || mailFailure.kind === 'mailConnect'
-      ? null
-      : mailFailure.kind === 'mailAuth'
-        ? t.settings.mailRefused
-        : t.error.text(mailFailure.kind, mailFailure.params),
-  );
+  const note = (card: string, feedback: Feedback | null): void => {
+    notes[card] = feedback;
+  };
+  const failed = (card: string, error: unknown): void =>
+    note(card, { tone: 'danger', text: () => errorText(error) });
 
-  async function act(
-    name: string,
-    note: (f: Feedback) => void,
-    work: () => Promise<Feedback>,
-    close: (() => void) | null = null,
-  ): Promise<void> {
-    busy = name;
-    note(null);
+  /** A switch or a choice: the page follows at once, the save after; a failure loads the
+   *  stored state again (switch, colours and language go back) and says why in its card. */
+  async function save(card: string, change: Partial<SettingsPatch>): Promise<void> {
+    const mine = ++saves;
+    note(card, null);
     try {
-      note(await work());
+      const next = await invoke('save_settings', { patch: settingsPatch(change) });
+      if (mine === saves) app.set(next);
     } catch (error) {
-      note({ tone: 'danger', text: () => errorText(error) });
+      failed(card, error);
+      void app.load();
+    }
+  }
+
+  function flip(card: string, row: SwitchRow, on: boolean): void {
+    if (cfg === null) return;
+    row.set(cfg, on);
+    void save(card, row.patch(on));
+  }
+
+  function choose<Id extends string>(card: string, row: ChoiceRow<Id>, id: Id): void {
+    if (cfg === null) return;
+    row.set(cfg, id);
+    // The language and the colours of the whole page follow the state at once.
+    app.set(cfg);
+    void save(card, row.patch(id));
+  }
+
+  function open(card: string, target: OpenTarget): void {
+    note(card, null);
+    invoke('open_target', { target }).catch((error: unknown) => failed(card, error));
+  }
+
+  /** Runs a command of a card: its failure is said in the card, its success by the command. */
+  async function command(card: string, id: CommandId, work: () => Promise<void>): Promise<void> {
+    busy = id;
+    note(card, null);
+    try {
+      await work();
+    } catch (error) {
+      failed(card, error);
     } finally {
       busy = null;
-      close?.();
     }
   }
 
-  function open(target: OpenTarget, note: (f: Feedback) => void): void {
-    invoke('open_target', { target }).catch((error: unknown) =>
-      note({ tone: 'danger', text: () => errorText(error) }),
-    );
-  }
-
-  /** Ändern and Entfernen of the connected mailbox. */
-  let mailboxButtons = $state<HTMLElement | null>(null);
-
-  /** The change form closes: the focus it held goes back to "Ändern", as a dialog's goes back
-   *  to its opener (only when it fell to the page, never taken from elsewhere). */
-  async function closeForm(): Promise<void> {
-    editing = false;
-    await tick();
-    if (document.activeElement === document.body) {
-      mailboxButtons?.querySelector<HTMLElement>('button')?.focus();
-    }
-  }
-
-  const setMailbox = (f: Feedback): void => void (mailboxNote = f);
-  const setFetch = (f: Feedback): void => void (fetchNote = f);
-  const setFiles = (f: Feedback): void => void (filesNote = f);
-  const setLanguageNote = (f: Feedback): void => void (languageNote = f);
-  const setCare = (f: Feedback): void => void (careNote = f);
-  const setReset = (f: Feedback): void => void (resetNote = f);
-
-  function removeMailbox(): void {
-    void act(
-      'mailbox',
-      setMailbox,
-      async () => {
-        await invoke('remove_mailbox');
-        await app.load();
-        return null;
-      },
-      () => (confirmRemove = false),
-    );
-  }
-
-  /** Days after which old jobs archive themselves, and the trash empties itself, when on. */
-  const AUTO_ARCHIVE_DAYS = 30;
-  const AUTO_EMPTY_TRASH_DAYS = 30;
-
-  /** A switch moves at once; a failure puts it back (reload) and says why below it. */
-  function autoArchive(on: boolean): Promise<void> {
-    const days = on ? AUTO_ARCHIVE_DAYS : 0;
-    if (app.state) app.state.autoArchiveDays = days;
-    return saveFetch({
-      autoArchiveDays: days,
-      autoEmptyTrashDays: null,
-      language: null,
-    });
-  }
-
-  function autoEmptyTrash(on: boolean): Promise<void> {
-    const days = on ? AUTO_EMPTY_TRASH_DAYS : 0;
-    if (app.state) app.state.autoEmptyTrashDays = days;
-    return saveFetch({
-      autoArchiveDays: null,
-      autoEmptyTrashDays: days,
-      language: null,
-    });
-  }
-
-  /**
-   * The language switches the whole page at once, before the backend has stored it; a
-   * failure switches back and says why below it. Excel file and overview follow at the next
-   * fetch.
-   */
-  function chooseLanguage(next: Language): Promise<void> {
-    const before = language.current;
-    language.set(next);
-    if (app.state) app.state.language = next;
-    return saveFetch(
-      { autoArchiveDays: null, autoEmptyTrashDays: null, language: next },
-      setLanguageNote,
-      () => language.set(before),
-    );
-  }
-
-  function saveFetch(
-    change: Omit<SettingsPatch, 'portals'>,
-    note: (f: Feedback) => void = setFetch,
-    undo: () => void = () => {},
-  ): Promise<void> {
-    const save = ++saves;
-    return act(change.language === null ? 'fetch' : 'language', note, async () => {
-      try {
-        const next = await invoke('save_settings', { patch: { portals: [], ...change } });
-        if (save === saves) app.set(next);
-      } catch (error) {
-        undo();
-        void app.load();
-        throw error;
-      }
-      return null;
-    });
-  }
-
-  /** Another work folder: the text files there are only the new ones (the backend never
-   *  writes a text file twice by itself), so a note says where the others are. */
-  function pickWorkspace(): void {
-    const folder = cfg?.settings.workspace ?? null;
-    const files = cfg?.settings.txtFiles ?? 0;
-    void act('workspace', setFiles, async () => {
-      const path = await invoke('pick_workspace');
-      if (path === null) return null;
-      const next = await app.load();
-      const moved = next !== null && next.settings.workspace !== folder;
-      return moved && files > 0 ? { tone: 'info', text: () => t.settings.txtLeftBehind } : null;
-    });
-  }
-
-  function rewrite(): void {
-    void act('rewrite', setFiles, async () => {
-      const { error, txtFailed, txtWritten } = await invoke('rewrite_txt');
+  /** Another work folder: the profile comes along (or the folder's own is used) and the
+   *  files are written there at once (pick_workspace); the toast says which. */
+  const pickWorkspace = (card: string): Promise<void> =>
+    command(card, 'workspaceChange', async () => {
+      const picked = await invoke('pick_workspace');
+      if (picked === null) return;
       await app.load();
-      if (error) return { tone: 'danger', text: () => t.error.text(error.kind, error.params) };
-      if (txtFailed > 0) return { tone: 'warning', text: () => t.settings.txtFailed(txtFailed) };
-      return { tone: 'success', text: () => t.settings.txtWritten(txtWritten) };
+      if (picked.profile === 'own') toasts.show(t.settings.workspaceOwnProfile, 'info');
+      else if (picked.profile === 'copied') toasts.show(t.settings.workspaceMoved);
+      else toasts.show(t.settings.workspaceFiles);
     });
+
+  /** Writes the text files again; a file another program holds open stays a note. */
+  async function writeTxt(card: string): Promise<boolean> {
+    const { error, txtFailed, txtWritten } = await invoke('rewrite_txt');
+    await app.load();
+    if (error) {
+      note(card, { tone: 'danger', text: () => t.error.text(error.kind, error.params) });
+      return false;
+    }
+    if (txtFailed > 0) {
+      note(card, { tone: 'warning', text: () => t.settings.txtFailed(txtFailed) });
+      return false;
+    }
+    return txtWritten > 0;
   }
 
-  function clear(): void {
-    void act(
-      'clear',
-      setFiles,
-      async () => {
-        const { failed, removed } = await invoke('clear_txt');
-        await app.load();
-        if (failed.length > 0) {
-          return { tone: 'warning', text: () => t.settings.txtFailed(failed.length) };
-        }
-        return { tone: 'success', text: () => t.settings.txtCleared(removed) };
+  const rewrite = (card: string): Promise<void> =>
+    command(card, 'txtRewrite', async () => {
+      if (await writeTxt(card)) toasts.show(t.settings.txtRewritten);
+      else if (notes[card] === null || notes[card] === undefined) {
+        toasts.show(t.settings.txtNothing, 'info');
+      }
+    });
+
+  /** Deletes the text files; the toast's undo writes them again. */
+  const clear = (card: string): Promise<void> =>
+    command(card, 'txtClear', async () => {
+      const { failed: open } = await invoke('clear_txt');
+      await app.load();
+      if (open.length > 0) {
+        note(card, { tone: 'warning', text: () => t.settings.txtFailed(open.length) });
+        return;
+      }
+      toasts.show(t.settings.txtCleared, 'success', {
+        label: t.common.undo,
+        onclick: () => void command(card, 'txtRewrite', async () => void (await writeTxt(card))),
+      });
+    });
+
+  /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
+  async function reset(): Promise<void> {
+    busy = 'reset';
+    resetError = null;
+    try {
+      await invoke('reset_all');
+      confirmReset = false;
+    } catch (error) {
+      resetError = () => errorText(error);
+    } finally {
+      busy = null;
+    }
+  }
+
+  function act(card: string, id: ActionId): void {
+    const action: Action = ACTIONS[id];
+    if (action.open !== undefined) {
+      open(card, action.open);
+      return;
+    }
+    const commands: Record<CommandId, () => void> = {
+      workspaceChange: () => void pickWorkspace(card),
+      txtRewrite: () => void rewrite(card),
+      txtClear: () => void clear(card),
+      reset: () => {
+        resetError = null;
+        confirmReset = true;
       },
-      () => (confirmClear = false),
-    );
+    };
+    commands[id as CommandId]();
   }
 
-  function readAll(): void {
-    confirmFull = false;
-    void run.start({ kind: 'fullMailbox' }).then((started) => {
-      if (started) navigation.go('jobs');
-      else setMailbox({ tone: 'danger', text: () => run.startError ?? t.run.failed });
-    });
-  }
+  const testidOf = (id: string): string => id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
   /**
    * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
@@ -328,25 +253,72 @@
       target?.focus({ preventScroll: true });
     });
   });
-
-  /** On success the app restarts empty; a failure closes the dialog and says why here. */
-  function reset(): void {
-    void act(
-      'reset',
-      setReset,
-      async () => {
-        await invoke('reset_all');
-        return null;
-      },
-      () => (confirmReset = false),
-    );
-  }
 </script>
 
-<!-- A note rises in where its action happened and fades when it goes (Notice, never at mount). -->
-{#snippet note(feedback: Feedback, testid: string)}
-  {#if feedback}
-    <Notice tone={feedback.tone} variant="inline" text={feedback.text()} {testid} />
+{#snippet row(card: string, item: Row)}
+  {#if cfg !== null && lock !== null}
+    {#if item.kind === 'switch'}
+      <SettingRow
+        label={item.label(t, cfg)}
+        hint={item.hint(t, cfg)}
+        for="switch-{item.id}"
+        testid="row-{item.id}"
+      >
+        <Toggle
+          id="switch-{item.id}"
+          checked={item.on(cfg)}
+          label={item.label(t, cfg)}
+          testid="toggle-{item.id}"
+          onchange={(on) => flip(card, item, on)}
+        />
+      </SettingRow>
+    {:else if item.kind === 'choice'}
+      {@const choice = item as ChoiceRow}
+      <SettingRow label={choice.label(t, cfg)} testid="row-{choice.id}">
+        <Segmented
+          size="sm"
+          options={choice.options.map((id) => ({ id, label: choice.name(t, id) }))}
+          value={choice.value(cfg)}
+          label={choice.label(t, cfg)}
+          testid={choice.id}
+          onchange={(id) => choose(card, choice, id)}
+        />
+      </SettingRow>
+    {:else if item.kind === 'actions'}
+      <SettingRow
+        label={item.label(t, cfg)}
+        hint={item.hint?.(t, cfg) ?? null}
+        copy={item.copy ?? false}
+        testid={item.id}
+      >
+        {#snippet badges()}
+          {@const badge = item.badge?.(t, cfg) ?? null}
+          {#if badge}<Badge label={badge} />{/if}
+        {/snippet}
+        <div class="buttons">
+          {#each item.actions as id (id)}
+            {@const action: Action = ACTIONS[id]}
+            {@const locked = action.locked?.(lock) ?? null}
+            <Button
+              variant={action.variant}
+              size="sm"
+              icon={action.icon}
+              label={action.label(t, cfg)}
+              loading={busy === id}
+              disabled={locked !== null}
+              disabledReason={locked}
+              warns={action.warns ?? false}
+              testid={testidOf(id)}
+              onclick={() => act(card, id)}
+            />
+          {/each}
+        </div>
+      </SettingRow>
+    {:else}
+      <SettingRow label={item.label(t, cfg)} testid={item.id}>
+        <span class="value" data-copy>{item.value(cfg)}</span>
+      </SettingRow>
+    {/if}
   {/if}
 {/snippet}
 
@@ -366,384 +338,56 @@
       <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
-    <section class="section" data-testid="settings-mailbox">
-      <h2 class="heading">{t.settings.mailbox}</h2>
-      <Card padding={cfg.mailbox.user && !editing ? 'rows' : 'md'}>
-        {#if cfg.mailbox.user && !editing}
-          <SettingRow label={cfg.mailbox.user} copyLabel hint={t.settings.vault[cfg.mailbox.vault]}>
-            {#snippet badges()}
-              {#if mailFailure}
-                <Badge
-                  label={mailFailure.kind === 'mailAuth'
-                    ? t.settings.refused
-                    : t.settings.unreachable}
-                  tone="danger"
-                  icon="triangle-alert"
+    {#each CARDS as card, index (card.id)}
+      <section class="section" data-testid="settings-{card.id}">
+        {#if card.heading}
+          <div class="title">
+            <div class="title-row" data-first-row={index === 0 ? '' : undefined}>
+              <h2 class="heading">{card.heading(t, cfg)}</h2>
+              {#if card.body === 'portals' && backToJob}
+                <Button
+                  variant="link"
+                  size="sm"
+                  label={t.settings.backToJob}
+                  testid="back-to-job"
+                  onclick={goBackToJob}
                 />
-              {:else}
-                <Badge label={t.settings.connected} tone="success" icon="check" />
               {/if}
-            {/snippet}
-            <div class="buttons" bind:this={mailboxButtons}>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon="pencil"
-                label={t.common.change}
-                disabled={run.active || ownOnly}
-                disabledReason={ownOnlyReason}
-                testid="mailbox-change"
-                onclick={() => {
-                  mailboxNote = null;
-                  editing = true;
-                }}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="trash-2"
-                label={t.common.remove}
-                disabled={run.active || ownOnly}
-                disabledReason={ownOnlyReason}
-                warns
-                testid="mailbox-remove"
-                onclick={() => (confirmRemove = true)}
-              />
             </div>
-          </SettingRow>
-          <!-- Every alert mail again, not only the new ones: a run of the mailbox. -->
-          <SettingRow label={t.settings.fullMailbox} hint={t.settings.fullMailboxHint}>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon="mail"
-              label={t.settings.fullMailboxAction}
-              disabled={run.fetchBlocked !== null}
-              disabledReason={run.fetchBlocked}
-              testid="full-mailbox"
-              onclick={() => (confirmFull = true)}
-            />
-          </SettingRow>
-        {:else}
-          {#if !cfg.mailbox.user}
-            <p class="lead">{t.settings.notConnected}</p>
-          {/if}
-          <!-- "Ändern" gives way to the form, which takes the caret; closing it gives it back.
-               A saved change says so under the row, like every action on this page. -->
-          <MailboxForm
-            saveLabel={cfg.mailbox.user ? t.common.save : t.settings.connect}
-            autofocus={editing}
-            compact
-            oncancel={cfg.mailbox.user ? () => void closeForm() : null}
-            onsaved={(saved) => {
-              mailboxSaved = true;
-              // Signed in, but the alert mails were not counted in time: the fetch reads them.
-              const counted = saved.check !== null;
-              mailboxNote = {
-                tone: 'success',
-                text: () => (counted ? t.settings.mailboxSaved : t.settings.mailboxNotCounted),
-              };
-              void closeForm();
-            }}
-          />
-        {/if}
-        {#if mailFailureText && !editing}
-          <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
-        {/if}
-        {#if cfg.mailbox.error}
-          <Notice
-            tone="danger"
-            variant="inline"
-            text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
-          />
-        {/if}
-        {@render note(mailboxNote, 'mailbox-note')}
-      </Card>
-    </section>
-
-    <section class="section" data-testid="settings-fetch">
-      <h2 class="heading">{t.settings.automatic}</h2>
-      <Card padding="rows">
-        <SettingRow
-          label={t.settings.autoArchive}
-          hint={t.settings.autoArchiveHint}
-          for="switch-auto-archive"
-        >
-          <Toggle
-            id="switch-auto-archive"
-            checked={cfg.autoArchiveDays > 0}
-            label={t.settings.autoArchive}
-            testid="toggle-auto-archive"
-            onchange={autoArchive}
-          />
-        </SettingRow>
-        <SettingRow
-          label={t.settings.autoEmptyTrash}
-          hint={t.settings.autoEmptyTrashHint}
-          for="switch-auto-empty-trash"
-        >
-          <Toggle
-            id="switch-auto-empty-trash"
-            checked={cfg.autoEmptyTrashDays > 0}
-            label={t.settings.autoEmptyTrash}
-            testid="toggle-auto-empty-trash"
-            onchange={autoEmptyTrash}
-          />
-        </SettingRow>
-        {@render note(fetchNote, 'fetch-note')}
-      </Card>
-    </section>
-
-    <section class="section" data-testid="settings-portals">
-      <div class="title">
-        <div class="title-row">
-          <h2 class="heading">{t.settings.portals}</h2>
-          {#if backToJob}
-            <Button
-              variant="link"
-              size="sm"
-              label={t.settings.backToJob}
-              testid="back-to-job"
-              onclick={goBackToJob}
-            />
-          {/if}
-        </div>
-        <p class="hint" data-testid="portals-hint">{t.settings.portalsHint}</p>
-      </div>
-      {#each cfg.portals as portal (portal.portal)}
-        <PortalCard {portal} />
-      {/each}
-    </section>
-
-    <!-- Every file row the same: open it, open its folder (both quiet); the path only at the
-         work folder, where the files are. -->
-    <section class="section" data-testid="settings-files">
-      <h2 class="heading">{t.settings.files}</h2>
-      <Card padding="rows">
-        <SettingRow label={t.settings.workspace} hint={cfg.settings.workspace} copy>
-          {#snippet badges()}
-            {#if cfg.settings.workspaceIsDefault}
-              <Badge label={t.settings.workspaceDefault} />
+            {#if card.hint}
+              <p class="hint" data-testid="{card.id}-hint">{card.hint(t, cfg)}</p>
             {/if}
-          {/snippet}
-          <div class="buttons">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="pencil"
-              label={t.common.change}
-              loading={busy === 'workspace'}
-              disabled={run.active || ownOnly}
-              disabledReason={ownOnlyReason}
-              testid="workspace-change"
-              onclick={pickWorkspace}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="folder-open"
-              label={t.common.openFolder}
-              testid="workspace-open"
-              onclick={() => open({ kind: 'workspace' }, setFiles)}
-            />
           </div>
-        </SettingRow>
-        <!-- The Excel file opens, or shows itself selected in its folder (before the first
-             fetch the folder is the work folder it will be in). -->
-        <SettingRow label={t.settings.excel} testid="excel">
-          <div class="buttons">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="file-spreadsheet"
-              label={t.common.open}
-              disabled={!cfg.settings.excelExists}
-              disabledReason={t.settings.excelMissing}
-              testid="excel-open"
-              onclick={() => open({ kind: 'excel' }, setFiles)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="folder-open"
-              label={t.common.openFolder}
-              testid="excel-reveal"
-              onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
-            />
-          </div>
-        </SettingRow>
-        <!-- The Bericht (the HTML file) beside it: opening writes it first, except in the dry
-             run and while a run holds the files (as in the day overview). -->
-        <SettingRow label={t.settings.overview} testid="overview">
-          <div class="buttons">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="file-text"
-              label={t.common.open}
-              disabled={!cfg.settings.excelExists && (dryRun || run.active)}
-              disabledReason={lockedReason}
-              testid="overview-open"
-              onclick={() => open({ kind: 'overview' }, setFiles)}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="folder-open"
-              label={t.common.openFolder}
-              testid="overview-reveal"
-              onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
-            />
-          </div>
-        </SettingRow>
-        <SettingRow label={t.settings.txt} hint={t.settings.txtCount(cfg.settings.txtFiles)}>
-          <div class="buttons">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="refresh-cw"
-              label={t.settings.txtRewrite}
-              loading={busy === 'rewrite'}
-              disabled={run.active || dryRun}
-              disabledReason={lockedReason}
-              testid="txt-rewrite"
-              onclick={rewrite}
-            />
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="trash-2"
-              label={t.settings.txtClear}
-              disabled={run.active || dryRun || cfg.settings.txtFiles === 0}
-              disabledReason={run.active || dryRun ? lockedReason : t.settings.txtNone}
-              warns
-              testid="txt-clear"
-              onclick={() => (confirmClear = true)}
-            />
-          </div>
-        </SettingRow>
-        {@render note(filesNote, 'files-note')}
-      </Card>
-    </section>
-
-    <section class="section" data-testid="settings-language">
-      <h2 class="heading">{t.settings.language}</h2>
-      <Card padding="rows">
-        <SettingRow hint={t.settings.languageHint}>
-          <Segmented
-            size="sm"
-            options={LANGUAGES.map((id) => ({ id, label: t.settings.languageName[id] }))}
-            value={language.current}
-            label={t.settings.language}
-            testid="language"
-            onchange={(next) => void chooseLanguage(next)}
-          />
-        </SettingRow>
-        {@render note(languageNote, 'language-note')}
-      </Card>
-    </section>
-
-    <!-- The app's keys with the names of the OS (Strg on Windows, the symbols on macOS). -->
-    <section class="section" data-testid="settings-keys">
-      <h2 class="heading">{t.settings.keys.heading}</h2>
-      <Card padding="md">
-        <dl class="keys">
-          {#each SHORTCUTS as shortcut (shortcut.combo)}
-            <dt>{t.settings.keys[shortcut.name]}</dt>
-            <dd class="combo">{keyLabel(shortcut.combo)}</dd>
+        {/if}
+        {#if card.body === 'mailbox'}
+          <MailboxCard {cfg} locked={mailboxLocked} />
+        {:else if card.body === 'portals'}
+          {#each cfg.portals as portal (portal.portal)}
+            <PortalCard {portal} />
           {/each}
-        </dl>
-      </Card>
-    </section>
-
-    <section class="section" data-testid="settings-care">
-      <h2 class="heading">{t.settings.maintenance}</h2>
-      <Card padding="rows">
-        <SettingRow label={t.settings.logs}>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="file-text"
-            label={t.common.openLog}
-            testid="logs-open"
-            onclick={() => open({ kind: 'logDir' }, setCare)}
-          />
-        </SettingRow>
-        <SettingRow label={t.settings.data} hint={cfg.dataDir} copy>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="folder-open"
-            label={t.common.openFolder}
-            testid="data-open"
-            onclick={() => open({ kind: 'dataDir' }, setCare)}
-          />
-        </SettingRow>
-        <SettingRow label={t.settings.version} testid="version">
-          <span class="value" data-copy>{cfg.version}</span>
-        </SettingRow>
-        {@render note(careNote, 'care-note')}
-      </Card>
-    </section>
-
-    <!-- The one destructive action on its own, last, apart from the harmless rows. -->
-    <Card padding="rows" testid="settings-reset">
-      {#if cfg.resetReport}
-        <Notice
-          tone={cfg.resetReport.failed > 0 ? 'warning' : 'success'}
-          variant="inline"
-          text={cfg.resetReport.failed > 0
-            ? t.settings.resetPartly(cfg.resetReport.failed)
-            : t.settings.resetDone}
-          testid="reset-report"
-        />
-      {/if}
-      <SettingRow label={t.settings.reset} hint={t.settings.resetHint}>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="rotate-ccw"
-          label={t.settings.resetAction}
-          warns
-          disabled={run.active || ownOnly}
-          disabledReason={ownOnlyReason}
-          testid="reset"
-          onclick={() => (confirmReset = true)}
-        />
-      </SettingRow>
-      {@render note(resetNote, 'reset-note')}
-    </Card>
+        {:else if card.body === 'keys'}
+          <Card padding="md"><KeyList /></Card>
+        {:else}
+          <Card padding="rows">
+            {#each card.body as item (item.id)}
+              {@render row(card.id, item)}
+            {/each}
+            {@const feedback = notes[card.id] ?? null}
+            {#if feedback}
+              <Notice
+                tone={feedback.tone}
+                variant="inline"
+                text={feedback.text()}
+                testid="{card.id}-note"
+              />
+            {/if}
+          </Card>
+        {/if}
+      </section>
+    {/each}
   {/if}
 </div>
 
-<Dialog
-  bind:open={confirmRemove}
-  variant="danger"
-  heading={t.settings.removeMailbox}
-  text={t.settings.removeMailboxText}
-  confirmLabel={t.common.remove}
-  busy={busy === 'mailbox'}
-  testid="dialog-remove-mailbox"
-  onconfirm={removeMailbox}
-/>
-<Dialog
-  bind:open={confirmClear}
-  variant="danger"
-  heading={t.settings.txtClearHeading}
-  text={t.settings.txtClearText}
-  confirmLabel={t.settings.txtClear}
-  busy={busy === 'clear'}
-  testid="dialog-clear"
-  onconfirm={clear}
-/>
-<Dialog
-  bind:open={confirmFull}
-  heading={t.settings.fullMailboxHeading}
-  text={t.settings.fullMailboxText}
-  confirmLabel={t.settings.fullMailboxConfirm}
-  testid="dialog-full-mailbox"
-  onconfirm={readAll}
-/>
 <Dialog
   bind:open={confirmReset}
   variant="danger"
@@ -752,8 +396,9 @@
   items={t.settings.resetItems}
   confirmLabel={t.settings.resetAction}
   busy={busy === 'reset'}
+  error={resetError?.() ?? null}
   testid="dialog-reset"
-  onconfirm={reset}
+  onconfirm={() => void reset()}
 />
 
 <style>
@@ -797,33 +442,12 @@
     font: var(--type-sm);
   }
 
-  .lead {
-    margin-bottom: var(--space-16);
-    color: var(--text-muted);
-    font: var(--type-md);
-  }
-
   /* The buttons of a row end on its trailing edge, 12 apart, one size (28). */
   .buttons {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-12);
-  }
-
-  /* Tastenkürzel: plain rows, what on the left, the keys on the right. */
-  .keys {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
-    gap: var(--space-8) var(--space-16);
-    color: var(--text);
-    font: var(--type-sm);
-  }
-
-  .combo {
-    color: var(--text-muted);
-    font-variant-numeric: var(--numeric);
-    text-align: right;
   }
 
   /* The app's version: a value to copy, quiet like the keys. */

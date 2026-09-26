@@ -206,7 +206,7 @@ test('macOS: a dialog leaves the toolbar row free, and the row moves the window'
   );
   expect(hit).toBe(true);
   // The keys are named as a Mac names them.
-  await expect(page.getByTestId('key-search')).toContainText('⌘F');
+  await expect(page.getByTestId('keys-help').getByTestId('key-search')).toContainText('⌘F');
 });
 
 test('Ctrl+/ shows the card of the keys, named as the OS names them; Esc closes it', async ({

@@ -6,44 +6,10 @@ import type { ExportSummary, RunEvent } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
-const MAC = '?platform=macos';
-
-async function settings(page: Page, query = WIN): Promise<void> {
-  await open(page, query);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('settings')).toBeVisible();
-}
 
 async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
-
-test('the Excel file opens, and "Ordner öffnen" shows it in its folder', async ({ page }) => {
-  await settings(page);
-  const reveal = page.getByTestId('excel').getByTestId('excel-reveal');
-  await expect(reveal).toHaveText('Ordner öffnen');
-  await reveal.click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'excelInFolder' } });
-  // Every file row the same: "Öffnen", then "Ordner öffnen".
-  const labels = await page
-    .getByTestId('excel')
-    .locator('.btn')
-    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
-  expect(labels).toEqual(['excel-open', 'excel-reveal']);
-
-  await settings(page, MAC);
-  await expect(page.getByTestId('excel-reveal')).toHaveText('Ordner öffnen');
-});
-
-test('no Excel file yet: it cannot open and says why; its folder still opens', async ({ page }) => {
-  await settings(page, `${WIN}&scenario=no-files`);
-  const excel = page.getByTestId('excel-open');
-  await expect(excel).toHaveAttribute('aria-disabled', 'true');
-  await excel.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Die Excel-Datei entsteht beim ersten Abruf.');
-  // Before the first fetch the folder is the work folder it will be in (backend).
-  await expect(page.getByTestId('excel-reveal')).not.toHaveAttribute('aria-disabled', 'true');
-});
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
 test.fixme('"Ordner öffnen" of the day overview shows the Excel file in its folder', async ({

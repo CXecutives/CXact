@@ -2,6 +2,7 @@
 import type { JobCounts } from "./JobCounts";
 import type { Language } from "./Language";
 import type { Mailbox } from "./Mailbox";
+import type { Palette } from "./Palette";
 import type { Platform } from "./Platform";
 import type { PortalState } from "./PortalState";
 import type { ProfileInfo } from "./ProfileInfo";
@@ -48,6 +49,10 @@ autoEmptyTrashDays: number,
  * The language of the interface and the exports: the chosen one, else the OS language.
  */
 language: Language, 
+/**
+ * The colours of the page and the window (the report, Excel and the icon keep Coast).
+ */
+palette: Palette, 
 /**
  * The last fetch (fetch or whole mailbox) - a rescore or a details run is none.
  */

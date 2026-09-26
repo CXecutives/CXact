@@ -130,6 +130,7 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
         let _ = std::fs::remove_dir(dir);
     }
     if let Err(e) = vault.delete_gmail() {
+        log::warn!("reset: Gmail access in the keychain not deleted: {e}");
         report
             .failed
             .push(format!("Gmail access in the keychain ({e})"));
@@ -140,10 +141,16 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
         policy.forget_session(portal);
     }
     if let Err(e) = policy.save() {
+        log::warn!("reset: sign-in state in {POLICY_FILE} not saved: {e}");
         report
             .failed
             .push(format!("sign-in state in {POLICY_FILE} ({e})"));
     }
+    log::info!(
+        "reset: {} removed, {} not deleted (each named above)",
+        report.removed,
+        report.failed.len()
+    );
     Some(report)
 }
 

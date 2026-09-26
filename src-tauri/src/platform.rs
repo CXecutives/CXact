@@ -14,46 +14,110 @@
 //! page (dialog button order, scrollbars, OS words) lives in `ui/src/lib/platform.ts`.
 
 use std::path::Path;
+#[cfg(windows)]
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use jobalert_core::export::palette;
-use jobalert_core::settings::Language;
+use jobalert_core::settings::{Language, Palette};
 use tauri::webview::{NewWindowResponse, PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview, WebviewWindow, WebviewWindowBuilder};
 
 /// Label of the app's own window (`tauri.conf.json`).
 pub const MAIN: &str = "main";
 
-// ------------------------------------------------------------------ title bar colours
+// ------------------------------------------------------------------ window colours
 
-// The colours of the native Windows title bar (Windows 11; DWM): tokens of
-// `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates. A new
-// colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the bar at
-// another token is a change here (`core/tests/ui_contract.rs` checks which ones).
+// The colours of the window in the palette the user chose (Einstellungen, Darstellung): the
+// native Windows title bar (Windows 11; DWM) and the window behind the page on both OS.
+// Tokens of `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates.
+// A new colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the
+// window at another token is a change here (`core/tests/ui_contract.rs` checks which ones).
 
-/// Background of the bar: `--bg`, the cream of the sidebar below it and the window's
-/// `backgroundColor`.
-#[cfg_attr(
-    not(windows),
-    allow(dead_code, reason = "only Windows colours its title bar")
-)]
-pub const TITLE_BAR_BACKGROUND: Rgb = palette::BG.rgb;
-/// Title text of the active window: `--text`.
-#[cfg_attr(
-    not(windows),
-    allow(dead_code, reason = "only Windows colours its title bar")
-)]
-pub const TITLE_BAR_TEXT: Rgb = palette::TEXT.rgb;
-/// Title text while the window is inactive: `--text-subtle`.
-#[cfg_attr(
-    not(windows),
-    allow(dead_code, reason = "only Windows colours its title bar")
-)]
-pub const TITLE_BAR_TEXT_INACTIVE: Rgb = palette::TEXT_SUBTLE.rgb;
+/// What the window wears in one palette.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowColours {
+    /// `--bg`: the Windows caption and the window before the page paints (the colour of the
+    /// sidebar below the caption).
+    pub background: Rgb,
+    /// `--text`: the title of the active window.
+    #[cfg_attr(
+        not(windows),
+        allow(dead_code, reason = "only Windows colours its title bar")
+    )]
+    pub title: Rgb,
+    /// `--text-subtle`: the title while the window is inactive.
+    #[cfg_attr(
+        not(windows),
+        allow(dead_code, reason = "only Windows colours its title bar")
+    )]
+    pub title_inactive: Rgb,
+}
+
+/// The window's colours in a palette.
+pub const fn window_colours(chosen: Palette) -> WindowColours {
+    match chosen {
+        Palette::Coast => WindowColours {
+            background: palette::BG.rgb,
+            title: palette::TEXT.rgb,
+            title_inactive: palette::TEXT_SUBTLE.rgb,
+        },
+        Palette::Light => WindowColours {
+            background: palette::LIGHT_BG.rgb,
+            title: palette::LIGHT_TEXT.rgb,
+            title_inactive: palette::LIGHT_TEXT_SUBTLE.rgb,
+        },
+        Palette::Dark => WindowColours {
+            background: palette::DARK_BG.rgb,
+            title: palette::DARK_TEXT.rgb,
+            title_inactive: palette::DARK_TEXT_SUBTLE.rgb,
+        },
+    }
+}
 
 /// A colour as red, green and blue bytes.
 pub type Rgb = [u8; 3];
+
+/// The palette the window wears now (the Windows title dims and brightens with the focus).
+#[cfg(windows)]
+static CHOSEN: Mutex<Palette> = Mutex::new(Palette::Coast);
+
+#[cfg(windows)]
+fn chosen() -> Palette {
+    *CHOSEN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Dresses the window in a palette at once: its background before the page paints, the
+/// system's light or dark frame (the macOS title bar and traffic lights, the Windows caption
+/// buttons) and, on Windows, the title bar's colours. At the start before the window shows
+/// (the stored choice), then on every choice in Einstellungen (`save_settings`).
+pub fn dress<R: Runtime>(window: &WebviewWindow<R>, palette: Palette) {
+    let colours = window_colours(palette);
+    let [r, g, b] = colours.background;
+    if let Err(e) = window.set_background_color(Some(tauri::window::Color(r, g, b, u8::MAX))) {
+        log::warn!("window background not set: {e}");
+    }
+    let theme = if palette == Palette::Dark {
+        tauri::Theme::Dark
+    } else {
+        tauri::Theme::Light
+    };
+    if let Err(e) = window.set_theme(Some(theme)) {
+        log::warn!("window theme not set: {e}");
+    }
+    #[cfg(windows)]
+    {
+        *CHOSEN
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = palette;
+        if let Ok(hwnd) = window.hwnd() {
+            frame::paint(hwnd, colours, window.is_focused().unwrap_or(true));
+        }
+    }
+}
 
 // ------------------------------------------------------------------ user agent
 
@@ -216,17 +280,17 @@ pub fn harden<'a, R: Runtime, M: Manager<R>>(
 /// blocks the context menu in JavaScript on both OS.
 #[cfg(windows)]
 pub fn apply<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
-    // The title bar in the app's colours before the window is shown; the title dims while
-    // the window is inactive, like on native apps.
+    // The title bar in the app's colours before the window is shown (`dress` repaints it in
+    // the chosen palette); the title dims while the window is inactive, like on native apps.
     if let Ok(hwnd) = window.hwnd() {
-        frame::paint(hwnd);
+        frame::paint(hwnd, window_colours(chosen()), true);
     }
     let watched = window.clone();
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Focused(focused) = event
             && let Ok(hwnd) = watched.hwnd()
         {
-            frame::focus(hwnd, *focused);
+            frame::focus(hwnd, window_colours(chosen()), *focused);
         }
     });
     window.with_webview(|webview| {
@@ -314,9 +378,9 @@ mod webview2 {
     }
 }
 
-/// The native title bar in the app's colours ([`TITLE_BAR_BACKGROUND`] and the title
-/// colours above). Windows 11 only: Windows 10 ignores the attributes (its bar stays light
-/// through the Light theme), so the result is not checked.
+/// The native title bar in the palette's colours ([`WindowColours`]). Windows 11 only:
+/// Windows 10 ignores the attributes (its bar follows the light or dark theme `dress` sets),
+/// so the result is not checked.
 #[cfg(windows)]
 mod frame {
     use windows::Win32::Foundation::{COLORREF, HWND};
@@ -324,25 +388,25 @@ mod frame {
         DWMWA_CAPTION_COLOR, DWMWA_TEXT_COLOR, DWMWINDOWATTRIBUTE, DwmSetWindowAttribute,
     };
 
-    use super::{Rgb, TITLE_BAR_BACKGROUND, TITLE_BAR_TEXT, TITLE_BAR_TEXT_INACTIVE};
+    use super::{Rgb, WindowColours};
 
     /// Bytes of a COLORREF (a `u32`).
     const COLORREF_SIZE: u32 = 4;
     const _: () = assert!(size_of::<COLORREF>() == COLORREF_SIZE as usize);
 
-    pub fn paint(hwnd: HWND) {
-        set(hwnd, DWMWA_CAPTION_COLOR, TITLE_BAR_BACKGROUND);
-        set(hwnd, DWMWA_TEXT_COLOR, TITLE_BAR_TEXT);
+    pub fn paint(hwnd: HWND, colours: WindowColours, focused: bool) {
+        set(hwnd, DWMWA_CAPTION_COLOR, colours.background);
+        focus(hwnd, colours, focused);
     }
 
-    pub fn focus(hwnd: HWND, focused: bool) {
+    pub fn focus(hwnd: HWND, colours: WindowColours, focused: bool) {
         set(
             hwnd,
             DWMWA_TEXT_COLOR,
             if focused {
-                TITLE_BAR_TEXT
+                colours.title
             } else {
-                TITLE_BAR_TEXT_INACTIVE
+                colours.title_inactive
             },
         );
     }
