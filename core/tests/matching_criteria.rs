@@ -617,7 +617,10 @@ fn an_exclusion_word_excludes_in_its_forms() {
         criterion(&a, CriterionKey::ExclusionWords).status,
         CriterionStatus::Violated
     );
-    let text = frame_ad("- Wir bieten ein Pflichtpraktikum im Controlling");
+    let text = frame_ad(
+        "- Betreuung von Werkstudenten\n- Wir suchen außerdem eine/n Praktikant/in für ein \
+         Pflichtpraktikum im Controlling",
+    );
     let a = assess_with(&profile, "Controlling (m/w/d)", &text);
     assert_eq!(a.verdict, Verdict::Excluded);
     // The strip links the reason, whose highlight is the sentence that names the word.
@@ -636,6 +639,15 @@ fn an_exclusion_word_excludes_in_its_forms() {
     let marked = String::from_utf16(&units[highlight.start as usize..highlight.end as usize])
         .expect("utf-16");
     assert!(marked.contains("Pflichtpraktikum"), "{marked}");
+    assert_eq!(
+        a.reasons
+            .iter()
+            .filter(|r| r.code == ReasonCode::ExclusionWord)
+            .map(|r| r.params["word"].as_str().unwrap_or(""))
+            .collect::<Vec<_>>(),
+        ["Praktikum"],
+        "the mention of the Werkstudenten one supervises excludes nothing"
+    );
     let a = assess_with(
         &profile,
         "Interim Controller (m/w/d)",
@@ -646,6 +658,42 @@ fn an_exclusion_word_excludes_in_its_forms() {
         criterion(&a, CriterionKey::ExclusionWords).status,
         CriterionStatus::Inactive
     );
+}
+
+/// E16-1: in the ad of a senior role, a position word that is only mentioned (the team, the
+/// people one supervises or trains, the company's offers) excludes nothing; the title and a
+/// sentence that states the offered role still do.
+#[test]
+fn e16_1_a_passing_mention_of_an_exclusion_word_excludes_nothing() {
+    let profile = limited(&json!({ "ausschlusswoerter": ["Werkstudent", "Praktikum"] }));
+    for line in [
+        "- Sie führen ein Team von acht Mitarbeitenden inkl. zwei Werkstudenten",
+        "- Betreuung von Praktikanten im Finanzbereich",
+        "- Erfahrung in der Ausbildung von Werkstudierenden wünschenswert",
+        "- Personalverantwortung inkl. Praktikumsbetreuung",
+        "Wir bieten jedes Jahr Praktika und Werkstudentenstellen an.",
+        "- Sie entwickeln pragmatische und praktikable Lösungen",
+    ] {
+        let a = assess_with(&profile, "Interim CFO (m/w/d)", &frame_ad(line));
+        assert_ne!(a.verdict, Verdict::Excluded, "{line}: {:?}", codes(&a));
+        assert_eq!(
+            criterion(&a, CriterionKey::ExclusionWords).status,
+            CriterionStatus::Inactive,
+            "{line}"
+        );
+    }
+    let a = assess_with(
+        &profile,
+        "Werkstudent Controlling (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
+    let a = assess_with(
+        &profile,
+        "Controlling (m/w/d)",
+        &frame_ad("Pflichtpraktikum im Finanzbereich (m/w/d)"),
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
 }
 
 /// The new keys under their English names and values the engine cannot read.

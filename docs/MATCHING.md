@@ -674,9 +674,44 @@ strip key `c:workload` is met with the ad's share inside the days.
 check `duration {months, min}`; the strip key `c:duration` is met at or above the minimum and not
 set for a permanent role.
 
-**Exclusion words** (`exclusion.rs`): a word in the title or the ad's own text excludes,
-`exclusionWord {word}` (as the profile writes it) with the sentences that name it; strip key
-`c:exclusionWords`, shown only when violated. Case-insensitive whole words with their German
+**Exclusion words** (`exclusion.rs`): a word excludes where it names the job itself,
+`exclusionWord {word}` (as the profile writes it) with the deciding sentences highlighted; strip
+key `c:exclusionWords`, shown only when violated (E16-1).
+
+- The title and the page's career level or employment type (LinkedIn `Praktikum`) always
+  decide.
+- A word that names a kind of position (`lexicon::EXCLUSION_ROLE_WORDS`: `Werkstudent`,
+  `Praktikum`, `Junior`, `Trainee`, `Ausbildung`, `Sachbearbeitung`, and person nouns ending in
+  `-ent`, `-ant`, `-and`, `-ist`) decides in the ad's own text only where the ad states the
+  offered role: a gender marker on it (`Werkstudent (m/w/d)`, `Werkstudent/in`), a hiring word
+  (`Wir suchen einen Praktikanten`, `Praktikant gesucht`, `hiring a Junior ...`), a role label
+  (`Stelle als Werkstudent`, `Position: Praktikum`), an offer with an indefinite article (`für
+  eine Werkstudententätigkeit`, `im Rahmen eines Pflichtpraktikums`), or a short line that
+  starts with one such role (`Praktikum im Finanzbereich`, `Junior-Level`). Never in a passing
+  mention: the team (`Team inkl. zwei Werkstudenten`), people one supervises, trains or mentors
+  (`Betreuung von Praktikanten`, `Ausbildung von Werkstudierenden`, `Coach two junior
+  engineers`), a denial (`keine Junior-Position`), a requirement (`abgeschlossene Ausbildung`,
+  any requirement line), an offer of the company (`Wir bieten jedes Jahr Praktika an`), a
+  compound about something else (`Praktikumsbetreuung`, `Ausbildungsbetrieb`), a list
+  (`Ausbildung und Personalentwicklung`).
+- Any other word (a condition: `Provisionsbasis`, `Rufbereitschaft`, `Callcenter`) decides in
+  any sentence of the ad's own text unless it is denied (`kein Schichtdienst`), about the team
+  or the company (`1.600 Mitarbeitende im Innen- und Außendienst`), about supervising, training
+  or planning others (`Präsenztrainings für den Außendienst`, `Personaleinsatzplanung für den
+  Schichtdienst`) or a requirement of experience (`Erfahrung im Außendienst`, `in einem Umfeld
+  mit Schichtdienst`).
+- When unsure a word does not exclude: a false exclusion hides a good job, a missed one only
+  costs a look.
+
+With the words `Werkstudent`, `Praktikum`, `Junior` and `Ausbildung` in every profile of the
+held-out sets, the passing mentions of six relevant pairs no longer exclude them (heldout7 P1
+L01, heldout8 P1 Q01, heldout4 P2 W04, heldout4 `sample_profile` and `sample_profile_senior`
+W09, heldout9 P1 S017); every body sentence that still decides states the role (`Werkstudent
+(m/w/d) Controlling & Data Analytics`, `we are hiring a Junior SAP FI/CO Consultant`, `suchen
+wir ... einen Junior Projektingenieur (m/w/d)`). The profiles' own words in set 9 keep every
+exclusion (`Honorar: auf Provisionsbasis` still decides).
+
+Case-insensitive whole words with their German
 forms: inflections and the compounds a word starts (`Werkstudent`: `Werkstudentin`,
 `Werkstudenten-Job`, `Werkstudentenstelle`), from eight letters also the compounds it ends
 (`Pflichtpraktikum`, `Pflichtpraktikums`); a female form in the profile matches the male one; a
