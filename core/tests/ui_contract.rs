@@ -1454,11 +1454,11 @@ fn icons_by_meaning() {
                     rest = &after[end..];
                 }
             }
-            if line.contains("<Icon ") {
-                if let Some(at) = line.find("name=\"") {
-                    let after = &line[at + 6..];
-                    spots.push(&after[..after.find('"').unwrap_or(after.len())]);
-                }
+            if line.contains("<Icon ")
+                && let Some(at) = line.find("name=\"")
+            {
+                let after = &line[at + 6..];
+                spots.push(&after[..after.find('"').unwrap_or(after.len())]);
             }
             for key in ["icon={", "name={"] {
                 if key == "name={" && !line.contains("<Icon ") {
