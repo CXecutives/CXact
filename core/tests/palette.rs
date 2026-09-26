@@ -22,15 +22,44 @@ fn read(relative: &str) -> String {
     std::fs::read_to_string(repo(relative)).unwrap_or_else(|e| panic!("{relative}: {e}"))
 }
 
-/// The custom properties of the first `:root` block of tokens.css (name without the dashes,
-/// value with its white space folded), in order.
-fn declarations() -> Vec<(String, String)> {
-    let css = Regex::new(r"(?s)/\*.*?\*/")
+/// tokens.css without its comments.
+fn tokens_css() -> String {
+    Regex::new(r"(?s)/\*.*?\*/")
         .unwrap()
         .replace_all(&read("ui/src/styles/tokens.css"), "")
-        .into_owned();
+        .into_owned()
+}
+
+/// The custom properties of the first `:root` block of tokens.css (Coast), in order.
+fn declarations() -> Vec<(String, String)> {
+    let css = tokens_css();
     let start = css.find(":root {").expect(":root block") + ":root {".len();
-    let body = &css[start..start + css[start..].find('}').expect("end of :root")];
+    properties(&css[start..start + css[start..].find('}').expect("end of :root")])
+}
+
+/// The palettes besides Coast by name: Coast's declarations with the ones of their
+/// `:root[data-palette='name']` block laid over them.
+fn palettes() -> Vec<(String, Vec<(String, String)>)> {
+    let css = tokens_css();
+    Regex::new(r":root\[data-palette='([\w-]+)'\]\s*\{([^}]*)\}")
+        .unwrap()
+        .captures_iter(&css)
+        .map(|found| {
+            let mut all = declarations();
+            for (name, value) in properties(&found[2]) {
+                match all.iter_mut().find(|(n, _)| *n == name) {
+                    Some(entry) => entry.1 = value,
+                    None => all.push((name, value)),
+                }
+            }
+            (found[1].to_string(), all)
+        })
+        .collect()
+}
+
+/// The custom properties of a block's body (name without the dashes, value with its white
+/// space folded), in order.
+fn properties(body: &str) -> Vec<(String, String)> {
     body.split(';')
         .filter_map(|part| {
             let (name, value) = part.trim().split_once(':')?;
@@ -82,7 +111,11 @@ struct Token {
 /// `hsl(var(--p-name))`, or `var(--other)` of another colour token. Tokens with an alpha,
 /// gradients and shadows stay in the page.
 fn colour_tokens() -> Vec<Token> {
-    let all = declarations();
+    colour_tokens_of(&declarations())
+}
+
+/// The colour tokens of a set of declarations (Coast's, or a palette's).
+fn colour_tokens_of(all: &[(String, String)]) -> Vec<Token> {
     let value = |name: &str| all.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
     let direct = Regex::new(r"^hsl\(var\(--(p-[\w-]+)\)\)$").unwrap();
     let alias = Regex::new(r"^var\(--([\w-]+)\)$").unwrap();
@@ -150,6 +183,43 @@ fn the_rust_palette_is_the_tokens() {
         .expect("--font-sans")
         .1;
     assert_eq!(palette::FONT_SANS, font, "palette.rs {REGEN}");
+}
+
+/// The window's colours of every other palette (Light, Dark): `--bg`, `--text` and
+/// `--text-subtle` of its block, as the window and the Windows title bar wear them.
+#[test]
+fn the_window_colours_of_each_palette_are_the_tokens() {
+    let found = palettes();
+    let names: Vec<&str> = found.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(names, ["light", "dark"], "the palettes of tokens.css");
+    let mut expected = Vec::new();
+    for (palette, all) in &found {
+        let tokens = colour_tokens_of(all);
+        for name in ["bg", "text", "text-subtle"] {
+            let token = tokens
+                .iter()
+                .find(|t| t.name == name)
+                .unwrap_or_else(|| panic!("{palette} has no --{name}"));
+            expected.push((
+                palette.clone(),
+                name.to_string(),
+                token.css.clone(),
+                token.rgb,
+            ));
+        }
+    }
+    let generated: Vec<(String, String, String, [u8; 3])> = palette::WINDOW_PALETTES
+        .iter()
+        .map(|(palette, name, colour)| {
+            (
+                (*palette).to_string(),
+                (*name).to_string(),
+                colour.css.to_string(),
+                colour.rgb,
+            )
+        })
+        .collect();
+    assert_eq!(generated, expected, "palette.rs {REGEN}");
 }
 
 /// palette.json (what tools/icon.py reads) holds the same colour tokens and font.
