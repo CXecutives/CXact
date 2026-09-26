@@ -14,8 +14,8 @@ pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`) are skipped silently - serde only refuses unknown fields with
-/// `deny_unknown_fields`.
+/// `autoFetchOnStart`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped silently - serde
+/// only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -26,13 +26,15 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// Move inbox jobs that are no favourite to the archive this many days after they were
-    /// first seen, at the end of every run; 0 = never.
-    pub auto_archive_days: u32,
-    /// Delete the jobs that lie in the trash this long for good, at the end of every run;
-    /// 0 = never.
-    pub auto_empty_trash_days: u32,
-    /// Language of the interface and of the exported Excel file, HTML overview and prompts;
+    /// Which alert mails "Postfach abrufen" reads (Einstellungen, Postfach). A range of a newer
+    /// version reads as the default.
+    #[serde(deserialize_with = "known_range")]
+    pub fetch_range: FetchRange,
+    /// The Excel file (`JobAlerts.xlsx`) is written with every export.
+    pub export_excel: bool,
+    /// The CSV file is written with every export.
+    pub export_csv: bool,
+    /// Language of the interface and of the exported Excel file and prompts;
     /// `None` = the language of the OS ([`Settings::language_or`]). The text files per job
     /// stay German (a contract with the matching skill). A code of a newer version reads as
     /// `None`.
@@ -110,19 +112,27 @@ impl Language {
     }
 }
 
-/// Days after which old jobs archive themselves when the switch is on.
-pub const AUTO_ARCHIVE_DAYS: u32 = 30;
-/// Days after which the trash empties itself when the switch is on.
-pub const AUTO_EMPTY_TRASH_DAYS: u32 = 30;
+/// Which alert mails "Postfach abrufen" reads (`mail::scan::Scope`): since the last fetch
+/// that covered the time before it, the last 7 or 30 days, or every alert mail. The scan
+/// state per portal advances only when the range covered the gap since it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum FetchRange {
+    #[default]
+    SinceLast,
+    Days7,
+    Days30,
+    All,
+}
 
-/// The switches of one portal. Safe defaults: active, details fetched, never signed in.
+/// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
+/// alert mails are read and its ads fetched; off = no mail read and zero requests to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
+#[serde(rename_all = "camelCase", from = "StoredSwitches")]
 pub struct PortalSwitches {
-    /// Alert mails of the portal are read.
+    /// Alert mails of the portal are read and its ads fetched.
     pub enabled: bool,
-    /// Job pages are fetched; off = zero requests to the portal.
-    pub fetch_details: bool,
     /// The app may sign in (only portals with a sign-in, i.e. freelance.de).
     pub login_enabled: bool,
 }
@@ -131,8 +141,38 @@ impl Default for PortalSwitches {
     fn default() -> PortalSwitches {
         PortalSwitches {
             enabled: true,
-            fetch_details: true,
             login_enabled: false,
+        }
+    }
+}
+
+/// The switches as a file of any version holds them. Earlier versions had a switch of their
+/// own for the ads (`fetchDetails`): off, the portal got zero requests. That promise stands,
+/// so such a portal comes back switched off until the user switches it on again.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+struct StoredSwitches {
+    enabled: bool,
+    fetch_details: bool,
+    login_enabled: bool,
+}
+
+impl Default for StoredSwitches {
+    fn default() -> StoredSwitches {
+        let switches = PortalSwitches::default();
+        StoredSwitches {
+            enabled: switches.enabled,
+            fetch_details: true,
+            login_enabled: switches.login_enabled,
+        }
+    }
+}
+
+impl From<StoredSwitches> for PortalSwitches {
+    fn from(stored: StoredSwitches) -> PortalSwitches {
+        PortalSwitches {
+            enabled: stored.enabled && stored.fetch_details,
+            login_enabled: stored.login_enabled,
         }
     }
 }
@@ -145,9 +185,10 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
+            fetch_range: FetchRange::SinceLast,
+            export_excel: true,
+            export_csv: false,
             language: None,
-            auto_archive_days: AUTO_ARCHIVE_DAYS,
-            auto_empty_trash_days: AUTO_EMPTY_TRASH_DAYS,
             palette: Palette::Coast,
         }
     }
@@ -179,7 +220,6 @@ impl Settings {
     fn safe_after_damage() -> Settings {
         let off = PortalSwitches {
             enabled: false,
-            fetch_details: false,
             login_enabled: false,
         };
         Settings {
@@ -217,9 +257,9 @@ impl Settings {
             .collect()
     }
 
-    /// Portals whose job pages may be fetched: enabled, with details switched on and - for
-    /// a portal that is only readable signed in - with the sign-in allowed. Otherwise the
-    /// portal gets zero requests, and no sign-in window ever opens unasked.
+    /// Portals whose job pages may be fetched: enabled and - for a portal that is only
+    /// readable signed in - with the sign-in allowed. Otherwise the portal gets zero
+    /// requests, and no sign-in window ever opens unasked.
     pub fn fetch_portals(&self) -> Vec<Portal> {
         Portal::ALL
             .into_iter()
@@ -231,7 +271,7 @@ impl Settings {
     /// the sign-in switched on.
     pub fn fetch_path(&self, portal: Portal) -> Option<FetchPath> {
         let switches = self.portal(portal);
-        if !(switches.enabled && switches.fetch_details) {
+        if !switches.enabled {
             return None;
         }
         portal.access().path(switches.login_enabled)
@@ -256,6 +296,16 @@ fn known_language<'de, D: Deserializer<'de>>(
 ) -> std::result::Result<Option<Language>, D::Error> {
     let code = Option::<String>::deserialize(deserializer)?;
     Ok(code.and_then(|code| serde_json::from_value(serde_json::Value::String(code)).ok()))
+}
+
+/// A stored range; one this version does not know is the default.
+fn known_range<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<FetchRange, D::Error> {
+    let name = Option::<String>::deserialize(deserializer)?;
+    Ok(name
+        .and_then(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
+        .unwrap_or_default())
 }
 
 /// A stored palette; one this version does not know is Coast.
@@ -313,23 +363,25 @@ mod tests {
             Portal::LinkedIn,
             PortalSwitches {
                 enabled: false,
-                fetch_details: false,
                 login_enabled: true,
             },
         );
-        s.auto_archive_days = 0;
+        s.fetch_range = FetchRange::Days7;
+        s.export_excel = false;
         s.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
         assert_eq!(
             back.portal(Portal::LinkedIn),
             PortalSwitches {
                 enabled: false,
-                fetch_details: false,
                 // LinkedIn has no sign-in: the switch cannot be on.
                 login_enabled: false,
             }
         );
-        assert_eq!(back.auto_archive_days, 0);
+        assert_eq!(
+            (back.fetch_range, back.export_excel),
+            (FetchRange::Days7, false)
+        );
         assert_eq!(
             back.enabled_portals(),
             [Portal::FreelanceDe, Portal::Freelancermap]
@@ -340,9 +392,16 @@ mod tests {
             .unwrap();
         let partial = Settings::load(&store).unwrap();
         assert!(partial.portal(Portal::FreelanceDe).login_enabled);
-        assert!(partial.portal(Portal::FreelanceDe).fetch_details);
+        assert!(partial.portal(Portal::FreelanceDe).enabled);
         assert!(partial.portal(Portal::LinkedIn).enabled);
-        assert_eq!(partial.auto_archive_days, AUTO_ARCHIVE_DAYS);
+        assert_eq!(
+            (
+                partial.fetch_range,
+                partial.export_excel,
+                partial.export_csv
+            ),
+            (FetchRange::SinceLast, true, false)
+        );
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:
@@ -363,10 +422,7 @@ mod tests {
         let back = Settings::load(&store).unwrap();
         assert!(back.fetch_portals().is_empty());
         assert!(back.enabled_portals().is_empty());
-        assert_eq!(
-            back.auto_archive_days, AUTO_ARCHIVE_DAYS,
-            "the rest: defaults"
-        );
+        assert!(back.export_excel, "the rest: defaults");
         let shared = std::sync::Arc::new(store);
         shared.kv_set(KEY, "{kaputt").unwrap();
         let paths = crate::pipeline::stored_paths(shared);
@@ -375,8 +431,8 @@ mod tests {
 
     /// A file of an earlier version carries fields that no longer exist and the list form of
     /// the portal choice: it loads, and the choice survives as the `enabled` switch. The
-    /// switch of the fetch at the start (gone: the app fetches only when asked) is skipped,
-    /// and saving drops it.
+    /// switch of the fetch at the start (gone: the app fetches only when asked) and the
+    /// automatic archive are skipped, and saving drops them.
     #[test]
     fn settings_of_an_older_version_still_load() {
         let store = Store::in_memory().unwrap();
@@ -390,10 +446,10 @@ mod tests {
         assert_eq!(back.enabled_portals(), [Portal::LinkedIn]);
         assert_eq!(back.fetch_portals(), [Portal::LinkedIn]);
         assert_eq!(back.workspace, None);
-        assert_eq!(back.auto_archive_days, 7, "the fields around it stay");
         back.save(&store).unwrap();
         let saved = store.kv_get(KEY).unwrap().unwrap();
         assert!(!saved.contains("autoFetchOnStart"), "{saved}");
+        assert!(!saved.contains("autoArchiveDays"), "{saved}");
         store.kv_set(KEY, r#"{"portals":[]}"#).unwrap();
         assert!(Settings::load(&store).unwrap().enabled_portals().is_empty());
     }
@@ -436,10 +492,10 @@ mod tests {
         );
         // A language of a newer version: the settings stay, the language follows the OS.
         store
-            .kv_set(KEY, r#"{"language":"fr","autoArchiveDays":0}"#)
+            .kv_set(KEY, r#"{"language":"fr","exportCsv":true}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
-        assert_eq!(newer.auto_archive_days, 0);
+        assert!(newer.export_csv);
         assert_eq!(newer.language, None);
     }
 
@@ -461,26 +517,71 @@ mod tests {
                 .contains(r#""palette":"dark""#)
         );
         store
-            .kv_set(KEY, r#"{"palette":"sepia","autoArchiveDays":0}"#)
+            .kv_set(KEY, r#"{"palette":"sepia","exportCsv":true}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
         assert_eq!(newer.palette, Palette::Coast);
-        assert_eq!(newer.auto_archive_days, 0);
+        assert!(newer.export_csv);
         assert_eq!(
             [Palette::Coast, Palette::Light, Palette::Dark].map(Palette::code),
             ["coast", "light", "dark"]
         );
     }
 
+    /// An enabled portal always fetches its ads; switched off it gets zero requests. A file
+    /// of an earlier version whose details switch was off brings the portal back switched
+    /// off (that switch promised zero requests), and saving drops the switch.
     #[test]
-    fn details_off_removes_the_portal_from_fetching_only() {
+    fn a_portal_off_gets_no_request_and_the_old_details_switch_keeps_its_promise() {
         let mut s = Settings::default();
-        s.portals.get_mut(&Portal::LinkedIn).unwrap().fetch_details = false;
-        assert_eq!(s.enabled_portals(), Portal::ALL);
+        assert_eq!(s.fetch_portals(), Portal::ALL);
+        s.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
         assert_eq!(
             s.fetch_portals(),
             [Portal::FreelanceDe, Portal::Freelancermap]
         );
+        assert_eq!(s.fetch_path(Portal::LinkedIn), None);
+        let store = Store::in_memory().unwrap();
+        store
+            .kv_set(
+                KEY,
+                r#"{"portals":{"linkedin":{"enabled":true,"fetchDetails":false},"freelance":{"enabled":true,"fetchDetails":true,"loginEnabled":true}}}"#,
+            )
+            .unwrap();
+        let back = Settings::load(&store).unwrap();
+        assert!(!back.portal(Portal::LinkedIn).enabled);
+        assert_eq!(back.fetch_path(Portal::LinkedIn), None);
+        assert_eq!(
+            back.fetch_path(Portal::FreelanceDe),
+            Some(FetchPath::Session)
+        );
+        back.save(&store).unwrap();
+        let saved = store.kv_get(KEY).unwrap().unwrap();
+        assert!(!saved.contains("fetchDetails"), "{saved}");
+    }
+
+    /// A range of a newer version reads as the default without costing the other settings.
+    #[test]
+    fn the_fetch_range_is_since_the_last_fetch_until_chosen() {
+        let store = Store::in_memory().unwrap();
+        assert_eq!(
+            Settings::load(&store).unwrap().fetch_range,
+            FetchRange::SinceLast
+        );
+        for (range, json) in [
+            (FetchRange::SinceLast, "sinceLast"),
+            (FetchRange::Days7, "days7"),
+            (FetchRange::Days30, "days30"),
+            (FetchRange::All, "all"),
+        ] {
+            assert_eq!(serde_json::to_value(range).unwrap(), json);
+        }
+        store
+            .kv_set(KEY, r#"{"fetchRange":"days90","exportExcel":false}"#)
+            .unwrap();
+        let newer = Settings::load(&store).unwrap();
+        assert_eq!(newer.fetch_range, FetchRange::SinceLast);
+        assert!(!newer.export_excel);
     }
 
     /// freelance.de without the sign-in switch goes as a guest (the public teaser) - never
@@ -496,10 +597,7 @@ mod tests {
             .login_enabled = true;
         assert_eq!(s.fetch_path(Portal::FreelanceDe), Some(FetchPath::Session));
         assert_eq!(s.fetch_path(Portal::LinkedIn), Some(FetchPath::Guest));
-        s.portals
-            .get_mut(&Portal::FreelanceDe)
-            .unwrap()
-            .fetch_details = false;
+        s.portals.get_mut(&Portal::FreelanceDe).unwrap().enabled = false;
         assert_eq!(s.fetch_path(Portal::FreelanceDe), None);
     }
 }

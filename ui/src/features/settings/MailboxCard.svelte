@@ -103,7 +103,7 @@
   /** Every alert mail again, not only the new ones: a run, shown in the Jobs view. */
   async function readAll(): Promise<void> {
     fullError = null;
-    if (await run.start({ kind: 'fullMailbox' })) {
+    if (await run.start({ kind: 'fetch' })) {
       confirmFull = false;
       navigation.go('jobs');
     } else {

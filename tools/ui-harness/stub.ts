@@ -662,7 +662,6 @@ function savedForm(form: ProfileForm): ProfileForm {
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
   portal: name,
   enabled: true,
-  fetchDetails: true,
   login: name === 'freelance' ? 'optional' : 'none',
   loginEnabled: false,
   signedIn: name === 'freelance' ? false : null,
@@ -820,15 +819,16 @@ function initial(): void {
       checkedAt: null,
     },
     profile: PROFILE,
-    // Every portal counts its pages (the backend sends the numbers of each).
+    // Every portal counts its calls (the backend sends the numbers of each): 100 a day.
     portals: [
-      portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 80 } }),
-      portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 60 } }),
+      portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 100 } }),
+      portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 100 } }),
       portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
     ],
     setupDone: true,
-    autoArchiveDays: 30,
-    autoEmptyTrashDays: 30,
+    fetchRange: 'sinceLast',
+    exportExcel: true,
+    exportCsv: false,
     language: LANGUAGE,
     palette: PALETTE,
     lastRun: lastRun(),
@@ -1282,7 +1282,7 @@ function emit(event: RunEvent): void {
   (runSender ?? pageSender)?.send(event);
 }
 
-const isFetch = (kind: RunSummary['kind']): boolean => kind === 'fetch' || kind === 'fullMailbox';
+const isFetch = (kind: RunSummary['kind']): boolean => kind === 'fetch';
 
 /** `app_state`: the page's new channel replaces the old one and takes over a running run. */
 function attachPage(sender: Sender): void {
@@ -1832,15 +1832,20 @@ const handlers: Handlers = {
       workspace: folder,
       workspaceIsDefault: false,
       excelPath: `${folder}/auswertung/JobAlerts.xlsx`,
-      excelExists: state.lastRun !== null,
+      excelExists: state.exportExcel && state.lastRun !== null,
     };
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };
   },
-  // Like `existing` (commands/app.rs): a result file nothing wrote yet is not found.
+  // Like `existing` (commands/app.rs): a result file nothing wrote yet is not found, the
+  // Excel file switched off neither, and the CSV file not yet (no export writes one yet).
   open_target: ({ target }) => {
     if (target.kind === 'excel' && !state.settings.excelExists) {
       throw fail('notFound', { what: 'file', path: state.settings.excelPath });
+    }
+    if (target.kind === 'csv') {
+      const path = state.settings.excelPath.replace(/\.xlsx$/, '.csv');
+      throw fail('notFound', { what: 'file', path });
     }
     return null;
   },
@@ -1849,12 +1854,16 @@ const handlers: Handlers = {
       const p = state.portals.find((x) => x.portal === change.portal);
       if (p === undefined) continue;
       if (change.enabled !== null) p.enabled = change.enabled;
-      if (change.fetchDetails !== null) p.fetchDetails = change.fetchDetails;
       if (change.loginEnabled !== null) p.loginEnabled = change.loginEnabled;
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
-    if (patch.autoArchiveDays !== null) state.autoArchiveDays = patch.autoArchiveDays;
-    if (patch.autoEmptyTrashDays !== null) state.autoEmptyTrashDays = patch.autoEmptyTrashDays;
+    if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
+    if (patch.exportCsv !== null) state.exportCsv = patch.exportCsv;
+    if (patch.exportExcel !== null) {
+      // Switched on, the file follows a moment later (like a mark); off, none is there.
+      state.exportExcel = patch.exportExcel;
+      state.settings.excelExists = patch.exportExcel && state.lastRun !== null;
+    }
     if (patch.language !== null) state.language = patch.language;
     if (patch.palette !== null) state.palette = patch.palette;
     return structuredClone(state);

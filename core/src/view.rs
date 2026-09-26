@@ -27,7 +27,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{Language, Palette, PortalSwitches, Settings};
+use crate::settings::{FetchRange, Language, Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -971,6 +971,7 @@ pub struct SettingsView {
     pub workspace_is_default: bool,
     /// The Excel file of the overview, where it is or will be written.
     pub excel_path: PathBuf,
+    /// The Excel file is there to open: written (`exportExcel` on) and on disk.
     pub excel_exists: bool,
 }
 
@@ -1003,10 +1004,15 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// Days after which old jobs archive themselves; 0 = never (`null` = unchanged).
-    pub auto_archive_days: Option<u32>,
-    /// Days after which the trash empties itself; 0 = never (`null` = unchanged).
-    pub auto_empty_trash_days: Option<u32>,
+    /// Which alert mails "Postfach abrufen" reads.
+    #[serde(default)]
+    pub fetch_range: Option<FetchRange>,
+    /// Write the Excel file with every export.
+    #[serde(default)]
+    pub export_excel: Option<bool>,
+    /// Write the CSV file with every export.
+    #[serde(default)]
+    pub export_csv: Option<bool>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
     /// The palette the user chose (Einstellungen, Darstellung).
@@ -1019,7 +1025,6 @@ pub struct SettingsPatch {
 pub struct PortalPatch {
     pub portal: Portal,
     pub enabled: Option<bool>,
-    pub fetch_details: Option<bool>,
     pub login_enabled: Option<bool>,
 }
 
@@ -1030,18 +1035,18 @@ impl SettingsPatch {
             if let Some(on) = patch.enabled {
                 switches.enabled = on;
             }
-            if let Some(on) = patch.fetch_details {
-                switches.fetch_details = on;
-            }
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
         }
-        if let Some(days) = self.auto_archive_days {
-            settings.auto_archive_days = days;
+        if let Some(range) = self.fetch_range {
+            settings.fetch_range = range;
         }
-        if let Some(days) = self.auto_empty_trash_days {
-            settings.auto_empty_trash_days = days;
+        if let Some(on) = self.export_excel {
+            settings.export_excel = on;
+        }
+        if let Some(on) = self.export_csv {
+            settings.export_csv = on;
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
@@ -1075,14 +1080,10 @@ pub struct Quota {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent switches and states of the portal, as the settings show them"
-)]
 pub struct PortalState {
     pub portal: Portal,
+    /// Its alert mails are read and its ads fetched.
     pub enabled: bool,
-    pub fetch_details: bool,
     pub login: PortalLogin,
     pub login_enabled: bool,
     /// `null` = unknown (or no sign-in), `false` = sign-in needed.
@@ -1125,7 +1126,6 @@ pub fn portal_states(
             PortalState {
                 portal,
                 enabled: switches.enabled,
-                fetch_details: switches.fetch_details,
                 login,
                 login_enabled: switches.login_enabled,
                 signed_in,
@@ -1402,15 +1402,17 @@ pub struct AppState {
     pub mailbox: Mailbox,
     pub profile: Option<ProfileInfo>,
     pub portals: Vec<PortalState>,
-    /// Days after which old inbox jobs that are no favourite archive themselves; 0 = never.
-    pub auto_archive_days: u32,
-    /// Days after which the trash empties itself; 0 = never.
-    pub auto_empty_trash_days: u32,
+    /// Which alert mails "Postfach abrufen" reads.
+    pub fetch_range: FetchRange,
+    /// The Excel file is written with every export.
+    pub export_excel: bool,
+    /// The CSV file is written with every export.
+    pub export_csv: bool,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
-    /// The colours of the page and the window (the report, Excel and the icon keep Coast).
+    /// The colours of the page and the window (Excel and the icon keep Coast).
     pub palette: Palette,
-    /// The last fetch (fetch or whole mailbox) - a rescore or a details run is none.
+    /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
     pub counts: JobCounts,
     pub match_pending: u32,
@@ -1455,6 +1457,8 @@ pub enum OpenTarget {
     /// The folder of the profile file in the workspace (`profil`).
     ProfileDir,
     Excel,
+    /// The CSV file (`exportCsv`); not found while none is written.
+    Csv,
     /// The Excel file shown selected in its folder (Explorer, Finder); the workspace while
     /// there is none yet.
     ExcelInFolder,

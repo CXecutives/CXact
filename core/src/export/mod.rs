@@ -33,8 +33,9 @@ pub const XLSX_NAME: &str = "JobAlerts.xlsx";
 /// Name part of an Excel file of the old program the app renamed before its first write
 /// (`JobAlerts.alt-20260925-093000.xlsx`, next to its own).
 pub const XLSX_BACKUP_PREFIX: &str = "JobAlerts.alt-";
-/// Overview of earlier versions; only kept so that "reset everything" takes it along.
-const LEGACY_CSV_NAME: &str = "JobAlerts.csv";
+/// The CSV overview next to the Excel file (setting `exportCsv`; an earlier version wrote one
+/// under the same name). "Reset everything" takes it along.
+pub const CSV_NAME: &str = "JobAlerts.csv";
 /// The HTML report of earlier versions; only kept so that "reset everything" takes it along.
 const LEGACY_HTML_NAME: &str = "JobAlerts.html";
 /// Subfolder of the workspace for results (as before).
@@ -47,6 +48,11 @@ const TMP_SUFFIX: &str = ".tmp";
 /// Path of the overview file in the result folder.
 pub fn overview_path(result_dir: &Path) -> PathBuf {
     result_dir.join(XLSX_NAME)
+}
+
+/// Path of the CSV overview in the result folder.
+pub fn csv_path(result_dir: &Path) -> PathBuf {
+    result_dir.join(CSV_NAME)
 }
 
 /// Writes `bytes` atomically to `path`: first into a temporary file in the same folder, then
@@ -104,7 +110,7 @@ pub fn app_files(result_dir: &Path, txt_names: &[String]) -> Vec<PathBuf> {
         name.eq_ignore_ascii_case(XLSX_NAME)
             || name.eq_ignore_ascii_case(LEGACY_HTML_NAME)
             || name.eq_ignore_ascii_case(TOP_MATCHES_NAME)
-            || name.eq_ignore_ascii_case(LEGACY_CSV_NAME)
+            || name.eq_ignore_ascii_case(CSV_NAME)
             || is_tmp(name)
     });
     files.extend(txt_files(result_dir, txt_names));

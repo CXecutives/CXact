@@ -142,16 +142,27 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             "folder",
         )?,
         OpenTarget::Excel => {
-            // Fresh before it opens: the marks since the last write are in it.
             let settings = state.settings()?;
             let workspace = state.workspace()?;
+            let excel = export::overview_path(&workspace.join(RESULT_DIR));
+            // Switched off, the app writes none: an old file is no file of the app's now.
+            if !settings.export_excel {
+                return Err(ErrorInfo::new(ErrorKind::NotFound)
+                    .with("what", "file")
+                    .with("path", excel.display().to_string()));
+            }
+            // Fresh before it opens: the marks since the last write are in it.
             if !state.dry_run && !state.busy() {
                 let language = settings.language_or(state.system_language);
                 let _ =
                     pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
             }
-            existing(export::overview_path(&workspace.join(RESULT_DIR)), "file")?
+            existing(excel, "file")?
         }
+        OpenTarget::Csv => existing(
+            export::csv_path(&state.workspace()?.join(RESULT_DIR)),
+            "file",
+        )?,
         OpenTarget::ExcelInFolder => {
             let workspace = state.workspace()?;
             let excel = export::overview_path(&workspace.join(RESULT_DIR));

@@ -282,7 +282,6 @@
       detailKind === 'failed' ||
       detailKind === 'teaser') &&
       portalState?.enabled === true &&
-      portalState.fetchDetails &&
       (detailKind !== 'teaser' || portalState.loginEnabled),
   );
   /** The portal shows only a preview without a sign-in that is not set up. */
@@ -290,9 +289,7 @@
     detailKind === 'teaser' && portalState !== null && !portalState.loginEnabled,
   );
   const detailNote = $derived(
-    portalState &&
-      (!portalState.enabled || !portalState.fetchDetails) &&
-      (detailKind === 'pending' || detailKind === 'onRequest')
+    portalState && !portalState.enabled && (detailKind === 'pending' || detailKind === 'onRequest')
       ? t.reader.detailsOff
       : detailKind === 'teaser'
         ? t.reader.teaserOf(t.portal[job.portal])
@@ -537,21 +534,11 @@
     });
   }
 
-  const DAY_MS = 86_400_000;
-  /** Not in the inbox: where it lies, quietly under the facts. The trash says in how many
-   *  days it goes for good (counted from the day the job went there, following the clock;
-   *  past that, soon: the next run or start empties it), like the trash's own sentence. */
+  /** Not in the inbox: where it lies, quietly under the facts (the trash no longer empties
+   *  itself). */
   const placeLine = $derived.by((): string | null => {
     if (job.place === 'archive') return t.place.inArchive;
-    if (job.place !== 'trash') return null;
-    const days = app.state?.autoEmptyTrashDays ?? 0;
-    if (days === 0) return t.place.inTrash;
-    const since =
-      job.trashedAt === null
-        ? 0
-        : Math.max(0, Math.floor((clock.now.getTime() - Date.parse(job.trashedAt)) / DAY_MS));
-    const left = days - since;
-    return left > 0 ? t.place.inTrashLeft(left) : t.place.inTrashSoon;
+    return job.place === 'trash' ? t.place.inTrash : null;
   });
   /** A closed or vanished ad, in the words of the row's badge; when the app last looked is its
    *  tooltip (the day it closed is not known). */

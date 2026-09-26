@@ -2,8 +2,6 @@
 
 /**
  * Where a job is, like a mail: in the inbox ("Eingang", the active jobs), the archive or the
- * trash ("Papierkorb"). A job is in exactly one place; the favourite (the star) is a flag of
- * its own. Runs never move a job, except that old ones archive themselves and an old trash
- * empties itself (settings).
+ * trash ("Papierkorb"). A job is in exactly one place. Runs never move a job.
  */
 export type Place = "inbox" | "archive" | "trash";

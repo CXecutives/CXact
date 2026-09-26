@@ -14,6 +14,7 @@ use super::imap::{BATCH, MailError, MailSource};
 use super::{MAIL_PARSER_VERSION, MailKind, classify_mail, is_candidate};
 use crate::model::AlertMail;
 use crate::portal::Portal;
+use crate::settings::FetchRange;
 use crate::store::{Seen, Store};
 use crate::time::local_date;
 
@@ -23,8 +24,22 @@ use crate::time::local_date;
 pub enum Scope {
     /// Since the last successful scan (one day of overlap); 30 days the first time.
     New,
+    /// The last so many days (from the day that many days before today).
+    Days(u16),
     /// The whole mailbox (All Mail: archived and filtered alerts too), without a date limit.
     All,
+}
+
+impl From<FetchRange> for Scope {
+    /// The scan of "Postfach abrufen" for the range the settings choose.
+    fn from(range: FetchRange) -> Scope {
+        match range {
+            FetchRange::SinceLast => Scope::New,
+            FetchRange::Days7 => Scope::Days(7),
+            FetchRange::Days30 => Scope::Days(30),
+            FetchRange::All => Scope::All,
+        }
+    }
 }
 
 /// Without a previous scan: this far back (a month of alerts: freelance projects are often
@@ -109,9 +124,10 @@ fn heal_from(store: &Store, portal: Portal) -> crate::Result<Option<Timestamp>> 
     store.stale_mail_since(portal)
 }
 
-/// The day the search starts from (`None` = everything). After an update of the mail
-/// parser the first scan reaches back once to the oldest job the older one read, so the
-/// current one reads it again (read-only, alert mails only).
+/// The day the search starts from (`None` = everything): since the last scan, or the last
+/// so many days. After an update of the mail parser the first scan reaches back once to the
+/// oldest job the older one read, so the current one reads it again (read-only, alert mails
+/// only) - also a scan of the last days, which marks the read-back as done.
 fn scan_since(
     store: &Store,
     scope: Scope,
@@ -120,25 +136,26 @@ fn scan_since(
 ) -> crate::Result<Option<Date>> {
     let today = local_date(now);
     let first = today.saturating_sub(FIRST_SCAN_DAYS.days());
-    Ok(match scope {
-        Scope::All => None,
-        Scope::New => {
-            let mut since = today;
-            for &portal in portals {
-                let from = match store.last_scan(portal)? {
-                    // One day of overlap: IMAP searches by day, in the server's time zone.
-                    Some(at) if at <= now => local_date(at).saturating_sub(1.day()),
-                    // State in the future (the clock was set wrong): treated as unknown.
-                    _ => first,
-                };
-                since = since.min(from);
-                if let Some(stale) = heal_from(store, portal)?.filter(|at| *at <= now) {
-                    since = since.min(local_date(stale).saturating_sub(1.day()));
-                }
-            }
-            Some(since)
+    let mut since = match scope {
+        Scope::All => return Ok(None),
+        Scope::Days(days) => today.saturating_sub(i32::from(days).days()),
+        Scope::New => today,
+    };
+    for &portal in portals {
+        if scope == Scope::New {
+            let from = match store.last_scan(portal)? {
+                // One day of overlap: IMAP searches by day, in the server's time zone.
+                Some(at) if at <= now => local_date(at).saturating_sub(1.day()),
+                // State in the future (the clock was set wrong): treated as unknown.
+                _ => first,
+            };
+            since = since.min(from);
         }
-    })
+        if let Some(stale) = heal_from(store, portal)?.filter(|at| *at <= now) {
+            since = since.min(local_date(stale).saturating_sub(1.day()));
+        }
+    }
+    Ok(Some(since))
 }
 
 /// Searches the mailbox and takes in all alert mails of the selected portals.
@@ -146,7 +163,7 @@ fn scan_since(
 /// `summary` belongs to the caller: even after an error or cancel it holds what was
 /// processed (and already stored) up to then. The per-portal scan state advances only
 /// after a complete pass - and only for portals whose gap since their last state the
-/// searched period fully covered.
+/// searched period fully covered (without a state: the first scan's 30 days).
 #[expect(
     clippy::too_many_arguments,
     reason = "mailbox, store, scope, clock and events are passed separately (swappable in tests)"
@@ -202,11 +219,14 @@ pub async fn scan<S: MailSource>(
         return Err(MailError::Cancelled.into());
     }
 
+    let first = local_date(started).saturating_sub(FIRST_SCAN_DAYS.days());
     for &portal in portals {
         // The gap is covered only with one day of overlap (as in `scan_since`). A state
-        // in the future counts as "unknown" and is replaced.
+        // in the future counts as "unknown" and is replaced; without one the gap is the
+        // first scan's days.
         let covered = match (since, store.last_scan(portal)?) {
-            (None, _) | (_, None) => true,
+            (None, _) => true,
+            (Some(since), None) => since <= first,
             (Some(since), Some(last)) => last > started || since < local_date(last),
         };
         if covered {
@@ -466,6 +486,80 @@ mod tests {
             "first run 30 days; then last state minus 1 day; \"All\" without a limit"
         );
         assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), Some(later));
+    }
+
+    /// "Letzte 7 Tage" and "Letzte 30 Tage" search from that day whatever the state; the
+    /// state advances only when the days reach back over the gap since it (one day of
+    /// overlap), and without a state only when they reach the first scan's 30 days.
+    #[tokio::test]
+    async fn the_last_days_search_their_days_and_advance_only_over_the_gap() {
+        let day = |s: &str| Some(s.parse::<Date>().unwrap());
+        // No state yet: seven days do not cover the first scan's thirty.
+        let store = Store::in_memory().unwrap();
+        let mut source = fake(None);
+        run_scan(&store, &mut source, Scope::Days(7), now())
+            .await
+            .1
+            .unwrap();
+        assert_eq!(source.searched, [day("2026-09-12")]);
+        assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), None);
+        run_scan(&store, &mut source, Scope::Days(30), now())
+            .await
+            .1
+            .unwrap();
+        assert_eq!(source.searched.last(), Some(&day("2026-08-20")));
+        assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), Some(now()));
+        // Three days later seven days cover the gap, three weeks later they do not.
+        let soon: Timestamp = "2026-09-22T08:00:00Z".parse().unwrap();
+        run_scan(&store, &mut source, Scope::Days(7), soon)
+            .await
+            .1
+            .unwrap();
+        assert_eq!(source.searched.last(), Some(&day("2026-09-15")));
+        assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), Some(soon));
+        let late: Timestamp = "2026-10-13T08:00:00Z".parse().unwrap();
+        run_scan(&store, &mut source, Scope::Days(7), late)
+            .await
+            .1
+            .unwrap();
+        assert_eq!(source.searched.last(), Some(&day("2026-10-06")));
+        assert_eq!(
+            store.last_scan(Portal::LinkedIn).unwrap(),
+            Some(soon),
+            "the gap stays open"
+        );
+        // "Seit dem letzten Abruf" then closes it from the last state.
+        run_scan(&store, &mut source, Scope::New, late)
+            .await
+            .1
+            .unwrap();
+        assert_eq!(source.searched.last(), Some(&day("2026-09-21")));
+        assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), Some(late));
+    }
+
+    /// Each range of the settings is the scan it names.
+    #[test]
+    fn every_fetch_range_is_its_scan() {
+        let store = Store::in_memory().unwrap();
+        let since = |range: FetchRange| {
+            scan_since(&store, Scope::from(range), &[Portal::LinkedIn], now()).unwrap()
+        };
+        let day = |s: &str| Some(s.parse::<Date>().unwrap());
+        assert_eq!(
+            since(FetchRange::SinceLast),
+            day("2026-08-20"),
+            "first scan"
+        );
+        assert_eq!(since(FetchRange::Days7), day("2026-09-12"));
+        assert_eq!(since(FetchRange::Days30), day("2026-08-20"));
+        assert_eq!(since(FetchRange::All), None);
+        store.set_last_scan(Portal::LinkedIn, now()).unwrap();
+        assert_eq!(since(FetchRange::SinceLast), day("2026-09-18"));
+        assert_eq!(
+            since(FetchRange::Days7),
+            day("2026-09-12"),
+            "whatever the state"
+        );
     }
 
     /// After an update of the mail parser the first scan reads back once to the oldest job

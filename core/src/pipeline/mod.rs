@@ -4,8 +4,8 @@
 //! the page. The export always runs at the end - after a cancellation, a portal stop or an
 //! error too (it is purely local). Every run starts with exactly one `Started` (its kind: the
 //! page also follows runs it did not start) and ends with exactly one `Finished`; the summary
-//! of a mailbox run (fetch, whole mailbox) is also stored as `last_run_summary` - "the last
-//! fetch" for the page, which a rescore or a details run never replaces. Events carry codes
+//! of a fetch is also stored as `last_run_summary` - "the last fetch" for the page, which a
+//! rescore or a details run never replaces. Events carry codes
 //! and data, never prose; the log gets English lines with the run id (never content,
 //! addresses or passwords).
 
@@ -36,7 +36,7 @@ use crate::fetch::{
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{FetchPath, JobKey, Portal};
-use crate::settings::Language;
+use crate::settings::{FetchRange, Language};
 use crate::store::{JobRow, Store};
 use crate::text::truncate_chars;
 use crate::time;
@@ -63,14 +63,13 @@ pub struct RunRequest {
 )]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum RunKind {
-    /// New alert mails of the enabled portals, their job details, export.
+    /// The alert mails of the enabled portals in the range the settings choose
+    /// (`fetchRange`), their job details, export.
     Fetch,
     /// Job details of exactly these jobs (older ones too), export.
     Details { keys: Vec<JobKey> },
     /// Score again with the current profile, export.
     Rescore,
-    /// Like `fetch`, but the whole mailbox (All Mail) without a date limit.
-    FullMailbox,
 }
 
 /// The kind of a run without its data (summary, snapshot).
@@ -81,13 +80,12 @@ pub enum RunKindName {
     Fetch,
     Details,
     Rescore,
-    FullMailbox,
 }
 
 impl RunKindName {
-    /// A mailbox run (fetch or the whole mailbox): the kind "the last fetch" means.
+    /// A mailbox run: the kind "the last fetch" means.
     pub fn reads_mail(self) -> bool {
-        matches!(self, RunKindName::Fetch | RunKindName::FullMailbox)
+        self == RunKindName::Fetch
     }
 }
 
@@ -97,7 +95,6 @@ impl RunKind {
             RunKind::Fetch => RunKindName::Fetch,
             RunKind::Details { .. } => RunKindName::Details,
             RunKind::Rescore => RunKindName::Rescore,
-            RunKind::FullMailbox => RunKindName::FullMailbox,
         }
     }
 }
@@ -110,17 +107,13 @@ pub struct RunContext {
     pub dry_run: bool,
     /// Portals whose alert mails are read (settings: enabled).
     pub portals: Vec<Portal>,
-    /// Portals whose job pages may be fetched (settings: enabled and details on).
+    /// Portals whose job pages may be fetched (settings: enabled).
     pub fetch_portals: Vec<Portal>,
     /// Of those, the portals read in the session window (sign-in switched on); the others
     /// go as a guest. A run never opens a session window for any other portal.
     pub sign_in: Vec<Portal>,
-    /// Inbox jobs that are no favourite archive themselves this many days after they were
-    /// first seen, at the end of the run; 0 = never (settings).
-    pub auto_archive_days: u32,
-    /// The trash empties itself of jobs that lie there this long, at the end of the run;
-    /// 0 = never (settings).
-    pub auto_empty_trash_days: u32,
+    /// Which alert mails a fetch reads (settings).
+    pub fetch_range: FetchRange,
     /// Language of the Excel file (the text files stay German).
     pub language: Language,
     /// The Gmail address the run reads (`None` without a mailbox step or in the dry run):
@@ -520,11 +513,7 @@ impl<'a> Plan<'a> {
         let queue = Some(Selection::Queue(&ctx.fetch_portals));
         match kind {
             RunKind::Fetch => Plan {
-                scan: Some(Scope::New),
-                fetch: queue,
-            },
-            RunKind::FullMailbox => Plan {
-                scan: Some(Scope::All),
+                scan: Some(Scope::from(ctx.fetch_range)),
                 fetch: queue,
             },
             RunKind::Details { keys } => Plan {
@@ -687,8 +676,6 @@ pub async fn run<B: Backends>(
             Err(e) => log::warn!("run {run}: new jobs not counted: {e}"),
         }
     }
-    auto_archive(store, run, ctx.auto_archive_days, clock());
-    auto_empty_trash(store, run, ctx, clock());
     remember_health(store, policy, ctx, clock());
 
     summary.finished_at = clock();
@@ -760,65 +747,6 @@ fn health_event(portal: Portal, health: PortalHealth) -> RunEvent {
     }
 }
 
-/// Old jobs without a stage archive themselves (`days` after they were first seen; 0 =
-/// never). A failure only goes to the log: the run's results stand without it.
-fn auto_archive(store: &Store, run: i64, days: u32, now: Timestamp) {
-    if days == 0 {
-        return;
-    }
-    match store.auto_archive(days_before(now, days), now) {
-        Ok(0) => {}
-        Ok(n) => log::info!("run {run}: {n} old jobs archived"),
-        Err(e) => log::warn!("run {run}: old jobs not archived: {e}"),
-    }
-}
-
-/// The trash empties itself at the end of a run (the export of the run follows).
-fn auto_empty_trash(store: &Store, run: i64, ctx: &RunContext, now: Timestamp) {
-    let workspace = (!ctx.dry_run).then_some(ctx.workspace.as_path());
-    let n = empty_old_trash(store, workspace, ctx.auto_empty_trash_days, now);
-    if n > 0 {
-        log::info!("run {run}: {n} jobs deleted from the trash");
-    }
-}
-
-/// The trash empties itself of the jobs that lie there `days` (0 = never): they are deleted
-/// for good with their text files (without a workspace, the dry run, only in the database);
-/// a tombstone stays. Runs at the end of every run and at the start of the app; the Excel
-/// file lists only the inbox, so it needs no new write. Returns how many went; a failure only
-/// goes to the log.
-pub fn empty_old_trash(
-    store: &Store,
-    workspace: Option<&Path>,
-    days: u32,
-    now: Timestamp,
-) -> usize {
-    if days == 0 {
-        return 0;
-    }
-    let deleted = store
-        .trashed_keys(Some(days_before(now, days)))
-        .and_then(|keys| store.delete_jobs(&keys, now));
-    match deleted {
-        Ok((gone, names)) => {
-            if let Some(workspace) = workspace.filter(|_| !gone.is_empty()) {
-                remove_deleted_txt(store, workspace, &names);
-            }
-            gone.len()
-        }
-        Err(e) => {
-            log::warn!("trash not emptied: {e}");
-            0
-        }
-    }
-}
-
-/// `days` before `now`.
-fn days_before(now: Timestamp, days: u32) -> Timestamp {
-    now.checked_sub(jiff::SignedDuration::from_hours(24 * i64::from(days)))
-        .unwrap_or(Timestamp::UNIX_EPOCH)
-}
-
 fn failed(error: ErrorInfo) -> Outcome {
     Outcome::Failed { error }
 }
@@ -832,12 +760,16 @@ pub fn last_scan_run(store: &Store) -> crate::Result<i64> {
         .unwrap_or(0))
 }
 
-/// The summary of the last mailbox run (fetch or whole mailbox), if one is stored (and
-/// readable).
+/// The summary of the last fetch, if one is stored (and readable). One of a run over the
+/// whole mailbox (a kind of its own in earlier versions) reads as a fetch.
 pub fn last_run(store: &Store) -> crate::Result<Option<RunSummary>> {
-    Ok(store
-        .kv_get(LAST_RUN)?
-        .and_then(|json| serde_json::from_str(&json).ok()))
+    Ok(store.kv_get(LAST_RUN)?.and_then(|json| {
+        let mut summary: serde_json::Value = serde_json::from_str(&json).ok()?;
+        if summary["kind"] == "fullMailbox" {
+            summary["kind"] = "fetch".into();
+        }
+        serde_json::from_value(summary).ok()
+    }))
 }
 
 fn status(code: StatusCode, portal: Option<Portal>, until: Option<Timestamp>) -> RunEvent {
@@ -1135,10 +1067,10 @@ impl Target {
     }
 }
 
-/// Text files (exactly once per job, always German) and overview (in `language`). The
-/// overview is only regenerated if something changed - data, run, folder, language, the
-/// Gmail account of the links - or it is missing; an Excel file open elsewhere is then not
-/// disturbed needlessly.
+/// Text files (exactly once per job, always German) and the Excel overview (in `language`,
+/// only with `exportExcel` on). The overview is only regenerated if something changed -
+/// data, run, folder, language, the Gmail account of the links - or it is missing; an Excel
+/// file open elsewhere is then not disturbed needlessly.
 pub fn export_all(
     store: &Store,
     workspace: &Path,
@@ -1157,15 +1089,22 @@ pub fn export_all(
         Ok(jobs) => write_txts(store, &result_dir, jobs, now, &mut summary),
         Err(e) => note_error(&mut summary, &e, Target::Txt),
     }
-    write_overview(
-        store,
-        &export::overview_path(&result_dir),
-        info,
-        (run, language),
-        now,
-        &mut summary,
-    );
+    if exports_excel(store) {
+        write_overview(
+            store,
+            &export::overview_path(&result_dir),
+            info,
+            (run, language),
+            now,
+            &mut summary,
+        );
+    }
     summary
+}
+
+/// The Excel file is written (setting `exportExcel`; unreadable settings: the default, on).
+fn exports_excel(store: &Store) -> bool {
+    crate::settings::Settings::load(store).map_or(true, |settings| settings.export_excel)
 }
 
 /// The Excel file written anew when the user's marks (a move, "fits anyway", a delete)
@@ -1173,7 +1112,7 @@ pub fn export_all(
 /// after marks and right before "open Excel". A run writes both by itself. An Excel file
 /// open in Excel stays as it is: the summary's error is `fileLocked` with `target`
 /// `overview`, `path` and `name` (`JobAlerts.xlsx`); `overviewXlsx` names the file when it
-/// was written.
+/// was written. With `exportExcel` off nothing is written.
 pub fn refresh_excel(
     store: &Store,
     workspace: &Path,
@@ -1182,7 +1121,7 @@ pub fn refresh_excel(
 ) -> ExportSummary {
     let result_dir = workspace.join(RESULT_DIR);
     let mut summary = ExportSummary::default();
-    if !reachable(workspace, &mut summary) {
+    if !exports_excel(store) || !reachable(workspace, &mut summary) {
         return summary;
     }
     let path = export::overview_path(&result_dir);
@@ -1641,18 +1580,16 @@ fn info_rows(store: &Store, written: Timestamp, words: &Texts) -> Vec<(String, I
     let mut rows = match scan_facts(store) {
         Some(facts) => {
             let scope = match facts.scope {
-                Scope::New => words.scope_new,
-                Scope::All => words.scope_all,
+                Scope::New => words.scope_new.to_owned(),
+                Scope::Days(days) => words.scope_days(days),
+                Scope::All => words.scope_all.to_owned(),
             };
             let mut rows = Vec::new();
             if let Some(at) = time::from_db(facts.at) {
                 rows.push((words.info_last_scan.to_owned(), InfoValue::Moment(at)));
             }
             rows.extend([
-                (
-                    words.info_scope.to_owned(),
-                    InfoValue::Text(scope.to_owned()),
-                ),
+                (words.info_scope.to_owned(), InfoValue::Text(scope)),
                 (
                     words.info_new.to_owned(),
                     count(facts.jobs.unwrap_or(facts.new)),

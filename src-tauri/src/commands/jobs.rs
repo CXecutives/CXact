@@ -146,7 +146,7 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
     let _files = state.claim_files(app)?;
     let keys = match keys {
         Some(keys) => keys.to_vec(),
-        None => state.store.trashed_keys(None)?,
+        None => state.store.trashed_keys()?,
     };
     let workspace = if state.dry_run {
         None

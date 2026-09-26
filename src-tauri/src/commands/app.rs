@@ -157,14 +157,15 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
             excel_path: export::overview_path(&result_dir),
-            excel_exists: export::overview_path(&result_dir).is_file(),
+            excel_exists: settings.export_excel && export::overview_path(&result_dir).is_file(),
             workspace: workspace.clone(),
         },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
         portals: view::portal_states(&policy, &settings, &empty_mails, now),
-        auto_archive_days: settings.auto_archive_days,
-        auto_empty_trash_days: settings.auto_empty_trash_days,
+        fetch_range: settings.fetch_range,
+        export_excel: settings.export_excel,
+        export_csv: settings.export_csv,
         language: settings.language_or(state.system_language),
         palette: settings.palette,
         last_run,
@@ -238,9 +239,10 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// Saves portal switches, the automatic archive and trash, the language and the palette. The
-/// workspace only changes through the dialog. Another language rewrites the Excel file a
-/// moment later (like a mark); another palette dresses the window at once.
+/// Saves portal switches, the fetch range, which files the export writes, the language and
+/// the palette. The workspace only changes through the dialog. Another language or the Excel
+/// file switched on writes the Excel file a moment later (like a mark); another palette
+/// dresses the window at once.
 #[tauri::command]
 pub async fn save_settings(
     app: AppHandle,
@@ -249,13 +251,17 @@ pub async fn save_settings(
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
-    let language = settings.language_or(state.system_language);
+    let (language, excel) = (
+        settings.language_or(state.system_language),
+        settings.export_excel,
+    );
     patch.apply(&mut settings);
     settings.save(&state.store)?;
     if patch.palette.is_some() {
         crate::platform::dress(&window, settings.palette);
     }
-    if settings.language_or(state.system_language) != language {
+    if settings.language_or(state.system_language) != language || (settings.export_excel && !excel)
+    {
         super::files::marked(&app);
     }
     build_state(&state)

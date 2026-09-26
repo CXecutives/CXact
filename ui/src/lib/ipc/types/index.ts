@@ -10,6 +10,7 @@ export type { ErrorInfo } from "./ErrorInfo";
 export type { ErrorKind } from "./ErrorKind";
 export type { Evidence } from "./Evidence";
 export type { ExportSummary } from "./ExportSummary";
+export type { FetchRange } from "./FetchRange";
 export type { Highlight } from "./Highlight";
 export type { InvalidInput } from "./InvalidInput";
 export type { JobCounts } from "./JobCounts";

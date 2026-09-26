@@ -11,7 +11,6 @@
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
 import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
-import { AUTO_ARCHIVE_DAYS, AUTO_EMPTY_TRASH_DAYS } from '$lib/ipc/types/settings';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -166,14 +165,13 @@ export interface CardSpec {
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  autoArchiveDays: null,
-  autoEmptyTrashDays: null,
+  fetchRange: null,
+  exportExcel: null,
+  exportCsv: null,
   language: null,
   palette: null,
   ...change,
 });
-
-/** Days after which old jobs archive themselves, and the trash empties itself, when on. */
 
 const palette: ChoiceRow<Palette> = {
   kind: 'choice',
@@ -199,30 +197,6 @@ const language: ChoiceRow<Language> = {
 
 export const CARDS: readonly CardSpec[] = [
   { id: 'mailbox', heading: (t) => t.settings.mailbox, body: 'mailbox' },
-  {
-    id: 'fetch',
-    heading: (t) => t.settings.automatic,
-    body: [
-      {
-        kind: 'switch',
-        id: 'auto-archive',
-        label: (t) => t.settings.autoArchive(AUTO_ARCHIVE_DAYS),
-        hint: (t) => t.settings.autoArchiveHint,
-        on: (state) => state.autoArchiveDays > 0,
-        patch: (on) => ({ autoArchiveDays: on ? AUTO_ARCHIVE_DAYS : 0 }),
-        set: (state, on) => void (state.autoArchiveDays = on ? AUTO_ARCHIVE_DAYS : 0),
-      },
-      {
-        kind: 'switch',
-        id: 'auto-empty-trash',
-        label: (t) => t.settings.autoEmptyTrash(AUTO_EMPTY_TRASH_DAYS),
-        hint: (t) => t.settings.autoEmptyTrashHint,
-        on: (state) => state.autoEmptyTrashDays > 0,
-        patch: (on) => ({ autoEmptyTrashDays: on ? AUTO_EMPTY_TRASH_DAYS : 0 }),
-        set: (state, on) => void (state.autoEmptyTrashDays = on ? AUTO_EMPTY_TRASH_DAYS : 0),
-      },
-    ],
-  },
   {
     id: 'portals',
     heading: (t) => t.settings.portals,

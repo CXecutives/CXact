@@ -3,4 +3,4 @@
 /**
  * The kind of a run without its data (summary, snapshot).
  */
-export type RunKindName = "fetch" | "details" | "rescore" | "fullMailbox";
+export type RunKindName = "fetch" | "details" | "rescore";

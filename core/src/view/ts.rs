@@ -6,8 +6,8 @@
 //!
 //! Beside the types, the decisions the interface shares with the backend are written as
 //! values, one lower-case module each (never edited by hand, [`values`]): `bands.ts` (the
-//! band thresholds), `portals.ts` (the portals' names and marks), `settings.ts` (the
-//! defaults of the settings), `profile.ts` (the form's criteria, limits and empty form).
+//! band thresholds), `portals.ts` (the portals' names and marks), `profile.ts` (the form's
+//! criteria, limits and empty form).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -24,7 +24,7 @@ use crate::pipeline::{
     RunSnapshot, RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
 use crate::portal::{JobKey, Portal};
-use crate::settings::{Language, Palette};
+use crate::settings::{FetchRange, Language, Palette};
 use crate::store::{Backup, BackupKind};
 use crate::view::{
     AppState, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts, JobDetail, JobMail,
@@ -189,6 +189,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Platform>();
     f.add::<Language>();
     f.add::<Palette>();
+    f.add::<FetchRange>();
     f.add::<VaultKind>();
     f.add::<Mailbox>();
     f.add::<PortalCount>();
@@ -283,7 +284,6 @@ fn json_name(value: impl serde::Serialize) -> String {
 /// The value modules: the decisions of the backend the interface shows, by file name.
 fn values() -> BTreeMap<String, String> {
     use crate::model::{HIGH_FROM, MID_FROM};
-    use crate::settings::{AUTO_ARCHIVE_DAYS, AUTO_EMPTY_TRASH_DAYS};
 
     let mut out = BTreeMap::new();
 
@@ -338,16 +338,6 @@ fn values() -> BTreeMap<String, String> {
     }
     portals.push_str("};\n");
     out.insert("portals.ts".to_owned(), portals);
-
-    let mut settings = value_header("core/src/settings.rs");
-    let _ = write!(
-        settings,
-        "\n/** Days after which old jobs archive themselves when the switch is on. */\n\
-         export const AUTO_ARCHIVE_DAYS = {AUTO_ARCHIVE_DAYS};\n\
-         /** Days after which the trash empties itself when the switch is on. */\n\
-         export const AUTO_EMPTY_TRASH_DAYS = {AUTO_EMPTY_TRASH_DAYS};\n"
-    );
-    out.insert("settings.ts".to_owned(), settings);
 
     let profile = value_header("core/src/profile/form.rs") + &crate::profile::form_typescript();
     out.insert("profile.ts".to_owned(), profile);

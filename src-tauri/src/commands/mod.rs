@@ -299,7 +299,7 @@ impl AppState {
         !matches!(*lock(&self.activity), Activity::Idle)
     }
 
-    /// What holds the app, as the page names it (`fetch`, `fullMailbox`, `details`,
+    /// What holds the app, as the page names it (`fetch`, `details`,
     /// `rescore`, `session`, `files`, `mailbox`): the closing note and the busy error say
     /// which.
     pub fn activity_name(&self) -> Option<serde_json::Value> {

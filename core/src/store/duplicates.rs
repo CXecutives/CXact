@@ -671,7 +671,7 @@ mod tests {
     }
 
     /// A teaser the user brought back into the inbox keeps her choice when its full text
-    /// takes its place: the new original is not archived for the teaser's age.
+    /// takes its place: the new original stands in the inbox.
     #[test]
     fn the_new_original_keeps_a_move_back_into_the_inbox() {
         use crate::model::Place;
@@ -704,7 +704,6 @@ mod tests {
         let full = add("https://www.linkedin.com/jobs/view/4000000009/", run, now());
         store.record_text(&full, TEXT, false, false, now()).unwrap();
         assert_eq!(store.link_duplicate(&full).unwrap(), Some(full.clone()));
-        assert_eq!(store.auto_archive(days(30), now()).unwrap(), 0);
         assert_eq!(store.job(&full).unwrap().unwrap().place(), Place::Inbox);
     }
 

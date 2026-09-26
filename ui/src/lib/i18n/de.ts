@@ -987,7 +987,6 @@ export const de = {
       fetch: 'Abruf',
       details: 'Details holen',
       rescore: 'Neu bewerten',
-      fullMailbox: FULL_MAILBOX,
     } satisfies Record<RunKindName, string>,
     done: 'Abruf fertig',
     rescored: 'Neu bewertet',

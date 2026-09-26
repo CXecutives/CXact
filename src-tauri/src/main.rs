@@ -201,24 +201,6 @@ fn fail(failure: &Failure) -> ! {
     std::process::exit(1);
 }
 
-/// The trash empties itself at the start too (setting; the dry run keeps its files).
-fn empty_old_trash(app: &tauri::App, store: &Store, dry_run: bool) {
-    let Ok(settings) = jobalert_core::settings::Settings::load(store) else {
-        return;
-    };
-    let default_workspace = app.state::<AppState>().default_workspace.clone();
-    let workspace = (!dry_run).then(|| settings.workspace_or(&default_workspace));
-    let gone = jobalert_core::pipeline::empty_old_trash(
-        store,
-        workspace.as_deref(),
-        settings.auto_empty_trash_days,
-        jiff::Timestamp::now(),
-    );
-    if gone > 0 {
-        log::info!("start: {gone} jobs deleted from the trash");
-    }
-}
-
 /// The log file in the data folder, and the panic hook that writes to it.
 fn install_log(data_dir: &Path) {
     let level = if cfg!(debug_assertions) {
@@ -336,7 +318,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         refresh: Refresh::default(),
         close_guard: CloseGuard::default(),
     });
-    empty_old_trash(app, &store, dry_run);
     // The web view version goes to the log only: the UI does not need it, and for debugging
     // the log is more reliable than a screenshot.
     let webview_version = tauri::webview_version().unwrap_or_default();

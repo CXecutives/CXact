@@ -789,7 +789,6 @@
         tools={toolsOf(job)}
         menu={() => menuOf(job)}
         chosen={selection.size > 0 && selection.has(job) && (bulk.active || viewport.narrow)}
-        trashDays={app.state?.autoEmptyTrashDays ?? 0}
         onchoose={choose}
       />
     {/snippet}
@@ -870,7 +869,7 @@
   testid="dialog-read-older"
   onconfirm={() => {
     confirmOlder = false;
-    void run.start({ kind: 'fullMailbox' });
+    void run.start({ kind: 'fetch' });
   }}
 />
 

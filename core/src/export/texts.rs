@@ -73,6 +73,10 @@ pub const PROGRAM_NAME: &str = "CXact";
 /// Scope of a mailbox scan in words.
 pub const SCOPE_NEW: &str = "Neu seit dem letzten Abruf";
 pub const SCOPE_ALL: &str = "Ganzes Postfach";
+/// The last so many days of the mailbox.
+pub fn scope_days(days: u16) -> String {
+    format!("Letzte {days} Tage")
+}
 
 /// When the file was written (a row of the info sheet).
 pub const CREATED: &str = "Erstellt am";
@@ -240,6 +244,9 @@ pub mod en {
 
     pub const SCOPE_NEW: &str = "New since the last fetch";
     pub const SCOPE_ALL: &str = "Whole mailbox";
+    pub fn scope_days(days: u16) -> String {
+        format!("Last {days} days")
+    }
 
     pub const CREATED: &str = "Created on";
     pub const EXCLUDED: &str = "Excluded";
@@ -419,6 +426,7 @@ pub struct Texts {
     pub info_program: &'static str,
     pub scope_new: &'static str,
     pub scope_all: &'static str,
+    scope_days: fn(u16) -> String,
     pub created: &'static str,
     pub excluded: &'static str,
     /// The key facts in the app's words.
@@ -480,6 +488,7 @@ pub const DE: Texts = Texts {
     info_program: INFO_PROGRAM,
     scope_new: SCOPE_NEW,
     scope_all: SCOPE_ALL,
+    scope_days,
     created: CREATED,
     excluded: EXCLUDED,
     rate_words,
@@ -536,6 +545,7 @@ pub const EN: Texts = Texts {
     info_program: en::INFO_PROGRAM,
     scope_new: en::SCOPE_NEW,
     scope_all: en::SCOPE_ALL,
+    scope_days: en::scope_days,
     created: en::CREATED,
     excluded: en::EXCLUDED,
     rate_words: en::rate_words,
@@ -597,6 +607,11 @@ impl Texts {
             "freelance" => Some(self.contracts[3]),
             _ => None,
         }
+    }
+
+    /// A scan of the last so many days in words (`Letzte 7 Tage`).
+    pub fn scope_days(&self, days: u16) -> String {
+        (self.scope_days)(days)
     }
 
     /// The info sheet's label of a portal's health.

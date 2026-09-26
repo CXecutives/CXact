@@ -402,9 +402,7 @@ export function detailsWanted(job: JobView): boolean {
     return false;
   }
   const portal = app.state?.portals.find((state) => state.portal === job.portal);
-  return (
-    portal?.enabled === true && portal.fetchDetails && (kind !== 'teaser' || portal.loginEnabled)
-  );
+  return portal?.enabled === true && (kind !== 'teaser' || portal.loginEnabled);
 }
 
 /** The star of earlier versions: the favourites went, it changes nothing. */

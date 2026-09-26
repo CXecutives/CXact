@@ -4,22 +4,23 @@
 //! one (which would switch every portal off), and what this version saves loads back the same.
 //!
 //! A new field of `Settings`: add `fixtures/settings/<version>.json` (a copy of the newest
-//! file plus the new field at a value other than its default), point `NEWEST` at it and give
-//! each older file its expectation (the new field at its default). Never edit a file that a
-//! released version wrote: users still have it on disk. A renamed field keeps the old name
-//! as `#[serde(alias = "...")]`, or the older files lose its value here.
+//! file plus the new field at a value other than its default; a second file of the same
+//! version gets a suffix, `3.0.0-2.json`), point `NEWEST` at it and give each older file its
+//! expectation (the new field at its default). Never edit a file that a released version
+//! wrote: users still have it on disk. A renamed field keeps the old name as
+//! `#[serde(alias = "...")]`, or the older files lose its value here.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use jobalert_core::portal::Portal;
-use jobalert_core::settings::{Language, Palette, PortalSwitches, Settings};
+use jobalert_core::settings::{FetchRange, Language, Palette, PortalSwitches, Settings};
 use jobalert_core::store::Store;
 
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0.json";
+const NEWEST: &str = "3.0.0-2.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -45,10 +46,9 @@ fn round_trip(settings: &Settings) -> (Settings, serde_json::Value) {
     )
 }
 
-fn switches(enabled: bool, fetch_details: bool, login_enabled: bool) -> PortalSwitches {
+fn switches(enabled: bool, login_enabled: bool) -> PortalSwitches {
     PortalSwitches {
         enabled,
-        fetch_details,
         login_enabled,
     }
 }
@@ -58,12 +58,13 @@ fn newest() -> Settings {
     Settings {
         workspace: Some(PathBuf::from("/data/CXact")),
         portals: BTreeMap::from([
-            (Portal::LinkedIn, switches(true, false, false)),
-            (Portal::FreelanceDe, switches(true, true, true)),
-            (Portal::Freelancermap, switches(false, true, false)),
+            (Portal::LinkedIn, switches(true, false)),
+            (Portal::FreelanceDe, switches(true, true)),
+            (Portal::Freelancermap, switches(false, false)),
         ]),
-        auto_archive_days: 14,
-        auto_empty_trash_days: 0,
+        fetch_range: FetchRange::Days30,
+        export_excel: false,
+        export_csv: true,
         language: Some(Language::En),
         palette: Palette::Dark,
     }
@@ -113,13 +114,12 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
     let loaded = load(&fixture("older.json"));
     let expected = Settings {
         workspace: Some(PathBuf::from("/data/CXact")),
-        // The list form: listed portals on, the others off, details fetched.
+        // The list form: listed portals on, the others off.
         portals: BTreeMap::from([
-            (Portal::LinkedIn, switches(true, true, false)),
-            (Portal::FreelanceDe, switches(false, true, false)),
-            (Portal::Freelancermap, switches(true, true, false)),
+            (Portal::LinkedIn, switches(true, false)),
+            (Portal::FreelanceDe, switches(false, false)),
+            (Portal::Freelancermap, switches(true, false)),
         ]),
-        auto_archive_days: 7,
         ..Settings::default()
     };
     assert_eq!(loaded, expected);
@@ -133,15 +133,40 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
     );
 }
 
+/// The file of 3.0.0: the automatic archive and trash are gone; a portal whose details
+/// switch was off comes back switched off (that switch promised zero requests to it); the
+/// new fields stand at their defaults.
+#[test]
+fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
+    let loaded = load(&fixture("3.0.0.json"));
+    let expected = Settings {
+        workspace: Some(PathBuf::from("/data/CXact")),
+        portals: BTreeMap::from([
+            (Portal::LinkedIn, switches(false, false)),
+            (Portal::FreelanceDe, switches(true, true)),
+            (Portal::Freelancermap, switches(false, false)),
+        ]),
+        language: Some(Language::En),
+        palette: Palette::Dark,
+        ..Settings::default()
+    };
+    assert_eq!(loaded, expected);
+    let (back, saved) = round_trip(&loaded);
+    assert_eq!(back, loaded);
+    let default = serde_json::to_value(Settings::default()).unwrap();
+    assert_eq!(keys(&saved), keys(&default), "saving writes today's form");
+}
+
 #[test]
 fn a_file_of_a_newer_version_loads_without_damage() {
     let loaded = load(&fixture("newer.json"));
-    // Unknown fields, an unknown portal and a switch it does not know are skipped; a language
-    // or palette of a newer version reads as none chosen. Nothing else changes: above all the
-    // file is not taken for a damaged one (that would switch every portal off).
+    // Unknown fields, an unknown portal and a switch it does not know are skipped; a language,
+    // palette or fetch range of a newer version reads as none chosen. Nothing else changes:
+    // above all the file is not taken for a damaged one (that would switch every portal off).
     let expected = Settings {
         language: None,
         palette: Palette::Coast,
+        fetch_range: FetchRange::SinceLast,
         ..newest()
     };
     assert_eq!(loaded, expected);

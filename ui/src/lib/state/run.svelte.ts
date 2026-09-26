@@ -41,7 +41,6 @@ const ORDER: readonly Step[] = ['scan', 'fetch', 'score', 'export'];
 /** The steps each kind goes through (a details run reads no mail, a rescore only scores). */
 const KIND_STEPS: Record<RunKindName, readonly Step[]> = {
   fetch: STEPS,
-  fullMailbox: STEPS,
   details: ['fetch', 'score'],
   rescore: ['score'],
 };
@@ -75,7 +74,7 @@ class Line implements HistoryLine {
 }
 
 /** A mailbox run: what "the last fetch" means (`app.state.lastRun`). */
-export const isFetch = (kind: RunKindName): boolean => kind === 'fetch' || kind === 'fullMailbox';
+export const isFetch = (kind: RunKindName): boolean => kind === 'fetch';
 
 class RunStore {
   active = $state(false);

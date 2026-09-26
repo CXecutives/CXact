@@ -4,4 +4,4 @@ import type { JobKey } from "./JobKey";
 /**
  * The kinds of run.
  */
-export type RunKind = { "kind": "fetch" } | { "kind": "details", keys: Array<JobKey>, } | { "kind": "rescore" } | { "kind": "fullMailbox" };
+export type RunKind = { "kind": "fetch" } | { "kind": "details", keys: Array<JobKey>, } | { "kind": "rescore" };

@@ -33,8 +33,7 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         portals: Portal::ALL.to_vec(),
         fetch_portals: Portal::ALL.to_vec(),
         sign_in: vec![Portal::FreelanceDe],
-        auto_archive_days: 0,
-        auto_empty_trash_days: 0,
+        fetch_range: FetchRange::SinceLast,
         language: Language::De,
         mailbox: None,
     }
@@ -590,7 +589,7 @@ async fn cancel_after_k_of_n_keeps_exactly_k() {
 #[test]
 fn the_largest_summary_is_a_small_event() {
     let now = Timestamp::now();
-    let mut summary = RunSummary::new(RunKindName::FullMailbox, false, now);
+    let mut summary = RunSummary::new(RunKindName::Fetch, false, now);
     summary.outcome = Outcome::Failed {
         error: ErrorInfo::new(ErrorKind::Io).with("path", "x".repeat(400)),
     };
@@ -1515,12 +1514,16 @@ fn run_requests_are_flat_json() {
     )
     .unwrap();
     assert_eq!(request.kind.name(), RunKindName::Details);
-    for kind in ["fetch", "rescore", "fullMailbox"] {
+    for kind in ["fetch", "rescore"] {
         let json = format!(r#"{{"kind":"{kind}"}}"#);
         let request: RunRequest = serde_json::from_str(&json).unwrap();
         assert_eq!(serde_json::to_string(&request).unwrap(), json);
     }
-    assert!(serde_json::from_str::<RunRequest>(r#"{"kind":"scan"}"#).is_err());
+    // The whole mailbox is the fetch range "Alle Alert-Mails" now, no kind of its own.
+    for gone in ["scan", "fullMailbox"] {
+        let json = format!(r#"{{"kind":"{gone}"}}"#);
+        assert!(serde_json::from_str::<RunRequest>(&json).is_err(), "{gone}");
+    }
 }
 
 /// `top_matches.json` for the matching skill: the scored jobs of the mailbox run, best
@@ -1625,7 +1628,7 @@ impl Backends for Paths {
     }
 }
 
-/// The switches reach the fetch: details off = no fetch path at all (zero requests);
+/// The switches reach the fetch: a portal off = no fetch path at all (zero requests);
 /// sign-in off = the guest path, never a session window; sign-in on = the session window.
 #[tokio::test(start_paused = true)]
 async fn switches_decide_the_fetch_path() {
@@ -1633,11 +1636,7 @@ async fn switches_decide_the_fetch_path() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let mut settings = crate::settings::Settings::default();
-    settings
-        .portals
-        .get_mut(&Portal::LinkedIn)
-        .unwrap()
-        .fetch_details = false;
+    settings.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
     let context = RunContext {
         fetch_portals: settings.fetch_portals(),
         sign_in: Vec::new(),
@@ -1699,8 +1698,8 @@ impl Backends for Stored {
     }
 }
 
-/// Details switched off while the run fetches: the portal gets no further request, although
-/// the run started with it switched on ("off = zero requests").
+/// A portal switched off while the run fetches gets no further request, although the run
+/// started with it switched on ("off = zero requests").
 #[tokio::test(start_paused = true)]
 async fn a_portal_switched_off_during_the_run_stops_at_once() {
     let c = clock();
@@ -1730,10 +1729,7 @@ async fn a_portal_switched_off_during_the_run_stops_at_once() {
             {
                 switched = true;
                 let mut off = crate::settings::Settings::load(&store).unwrap();
-                off.portals
-                    .get_mut(&Portal::LinkedIn)
-                    .unwrap()
-                    .fetch_details = false;
+                off.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
                 off.save(&store).unwrap();
             }
         },
@@ -1760,7 +1756,6 @@ async fn every_run_starts_with_its_kind() {
         .key;
     let kinds = [
         (RunKind::Fetch, RunKindName::Fetch),
-        (RunKind::FullMailbox, RunKindName::FullMailbox),
         (RunKind::Details { keys: vec![key] }, RunKindName::Details),
         (RunKind::Rescore, RunKindName::Rescore),
     ];
@@ -1853,21 +1848,21 @@ async fn the_last_run_is_the_last_fetch() {
     .await;
     assert!(matches!(failed.outcome, Outcome::Failed { .. }));
     assert_eq!(last().run, failed.run, "a failed fetch is the last fetch");
+    // Every alert mail ("Alle Alert-Mails") is a fetch like any other.
+    let every = RunContext {
+        fetch_range: FetchRange::All,
+        ..ctx(dir.path(), false)
+    };
     let (full, _) = go(
         &mut DemoBackends,
         &store,
-        &RunRequest {
-            kind: RunKind::FullMailbox,
-        },
-        &ctx(dir.path(), false),
+        &request(),
+        &every,
         &CancellationToken::new(),
         &c,
     )
     .await;
-    assert_eq!(
-        (last().run, last().kind),
-        (full.run, RunKindName::FullMailbox)
-    );
+    assert_eq!((last().run, last().kind), (full.run, RunKindName::Fetch));
 }
 
 /// What the run card counts, from the run itself: its new jobs (first seen in it, a
@@ -1965,7 +1960,8 @@ async fn a_fetch_counts_its_new_jobs() {
     assert_eq!(r.new_jobs, None);
 }
 
-/// Summaries stored by an earlier version (without `newJobs`) are still read.
+/// Summaries stored by an earlier version (without `newJobs`, or of a run over the whole
+/// mailbox) are still read, the latter as a fetch.
 #[test]
 fn an_older_stored_summary_still_reads() {
     let store = Store::in_memory().unwrap();
@@ -1973,7 +1969,35 @@ fn an_older_stored_summary_still_reads() {
     let mut json = serde_json::to_value(&summary).unwrap();
     json.as_object_mut().unwrap().remove("newJobs");
     store.kv_set(LAST_RUN, &json.to_string()).unwrap();
+    assert_eq!(last_run(&store).unwrap(), Some(summary.clone()));
+    json["kind"] = "fullMailbox".into();
+    store.kv_set(LAST_RUN, &json.to_string()).unwrap();
     assert_eq!(last_run(&store).unwrap(), Some(summary));
+}
+
+/// With the Excel file switched off (`exportExcel`) an export writes none, and asked for it
+/// (`refresh_excel`) neither; the text files are written all the same.
+#[test]
+fn an_excel_file_switched_off_is_not_written() {
+    let dir = tempfile::tempdir().unwrap();
+    let (store, _) = store_with_texts();
+    let settings = crate::settings::Settings {
+        export_excel: false,
+        ..crate::settings::Settings::default()
+    };
+    settings.save(&store).unwrap();
+    let xlsx = export::overview_path(&dir.path().join(RESULT_DIR));
+    let s = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
+    assert_eq!(s.overview_xlsx, None);
+    assert_eq!(s.error, None);
+    assert_eq!(s.txt_written, 2);
+    assert!(!xlsx.exists());
+    let asked = refresh_excel(&store, dir.path(), Timestamp::now(), Language::De);
+    assert_eq!((asked.overview_xlsx, asked.error), (None, None));
+    assert!(!xlsx.exists());
+    crate::settings::Settings::default().save(&store).unwrap();
+    let on = refresh_excel(&store, dir.path(), Timestamp::now(), Language::De);
+    assert_eq!(on.overview_xlsx.as_deref(), Some(xlsx.as_path()));
 }
 
 /// A failed export does not fail the run, but the summary names it as a code with its
@@ -2231,65 +2255,6 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     assert!(!file.exists());
 }
 
-/// At the end of a run old jobs archive themselves (by the days in the settings; 0 = never).
-#[tokio::test(start_paused = true)]
-async fn a_run_archives_old_jobs_without_a_stage() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let archiving = RunContext {
-        auto_archive_days: 30,
-        ..ctx(dir.path(), true)
-    };
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &archiving,
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    let archived = |store: &Store| -> usize {
-        store
-            .jobs(&JobFilter::default())
-            .unwrap()
-            .iter()
-            .filter(|job| job.archived_at.is_some())
-            .count()
-    };
-    assert_eq!(archived(&store), 0, "young jobs stay");
-    let later = move || c() + SignedDuration::from_hours(24 * 40);
-    let off = RunContext {
-        auto_archive_days: 0,
-        ..ctx(dir.path(), true)
-    };
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &off,
-        &CancellationToken::new(),
-        &later,
-    )
-    .await;
-    assert_eq!(archived(&store), 0, "switched off");
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &archiving,
-        &CancellationToken::new(),
-        &later,
-    )
-    .await;
-    let jobs = store.jobs(&JobFilter::default()).unwrap();
-    assert!(jobs.len() > 1);
-    for job in &jobs {
-        assert!(job.archived_at.is_some(), "{}", job.key);
-    }
-}
-
 /// The Excel sheet lists the inbox and the archive, never the trash (a job back from it is
 /// listed again), and a duplicate never has a row of its own.
 #[tokio::test(start_paused = true)]
@@ -2322,68 +2287,6 @@ async fn the_excel_sheet_leaves_out_the_trash() {
     assert_eq!(rows, 1 + listed, "the header and one row per listed job");
     assert!(listed <= store.jobs(&JobFilter::default()).unwrap().len());
     assert_eq!(u64::try_from(listed).unwrap(), store.sheet_count().unwrap());
-}
-
-/// At the end of a run the trash empties itself of the jobs that lie there long enough
-/// (0 = never): rows and text files go, a tombstone stays; the young trash stays.
-#[tokio::test(start_paused = true)]
-async fn a_run_empties_an_old_trash() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let fetch = ctx(dir.path(), false);
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &fetch,
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    let jobs = store.jobs(&JobFilter::default()).unwrap();
-    let old = jobs.iter().find(|j| j.txt_name.is_some()).unwrap().clone();
-    let young = jobs.iter().find(|j| j.key != old.key).unwrap().key.clone();
-    let file = dir
-        .path()
-        .join(RESULT_DIR)
-        .join(TXT_DIR)
-        .join(old.txt_name.as_deref().unwrap());
-    let long_ago = c() - SignedDuration::from_hours(24 * 40);
-    store
-        .move_jobs(std::slice::from_ref(&old.key), Place::Trash, long_ago)
-        .unwrap();
-    store
-        .move_jobs(std::slice::from_ref(&young), Place::Trash, c())
-        .unwrap();
-    // Switched off: nothing goes.
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &fetch,
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert!(store.job(&old.key).unwrap().is_some());
-    let emptying = RunContext {
-        auto_empty_trash_days: 30,
-        ..ctx(dir.path(), false)
-    };
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &emptying,
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert!(store.job(&old.key).unwrap().is_none());
-    assert!(store.is_deleted(&old.key).unwrap());
-    assert!(!file.exists());
-    assert_eq!(store.job(&young).unwrap().unwrap().place(), Place::Trash);
 }
 
 /// A mark changes the skill's list without a run: a job moved to the trash leaves
@@ -2483,7 +2386,7 @@ fn a_purge_counts_the_rows_it_deleted() {
     // Emptying the whole trash counts the same way.
     let (store, keys) = store_with_texts();
     store.move_jobs(&keys, Place::Trash, now).unwrap();
-    let all = store.trashed_keys(None).unwrap();
+    let all = store.trashed_keys().unwrap();
     let deleted = delete_jobs(&store, Some(dir.path()), None, &all, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 2);
 }

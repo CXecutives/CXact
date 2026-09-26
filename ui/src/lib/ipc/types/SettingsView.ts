@@ -8,4 +8,8 @@ workspace: string, workspaceIsDefault: boolean,
 /**
  * The Excel file of the overview, where it is or will be written.
  */
-excelPath: string, excelExists: boolean, };
+excelPath: string, 
+/**
+ * The Excel file is there to open: written (`exportExcel` on) and on disk.
+ */
+excelExists: boolean, };
