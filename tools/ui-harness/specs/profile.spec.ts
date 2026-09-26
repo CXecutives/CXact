@@ -875,8 +875,11 @@ test('the day exists only for "Ab Datum", gets the caret and is judged when left
   expect(said).toHaveLength(2);
   await expect(page.getByTestId('profile-save-status')).toHaveText('Nicht gespeichert');
   expect(await saves(page)).toBe(0);
-  // After "Verwerfen", the day chosen anew is judged anew.
+  // After "Verwerfen" the stored day is back (the demo profile is available from a day), and
+  // a day chosen anew is judged anew.
   await discard(page).click();
+  await expect(error).toHaveCount(0);
+  await choices.getByRole('radio', { name: 'Sofort' }).click();
   await expect(date).toHaveCount(0);
   await choices.getByRole('radio', { name: 'Ab Datum' }).click();
   await expect(date).toBeFocused();
