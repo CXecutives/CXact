@@ -782,16 +782,11 @@ export const de = {
       value === 1
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
-    markAllRead: 'Alle als gelesen markieren',
-    /** The text button of the list header (during a search: its hits). */
-    allRead: 'Alle gelesen',
-    hitsRead: 'Ergebnisse gelesen',
   },
   /** The app's own menus (their accessible names and the entries of the job's menu). */
   menu: {
     job: 'Job',
     open: 'Öffnen',
-    unread: 'Als ungelesen markieren',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -834,7 +829,6 @@ export const de = {
     archive: 'Archivieren',
     trash: 'In den Papierkorb',
     star: 'Favorit',
-    unread: 'Als ungelesen markieren',
     openAd: 'Anzeige öffnen',
     closeJob: 'Job schließen',
   },
@@ -947,11 +941,10 @@ export const de = {
     filter: 'Filter',
     /** The second line of its tooltip while a filter is on: what the list shows (the portal
      *  by name). */
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
+    filterOn: (portal: string | null, band: 'mid' | 'high' | null): string => {
       const parts = [
         portal === null ? '' : `nur ${portal}`,
         band === 'mid' ? 'ab mittlerer Passung' : band === 'high' ? 'nur hohe Passung' : '',
-        applied ? 'nur beworbene Jobs' : '',
       ].filter((part) => part !== '');
       const text = parts.join(', ');
       return text.charAt(0).toUpperCase() + text.slice(1);
@@ -965,7 +958,6 @@ export const de = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     /** Without a usable profile there is no fit to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Passung.',
-    appliedOnly: 'Nur beworbene Jobs',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
@@ -1235,7 +1227,6 @@ export const de = {
     restore: 'Wiederherstellen',
     /** The "…" button and its menu. */
     more: 'Weitere Aktionen',
-    markUnread: 'Als ungelesen markieren',
     /** An excluded job: its passage, counting it anyway, and back. */
     showInAd: 'In der Anzeige zeigen',
     override: 'Trotzdem einbeziehen',
@@ -1321,15 +1312,6 @@ export const de = {
      *  that opens the mail. */
     emptyAlerts: emptyMails,
     lastRun: 'Letzter Abruf',
-    /** The jobs marked "Beworben", with when and the note. */
-    applied: 'Beworben',
-    appliedWhen: (days: number) =>
-      days === 0
-        ? 'Beworben heute'
-        : days === 1
-          ? 'Beworben gestern'
-          : `Beworben vor ${n(days)} Tagen`,
-    adClosed: 'Anzeige geschlossen',
     /** The musts the profile lacks most often (30 days). */
     openMusts: 'Oft verlangt, nicht im Profil',
     inJobs: (value: number) => `in ${n(value)} Jobs`,
@@ -1862,8 +1844,6 @@ export const de = {
       archive: 'Archivieren',
       trash: 'In den Papierkorb',
       favourite: 'Favorit',
-      unread: 'Gelesen oder ungelesen',
-      applied: 'Beworben',
       openAd: 'Anzeige öffnen',
       fetch: 'Abrufen',
     },
@@ -1905,7 +1885,6 @@ export const de = {
     inboxOne: (name: string) => `„${name}“ zurückgeholt.`,
     inboxMany: (value: number) => `${n(value)} Jobs zurückgeholt.`,
     restoredMany: (value: number) => `${n(value)} Jobs wiederhergestellt.`,
-    allRead: 'Alle als gelesen markiert.',
     archivedMany: (value: number) => `${n(value)} Jobs archiviert.`,
     restored: (name: string) => `„${name}“ wiederhergestellt.`,
     /** Only a deletion for good says "endgültig". */

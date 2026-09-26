@@ -22,9 +22,7 @@
   import JobRow, { type RowTool } from '$components/JobRow.svelte';
   import Notice from '$components/Notice.svelte';
   import StatTile from '$components/StatTile.svelte';
-  import Icon from '$components/Icon.svelte';
-  import ListRow from '$components/ListRow.svelte';
-  import { displayTitle, formatEuro, formatMoment, formatRelative } from '$lib/i18n/format';
+  import { formatEuro, formatMoment, formatRelative } from '$lib/i18n/format';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
@@ -76,7 +74,6 @@
         search: null,
         portal: null,
         minBand: 'low',
-        applied: false,
         limit: BEST,
         offset: 0,
       },
@@ -103,35 +100,12 @@
         search: null,
         portal: null,
         minBand: null,
-        applied: false,
         limit: FAVOURITES,
         offset: 0,
       },
     })
       .then((page) => (saved = page.jobs))
       .catch(() => (saved = []));
-  }
-
-  /** The jobs marked "Beworben" in the inbox, newest first. */
-  const APPLIED = 5;
-  let appliedRows = $state.raw<JobView[]>([]);
-  function loadApplied(): void {
-    invoke('list_jobs', {
-      query: {
-        place: 'inbox',
-        unread: false,
-        favourites: false,
-        sort: 'newest',
-        search: null,
-        portal: null,
-        minBand: null,
-        applied: true,
-        limit: APPLIED,
-        offset: 0,
-      },
-    })
-      .then((page) => (appliedRows = page.jobs))
-      .catch(() => (appliedRows = []));
   }
 
   /** The open musts, the market and the portals' last alert mails (one call). */
@@ -148,24 +122,8 @@
     void app.state?.profile?.savedAt;
     untrack(loadTop);
     untrack(loadSaved);
-    untrack(loadApplied);
     untrack(loadStats);
   });
-  /** Whole days since a moment, by the calendar (0 = today). */
-  function daysSince(iso: string): number {
-    const day = (date: Date): number =>
-      new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    return Math.max(0, Math.round((day(new Date()) - day(new Date(iso))) / 86_400_000));
-  }
-  /** Company · Beworben vor 3 Tagen. */
-  function appliedLine(job: JobView): string {
-    const when = job.appliedAt === null ? null : t.overview.appliedWhen(daysSince(job.appliedAt));
-    return [job.company, when].filter(Boolean).join(' · ');
-  }
-  const applied = $derived(
-    appliedRows.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
-  );
-
   // The market: new jobs per portal this week, the median day rate of fitting jobs beside
   // the profile's minimum, the share of mostly remote jobs.
   const market = $derived(stats?.market ?? null);
@@ -213,7 +171,6 @@
           search: null,
           portal: null,
           minBand: null,
-          applied: false,
           limit: 500,
           offset: 0,
         },
@@ -482,27 +439,6 @@
             onpin={pin}
             tools={toolsOf(job)}
           />
-        {/each}
-      </div>
-    </section>
-  {/if}
-
-  {#if applied.length > 0}
-    <section class="block" data-testid="applied">
-      <h2 class="heading">{t.overview.applied}</h2>
-      <div class="best applied">
-        {#each applied as job (keyOf(job.key))}
-          <ListRow
-            testid="applied-{job.key.portal}-{job.key.id}"
-            onclick={() => navigation.go('jobs', false, () => void jobs.select(job, true))}
-          >
-            {#snippet leading()}<span class="applied-icon"><Icon name="send" size="sm" /></span
-              >{/snippet}
-            <span class="applied-title">{displayTitle(job.title)}</span>
-            <span class="quiet">{appliedLine(job)}</span>
-            {#if job.closed}<span class="closed">{t.overview.adClosed}</span>{/if}
-            {#if job.note}<span class="note" data-copy>{job.note}</span>{/if}
-          </ListRow>
         {/each}
       </div>
     </section>
@@ -785,37 +721,6 @@
   .rows {
     display: flex;
     flex-direction: column;
-  }
-
-  /* Applied rows are as tall as their lines (a note makes three). */
-  .applied {
-    --row-height: 0;
-  }
-
-  .applied-icon {
-    display: flex;
-    align-items: center;
-    height: var(--leading-md);
-    color: var(--text-heading);
-  }
-
-  .applied-title {
-    overflow: hidden;
-    font: var(--type-title);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .closed {
-    color: var(--danger-fg);
-    font: var(--type-sm);
-  }
-
-  .note {
-    overflow: hidden;
-    font: var(--type-sm);
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   /* An open must: its words and how often, the action at the end of the row. */

@@ -219,8 +219,6 @@ function sample(
     place: 'inbox',
     trashedAt: null,
     overridden: false,
-    appliedAt: null,
-    note: null,
     ...extra,
   };
 }

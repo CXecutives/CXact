@@ -25,10 +25,10 @@ const MAX_CELL_CHARS: usize = 32_767;
 const MAX_LINKS: usize = 65_530;
 /// Column widths in characters (order as in `COLUMNS`; a width `w` is `7 w + 5` px at 100 %).
 /// Every header keeps clear of its filter button (about 20 px with the cell's padding); the
-/// exclusion and the note hold a sentence, the details "Keine Bewerbung mehr möglich".
-const WIDTHS: [f64; 23] = [
-    50.0, 11.0, 16.0, 48.0, 30.0, 22.0, 12.0, 20.0, 13.0, 12.0, 13.0, 16.0, 16.0, 17.0, 11.0, 15.0,
-    40.0, 11.0, 28.0, 17.0, 16.0, 19.0, 24.0,
+/// exclusion holds a sentence, the details "Keine Bewerbung mehr möglich".
+const WIDTHS: [f64; 21] = [
+    50.0, 11.0, 16.0, 48.0, 30.0, 22.0, 12.0, 20.0, 13.0, 12.0, 13.0, 16.0, 16.0, 17.0, 11.0, 11.0,
+    28.0, 17.0, 16.0, 19.0, 24.0,
 ];
 /// The fill of the header row: the app's muted surface.
 const HEADER_FILL: Colour = palette::SURFACE_MUTED;
@@ -57,14 +57,12 @@ mod col {
     pub const CONTRACT: u16 = 12;
     pub const PORTAL: u16 = 13;
     pub const PLACE: u16 = 14;
-    pub const APPLIED: u16 = 15;
-    pub const NOTE: u16 = 16;
-    pub const FAVOURITE: u16 = 17;
-    pub const DETAILS: u16 = 18;
-    pub const DATE: u16 = 19;
-    pub const AD: u16 = 20;
-    pub const MAIL: u16 = 21;
-    pub const KEY: u16 = 22;
+    pub const FAVOURITE: u16 = 15;
+    pub const DETAILS: u16 = 16;
+    pub const DATE: u16 = 17;
+    pub const AD: u16 = 18;
+    pub const MAIL: u16 = 19;
+    pub const KEY: u16 = 20;
 }
 
 /// A value of the info sheet: text, a whole number or a moment (a date cell) - numbers and
@@ -192,17 +190,6 @@ fn jobs_sheet(
             Place::Inbox | Place::Trash => texts.place_inbox,
         };
         text(sheet, row, col::PLACE, place)?;
-        if let Some(at) = job.applied_at {
-            sheet.write_datetime_with_format(
-                row,
-                col::APPLIED,
-                time::local_date(at),
-                &formats.day[g],
-            )?;
-        }
-        if let Some(note) = &job.note {
-            text(sheet, row, col::NOTE, note)?;
-        }
         if job.pinned_at.is_some() {
             text(sheet, row, col::FAVOURITE, texts.cell_yes)?;
         }
@@ -467,8 +454,6 @@ mod tests {
             archived_at: None,
             trashed_at: None,
             override_include: false,
-            applied_at: None,
-            note: None,
         }
     }
 
@@ -511,8 +496,6 @@ mod tests {
                 "Vertragsart",
                 "Portal",
                 "Ablage",
-                "Beworben am",
-                "Notiz",
                 "Favorit",
                 "Details",
                 "Datum",
@@ -537,8 +520,6 @@ mod tests {
             DescStatus::Ok,
         );
         job.pinned_at = Some("2026-09-19T09:00:00Z".parse().unwrap());
-        job.applied_at = Some("2026-09-20T09:00:00Z".parse().unwrap());
-        job.note = Some("Anruf am Montag".into());
         job.archived_at = Some("2026-09-21T09:00:00Z".parse().unwrap());
         let mut record = record(MatchStatus::Scored, 83);
         record.facts = KeyFacts {
@@ -577,17 +558,15 @@ mod tests {
         assert_eq!(first[12].to_string(), "Interim");
         assert_eq!(first[13].to_string(), "linkedin.com");
         assert_eq!(first[14].to_string(), "Archiv");
-        assert!(matches!(first[15], Data::DateTime(_)));
-        assert_eq!(first[16].to_string(), "Anruf am Montag");
-        assert_eq!(first[17].to_string(), "Ja");
-        assert_eq!(first[18].to_string(), "Vorhanden");
+        assert_eq!(first[15].to_string(), "Ja");
+        assert_eq!(first[16].to_string(), "Vorhanden");
         assert!(
-            matches!(first[19], Data::DateTime(_)),
+            matches!(first[17], Data::DateTime(_)),
             "the mail date is an Excel date"
         );
-        assert_eq!(first[20].to_string(), "Anzeige öffnen");
-        assert_eq!(first[21].to_string(), "Alert-Mail öffnen");
-        assert_eq!(first[22].to_string(), "linkedin:4000000002");
+        assert_eq!(first[18].to_string(), "Anzeige öffnen");
+        assert_eq!(first[19].to_string(), "Alert-Mail öffnen");
+        assert_eq!(first[20].to_string(), "linkedin:4000000002");
         let xlsx = std::fs::read(&path).unwrap();
         let sheet = part(&xlsx, "xl/worksheets/sheet1.xml");
         assert!(
@@ -650,14 +629,14 @@ mod tests {
         assert_eq!(second[8].to_string(), "ab sofort");
         let xlsx = std::fs::read(&path).unwrap();
         let grey = EXCLUDED_GREY.hex()[1..].to_string();
-        for cell in ["U2", "V2"] {
+        for cell in ["S2", "T2"] {
             let font = font_of(&xlsx, cell);
             assert!(
                 font.contains(&grey) && font.contains("<u/>"),
                 "{cell}: {font}"
             );
         }
-        for cell in ["U3", "V3"] {
+        for cell in ["S3", "T3"] {
             let font = font_of(&xlsx, cell);
             assert!(
                 !font.contains(&grey) && font.contains("<u/>"),
@@ -733,9 +712,9 @@ mod tests {
         assert_eq!(first[8].to_string(), "starts now");
         assert_eq!(first[12].to_string(), "Permanent");
         assert_eq!(first[14].to_string(), "Jobs");
-        assert_eq!(first[18].to_string(), "Preview");
-        assert_eq!(first[20].to_string(), "Open ad");
-        assert_eq!(first[21].to_string(), "Open alert email");
+        assert_eq!(first[16].to_string(), "Preview");
+        assert_eq!(first[18].to_string(), "Open ad");
+        assert_eq!(first[19].to_string(), "Open alert email");
         let info = book.worksheet_range(en::INFO_SHEET).unwrap();
         assert_eq!(info.get((0, 0)).unwrap().to_string(), en::INFO_LAST_SCAN);
         assert_eq!(info.get((1, 0)).unwrap().to_string(), en::INFO_NOTE_LABEL);
@@ -794,7 +773,7 @@ mod tests {
                 .worksheet_range(Texts::of(language).jobs_sheet)
                 .unwrap();
             let details: Vec<String> = (1..=3)
-                .map(|row| range.get((row, 18)).unwrap().to_string())
+                .map(|row| range.get((row, 16)).unwrap().to_string())
                 .collect();
             assert_eq!(details, words);
         }
@@ -866,11 +845,11 @@ mod tests {
             "Interim CFO",
             DescStatus::Ok,
         );
-        job.note = Some("x".repeat(40_000));
+        job.title = "x".repeat(40_000);
         write_xlsx(&path, &[job], &[], Language::De, None).unwrap();
         let mut book: Xlsx<_> = open_workbook(&path).unwrap();
         let range = book.worksheet_range(JOBS_SHEET).unwrap();
-        let note = range.get((1, 16)).unwrap().to_string();
-        assert_eq!(note.chars().count(), MAX_CELL_CHARS);
+        let title = range.get((1, 0)).unwrap().to_string();
+        assert_eq!(title.chars().count(), MAX_CELL_CHARS);
     }
 }

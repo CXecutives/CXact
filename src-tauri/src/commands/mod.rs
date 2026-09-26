@@ -37,7 +37,7 @@ pub use scoring::Scoring;
     dead_code,
     reason = "read by core/tests/contract.rs, which generates the TypeScript command map"
 )]
-pub const COMMANDS: [(&str, &str, &str); 41] = [
+pub const COMMANDS: [(&str, &str, &str); 37] = [
     ("app_state", "{ channel: Channel<RunEvent> }", "AppState"),
     (
         "start_run",
@@ -48,12 +48,6 @@ pub const COMMANDS: [(&str, &str, &str); 41] = [
     ("list_jobs", "{ query: JobQuery }", "JobPage"),
     ("job_detail", "{ key: JobKey }", "JobDetail"),
     ("mark_read", "{ key: JobKey }", "boolean"),
-    (
-        "mark_all_read",
-        "{ place: Place; search: string | null; portal: Portal | null; minBand: Band | null; applied: boolean }",
-        "JobKey[]",
-    ),
-    ("mark_unread", "{ keys: JobKey[] }", "number"),
     ("set_pinned", "{ key: JobKey; on: boolean }", "boolean"),
     ("move_jobs", "{ to: Place; keys: JobKey[] }", "JobKey[]"),
     ("move_back", "{ jobs: MoveBack[] }", "JobKey[]"),
@@ -103,12 +97,6 @@ pub const COMMANDS: [(&str, &str, &str); 41] = [
         "null",
     ),
     ("clipboard_text", "Record<string, never>", "string | null"),
-    ("set_applied", "{ on: boolean; keys: JobKey[] }", "JobKey[]"),
-    (
-        "set_note",
-        "{ key: JobKey; note: string | null }",
-        "boolean",
-    ),
     ("overview_stats", "Record<string, never>", "OverviewStats"),
     (
         "company_count",
@@ -126,8 +114,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::list_jobs,
         jobs::job_detail,
         jobs::mark_read,
-        jobs::mark_all_read,
-        jobs::mark_unread,
         jobs::set_pinned,
         jobs::move_jobs,
         jobs::move_back,
@@ -157,8 +143,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::reset_all,
         app::report_ui_error,
         app::clipboard_text,
-        jobs::set_applied,
-        jobs::set_note,
         jobs::overview_stats,
         jobs::company_count,
     ]

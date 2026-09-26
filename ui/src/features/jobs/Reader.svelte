@@ -390,11 +390,6 @@
     if (!guarded()) toggleStar([job]);
   }
 
-  function markUnread(): void {
-    actionError = null;
-    void jobs.markUnread([job.key]).then((error) => (actionError = error));
-  }
-
   /** The "…" button and its menu, right below it (a second click closes it: the press
    *  outside does). */
   let moreAnchor = $state<HTMLElement | null>(null);
@@ -419,16 +414,6 @@
         run: () => void copyPrompt(),
       },
     ];
-    if (job.place === 'inbox') {
-      entries.push({
-        id: 'unread',
-        label: t.reader.markUnread,
-        icon: 'mail',
-        keys: keyLabel('u'),
-        disabled: job.unread,
-        run: markUnread,
-      });
-    }
     if (tools.some((tool) => tool.id === 'trash')) {
       entries.push(
         { kind: 'separator' },

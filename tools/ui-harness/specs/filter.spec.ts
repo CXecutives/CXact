@@ -1,11 +1,10 @@
-// The funnel of the inbox: the order and the filter (one portal, a lowest band, the jobs
-// marked "Beworben") in one menu. The filter narrows the list and all its counts like the
-// search, is kept, marks the funnel with a dot and names itself in its tooltip; "Ergebnisse
-// gelesen" marks only what it shows; a filter that leaves nothing says so and takes itself
-// off. The archive and the trash have no filter.
+// The funnel of the inbox: the order and the filter (one portal, a lowest band) in one menu.
+// The filter narrows the list and all its counts like the search, is kept, marks the funnel
+// with a dot and names itself in its tooltip; a filter that leaves nothing says so and takes
+// itself off. The archive and the trash have no filter.
 
 import type { Page } from '@playwright/test';
-import type { JobQuery, JobView, Portal } from '../../../ui/src/lib/ipc/types';
+import type { JobQuery } from '../../../ui/src/lib/ipc/types';
 import { animationsDone, calls, expect, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
@@ -51,12 +50,6 @@ async function choose(page: Page, id: string): Promise<void> {
   await expect(page.getByTestId('menu')).toHaveCount(0);
 }
 
-async function job(page: Page, portal: Portal, id: string): Promise<JobView> {
-  const found = await page.evaluate((key) => window.__harness.job(key), { portal, id });
-  if (found === null) throw new Error(`no job ${portal}:${id}`);
-  return found;
-}
-
 test('the funnel is in the inbox only; the archive keeps its order button', async ({ page }) => {
   await open(page, WIN);
   await expect(funnel(page)).toBeVisible();
@@ -73,7 +66,7 @@ test('the funnel is in the inbox only; the archive keeps its order button', asyn
   await expect(funnel(page)).toBeVisible();
 });
 
-test('the menu: the order, the portals in the app order, the bands, Beworben', async ({ page }) => {
+test('the menu: the order, the portals in the app order, the bands', async ({ page }) => {
   await open(page, WIN);
   await funnel(page).click();
   await expect(funnel(page)).toHaveAttribute('aria-expanded', 'true');
@@ -89,13 +82,11 @@ test('the menu: the order, the portals in the app order, the bands, Beworben', a
     'Jede Passung',
     'Ab mittlerer Passung',
     'Nur hohe Passung',
-    'Nur beworbene Jobs',
   ]);
-  await expect(menu.getByRole('separator')).toHaveCount(3);
+  await expect(menu.getByRole('separator')).toHaveCount(2);
   for (const id of ['match', 'portal-all', 'band-any']) {
     await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
   }
-  await expect(menuItem(page, 'applied')).toHaveAttribute('aria-checked', 'false');
   // Nothing to reset while no filter is on.
   await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
   await page.keyboard.press('Escape');
@@ -131,19 +122,9 @@ test.fixme('each part narrows the list and every count, and they add up', async 
   ]);
   // The band leaves the unscored and the excluded jobs out.
   await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
-
-  await choose(page, 'applied');
-  await expect.poll(() => counts(page)).toEqual([0, 1, 0]);
-  expect(await listed(page)).toEqual(['linkedin-4100200303']);
-  expect(await lastQuery(page)).toMatchObject({
-    place: 'inbox',
-    portal: 'linkedin',
-    minBand: 'mid',
-    applied: true,
-  });
 });
 
-test('each part alone: only the high band, only the applied jobs', async ({ page }) => {
+test('each part alone: only the high band', async ({ page }) => {
   await open(page, WIN);
   await facet(page, 'Alle').click();
   await choose(page, 'portal-linkedin');
@@ -157,12 +138,6 @@ test('each part alone: only the high band, only the applied jobs', async ({ page
   await expect(menuItem(page, 'portal-all')).toHaveAttribute('aria-checked', 'true');
   await expect(menuItem(page, 'band-high')).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
-
-  // Only the applied jobs, whatever their portal and band.
-  await choose(page, 'band-any');
-  await choose(page, 'applied');
-  await expect.poll(() => counts(page)).toEqual([0, 2, 0]);
-  expect((await listed(page)).sort()).toEqual(['freelancermap-2804', 'linkedin-4100200303']);
 });
 
 test.fixme('a dot and the tooltip name the filter; reset takes it all off', async ({ page }) => {
@@ -187,7 +162,7 @@ test.fixme('a dot and the tooltip name the filter; reset takes it all off', asyn
   await menuItem(page, 'filter-reset').click();
   await expect(dot).toHaveCount(0);
   await expect.poll(() => counts(page)).toEqual([6, 14, 1]);
-  expect(await lastQuery(page)).toMatchObject({ portal: null, minBand: null, applied: false });
+  expect(await lastQuery(page)).toMatchObject({ portal: null, minBand: null });
   expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBeNull();
 });
 
@@ -203,7 +178,7 @@ test('the filter is kept across a restart; the archive ignores it', async ({ pag
   const first = (await calls(page, 'list_jobs'))
     .map(([, args]) => (args as { query: JobQuery }).query)
     .find((query) => query.limit > 0);
-  expect(first).toMatchObject({ portal: 'freelancermap', minBand: 'mid', applied: false });
+  expect(first).toMatchObject({ portal: 'freelancermap', minBand: 'mid' });
   // The archive and the trash have no filter: their queries carry none.
   await page.getByTestId('place-archive').click();
   await expect(page.getByTestId('place-count')).toHaveText('1 Job im Archiv');
@@ -211,7 +186,6 @@ test('the filter is kept across a restart; the archive ignores it', async ({ pag
     place: 'archive',
     portal: null,
     minBand: null,
-    applied: false,
   });
   // The Übersicht never follows it: it counts every new job.
   await page.getByTestId('nav-overview').click();
@@ -244,51 +218,11 @@ test('without a profile the bands and the match order are off and say why', asyn
   expect(await lastQuery(page)).toMatchObject({ portal: 'freelance', minBand: null });
 });
 
-test('all read under a filter marks only what it shows; the undo brings them back', async ({
-  page,
-}) => {
-  await open(page, WIN);
-  await expect(page.getByTestId('mark-all-read')).toHaveText('Alle gelesen');
-  await choose(page, 'portal-freelancermap');
-  await expect.poll(() => count(page, 'Neu')).toBe(3);
-  const mark = page.getByTestId('mark-all-read');
-  await expect(mark).toHaveText('Ergebnisse gelesen');
-  await mark.click();
-  await expect(page.getByTestId('toast')).toHaveCount(1);
-  expect((await calls(page, 'mark_all_read')).map(([, args]) => args)).toEqual([
-    { place: 'inbox', search: null, portal: 'freelancermap', minBand: null, applied: false },
-  ]);
-  for (const id of ['2801', '2802', '2803']) {
-    expect((await job(page, 'freelancermap', id)).unread, id).toBe(false);
-  }
-  // Jobs the filter leaves out stay unread.
-  expect((await job(page, 'linkedin', '4100200301')).unread).toBe(true);
-  expect((await job(page, 'freelance', '900411')).unread).toBe(true);
-  await expect.poll(() => count(page, 'Neu')).toBe(0);
-  // The Übersicht counts every job, not the filtered ones: three new ones are left.
-  await page.getByTestId('nav-overview').click();
-  await expect(page.getByTestId('tile-new').locator('.digits')).toHaveText('3');
-  await page.getByTestId('nav-jobs').click();
-  // Without the filter the other new jobs are there.
-  await choose(page, 'filter-reset');
-  await expect.poll(() => count(page, 'Neu')).toBe(3);
-  // The undo marks exactly those three unread again.
-  await page.getByTestId('toast-action').click();
-  await expect.poll(() => count(page, 'Neu')).toBe(6);
-  expect((await calls(page, 'mark_unread')).at(-1)?.[1]).toEqual({
-    keys: [
-      { portal: 'freelancermap', id: '2801' },
-      { portal: 'freelancermap', id: '2802' },
-      { portal: 'freelancermap', id: '2803' },
-    ],
-  });
-});
-
 test('a filter that leaves nothing says so once and takes itself off', async ({ page }) => {
   await open(page, WIN);
   await facet(page, 'Alle').click();
   await choose(page, 'portal-freelance');
-  await choose(page, 'applied');
+  await choose(page, 'band-high');
   const empty = page.getByTestId('empty-filter');
   await expect(empty).toContainText('Kein Job passt zum Filter.');
   await expect(rows(page)).toHaveCount(0);
@@ -302,10 +236,6 @@ test('a filter that leaves nothing says so once and takes itself off', async ({ 
   await expect(empty).toHaveCount(0);
   await expect(rows(page).first()).toBeVisible();
   await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-  // Neu with jobs in the filtered inbox but none new says that nothing is new instead.
-  await choose(page, 'applied');
-  await expect(page.getByTestId('empty-new')).toBeVisible();
-  await expect(empty).toHaveCount(0);
 });
 
 test('the open job stays while the filter lists it, else it closes', async ({ page }) => {
@@ -330,7 +260,6 @@ test('the header stays one line from 520 px and compact at 480 x 360', async ({ 
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '540'));
   await open(page, WIN);
   await choose(page, 'portal-linkedin');
-  await expect(page.getByTestId('mark-all-read')).toHaveText('Ergebnisse gelesen');
   const second = page.getByTestId('facet').locator('xpath=..');
   const width = await page
     .getByTestId('list-header')

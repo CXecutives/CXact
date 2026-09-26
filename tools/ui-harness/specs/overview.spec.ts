@@ -1,6 +1,6 @@
 // The Übersicht, a view of its own and where the app starts: each block only with content,
-// every count leads into the list, the applied jobs, the requirements the profile lacks
-// most often (added at once, with an undo), the market of the week.
+// every count leads into the list, the requirements the profile lacks most often (added at
+// once, with an undo), the market of the week.
 
 import { calls, expect, open, test } from './fixtures';
 
@@ -11,21 +11,6 @@ test('the app starts in the Übersicht; a count leads into the list', async ({ p
   await page.getByTestId('tile-new').click();
   await expect(page.getByTestId('list-scroll')).toBeVisible();
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-});
-
-test('Beworben lists the applied jobs with the day and the note; a click opens the job', async ({
-  page,
-}) => {
-  await open(page, '?platform=windows&view=overview');
-  const block = page.getByTestId('applied');
-  await expect(block.getByRole('heading')).toHaveText('Beworben');
-  const row = block.getByTestId('applied-linkedin-4100200303');
-  await expect(row).toContainText('Controller Konzernberichtswesen');
-  await expect(row).toContainText('Contoso Services GmbH · Beworben gestern');
-  await expect(row).toContainText('Rückruf der Personalberatung am Montag');
-  await expect(block.getByTestId('applied-freelancermap-2804')).toBeVisible();
-  await row.click();
-  await expect(page.getByTestId('reader')).toContainText('Controller Konzernberichtswesen');
 });
 
 test('an open must goes into the profile at once and comes out with the undo', async ({ page }) => {

@@ -77,10 +77,6 @@ pub struct JobRow {
     pub trashed_at: Option<Timestamp>,
     /// The user marked the job as fitting although the engine excludes it.
     pub override_include: bool,
-    /// When the user marked that she applied for the job ("Beworben"); `None` = not.
-    pub applied_at: Option<Timestamp>,
-    /// The user's note (trimmed, at most `marks::MAX_NOTE_CHARS` characters).
-    pub note: Option<String>,
 }
 
 impl JobRow {
@@ -105,8 +101,6 @@ pub struct ListFilter {
     /// Only jobs scored in this band or better (`Mid` = mid and high); unscored and excluded
     /// jobs pass only without it.
     pub min_band: Option<Band>,
-    /// Only jobs the user marked as applied ("Beworben").
-    pub applied: bool,
 }
 
 impl ListFilter {
@@ -167,11 +161,10 @@ fn per_portal_columns(new: &str) -> (String, String) {
 
 /// The condition of a [`ListFilter`] on the `job` table: `portal` binds its key, `score` the
 /// lowest score (each `NULL` for no filter).
-pub(super) fn filter_condition(portal: &str, score: &str, applied: &str) -> String {
+pub(super) fn filter_condition(portal: &str, score: &str) -> String {
     format!(
         "({portal} IS NULL OR portal = {portal})
-         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))
-         AND (NOT {applied} OR applied_at IS NOT NULL)"
+         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))"
     )
 }
 
@@ -441,7 +434,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition("?5", "?6", "?7"),
+            filter = filter_condition("?5", "?6"),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -460,8 +453,7 @@ impl Store {
             query.offset,
             HIGH_FROM,
             portal,
-            min,
-            query.filter.applied
+            min
         ])?;
         while let Some(row) = rows.next()? {
             let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());
@@ -827,8 +819,8 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
     desc_facts, CASE WHEN app_status IS NOT NULL THEN COALESCE(app_status_at, first_seen_at) END,
-    archived_at, trashed_at, override_include, applied_at, note";
-pub(super) const JOB_COLUMN_COUNT: usize = 32;
+    archived_at, trashed_at, override_include";
+pub(super) const JOB_COLUMN_COUNT: usize = 30;
 
 /// The jobs whose details the app fetches by itself: the inbox and the starred jobs of the
 /// archive (she kept the star, so she may still read them; the favourites filter lists only
@@ -922,8 +914,6 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         archived_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
         trashed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
         override_include: r.get::<_, Option<i64>>(col(29))?.is_some(),
-        applied_at: r.get::<_, Option<i64>>(col(30))?.and_then(from_db),
-        note: r.get(col(31))?,
     }))
 }
 
@@ -2051,11 +2041,6 @@ mod tests {
             .record_text(&b.key, "Remote möglich, Start sofort", false, false, now())
             .unwrap();
         assert_eq!(find("controller remote"), ["Controller"]);
-        // Mark all read takes the same hits.
-        let read = store
-            .mark_all_read(Place::Inbox, Some("berater münchen"), now())
-            .unwrap();
-        assert_eq!(read, std::slice::from_ref(&a.key));
     }
 
     #[test]

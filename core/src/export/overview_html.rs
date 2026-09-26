@@ -598,8 +598,6 @@ mod tests {
             archived_at: None,
             trashed_at: None,
             override_include: false,
-            applied_at: None,
-            note: None,
         }
     }
 

@@ -68,8 +68,6 @@
     { name: 'archive', combo: 'e' },
     { name: 'trash', combo: 'del' },
     { name: 'favourite', combo: 's' },
-    { name: 'unread', combo: 'u' },
-    { name: 'applied', combo: 'b' },
     { name: 'openAd', combo: 'o' },
     { name: 'fetch', combo: 'f5' },
   ];

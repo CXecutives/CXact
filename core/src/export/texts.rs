@@ -26,7 +26,7 @@ pub const INFO_SHEET: &str = "Info";
 /// and the job's key last. Unlike the text files nobody reads it by machine - so it says
 /// "Portal" like the interface, not "Quelle" like the skill contract; "Ablage" is the place
 /// (Jobs or Archiv).
-pub const COLUMNS: [&str; 23] = [
+pub const COLUMNS: [&str; 21] = [
     "Titel",
     "Passung",
     "Pflicht erfüllt",
@@ -42,8 +42,6 @@ pub const COLUMNS: [&str; 23] = [
     "Vertragsart",
     "Portal",
     "Ablage",
-    "Beworben am",
-    "Notiz",
     "Favorit",
     "Details",
     "Datum",
@@ -326,8 +324,6 @@ pub mod en {
         "Contract type",
         "Portal",
         "Place",
-        "Applied on",
-        "Note",
         "Favourite",
         "Details",
         "Date",

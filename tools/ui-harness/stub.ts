@@ -300,8 +300,6 @@ function job(
     place: 'inbox',
     trashedAt: null,
     overridden: false,
-    appliedAt: null,
-    note: null,
     ...extra,
   };
 }
@@ -431,11 +429,7 @@ function sampleJobs(): JobView[] {
       'Contoso Services GmbH',
       'Frankfurt am Main',
       27,
-      {
-        match: scored(58, ['Konzernberichtswesen'], 2, 4),
-        appliedAt: at(20),
-        note: 'Rückruf der Personalberatung am Montag',
-      },
+      { match: scored(58, ['Konzernberichtswesen'], 2, 4) },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
       // Three days a week for a year: both within the profile.
@@ -443,7 +437,6 @@ function sampleJobs(): JobView[] {
         ...scored(47, ['Liquiditätsplanung'], 1, 3),
         facts: { ...NO_FACTS, months: 12, workloadFrom: 60, workloadTo: 60 },
       },
-      appliedAt: at(26),
     }),
     // Archived: in no list but the archive and in no count but its own.
     job(
@@ -1347,10 +1340,8 @@ function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favouri
 
 const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
 
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
- *  jobs marked "Beworben". */
-function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand' | 'applied'>): boolean {
-  if (query.applied === true && j.appliedAt === null) return false;
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
+function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -2580,57 +2571,12 @@ const handlers: Handlers = {
   move_jobs: ({ keys, to }) => moveJobs(keys, to),
   move_back: ({ jobs: back }) => moveBack(back),
   restore_jobs: ({ keys }) => restoreJobs(keys),
-  // What the list shows: with a search only its hits, with the filter only its jobs
-  // (store::mark_all_read_filtered).
-  mark_all_read: ({ place, search, portal, minBand, applied }) => {
-    const marked = jobs.filter(
-      (j) =>
-        j.unread &&
-        j.place === place &&
-        matchesSearch(j, search) &&
-        inFilter(j, { portal, minBand, applied }),
-    );
-    for (const j of marked) j.unread = false;
-    refresh();
-    return marked.map((j) => structuredClone(j.key));
-  },
-  // "Beworben" with its time; never archives the job (store::set_applied).
-  set_applied: ({ keys, on }) => {
-    const changed: JobKey[] = [];
-    for (const key of keys) {
-      const j = find(key);
-      if (j === undefined || (j.appliedAt !== null) === on) continue;
-      j.appliedAt = on ? new Date(Date.now()).toISOString() : null;
-      changed.push(structuredClone(j.key));
-    }
-    refresh();
-    return changed;
-  },
-  set_note: ({ key, note }) => {
-    const j = find(key);
-    const next = note === null || note.trim() === '' ? null : note.trim().slice(0, 2000);
-    if (j === undefined || j.note === next) return false;
-    j.note = next;
-    refresh();
-    return true;
-  },
   overview_stats: () => structuredClone(overviewStats()),
   company_count: ({ company, days }) => {
     const since = Date.now() - days * DAY_MS;
     return jobs.filter(
       (j) => j.company === company && Date.parse(j.firstSeenAt) >= since && j.place !== 'trash',
     ).length;
-  },
-  mark_unread: ({ keys }) => {
-    let changed = 0;
-    for (const key of keys) {
-      const j = find(key);
-      if (j === undefined || j.unread) continue;
-      j.unread = true;
-      changed += 1;
-    }
-    refresh();
-    return changed;
   },
   // "Fits anyway": scored with its fit score and the note `userOverride`; taken back, the
   // engine's verdict again (store::set_override, view::JobView).

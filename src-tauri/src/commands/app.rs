@@ -120,7 +120,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             offset: 0,
             portal: None,
             min_band: None,
-            applied: false,
         },
     )?
     .counts;

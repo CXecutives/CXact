@@ -181,7 +181,7 @@ test('single list keys type inside the search field', async ({ page }) => {
   await search.click();
   await page.keyboard.type('esub o');
   await expect(search).toHaveValue('esub o');
-  for (const command of ['move_jobs', 'set_pinned', 'mark_unread', 'open_target']) {
+  for (const command of ['move_jobs', 'set_pinned', 'open_target']) {
     expect(await calls(page, command), command).toHaveLength(0);
   }
 });

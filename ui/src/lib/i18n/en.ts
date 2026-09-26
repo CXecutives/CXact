@@ -753,14 +753,10 @@ export const en: Catalog = {
       value === 1
         ? 'The job is deleted forever and never comes back.'
         : `The ${n(value)} jobs are deleted forever and never come back.`,
-    markAllRead: 'Mark all as read',
-    allRead: 'All read',
-    hitsRead: 'Results read',
   },
   menu: {
     job: 'Job',
     open: 'Open',
-    unread: 'Mark as unread',
   },
   edit: {
     menu: 'Edit',
@@ -798,7 +794,6 @@ export const en: Catalog = {
     archive: 'Archive',
     trash: 'Move to the trash',
     star: 'Favourite',
-    unread: 'Mark as unread',
     openAd: 'Open the ad',
     closeJob: 'Close the job',
   },
@@ -892,11 +887,10 @@ export const en: Catalog = {
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Filter',
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
+    filterOn: (portal: string | null, band: 'mid' | 'high' | null): string => {
       const parts = [
         portal === null ? '' : `only ${portal}`,
         band === 'mid' ? 'medium or high match' : band === 'high' ? 'only high match' : '',
-        applied ? 'only applied jobs' : '',
       ].filter((part) => part !== '');
       const text = parts.join(', ');
       return text.charAt(0).toUpperCase() + text.slice(1);
@@ -908,7 +902,6 @@ export const en: Catalog = {
       high: 'High match only',
     } satisfies Record<'any' | 'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
-    appliedOnly: 'Applied jobs only',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
@@ -1121,7 +1114,6 @@ export const en: Catalog = {
     archive: 'Archive',
     restore: 'Restore',
     more: 'More actions',
-    markUnread: 'Mark as unread',
     showInAd: 'Show in the ad',
     override: 'Include anyway',
     overrideUndo: 'Undo',
@@ -1191,14 +1183,6 @@ export const en: Catalog = {
     files: 'Files',
     emptyAlerts: emptyMails,
     lastRun: 'Last fetch',
-    applied: 'Applied',
-    appliedWhen: (days: number) =>
-      days === 0
-        ? 'Applied today'
-        : days === 1
-          ? 'Applied yesterday'
-          : `Applied ${n(days)} days ago`,
-    adClosed: 'Ad closed',
     openMusts: 'Often required, not in the profile',
     inJobs: (value: number) => `in ${n(value)} jobs`,
     addToProfile: 'Add to profile',
@@ -1633,8 +1617,6 @@ export const en: Catalog = {
       archive: 'Archive',
       trash: 'Move to trash',
       favourite: 'Favourite',
-      unread: 'Read or unread',
-      applied: 'Applied',
       openAd: 'Open ad',
       fetch: 'Fetch',
     },
@@ -1671,7 +1653,6 @@ export const en: Catalog = {
     inboxOne: (name: string) => `“${name}” is back in Jobs.`,
     inboxMany: (value: number) => `${n(value)} jobs are back in Jobs.`,
     restoredMany: (value: number) => `${n(value)} jobs restored.`,
-    allRead: 'All marked as read.',
     archivedMany: (value: number) => `${n(value)} jobs archived.`,
     restored: (name: string) => `“${name}” restored.`,
     deletedOne: (name: string) => `“${name}” deleted forever.`,

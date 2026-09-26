@@ -1184,12 +1184,6 @@ test('Neu is entered again after another view: read jobs leave it, the open one 
   // The open job stays listed (read); the others are unchanged.
   await expect(page.getByTestId('reader-title')).toHaveText(title);
   await expect(rows(page)).toHaveCount(before);
-  // After Alle als gelesen markieren and a trip to Einstellungen, Neu is empty but the open job.
-  await page.getByTestId('mark-all-read').click();
-  await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('nav-jobs').click();
-  await expect(rows(page)).toHaveCount(1);
   // The last tab is kept: Alle, then Archiv, then Eingang is Alle again.
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await page.getByTestId('place-archive').click();
@@ -1216,21 +1210,8 @@ test('a place entered from another view closes the inbox job; an empty place has
   await expect(page.getByTestId('list-header').locator('.second')).toHaveCount(0);
 });
 
-test('under a search all read marks the hits; the trash empties whole and says how many', async ({
-  page,
-}) => {
+test('the trash empties whole and says how many', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('search').fill('Interim');
-  await expect(page.getByTestId('mark-all-read')).toBeVisible();
-  await page.getByTestId('mark-all-read').click();
-  expect((await calls(page, 'mark_all_read')).at(-1)?.[1]).toEqual({
-    place: 'inbox',
-    search: 'Interim',
-    portal: null,
-    minBand: null,
-    applied: false,
-  });
-  await page.getByTestId('search').fill('');
   // The trash: two jobs, a search that finds one: Papierkorb leeren still empties both and
   // its dialog says so.
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
@@ -1388,18 +1369,6 @@ test('choose like a mail app: Ctrl+click, Shift+click, the bar acts on all, Esc 
     expect.objectContaining({ to: 'archive' }),
   );
   await expect(page.getByTestId('toast').last()).toContainText('3 Jobs archiviert.');
-});
-
-test('Alle als gelesen markieren: one click, the toast takes it back', async ({ page }) => {
-  await open(page, WIN);
-  const unread = await segmentCount(page, 'Neu');
-  expect(unread).toBeGreaterThan(0);
-  await page.getByTestId('mark-all-read').click();
-  await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
-  await expect(page.getByTestId('toast').last()).toContainText('Alle als gelesen markiert.');
-  await page.getByTestId('toast').last().getByTestId('toast-action').click();
-  await expect.poll(() => segmentCount(page, 'Neu')).toBe(unread);
-  expect(await calls(page, 'mark_unread')).toHaveLength(1);
 });
 
 test('a search looks in its place and names the hits elsewhere, keeping the search', async ({

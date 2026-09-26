@@ -30,8 +30,6 @@ export const COMMAND_NAMES = [
   'list_jobs',
   'job_detail',
   'mark_read',
-  'mark_all_read',
-  'mark_unread',
   'set_pinned',
   'move_jobs',
   'move_back',
@@ -61,8 +59,6 @@ export const COMMAND_NAMES = [
   'reset_all',
   'report_ui_error',
   'clipboard_text',
-  'set_applied',
-  'set_note',
   'overview_stats',
   'company_count',
 ] as const satisfies readonly CommandName[];
