@@ -265,7 +265,7 @@
             variant="ghost"
             size="sm"
             label={action.label}
-            keys={isUndo(action) ? 'mod+z' : null}
+            keys={isUndo(action) ? 'undo' : null}
             testid="toast-action"
             onclick={() => act(() => toasts.act(toast.id))}
           />

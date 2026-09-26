@@ -62,7 +62,8 @@
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatDate, formatRelative, formatTime } from '$lib/i18n/format';
   import { contentMoving } from '$lib/input/input';
-  import { keyLabel } from '$lib/platform';
+  import { keysOf, type ShortcutAction } from '$lib/input/keys';
+  import { keyConventions, keyLabel } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import {
     DETAIL_WARNS,
@@ -356,17 +357,18 @@
     };
   });
 
-  /** The keys the list takes for the open job (input.ts), named in the tooltips. */
-  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', string>> = {
-    open: 'o',
-    star: 's',
-    archive: 'e',
-    trash: 'del',
-    close: 'esc',
+  /** The keys the list takes for the open job (lib/input/keys.ts), named in the tooltips. */
+  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', ShortcutAction>> = {
+    open: 'openAd',
+    star: 'star',
+    archive: 'archive',
+    trash: 'trash',
+    close: 'close',
   };
   const keyOfAction = (id: keyof typeof KEYS): string | null => {
-    const key = KEYS[id];
-    return key === undefined ? null : keyLabel(key);
+    const action = KEYS[id];
+    const combo = action === undefined ? null : keysOf(action, keyConventions());
+    return combo === null ? null : keyLabel(combo);
   };
 
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
