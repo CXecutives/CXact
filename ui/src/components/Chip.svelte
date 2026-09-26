@@ -1,13 +1,9 @@
 <!--
-  A quiet pill for a fact with a state (the reader's criteria strip): an icon for the state,
-  then the words, usually the ad's own value ("1.100 €/Tag", "ab sofort").
-  - met: a green icon (only with the ad as evidence), unknown: the navy question mark of a
-    point to check (info, the same colour as its reason and its passage), violated: red on
-    the danger wash, unset: muted with a dash (the ad does not say), plain: a neutral fact.
-  - With onselect it is a button: it washes on hover (80 ms in, 150 ms out), lights its
-    passage while hovered (onhover) and jumps to it on a click; pressed it darkens and never
-    moves. Without it the pill is plain text with its tooltip. In running text (`text`) a
-    value that jumps carries a dotted underline.
+  A quiet pill for a fact with a state: an icon for the state, then the words, usually the
+  ad's own value ("1.100 €/Tag", "ab sofort"). met: a green icon, unknown: the muted question
+  mark of an unclear point (the same colour as its reason), violated: red on the danger wash,
+  unset: muted (the ad does not say), plain: a neutral fact. It is text, not a control; its
+  tooltip says only what its words leave out.
 -->
 <script lang="ts" module>
   export type ChipState = 'met' | 'violated' | 'unknown' | 'unset' | 'plain';
@@ -22,61 +18,18 @@
     label: string;
     state?: ChipState;
     icon?: IconName | null;
-    /** A value in running text (the reader's terms table): no pill, the line's type. */
-    text?: boolean;
-    /** Tooltip (what the state means). */
+    /** Tooltip (only what the words leave out). */
     hint?: string | null;
-    /** Its passage is marked in the text. */
-    active?: boolean;
-    onhover?: ((on: boolean) => void) | null;
-    onselect?: (() => void) | null;
     testid?: string | null;
   }
 
-  let {
-    label,
-    state = 'plain',
-    icon = null,
-    text = false,
-    hint = null,
-    active = false,
-    onhover = null,
-    onselect = null,
-    testid = null,
-  }: Props = $props();
+  let { label, state = 'plain', icon = null, hint = null, testid = null }: Props = $props();
 </script>
 
-{#snippet body()}
+<span class="chip {state}" data-state={state} data-testid={testid ?? undefined} use:tooltip={hint}>
   {#if icon}<span class="chip-icon"><Icon name={icon} size="xs" /></span>{/if}
   <span class="chip-label">{label}</span>
-{/snippet}
-
-{#if onselect}
-  <button
-    type="button"
-    class="chip {state}"
-    class:text
-    class:active
-    data-state={state}
-    data-testid={testid ?? undefined}
-    use:tooltip={hint}
-    onpointerenter={() => onhover?.(true)}
-    onpointerleave={() => onhover?.(false)}
-    onclick={() => onselect?.()}
-  >
-    {@render body()}
-  </button>
-{:else}
-  <span
-    class="chip {state}"
-    class:text
-    data-state={state}
-    data-testid={testid ?? undefined}
-    use:tooltip={hint}
-  >
-    {@render body()}
-  </span>
-{/if}
+</span>
 
 <style>
   .chip {
@@ -91,26 +44,6 @@
     font: var(--type-xs);
     font-weight: var(--weight-medium);
     white-space: nowrap;
-    transition: background-color var(--dur-base) var(--ease-standard);
-  }
-
-  button.chip:hover {
-    background-color: var(--border);
-    transition-duration: var(--dur-hover);
-  }
-
-  :global(:where(:root:not([data-aux-press]))) button.chip:active:hover {
-    background-color: var(--border-strong);
-    transition-duration: var(--dur-instant);
-  }
-
-  button.chip:focus-visible {
-    box-shadow: var(--focus-ring);
-  }
-
-  .chip.active {
-    background-color: var(--active-surface);
-    color: var(--active-text);
   }
 
   .chip-icon {
@@ -122,13 +55,12 @@
     --chip-icon: var(--success-strong);
   }
 
-  /* To check is info everywhere: chip, reason icon and the passage's underline. */
+  /* Unclear is muted everywhere: chip and reason alike. */
   .unknown {
-    --chip-icon: var(--info);
+    --chip-icon: var(--text-muted);
   }
 
-  .violated,
-  button.violated:hover {
+  .violated {
     --chip-icon: var(--danger-strong);
 
     background-color: var(--danger-soft);
@@ -137,21 +69,5 @@
 
   .unset {
     color: var(--text-subtle);
-  }
-  /* A value in running text: no pill, the type of its line, ink. */
-  .chip.text {
-    height: auto;
-    padding: 0;
-    background-color: transparent;
-    color: var(--text);
-    font: var(--type-sm);
-  }
-
-  /* One that jumps to its passage says so with a dotted underline; a plain one has none. */
-  button.chip.text .chip-label {
-    text-decoration-line: underline;
-    text-decoration-style: dotted;
-    text-decoration-color: var(--text-subtle);
-    text-underline-offset: var(--space-4);
   }
 </style>

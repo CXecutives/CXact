@@ -18,6 +18,7 @@
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
   import Briefcase from '@lucide/svelte/icons/briefcase';
+  import Building from '@lucide/svelte/icons/building';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import Check from '@lucide/svelte/icons/check';
@@ -47,6 +48,7 @@
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import Funnel from '@lucide/svelte/icons/funnel';
+  import Globe from '@lucide/svelte/icons/globe';
   import Handshake from '@lucide/svelte/icons/handshake';
   import History from '@lucide/svelte/icons/history';
   import Hourglass from '@lucide/svelte/icons/hourglass';
@@ -60,6 +62,7 @@
   import MailOpen from '@lucide/svelte/icons/mail-open';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
+  import OctagonX from '@lucide/svelte/icons/octagon-x';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -87,6 +90,7 @@
     ban: Ban,
     banknote: Banknote,
     briefcase: Briefcase,
+    building: Building,
     'building-2': Building2,
     calendar: Calendar,
     check: Check,
@@ -116,6 +120,7 @@
     'file-up': FileUp,
     'folder-open': FolderOpen,
     funnel: Funnel,
+    globe: Globe,
     handshake: Handshake,
     history: History,
     hourglass: Hourglass,
@@ -129,6 +134,7 @@
     'mail-open': MailOpen,
     'map-pin': MapPin,
     'message-square-text': MessageSquareText,
+    'octagon-x': OctagonX,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,

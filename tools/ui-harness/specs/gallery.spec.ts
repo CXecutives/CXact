@@ -37,7 +37,7 @@ test('the gallery renders every board and component section', async ({ page }) =
   await expect(page.getByTestId('swatch-text')).toContainText('AA');
 });
 
-test('score rings show their value, an excluded one in grey with its ban mark; unscorable shows none', async ({
+test('score rings show their value, an excluded one in grey without a ban mark; unscorable a dash', async ({
   page,
 }) => {
   await open(page, '?gallery');
@@ -46,7 +46,7 @@ test('score rings show their value, an excluded one in grey with its ban mark; u
   await expect(high).toHaveText('91');
   await expect(high).toHaveAttribute(
     'aria-label',
-    new RegExp(`Passung 91${String.fromCharCode(0x202f)}% · Hohe Passung`),
+    new RegExp(`^Hohe Übereinstimmung, 91${String.fromCharCode(0x202f)}%$`),
   );
   await expect(page.getByTestId('ring-excluded-lg')).toContainText('72');
   // No ban mark on the ring: the reason line beside it carries it.
@@ -54,44 +54,36 @@ test('score rings show their value, an excluded one in grey with its ban mark; u
   await expect(page.getByTestId('ring-unscorable-lg')).toHaveText('–');
 });
 
-test("a ring that waits: the reader's arc turns, the list's track breathes", async ({ page }) => {
-  await open(page, '?gallery');
-  const wait = (id: string): Promise<{ name: string; dashes: string }> =>
-    page.getByTestId(id).evaluate((ring) => {
-      const layer = ring.querySelector('.wait')!;
-      return {
-        name: getComputedStyle(layer).animationName,
-        dashes: getComputedStyle(layer.querySelector('circle')!).strokeDasharray,
-      };
-    });
-  expect((await wait('ring-pending-md')).name).toBe('spin');
-  // In the list no spinner shape stands still: the whole solid track, breathing.
-  const list = await wait('ring-pending-sm');
-  expect(list.name).toBe('breathe');
-  expect(list.dashes).toBe('none');
-});
-
-test('the evidence of a reason is part of it: its wash and its click cover the line', async ({
+test('every ring without a score is the same hollow ring with a dash, at every size', async ({
   page,
 }) => {
   await open(page, '?gallery');
-  const reason = page.getByTestId('gallery-reasons').locator('button.reason').first();
-  const evidence = reason.getByTestId('evidence');
-  await evidence.scrollIntoViewIfNeeded();
-  await expect(evidence).toContainText('Konzerncontrolling');
-  // Under the words, on their axis, inside the reason's box.
-  const row = (await reason.boundingBox())!;
-  const line = (await evidence.boundingBox())!;
-  const words = (await reason.locator('.head > .label').boundingBox())!;
-  expect(line.y).toBeGreaterThan(words.y + words.height - 1);
-  expect(Math.abs(line.x - words.x)).toBeLessThan(1);
-  expect(line.y + line.height).toBeLessThanOrEqual(row.y + row.height);
-  // Hovering the evidence washes the whole reason.
-  await evidence.hover();
-  await expect(reason).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  for (const state of ['pending', 'none', 'unscorable']) {
+    for (const size of ['lg', 'md', 'sm']) {
+      const ring = page.getByTestId(`ring-${state}-${size}`);
+      await expect(ring).toHaveText('–');
+      await expect(ring.locator('circle')).toHaveCount(1);
+      await expect(ring).toHaveAttribute('aria-label', 'Noch nicht bewertet');
+    }
+  }
 });
 
-test('to check has one colour: the chip and the reason show the same navy', async ({ page }) => {
+test('a reason is its icon and its words; the icon alone names it, why in its tooltip', async ({
+  page,
+}) => {
+  await open(page, '?gallery');
+  const section = page.getByTestId('gallery-reasons');
+  await section.scrollIntoViewIfNeeded();
+  // Plain text: nothing to press, nothing that washes.
+  await expect(section.locator('button.reason')).toHaveCount(0);
+  const icon = section.locator('.reason.icon-only').first();
+  await expect(icon).toHaveAttribute('role', 'img');
+  await page.waitForTimeout(250);
+  await icon.hover();
+  await expect(page.getByRole('tooltip')).toContainText('Konzerncontrolling');
+});
+
+test('to check has one colour: the chip and the reason alike', async ({ page }) => {
   await open(page, '?gallery');
   const section = page.getByTestId('gallery-reasons');
   await section.scrollIntoViewIfNeeded();
@@ -315,7 +307,7 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   await expect.poll(async () => (await fit()).hidden.length).toBeGreaterThan(0);
   const narrow = await fit();
   // The rate first here (the ad names no contract), with the euro icon instead of a sign.
-  expect(narrow.shown[0]).toMatch(/^1\.100\/Tag$/);
+  expect(narrow.shown[0]).toMatch(/^1\.100\s€\/Tag$/);
   expect(narrow.cut).toEqual([]);
 });
 

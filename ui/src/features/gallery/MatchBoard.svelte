@@ -43,7 +43,6 @@
       : [id];
     anchor = id;
   }
-  let active = $state<string | null>(null);
   let run = $state(0);
 
   function shuffle(): void {
@@ -86,11 +85,8 @@
         {kind}
         label={t.reasonLabels[kind]}
         weight={REASON_WEIGHTS[index % REASON_WEIGHTS.length] ?? null}
-        detail={kind === 'met' ? t.evidence : null}
-        active={active === kind}
-        onhover={(on) => (active = on ? kind : null)}
-        onselect={() => undefined}
       />
+      <ReasonItem {kind} label={t.reasonLabels[kind]} hint={t.evidence} iconOnly />
     {/each}
     {#each REASON_KINDS as kind (kind)}
       <ReasonItem {kind} label={t.reasonLabels[kind]} compact />
@@ -98,14 +94,7 @@
   </div>
   <div class="chips">
     {#each CHIP_STATES as state (state)}
-      <Chip
-        {state}
-        label={t.chipLabels[state]}
-        icon={CHIP_ICON[state]}
-        active={active === state}
-        onhover={(on) => (active = on ? state : null)}
-        onselect={state === 'plain' ? null : () => undefined}
-      />
+      <Chip {state} label={t.chipLabels[state]} icon={CHIP_ICON[state]} />
     {/each}
   </div>
 </Section>

@@ -1,24 +1,19 @@
 <!--
-  The match of a job as a ring: sm 40 (list rows), md 56 (reader), lg 96.
+  The match of a job as a ring: sm 40 (list rows), md 56 (reader), lg 96. Hollow at every
+  size: the solid track, the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
   (360 ms, ease-out) only when that means something: when a score arrives while the ring is
   on screen (live scoring during a run; the number counts along), or the first time a job is
   opened (`animate` names the job; once per job and session; the number stands at once, only
   the arc fills). A view that comes back shows its rings as they are. At most 10 rings fill
   at the same time, the others are placed at once.
-  A scored ring takes the colour of its decile (ten steps, red through orange and yellow
-  to green; `d0` ... `d9`) with ink digits; the tinted disc of the larger rings follows
-  the band. Every ring has the same solid track; the centre and the arc say the state:
-  provisional (a score from a teaser only) looks exactly like a scored ring, the row's
-  badge and the reader say that it is not final (its name says it too). none: not scored
-  yet: the track with an empty centre. excluded: the ring and its number in grey (the fit is
-  kept, so a wrong exclusion shows at once); the ban mark belongs to the reason line beside
-  it, not to the ring (user decision 2026-09-26).
-  unscorable, and off (no usable profile, so no match at all): the track and a dash.
-  pending: in the reader a quarter arc turns on the track; in the list (sm, where many
-  turning arcs would cost frames and a still arc looks like a frozen spinner) the track
-  breathes slowly (2 s, opacity only); under reduced motion both stand still. A score of
-  100 sets its digits smaller in the list ring. A selected row passes a warm --ring-track.
+  A scored ring takes the colour of its decile (ten steps, red through orange and yellow to
+  green; `d0` ... `d9`) with ink digits. provisional (a score from a teaser only) looks exactly
+  like a scored ring: the reader says once that the ad is only a preview. excluded: the ring
+  and its number in grey (the fit is kept, so a wrong exclusion shows at once).
+  Every ring without a score is one state and one look (not scored yet, being scored, not
+  scorable, and off without a usable profile): the empty track with a dash. A score of 100 sets
+  its digits smaller in the list ring.
 -->
 <script lang="ts" module>
   import type { Band, DetailState, JobMatch } from '$lib/ipc/types';
@@ -93,7 +88,6 @@
   let mounted = false;
   let wasScored = false;
   let arc = $state<SVGCircleElement | null>(null);
-  const band = $derived(valued && 'band' in ring ? ring.band : null);
   /** The colour step: the decile of the score, 100 in the last one. */
   const step = $derived(
     valued && ring.status !== 'excluded' ? `d${Math.min(9, Math.floor(score / 10))}` : '',
@@ -102,15 +96,10 @@
   const label = $derived.by(() => {
     switch (ring.status) {
       case 'scored':
-        return `${t.score.value(formatPercent(ring.score))} · ${t.score.band[ring.band]}`;
       case 'provisional':
-        return `${t.score.value(formatPercent(ring.score))} · ${t.score.band[ring.band]} · ${t.score.provisional}`;
+        return t.score.value(t.score.band[ring.band], formatPercent(ring.score));
       case 'excluded':
-        return `${t.score.value(formatPercent(ring.score))} · ${t.score.excluded}`;
-      case 'unscorable':
-        return t.score.unscorable;
-      case 'pending':
-        return t.score.pending;
+        return t.score.value(t.score.excluded, formatPercent(ring.score));
       case 'off':
         return t.score.off;
       default:
@@ -175,14 +164,13 @@
 </script>
 
 <span
-  class="ring {size} {ring.status} {band ?? ''} {step}"
+  class="ring {size} {ring.status} {step}"
   class:full={valued && score === 100}
   role="img"
   aria-label={label}
   data-testid={testid ?? undefined}
 >
   <svg class="svg" viewBox="0 0 36 36" aria-hidden="true">
-    <circle class="disc" cx="18" cy="18" r="15.9155" />
     <circle class="track" cx="18" cy="18" r="15.9155" />
     {#if valued}
       <circle
@@ -195,20 +183,10 @@
       />
     {/if}
   </svg>
-  {#if ring.status === 'pending'}
-    <!-- On its own HTML wrapper (a loop on an SVG child runs on the main thread): the
-         reader's quarter arc turns, the list's track breathes; both stand still
-         under reduced motion. -->
-    <span class="wait" aria-hidden="true">
-      <svg class="svg" viewBox="0 0 36 36">
-        <circle class="arc" cx="18" cy="18" r="15.9155" />
-      </svg>
-    </span>
-  {/if}
   <span class="center">
     {#if valued}
       {Math.round(number.current)}
-    {:else if ring.status === 'unscorable' || ring.status === 'off'}
+    {:else}
       –
     {/if}
   </span>
@@ -224,17 +202,12 @@
     color: var(--ring-text);
     --ring-color: var(--score-track);
     --ring-text: var(--text-subtle);
-    --ring-surface: transparent;
   }
 
   .svg {
     width: 100%;
     height: 100%;
     overflow: visible;
-  }
-
-  .disc {
-    fill: var(--ring-surface);
   }
 
   .track,
@@ -244,7 +217,7 @@
   }
 
   .track {
-    stroke: var(--ring-track, var(--score-track));
+    stroke: var(--score-track);
   }
 
   .excluded .track {
@@ -253,44 +226,6 @@
 
   .excluded .value {
     stroke: var(--score-excluded);
-  }
-
-  /* Pending: a quarter arc over the track (25 of the 100 units), from 12 o'clock. */
-  .wait {
-    position: absolute;
-    inset: 0;
-    display: flex;
-  }
-
-  .arc {
-    fill: none;
-    stroke: var(--border-strong);
-    stroke-width: calc(var(--ring-stroke) * var(--ring-scale));
-    stroke-dasharray: 25 75;
-    stroke-dashoffset: 25;
-    stroke-linecap: round;
-  }
-
-  /* Only the reader's ring turns while it waits; many turning rings in a list cost frames. */
-  .md .wait {
-    animation: spin var(--dur-loop) linear infinite;
-    animation-play-state: var(--loop-state);
-  }
-
-  /* The list ring that waits: no spinner shape, the whole track breathes instead (it moves
-     onto the layer that breathes). */
-  .sm.pending .track {
-    stroke: none;
-  }
-
-  .sm .arc {
-    stroke: var(--ring-track, var(--score-track));
-    stroke-dasharray: none;
-  }
-
-  .sm .wait {
-    animation: breathe var(--dur-breathe) var(--ease-standard) infinite;
-    animation-play-state: var(--loop-state);
   }
 
   .value {
@@ -313,22 +248,10 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  /* The disc of the larger rings follows the band; the digits are ink. */
+  /* The digits of a score are ink. */
   .scored,
   .provisional {
     --ring-text: var(--score-digits);
-  }
-
-  .high {
-    --ring-surface: var(--score-high-surface);
-  }
-
-  .mid {
-    --ring-surface: var(--score-mid-surface);
-  }
-
-  .low {
-    --ring-surface: var(--score-low-surface);
   }
 
   /* The ring colour: the decile of the score. */
@@ -395,12 +318,6 @@
     --ring-stroke: var(--ring-lg-stroke);
     --ring-scale: var(--ring-lg-scale);
     --ring-type: var(--type-2xl);
-  }
-
-  /* The small ring stays calm: no tinted disc inside a 40 px row. */
-  .sm.scored,
-  .sm.provisional {
-    --ring-surface: transparent;
   }
 
   /* Three digits would touch the 4 px stroke of the 40 px ring. */
