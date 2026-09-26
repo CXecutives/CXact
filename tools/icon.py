@@ -152,10 +152,16 @@ class Path2:
             elif seg[0] == 'C':
                 out.append('C' + ' '.join(f'{fmt(x)} {fmt(y)}' for x, y in seg[1:]))
             else:
-                _, _, r, a0, a1, p = seg
-                large = 1 if abs(a1 - a0) > math.pi else 0
-                sweep = 1 if a1 > a0 else 0
-                out.append(f'A{fmt(r)} {fmt(r)} 0 {large} {sweep} {fmt(p[0])} {fmt(p[1])}')
+                _, (cx, cy), r, a0, a1, _ = seg
+                # An SVG arc is given by its end points: near a half circle a rounded end point
+                # moves the implied centre a lot (0.6 px for the check's caps at 1024), so an
+                # arc is written in parts of at most a quarter circle.
+                parts = max(1, math.ceil(abs(a1 - a0) / (math.pi / 2) - 1e-9))
+                for i in range(1, parts + 1):
+                    a = a0 + (a1 - a0) * i / parts
+                    sweep = 1 if a1 > a0 else 0
+                    out.append(f'A{fmt(r)} {fmt(r)} 0 0 {sweep} '
+                               f'{fmt(cx + r * math.cos(a))} {fmt(cy + r * math.sin(a))}')
         return ''.join(out) + 'Z'
 
     def points(self):
