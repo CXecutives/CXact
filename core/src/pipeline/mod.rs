@@ -1090,6 +1090,17 @@ impl Target {
             Target::OverviewHtml => "overviewHtml",
         }
     }
+
+    /// The base name of what failed when the error itself names no file (an error of the
+    /// Excel writer, of the database behind a stamp).
+    const fn file_name(self) -> Option<&'static str> {
+        match self {
+            Target::Overview | Target::Backup => Some(export::XLSX_NAME),
+            Target::OverviewHtml => Some(export::HTML_NAME),
+            Target::TxtFolder => Some(TXT_DIR),
+            Target::Workspace | Target::Txt => None,
+        }
+    }
 }
 
 /// Text files (exactly once per job, always German) and overview (in `language`). The
@@ -1318,13 +1329,23 @@ fn reachable(workspace: &Path, summary: &mut ExportSummary) -> bool {
 }
 
 /// The first error stays: it is closest to the cause (the folder is unreachable); later
-/// consequential errors only go to the log. Only one is reported anyway.
+/// consequential errors only go to the log. Only one is reported anyway. It says what
+/// failed (`target`) and the base name of the file or folder (`name`).
 fn note_error(summary: &mut ExportSummary, error: &crate::Error, target: Target) {
     if summary.error.is_some() {
         log::warn!("export: another error ({}): {error}", target.code());
     } else {
         log::warn!("export: {}: {error}", target.code());
-        summary.error = Some(ErrorInfo::from(error).with("target", target.code()));
+        summary.error = Some(export_error(error, target));
+    }
+}
+
+/// An export error for the page: its code with `target` and `name`.
+fn export_error(error: &crate::Error, target: Target) -> ErrorInfo {
+    let info = ErrorInfo::from(error).with("target", target.code());
+    match target.file_name() {
+        Some(name) => info.with_name_of(Path::new(name)),
+        None => info,
     }
 }
 

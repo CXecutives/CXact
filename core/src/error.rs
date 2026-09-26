@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::fetch::PortalHealth;
 use crate::mail::imap::MailError;
 use crate::portal::Portal;
 use crate::secrets::SecretError;
@@ -151,6 +152,53 @@ impl ErrorInfo {
         self.params.insert(name.to_string(), value.into());
         self
     }
+
+    /// Adds `name`, the base name of `path` (`JobAlerts.xlsx`), unless the error has one:
+    /// the page names the file without its folders.
+    #[must_use]
+    pub fn with_name_of(self, path: &Path) -> ErrorInfo {
+        match path.file_name() {
+            Some(name) if !self.params.contains_key("name") => {
+                self.with("name", name.to_string_lossy().into_owned())
+            }
+            _ => self,
+        }
+    }
+
+    /// "Not found" with what was looked for (`job`, `mail`, `folder`, `file`, `profile`).
+    pub fn not_found(what: &str) -> ErrorInfo {
+        ErrorInfo::new(ErrorKind::NotFound).with("what", what)
+    }
+
+    /// A portal that takes no request right now, as an error with the words of its health:
+    /// `portalQuota` for a cap and `portalPaused` for everything else, each with `portal`,
+    /// `until` (ISO 8601, `null` = until the next run) and `reason` (a `PauseReason` code, or
+    /// `quota`, `loginRequired`, `layoutChanged`). The page says "ab 11:05 wieder möglich"
+    /// from `until`; nothing continues by itself.
+    pub fn portal_health(portal: Portal, health: &PortalHealth) -> ErrorInfo {
+        let (kind, until, reason) = match health {
+            PortalHealth::QuotaReached { until } => {
+                (ErrorKind::PortalQuota, Some(*until), "quota".to_owned())
+            }
+            PortalHealth::Paused { until, reason } => {
+                let code = match serde_json::to_value(reason) {
+                    Ok(Value::String(code)) => code,
+                    _ => String::new(),
+                };
+                (ErrorKind::PortalPaused, *until, code)
+            }
+            PortalHealth::LoginRequired => {
+                (ErrorKind::PortalPaused, None, "loginRequired".to_owned())
+            }
+            PortalHealth::LayoutSuspect { .. } | PortalHealth::Ok => {
+                (ErrorKind::PortalPaused, None, "layoutChanged".to_owned())
+            }
+        };
+        ErrorInfo::new(kind)
+            .with("portal", portal.key())
+            .with("until", until.map(|at| at.to_string()))
+            .with("reason", reason)
+    }
 }
 
 impl Error {
@@ -199,9 +247,10 @@ impl From<&Error> for ErrorInfo {
     fn from(error: &Error) -> ErrorInfo {
         let info = ErrorInfo::new(error.kind());
         match error {
-            Error::FileLocked(path) | Error::Io { path, .. } => {
-                info.with("path", path.display().to_string())
-            }
+            // The path for the log and "show in folder", the base name for the words.
+            Error::FileLocked(path) | Error::Io { path, .. } => info
+                .with("path", path.display().to_string())
+                .with_name_of(path),
             Error::NewerSchema(version) => info.with("schema", *version),
             Error::Invalid(input) => ErrorInfo::from(input),
             Error::FetchUnavailable { portal, .. } => info.with("portal", portal.key()),
@@ -273,10 +322,24 @@ mod tests {
 
     #[test]
     fn infos_are_codes_with_data() {
-        let locked = ErrorInfo::from(&Error::FileLocked(PathBuf::from("a.xlsx")));
+        let path = PathBuf::from("auswertung").join("JobAlerts.xlsx");
+        let locked = ErrorInfo::from(&Error::FileLocked(path.clone()));
         assert_eq!(
             serde_json::to_value(&locked).unwrap(),
-            serde_json::json!({"kind": "fileLocked", "params": {"path": "a.xlsx"}})
+            serde_json::json!({"kind": "fileLocked",
+                "params": {"path": path.display().to_string(), "name": "JobAlerts.xlsx"}})
+        );
+        let io = ErrorInfo::from(&Error::io(
+            PathBuf::from("a").join("b.txt"),
+            std::io::Error::other("x"),
+        ));
+        assert_eq!(
+            (io.kind, &io.params["name"]),
+            (ErrorKind::Io, &"b.txt".into())
+        );
+        assert_eq!(
+            serde_json::to_value(ErrorInfo::not_found("job")).unwrap(),
+            serde_json::json!({"kind": "notFound", "params": {"what": "job"}})
         );
         let invalid = ErrorInfo::from(&Error::Invalid(InvalidInput::ProfileNotJson {
             line: 3,
@@ -293,5 +356,41 @@ mod tests {
         });
         assert_eq!(portal.kind, ErrorKind::PortalUnavailable);
         assert_eq!(portal.params["portal"], "linkedin");
+    }
+
+    /// A portal that rests says until when and why, a cap as well as a pause: the page words
+    /// "ab 11:05 wieder möglich" from `until`, and a pause until the next run has none.
+    #[test]
+    fn a_resting_portal_says_until_when_and_why() {
+        use crate::fetch::policy::PauseReason;
+        let at: jiff::Timestamp = "2026-09-26T09:05:00Z".parse().unwrap();
+        let quota =
+            ErrorInfo::portal_health(Portal::LinkedIn, &PortalHealth::QuotaReached { until: at });
+        assert_eq!(
+            serde_json::to_value(&quota).unwrap(),
+            serde_json::json!({"kind": "portalQuota", "params": {
+                "portal": "linkedin", "until": "2026-09-26T09:05:00Z", "reason": "quota"}})
+        );
+        let paused = ErrorInfo::portal_health(
+            Portal::FreelanceDe,
+            &PortalHealth::Paused {
+                until: Some(at),
+                reason: PauseReason::Blocked,
+            },
+        );
+        assert_eq!(paused.kind, ErrorKind::PortalPaused);
+        assert_eq!(paused.params["reason"], "blocked");
+        assert_eq!(paused.params["until"], "2026-09-26T09:05:00Z");
+        let next_run = ErrorInfo::portal_health(
+            Portal::FreelanceDe,
+            &PortalHealth::Paused {
+                until: None,
+                reason: PauseReason::Challenged,
+            },
+        );
+        assert_eq!(next_run.params["until"], Value::Null);
+        assert_eq!(next_run.params["reason"], "challenged");
+        let login = ErrorInfo::portal_health(Portal::FreelanceDe, &PortalHealth::LoginRequired);
+        assert_eq!(login.params["reason"], "loginRequired");
     }
 }

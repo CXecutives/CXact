@@ -1896,6 +1896,7 @@ async fn a_failed_export_is_reported_as_a_code() {
     );
     let error = s.export.as_ref().unwrap().error.as_ref().unwrap();
     assert_eq!(error.params["target"], "overviewHtml");
+    assert_eq!(error.params["name"], export::HTML_NAME, "the base name");
     assert!(
         matches!(error.kind, ErrorKind::Io | ErrorKind::FileLocked),
         "{error:?}"
@@ -1957,6 +1958,7 @@ async fn an_open_excel_file_is_reported_as_locked() {
         (error.kind, &error.params["target"]),
         (ErrorKind::FileLocked, &serde_json::json!("overview"))
     );
+    assert_eq!(error.params["name"], export::XLSX_NAME);
     assert_eq!(export.overview_xlsx, None);
     assert_eq!(std::fs::read(&xlsx).unwrap(), before, "the open file stays");
 }

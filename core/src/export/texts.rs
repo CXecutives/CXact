@@ -60,7 +60,8 @@ pub const INFO_KNOWN: &str = "Schon bekannt beim letzten Lesen des Postfachs";
 pub const INFO_DUP: &str = "In mehreren Alert-Mails beim letzten Lesen des Postfachs";
 pub const INFO_JOBS_TOTAL: &str = "Jobs gesamt";
 pub const INFO_PROGRAM: &str = "Programm";
-pub const PROGRAM_NAME: &str = "Job-Alert-Monitor";
+/// The app's visible name (the files, the keychain entry and the identifiers keep theirs).
+pub const PROGRAM_NAME: &str = "CXact";
 
 /// Scope of a mailbox scan in words.
 pub const SCOPE_NEW: &str = "Neu seit dem letzten Abruf";
