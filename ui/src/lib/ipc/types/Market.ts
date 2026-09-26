@@ -6,8 +6,9 @@ import type { PortalCount } from "./PortalCount";
  */
 export type Market = { 
 /**
- * New jobs per portal of the last [`RECENT_DAYS`] days (by the alert mail's date; a job
- * two portals announced counts for each), every portal in the order of `Portal::ALL`.
+ * New jobs per portal of the last [`OVERVIEW_DAYS`] days, the window of the rate and
+ * the remote share (by the alert mail's date, else the first sighting; a job two
+ * portals announced counts for each), every portal in the order of `Portal::ALL`.
  */
 newByPortal: Array<PortalCount>, 
 /**

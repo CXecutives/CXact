@@ -1365,7 +1365,8 @@ function refresh(): void {
 const DAY_MS = 24 * HOUR;
 
 /** The Übersicht's numbers (view::overview_stats): open musts of 30 days in the inbox, the
- *  market of 7 days, the enabled portals with their last alert mail. */
+ *  market of 30 days, the enabled portals with their last alert mail, what the inbox leaves
+ *  open (ads "Details holen" can still fetch, excluded jobs not opened yet). */
 function overviewStats(): OverviewStats {
   const month = NOW - 30 * DAY_MS;
   const week = NOW - 7 * DAY_MS;
@@ -1405,9 +1406,19 @@ function overviewStats(): OverviewStats {
   const newByPortal = PORTALS.map((portal) => ({
     portal,
     count: jobs.filter(
-      (j) => j.key.portal === portal && Date.parse(j.firstSeenAt) >= week && j.place !== 'trash',
+      (j) => j.key.portal === portal && Date.parse(j.mailDate ?? j.firstSeenAt) >= month,
     ).length,
   }));
+  // store::inbox_open with the portal's switches (the UI's detailsWanted).
+  const inbox = jobs.filter((j) => j.place === 'inbox');
+  const detailsWanted = inbox.filter((j) => {
+    const switches = state.portals.find((p) => p.portal === j.key.portal);
+    if (switches === undefined || !switches.enabled || !switches.fetchDetails) return false;
+    const kind = j.detail.kind;
+    if (kind === 'teaser') return switches.loginEnabled;
+    return kind === 'pending' || kind === 'onRequest' || kind === 'failed';
+  }).length;
+  const excludedNew = inbox.filter((j) => j.unread && j.match?.status === 'excluded').length;
   const quietPortals = state.portals
     .filter((p) => p.enabled)
     .map((p) => {
@@ -1431,6 +1442,8 @@ function overviewStats(): OverviewStats {
       remoteKnown: remote.length,
     },
     quietPortals,
+    detailsWanted,
+    excludedNew,
   };
 }
 
