@@ -612,3 +612,8 @@ as the parts land on `main`.
   excluded section open, what resolves itself, quiet portals with "Alert anlegen"), Oft
   verlangt, Markt der letzten 30 Tage, Dateien. No Ausgeschlossen tile, no "Alle n neuen", no
   "Braucht eine Entscheidung"; each block says its own errors.
+- [x] Engine 16 review fixes before the release (E16-1 to E16-8, still `ENGINE_VERSION` 16, see
+      `docs/MATCHING.md` "Review fixes"): exclusion words only where they name the job itself,
+      whole-word generated forms, wage words as words, ANÜ a topic only under a governing cue and
+      read in the title, no home office, site or travel days as workload, part-time hours
+      without the week, months only from a real duration statement. Both reports unchanged.
