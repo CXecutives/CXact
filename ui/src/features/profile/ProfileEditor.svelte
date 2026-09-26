@@ -162,10 +162,15 @@
     fieldError?.field === field ? { row: fieldError.row, text: fieldError.text() } : null;
 
   /** The workload is one field of two days (von, bis): one message for both, and "Wert
-   *  entfernen" takes every value of the file behind it. */
+   *  entfernen" takes every value of the file behind it. A refusal of either day comes
+   *  first, as at every field, before a value of the file that does not read. */
   const WORKLOAD: readonly UnreadableField[] = ['workloadMinDays', 'workloadMaxDays'];
   const workloadError = (): string | null =>
-    errorOf('workloadMinDays') ?? errorOf('workloadMaxDays');
+    (fieldError !== null && WORKLOAD.includes(fieldError.field as UnreadableField)
+      ? fieldError.text()
+      : null) ??
+    errorOf('workloadMinDays') ??
+    errorOf('workloadMaxDays');
   function workloadRemove(): { label: string; testid: string; onclick: () => void } | null {
     if (WORKLOAD.includes(fieldError?.field as UnreadableField)) return null;
     const found = WORKLOAD.flatMap(problemsOf).filter((problem) => !problem.entry);

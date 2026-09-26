@@ -139,6 +139,36 @@ for (const [platform, query] of [
   });
 }
 
+test('a day far beyond the week reaches the backend and is refused at the workload', async ({
+  page,
+}) => {
+  await profile(page);
+  const min = page.getByTestId('profile-workload-min');
+  await min.fill('300');
+  await page.getByTestId('profile-save').click();
+  await expect(page.locator('[data-field="workload"]')).toContainText('Höchstens 5.');
+  await expect(min).toHaveAttribute('aria-invalid', 'true');
+  await expect(min).toBeFocused();
+  await expect(page.getByTestId('profile-save-status')).toHaveText('Nicht gespeichert');
+  expect((await lastSave(page)).after.criteria.workloadMinDays).toBe(300);
+});
+
+test('a refused day is said at the workload before a value of the file that does not read', async ({
+  page,
+}) => {
+  await profile(page, `${WIN}&scenario=profile-unreadable`);
+  const workload = page.locator('[data-field="workload"]');
+  const max = page.getByTestId('profile-workload-max');
+  await expect(workload).toContainText('„viel“');
+  await max.fill('7');
+  await page.getByTestId('profile-save').click();
+  await expect(workload).toContainText('Höchstens 5.');
+  await expect(workload).not.toContainText('„viel“');
+  await expect(max).toHaveAttribute('aria-invalid', 'true');
+  await expect(max).toBeFocused();
+  expect((await lastSave(page)).after.criteria.workloadMaxDays).toBe(7);
+});
+
 test('a minimum duration the backend refuses is said at its field; put right, it saves', async ({
   page,
 }) => {
