@@ -1555,11 +1555,15 @@ export const de = {
     steps: 'Erste Schritte',
     mailbox: 'Postfach',
     /** Where the jobs come from: the portals by name, in the app's order (`Portal::ALL`). */
-    mailboxText: `Die Alert-Mails von ${joined(Object.values(portalName))} gehören${NBSP}hierher.`,
+    mailboxText: `Die Alerts von ${joined(Object.values(portalName))} müssen an diese Gmail-Adresse${NBSP}gehen.`,
+    /** Per portal after connecting: its page to set up an alert. */
+    createAlert: 'Alert anlegen',
     profile: 'Profil',
     profileText: 'Das Profil entsteht in der App, auf Wunsch aus dem Lebenslauf.',
+    /** The empty form instead of the steps with an AI. */
+    selfFill: 'Selbst ausfüllen',
     fetch: 'Erster Abruf',
-    fetchHint: 'Das dauert ein paar Minuten.',
+    fetchHint: 'Der erste Abruf liest die Alerts der letzten 30 Tage und dauert ein paar Minuten.',
   },
   shell: {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',

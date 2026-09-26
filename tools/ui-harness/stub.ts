@@ -20,7 +20,9 @@
 // profile-thin · profile-unreadable (a value of every criterion and wish does not read, a key
 // is not read at all) · reset (the state after
 // "reset everything": first run, no mailbox, no profile, the report) · first-run-empty-profile
-// · session-left (freelance.de still signed in with the sign-in switched off)
+// · session-left (freelance.de still signed in while the fetch does not use the sign-in)
+// · first-fetch-failed (the setup page after a first fetch that could not reach Gmail: step 3
+// says why; "Abrufen" then completes and ends the setup)
 // · no-minimum (a profile without a minimum day rate and a start: the reader's strip shows
 // the ad's rate and start as plain facts)
 // · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
@@ -976,9 +978,10 @@ function initial(): void {
     },
     mailbox: { user: 'alerts.demo@gmail.com', vault: VAULT, error: null },
     profile: PROFILE,
+    // Every portal counts its pages (the backend sends the numbers of each).
     portals: [
-      portal('linkedin'),
-      portal('freelance'),
+      portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 80 } }),
+      portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 60 } }),
       portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
     ],
     autoFetchOnStart: true,
@@ -1012,6 +1015,12 @@ function initial(): void {
       state.firstRun = true;
       state.profile = null;
       state.lastRun = null;
+      break;
+    case 'first-fetch-failed':
+      // A failed first fetch keeps the setup page (only a completed one ends it).
+      jobs = [];
+      state.firstRun = true;
+      state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
       break;
     case 'first-run-empty-profile':
       // A profile that names no competences: nothing can be scored with it.
@@ -1062,7 +1071,7 @@ function initial(): void {
       state.resetReport = { removed: 12, failed: 1 };
       break;
     case 'session-left':
-      // Signed in once, then "Mit Anmeldung" switched off: the stored sign-in stays.
+      // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
       state.portals[1]!.signedIn = true;
       break;
     case 'dry-run':
@@ -1970,7 +1979,8 @@ function apply(event: RunEvent): void {
     else if (!tombstones.has(markKey(event.job.key))) jobs.unshift(event.job);
     refresh();
   } else if (event.type === 'finished') {
-    state.firstRun = false;
+    // Only a completed fetch ends the setup (a failed first fetch keeps the setup page).
+    if (event.summary.outcome.kind === 'completed') state.firstRun = false;
     // "The last fetch": a rescore or a details run never replaces it (pipeline::run).
     if (isFetch(event.summary.kind)) state.lastRun = event.summary;
     state.running = null;

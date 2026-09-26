@@ -10,11 +10,14 @@ class Shell {
    *  list is out of sight, so the sidebar's run status stands in for it. Set by JobsView. */
   listHidden = $state(false);
 
-  /** Until `start_run` answers the first-run page stays (a failed start never flashes). */
+  /** Until `start_run` answers the first-run page stays (a failed start never flashes);
+   *  while the first fetch goes the Jobs view shows it, and only a completed one ends the
+   *  setup (a failed or cancelled first fetch brings the page back, its step 3 says why). */
   get firstRun(): boolean {
     const state = app.state;
     const going = run.active && !run.starting;
-    return state !== null && state.firstRun && !going && run.summary === null;
+    const completed = run.summary?.outcome.kind === 'completed';
+    return state !== null && state.firstRun && !going && !completed;
   }
 
   /**
