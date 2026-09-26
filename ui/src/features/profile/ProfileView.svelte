@@ -278,11 +278,16 @@
         saveNote = () => errorText(error);
       } else {
         // Said at its field without its name again; the save bar says it where the field
-        // is not on the page.
+        // is not on the page. The second day of the workload below the first has no limit.
         fieldError = {
           field: at.field,
           row: at.row,
-          text: () => (at.max === null ? t.profile.field.refused : t.profile.field.atMost(at.max)),
+          text: () =>
+            at.max !== null
+              ? t.profile.field.atMost(at.max)
+              : at.field === 'workloadMaxDays'
+                ? t.profile.field.workloadOrder
+                : t.profile.field.refused,
         };
         if (!(await panel?.focusField(at.field))) saveNote = () => errorText(error);
       }

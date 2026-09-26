@@ -109,6 +109,13 @@
       case 'permanentRemoteMin':
       case 'wishDayRate':
         return words.unreadableNumber(problem.value);
+      // A number out of its range (9 days a week) is a number all the same.
+      case 'workloadMinDays':
+      case 'workloadMaxDays':
+      case 'minMonths':
+        return /^\d+$/.test(problem.value)
+          ? words.unreadableValue(problem.value)
+          : words.unreadableNumber(problem.value);
       case 'available':
         return words.unreadableDate(problem.value);
       case 'roles':
@@ -153,6 +160,21 @@
 
   const listError = (field: string): { row: number | null; text: string } | null =>
     fieldError?.field === field ? { row: fieldError.row, text: fieldError.text() } : null;
+
+  /** The workload is one field of two days (von, bis): one message for both, and "Wert
+   *  entfernen" takes every value of the file behind it. */
+  const WORKLOAD: readonly UnreadableField[] = ['workloadMinDays', 'workloadMaxDays'];
+  const workloadError = (): string | null =>
+    errorOf('workloadMinDays') ?? errorOf('workloadMaxDays');
+  function workloadRemove(): { label: string; testid: string; onclick: () => void } | null {
+    if (WORKLOAD.includes(fieldError?.field as UnreadableField)) return null;
+    const found = WORKLOAD.flatMap(problemsOf).filter((problem) => !problem.entry);
+    return found.length === 0
+      ? null
+      : { label: words.removeValue, testid: 'value-remove', onclick: () => found.forEach(drop) };
+  }
+  const workloadInvalid = (field: UnreadableField): boolean =>
+    fieldError?.field === field || problemsOf(field).length > 0;
 
   const trimmed = $derived.by((): number | null => {
     const notice = warnings.find((w) => w.code === 'focusTrimmed');
@@ -309,7 +331,17 @@
       (value) => value === null || value === '' || (Array.isArray(value) && value.length === 0),
     );
   const noCriteria = $derived(
-    empty(c.minDayRate, c.countries, c.targetYears, c.minSalary, c.permanentPlaces) &&
+    empty(
+      c.minDayRate,
+      c.countries,
+      c.targetYears,
+      c.minSalary,
+      c.permanentPlaces,
+      c.workloadMinDays ?? null,
+      c.workloadMaxDays ?? null,
+      c.minMonths ?? null,
+      c.exclusionWords ?? [],
+    ) &&
       !c.noAnue &&
       !c.noPermanent &&
       c.available.kind === 'unset',
@@ -363,9 +395,9 @@
     </div>
   </ProfileSection>
 
-  <!-- Konditionen: what excludes a job, and from when she is free. Room is kept for what the
-       engine reads later: a pair of numbers under the day rate (the workload in days per
-       week, the minimum duration in months) and a chip list of words that exclude at the end. -->
+  <!-- Konditionen: what excludes a job, and from when she is free; after the start the rules
+       of engine 16: the workload in days per week (von, bis) beside the minimum duration in
+       months, both checks, then the words that exclude a job. -->
   <ProfileSection
     heading={t.profile.section.criteria}
     hint={t.profile.sectionHint.criteria}
@@ -381,6 +413,10 @@
         'permanentPlaces',
         'permanentRemoteMin',
         'available',
+        'workloadMinDays',
+        'workloadMaxDays',
+        'minMonths',
+        'exclusionWords',
       )}
     testid="section-criteria"
   >
@@ -466,6 +502,76 @@
           onremove={() => drop(problem)}
         />
       {/each}
+    </div>
+    <div class="pair">
+      <div data-field="workload">
+        <Field
+          label={words.workload}
+          for="{id}-workload-min"
+          hint={words.workloadHint}
+          error={workloadError()}
+          action={workloadRemove()}
+        >
+          <div class="range" data-testid="profile-workload">
+            <span class="word">{words.workloadFrom}</span>
+            <div class="day" data-field="workloadMinDays">
+              <NumberField
+                id="{id}-workload-min"
+                compact
+                label={words.workloadMin}
+                bind:value={() => c.workloadMinDays ?? null, (next) => (c.workloadMinDays = next)}
+                invalid={workloadInvalid('workloadMinDays')}
+                testid="profile-workload-min"
+              />
+            </div>
+            <span class="word">{words.workloadTo}</span>
+            <div class="day" data-field="workloadMaxDays">
+              <NumberField
+                compact
+                label={words.workloadMax}
+                unit={t.profile.unit.days}
+                bind:value={() => c.workloadMaxDays ?? null, (next) => (c.workloadMaxDays = next)}
+                invalid={workloadInvalid('workloadMaxDays')}
+                testid="profile-workload-max"
+              />
+            </div>
+          </div>
+        </Field>
+      </div>
+      <div data-field="minMonths">
+        <Field
+          label={words.minMonths}
+          for="{id}-min-months"
+          hint={words.minMonthsHint}
+          error={errorOf('minMonths')}
+          action={removeOf('minMonths')}
+        >
+          <NumberField
+            id="{id}-min-months"
+            unit={t.profile.unit.months}
+            bind:value={() => c.minMonths ?? null, (next) => (c.minMonths = next)}
+            invalid={errorOf('minMonths') !== null}
+            testid="profile-min-months"
+          />
+        </Field>
+      </div>
+    </div>
+    <div data-field="exclusionWords">
+      <Field
+        label={words.exclusionWords}
+        for="{id}-exclusion-words"
+        hint={words.exclusionWordsHint}
+        error={errorOf('exclusionWords')}
+        action={removeOf('exclusionWords')}
+      >
+        <ChipInput
+          id="{id}-exclusion-words"
+          bind:values={() => c.exclusionWords ?? [], (next) => (c.exclusionWords = next)}
+          placeholder={words.exclusionWordsPlaceholder}
+          invalid={errorOf('exclusionWords') !== null}
+          testid="profile-exclusion-words"
+        />
+      </Field>
     </div>
     <div data-field="countries">
       <Field
@@ -945,6 +1051,25 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-12);
+  }
+
+  /* The workload reads as one line: von, the first day, bis, the second day and its unit
+     (it wraps only where the column is narrow). */
+  .range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8);
+    min-width: 0;
+  }
+
+  .word {
+    color: var(--text-muted);
+    font: var(--type-field);
+  }
+
+  .day {
+    min-width: 0;
   }
 
   /* The day is as wide as every number field. */

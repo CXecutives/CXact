@@ -72,7 +72,18 @@
     minSalary: t.profile.field.minSalary,
     permanentRegion: t.profile.field.places,
     targetYears: t.profile.field.targetYears,
+    workload: t.profile.field.workload,
+    duration: t.profile.field.minMonths,
+    exclusionWords: t.profile.field.exclusionWords,
   });
+
+  /** A whole number of the engine's params (`null`, a missing one or text is none). */
+  const whole = (value: unknown): number | null =>
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d+$/.test(value)
+        ? Number(value)
+        : null;
 
   /** A set criterion as the engine applies it: its name and its value. */
   function criterion(notice: Notice): { label: string; value: string } | null {
@@ -105,6 +116,13 @@
         return { label, value: str(p.places) };
       case 'targetYears':
         return { label, value: words.yearsFrom(Number(p.min)) };
+      // Engine 16: the days per week, the minimum duration and the exclusion words.
+      case 'workload':
+        return { label, value: words.workload(whole(p.minDays), whole(p.maxDays)) };
+      case 'duration':
+        return { label, value: words.months(Number(p.min)) };
+      case 'exclusionWords':
+        return { label, value: str(p.words) };
       default:
         return { label, value: '' };
     }

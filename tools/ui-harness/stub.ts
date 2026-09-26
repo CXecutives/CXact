@@ -31,8 +31,12 @@
 // be read; a retry loads).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no).
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
-// `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100
-// and a competence with more than 70 years (with its row), like core's validation.
+// `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
+// a competence with more than 70 years (with its row), more than five days a week, a second
+// day below the first and a minimum duration above 120 months, like core's validation.
+// Engine 16 in the demo: the profile works three to five days a week for at least six months
+// and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
+// (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
 // `?tick=ms` sets the pace of a scripted run (default 40); `?export=locked` lets the export
 // of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail;
 // `?folder=other` lets `pick_workspace` choose another, empty folder.
@@ -373,7 +377,11 @@ function sampleJobs(): JobView[] {
     job('freelancermap', '2802', 'Interim Head of Finance', 'Grünwerk Mobility GmbH', 'Berlin', 6, {
       unread: true,
       workMode: 'remote',
-      match: scored(72, ['Finanzplanung und Liquidität'], 3, 4),
+      // Three months, shorter than the profile's six: a check of the duration.
+      match: {
+        ...scored(72, ['Finanzplanung und Liquidität'], 3, 4),
+        facts: { ...NO_FACTS, months: 3 },
+      },
     }),
     job(
       'freelancermap',
@@ -427,7 +435,11 @@ function sampleJobs(): JobView[] {
       },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
-      match: scored(47, ['Liquiditätsplanung'], 1, 3),
+      // Three days a week for a year: both within the profile.
+      match: {
+        ...scored(47, ['Liquiditätsplanung'], 1, 3),
+        facts: { ...NO_FACTS, months: 12, workloadFrom: 60, workloadTo: 60 },
+      },
       appliedAt: at(26),
     }),
     // Archived: in no list but the archive and in no count but its own.
@@ -459,7 +471,11 @@ function sampleJobs(): JobView[] {
     ),
     job('freelance', '900413', 'SAP FI Berater Migration', 'Datenwerk Süd GmbH', 'München', 55, {
       workMode: 'onsite',
-      match: scored(32, ['SAP FI'], 1, 4),
+      // Two days a week, fewer than the profile's three: a check of the workload.
+      match: {
+        ...scored(32, ['SAP FI'], 1, 4),
+        facts: { ...NO_FACTS, workloadFrom: 40, workloadTo: 40 },
+      },
     }),
     job(
       'freelancermap',
@@ -476,6 +492,20 @@ function sampleJobs(): JobView[] {
     job('linkedin', '4100200305', 'Payroll Specialist', 'Lakeside Payroll AG', 'Zürich', 80, {
       match: excludedBy('country', 38, { allowed: 'DE, AT' }),
     }),
+    // A word of the profile's exclusion words in the title (engine 16); read, older than the
+    // week of the overview's market.
+    job(
+      'freelancermap',
+      '2807',
+      'Werkstudent Controlling (m/w/d)',
+      'Elbufer Handel GmbH',
+      'Hamburg',
+      200,
+      {
+        workMode: null,
+        match: excludedBy('exclusionWord', 41, { word: 'Werkstudent' }),
+      },
+    ),
     job('freelancermap', '2806', 'Reporting Analyst', 'Hafenkontor GmbH', 'Hamburg', 96, {
       short: true,
       match: {
@@ -576,14 +606,53 @@ const PROFILE_FORM: ProfileForm = {
     minSalary: null,
     permanentPlaces: [],
     permanentRemoteMin: null,
+    // Engine 16: three to five days a week, at least six months, two words that exclude.
+    workloadMinDays: 3,
+    workloadMaxDays: 5,
+    minMonths: 6,
+    exclusionWords: ['Werkstudent', 'Praktikum'],
   },
 };
+
+/** The profile's criteria as the engine reads them (`ProfileUnderstanding.criteria`, the
+ *  params flat like core's view: a list is one text). */
+function criteriaOf(c: ProfileForm['criteria']): Notice[] {
+  const minDays = c.workloadMinDays ?? null;
+  const maxDays = c.workloadMaxDays ?? null;
+  const words = c.exclusionWords ?? [];
+  return [
+    { code: 'minDayRate', params: { set: c.minDayRate !== null, min: c.minDayRate } },
+    {
+      code: 'countries',
+      params: { set: c.countries.length > 0, countries: c.countries.join(', ') },
+    },
+    { code: 'noAnue', params: { set: c.noAnue } },
+    { code: 'noPermanent', params: { set: c.noPermanent } },
+    {
+      code: 'availability',
+      params: {
+        set: c.available.kind !== 'unset',
+        from:
+          c.available.kind === 'from'
+            ? c.available.date
+            : c.available.kind === 'now'
+              ? 'now'
+              : null,
+      },
+    },
+    { code: 'minSalary', params: { set: c.minSalary !== null, min: c.minSalary } },
+    { code: 'permanentRegion', params: { set: c.permanentPlaces.length > 0, places: null } },
+    { code: 'targetYears', params: { set: c.targetYears !== null, min: c.targetYears } },
+    { code: 'workload', params: { set: minDays !== null || maxDays !== null, minDays, maxDays } },
+    { code: 'duration', params: { set: (c.minMonths ?? null) !== null, min: c.minMonths ?? null } },
+    { code: 'exclusionWords', params: { set: words.length > 0, words: words.join(', ') } },
+  ];
+}
 
 /** What the engine understands of a form (a rough stand-in: the form's own terms). */
 function understoodOf(form: ProfileForm, warnings: Notice[]): ProfileUnderstanding {
   const names = form.competences.map((r) => r.name);
   const terms = [...names, ...form.tools, ...form.keywords];
-  const c = form.criteria;
   return {
     competenceCount: terms.length,
     competences: terms,
@@ -592,19 +661,7 @@ function understoodOf(form: ProfileForm, warnings: Notice[]): ProfileUnderstandi
       { path: 'methoden_tools[].name', count: form.tools.length },
       { path: 'keywords[]', count: form.keywords.length },
     ].filter((s) => s.count > 0),
-    criteria: [
-      { code: 'minDayRate', params: { set: c.minDayRate !== null, min: c.minDayRate } },
-      {
-        code: 'countries',
-        params: { set: c.countries.length > 0, countries: c.countries.join(', ') },
-      },
-      { code: 'noAnue', params: { set: c.noAnue } },
-      { code: 'noPermanent', params: { set: c.noPermanent } },
-      { code: 'availability', params: { set: c.available.kind !== 'unset', from: null } },
-      { code: 'minSalary', params: { set: c.minSalary !== null, min: c.minSalary } },
-      { code: 'permanentRegion', params: { set: c.permanentPlaces.length > 0, places: null } },
-      { code: 'targetYears', params: { set: c.targetYears !== null, min: c.targetYears } },
-    ],
+    criteria: criteriaOf(form.criteria),
     warnings,
     packs: packsOf(form),
     years: form.years,
@@ -691,6 +748,9 @@ const PROFILE: ProfileInfo = {
       { code: 'minSalary', params: { set: false, min: null } },
       { code: 'permanentRegion', params: { set: false, places: null, remoteMin: null } },
       { code: 'targetYears', params: { set: true, min: 15 } },
+      { code: 'workload', params: { set: true, minDays: 3, maxDays: 5 } },
+      { code: 'duration', params: { set: true, min: 6 } },
+      { code: 'exclusionWords', params: { set: true, words: 'Werkstudent, Praktikum' } },
     ],
     warnings: [
       {
@@ -755,6 +815,12 @@ const UNREADABLE_PROFILE: ProfileInfo = {
       unread('remote', '"egal"', 'remote'),
       unread('regionen', '5', 'regions'),
       unread('branchen', '{}', 'wishIndustries'),
+      // Engine 16: a word for a day, a day beyond the week, a word for months, a number for
+      // words.
+      unread('auslastung_min_tage', '"viel"', 'workloadMinDays'),
+      unread('auslastung_max_tage', '9', 'workloadMaxDays'),
+      unread('min_laufzeit_monate', '"lang"', 'minMonths'),
+      unread('ausschlusswoerter', '5', 'exclusionWords'),
       { code: 'ignoredKeys', params: { keys: 'tagessatz_max' } },
     ],
   },
@@ -774,6 +840,10 @@ const UNREADABLE_PROFILE: ProfileInfo = {
       minSalary: null,
       permanentPlaces: [],
       permanentRemoteMin: null,
+      workloadMinDays: null,
+      workloadMaxDays: null,
+      minMonths: null,
+      exclusionWords: [],
     },
   },
 };
@@ -828,6 +898,9 @@ function answerDraft(answer: string, update = false): ProfileDraft {
   }
   const list = (key: string): unknown[] =>
     Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
+  const criteria = (data.harte_kriterien ?? {}) as Json;
+  const days = (value: unknown): number | null =>
+    typeof value === 'number' && value >= 1 && value <= 5 ? value : null;
   const form: ProfileForm = {
     ...structuredClone(PROFILE_FORM),
     name: typeof data.name === 'string' ? data.name : '',
@@ -863,9 +936,15 @@ function answerDraft(answer: string, update = false): ProfileDraft {
       ...PROFILE_FORM.criteria,
       minDayRate: null,
       // Countries an answer names (one the app does not know stays as it is).
-      countries: texts((data.harte_kriterien as Json | undefined)?.laender),
+      countries: texts(criteria.laender),
       noAnue: false,
       targetYears: null,
+      // The rules of engine 16 the answer sets (a day of the week from 1 to 5).
+      workloadMinDays: days(criteria.auslastung_min_tage),
+      workloadMaxDays: days(criteria.auslastung_max_tage),
+      minMonths:
+        typeof criteria.min_laufzeit_monate === 'number' ? criteria.min_laufzeit_monate : null,
+      exclusionWords: texts(criteria.ausschlusswoerter),
     },
   };
   if (form.competences.length === 0 && form.name === '')
@@ -905,6 +984,14 @@ function savedForm(form: ProfileForm): ProfileForm {
       .filter((r) => r.language.trim() !== '')
       .map((r, index) => ({ ...r, language: r.language.trim(), origin: index })),
     focus: clean(form.focus),
+    // Every field of engine 16 is there once saved (core's form always has them).
+    criteria: {
+      ...structuredClone(form.criteria),
+      workloadMinDays: form.criteria.workloadMinDays ?? null,
+      workloadMaxDays: form.criteria.workloadMaxDays ?? null,
+      minMonths: form.criteria.minMonths ?? null,
+      exclusionWords: clean(form.criteria.exclusionWords ?? []),
+    },
   };
 }
 
@@ -1463,6 +1550,7 @@ const CONTRACTS: Record<string, { type: string; inferred: boolean }> = {
   '2805': { type: 'freelance', inferred: false },
   '900413': { type: 'freelance', inferred: false },
   '2806': { type: 'unclear', inferred: false },
+  '2807': { type: 'unclear', inferred: false },
 };
 
 function contractOf(j: JobView): { type: string; inferred: boolean } {
@@ -1472,12 +1560,13 @@ function contractOf(j: JobView): { type: string; inferred: boolean } {
 /** How each contract type reads in an ad (the passage of the row "Vertragsart"). */
 function contractWords(contract: { type: string; inferred: boolean }): string {
   switch (contract.type) {
+    // No workload here: an ad states it in its frame, where its facts say so (frameOf).
     case 'interim':
-      return 'Interim-Mandat in Vollzeit';
+      return 'Interim-Mandat';
     case 'freelance':
       return 'Freiberufliche Mitarbeit im Projekt';
     case 'permanent':
-      return contract.inferred ? 'Unbefristete Position in Vollzeit' : 'Festanstellung in Vollzeit';
+      return contract.inferred ? 'Unbefristete Position' : 'Festanstellung';
     case 'anue':
       return 'Einsatz über Arbeitnehmerüberlassung';
     default:
@@ -1512,27 +1601,50 @@ function yearsOf(j: JobView): { years: number; stated: boolean } {
 function frameOf(
   facts: Match['facts'],
   contract: string,
-): { start: string; rate: string; remote: string; text: string } {
+): { start: string; rate: string; remote: string; months: string; workload: string; text: string } {
   const start = facts.start === 'now' ? 'Start ab sofort' : 'Start zum nächstmöglichen Zeitpunkt';
   const rate =
     facts.rate === null
       ? 'Tagessatz nach Absprache'
       : `Tagessatz ${facts.rate.toLocaleString('de-DE')} €`;
-  const months =
-    facts.months === null ? '' : `, Laufzeit ${facts.months} Monate mit Option auf Verlängerung`;
+  const months = facts.months === null ? '' : `Laufzeit ${facts.months} Monate`;
   const remote =
     facts.remoteFrom === null
       ? ''
       : facts.remoteFrom >= 100
         ? 'vollständig remote'
         : `Einsatz zu ${facts.remoteFrom} Prozent remote`;
+  // The workload as an ad says it (the engine reads full-time, days a week and a share).
+  const to = facts.workloadTo;
+  const workload =
+    to === undefined
+      ? ''
+      : to >= 100
+        ? 'Einsatz in Vollzeit'
+        : to % 20 === 0
+          ? `Einsatz an ${to / 20} Tagen pro Woche`
+          : `Auslastung ${to} Prozent`;
   const lead = contract === '' ? '' : `${contract}. `;
+  const length = months === '' ? '' : `, ${months} mit Option auf Verlängerung`;
+  const days = workload === '' ? '' : `, ${workload}`;
   return {
     start,
     rate,
     remote,
-    text: `\nRahmen\n${lead}${start}${months}. ${rate}${remote === '' ? '' : `, ${remote}`}.\n`,
+    months,
+    workload,
+    text: `\nRahmen\n${lead}${start}${length}${days}. ${rate}${remote === '' ? '' : `, ${remote}`}.\n`,
   };
+}
+
+/** The profile's days a week against an ad's workload, as core's matching::limits decides:
+ *  more days than the maximum or fewer than the minimum is a check. */
+function workloadFits(facts: Match['facts'], min: number | null, max: number | null): boolean {
+  const to = facts.workloadTo ?? 0;
+  const from = facts.workloadFrom;
+  const above = from !== undefined && max !== null && from > max * 20;
+  const below = min !== null && to < min * 20;
+  return !above && !below;
 }
 
 /** The profile's wishes next to an ad's facts, in the engine's states (met, near, missed). */
@@ -1622,7 +1734,7 @@ function detailOf(j: JobView): JobDetail {
   const yearsWords = `Mindestens ${years.years} Jahre Berufserfahrung in Finanzfunktionen`;
 
   // A day rate that excludes the job is one the ad states.
-  const facts = {
+  const facts: Match['facts'] = {
     ...(m?.facts ?? NO_FACTS),
     ...(excludedBy === 'dayRate' && typeof notes.rate === 'number' ? { rate: notes.rate } : {}),
   };
@@ -1708,6 +1820,44 @@ function detailOf(j: JobView): JobDetail {
   }
   if (excludedBy === 'dayRate') {
     add('violation', 'hard', 'dayRate', '', { rate: facts.rate, min }, rangeOf(frame.rate));
+  }
+  // An exclusion word of the profile, where the title or the ad says it (engine 16).
+  const word = excludedBy === 'exclusionWord' ? String(notes.word ?? '') : null;
+  const wordRange = word === null ? [] : rangeOf(word);
+  const wordReason = word === null ? null : String(reasons.length);
+  if (word !== null) add('violation', 'hard', 'exclusionWord', '', { word }, wordRange);
+  // The profile's days a week and minimum duration (engine 16) are checks, never an
+  // exclusion; a permanent job has no end.
+  const limits = state.profile?.form?.criteria ?? PROFILE_FORM.criteria;
+  const minDays = limits.workloadMinDays ?? null;
+  const maxDays = limits.workloadMaxDays ?? null;
+  const minMonths = limits.minMonths ?? null;
+  const days: Record<string, number> = {
+    ...(minDays === null ? {} : { minDays }),
+    ...(maxDays === null ? {} : { maxDays }),
+  };
+  const stated: Record<string, number> =
+    facts.workloadTo === undefined
+      ? {}
+      : {
+          ...(facts.workloadFrom === undefined ? {} : { from: facts.workloadFrom }),
+          to: facts.workloadTo,
+        };
+  const workloadSet = minDays !== null || maxDays !== null;
+  const workloadRange = rangeOf(frame.workload);
+  const workloadReason =
+    workloadSet && facts.workloadTo !== undefined && !workloadFits(facts, minDays, maxDays)
+      ? String(reasons.length)
+      : null;
+  if (workloadReason !== null) {
+    add('check', 'info', 'workload', '', { ...stated, ...days }, workloadRange);
+  }
+  const durationSet = minMonths !== null && contract.type !== 'permanent';
+  const monthsRange = rangeOf(frame.months);
+  let durationReason: string | null = null;
+  if (durationSet && minMonths !== null && facts.months !== null && facts.months < minMonths) {
+    durationReason = String(reasons.length);
+    add('check', 'info', 'duration', '', { months: facts.months, min: minMonths }, monthsRange);
   }
   // The experience against the profile's target of 15 years: enough, or a senior title that
   // asks for fewer (the profile brings more); an estimate below it is a point to check, and
@@ -1816,6 +1966,47 @@ function detailOf(j: JobView): JobDetail {
       (c.code !== 'minDayRate' || state.profile?.form?.criteria.minDayRate !== null) &&
       (c.code !== 'availability' || scenario !== 'no-minimum'),
   );
+  // Engine 16: the profile's values, the ad's and the reason that decided it (core
+  // view::criteria_strip); the exclusion words show only where one excludes the job.
+  const linked = (id: string | null): Record<string, string> => (id === null ? {} : { reason: id });
+  if (workloadSet) {
+    const kind =
+      facts.workloadTo === undefined ? 'open' : workloadReason === null ? 'met' : 'check';
+    criteria.push(
+      criterion(
+        'c:workload',
+        kind,
+        'workload',
+        { ...days, ...stated, ...linked(workloadReason) },
+        workloadRange,
+      ),
+    );
+  }
+  if (durationSet && minMonths !== null) {
+    const kind = facts.months === null ? 'open' : durationReason === null ? 'met' : 'check';
+    const months: Record<string, number> = facts.months === null ? {} : { months: facts.months };
+    criteria.push(
+      criterion(
+        'c:duration',
+        kind,
+        'duration',
+        { min: minMonths, ...months, ...linked(durationReason) },
+        monthsRange,
+      ),
+    );
+  }
+  if (word !== null) {
+    const words = (limits.exclusionWords ?? []).join(', ');
+    criteria.push(
+      criterion(
+        'c:exclusionWords',
+        'violation',
+        'exclusionWords',
+        { words, word, ...linked(wordReason) },
+        wordRange,
+      ),
+    );
+  }
   // A closed ad was last fetched when its page said so.
   const fetchedAt = ok ? (j.closed ? at(20) : j.firstSeenAt) : null;
   return {
@@ -2436,6 +2627,17 @@ const handlers: Handlers = {
     const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > 70);
     if (tooLong >= 0) refuse('competences', 70, tooLong);
     if (after.focus.length > 5) refuse('focus', 5);
+    // Engine 16 (core form::validate_limits): at most five days a week, the second day not
+    // below the first, at most 120 months, and words within what a profile holds.
+    const c = after.criteria;
+    const minDays = c.workloadMinDays ?? null;
+    const maxDays = c.workloadMaxDays ?? null;
+    if ((minDays ?? 0) > 5) refuse('workloadMinDays', 5);
+    if ((maxDays ?? 0) > 5) refuse('workloadMaxDays', 5);
+    if (minDays !== null && maxDays !== null && maxDays < minDays) refuse('workloadMaxDays', null);
+    if ((c.minMonths ?? 0) > 120) refuse('minMonths', 120);
+    const words = c.exclusionWords ?? [];
+    if (words.length > 300 || words.some((w) => w.length > 1000)) refuse('exclusionWords', null);
     const form = savedForm(after);
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
@@ -2451,6 +2653,7 @@ const handlers: Handlers = {
         competences: form.competences.map((r) => r.name),
         // Like the engine: a domain only from what the profile names (no fixed sample packs).
         packs: packsOf(form),
+        criteria: criteriaOf(form.criteria),
         warnings: [],
         focus: form.focus,
         roles: form.roles,

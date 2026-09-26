@@ -965,12 +965,15 @@ test('every value that does not read is said at its field and can be removed', a
     '„Head of“ ist keine Rolle, die die App kennt.',
     'In der Datei stand „egal“, das kann die App nicht lesen.',
     'In der Datei stand „{}“, das kann die App nicht lesen.',
+    // Engine 16: the workload (one field for both days), the duration.
+    'In der Datei stand „lang“, das ist keine Zahl.',
   ]) {
     await expect(form).toContainText(text);
   }
-  // One per field: fifteen fields, each with "Wert entfernen".
+  // One per field: eighteen fields, each with "Wert entfernen" (the two days of the workload
+  // are one field).
   const removes = form.getByTestId('value-remove');
-  await expect(removes).toHaveCount(15);
+  await expect(removes).toHaveCount(18);
   // A Schwerpunkt and a target role that do not count go from their list at once.
   await page.getByTestId('focus-unread').getByTestId('value-remove').click();
   await expect.poll(() => marked(page)).toEqual(['Controlling']);
@@ -999,6 +1002,10 @@ test('every value that does not read is said at its field and can be removed', a
       'targetYears',
       'wishDayRate',
       'wishIndustries',
+      'workloadMinDays',
+      'workloadMaxDays',
+      'minMonths',
+      'exclusionWords',
     ].sort(),
   );
   expect(sent.after.focus).toEqual(['Controlling']);

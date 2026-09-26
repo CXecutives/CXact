@@ -73,7 +73,8 @@ test.describe('sections', () => {
     await open(page, WIN);
     await facet(page, 'Alle').click();
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider).toHaveText('Ausgeschlossen (2)');
+    // Under Alle: agency work, a country and an exclusion word.
+    await expect(divider).toHaveText('Ausgeschlossen (3)');
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     // At the end of the list, below every other row.
@@ -84,7 +85,7 @@ test.describe('sections', () => {
     await expect(list(page).locator('[data-group="rest"] [data-open]')).toHaveCount(1);
     await divider.click();
     await expect(divider).toHaveAttribute('aria-expanded', 'true');
-    await expect(excludedRows(page)).toHaveCount(2);
+    await expect(excludedRows(page)).toHaveCount(3);
     // Kept: the next start shows it open, in every place.
     await open(page, WIN);
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
