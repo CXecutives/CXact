@@ -122,6 +122,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
         ? 'Der Ordner ist nicht vorhanden.'
         : 'Das gibt es nicht mehr.',
   dryRun: 'Im Probelauf geht das nicht.',
+  demo: 'In der Demo geht das nicht.',
   mailMissing: 'Es ist kein Postfach verbunden.',
   mailConnect: 'Gmail ist nicht erreichbar.',
   mailAuth: 'Gmail lehnt Adresse oder App-Passwort ab.',
@@ -649,6 +650,8 @@ export const de = {
     settings: 'Einstellungen',
     /** Why the Übersicht waits during the first run. */
     overviewLater: 'Nach dem ersten Abruf',
+    /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
+    demo: 'Demo',
   },
   common: {
     loading: 'Wird geladen',
@@ -1734,6 +1737,8 @@ export const de = {
     /** The section of what the app does on its own: archive, empty the trash. */
     automatic: 'Automatisch',
     portals: 'Portale',
+    /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
+    backToJob: 'Zurück zum Job',
     files: 'Dateien',
     maintenance: 'Wartung',
     connected: 'Verbunden',
@@ -1812,6 +1817,8 @@ export const de = {
     fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
     logs: 'Protokoll',
     data: 'Daten der App',
+    /** The row of the app's version in Wartung. */
+    version: 'Version',
     reset: 'Alles zurücksetzen',
     /** Everything core's reset deletes: the database, the profile, the keychain entry, the
      *  portal sign-ins; the dialog adds the app's files in the work folder. */
@@ -1833,6 +1840,8 @@ export const de = {
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
     running: 'Ein Abruf läuft gerade.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
+    /** The demo (`--demo`): its own data from sample ads, no fetch. */
+    demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
     language: 'Sprache',
     /** Excel file and report are written at the next fetch (the text files stay German). */
     languageHint: 'Excel-Datei und Bericht folgen beim nächsten Abruf.',

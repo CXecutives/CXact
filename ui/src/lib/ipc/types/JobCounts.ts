@@ -28,6 +28,14 @@ trash: number,
  */
 excluded: number, 
 /**
+ * Excluded, in the archive (the section "Ausgeschlossen" of the Archiv tab).
+ */
+excludedArchive: number, 
+/**
+ * Excluded, in the trash (the section "Ausgeschlossen" of the Papierkorb tab).
+ */
+excludedTrash: number, 
+/**
  * Scored in the high band, in the inbox.
  */
 high: number, 

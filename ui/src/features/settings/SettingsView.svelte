@@ -17,7 +17,10 @@
   Every file row works the same: "Öffnen" and "Ordner öffnen"; the path (text to select and
   copy) stands only at the work folder. Textdateien says what they are (the ads as text for
   an AI); after a change of the folder a note says that they are still in the old one until
-  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them.
+  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them; Wartung ends with
+  the app's version. Opened from a job for one portal ("Anmeldung einrichten") the page
+  glides to that portal's card, focuses its sign-in and offers "Zurück zum Job". The demo
+  keeps to its own folders: mailbox, work folder and reset are locked with its reason.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -35,7 +38,9 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { Language, OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { tick } from 'svelte';
@@ -89,6 +94,11 @@
   const dryRunReason = $derived(t.error.text('dryRun', {}));
   /** Why a locked action waits: the dry run, or the run in progress (a fetch or a rescore). */
   const lockedReason = $derived(dryRun ? dryRunReason : run.busyText);
+  /** The demo keeps to its own folders: no mailbox, no other work folder, no reset (the
+   *  backend refuses them with `demo`). */
+  const demo = $derived(cfg?.demo ?? false);
+  const ownOnly = $derived(dryRun || demo);
+  const ownOnlyReason = $derived(demo ? t.error.text('demo', {}) : lockedReason);
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -281,6 +291,44 @@
     });
   }
 
+  /**
+   * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
+   * `navigation.focusPortal`, read once and set back): its card glides into view, its sign-in
+   * button (else its switch) takes the focus, and a link leads back to the job, which stays
+   * open in Jobs.
+   */
+  let root = $state<HTMLElement | null>(null);
+  let fromJob = $state(false);
+  const backToJob = $derived(fromJob && jobs.selected !== null);
+
+  /** Back to the job: the way is spent (a quick return may find this page still fading out,
+   *  and it opens as the plain page). The job's row takes the focus once the list is back,
+   *  as when the reader closes, so the keys go on from the job. */
+  function goBackToJob(): void {
+    const open = jobs.selected;
+    fromJob = false;
+    navigation.go('jobs', false, () => {
+      if (open !== null) void tick().then(() => jobs.reach(open, true));
+    });
+  }
+  $effect(() => {
+    const portal = navigation.focusPortal;
+    if (portal === null || root === null || cfg === null) return;
+    navigation.focusPortal = null;
+    fromJob = jobs.selected !== null;
+    const scope = root;
+    void tick().then(() => {
+      const card = scope.querySelector(`[data-testid="portal-${portal}"]`);
+      if (card === null) return;
+      glideIntoView(card, 'center');
+      const target =
+        card.querySelector<HTMLElement>(
+          `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
+        ) ?? card.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
+      target?.focus({ preventScroll: true });
+    });
+  });
+
   /** On success the app restarts empty; a failure closes the dialog and says why here. */
   function reset(): void {
     void act(
@@ -302,7 +350,7 @@
   {/if}
 {/snippet}
 
-<div class="page" data-testid="settings">
+<div class="page" data-testid="settings" bind:this={root}>
   {#if cfg === null}
     {#if app.slow}
       <Card
@@ -314,6 +362,8 @@
   {:else}
     {#if cfg.dryRun}
       <Notice tone="info" text={t.settings.dryRun} />
+    {:else if cfg.demo}
+      <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
     <section class="section" data-testid="settings-mailbox">
@@ -340,8 +390,8 @@
                 size="sm"
                 icon="pencil"
                 label={t.common.change}
-                disabled={run.active || dryRun}
-                disabledReason={lockedReason}
+                disabled={run.active || ownOnly}
+                disabledReason={ownOnlyReason}
                 testid="mailbox-change"
                 onclick={() => {
                   mailboxNote = null;
@@ -353,8 +403,8 @@
                 size="sm"
                 icon="trash-2"
                 label={t.common.remove}
-                disabled={run.active || dryRun}
-                disabledReason={lockedReason}
+                disabled={run.active || ownOnly}
+                disabledReason={ownOnlyReason}
                 warns
                 testid="mailbox-remove"
                 onclick={() => (confirmRemove = true)}
@@ -441,7 +491,18 @@
 
     <section class="section" data-testid="settings-portals">
       <div class="title">
-        <h2 class="heading">{t.settings.portals}</h2>
+        <div class="title-row">
+          <h2 class="heading">{t.settings.portals}</h2>
+          {#if backToJob}
+            <Button
+              variant="link"
+              size="sm"
+              label={t.settings.backToJob}
+              testid="back-to-job"
+              onclick={goBackToJob}
+            />
+          {/if}
+        </div>
         <p class="hint" data-testid="portals-hint">{t.settings.portalsHint}</p>
       </div>
       {#each cfg.portals as portal (portal.portal)}
@@ -467,8 +528,8 @@
               icon="pencil"
               label={t.common.change}
               loading={busy === 'workspace'}
-              disabled={run.active || dryRun}
-              disabledReason={lockedReason}
+              disabled={run.active || ownOnly}
+              disabledReason={ownOnlyReason}
               testid="workspace-change"
               onclick={pickWorkspace}
             />
@@ -613,6 +674,9 @@
             onclick={() => open({ kind: 'dataDir' }, setCare)}
           />
         </SettingRow>
+        <SettingRow label={t.settings.version} testid="version">
+          <span class="value" data-copy>{cfg.version}</span>
+        </SettingRow>
         {@render note(careNote, 'care-note')}
       </Card>
     </section>
@@ -636,8 +700,8 @@
           icon="rotate-ccw"
           label={t.settings.resetAction}
           warns
-          disabled={run.active || dryRun}
-          disabledReason={lockedReason}
+          disabled={run.active || ownOnly}
+          disabledReason={ownOnlyReason}
           testid="reset"
           onclick={() => (confirmReset = true)}
         />
@@ -710,6 +774,14 @@
     gap: var(--space-4);
   }
 
+  /* The heading, and at its end the way back to the job she came from. */
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+  }
+
   .heading {
     color: var(--text-heading);
     font: var(--type-lg);
@@ -747,6 +819,13 @@
     color: var(--text-muted);
     font-variant-numeric: var(--numeric);
     text-align: right;
+  }
+
+  /* The app's version: a value to copy, quiet like the keys. */
+  .value {
+    color: var(--text-muted);
+    font: var(--type-sm);
+    font-variant-numeric: var(--numeric);
   }
 
   .skeleton {

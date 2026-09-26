@@ -27,6 +27,9 @@
 // the ad's rate and start as plain facts)
 // · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
 // refuses with `dryRun` like `ensure_real`)
+// · demo (the `--demo` start: a sample mailbox, no profile and so no scores yet, no fetch of
+// any kind, no mailbox, sign-in, other work folder or reset; they refuse with `demo` like
+// `ensure_not_demo`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no).
@@ -1095,7 +1098,10 @@ function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
   state = {
     platform: MAC ? 'macos' : 'windows',
+    // The app's version (src-tauri's CARGO_PKG_VERSION, the workspace's).
+    version: '3.0.0',
     dryRun: false,
+    demo: false,
     firstRun: false,
     running: null,
     settings: {
@@ -1203,6 +1209,14 @@ function initial(): void {
       // A sign-in still stored while the fetch does not use it: the row offers Abmelden.
       state.portals[1]!.signedIn = true;
       break;
+    case 'demo':
+      // Like `create_demo_data` without a profile: nothing scored, until she picks a test
+      // profile in Profil.
+      state.demo = true;
+      state.mailbox = { user: 'demo@example.org', vault: VAULT, error: null, check: null };
+      state.profile = null;
+      for (const j of jobs) j.match = null;
+      break;
     case 'dry-run':
       state.dryRun = true;
       state.mailbox = {
@@ -1278,7 +1292,8 @@ function initial(): void {
 
 /**
  * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; a favourite counts until it goes to the trash.
+ * excluded, per portal too; a favourite counts until it goes to the trash; the excluded ones
+ * of the archive and the trash each in their place.
  */
 function countsOf(list: JobView[]): JobCounts {
   const c: JobCounts = {
@@ -1288,16 +1303,20 @@ function countsOf(list: JobView[]): JobCounts {
     archive: 0,
     trash: 0,
     excluded: 0,
+    excludedArchive: 0,
+    excludedTrash: 0,
     high: 0,
     noDetail: 0,
     newByPortal: PORTALS.map((portal) => ({ portal, new: 0 })),
   };
   for (const j of list) {
+    const out = j.match?.status === 'excluded';
     if (j.pinned && j.place !== 'trash') c.favourites += 1;
     if (j.place === 'archive') c.archive += 1;
     if (j.place === 'trash') c.trash += 1;
+    if (out && j.place === 'archive') c.excludedArchive += 1;
+    if (out && j.place === 'trash') c.excludedTrash += 1;
     if (j.place !== 'inbox') continue;
-    const out = j.match?.status === 'excluded';
     const isNew = j.unread && !out;
     c.inbox += 1;
     c.unread += isNew ? 1 : 0;
@@ -1509,14 +1528,22 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
     query.place === 'trash' && !query.favourites
       ? (trashedAt.get(markKey(j.key)) ?? '')
       : (j.mailDate ?? j.firstSeenAt);
+  // store::page_order: the excluded last; by match the jobs without a score first (the list's
+  // "Noch ohne Passung" on top, so every page is complete); a closed ad after the open ones;
+  // then the best score.
   const page = base
     .filter((j) => inQuery(j, query))
     .sort((a, b) => {
       const ex = Number(a.match?.status === 'excluded') - Number(b.match?.status === 'excluded');
       if (ex !== 0) return ex;
-      if (query.sort === 'match') {
-        const na = Number(a.match === null) - Number(b.match === null);
-        if (na !== 0) return na;
+      const byMatch = query.sort === 'match';
+      if (byMatch) {
+        const pending = Number(b.match === null) - Number(a.match === null);
+        if (pending !== 0) return pending;
+      }
+      const closed = Number(a.closed) - Number(b.closed);
+      if (closed !== 0) return closed;
+      if (byMatch) {
         const d = (b.match?.score ?? 0) - (a.match?.score ?? 0);
         if (d !== 0) return d;
       }
@@ -2857,6 +2884,22 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'reset_all',
 ]);
 
+/** Commands that refuse in the demo (`ensure_not_demo` in src-tauri): the mailbox, the
+ *  portals, the vault, another work folder, the reset; `start_run` takes only a rescore. */
+const DEMO_REFUSED: ReadonlySet<string> = new Set([
+  'save_mailbox',
+  'remove_mailbox',
+  'portal_login',
+  'portal_logout',
+  'pick_workspace',
+  'reset_all',
+]);
+
+function demoRefuses(command: string, args: Record<string, unknown>): boolean {
+  if (DEMO_REFUSED.has(command)) return true;
+  return command === 'start_run' && (args.request as RunRequest).kind !== 'rescore';
+}
+
 /** Resolves in the next task (a message, not a timer: no clamping, no fake clock). */
 function nextTask(): Promise<void> {
   return new Promise((resolve) => {
@@ -2874,6 +2917,7 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   const handler = handlers[command as keyof Commands] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
+  if (state.demo && demoRefuses(command, args)) throw fail('demo');
   const delay = command === 'job_detail' ? DELAY + harness.detailDelay : DELAY;
   if (command !== 'report_ui_error') {
     // Like Tauri's IPC, the answer arrives in a task of its own: the page's work on it is

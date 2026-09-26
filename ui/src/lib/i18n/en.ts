@@ -158,6 +158,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
         ? 'The folder does not exist.'
         : 'This no longer exists.',
   dryRun: 'This does not work in the dry run.',
+  demo: 'This does not work in the demo.',
   mailMissing: 'No mailbox is connected.',
   mailConnect: 'Gmail cannot be reached.',
   mailAuth: 'Gmail rejected the address or the app password.',
@@ -646,6 +647,7 @@ export const en: Catalog = {
     profile: 'Profile',
     settings: 'Settings',
     overviewLater: 'After the first fetch',
+    demo: 'Demo',
   },
   common: {
     loading: 'Loading',
@@ -1527,6 +1529,7 @@ export const en: Catalog = {
     mailbox: 'Mailbox',
     automatic: 'Automatic',
     portals: 'Portals',
+    backToJob: 'Back to the job',
     files: 'Files',
     maintenance: 'Maintenance',
     connected: 'Connected',
@@ -1594,6 +1597,7 @@ export const en: Catalog = {
     fullMailboxText: 'This takes longer and fetches more pages from the portals.',
     logs: 'Log',
     data: 'App data',
+    version: 'Version',
     reset: 'Reset everything',
     resetHint: 'Deletes jobs, settings, profile, app password and sign-ins.',
     resetAction: 'Reset',
@@ -1611,6 +1615,7 @@ export const en: Catalog = {
       `The app is reset, but ${count(value, 'item', 'items')} could not be deleted.`,
     running: 'A fetch is running right now.',
     dryRun: 'Dry run, so no data is changed.',
+    demo: 'Demo with sample data, without the mailbox or the portals.',
     language: 'Language',
     languageHint: 'The Excel file and the report switch at the next fetch.',
     languageName: {

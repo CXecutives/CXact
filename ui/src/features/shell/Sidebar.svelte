@@ -7,7 +7,8 @@
   (the keys stand in their tooltips). The places of the jobs (Eingang, Archiv, Papierkorb)
   are tabs above the list. At the foot a quiet run status on one line (what happened last
   and when) that opens the run in the Jobs view. It shows only while there is a run to open,
-  and it is said once: while the run card is on screen it steps aside.
+  and it is said once: while the run card is on screen it steps aside. In the demo a quiet
+  line "Demo" stands above it (the title bar says so on Windows only; macOS hides it).
   Before the first fetch Jobs is the setup page and the Übersicht waits, saying why;
   Profil and Einstellungen can be reached. A press here never takes the focus (the list
   keeps its keys). Below 1100 px it folds to its icons by the window width alone.
@@ -118,6 +119,11 @@
     </div>
   {/if}
 
+  {#if app.state?.demo}
+    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real. -->
+    <p class="demo" data-testid="demo-mark">{t.nav.demo}</p>
+  {/if}
+
   {#if statusShown}
     <div class="status" transition:fade={{ on: motion.ready }}>
       <StatusLine
@@ -171,5 +177,22 @@
     justify-content: center;
     width: 100%;
     margin-top: auto;
+  }
+
+  /* The demo's quiet line at the foot, above the run status (the text where the nav's
+     icons start; centred in the rail). */
+  .demo {
+    margin-top: auto;
+    padding: var(--space-8) var(--space-12);
+    color: var(--text-subtle);
+    font: var(--type-xs);
+  }
+
+  .rail .demo {
+    padding-inline: 0;
+  }
+
+  .demo + .status {
+    margin-top: 0;
   }
 </style>

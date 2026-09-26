@@ -51,8 +51,10 @@ test('core workflow: fetch, rings fill, open the best job, reasons light the ad'
   const line = await page.getByTestId('run-card').locator('.history li').first().textContent();
   expect(line?.trim()).toMatch(/^\d{2}:\d{2} \S/);
 
-  // The new job with the best score is scored live and sorted to the top once finished.
-  const top = rows(page).first();
+  // The new job with the best score is scored live and sorted to the top of the scored jobs
+  // once finished; the job still without a score stands above them (by match it is first).
+  await expect(rows(page).first()).toHaveAttribute('data-testid', 'job-row-linkedin-4100200302');
+  const top = rows(page).nth(1);
   await expect(top).toHaveAttribute('data-testid', 'job-row-freelancermap-2801');
   await expect(row(page, 'linkedin-4100200399').getByRole('img').first()).toHaveAttribute(
     'aria-label',
@@ -926,7 +928,8 @@ test('the reader: one row of actions, archive opens the next job, undo, a prompt
 }) => {
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  const first = rows(page).first();
+  // The best job: the first row is the one still without a score (by match it is first).
+  const first = rows(page).nth(1);
   await first.click();
   await expect(page.getByTestId('reader')).toBeVisible();
   // Open the ad (the strongest), the favourite and the move labelled, the rest in "…".
@@ -959,7 +962,7 @@ test('the reader: one row of actions, archive opens the next job, undo, a prompt
   await page.waitForTimeout(550);
   // Archivieren folds the row away and opens the next job; a double click archives one.
   const title = await page.getByTestId('reader-title').innerText();
-  const next = await rows(page).nth(1).locator('.title').innerText();
+  const next = await rows(page).nth(2).locator('.title').innerText();
   await page.getByTestId('reader-archive').dblclick();
   await expect(page.getByTestId('reader-title')).toHaveText(next);
   expect(await calls(page, 'move_jobs')).toHaveLength(1);

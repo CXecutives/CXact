@@ -37,13 +37,15 @@ const UI_ERRORS_PER_MINUTE: usize = 10;
 const MAX_UI_MESSAGE_CHARS: usize = 500;
 const MAX_UI_SOURCE_CHARS: usize = 200;
 
-/// The mailbox as the interface shows it. The dry run never touches the vault but shows a
-/// mailbox: otherwise the app would stay in the setup state and exactly what the dry run
-/// should demonstrate could not be seen. `example.org` is reserved for examples and cannot
-/// be a real mailbox.
+/// The mailbox as the interface shows it. The dry run and the demo never touch the vault
+/// but show a mailbox: otherwise the app would ask for one, and what they should
+/// demonstrate could not be seen. `example.org` is reserved for examples and cannot be a
+/// real mailbox.
 pub(super) fn mailbox(state: &AppState) -> Mailbox {
     let (user, error) = if state.dry_run {
         (Some("probelauf@example.org".to_string()), None)
+    } else if state.demo {
+        (Some("demo@example.org".to_string()), None)
     } else {
         state.gmail_user()
     };
@@ -132,7 +134,9 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     };
     Ok(view::AppState {
         platform: crate::platform::platform(),
+        version: env!("CARGO_PKG_VERSION").to_owned(),
         dry_run: state.dry_run,
+        demo: state.demo,
         // The dry run is a demo with a mailbox and a sample profile: it starts in the app itself,
         // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
         // first-run page stays until a fetch has read the mailbox, also after a failed one.
@@ -205,8 +209,11 @@ fn at_start(app: &AppHandle, state: &AppState) {
 
 /// Once per app start, after the first page load and off the window thread: the database's
 /// copy of the day in the data folder (`Store::backup_daily`, the newest three kept). The dry
-/// run has none: its database lives in memory.
+/// run has none: its database lives in memory; nor the demo: it is made anew at every start.
 fn daily_backup(app: &AppHandle) {
+    if app.state::<AppState>().demo {
+        return;
+    }
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
         let state = app.state::<AppState>();
@@ -243,6 +250,8 @@ pub async fn pick_workspace(
     state: State<'_, AppState>,
 ) -> CmdResult<Option<PathBuf>> {
     state.ensure_idle()?;
+    // The demo keeps to its own work folder.
+    state.ensure_not_demo()?;
     let current = state.workspace()?;
     let Some(folder) = rfd::AsyncFileDialog::new()
         .set_title(texts::of(state.language()?).pick_workspace)
@@ -278,6 +287,7 @@ pub async fn pick_workspace(
 pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
     state.ensure_idle()?;
     state.ensure_real()?;
+    state.ensure_not_demo()?;
     let plan = ResetPlan {
         workspace: state.workspace()?,
         txt_names: state.store.txt_names()?,

@@ -24,6 +24,7 @@ pub async fn save_mailbox(
 ) -> CmdResult<Mailbox> {
     state.ensure_idle()?;
     state.ensure_real()?;
+    state.ensure_not_demo()?;
     let credentials = Credentials::new(&user, &password);
     let portals = state.settings()?.enabled_portals();
     let check = check_mailbox(
@@ -54,6 +55,7 @@ pub async fn save_mailbox(
 pub async fn remove_mailbox(state: State<'_, AppState>) -> CmdResult<bool> {
     state.ensure_idle()?;
     state.ensure_real()?;
+    state.ensure_not_demo()?;
     let removed = Vault::app().delete_gmail()?;
     *lock(&state.gmail_user) = GmailUser::Known(None);
     *lock(&state.mailbox_check) = None;

@@ -121,8 +121,9 @@ impl ListFilter {
 }
 
 /// The order of a page of the list (`p`: the prefix of its columns). Excluded jobs always
-/// come last; "match" puts the best score first (unscored after scored), "newest" the latest
-/// first sighting. The trash lists the latest trashed first.
+/// come last; "match" puts the jobs still without a score first (the list's section "Noch
+/// ohne Passung" on top, so every page it loads is complete), then the best score first;
+/// "newest" the latest first sighting. The trash lists the latest trashed first.
 fn page_order(query: &PageQuery, p: &str) -> String {
     // "By date": the date of the alert mail; in the trash the day it went there.
     let date = if query.place == Place::Trash && !query.favourites {
@@ -130,19 +131,20 @@ fn page_order(query: &PageQuery, p: &str) -> String {
     } else {
         format!("COALESCE({p}mail_date, {p}first_seen_at)")
     };
-    let by_match = if query.by_match {
+    let (pending, by_match) = if query.by_match {
         // Equal scores follow the score before the caps (`rank` in the note).
-        format!(
-            "({p}match_score IS NULL), {p}match_score DESC, \
-             json_extract({p}match_note, '$.rank') DESC, "
+        (
+            format!("({p}match_score IS NOT NULL), "),
+            format!("{p}match_score DESC, json_extract({p}match_note, '$.rank') DESC, "),
         )
     } else {
-        String::new()
+        (String::new(), String::new())
     };
     // A closed ad (no applications any more) follows the open ones.
     format!(
-        "({p}match_status IS 'excluded'), ({p}desc_status = 'ok' AND {p}desc_closed = 1), \
-         {by_match}{date} DESC, {p}portal, {p}job_id"
+        "({p}match_status IS 'excluded'), {pending}\
+         ({p}desc_status = 'ok' AND {p}desc_closed = 1), {by_match}{date} DESC, \
+         {p}portal, {p}job_id"
     )
 }
 
@@ -182,8 +184,8 @@ pub struct PageQuery {
     pub unread: bool,
     /// Only the favourites of the inbox (an archived favourite is found in the archive).
     pub favourites: bool,
-    /// Best match first; otherwise by date: the alert mail's, in the trash the day it went
-    /// there; excluded jobs last either way.
+    /// The jobs without a score first, then the best match; otherwise by date: the alert
+    /// mail's, in the trash the day it went there; excluded jobs last either way.
     pub by_match: bool,
     /// Search: every word in the portal's name, title, company, location or full text
     /// (case-insensitive, in any order).
@@ -195,7 +197,7 @@ pub struct PageQuery {
 }
 
 /// Column of the first per-portal count in the statement of [`Store::job_page`].
-const PER_PORTAL_AT: usize = 8;
+const PER_PORTAL_AT: usize = 10;
 
 /// Counts that belong to a page of the job list: per place, and within the inbox.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -210,6 +212,10 @@ pub struct PageCounts {
     pub trash: u32,
     /// Excluded, in the inbox.
     pub excluded: u32,
+    /// Excluded, in the archive.
+    pub excluded_archive: u32,
+    /// Excluded, in the trash.
+    pub excluded_trash: u32,
     /// Scored in the high band, in the inbox.
     pub high: u32,
     /// Without a full text, in the inbox.
@@ -387,7 +393,8 @@ impl Store {
         let order = |p: &str| page_order(query, p);
         // The counts of the inbox leave the archive and the trash out. The unread filter lists
         // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. A favourite counts while it is in the inbox.
+        // out. A favourite counts while it is in the inbox. The excluded jobs are counted per
+        // place, so the list's section says its number before every page is there.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
         let place = if query.favourites {
@@ -413,7 +420,11 @@ impl Store {
                         COALESCE(SUM({shown} AND desc_status <> 'ok'), 0) AS n_no_detail,
                         COALESCE(SUM({FAVOURITES}), 0) AS n_favourites,
                         COALESCE(SUM({archive}), 0) AS n_archive,
-                        COALESCE(SUM({trash}), 0) AS n_trash{per_portal}
+                        COALESCE(SUM({trash}), 0) AS n_trash,
+                        COALESCE(SUM({archive} AND match_status IS 'excluded'), 0)
+                            AS n_excluded_archive,
+                        COALESCE(SUM({trash} AND match_status IS 'excluded'), 0)
+                            AS n_excluded_trash{per_portal}
                  FROM base
              ), page AS (
                  SELECT {JOB_COLUMNS} FROM base
@@ -423,7 +434,8 @@ impl Store {
              )
              SELECT counts.n_inbox, counts.n_unread, counts.n_excluded, counts.n_high,
                     counts.n_no_detail, counts.n_favourites, counts.n_archive,
-                    counts.n_trash{per_portal_out}, page.*
+                    counts.n_trash, counts.n_excluded_archive,
+                    counts.n_excluded_trash{per_portal_out}, page.*
              FROM counts LEFT JOIN page
              ORDER BY {}",
             order(""),
@@ -465,6 +477,8 @@ impl Store {
                 favourites: row.get(5)?,
                 archive: row.get(6)?,
                 trash: row.get(7)?,
+                excluded_archive: row.get(8)?,
+                excluded_trash: row.get(9)?,
                 new_by_portal,
             };
             if row.get::<_, Option<String>>(first)?.is_some() {
@@ -2227,5 +2241,79 @@ mod tests {
             seen("Etwas anderes"),
             "Senior Requirements Engineer (w/m/d)"
         );
+    }
+
+    /// The jobs of a page with their order: by match first the jobs still without a score
+    /// (the list's "Noch ohne Passung" on top, so every page it loads is complete), then the
+    /// best score; a closed ad after the open ones of its group; the excluded ones last. By
+    /// date only the closed and the excluded ones step back.
+    #[test]
+    fn by_match_the_jobs_without_a_score_come_first() {
+        use crate::model::MatchStatus::{Excluded, Scored};
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        // P and Q wait for their score, H and L are scored, C is a closed ad, X excluded;
+        // the mails from the newest (P) to the oldest (X).
+        let mut keys = Vec::new();
+        for (hours, title) in (1..).zip(["P", "Q", "H", "L", "C", "X"]) {
+            let job = posting(
+                &format!("https://www.linkedin.com/jobs/view/41000000{hours:02}/"),
+                title,
+                "",
+                "",
+            );
+            let mail = MailRef {
+                subject: "x",
+                date: Some(now() - SignedDuration::from_hours(hours)),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &job, mail, now()).unwrap();
+            keys.push(job.key);
+        }
+        for closed in [&keys[1], &keys[4]] {
+            store
+                .record_text(closed, "Nicht mehr offen", false, true, now())
+                .unwrap();
+        }
+        let record = |status, score| MatchRecord {
+            status,
+            score,
+            note: None,
+            must_met: 0,
+            must_total: 0,
+            top: Vec::new(),
+            facts: crate::model::KeyFacts::default(),
+            rank: 0,
+        };
+        store
+            .save_matches(
+                &[
+                    (keys[2].clone(), record(Scored, 60)),
+                    (keys[3].clone(), record(Scored, 30)),
+                    (keys[4].clone(), record(Scored, 95)),
+                    (keys[5].clone(), record(Excluded, 99)),
+                ],
+                "r",
+                now(),
+            )
+            .unwrap();
+        let page = |by_match, limit| {
+            let query = PageQuery {
+                by_match,
+                limit,
+                ..PageQuery::default()
+            };
+            store.job_page(&query).unwrap().0
+        };
+        let titles = |by_match| {
+            page(by_match, 50)
+                .into_iter()
+                .map(|job| job.title)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(titles(true), ["P", "Q", "H", "L", "C", "X"]);
+        assert_eq!(titles(false), ["P", "H", "L", "Q", "C", "X"]);
+        // A page of two by match holds the two without a score, whole.
+        assert!(page(true, 2).iter().all(|job| job.match_.is_none()));
     }
 }

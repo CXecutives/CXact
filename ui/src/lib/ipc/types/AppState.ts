@@ -13,7 +13,16 @@ import type { SettingsView } from "./SettingsView";
 /**
  * Everything the interface needs at the start (and after a reload).
  */
-export type AppState = { platform: Platform, dryRun: boolean, 
+export type AppState = { platform: Platform, 
+/**
+ * The app's version (`3.0.0`), shown in Einstellungen under Wartung.
+ */
+version: string, dryRun: boolean, 
+/**
+ * The demo (`--demo`): a data folder of its own made from bundled ads; it never
+ * fetches (`Demo` refuses the mailbox, the portals and the vault).
+ */
+demo: boolean, 
 /**
  * No run has finished yet and no job is known.
  */

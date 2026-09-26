@@ -91,10 +91,12 @@
   const split = $derived(
     jobs.facet === 'new' && sections.fresh.length > 0 && sections.rest.length > 0,
   );
-  // How many excluded jobs the list holds: Alle knows it (with the search, like the facet),
-  // the other lists once every page is there.
+  // How many excluded jobs the list holds: Alle, Archiv and Papierkorb know it (with the
+  // search, like the facet), the other lists once every page is there.
   const excludedCount = $derived.by((): number | null => {
     if (jobs.facet === 'all') return jobs.counts.excluded;
+    if (jobs.facet === 'archived') return jobs.counts.excludedArchive;
+    if (jobs.facet === 'trash') return jobs.counts.excludedTrash;
     if (jobs.rows.length < jobs.total) return null;
     return jobs.visible.filter(isExcluded).length;
   });

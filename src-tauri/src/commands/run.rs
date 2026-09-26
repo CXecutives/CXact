@@ -185,6 +185,10 @@ fn run_context(
     state: &AppState,
     request: &RunRequest,
 ) -> CmdResult<(RunContext, Option<Credentials>)> {
+    // The demo scores its jobs again but never fetches: no mailbox, no portal.
+    if state.demo && request.kind.name() != RunKindName::Rescore {
+        return Err(ErrorInfo::new(ErrorKind::Demo));
+    }
     let settings = state.settings()?;
     let scans = request.kind.name().reads_mail();
     if scans && settings.enabled_portals().is_empty() {

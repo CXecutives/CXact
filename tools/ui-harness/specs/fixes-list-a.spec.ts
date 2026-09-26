@@ -181,13 +181,13 @@ test.describe('choosing several jobs', () => {
     await page.getByTestId('reader-archive').click();
     await expect(page.getByTestId('reader-title')).toHaveText(/Kaufmännische Leitung/);
     await settleMoves(page);
-    await row(page, 'linkedin-4100200304').click({ modifiers: ['Shift'] });
+    await row(page, 'freelance-900413').click({ modifiers: ['Shift'] });
     await expect(page.getByTestId('selection-bar')).toContainText('4 ausgewählt');
     expect(await highlighted(page)).toEqual([
       'freelancermap:2803',
       'linkedin:4100200303',
       'freelancermap:2804',
-      'linkedin:4100200304',
+      'freelance:900413',
     ]);
     // A job opened from the Übersicht starts the range too, not the row clicked before.
     await page.keyboard.press('Escape');

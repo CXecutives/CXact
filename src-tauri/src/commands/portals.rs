@@ -44,6 +44,7 @@ fn claim_slot<'a>(
     portal: Portal,
 ) -> CmdResult<SessionGuard<'a>> {
     state.ensure_real()?;
+    state.ensure_not_demo()?;
     if PortalSite::of(portal).is_none() {
         return Err(ErrorInfo::from(&InvalidInput::NoSignIn { portal }));
     }

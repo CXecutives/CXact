@@ -775,7 +775,8 @@ pub fn job_views(store: &Store, rows: &[JobRow]) -> crate::Result<Vec<JobView>> 
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum JobSort {
-    /// Best match first (excluded jobs behind the others).
+    /// The jobs still without a score first, then the best match (excluded jobs behind the
+    /// others).
     Match,
     /// By date: the alert mail's, in the trash the day the job went there.
     Newest,
@@ -840,6 +841,10 @@ pub struct JobCounts {
     pub trash: u32,
     /// Excluded, in the inbox.
     pub excluded: u32,
+    /// Excluded, in the archive (the section "Ausgeschlossen" of the Archiv tab).
+    pub excluded_archive: u32,
+    /// Excluded, in the trash (the section "Ausgeschlossen" of the Papierkorb tab).
+    pub excluded_trash: u32,
     /// Scored in the high band, in the inbox.
     pub high: u32,
     /// Without a full text, in the inbox.
@@ -888,6 +893,8 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
             archive: counts.archive,
             trash: counts.trash,
             excluded: counts.excluded,
+            excluded_archive: counts.excluded_archive,
+            excluded_trash: counts.excluded_trash,
             high: counts.high,
             no_detail: counts.no_detail,
             new_by_portal: counts
@@ -1588,9 +1595,18 @@ pub struct ResetSummary {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "flat facts of the app for the page, one JSON field each (IPC contract)"
+)]
 pub struct AppState {
     pub platform: Platform,
+    /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
+    pub version: String,
     pub dry_run: bool,
+    /// The demo (`--demo`): a data folder of its own made from bundled ads; it never
+    /// fetches (`Demo` refuses the mailbox, the portals and the vault).
+    pub demo: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,
     /// A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
@@ -2059,9 +2075,9 @@ mod tests {
             job_page(&store, &q).unwrap()
         };
         let all = page(None, None);
-        assert_eq!(titles(&all), ["B", "A", "E", "D", "C"]);
+        assert_eq!(titles(&all), ["D", "B", "A", "E", "C"]);
         let linkedin = page(Some(Portal::LinkedIn), None);
-        assert_eq!(titles(&linkedin), ["B", "A", "D", "C"]);
+        assert_eq!(titles(&linkedin), ["D", "B", "A", "C"]);
         assert_eq!(linkedin.counts.inbox, 4, "the counts follow");
         let map = page(Some(Portal::Freelancermap), None);
         assert_eq!(titles(&map), ["E"]);
@@ -2323,6 +2339,8 @@ mod tests {
             archive: 0,
             trash: 0,
             excluded: 1,
+            excluded_archive: 0,
+            excluded_trash: 0,
             high: 1,
             no_detail: 3,
             new_by_portal: vec![
@@ -2344,17 +2362,18 @@ mod tests {
             job_page(&store, &query(Place::Inbox, unread, sort, limit, offset)).unwrap()
         };
         // Unread lists every unread job: the excluded one behind the others (grey in the
-        // list), unscored after scored. Its count leaves the excluded one out.
+        // list), the unscored one first. Its count leaves the excluded one out.
         let new = page(true, JobSort::Match, 50, 0);
-        assert_eq!(titles(&new), ["B", "D", "C"]);
+        assert_eq!(titles(&new), ["D", "B", "C"]);
         assert_eq!(&new.counts, &expected);
-        assert!(new.jobs[0].unread && new.jobs[0].match_.is_some());
+        assert!(new.jobs[0].unread && new.jobs[0].match_.is_none());
+        assert!(new.jobs[1].unread && new.jobs[1].match_.is_some());
         let excluded = new.jobs[2].match_.as_ref().unwrap();
         assert!(new.jobs[2].unread && excluded.status == MatchStatus::Excluded);
         assert_eq!(titles(&page(true, JobSort::Newest, 50, 0)), ["D", "B", "C"]);
         assert_eq!(
             titles(&page(false, JobSort::Match, 50, 0)),
-            ["B", "A", "D", "C"]
+            ["D", "B", "A", "C"]
         );
         let newest = page(false, JobSort::Newest, 50, 0);
         assert_eq!(titles(&newest), ["D", "B", "A", "C"]);
@@ -2410,6 +2429,11 @@ mod tests {
             "archive and trash in no inbox count, the archived favourite neither"
         );
         assert_eq!((counts.archive, counts.trash), (1, 1));
+        assert_eq!(
+            (counts.excluded_archive, counts.excluded_trash),
+            (1, 0),
+            "the excluded ones of the archive and the trash, each in its place"
+        );
         let archive = page(Place::Archive);
         assert_eq!(titles(&archive), ["C"]);
         assert_eq!(archive.jobs[0].place, Place::Archive);
@@ -2432,8 +2456,8 @@ mod tests {
         assert_eq!(titles(&after), ["D", "A"]);
         assert_eq!(
             titles(&page(Place::Trash)),
-            ["A", "D"],
-            "by match the scored first"
+            ["D", "A"],
+            "by match the one without a score first"
         );
         assert_eq!((after.counts.favourites, after.counts.trash), (0, 2));
         let json = serde_json::to_value(&after.jobs[1]).unwrap();
@@ -2455,6 +2479,17 @@ mod tests {
         let starred = job_page(&store, &favourites).unwrap();
         assert_eq!(titles(&starred), ["B", "C"], "the excluded one last");
         assert_eq!(starred.counts.favourites, 2);
+        // In the trash, the excluded one counts there.
+        store.move_jobs(&[key(3)], Place::Trash, later).unwrap();
+        let counts = page(Place::Trash).counts;
+        assert_eq!(
+            (
+                counts.excluded,
+                counts.excluded_archive,
+                counts.excluded_trash
+            ),
+            (0, 0, 1)
+        );
     }
 
     /// The new jobs per portal and the pinned ones come with every page, from the same

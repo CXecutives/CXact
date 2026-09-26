@@ -65,6 +65,8 @@
       topError = null;
       return;
     }
+    // Only scored jobs: by match the jobs still without a score come first (store::job_page),
+    // and they would take the places of the best.
     invoke('list_jobs', {
       query: {
         place: 'inbox',
@@ -73,7 +75,7 @@
         sort: 'match',
         search: null,
         portal: null,
-        minBand: null,
+        minBand: 'low',
         applied: false,
         limit: BEST,
         offset: 0,
@@ -335,6 +337,8 @@
   const canCompare = $derived(
     app.hasProfile && counts !== null && (counts.favourites > 0 || counts.inbox > counts.excluded),
   );
+  /** Jobs without their full ad to decide on: the demo never fetches, so it asks nothing. */
+  const noDetail = $derived(app.state?.demo ? 0 : (counts?.noDetail ?? 0));
 
   /** A best row's tools, like the list's: the inbox's actions, then the star. */
   function toolsOf(job: JobView): RowTool[] {
@@ -532,15 +536,15 @@
     </section>
   {/if}
 
-  {#if counts !== null && (counts.noDetail > 0 || (app.hasProfile && counts.excluded > 0))}
+  {#if counts !== null && (noDetail > 0 || (app.hasProfile && counts.excluded > 0))}
     <section class="block" data-testid="decide">
       <h2 class="heading">{t.overview.decide}</h2>
       <div class="rows">
-        {#if counts.noDetail > 0}
+        {#if noDetail > 0}
           <Notice
             tone="info"
             variant="row"
-            text={t.overview.noDetail(counts.noDetail)}
+            text={t.overview.noDetail(noDetail)}
             action={{
               label: t.overview.fetchDetails,
               icon: 'download',
