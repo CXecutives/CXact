@@ -127,6 +127,9 @@ test('a middle click on a button, a link-like button or a row does nothing', asy
   await page.waitForTimeout(200);
   expect(await calls(page, 'start_run')).toHaveLength(0);
   expect(await calls(page, 'job_detail')).toHaveLength(0);
+  // The middle press in the list, which scrolls, started the OS autoscroll: a click on the
+  // empty reader ends it (and presses nothing).
+  await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
   // The ad's link (it opens the page outside the app on a left click only).
   await rows(page).first().click();
   const openAd = page.getByTestId('open-ad');

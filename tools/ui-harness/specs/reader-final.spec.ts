@@ -9,8 +9,6 @@ import { calls, expect, open, settle, test } from './fixtures';
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
 const row = (page: Page, key: string) => list(page).getByTestId(`job-row-${key}`);
-const facet = (page: Page, name: string) =>
-  page.getByTestId('facet').getByRole('radio', { name: new RegExp(name) });
 // The open job's stage (the one on its way out has dropped its test id).
 const stage = (page: Page) => page.getByTestId('stage');
 const terms = (page: Page) => stage(page).getByTestId('criteria');
@@ -40,7 +38,6 @@ async function show(page: Page, key: string): Promise<void> {
 
 async function openJob(page: Page, key: string, query = WIN): Promise<void> {
   await open(page, query);
-  await facet(page, 'Alle').click();
   await show(page, key);
 }
 
@@ -102,7 +99,6 @@ test('the head: title, company and place, then portal, time and the other portal
 
 test('opening a job fills the ring, its number stands at once', async ({ page }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await settle(page);
   // Every number the reader's ring shows, frame by frame, from before the click on.
   await page.evaluate(() => {
@@ -144,7 +140,7 @@ test('the actions: the ad strongest, Favorit and Archivieren labelled, the rest 
   }
   // Not in the title line any more.
   await expect(stage(page).locator('.title-line [data-testid="reader-archive"]')).toHaveCount(0);
-  // The "…" menu: the alert mail, the prompt, unread, the trash, with their keys.
+  // The "…" menu: the alert mail, the prompt, the trash, with their keys.
   await actions.getByTestId('reader-more').click();
   const menu = page.getByTestId('menu');
   await expect(menu).toBeVisible();
@@ -152,11 +148,9 @@ test('the actions: the ad strongest, Favorit and Archivieren labelled, the rest 
     await menu
       .locator('[data-testid^="menu-item-"]')
       .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid'))),
-  ).toEqual(['menu-item-mail', 'menu-item-prompt', 'menu-item-unread', 'menu-item-trash']);
+  ).toEqual(['menu-item-mail', 'menu-item-prompt', 'menu-item-trash']);
   await expect(menu.getByTestId('menu-item-mail')).toContainText('Alert-Mail öffnen');
   await expect(menu.getByTestId('menu-item-prompt')).toContainText('KI-Prompt kopieren');
-  await expect(menu.getByTestId('menu-item-unread')).toContainText('Als ungelesen markieren');
-  await expect(menu.getByTestId('menu-item-unread').locator('.keys')).toHaveText('U');
   await expect(menu.getByTestId('menu-item-trash')).toContainText('In den Papierkorb');
   await expect(menu.getByTestId('menu-item-trash').locator('.keys')).toHaveText('Entf');
   await menu.getByTestId('menu-item-mail').click();
@@ -169,11 +163,6 @@ test('the actions: the ad strongest, Favorit and Archivieren labelled, the rest 
   await expect(menu.getByTestId('menu-item-mail')).toHaveClass(/active/);
   await page.keyboard.press('Escape');
   await expect(actions.getByTestId('reader-more')).toBeFocused();
-  await actions.getByTestId('reader-more').click();
-  await page.getByTestId('menu-item-unread').click();
-  expect((await calls(page, 'mark_unread')).at(-1)?.[1]).toEqual({
-    keys: [{ portal: 'freelancermap', id: '2801' }],
-  });
   // In den Papierkorb: the job goes, the next one opens.
   await page.waitForTimeout(550);
   await actions.getByTestId('reader-more').click();

@@ -116,7 +116,6 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
 }) => {
   const title = 'SAP S/4HANA Finance Projektleitung';
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await page.getByTestId('job-list').getByTestId('job-row-freelance-900411').click();
   await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
   await animationsDone(page);
@@ -177,7 +176,6 @@ test('the demo fetches no full ads: Details holen is off with its reason, the Ü
   page,
 }) => {
   await open(page, `${WIN}&scenario=demo`);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const list = page.getByTestId('job-list');
   // Two jobs that both lack their full ad.
   await list.getByTestId('job-row-freelancermap-2805').click();

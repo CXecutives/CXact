@@ -201,7 +201,7 @@ test('forms-final: Einstellungen fetch nothing at start and list the keys', asyn
   await expect(page.getByTestId('settings-mailbox').getByTestId('full-mailbox')).toBeVisible();
   const keys = page.getByTestId('settings-keys');
   await expect(keys.getByRole('heading', { level: 2 })).toHaveText('Tastenkürzel');
-  await expect(keys.locator('dd')).toHaveCount(13);
+  await expect(keys.locator('dd')).toHaveCount(11);
   await expect(keys.locator('dd').first()).toHaveText('Strg+1');
   await expect(keys.locator('dd').last()).toHaveText('F5');
   // The row buttons are 28 px, none of the page is 36.

@@ -5,7 +5,8 @@ import { expect, open, test } from './fixtures';
 
 test('every reason mark says its state in words under the pointer', async ({ page }) => {
   await open(page, '?platform=windows');
-  await page.locator('[data-testid^="job-row-"]').first().click();
+  // The best job (the first row by match is a job still without a score, without reasons).
+  await page.getByTestId('job-row-freelancermap-2801').click();
   const marks = page.getByTestId('stage').locator('.reason .icon[aria-label]');
   await expect(marks.first()).toBeVisible();
   const count = Math.min(await marks.count(), 4);

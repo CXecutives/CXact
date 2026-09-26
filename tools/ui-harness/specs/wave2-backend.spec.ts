@@ -16,7 +16,6 @@ async function later(page: Page, days: number): Promise<void> {
 
 test('undoing Wiederherstellen keeps the trash date and its days', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const key = 'freelancermap-2802';
   await row(page, key).hover();
   await page.getByTestId(`trash-${key}`).click();
@@ -63,7 +62,6 @@ async function tool(page: Page, id: string, key: string): Promise<void> {
 
 test('Wiederherstellen puts a job thrown away from the Archiv back there', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const key = 'linkedin-4100200301';
   await tool(page, 'archive', key);
   await page.getByTestId('place-archive').click();
@@ -84,7 +82,6 @@ test('Wiederherstellen puts a job thrown away from the Archiv back there', async
   await page.getByTestId('place-archive').click();
   await expect(row(page, key)).toHaveCount(1);
   await page.getByTestId('place-inbox').click();
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(
     page
       .getByTestId('job-list')

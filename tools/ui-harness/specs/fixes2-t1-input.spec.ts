@@ -53,7 +53,7 @@ test('the right and the middle button never press a control', async ({ page }) =
     page.getByTestId('fetch'),
     page.locator('[data-testid^="job-row-"]').first(),
     page.getByTestId('nav-settings'),
-    page.getByTestId('facet').getByRole('radio').nth(1),
+    page.getByTestId('place-archive'),
   ];
   for (const [at, target] of targets.entries()) {
     // A row answers the right button with its menu (checked in menu specs), not a press.
@@ -62,6 +62,9 @@ test('the right and the middle button never press a control', async ({ page }) =
       expect(held, `${button} held on ${String(target)}`).toBe(hover);
       expect(after).toBe(hover);
     }
+    // A middle press in the list, which scrolls, starts the OS autoscroll: a click on the
+    // empty reader ends it (and presses nothing).
+    if (at === 1) await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
   }
   expect(await calls(page, 'start_run')).toHaveLength(0);
   await expect(page.getByTestId('reader')).toHaveCount(0);
@@ -169,8 +172,10 @@ test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
 });
 
 test('a radio group is one Tab stop and the arrows choose', async ({ page }) => {
-  await open(page, WIN);
-  const radios = page.getByTestId('facet').getByRole('radio');
+  await open(page, '?gallery&platform=windows');
+  const group = page.getByTestId('segmented-facet');
+  await group.scrollIntoViewIfNeeded();
+  const radios = group.getByRole('radio');
   const count = await radios.count();
   expect(count).toBeGreaterThan(1);
   const stops = await radios.evaluateAll((nodes) =>
@@ -181,11 +186,11 @@ test('a radio group is one Tab stop and the arrows choose', async ({ page }) => 
   const first = await checked.textContent();
   await checked.focus();
   await page.keyboard.press('ArrowRight');
-  const now = page.getByTestId('facet').locator('[aria-checked="true"]');
+  const now = group.locator('[aria-checked="true"]');
   await expect(now).not.toHaveText(first!);
   await expect(now).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.getByTestId('facet').locator('[aria-checked="true"]')).toHaveText(first!);
+  await expect(group.locator('[aria-checked="true"]')).toHaveText(first!);
   // Left from the first option wraps to the last.
   await radios.first().click();
   await radios.first().focus();

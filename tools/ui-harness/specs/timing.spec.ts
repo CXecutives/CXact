@@ -50,10 +50,9 @@ test('2000 jobs render in windows without long tasks', async ({ page, browserNam
   await asReferenceMachine(page);
   await idle();
   const since = await page.evaluate(() => new Event('start').timeStamp);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('facet').getByRole('radio', { name: /Alle/ })).toContainText(
-    '2.000',
-  );
+  await expect(
+    page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first(),
+  ).toBeVisible();
   const count = await page.locator('[data-testid^="job-row-"]').count();
   expect(count).toBeLessThanOrEqual(70);
   for (let i = 0; i < 4; i += 1) {

@@ -29,13 +29,9 @@ const stage = (page: Page) => page.getByTestId('stage');
 const term = (page: Page, key: string) =>
   stage(page).getByTestId('criteria').getByTestId(`term-${key}`);
 
-/** Opens a job from "Alle" (an excluded one from its folded section at the end). */
+/** Opens a job of the inbox (an excluded one from its folded section at the end). */
 async function show(page: Page, key: string, query = WIN): Promise<void> {
   await open(page, query);
-  await page
-    .getByTestId('facet')
-    .getByRole('radio', { name: /Alle|All/ })
-    .click();
   const target = row(page, key);
   if ((await target.count()) === 0) await page.getByTestId('excluded-divider').click();
   await target.click();
@@ -299,7 +295,6 @@ test('a job excluded by an exclusion word says the word and shows it in the ad',
 // the facts table and show only the ad's side.
 test.fixme('a list row shows the workload after the duration, short', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(row(page, 'freelance-900413').getByTestId('row-facts')).toHaveText('2 Tage/Woche');
   await expect(row(page, 'freelancermap-2804').getByTestId('row-facts')).toHaveText(
     /^12 Monate.*3 Tage\/Woche$/,

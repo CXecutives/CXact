@@ -14,7 +14,6 @@ test.beforeEach(async ({ page }) => {
 test('right click, middle click and drag: what the page lets through', async ({ page }) => {
   // A list long enough to scroll: the middle button may start the autoscroll there.
   await page.setViewportSize({ width: 1360, height: 560 });
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const result = await page.evaluate(() => {
     const field = document.body.appendChild(document.createElement('input'));
     const view = document.querySelector('[data-testid="view-jobs"]')!;
@@ -655,7 +654,8 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   page,
   browserName,
 }) => {
-  await page.locator('[data-testid^="job-row-"]').first().click();
+  // A job with its full ad (by match the first row is one still without a score or ad).
+  await page.getByTestId('job-row-freelancermap-2801').click();
   const text = page.getByTestId('ad-text');
   await expect(text).toBeVisible();
   // A drag across the ad text selects it, like in a document (in view, below the reader's
@@ -709,6 +709,6 @@ test('the ad text, title and facts select and copy; the rest does not select', a
 test('native cursor: the arrow on controls, the text cursor on copyable text', async ({ page }) => {
   await expect(page.getByTestId('fetch')).toHaveCSS('cursor', 'default');
   await expect(page.getByTestId('nav-profile')).toHaveCSS('cursor', 'default');
-  await page.locator('[data-testid^="job-row-"]').first().click();
+  await page.getByTestId('job-row-freelancermap-2801').click();
   await expect(page.getByTestId('ad-text')).toHaveCSS('cursor', 'text');
 });

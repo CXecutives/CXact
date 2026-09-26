@@ -19,22 +19,21 @@
 //   next load puts it. The list re-sorts once, when the run finishes, and keeps the
 //   selection.
 // - `mark_read` when the user opens a job (a click, the keyboard); a job the app opens by
-//   itself (the next one after a move) only once it has been looked at (`markSeen`).
-// - Like Mail, Neu keeps the jobs read in this visit and the open one until the list is
-//   entered again (another tab, back from another view); the last inbox tab is kept.
+//   itself (the next one after a move) only once it has been looked at (`markSeen`). An
+//   unread job keeps its dot until then; the list itself never changes for it.
 // - Like mail: every job is in one place (inbox, archive, trash); the favourite (the star)
 //   is a flag of its own, and "fits anyway" another. A move takes the row out of a list it
 //   no longer belongs to; deleting for good (only from the trash) removes it.
-// - "Neu" is the unread jobs of the inbox; "Favoriten" the starred jobs of inbox and archive.
-// - The inbox has a filter beside the search (the funnel: one portal, a lowest band, the jobs
-//   marked "Beworben"; kept like the order). Like the search it narrows the list and all its
-//   counts; the archive and the trash ignore it. The overview's counts never follow it.
+// - Each place is one list in the chosen order, the excluded jobs last. The inbox has a
+//   filter beside the search (the funnel, lib/state/filter.ts: the favourites, one portal, a
+//   lowest band; kept like the order). The portal and the band narrow the list and its counts
+//   like the search, the favourites only the list; the archive and the trash ignore it. The
+//   overview's counts never follow it.
 
 import { SvelteSet } from 'svelte/reactivity';
 import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
 import type {
-  Band,
   Deleted,
   JobCounts,
   JobDetail,
@@ -43,11 +42,19 @@ import type {
   JobSort,
   JobView,
   Place,
-  Portal,
   RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
 import { app } from './app.svelte';
+import {
+  inListFilter,
+  isFiltered,
+  NO_FILTER,
+  parseFilter,
+  passesFilter,
+  type ListChoice,
+  type ListFilter,
+} from './filter';
 import { run } from './run.svelte';
 
 export const PAGE = 120;
@@ -62,8 +69,6 @@ const HIGH = 80;
 const COUNTS_EVERY = 400;
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
-/** What the list shows: the unread or all jobs of the inbox, the favourites, a place. */
-export type JobFacet = 'new' | 'all' | 'favourites' | 'archived' | 'trash';
 
 const ZERO: JobCounts = {
   inbox: 0,
@@ -79,11 +84,6 @@ const ZERO: JobCounts = {
   newByPortal: [],
 };
 
-/** The place a facet lists. */
-export function placeOf(facet: JobFacet): Place {
-  return facet === 'archived' ? 'archive' : facet === 'trash' ? 'trash' : 'inbox';
-}
-
 export function keyOf(key: JobKey): string {
   return `${key.portal}:${key.id}`;
 }
@@ -94,63 +94,17 @@ export function sameKey(a: JobKey | null, b: JobKey | null): boolean {
 
 export const isExcluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
-/** The lowest band the filter asks for: `mid` lists the mid and the high band. */
-export type FilterBand = Exclude<Band, 'low'>;
-
-/** The funnel's filter of the inbox (store::ListFilter). */
-export interface ListFilter {
-  /** Only this portal's jobs; null = every portal. */
-  portal: Portal | null;
-  /** Only jobs scored in this band or better; null = every job (unscored, excluded too). */
-  minBand: FilterBand | null;
-  /** Only the jobs marked "Beworben". */
-  applied: boolean;
+/** Does a job belong to the list of a place with its filter (the backend's rule,
+ *  store::job_page)? */
+export function inList(job: JobView, place: Place, filter: ListFilter): boolean {
+  return job.place === place && (place !== 'inbox' || inListFilter(job, filter));
 }
 
-export const NO_FILTER: ListFilter = { portal: null, minBand: null, applied: false };
-
-/** Does a job pass the filter (the backend's rule, store::filter_condition)? */
-export function inListFilter(job: JobView, filter: ListFilter): boolean {
-  if (filter.applied && job.appliedAt === null) return false;
-  if (filter.portal !== null && job.key.portal !== filter.portal) return false;
-  if (filter.minBand === null) return true;
-  const match = job.match;
-  if (match === null || match.status !== 'scored') return false;
-  return filter.minBand === 'high' ? match.band === 'high' : match.band !== 'low';
-}
-
-/** Some filter is on. */
-export function isFiltered(filter: ListFilter): boolean {
-  return filter.portal !== null || filter.minBand !== null || filter.applied;
-}
-
-/**
- * The sections of the list, in the order they stand: by match the jobs still waiting for
- * their score on top ("Noch ohne Passung"), under Neu the jobs first seen in the last fetch
- * before the older unread ones ("Seit dem letzten Abruf"), the excluded ones last.
- */
-export type RowGroup = 'pending' | 'fresh' | 'rest' | 'excluded';
-const GROUP_RANK: Record<RowGroup, number> = { pending: 0, fresh: 1, rest: 2, excluded: 3 };
-
-/** Does a job belong to the list of a facet (the backend's rule, store::job_page)? */
-export function inFacet(job: JobView, facet: JobFacet): boolean {
-  switch (facet) {
-    case 'new':
-      return job.place === 'inbox' && job.unread;
-    case 'all':
-      return job.place === 'inbox';
-    case 'favourites':
-      return job.pinned && job.place === 'inbox';
-    case 'archived':
-      return job.place === 'archive';
-    case 'trash':
-      return job.place === 'trash';
-  }
-}
 /**
  * What one job adds to the counts (the backend's definitions, store::job_page): the inbox
- * counts only inbox jobs, a favourite counts until it goes to the trash; a job the filter of
- * the counts leaves out adds nothing (a change can take a job out of it or bring it in).
+ * counts only inbox jobs, a favourite only while it is in the inbox; a job the filter of the
+ * counts leaves out adds nothing (a change can take a job out of it or bring it in). The
+ * favourites of the filter narrow only the list, not its counts.
  */
 function add(
   counts: JobCounts,
@@ -158,7 +112,7 @@ function add(
   sign: 1 | -1,
   filter: ListFilter = NO_FILTER,
 ): JobCounts {
-  if (job === null || !inListFilter(job, filter)) return counts;
+  if (job === null || !passesFilter(job, filter)) return counts;
   const shown = job.place === 'inbox' ? sign : 0;
   const out = isExcluded(job);
   const isNew = job.unread && !out ? shown : 0;
@@ -166,7 +120,7 @@ function add(
   return {
     inbox: counts.inbox + shown,
     unread: counts.unread + isNew,
-    favourites: counts.favourites + (job.pinned && job.place !== 'trash' ? sign : 0),
+    favourites: counts.favourites + (job.pinned && job.place === 'inbox' ? sign : 0),
     archive: counts.archive + (job.place === 'archive' ? sign : 0),
     trash: counts.trash + (job.place === 'trash' ? sign : 0),
     excluded: counts.excluded + (out ? shown : 0),
@@ -262,14 +216,7 @@ const FILTER_KEY = 'jobs-filter';
  *  portal is checked against the app's portals where it applies (`filter`). */
 function keptFilter(): ListFilter {
   try {
-    const kept = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as unknown;
-    if (typeof kept !== 'object' || kept === null) return NO_FILTER;
-    const { portal, minBand, applied } = kept as Record<string, unknown>;
-    return {
-      portal: typeof portal === 'string' ? (portal as Portal) : null,
-      minBand: minBand === 'mid' || minBand === 'high' ? minBand : null,
-      applied: applied === true,
-    };
+    return parseFilter(JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as unknown);
   } catch {
     return NO_FILTER;
   }
@@ -286,32 +233,33 @@ function keepFilter(filter: ListFilter): void {
 }
 
 class JobsStore {
-  facet = $state<JobFacet>('new');
+  /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
+  place = $state<Place>('inbox');
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter of the inbox as chosen (kept); `filter` is what applies. */
   filterChoice = $state.raw<ListFilter>(keptFilter());
 
   rows = $state.raw<JobView[]>([]);
-  /** The counts of the list: with the search, whatever the facet. */
+  /** The counts of the list: with the search and the filter, whatever the place. */
   counts = $state<JobCounts>(ZERO);
+  /** The counts of the search without the inbox's filter (the other places' hits, "Im
+   *  Archiv (2)"); null: the same as `counts` (no search, or no filter that narrows them). */
+  hitCounts = $state<JobCounts | null>(null);
   /** Rows the backend has for the current query: its count, or exactly how many once a page
    *  came back short. */
   total = $state(0);
   /**
    * How far the page has read the backend's list of this query: the offset of the next page.
-   * It counts the rows the backend served, less those that left the query since (read under
-   * Neu, unstarred under Favoriten, moved, deleted) and plus those that came back: such rows
-   * keep their place in the list for a while, so the number of rows is no offset. Rows the
-   * page put in itself (a run's new jobs, the open job kept under Neu) do not count: where
-   * they stand in the backend's order is unknown, and at worst the next page repeats a row
-   * (it is dropped), it never skips one.
+   * It counts the rows the backend served, less those that left the query since (moved,
+   * deleted) and plus those that came back: such rows keep their place in the list for a
+   * while, so the number of rows is no offset. Rows the page put in itself (a run's new
+   * jobs) do not count: where they stand in the backend's order is unknown, and at worst the
+   * next page repeats a row (it is dropped), it never skips one.
    */
   #served = $state(0);
   /** Keys of the rows the page put in itself (see #served). */
   #own = new Set<string>();
-  /** Jobs opened and so read in this visit of Neu: a reload keeps them (see withRead). */
-  #readHere = new Set<string>();
   status = $state<Status>('idle');
   /** The list has taken --delay-placeholder to load: its placeholder rows show (at once). */
   slow = $state(false);
@@ -320,8 +268,8 @@ class JobsStore {
   pageError = $state<string | null>(null);
   /**
    * A job action of the list that failed (a move of a row or of the chosen jobs, its undo,
-   * the star, "all read" and its undo): one sentence in the list header until the next
-   * action succeeds or another list comes (place, tab, search, order).
+   * the star): one sentence in the list header until the next action succeeds or another
+   * list comes (place, search, order, filter).
    */
   actionError = $state<string | null>(null);
   /** Jobs were deleted for good, but a result file could not follow (the Excel file is open
@@ -372,30 +320,41 @@ class JobsStore {
   /**
    * The filter actually used: only in the inbox (the archive and the trash ignore it),
    * without a profile no band (there is no match to filter by), and only a portal the app
-   * knows. Sent with every query of the list and with "all read".
+   * knows. Sent with every query of the list.
    */
   get filter(): ListFilter {
-    if (placeOf(this.facet) !== 'inbox') return NO_FILTER;
+    if (this.place !== 'inbox') return NO_FILTER;
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
     return {
+      favourites: chosen.favourites,
       portal:
         chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
           ? chosen.portal
           : null,
       minBand: app.hasProfile ? chosen.minBand : null,
-      applied: chosen.applied,
     };
   }
 
-  /** A filter narrows the list (the funnel's dot, "Ergebnisse gelesen"). */
+  /** A filter narrows the list (the funnel's dot, the line under the toolbar). */
   get filtered(): boolean {
     return isFiltered(this.filter);
   }
 
-  /** A job belongs to the list: its facet and the filter (the backend's rule). */
+  /** The order and the filter as the funnel's menu shows them. */
+  get choice(): ListChoice {
+    return { sort: this.sort, filter: this.filter };
+  }
+
+  /** The funnel's menu picked an entry: another order or another filter. */
+  choose(next: ListChoice): void {
+    if (next.sort !== this.sort) this.setSort(next.sort);
+    else this.setFilter(next.filter);
+  }
+
+  /** A job belongs to the list: its place and the filter (the backend's rule). */
   #inList(job: JobView): boolean {
-    return inFacet(job, this.facet) && inListFilter(job, this.filter);
+    return inList(job, this.place, this.filter);
   }
 
   /**
@@ -406,11 +365,7 @@ class JobsStore {
   setFilter(change: Partial<ListFilter>): void {
     const next = { ...this.filterChoice, ...change };
     const now = this.filterChoice;
-    if (
-      next.portal === now.portal &&
-      next.minBand === now.minBand &&
-      next.applied === now.applied
-    ) {
+    if ((Object.keys(next) as (keyof ListFilter)[]).every((key) => next[key] === now[key])) {
       return;
     }
     this.filterChoice = next;
@@ -432,37 +387,16 @@ class JobsStore {
     return app.hasProfile && (run.active || (app.state?.matchPending ?? 0) > 0);
   }
 
-  /** When the last fetch began (its new jobs were first seen since), or null. */
-  readonly #fetchedSince = $derived.by((): number | null => {
-    const last = run.summary ?? app.state?.lastRun ?? null;
-    const at = last === null ? Number.NaN : Date.parse(last.startedAt);
-    return Number.isFinite(at) ? at : null;
-  });
-
-  /** The section of the list a row stands in (RowGroup). */
-  groupOf(job: JobView): RowGroup {
-    if (isExcluded(job)) return 'excluded';
-    if (this.sort === 'match' && job.match === null && this.scoring) return 'pending';
-    const since = this.#fetchedSince;
-    if (this.facet === 'new' && since !== null && Date.parse(job.firstSeenAt) >= since) {
-      return 'fresh';
-    }
-    return 'rest';
-  }
-
   /**
-   * Rows of the list in the order it draws them, section by section (RowGroup): the excluded
-   * ones last (behind their divider), also a row whose exclusion changed in place (an
-   * override, a run scoring a new job). The keys, the selection and the next job after a move
-   * all count in this order.
+   * Rows of the list in the order it draws them: the excluded ones last (behind their fold),
+   * also a row whose exclusion changed in place (an override, a run scoring a new job). The
+   * keys, the selection and the next job after a move all count in this order.
    */
   readonly visible = $derived.by((): JobView[] => {
-    const rank = this.rows.map((job) => GROUP_RANK[this.groupOf(job)]);
-    if (rank.every((value, index) => index === 0 || value >= rank[index - 1]!)) return this.rows;
-    return this.rows
-      .map((job, index) => ({ job, rank: rank[index]!, index }))
-      .sort((a, b) => a.rank - b.rank || a.index - b.index)
-      .map((entry) => entry.job);
+    const rows = this.rows;
+    const first = rows.findIndex(isExcluded);
+    if (first < 0 || rows.slice(first).every(isExcluded)) return rows;
+    return [...rows.filter((job) => !isExcluded(job)), ...rows.filter(isExcluded)];
   });
 
   readonly shown = $derived(this.visible.slice(0, this.rendered));
@@ -476,11 +410,6 @@ class JobsStore {
     this.rendered >= Math.min(this.window, this.visible.length) &&
       (this.window < this.visible.length || this.#served < this.total),
   );
-
-  /** The favourites (the star) of inbox and archive. */
-  get pinned(): number {
-    return this.overviewCounts?.favourites ?? 0;
-  }
 
   /** Mount the window in chunks, one per frame: no frame builds 60 rows at once. */
   private pump(): void {
@@ -501,8 +430,7 @@ class JobsStore {
     run.listen((event) => this.onRun(event));
   }
 
-  /** First load after the app state: open "Alle" when nothing is new (and keep it as the
-   *  inbox tab, so Jobs in the sidebar comes back to it). */
+  /** First load after the app state. */
   async start(): Promise<void> {
     const counts = app.state?.counts;
     // The app state knows the counts already: no zeros while the first page loads.
@@ -510,35 +438,27 @@ class JobsStore {
       this.counts = counts;
       this.overviewCounts = counts;
     }
-    if (counts && counts.unread === 0 && counts.inbox > 0) {
-      this.facet = 'all';
-      this.inboxFacet = 'all';
-    }
     await Promise.all([this.load(), this.loadOverview()]);
   }
 
-  /** The last tab of the inbox (Neu, Alle, Favoriten): Jobs in the sidebar goes back to it. */
-  inboxFacet = $state<JobFacet>('new');
-
-  /** Another place or tab. `dropSearch`: a place chosen in the sidebar opens without the
-   *  search, like a folder of a mail app (the "Auch im …" links keep it). */
-  setFacet(facet: JobFacet, dropSearch = false): void {
+  /** Another place. `dropSearch`: a place chosen in the tabs opens without the search, like
+   *  a folder of a mail app (the "Im Archiv (n)" links keep it). */
+  setPlace(place: Place, dropSearch = false): void {
     // Another place: an open job of the one left behind closes, like a mail of another
-    // folder (here, not in the list: the place also changes from Profil or Einstellungen).
+    // folder (here, not in the list: the place also changes from the Übersicht).
     const selected = this.selected;
     const open =
       this.detail?.job ??
       (selected ? this.rows.find((row) => sameKey(row.key, selected)) : undefined) ??
       null;
-    if (open !== null && placeOf(facet) !== open.place && !inFacet(open, facet)) {
-      this.clearSelection();
-    }
-    if (dropSearch && this.search !== '') {
+    if (open !== null && open.place !== place) this.clearSelection();
+    const searched = dropSearch && this.search !== '';
+    if (searched) {
       if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
       this.search = '';
     }
-    this.facet = facet;
-    if (facet === 'new' || facet === 'all' || facet === 'favourites') this.inboxFacet = facet;
+    if (place === this.place && !searched) return;
+    this.place = place;
     this.quiet();
     void this.load();
   }
@@ -571,9 +491,8 @@ class JobsStore {
    * Load the first page.
    * `keep` = the same rows in a new order (sort, end of a run): the mounted rows stay and move,
    * and as many rows come back as the list holds (a list scrolled far down stays as long).
-   * `keepRead`: Neu keeps the jobs read in this visit (not when the list is entered again).
    */
-  async load(keep = false, keepRead = keep): Promise<void> {
+  async load(keep = false): Promise<void> {
     const request = ++this.#request;
     this.status = 'loading';
     this.error = null;
@@ -588,10 +507,10 @@ class JobsStore {
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
       this.#own.clear();
-      if (!keepRead) this.#readHere.clear();
       this.#served = page.jobs.length;
-      this.rows = this.withRead(keep ? reused(this.rows, page.jobs) : page.jobs, keepRead);
+      this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;
       this.counts = page.counts;
+      void this.loadHits(request);
       this.total = page.jobs.length < limit ? page.jobs.length : this.countOf(page.counts);
       this.window = keep ? Math.max(WINDOW, this.window) : WINDOW;
       this.rendered = mounted ? this.kept(mounted, Math.min(this.rendered, this.window)) : CHUNK;
@@ -607,58 +526,6 @@ class JobsStore {
       clearTimeout(timer);
       if (request === this.#request) this.slow = false;
     }
-  }
-
-  /**
-   * Neu keeps the open job listed after it was read, until another job is opened (like
-   * Mail), and a reload of the same list (the end of a run, a sort) keeps every job read in
-   * this visit: a reload never pulls a job away from under the reader. A kept row stands
-   * where the list's order puts it among the rows that came.
-   */
-  private withRead(rows: JobView[], keep: boolean): JobView[] {
-    if (this.facet !== 'new' || this.search.trim() !== '') return rows;
-    const open = this.detail?.job ?? null;
-    const isOpen = (job: JobView): boolean =>
-      open !== null && sameKey(job.key, open.key) && sameKey(open.key, this.selected);
-    const listed = new Set(rows.map((job) => keyOf(job.key)));
-    const kept = this.rows
-      .filter(
-        (job) =>
-          !listed.has(keyOf(job.key)) &&
-          ((keep && !job.unread && this.#readHere.has(keyOf(job.key))) || isOpen(job)),
-      )
-      .map((job) => (isOpen(job) && open !== null ? open : job))
-      .filter((job) => job.place === 'inbox' && inListFilter(job, this.filter));
-    if (
-      open !== null &&
-      isOpen(open) &&
-      open.place === 'inbox' &&
-      inListFilter(open, this.filter) &&
-      !listed.has(keyOf(open.key))
-    ) {
-      if (!kept.some((job) => sameKey(job.key, open.key))) kept.push(open);
-    }
-    if (kept.length === 0) return rows;
-    const out = [...rows];
-    for (const job of kept) {
-      const index = out.findIndex((row) => this.#ahead(job, row));
-      out.splice(index < 0 ? out.length : index, 0, job);
-      this.#own.add(keyOf(job.key));
-    }
-    return out;
-  }
-
-  /** `job` stands before `row` in the list's order (the backend's, store::job_page). */
-  #ahead(job: JobView, row: JobView): boolean {
-    const out = Number(isExcluded(job)) - Number(isExcluded(row));
-    if (out !== 0) return out < 0;
-    if (this.sort === 'match') {
-      const none = Number(job.match === null) - Number(row.match === null);
-      if (none !== 0) return none < 0;
-      const score = (job.match?.score ?? 0) - (row.match?.score ?? 0);
-      if (score !== 0) return score > 0;
-    }
-    return (job.mailDate ?? job.firstSeenAt) > (row.mailDate ?? row.firstSeenAt);
   }
 
   /**
@@ -678,33 +545,44 @@ class JobsStore {
     return end;
   }
 
-  /** Rows the query has: under Neu the unread excluded jobs come on top of the count. */
+  /** Rows the query has (the favourites of the filter are counted on their own). */
   private countOf(counts: JobCounts): number {
-    switch (this.facet) {
-      case 'new':
-        return Number.MAX_SAFE_INTEGER;
-      case 'all':
-        return counts.inbox;
-      case 'favourites':
-        return counts.favourites;
-      case 'archived':
-        return counts.archive;
-      case 'trash':
-        return counts.trash;
-    }
+    if (this.place === 'inbox' && this.filter.favourites) return counts.favourites;
+    return counts[this.place];
   }
 
-  private query(offset: number, limit = PAGE): JobQuery {
+  private query(offset: number, limit = PAGE, filter = this.filter): JobQuery {
     return {
-      place: placeOf(this.facet),
-      unread: this.facet === 'new',
-      favourites: this.facet === 'favourites',
+      place: this.place,
+      unread: false,
+      favourites: filter.favourites,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
-      ...this.filter,
+      portal: filter.portal,
+      minBand: filter.minBand,
+      applied: false,
       limit,
       offset,
     };
+  }
+
+  /**
+   * The search's counts without the filter (the other places' hits): only a search in the
+   * filtered inbox needs them, a counts-only query. Else the list's counts say it.
+   */
+  private async loadHits(request: number): Promise<void> {
+    const filter = this.filter;
+    if (this.search.trim() === '' || (filter.portal === null && filter.minBand === null)) {
+      this.hitCounts = null;
+      return;
+    }
+    try {
+      const page = await invoke('list_jobs', { query: this.query(0, 0, NO_FILTER) });
+      if (request === this.#request) this.hitCounts = page.counts;
+    } catch {
+      // The links then count with the filter, as the list does.
+      if (request === this.#request) this.hitCounts = null;
+    }
   }
 
   /** The next page of the backend's list (see #served): its rows the list does not hold yet. */
@@ -855,7 +733,6 @@ class JobsStore {
 
   private async markRead(key: JobKey): Promise<void> {
     this.patch(key, { unread: false });
-    if (this.facet === 'new') this.#readHere.add(keyOf(key));
     try {
       await invoke('mark_read', { key });
     } catch {
@@ -906,39 +783,6 @@ class JobsStore {
     const row = this.rows.find((job) => sameKey(job.key, key));
     if (row) return row;
     return this.detail && sameKey(this.detail.job.key, key) ? this.detail.job : null;
-  }
-
-  /**
-   * "All read": every unread job of the current place; with a search only its hits, with a
-   * filter only its jobs (what the list shows). Resolves with the keys for the undo
-   * (`markUnread`), or the error text.
-   */
-  async markAllRead(): Promise<{ keys: JobKey[] } | { error: string }> {
-    const search = this.search.trim() === '' ? null : this.search.trim();
-    try {
-      const keys = await invoke('mark_all_read', {
-        place: placeOf(this.facet),
-        search,
-        ...this.filter,
-      });
-      this.patchAll(keys, { unread: false });
-      void this.refreshCounts();
-      return { keys };
-    } catch (error) {
-      return { error: errorText(error) };
-    }
-  }
-
-  /** The undo of "all read". Resolves with the error text, or null. */
-  async markUnread(keys: JobKey[]): Promise<string | null> {
-    try {
-      await invoke('mark_unread', { keys });
-      this.patchAll(keys, { unread: true });
-      void this.refreshCounts();
-      return null;
-    } catch (error) {
-      return errorText(error);
-    }
   }
 
   /**
@@ -1035,9 +879,9 @@ class JobsStore {
   /**
    * Takes moves back (the undo of a toast): every job goes back to the place it came from as
    * it was there (the trash keeps its date). A row the list lost comes back where it stood
-   * when the list is still the one it left (Neu keeps a read job, like before the move); in
-   * another list the list loads again when the job belongs there. Resolves with the keys that
-   * went back (a job already there did not), or the error text.
+   * when the list is still the one it left; in another list the list loads again when the
+   * job belongs there. Resolves with the keys that went back (a job already there did not),
+   * or the error text.
    */
   async moveBack(
     back: readonly Unmove[],
@@ -1133,6 +977,7 @@ class JobsStore {
     // A listed row belongs to the list's counts; every job belongs to the overall ones.
     if (row !== null) {
       this.counts = moved(this.counts, row, after, this.filter);
+      if (this.hitCounts !== null) this.hitCounts = moved(this.hitCounts, row, after);
       this.recount(row, after);
       this.rows = replaced(this.rows, key, () => after);
     } else {
@@ -1146,37 +991,6 @@ class JobsStore {
     }
   }
 
-  /**
-   * `patch` for many jobs at once ("all read" and its undo): one pass over the rows and one
-   * copy of them, the list's counts moved per listed row. The caller asks the backend for the
-   * counts afterwards (it knows the jobs the page does not hold).
-   */
-  private patchAll(keys: readonly JobKey[], change: Partial<JobView>): void {
-    const wanted = new Set(keys.map(keyOf));
-    let counts = this.counts;
-    let overall = this.overviewCounts;
-    let changed = false;
-    const filter = this.filter;
-    const rows = this.rows.map((row) => {
-      if (!wanted.has(keyOf(row.key))) return row;
-      const after = { ...row, ...change };
-      counts = moved(counts, row, after, filter);
-      if (overall !== null) overall = moved(overall, row, after);
-      this.recount(row, after);
-      changed = true;
-      return after;
-    });
-    if (changed) {
-      this.rows = rows;
-      this.counts = counts;
-      this.overviewCounts = overall;
-    }
-    const shown = this.detail;
-    if (shown !== null && wanted.has(keyOf(shown.job.key))) {
-      this.detail = { ...shown, job: { ...shown.job, ...change } };
-    }
-  }
-
   private onRun(event: RunEvent): void {
     if (event.type === 'jobUpdated') this.upsert(event.job, event.fresh);
     else if (event.type === 'finished') void this.afterRun();
@@ -1187,9 +1001,8 @@ class JobsStore {
 
   /**
    * A job of the run changed. A listed row updates in place; a job new in this run comes
-   * in at the top (under Neu only while unread, never into a search). A known job the page
-   * does not list (further down, beyond the loaded page) stays out: it is no new row. The
-   * counts follow from the backend.
+   * in at the top (never into a search). A known job the page does not list (further down,
+   * beyond the loaded page) stays out: it is no new row. The counts follow from the backend.
    */
   private upsert(job: JobView, fresh: boolean): void {
     const index = this.rows.findIndex((row) => sameKey(row.key, job.key));
@@ -1206,7 +1019,7 @@ class JobsStore {
       this.search.trim() === '' &&
       this.#inList(job)
     ) {
-      // Under Neu an unread excluded job also shows (grey, behind the divider), uncounted.
+      // An excluded job goes behind the fold, the others on top.
       const at = isExcluded(job) ? this.rows.findIndex(isExcluded) : 0;
       const rows = [...this.rows];
       rows.splice(at < 0 ? rows.length : at, 0, job);

@@ -43,7 +43,6 @@
     { id: 'archive', label: k.archive, keys: 'E' },
     { id: 'trash', label: k.trash, keys: keyLabel('del') },
     { id: 'star', label: k.star, keys: 'S' },
-    { id: 'unread', label: k.unread, keys: 'U' },
     { id: 'openAd', label: k.openAd, keys: 'O' },
     { id: 'close', label: k.closeJob, keys: keyLabel('esc') },
   ]);

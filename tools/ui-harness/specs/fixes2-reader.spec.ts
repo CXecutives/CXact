@@ -8,8 +8,6 @@ import { calls, expect, open, runFinished, test } from './fixtures';
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
-const facet = (page: Page, name: string) =>
-  page.getByTestId('facet').getByRole('radio', { name: new RegExp(name) });
 
 /** A clipboard that refuses every write (a WebView without the permission). */
 async function refusingClipboard(page: Page): Promise<void> {
@@ -23,7 +21,6 @@ async function refusingClipboard(page: Page): Promise<void> {
 test('one column: choosing several jobs keeps the list, its bar acts on them', async ({ page }) => {
   await page.setViewportSize({ width: 683, height: 700 });
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await rows(page)
     .nth(0)
     .click({ modifiers: ['Control'] });
@@ -46,7 +43,6 @@ test('one column: choosing several jobs keeps the list, its bar acts on them', a
 test('one column: the header stays on top while the list scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 780, height: 560 });
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await page
     .getByTestId('list-scroll')
     .evaluate((node) => node.parentElement?.scrollTo({ top: 400 }));
@@ -58,7 +54,6 @@ test('one column: the header stays on top while the list scrolls', async ({ page
 
 test('a search keeps the open job that is a hit beyond the loaded rows', async ({ page }) => {
   await open(page, `${WIN}&scenario=many`);
-  await facet(page, 'Alle').click();
   // The order is in the funnel's menu.
   await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-newest').click();
@@ -68,7 +63,15 @@ test('a search keeps the open job that is a hit beyond the loaded rows', async (
   await page.getByTestId('menu-item-match').click();
   await expect(page.getByTestId('menu')).toHaveCount(0);
   await page.getByTestId('search').fill('Finance Manager');
-  await expect(facet(page, 'Alle')).toContainText('500');
+  // The search's list has come (the open job is one of its hits beyond the loaded rows).
+  await expect
+    .poll(async () =>
+      (await calls(page, 'list_jobs')).some(
+        ([, args]) =>
+          (args as { query: { search: string | null } }).query.search === 'Finance Manager',
+      ),
+    )
+    .toBe(true);
   await page.waitForTimeout(400);
   await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
 });
@@ -77,7 +80,6 @@ for (const width of [900, 960, 1000, 1100]) {
   test(`the reader's action row stays one line at ${width} px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await open(page, WIN);
-    await facet(page, 'Alle').click();
     await rows(page).first().click();
     const top = async (id: string): Promise<number> =>
       (await page.getByTestId(id).boundingBox())?.y ?? -1;
@@ -87,7 +89,6 @@ for (const width of [900, 960, 1000, 1100]) {
 
 test('the date of a job names the day and the time of its alert mail', async ({ page }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await row(page, 'freelancermap-2801').click();
   await page.getByTestId('stage').getByTestId('reader-when').hover();
   await expect(page.getByRole('tooltip')).toHaveText(/^Alert-Mail vom 24\.09\.2026 um \d\d:\d\d$/);
@@ -97,7 +98,6 @@ test('a passage of a term says its row and verdict in one phrase under the point
   page,
 }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   // An ad that leaves the rate open.
   await row(page, 'freelancermap-2802').click();
   const tip = async (words: string): Promise<string> => {
@@ -116,7 +116,6 @@ test('a passage of a term says its row and verdict in one phrase under the point
 
 test('the facts copy as one line with their dots', async ({ page }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await row(page, 'freelancermap-2801').click();
   const copied = await page.locator('.head .facts').evaluate((line) => {
     const selection = window.getSelection();
@@ -135,7 +134,6 @@ test.fixme('a clipboard that refuses says so in its own words, everywhere', asyn
   await expect(page.getByTestId('day-overview')).toContainText(
     'Der Prompt ließ sich nicht kopieren.',
   );
-  await facet(page, 'Alle').click();
   await rows(page).first().click();
   await page.getByTestId('prompt').click();
   await expect(page.getByTestId('reader')).toContainText('Der Prompt ließ sich nicht kopieren.');
@@ -143,18 +141,8 @@ test.fixme('a clipboard that refuses says so in its own words, everywhere', asyn
 });
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
-test.fixme('the comparison prompt stays while no new match is left', async ({ page }) => {
-  await open(page, WIN);
-  await expect(page.getByTestId('best').getByTestId('prompt-top')).toBeVisible();
-  await page.getByTestId('mark-all-read').click();
-  await expect(page.getByTestId('best')).toHaveCount(0);
-  await expect(page.getByTestId('compare').getByTestId('prompt-top')).toBeVisible();
-});
-
-// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
 test.fixme('the best rows of the overview have the tools of the list', async ({ page }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   const best = page.getByTestId('best');
   await best.locator('[data-testid^="best-"]').first().hover();
   await expect(best.getByRole('button', { name: 'Archivieren' }).first()).toBeVisible();
@@ -163,7 +151,6 @@ test.fixme('the best rows of the overview have the tools of the list', async ({ 
 
 test('closing a job from the reader hands the focus to its row', async ({ page }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await row(page, 'freelancermap-2801').click();
   await page.getByTestId('reader-close').focus();
   await page.keyboard.press('Enter');
@@ -180,7 +167,6 @@ test('archiving from the reader keeps the focus on Archivieren of the next job',
   page,
 }) => {
   await open(page, WIN);
-  await facet(page, 'Alle').click();
   await rows(page).first().click();
   const first = await page.getByTestId('reader-title').textContent();
   await page.getByTestId('reader-archive').focus();

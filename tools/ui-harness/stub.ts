@@ -14,6 +14,7 @@
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
+//   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
 //
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
@@ -92,6 +93,9 @@ interface Harness {
   holdAfter: number | null;
   /** A copy of a job as the stub holds it (null if unknown). */
   job: (key: JobKey) => JobView | null;
+  /** What `list_jobs` returns for a query (the inbox by match unless it says otherwise),
+   *  without recording a call: the specs read the demo data here instead of copying it. */
+  list: (query: Partial<JobQuery>) => { jobs: JobView[]; counts: JobCounts };
   /** The text `clipboard_text` returns (null: the browser's clipboard, if it allows it). */
   clipboard: string | null;
   /** The page holds unsaved changes (its last `set_unsaved`). */
@@ -352,8 +356,7 @@ function job(
 }
 
 /** When the last fetch (`lastRun`, 1.2 to 1 hours ago) first saw its new jobs: the three
- *  best unread jobs came with it, the other unread ones are older (the two sections of the
- *  list's Neu). */
+ *  best unread jobs came with it, the other unread ones are older. */
 const LAST_FETCH_SAW = at(1.1);
 
 function sampleJobs(): JobView[] {
@@ -476,8 +479,6 @@ function sampleJobs(): JobView[] {
       27,
       {
         match: { ...scored(58, ['Konzernberichtswesen'], 2, 4), facts: SALARIED },
-        appliedAt: at(20),
-        note: 'Rückruf der Personalberatung am Montag',
       },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
@@ -486,7 +487,6 @@ function sampleJobs(): JobView[] {
         // Three days a week for a year: both within the profile.
         facts: { ...NO_FACTS, start: 'vague', months: 12, workloadFrom: 60, workloadTo: 60 },
       },
-      appliedAt: at(26),
     }),
     // Archived: in no list but the archive and in no count but its own.
     job(
@@ -1342,7 +1342,7 @@ function initial(): void {
 
 /**
  * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; a favourite counts until it goes to the trash; the excluded ones
+ * excluded, per portal too; a favourite counts while it is in the inbox; the excluded ones
  * of the archive and the trash each in their place.
  */
 function countsOf(list: JobView[]): JobCounts {
@@ -1361,7 +1361,7 @@ function countsOf(list: JobView[]): JobCounts {
   };
   for (const j of list) {
     const out = j.match?.status === 'excluded';
-    if (j.pinned && j.place !== 'trash') c.favourites += 1;
+    if (j.pinned && j.place === 'inbox') c.favourites += 1;
     if (j.place === 'archive') c.archive += 1;
     if (j.place === 'trash') c.trash += 1;
     if (out && j.place === 'archive') c.excludedArchive += 1;
@@ -1389,18 +1389,17 @@ const tombstones = new Set<string>();
 const overridden = new Map<string, Match>();
 const markKey = (key: JobKey): string => `${key.portal}:${key.id}`;
 
-/** The list of a query (store::job_page): a place, the favourites, only the unread ones. */
+/** The list of a query (store::job_page): a place, the favourites of the inbox, only the
+ *  unread ones. */
 function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favourites'>): boolean {
-  const where = query.favourites ? j.pinned && j.place !== 'trash' : j.place === query.place;
+  const where = query.favourites ? j.pinned && j.place === 'inbox' : j.place === query.place;
   return where && (!query.unread || j.unread);
 }
 
 const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
 
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
- *  jobs marked "Beworben". */
-function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand' | 'applied'>): boolean {
-  if (query.applied === true && j.appliedAt === null) return false;
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
+function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -2638,13 +2637,13 @@ const handlers: Handlers = {
   restore_jobs: ({ keys }) => restoreJobs(keys),
   // What the list shows: with a search only its hits, with the filter only its jobs
   // (store::mark_all_read_filtered).
-  mark_all_read: ({ place, search, portal, minBand, applied }) => {
+  mark_all_read: ({ place, search, portal, minBand }) => {
     const marked = jobs.filter(
       (j) =>
         j.unread &&
         j.place === place &&
         matchesSearch(j, search) &&
-        inFilter(j, { portal, minBand, applied }),
+        inFilter(j, { portal, minBand }),
     );
     for (const j of marked) j.unread = false;
     refresh();
@@ -2915,6 +2914,23 @@ const harness: Harness = {
   job(key) {
     const found = find(key);
     return found === undefined ? null : structuredClone(found);
+  },
+  list(query) {
+    return structuredClone(
+      listJobs({
+        place: 'inbox',
+        unread: false,
+        favourites: false,
+        sort: 'match',
+        search: null,
+        portal: null,
+        minBand: null,
+        applied: false,
+        limit: 500,
+        offset: 0,
+        ...query,
+      }),
+    );
   },
 };
 window.__harness = harness;

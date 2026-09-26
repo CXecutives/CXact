@@ -11,8 +11,8 @@
   tooltip), and a note for a portal that needs the user.
   finished (the header cross-fades from the running one): the outcome, its time and, for a
   fetch, the buttons "n neu" and "n mit hoher Passung" (the run's own numbers from the
-  backend; nothing when there are none, the note says it), which show Neu (by match for the
-  good ones) from any place, and one line per portal ("linkedin.com 4 neu, 2 doppelt, 3 ohne
+  backend; nothing when there are none, the note says it), which show the inbox (by match for
+  the good ones; a filter stays and its line says so) from any place, and one line per portal ("linkedin.com 4 neu, 2 doppelt, 3 ohne
   Details"); a details run what it got, a rescore only that it is done; then what went wrong
   with a fitting action (a failed run can always be tried again), a file the export could
   not write (once), the history with copy. The overview file and the folder have their one
@@ -143,9 +143,9 @@
     return parts.length > 0 ? parts.join(', ') : t.run.portalNothing;
   }
 
-  /** "n neu" and "n mit hoher Passung": the list shows Neu (the good ones first). */
+  /** "n neu" and "n mit hoher Passung": the list shows the inbox (the good ones first). */
   function showNew(byMatch: boolean): void {
-    jobs.setFacet('new');
+    jobs.setPlace('inbox', true);
     if (byMatch && app.hasProfile && jobs.sortChoice !== 'match') jobs.setSort('match');
   }
   const title = $derived(summary ? outcomeText(summary) : t.run.done);
@@ -298,7 +298,7 @@
           <!-- The shared clock: "08:30" gains its date after midnight, like the sidebar. -->
           <span class="time">{formatMoment(summary.finishedAt, clock.now)}</span>
           {#if fetchRun && newJobs > 0}
-            <!-- The run's numbers lead to its jobs: Neu, the good ones first. -->
+            <!-- The run's numbers lead to its jobs: the inbox, the good ones first. -->
             <Button
               variant="secondary"
               size="sm"
