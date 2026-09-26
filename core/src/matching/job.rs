@@ -89,7 +89,11 @@ fn heading(line: &str) -> Option<HeadingKind> {
     } else if starts(MUST_PREFIXES) {
         Some(HeadingKind::Must)
     } else {
-        None
+        // A heading in two languages (`Aufgaben / Tasks`, `Profil / Profile`): its first
+        // part that is a heading.
+        norm.split(" / ")
+            .skip_while(|_| !norm.contains(" / "))
+            .find_map(|part| heading(part).filter(|_| part != norm))
     }
 }
 
@@ -938,6 +942,9 @@ fn soft_token(folded: &str, tokens: &[&str], i: usize) -> bool {
     })
 }
 
+/// Other atoms from which an item that names a language is a skill line instead.
+const LANGUAGE_ITEM_OTHERS: usize = 4;
+
 fn classify(text: &str, phrase_level: Option<u8>, vocab: &Vocab) -> Class {
     let folded = fold(text);
     let tokens: Vec<&str> = atoms::raw_tokens(&folded).collect();
@@ -969,11 +976,15 @@ fn classify(text: &str, phrase_level: Option<u8>, vocab: &Vocab) -> Class {
     {
         return Class::Soft;
     }
+    // A language item names little else (`Deutsch fließend`); a line of several skills that
+    // ends with a language is no language requirement.
+    let others = content.iter().filter(|a| language_of(a).is_none()).count();
     if let Some(language) = tokens
         .iter()
         .map(|t| (*t).to_owned())
         .chain(content.iter().cloned())
         .find_map(|t| language_of(&t))
+        .filter(|_| others < LANGUAGE_ITEM_OTHERS)
     {
         return Class::Language(language.to_owned(), level_in(text).or(phrase_level));
     }
@@ -1422,6 +1433,36 @@ mod tests {
         // Folding that keeps the length but moves the offsets ("İ" grows, "ẞ" shrinks).
         let got = items("İẞ Kenntnisse z. B. SAP");
         assert!(!got.is_empty(), "{got:?}");
+    }
+
+    /// Messy ads (set 9): a heading in two languages, a keyword line of several skills that
+    /// ends with a language, frame lines about workload and extension.
+    #[test]
+    fn messy_ads_keep_their_structure() {
+        assert_eq!(heading("Aufgaben / Tasks:"), Some(HeadingKind::Task));
+        assert_eq!(heading("Profil / Profile"), Some(HeadingKind::Must));
+        assert_eq!(heading("Controlling / Reporting"), None);
+        let core = Vocab::core();
+        assert_eq!(
+            classify(
+                "ISTQB Advanced Test Manager, min. 7 Jahre Testmanagement, SAP Testing, \
+                 Playwright hands on, Deutsch fliessend",
+                None,
+                &core
+            ),
+            Class::Skill
+        );
+        assert!(matches!(
+            classify("Verhandlungssicheres Deutsch", None, &core),
+            Class::Language(..)
+        ));
+        for frame in [
+            "Einsatz in Vollzeit, davon drei Tage pro Woche vor Ort",
+            "Eine Verlängerung ist möglich",
+            "Beauftragung über uns",
+        ] {
+            assert_eq!(classify(frame, None, &core), Class::Frame, "{frame}");
+        }
     }
 
     #[test]

@@ -1,0 +1,284 @@
+{
+  "name": "Renate Beispielhof",
+  "email": "renate.beispielhof@example.invalid",
+  "telefon": "+49 171 0000000",
+  "titel": "Interim CFO und kaufmännische Leitung",
+  "abschluss": "Diplom-Kauffrau (Univ.)",
+  "berufserfahrung_jahre": 30,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Kauffrau (Univ.)",
+      "fach": "Betriebswirtschaftslehre mit den Schwerpunkten Finanzierung und Wirtschaftsprüfung",
+      "hochschule": "Beispieluniversität",
+      "jahr": 1996
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2013 - heute",
+      "rolle": "Interim CFO und kaufmännische Geschäftsführerin (selbstständig)",
+      "schwerpunkte": [
+        "Sechzehn Interim-Mandate als CFO oder kaufmännische Geschäftsführerin, davon elf in Private-Equity-Portfoliounternehmen",
+        "Refinanzierungen über Konsortialkredite, Unitranche und Schuldscheindarlehen mit Volumina bis 450 Mio. EUR",
+        "Buy-and-Build-Strategien mit mehr als 20 Add-on-Akquisitionen, Due Diligence und Post Merger Integration",
+        "Drei Umstellungen des Konzernabschlusses von HGB auf IFRS, Exit-Vorbereitung mit Vendor Due Diligence",
+        "Finanztransformation mit Neuaufstellung von Controlling, Shared Services und SAP S/4HANA Finance"
+      ]
+    },
+    {
+      "zeitraum": "2005 - 2013",
+      "rolle": "CFO einer Private-Equity-finanzierten Industriegruppe im Maschinenbau mit 1.800 Mitarbeitenden",
+      "schwerpunkte": [
+        "Finanzierung eines Secondary Buyout und Refinanzierung der Akquisitionsfinanzierung",
+        "Konzernabschluss nach IFRS für 22 Gesellschaften, Covenant-Reporting an die Banken",
+        "Aufbau eines konzernweiten Cash Poolings und Treasury Managements",
+        "Führung von 65 Mitarbeitenden in Rechnungswesen, Controlling, Treasury und Steuern"
+      ]
+    },
+    {
+      "zeitraum": "1996 - 2005",
+      "rolle": "Prüfungsleiterin und zuletzt Senior Managerin Transaction Services in einer Wirtschaftsprüfungsgesellschaft",
+      "schwerpunkte": [
+        "Jahres- und Konzernabschlussprüfungen nach HGB und IFRS",
+        "Financial Due Diligence für Finanzinvestoren",
+        "Unternehmensbewertung und Kaufpreisallokation"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Interim Management",
+      "jahre": 13,
+      "auch": ["Interim-Mandate", "Interim CFO", "Management auf Zeit"]
+    },
+    {
+      "kompetenz": "Kaufmännische Leitung",
+      "jahre": 21,
+      "auch": ["CFO", "Chief Financial Officer", "Kaufmännische Geschäftsführung", "Finanzvorstand"]
+    },
+    {
+      "kompetenz": "Finanztransformation",
+      "jahre": 14,
+      "auch": ["Finance Transformation", "Transformation der Finanzorganisation"]
+    },
+    {
+      "kompetenz": "Konzernrechnungslegung nach IFRS",
+      "jahre": 26,
+      "auch": ["IFRS", "IFRS-Konzernabschluss", "IFRS-Umstellung"]
+    },
+    {
+      "kompetenz": "Jahresabschlüsse nach HGB",
+      "jahre": 30
+    },
+    {
+      "kompetenz": "M&A-Transaktionen",
+      "jahre": 18,
+      "auch": ["Mergers & Acquisitions", "Due Diligence", "Buy-and-Build", "Unternehmenskauf"]
+    },
+    {
+      "kompetenz": "Refinanzierung",
+      "jahre": 15,
+      "auch": ["Refinancing", "Akquisitionsfinanzierung", "Unitranche", "Konsortialkredit", "Schuldscheindarlehen"]
+    },
+    {
+      "kompetenz": "Zusammenarbeit mit Private-Equity-Gesellschaftern",
+      "jahre": 19,
+      "auch": ["Private Equity", "PE-Portfoliounternehmen", "Investorenreporting"]
+    },
+    {
+      "kompetenz": "Treasury",
+      "jahre": 18,
+      "auch": ["Cash Management", "Liquiditätsplanung", "Cash Pooling"]
+    },
+    {
+      "kompetenz": "Controlling",
+      "jahre": 28,
+      "auch": ["FP&A", "Financial Controlling", "Unternehmensplanung"]
+    },
+    {
+      "kompetenz": "Covenant-Management",
+      "jahre": 15,
+      "auch": ["Bankenreporting", "Covenants", "Bankenkommunikation"]
+    },
+    {
+      "kompetenz": "Restrukturierung",
+      "jahre": 12,
+      "auch": ["Sanierung", "Turnaround"]
+    },
+    {
+      "kompetenz": "Post Merger Integration",
+      "jahre": 12,
+      "auch": ["PMI", "Integration von Akquisitionen"]
+    },
+    {
+      "kompetenz": "Carve-out",
+      "jahre": 8,
+      "auch": ["Stand-alone-Aufbau", "Ausgliederung"]
+    },
+    {
+      "kompetenz": "Exit-Vorbereitung",
+      "jahre": 9,
+      "auch": ["Vendor Due Diligence", "Equity Story", "Exit Readiness"]
+    },
+    {
+      "kompetenz": "Working Capital Management",
+      "jahre": 14
+    },
+    {
+      "kompetenz": "Management Reporting",
+      "jahre": 28,
+      "auch": ["Berichtswesen", "Konzernreporting", "Gesellschafterreporting"]
+    },
+    {
+      "kompetenz": "Führung von Finanzteams",
+      "jahre": 23,
+      "auch": ["Personalverantwortung", "disziplinarische Führung"]
+    }
+  ],
+  "methoden_tools": [
+    {
+      "name": "SAP S/4HANA Finance"
+    },
+    {
+      "name": "SAP FI/CO"
+    },
+    {
+      "name": "SAP Group Reporting"
+    },
+    {
+      "name": "LucaNet"
+    },
+    {
+      "name": "Board"
+    },
+    {
+      "name": "Power BI"
+    },
+    {
+      "name": "Excel"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "Zertifizierte Restrukturierungs- und Sanierungsberaterin"
+    },
+    {
+      "name": "Zertifiziertes Aufsichtsratsmitglied"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Maschinenbau"
+    },
+    {
+      "branche": "Automobilzulieferer"
+    },
+    {
+      "branche": "Medizintechnik"
+    },
+    {
+      "branche": "Konsumgüter"
+    },
+    {
+      "branche": "Private-Equity-Portfoliounternehmen"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C2"
+    },
+    {
+      "sprache": "Italienisch",
+      "niveau": "B2"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Sechzehn Interim-Mandate als CFO, davon elf in Private-Equity-Portfoliounternehmen",
+    "Hat jede Refinanzierung ihrer Mandate ohne Covenant-Bruch abgeschlossen",
+    "Begleitet Unternehmen vom Carve-out über Buy-and-Build bis zum Exit"
+  ],
+  "keywords": [
+    "Interim CFO",
+    "kaufmännische Leitung",
+    "Finanztransformation",
+    "IFRS",
+    "M&A",
+    "Refinanzierung",
+    "Private Equity",
+    "Carve-out",
+    "Treasury",
+    "Covenants"
+  ],
+  "schwerpunkte": [
+    "Refinanzierung",
+    "M&A-Transaktionen",
+    "Konzernrechnungslegung nach IFRS",
+    "Finanztransformation"
+  ],
+  "wunschrollen": [
+    "Interim CFO",
+    "Kaufmännische Geschäftsführung",
+    "CFO",
+    "Leitung Finanztransformation"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1400,
+    "remote": "flexibel, gern ein bis zwei Tage remote",
+    "regionen": [
+      "München",
+      "Bayern",
+      "Baden-Württemberg",
+      "Österreich"
+    ],
+    "branchen": [
+      "Maschinenbau",
+      "Medizintechnik",
+      "Private Equity"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1000,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue"
+    ],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "sofort",
+    "min_jahresgehalt": 150000,
+    "festanstellung_orte": [
+      "München",
+      "Augsburg",
+      "Ingolstadt",
+      "Landshut",
+      "Rosenheim",
+      "Freising",
+      "Erding",
+      "Dachau",
+      "Fürstenfeldbruck",
+      "Starnberg",
+      "Garching",
+      "Unterschleißheim",
+      "Ismaning",
+      "Unterföhring",
+      "Ottobrunn",
+      "Germering",
+      "Wolfratshausen",
+      "Bad Tölz",
+      "Weilheim in Oberbayern",
+      "Pfaffenhofen an der Ilm",
+      "Mühldorf am Inn",
+      "Kaufbeuren"
+    ],
+    "festanstellung_remote_min": 60,
+    "zielprofil_min_jahre": 10
+  }
+}

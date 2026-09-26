@@ -1,0 +1,70 @@
+Titel: DevOps / Cloud Engineer AWS Kubernetes Terraform (m/w/d) REMOTE
+Unternehmen: Nordlicht IT-Recruiting UG
+Ort: Essen
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/nproj/2923902.html
+Abgerufen am: 23.09.2026 07:33
+
+Projektdetails
+Start
+ASAP
+Dauer
+6 Monate+
+Von
+Nordlicht IT-Recruiting UG
+Eingestellt
+22.09.2026
+Projekt-ID
+2923902
+Branche
+IT
+Vertragsart
+Freiberuflich
+Einsatzart
+100 % Remote
+Stundensatz
+105-115 €/h
+
+Beschreibung
+!!! URGENT !!! DevOps Engineer für unseren kunden (logistik, raum Essen) gesucht
+start asap, 6 month+, remote 100%, fulltime
+
+MUST HAVE:
+AWS (EKS, EC2, IAM, VPC) , Kubernetes, Helm, Terraform, GitLab CI, Docker, Linux, Python oder Go
+
+NICE TO HAVE: ArgoCD, Prometheus/Grafana, Vault, Ansible, AZURE
+
+Aufgaben: aufbau + betrieb der plattform, migration von on prem VMware nach AWS, CI/CD pipelines, IaC, monitoring, securtiy hardening, doku
+
+Anforderungen: min. 6 jahre DevOps erfahrung, deutsch UND englisch, AWS certification von vorteil!!
+
+!!! URGENT !!! DevOps Engineer für unseren kunden (logistik, raum Essen) gesucht
+start asap, 6 month+, remote 100%, fulltime
+
+MUST HAVE:
+AWS (EKS, EC2, IAM, VPC) , Kubernetes, Helm, Terraform, GitLab CI, Docker, Linux, Python oder Go
+
+NICE TO HAVE: ArgoCD, Prometheus/Grafana, Vault, Ansible, AZURE
+
+keywords: devops, cloud, aws, eks, k8s, kuberentes, terraform, helm, gitlab, ci/cd, docker, linux, python, go, iac, sre, platform engineering, cloud engineer, cloud architect, infra as code, vmware migration
+
+BITTE NUR MIT STUNDENSATZ + VERFÜGBARKEIT BEWERBEN, keine subunternehmer-ketten!!
+
+Schlagworte
+DevOps
+AWS
+Kubernetes
+Terraform
+GitLab
+Cloud
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Nordlicht IT-Recruiting UG
+IT-Recruiting
+63 veröffentlichte Projekte
+Mitglied seit 2023
+Firmenprofil ansehen

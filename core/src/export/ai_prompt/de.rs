@@ -434,6 +434,30 @@ impl Wording for German {
                     )
                 },
             ),
+            CriterionKey::Workload => {
+                let days = |n: i64| plural(n, "Tag", "Tage");
+                match (int(profile, "minDays"), int(profile, "maxDays")) {
+                    (Some(min), Some(max)) if min == max => {
+                        format!("Auslastung {} pro Woche", days(min))
+                    }
+                    (Some(min), Some(max)) => format!("Auslastung {min} bis {max} Tage pro Woche"),
+                    (Some(min), None) => format!("Auslastung mindestens {} pro Woche", days(min)),
+                    (None, Some(max)) => format!("Auslastung höchstens {} pro Woche", days(max)),
+                    (None, None) => "Auslastung".to_owned(),
+                }
+            }
+            CriterionKey::Duration => int(profile, "min").map_or_else(
+                || "Laufzeit".to_owned(),
+                |min| format!("Laufzeit mindestens {}", plural(min, "Monat", "Monate")),
+            ),
+            CriterionKey::ExclusionWords => {
+                let words = list_param(profile, "words").join(", ");
+                if words.is_empty() {
+                    "Ausschlusswörter".to_owned()
+                } else {
+                    format!("Ausschlusswörter {words}")
+                }
+            }
         }
     }
 
@@ -476,6 +500,14 @@ impl Wording for German {
             CriterionKey::TargetYears => {
                 int(ad, "years").map(|years| format!("verlangt {}", plural(years, "Jahr", "Jahre")))
             }
+            CriterionKey::Workload => int(ad, "to").map(|to| match int(ad, "from") {
+                Some(from) if from == to => format!("Auslastung {}", percent(to)),
+                Some(from) => format!("Auslastung {} bis {}", percent(from), percent(to)),
+                None => format!("Auslastung bis {}", percent(to)),
+            }),
+            CriterionKey::Duration => int(ad, "months")
+                .map(|months| format!("Laufzeit {}", plural(months, "Monat", "Monate"))),
+            CriterionKey::ExclusionWords => None,
         }
     }
 
@@ -667,6 +699,22 @@ impl Wording for German {
                     text_param(p, "industry").unwrap_or_default()
                 ),
                 _ => "Die Anzeige nennt keine Branche.".to_owned(),
+            },
+            ReasonCode::Workload => {
+                "Die Auslastung der Anzeige passt nicht zu den Tagen pro Woche im Profil."
+                    .to_owned()
+            }
+            ReasonCode::Duration => match (int(p, "months"), int(p, "min")) {
+                (Some(months), Some(min)) => format!(
+                    "Die Laufzeit von {} ist kürzer als die Mindestlaufzeit von {}.",
+                    plural(months, "Monat", "Monaten"),
+                    plural(min, "Monat", "Monaten")
+                ),
+                _ => "Die Laufzeit ist kürzer als die Mindestlaufzeit.".to_owned(),
+            },
+            ReasonCode::ExclusionWord => match text_param(p, "word") {
+                Some(word) => format!("Die Anzeige enthält das Ausschlusswort {}.", self.quote(word)),
+                None => "Die Anzeige enthält ein Ausschlusswort.".to_owned(),
             },
         };
         Some(said)

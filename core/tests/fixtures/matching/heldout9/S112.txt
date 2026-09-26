@@ -1,0 +1,70 @@
+Titel: TESTMANAGER / QA LEAD (m/w/d) Playwright Selenium SAP Retail – 70% REMOTE
+Unternehmen: Taunusfeld IT-Consulting UG
+Ort: D-60486 Frankfurt am Main
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1318215-TESTMANAGER-QA-LEAD-m-w-d-Playwright-Selenium-SAP-Retail-70-REMOTE
+Abgerufen am: 17.09.2026 07:36
+
+Projekt-ID: 1318215
+Ort: Frankfurt am Main
+Remote: 70 %
+Start: ab sofort
+Dauer: bis 31.03.2027
+Vertragsart: Freiberuflich
+Honorar: 115 € pro Stunde
+Letztes Update: 16.09.2026
+
+Projektbeschreibung
+Hallo zusammen,
+
+fuer unseren Endkunden (Retail / E-Commerce, Raum Frankfurt, ca 180 Filialen) suchen wir DRINGEND einen erfahrenen Testmanager bzw QA Lead !!
+
+Keywords:
+Testmanagement, Test Management, Testautomatisierung, playwright, Selenium, Java/TypeScript, SAP S/4 HANA Retail, SAP CAR, Quality Gates, Release Mgmt, Jira + Xray, GitLab CI, agile testing, Scrum/SAFe, ISTQB Advanced (MUST), Regressiontests, UAT, E2E
+
+Aufgaben / Tasks:
+- test strategy + Testkonzept für den S/4 Retail Rollout erstellen und mit PMO abstimmen
+- Automation Framework aufbauen (Playwright, TypeScript) und die alten Selenium Suites migrieren
+- Quality Gates in der Pipeline definieren (GitLab CI), Go/NoGo vorbereiten
+- Release Mgmt untersützen
+- Steuerung Testteam (4 Tester offshore + 2 onsite)
+- defect mgmt in Jira/Xray, Reportings an PMO + Lenkungskreis
+
+MUST HAVE:
+ISTQB Advanced Test Manager, min. 7 Jahre Testmanagement, SAP Testing Erfahrng, Playwright ODER Selenium hands on, Deutsch fliessend
+
+Nice to have: Tosca, Retail, SAFe, Kassensysteme
+
+Aufgaben / Tasks:
+- test strategy + Testkonzept für den S/4 Retail Rollout erstellen und mit PMO abstimmen
+- Automation Framework aufbauen (Playwright, TypeScript) und die alten Selenium Suites migrieren
+- Quality Gates in der Pipeline definieren (GitLab CI), Go/NoGo vorbereiten
+- Release Mgmt untersützen
+- Steuerung Testteam (4 Tester offshore + 2 onsite)
+- defect mgmt in Jira/Xray, Reportings an PMO + Lenkungskreis
+
+Rahmendaten: Start asap / ab sofort, Laufzeit bis 31.03.2027 (Verlängerung sehr warscheinlich), 70% remote rest Frankfurt, VOLLZEIT, Rate 115€/h all-in
+
+KEINE ANÜ, direkter Freelancervertrag mit uns.. Bitte CV (Word!!) + Stundensatz + Verfügbarkeit, wir melden uns innerhalb 24h. Danke + Gruß
+
+Kategorien und Skills
+Testmanagement
+Testautomatisierung
+Playwright
+Selenium
+SAP S/4HANA
+Quality Gates
+ISTQB
+
+Projektanbieter
+Taunusfeld IT-Consulting UG
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Testautomatisierer Cypress (m/w/d)
+Remote · ab sofort · 6 Monate
+SAP CAR Berater (m/w/d)
+Eschborn · 11.2026
+Alle Projekte in Softwaretest anzeigen

@@ -132,6 +132,14 @@ pub(crate) const KEYS_PERMANENT_PLACES: &[&str] = &[
 pub(crate) const KEYS_PERMANENT_REMOTE: &[&str] =
     &["festanstellung_remote_min", "permanent_remote_min"];
 pub(crate) const KEYS_TARGET_YEARS: &[&str] = &["zielprofil_min_jahre", "target_min_years"];
+/// Days per week (1 to 5) the consultant works at least and at most.
+pub(crate) const KEYS_WORKLOAD_MIN: &[&str] = &["auslastung_min_tage", "workload_min_days"];
+pub(crate) const KEYS_WORKLOAD_MAX: &[&str] = &["auslastung_max_tage", "workload_max_days"];
+/// Minimum duration of an engagement in months.
+pub(crate) const KEYS_MIN_MONTHS: &[&str] = &["min_laufzeit_monate", "min_duration_months"];
+/// Words that exclude an ad (a list or one text).
+pub(crate) const KEYS_EXCLUSION_WORDS: &[&str] =
+    &["ausschlusswoerter", "ausschlusswörter", "exclusion_words"];
 /// The old criteria under their German and English names (read in `harte_kriterien` and
 /// `hard_criteria`).
 pub(crate) const KEYS_MIN_RATE: &[&str] = &[KEY_MIN_RATE, "min_day_rate"];
@@ -151,6 +159,10 @@ pub(crate) const KEYS_ALL_CRITERIA: &[&[&str]] = &[
     KEYS_PERMANENT_PLACES,
     KEYS_PERMANENT_REMOTE,
     KEYS_TARGET_YEARS,
+    KEYS_WORKLOAD_MIN,
+    KEYS_WORKLOAD_MAX,
+    KEYS_MIN_MONTHS,
+    KEYS_EXCLUSION_WORDS,
 ];
 /// Top-level total years of experience.
 pub(crate) const KEYS_TOTAL_YEARS: &[&str] = &[

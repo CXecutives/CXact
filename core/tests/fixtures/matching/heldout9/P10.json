@@ -1,0 +1,305 @@
+{
+  "name": "Nina Beispielstedt",
+  "email": "nina.beispielstedt@example.invalid",
+  "telefon": "+49 176 0000000",
+  "titel": "Interim Managerin Energiewirtschaft und Regulierung",
+  "abschluss": "Diplom-Wirtschaftsingenieurin (Univ.) Elektrische Energietechnik",
+  "berufserfahrung_jahre": 21,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Wirtschaftsingenieurin (Univ.) Elektrische Energietechnik",
+      "fach": "Wirtschaftsingenieurwesen mit den Schwerpunkten Energiesysteme und Energiewirtschaft",
+      "hochschule": "Beispieluniversität",
+      "jahr": 2005
+    },
+    {
+      "abschluss": "Master of Laws (LL.M.) Energierecht",
+      "fach": "Energiewirtschaftsrecht und Regulierung (berufsbegleitend)",
+      "hochschule": "Beispielhochschule für Recht und Wirtschaft",
+      "jahr": 2013
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "03/2016 bis heute",
+      "rolle": "Selbstständige Beraterin und Interim Managerin Energiewirtschaft",
+      "schwerpunkte": [
+        "Interim-Leitung Regulierungsmanagement bei zwei Verteilnetzbetreibern",
+        "Einführung der Prozesse für Redispatch 2.0 als Data Provider und Einsatzverantwortlicher",
+        "Programmleitung Smart-Meter-Rollout für einen grundzuständigen Messstellenbetreiber",
+        "Anpassung der Marktkommunikation an GPKE, MaBiS und WiM",
+        "EEG- und KWKG-Abrechnung und Bereinigung der Anlagenstammdaten im Marktstammdatenregister"
+      ]
+    },
+    {
+      "zeitraum": "07/2009 bis 02/2016",
+      "rolle": "Abteilungsleiterin Regulierungsmanagement der Netzgesellschaft eines Stadtwerks",
+      "schwerpunkte": [
+        "Anreizregulierung und Erlösobergrenze",
+        "Kostenprüfung und Netzentgeltkalkulation",
+        "Abstimmung mit Bundesnetzagentur und Landesregulierungsbehörde",
+        "Unbundling",
+        "Führung von neun Mitarbeitenden"
+      ]
+    },
+    {
+      "zeitraum": "10/2005 bis 06/2009",
+      "rolle": "Beraterin Energiewirtschaft in einer Managementberatung",
+      "schwerpunkte": [
+        "Prozesse im Energiehandel und Portfoliomanagement",
+        "Bilanzkreismanagement",
+        "Marktkommunikation",
+        "Prozessoptimierung bei Energieversorgern"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Regulierungsmanagement",
+      "jahre": 17,
+      "auch": ["Regulatory Affairs", "Regulatory Management", "Netzregulierung"]
+    },
+    {
+      "kompetenz": "Anreizregulierung",
+      "jahre": 17,
+      "auch": ["ARegV", "Erlösobergrenze", "Incentive Regulation"]
+    },
+    {
+      "kompetenz": "Netzentgeltkalkulation",
+      "jahre": 17,
+      "auch": ["Netzentgelte", "Netzentgeltbildung", "Grid Tariffs"]
+    },
+    {
+      "kompetenz": "Kostenprüfung",
+      "jahre": 7,
+      "auch": ["Kostenprüfungsverfahren", "Kostenermittlung nach StromNEV"]
+    },
+    {
+      "kompetenz": "Redispatch 2.0",
+      "jahre": 5,
+      "auch": ["Redispatch", "RD 2.0"]
+    },
+    {
+      "kompetenz": "Smart-Meter-Rollout",
+      "jahre": 7,
+      "auch": ["Smart Metering Rollout", "iMSys-Rollout", "Rollout intelligenter Messsysteme"]
+    },
+    {
+      "kompetenz": "Messstellenbetrieb",
+      "jahre": 7,
+      "auch": ["grundzuständiger Messstellenbetrieb", "gMSB", "Metering"]
+    },
+    {
+      "kompetenz": "Marktkommunikation",
+      "jahre": 14,
+      "auch": ["MaKo", "Marktprozesse", "Market Communication"]
+    },
+    {
+      "kompetenz": "EEG-Abrechnung",
+      "jahre": 9,
+      "auch": ["Einspeiseabrechnung", "EEG-Vergütung"]
+    },
+    {
+      "kompetenz": "Energiehandelsprozesse",
+      "jahre": 4,
+      "auch": ["Energy Trading Processes", "Prozesse im Energiehandel"]
+    },
+    {
+      "kompetenz": "Bilanzkreismanagement",
+      "jahre": 4,
+      "auch": ["Bilanzkreisbewirtschaftung", "Balancing Group Management"]
+    },
+    {
+      "kompetenz": "Energierecht",
+      "jahre": 17,
+      "auch": ["Energiewirtschaftsrecht", "EnWG", "Energy Law"]
+    },
+    {
+      "kompetenz": "Unbundling",
+      "jahre": 7,
+      "auch": ["Entflechtung"]
+    },
+    {
+      "kompetenz": "Programmmanagement",
+      "jahre": 10,
+      "auch": ["Programmleitung", "Program Management"]
+    },
+    {
+      "kompetenz": "Projektmanagement",
+      "jahre": 21,
+      "auch": ["Projektleitung", "Project Management"]
+    },
+    {
+      "kompetenz": "Prozessmanagement",
+      "jahre": 15,
+      "auch": ["Business Process Management", "Prozessoptimierung"]
+    },
+    {
+      "kompetenz": "Interim Management",
+      "jahre": 10,
+      "auch": ["Interim-Mandate", "Management auf Zeit"]
+    },
+    {
+      "kompetenz": "Führung von Fachteams",
+      "jahre": 12,
+      "auch": ["disziplinarische Führung", "Personalverantwortung"]
+    }
+  ],
+  "schwerpunkte": [
+    "Regulierungsmanagement",
+    "Redispatch 2.0",
+    "Smart-Meter-Rollout",
+    "Marktkommunikation",
+    "Anreizregulierung"
+  ],
+  "wunschrollen": [
+    "Interim Leitung Regulierungsmanagement",
+    "Head of Regulatory Affairs",
+    "Programmleitung Smart-Meter-Rollout",
+    "Projektleitung Redispatch 2.0",
+    "Interim Bereichsleitung Netzwirtschaft"
+  ],
+  "methoden_tools": [
+    {
+      "name": "SAP IS-U"
+    },
+    {
+      "name": "SAP S/4HANA Utilities"
+    },
+    {
+      "name": "Schleupen.CS"
+    },
+    {
+      "name": "Robotron esa"
+    },
+    {
+      "name": "Kisters BelVis"
+    },
+    {
+      "name": "Wilken ENER:GY"
+    },
+    {
+      "name": "MS Project"
+    },
+    {
+      "name": "Jira"
+    },
+    {
+      "name": "Power BI"
+    },
+    {
+      "name": "Excel"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "PMP"
+    },
+    {
+      "name": "PRINCE2 Practitioner"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Energiewirtschaft"
+    },
+    {
+      "branche": "Netzbetreiber"
+    },
+    {
+      "branche": "Stadtwerke"
+    },
+    {
+      "branche": "Messstellenbetreiber"
+    },
+    {
+      "branche": "Unternehmensberatung"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    },
+    {
+      "sprache": "Niederländisch",
+      "niveau": "B1"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Führte zwei Verteilnetzbetreiber fristgerecht in den Redispatch 2.0",
+    "Leitete den Rollout von 48.000 intelligenten Messsystemen bei einem grundzuständigen Messstellenbetreiber",
+    "Brachte zwei Kostenprüfungen der vierten Regulierungsperiode ohne Beschwerdeverfahren zum Abschluss"
+  ],
+  "keywords": [
+    "EnWG",
+    "ARegV",
+    "StromNEV",
+    "MsbG",
+    "GPKE",
+    "MaBiS",
+    "WiM",
+    "EEG",
+    "KWKG",
+    "BNetzA",
+    "Bundesnetzagentur",
+    "Connect+",
+    "RAIDA",
+    "Marktstammdatenregister",
+    "EDIFACT",
+    "§ 14a EnWG",
+    "Verteilnetzbetreiber",
+    "Stadtwerke"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1150,
+    "remote": "teilweise",
+    "regionen": [
+      "NRW",
+      "Niedersachsen",
+      "Hessen"
+    ],
+    "branchen": [
+      "Netzbetreiber",
+      "Stadtwerke"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1000,
+    "laender": [
+      "DE",
+      "AT"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue"
+    ],
+    "min_jahresgehalt": 140000,
+    "festanstellung_orte": [
+      "Essen",
+      "Dortmund",
+      "Bochum",
+      "Düsseldorf",
+      "Köln",
+      "Duisburg",
+      "Gelsenkirchen",
+      "Mülheim an der Ruhr"
+    ],
+    "festanstellung_remote_min": 40,
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "sofort",
+    "zielprofil_min_jahre": 8,
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": [
+      "Werkstudent",
+      "Rufbereitschaft",
+      "Schichtdienst",
+      "Außendienst"
+    ]
+  }
+}

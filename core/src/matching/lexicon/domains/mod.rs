@@ -10,7 +10,9 @@
 //! the text loses them first), or one hyphenated word for a spelling with hyphens; values
 //! are one concept. A key in two packs names the same concept in both.
 
+mod consulting;
 mod data;
+mod energy;
 mod finance;
 mod hr;
 mod it_project;
@@ -18,6 +20,7 @@ mod legal;
 mod operations;
 mod pharma;
 mod procurement;
+mod restructuring;
 mod sales;
 mod sap;
 mod software;
@@ -48,6 +51,9 @@ pub(crate) const DOMAINS: &[&Domain] = &[
     &sales::DOMAIN,
     &legal::DOMAIN,
     &software::DOMAIN,
+    &restructuring::DOMAIN,
+    &consulting::DOMAIN,
+    &energy::DOMAIN,
 ];
 
 /// Helpers for the pack tests: atoms and fits under the packs a profile switches on.

@@ -1,0 +1,93 @@
+Titel: Testmanager SAP S/4HANA (m/w/d) – Arbeitnehmerüberlassung
+Unternehmen: Kraichgau Personal & IT Services GmbH
+Ort: Stuttgart
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/testmanager-sap-s-4hana-m-w-d-arbeitnehmerueberlassung-2917308
+Abgerufen am: 19.09.2026 07:22
+
+Projektdetails
+Start
+01.12.2026
+Dauer
+7 Monate
+Von
+Kraichgau Personal & IT Services GmbH
+Eingestellt
+18.09.2026
+Projekt-ID
+2917308
+Branche
+Energieversorgung
+Vertragsart
+Arbeitnehmerüberlassung
+Einsatzart
+40 % Remote
+Stundensatz
+auf Anfrage
+
+Beschreibung
+Über uns
+Die Kraichgau Personal & IT Services GmbH ist seit 1998 Ihr verlässlicher Partner für Personaldienstleistungen in Baden-Württemberg. Mit 14 Niederlassungen, über 2.000 Mitarbeitenden im Kundeneinsatz und einem spezialisierten Geschäftsbereich für IT-Fachkräfte gehören wir zu den führenden regionalen Personaldienstleistern. Wir arbeiten nach dem Tarifvertrag der Zeitarbeit und stehen für faire Bezahlung, persönliche Betreuung und langfristige Perspektiven. Viele unserer Mitarbeitenden wurden von unseren Kundenunternehmen übernommen.
+
+Ihre Chance
+Im Rahmen der Arbeitnehmerüberlassung suchen wir für unseren Kunden, einen großen Energieversorger mit Sitz in Stuttgart, einen Testmanager SAP S/4HANA (m/w/d). Der Kunde stellt seine Abrechnungs- und Finanzprozesse auf SAP S/4HANA um und benötigt Verstärkung im Testmanagement des Programms.
+
+Ihre Aufgaben
+• Verantwortung für das Testmanagement im Teilprogramm Finanzen und Abrechnung
+• Erstellung der Teststrategie und Planung der Testphasen (Integrationstest, Regressionstest, Abnahmetest)
+• Steuerung der Testerinnen und Tester sowie der Key User aus den Fachbereichen
+• Weiterentwicklung der Testautomatisierung mit Tricentis Tosca und Selenium
+• Definition von Quality Gates und Freigabekriterien für die Releases
+• Fehlermanagement und Reporting an die Programmleitung
+• Enge Zusammenarbeit mit dem Release-Management und dem Betrieb
+
+Ihr Profil
+• Mehrjährige Erfahrung als Testmanager in SAP-Projekten, idealerweise S/4HANA
+• ISTQB Advanced Level Test Manager wünschenswert
+• Erfahrung mit Testautomatisierung und agilen Vorgehensmodellen
+• Kenntnisse in Jira, Xray oder SAP Solution Manager
+• Sehr gute Deutschkenntnisse
+• Teamfähigkeit, Zuverlässigkeit und Kommunikationsstärke
+
+Rahmenbedingungen
+• Einsatz im Rahmen der Arbeitnehmerüberlassung, Anstellung bei der Kraichgau Personal & IT Services GmbH
+• Vollzeit, 40 Stunden pro Woche
+• Start 01.12.2026, Einsatzdauer zunächst 7 Monate
+• 40 % mobiles Arbeiten nach Absprache mit dem Kunden
+• Übertarifliche Vergütung, Branchenzuschläge und Equal Pay nach gesetzlicher Regelung
+• Übernahme durch den Kunden nach dem Einsatz möglich
+
+Unser Angebot
+• Unbefristeter Arbeitsvertrag mit uns
+• 30 Tage Urlaub, Urlaubs- und Weihnachtsgeld
+• Persönliche Betreuung durch Ihre Disponentin vor Ort
+• Mitarbeiterrabatte und Jobrad
+
+Haben wir Ihr Interesse geweckt? Dann bewerben Sie sich mit Ihren vollständigen Unterlagen, Ihrer Gehaltsvorstellung und Ihrem frühestmöglichen Eintrittstermin. Wir freuen uns auf Sie.
+
+Schlagworte
+Testmanagement
+SAP S/4HANA
+Tosca
+Selenium
+Quality Gates
+Arbeitnehmerüberlassung
+Energieversorgung
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Kraichgau Personal & IT Services GmbH
+Personaldienstleistungen und IT-Fachkräfte
+187 veröffentlichte Projekte
+Mitglied seit 2016
+Firmenprofil ansehen
+
+Ähnliche Projekte
+SAP IS-U Berater (m/w/d)
+Karlsruhe · 01.2027 · 12 Monate
+Testautomatisierer Tosca (m/w/d)
+Stuttgart · ab sofort
+Mehr Projekte anzeigen

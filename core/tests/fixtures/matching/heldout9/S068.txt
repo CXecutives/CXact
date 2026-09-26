@@ -1,0 +1,13 @@
+Titel: Senior Analytics Engineer – Snowflake and dbt (Contract, 9 months)
+Unternehmen: Sihlquai Retail Analytics AG
+Ort: Zurich, Zurich, Switzerland (Remote)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4352877041/
+Abgerufen am: 25.09.2026 07:48
+
+Senior Analytics Engineer – Snowflake and dbt (Contract, 9 months)
+Sihlquai Retail Analytics AG · Zurich, Zurich, Switzerland (Remote)
+€900/day - €1,000/day · Remote · Contract
+Actively recruiting
+Help us rebuild the data warehouse behind our loyalty and pricing analytics: dbt models on Snowflake, Airflow orchestration, data quality tests and semantic layer for Tableau. Four days a week, fully remote from DACH, start 01.12.2026 …
+See more

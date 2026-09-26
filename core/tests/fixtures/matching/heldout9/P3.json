@@ -1,0 +1,301 @@
+{
+  "name": "Rainer Exempelberg",
+  "email": "rainer.exempelberg@example.invalid",
+  "telefon": "+49 171 0000000",
+  "titel": "Interim Geschäftsführer und CRO",
+  "abschluss": "Diplom-Kaufmann (Univ.)",
+  "berufserfahrung_jahre": 29,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Kaufmann (Univ.)",
+      "fach": "Betriebswirtschaftslehre mit den Schwerpunkten Finanzierung und Bankbetriebslehre",
+      "hochschule": "Beispieluniversität",
+      "jahr": 1996
+    },
+    {
+      "abschluss": "Zertifizierter Restrukturierungs- und Sanierungsexperte",
+      "fach": "Sanierungs- und Insolvenzrecht, Sanierungskonzepte",
+      "jahr": 2010
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "01/2012 bis heute",
+      "rolle": "Interim Geschäftsführer und Chief Restructuring Officer (selbstständig)",
+      "schwerpunkte": [
+        "Vierzehn Interim-Mandate als CRO, Sanierungsgeschäftsführer oder Interim-CEO in Industrie und Handel",
+        "Umsetzung von Sanierungskonzepten nach IDW S6 gemeinsam mit Gutachtern und Gesellschaftern",
+        "Führung von Bankenpools, Stillhalteabkommen, Covenant-Resets und Refinanzierungen",
+        "Drei Mandate als Generalbevollmächtigter in Eigenverwaltung und im Schutzschirmverfahren, ein StaRUG-Restrukturierungsplan",
+        "13-Wochen-Liquiditätsplanung und Cash-Task-Forces in akuten Liquiditätskrisen",
+        "Distressed-M&A-Prozesse und Investorensuche"
+      ]
+    },
+    {
+      "zeitraum": "01/2005 bis 12/2011",
+      "rolle": "Kaufmännischer Geschäftsführer eines Automobilzulieferers mit 1.900 Mitarbeitenden",
+      "schwerpunkte": [
+        "Turnaround nach dem Umsatzeinbruch 2009 mit Kurzarbeit und Kostensenkungsprogramm",
+        "Schließung eines Werks mit Interessenausgleich und Sozialplan",
+        "Verhandlungen mit sieben Banken und Neuordnung des Konsortialkredits",
+        "Working Capital Programm mit Freisetzung von 34 Mio. EUR Liquidität"
+      ]
+    },
+    {
+      "zeitraum": "01/1998 bis 12/2004",
+      "rolle": "Manager und Senior Manager in einer Restrukturierungsberatung",
+      "schwerpunkte": [
+        "Erstellung von Sanierungskonzepten und Independent Business Reviews für Banken",
+        "Integrierte Unternehmensplanung und Liquiditätsplanung in Krisenfällen",
+        "Begleitung von Kostensenkungs- und Standortprogrammen"
+      ]
+    },
+    {
+      "zeitraum": "10/1996 bis 12/1997",
+      "rolle": "Firmenkundenbetreuer in der Intensivbetreuung einer Geschäftsbank",
+      "schwerpunkte": [
+        "Betreuung von Firmenkunden in Sanierungs- und Abwicklungsfällen",
+        "Kreditanalyse und Sicherheitenbewertung"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Restrukturierung",
+      "jahre": 29,
+      "auch": ["Sanierung", "Restructuring", "Unternehmenssanierung"]
+    },
+    {
+      "kompetenz": "Chief Restructuring Officer",
+      "jahre": 14,
+      "auch": ["CRO", "Sanierungsgeschäftsführer", "Generalbevollmächtigter"]
+    },
+    {
+      "kompetenz": "Turnaround-Management",
+      "jahre": 21,
+      "auch": ["Turnaround", "Turnaround Management"]
+    },
+    {
+      "kompetenz": "Interim Management",
+      "jahre": 14,
+      "auch": ["Management auf Zeit", "Interim-Mandate", "Interim Manager"]
+    },
+    {
+      "kompetenz": "Geschäftsführung",
+      "jahre": 21,
+      "auch": ["Managing Director", "Interim Geschäftsführung", "Interim CEO"]
+    },
+    {
+      "kompetenz": "Liquiditätsmanagement",
+      "jahre": 29,
+      "auch": ["Liquiditätsplanung", "13-Wochen-Liquiditätsplanung", "13-week cash flow", "Liquiditätssteuerung"]
+    },
+    {
+      "kompetenz": "Sanierungskonzepte nach IDW S6",
+      "jahre": 21,
+      "auch": ["IDW S6", "Sanierungsgutachten", "Sanierungskonzept"]
+    },
+    {
+      "kompetenz": "Bankenverhandlungen",
+      "jahre": 29,
+      "auch": ["Bankenkommunikation", "Lender Management", "Stillhalteabkommen", "Verhandlungen mit Banken"]
+    },
+    {
+      "kompetenz": "Eigenverwaltung und Schutzschirmverfahren",
+      "jahre": 10,
+      "auch": ["Eigenverwaltung", "Schutzschirmverfahren", "Insolvenz in Eigenverwaltung"]
+    },
+    {
+      "kompetenz": "StaRUG-Restrukturierung",
+      "jahre": 5,
+      "auch": ["StaRUG", "Restrukturierungsplan", "präventiver Restrukturierungsrahmen"]
+    },
+    {
+      "kompetenz": "Refinanzierung",
+      "jahre": 21,
+      "auch": ["Refinancing", "Konsortialkredit", "Covenant-Reset"]
+    },
+    {
+      "kompetenz": "Working Capital Management",
+      "jahre": 21,
+      "auch": ["Working Capital", "Net Working Capital"]
+    },
+    {
+      "kompetenz": "Kostensenkungsprogramme",
+      "jahre": 21,
+      "auch": ["Kostensenkung", "Cost Reduction", "Ergebnisverbesserungsprogramm"]
+    },
+    {
+      "kompetenz": "Integrierte Unternehmensplanung",
+      "jahre": 29,
+      "auch": ["Integrierte Planung", "Drei-Wege-Planung", "Business Plan"]
+    },
+    {
+      "kompetenz": "Independent Business Review",
+      "jahre": 7,
+      "auch": ["IBR", "Unabhängige Unternehmensanalyse"]
+    },
+    {
+      "kompetenz": "Standortschließungen",
+      "jahre": 14,
+      "auch": ["Werksschließung", "Standortkonsolidierung"]
+    },
+    {
+      "kompetenz": "Verhandlungen mit dem Betriebsrat",
+      "jahre": 21,
+      "auch": ["Interessenausgleich und Sozialplan", "Betriebsratsverhandlungen"]
+    },
+    {
+      "kompetenz": "Distressed M&A",
+      "jahre": 10,
+      "auch": ["Investorenprozess", "Distressed Sale", "Übertragende Sanierung"]
+    },
+    {
+      "kompetenz": "Stakeholdermanagement in Krisen",
+      "jahre": 21,
+      "auch": ["Gläubigermanagement", "Stakeholder Management"]
+    }
+  ],
+  "schwerpunkte": [
+    "Restrukturierung",
+    "Chief Restructuring Officer",
+    "Liquiditätsmanagement",
+    "Sanierungskonzepte nach IDW S6",
+    "Bankenverhandlungen"
+  ],
+  "methoden_tools": [
+    {
+      "name": "Excel"
+    },
+    {
+      "name": "SAP S/4HANA"
+    },
+    {
+      "name": "SAP ECC"
+    },
+    {
+      "name": "LucaNet"
+    },
+    {
+      "name": "Power BI"
+    },
+    {
+      "name": "Board"
+    },
+    {
+      "name": "Integrierte Finanzplanung (Drei-Wege-Modell)"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "Zertifizierter Restrukturierungs- und Sanierungsexperte"
+    },
+    {
+      "name": "Certified Turnaround Professional (CTP)"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Automobilzulieferer"
+    },
+    {
+      "branche": "Maschinenbau"
+    },
+    {
+      "branche": "Metallverarbeitung"
+    },
+    {
+      "branche": "Kunststoffverarbeitung"
+    },
+    {
+      "branche": "Handel"
+    },
+    {
+      "branche": "Bauzulieferindustrie"
+    },
+    {
+      "branche": "Private-Equity-Portfoliounternehmen"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    },
+    {
+      "sprache": "Italienisch",
+      "niveau": "B1"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Vierzehn Interim-Mandate als CRO oder Sanierungsgeschäftsführer, zwölf davon ohne Insolvenz abgeschlossen",
+    "Hat drei Eigenverwaltungen als Generalbevollmächtigter bis zur Aufhebung des Verfahrens geführt",
+    "Führt Bankenpools mit bis zu neun Instituten durch Stillhalteabkommen und Refinanzierung"
+  ],
+  "keywords": [
+    "CRO",
+    "Sanierung",
+    "Turnaround",
+    "IDW S6",
+    "StaRUG",
+    "Eigenverwaltung",
+    "Schutzschirmverfahren",
+    "13-Wochen-Liquiditätsplanung",
+    "Bankenpool",
+    "Covenants",
+    "Fortführungsprognose",
+    "Insolvenzordnung",
+    "Cash-Task-Force"
+  ],
+  "wunschrollen": [
+    "Chief Restructuring Officer",
+    "Interim Geschäftsführer Restrukturierung",
+    "Interim CEO Turnaround",
+    "Generalbevollmächtigter in Eigenverwaltung",
+    "Interim Managing Director Restructuring"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1900,
+    "remote": "teilweise",
+    "regionen": [
+      "Baden-Württemberg",
+      "Bayern",
+      "Nordrhein-Westfalen",
+      "Hessen",
+      "Wien"
+    ],
+    "branchen": [
+      "Automobilzulieferer",
+      "Maschinenbau",
+      "Private Equity"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1500,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue",
+      "festanstellung"
+    ],
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "sofort",
+    "zielprofil_min_jahre": 15,
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": [
+      "Werkstudent",
+      "Praktikum",
+      "Sachbearbeitung",
+      "Inkasso"
+    ]
+  }
+}

@@ -451,6 +451,30 @@ impl Wording for English {
                     )
                 },
             ),
+            CriterionKey::Workload => {
+                let days = |n: i64| plural(n, "day", "days");
+                match (int(profile, "minDays"), int(profile, "maxDays")) {
+                    (Some(min), Some(max)) if min == max => {
+                        format!("Workload {} a week", days(min))
+                    }
+                    (Some(min), Some(max)) => format!("Workload {min} to {max} days a week"),
+                    (Some(min), None) => format!("Workload at least {} a week", days(min)),
+                    (None, Some(max)) => format!("Workload at most {} a week", days(max)),
+                    (None, None) => "Workload".to_owned(),
+                }
+            }
+            CriterionKey::Duration => int(profile, "min").map_or_else(
+                || "Duration".to_owned(),
+                |min| format!("Duration at least {}", plural(min, "month", "months")),
+            ),
+            CriterionKey::ExclusionWords => {
+                let words = list_param(profile, "words").join(", ");
+                if words.is_empty() {
+                    "Exclusion words".to_owned()
+                } else {
+                    format!("Exclusion words {words}")
+                }
+            }
         }
     }
 
@@ -493,6 +517,14 @@ impl Wording for English {
             CriterionKey::TargetYears => {
                 int(ad, "years").map(|years| format!("asks for {}", plural(years, "year", "years")))
             }
+            CriterionKey::Workload => int(ad, "to").map(|to| match int(ad, "from") {
+                Some(from) if from == to => format!("workload {to}%"),
+                Some(from) => format!("workload {from} to {to}%"),
+                None => format!("workload up to {to}%"),
+            }),
+            CriterionKey::Duration => int(ad, "months")
+                .map(|months| format!("duration {}", plural(months, "month", "months"))),
+            CriterionKey::ExclusionWords => None,
         }
     }
 
@@ -683,6 +715,21 @@ impl Wording for English {
                     text_param(p, "industry").unwrap_or_default()
                 ),
                 _ => "The ad names no industry.".to_owned(),
+            },
+            ReasonCode::Workload => {
+                "The workload of the ad does not fit the days a week of the profile.".to_owned()
+            }
+            ReasonCode::Duration => match (int(p, "months"), int(p, "min")) {
+                (Some(months), Some(min)) => format!(
+                    "The duration of {} is shorter than the minimum of {}.",
+                    plural(months, "month", "months"),
+                    plural(min, "month", "months")
+                ),
+                _ => "The duration is shorter than the minimum.".to_owned(),
+            },
+            ReasonCode::ExclusionWord => match text_param(p, "word") {
+                Some(word) => format!("The ad contains the exclusion word {}.", self.quote(word)),
+                None => "The ad contains an exclusion word.".to_owned(),
             },
         };
         Some(said)

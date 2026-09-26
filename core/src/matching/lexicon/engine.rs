@@ -346,6 +346,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
 pub(crate) const FRAME_WORDS: &[&str] = &[
     "auslastung",
     "availability",
+    "beauftragung",
     "bereitschaft",
     "dauer",
     "duration",
@@ -371,10 +372,13 @@ pub(crate) const FRAME_WORDS: &[&str] = &[
     "start",
     "stundensatz",
     "tagessatz",
+    "teilzeit",
     "travel",
     "verfugbar",
     "vergutung",
+    "verlangerung",
     "vertragsart",
+    "vollzeit",
     "vor-ort-prasenz",
     "willingness",
     "workload",
@@ -1216,6 +1220,42 @@ pub(crate) const RATE_WORDS: &[&str] = &[
     "per hour",
     "€/tag",
     "€/h",
+    "stundenlohn",
+    "hourly wage",
+    "hourly pay",
+];
+/// Employment pay (an hourly wage of an employee or of temporary agency work), never a
+/// freelance rate: substrings, then whole words.
+pub(crate) const WAGE_WORDS: &[&str] = &[
+    "stundenlohn",
+    "tariflohn",
+    "mindestlohn",
+    "tarif",
+    "entgelt",
+    "equal pay",
+    "wage",
+    "gross per hour",
+    "per hour gross",
+    "gross hourly",
+    "hourly gross",
+];
+pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["lohn", "igz", "bap", "gvp"];
+/// Words that make a rate employment pay unless the sentence names a freelance rate
+/// (whole words).
+pub(crate) const WAGE_HINTS: &[&str] = &["brutto", "gross"];
+/// A freelance rate: overrules `WAGE_HINTS` (substrings).
+pub(crate) const FREELANCE_RATE_WORDS: &[&str] = &[
+    "stundensatz",
+    "tagessatz",
+    "honorar",
+    "day rate",
+    "daily rate",
+    "freelance",
+    "freiberuf",
+    "zzgl",
+    "mwst",
+    "plus vat",
+    "excl. vat",
 ];
 pub(crate) const SALARY_WORDS: &[&str] = &[
     "gehalt",
@@ -1309,6 +1349,117 @@ pub(crate) const DURATION_WORDS: &[&str] = &[
     "length",
 ];
 pub(crate) const MONTH_UNITS: &[&str] = &["monat", "month"];
+/// Workload (share of a five-day week). Words that make a percentage a workload
+/// (`Auslastung 80 %`), substrings.
+pub(crate) const WORKLOAD_CUES: &[&str] = &[
+    "auslastung",
+    "arbeitspensum",
+    "pensum",
+    "einsatzumfang",
+    "stellenumfang",
+    "beschaftigungsumfang",
+    "arbeitszeit",
+    "teilzeit",
+    "vollzeit",
+    "workload",
+    "utilisation",
+    "utilization",
+    "capacity",
+    "part-time",
+    "full-time",
+    "part time",
+    "full time",
+];
+/// Full-time work (whole words or phrases).
+pub(crate) const WORKLOAD_FULL: &[&str] = &[
+    "vollzeit",
+    "vollzeitstelle",
+    "vollzeitposition",
+    "vollzeittatigkeit",
+    "vollzeitbeschaftigung",
+    "vollauslastung",
+    "volle auslastung",
+    "full-time",
+    "full time",
+    "fulltime",
+];
+/// Part-time work (whole words or phrases): up to `WORKLOAD_PART` percent.
+pub(crate) const WORKLOAD_PART_WORDS: &[&str] = &[
+    "teilzeit",
+    "teilzeitstelle",
+    "teilzeittatigkeit",
+    "teilzeitbeschaftigung",
+    "part-time",
+    "part time",
+    "parttime",
+];
+/// Part-time only as an option (`Vollzeit, Teilzeit möglich`, `Voll- oder Teilzeit`): any
+/// workload up to full time.
+pub(crate) const WORKLOAD_PART_OPTION: &[&str] = &[
+    "moglich",
+    "possible",
+    "optional",
+    "denkbar",
+    "voll- oder teilzeit",
+    "voll- und teilzeit",
+    "teil- oder vollzeit",
+    "teil- und vollzeit",
+];
+/// Words near a number of days or a percentage that make it the place of work, not the
+/// workload (`3 Tage/Woche vor Ort`, `remote 2 Tage`, `80 % remote`): whole words or phrases.
+pub(crate) const WORKLOAD_PLACE_WORDS: &[&str] = &[
+    "vor ort",
+    "onsite",
+    "on-site",
+    "on site",
+    "remote",
+    "homeoffice",
+    "home office",
+    "home-office",
+    "mobil",
+    "mobile",
+    "mobiles",
+    "mobilem",
+    "buro",
+    "office",
+    "prasenz",
+    "beim kunden",
+    "at the client",
+    "anwesenheit",
+    "hybrid",
+    "reise",
+    "reisen",
+    "reiseanteil",
+    "reisetatigkeit",
+    "travel",
+];
+/// Days and weeks of a workload (`3 Tage/Woche`, `4 days per week`), and the hours.
+pub(crate) const WORKLOAD_DAY_UNITS: &[&str] = &["tage", "tagen", "tag", "days", "day", "pt"];
+pub(crate) const WORKLOAD_HOUR_UNITS: &[&str] =
+    &["stunden", "std.", "std", "hours", "hour", "hrs", "h"];
+/// Words between the unit and the week (`Tage pro Woche`, `days a week`, `Tage in der Woche`).
+pub(crate) const WORKLOAD_PER: &[&str] = &[
+    "/", "pro", "per", "je", "in", "der", "die", "a", "each", "im", "the",
+];
+pub(crate) const WORKLOAD_WEEK: &[&str] = &["woche", "week", "wk"];
+/// Hours per week in one word (`20 Wochenstunden`).
+pub(crate) const WORKLOAD_WEEKLY_HOURS: &[&str] = &["wochenstunden", "weekly hours"];
+/// Small numbers written as words (days per week).
+pub(crate) const WORKLOAD_NUMBER_WORDS: &[(&str, u32)] = &[
+    ("einen", 1),
+    ("ein", 1),
+    ("one", 1),
+    ("zwei", 2),
+    ("two", 2),
+    ("drei", 3),
+    ("three", 3),
+    ("vier", 4),
+    ("four", 4),
+    ("funf", 5),
+    ("five", 5),
+];
+/// Separators of a range of numbers (`3-4`, `3 bis 4`, `16 to 20`).
+pub(crate) const WORKLOAD_RANGE: &[&str] = &["-", "–", "bis", "to", "oder", "or"];
 pub(crate) const WEEK_UNITS: &[&str] = &["woche", "week"];
 pub(crate) const HOURLY_WORDS: &[&str] = &["stunde", "std", "hour", "/h", "stundensatz"];
 /// A day rate named in the value of a rate line.
@@ -1652,6 +1803,8 @@ pub(crate) const FULL_REMOTE: &[&str] = &[
     "vollstandig remote",
     "voll remote",
     "remote only",
+    "remote 100 %",
+    "remote 100%",
 ];
 
 /// ANÜ named: whole words, then substrings (case-folded, without umlauts).
@@ -1671,9 +1824,81 @@ pub(crate) const ANUE_NEGATION_PARTS: &[&str] = &[
     "excluded",
     "ruled out",
 ];
+/// ANÜ as a topic of the requirements, not the contract form (experience with it, knowledge
+/// of the law, managing temporary staff): substrings in the clause that names it or at the
+/// start of the sentence.
+pub(crate) const ANUE_TOPIC: &[&str] = &[
+    "erfahrung",
+    "kenntnis",
+    "know-how",
+    "knowhow",
+    "vertraut",
+    "versiert",
+    "expertise",
+    "fachwissen",
+    "von vorteil",
+    "wunschenswert",
+    "idealerweise",
+    "steuerung",
+    "experience",
+    "knowledge",
+    "familiar",
+    "nice to have",
+    "a plus",
+    "an advantage",
+    "managing",
+    "management of",
+];
 /// ANÜ only one option: whole words, then substrings.
-pub(crate) const ANUE_OPTION: &[&str] = &["oder", "or", "wahlweise", "alternativ", "optional"];
-pub(crate) const ANUE_OPTION_PARTS: &[&str] = &["je nach", "moglich"];
+pub(crate) const ANUE_OPTION: &[&str] = &[
+    "oder",
+    "or",
+    "wahlweise",
+    "alternativ",
+    "optional",
+    "moglich",
+];
+pub(crate) const ANUE_OPTION_PARTS: &[&str] = &["je nach"];
+/// ANÜ as the business of a company, not the contract form (its core business, a group
+/// active in it): substrings of the sentence, unless it also names the contract
+/// (`ANUE_CONTRACT`).
+pub(crate) const ANUE_BUSINESS: &[&str] = &[
+    "kerngeschaft",
+    "geschaftsfeld",
+    "geschaftsbereich",
+    "tatig",
+    "spezialisiert",
+    "marktfuhrer",
+    "anbieter von",
+    "anbieter fur",
+    "active in",
+    "specialis",
+    "specializ",
+    "provider of",
+];
+/// A sentence that places the job itself in ANÜ (whole words or phrases).
+pub(crate) const ANUE_CONTRACT: &[&str] = &[
+    "im rahmen",
+    "im wege",
+    "auf basis",
+    "einsatz",
+    "besetzung",
+    "anstellung",
+    "vertragsart",
+    "suchen wir",
+    "wir suchen",
+    "we are looking",
+    "we seek",
+    "fur unseren kunden",
+    "for our client",
+    "uber anu",
+    "per anu",
+    "via anu",
+];
+/// Pay by commission or by result is no day rate (substrings; `provisionsfrei` is none).
+pub(crate) const NO_RATE_WORDS: &[&str] =
+    &["provision", "commission", "erfolgshonorar", "success fee"];
+pub(crate) const NO_RATE_EXCEPT: &[&str] = &["provisionsfrei", "ohne provision", "no commission"];
 
 /// Permanent position.
 pub(crate) const PERMANENT_WORDS: &[&str] = &[
@@ -1712,6 +1937,10 @@ pub(crate) const INTERIM_CUES: &[&str] = &[
     "auf zeit",
     "projektbasis",
     "project basis",
+    "vakanzuberbruckung",
+    "ubergangsgeschaftsfuhr",
+    "ubergangsweise",
+    "fractional",
 ];
 /// A stated permanent position (in addition to [`PERMANENT_WORDS`]).
 pub(crate) const PERMANENT_STATED: &[&str] = &[
@@ -1847,6 +2076,37 @@ pub(crate) const SALARY_CUES: &[&str] = &[
     "p. a.",
     "p.a.",
     "per annum",
+];
+/// Units and currencies that make an amount of a salary sentence money (`95.000 €`, `120k`,
+/// `130.000 brutto p.a.`).
+pub(crate) const SALARY_UNITS: &[&str] = &[
+    "€",
+    "eur",
+    "euro",
+    "chf",
+    "usd",
+    "gbp",
+    "$",
+    "£",
+    "k",
+    "t€",
+    "teur",
+    "tsd",
+    "brutto",
+    "p.a.",
+    "p. a.",
+    "pro jahr",
+    "per year",
+    "per annum",
+    "jahrlich",
+    "im jahr",
+    "a year",
+    "/jahr",
+    "/yr",
+    "/mo",
+    "pro monat",
+    "per month",
+    "monatlich",
 ];
 pub(crate) const MONTHLY_WORDS: &[&str] = &["monat", "month", "/mo"];
 pub(crate) const LOWER_BOUND_WORDS: &[&str] =

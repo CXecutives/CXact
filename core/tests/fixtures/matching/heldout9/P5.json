@@ -1,0 +1,236 @@
+{
+  "name": "Felix Beispielhuber",
+  "email": "felix.beispielhuber@example.invalid",
+  "telefon": "+49 151 0000000",
+  "titel": "Freiberuflicher Softwareentwickler Java, Kotlin und Angular",
+  "abschluss": "M.Sc. Informatik",
+  "berufserfahrung_jahre": 14,
+  "ausbildung": [
+    {
+      "abschluss": "M.Sc. Informatik",
+      "fach": "Informatik mit Schwerpunkt Softwaretechnik und verteilte Systeme",
+      "hochschule": "Beispieluniversität",
+      "jahr": 2012
+    },
+    {
+      "abschluss": "B.Sc. Wirtschaftsinformatik",
+      "fach": "Wirtschaftsinformatik",
+      "hochschule": "Beispielhochschule für angewandte Wissenschaften",
+      "jahr": 2010
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2018 - heute",
+      "rolle": "Freiberuflicher Senior Softwareentwickler Java und Kotlin (selbstständig)",
+      "schwerpunkte": [
+        "Neuentwicklung einer Microservice-Plattform für die Schadenregulierung eines Versicherers mit Spring Boot, Kotlin, Kafka und PostgreSQL",
+        "Ablösung eines Java-EE-Monolithen durch Spring-Boot-Services nach dem Strangler-Muster bei einem Logistikdienstleister",
+        "Full-Stack-Entwicklung eines Händlerportals mit Angular und Spring Boot für einen Onlinehändler",
+        "Entwurf von REST-APIs mit OpenAPI und Contract Testing mit Pact",
+        "Einführung von Testcontainers, Mutation Testing und CI-Pipelines mit GitLab CI"
+      ]
+    },
+    {
+      "zeitraum": "2014 - 2018",
+      "rolle": "Senior Softwareentwickler Java in einem IT-Beratungshaus",
+      "schwerpunkte": [
+        "Backend-Entwicklung mit Spring und Hibernate für Banken und Versicherungen",
+        "Migration von Oracle nach PostgreSQL",
+        "Frontend-Entwicklung mit AngularJS und später Angular 4 bis 6",
+        "Code Reviews und Mentoring von drei Junior-Entwicklern"
+      ]
+    },
+    {
+      "zeitraum": "2012 - 2014",
+      "rolle": "Softwareentwickler Java in einem Softwarehaus für Logistiksoftware",
+      "schwerpunkte": [
+        "Weiterentwicklung eines Lagerverwaltungssystems mit Java EE und JSF",
+        "Schnittstellen zu SAP über IDoc und Webservices"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Java",
+      "jahre": 14,
+      "auch": ["Java 17", "Java 21", "Java SE", "Core Java"]
+    },
+    {
+      "kompetenz": "Spring Boot",
+      "jahre": 9,
+      "auch": ["Spring Framework", "Spring Cloud", "Spring Data JPA", "Spring Security"]
+    },
+    {
+      "kompetenz": "Kotlin",
+      "jahre": 6,
+      "auch": ["Kotlin Coroutines"]
+    },
+    {
+      "kompetenz": "TypeScript",
+      "jahre": 8
+    },
+    {
+      "kompetenz": "Angular",
+      "jahre": 8,
+      "auch": ["Angular 17", "RxJS", "NgRx", "AngularJS"]
+    },
+    {
+      "kompetenz": "REST-APIs",
+      "jahre": 11,
+      "auch": ["RESTful Services", "OpenAPI", "Swagger", "API-Design"]
+    },
+    {
+      "kompetenz": "Microservices",
+      "jahre": 8,
+      "auch": ["Microservice-Architektur", "verteilte Systeme"]
+    },
+    {
+      "kompetenz": "PostgreSQL",
+      "jahre": 10,
+      "auch": ["SQL", "Flyway", "Liquibase"]
+    },
+    {
+      "kompetenz": "Hibernate",
+      "jahre": 12,
+      "auch": ["JPA"]
+    },
+    {
+      "kompetenz": "Apache Kafka",
+      "jahre": 5,
+      "auch": ["Event-Driven Architecture", "Event Streaming"]
+    },
+    {
+      "kompetenz": "Testautomatisierung",
+      "jahre": 10,
+      "auch": ["JUnit 5", "Testcontainers", "Mockito", "Jest", "Test Driven Development", "TDD"]
+    },
+    {
+      "kompetenz": "Docker",
+      "jahre": 7,
+      "auch": ["Container"]
+    },
+    {
+      "kompetenz": "Kubernetes",
+      "jahre": 4,
+      "auch": ["Helm"]
+    },
+    {
+      "kompetenz": "CI/CD",
+      "jahre": 8,
+      "auch": ["GitLab CI", "Jenkins", "GitHub Actions"]
+    },
+    {
+      "kompetenz": "Domain Driven Design",
+      "jahre": 6,
+      "auch": ["DDD", "Hexagonale Architektur", "Clean Architecture"]
+    },
+    {
+      "kompetenz": "Java EE",
+      "jahre": 5,
+      "auch": ["Jakarta EE", "JSF", "EJB"]
+    },
+    {
+      "kompetenz": "Legacy-Modernisierung",
+      "jahre": 6,
+      "auch": ["Strangler Pattern", "Migration von Monolithen"]
+    },
+    {
+      "kompetenz": "Agile Softwareentwicklung",
+      "jahre": 11,
+      "auch": ["Scrum", "Kanban"]
+    }
+  ],
+  "methoden_tools": [
+    {"name": "IntelliJ IDEA"},
+    {"name": "Gradle"},
+    {"name": "Maven"},
+    {"name": "Git"},
+    {"name": "GitLab"},
+    {"name": "Jira"},
+    {"name": "Confluence"},
+    {"name": "SonarQube"},
+    {"name": "Keycloak"},
+    {"name": "Redis"},
+    {"name": "Oracle Database"},
+    {"name": "AWS"}
+  ],
+  "zertifizierungen": [
+    {"name": "Oracle Certified Professional Java SE 17 Developer"},
+    {"name": "VMware Certified Spring Professional"},
+    {"name": "Professional Scrum Developer (PSD I)"}
+  ],
+  "branchen": [
+    {"branche": "Versicherungen"},
+    {"branche": "Banken"},
+    {"branche": "Logistik"},
+    {"branche": "E-Commerce"},
+    {"branche": "Öffentlicher Sektor"}
+  ],
+  "sprachen": [
+    {"sprache": "Deutsch", "niveau": "Muttersprache"},
+    {"sprache": "Englisch", "niveau": "C1"}
+  ],
+  "alleinstellungsmerkmale": [
+    "Zehn Jahre Microservices mit Spring Boot in Versicherungen und Logistik",
+    "Backend und Frontend aus einer Hand mit Kotlin, Spring Boot und Angular",
+    "Hat drei Java-EE-Monolithen ohne Big-Bang-Umstellung abgelöst"
+  ],
+  "keywords": [
+    "Java",
+    "Spring Boot",
+    "Kotlin",
+    "Angular",
+    "TypeScript",
+    "Microservices",
+    "REST",
+    "PostgreSQL",
+    "Kafka",
+    "Full-Stack"
+  ],
+  "schwerpunkte": [
+    "Backend-Entwicklung mit Java und Kotlin",
+    "Microservice-Architektur",
+    "Full-Stack mit Angular"
+  ],
+  "wunschrollen": [
+    "Senior Java Developer",
+    "Kotlin Backend Developer",
+    "Full-Stack Developer Java und Angular",
+    "Softwarearchitekt Microservices"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 900,
+    "remote": "mindestens 80 %, remote-first",
+    "regionen": [
+      "Remote",
+      "Köln",
+      "Düsseldorf"
+    ],
+    "branchen": [
+      "Versicherungen",
+      "Logistik",
+      "E-Commerce"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 800,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue",
+      "festanstellung"
+    ],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "sofort",
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": [
+      "Werkstudent",
+      "Praktikum",
+      "Abschlussarbeit"
+    ]
+  }
+}

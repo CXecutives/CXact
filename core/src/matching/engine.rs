@@ -17,12 +17,14 @@ use serde_json::{Value, json};
 use super::ad_facts::{self, AdFacts};
 use super::atoms::{self, Fit, Vocab, fold};
 use super::contract::{self, Contract, ContractKind};
+use super::exclusion;
 use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
 use super::focus::{self, Focus};
 use super::job::{self, Class, Item, Stage, contains_word};
 use super::legacy::LegacyProfile;
 use super::lexicon::engine as lex;
+use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{
     E_FULL, E_HALF, E_NONE, FOCUS_FACTOR, FOCUS_RELEVANCE, FOCUS_RELEVANCE_MAX, FORMAL_CAP,
@@ -568,6 +570,19 @@ fn final_score(adjusted: u64, cap: Option<u8>, unscorable: bool) -> (u8, u16) {
     (score, u16::try_from(adjusted).unwrap_or(1000))
 }
 
+/// The limits of an engagement (checks) and the exclusion words (they exclude).
+fn limit_findings(
+    criteria: &HardCriteria,
+    title: &str,
+    segments: &[Segment],
+    ad: &AdFacts,
+) -> Vec<Finding> {
+    let mut findings = limits::workload(criteria, ad);
+    findings.extend(limits::duration(criteria, ad));
+    findings.extend(exclusion::check(criteria, title, segments));
+    findings
+}
+
 /// Assesses one job.
 pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
@@ -599,6 +614,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         &page_levels(job),
     ));
     let ad_facts = ad_facts::read(&facts, &segments, &folded, &stated_contract, &doc);
+    findings.extend(limit_findings(criteria, job.title, &segments, &ad_facts));
     let requirement_lines = doc.requirement_lines;
     let items = scored(profile, doc.items);
     let (fit_score, must_weight, nice_count) = fit_score(&items);

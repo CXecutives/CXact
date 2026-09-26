@@ -264,22 +264,26 @@ fn permanent_employment_can_be_excluded() {
 /// as a plain line and as a list item of a page. A real heading still ends the ad.
 #[test]
 fn a_requirement_that_starts_like_other_listings_keeps_the_ad_whole() {
-    let frame = "Rahmendaten:\n- Einsatz über Arbeitnehmerüberlassung\n- Tagessatz: 600 €";
+    // The pay of temporary agency work is no day rate (version 16): one frame each.
+    let frame = "Rahmendaten:\n- Einsatz über Arbeitnehmerüberlassung";
+    let rate = "Rahmendaten:\n- Freiberuflich\n- Tagessatz: 600 €";
     for line in [
         "Ähnliche Projekterfahrung von Vorteil",
         "- Weitere Projekterfahrung wünschenswert",
     ] {
-        let text = format!("Ihr Profil:\n- Erfahrung im Controlling\n{line}\n\n{frame}");
-        let a = run("Hamburg", &text);
-        assert_eq!(a.verdict, Verdict::Excluded, "{line}");
-        assert_eq!(
-            criterion(&a, CriterionKey::NoAnue).status,
-            CriterionStatus::Violated
-        );
-        assert_eq!(
-            criterion(&a, CriterionKey::MinDayRate).status,
-            CriterionStatus::Violated
-        );
+        for (below, key) in [
+            (frame, CriterionKey::NoAnue),
+            (rate, CriterionKey::MinDayRate),
+        ] {
+            let text = format!("Ihr Profil:\n- Erfahrung im Controlling\n{line}\n\n{below}");
+            let a = run("Hamburg", &text);
+            assert_eq!(a.verdict, Verdict::Excluded, "{line}");
+            assert_eq!(
+                criterion(&a, key).status,
+                CriterionStatus::Violated,
+                "{line} {key:?}"
+            );
+        }
     }
     let listings = format!(
         "Ihr Profil:\n- Erfahrung im Controlling\n- Tagessatz: 950 €\n\nÄhnliche Projekte (12)\n{frame}"
@@ -317,5 +321,393 @@ fn country_names_in_a_profile_keep_the_country_rule() {
     assert_eq!(
         criterion(&paris, CriterionKey::Countries).status,
         CriterionStatus::Violated
+    );
+}
+
+fn codes(a: &Assessment) -> Vec<(ReasonCode, ReasonKind)> {
+    a.reasons
+        .iter()
+        .filter(|r| matches!(r.kind, ReasonKind::Violation | ReasonKind::Check))
+        .map(|r| (r.code, r.kind))
+        .collect()
+}
+
+/// An ad of employment with an hourly wage (German or English).
+fn wage_ad(pay: &str) -> String {
+    format!(
+        "Für unser Team suchen wir eine Sachbearbeitung Buchhaltung (m/w/d).
+
+Ihre Aufgaben:
+- Kontierung und Buchung von Eingangsrechnungen
+- Mitarbeit im Controlling
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung
+
+{pay}"
+    )
+}
+
+/// An hourly wage of an employee or of temporary agency work is employment pay: the job is
+/// judged as employment (the salary rule with a yearly estimate), never by its day rate.
+#[test]
+fn an_hourly_wage_is_employment_pay_never_a_day_rate() {
+    let profile = compile_profile(&profile());
+    for pay in [
+        "Wir bieten 18,50 € brutto pro Stunde bei 38,5 Stunden pro Woche.",
+        "Stundenlohn: 21 €",
+        "Bruttostundenlohn 19,80 € nach iGZ-Tarif",
+        "We offer €17.50 gross per hour.",
+        "Pay: hourly wage of €16 plus shift allowance.",
+    ] {
+        let a = assess_with(
+            &profile,
+            "Sachbearbeiter Buchhaltung (m/w/d)",
+            &wage_ad(pay),
+        );
+        let found = codes(&a);
+        assert!(
+            !found.iter().any(|(code, _)| *code == ReasonCode::DayRate),
+            "{pay}: {found:?}"
+        );
+        // Employment pay below the minimum salary (a yearly estimate) excludes.
+        assert_eq!(a.verdict, Verdict::Excluded, "{pay}: {found:?}");
+        assert!(
+            found.contains(&(ReasonCode::Salary, ReasonKind::Violation)),
+            "{pay}: {found:?}"
+        );
+        assert_eq!(
+            criterion(&a, CriterionKey::MinDayRate).status,
+            CriterionStatus::Inactive,
+            "{pay}"
+        );
+        assert_eq!(a.facts.contract.as_deref(), Some("permanent"), "{pay}");
+    }
+    // Without a minimum salary the wage excludes nothing.
+    let mut value = self::profile();
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("min_jahresgehalt");
+    let freelance_only = compile_profile(&value);
+    let a = assess_with(
+        &freelance_only,
+        "Sachbearbeiter Buchhaltung (m/w/d)",
+        &wage_ad("Stundenlohn: 21 €"),
+    );
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+}
+
+/// The pay of temporary agency work is employment pay as well: no day rate, the salary rule.
+#[test]
+fn the_pay_of_temporary_agency_work_is_no_day_rate() {
+    let mut value = profile();
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("ausgeschlossene_vertragsarten");
+    let text = wage_ad("Einsatz im Rahmen der Arbeitnehmerüberlassung, Stundensatz 35 €.");
+    let a = assess_with(&compile_profile(&value), "Controller (m/w/d)", &text);
+    let found = codes(&a);
+    assert!(
+        !found.iter().any(|(code, _)| *code == ReasonCode::DayRate),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&(ReasonCode::Salary, ReasonKind::Violation)),
+        "{found:?}"
+    );
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("min_jahresgehalt");
+    let a = assess_with(&compile_profile(&value), "Controller (m/w/d)", &text);
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+}
+
+/// A freelance hourly rate stays a rate: times eight it is the day rate.
+#[test]
+fn a_freelance_hourly_rate_counts_eight_times() {
+    let profile = compile_profile(&profile());
+    for pay in [
+        "Stundensatz: 95 €/h",
+        "Vergütung: 95 € pro Stunde zzgl. MwSt.",
+        "Hourly rate: €95 (freelance)",
+        "Stundensatz 95 € brutto",
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &wage_ad(pay));
+        let found = codes(&a);
+        assert!(
+            found.contains(&(ReasonCode::DayRate, ReasonKind::Violation)),
+            "{pay}: {found:?}"
+        );
+        let rate = criterion(&a, CriterionKey::MinDayRate);
+        assert_eq!(rate.status, CriterionStatus::Violated, "{pay}");
+        assert_eq!(
+            (
+                rate.params["rate"].as_u64(),
+                rate.params["hourly"].as_bool()
+            ),
+            (Some(95), Some(true)),
+            "{pay}"
+        );
+    }
+}
+
+/// The profile with the limits of an engagement and exclusion words.
+fn limited(extra: &Value) -> CompiledProfile {
+    let mut value = profile();
+    let criteria = value["harte_kriterien"].as_object_mut().expect("criteria");
+    for (key, v) in extra.as_object().expect("object") {
+        criteria.insert(key.clone(), v.clone());
+    }
+    compile_profile(&value)
+}
+
+fn frame_ad(frame: &str) -> String {
+    format!(
+        "Wir suchen einen Interim Controller (m/w/d) auf freiberuflicher Basis.
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung
+
+Rahmendaten:
+{frame}
+- Tagessatz: 950 € pro Tag"
+    )
+}
+
+/// The workload outside the profile's days per week is a check (`workload` with the ad's
+/// share and the profile's days), never an exclusion; inside it meets the criterion.
+#[test]
+fn a_workload_outside_the_days_per_week_is_a_check() {
+    let profile = limited(&json!({ "auslastung_min_tage": 2, "auslastung_max_tage": 3 }));
+    let set = profile
+        .summary()
+        .criteria
+        .iter()
+        .find(|c| c.key == CriterionKey::Workload);
+    assert_eq!(
+        set.map(|c| (c.set, c.params.clone())),
+        Some((
+            true,
+            json!({ "minDays": 2, "maxDays": 3 })
+                .as_object()
+                .cloned()
+                .expect("map")
+        ))
+    );
+    let text = frame_ad("- Auslastung: 100 %");
+    let a = assess_with(&profile, "Interim Controller (m/w/d)", &text);
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+    let check = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Workload)
+        .expect("a workload check");
+    assert_eq!(check.kind, ReasonKind::Check);
+    assert_eq!(
+        Value::Object(check.params.clone()),
+        json!({ "from": 100, "to": 100, "minDays": 2, "maxDays": 3 })
+    );
+    let state = criterion(&a, CriterionKey::Workload);
+    assert_eq!(state.status, CriterionStatus::Check);
+    assert!(passage(&text, state).contains("100 %"));
+    assert_eq!(
+        (a.facts.workload_from, a.facts.workload_to),
+        (Some(100), Some(100))
+    );
+
+    let text = frame_ad("- Einsatz an 3 Tagen pro Woche, remote 80 %");
+    let a = assess_with(&profile, "Interim Controller (m/w/d)", &text);
+    let state = criterion(&a, CriterionKey::Workload);
+    assert_eq!(state.status, CriterionStatus::Ok, "{:?}", codes(&a));
+    assert_eq!(
+        (state.params["from"].as_u64(), state.params["to"].as_u64()),
+        (Some(60), Some(60))
+    );
+    assert_eq!(
+        (a.facts.remote_from, a.facts.workload_from),
+        (Some(80), Some(60))
+    );
+
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Workload).status,
+        CriterionStatus::NotMentioned
+    );
+    assert_eq!(a.facts.workload_to, None);
+    // Without the keys the workload is no criterion; the facts still name it.
+    let a = run("Hamburg", &frame_ad("- Vollzeit"));
+    assert_eq!(
+        criterion(&a, CriterionKey::Workload).status,
+        CriterionStatus::Inactive
+    );
+    assert_eq!(a.facts.workload_to, Some(100));
+}
+
+/// An engagement shorter than the minimum is a check (`duration {months, min}`).
+#[test]
+fn an_engagement_shorter_than_the_minimum_is_a_check() {
+    let profile = limited(&json!({ "min_laufzeit_monate": 6 }));
+    let text = frame_ad("- Laufzeit: 3 Monate");
+    let a = assess_with(&profile, "Interim Controller (m/w/d)", &text);
+    assert_ne!(a.verdict, Verdict::Excluded);
+    let check = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Duration)
+        .expect("a duration check");
+    assert_eq!(check.kind, ReasonKind::Check);
+    assert_eq!(
+        Value::Object(check.params.clone()),
+        json!({ "months": 3, "min": 6 })
+    );
+    let state = criterion(&a, CriterionKey::Duration);
+    assert_eq!(state.status, CriterionStatus::Check);
+    assert!(passage(&text, state).contains("3 Monate"));
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Laufzeit: 12 Monate"),
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Duration).status,
+        CriterionStatus::Ok
+    );
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Duration).status,
+        CriterionStatus::NotMentioned
+    );
+}
+
+/// An exclusion word in the title or the ad excludes (`exclusionWord {word}`), in its
+/// German forms; without a hit the criterion stays out of the strip.
+#[test]
+fn an_exclusion_word_excludes_in_its_forms() {
+    let profile = limited(&json!({ "ausschlusswoerter": ["Werkstudent", "Praktikum"] }));
+    let a = assess_with(
+        &profile,
+        "Werkstudentin Controlling (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
+    let hit = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::ExclusionWord)
+        .expect("an exclusion word");
+    assert_eq!(hit.kind, ReasonKind::Violation);
+    assert_eq!(
+        Value::Object(hit.params.clone()),
+        json!({ "word": "Werkstudent" })
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::ExclusionWords).status,
+        CriterionStatus::Violated
+    );
+    let text = frame_ad("- Wir bieten ein Pflichtpraktikum im Controlling");
+    let a = assess_with(&profile, "Controlling (m/w/d)", &text);
+    assert_eq!(a.verdict, Verdict::Excluded);
+    // The strip links the reason, whose highlight is the sentence that names the word.
+    let state = criterion(&a, CriterionKey::ExclusionWords);
+    let reason = a
+        .reasons
+        .iter()
+        .find(|r| Some(r.id) == state.reason)
+        .expect("the linked reason");
+    let highlight = a
+        .highlights
+        .iter()
+        .find(|h| reason.ranges.contains(&h.id))
+        .expect("a highlight");
+    let units: Vec<u16> = text.encode_utf16().collect();
+    let marked = String::from_utf16(&units[highlight.start as usize..highlight.end as usize])
+        .expect("utf-16");
+    assert!(marked.contains("Pflichtpraktikum"), "{marked}");
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_ne!(a.verdict, Verdict::Excluded);
+    assert_eq!(
+        criterion(&a, CriterionKey::ExclusionWords).status,
+        CriterionStatus::Inactive
+    );
+}
+
+/// The new keys under their English names and values the engine cannot read.
+#[test]
+fn the_new_criteria_read_english_keys_and_report_odd_values() {
+    let english = compile_profile(&json!({
+        "kernkompetenzen": [{"kompetenz": "Controlling"}],
+        "hard_criteria": {
+            "workload_min_days": "2", "workload_max_days": 4,
+            "min_duration_months": "6", "exclusion_words": "Werkstudent; Praktikum"
+        }
+    }));
+    let summary = english.summary();
+    let params = |key| {
+        summary
+            .criteria
+            .iter()
+            .find(|c| c.key == key)
+            .map(|c| (c.set, Value::Object(c.params.clone())))
+    };
+    assert_eq!(
+        params(CriterionKey::Workload),
+        Some((true, json!({ "minDays": 2, "maxDays": 4 })))
+    );
+    assert_eq!(
+        params(CriterionKey::Duration),
+        Some((true, json!({ "min": 6 })))
+    );
+    assert_eq!(
+        params(CriterionKey::ExclusionWords),
+        Some((true, json!({ "words": ["Werkstudent", "Praktikum"] })))
+    );
+    assert!(
+        summary
+            .warnings
+            .iter()
+            .all(|w| w.params.get("keys").is_none())
+    );
+    let odd = compile_profile(&json!({
+        "kernkompetenzen": [{"kompetenz": "Controlling"}],
+        "harte_kriterien": {
+            "auslastung_min_tage": 4, "auslastung_max_tage": 2,
+            "min_laufzeit_monate": "lang", "ausschlusswoerter": 5
+        }
+    }));
+    let keys: Vec<String> = odd
+        .summary()
+        .warnings
+        .iter()
+        .filter_map(|w| {
+            w.params
+                .get("key")
+                .and_then(Value::as_str)
+                .map(str::to_owned)
+        })
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            "auslastung_max_tage",
+            "min_laufzeit_monate",
+            "ausschlusswoerter"
+        ]
     );
 }

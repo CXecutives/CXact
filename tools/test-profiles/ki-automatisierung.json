@@ -1,0 +1,91 @@
+{
+  "name": "Jonas Exempel",
+  "titel": "KI- und Automatisierungsberater",
+  "wunschrollen": [
+    "KI-Berater",
+    "AI Consultant",
+    "Projektleiter KI",
+    "Berater Prozessautomatisierung"
+  ],
+  "berufserfahrung_jahre": 12,
+  "ausbildung": [
+    { "abschluss": "Master of Science Wirtschaftsinformatik" }
+  ],
+  "kernkompetenzen": [
+    { "kompetenz": "KI-Strategie", "jahre": 5, "auch": ["AI Strategy", "KI-Roadmap"] },
+    { "kompetenz": "Generative KI", "jahre": 3, "auch": ["Generative AI", "GenAI"] },
+    { "kompetenz": "Large Language Models", "jahre": 3, "auch": ["LLM"] },
+    { "kompetenz": "Prozessautomatisierung", "jahre": 9, "auch": ["Process Automation"] },
+    { "kompetenz": "Robotic Process Automation", "jahre": 7, "auch": ["RPA"] },
+    { "kompetenz": "Workflow-Automatisierung", "jahre": 6, "auch": ["Workflow Automation"] },
+    { "kompetenz": "Machine Learning", "jahre": 6, "auch": ["Maschinelles Lernen"] },
+    { "kompetenz": "Prompt Engineering", "jahre": 3 },
+    { "kompetenz": "Datenanalyse", "jahre": 10, "auch": ["Data Analytics"] },
+    { "kompetenz": "Prozessanalyse", "jahre": 10, "auch": ["Process Analysis", "Prozessaufnahme"] },
+    { "kompetenz": "Digitalisierung", "jahre": 10, "auch": ["Digitale Transformation", "Digital Transformation"] },
+    { "kompetenz": "Change Management", "jahre": 6 },
+    { "kompetenz": "Use-Case-Entwicklung", "jahre": 5, "auch": ["Use Case Development"] },
+    { "kompetenz": "Projektleitung", "jahre": 8, "auch": ["Project Management"] }
+  ],
+  "schwerpunkte": [
+    "KI-Strategie",
+    "Generative KI",
+    "Prozessautomatisierung",
+    "Robotic Process Automation"
+  ],
+  "methoden_tools": [
+    { "name": "Python" },
+    { "name": "Azure OpenAI" },
+    { "name": "Microsoft Power Automate" },
+    { "name": "UiPath" },
+    { "name": "n8n" },
+    { "name": "LangChain" },
+    { "name": "Microsoft Copilot Studio" },
+    { "name": "SQL" }
+  ],
+  "zertifizierungen": [
+    { "name": "Microsoft Certified: Azure AI Engineer Associate" },
+    { "name": "UiPath Certified Professional" }
+  ],
+  "branchen": [
+    { "branche": "Maschinenbau" },
+    { "branche": "Logistik" },
+    { "branche": "Großhandel" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C1" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Automatisierte die Auftragserfassung eines Großhändlers mit einem Sprachmodell und senkte die Durchlaufzeit um zwei Drittel.",
+    "Baute für drei Mittelständler eine KI-Roadmap von der Idee bis zum produktiven Einsatz."
+  ],
+  "keywords": [
+    "EU AI Act",
+    "Retrieval Augmented Generation",
+    "Chatbots",
+    "Dokumentenverarbeitung",
+    "Intelligent Document Processing",
+    "Microsoft 365"
+  ],
+  "stationen": [
+    { "zeitraum": "04/2019 bis heute", "rolle": "Freiberuflicher Berater KI und Automatisierung", "schwerpunkte": ["Generative KI", "Prozessautomatisierung", "KI-Strategie"] },
+    { "zeitraum": "08/2014 bis 03/2019", "rolle": "Senior Consultant Prozessautomatisierung", "schwerpunkte": ["Robotic Process Automation", "Prozessanalyse"] }
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1100,
+    "remote": "ueberwiegend",
+    "regionen": ["Stuttgart", "München", "Nürnberg"],
+    "branchen": ["Maschinenbau", "Logistik"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 900,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue", "festanstellung"],
+    "verfuegbar_ab": "sofort",
+    "auslastung_min_tage": 2,
+    "auslastung_max_tage": 4,
+    "min_laufzeit_monate": 2,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum", "Abschlussarbeit"]
+  }
+}

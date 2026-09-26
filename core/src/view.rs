@@ -2861,6 +2861,9 @@ Rahmenbedingungen:
                 ("minSalary", false),
                 ("permanentRegion", false),
                 ("targetYears", false),
+                ("workload", false),
+                ("duration", false),
+                ("exclusionWords", false),
             ]
         );
         assert!(understood.warnings.is_empty());

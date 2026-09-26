@@ -1,0 +1,88 @@
+Titel: KI-Berater (m/w/d) für die Einführung von Microsoft 365 Copilot und Prozessautomatisierung
+Unternehmen: Aischgrund Armaturenwerk GmbH & Co. KG
+Ort: Neustadt an der Aisch
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/ki-berater-m-w-d-fuer-die-einfuehrung-von-microsoft-365-copilot-und-prozessautomatisierung-2921447
+Abgerufen am: 15.09.2026 07:36
+
+Projektdetails
+Start
+01.11.2026
+Dauer
+6 Monate
+Von
+Aischgrund Armaturenwerk GmbH & Co. KG
+Eingestellt
+14.09.2026
+Projekt-ID
+2921447
+Branche
+Maschinenbau
+Vertragsart
+Freiberuflich
+Einsatzart
+80 % Remote
+Stundensatz
+120 - 135 €/h
+
+Beschreibung
+Wir sind ein familiengeführter Hersteller von Industriearmaturen mit 380 Mitarbeitenden in Mittelfranken und einer Vertriebsniederlassung in Linz. Seit zwei Jahren arbeiten wir vollständig mit Microsoft 365 (E3), unsere Auftragsabwicklung läuft über proALPHA. Die Geschäftsführung hat entschieden, generative KI geordnet einzuführen, und hat dafür 60 Lizenzen für Microsoft 365 Copilot für eine Pilotphase freigegeben. Parallel wollen wir wiederkehrende Verwaltungsprozesse im Innendienst, im Einkauf und in der Personalabteilung automatisieren.
+
+Für dieses Vorhaben suchen wir eine erfahrene externe Beraterin oder einen erfahrenen externen Berater, die oder der uns von der Vorbereitung bis zur Entscheidung über den breiten Rollout begleitet.
+
+Ihre Aufgaben
+• Readiness-Check für Microsoft 365 Copilot: Berechtigungen in SharePoint und Teams, Datenklassifizierung, Bereinigung von Freigaben gemeinsam mit unserer IT (zwei Administratoren)
+• Aufbau und Begleitung der Pilotgruppe, Auswahl und Priorisierung von Anwendungsfällen je Abteilung
+• Erstellung einer KI-Nutzungsrichtlinie gemeinsam mit Datenschutz und Betriebsrat, einschließlich der Anforderungen an die KI-Kompetenz nach Art. 4 EU AI Act
+• Konzeption und Durchführung von Schulungen und Prompt-Engineering-Workshops für Key User und Führungskräfte
+• Automatisierung von zwei bis drei Pilotprozessen mit Power Automate, zum Beispiel die Erfassung von Auftragsbestätigungen aus E-Mails, die Freigabe von Bestellanforderungen und das Onboarding neuer Mitarbeitender
+• Anbindung an proALPHA über die vorhandene REST-Schnittstelle in Abstimmung mit unserem ERP-Partner
+• Messung des Nutzens (Zeitersparnis, Akzeptanz, Qualität) und Empfehlung für den breiten Rollout ab Mai 2027
+
+Ihr Profil
+• Mehrjährige Erfahrung mit KI-Integration und Prozessautomatisierung in mittelständischen Unternehmen
+• Nachweisbare Erfahrung mit mindestens einer Copilot-Einführung
+• Sehr gute Kenntnisse in Power Automate, SharePoint Online und Microsoft Teams, Erfahrung mit n8n oder Make ist ein Plus
+• Sie erklären KI verständlich und haben Freude an Schulungen mit Mitarbeitenden aus Produktion und Verwaltung
+• Erfahrung mit geförderten Beratungen (BAFA, INQA-Coaching) ist willkommen, da wir eine Förderung prüfen
+• Sehr gutes Deutsch, gutes Englisch
+
+Rahmenbedingungen
+Start: 01.11.2026
+Laufzeit: 6 Monate, Option auf Verlängerung für den Rollout
+Auslastung: 3 Tage pro Woche
+Einsatzort: überwiegend remote, etwa zwei Tage im Monat vor Ort in Neustadt an der Aisch für Workshops
+Vergütung: 120 bis 135 € pro Stunde zzgl. MwSt., Reisekosten nach Aufwand
+Vertragsform: Dienstvertrag direkt mit uns, keine Vermittlung
+
+Schlagworte
+Microsoft 365 Copilot
+KI-Einführung
+Power Automate
+Prozessautomatisierung
+Prompt Engineering
+SharePoint Online
+Schulungen
+Mittelstand
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Aischgrund Armaturenwerk GmbH & Co. KG
+Industriearmaturen aus Mittelfranken
+3 veröffentlichte Projekte
+Mitglied seit 2024
+Firmenprofil ansehen
+
+Ähnliche Projekte
+Power Platform Consultant (m/w/d)
+Nürnberg · 11.2026 · 6 Monate
+Copilot Adoption Manager (m/w/d) Remote
+Remote · ab sofort
+IT-Projektleiter Microsoft 365 Migration (m/w/d)
+Erlangen · 01.2027
+Mehr Projekte anzeigen
+
+Sie sind Freelancer im Bereich Künstliche Intelligenz? Jetzt kostenlos registrieren und Projekte per E-Mail erhalten.

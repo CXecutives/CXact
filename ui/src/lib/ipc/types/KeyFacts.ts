@@ -32,4 +32,10 @@ remoteFrom: number | null, remoteTo: number | null,
 /**
  * Contract type: `interim`, `permanent` or `anue` (`null` when unclear).
  */
-contract: string | null, };
+contract: string | null, 
+/**
+ * Workload in percent of a five-day week, from and to (full-time 100, `3 Tage/Woche`
+ * 60, `20 h/Woche` 50; part-time without a number has no `from` and `to` 80); left out
+ * when the ad says nothing.
+ */
+workloadFrom?: number, workloadTo?: number, };

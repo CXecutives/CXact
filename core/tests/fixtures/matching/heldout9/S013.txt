@@ -1,0 +1,64 @@
+Titel: Automatisierung Backoffice mit n8n und KI (m/w/d) – Personaldienstleister
+Unternehmen: Fichtelgebirge Personalpartner GmbH
+Ort: D-95444 Bayreuth
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1341268-Automatisierung-Backoffice-mit-n8n-und-KI-m-w-d-Personaldienstleister
+Abgerufen am: 17.09.2026 18:12
+
+Projekt-ID: 1341268
+Ort: Bayreuth
+Remote: 90 %
+Start: ab sofort
+Dauer: 5 Monate
+Vertragsart: Freiberuflich
+Honorar: 950 € pro Tag
+Letztes Update: 17.09.2026
+
+Projektbeschreibung
+Wir sind ein regionaler Personaldienstleister mit neun Niederlassungen in Oberfranken und der Oberpfalz und haben rund 1.400 Mitarbeitende im Kundeneinsatz, vor allem in Produktion, Lager und Handwerk. Unsere Verwaltung wächst leider schneller als uns lieb ist. Stundenzettel kommen als Foto per Messenger, Einsatzbestätigungen werden abgetippt, Bewerbungen landen in fünf verschiedenen Postfächern. Das wollen wir ändern und suchen dafür eine erfahrene Beraterin bzw. einen erfahrenen Berater für Automatisierung und KI, die/der mit uns pragmatisch loslegt.
+
+Ehrlich gesagt ist das Projekt noch nicht bis ins Letzte durchgeplant. Wir haben eine Liste mit Ideen, ein festes Budget und den Wunsch, schnell zu sehen, was funktioniert. n8n läuft bei uns bereits selbst gehostet als Testinstanz, eingerichtet von unserem IT-Dienstleister.
+
+Aufgaben:
+- Aufnahme der Verwaltungsprozesse in den Niederlassungen und Priorisierung nach Aufwand und Nutzen
+- Aufbau von Workflows in n8n, z. B. Auslesen von Stundenzetteln per KI (Texterkennung und Sprachmodell), Übergabe an unsere Zeitwirtschaft, automatische Rückfragen bei fehlenden Angaben
+- Automatische Vorsortierung und Zusammenfassung eingehender Bewerbungen und Übergabe an unser Bewerbermanagement
+- Anbindung von Microsoft 365 (Outlook, SharePoint) und unserer Branchensoftware über REST-APIs
+- Datenschutzkonforme Nutzung von Sprachmodellen (Auftragsverarbeitung, Hosting in der EU)
+- Schulung der Disponentinnen und Disponenten, Übergabe an unsere interne IT
+- evtl. Unterstützung bei einem Förderantrag (go-digital oder BAFA), falls das sinnvoll ist
+
+Anforderungen:
+- Erfahrung mit n8n oder Make aus echten Kundenprojekten
+- Erfahrung mit dem Einsatz von Sprachmodellen in Geschäftsprozessen, Prompt Engineering
+- Verständnis für Verwaltungsprozesse in mittelständischen Unternehmen
+- Erfahrung mit Arbeitnehmerüberlassung von Vorteil (Einsatzplanung, Equal Pay, Kundeneinsätze), damit Sie unsere Abläufe schnell verstehen
+- Gute Kommunikation: Sie nehmen auch Kolleginnen und Kollegen mit, die mit IT wenig am Hut haben
+- Deutsch sehr gut
+
+Rahmen:
+Auslastung ca. 3 Tage/Woche, überwiegend remote. Kick-off und zwei bis drei Workshops finden vor Ort in Bayreuth statt. Vertragsart freiberuflich, Abrechnung nach Tagen, Tagessatz 950 € zzgl. MwSt. Eine Verlängerung ist möglich, wenn es gut läuft und wir weitere Prozesse angehen wollen.
+
+Kategorien und Skills
+n8n
+Prozessautomatisierung
+Künstliche Intelligenz
+Prompt Engineering
+Microsoft 365
+REST-API
+Personaldienstleistung
+
+Projektanbieter
+Fichtelgebirge Personalpartner GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+n8n Entwickler (m/w/d) Remote
+Remote · ab sofort
+KI-Berater Mittelstand (m/w/d)
+Regensburg · 11.2026
+Power Automate Consultant (m/w/d)
+Hof · 3 Monate
+Alle Projekte in Automatisierung anzeigen

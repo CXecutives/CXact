@@ -5,8 +5,8 @@
 use std::path::Path;
 
 use jobalert_core::matching::{
-    Assessment, CriterionKey, JobInput, ProfileWarningCode, ReasonCode, ReasonKind, TextKind,
-    Verdict, assess, compile_profile,
+    Assessment, CriterionKey, JobInput, ProfileQuality, ProfileWarningCode, ReasonCode, ReasonKind,
+    TextKind, Verdict, assess, compile_profile,
 };
 use jobalert_core::portal::Portal;
 use serde_json::{Value, json};
@@ -105,7 +105,7 @@ fn the_core_alone_serves_an_unrelated_field() {
 #[test]
 fn packs_follow_the_competences() {
     let senior = compile_profile(&fixture("sample_profile_senior.json"));
-    assert_eq!(senior.summary().packs, ["finance", "sap"]);
+    assert_eq!(senior.summary().packs, ["finance", "sap", "restructuring"]);
     let sap = compile_profile(&fixture("sample_profile_sap.json"));
     assert_eq!(sap.summary().packs, ["finance", "sap", "itProject"]);
     let it = compile_profile(&fixture("sample_profile_it.json"));
@@ -262,4 +262,87 @@ fn an_absurd_hourly_rate_is_no_day_rate_violation() {
         a.reasons
     );
     assert_ne!(a.verdict, Verdict::Excluded, "{:?}", a.reasons);
+}
+
+/// A plain interim ad every test profile can read.
+const TEST_PROFILE_AD: &str = "Für ein Transformationsprojekt suchen wir Unterstützung auf \
+freiberuflicher Basis.
+
+Ihre Aufgaben:
+- Leitung von Teilprojekten und Steuerung externer Partner
+- Aufbau eines Reportings für die Geschäftsführung
+
+Ihr Profil:
+- Mehrjährige Projekterfahrung
+- Erfahrung im Mittelstand
+- Sehr gute Deutsch- und Englischkenntnisse
+
+Rahmendaten:
+- Start: ab sofort
+- Laufzeit: 6 Monate
+- Auslastung: 3 Tage pro Woche
+- Tagessatz: 1.200 € pro Tag";
+
+/// The test profiles for the user (`tools/test-profiles/`) load the way the file picker
+/// loads them, are understood without a warning, set their criteria and score an ad.
+#[test]
+fn the_test_profiles_load_and_score() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../tools/test-profiles");
+    let mut names = Vec::new();
+    for entry in std::fs::read_dir(&dir).expect("tools/test-profiles") {
+        let path = entry.expect("entry").path();
+        if path.extension().is_none_or(|e| e != "json") {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .expect("name")
+            .to_string_lossy()
+            .into_owned();
+        let draft = jobalert_core::profile::draft_from_file(&path).expect("loads");
+        assert_eq!(draft.quality, ProfileQuality::Good, "{name}");
+        assert!(
+            draft.summary.warnings.is_empty(),
+            "{name}: {:?}",
+            draft.summary.warnings
+        );
+        let value: Value = serde_json::from_str(&draft.source).expect("json");
+        let a = run(&value, "Interim Projektleitung (m/w/d)", TEST_PROFILE_AD);
+        assert_eq!(a.verdict, Verdict::Scored, "{name}: {:?}", a.reasons);
+        names.push(name);
+    }
+    names.sort();
+    assert_eq!(
+        names,
+        [
+            "interim-cfo.json",
+            "it-cloud-freelancer.json",
+            "ki-automatisierung.json",
+            "performance-profit.json",
+            "sap-fico.json"
+        ]
+    );
+    let text = std::fs::read_to_string(dir.join("interim-cfo.json")).expect("file");
+    let cfo = compile_profile(&serde_json::from_str::<Value>(&text).expect("json"));
+    let set: Vec<CriterionKey> = cfo
+        .summary()
+        .criteria
+        .iter()
+        .filter(|c| c.set)
+        .map(|c| c.key)
+        .collect();
+    assert_eq!(
+        set,
+        [
+            CriterionKey::MinDayRate,
+            CriterionKey::Countries,
+            CriterionKey::NoAnue,
+            CriterionKey::Availability,
+            CriterionKey::MinSalary,
+            CriterionKey::PermanentRegion,
+            CriterionKey::TargetYears,
+            CriterionKey::Duration,
+            CriterionKey::ExclusionWords
+        ]
+    );
 }

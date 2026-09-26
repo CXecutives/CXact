@@ -1,0 +1,290 @@
+{
+  "name": "Jens Beispielhagen",
+  "email": "jens.beispielhagen@example.invalid",
+  "telefon": "+49 151 0000000",
+  "titel": "Interim Projektsteuerer Bau und Immobilien",
+  "abschluss": "Diplom-Ingenieur (FH) Bauingenieurwesen",
+  "berufserfahrung_jahre": 24,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Ingenieur (FH) Bauingenieurwesen",
+      "fach": "Bauingenieurwesen mit den Schwerpunkten Baubetrieb und Baumanagement",
+      "hochschule": "Beispielhochschule für Technik",
+      "jahr": 2002
+    },
+    {
+      "abschluss": "Master of Science Real Estate Management",
+      "fach": "Immobilienmanagement und Projektentwicklung (berufsbegleitend)",
+      "hochschule": "Beispieluniversität",
+      "jahr": 2010
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "01/2014 bis heute",
+      "rolle": "Freiberuflicher Projektsteuerer und Interim Projektleiter Bau (selbstständig)",
+      "schwerpunkte": [
+        "Projektsteuerung nach AHO Heft 9 für Büro-, Logistik- und Rechenzentrumsprojekte mit Budgets bis 280 Mio. EUR",
+        "Kosten- und Terminsteuerung, Nachtragsmanagement und Berichtswesen an Bauherr und Investoren",
+        "Vergabe von Planer- und Bauleistungen nach VOB/A und HOAI, Vertragsmanagement nach VOB/B",
+        "TGA-Koordination bei zwei Colocation-Rechenzentren (Tier III, zusammen 36 MW IT-Last)",
+        "Mieterausbau (Fit-out) von Konzernzentralen und Bankflächen mit bis zu 45.000 m² BGF"
+      ]
+    },
+    {
+      "zeitraum": "04/2007 bis 12/2013",
+      "rolle": "Projektleiter und später Bereichsleiter Projektsteuerung in einem Projektsteuerungsbüro",
+      "schwerpunkte": [
+        "Bauherrenvertretung für Büro- und Gewerbeimmobilien",
+        "Kostenplanung nach DIN 276 und Kostenverfolgung",
+        "Terminplanung und Terminsteuerung",
+        "Durchführung von Vergabeverfahren für öffentliche Auftraggeber",
+        "Führung von zwölf Projektsteuerern"
+      ]
+    },
+    {
+      "zeitraum": "09/2002 bis 03/2007",
+      "rolle": "Bauleiter und Oberbauleiter bei einem Generalunternehmer",
+      "schwerpunkte": [
+        "Bauleitung im Hochbau",
+        "Nachunternehmersteuerung",
+        "Aufmaß und Abrechnung",
+        "Arbeitsvorbereitung"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Projektsteuerung",
+      "jahre": 19,
+      "auch": ["Projektsteuerung nach AHO", "Bauherrenvertretung", "Construction Project Management"]
+    },
+    {
+      "kompetenz": "Projektleitung Bau",
+      "jahre": 22,
+      "auch": ["Bauprojektleitung", "Projektleitung Hochbau", "Construction Project Manager"]
+    },
+    {
+      "kompetenz": "Kostensteuerung",
+      "jahre": 19,
+      "auch": ["Kostencontrolling", "Cost Control", "Kostenmanagement"]
+    },
+    {
+      "kompetenz": "Kostenplanung nach DIN 276",
+      "jahre": 19,
+      "auch": ["Kostenermittlung", "Kostenberechnung", "Cost Planning"]
+    },
+    {
+      "kompetenz": "Terminsteuerung",
+      "jahre": 19,
+      "auch": ["Terminplanung", "Terminmanagement", "Scheduling"]
+    },
+    {
+      "kompetenz": "Vergabemanagement",
+      "jahre": 17,
+      "auch": ["Ausschreibung und Vergabe", "Vergabe nach VOB/A", "Tendering", "Procurement Management"]
+    },
+    {
+      "kompetenz": "Bauvertragsmanagement",
+      "jahre": 17,
+      "auch": ["Vertragsmanagement VOB/B", "Contract Management"]
+    },
+    {
+      "kompetenz": "Nachtragsmanagement",
+      "jahre": 22,
+      "auch": ["Claim Management", "Nachtragsprüfung", "Change Order Management"]
+    },
+    {
+      "kompetenz": "TGA-Koordination",
+      "jahre": 11,
+      "auch": ["TGA-Projektsteuerung", "MEP Coordination", "MEP Management"]
+    },
+    {
+      "kompetenz": "Planungsmanagement",
+      "jahre": 17,
+      "auch": ["Planungssteuerung", "Design Management"]
+    },
+    {
+      "kompetenz": "Rechenzentrumsbau",
+      "jahre": 7,
+      "auch": ["Data Center Construction", "Data Centre Construction", "Rechenzentrumsprojekte"]
+    },
+    {
+      "kompetenz": "Mieterausbau",
+      "jahre": 11,
+      "auch": ["Fit-out", "Tenant Fit-out", "Ausbau von Mietflächen"]
+    },
+    {
+      "kompetenz": "Projektentwicklung",
+      "jahre": 8,
+      "auch": ["Immobilienprojektentwicklung", "Real Estate Development"]
+    },
+    {
+      "kompetenz": "Abnahmemanagement",
+      "jahre": 17,
+      "auch": ["Abnahme und Übergabe", "Mängelmanagement"]
+    },
+    {
+      "kompetenz": "Bauleitung",
+      "jahre": 5,
+      "auch": ["Oberbauleitung", "Site Management"]
+    },
+    {
+      "kompetenz": "Nachunternehmersteuerung",
+      "jahre": 5,
+      "auch": ["Nachunternehmermanagement", "Subcontractor Management"]
+    },
+    {
+      "kompetenz": "Projektrisikomanagement",
+      "jahre": 12,
+      "auch": ["Risikomanagement im Bauprojekt", "Project Risk Management"]
+    },
+    {
+      "kompetenz": "Führung von Projektteams",
+      "jahre": 15,
+      "auch": ["Teamführung", "Personalverantwortung"]
+    }
+  ],
+  "schwerpunkte": [
+    "Projektsteuerung",
+    "Kostensteuerung",
+    "Vergabemanagement",
+    "TGA-Koordination",
+    "Rechenzentrumsbau"
+  ],
+  "wunschrollen": [
+    "Projektsteuerer Bau",
+    "Interim Projektleiter Bau",
+    "Construction Project Manager",
+    "Projektleiter Rechenzentrumsbau",
+    "Bauherrenvertreter"
+  ],
+  "methoden_tools": [
+    {
+      "name": "MS Project"
+    },
+    {
+      "name": "Oracle Primavera P6"
+    },
+    {
+      "name": "RIB iTWO"
+    },
+    {
+      "name": "ORCA AVA"
+    },
+    {
+      "name": "Nevaris"
+    },
+    {
+      "name": "thinkproject"
+    },
+    {
+      "name": "Autodesk Construction Cloud"
+    },
+    {
+      "name": "BIM-Koordination mit Solibri"
+    },
+    {
+      "name": "Last Planner System"
+    },
+    {
+      "name": "Power BI"
+    },
+    {
+      "name": "Excel"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "IPMA Level B Certified Senior Project Manager"
+    },
+    {
+      "name": "DGNB Consultant"
+    },
+    {
+      "name": "buildingSMART BIM Professional"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Immobilienwirtschaft"
+    },
+    {
+      "branche": "Bauwirtschaft"
+    },
+    {
+      "branche": "Rechenzentren"
+    },
+    {
+      "branche": "Logistikimmobilien"
+    },
+    {
+      "branche": "Banken"
+    },
+    {
+      "branche": "Öffentliche Auftraggeber"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Steuerte zwei Colocation-Rechenzentren mit zusammen 36 MW IT-Last bis zur Übergabe an den Betreiber",
+    "Hielt bei einem Bürohochhaus mit 190 Mio. EUR Budget die Kostenobergrenze trotz Materialpreissteigerungen ein",
+    "Vergab mehr als 60 Gewerke nach VOB/A ohne ein einziges Nachprüfungsverfahren"
+  ],
+  "keywords": [
+    "AHO",
+    "HOAI",
+    "VOB/A",
+    "VOB/B",
+    "DIN 276",
+    "Leistungsphasen",
+    "Kostenobergrenze",
+    "Generalunternehmer",
+    "Einzelvergabe",
+    "Tier III",
+    "USV",
+    "Mittelspannung",
+    "Kälteversorgung",
+    "BIM",
+    "DGNB",
+    "Lean Construction"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1050,
+    "remote": "teilweise",
+    "regionen": [
+      "Rhein-Main",
+      "Rhein-Neckar",
+      "Köln",
+      "Düsseldorf"
+    ],
+    "branchen": [
+      "Rechenzentren",
+      "Immobilienwirtschaft"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 900,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue",
+      "festanstellung"
+    ],
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "01.11.2026",
+    "zielprofil_min_jahre": 10
+  }
+}

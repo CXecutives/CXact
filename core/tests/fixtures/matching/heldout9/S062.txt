@@ -1,0 +1,93 @@
+Titel: Lead Platform Engineer (m/w/d) AWS, EKS und Terraform – Vakanzüberbrückung
+Unternehmen: Isarhang Payments GmbH
+Ort: München
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/lead-platform-engineer-m-w-d-aws-eks-und-terraform-vakanzueberbrueckung-2918733
+Abgerufen am: 17.09.2026 07:12
+
+Projektdetails
+Start
+01.11.2026
+Dauer
+6 Monate
+Von
+Isarhang Payments GmbH
+Eingestellt
+16.09.2026
+Projekt-ID
+2918733
+Branche
+Finanzdienstleistungen
+Vertragsart
+Freiberuflich
+Einsatzart
+90 % Remote
+Stundensatz
+auf Anfrage
+
+Beschreibung
+Die Isarhang Payments GmbH ist ein von der BaFin beaufsichtigter Zahlungsdienstleister aus München. Wir wickeln Kartenzahlungen und Echtzeitüberweisungen für rund 9.000 Händler in Deutschland und Österreich ab. Unsere gesamte Produktion läuft auf AWS.
+
+Unser Lead Platform Engineer hat uns Ende September verlassen, die Nachfolge startet voraussichtlich im Mai 2027. Für die Vakanzüberbrückung suchen wir eine erfahrene freiberufliche Platform Engineerin oder einen freiberuflichen Platform Engineer, die oder der das vierköpfige Platform Team fachlich führt und die laufenden Vorhaben sicher weiterführt.
+
+Ihre Aufgaben
+• Fachliche Leitung des Platform Teams und Ansprechperson für 11 Produktteams
+• Betrieb und Weiterentwicklung von vier EKS-Clustern (Produktion, Staging, zwei Entwicklungsumgebungen), inklusive des Upgrades auf die nächste Kubernetes-Version
+• Weiterentwicklung unserer Terraform-Module und Einführung von Terragrunt für die Account-Struktur in AWS Organizations
+• Umstellung der verbleibenden Jenkins-Jobs auf GitHub Actions und GitOps mit ArgoCD
+• Ausbau des Observability-Stacks (Prometheus, Grafana, Loki, OpenTelemetry) und Einführung von SLOs für die zahlungskritischen Services
+• Fertigstellung des Self-Service-Portals auf Basis von Backstage
+• Umsetzung von DORA-Anforderungen an Resilienz und Notfalltests gemeinsam mit der IT-Sicherheit
+• Strukturierte Übergabe an die künftige Stelleninhaberin oder den künftigen Stelleninhaber
+
+Ihr Profil
+• Mindestens 8 Jahre Erfahrung mit Cloud-Infrastruktur, davon mehrere Jahre mit AWS und Kubernetes in Produktion
+• Sehr gute Kenntnisse in Terraform und GitOps
+• Erfahrung mit CI/CD über GitHub Actions oder GitLab CI
+• Erfahrung im Aufbau von Observability und im Umgang mit SLOs
+• Erfahrung in der fachlichen Führung eines kleinen Teams
+• Kenntnisse regulatorischer Anforderungen (DORA, BAIT) von Vorteil
+• AWS-Zertifizierung (Professional) wünschenswert
+• Sehr gutes Deutsch und Englisch
+
+Rahmendaten
+Start: 01.11.2026
+Laufzeit: 6 Monate, Option auf Verlängerung um drei Monate
+Auslastung: 4 Tage pro Woche, auf Wunsch auch 5
+Remote: 90 %, ein Tag alle zwei Wochen in München
+Tagessatz: 1.000 bis 1.100 € zzgl. MwSt., Reisekosten nach Aufwand
+Vertragsform: freiberuflich, Beauftragung direkt durch die Isarhang Payments GmbH
+
+Wir freuen uns auf Ihr Profil mit Verfügbarkeit und Tagessatz. Ein erstes Gespräch führen Sie mit unserem CTO und einer Person aus dem Platform Team.
+
+Schlagworte
+AWS
+EKS
+Kubernetes
+Terraform
+Terragrunt
+GitHub Actions
+ArgoCD
+Prometheus
+Grafana
+Platform Engineering
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Isarhang Payments GmbH
+Zahlungsdienstleister
+7 veröffentlichte Projekte
+Mitglied seit 2022
+Firmenprofil ansehen
+
+Ähnliche Projekte
+DevOps Engineer AWS (m/w/d)
+München · ab sofort · 12 Monate
+Site Reliability Engineer (m/w/d) FinTech
+Remote · 11/2026
+Cloud Security Engineer (m/w/d)
+Frankfurt am Main · 01/2027
+Weitere Projekte anzeigen

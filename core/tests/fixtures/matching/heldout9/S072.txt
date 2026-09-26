@@ -1,0 +1,64 @@
+Titel: Senior Systemadministrator Windows Server / VMware (m/w/d) – Betrieb und Rufbereitschaft
+Unternehmen: Ravensberg Klinik-IT GmbH
+Ort: D-33602 Bielefeld
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1342718-Senior-Systemadministrator-Windows-Server-VMware-m-w-d-Betrieb-und-Rufbereitschaft
+Abgerufen am: 17.09.2026 07:51
+
+Projekt-ID: 1342718
+Ort: Bielefeld
+Remote: 40 %
+Start: ab sofort
+Dauer: 9 Monate
+Vertragsart: Freiberuflich
+Honorar: 105 € pro Stunde
+Letztes Update: 17.09.2026
+
+Projektbeschreibung
+Die Ravensberg Klinik-IT GmbH ist der IT-Dienstleister von drei kommunalen Krankenhäusern in Ostwestfalen mit zusammen rund 2.300 Betten und 4.200 IT-Arbeitsplätzen. Wir betreiben zwei eigene Rechenzentren und unterliegen als Betreiber kritischer Infrastruktur den Anforderungen des BSI-Gesetzes. Wegen einer längeren Abwesenheit im Team und des laufenden Ausbaus der Virtualisierung suchen wir ab sofort eine erfahrene Verstärkung für den Serverbetrieb.
+
+Aufgaben:
+- Betrieb und Weiterentwicklung der Windows-Server-Landschaft mit rund 480 Servern (Windows Server 2016 bis 2022)
+- Administration von Active Directory, Gruppenrichtlinien, DNS, DHCP und der internen PKI
+- Betrieb der VMware-vSphere-Cluster (vSphere 8, vSAN) und der Datensicherung mit Veeam
+- Monatliches Patchmanagement und Behebung von Schwachstellen nach den Vorgaben unseres ISMS
+- Teilnahme an der Rufbereitschaft (eine Woche pro Monat, 24/7, Reaktionszeit 30 Minuten)
+- Pflege des Betriebshandbuchs und Mitarbeit an den KRITIS-Nachweisen nach § 8a BSIG
+- Unterstützung bei der Migration klinischer Anwendungen auf neue Serverplattformen
+
+Anforderungen:
+- Mindestens 7 Jahre Erfahrung in der Administration von Windows-Server- und VMware-Umgebungen
+- Sehr gute Kenntnisse in Active Directory, Gruppenrichtlinien und PowerShell
+- Erfahrung mit Veeam Backup & Replication
+- Erfahrung im Krankenhausumfeld oder bei KRITIS-Betreibern von Vorteil
+- Bereitschaft zur Rufbereitschaft und zu regelmäßigen Einsätzen vor Ort in Bielefeld
+- Wohnort im Umkreis von etwa 60 km, damit Einsätze in der Nacht vor Ort möglich sind
+- Sehr gute Deutschkenntnisse
+
+Rahmen:
+- Auslastung Vollzeit, bis zu 40 % remote
+- Die Rufbereitschaft wird zusätzlich mit einer Pauschale von 350 € pro Woche vergütet, Einsätze außerhalb der Kernzeit mit 130 € pro Stunde
+- Beauftragung als Dienstvertrag direkt mit der Ravensberg Klinik-IT GmbH
+
+Kategorien und Skills
+Windows Server
+Active Directory
+VMware vSphere
+Veeam
+PowerShell
+KRITIS
+
+Projektanbieter
+Ravensberg Klinik-IT GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Windows Server Administrator (m/w/d) Rechenzentrum
+Paderborn · 01.11.2026
+VMware Engineer (m/w/d) vSAN und NSX
+Gütersloh · ab sofort
+IT-Systemadministrator Krankenhaus (m/w/d)
+Detmold · 6 Monate
+Alle Projekte in Systemadministration anzeigen

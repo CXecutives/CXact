@@ -3,8 +3,8 @@
 //! ANÜ (named, not negated, not optional) · permanent employment (excluded by the profile:
 //! a stated permanent role, not an inferred one or one that offers interim too) · work
 //! country (location, on-site sentence, not fully remote) · day rate (EUR, upper bound,
-//! hourly x 8, not for permanent roles) · availability (never decided: a gap or a vague
-//! start is a check).
+//! hourly x 8; not for employment pay: a permanent role, temporary agency work or a wage) ·
+//! availability (never decided: a gap or a vague start is a check).
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -51,8 +51,36 @@ pub(crate) struct HardCriteria {
     pub remote_min: Option<u64>,
     /// Minimum years the target profile of an ad must ask for.
     pub target_years: Option<u32>,
+    /// Days per week (1 to 5) the consultant works at least and at most.
+    pub workload_min: Option<u8>,
+    pub workload_max: Option<u8>,
+    /// Minimum duration of an engagement in months.
+    pub min_months: Option<u16>,
+    /// Words that exclude an ad, as written.
+    pub exclusion_words: Vec<String>,
     /// Keys present with a value that cannot be read: (key, value).
     pub not_understood: Vec<(&'static str, String)>,
+}
+
+/// Longest minimum duration read (ten years).
+const MAX_MIN_MONTHS: u64 = 120;
+/// Days of a working week.
+const WEEK_DAYS: u64 = 5;
+
+/// A list of texts or one text split at `,` and `;` (trimmed, without empty entries).
+fn texts_of(value: &Value) -> Option<Vec<String>> {
+    let entries: Vec<&str> = match value {
+        Value::Array(items) => items.iter().map(Value::as_str).collect::<Option<_>>()?,
+        Value::String(text) => text.split([',', ';']).collect(),
+        _ => return None,
+    };
+    let mut out: Vec<String> = Vec::new();
+    for entry in entries.iter().map(|e| e.trim()).filter(|e| !e.is_empty()) {
+        if !out.iter().any(|o| fold(o) == fold(entry)) {
+            out.push(entry.to_owned());
+        }
+    }
+    Some(out)
 }
 
 /// A profile value of the new criteria: first key found in `harte_kriterien` (or the
@@ -269,23 +297,9 @@ impl HardCriteria {
         let min_salary = read(lexicon::KEYS_MIN_SALARY);
         let remote_min = read(lexicon::KEYS_PERMANENT_REMOTE).map(|p| p.min(100));
         let target_years = read(lexicon::KEYS_TARGET_YEARS).and_then(|y| u32::try_from(y).ok());
-        let places = criterion(data, lexicon::KEYS_PERMANENT_PLACES).and_then(|(key, value)| {
-            let list: Vec<String> = value
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|p| !p.is_empty())
-                .map(str::to_owned)
-                .collect();
-            if list.is_empty() {
-                not_understood.push((key, value.to_string()));
-                None
-            } else {
-                Some(list)
-            }
-        });
+        let places = places_of(data, &mut not_understood);
+        let (workload_min, workload_max, min_months, exclusion_words) =
+            engagement_limits(data, &mut not_understood);
         Self {
             min_rate,
             countries,
@@ -297,9 +311,81 @@ impl HardCriteria {
             places,
             remote_min,
             target_years,
+            workload_min,
+            workload_max,
+            min_months,
+            exclusion_words,
             not_understood,
         }
     }
+}
+
+/// The places of the region for permanent roles (a list of texts; an empty one is not
+/// understood).
+fn places_of(
+    data: &Value,
+    not_understood: &mut Vec<(&'static str, String)>,
+) -> Option<Vec<String>> {
+    criterion(data, lexicon::KEYS_PERMANENT_PLACES).and_then(|(key, value)| {
+        let list: Vec<String> = value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned)
+            .collect();
+        if list.is_empty() {
+            not_understood.push((key, value.to_string()));
+            None
+        } else {
+            Some(list)
+        }
+    })
+}
+
+/// Days per week (at least, at most), the minimum duration in months and the exclusion
+/// words of a profile; values that cannot be read go to `not_understood`.
+fn engagement_limits(
+    data: &Value,
+    not_understood: &mut Vec<(&'static str, String)>,
+) -> (Option<u8>, Option<u8>, Option<u16>, Vec<String>) {
+    let mut days = |keys: &[&'static str]| {
+        let (key, value) = criterion(data, keys)?;
+        let n = number(value).filter(|n| (1..=WEEK_DAYS).contains(n));
+        if n.is_none() {
+            not_understood.push((key, value.to_string()));
+        }
+        n.and_then(|n| u8::try_from(n).ok())
+    };
+    let workload_min = days(lexicon::KEYS_WORKLOAD_MIN);
+    let mut workload_max = days(lexicon::KEYS_WORKLOAD_MAX);
+    // A maximum below the minimum is no range.
+    if let (Some(min), Some(max)) = (workload_min, workload_max)
+        && max < min
+        && let Some((key, value)) = criterion(data, lexicon::KEYS_WORKLOAD_MAX)
+    {
+        not_understood.push((key, value.to_string()));
+        workload_max = None;
+    }
+    let min_months = criterion(data, lexicon::KEYS_MIN_MONTHS).and_then(|(key, value)| {
+        let n = number(value).filter(|n| (1..=MAX_MIN_MONTHS).contains(n));
+        if n.is_none() {
+            not_understood.push((key, value.to_string()));
+        }
+        n.and_then(|n| u16::try_from(n).ok())
+    });
+    let exclusion_words = criterion(data, lexicon::KEYS_EXCLUSION_WORDS)
+        .and_then(|(key, value)| {
+            let words = texts_of(value);
+            if words.is_none() {
+                not_understood.push((key, value.to_string()));
+            }
+            words
+        })
+        .unwrap_or_default();
+    (workload_min, workload_max, min_months, exclusion_words)
 }
 
 /// Keys of the criteria sections the engine does not read (a typo, an unknown rule).
@@ -517,7 +603,8 @@ pub(crate) fn check(
     if let Some(allowed) = &criteria.countries {
         findings.extend(country(criteria, allowed, job, segments, folded));
     }
-    if contract.kind != ContractKind::Permanent {
+    // The pay of an employment or of temporary agency work is no day rate.
+    if !matches!(contract.kind, ContractKind::Permanent | ContractKind::Anue) {
         findings.extend(day_rate(criteria, job, segments));
     }
     if let Availability::From(date) = criteria.available {
@@ -546,6 +633,9 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
         }
     }
     for (range, f) in segments {
+        if anue_topic(f, &named) {
+            continue;
+        }
         if named(f) {
             if negated(f) {
                 continue;
@@ -591,6 +681,28 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     } else {
         Vec::new()
     }
+}
+
+/// Characters at the start of a sentence where a cue of `ANUE_TOPIC` makes the whole
+/// sentence a requirement (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
+const ANUE_TOPIC_HEAD: usize = 24;
+
+/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form: a cue of
+/// `ANUE_TOPIC` in the clause that names it, or at the start of the sentence.
+fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
+    let cue = |s: &str| lex::ANUE_TOPIC.iter().any(|w| s.contains(w));
+    let hidden = |s: &str| lex::ANUE_HIDDEN.iter().any(|w| contains_word(s, w));
+    let head: String = folded.trim_start().chars().take(ANUE_TOPIC_HEAD).collect();
+    let mentions = |s: &str| named(s) || hidden(s);
+    // The business of a company (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`).
+    let business = lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w))
+        && !lex::ANUE_CONTRACT.iter().any(|w| contains_word(folded, w));
+    mentions(folded)
+        && (cue(&head)
+            || business
+            || folded
+                .split([',', ';'])
+                .any(|clause| mentions(clause) && cue(clause)))
 }
 
 /// Countries named in a folded text (names and cities).
@@ -683,7 +795,14 @@ type Named = (&'static str, Range<usize>);
 /// travel statement before it (else the first one after it): `vor Ort in Düsseldorf,
 /// gelegentlich Reisen nach Polen` works in Germany and travels to Poland. A frame line
 /// naming the place (`Ort: 3199 Rotterdam, Niederlande`) is decided like the job location.
-fn places_of_work(segments: &[(Range<usize>, String)]) -> (Vec<Named>, Vec<Named>) {
+/// An on-site statement that also names an allowed country or the job's own place on site
+/// (`on site in Leverkusen and at the plants in Belgium`) makes the other countries second
+/// sites, checked like travel.
+fn places_of_work(
+    segments: &[(Range<usize>, String)],
+    allowed: &[String],
+    home: &[&str],
+) -> (Vec<Named>, Vec<Named>) {
     let mut onsite: Vec<Named> = Vec::new();
     let mut travel: Vec<Named> = Vec::new();
     for (range, f) in segments {
@@ -695,19 +814,35 @@ fn places_of_work(segments: &[(Range<usize>, String)]) -> (Vec<Named>, Vec<Named
             .iter()
             .any(|l| f.trim_start().starts_with(l));
         let cues = place_cues(f);
-        let (mut here, mut away): (Vec<&'static str>, Vec<&'static str>) = (Vec::new(), Vec::new());
-        for (at, code) in named {
-            let cue = cues
-                .iter()
+        let cue_at = |at: usize| {
+            cues.iter()
                 .rev()
                 .find(|(c, _)| *c < at)
                 .or_else(|| cues.iter().find(|(c, _)| *c > at))
-                .map(|&(_, onsite)| onsite);
-            match (place, cue) {
+                .map(|&(_, onsite)| onsite)
+        };
+        let (mut here, mut away): (Vec<&'static str>, Vec<&'static str>) = (Vec::new(), Vec::new());
+        for (at, code) in named {
+            match (place, cue_at(at)) {
                 (true, _) | (false, Some(true)) => here.push(code),
                 (false, Some(false)) => away.push(code),
                 (false, None) => {}
             }
+        }
+        let home_on_site = !place
+            && (here.iter().any(|c| allowed.iter().any(|a| a == c))
+                || home.iter().any(|word| {
+                    f.match_indices(word)
+                        .any(|(at, _)| word_at(f, at, word.len()) && cue_at(at) == Some(true))
+                }));
+        if home_on_site {
+            here.retain(|c| {
+                let inside = allowed.iter().any(|a| a == c);
+                if !inside {
+                    away.push(c);
+                }
+                inside
+            });
         }
         for list in [&mut here, &mut away] {
             list.sort_unstable();
@@ -718,6 +853,13 @@ fn places_of_work(segments: &[(Range<usize>, String)]) -> (Vec<Named>, Vec<Named
         travel.extend(away.into_iter().map(|c| (c, range.clone())));
     }
     (onsite, travel)
+}
+
+/// Is `folded[at..at + len]` a whole word?
+fn word_at(folded: &str, at: usize, len: usize) -> bool {
+    let before = folded[..at].chars().next_back();
+    let after = folded[at + len..].chars().next();
+    before.is_none_or(|c| !c.is_alphanumeric()) && after.is_none_or(|c| !c.is_alphanumeric())
 }
 
 fn country(
@@ -739,17 +881,25 @@ fn country(
     let location = fact(job.facts, super::fact_key::LOCATION)
         .and_then(Value::as_str)
         .unwrap_or(job.location);
+    let location_folded = fold(location);
+    // LinkedIn's workplace type in the location (`Wien, Österreich (Remote)`) is remote work.
     let remote_full = facts_remote
         || lex::FULL_REMOTE.iter().any(|w| folded.contains(w))
-        || fold(location).starts_with("remote");
+        || contains_word(&location_folded, "remote");
     let home_allowed = segments.iter().any(|(_, f)| {
         lex::REMOTE_FROM.iter().any(|w| f.contains(w))
             && countries_in(f)
                 .iter()
                 .any(|c| allowed.iter().any(|a| a == c))
     });
-    let (onsite, travel) = places_of_work(segments);
     let located = outside(&location_countries(location));
+    // The job's own place counts as home only where it is not outside the countries.
+    let home = if located.is_empty() {
+        super::permanent::place_words(&location_folded)
+    } else {
+        Vec::new()
+    };
+    let (onsite, travel) = places_of_work(segments, allowed, &home);
     let onsite_codes: Vec<&'static str> = onsite.iter().map(|(c, _)| *c).collect();
     let onsite_out = outside(&onsite_codes);
     let travel_codes: Vec<&'static str> = travel.iter().map(|(c, _)| *c).collect();
@@ -794,8 +944,17 @@ fn country(
     if !onsite_out.is_empty() {
         return vec![unclear(onsite_out.clone(), spans_of(&onsite, &onsite_out))];
     }
+    // Remote work for a place abroad the profile rules out (`remote_ausserhalb_erlaubt`
+    // false) is decided; an ad that allows working from an allowed country is not.
     if !located.is_empty() && criteria.remote_outside == Some(false) && !home_allowed {
-        return vec![unclear(located, Vec::new())];
+        let params = json!({ "outside": located, "allowed": allowed });
+        return vec![Finding::new(
+            ReasonCode::Country,
+            true,
+            Some(CriterionKey::Countries),
+            params,
+            Vec::new(),
+        )];
     }
     if !travel_out.is_empty() {
         return vec![unclear(travel_out.clone(), spans_of(&travel, &travel_out))];
@@ -803,12 +962,15 @@ fn country(
     Vec::new()
 }
 
-/// A rate statement: highest amount, hourly or daily, EUR or not.
+/// A rate statement: highest amount, hourly or daily, EUR or not, freelance rate or wage.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Rate {
     pub upper: u64,
     pub hourly: bool,
     pub currency: Option<&'static str>,
+    /// Employment pay (`Stundenlohn`, `brutto pro Stunde`, a pay scale): the job is judged as
+    /// employment, never by its day rate.
+    pub wage: bool,
 }
 
 impl Rate {
@@ -840,15 +1002,52 @@ pub(crate) fn stated_rate(
 }
 
 /// The rate of a sentence, clause by clause (`Freelance mit 90 € pro Stunde oder befristet
-/// (Gehaltsband 72-84 T€ p.a.)`: the salary clause does not hide the rate); the highest per
-/// day when clauses name several.
+/// (Gehaltsband 72-84 T€ p.a.)`: the salary clause does not hide the rate); a freelance rate
+/// before a wage, the highest per day when clauses name several.
 pub(crate) fn rate_in(folded: &str) -> Option<Rate> {
+    clause_rates(folded).max_by_key(|r| (!r.wage, r.per_day()))
+}
+
+/// Does a sentence name employment pay (an hourly wage)?
+pub(crate) fn wage_in(folded: &str) -> bool {
+    clause_rates(folded).any(|r| r.wage)
+}
+
+/// The hourly pay of a sentence, a wage before a freelance rate.
+pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
+    clause_rates(folded)
+        .filter(|r| r.hourly)
+        .max_by_key(|r| (r.wage, r.upper))
+}
+
+/// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
+/// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
+fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> + '_ {
+    let whole = is_wage(folded) && !names_freelance_rate(folded);
     folded
         .split([';', '(', ')'])
         .flat_map(|part| part.split(" oder "))
         .flat_map(|part| part.split(" or "))
         .filter_map(parse_rate)
-        .max_by_key(Rate::per_day)
+        .map(move |rate| Rate {
+            wage: rate.wage || whole,
+            ..rate
+        })
+}
+
+fn names_freelance_rate(folded: &str) -> bool {
+    lex::FREELANCE_RATE_WORDS.iter().any(|w| folded.contains(w))
+}
+
+/// Is a rate statement employment pay (`Stundenlohn`, a pay scale, `brutto` without a
+/// freelance rate word) rather than a freelance rate?
+pub(crate) fn is_wage(folded: &str) -> bool {
+    lex::WAGE_WORDS.iter().any(|w| folded.contains(w))
+        || lex::WAGE_WORDS_WHOLE
+            .iter()
+            .any(|w| contains_word(folded, w))
+        || (lex::WAGE_HINTS.iter().any(|w| contains_word(folded, w))
+            && !names_freelance_rate(folded))
 }
 
 /// A currency next to a time unit, also with the amount between them (`110 EUR/h`, `EUR pro
@@ -869,6 +1068,12 @@ pub(crate) fn readable_rate(text: &str) -> bool {
 }
 
 pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
+    // Pay by commission is no rate (`Vergütung auf Provisionsbasis ... 250 € pro Workshop`).
+    if lex::NO_RATE_WORDS.iter().any(|w| folded.contains(w))
+        && !lex::NO_RATE_EXCEPT.iter().any(|w| folded.contains(w))
+    {
+        return None;
+    }
     let rate_word = lex::RATE_WORDS.iter().any(|w| folded.contains(w));
     let currency_per_time =
         || CURRENCY_MARKS.iter().any(|m| folded.contains(m)) && CURRENCY_PER_TIME.is_match(folded);
@@ -916,7 +1121,10 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
         // Only an amount next to a currency or a rate word is a rate (`Start: 02/2027 ·
         // 78 €/h` is 78, a postcode or a year is none).
         // Next to a currency even a student's wage counts (`16,50 € pro Stunde`).
-        if !percent && !date && value >= MIN_RATE_AMOUNT && rate_context(folded, start, i) {
+        // An amount of a salary's size is no rate (`Vergütungspaket von 170.000 bis
+        // 210.000 €`).
+        let rate_size = (MIN_RATE_AMOUNT..MAX_RATE_AMOUNT).contains(&value);
+        if !percent && !date && rate_size && rate_context(folded, start, i) {
             amounts.push(value);
         }
     }
@@ -934,11 +1142,14 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
         upper,
         hourly,
         currency,
+        wage: is_wage(folded),
     })
 }
 
 /// Smallest amount read as a rate (a rate is always next to a currency or rate word).
 const MIN_RATE_AMOUNT: u64 = 5;
+/// Amounts from here on are salaries or budgets, never a rate per day or hour.
+const MAX_RATE_AMOUNT: u64 = 10_000;
 
 /// Is the number at `start..end` part of a date (`02/2027`, `01.11.2026`)?
 fn date_part(bytes: &[u8], start: usize, end: usize) -> bool {
@@ -1006,6 +1217,10 @@ fn day_rate(
     let Some((rate, span)) = stated_rate(job, segments) else {
         return Vec::new();
     };
+    // Employment pay is judged as employment (salary rules), never as a day rate.
+    if rate.wage {
+        return Vec::new();
+    }
     let spans: Vec<Range<usize>> = span.into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "currency": currency.to_uppercase(), "amount": rate.upper });
@@ -1263,6 +1478,50 @@ mod tests {
         );
     }
 
+    /// ANÜ as a topic of the requirements (experience with it, knowledge of the law,
+    /// managing temporary staff) is no contract form of the ad.
+    #[test]
+    fn anue_as_a_topic_of_the_requirements_never_excludes() {
+        for text in [
+            "Erfahrung mit Arbeitnehmerüberlassung von Vorteil.",
+            "Kenntnisse des Arbeitnehmerüberlassungsgesetzes (AÜG) wünschenswert.",
+            "Idealerweise Know-how in der Arbeitnehmerüberlassung und im Tarifrecht",
+            "Sie verantworten die Steuerung der Arbeitnehmerüberlassung an allen Standorten.",
+            "Experience with temporary agency work is a plus.",
+            "Knowledge of temporary agency work rules (AÜG), payroll and works council matters.",
+        ] {
+            assert!(anue_codes(text).is_empty(), "{text}");
+        }
+        // The contract form stays the contract form, also in a list of keywords.
+        for text in [
+            "Die Besetzung erfolgt im Rahmen der Arbeitnehmerüberlassung.",
+            "Arbeitnehmerüberlassung, 6 Monate, Erfahrung mit SAP FI erforderlich",
+        ] {
+            assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+    }
+
+    /// ANÜ as the business of the hiring company is no contract form; the contract wording
+    /// in the same kind of sentence stays one, and `nächstmöglich` offers no option.
+    #[test]
+    fn anue_as_the_business_of_a_company_never_excludes() {
+        for text in [
+            "Unser Kerngeschäft ist die Arbeitnehmerüberlassung in Industrie und Logistik.",
+            "Die Gruppe ist in der Arbeitnehmerüberlassung, der Personalvermittlung und im \
+             Engineering tätig.",
+        ] {
+            assert!(anue_codes(text).is_empty(), "{text}");
+        }
+        for text in [
+            "Wir sind ein in der Region tätiger Personaldienstleister und suchen im Rahmen der \
+             Arbeitnehmerüberlassung eine Buchhaltung.",
+            "Wir suchen zum nächstmöglichen Zeitpunkt im Rahmen der Arbeitnehmerüberlassung \
+             einen Controller.",
+        ] {
+            assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+    }
+
     #[test]
     fn a_denied_anue_never_excludes_in_english_either() {
         for text in [
@@ -1352,6 +1611,13 @@ mod tests {
         assert_eq!(rate("Stundensatz: 120 €"), Some((120, true)));
         // A salary chip stays no rate.
         assert_eq!(rate("€95,000/yr - €110,000/yr"), None);
+        // Neither is an amount of a salary's size or pay by commission.
+        assert_eq!(rate("Vergütungspaket von 170.000 bis 210.000 €"), None);
+        assert_eq!(
+            rate("Vergütung auf Provisionsbasis: 20 % Provision, 250 € pro Workshop"),
+            None
+        );
+        assert_eq!(rate("Tagessatz 900 €, provisionsfrei"), Some((900, false)));
     }
 
     #[test]
@@ -1449,5 +1715,42 @@ mod tests {
             country_codes("In Wien vor Ort."),
             [(ReasonCode::Country, true)]
         );
+        // The job's own place on site makes other countries second sites (a check).
+        assert_eq!(
+            country_codes(
+                "Etwa die Hälfte der Zeit vor Ort in Köln und in den Werken in Belgien und \
+                 den Niederlanden."
+            ),
+            [(ReasonCode::CountryUnclear, false)]
+        );
+    }
+
+    /// Remote work for a place abroad is decided where the profile rules it out
+    /// (`remote_ausserhalb_erlaubt` false), a check where it allows it; a location that
+    /// says remote is remote work.
+    #[test]
+    fn remote_work_abroad_follows_the_profile() {
+        let codes = |outside_allowed: bool| {
+            let data = serde_json::json!({ "harte_kriterien": {
+                "laender": ["DE"], "remote_ausserhalb_erlaubt": outside_allowed
+            }});
+            let criteria = HardCriteria::new(&super::super::profile::criteria(&data), &data);
+            let allowed = criteria.countries.clone().expect("countries");
+            let text = "Das Team sitzt in Zürich, die Arbeit ist remote.";
+            let job = JobFacts {
+                title: "Data Engineer",
+                text,
+                location: "Zürich, Schweiz (Remote)",
+                portal: Portal::LinkedIn,
+                facts: None,
+                posted: None,
+            };
+            country(&criteria, &allowed, &job, &segments(text), &fold(text))
+                .into_iter()
+                .map(|f| (f.code, f.decided))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(codes(false), [(ReasonCode::Country, true)]);
+        assert!(codes(true).is_empty(), "{:?}", codes(true));
     }
 }

@@ -1,0 +1,79 @@
+Titel: Interim Leitung IT-Infrastruktur und Security (m/w/d) – Vakanzüberbrückung
+Unternehmen: Emschertal Armaturenwerke GmbH
+Ort: Bochum, Nordrhein-Westfalen, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4358712406/
+Abgerufen am: 16.09.2026 07:44
+
+Emschertal Armaturenwerke GmbH
+Bochum, Nordrhein-Westfalen, Deutschland (Hybrid)
+Vor 2 Tagen · 37 Bewerber
+Hybrid · Freiberuflich · Mittlere bis Senior-Ebene
+Bewerben
+Speichern
+
+Info zum Job
+Die Emschertal Armaturenwerke entwickeln und fertigen Industriearmaturen für die Wasserwirtschaft, die Chemie und die Energietechnik. Rund 1.400 Mitarbeitende arbeiten an unseren Standorten in Bochum, Hamm und Siegen. Unsere IT mit 22 Kolleginnen und Kollegen betreut etwa 1.100 Arbeitsplätze, zwei Rechenzentren und die Netze von drei Werken.
+
+Unser Leiter IT-Infrastruktur hat das Unternehmen verlassen, die Nachfolge beginnt im Mai 2027. Gleichzeitig hat ein Sicherheitsaudit im Sommer mehrere Handlungsfelder aufgezeigt: ein flaches Active Directory ohne Tiering, eine veraltete VMware-Umgebung, eine Citrix-Farm am Ende ihres Supports und ein kaum segmentiertes Produktionsnetz. Für die Vakanzüberbrückung suchen wir eine erfahrene Persönlichkeit, die das Team führt und die wichtigsten Maßnahmen umsetzt.
+
+Ihre Aufgaben
+• Fachliche Führung des Infrastrukturteams mit neun Mitarbeitenden für Server, Netzwerk, Arbeitsplatz und Rechenzentrum
+• Einführung eines Active-Directory-Tiering-Modells und Härtung der Domänencontroller unter Windows Server 2022
+• Migration der VMware-Umgebung von vSphere 6.7 auf vSphere 8 an beiden Rechenzentrumsstandorten
+• Ablösung der Citrix-Farm (Citrix Virtual Apps 7.15 LTSR) durch die aktuelle LTSR-Version
+• Segmentierung des Produktionsnetzes mit FortiGate-Firewalls und Cisco-Catalyst-Switches
+• Steuerung unseres Managed-SOC-Dienstleisters, Bewertung der SIEM-Meldungen und Leitung des Incident-Response-Prozesses
+• Vorbereitung der ISO-27001-Zertifizierung gemeinsam mit unserem Informationssicherheitsbeauftragten
+• Berichterstattung an die kaufmännische Geschäftsführung und strukturierte Übergabe an die künftige Leitung
+
+Ihr Profil
+• Mindestens 10 Jahre Erfahrung in IT-Infrastruktur und Informationssicherheit, davon mehrere Jahre mit Führungs- oder Projektleitungsverantwortung
+• Tiefe Kenntnisse in Windows Server, Active Directory und VMware vSphere
+• Praxis mit Citrix sowie mit Netzwerken auf Basis von Cisco und Fortinet
+• Erfahrung mit ISO 27001 oder BSI IT-Grundschutz und im Umgang mit Sicherheitsvorfällen
+• Interim-Erfahrung ist von Vorteil
+• Sehr gutes Deutsch und gutes Englisch
+
+Rahmenbedingungen
+• Start: 01.11.2026
+• Laufzeit: 6 Monate, Verlängerung um drei Monate möglich
+• Auslastung: 80 %, davon drei Tage pro Woche vor Ort in Bochum, gelegentlich in Hamm und Siegen
+• Tagessatz: 950 bis 1.050 € zzgl. MwSt., Reisekosten nach Aufwand
+• Vertragsform: Dienstvertrag direkt mit uns, ohne Vermittler
+
+Ihre Fragen beantwortet Herr K. L., kaufmännischer Geschäftsführer.
+
+Weniger anzeigen
+Senioritätsstufe
+Mittlere bis Senior-Ebene
+Beschäftigungsverhältnis
+Freiberuflich
+Tätigkeitsbereich
+Informationstechnologie
+Branchen
+Maschinenbau
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Emschertal Armaturenwerke GmbH kennen
+Anmelden
+
+Jobbenachrichtigung für Interim IT-Leitung in Bochum aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+IT-Security-Architekt (m/w/d)
+Dortmund, Nordrhein-Westfalen, Deutschland
+Vor 1 Woche
+Teamleitung Netzwerk und Rechenzentrum (m/w/d)
+Essen, Nordrhein-Westfalen, Deutschland
+Vor 3 Tagen
+Interim CIO (m/w/d)
+Düsseldorf, Nordrhein-Westfalen, Deutschland
+Vor 5 Tagen
+
+Personen haben auch gesucht
+IT-Leiter
+Infrastrukturarchitekt
+Informationssicherheit
+Systemadministrator

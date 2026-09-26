@@ -1,0 +1,86 @@
+Titel: AUTOSAR Integrator (m/w/d) – Steuergeräte-Integration Fahrwerk
+Unternehmen: Isartal Engineering Services GmbH
+Ort: Unterschleißheim
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/autosar-integrator-m-w-d-steuergeraete-integration-fahrwerk-2923641
+Abgerufen am: 20.09.2026 07:55
+
+Projektdetails
+Start
+01/2027
+Dauer
+12 Monate
+Von
+Isartal Engineering Services GmbH
+Eingestellt
+19.09.2026
+Projekt-ID
+2923641
+Branche
+Automobilindustrie
+Vertragsart
+Freiberuflich
+Einsatzart
+40 % Remote
+Stundensatz
+115 €/h
+
+Beschreibung
+Wir sind ein Engineering-Dienstleister mit rund 300 Mitarbeitenden im Münchner Norden und unterstützen Fahrzeughersteller und Zulieferer in der Entwicklung von Steuergeräten. Für ein Kundenprojekt im Bereich Fahrwerk (aktive Dämpfung, Zielplattform für mehrere Baureihen) suchen wir ab Q1 2027 Verstärkung für das Integrationsteam.
+
+Die Software des Steuergeräts basiert auf AUTOSAR Classic (Vector MICROSAR) und läuft auf einem Infineon AURIX TC3xx. Das Projekt steht kurz vor der B-Muster-Phase, die Sicherheitsziele sind bis ASIL D eingestuft.
+
+Deine Aufgaben
+- Integration der AUTOSAR-Software (Applikationskomponenten, RTE und Basissoftware) auf der Zielhardware
+- Konfiguration der BSW-Module für Kommunikation, Speicher und Diagnose (Com, CanIf, NvM, Dem, Dcm) mit DaVinci Configurator
+- Umsetzung und Test der Sicherheitsmechanismen wie E2E-Absicherung und Watchdog-Management
+- Inbetriebnahme neuer Hardware-Muster und Fehlersuche mit Lauterbach TRACE32 und CANoe
+- Integrationstests am HIL und Auswertung der Ergebnisse
+- Pflege der Integrationsanforderungen in DOORS und Zusammenarbeit mit dem Safety-Team
+- Arbeit nach Automotive-SPICE-Prozessen
+
+Was du mitbringst
+- Mind. 7 Jahre Erfahrung in der Embedded-Entwicklung im Automotive-Umfeld
+- Sehr gute Kenntnisse in AUTOSAR Classic und Embedded C
+- Erfahrung mit CAN, CAN FD und Diagnose nach UDS
+- Kenntnisse der ISO 26262, idealerweise in ASIL-D-Projekten
+- Erfahrung mit Infineon AURIX ist ein Plus
+- Gute Deutsch- und Englischkenntnisse
+
+Rahmendaten
+Start: Q1 2027, voraussichtlich 11.01.2027
+Laufzeit: 12 Monate, Verlängerung geplant
+Auslastung: 80 %
+Einsatzort: Unterschleißheim, drei Tage pro Woche vor Ort
+Stundensatz: 115 €/h
+Vertragsform: freiberuflich
+
+Schlagworte
+AUTOSAR
+Integration
+Embedded C
+ISO 26262
+CANoe
+Fahrwerk
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Isartal Engineering Services GmbH
+Engineering-Dienstleistungen Automotive
+88 veröffentlichte Projekte
+Mitglied seit 2016
+Firmenprofil ansehen
+
+Ähnliche Projekte
+AUTOSAR Basissoftware Entwickler (m/w/d)
+München · ab sofort
+Softwareintegrator Bremssteuergerät (m/w/d)
+Ingolstadt · 02.2027 · 9 Monate
+HIL-Testingenieur (m/w/d)
+Garching · 6 Monate
+Mehr Projekte anzeigen
+
+Sie sind Freelancer im Bereich Embedded Systems? Jetzt kostenlos registrieren und Projekte per E-Mail erhalten.

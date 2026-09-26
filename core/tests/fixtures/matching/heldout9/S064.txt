@@ -1,0 +1,74 @@
+Titel: Interim IT Infrastructure Manager (m/f/d) – Data Centre and Network
+Unternehmen: Donaukanal Speditions AG
+Ort: Vienna, Vienna, Austria (On-site)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4352015573/
+Abgerufen am: 19.09.2026 07:44
+
+Donaukanal Speditions AG
+Vienna, Vienna, Austria (On-site)
+6 days ago · 41 applicants
+€1,100/day · On-site · Contract · Director
+Apply
+Save
+
+About the job
+Donaukanal Speditions AG is a mid-sized freight forwarding and warehousing group with 2,300 employees, 19 branches in Austria, Hungary and Slovakia and our headquarters in Vienna. Our IT runs mostly on premises: two data centres in Vienna and Győr, a Cisco-based WAN connecting all branches, and roughly 600 virtual servers on VMware.
+
+Our Head of IT Infrastructure is on long-term leave. We are looking for an experienced interim manager (Management auf Zeit) to lead the infrastructure department for an interim assignment of six months, maybe longer.
+
+Your responsibilities
+- Lead the infrastructure team of 12 people (network, server, storage, workplace) and two service providers
+- Keep daily operations stable, including the 24/7 on-call rotation for the warehouse systems
+- Drive the consolidation of the Győr data centre into Vienna by mid 2027 (planning, budget, vendor selection)
+- Replace the end-of-life core switches and firewalls (Cisco, Palo Alto) at headquarters
+- Renegotiate the contracts for WAN, printing and hardware maintenance
+- Prepare a decision paper on hybrid cloud: which workloads could move to Microsoft Azure in 2028
+- Report monthly to the CIO and the Management Board
+
+What we are looking for
+- 10+ years in IT infrastructure, at least 5 years leading infrastructure or operations teams
+- Solid knowledge of data centre operations, VMware vSphere, storage (NetApp) and backup (Veeam)
+- Good understanding of enterprise networks and security (Cisco, Palo Alto, NAC)
+- Experience with data centre moves or consolidations
+- Vendor and contract management
+- First experience with Azure or other public clouds is welcome but not required
+- Fluent German and good English; Hungarian is a plus
+
+The engagement
+- Interim assignment, freelance contract directly with us, 6 months with option to extend
+- Start: 01.12.2026
+- Full time, 5 days per week, on site in Vienna (one home office day per week possible after onboarding)
+- Occasional trips to Győr and Bratislava
+- Day rate: €1,100 plus travel expenses
+
+Show more
+Show less
+Seniority level
+Director
+Employment type
+Contract
+Job function
+Information Technology
+Industries
+Freight and Package Transportation
+
+Referrals increase your chances of interviewing at Donaukanal Speditions AG by 2x
+See who you know
+
+Similar jobs
+Head of IT Operations
+Vienna, Austria (Hybrid)
+1 week ago
+Network Engineer Cisco (m/f/d)
+Linz, Upper Austria, Austria
+3 days ago
+Data Centre Manager
+Graz, Styria, Austria
+€75,000/yr - €90,000/yr
+5 days ago
+
+People also viewed
+IT Infrastructure Manager
+Interim IT Manager
+Head of IT

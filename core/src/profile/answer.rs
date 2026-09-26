@@ -166,6 +166,22 @@ const CRITERIA: &[Field] = &[
         keys: lexicon::KEYS_PERMANENT_REMOTE,
         shape: Shape::Number,
     },
+    Field {
+        keys: lexicon::KEYS_WORKLOAD_MIN,
+        shape: Shape::Number,
+    },
+    Field {
+        keys: lexicon::KEYS_WORKLOAD_MAX,
+        shape: Shape::Number,
+    },
+    Field {
+        keys: lexicon::KEYS_MIN_MONTHS,
+        shape: Shape::Number,
+    },
+    Field {
+        keys: &["ausschlusswoerter", "exclusion_words"],
+        shape: TEXTS,
+    },
 ];
 /// The skeleton's keys in its order.
 const TOP: &[Field] = &[

@@ -9,8 +9,9 @@ use serde_json::{Map, Value, json};
 use super::ad_facts::{self, AdFacts, Stated, currency_code, start_code};
 use super::contract::ContractKind;
 use super::engine::{EngineProfile, Evaluation};
-use super::facts::{Availability, Start};
+use super::facts::{Availability, HardCriteria, Start};
 use super::job::{Class, Stage};
+use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{E_FULL, E_NONE, W_MUST};
 use super::sections::ReqKind;
@@ -355,7 +356,8 @@ fn at_least<T: Copy + PartialOrd + Into<u64>>(
 /// for a rate to be agreed.
 fn rate_state(min: i128, ad: &AdFacts, text: &str) -> CriterionState {
     let key = CriterionKey::MinDayRate;
-    if let Some(rate) = &ad.rate {
+    // A wage is no day rate.
+    if let Some(rate) = ad.rate.as_ref().filter(|r| !r.value.wage) {
         let r = rate.value;
         let mut params = json!({ "rate": r.upper, "hourly": r.hourly });
         if let Some(currency) = r.currency {
@@ -393,6 +395,8 @@ fn start_state(ad: &AdFacts, text: &str) -> CriterionState {
 fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<CriterionState> {
     let c = &profile.criteria;
     let permanent = ad.contract == ContractKind::Permanent;
+    // Employment pay: a permanent role or temporary agency work has no day rate.
+    let employment = permanent || ad.contract == ContractKind::Anue;
     let unset = |key| criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
     let remote_full =
         ad_facts::location_remote(&ad.location) || ad.remote.is_some_and(|(from, _)| from >= 100);
@@ -407,7 +411,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         && matches!(ad.contract, ContractKind::Interim | ContractKind::Permanent);
     vec![
         match c.min_rate {
-            Some(min) if !permanent => rate_state(min, ad, text),
+            Some(min) if !employment => rate_state(min, ad, text),
             _ => unset(CriterionKey::MinDayRate),
         },
         match &c.countries {
@@ -447,7 +451,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             start_state(ad, text)
         },
         match c.min_salary {
-            Some(min) if permanent => at_least(
+            Some(min) if employment => at_least(
                 CriterionKey::MinSalary,
                 ad.salary.as_ref(),
                 min,
@@ -472,5 +476,40 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             ),
             None => unset(CriterionKey::TargetYears),
         },
+        workload_state(c, ad, text),
+        match c.min_months {
+            // A permanent role has no end.
+            Some(min) if !permanent => at_least(
+                CriterionKey::Duration,
+                ad.months.as_ref(),
+                min,
+                "months",
+                text,
+            ),
+            _ => unset(CriterionKey::Duration),
+        },
+        // Only a hit shows (a violation); no word is no evidence.
+        unset(CriterionKey::ExclusionWords),
     ]
+}
+
+/// The workload: `Ok` for a stated workload within the profile's days per week (`from`,
+/// `to` in percent), `NotMentioned` for none; one outside is a check (a finding).
+fn workload_state(c: &HardCriteria, ad: &AdFacts, text: &str) -> CriterionState {
+    let key = CriterionKey::Workload;
+    let (min, max) = (c.workload_min, c.workload_max);
+    if min.is_none() && max.is_none() {
+        return criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
+    }
+    match &ad.workload {
+        Some(stated) => {
+            let mut params = json!({ "to": stated.value.to });
+            if let Some(from) = stated.value.from {
+                params["from"] = json!(from);
+            }
+            let ok = limits::workload_fits(stated.value, min, max);
+            criterion(key, told(ok), &params, stated.span.as_ref(), text)
+        }
+        None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+    }
 }

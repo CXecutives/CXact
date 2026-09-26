@@ -1,0 +1,73 @@
+Titel: Senior Data Engineer – Python, Spark and Databricks (Contract, Remote)
+Unternehmen: Spreebogen Mobility GmbH
+Ort: Berlin, Berlin, Germany (Remote)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4352118406/
+Abgerufen am: 16.09.2026 07:41
+
+Spreebogen Mobility GmbH
+Berlin, Berlin, Germany (Remote)
+4 days ago · 87 applicants
+€850/day - €950/day · Remote · Contract · Mid-Senior level
+Apply
+Save
+
+About the job
+Spreebogen Mobility runs a car-sharing and e-scooter platform in eleven German and Austrian cities. Every day our fleet of 21,000 vehicles sends around 400 million telemetry events, and our pricing, fleet rebalancing and maintenance planning all depend on this data.
+
+In 2026 we moved our analytics from a self-managed Hadoop cluster to Databricks on AWS. The migration is done, but the pipelines were ported one to one and are hard to maintain. We are now looking for an experienced freelance data engineer who helps our data platform team rebuild the core pipelines properly and set standards the team can keep.
+
+What you will do
+• Redesign the telemetry and booking pipelines on Databricks with PySpark and Delta Lake (medallion architecture)
+• Build streaming ingestion from Amazon Kinesis with Spark Structured Streaming
+• Model the curated layer for pricing and fleet analytics together with our analytics engineers (dbt)
+• Introduce data quality checks with Great Expectations and data contracts with the producing teams
+• Orchestrate workloads with Databricks Workflows and Airflow
+• Reduce compute cost of the platform by at least 25 % through partitioning, cluster policies and job tuning
+• Coach two junior data engineers through pairing and code reviews
+
+What you bring
+• 6+ years as a data engineer, at least 3 of them with Apache Spark in production
+• Very good Python, including testing and packaging (pytest, poetry)
+• Hands-on experience with Databricks, Delta Lake and Unity Catalog
+• Experience with streaming data (Kinesis, Kafka or similar)
+• Good SQL skills; PostgreSQL knowledge helps, since our booking system runs on it
+• Some exposure to Scala or Java is a plus, but you will not write backend services here
+• Fluent English; German is not required
+
+Engagement
+• Freelance contract, 12 months, extension likely
+• Start: January 2027 (Q1 2027), onboarding remote
+• Full time, fully remote within the EU; one team week in Berlin per quarter, travel costs covered
+• Day rate: €850 to €950, depending on experience
+
+Show more
+Show less
+Seniority level
+Mid-Senior level
+Employment type
+Contract
+Job function
+Information Technology and Engineering
+Industries
+Ground Passenger Transportation and Software Development
+
+Referrals increase your chances of interviewing at Spreebogen Mobility GmbH by 2x
+See who you know
+
+Similar jobs
+Analytics Engineer (dbt, Snowflake)
+Hamburg, Germany (Hybrid)
+3 days ago
+Data Platform Engineer – Contract
+Remote
+1 week ago
+Senior Machine Learning Engineer
+Munich, Bavaria, Germany
+€85,000/yr - €105,000/yr
+2 days ago
+
+People also viewed
+Data Engineer
+Databricks Engineer
+Big Data Engineer

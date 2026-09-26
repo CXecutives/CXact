@@ -1,0 +1,90 @@
+{
+  "name": "Petra Probe",
+  "titel": "Managementberaterin Performance und Profit",
+  "wunschrollen": [
+    "Projektleiterin Ergebnisverbesserung",
+    "Management Consultant Performance Improvement",
+    "Interim Managerin Restrukturierung",
+    "Beraterin Pricing"
+  ],
+  "berufserfahrung_jahre": 22,
+  "ausbildung": [
+    { "abschluss": "Diplom-Kauffrau (Univ.) Betriebswirtschaftslehre" },
+    { "abschluss": "MBA" }
+  ],
+  "kernkompetenzen": [
+    { "kompetenz": "Ergebnisverbesserung", "jahre": 15, "auch": ["Profit Improvement", "Performance Improvement", "EBIT-Verbesserung"] },
+    { "kompetenz": "Kostensenkung", "jahre": 15, "auch": ["Cost Reduction", "Kostenoptimierung"] },
+    { "kompetenz": "Pricing", "jahre": 10, "auch": ["Preismanagement", "Preisstrategie"] },
+    { "kompetenz": "Managementberatung", "jahre": 20, "auch": ["Management Consulting", "Unternehmensberatung"] },
+    { "kompetenz": "Unternehmensstrategie", "jahre": 14, "auch": ["Corporate Strategy", "Strategieentwicklung"] },
+    { "kompetenz": "Restrukturierung", "jahre": 12, "auch": ["Restructuring", "Turnaround"] },
+    { "kompetenz": "Operational Excellence", "jahre": 10 },
+    { "kompetenz": "Lean Management", "jahre": 9 },
+    { "kompetenz": "Vertriebsexzellenz", "jahre": 8, "auch": ["Sales Excellence"] },
+    { "kompetenz": "Working Capital Management", "jahre": 8 },
+    { "kompetenz": "Controlling", "jahre": 12 },
+    { "kompetenz": "KPI-Systeme", "jahre": 12, "auch": ["Kennzahlensysteme"] },
+    { "kompetenz": "Transformationsmanagement", "jahre": 10, "auch": ["Transformation Management"] },
+    { "kompetenz": "Business Case", "jahre": 15, "auch": ["Business Cases"] }
+  ],
+  "schwerpunkte": [
+    "Ergebnisverbesserung",
+    "Kostensenkung",
+    "Pricing",
+    "Restrukturierung"
+  ],
+  "methoden_tools": [
+    { "name": "Excel" },
+    { "name": "Power BI" },
+    { "name": "think-cell" },
+    { "name": "Wertstromanalyse" },
+    { "name": "Zero-Based Budgeting" }
+  ],
+  "zertifizierungen": [
+    { "name": "Lean Six Sigma Green Belt" }
+  ],
+  "branchen": [
+    { "branche": "Maschinenbau" },
+    { "branche": "Konsumgüter" },
+    { "branche": "Bauzulieferer" },
+    { "branche": "Handel" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C1" },
+    { "sprache": "Französisch", "niveau": "B2" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Hob das EBIT eines Mittelständlers mit einem Ergebnisprogramm in 18 Monaten um vier Prozentpunkte.",
+    "Führte bei fünf Industriekunden eine wertbasierte Preisfindung ein."
+  ],
+  "keywords": [
+    "Mittelstand",
+    "EBITDA",
+    "Deckungsbeitragsrechnung",
+    "Sanierungskonzept",
+    "IDW S 6",
+    "Target Costing"
+  ],
+  "stationen": [
+    { "zeitraum": "01/2014 bis heute", "rolle": "Selbstständige Managementberaterin", "schwerpunkte": ["Ergebnisverbesserung", "Pricing", "Restrukturierung"] },
+    { "zeitraum": "09/2004 bis 12/2013", "rolle": "Principal in einer Strategieberatung", "schwerpunkte": ["Kostensenkung", "Unternehmensstrategie"] }
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1500,
+    "remote": "teilweise",
+    "regionen": ["Nordrhein-Westfalen", "Hessen"],
+    "branchen": ["Maschinenbau", "Konsumgüter"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1100,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue"],
+    "verfuegbar_ab": "sofort",
+    "zielprofil_min_jahre": 8,
+    "auslastung_max_tage": 4,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum"]
+  }
+}

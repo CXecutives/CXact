@@ -1,0 +1,86 @@
+{
+  "name": "Tobias Muster",
+  "titel": "SAP FI/CO Berater",
+  "wunschrollen": [
+    "SAP FI/CO Berater",
+    "SAP S/4HANA Finance Consultant",
+    "Teilprojektleiter SAP Finance"
+  ],
+  "berufserfahrung_jahre": 15,
+  "ausbildung": [
+    { "abschluss": "Bachelor of Arts Betriebswirtschaftslehre (BA)" }
+  ],
+  "kernkompetenzen": [
+    { "kompetenz": "SAP FI", "jahre": 14, "auch": ["SAP Financial Accounting"] },
+    { "kompetenz": "SAP CO", "jahre": 12, "auch": ["SAP Controlling"] },
+    { "kompetenz": "SAP S/4HANA Finance", "jahre": 6, "auch": ["S/4HANA Finance"] },
+    { "kompetenz": "Hauptbuchhaltung", "jahre": 14, "auch": ["General Ledger"] },
+    { "kompetenz": "Anlagenbuchhaltung", "jahre": 12, "auch": ["Asset Accounting"] },
+    { "kompetenz": "Kreditorenbuchhaltung", "jahre": 12, "auch": ["Accounts Payable"] },
+    { "kompetenz": "Debitorenbuchhaltung", "jahre": 12, "auch": ["Accounts Receivable"] },
+    { "kompetenz": "Produktkostencontrolling", "jahre": 8, "auch": ["Product Costing"] },
+    { "kompetenz": "Profit-Center-Rechnung", "jahre": 10, "auch": ["Profit Center Accounting"] },
+    { "kompetenz": "Kostenstellenrechnung", "jahre": 12, "auch": ["Cost Center Accounting"] },
+    { "kompetenz": "Customizing", "jahre": 14 },
+    { "kompetenz": "Datenmigration", "jahre": 8, "auch": ["Data Migration"] },
+    { "kompetenz": "Fit-Gap-Analyse", "jahre": 8, "auch": ["Fit Gap Analysis"] },
+    { "kompetenz": "Central Finance", "jahre": 3 }
+  ],
+  "schwerpunkte": [
+    "SAP S/4HANA Finance",
+    "SAP FI",
+    "SAP CO",
+    "Datenmigration"
+  ],
+  "methoden_tools": [
+    { "name": "SAP S/4HANA" },
+    { "name": "SAP ECC 6.0" },
+    { "name": "SAP Fiori" },
+    { "name": "SAP Activate" },
+    { "name": "SAP Migration Cockpit" },
+    { "name": "Jira" }
+  ],
+  "zertifizierungen": [
+    { "name": "SAP Certified Application Associate SAP S/4HANA for Financial Accounting" }
+  ],
+  "branchen": [
+    { "branche": "Automobilzulieferer" },
+    { "branche": "Pharma" },
+    { "branche": "Energieversorgung" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C1" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Begleitete vier Umstiege von SAP ECC auf S/4HANA im Finanzbereich bis zum Go-live.",
+    "Migrierte die Anlagenbuchhaltung eines Konzerns mit 40 Buchungskreisen."
+  ],
+  "keywords": [
+    "New Asset Accounting",
+    "Universal Journal",
+    "Material Ledger",
+    "Brownfield",
+    "Greenfield",
+    "Intercompany"
+  ],
+  "stationen": [
+    { "zeitraum": "03/2016 bis heute", "rolle": "Freiberuflicher SAP FI/CO Berater", "schwerpunkte": ["SAP S/4HANA Finance", "Datenmigration", "Central Finance"] },
+    { "zeitraum": "10/2011 bis 02/2016", "rolle": "SAP Berater Finanzwesen", "schwerpunkte": ["SAP FI", "SAP CO", "Customizing"] }
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1000,
+    "remote": "ueberwiegend",
+    "regionen": ["Rhein-Main", "Rhein-Neckar"],
+    "branchen": ["Automobilzulieferer", "Pharma"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 850,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue"],
+    "verfuegbar_ab": "sofort",
+    "auslastung_min_tage": 3,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum"]
+  }
+}

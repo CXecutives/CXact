@@ -1,0 +1,115 @@
+{
+  "name": "Katrin Beispiel",
+  "titel": "Interim CFO und Finanztransformation",
+  "wunschrollen": [
+    "Interim CFO",
+    "Kaufmännische Geschäftsführerin",
+    "Head of Finance",
+    "Leiterin Finanzen und Controlling"
+  ],
+  "berufserfahrung_jahre": 30,
+  "ausbildung": [
+    { "abschluss": "Diplom-Kauffrau (Univ.) Betriebswirtschaftslehre" }
+  ],
+  "kernkompetenzen": [
+    { "kompetenz": "Interim Management", "jahre": 15, "auch": ["Interim-Mandate", "Management auf Zeit"] },
+    { "kompetenz": "Finanztransformation", "jahre": 15, "auch": ["Finance Transformation"] },
+    { "kompetenz": "Controlling", "jahre": 28, "auch": ["Financial Controlling", "FP&A"] },
+    { "kompetenz": "Konzernrechnungslegung nach IFRS", "jahre": 22, "auch": ["IFRS-Konzernabschluss"] },
+    { "kompetenz": "Jahresabschluss nach HGB", "jahre": 28 },
+    { "kompetenz": "Konsolidierung", "jahre": 20, "auch": ["Consolidation"] },
+    { "kompetenz": "Treasury", "jahre": 18, "auch": ["Liquiditätsmanagement"] },
+    { "kompetenz": "Restrukturierung", "jahre": 12, "auch": ["Restructuring", "Sanierung"] },
+    { "kompetenz": "Post Merger Integration", "jahre": 10, "auch": ["PMI"] },
+    { "kompetenz": "Unternehmensplanung", "jahre": 25, "auch": ["Business Planning"] },
+    { "kompetenz": "Budgetierung", "jahre": 25, "auch": ["Budgeting"] },
+    { "kompetenz": "Unternehmensfinanzierung", "jahre": 20, "auch": ["Corporate Finance"] },
+    { "kompetenz": "Carve-out", "jahre": 8 },
+    { "kompetenz": "Management Reporting", "jahre": 28, "auch": ["Berichtswesen"] },
+    { "kompetenz": "Working Capital Management", "jahre": 12 },
+    { "kompetenz": "Financial Due Diligence", "jahre": 9 }
+  ],
+  "schwerpunkte": [
+    "Interim Management",
+    "Finanztransformation",
+    "Restrukturierung",
+    "Konzernrechnungslegung nach IFRS"
+  ],
+  "methoden_tools": [
+    { "name": "SAP S/4HANA FI/CO" },
+    { "name": "LucaNet" },
+    { "name": "Power BI" },
+    { "name": "Excel" }
+  ],
+  "zertifizierungen": [],
+  "branchen": [
+    { "branche": "Maschinenbau" },
+    { "branche": "Automobilzulieferer" },
+    { "branche": "Handel" },
+    { "branche": "Chemie" }
+  ],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "C1" }
+  ],
+  "alleinstellungsmerkmale": [
+    "Führte drei Finanzbereiche durch eine Restrukturierung mit Bankenfinanzierung.",
+    "Stellte zwei Konzerne in unter zwölf Monaten auf IFRS um."
+  ],
+  "keywords": [
+    "IFRS 16",
+    "HGB",
+    "Liquiditätsplanung",
+    "13-Wochen-Liquiditätsplanung",
+    "Covenants",
+    "Bankenverhandlungen",
+    "Cashflow"
+  ],
+  "stationen": [
+    { "zeitraum": "01/2011 bis heute", "rolle": "Interim CFO", "schwerpunkte": ["Restrukturierung", "Finanztransformation", "Post Merger Integration"] },
+    { "zeitraum": "01/2003 bis 12/2010", "rolle": "Kaufmännische Geschäftsführerin", "schwerpunkte": ["Konzernrechnungslegung nach IFRS", "Treasury"] },
+    { "zeitraum": "10/1996 bis 12/2002", "rolle": "Leiterin Konzerncontrolling", "schwerpunkte": ["Controlling", "Unternehmensplanung"] }
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1400,
+    "remote": "teilweise",
+    "regionen": ["München", "Bayern", "Baden-Württemberg"],
+    "branchen": ["Maschinenbau", "Automobilzulieferer"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1000,
+    "laender": ["DE", "AT", "CH"],
+    "ausgeschlossene_vertragsarten": ["anue"],
+    "verfuegbar_ab": "sofort",
+    "min_jahresgehalt": 150000,
+    "festanstellung_orte": [
+      "München",
+      "Augsburg",
+      "Ingolstadt",
+      "Landshut",
+      "Rosenheim",
+      "Freising",
+      "Erding",
+      "Dachau",
+      "Fürstenfeldbruck",
+      "Starnberg",
+      "Garching",
+      "Unterschleißheim",
+      "Ismaning",
+      "Unterföhring",
+      "Ottobrunn",
+      "Germering",
+      "Wolfratshausen",
+      "Bad Tölz",
+      "Weilheim",
+      "Landsberg am Lech",
+      "Pfaffenhofen an der Ilm",
+      "Mühldorf am Inn",
+      "Moosburg"
+    ],
+    "festanstellung_remote_min": 60,
+    "zielprofil_min_jahre": 10,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum"]
+  }
+}

@@ -778,6 +778,10 @@ mod tests {
                 min_salary: Some(120_000),
                 permanent_places: texts(&["Hamburg", "Berlin"]),
                 permanent_remote_min: Some(50),
+                workload_min_days: Some(3),
+                workload_max_days: Some(5),
+                min_months: Some(6),
+                exclusion_words: texts(&["Werkstudent", "Praktikum"]),
             },
         }
     }
@@ -850,7 +854,10 @@ mod tests {
                 CriterionKey::Availability,
                 CriterionKey::MinSalary,
                 CriterionKey::PermanentRegion,
-                CriterionKey::TargetYears
+                CriterionKey::TargetYears,
+                CriterionKey::Workload,
+                CriterionKey::Duration,
+                CriterionKey::ExclusionWords
             ]
         );
         for path in [

@@ -1,0 +1,63 @@
+Titel: Hardware-Entwickler Leistungselektronik (m/w/d) – Traktionswechselrichter
+Unternehmen: Brigach Power Electronics GmbH
+Ort: D-78048 Villingen-Schwenningen
+Quelle: Freelance
+Link: https://www.freelance.de/project/index.php?id=1342690
+Abgerufen am: 21.09.2026 07:48
+
+Projekt-ID: 1342690
+Ort: Villingen-Schwenningen
+Remote: 10 %
+Start: 15.11.2026
+Dauer: 10 Monate
+Vertragsart: Freiberuflich
+Honorar: 110 € pro Stunde
+Letztes Update: 21.09.2026
+
+Projektbeschreibung
+Wer wir sind: Die Brigach Power Electronics GmbH wurde 1962 als kleine Elektrowerkstatt im Schwarzwald gegründet und ist heute ein international tätiger Spezialist für Leistungselektronik mit rund 900 Mitarbeitenden an Standorten in Deutschland, Ungarn und China. Seit mehr als sechzig Jahren verbindet uns die Leidenschaft für Energie in Bewegung. Unsere Produkte finden sich in Industrieantrieben, Bahntechnik, Ladeinfrastruktur und zunehmend in elektrischen Fahrzeugen. Als Familienunternehmen in dritter Generation legen wir großen Wert auf Nachhaltigkeit, Innovationskraft und ein respektvolles Miteinander. Wir investieren jedes Jahr mehr als acht Prozent unseres Umsatzes in Forschung und Entwicklung und arbeiten eng mit Hochschulen und Forschungsinstituten in der Region zusammen. Mehrfach wurden wir als Innovationsführer im Mittelstand ausgezeichnet.
+
+Für die Entwicklung einer neuen Generation von Traktionswechselrichtern auf Basis von Siliziumkarbid suchen wir einen erfahrenen Hardware-Entwickler (m/w/d) zur Unterstützung unseres Teams.
+
+Aufgaben:
+- Mitarbeit bei der Schaltungsentwicklung, insbesondere Gate-Treiber für SiC-MOSFETs
+- Unterstützung bei Layout-Reviews in Altium Designer
+- Simulationen mit LTspice und PLECS
+- EMV-Messungen und Optimierung
+- Themen rund um das Wärmemanagement
+- Betreuung des Musterbaus
+- Dokumentation
+
+Anforderungen:
+- Abgeschlossenes Studium der Elektrotechnik
+- Mindestens 8 Jahre Erfahrung in der Hardwareentwicklung von Leistungselektronik
+- Sicherer Umgang mit Altium Designer
+- Erfahrung mit EMV und Wärmemanagement
+- Kenntnisse der Hardware-Metriken nach ISO 26262 (SPFM, LFM) von Vorteil
+- Teamfähigkeit und selbstständige Arbeitsweise
+- Gute Deutschkenntnisse
+
+Einsatz: Vollzeit überwiegend vor Ort in Villingen-Schwenningen, da im Labor gearbeitet wird. Beauftragung als Werk- oder Dienstvertrag.
+
+Kategorien und Skills
+Leistungselektronik
+Hardwareentwicklung
+Altium Designer
+Siliziumkarbid
+EMV
+Wechselrichter
+
+Projektanbieter
+Brigach Power Electronics GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Elektronikentwickler Analog/Digital (m/w/d)
+Rottweil · 01.2027
+EMV-Ingenieur (m/w/d) Fahrzeugtechnik
+Tuttlingen · ab sofort
+Layouter Altium (m/w/d)
+Freiburg im Breisgau · 5 Monate
+Alle Projekte in Elektrotechnik anzeigen

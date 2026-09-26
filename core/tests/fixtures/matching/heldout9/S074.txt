@@ -1,0 +1,79 @@
+Titel: Citrix Consultant (m/w/d) – Migration nach Azure Virtual Desktop
+Unternehmen: Kaiserswerth Lebensversicherung AG
+Ort: Düsseldorf, Nordrhein-Westfalen, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4358690153/
+Abgerufen am: 21.09.2026 07:29
+
+Kaiserswerth Lebensversicherung AG
+Düsseldorf, Nordrhein-Westfalen, Deutschland (Hybrid)
+Vor 4 Tagen · 52 Bewerber
+Hybrid · Freiberuflich · Mittlere bis Senior-Ebene
+Bewerben
+Speichern
+
+Info zum Job
+Die Kaiserswerth Lebensversicherung ist ein mittelständischer Lebensversicherer mit rund 1.600 Mitarbeitenden im Innen- und Außendienst. Wir modernisieren unsere IT und verlagern unsere Arbeitsplätze Schritt für Schritt in die Cloud. Dazu gehört auch die Ablösung unserer Citrix-Umgebung durch Azure Virtual Desktop, die im kommenden Jahr abgeschlossen werden soll.
+
+Für dieses Vorhaben suchen wir eine:n freiberufliche:n Citrix Consultant, der oder die unsere bestehende Umgebung genau kennt, bevor sie abgeschaltet wird, und die Migration fachlich mitgestaltet. Das Projekt wird von unserer internen Projektleitung gesteuert, die technische Verantwortung für die Migration liegt bei dir.
+
+Was dich erwartet
+• Bestandsaufnahme der Citrix-Umgebung (Citrix Virtual Apps and Desktops 2203 LTSR, NetScaler, rund 1.800 Nutzer, 240 veröffentlichte Anwendungen)
+• Mitarbeit an der Zielarchitektur mit Azure Virtual Desktop, FSLogix und MSIX App Attach
+• Bewertung und Neupaketierung von Fachanwendungen gemeinsam mit den Fachbereichen
+• Planung und Durchführung der Migration in Wellen, inklusive Pilotgruppen und Rückfallplanung
+• Stabiler Betrieb der Citrix-Umgebung bis zur Abschaltung, Behebung von Performance-Problemen
+• Anbindung an Entra ID, Intune und Conditional Access gemeinsam mit unserem Cloud-Team
+• Dokumentation und Wissenstransfer an das interne Team
+
+Was du mitbringst
+• Mindestens 6 Jahre Erfahrung mit Citrix Virtual Apps and Desktops in größeren Umgebungen
+• Praktische Erfahrung mit Azure Virtual Desktop und FSLogix
+• Kenntnisse in Entra ID, Intune und Azure-Netzwerken
+• Gute Kenntnisse in PowerShell, Terraform ist ein Plus
+• Erfahrung mit VMware vSphere, auf der die Citrix-Umgebung heute läuft, von Vorteil
+• Erfahrung in regulierten Branchen (VAIT, DORA) wünschenswert
+• Sehr gutes Deutsch
+
+Rahmenbedingungen
+• Start: 04.01.2027
+• Laufzeit: 7 Monate
+• Umfang: 3 Tage pro Woche
+• Remote-Anteil etwa 60 %, sonst vor Ort in Düsseldorf
+• Stundensatz: 110 € zzgl. MwSt.
+• Vertrag: Dienstvertrag, Abrechnung nach Aufwand
+
+Wir freuen uns auf dein Profil mit Referenzen aus vergleichbaren Migrationen.
+
+Weniger anzeigen
+Senioritätsstufe
+Mittlere bis Senior-Ebene
+Beschäftigungsverhältnis
+Freiberuflich
+Tätigkeitsbereich
+Informationstechnologie
+Branchen
+Versicherungen
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Kaiserswerth Lebensversicherung AG kennen
+Anmelden
+
+Jobbenachrichtigung für Citrix Consultant in Düsseldorf aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+Azure Cloud Engineer (m/w/d)
+Köln, Nordrhein-Westfalen, Deutschland
+Vor 2 Tagen
+Workplace Architect Microsoft 365 (m/w/d)
+Düsseldorf, Nordrhein-Westfalen, Deutschland
+Vor 1 Woche
+VDI Engineer (m/w/d)
+Neuss, Nordrhein-Westfalen, Deutschland
+Vor 6 Tagen
+
+Personen haben auch gesucht
+Citrix Administrator
+Azure Virtual Desktop
+Cloud Architect

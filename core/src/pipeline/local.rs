@@ -20,7 +20,7 @@ const TOP: usize = 2;
 /// Version of what a stored job hands the engine besides its text (2: page facts and the
 /// teaser flag; 3: the company, for the industry wish; 4: career level, industries and a
 /// remote field in words). Part of the revision: a change scores every stored job again.
-const INPUTS: u32 = 4;
+const INPUTS: u32 = 5;
 
 /// The local engine with one profile.
 pub struct LocalMatcher {

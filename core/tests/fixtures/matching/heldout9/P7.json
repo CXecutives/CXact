@@ -1,0 +1,314 @@
+{
+  "name": "Jens Beispielhoff",
+  "email": "jens.beispielhoff@example.invalid",
+  "telefon": "+49 171 0000000",
+  "titel": "Freiberuflicher Berater für IT-Infrastruktur und Informationssicherheit",
+  "abschluss": "Diplom-Informatiker (FH)",
+  "berufserfahrung_jahre": 20,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Informatiker (FH)",
+      "fach": "Informatik mit dem Schwerpunkt Rechnernetze und Systemadministration",
+      "hochschule": "Beispielhochschule für angewandte Wissenschaften",
+      "jahr": 2006
+    },
+    {
+      "abschluss": "Fachinformatiker für Systemintegration (IHK)",
+      "fach": "Systemintegration",
+      "jahr": 2002
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2016 - heute",
+      "rolle": "Freiberuflicher Berater für IT-Infrastruktur und Informationssicherheit",
+      "schwerpunkte": [
+        "Neuaufbau und Härtung von Active-Directory-Umgebungen mit Tiering-Modell bei Mittelständlern und Stadtwerken",
+        "Migrationen von VMware vSphere und Citrix Virtual Apps and Desktops in zwei Rechenzentren",
+        "Einführung von ISMS nach ISO 27001 auf Basis von BSI IT-Grundschutz, drei erfolgreiche Zertifizierungen",
+        "Netzsegmentierung mit FortiGate-Clustern und Cisco-Catalyst-Switches, auch für Produktionsnetze",
+        "Aufbau von SIEM-Anbindungen (Splunk, Microsoft Sentinel) und Steuerung von Managed-SOC-Dienstleistern",
+        "Leitung der technischen Incident Response bei zwei Ransomware-Vorfällen",
+        "Interim-Leitung IT-Infrastruktur bei einem Maschinenbauer für neun Monate"
+      ]
+    },
+    {
+      "zeitraum": "2010 - 2016",
+      "rolle": "Teamleiter Server und Netzwerk bei einem IT-Systemhaus in Dortmund",
+      "schwerpunkte": [
+        "Führung von acht Administratoren für Server, Speicher und Netzwerk",
+        "Betrieb von Windows-Server- und VMware-Umgebungen für rund 60 Mittelstandskunden",
+        "Planung von Citrix-Farmen und Netzwerken mit Cisco und Fortinet",
+        "Einführung von Veeam als Backup-Standard und Notfalltests"
+      ]
+    },
+    {
+      "zeitraum": "2006 - 2010",
+      "rolle": "Systemadministrator bei einem Stadtwerk im Ruhrgebiet",
+      "schwerpunkte": [
+        "Administration von Windows Server, Active Directory und Exchange",
+        "Aufbau der ersten VMware-Virtualisierung",
+        "Mitarbeit am IT-Sicherheitskonzept nach BSI IT-Grundschutz"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Windows Server",
+      "jahre": 20,
+      "auch": ["Windows Server 2019", "Windows Server 2022", "Microsoft-Serverinfrastruktur"]
+    },
+    {
+      "kompetenz": "Active Directory",
+      "jahre": 20,
+      "auch": ["AD DS", "Gruppenrichtlinien", "GPO", "Verzeichnisdienste", "AD-Tiering"]
+    },
+    {
+      "kompetenz": "VMware vSphere",
+      "jahre": 16,
+      "auch": ["VMware", "ESXi", "vCenter", "Virtualisierung", "Servervirtualisierung"]
+    },
+    {
+      "kompetenz": "Citrix Virtual Apps and Desktops",
+      "jahre": 13,
+      "auch": ["Citrix", "Citrix XenApp", "XenDesktop", "Citrix ADC", "NetScaler", "VDI"]
+    },
+    {
+      "kompetenz": "Netzwerkarchitektur",
+      "jahre": 16,
+      "auch": ["Netzwerke", "LAN/WAN", "VLAN", "Routing und Switching", "Netzsegmentierung"]
+    },
+    {
+      "kompetenz": "Cisco-Netzwerke",
+      "jahre": 14,
+      "auch": ["Cisco", "Cisco Catalyst", "Cisco Nexus", "Cisco ISE", "Cisco ASA"]
+    },
+    {
+      "kompetenz": "Fortinet-Firewalls",
+      "jahre": 10,
+      "auch": ["Fortinet", "FortiGate", "FortiManager", "FortiAnalyzer", "Firewall"]
+    },
+    {
+      "kompetenz": "ISO 27001",
+      "jahre": 10,
+      "auch": ["ISO/IEC 27001", "ISMS", "Informationssicherheitsmanagementsystem", "Informationssicherheit"]
+    },
+    {
+      "kompetenz": "BSI IT-Grundschutz",
+      "jahre": 12,
+      "auch": ["IT-Grundschutz", "BSI-Standards 200-1 bis 200-3", "Grundschutz-Check", "IT-Grundschutz-Kompendium"]
+    },
+    {
+      "kompetenz": "SIEM",
+      "jahre": 6,
+      "auch": ["Security Information and Event Management", "Splunk", "Microsoft Sentinel", "Log-Management"]
+    },
+    {
+      "kompetenz": "Incident Response",
+      "jahre": 8,
+      "auch": ["Security Incident Management", "Sicherheitsvorfälle", "IT-Forensik", "IT-Notfallmanagement"]
+    },
+    {
+      "kompetenz": "Systemhärtung",
+      "jahre": 10,
+      "auch": ["Härtung", "Hardening", "CIS Benchmarks"]
+    },
+    {
+      "kompetenz": "Backup und Disaster Recovery",
+      "jahre": 14,
+      "auch": ["Veeam", "Datensicherung", "Notfallwiederherstellung", "Business Continuity"]
+    },
+    {
+      "kompetenz": "Public Key Infrastructure",
+      "jahre": 8,
+      "auch": ["PKI", "AD CS", "Microsoft-Zertifikatsdienste"]
+    },
+    {
+      "kompetenz": "Schwachstellenmanagement",
+      "jahre": 7,
+      "auch": ["Vulnerability Management", "Patchmanagement", "Tenable", "Nessus"]
+    },
+    {
+      "kompetenz": "NIS2 und KRITIS",
+      "jahre": 5,
+      "auch": ["NIS-2", "KRITIS", "IT-Sicherheitsgesetz", "§ 8a BSIG", "IT-Sicherheitskatalog"]
+    },
+    {
+      "kompetenz": "Microsoft 365 und Exchange",
+      "jahre": 12,
+      "auch": ["Exchange Server", "Microsoft 365", "Entra ID", "Intune"]
+    },
+    {
+      "kompetenz": "Projektleitung Infrastruktur",
+      "jahre": 12,
+      "auch": ["IT-Projektleitung", "Infrastrukturprojekte", "technische Projektleitung"]
+    },
+    {
+      "kompetenz": "Führung von IT-Teams",
+      "jahre": 7,
+      "auch": ["Teamleitung", "disziplinarische Führung"]
+    }
+  ],
+  "methoden_tools": [
+    {
+      "name": "VMware vSphere 8"
+    },
+    {
+      "name": "Citrix DaaS"
+    },
+    {
+      "name": "Cisco IOS XE"
+    },
+    {
+      "name": "FortiGate und FortiManager"
+    },
+    {
+      "name": "Splunk Enterprise Security"
+    },
+    {
+      "name": "Microsoft Sentinel"
+    },
+    {
+      "name": "Microsoft Defender for Endpoint"
+    },
+    {
+      "name": "Veeam Backup & Replication"
+    },
+    {
+      "name": "PowerShell"
+    },
+    {
+      "name": "Tenable Nessus"
+    },
+    {
+      "name": "verinice"
+    },
+    {
+      "name": "Wireshark"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "ISO/IEC 27001 Lead Auditor"
+    },
+    {
+      "name": "BSI IT-Grundschutz-Praktiker"
+    },
+    {
+      "name": "VMware Certified Professional Data Center Virtualization (VCP-DCV)"
+    },
+    {
+      "name": "Citrix Certified Expert Virtualization"
+    },
+    {
+      "name": "Cisco CCNP Enterprise"
+    },
+    {
+      "name": "Fortinet NSE 7 Network Security Architect"
+    },
+    {
+      "name": "GIAC Certified Incident Handler (GCIH)"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Energieversorgung und Stadtwerke"
+    },
+    {
+      "branche": "Öffentliche Verwaltung"
+    },
+    {
+      "branche": "Krankenhäuser"
+    },
+    {
+      "branche": "Maschinenbau"
+    },
+    {
+      "branche": "Logistik"
+    },
+    {
+      "branche": "Finanzdienstleistung"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    },
+    {
+      "sprache": "Niederländisch",
+      "niveau": "A2"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Verbindet tiefe Infrastrukturpraxis mit ISMS nach ISO 27001 und BSI IT-Grundschutz",
+    "Drei ISO-27001-Zertifizierungen auf Basis von IT-Grundschutz bei KRITIS-Betreibern begleitet",
+    "Hat zwei Ransomware-Vorfälle technisch geleitet und die Umgebungen gehärtet neu aufgebaut"
+  ],
+  "keywords": [
+    "Active Directory",
+    "Windows Server",
+    "VMware",
+    "Citrix",
+    "Cisco",
+    "Fortinet",
+    "ISO 27001",
+    "IT-Grundschutz",
+    "SIEM",
+    "Incident Response",
+    "KRITIS"
+  ],
+  "schwerpunkte": [
+    "Active Directory und Windows-Server-Infrastruktur",
+    "Virtualisierung mit VMware und Citrix",
+    "Netzwerksicherheit mit Cisco und Fortinet",
+    "ISMS nach ISO 27001 und BSI IT-Grundschutz",
+    "Incident Response und SIEM"
+  ],
+  "wunschrollen": [
+    "IT-Security-Berater",
+    "Informationssicherheitsbeauftragter auf Zeit",
+    "Interim Leitung IT-Infrastruktur",
+    "Infrastrukturarchitekt"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 900,
+    "remote": "bis 60 %, vor Ort in NRW gern",
+    "regionen": [
+      "Nordrhein-Westfalen",
+      "Ruhrgebiet",
+      "Rheinland",
+      "Münsterland"
+    ],
+    "branchen": [
+      "Energieversorgung",
+      "Öffentliche Verwaltung",
+      "Krankenhäuser"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 800,
+    "laender": [
+      "DE"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue",
+      "festanstellung"
+    ],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "sofort",
+    "zielprofil_min_jahre": 5,
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 3,
+    "ausschlusswoerter": [
+      "Rufbereitschaft",
+      "Schichtdienst",
+      "Werkstudent"
+    ]
+  }
+}

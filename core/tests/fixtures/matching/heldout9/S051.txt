@@ -1,0 +1,92 @@
+Titel: Senior Java Entwickler (m/w/d) Spring Boot und Kotlin – Microservices für die Schadenregulierung
+Unternehmen: Domblick IT-Projektpartner GmbH
+Ort: Köln
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/senior-java-entwickler-m-w-d-spring-boot-und-kotlin-microservices-fuer-die-schadenregulierung-2918417
+Abgerufen am: 18.09.2026 07:22
+
+Projektdetails
+Start
+01.11.2026
+Dauer
+9 Monate
+Von
+Domblick IT-Projektpartner GmbH
+Eingestellt
+17.09.2026
+Projekt-ID
+2918417
+Branche
+Versicherungen
+Vertragsart
+Freiberuflich
+Einsatzart
+90 % Remote
+Stundensatz
+105 - 115 €/h
+
+Beschreibung
+Unser Kunde ist ein Kompositversicherer mit Sitz in Köln und rund 3.800 Mitarbeitenden. Die bestehende Schadenanwendung, ein Java-EE-Monolith aus dem Jahr 2009, wird schrittweise durch eine Microservice-Plattform abgelöst. Zwei Produktteams arbeiten bereits produktiv auf der neuen Plattform, ein drittes Team für die Kfz-Schadenregulierung wird gerade aufgebaut. Für dieses Team suchen wir einen erfahrenen Backend-Entwickler (m/w/d), der fachlich und technisch Verantwortung übernimmt.
+
+Ihre Aufgaben
+• Entwicklung neuer Microservices mit Java 21, Kotlin und Spring Boot 3 für die Kfz-Schadenmeldung, die Deckungsprüfung und die Regulierung
+• Entwurf und Dokumentation von REST-APIs nach dem API-First-Ansatz mit OpenAPI 3
+• Anbindung an den Event-Bus auf Basis von Apache Kafka (Schadenereignisse, Zahlungsfreigaben)
+• Datenhaltung in PostgreSQL mit Flyway-Migrationen, Spring Data JPA und Testcontainers
+• Herauslösen fachlicher Funktionen aus dem Monolithen nach dem Strangler-Muster
+• Mitarbeit an der Sachbearbeiteroberfläche in Angular 17 bei Bedarf
+• Code Reviews, Pair Programming und Weitergabe von Wissen an die internen Entwicklerinnen und Entwickler
+• Mitarbeit an der Architektur gemeinsam mit dem Plattformteam (Kubernetes, GitLab CI, ArgoCD)
+
+Ihr Profil
+• Mindestens 8 Jahre Erfahrung in der Backend-Entwicklung mit Java, davon mehrere Jahre mit Spring Boot
+• Praktische Erfahrung mit Kotlin im produktiven Einsatz
+• Sehr gute Kenntnisse in Microservice-Architekturen, REST und ereignisgesteuerter Kommunikation
+• Erfahrung mit PostgreSQL und automatisierten Tests (JUnit 5, Testcontainers)
+• Erfahrung mit der Modernisierung von Java-EE-Anwendungen von Vorteil
+• Kenntnisse in Angular und TypeScript wünschenswert
+• Erfahrung in der Versicherungsbranche von Vorteil, aber keine Voraussetzung
+• Sehr gutes Deutsch, gutes Englisch
+
+Rahmendaten
+Start: 01.11.2026
+Laufzeit: 9 Monate, eine Verlängerung ist geplant
+Auslastung: Vollzeit, 5 Tage pro Woche
+Remote: 90 %, einmal im Monat zwei Tage Teamtreffen in Köln (Reisekosten werden erstattet)
+Stundensatz: 105 bis 115 € pro Stunde zzgl. MwSt.
+Vertragsform: freiberuflich, Dienstvertrag über die Domblick IT-Projektpartner GmbH
+Arbeitsmodell: Scrum mit zweiwöchigen Sprints, Jira und Confluence
+
+Bitte senden Sie uns Ihr aktuelles Profil mit Verfügbarkeit und Stundensatz. Wir melden uns innerhalb von zwei Werktagen.
+
+Schlagworte
+Java
+Kotlin
+Spring Boot
+Microservices
+REST
+OpenAPI
+Kafka
+PostgreSQL
+Angular
+Versicherung
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Domblick IT-Projektpartner GmbH
+IT-Projektvermittlung für Versicherungen und Banken
+214 veröffentlichte Projekte
+Mitglied seit 2014
+Firmenprofil ansehen
+
+Ähnliche Projekte
+Kotlin Backend Entwickler (m/w/d) Zahlungsverkehr
+Remote · 12/2026 · 6 Monate
+Java Architekt (m/w/d) Versicherung
+Düsseldorf · ab sofort · freiberuflich
+Full-Stack Entwickler Angular und Spring (m/w/d)
+Bonn · 01/2027
+Weitere Projekte anzeigen

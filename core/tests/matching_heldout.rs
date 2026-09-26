@@ -1,4 +1,4 @@
-//! Held-out regression corpora (`core/tests/fixtures/matching/heldout1` to `heldout8`):
+//! Held-out regression corpora (`core/tests/fixtures/matching/heldout1` to `heldout9`):
 //! invented ads with blind labels (grade 0-3, excluded) written by independent agents for
 //! profiles the engine was not tuned on at the time. Every set was later used to find and
 //! fix systematic gaps, so they are regression gates now, not an unseen measurement.
@@ -25,7 +25,9 @@ mod metrics;
 
 use std::path::{Path, PathBuf};
 
-use jobalert_core::matching::{JobInput, TextKind, Verdict, assess, compile_profile, legacy};
+use jobalert_core::matching::{
+    Assessment, JobInput, TextKind, Verdict, assess, compile_profile, legacy,
+};
 use jobalert_core::portal::Portal;
 use metrics::{Metrics, Outcome, Pair};
 use serde_json::Value;
@@ -98,23 +100,12 @@ fn run_set(name: &str) -> SetRun {
                 },
             };
             let a = assess(&profile, &input, None).expect("a usable profile");
-            // Debugging aid: `HELDOUT_EXPLAIN="heldout1 sample_profile D11"` prints the
-            // reasons of that pair (with `heldout_rows -- --nocapture`).
             let pair_name = format!(
                 "{name} {} {}",
                 profile_name.trim_end_matches(".json"),
                 job.file
             );
-            if std::env::var("HELDOUT_EXPLAIN").is_ok_and(|v| v == pair_name) {
-                println!("{pair_name} score {}", a.score);
-                for r in &a.reasons {
-                    let evidence = r.evidence.as_ref().map(|e| e.profile.as_str());
-                    println!(
-                        "  {:?} {:?} {:?} {:?} <- {evidence:?}",
-                        r.kind, r.weight, r.code, r.label
-                    );
-                }
-            }
+            explain(&pair_name, &a, label.grade, label.excluded);
             let outcome = match a.verdict {
                 Verdict::Scored => Outcome::Scored,
                 Verdict::Excluded => Outcome::Excluded,
@@ -149,6 +140,40 @@ fn run_set(name: &str) -> SetRun {
     }
 }
 
+/// Debugging aid: `HELDOUT_EXPLAIN="heldout1 sample_profile D11"` prints the reasons of that
+/// pair (with `heldout_rows -- --nocapture`); several pairs are separated by `;`, `disagree`
+/// names every pair whose exclusion the label does not share or whose grade 3 is buried,
+/// `low` every relevant pair (grade 2 or 3) below 60, and `HELDOUT_ONLY=heldout1` runs one
+/// set.
+fn explain(pair_name: &str, a: &Assessment, grade: u8, label_excluded: bool) {
+    let Ok(wanted) = std::env::var("HELDOUT_EXPLAIN") else {
+        return;
+    };
+    let excluded = a.verdict == Verdict::Excluded;
+    let disagree =
+        excluded != label_excluded || (grade == 3 && !label_excluded && (excluded || a.score < 40));
+    let low = grade >= 2 && !label_excluded && a.score < 60;
+    let named = wanted.split(';').any(|p| p.trim() == pair_name);
+    if !((wanted == "disagree" && disagree) || (wanted == "low" && low) || named) {
+        return;
+    }
+    println!(
+        "{pair_name} score {} grade {grade} label excluded {label_excluded}",
+        a.score
+    );
+    for r in &a.reasons {
+        let evidence = r.evidence.as_ref().map(|e| e.profile.as_str());
+        println!(
+            "  {:?} {:?} {:?} {:?} <- {evidence:?} {}",
+            r.kind,
+            r.weight,
+            r.code,
+            r.label,
+            Value::Object(r.params.clone())
+        );
+    }
+}
+
 /// What a set must reach (frozen from the engine; see `docs/MATCHING.md`).
 struct Floor {
     ndcg10: f64,
@@ -179,14 +204,14 @@ const HELDOUT3: Floor = Floor {
     exclusion_recall: 1.0,
     grade3_buried: 0,
 };
-/// Open decision (the ANÜ wage policy): an hourly wage of temporary agency work
-/// (`82 € entspricht dem Bruttostundenlohn`) is read as a day rate x 8, so F03 is excluded
-/// for two profiles by the day rate; the labels read it as employment pay (no rate, and a
-/// salary per year only for F08). The engine keeps its reading until that is decided.
+/// The ANÜ wage policy, decided in version 16: the hourly pay of temporary agency work
+/// (`82 € entspricht dem Bruttostundenlohn`) is employment pay, no day rate, as the labels
+/// read it (F03 is no longer excluded for two profiles by a day rate, F08 is by its salary
+/// per year).
 const HELDOUT6: Floor = Floor {
     ndcg10: 0.90,
     spearman: 0.50,
-    exclusion_precision: 0.98,
+    exclusion_precision: 1.0,
     exclusion_recall: 0.99,
     grade3_buried: 0,
 };
@@ -202,14 +227,20 @@ const HELDOUT5: Floor = Floor {
 };
 /// Set 7 at the level of engine 12 (the hard criteria read only the ad, not the other
 /// listings under it; first contact with engine 10 gave 0.900, 0.438, 0.973 and 3 buried):
-/// the student jobs the labelers exclude by their wage stay in for ten profiles.
+/// the student jobs the labelers exclude by their wage stay in for ten profiles. Recall 0.88
+/// until version 16: the hourly pay of temporary agency work is employment pay, never a day
+/// rate (the user's decision), so the agency jobs L02, L05, M05 and M15 the labels exclude
+/// by that pay x 8 stay in for the freelance profiles that allow ANÜ and set no salary
+/// (0.844; remote work abroad a profile rules out, decided since version 16, gives 0.863).
 const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.88,
+    exclusion_recall: 0.86,
     grade3_buried: 2,
 };
+/// The agency wage of version 16 costs the recall of set 7's reason (N03, N16, Q15, S05,
+/// S16); the rules of set 9 bring it back to 0.850.
 const HELDOUT8: Floor = Floor {
     ndcg10: 0.93,
     spearman: 0.39,
@@ -217,14 +248,27 @@ const HELDOUT8: Floor = Floor {
     exclusion_recall: 0.85,
     grade3_buried: 1,
 };
+/// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
+/// 0.923 and 4 buried; engine 15 0.814 and 5 buried): the target years the labels read
+/// differently between profiles (tooJunior for P7 and P8 against the labels, a senior title
+/// with fewer years than P9 and P12 ask for left in) stay as they are.
+const HELDOUT9: Floor = Floor {
+    ndcg10: 0.87,
+    spearman: 0.44,
+    exclusion_precision: 0.98,
+    exclusion_recall: 0.96,
+    grade3_buried: 0,
+};
 /// Engine 9 moved set 2 from 0.864 to 0.856: a language met is a light fit now, so off-field
 /// ads whose only fitting musts are languages (grade 0 and 1 alike) fall below the cap they
 /// shared, and Y05 loses its German where `Projekt Management` (written apart) stays open.
+/// Recall 1.0 and Spearman 0.64 until version 16, for the reason of set 7 (X06 for P2 is
+/// scored, 0.640 -> 0.639).
 const HELDOUT2: Floor = Floor {
     ndcg10: 0.85,
-    spearman: 0.64,
+    spearman: 0.63,
     exclusion_precision: 1.0,
-    exclusion_recall: 1.0,
+    exclusion_recall: 0.98,
     grade3_buried: 1,
 };
 
@@ -313,9 +357,15 @@ fn heldout8_holds_its_gates() {
     check("heldout8", &HELDOUT8);
 }
 
+#[test]
+fn heldout9_holds_its_gates() {
+    check("heldout9", &HELDOUT9);
+}
+
 /// Every held-out set.
-const SETS: [&str; 8] = [
+const SETS: [&str; 9] = [
     "heldout1", "heldout2", "heldout3", "heldout4", "heldout5", "heldout6", "heldout7", "heldout8",
+    "heldout9",
 ];
 
 /// Prints every set's tables and misses (`-- --ignored heldout_report --nocapture`), then
@@ -363,7 +413,11 @@ fn summary_line(name: &str, t: &Metrics) -> String {
 #[test]
 #[ignore = "debugging aid"]
 fn heldout_rows() {
-    for name in SETS {
+    let only = std::env::var("HELDOUT_ONLY").ok();
+    for name in SETS
+        .into_iter()
+        .filter(|name| only.as_deref().is_none_or(|o| o == *name))
+    {
         for r in run_set(name).rows {
             let p = r.pair;
             println!(

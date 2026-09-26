@@ -1,0 +1,224 @@
+{
+  "name": "Nina Mustermeier",
+  "email": "nina.mustermeier@example.invalid",
+  "telefon": "+49 176 0000000",
+  "titel": "Freiberufliche Cloud- und DevOps-Engineerin, Platform Engineering",
+  "abschluss": "Dipl.-Ing. (FH) Nachrichtentechnik",
+  "berufserfahrung_jahre": 16,
+  "ausbildung": [
+    {
+      "abschluss": "Dipl.-Ing. (FH) Nachrichtentechnik",
+      "fach": "Nachrichtentechnik mit Vertiefung Rechnernetze",
+      "hochschule": "Beispielhochschule für Technik",
+      "jahr": 2010
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2017 - heute",
+      "rolle": "Freiberufliche Cloud- und DevOps-Engineerin (selbstständig)",
+      "schwerpunkte": [
+        "Aufbau einer internen Developer Platform auf AWS EKS mit Terraform, ArgoCD und Backstage für einen Zahlungsdienstleister",
+        "Migration von 140 Anwendungen aus dem eigenen Rechenzentrum nach Azure (AKS, Azure Landing Zone) für einen Energieversorger",
+        "Standardisierung der CI/CD-Pipelines mit GitLab CI und GitHub Actions über 60 Teams",
+        "Einführung von Observability mit Prometheus, Grafana, Loki und OpenTelemetry",
+        "Vakanzüberbrückung als Lead Platform Engineer bei einem Onlinehändler"
+      ]
+    },
+    {
+      "zeitraum": "2013 - 2017",
+      "rolle": "DevOps Engineer bei einem Softwareanbieter für Logistik",
+      "schwerpunkte": [
+        "Automatisierung von Infrastruktur mit Ansible und Terraform",
+        "Aufbau der ersten Kubernetes-Cluster und der Container-Registry",
+        "Betrieb von Jenkins-Pipelines und Umstellung auf GitLab CI"
+      ]
+    },
+    {
+      "zeitraum": "2010 - 2013",
+      "rolle": "Linux-Systemadministratorin in einem Rechenzentrum",
+      "schwerpunkte": [
+        "Betrieb von Linux-Servern, Monitoring mit Nagios",
+        "Netzwerk- und Firewall-Konfiguration"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Amazon Web Services",
+      "jahre": 8,
+      "auch": ["AWS", "EKS", "EC2", "IAM", "AWS Organizations"]
+    },
+    {
+      "kompetenz": "Microsoft Azure",
+      "jahre": 6,
+      "auch": ["Azure", "AKS", "Azure Landing Zone", "Azure DevOps"]
+    },
+    {
+      "kompetenz": "Kubernetes",
+      "jahre": 9,
+      "auch": ["K8s", "Helm", "OpenShift", "Rancher"]
+    },
+    {
+      "kompetenz": "Terraform",
+      "jahre": 8,
+      "auch": ["Infrastructure as Code", "IaC", "OpenTofu", "Terragrunt"]
+    },
+    {
+      "kompetenz": "CI/CD",
+      "jahre": 11,
+      "auch": ["GitLab CI", "GitHub Actions", "Jenkins", "Continuous Delivery"]
+    },
+    {
+      "kompetenz": "GitOps",
+      "jahre": 5,
+      "auch": ["ArgoCD", "Flux"]
+    },
+    {
+      "kompetenz": "Observability",
+      "jahre": 7,
+      "auch": ["Monitoring", "Prometheus", "Grafana", "OpenTelemetry", "Loki"]
+    },
+    {
+      "kompetenz": "Platform Engineering",
+      "jahre": 5,
+      "auch": ["Internal Developer Platform", "Backstage"]
+    },
+    {
+      "kompetenz": "Site Reliability Engineering",
+      "jahre": 5,
+      "auch": ["SRE", "SLOs", "Incident Management"]
+    },
+    {
+      "kompetenz": "Docker",
+      "jahre": 10,
+      "auch": ["Container", "Containerisierung"]
+    },
+    {
+      "kompetenz": "Linux",
+      "jahre": 16,
+      "auch": ["Linux-Administration", "Bash"]
+    },
+    {
+      "kompetenz": "Ansible",
+      "jahre": 9,
+      "auch": ["Konfigurationsmanagement"]
+    },
+    {
+      "kompetenz": "Cloud-Migration",
+      "jahre": 6,
+      "auch": ["Cloud Migration", "Lift and Shift"]
+    },
+    {
+      "kompetenz": "Cloud Security",
+      "jahre": 5,
+      "auch": ["DevSecOps", "HashiCorp Vault", "Policy as Code"]
+    },
+    {
+      "kompetenz": "Python",
+      "jahre": 7,
+      "auch": ["Skripting"]
+    },
+    {
+      "kompetenz": "Go",
+      "jahre": 3
+    },
+    {
+      "kompetenz": "FinOps",
+      "jahre": 3,
+      "auch": ["Cloud-Kostenoptimierung"]
+    }
+  ],
+  "methoden_tools": [
+    {"name": "Terraform Cloud"},
+    {"name": "ArgoCD"},
+    {"name": "Helm"},
+    {"name": "Istio"},
+    {"name": "Prometheus"},
+    {"name": "Grafana"},
+    {"name": "Datadog"},
+    {"name": "HashiCorp Vault"},
+    {"name": "Backstage"},
+    {"name": "GitLab"},
+    {"name": "GitHub"},
+    {"name": "Jira"}
+  ],
+  "zertifizierungen": [
+    {"name": "AWS Certified Solutions Architect Professional"},
+    {"name": "AWS Certified DevOps Engineer Professional"},
+    {"name": "Microsoft Certified Azure Solutions Architect Expert"},
+    {"name": "Certified Kubernetes Administrator (CKA)"},
+    {"name": "HashiCorp Certified Terraform Associate"}
+  ],
+  "branchen": [
+    {"branche": "Finanzdienstleistungen"},
+    {"branche": "Energieversorgung"},
+    {"branche": "E-Commerce"},
+    {"branche": "Logistik"},
+    {"branche": "Softwareindustrie"}
+  ],
+  "sprachen": [
+    {"sprache": "Deutsch", "niveau": "Muttersprache"},
+    {"sprache": "Englisch", "niveau": "C1"}
+  ],
+  "alleinstellungsmerkmale": [
+    "Baut Plattformen, die Entwicklungsteams selbst bedienen können",
+    "Zertifiziert auf AWS und Azure, Kubernetes seit 2017 in Produktion",
+    "Hat 140 Anwendungen ohne ungeplante Ausfallzeit in die Cloud migriert"
+  ],
+  "keywords": [
+    "AWS",
+    "Azure",
+    "Kubernetes",
+    "Terraform",
+    "DevOps",
+    "Platform Engineering",
+    "GitLab CI",
+    "GitHub Actions",
+    "Observability",
+    "SRE"
+  ],
+  "schwerpunkte": [
+    "Platform Engineering auf Kubernetes",
+    "Infrastructure as Code mit Terraform",
+    "CI/CD und Observability"
+  ],
+  "wunschrollen": [
+    "Platform Engineer",
+    "Cloud Engineer",
+    "DevOps Engineer",
+    "Site Reliability Engineer",
+    "Cloud Architect"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1050,
+    "remote": "mindestens 80 %",
+    "auslastung": "3 bis 5 Tage pro Woche",
+    "regionen": [
+      "Remote",
+      "München",
+      "Frankfurt am Main"
+    ],
+    "branchen": [
+      "Finanzdienstleistungen",
+      "Energieversorgung",
+      "E-Commerce"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 950,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue",
+      "festanstellung"
+    ],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "ab 01.11.2026",
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5
+  }
+}
