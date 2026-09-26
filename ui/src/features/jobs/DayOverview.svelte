@@ -156,6 +156,11 @@
       new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
     return Math.max(0, Math.round((day(new Date()) - day(new Date(iso))) / 86_400_000));
   }
+  /** Company · Beworben vor 3 Tagen. */
+  function appliedLine(job: JobView): string {
+    const when = job.appliedAt === null ? null : t.overview.appliedWhen(daysSince(job.appliedAt));
+    return [job.company, when].filter(Boolean).join(' · ');
+  }
   const applied = $derived(
     appliedRows.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
   );
@@ -192,6 +197,16 @@
     (market?.newByPortal ?? []).filter((p) => portals.includes(p.portal)),
   );
   const minRate = $derived(app.state?.profile?.form?.criteria.minDayRate ?? null);
+  const rateLine = $derived(
+    market?.medianDayRate == null
+      ? ''
+      : [
+          t.overview.marketRateValue(formatEuro(market.medianDayRate), market.rateCount),
+          minRate === null ? null : t.overview.marketMin(formatEuro(minRate)),
+        ]
+          .filter(Boolean)
+          .join(' · '),
+  );
   const showMarket = $derived(
     market !== null &&
       (newThisWeek.some((p) => p.count > 0) ||
@@ -390,7 +405,7 @@
 <div class="overview" data-testid="day-overview" aria-label={t.overview.label}>
   {#if counts !== null}
     <section class="block" data-testid="since">
-      <div class="heading-line">
+      <div class="heading-line first" data-first-row>
         <h2 class="heading">{t.overview.since}</h2>
         <span class="heading-action">
           <Button
@@ -506,12 +521,8 @@
             {#snippet leading()}<span class="applied-icon"><Icon name="send" size="sm" /></span
               >{/snippet}
             <span class="applied-title">{displayTitle(job.title)}</span>
-            <span class="quiet"
-              >{job.company}{#if job.appliedAt}{' · '}{t.overview.appliedWhen(
-                  daysSince(job.appliedAt),
-                )}{/if}{#if job.closed}{' · '}<span class="closed">{t.overview.adClosed}</span
-                >{/if}</span
-            >
+            <span class="quiet">{appliedLine(job)}</span>
+            {#if job.closed}<span class="closed">{t.overview.adClosed}</span>{/if}
             {#if job.note}<span class="note" data-copy>{job.note}</span>{/if}
           </ListRow>
         {/each}
@@ -639,10 +650,7 @@
         {#if market.medianDayRate !== null}
           <dt>{t.overview.marketRate}</dt>
           <dd data-testid="market-rate">
-            {t.overview.marketRateValue(
-              formatEuro(market.medianDayRate),
-              market.rateCount,
-            )}{#if minRate !== null}{' · '}{t.overview.marketMin(formatEuro(minRate))}{/if}
+            {rateLine}
           </dd>
         {/if}
         {#if market.remoteShare !== null}
@@ -756,6 +764,11 @@
     margin-right: calc(-1 * var(--ghost-inset));
   }
 
+  /* The Übersicht's first line: heading and Abrufen centred in the window's first row. */
+  .heading-line.first {
+    align-items: center;
+  }
+
   .heading-action {
     display: flex;
     margin-block: calc((var(--leading-lg) - var(--control-sm)) / 2);
@@ -814,6 +827,7 @@
 
   .closed {
     color: var(--danger-fg);
+    font: var(--type-sm);
   }
 
   .note {

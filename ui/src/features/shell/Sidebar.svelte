@@ -99,15 +99,6 @@
       }
     });
   }
-
-  /** The run card opens with the switch to Jobs (an unsaved Profil may keep the view). */
-  function openRun(): void {
-    navigation.go('jobs', false, () => {
-      run.panel = 'open';
-      // In one column an open job hides the list and its run card: back to the list.
-      if (viewport.narrow) jobs.clearSelection();
-    });
-  }
 </script>
 
 <aside class="sidebar" class:rail={viewport.rail} data-testid="sidebar" data-press-only>
@@ -139,7 +130,7 @@
         progressLabel={t.toolbar.progress}
         collapsed={viewport.rail}
         testid="run-status"
-        onclick={openRun}
+        onclick={() => run.show()}
       />
     </div>
   {/if}

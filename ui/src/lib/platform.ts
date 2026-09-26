@@ -107,6 +107,9 @@ export interface KeyConventions {
   /** Shift+F10 opens the context menu of a field or a selection, like the Menu key
    *  (Windows; a Mac keyboard has neither). */
   contextMenuKey: boolean;
+  /** The key that goes back where a view has a way back: Alt+Left on Windows (Explorer),
+   *  Cmd+[ or Cmd+Left on macOS (Finder, Safari). */
+  back: 'alt' | 'command';
 }
 
 /** A middle click over a scroll area starts the OS autoscroll, which runs until the next
@@ -124,31 +127,51 @@ export function keyConventions(): KeyConventions {
     controlEdits: mac,
     systemMenuKey: !mac,
     contextMenuKey: !mac,
+    back: mac ? 'command' : 'alt',
   };
 }
 
+/** Keys whose name is the same arrow on both OS. */
+const ARROWS: Readonly<Record<string, string>> = {
+  up: '↑',
+  down: '↓',
+  left: '←',
+  right: '→',
+};
+
+/** The name of one key (no modifier) as the OS writes it. */
+function keyName(key: string, mac: boolean): string {
+  const arrow = ARROWS[key];
+  if (arrow !== undefined) return arrow;
+  switch (key) {
+    case 'del':
+      return mac ? '⌫' : t.keys.del;
+    case 'enter':
+      return mac ? '↩' : t.keys.enter;
+    case 'home':
+      return mac ? '↖' : t.keys.home;
+    case 'end':
+      return mac ? '↘' : t.keys.end;
+    case 'esc':
+      return 'Esc';
+    default:
+      return key.toUpperCase();
+  }
+}
+
 /**
- * A shortcut as the OS writes it, for menus and tooltips: `mod` is the command key (Ctrl on
- * Windows, Cmd on macOS), `del` the key that deletes (Entf on Windows, ⌫ on macOS).
- * Windows: "Strg+Umschalt+Z", "Entf", "F5"; macOS: symbols in Apple's order, "⇧⌘Z", "⌫".
+ * A shortcut as the OS writes it, for menus, tooltips and the card of the keys: `mod` is the
+ * command key (Ctrl on Windows, Cmd on macOS), `del` the key that deletes (Entf on Windows,
+ * ⌫ on macOS), `up`, `down`, `left`, `right`, `home`, `end` and `esc` name those keys.
+ * Windows: "Strg+Umschalt+Z", "Entf", "F5", "Alt+←"; macOS: symbols in Apple's order, "⇧⌘Z",
+ * "⌫".
  */
 export function keyLabel(combo: string): string {
   const mac = platform() === 'macos';
   const parts = combo.toLowerCase().split('+');
   const key = parts.pop() ?? '';
   const mods = new Set(parts);
-  const name =
-    key === 'del'
-      ? mac
-        ? '⌫'
-        : t.keys.del
-      : key === 'enter'
-        ? mac
-          ? '↩'
-          : t.keys.enter
-        : key === 'esc'
-          ? 'Esc'
-          : key.toUpperCase();
+  const name = keyName(key, mac);
   if (mac) {
     const symbols = [
       mods.has('ctrl') ? '⌃' : '',

@@ -17,9 +17,17 @@
 //   outside it closes it; the left press that closes it does nothing else.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
-//   click never activates anything (no auxclick), the back/forward buttons do nothing
+//   click never activates anything (no auxclick, no press, no new window). The back
+//   button of the mouse, Alt+Left (Windows) and Cmd+[ or Cmd+Left (macOS, outside fields)
+//   go back only where a view offers a way back (`onBack`: the reader in one column);
+//   forward does nothing, and neither ever navigates the web view.
+// - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
+//   Over an open menu only the menu scrolls; behind a modal dialog nothing scrolls. The one
+//   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
+//   held, a menu or a modal dialog open), so plain scrolling never waits for the page.
 // - a double click does nothing (in text that copies it selects a word, like everywhere)
-// - no dragging of text, links or images
+// - no dragging of text, links or images (only the column handle and the window's drag
+//   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
 //   text, job title and facts, profile values, paths); Ctrl/Cmd+C copies such a selection
 // - keys like in a native window: Tab and Shift+Tab move the focus (a disabled control is
@@ -39,24 +47,27 @@
 //   line and Home/End to its top and end, like the message of a mail app; a click in the
 //   list gives them back to the list.
 //   Outside fields Ctrl+Z (Cmd+Z on macOS) takes back the last list action while it can
-//   still be undone (`onUndo`), and PageUp, PageDown, Space and Shift+Space scroll the pane
-//   that has the focus (or the one clicked last) by a page, like a native window; with the
-//   focus nowhere the arrows scroll the pane clicked last by a line and Home/End to its
-//   top and end (Einstellungen, Profil).
+//   still be undone (`onUndo`; the macOS menu bar's Edit > Undo does the same), and PageUp,
+//   PageDown, Space and Shift+Space scroll the pane that has the focus (or the one clicked
+//   last) by a page, like a native window; with the focus nowhere the arrows scroll the
+//   pane clicked last by a line and Home/End to its top and end (Einstellungen, Profil).
+//   Key scrolling glides in one short tween (lib/motion/scroll.ts), never the engine's
+//   smooth scroll. Ctrl+/ (Cmd+/ on macOS) opens the card of the keys (`help`).
 //   Everything else, including every WebView shortcut (reload, find, print, zoom,
 //   devtools, caret browsing, Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
-//   focus is.
+//   focus is. Esc closes only the layer on top: the menu, then the dialog, then the
+//   selection.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
-// - no Ctrl/Cmd+wheel zoom (the wheel is watched only while Ctrl or Cmd is held, so plain
-//   scrolling never waits for the page) and no pinch zoom
+// - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
 // - Esc outside fields and dialogs clears what is selected (`escape`: the selection of
 //   several jobs), like in a mail app
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
-import { clipboardText, reportUiError } from '../ipc/api';
+import { clipboardText, onMenuUndo, reportUiError } from '../ipc/api';
+import { glideBy, glideTo } from '../motion/scroll';
 import {
   fieldMenuUndoDelete,
   hasAutoscroll,
@@ -64,6 +75,7 @@ import {
   keyLabel,
   type KeyConventions,
 } from '../platform';
+import { help } from '../state/help.svelte';
 import { navigation, VIEW_IDS, type ViewId } from '../state/navigation.svelte';
 import {
   chooseEntry,
@@ -491,17 +503,15 @@ function scrollsLine(event: KeyboardEvent): boolean {
   return pane !== null && scrollByKey(pane, event.key);
 }
 
-/** ArrowUp/ArrowDown scroll `pane` by a line, Home/End to its top or end. */
+/** ArrowUp/ArrowDown scroll `pane` by a line, Home/End to its top or end (one short glide
+ *  each, lib/motion/scroll.ts). */
 function scrollByKey(pane: HTMLElement, key: string): boolean {
-  const smooth = document.documentElement.dataset.motion !== 'reduce';
-  const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto';
   if (key === 'ArrowUp' || key === 'ArrowDown') {
-    const line = tokenPx('--scroll-line');
-    pane.scrollBy({ top: (key === 'ArrowDown' ? 1 : -1) * line, behavior });
+    glideBy(pane, (key === 'ArrowDown' ? 1 : -1) * tokenPx('--scroll-line'));
     return true;
   }
   if (key === 'Home' || key === 'End') {
-    pane.scrollTo({ top: key === 'End' ? pane.scrollHeight : 0, behavior });
+    glideTo(pane, key === 'End' ? pane.scrollHeight : 0);
     return true;
   }
   return false;
@@ -717,6 +727,10 @@ function keepInView(node: HTMLElement): void {
 
 function onFocusIn(event: FocusEvent): void {
   const node = event.target;
+  // A menu and a modal dialog take the focus when they open: from then on the wheel is
+  // held for them (onWheel).
+  if (closest(node, MENU_LAYER) !== null) watchWheel('menu', true);
+  if (closest(node, MODAL) !== null) watchWheel('modal', true);
   if (!keyboardFocus || !(node instanceof HTMLElement)) return;
   // After the engine's own scroll into view.
   requestAnimationFrame(() => keepInView(node));
@@ -745,6 +759,19 @@ function onKeyDown(event: KeyboardEvent): void {
     }
   }
   if (isCopy(event)) return;
+  if (isHelpKey(event)) {
+    // The card of the keys, from anywhere (a field too); the same keys close it again.
+    event.preventDefault();
+    if (help.open) help.hide();
+    else if (modal === null) help.show();
+    return;
+  }
+  if (!inField(event.target) && (isBackKey(event) || isForwardKey(event))) {
+    // Never the web view's history: back only where a view has a way back.
+    event.preventDefault();
+    if (isBackKey(event)) goBack();
+    return;
+  }
   // Shift+F10 and the Menu key (Windows) open the app's menu at the field, the selected
   // copyable text or the open item of the list; the page opens it, not the engine.
   if (isContextMenuKey(event)) {
@@ -796,7 +823,7 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
   event.preventDefault();
   if (isUndo(event)) {
-    if (modal === null) [...undos].reverse().some((undo) => undo());
+    if (modal === null) undoLast();
     return;
   }
   if (modal === null && scrollsPage(event)) return;
@@ -841,11 +868,7 @@ function scrollsPage(event: KeyboardEvent): boolean {
 }
 
 function scrollByPage(pane: HTMLElement, down: boolean): void {
-  const smooth = document.documentElement.dataset.motion !== 'reduce';
-  pane.scrollBy({
-    top: (down ? 1 : -1) * pane.clientHeight * PAGE_SHARE,
-    behavior: smooth ? 'smooth' : 'auto',
-  });
+  glideBy(pane, (down ? 1 : -1) * Math.round(pane.clientHeight * PAGE_SHARE));
 }
 
 /** Space or Shift+Space on the open item's row: its reader scrolls a page. */
@@ -871,6 +894,74 @@ export function onUndo(handler: () => boolean): () => void {
     const at = undos.indexOf(handler);
     if (at !== -1) undos.splice(at, 1);
   };
+}
+
+/** The newest undo that has something to take back runs; `true` if one did. */
+function undoLast(): boolean {
+  return [...undos].reverse().some((undo) => undo());
+}
+
+/**
+ * Edit > Undo of the macOS menu bar (platform.rs: the item sends `menu-undo`): in a field
+ * the field's own undo, elsewhere the app's (the last list action), like Cmd+Z; nothing
+ * while a menu or a dialog is open.
+ */
+function undoFromMenu(): void {
+  if (menuState.open !== null) return;
+  const active = document.activeElement;
+  if (inField(active)) {
+    document.execCommand('undo');
+    return;
+  }
+  if (topModal() === null) undoLast();
+}
+
+/** The ways back of the views (the reader in one column: its "Zurück"); the newest first. */
+const backs: (() => boolean)[] = [];
+
+/**
+ * `onBack(handler)`: the mouse's back button, Alt+Left (Windows) and Cmd+[ or Cmd+Left
+ * (macOS) outside fields run the newest handler that has a way back (it returns `true`
+ * when it went back), like the Zurück of the view. Without one they do nothing; they never
+ * navigate the web view. Returns the unsubscribe function.
+ */
+export function onBack(handler: () => boolean): () => void {
+  backs.push(handler);
+  return () => {
+    const at = backs.indexOf(handler);
+    if (at !== -1) backs.splice(at, 1);
+  };
+}
+
+/** Go back where a view offers it (never behind a menu or a dialog); `true` if it did. */
+function goBack(): boolean {
+  if (menuState.open !== null || topModal() !== null) return false;
+  return [...backs].reverse().some((back) => back());
+}
+
+/** The back key of the OS: Alt+Left on Windows; Cmd+[ or Cmd+Left on macOS. */
+function isBackKey(event: KeyboardEvent): boolean {
+  if (event.shiftKey) return false;
+  if (keyConventions().back === 'alt') {
+    return event.altKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowLeft';
+  }
+  return event.metaKey && !event.ctrlKey && (event.key === '[' || event.key === 'ArrowLeft');
+}
+
+/** Alt+Right (Windows), Cmd+] or Cmd+Right (macOS): forward, which the app has not. */
+function isForwardKey(event: KeyboardEvent): boolean {
+  if (event.shiftKey) return false;
+  if (keyConventions().back === 'alt') {
+    return event.altKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowRight';
+  }
+  return event.metaKey && !event.ctrlKey && (event.key === ']' || event.key === 'ArrowRight');
+}
+
+/** Ctrl+/ or Cmd+/ (any layout: the key that types a slash, or the one on the number pad):
+ *  the card of the keys. */
+function isHelpKey(event: KeyboardEvent): boolean {
+  if (!event[keyConventions().command] || event.altKey) return false;
+  return event.key === '/' || event.code === 'NumpadDivide' || event.code === 'Slash';
 }
 
 /** Ctrl+Z or Cmd+Z (the command key of the OS), without Alt or Shift. */
@@ -1293,22 +1384,81 @@ function pressOutsideMenu(event: MouseEvent): boolean {
 }
 
 /**
- * Ctrl/Cmd+wheel would zoom. A wheel listener that may cancel is not passive, and a
- * page-wide one makes every scroll wait for the main thread, so it is attached only
- * while Ctrl or Cmd is held (WebView2 turns its zoom off natively as well).
+ * The wheel only scrolls, and only what it should. A wheel listener that may cancel is not
+ * passive, and a page-wide one makes every scroll wait for the main thread, so it is
+ * attached only while it has something to hold (`watchWheel`): Ctrl or Cmd is held
+ * (Ctrl/Cmd+wheel would zoom; WebView2 turns its zoom off natively as well), a menu is open
+ * (only the menu scrolls under the pointer, never the page behind it at the menu's ends)
+ * or a modal dialog is open (only the dialog's own scroll areas scroll). Once none of it
+ * holds any more, the next wheel event takes the listener off again.
  */
-function blockZoom(event: WheelEvent): void {
-  if (event.ctrlKey || event.metaKey) event.preventDefault();
-  else guardZoom(false);
+function onWheel(event: WheelEvent): void {
+  if (event.ctrlKey || event.metaKey) {
+    event.preventDefault();
+    return;
+  }
+  watchWheel('zoom', false);
+  if (menuState.open !== null) {
+    holdMenuWheel(event);
+    return;
+  }
+  watchWheel('menu', false);
+  const modal = topModal();
+  if (modal !== null) {
+    if (!scrollsInside(event, modal)) event.preventDefault();
+    return;
+  }
+  watchWheel('modal', false);
 }
 
-let zoomGuarded = false;
+type WheelReason = 'zoom' | 'menu' | 'modal';
+const wheelReasons = new Set<WheelReason>();
+
+function watchWheel(reason: WheelReason, on: boolean): void {
+  const before = wheelReasons.size > 0;
+  if (on) wheelReasons.add(reason);
+  else wheelReasons.delete(reason);
+  const after = wheelReasons.size > 0;
+  if (before === after) return;
+  if (after) document.addEventListener('wheel', onWheel, { capture: true, passive: false });
+  else document.removeEventListener('wheel', onWheel, { capture: true });
+}
 
 function guardZoom(on: boolean): void {
-  if (on === zoomGuarded) return;
-  zoomGuarded = on;
-  if (on) document.addEventListener('wheel', blockZoom, { capture: true, passive: false });
-  else document.removeEventListener('wheel', blockZoom, { capture: true });
+  watchWheel('zoom', on);
+}
+
+/** `node` scrolls further in the direction of the wheel (down or up, right or left). */
+function scrollsToward(node: Element, event: WheelEvent): boolean {
+  const style = getComputedStyle(node);
+  if (event.deltaY !== 0 && /auto|scroll/.test(style.overflowY)) {
+    const room = node.scrollHeight - node.clientHeight;
+    if (event.deltaY > 0 ? node.scrollTop < room - 1 : node.scrollTop > 0) return true;
+  }
+  if (event.deltaX !== 0 && /auto|scroll/.test(style.overflowX)) {
+    const room = node.scrollWidth - node.clientWidth;
+    if (event.deltaX > 0 ? node.scrollLeft < room - 1 : node.scrollLeft > 0) return true;
+  }
+  return false;
+}
+
+/** The wheel over `layer` moves one of its own scroll areas (never anything behind it). */
+function scrollsInside(event: WheelEvent, layer: Element): boolean {
+  const target = event.target;
+  if (!(target instanceof Element) || !layer.contains(target)) return false;
+  for (let node: Element | null = target; node !== null; node = node.parentElement) {
+    if (scrollsToward(node, event)) return true;
+    if (node === layer) break;
+  }
+  return false;
+}
+
+/** An open menu: the wheel over it scrolls only the menu; outside it the page scrolls (and
+ *  the scroll closes the menu, onScroll). */
+function holdMenuWheel(event: WheelEvent): void {
+  const menu = closest(event.target, '[role="menu"]');
+  if (menu === null) return;
+  if (!scrollsInside(event, menu)) event.preventDefault();
 }
 
 /**
@@ -1498,11 +1648,15 @@ export function installInput(): void {
     },
     capture,
   );
-  // Back/forward buttons: Chromium navigates on their release.
+  // Back/forward buttons: Chromium navigates on their release. Back goes back where a view
+  // has a way back (`onBack`), forward does nothing.
   document.addEventListener(
     'mouseup',
     (event) => {
-      if (event.button >= BACK) event.preventDefault();
+      if (event.button >= BACK) {
+        event.preventDefault();
+        if (event.button === BACK) goBack();
+      }
       // Dragged with the middle button held: it scrolled while held, no mode is left.
       if (event.button === MIDDLE && autoscroll) {
         const moved = Math.hypot(event.clientX - middleAt.x, event.clientY - middleAt.y);
@@ -1591,6 +1745,8 @@ export function installInput(): void {
   // Safari/WKWebView pinch zoom.
   document.addEventListener('gesturestart', prevent, capture);
   document.addEventListener('gesturechange', prevent, capture);
+  // Edit > Undo of the macOS menu bar.
+  onMenuUndo(undoFromMenu);
 }
 
 /** Attributes every text field gets (applied by the TextField component). */

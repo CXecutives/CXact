@@ -26,7 +26,9 @@
 // · no-minimum (a profile without a minimum day rate and a start: the reader's strip shows
 // the ad's rate and start as plain facts)
 // · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
-// refuses with `dryRun` like `ensure_real`).
+// refuses with `dryRun` like `ensure_real`)
+// · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
+// be read; a retry loads).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no).
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100
@@ -2128,8 +2130,15 @@ const find = (key: { portal: string; id: string }): JobView | undefined =>
 /** The Rust side of the `channel` argument of the command being handled. */
 let sender: Sender | null = null;
 
+/** `load-failed`: the first `app_state` fails. */
+let loadFailures = scenario === 'load-failed' ? 1 : 0;
+
 const handlers: Handlers = {
   app_state: () => {
+    if (loadFailures > 0) {
+      loadFailures -= 1;
+      throw fail('db');
+    }
     if (sender !== null) attachPage(sender);
     return structuredClone(state);
   },

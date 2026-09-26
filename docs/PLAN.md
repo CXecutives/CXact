@@ -329,7 +329,11 @@ autoscroll (Windows; macOS has none) · words for OS things (Explorer / Finder, 
 Schlüsselbund) · the command key of the app's shortcuts and how a shortcut is written (Strg vs. Cmd) · menu (none vs.
 minimal App/Edit/Window) · font smoothing on macOS · keychain vs. credential manager
 (same code) · a text field's menu (Windows: Undo | Cut, Copy, Paste, Delete | Select all;
-macOS without Undo and Delete) · session storage API · reveal in folder (`explorer /select` vs. `open -R`) · per-OS user agent. Build target Safari 17; forbidden: View Transitions, `@starting-style`,
+macOS without Undo and Delete) · session storage API · reveal in folder (`explorer /select` vs. `open -R`) · per-OS user agent
+· the back key where a view has a way back (Windows: Alt+Left; macOS: Cmd+[ or Cmd+Left; the mouse's back button on
+both) · the macOS toolbar row names Profil and Einstellungen and stays free of a dialog's scrim (it keeps moving the
+window) · Edit > Undo of the macOS menu runs the app's undo outside fields · key names in texts (Strg+Klick vs.
+⌘-Klick, ⇧-Klick) · the start dialog speaks the OS language (German or English). Build target Safari 17; forbidden: View Transitions, `@starting-style`,
 `scrollbar-gutter`, `content-visibility`. Windows: NSIS currentUser, German installer, downloadBootstrapper.
 macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc signed, minimum 14.0; the icon targets the macOS 26 (Tahoe) Dock look.
 

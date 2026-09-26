@@ -13,28 +13,76 @@ use std::sync::{Arc, Mutex};
 use commands::{Activity, AppState, CloseGuard, GmailUser, Refresh, Scoring};
 use jobalert_core::error::ErrorKind;
 use jobalert_core::secrets::Vault;
+use jobalert_core::settings::Language;
 use jobalert_core::store::Store;
 use tauri::Manager;
 
 // ------------------------------------------------------------------ startup error texts
-// User-facing text, German by product decision. The start dialog is the only prose here.
-const TEXT_DIALOG_TITLE: &str = "CXact";
-const TEXT_START_FAILED: &str = "Die App konnte nicht starten.";
-/// Followed by the log folder and a period.
-const TEXT_SEE_LOG: &str = "Details stehen im Protokoll unter";
-const TEXT_WINDOW_FAILED: &str = "Das Fenster ließ sich nicht öffnen.";
-const TEXT_DATABASE_FAILED: &str = "Die Datenbank ließ sich nicht öffnen.";
-const TEXT_DATABASE_LOCKED: &str = "Die Datenbank ist in einem anderen Programm geöffnet.";
-const TEXT_NEWER_SCHEMA: &str = "Die Daten stammen von einer neueren Version der App.";
-/// Followed by the path of the database and a period.
-const TEXT_DATABASE_AT: &str = "Die Datei liegt unter";
-const TEXT_CLOSE_OTHER: &str = "Bitte dieses Programm schließen und die App neu starten.";
-const TEXT_USE_NEWER: &str = "Bitte die neuere Version verwenden, die Daten bleiben unverändert.";
-const TEXT_DATABASE_IN_USE: &str =
-    "Ist sie in einem anderen Programm geöffnet, dieses schließen und die App neu starten.";
-const TEXT_DATABASE_DAMAGED: &str = "Ist sie beschädigt, die Datei umbenennen. Die App legt \
-    dann eine neue an, ohne die bisherigen Jobs und Einstellungen.";
+// The start dialog is the only prose here. It speaks the language of the OS, like the OS's
+// own dialogs (it shows before the app's own setting could be read): German on a German
+// system, English on any other.
+
+/// The words of the start dialog in one language.
+struct Texts {
+    title: &'static str,
+    start_failed: &'static str,
+    /// Followed by the log folder and a period.
+    see_log: &'static str,
+    window_failed: &'static str,
+    database_failed: &'static str,
+    database_locked: &'static str,
+    newer_schema: &'static str,
+    /// Followed by the path of the database and a period.
+    database_at: &'static str,
+    close_other: &'static str,
+    use_newer: &'static str,
+    database_in_use: &'static str,
+    database_damaged: &'static str,
+}
+
+// User-facing text, German by product decision.
+const DE: Texts = Texts {
+    title: "CXact",
+    start_failed: "Die App konnte nicht starten.",
+    see_log: "Details stehen im Protokoll unter",
+    window_failed: "Das Fenster ließ sich nicht öffnen.",
+    database_failed: "Die Datenbank ließ sich nicht öffnen.",
+    database_locked: "Die Datenbank ist in einem anderen Programm geöffnet.",
+    newer_schema: "Die Daten stammen von einer neueren Version der App.",
+    database_at: "Die Datei liegt unter",
+    close_other: "Schließ dieses Programm und starte die App neu.",
+    use_newer: "Nimm die neuere Version, die Daten bleiben unverändert.",
+    database_in_use: "Ist sie in einem anderen Programm geöffnet, schließ es und starte die App neu.",
+    database_damaged: "Ist sie beschädigt, benenne die Datei um. Die App legt dann eine neue an, \
+        ohne die bisherigen Jobs und Einstellungen.",
+};
+// end of user-facing text
+
+// User-facing text, English.
+const EN: Texts = Texts {
+    title: "CXact",
+    start_failed: "The app could not start.",
+    see_log: "The log has the details, in",
+    window_failed: "The window could not open.",
+    database_failed: "The database could not be opened.",
+    database_locked: "The database is open in another program.",
+    newer_schema: "The data comes from a newer version of the app.",
+    database_at: "The file is in",
+    close_other: "Close that program and start the app again.",
+    use_newer: "Use the newer version, the data stays as it is.",
+    database_in_use: "If it is open in another program, close that and start the app again.",
+    database_damaged: "If it is damaged, rename the file. The app then creates a new one, \
+        without the jobs and settings so far.",
+};
 // ------------------------------------------------------------------ end of user-facing text
+
+/// The start dialog's words: those of the OS's language.
+fn texts() -> &'static Texts {
+    match platform::system_language() {
+        Language::De => &DE,
+        Language::En => &EN,
+    }
+}
 
 /// Exit code from `AppHandle::exit(code)`. Otherwise Tauri always ends the process with 0 on
 /// Windows (the event loop only knows `ExitWithCode(0)`).
@@ -75,8 +123,9 @@ fn main() {
     std::process::exit(EXIT_CODE.load(Ordering::SeqCst));
 }
 
-/// A startup failure: what the user reads (German, may be empty: then only that the app
-/// could not start) and the cause for the log (English - the dialog never shows it).
+/// A startup failure: what the user reads (in the OS's language, may be empty: then only
+/// that the app could not start) and the cause for the log (English - the dialog never shows
+/// it).
 struct Failure {
     message: String,
     cause: String,
@@ -92,9 +141,10 @@ impl Failure {
 
     /// The window or the UI could not be created; the platform may know what helps.
     fn window(cause: impl std::fmt::Display) -> Failure {
-        let message = match platform::WINDOW_HINT {
-            Some(hint) => format!("{TEXT_WINDOW_FAILED}\n\n{hint}"),
-            None => TEXT_WINDOW_FAILED.to_owned(),
+        let text = texts();
+        let message = match platform::window_hint(platform::system_language()) {
+            Some(hint) => format!("{}\n\n{hint}", text.window_failed),
+            None => text.window_failed.to_owned(),
         };
         Failure {
             message,
@@ -105,12 +155,16 @@ impl Failure {
     /// The database could not be opened: what happened, where the file is and what to do.
     /// A database of a newer version is not damaged - it must not be put aside.
     fn database(path: &Path, error: &jobalert_core::Error) -> Failure {
-        let at = format!("{TEXT_DATABASE_AT} {}.", path.display());
+        let text = texts();
+        let at = format!("{} {}.", text.database_at, path.display());
         let message = match error.kind() {
-            ErrorKind::NewerSchema => format!("{TEXT_NEWER_SCHEMA} {at}\n\n{TEXT_USE_NEWER}"),
-            ErrorKind::FileLocked => format!("{TEXT_DATABASE_LOCKED} {at}\n\n{TEXT_CLOSE_OTHER}"),
+            ErrorKind::NewerSchema => format!("{} {at}\n\n{}", text.newer_schema, text.use_newer),
+            ErrorKind::FileLocked => {
+                format!("{} {at}\n\n{}", text.database_locked, text.close_other)
+            }
             _ => format!(
-                "{TEXT_DATABASE_FAILED} {at}\n\n{TEXT_DATABASE_IN_USE} {TEXT_DATABASE_DAMAGED}"
+                "{} {at}\n\n{} {}",
+                text.database_failed, text.database_in_use, text.database_damaged
             ),
         };
         Failure {
@@ -123,15 +177,17 @@ impl Failure {
 /// Shows a startup error and exits.
 fn fail(failure: &Failure) -> ! {
     log::error!("startup failed: {}", failure.cause);
-    let mut text = TEXT_START_FAILED.to_owned();
+    let words = texts();
+    let mut text = words.start_failed.to_owned();
     if !failure.message.is_empty() {
         text = format!("{text}\n\n{}", failure.message);
     }
     rfd::MessageDialog::new()
         .set_level(rfd::MessageLevel::Error)
-        .set_title(TEXT_DIALOG_TITLE)
+        .set_title(words.title)
         .set_description(format!(
-            "{text}\n\n{TEXT_SEE_LOG} {}.",
+            "{text}\n\n{} {}.",
+            words.see_log,
             platform::LOG_DIR_HINT
         ))
         .set_buttons(rfd::MessageButtons::Ok)

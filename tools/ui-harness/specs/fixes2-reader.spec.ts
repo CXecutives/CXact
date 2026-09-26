@@ -207,8 +207,12 @@ test('files that could not be written are no green success elsewhere', async ({ 
   await page.getByTestId('nav-settings').click();
   await runFinished(page);
   const toast = page.getByTestId('toast');
-  await expect(toast).toHaveText('Abruf fertig, die Dateien sind nicht aktuell.');
+  await expect(toast.getByTestId('toast-text')).toHaveText(
+    'Abruf fertig, die Dateien sind nicht aktuell.',
+  );
   await expect(toast).not.toHaveClass(/success/);
+  // The run card has the way; the toast leads there.
+  await expect(toast.getByTestId('toast-action')).toHaveText('Zeigen');
 });
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.

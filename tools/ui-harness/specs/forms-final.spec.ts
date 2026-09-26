@@ -282,16 +282,7 @@ test('forms-final: the language field suggests common languages in both names', 
   await expect(field).toHaveValue('Klingonisch');
 });
 
-test('forms-final: the toasts rise above the save bar while it shows', async ({ page }) => {
-  await profile(page);
-  const bar = (await page.getByTestId('profile-save-bar').boundingBox())!;
-  const bottom = async (): Promise<number> =>
-    page.getByTestId('toasts').evaluate((node) => Number.parseFloat(getComputedStyle(node).bottom));
-  expect(await bottom()).toBeGreaterThanOrEqual(bar.height + 24);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-  await expect.poll(bottom).toBe(24);
-});
+// The toasts above the save bar: shell-final.spec.ts (the stack measures the bar).
 
 test('forms-final: "Weiter zum ersten Abruf" starts the fetch', async ({ page }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);

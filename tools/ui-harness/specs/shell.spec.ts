@@ -319,7 +319,7 @@ test('narrow: the run status opens the run card even while a job is open', async
   await expect(page.getByTestId('run-card')).toBeVisible();
 });
 
-test('every run status fits the sidebar without being cut off', async ({ page }) => {
+test('every run status is one line; a cut one says itself in its tooltip', async ({ page }) => {
   await open(page, '?platform=windows');
   await page.getByTestId('nav-settings').click();
   const codes = [
@@ -344,11 +344,18 @@ test('every run status fits the sidebar without being cut off', async ({ page })
     );
     const status = page.getByTestId('run-status');
     await expect(status).not.toContainText('Abgerufen');
-    const cut = await status.locator('.text').evaluate((node) => ({
-      text: node.textContent,
-      cut: node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1,
+    const line = await status.locator('.text').evaluate((node) => ({
+      text: node.textContent ?? '',
+      lines: Math.round(node.clientHeight / parseFloat(getComputedStyle(node).lineHeight)),
+      cut: node.scrollWidth > node.clientWidth + 1,
     }));
-    expect(cut.cut, `${code}: ${cut.text}`).toBe(false);
+    expect(line.lines, `${code}: ${line.text}`).toBe(1);
+    if (line.cut) {
+      await status.hover();
+      await expect(page.getByRole('tooltip')).toHaveText(line.text);
+      await page.mouse.move(700, 450);
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
+    }
   }
 });
 

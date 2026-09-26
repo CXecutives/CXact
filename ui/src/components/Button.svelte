@@ -8,8 +8,9 @@
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip.
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
-    not react otherwise, and Tab passes them like native disabled buttons (one that is
-    disabled while focused keeps the focus).
+    not react otherwise. Tab passes them like native disabled buttons, except one that says
+    why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
+    (one that is disabled while focused keeps the focus).
   - Loading keeps the width: the content fades out under the spinner.
   - A ghost toggle (the pin star) pops once when it is switched on by a click.
   - radio: an option of a group with one choice (profile/ChoiceButtons, a radiogroup): it
@@ -150,7 +151,11 @@
   aria-pressed={pressed === null || radio ? undefined : pressed}
   aria-haspopup={menu ? 'menu' : undefined}
   aria-expanded={menu ? expanded : undefined}
-  tabindex={inField || disabled || (radio && !radio.stop) ? -1 : radio ? 0 : undefined}
+  tabindex={inField || (disabled && !disabledReason) || (radio && !radio.stop)
+    ? -1
+    : radio
+      ? 0
+      : undefined}
   data-keep-focus={inField ? '' : undefined}
   data-testid={testid ?? undefined}
   use:tooltip={hint}

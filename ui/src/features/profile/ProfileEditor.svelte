@@ -15,7 +15,7 @@
   backend refused is said there too, and the field gets the caret (said once, at the field).
   The save bar stays at the bottom of the view: "Speichern" (the one primary, only with a
   change) and "Verwerfen"; without a change both say why they wait. While it shows, the
-  toasts rise above it (`--toast-bottom` on :root). An untouched new form goes back to the
+  toasts rise above it (the toast stack measures it). An untouched new form goes back to the
   ways in with "Verwerfen" or Esc. Enter in a field saves, as in every form (in the row lists
   it goes to the next row, in a chip field it adds what was typed), and Ctrl/Cmd+S saves from
   anywhere in the form.
@@ -28,7 +28,6 @@
   import SettingRow from '$components/SettingRow.svelte';
   import TextField from '$components/TextField.svelte';
   import Toggle from '$components/Toggle.svelte';
-  import { px, setVars } from '$lib/actions/cssVars';
   import { de } from '$lib/i18n/de';
   import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
@@ -285,23 +284,6 @@
       }
     });
   }
-
-  // While the save bar shows, the toasts rise above it (Toast.svelte reads --toast-bottom).
-  $effect(() => {
-    const node = bar;
-    if (node === null) return;
-    const rootNode = document.documentElement;
-    const watch = new ResizeObserver(() =>
-      setVars(rootNode, {
-        'toast-bottom': `calc(var(--space-24) + ${px(node.offsetHeight)})`,
-      }),
-    );
-    watch.observe(node);
-    return () => {
-      watch.disconnect();
-      setVars(rootNode, { 'toast-bottom': null });
-    };
-  });
 
   /** The rules for permanent roles hide while those are excluded, unless a save refused one
    *  of their values: then they stay until the form is saved or discarded, so it can be put

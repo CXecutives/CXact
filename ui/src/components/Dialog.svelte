@@ -14,29 +14,37 @@
   open.
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
   The buttons follow the OS: the action first on Windows (then the third action, then
-  cancel), last (right) on macOS with the third action on the far left.
-  The sentence under the heading is left out where the heading says it all; `items` lists
-  what the action concerns (everything a reset deletes) under it.
+  cancel), last (right) on macOS with the third action on the far left. On macOS the scrim
+  starts below the toolbar row, which keeps moving the window (a sheet leaves the title bar
+  free), and nothing in the row can be pressed meanwhile.
+  A card that only informs (the keys) has content of its own (`children`) and one button
+  that closes it (`alone`). The sentence under the heading is left out where the heading
+  says it all; `items` lists what the action concerns (everything a reset deletes) under it.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import { primaryFirst } from '$lib/platform';
+  import { dragBands, primaryFirst } from '$lib/platform';
   import { dialogIn, dialogOut, scrim } from '$lib/motion/transitions';
   import { toasts } from '$lib/state/toasts.svelte';
-  import { untrack } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
   import Button from './Button.svelte';
+  import DragBand from './DragBand.svelte';
   import Notice from './Notice.svelte';
 
   interface Props {
     open: boolean;
     variant?: 'confirm' | 'danger';
     heading: string;
-    /** One sentence under the heading; none where the heading says it all. */
+    /** One or two sentences under the heading (null: the content says it). */
     text?: string | null;
     /** What the action concerns, one item each (what a reset deletes). */
     items?: readonly string[] | null;
+    /** Content of its own under the text (the list of the keys). */
+    children?: Snippet;
+    /** Only the confirm button: a card that informs and closes. */
+    alone?: boolean;
     /** The bare verb of the heading ("Postfach entfernen?": Entfernen; "Ganzes Postfach
      *  lesen?": Lesen), the same pattern in every dialog. */
     confirmLabel: string;
@@ -58,6 +66,8 @@
     heading,
     text = null,
     items = null,
+    children,
+    alone = false,
     confirmLabel,
     cancelLabel,
     busy = false,
@@ -83,6 +93,8 @@
   }
 
   const actionFirst = primaryFirst();
+  /** macOS: the toolbar row stays free of the scrim and moves the window. */
+  const band = dragBands();
 
   /** Where the focus was before the dialog opened; it goes back there on close. */
   let opener: HTMLElement | null = null;
@@ -115,91 +127,103 @@
 </script>
 
 {#if open}
-  <div
-    class="scrim"
-    transition:scrim
-    onpointerdown={(event) =>
-      (pressedOnScrim = event.button === 0 && event.target === event.currentTarget)}
-    onclick={(event) => {
-      if (pressedOnScrim && event.target === event.currentTarget) cancel();
-      pressedOnScrim = false;
-    }}
-    role="presentation"
-  >
+  <div class="layer" transition:scrim>
+    {#if band}<DragBand />{/if}
     <div
-      class="dialog {variant}"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="{id}-heading"
-      aria-describedby={text !== null || items !== null ? `${id}-text` : undefined}
-      tabindex="-1"
-      data-testid={testid ?? undefined}
-      in:dialogIn
-      out:dialogOut
-      use:formKeys={{ cancel, save: variant === 'danger' ? cancel : confirm }}
-      use:focusFirst={variant}
+      class="scrim"
+      onpointerdown={(event) =>
+        (pressedOnScrim = event.button === 0 && event.target === event.currentTarget)}
+      onclick={(event) => {
+        if (pressedOnScrim && event.target === event.currentTarget) cancel();
+        pressedOnScrim = false;
+      }}
+      role="presentation"
+      data-testid="dialog-scrim"
     >
-      <h2 class="heading" id="{id}-heading">{heading}</h2>
-      {#if text !== null || items !== null}
-        <div class="body" id="{id}-text">
-          {#if text !== null}<p class="text">{text}</p>{/if}
-          {#if items !== null}
-            <ul class="items" data-testid="dialog-items">
-              {#each items as item (item)}<li>{item}</li>{/each}
-            </ul>
-          {/if}
-        </div>
-      {/if}
-      {#if error}
-        <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
-      {/if}
-      <div class="actions">
-        {#snippet dismiss()}
+      <div
+        class="dialog {variant}"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="{id}-heading"
+        aria-describedby={text || items !== null ? `${id}-text` : undefined}
+        tabindex="-1"
+        data-testid={testid ?? undefined}
+        in:dialogIn
+        out:dialogOut
+        use:formKeys={{ cancel, save: variant === 'danger' ? cancel : confirm }}
+        use:focusFirst={variant}
+      >
+        <h2 class="heading" id="{id}-heading">{heading}</h2>
+        {#if text || items !== null}
+          <div class="body" id="{id}-text">
+            {#if text}<p class="text">{text}</p>{/if}
+            {#if items !== null}
+              <ul class="items" data-testid="dialog-items">
+                {#each items as item (item)}<li>{item}</li>{/each}
+              </ul>
+            {/if}
+          </div>
+        {/if}
+        {@render children?.()}
+        {#if error}
+          <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
+        {/if}
+        <div class="actions">
+          {#snippet dismiss()}
+            <Button
+              variant="secondary"
+              label={cancelLabel ?? t.common.cancel}
+              disabled={busy}
+              isDefault={variant === 'danger'}
+              testid="dialog-cancel"
+              onclick={cancel}
+            />
+          {/snippet}
+          {#snippet alt()}
+            {#if altLabel}
+              <span class:apart={!actionFirst}>
+                <Button
+                  variant="secondary"
+                  label={altLabel}
+                  disabled={busy}
+                  testid="dialog-alt"
+                  onclick={() => onalt?.()}
+                />
+              </span>
+            {/if}
+          {/snippet}
+          {#if !actionFirst && !alone}{@render alt()}{@render dismiss()}{/if}
           <Button
-            variant="secondary"
-            label={cancelLabel ?? t.common.cancel}
-            disabled={busy}
-            isDefault={variant === 'danger'}
-            testid="dialog-cancel"
-            onclick={cancel}
+            variant={variant === 'danger' ? 'danger' : 'primary'}
+            label={confirmLabel}
+            loading={busy}
+            isDefault={variant !== 'danger'}
+            testid="dialog-confirm"
+            onclick={confirm}
           />
-        {/snippet}
-        {#snippet alt()}
-          {#if altLabel}
-            <span class:apart={!actionFirst}>
-              <Button
-                variant="secondary"
-                label={altLabel}
-                disabled={busy}
-                testid="dialog-alt"
-                onclick={() => onalt?.()}
-              />
-            </span>
-          {/if}
-        {/snippet}
-        {#if !actionFirst}{@render alt()}{@render dismiss()}{/if}
-        <Button
-          variant={variant === 'danger' ? 'danger' : 'primary'}
-          label={confirmLabel}
-          loading={busy}
-          isDefault={variant !== 'danger'}
-          testid="dialog-confirm"
-          onclick={confirm}
-        />
-        {#if actionFirst}{@render alt()}{@render dismiss()}{/if}
+          {#if actionFirst && !alone}{@render alt()}{@render dismiss()}{/if}
+        </div>
       </div>
     </div>
   </div>
 {/if}
 
 <style>
-  .scrim {
+  /* The whole window: the toolbar row (macOS; it moves the window) above the scrim. */
+  .layer {
     position: fixed;
     z-index: var(--z-overlay);
     inset: 0;
     display: flex;
+    flex-direction: column;
+  }
+
+  .scrim {
+    display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
+    min-height: 0;
     padding: var(--space-16);
     background-color: var(--scrim);
   }
@@ -212,6 +236,8 @@
     gap: var(--space-12);
     width: var(--dialog-width);
     max-width: 100%;
+    max-height: 100%;
+    overflow-y: auto;
     padding: var(--space-24);
     border-radius: var(--radius-dialog);
     background-color: var(--surface);
