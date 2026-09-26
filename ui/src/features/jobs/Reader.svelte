@@ -59,7 +59,7 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatDate, formatRelative, formatTime } from '$lib/i18n/format';
-  import { contentMoving } from '$lib/input/input';
+  import { contentMoving, LIST_KEYS } from '$lib/input/input';
   import { keyLabel } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import {
@@ -422,7 +422,7 @@
           id: 'trash',
           label: t.actions.trash,
           icon: 'trash-2',
-          keys: keyLabel('del'),
+          keys: keyLabel(LIST_KEYS.trash),
           run: () => act('trash'),
         },
       );

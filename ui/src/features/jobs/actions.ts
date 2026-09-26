@@ -24,7 +24,7 @@ import { app } from '$lib/state/app.svelte';
 import { inList, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText } from '$lib/state/run.svelte';
-import { onUndo } from '$lib/input/input';
+import { LIST_KEYS, onUndo } from '$lib/input/input';
 import { commandKey } from '$lib/platform';
 import { toasts } from '$lib/state/toasts.svelte';
 
@@ -51,9 +51,9 @@ const TARGET: Record<MoveId, Place> = {
 /** One icon per meaning: the place a job goes to (docs/PLAN.md, icons by meaning); deleting
  *  for good never looks like the trash. The key is the list's single key (input.ts). */
 const ACTIONS: Record<ActionId, { icon: IconName; key: string | null }> = {
-  archive: { icon: 'archive', key: 'e' },
+  archive: { icon: 'archive', key: LIST_KEYS.archive },
   toInbox: { icon: 'inbox', key: null },
-  trash: { icon: 'trash-2', key: 'del' },
+  trash: { icon: 'trash-2', key: LIST_KEYS.trash },
   restore: { icon: 'undo-2', key: null },
   purge: { icon: 'circle-x', key: null },
 };
@@ -87,10 +87,10 @@ export interface JobMenuItem {
  */
 export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
   [
-    { id: 'open', icon: 'mail-open', key: 'enter', shows: (_job, many) => !many },
-    { id: 'open-ad', icon: 'external-link', key: 'o', shows: (_job, many) => !many },
+    { id: 'open', icon: 'mail-open', key: LIST_KEYS.open, shows: (_job, many) => !many },
+    { id: 'open-ad', icon: 'external-link', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
   ],
-  [{ id: 'star', icon: 'star', key: 's', shows: (job) => hasStar(job.place) }],
+  [{ id: 'star', icon: 'star', key: LIST_KEYS.star, shows: (job) => hasStar(job.place) }],
   [{ id: 'moves', icon: null, key: null, shows: () => true }],
   [{ id: 'prompt', icon: 'copy', key: null, shows: (job, many) => !many && job.match !== null }],
 ];

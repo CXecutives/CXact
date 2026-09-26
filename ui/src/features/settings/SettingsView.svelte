@@ -33,6 +33,7 @@
   import Skeleton from '$components/Skeleton.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { language } from '$lib/i18n/language.svelte';
+  import { LIST_KEYS } from '$lib/input/input';
   import { keyLabel } from '$lib/platform';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
@@ -54,7 +55,8 @@
   /** The app's languages, named in the language of the app. */
   const LANGUAGES: readonly Language[] = ['de', 'en'];
 
-  /** The app's keys in the order of the app: the views, the list, a job, the fetch. */
+  /** The app's keys in the order of the app: the views, the list, a job, the fetch (the
+   *  list's single keys from its one table, LIST_KEYS). */
   const SHORTCUTS: readonly {
     name: Exclude<keyof typeof t.settings.keys, 'heading'>;
     combo: string;
@@ -65,10 +67,10 @@
     { name: 'settings', combo: 'mod+4' },
     { name: 'search', combo: 'mod+f' },
     { name: 'undo', combo: 'mod+z' },
-    { name: 'archive', combo: 'e' },
-    { name: 'trash', combo: 'del' },
-    { name: 'favourite', combo: 's' },
-    { name: 'openAd', combo: 'o' },
+    { name: 'archive', combo: LIST_KEYS.archive },
+    { name: 'trash', combo: LIST_KEYS.trash },
+    { name: 'favourite', combo: LIST_KEYS.star },
+    { name: 'openAd', combo: LIST_KEYS.openAd },
     { name: 'fetch', combo: 'f5' },
   ];
 

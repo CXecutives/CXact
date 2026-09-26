@@ -37,11 +37,11 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { chipKeys } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
-  import type { JobSort, Place } from '$lib/ipc/types';
+  import type { Place } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
-  import { FILTER_GROUPS, filterWords, NO_FILTER } from '$lib/state/filter';
+  import { FILTER_GROUPS, filterWords, NO_FILTER, SORTS } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -110,8 +110,8 @@
     input?.select();
   }
 
-  const SORTS: readonly JobSort[] = ['match', 'newest'];
-  // In the Papierkorb the date is the day a job went there (what its row shows).
+  // The orders of the filter table; in the Papierkorb the date is the day a job went there
+  // (what its row shows).
   const sorts = $derived(SORTS.map((sort) => ({ id: sort, label: t.toolbar.sortLabel[sort] })));
 
   /* ---------------------------------------------------------------------- funnel */

@@ -62,7 +62,9 @@ export interface FilterGroup {
   entries: (portals: readonly Portal[]) => FilterEntry[];
 }
 
-const SORTS: readonly JobSort[] = ['match', 'newest'];
+/** The orders of every list, in the menus' order (the funnel's, the Archiv's and the
+ *  Papierkorb's). */
+export const SORTS: readonly JobSort[] = ['match', 'newest'];
 const BANDS: readonly (FilterBand | null)[] = [null, 'mid', 'high'];
 
 export const FILTER_GROUPS: readonly FilterGroup[] = [

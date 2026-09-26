@@ -574,7 +574,9 @@ as the parts land on `main`.
   say when it is on; the archive and the trash keep their order button and have no filter.
 - Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
   S favourite, O open the ad; shown in tooltips and menus (U and B went with "Als ungelesen"
-  and "Beworben", 2026-09-26).
+  and "Beworben", 2026-09-26). One table holds these keys (`LIST_KEYS` in
+  `ui/src/lib/input/input.ts`): the handler, the job's actions and menu, the card of the keys
+  and Einstellungen read it; the orders of every menu come from the filter table's `SORTS`.
 - Rows (approved row, user 2026-09-26): line 1 the title with, together at its end, the star
   of a favourite, the portal's tile ("+1" for other portals, named in its tooltip; the tile
   stays beside the hover tools) and the date; line 2 company · place; line 3 the ad's facts

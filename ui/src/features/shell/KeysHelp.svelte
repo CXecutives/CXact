@@ -7,6 +7,7 @@
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
   import { t } from '$lib/i18n/t';
+  import { LIST_KEYS, type ListAction } from '$lib/input/input';
   import { keyConventions, keyLabel } from '$lib/platform';
   import { help } from '$lib/state/help.svelte';
 
@@ -15,6 +16,9 @@
     label: string;
     keys: string;
   }
+
+  /** The list's single keys in the card's order (the keys themselves: LIST_KEYS). */
+  const ACTIONS: readonly ListAction[] = ['archive', 'trash', 'star', 'openAd'];
 
   const os = keyConventions();
   const mac = os.command === 'metaKey';
@@ -40,10 +44,7 @@
       label: k.extend,
       keys: `${keyLabel('shift+up')} ${keyLabel('shift+down')}`,
     },
-    { id: 'archive', label: k.archive, keys: 'E' },
-    { id: 'trash', label: k.trash, keys: keyLabel('del') },
-    { id: 'star', label: k.star, keys: 'S' },
-    { id: 'openAd', label: k.openAd, keys: 'O' },
+    ...ACTIONS.map((id) => ({ id, label: k[id], keys: keyLabel(LIST_KEYS[id]) })),
     { id: 'close', label: k.closeJob, keys: keyLabel('esc') },
   ]);
 </script>
