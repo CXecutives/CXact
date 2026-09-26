@@ -3,7 +3,11 @@
 // language the backend says are shell.spec.ts.
 
 import type { Page } from '@playwright/test';
+import { demoScore } from './demo';
 import { expect, expectShot, open, test } from './fixtures';
+
+/** The score of the best job, the first row of the list (freelancermap-2801). */
+const BEST = String(demoScore('freelancermap-2801'));
 
 const WIN = '?platform=windows';
 const EN = `${WIN}&lang=en`;
@@ -35,9 +39,9 @@ test('an exclusion by country names the countries in words, in both languages', 
 
 test('baseline: jobs with the reader in English', async ({ page }) => {
   await open(page, EN);
-  // The best scored job (by match the first row is one still without a score).
+  // The best scored job.
   await page.getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader-ring')).toContainText('91');
+  await expect(page.getByTestId('reader-ring')).toContainText(BEST);
   await expectShot(page, 'jobs-reader-en');
 });
 

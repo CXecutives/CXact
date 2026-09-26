@@ -266,7 +266,9 @@ function criterionVerdict(criterion: Reason, linked: Reason | undefined): Verdic
           : criterion.kind === 'open'
             ? 'unset'
             : 'met';
-  if (linked === undefined || own === 'violated' || own === 'unset') return own;
+  // The engine leaves a criterion open when only a finding decides it (a job asking fewer
+  // years than the target, a start to be agreed): that finding says the verdict.
+  if (linked === undefined || own === 'violated') return own;
   return reasonVerdict(linked) ?? own;
 }
 

@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
+import { withSalary } from './demo';
 import { animationsDone, expect, open, test } from './fixtures';
 
 /** The facts table (ui/src/lib/facts.ts) as its source states it: each entry's key, icon and
@@ -87,6 +88,7 @@ test('a row shows its facts in the order of the Konditionen, each value with the
   expect(new Set(TABLE.map((fact) => fact.icon)).size).toBe(TABLE.length);
   await open(page, WIN);
   await everyJob(page);
+  await withSalary(page);
   // A rate, a salary, a remote share, a hybrid and an on-site job without a share.
   for (const key of [
     'linkedin-4100200301',
@@ -141,6 +143,7 @@ test('a start to be agreed and a salary read alike in the row and in the reader'
   // The ad says the same words (the engine reads "nach Absprache" as a start to be agreed).
   await expect(page.getByTestId('reader')).toContainText(`Start ${words}`);
   // A permanent job's salary: the reader's pay row names it, like the list row.
+  await withSalary(page);
   const pay = await facts(page, 'linkedin-4100200303').locator('[data-fact="money"]').textContent();
   expect(pay).toMatch(/^95\.000\/Jahr$/);
   await openJob(page, 'linkedin-4100200303');
@@ -174,6 +177,7 @@ test('the pay stands in ink, the other facts are muted; a permanent job its sala
   // The icon says euro: the amount has no sign of its own.
   await expect(line.locator('[data-fact="money"]')).toHaveText(/^1\.200\/Tag$/);
   // A permanent job: the salary a year where a freelance job has its day rate.
+  await withSalary(page);
   const permanent = await shown(facts(page, 'linkedin-4100200303'));
   inTableOrder(
     permanent.map((fact) => fact.key),
@@ -200,21 +204,22 @@ test('an ad that names nothing shows its contract and work mode, a row without a
   // The badge follows the last fact shown (the gap of the line), not the far edge.
   expect(badge.x - (last.x + last.width)).toBeLessThan(12);
   // Not scored yet: the work mode alone.
-  expect(
-    (await shown(row(page, 'linkedin-4100200302').getByTestId('row-facts'))).map((f) => f.key),
-  ).toEqual(['mode']);
-  // Neither facts nor a location that says how: no line of facts, the row keeps its height.
   const key = { portal: 'linkedin', id: '4100200302' } as const;
   const job = (await page.evaluate((k) => window.__harness.job(k), key)) as JobView;
-  await page.evaluate(
-    (base) =>
-      window.__harness.emit({
-        type: 'jobUpdated',
-        job: { ...base, workMode: null, detail: { kind: 'ok' } },
-        fresh: false,
-      }),
-    job,
-  );
+  const update = (next: Partial<JobView>) =>
+    page.evaluate(
+      ([base, next]) =>
+        window.__harness.emit({ type: 'jobUpdated', job: { ...base, ...next }, fresh: false }),
+      [job, next] as const,
+    );
+  await update({ match: null });
+  await expect
+    .poll(async () =>
+      (await shown(row(page, 'linkedin-4100200302').getByTestId('row-facts'))).map((f) => f.key),
+    )
+    .toEqual(['mode']);
+  // Neither facts nor a location that says how: no line of facts, the row keeps its height.
+  await update({ match: null, workMode: null, detail: { kind: 'ok' } });
   await expect(row(page, 'linkedin-4100200302').getByTestId('row-facts')).toHaveCount(0);
   expect(Math.round((await row(page, 'linkedin-4100200302').boundingBox())!.height)).toBe(86);
 });

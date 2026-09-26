@@ -21,7 +21,6 @@
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import Check from '@lucide/svelte/icons/check';
-  import CheckCheck from '@lucide/svelte/icons/check-check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
@@ -68,7 +67,6 @@
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
-  import Send from '@lucide/svelte/icons/send';
   import Settings from '@lucide/svelte/icons/settings';
   import Shield from '@lucide/svelte/icons/shield';
   import Star from '@lucide/svelte/icons/star';
@@ -92,7 +90,6 @@
     'building-2': Building2,
     calendar: Calendar,
     check: Check,
-    'check-check': CheckCheck,
     'chevron-down': ChevronDown,
     'chevron-left': ChevronLeft,
     'circle-check': CircleCheck,
@@ -139,7 +136,6 @@
     'rotate-cw': RotateCw,
     scissors: Scissors,
     search: Search,
-    send: Send,
     settings: Settings,
     shield: Shield,
     star: Star,

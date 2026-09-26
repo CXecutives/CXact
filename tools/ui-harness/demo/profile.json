@@ -1,0 +1,75 @@
+{
+  "name": "Erika Beispiel",
+  "email": "erika.beispiel@example.invalid",
+  "titel": "Interim Managerin Finanzen",
+  "abschluss": "Diplom-Kauffrau (Univ.)",
+  "berufserfahrung_jahre": 20,
+  "kernkompetenzen": [
+    { "kompetenz": "Interim Management", "jahre": 12 },
+    { "kompetenz": "Controlling", "jahre": 18, "auch": ["Financial Controlling", "FP&A"] },
+    { "kompetenz": "Konzernrechnungslegung nach IFRS", "jahre": 14 },
+    { "kompetenz": "Konsolidierung", "jahre": 11 },
+    { "kompetenz": "Liquiditätsplanung", "jahre": 10 },
+    { "kompetenz": "Restrukturierung", "jahre": 8, "auch": ["Sanierung"] }
+  ],
+  "alleinstellungsmerkmale": ["Aufbau von Konzernreportings in weniger als 100 Tagen"],
+  "keywords": ["IFRS", "HGB", "Konzernabschluss"],
+  "branchen": [{ "branche": "Maschinenbau" }, { "branche": "Automotive" }, { "branche": "Chemie" }],
+  "methoden_tools": [{ "name": "SAP S/4HANA" }, { "name": "LucaNet" }, { "name": "Power BI" }],
+  "zertifizierungen": [{ "name": "Certified Interim Manager (DDIM)" }],
+  "sprachen": [
+    { "sprache": "Deutsch", "niveau": "Muttersprache" },
+    { "sprache": "Englisch", "niveau": "B2" }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "01/2022 bis heute",
+      "rolle": "Interim CFO",
+      "schwerpunkte": [
+        "Konzernabschluss nach HGB",
+        "Carve-out einer Sparte",
+        "Cash Management",
+        "Bankenkommunikation"
+      ]
+    },
+    {
+      "zeitraum": "03/2016 bis 12/2021",
+      "rolle": "Head of Group Controlling",
+      "schwerpunkte": [
+        "Konzernreporting",
+        "Budgetierung und Forecast",
+        "Konsolidierung mit LucaNet",
+        "Führung von Finanzteams"
+      ]
+    },
+    {
+      "zeitraum": "10/2006 bis 02/2016",
+      "rolle": "Leiterin Rechnungswesen",
+      "schwerpunkte": [
+        "Jahresabschluss nach HGB",
+        "Einführung von SAP S/4HANA",
+        "Aufbau eines Shared Service Centers"
+      ]
+    }
+  ],
+  "schwerpunkte": ["Controlling", "Konzernrechnungslegung nach IFRS"],
+  "wunschrollen": ["Interim CFO"],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1200,
+    "remote": "ueberwiegend",
+    "regionen": ["Hamburg"]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1100,
+    "laender": ["DE", "AT"],
+    "ausgeschlossene_vertragsarten": ["anue"],
+    "remote_ausserhalb_erlaubt": true,
+    "verfuegbar_ab": "01.09.2026",
+    "zielprofil_min_jahre": 15,
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 6,
+    "ausschlusswoerter": ["Werkstudent", "Praktikum"],
+    "festanstellung_remote_min": "viel"
+  }
+}
