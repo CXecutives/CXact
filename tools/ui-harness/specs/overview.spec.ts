@@ -86,7 +86,7 @@ test('Hohe Passung opens the high band of the inbox, read or not', async ({ page
   expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: 'high', unread: false });
 });
 
-test('the excluded jobs not opened yet: the Eingang with its excluded section open', async ({
+test('the excluded jobs not opened yet: the Eingang with its excluded section open and in view', async ({
   page,
 }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '0'));
@@ -97,6 +97,7 @@ test('the excluded jobs not opened yet: the Eingang with its excluded section op
   await expect(filterLine(page)).toHaveCount(0);
   await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
   await expect(excludedRows(page)).toHaveCount((await stubList(page)).excluded.length);
+  await expect(page.getByTestId('excluded-divider')).toBeInViewport();
 });
 
 test('a job opens in the Eingang, whatever list and search Jobs had', async ({ page }) => {
