@@ -1646,6 +1646,62 @@ fn one_answer_per_surface_kind() {
     fail(&problems, "controls read the kind tokens of their surface");
 }
 
+/// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the
+/// components of that role, so coral cannot creep into a heading, a link or a hover.
+#[test]
+fn coral_only_in_its_roles() {
+    const ROLES: [(&str, &[&str]); 8] = [
+        // The one primary action of a view.
+        ("var(--primary", &["components/Button.svelte"]),
+        // A switch that is on, and the check of a chosen row.
+        (
+            "var(--toggle-on",
+            &["components/Toggle.svelte", "components/JobRow.svelte"],
+        ),
+        // The dot of a job not opened yet.
+        ("var(--unread", &["components/JobRow.svelte"]),
+        // Where you are: the selected row, its bar and its ring track, the active view.
+        (
+            "var(--surface-selected",
+            &["components/ListRow.svelte", "components/JobRow.svelte"],
+        ),
+        (
+            "var(--selection-bar",
+            &["components/ListRow.svelte", "features/jobs/RowBar.svelte"],
+        ),
+        ("var(--ring-track-selected", &["components/ListRow.svelte"]),
+        ("var(--nav-active-icon", &["components/SideNav.svelte"]),
+        // New: the soft count and the coral tone of a badge, a tile and a stat.
+        (
+            "var(--accent",
+            &[
+                "components/Badge.svelte",
+                "components/IconTile.svelte",
+                "components/StatTile.svelte",
+            ],
+        ),
+    ];
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    for (needle, allowed) in ROLES {
+        problems.extend(find(&all, &[needle], |s| {
+            s.is("styles/tokens.css")
+                || s.under("features/gallery/")
+                || allowed.contains(&s.path.as_str())
+        }));
+    }
+    problems.extend(find(&all, &["var(--count-soft-"], |s| {
+        s.is("styles/tokens.css") || s.is("components/Count.svelte")
+    }));
+    problems.extend(find(&all, &["var(--p-coral"], |s| {
+        s.is("styles/tokens.css")
+    }));
+    fail(
+        &problems,
+        "coral only in its roles (act, new, where you are)",
+    );
+}
+
 /// The release build must not ship the gallery (it is compiled out via `__GALLERY__`).
 #[test]
 fn the_release_build_has_no_gallery() {
