@@ -26,6 +26,8 @@
     label?: string | null;
     placeholder?: string | null;
     invalid?: boolean;
+    /** Waits for another value (its field's hint says for which). */
+    disabled?: boolean;
     describedby?: string | null;
     testid?: string | null;
   }
@@ -39,6 +41,7 @@
     label = null,
     placeholder = null,
     invalid = false,
+    disabled = false,
     describedby = null,
     testid = null,
   }: Props = $props();
@@ -92,6 +95,7 @@
       {label}
       {placeholder}
       {invalid}
+      {disabled}
       describedby={[
         rounded ? `${noteId}-rounded` : (describedby ?? described()),
         unit ? `${noteId}-unit` : null,

@@ -348,25 +348,30 @@ const dateTextOf = (form: ProfileForm): string =>
 const union = (stored: readonly string[], added: readonly string[]): string[] =>
   cleanList([...stored, ...added]);
 
+/** The higher of two numbers of years; a missing one leaves the other. */
+const higher = (a: number | null, b: number | null): number | null =>
+  a === null ? b : b === null ? a : Math.max(a, b);
+
 /**
- * The stored profile updated with an AI's answer to a CV: the answer fills and adds (a role,
- * years, new competences and other terms, new list entries, languages and their levels), the
- * stored profile keeps everything the answer leaves out, the Schwerpunkte and the user's
- * wishes and criteria (the answer only fills what the profile leaves empty). Rows keep their
- * place in the stored file (`origin`); new rows have none.
+ * The stored profile updated with an AI's answer to a CV (the user's decision: an update
+ * only fills gaps and adds, it never overwrites). The answer fills what the profile leaves
+ * empty (the name, the role, a level, the wishes and criteria, the Schwerpunkte while there
+ * are none) and adds what is new (competences, list entries, languages, synonyms); years take
+ * the higher number, in total and per competence. Everything else stays as stored. Rows keep
+ * their place in the stored file (`origin`); new rows have none.
  */
 export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
   const a = normalized(answer);
   const form: ProfileForm = {
     ...structuredClone(stored),
     name: stored.name.trim() || a.name,
-    title: a.title || stored.title,
-    years: a.years ?? stored.years,
+    title: stored.title.trim() || a.title,
+    years: higher(stored.years, a.years),
   };
   for (const row of a.competences) {
     const match = form.competences.find((own) => same(own.name.trim(), row.name));
     if (match) {
-      match.years = row.years ?? match.years;
+      match.years = higher(match.years, row.years);
       match.aliases = union(match.aliases, row.aliases);
     } else {
       form.competences.push({ ...row, origin: null });
@@ -380,7 +385,7 @@ export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
   form.certificates = union(form.certificates, a.certificates);
   for (const row of a.languages) {
     const match = form.languages.find((own) => same(own.language.trim(), row.language));
-    if (match) match.level = row.level ?? match.level;
+    if (match) match.level ??= row.level;
     else form.languages.push({ ...row, origin: null });
   }
   if (form.focus.length === 0) form.focus = a.focus.slice(0, MAX_FOCUS);
@@ -390,24 +395,21 @@ export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
   w.remote ??= a.wishes.remote;
   w.regions = union(w.regions, a.wishes.regions);
   w.industries = union(w.industries, a.wishes.industries);
+  // The criteria as core describes them: a number or a list only where the profile has none.
   const c = form.criteria;
   const ac = a.criteria;
-  c.minDayRate ??= ac.minDayRate;
-  if (c.countries.length === 0) c.countries = ac.countries;
+  for (const key of NUMBER_KEYS) {
+    // The days a week are one range: the answer's only while the profile sets neither end.
+    if (key !== 'workloadMinDays' && key !== 'workloadMaxDays') c[key] ??= ac[key];
+  }
+  if (c.workloadMinDays === null && c.workloadMaxDays === null) {
+    c.workloadMinDays = ac.workloadMinDays;
+    c.workloadMaxDays = ac.workloadMaxDays;
+  }
+  for (const key of WORD_KEYS) if (c[key].length === 0) c[key] = ac[key];
   c.noAnue ||= ac.noAnue;
   c.noPermanent ||= ac.noPermanent;
   if (c.available.kind === 'unset') c.available = ac.available;
-  c.targetYears ??= ac.targetYears;
-  c.minSalary ??= ac.minSalary;
-  if (c.permanentPlaces.length === 0) c.permanentPlaces = ac.permanentPlaces;
-  c.permanentRemoteMin ??= ac.permanentRemoteMin;
-  // The days a week are one range: the answer's only while the profile sets neither end.
-  if ((c.workloadMinDays ?? null) === null && (c.workloadMaxDays ?? null) === null) {
-    c.workloadMinDays = ac.workloadMinDays ?? null;
-    c.workloadMaxDays = ac.workloadMaxDays ?? null;
-  }
-  c.minMonths ??= ac.minMonths ?? null;
-  if ((c.exclusionWords ?? []).length === 0) c.exclusionWords = ac.exclusionWords ?? [];
   return form;
 }
 
@@ -434,14 +436,24 @@ class ProfileEditor {
   answer = $state('');
   /** The day of "Verfügbar ab" as typed (the form holds it as `YYYY-MM-DD`). */
   dateText = $state('');
+  /** The day is judged (said when it does not read): once its field is left with text in it
+   *  or on saving, never while it is typed. */
+  judged = $state(false);
   /** Text typed into a chip field that is no chip yet: a change like any other. */
   readonly typed = new TypedText();
 
+  /** Unsaved: a draft as it is (a file, an answer, an update), else a change of the form. */
   get dirty(): boolean {
     if (this.origin === null) return false;
     if (this.origin === 'file' || this.origin === 'answer' || this.origin === 'update') {
       return true;
     }
+    return this.changed;
+  }
+
+  /** The form differs from what it was handed out as (a draft that was changed, too). */
+  get changed(): boolean {
+    if (this.origin === null) return false;
     return this.cleared.length > 0 || this.typed.any || !sameForm(this.before, this.after);
   }
 
@@ -450,6 +462,7 @@ class ProfileEditor {
     this.before = copy(before);
     this.after = copy(after);
     this.dateText = dateTextOf(after);
+    this.judged = false;
     this.cleared = [];
     this.pasting = false;
   }
@@ -520,37 +533,54 @@ class ProfileEditor {
 
   /** Writes the form; the caller reloads the app state (and with it the stored form). */
   save(): Promise<ProfileInfo> {
-    return invoke('save_profile', {
-      save: {
-        before: this.before,
-        after: normalized(copy(this.after)),
-        source: this.source,
-        clear: [...this.cleared],
-      },
-    });
+    const save = {
+      before: copy(this.before),
+      after: normalized(copy(this.after)),
+      source: this.source,
+      clear: [...this.cleared],
+    };
+    return serial(() => invoke('save_profile', { save }));
   }
 }
 
 export const editor = new ProfileEditor();
 
+/** The saves of the profile, one after the other: each starts once the one before is written
+ *  and the state is loaded again (DS-3), so two quick saves never write over each other. */
+let saving: Promise<unknown> = Promise.resolve();
+function serial<T>(task: () => Promise<T>): Promise<T> {
+  const next = saving.then(task, task);
+  saving = next.catch(() => undefined);
+  return next;
+}
+
+/** The stored profile's keywords changed by `change`, saved like a save of the form (the
+ *  previous file is the backup, every job is scored again) and built on the profile as it is
+ *  stored when its turn comes. `false` when nothing changes or there is no profile. */
+function saveKeywords(change: (keywords: string[]) => string[]): Promise<boolean> {
+  return serial(async () => {
+    const stored = app.state?.profile?.form ?? null;
+    if (stored === null) return false;
+    const before = copy(stored);
+    const after = normalized({ ...copy(stored), keywords: change([...before.keywords]) });
+    if (sameForm(after, before)) return false;
+    await invoke('save_profile', { save: { before, after, source: null, clear: [] } });
+    await app.load();
+    return true;
+  });
+}
+
 /**
  * "Zum Profil hinzufügen": a requirement the ads name becomes a search term of the stored
- * profile, saved at once like a save of the form (the previous file is the backup, every job
- * is scored again). Returns its undo; null when the term is in the profile already or there
- * is no profile. Refused while the form holds unsaved changes (they come first).
+ * profile, saved at once. Returns its undo, which takes out this term only (a term added
+ * meanwhile stays); null when the term is in the profile already or there is no profile.
+ * Refused while the form holds unsaved changes (they come first).
  */
 export async function addToProfile(term: string): Promise<(() => Promise<void>) | null> {
-  const stored = app.state?.profile?.form ?? null;
-  if (stored === null || editor.dirty) return null;
-  const before = copy(stored);
-  const after = normalized({ ...copy(stored), keywords: cleanList([...stored.keywords, term]) });
-  if (sameForm(after, before)) return null;
-  await invoke('save_profile', { save: { before, after, source: null, clear: [] } });
-  await app.load();
+  if (editor.dirty) return null;
+  const text = term.trim();
+  if (!(await saveKeywords((keywords) => cleanList([...keywords, text])))) return null;
   return async () => {
-    await invoke('save_profile', {
-      save: { before: after, after: before, source: null, clear: [] },
-    });
-    await app.load();
+    await saveKeywords((keywords) => keywords.filter((keyword) => !same(keyword.trim(), text)));
   };
 }

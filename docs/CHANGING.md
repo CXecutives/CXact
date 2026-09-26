@@ -201,13 +201,24 @@ A number or a list of words under `harte_kriterien`:
    "Wert entfernen" follow the row; a test fails while `ALL` or the table misses a field.
 3. `cargo test -p jobalert-core ipc_types` rewrites `ProfileCriteria.ts`,
    `UnreadableField.ts` and `profile.ts`.
-4. The UI: its place in `ui/src/features/profile/ProfileEditor.svelte` (the unit through
-   `unitOf`) and its label in both catalogs (`profile.field`).
-   `ui/src/lib/state/profile.svelte.ts` and the stub's validation need nothing.
+4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
+   (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
+   come from core) and its label (and hint, placeholder) in both catalogs (`profile.field`).
+   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` (the CV update fills it
+   too) and the stub's validation need nothing.
 
 A criterion of another kind (a switch, a choice) is a new `Kind` variant: the compiler
 names every `match row.kind` that has to handle it; in the UI `normalizedCriteria` and
-`fieldValue` of `profile.svelte.ts` take it by hand.
+`fieldValue` of `profile.svelte.ts` take it by hand, a switch is one `kind: 'switch'` entry of
+the section's switches, anything else a control kind of `sections.ts` with its component.
+
+## Change the Profil form
+
+Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the sections in
+their order and each one's lines of fields. Moving, adding or removing a field or a section is
+one entry there (a new section also needs its heading and sentence in `profile.section` and
+`profile.sectionHint`); a quiet hint where values contradict each other is the field's
+`advice`, a field that waits for another its `off`.
 
 ## Add an Excel column
 

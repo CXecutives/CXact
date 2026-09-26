@@ -1,7 +1,7 @@
 <!--
   One section of the profile form: the heading (H2, 17/600; with "Noch leer" when a thin
   profile leaves it empty: quiet for an optional block, amber only for the one block that is
-  needed), at most one sentence under it, the fields in a card 12 px below.
+  needed), at most one sentence 4 px under it, the fields in a card 12 px below.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -60,8 +60,9 @@
     font: var(--type-lg);
   }
 
+  /* 4 px under the heading: it belongs to it, the card keeps the 12 px. */
   .hint {
-    margin-top: calc(-1 * var(--space-4));
+    margin-top: calc(-1 * var(--space-8));
     color: var(--text-muted);
     font: var(--type-sm);
   }

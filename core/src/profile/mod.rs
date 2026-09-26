@@ -2,7 +2,8 @@
 //! that is where the matching skill reads it. The Profil view edits it through a form
 //! ([`form`]): saving merges the form into the file, so keys the form does not know, their
 //! values and the order of the keys stay; the previous file stays next to it as the one
-//! backup. Removing the profile makes it that backup, so it can be restored. A file or a
+//! backup. Removing the profile makes it that backup, so it can be restored; restoring over a
+//! profile (the undo of another file that replaced it) swaps the two. A file or a
 //! pasted answer of an AI ([`prompt`], read by [`answer`]) fills the form first, the user
 //! reviews it and saves. No network: everything stays on the computer.
 
@@ -121,15 +122,28 @@ pub fn remove(workspace: &Path) -> Result<bool> {
     Ok(true)
 }
 
-/// Brings a removed profile back from the backup; `false` when there is a profile already
-/// or no backup.
+/// Brings the backup back as the profile: the undo of a removal, and of a save that replaced
+/// the profile (another file). A profile that is there becomes the backup in its place, so
+/// the undo can itself be undone. `false` without a backup.
 pub fn restore(workspace: &Path) -> Result<bool> {
     let path = profile_path(workspace);
     let backup = backup_path(workspace);
-    if path.exists() || !backup.exists() {
+    if !backup.exists() {
         return Ok(false);
     }
-    std::fs::rename(&backup, &path).map_err(|e| Error::io(&backup, e))?;
+    if !path.exists() {
+        std::fs::rename(&backup, &path).map_err(|e| Error::io(&backup, e))?;
+        return Ok(true);
+    }
+    // A swap in three renames within the folder; the profile is never left missing longer
+    // than between the last two.
+    let aside = path.with_extension("json.swap");
+    std::fs::rename(&path, &aside).map_err(|e| Error::io(&path, e))?;
+    if let Err(e) = std::fs::rename(&backup, &path) {
+        let _ = std::fs::rename(&aside, &path);
+        return Err(Error::io(&backup, e));
+    }
+    std::fs::rename(&aside, &backup).map_err(|e| Error::io(&aside, e))?;
     Ok(true)
 }
 
@@ -494,7 +508,7 @@ mod tests {
         assert!(restore(dir.path()).unwrap());
         assert_eq!(stored(dir.path()), last);
         assert!(!backup_path(dir.path()).exists());
-        assert!(!restore(dir.path()).unwrap(), "a profile is there already");
+        assert!(!restore(dir.path()).unwrap(), "no backup left");
 
         // "Reset everything" after a removal leaves neither the profile nor its backup.
         assert!(remove(dir.path()).unwrap());
@@ -608,6 +622,21 @@ mod tests {
         );
         assert!(text.contains("\"zeta_notiz\": \"bleibt\""));
         assert!(backup_path(dir.path()).exists());
+
+        // Rückgängig: the old profile comes back, the chosen one becomes the backup, and a
+        // second undo swaps them again.
+        assert!(restore(dir.path()).unwrap());
+        assert!(stored(dir.path()).contains("hobbys"));
+        let backup = std::fs::read_to_string(backup_path(dir.path())).unwrap();
+        assert_eq!(backup, text);
+        assert!(restore(dir.path()).unwrap());
+        assert_eq!(stored(dir.path()), text);
+        let mut files: Vec<String> = std::fs::read_dir(dir.path().join(PROFILE_DIR))
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        files.sort();
+        assert_eq!(files, [PROFILE_FILE, BACKUP_FILE], "nothing left aside");
     }
 
     #[test]

@@ -298,16 +298,6 @@ function workloadWords(from: number | null, to: number, short: boolean): string 
   return `${n(low)} to ${formatPercent(to)}`;
 }
 
-/** The days per week of the profile: "3 to 5 days", "at least 3 days", with `week` "3 to 5
- *  days a week". */
-function profileDays(min: number | null, max: number | null, week: boolean): string {
-  const days = (value: number): string =>
-    week ? weekDays(value, false) : count(value, 'day', 'days');
-  if (min !== null && max !== null) return min === max ? days(min) : `${n(min)} to ${days(max)}`;
-  if (min !== null) return `at least ${days(min)}`;
-  return max === null ? '' : `at most ${days(max)}`;
-}
-
 const numberOr = (value: unknown): number | null => (typeof value === 'number' ? value : null);
 
 /** The ad's workload against the profile's days (`from`, `to`, `minDays`, `maxDays`). */
@@ -626,9 +616,9 @@ const rawKeys = (value: unknown): string[] =>
 const warning = {
   noCompetences: 'The profile names no skills.',
   fewCompetences: 'The profile names only a few skills.',
-  noCriteria: 'The profile sets no exclusion criteria.',
+  noCriteria: 'The profile sets no conditions.',
   availabilityNotUnderstood: '“Available from” cannot be read.',
-  ignoredKeys: (p) => `The app does not read ${joined(rawKeys(p.keys))} in the exclusion criteria.`,
+  ignoredKeys: (p) => `The app does not read ${joined(rawKeys(p.keys))} in the conditions.`,
   criterionNotUnderstood: (p) => `“${keyLabel(str(p.key))}” cannot be read.`,
   regionWithoutPlaces: 'The minimum remote share only works together with locations.',
   focusTrimmed: (p) => `Only the first ${n(num(p.max))} focus areas count.`,
@@ -1185,6 +1175,9 @@ export const en: Catalog = {
   profile: {
     none: 'No profile yet',
     replaces: 'A new profile replaces the file.',
+    replacesStored: 'Saving replaces your profile.',
+    replaced: 'Profile replaced.',
+    restoreFailed: 'The previous profile could not be brought back.',
     create: 'Create profile',
     fromCv: 'Create from CV',
     updateFromCv: 'Update from CV',
@@ -1205,12 +1198,13 @@ export const en: Catalog = {
       thin: 'Few skills, so the match stays rough.',
       empty: 'Without skills, nothing is scored.',
     } satisfies Record<ProfileQuality, string>,
+    noRowsText: 'Without skills, the match stays rough.',
     rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being scored again.`,
     rescored: 'Saved, and the jobs are scored again.',
     check: (value: number) => count(value, 'value to check', 'values to check'),
     next: 'Go to the first fetch',
+    nextMailbox: 'Go to the mailbox',
     understood: (terms: number) => count(terms, 'search term', 'search terms'),
-    focusCount: (focus: number) => count(focus, 'focus area', 'focus areas'),
     warning,
     pack: {
       finance: 'Finance',
@@ -1232,7 +1226,7 @@ export const en: Catalog = {
       new: 'New profile',
       file: 'Profile from a file',
       answer: 'Profile from the CV',
-      update: 'Profile updated from the CV',
+      update: 'Update from the CV',
     },
     unsaved: 'Not saved',
     review: 'Check the details and save them.',
@@ -1311,7 +1305,8 @@ export const en: Catalog = {
       addLanguage: 'Add language',
       removeLanguage: (name: string) => `Remove ${name || 'language'}`,
       wishRate: 'Preferred day rate',
-      wishRateHint: 'The minimum day rate is set in the conditions.',
+      belowMinRate: 'Below the minimum day rate.',
+      aboveExperience: 'Above your professional experience.',
       remote: 'Remote share',
       regions: 'Preferred regions',
       regionsPlaceholder: 'e.g. Munich',
@@ -1353,6 +1348,7 @@ export const en: Catalog = {
       remoteMin: 'Minimum remote share',
       remoteMinHint:
         'Outside the locations for permanent jobs, a job needs at least this much remote work.',
+      placesFirst: 'Add locations first.',
       rounded: 'Rounded down to whole euros.',
       roundedWhole: 'Rounded down to a whole number.',
       refused: 'This value does not fit.',
@@ -1361,7 +1357,7 @@ export const en: Catalog = {
       unreadableDate: (value: string) => `The file said “${value}”, which is not a date.`,
       unreadableValue: (value: string) => `The file said “${value}”, which the app cannot read.`,
       unreadableFocus: (value: string) => `“${value}” is not one of the skills.`,
-      unreadableRole: (value: string) => `“${value}” is not a role the app knows.`,
+      unreadableRole: (value: string) => `“${value}” names no field.`,
       removeValue: 'Remove value',
     },
     unit: {
@@ -1438,16 +1434,9 @@ export const en: Catalog = {
       fileOnly: (name: string) => `${name}, only in the file`,
       years: 'Professional experience',
       yearsValue: (value: number) => count(value, 'year', 'years'),
-      yearsFrom: (value: number) => `${count(value, 'year', 'years')} of experience`,
-      workload: (min: number | null, max: number | null) => profileDays(min, max, true),
-      months: (value: number) => count(value, 'month', 'months'),
       degrees: 'Degrees',
       packs: 'Specialist vocabulary',
-      criteria: 'Conditions',
-      none: 'None',
-      from: (value: string) => `from ${value}`,
-      excluded: 'excluded',
-      stale: 'This is how the saved profile reads.',
+      stale: 'This does not include the changes.',
       source: {
         titel: 'Role',
         kernkompetenzen: 'Skills',

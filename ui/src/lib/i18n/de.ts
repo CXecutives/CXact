@@ -269,16 +269,6 @@ function workloadWords(from: number | null, to: number, short: boolean): string 
   return `${n(low)} bis ${formatPercent(to)}`;
 }
 
-/** The days per week of the profile (`minDays`, `maxDays`): "3 bis 5 Tage", "mindestens 3
- *  Tage", with `week` "3 bis 5 Tage pro Woche". */
-function profileDays(min: number | null, max: number | null, week: boolean): string {
-  const days = (value: number): string =>
-    week ? weekDays(value, false) : count(value, 'Tag', 'Tage');
-  if (min !== null && max !== null) return min === max ? days(min) : `${n(min)} bis ${days(max)}`;
-  if (min !== null) return `mindestens ${days(min)}`;
-  return max === null ? '' : `höchstens ${days(max)}`;
-}
-
 const numberOr = (value: unknown): number | null => (typeof value === 'number' ? value : null);
 
 /** The ad's workload against the profile's days (`from`, `to`, `minDays`, `maxDays`). */
@@ -630,10 +620,10 @@ const countryNames = (value: unknown): string =>
 const warning = {
   noCompetences: 'Das Profil nennt keine Kompetenzen.',
   fewCompetences: 'Das Profil nennt nur wenige Kompetenzen.',
-  noCriteria: 'Das Profil setzt keine Ausschlusskriterien.',
+  noCriteria: 'Das Profil setzt keine Konditionen.',
   availabilityNotUnderstood: '„Verfügbar ab“ ist nicht lesbar.',
   // Keys of a criteria section the engine does not read (a typo, an unknown rule).
-  ignoredKeys: (p) => `Die App liest ${joined(rawKeys(p.keys))} in den Ausschlusskriterien nicht.`,
+  ignoredKeys: (p) => `Die App liest ${joined(rawKeys(p.keys))} in den Konditionen nicht.`,
   criterionNotUnderstood: (p) => `„${keyLabel(str(p.key))}“ ist nicht lesbar.`,
   regionWithoutPlaces: 'Der Mindest-Remote-Anteil wirkt nur zusammen mit Orten.',
   focusTrimmed: (p) => `Nur die ersten ${n(num(p.max))} Schwerpunkte zählen.`,
@@ -1329,6 +1319,11 @@ export const de = {
     none: 'Noch kein Profil',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
+    /** Another file over the stored profile, and the toast after saving it (Rückgängig). */
+    replacesStored: 'Speichern ersetzt dein Profil.',
+    replaced: 'Profil ersetzt.',
+    /** Rückgängig of a removal or a replacement that did not work. */
+    restoreFailed: 'Das alte Profil ließ sich nicht zurückholen.',
     create: 'Profil anlegen',
     fromCv: 'Aus Lebenslauf anlegen',
     /** The same way for a profile that exists: the answer fills the form for review. */
@@ -1353,15 +1348,18 @@ export const de = {
       thin: 'Wenige Kompetenzen, die Passung bleibt grob.',
       empty: 'Ohne Kompetenzen wird nichts bewertet.',
     } satisfies Record<ProfileQuality, string>,
+    /** No competence rows, but other terms: the match works, roughly. */
+    noRowsText: 'Ohne Kompetenzen bleibt die Passung grob.',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
     rescored: 'Gespeichert, Jobs neu bewertet.',
     /** Values of the file that do not read and a rule that stays off: a click goes to the
      *  first one. */
     check: (value: number) => count(value, 'Wert prüfen', 'Werte prüfen'),
     next: 'Weiter zum ersten Abruf',
+    /** The same place without a mailbox: back to the setup page. */
+    nextMailbox: 'Weiter zum Postfach',
     /** The head's stats line, the same word as in "So liest die App dein Profil". */
     understood: (terms: number) => count(terms, 'Suchbegriff', 'Suchbegriffe'),
-    focusCount: (focus: number) => count(focus, 'Schwerpunkt', 'Schwerpunkte'),
     warning,
     /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
     pack: {
@@ -1384,7 +1382,7 @@ export const de = {
       new: 'Neues Profil',
       file: 'Profil aus einer Datei',
       answer: 'Profil aus dem Lebenslauf',
-      update: 'Profil mit dem Lebenslauf aktualisiert',
+      update: 'Aktualisierung aus dem Lebenslauf',
     },
     unsaved: 'Nicht gespeichert',
     review: 'Prüfe die Angaben und speichere sie.',
@@ -1469,7 +1467,9 @@ export const de = {
       addLanguage: 'Sprache hinzufügen',
       removeLanguage: (name: string) => `${name || 'Sprache'} entfernen`,
       wishRate: 'Wunschtagessatz',
-      wishRateHint: 'Den Mindest-Tagessatz legen die Konditionen fest.',
+      /** Quiet hints where two values contradict each other. */
+      belowMinRate: 'Liegt unter dem Mindest-Tagessatz.',
+      aboveExperience: 'Liegt über deiner Berufserfahrung.',
       remote: 'Remote-Anteil',
       regions: 'Wunschregionen',
       regionsPlaceholder: 'z. B. München',
@@ -1519,6 +1519,8 @@ export const de = {
       remoteMin: 'Mindest-Remote-Anteil',
       remoteMinHint:
         'Außerhalb der Orte für Festanstellung braucht ein Job mindestens diesen Remote-Anteil.',
+      /** The remote share waits for the places it counts outside of. */
+      placesFirst: 'Trag erst Orte ein.',
       /** A euro amount with cents: the app counts whole euros. */
       rounded: 'Auf ganze Euro abgerundet.',
       /** Another number with a decimal part: the app counts whole ones. */
@@ -1532,7 +1534,7 @@ export const de = {
       unreadableValue: (value: string) =>
         `In der Datei stand „${value}“, das kann die App nicht lesen.`,
       unreadableFocus: (value: string) => `„${value}“ steht nicht bei den Kompetenzen.`,
-      unreadableRole: (value: string) => `„${value}“ ist keine Rolle, die die App kennt.`,
+      unreadableRole: (value: string) => `„${value}“ nennt kein Fachgebiet.`,
       removeValue: 'Wert entfernen',
     },
     /** The unit right of a number field. */
@@ -1645,19 +1647,10 @@ export const de = {
       fileOnly: (name: string) => `${name}, nur in der Datei`,
       years: 'Berufserfahrung',
       yearsValue: (value: number) => count(value, 'Jahr', 'Jahre'),
-      /** After the label "Jobs ab" (dative): `15 Jahren Erfahrung`. */
-      yearsFrom: (value: number) => `${count(value, 'Jahr', 'Jahren')} Erfahrung`,
-      /** The days per week (`minDays`, `maxDays`): "3 bis 5 Tage pro Woche". */
-      workload: (min: number | null, max: number | null) => profileDays(min, max, true),
-      /** After the label "Mindestlaufzeit": `6 Monate`. */
-      months: (value: number) => count(value, 'Monat', 'Monate'),
       degrees: 'Abschlüsse',
       packs: 'Fachwortschatz',
-      criteria: 'Konditionen',
-      none: 'Keine',
-      from: (value: string) => `ab ${value}`,
-      excluded: 'ausgeschlossen',
-      stale: 'Das gilt für den gespeicherten Stand.',
+      /** The form holds changes this reading does not know yet. */
+      stale: 'Das gilt ohne die Änderungen.',
       /** Parts of the profile file by their key (an external contract), in the form's words. */
       source: {
         titel: 'Rolle',
