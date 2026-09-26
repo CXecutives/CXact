@@ -641,7 +641,12 @@ Controller mit Berufserfahrung`, `Erfahrung im Controlling erforderlich, die Ans
 as the business of the hiring company is no contract form either
 (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`, `ANUE_BUSINESS`) unless the sentence also
 places the job in it (`im Rahmen`, `Einsatz`, `suchen wir`, `ANUE_CONTRACT`). `möglich` offers
-ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not).
+ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not). The
+title counts like a contract sentence (E16-7): `SAP FI/CO Berater (m/w/d) in
+Arbeitnehmerüberlassung` or `... - ANÜ` excludes with an ANÜ-free body, on a freelance portal
+too, `freiberuflich oder ANÜ` is the option, `keine ANÜ` nothing, and a role of the staffing
+business (`Disponent (m/w/d) Arbeitnehmerüberlassung`, `lexicon::ANUE_FIELD_ROLES`) names ANÜ
+as its field, not its contract form.
 
 **Employment pay (the user's decision on the open wage question of sets 5 to 8).** An hourly
 wage (`Stundenlohn`, `Bruttostundenlohn`, `iGZ`, `equal pay`, `gross per hour`, `€18/h gross`,

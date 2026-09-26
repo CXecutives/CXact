@@ -507,6 +507,39 @@ Rahmendaten:
     assert_ne!(a.facts.contract.as_deref(), Some("permanent"));
 }
 
+/// E16-7: ANÜ named only in the title excludes for a profile that rules ANÜ out, on a
+/// freelance portal too, and the contract row says ANÜ, not interim.
+#[test]
+fn e16_7_anue_in_the_title_alone_excludes() {
+    let text = "Wir suchen einen SAP FI/CO Berater für unseren Kunden.
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung";
+    let job = JobInput {
+        title: "SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung",
+        company: "Muster AG",
+        location: "Hamburg",
+        portal: Portal::FreelanceDe,
+        text,
+        facts: None,
+        posted: None,
+        kind: TextKind::Full,
+    };
+    let a = assess(&compile_profile(&profile()), &job, None).expect("assessed");
+    assert_eq!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+    assert!(
+        codes(&a).contains(&(ReasonCode::Anue, ReasonKind::Violation)),
+        "{:?}",
+        codes(&a)
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::NoAnue).status,
+        CriterionStatus::Violated
+    );
+    assert_eq!(a.facts.contract.as_deref(), Some("anue"));
+}
+
 /// The profile with the limits of an engagement and exclusion words.
 fn limited(extra: &Value) -> CompiledProfile {
     let mut value = profile();

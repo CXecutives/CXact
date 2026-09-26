@@ -625,7 +625,22 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     let contract = fact(job.facts, super::fact_key::CONTRACT)
         .and_then(Value::as_str)
         .map(fold);
-    if let Some(f) = contract.as_deref().filter(|f| named(f) && !negated(f)) {
+    // The title counts like a contract sentence (E16-7):
+    // `SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung`. It does not where it names ANÜ
+    // as a topic or as the field of a role in the staffing business:
+    // `Disponent (m/w/d) Arbeitnehmerüberlassung`.
+    let title = fold(job.title);
+    let title_says = (named(&title)
+        && !negated(&title)
+        && !anue_topic(&title, &named)
+        && !lex::ANUE_FIELD_ROLES.iter().any(|w| title.contains(w)))
+    .then_some(title.as_str());
+    for f in contract
+        .as_deref()
+        .filter(|f| named(f) && !negated(f))
+        .into_iter()
+        .chain(title_says)
+    {
         if optional(f) {
             option.push(0..0);
         } else {
@@ -1617,6 +1632,46 @@ mod tests {
             "Arbeitnehmerüberlassung, 6 Monate, Erfahrung mit SAP FI erforderlich",
         ] {
             assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+    }
+
+    /// E16-7: ANÜ named only in the title is read like a contract sentence; a denial, an
+    /// option or the field of a staffing role in the title decides nothing.
+    #[test]
+    fn e16_7_anue_named_only_in_the_title_is_read() {
+        let codes = |title: &str| {
+            let text = "Wir suchen einen SAP FI/CO Berater für unseren Kunden.\n\
+                        - Erfahrung mit SAP FI/CO";
+            let job = JobFacts {
+                title,
+                text,
+                location: "",
+                portal: Portal::FreelanceDe,
+                facts: None,
+                posted: None,
+            };
+            anue(&job, &segments(text))
+                .into_iter()
+                .map(|f| (f.code, f.decided))
+                .collect::<Vec<_>>()
+        };
+        for title in [
+            "SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung",
+            "SAP FI/CO Berater (m/w/d) - ANÜ",
+            "SAP FI/CO Consultant (m/f/d) - temporary agency work",
+        ] {
+            assert_eq!(codes(title), [(ReasonCode::Anue, true)], "{title}");
+        }
+        assert_eq!(
+            codes("SAP FI/CO Berater (m/w/d) - freiberuflich oder ANÜ"),
+            [(ReasonCode::AnueOptional, false)]
+        );
+        for title in [
+            "SAP FI/CO Berater (m/w/d) - keine ANÜ",
+            "Disponent (m/w/d) Arbeitnehmerüberlassung",
+            "SAP FI/CO Berater (m/w/d)",
+        ] {
+            assert!(codes(title).is_empty(), "{title}");
         }
     }
 

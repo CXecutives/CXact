@@ -1955,6 +1955,17 @@ pub(crate) const ANUE_BUSINESS: &[&str] = &[
     "specializ",
     "provider of",
 ];
+/// Roles of the staffing business: a title that names one with ANÜ names ANÜ as the field of
+/// the role, not its contract form (`Disponent (m/w/d) Arbeitnehmerüberlassung`), substrings.
+pub(crate) const ANUE_FIELD_ROLES: &[&str] = &[
+    "disponent",
+    "recruit",
+    "personalberater",
+    "personalvermittl",
+    "niederlassungsleit",
+    "branch manager",
+    "personaldienstleist",
+];
 /// A sentence that places the job itself in ANÜ (whole words or phrases).
 pub(crate) const ANUE_CONTRACT: &[&str] = &[
     "im rahmen",
