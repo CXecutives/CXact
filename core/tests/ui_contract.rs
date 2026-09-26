@@ -593,8 +593,33 @@ fn no_text_literals_in_markup() {
                 }
             }
         }
+        // The same props given a string literal in braces: `label={'Speichern'}`.
+        for (n, line) in markup(&source.code).lines().enumerate() {
+            for prop in props {
+                let name = &prop[..prop.len() - 1];
+                for quote in ['\'', '"', '`'] {
+                    let open = format!("{name}{{{quote}");
+                    for (at, _) in line.match_indices(&open) {
+                        let starts_word = line[..at]
+                            .chars()
+                            .next_back()
+                            .is_none_or(char::is_whitespace);
+                        let value: String = line[at + open.len()..]
+                            .chars()
+                            .take_while(|c| *c != quote)
+                            .collect();
+                        if starts_word && value.chars().any(char::is_alphabetic) {
+                            problems.push(format!("{}:{}: {open}{value}", source.path, n + 1));
+                        }
+                    }
+                }
+            }
+        }
     }
-    fail(&problems, "UI text only from lib/i18n/de.ts");
+    fail(
+        &problems,
+        "UI text only from lib/i18n/de.ts (fix: a key in de.ts and en.ts, read through t)",
+    );
 }
 
 /// The keyboard stays native (audit 2026-09-24): fields take every character the layout
