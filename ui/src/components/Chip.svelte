@@ -6,7 +6,8 @@
     the danger wash, unset: muted with a dash (the ad does not say), plain: a neutral fact.
   - With onselect it is a button: it washes on hover (80 ms in, 150 ms out), lights its
     passage while hovered (onhover) and jumps to it on a click; pressed it darkens and never
-    moves. Without it the pill is plain text with its tooltip.
+    moves. Without it the pill is plain text with its tooltip. In running text (`text`) a
+    value that jumps carries a dotted underline.
 -->
 <script lang="ts" module>
   export type ChipState = 'met' | 'violated' | 'unknown' | 'unset' | 'plain';
@@ -144,5 +145,13 @@
     background-color: transparent;
     color: var(--text);
     font: var(--type-sm);
+  }
+
+  /* One that jumps to its passage says so with a dotted underline; a plain one has none. */
+  button.chip.text .chip-label {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--text-subtle);
+    text-underline-offset: var(--space-4);
   }
 </style>

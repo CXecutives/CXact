@@ -5,7 +5,8 @@
   can highlight the passage (onhover), a click can scroll to it (onselect). A reason that
   jumps washes on hover and shows a small arrow down, darkens while pressed, and takes the
   navy wash while its passage is pinned (active). Compact (a list row), words cut off show in
-  full in a tooltip.
+  full in a tooltip. `emphasis` sets a reason apart in its group: strong (a missing must, its
+  words and mark in ink) or quiet (a missing optional one, its words muted).
 -->
 <script lang="ts" module>
   import type { ReasonKind, ReasonWeight } from '$lib/ipc/types';
@@ -55,6 +56,8 @@
     detail?: string | null;
     /** One line without weight badge (list rows). */
     compact?: boolean;
+    /** Strong: stands out in its group (a missing must); quiet: steps back (optional). */
+    emphasis?: 'strong' | 'quiet' | null;
     active?: boolean;
     onhover?: ((on: boolean) => void) | null;
     onselect?: (() => void) | null;
@@ -67,6 +70,7 @@
     hint = null,
     detail = null,
     compact = false,
+    emphasis = null,
     active = false,
     onhover = null,
     onselect = null,
@@ -105,7 +109,7 @@
 {#if onselect}
   <button
     type="button"
-    class="reason {kind}"
+    class="reason {kind} {emphasis ?? ''}"
     class:active
     use:tooltip={hint}
     onpointerenter={() => onhover?.(true)}
@@ -116,7 +120,9 @@
     <span class="jump" aria-hidden="true"><Icon name="arrow-down" size="xs" /></span>
   </button>
 {:else}
-  <span class="reason {kind}" class:compact use:tooltip={hint}>{@render body()}</span>
+  <span class="reason {kind} {emphasis ?? ''}" class:compact use:tooltip={hint}
+    >{@render body()}</span
+  >
 {/if}
 
 <style>
@@ -259,5 +265,20 @@
 
   .check {
     --reason-color: var(--info);
+  }
+
+  /* A missing must stands out in its group: its mark and its words in ink. */
+  .strong {
+    --reason-color: var(--text-heading);
+  }
+
+  .strong .label {
+    color: var(--text-heading);
+    font-weight: var(--weight-medium);
+  }
+
+  /* A missing optional one steps back. */
+  .quiet .label {
+    color: var(--text-muted);
   }
 </style>
