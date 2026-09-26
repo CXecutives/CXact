@@ -27,7 +27,7 @@ Each layer uses only the ones below it.
   - `lib/`: no components, no features. `lib/state/` the app's state, `lib/ipc/api.ts` the
     only door to Tauri, `lib/input/input.ts` all input handling, `lib/motion/` all motion,
     `lib/i18n/` the catalogs (`de.ts` the source, `en.ts` its mirror) and the text functions,
-    `lib/platform.ts` the per-OS conventions.
+    `lib/platform.ts` the per-OS conventions, `lib/icons.ts` the icons by meaning.
   - `App.svelte`, `main.ts`: which view shows.
 
 ## One source per decision
@@ -39,8 +39,11 @@ A decision is written once; everything else reads it or is generated from it.
 | Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (report, Excel, title bar, window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts` | funnel menu, filter line, reset, harness |
-| Icons | `IconName` in `ui/src/components/Icon.svelte` (the icons map `ui/src/lib/icons.ts` is in flight) | every icon |
-| Keys | `ui/src/lib/input/keys.ts`, `LIST_KEYS` in `input.ts` | handlers, menus, tooltips, the card of the keys, Einstellungen |
+| Icons (meaning to glyph) | `ui/src/lib/icons.ts` | `Icon.svelte`, every icon position |
+| Views of the sidebar (name, icon, key) | `ui/src/lib/views.ts` | sidebar, keys |
+| Keys | `ui/src/lib/input/keys.ts` (per-OS conventions: `keyConventions()` in `lib/platform.ts`) | `input.ts`, menus, tooltips, the card of the keys, Einstellungen |
+| Toasts (kinds, life) | `TOAST_KINDS`, `TOAST_LIFE` in `ui/src/lib/state/toasts.svelte.ts` | `Toast.svelte` |
+| Hover, press, focus | one answer per surface kind in `tokens.css` | every control |
 | Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts`, `features/overview/blocks.ts`, `features/first-run/steps.ts`, `features/profile/rows.ts` | their views |
 | Texts | `ui/src/lib/i18n/de.ts` (`en.ts` mirrors it) | every text the UI shows |
 | Commands | `src-tauri/commands.txt` | `generate_handler!`, capabilities, `commands.ts`, the stub |
@@ -121,6 +124,7 @@ the rule and the fix.
 | Settings of every version load without loss | `core/tests/settings_compat.rs` |
 | Database of every version migrates (schema chain, backup first) | `core/src/store/schema.rs` tests, `core/tests/existing_data.rs` |
 | TXT files byte-identical | `header_is_exactly_the_contract`, `txt_is_blind_to_the_match` |
+| Icons by meaning, one glyph per meaning; one keys table; toasts only through the toast API; one tooltip; two button heights; one answer per surface kind | `ui_contract.rs` |
 | At most one primary button per view | `ui_contract.rs` |
 | A flaky test fails the run | CI: `--fail-on-flaky-tests` |
 
