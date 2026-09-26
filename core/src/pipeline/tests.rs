@@ -370,6 +370,18 @@ async fn mail_failure_skips_fetch_but_exports() {
     // The Gmail reply is for the log only, never in the summary.
     let json = serde_json::to_string(&s).unwrap();
     assert!(!json.contains("AUTHENTICATIONFAILED"), "{json}");
+    // A first fetch that failed leaves setup open; one that read the mailbox ends it.
+    assert!(!has_completed_fetch(&store));
+    go(
+        &mut DemoBackends,
+        &store,
+        &request(),
+        &scan_only(dir.path()),
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    assert!(has_completed_fetch(&store));
 }
 
 #[tokio::test(start_paused = true)]

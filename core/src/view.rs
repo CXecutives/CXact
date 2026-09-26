@@ -1351,6 +1351,9 @@ pub struct AppState {
     pub dry_run: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,
+    /// A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
+    /// first-run page stays until then, also after a first fetch that failed.
+    pub setup_done: bool,
     /// The run in progress (after a reload the interface picks up from here).
     pub running: Option<RunSnapshot>,
     pub settings: SettingsView,
@@ -2168,8 +2171,23 @@ Rahmenbedingungen:
         assert_eq!(m.summary.unwrap().code, "userOverride");
         assert_eq!(m.reasons[0].code, "userOverride");
         assert!(m.reasons.iter().any(|r| r.kind == ReasonKind::Violation));
-        let row = JobView::from(&store.job(&key).unwrap().unwrap());
-        let shown = row.match_.unwrap();
+        // The engine's verdict stays where it is said: the criterion is still violated and
+        // the stored note still names it; the override is a mark of its own, also after a
+        // rescore.
+        let rate = m.criteria.iter().find(|c| c.code == "minDayRate").unwrap();
+        assert_eq!(rate.kind, ReasonKind::Violation, "{:?}", m.criteria);
+        let row = store.job(&key).unwrap().unwrap();
+        let fresh = matcher.judge(&row, store.description(&key).unwrap().as_deref());
+        store
+            .save_judgements(&[(key.clone(), fresh.unwrap())], "r9", now)
+            .unwrap();
+        let stored = store.job(&key).unwrap().unwrap();
+        let record = stored.match_.as_ref().unwrap();
+        assert_eq!(
+            (record.status, record.note.as_ref().unwrap().code.as_str()),
+            (MatchStatus::Scored, "dayRate")
+        );
+        let shown = JobView::from(&stored).match_.unwrap();
         assert_eq!(shown.status, MatchStatus::Scored);
         assert_eq!(shown.note.unwrap().code, "userOverride");
         assert!(store.set_override(&key, false).unwrap());

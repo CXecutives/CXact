@@ -19,6 +19,11 @@ export type AppState = { platform: Platform, dryRun: boolean,
  */
 firstRun: boolean, 
 /**
+ * A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
+ * first-run page stays until then, also after a first fetch that failed.
+ */
+setupDone: boolean, 
+/**
  * The run in progress (after a reload the interface picks up from here).
  */
 running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, profile: ProfileInfo | null, portals: Array<PortalState>, 

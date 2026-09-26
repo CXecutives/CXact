@@ -1652,6 +1652,14 @@ fn save_facts(store: &Store, facts: &ScanFacts) {
     }
 }
 
+/// Has a fetch ever completed its mailbox step (a scan that read the mailbox)? Until then
+/// the app keeps its first-run page: a first fetch that failed (a wrong app password, no
+/// connection) or was cancelled before the mailbox was read leaves setup open. A database of
+/// an earlier version that fetched counts as done.
+pub fn has_completed_fetch(store: &Store) -> bool {
+    last_fetch_at(store).is_some()
+}
+
 /// Start of the last successful mailbox scan.
 pub fn last_fetch_at(store: &Store) -> Option<Timestamp> {
     store
