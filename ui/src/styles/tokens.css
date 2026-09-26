@@ -412,6 +412,8 @@
      its button and keeps --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
   --menu-row: 30px;
+  /* A group's small heading (the filter menu's Sortierung, Portal, Passung). */
+  --menu-heading: 26px;
   --menu-pad: var(--space-4);
   --menu-inset: var(--space-8);
   --menu-icon: 20px;

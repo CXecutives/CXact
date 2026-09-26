@@ -242,16 +242,18 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   does not fit shows at the limit and comes back once there is room. Only this handle resizes (the sidebar has none). No line: on hover a
   grey 4 x 44 px grip (`--grip-width`, `--grip-height`) in the middle of the gap, darker while dragging, like Claude's; the
   tooltip "Breite ändern" over "Doppelklick setzt zurück"; a double click sets the first width back.
-- Jobs: list header, row 1 search + Abrufen (the primary; Abbrechen during a run), row 2 Neu n · Alle n · Favoriten n,
-  "Alle als gelesen markieren" and the order (a quiet MenuButton with the OS menu: Nach Passung, Nach Datum) · left
+- Jobs: list header (the approved design of 2026-09-26): the tabs Eingang (its unopened jobs in coral, none at 0),
+  Archiv, Papierkorb; one toolbar row: the search, the funnel (inbox only) and Abrufen (the primary; Abbrechen
+  during a run); an active filter named in one quiet line under it with "Zurücksetzen"; the Archiv and the
+  Papierkorb keep a second row with their count, "Papierkorb leeren" and the order · left
   column run card + list (86 px rows, 106 with a two-line title: ring 40, title with unread dot, meta, reason line,
   date, status badge only on deviation; excluded grey behind the divider; duplicates as one row) · reader unboxed on
   the sheet, at most 720 px (ring 56 counting up, band word, n of m must, the "Rahmen" chips for contract type and hard
   criteria plus the ad's rate and start where no criterion covers them, reasons met/partial/open/check/violations;
   hover lights the passage, click scrolls to it) · day overview when nothing is selected (Neu und passend with the
   comparison prompt, Offene Punkte, Dateien; no counts; the blocks stand in the DOM as on screen).
-  Neu keeps the jobs opened in this visit through a reload that keeps the list (the end of a run, a sort), where the
-  list's order puts them; entering Neu again drops them. The keys count rows in the order the list draws them.
+  One list per place in the chosen order (no segments, no sections but the folded "Ausgeschlossen (n)" at the
+  end); an unopened job keeps its dot until it is opened. The keys count rows in the order the list draws them.
   Wave 1 (2026-09-25): a placeholder waits once (the list or the job that takes
   `--delay-placeholder` shows it, then at once; until then the pane keeps what it showed); the
   selected row darkens one more warm step while pressed (`--surface-selected-press`, 93 %); a
@@ -559,8 +561,9 @@ as the parts land on `main`.
 - No fetch at app start (the switch is gone); F5 or Ctrl/Cmd+R and "Abrufen" fetch.
 - The app starts in the **Übersicht**, a view of its own (sidebar: Übersicht, Jobs, Profil,
   Einstellungen; the settings as a gear). Archiv and Papierkorb are tabs of Jobs (Eingang,
-  Archiv, Papierkorb); Neu, Alle and Favoriten exist in the inbox only, Favoriten are the
-  favourites of the inbox. Ctrl/Cmd+1 to 4 choose the views.
+  Archiv, Papierkorb). The inbox is one list (user, 2026-09-26): no Neu, Alle, Favoriten
+  segments, no "Alle gelesen"; the Eingang tab counts the unopened jobs. Ctrl/Cmd+1 to 4
+  choose the views.
 - Menus: the app draws every menu itself (field menu, the job's menu on a right click, the
   sort, "…" menus); no OS popup (the Tauri menu API and its permissions are gone). OS file and
   folder pickers, the start failure box, the macOS menu bar and the freelance.de sign-in
@@ -568,8 +571,16 @@ as the parts land on `main`.
 - Filter: one funnel in the inbox's header holds the order and the filter (portal, band from
   mid or high only, reset); a dot and its tooltip say when it is on; the archive and the
   trash keep their order button and have no filter.
+- Filter: one funnel in the inbox's toolbar row holds the order and the filter under small
+  headings (Sortierung; Nur Favoriten, a switch; Portal; Passung from mid or high only;
+  "Filter zurücksetzen"), one table (`ui/src/lib/state/filter.ts`) that the menu, the line
+  under the toolbar, the reset and the harness read; a coral dot on the funnel and the line
+  say when it is on; the archive and the trash keep their order button and have no filter.
 - Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
-  S favourite, U unread, B applied, O open the ad; shown in tooltips and menus.
+  S favourite, O open the ad; shown in tooltips and menus (U and B went with "Als ungelesen"
+  and "Beworben", 2026-09-26). One table holds these keys (`LIST_KEYS` in
+  `ui/src/lib/input/input.ts`): the handler, the job's actions and menu, the card of the keys
+  and Einstellungen read it; the orders of every menu come from the filter table's `SORTS`.
 - Rows (approved row, user 2026-09-26): line 1 the title with, together at its end, the star
   of a favourite, the portal's tile ("+1" for other portals, named in its tooltip; the tile
   stays beside the hover tools) and the date; line 2 company · place; line 3 the ad's facts
@@ -591,6 +602,8 @@ as the parts land on `main`.
   structure (section headings, active labels of the sidebar, tabs and segments, links, "prüfen").
 - Time: days in words up to a week everywhere ("gestern 08:30", "vorgestern", "Mo").
 - New features: exclusion words in the profile; workload and
+- New features: ("Beworben" with date and note left the UI again, 2026-09-26; the backend
+  follows); exclusion words in the profile; workload and
   minimum duration as checks (engine 16); an hourly wage for employees or agency work is
   employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
   updates, an application-letter prompt, snooze, radius, direct client vs agency.

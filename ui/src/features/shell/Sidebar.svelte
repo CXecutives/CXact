@@ -23,7 +23,6 @@
   import { dragBands, keyLabel } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
-  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
@@ -75,15 +74,9 @@
       !(navigation.current === 'jobs' && !shell.firstRun && shell.runCard && !shell.listHidden),
   );
 
-  /** The view first: an unsaved Profil may keep it and ask. Back from another view, Neu is
-   *  entered again (the jobs read meanwhile leave it). */
+  /** The view (an unsaved Profil may keep it and ask). */
   function choose(id: ViewId): void {
-    const from = navigation.current;
-    navigation.go(id, false, () => {
-      if (id === 'jobs' && from !== 'jobs' && !shell.firstRun && jobs.facet === 'new') {
-        void jobs.load(true);
-      }
-    });
+    navigation.go(id);
   }
 </script>
 

@@ -701,9 +701,8 @@ export const de = {
     tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${clickWith(key)}.`,
     /** The pane names the chosen jobs, the first few, then how many more. */
     more: (value: number) => `+${n(value)}`,
-    /** The pane's and the bar's words for the star and for reading. */
+    /** The pane's and the bar's word for the star. */
     pin: 'Favorit',
-    read: 'Als gelesen',
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
@@ -924,12 +923,8 @@ export const de = {
     fetch: 'Abrufen',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
-    /** The switch Neu, Alle, Favoriten ("Auswahl" is the multi-selection's word). */
-    facet: 'Ansicht',
-    facetNew: 'Neu',
-    facetAll: 'Alle',
-    facetSaved: 'Favoriten',
-    /** The menu of the sort button (its accessible name). */
+    /** The menu of the sort button (its accessible name), the order's heading in the
+     *  funnel's menu. */
     sortMenu: 'Sortierung',
     /** The order of the list in words (the sort button). */
     sortLabel: {
@@ -939,18 +934,11 @@ export const de = {
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
     /** The funnel of the inbox (its tooltip and the name of its menu): the order and the
-     *  filter in one menu. */
+     *  filter in one menu (lib/state/filter.ts), its groups under small headings. */
     filter: 'Filter',
-    /** The second line of its tooltip while a filter is on: what the list shows (the portal
-     *  by name). */
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null): string => {
-      const parts = [
-        portal === null ? '' : `nur ${portal}`,
-        band === 'mid' ? 'ab mittlerer Passung' : band === 'high' ? 'nur hohe Passung' : '',
-      ].filter((part) => part !== '');
-      const text = parts.join(', ');
-      return text.charAt(0).toUpperCase() + text.slice(1);
-    },
+    favouritesOnly: 'Nur Favoriten',
+    portalHeading: 'Portal',
+    bandHeading: 'Passung',
     allPortals: 'Alle Portale',
     /** The lowest band of the filter (`any`: every job, also one without a score). */
     band: {
@@ -961,6 +949,10 @@ export const de = {
     /** Without a usable profile there is no fit to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Passung.',
     filterReset: 'Filter zurücksetzen',
+    /** The quiet line under the toolbar while a filter is on: its choices in the menu's
+     *  words, then the way back. */
+    filterLine: (parts: readonly string[]) => parts.join(' · '),
+    filterLineReset: 'Zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst ein Portal ein.',
@@ -1069,11 +1061,6 @@ export const de = {
     label: 'Jobs',
     /** The folding section at the end of every place (its count in brackets where known). */
     excluded: 'Ausgeschlossen',
-    /** By match: the jobs still waiting for their score, a small group on top. */
-    pendingSection: 'Noch ohne Passung',
-    /** Under Neu: the jobs first seen in the last fetch, then the older unread ones. */
-    freshSection: 'Seit dem letzten Abruf',
-    olderSection: 'Früher',
     /** A row excluded by a formal requirement the ad makes mandatory (`formalOpen` with its
      *  `class`), in the short words of the criteria. */
     formalMissing: {
@@ -1085,20 +1072,11 @@ export const de = {
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
     createAlert: (portal: string) => `Alert auf ${portal} anlegen`,
     readOlder: FULL_MAILBOX,
-    emptyNew: 'Keine neuen Jobs.',
-    emptyFavourites: 'Noch keine Favoriten.',
     emptyAll: 'Nach dem ersten Abruf stehen die Jobs hier.',
     emptyAfterRun: 'Die Alert-Mails enthielten bisher keine Jobs.',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
-    /** A search under Neu or Favoriten that Alle would find. */
-    noHitIn: {
-      new: (query: string) => `Keine neuen Jobs zu „${query}“.`,
-      favourites: (query: string) => `Keine Favoriten zu „${query}“.`,
-    },
-    searchAll: 'In allen suchen',
     /** The filter of the inbox leaves nothing in the list. */
     noFilterHit: 'Kein Job passt zum Filter.',
-    showAll: 'Alle zeigen',
     loadFailed: 'Die Jobliste ließ sich nicht laden.',
     pageFailed: 'Weitere Jobs ließen sich nicht laden.',
     createProfile: 'Profil anlegen',

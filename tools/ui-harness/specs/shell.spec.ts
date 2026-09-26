@@ -165,7 +165,8 @@ const EN = `${WIN}&lang=en`;
 
 async function readFirst(page: Page): Promise<void> {
   await page.getByTestId('nav-jobs').click();
-  await rows(page).first().click();
+  // The best scored job (by match the first row is one still without a score).
+  await page.getByTestId('job-row-freelancermap-2801').click();
   await expect(page.getByTestId('reader-ring')).toContainText('91');
   await animationsDone(page);
 }
@@ -967,7 +968,6 @@ test('with scrollbars shown the list and the reader keep their room: edges line 
     });
     const page = await context.newPage();
     await open(page, WIN);
-    await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
     const list = page.getByTestId('list-scroll');
     // The room of the Windows scrollbar is there (8 px), whether the list scrolls or not.
     const gutter = await list.evaluate(
@@ -1107,7 +1107,6 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   );
   await page.keyboard.press('Escape');
   await page.getByTestId('nav-jobs').click();
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'freelancermap-2803').hover();
   await page.getByTestId('trash-freelancermap-2803').click();
   await page.getByTestId('place-trash').click();
@@ -1277,22 +1276,21 @@ test('Shift with the arrows, Home and End chooses jobs from the open one', async
   await expect(page.getByTestId('selection-pane')).toHaveCount(0);
 });
 
-test('the segments above the list choose with left and right; Home and End go to the list', async ({
+test('the places above the list choose with left and right; Home and End go to the list', async ({
   page,
 }) => {
   await open(page, WIN);
-  const facet = page.getByTestId('facet');
-  const radios = facet.getByRole('radio');
-  await facet.locator('[aria-checked="true"]').focus();
+  const tabs = page.getByTestId('places').getByRole('tab');
+  await page.getByTestId('place-inbox').focus();
   await page.keyboard.press('ArrowRight');
-  await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
-  await expect(radios.nth(1)).toBeFocused();
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(1)).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(radios.first()).toHaveAttribute('aria-checked', 'true');
+  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   // Up, down, Home and End belong to the list: End opens its last job.
   const before = (await calls(page, 'job_detail')).length;
   await page.keyboard.press('End');
-  await expect(radios.first()).toHaveAttribute('aria-checked', 'true');
+  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
   await expect.poll(async () => (await calls(page, 'job_detail')).length).toBeGreaterThan(before);
 });
 
@@ -1389,7 +1387,6 @@ test('a neutral badge stands off the wash of the selected row', async ({ page })
 test('a cut title in a toast: the closing quote follows the ellipsis', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'freelancermap-2801').hover();
   await page.getByTestId('archive-freelancermap-2801').click();
   const name = page.getByTestId('toast-text').locator('.name');
@@ -1455,7 +1452,6 @@ test('one glyph per action: retries load again, the reset keeps its own', async 
 
 test('deleting for good names the job like a move; several by their number', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   for (const key of ['freelancermap-2802', 'freelancermap-2803', 'linkedin-4100200301']) {
     await row(page, key).hover();
     await page.getByTestId(`trash-${key}`).click();
@@ -1587,8 +1583,10 @@ test('the reader ring fills from empty the first time a job opens, once', async 
   const fills = (): Promise<string[]> =>
     page.evaluate(() => [...(window as unknown as { __fills: string[] }).__fills]);
   await open(page, '?platform=windows');
-  const rows = page.locator('[data-testid^="job-row-"]');
-  await rows.first().click();
+  // Two scored jobs (by match the first row is one still without a score, no fill).
+  const best = page.getByTestId('job-row-freelancermap-2801');
+  const next = page.getByTestId('job-row-linkedin-4100200301');
+  await best.click();
   const ring = page.getByTestId('reader-ring');
   await expect(ring).toBeVisible();
   // One Web Animation on the arc, starting from empty (stroke-dashoffset 100).
@@ -1598,11 +1596,11 @@ test('the reader ring fills from empty the first time a job opens, once', async 
     .poll(() => ring.evaluate((node) => node.querySelector('.value')!.getAnimations().length))
     .toBe(0);
   // Once: another job fills its own ring, the first one back is simply there.
-  await rows.nth(1).click();
+  await next.click();
   await expect.poll(fills).toEqual(['100', '100']);
-  await rows.first().click();
+  await best.click();
   await expect(page.getByTestId('reader-title')).toHaveText(
-    await rows.first().locator('.title').innerText(),
+    await best.locator('.title').innerText(),
   );
   await settle(page);
   expect(await fills()).toEqual(['100', '100']);
@@ -1669,7 +1667,6 @@ test('under reduced motion nothing scales, pops or shakes', async ({ page }) => 
 
 test('hover rests while a list scrolls', async ({ page }) => {
   await open(page, '?platform=windows');
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // The window mounts a few rows per frame: scroll once the list can.
   await expect
     .poll(() =>

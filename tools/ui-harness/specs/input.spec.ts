@@ -155,7 +155,6 @@ test.beforeEach(async ({ page }) => {
 test('right click, middle click and drag: what the page lets through', async ({ page }) => {
   // A list long enough to scroll: the middle button may start the autoscroll there.
   await page.setViewportSize({ width: 1360, height: 560 });
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const result = await page.evaluate(() => {
     const field = document.body.appendChild(document.createElement('input'));
     const view = document.querySelector('[data-testid="view-jobs"]')!;
@@ -733,7 +732,8 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   page,
   browserName,
 }) => {
-  await page.locator('[data-testid^="job-row-"]').first().click();
+  // A job with its full ad (by match the first row is one still without a score or ad).
+  await page.getByTestId('job-row-freelancermap-2801').click();
   const text = page.getByTestId('ad-text');
   await expect(text).toBeVisible();
   // A drag across the ad text selects it, like in a document (in view, below the reader's
@@ -787,7 +787,7 @@ test('the ad text, title and facts select and copy; the rest does not select', a
 test('native cursor: the arrow on controls, the text cursor on copyable text', async ({ page }) => {
   await expect(page.getByTestId('fetch')).toHaveCSS('cursor', 'default');
   await expect(page.getByTestId('nav-profile')).toHaveCSS('cursor', 'default');
-  await page.locator('[data-testid^="job-row-"]').first().click();
+  await page.getByTestId('job-row-freelancermap-2801').click();
   await expect(page.getByTestId('ad-text')).toHaveCSS('cursor', 'text');
 });
 
@@ -889,6 +889,9 @@ test('a middle click on a button, a link-like button or a row does nothing', asy
   await page.waitForTimeout(200);
   expect(await calls(page, 'start_run')).toHaveLength(0);
   expect(await calls(page, 'job_detail')).toHaveLength(0);
+  // The middle press in the list, which scrolls, started the OS autoscroll: a click on the
+  // empty reader ends it (and presses nothing).
+  await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
   // The ad's link (it opens the page outside the app on a left click only).
   await rows(page).first().click();
   const openAd = page.getByTestId('open-ad');
@@ -1008,7 +1011,7 @@ test('the right and the middle button never press a control', async ({ page }) =
     page.getByTestId('fetch'),
     page.locator('[data-testid^="job-row-"]').first(),
     page.getByTestId('nav-settings'),
-    page.getByTestId('facet').getByRole('radio').nth(1),
+    page.getByTestId('place-archive'),
   ];
   for (const [at, target] of targets.entries()) {
     // A row answers the right button with its menu (checked in menu specs), not a press.
@@ -1017,6 +1020,9 @@ test('the right and the middle button never press a control', async ({ page }) =
       expect(held, `${button} held on ${String(target)}`).toBe(hover);
       expect(after).toBe(hover);
     }
+    // A middle press in the list, which scrolls, starts the OS autoscroll: a click on the
+    // empty reader ends it (and presses nothing).
+    if (at === 1) await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
   }
   expect(await calls(page, 'start_run')).toHaveLength(0);
   await expect(page.getByTestId('reader')).toHaveCount(0);
@@ -1124,8 +1130,10 @@ test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
 });
 
 test('a radio group is one Tab stop and the arrows choose', async ({ page }) => {
-  await open(page, WIN);
-  const radios = page.getByTestId('facet').getByRole('radio');
+  await open(page, '?gallery&platform=windows');
+  const group = page.getByTestId('segmented-facet');
+  await group.scrollIntoViewIfNeeded();
+  const radios = group.getByRole('radio');
   const count = await radios.count();
   expect(count).toBeGreaterThan(1);
   const stops = await radios.evaluateAll((nodes) =>
@@ -1136,11 +1144,11 @@ test('a radio group is one Tab stop and the arrows choose', async ({ page }) => 
   const first = await checked.textContent();
   await checked.focus();
   await page.keyboard.press('ArrowRight');
-  const now = page.getByTestId('facet').locator('[aria-checked="true"]');
+  const now = group.locator('[aria-checked="true"]');
   await expect(now).not.toHaveText(first!);
   await expect(now).toBeFocused();
   await page.keyboard.press('ArrowLeft');
-  await expect(page.getByTestId('facet').locator('[aria-checked="true"]')).toHaveText(first!);
+  await expect(group.locator('[aria-checked="true"]')).toHaveText(first!);
   // Left from the first option wraps to the last.
   await radios.first().click();
   await radios.first().focus();
@@ -1266,24 +1274,24 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
   // The autoscroll is Windows' (WebView2, a Chromium): WebKit has none to end.
   test.skip(browserName === 'webkit', 'no autoscroll in WebKit');
   await open(page, '?platform=windows&scenario=many');
-  const all = page.getByTestId('facet').getByRole('radio', { name: /Alle/ });
+  const archive = page.getByTestId('place-archive');
   const list = (await page.getByTestId('job-list').boundingBox())!;
   const inList = { x: list.x + list.width / 2, y: list.y + list.height / 2 };
   // A middle click in the list: the autoscroll runs until the next press.
   await page.mouse.move(inList.x, inList.y);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.up({ button: 'middle' });
-  await all.click();
-  await expect(all).not.toHaveAttribute('aria-checked', 'true');
+  await archive.click();
+  await expect(archive).not.toHaveAttribute('aria-selected', 'true');
   // The next click is an ordinary one again.
-  await all.click();
-  await expect(all).toHaveAttribute('aria-checked', 'true');
+  await archive.click();
+  await expect(archive).toHaveAttribute('aria-selected', 'true');
   // Held and dragged, the middle button scrolled while held: no mode is left.
-  const fresh = page.getByTestId('facet').getByRole('radio', { name: /Neu/ });
+  const inbox = page.getByTestId('place-inbox');
   await page.mouse.move(inList.x, inList.y);
   await page.mouse.down({ button: 'middle' });
   await page.mouse.move(inList.x, inList.y + 60, { steps: 4 });
   await page.mouse.up({ button: 'middle' });
-  await fresh.click();
-  await expect(fresh).toHaveAttribute('aria-checked', 'true');
+  await inbox.click();
+  await expect(inbox).toHaveAttribute('aria-selected', 'true');
 });

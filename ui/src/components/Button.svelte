@@ -22,9 +22,9 @@
     stop (`stop`) is in the Tab order; the arrows move between the options (input.ts). A
     choice reads like a field: 14 px text.
   - turned: the glyph stands half a turn; it turns in 180 ms.
-  - dot: a small navy dot at the glyph's corner says that something of it is on (the
+  - dot: a small coral dot at the glyph's corner says that something of it is on (the
     funnel of the list while a filter narrows it); `hint` adds a second, smaller line to
-    the tooltip that says what (the active filters).
+    the tooltip that says what.
   - link: navy text that underlines on hover (a way on, e.g. under a field).
   - inField: a button inside a text field (show password, clear search), like the native
     ones: not in the Tab order, and a click leaves the caret in the field.
@@ -244,8 +244,8 @@
     transition: transform var(--dur-base) var(--ease-emphasized);
   }
 
-  /* Something of the button is on: a small navy dot on the glyph's upper corner, like the
-     mark of a filter that is set (navy is the chosen filter's colour). */
+  /* Something of the button is on: a small coral dot on the glyph's upper corner, like the
+     mark of a filter that is set (the approved design, 2026-09-26). */
   .dot {
     position: absolute;
     top: calc(-1 * var(--space-4));
@@ -253,7 +253,7 @@
     width: var(--dot-unread);
     height: var(--dot-unread);
     border-radius: var(--radius-full);
-    background-color: var(--active-edge);
+    background-color: var(--unread);
   }
 
   .busy {

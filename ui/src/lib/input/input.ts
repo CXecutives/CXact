@@ -328,20 +328,33 @@ export interface ListKeyHandlers {
    *  through it, like in a mail app (pressing the row again would change nothing), and after
    *  a click into it the arrows, Home and End scroll it. */
   reader?: () => HTMLElement | null;
-  /** Single keys for the open item (or the chosen ones), like a mail app: E archive,
-   *  Entf (Windows) or Backspace/Delete (macOS) trash, S favourite, O open the ad. Never in
-   *  a field. */
+  /** Single keys for the open item (or the chosen ones), like a mail app (LIST_KEYS). Never
+   *  in a field. */
   act?: (action: ListAction) => void;
 }
 
-export type ListAction = 'archive' | 'trash' | 'star' | 'openAd';
+/**
+ * The single keys of the job list, one table, as keyLabel writes them: this handler, the
+ * job's actions and its menu (their key hints), the card of the keys and Einstellungen all
+ * read it; another key is a change here only. `del` is Entf on Windows, Backspace or Delete
+ * on macOS; Enter opens a row by the row's own button (the handler leaves it alone).
+ */
+export const LIST_KEYS = {
+  open: 'enter',
+  archive: 'e',
+  trash: 'del',
+  star: 's',
+  openAd: 'o',
+} as const;
 
-/** The single keys of a list (lower case, no modifier). */
-const LIST_ACTION_KEYS: Readonly<Record<string, ListAction>> = {
-  e: 'archive',
-  s: 'star',
-  o: 'openAd',
-};
+export type ListAction = Exclude<keyof typeof LIST_KEYS, 'open'>;
+
+/** The letter keys of LIST_KEYS (lower case, no modifier) and what they do. */
+const LETTER_ACTIONS: ReadonlyMap<string, ListAction> = new Map(
+  (Object.entries(LIST_KEYS) as [keyof typeof LIST_KEYS, string][]).flatMap(([action, key]) =>
+    action !== 'open' && key.length === 1 ? [[key, action] as const] : [],
+  ),
+);
 
 /** Entf on Windows, Backspace or Delete on macOS (the Mac's delete key is Backspace). */
 function isTrashKey(event: KeyboardEvent): boolean {
@@ -434,7 +447,7 @@ function dispatchListKey(event: KeyboardEvent): boolean {
   const list = listFor(event.target);
   if (list === null) return false;
   if (!event.shiftKey && list.act !== undefined) {
-    const action = isTrashKey(event) ? 'trash' : LIST_ACTION_KEYS[event.key.toLowerCase()];
+    const action = isTrashKey(event) ? 'trash' : LETTER_ACTIONS.get(event.key.toLowerCase());
     if (action !== undefined && event.key.length <= 9) {
       list.act(action);
       return true;

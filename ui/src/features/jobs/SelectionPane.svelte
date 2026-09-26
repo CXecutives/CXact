@@ -1,9 +1,8 @@
 <!--
   The reader while two or more jobs are chosen (like Mail and Outlook): how many, the titles
   of the first eight (then "+n"), and what can be done with all of them, with their words:
-  the place's actions and the star (as in the list header's bar), "Als gelesen" while one
-  of them is unread, "Details holen" when every one still lacks its full ad. One quiet line
-  says how to choose.
+  the place's actions and the star (as in the list header's bar), "Details holen" when every
+  one still lacks its full ad. One quiet line says how to choose.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';

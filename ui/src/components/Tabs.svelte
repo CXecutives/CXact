@@ -2,19 +2,23 @@
   The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels in a row, the
   chosen one in ink with a thin line under it that slides to the next choice like the
   sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and a
-  change of size never slide). An unchosen tab darkens on hover. Like native tabs the row is
-  one Tab stop and the left and right arrows choose (lib/input/input.ts).
+  change of size never slide). A tab may carry a small coral number after its label (the
+  inbox's unopened jobs; none at 0). An unchosen tab darkens on hover. Like native tabs the
+  row is one Tab stop and the left and right arrows choose (lib/input/input.ts).
 -->
 <script lang="ts" module>
   export interface TabOption<Id extends string = string> {
     id: Id;
     label: string;
+    /** A number after the label (what is new there); null or absent: none. */
+    count?: number | null;
     testid?: string;
   }
 </script>
 
 <script lang="ts" generics="Id extends string">
   import { cssVars, px } from '$lib/actions/cssVars';
+  import { formatNumber } from '$lib/i18n/format';
   import { settled } from '$lib/motion/settled.svelte';
 
   interface Props {
@@ -75,7 +79,12 @@
       data-testid={option.testid ?? undefined}
       onclick={() => {
         if (!chosen) onchange(option.id);
-      }}>{option.label}</button
+      }}
+      >{option.label}{#if option.count}<span
+          class="count"
+          data-testid={option.testid ? `${option.testid}-count` : undefined}
+          >{formatNumber(option.count)}</span
+        >{/if}</button
     >
   {/each}
   {#if line}<span
@@ -122,6 +131,15 @@
 
   .tab[aria-selected='true'] {
     color: var(--nav-active-fg);
+  }
+
+  /* Coral like the unread dot: what is new there. */
+  .count {
+    margin-inline-start: var(--space-6);
+    color: var(--unread);
+    font: var(--type-xs);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: var(--numeric);
   }
 
   .tab:focus-visible {

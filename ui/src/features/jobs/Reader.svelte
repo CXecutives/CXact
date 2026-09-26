@@ -61,9 +61,8 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatDate, formatRelative, formatTime } from '$lib/i18n/format';
-  import { contentMoving } from '$lib/input/input';
-  import { keysOf, type ShortcutAction } from '$lib/input/keys';
-  import { keyConventions, keyLabel } from '$lib/platform';
+  import { contentMoving, LIST_KEYS } from '$lib/input/input';
+  import { keyLabel } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import {
     DETAIL_WARNS,
@@ -357,18 +356,18 @@
     };
   });
 
-  /** The keys the list takes for the open job (lib/input/keys.ts), named in the tooltips. */
-  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', ShortcutAction>> = {
-    open: 'openAd',
-    star: 'star',
-    archive: 'archive',
-    trash: 'trash',
-    close: 'close',
+  /** The keys the list takes for the open job, named in the tooltips: the one key table
+   *  (input.ts LIST_KEYS; "open" here is the ad), plus Esc that closes the job. */
+  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', string>> = {
+    open: LIST_KEYS.openAd,
+    star: LIST_KEYS.star,
+    archive: LIST_KEYS.archive,
+    trash: LIST_KEYS.trash,
+    close: 'esc',
   };
   const keyOfAction = (id: keyof typeof KEYS): string | null => {
-    const action = KEYS[id];
-    const combo = action === undefined ? null : keysOf(action, keyConventions());
-    return combo === null ? null : keyLabel(combo);
+    const key = KEYS[id];
+    return key === undefined ? null : keyLabel(key);
   };
 
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
@@ -497,7 +496,7 @@
       id: 'trash',
       icon: 'trash',
       label: () => t.actions.trash,
-      key: 'del',
+      key: LIST_KEYS.trash,
       apart: true,
       when: () => tools.some((tool) => tool.id === 'trash'),
       run: () => act('trash'),

@@ -1,5 +1,6 @@
-// What a job can do where it is, with one name, icon and order on a row, in the reader and
-// in the selection bar (the star, a flag of its own, comes last where there is one):
+// What a job can do where it is, with one name, icon, key and order on a row, in the reader,
+// in its menu and in the selection bar (the star, a flag of its own, comes last where there
+// is one), from the tables below (ACTIONS, OF_PLACE, JOB_MENU):
 //   Eingang: Archivieren, Löschen · Archiv: In den Eingang, Löschen · Papierkorb:
 //   Wiederherstellen, Endgültig löschen (asks first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
@@ -20,10 +21,10 @@ import { t } from '$lib/i18n/t';
 import type { Deleted, JobKey, JobView, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
 import { app } from '$lib/state/app.svelte';
-import { inFacet, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
+import { inList, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText } from '$lib/state/run.svelte';
-import { onUndo } from '$lib/input/input';
+import { LIST_KEYS, onUndo } from '$lib/input/input';
 import { commandKey } from '$lib/platform';
 import { toasts } from '$lib/state/toasts.svelte';
 
@@ -33,6 +34,8 @@ export type ActionId = MoveId | 'purge';
 export interface JobAction {
   id: ActionId;
   icon: IconName;
+  /** Its single key in the list (lib/input/input.ts, as keyLabel writes it), if any. */
+  key: string | null;
   label: string;
 }
 
@@ -46,13 +49,13 @@ const TARGET: Record<MoveId, Place> = {
 };
 
 /** One icon per meaning: the place a job goes to (docs/PLAN.md, icons by meaning); deleting
- *  for good never looks like the trash. */
-const ICON: Record<ActionId, IconName> = {
-  archive: 'archive',
-  toInbox: 'inbox',
-  trash: 'trash',
-  restore: 'undo',
-  purge: 'purge',
+ *  for good never looks like the trash. The key is the list's single key (input.ts). */
+const ACTIONS: Record<ActionId, { icon: IconName; key: string | null }> = {
+  archive: { icon: 'archive', key: LIST_KEYS.archive },
+  toInbox: { icon: 'inbox', key: null },
+  trash: { icon: 'trash', key: LIST_KEYS.trash },
+  restore: { icon: 'undo', key: null },
+  purge: { icon: 'purge', key: null },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -63,8 +66,34 @@ const OF_PLACE: Record<Place, readonly ActionId[]> = {
 
 /** The actions of a job in this place, in their one order (the star is not one of them). */
 export function actionsOf(place: Place): JobAction[] {
-  return OF_PLACE[place].map((id) => ({ id, icon: ICON[id], label: t.actions[id] }));
+  return OF_PLACE[place].map((id) => ({ id, ...ACTIONS[id], label: t.actions[id] }));
 }
+
+/** An entry of the job's menu (its id is the menu's test id `menu-item-<id>`): `moves`
+ *  stands for the job's actions where it is. */
+export interface JobMenuItem {
+  id: 'open' | 'open-ad' | 'star' | 'moves' | 'prompt';
+  icon: IconName | null;
+  /** Its single key (as keyLabel writes it), if any. */
+  key: string | null;
+  /** Shown for this job; `many`: the menu acts on several chosen jobs. */
+  shows: (job: JobView, many: boolean) => boolean;
+}
+
+/**
+ * The job's menu (a right click on its row), group by group in its order, a line between the
+ * groups: open it and its ad (one job only), the star, the moves of its place, the prompt
+ * for an AI chat (one scored job only).
+ */
+export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
+  [
+    { id: 'open', icon: 'read', key: LIST_KEYS.open, shows: (_job, many) => !many },
+    { id: 'open-ad', icon: 'external', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
+  ],
+  [{ id: 'star', icon: 'star', key: LIST_KEYS.star, shows: (job) => hasStar(job.place) }],
+  [{ id: 'moves', icon: null, key: null, shows: () => true }],
+  [{ id: 'prompt', icon: 'prompt', key: null, shows: (job, many) => !many && job.match !== null }],
+];
 
 /** A favourite never lies in the trash: the star is there in the inbox and the archive. */
 export const hasStar = (place: Place): boolean => place !== 'trash';
@@ -72,7 +101,7 @@ export const hasStar = (place: Place): boolean => place !== 'trash';
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
 
-// Ctrl/Cmd+Z takes back the newest move (or "all read") while its toast is up.
+// Ctrl/Cmd+Z takes back the newest move while its toast is up.
 onUndo(() => toasts.undoLast());
 
 const GUARD_MS = 500;
@@ -254,9 +283,9 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   // A job that already lies there is no move (and no toast says it moved).
   const list = all.filter((job) => job.place !== to);
   if (list.length === 0 || guarded()) return null;
-  // Only rows that leave the list fold away (a favourite archived stays among Favoriten), and
-  // only a few: many rows folding at once would hold the page for frames.
-  const leaving = list.filter((job) => !inFacet({ ...job, place: to }, jobs.facet));
+  // Only rows that leave the list fold away, and only a few: many rows folding at once would
+  // hold the page for frames.
+  const leaving = list.filter((job) => !inList({ ...job, place: to }, jobs.place, jobs.filter));
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
   const focus = inRow();
   const folding = leaving.length <= staggerLimit() ? leaving : [];
@@ -354,8 +383,8 @@ export function trashEmptied(deleted: Deleted): void {
 }
 
 /**
- * The actions for chosen jobs: those of their place; chosen from several places (Favoriten
- * holds inbox and archive) only what fits every one of them.
+ * The actions for chosen jobs: those of their place; chosen from several places (a job that
+ * moved meanwhile) only what fits every one of them.
  */
 export function actionsFor(list: readonly JobView[]): JobAction[] {
   const places = [...new Set(list.map((job) => job.place))];

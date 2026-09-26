@@ -4,7 +4,8 @@
   the window). It opens at the pointer (a right click) or below its button, flips at the
   window's edges and never leaves the window: a menu taller than the window scrolls inside
   itself (the wheel over it scrolls only the menu). Rows are 30 px with the text of a field,
-  a fixed icon column (the check of a choice sits there too) and the keys right and quiet.
+  a fixed icon column (the check of a choice or a switch sits there too) and the keys right
+  and quiet; a group may carry a small muted heading, which the keys pass over.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row, a left click chooses it.
 -->
@@ -71,14 +72,19 @@
         {#each open.entries as entry, index (index)}
           {#if isItem(entry)}
             {@const choice = entry.checked !== undefined && entry.checked !== null}
+            {@const role = entry.toggle
+              ? 'menuitemcheckbox'
+              : choice
+                ? 'menuitemradio'
+                : 'menuitem'}
             <button
               type="button"
               class="item"
               class:active={menuState.active === index}
               class:danger={entry.danger === true}
               id={itemId(open.id, index)}
-              role={choice ? 'menuitemradio' : 'menuitem'}
-              aria-checked={choice ? entry.checked === true : undefined}
+              {role}
+              aria-checked={role === 'menuitem' ? undefined : entry.checked === true}
               aria-disabled={entry.disabled === true ? 'true' : undefined}
               tabindex="-1"
               data-testid="menu-item-{entry.id}"
@@ -96,6 +102,10 @@
               <span class="label">{entry.label}</span>
               {#if entry.keys}<span class="keys">{entry.keys}</span>{/if}
             </button>
+          {:else if entry.kind === 'heading'}
+            <div class="heading" role="presentation" data-testid="menu-heading">
+              {entry.label}
+            </div>
           {:else}
             <div class="separator" role="separator"></div>
           {/if}
@@ -186,6 +196,17 @@
     padding-inline-start: var(--space-16);
     color: var(--text-subtle);
     font: var(--type-sm);
+  }
+
+  /* A group's name: small and muted, above its entries. */
+  .heading {
+    display: flex;
+    flex: none;
+    align-items: flex-end;
+    height: var(--menu-heading);
+    padding: 0 var(--menu-inset) var(--space-4);
+    color: var(--text-muted);
+    font: var(--type-xs);
   }
 
   .separator {

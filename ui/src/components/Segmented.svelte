@@ -9,8 +9,8 @@
   warm pill, the others stay muted with a plain count (same box, so nothing moves); an option
   may keep one tone whatever is chosen (the unread count stays warm). A count that goes
   (`null`: none now, 0 is not shown) keeps its room, unseen, as wide as it was last, so the
-  options keep their widths and nothing jumps ("Alle gelesen" empties Neu). An
-  unchosen option washes on hover and darkens while pressed. Counts roll when they change.
+  options keep their widths and nothing jumps. An unchosen option washes on hover and darkens
+  while pressed. Counts roll when they change.
   Like native radio buttons the group is one Tab stop and the arrows, Home and End choose.
 -->
 <script lang="ts" module>

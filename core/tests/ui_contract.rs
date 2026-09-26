@@ -1659,8 +1659,16 @@ fn coral_only_in_its_roles() {
             "var(--toggle-on",
             &["components/Toggle.svelte", "components/JobRow.svelte"],
         ),
-        // The dot of a job not opened yet.
-        ("var(--unread", &["components/JobRow.svelte"]),
+        // The dot of a job not opened yet, what is new in a place (the tab's count) and the
+        // dot of a filter that is on (the approved design, 2026-09-26).
+        (
+            "var(--unread",
+            &[
+                "components/JobRow.svelte",
+                "components/Tabs.svelte",
+                "components/Button.svelte",
+            ],
+        ),
         // Where you are: the selected row, its bar and its ring track, the active view.
         (
             "var(--surface-selected",

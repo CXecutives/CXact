@@ -33,7 +33,6 @@ test('the reader shows the ad rate and start without a profile minimum', async (
 
 test('the search matches every word in any field and the portal name', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const search = page.getByTestId('search');
   // Two words that do not stand next to each other, in two fields.
   await search.fill('bremen CONTROLLING');
@@ -171,7 +170,6 @@ test('the arrow keys follow the order on screen after an exclusion changes in pl
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'linkedin-4100200305').click();
   await stage(page).getByTestId('override').click();
   const openKey = () =>
@@ -194,7 +192,6 @@ test('the arrow keys follow the order on screen after an exclusion changes in pl
 
 test('deleting the open job for good opens the next one', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   for (const key of ['freelancermap-2803', 'linkedin-4100200302']) {
     await row(page, key).hover();
     await page.getByTestId(`trash-${key}`).click();
@@ -209,21 +206,6 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   await stage(page).getByTestId('reader-purge').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
   await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
-});
-
-// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
-test.fixme('the day overview starts without a hairline when only open points are left', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=offline`);
-  await page
-    .getByTestId('mark-all-read')
-    .click()
-    .catch(() => undefined);
-  const firstBlock = page.getByTestId('day-overview').locator(':scope > .block').first();
-  await expect(firstBlock).toBeVisible();
-  const border = await firstBlock.evaluate((el) => getComputedStyle(el).borderTopWidth);
-  expect(border).toBe('0px');
 });
 
 test('one column: back after the arrow keys shows the open row, and Ctrl+F reaches the search', async ({
@@ -350,10 +332,7 @@ test('a fetch started from the Archiv leads to its new jobs', async ({ page }) =
   await page.getByTestId('place-archive').click();
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  // The run's count of new jobs leads to them, from any place.
+  // The run's count of new jobs leads to them, from any place: the inbox.
   await page.getByTestId('last-new').click();
-  await expect(page.getByTestId('facet').getByRole('radio', { name: /Neu/ })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
 });

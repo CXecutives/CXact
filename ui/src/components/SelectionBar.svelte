@@ -1,5 +1,5 @@
 <!--
-  The slim bar that replaces the list header's second row while two or more jobs are
+  The slim bar that replaces the list header's toolbar row while two or more jobs are
   selected, on one line: "3 ausgewählt", the place's actions as icon buttons (the same icons,
   names and order as on a row and in the reader), and the × that ends the choice ("Auswahl
   aufheben" its tooltip). Esc clears the
