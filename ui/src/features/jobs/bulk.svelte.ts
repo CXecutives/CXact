@@ -85,8 +85,8 @@ class Bulk {
         icon: 'download',
         label: t.reader.fetchDetails,
         testid: 'selection-details',
-        disabled: run.active,
-        disabledReason: run.busyText,
+        disabled: run.detailsBlocked !== null,
+        disabledReason: run.detailsBlocked,
         onclick: () => void run.start({ kind: 'details', keys: this.chosen.map((job) => job.key) }),
       });
     }

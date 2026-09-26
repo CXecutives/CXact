@@ -165,6 +165,15 @@ class RunStore {
     return null;
   }
 
+  /** Why a run that fetches the full ads of chosen jobs ("Details holen") cannot start now:
+   *  the demo never fetches, a run holds the app; null when it can. The backend refuses the
+   *  same. */
+  get detailsBlocked(): string | null {
+    if (app.state?.demo) return t.error.text('demo', {});
+    if (this.active) return this.busyText;
+    return null;
+  }
+
   /** The steps of the run in progress. */
   get steps(): readonly Step[] {
     return KIND_STEPS[this.kind ?? 'fetch'];

@@ -562,6 +562,8 @@ export const de = {
     settings: 'Einstellungen',
     /** Why the Übersicht waits during the first run. */
     overviewLater: 'Nach dem ersten Abruf',
+    /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
+    demo: 'Demo',
   },
   common: {
     loading: 'Wird geladen',

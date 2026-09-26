@@ -27,8 +27,9 @@
 // the ad's rate and start as plain facts)
 // · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
 // refuses with `dryRun` like `ensure_real`)
-// · demo (the `--demo` start: a sample mailbox, no fetch of any kind, no mailbox, sign-in,
-// other work folder or reset; they refuse with `demo` like `ensure_not_demo`)
+// · demo (the `--demo` start: a sample mailbox, no profile and so no scores yet, no fetch of
+// any kind, no mailbox, sign-in, other work folder or reset; they refuse with `demo` like
+// `ensure_not_demo`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
 // be read; a retry loads).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no).
@@ -1122,8 +1123,12 @@ function initial(): void {
       state.portals[1]!.signedIn = true;
       break;
     case 'demo':
+      // Like `create_demo_data` without a profile: nothing scored, until she picks a test
+      // profile in Profil.
       state.demo = true;
       state.mailbox = { user: 'demo@example.org', vault: VAULT, error: null, check: null };
+      state.profile = null;
+      for (const j of jobs) j.match = null;
       break;
     case 'dry-run':
       state.dryRun = true;

@@ -302,10 +302,14 @@
   const backToJob = $derived(fromJob && jobs.selected !== null);
 
   /** Back to the job: the way is spent (a quick return may find this page still fading out,
-   *  and it opens as the plain page). */
+   *  and it opens as the plain page). The job's row takes the focus once the list is back,
+   *  as when the reader closes, so the keys go on from the job. */
   function goBackToJob(): void {
+    const open = jobs.selected;
     fromJob = false;
-    navigation.go('jobs');
+    navigation.go('jobs', false, () => {
+      if (open !== null) void tick().then(() => jobs.reach(open, true));
+    });
   }
   $effect(() => {
     const portal = navigation.focusPortal;

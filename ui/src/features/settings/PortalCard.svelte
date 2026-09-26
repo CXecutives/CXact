@@ -84,8 +84,15 @@
   const signedIn = $derived(portal.signedIn === true);
   const loginRow = $derived(portal.login === 'optional' && (portal.enabled || signedIn));
   const status = $derived(portal.enabled && (health !== null || quota !== null));
-  const dryRun = $derived(app.state?.dryRun ?? false);
-  const dryRunReason = $derived(t.error.text('dryRun', {}));
+  /** The dry run and the demo touch no portal: no sign-in, no sign-out (the backend refuses
+   *  them the same way). */
+  const noPortal = $derived(
+    app.state?.dryRun
+      ? t.error.text('dryRun', {})
+      : app.state?.demo
+        ? t.error.text('demo', {})
+        : null,
+  );
 
   async function change(patch: Switches): Promise<void> {
     error = null;
@@ -219,8 +226,8 @@
                 icon="log-out"
                 label={t.settings.signOut}
                 loading={busy}
-                disabled={dryRun}
-                disabledReason={dryRunReason}
+                disabled={noPortal !== null}
+                disabledReason={noPortal}
                 testid="sign-out-{portal.portal}"
                 onclick={() => void session(false)}
               />
@@ -231,12 +238,8 @@
                 icon="log-in"
                 label={t.settings.signIn}
                 loading={busy}
-                disabled={run.active || dryRun || !portal.fetchDetails}
-                disabledReason={dryRun
-                  ? dryRunReason
-                  : run.active
-                    ? run.busyText
-                    : t.settings.needsDetails}
+                disabled={run.active || noPortal !== null || !portal.fetchDetails}
+                disabledReason={noPortal ?? (run.active ? run.busyText : t.settings.needsDetails)}
                 testid="sign-in-{portal.portal}"
                 onclick={() => void session(true)}
               />

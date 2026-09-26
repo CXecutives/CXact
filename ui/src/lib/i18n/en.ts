@@ -566,6 +566,7 @@ export const en: Catalog = {
     profile: 'Profile',
     settings: 'Settings',
     overviewLater: 'After the first fetch',
+    demo: 'Demo',
   },
   common: {
     loading: 'Loading',
