@@ -2328,12 +2328,12 @@ async fn a_mark_refreshes_the_overview_and_the_top_matches() {
     store.set_pinned(&controlling.key, true, c()).unwrap();
     refresh();
     assert!(
-        html().contains(texts::HTML_PINNED),
-        "the new favourite shows"
+        html().contains("<span class=\"star\" title=\"Favorit\">"),
+        "the new favourite shows its star in its band"
     );
     assert!(
-        html().contains(texts::HTML_NEW) && html().contains("SAP FI/CO Berater"),
-        "and the other unread matches stay listed beside it"
+        html().contains(&texts::html_low(1)) && !html().contains("SAP FI/CO Berater"),
+        "and the low match stays counted beside it"
     );
     let path = refresh_overview(&store, dir.path(), c(), Language::De).unwrap();
     assert_eq!(path, export::overview_html_path(&result_dir));

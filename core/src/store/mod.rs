@@ -28,10 +28,8 @@ mod pages;
 mod schema;
 
 pub use backup::{BACKUP_DIR, backup_dir};
-pub use jobs::{
-    AlertMailRow, JobFilter, JobRow, MailRef, NEW_DAYS, PageCounts, PageQuery, Seen, new_since,
-};
-pub use matches::Judgement;
+pub use jobs::{AlertMailRow, JobFilter, JobRow, MailRef, PageCounts, PageQuery, Seen};
+pub use matches::{Judgement, NewFitting, OverviewJobs};
 
 pub struct Store {
     conn: Mutex<Connection>,

@@ -96,17 +96,6 @@ impl JobRow {
     }
 }
 
-/// The skill's top matches take the jobs of this many days (by the date of the alert mail).
-pub const NEW_DAYS: i64 = 14;
-
-/// Where the skill's window starts for `now`: [`NEW_DAYS`] back, at the start of that day
-/// (UTC), so the border moves once a day.
-pub fn new_since(now: Timestamp) -> Timestamp {
-    const DAY: i64 = 86_400;
-    let start = now.as_second().div_euclid(DAY) * DAY - NEW_DAYS * DAY;
-    Timestamp::from_second(start).unwrap_or(Timestamp::UNIX_EPOCH)
-}
-
 /// One page of the job list: the jobs of one place, optionally only the unread ones. The
 /// counts cover the search, whatever the place and the filter.
 #[derive(Debug, Clone, Default)]

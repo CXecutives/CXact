@@ -477,16 +477,12 @@ mod tests {
         let keys = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
             jobs.into_iter().map(|j| j.key).collect()
         };
-        let top = keys(
-            store
-                .skill_matches(crate::store::new_since(now()), 10)
-                .unwrap(),
-        );
+        let top = keys(store.best_matches(10).unwrap());
         assert_eq!(top, std::slice::from_ref(&first.key));
         let overview = store.overview_jobs(20).unwrap();
         assert!(overview.favourites.is_empty());
-        assert_eq!(keys(overview.new), [first.key]);
-        assert_eq!(overview.new_total, 1);
+        assert_eq!(keys(overview.new.jobs), [first.key]);
+        assert_eq!(overview.new.total, 1);
     }
 
     /// A job the user marked stays a job of its own: linked as a duplicate it would leave

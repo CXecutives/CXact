@@ -1,7 +1,8 @@
-//! `top_matches.json` in the result folder: the best open scored jobs with what the engine
-//! found, for the external matching skill (an optional second stage): scored (or counted
-//! anyway by the user, "Trotzdem passend"), unread or a favourite, in the inbox, the ad still
-//! open, the alert mail at most 14 days old. It does not depend on the last run, so a fetch
+//! `top_matches.json` in the result folder: the best current matches with what the engine
+//! found, for the external matching skill (an optional second stage) - the jobs the
+//! comparison prompt takes too (`Store::best_matches`, "Beste zum Vergleich"): counted as
+//! scored (or counted anyway by the user, "Trotzdem passend"), in the inbox, the ad still
+//! online and open, the favourites first. It does not depend on the last run, so a fetch
 //! without new jobs keeps the list; every run (a rescore too) writes it anew.
 //! The file name and the English keys are a contract with the skill - do not rename.
 
@@ -101,13 +102,13 @@ pub fn top_matches(
 ) -> Result<TopMatches> {
     let mut jobs = Vec::new();
     // A few more than needed: a fresh assessment can move a job out of the list.
-    let since = crate::store::new_since(now);
-    for job in store.skill_matches(since, TOP_MATCHES_MAX * 2)? {
+    for job in store.best_matches(TOP_MATCHES_MAX * 2)? {
         if let Some(entry) = found(store, matcher, &job)?.filter(Found::counts) {
             jobs.push(entry.top);
         }
     }
-    jobs.sort_by_key(|j| std::cmp::Reverse(j.score));
+    // The order of the comparison: the favourites first, then the (fresh) score.
+    jobs.sort_by_key(|j| (j.app_status.is_none(), std::cmp::Reverse(j.score)));
     jobs.truncate(TOP_MATCHES_MAX as usize);
     Ok(TopMatches {
         schema: TOP_MATCHES_SCHEMA,

@@ -11,7 +11,7 @@ use super::jobs::{JOB_COLUMNS, JobRow, job_row};
 use super::marks::INBOX;
 use super::{Store, bump};
 use crate::error::Result;
-use crate::model::{HIGH_FROM, KeyFacts, MatchRecord, MatchStatus, Notice};
+use crate::model::{HIGH_FROM, KeyFacts, MID_FROM, MatchRecord, MatchStatus, Notice};
 use crate::portal::JobKey;
 use crate::text::truncate_chars;
 use crate::time::{from_db, to_db};
@@ -69,15 +69,47 @@ impl From<MatchRecord> for Judgement {
     }
 }
 
-/// The jobs of the HTML overview ([`Store::overview_jobs`]).
+/// "Neu und passend": unread, counted as scored (the engine scores the job or the user counts
+/// it anyway, stored as `scored`), in the inbox, no duplicate (its original's row stands for
+/// it). The app's day overview lists the same jobs (`list_jobs` unread, by match, scored).
+pub(crate) const NEW_FITTING: &str = "read_at IS NULL AND match_status = 'scored'
+    AND dup_of IS NULL AND archived_at IS NULL AND trashed_at IS NULL";
+
+/// "Beste zum Vergleich": counted as scored, in the inbox, no duplicate, the ad still online
+/// and open, read or not.
+pub(crate) const COMPARABLE: &str = "match_status = 'scored' AND dup_of IS NULL
+    AND archived_at IS NULL AND trashed_at IS NULL AND desc_status <> 'gone' AND desc_closed = 0";
+
+/// The list's order by match: the best score first, equal scores by the score before the
+/// caps (`rank` in the note), then the newest mail.
+const BY_MATCH: &str = "match_score DESC, json_extract(match_note, '$.rank') DESC,
+    COALESCE(mail_date, first_seen_at) DESC, portal, job_id";
+
+/// "Neu und passend" ([`Store::new_fitting`]).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct NewFitting {
+    /// Best first, at most the limit.
+    pub jobs: Vec<JobRow>,
+    /// All of them, beyond the limit too, and per band.
+    pub total: usize,
+    pub high: usize,
+    pub mid: usize,
+    pub low: usize,
+}
+
+/// The jobs of the report ([`Store::overview_jobs`]).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct OverviewJobs {
-    /// The favourites of the inbox, best first.
+    /// The favourites of the inbox (excluded ones last, then by score).
     pub favourites: Vec<JobRow>,
-    /// The best new matches (unread, scored, no favourite).
-    pub new: Vec<JobRow>,
-    /// Every new match, beyond the limit too.
-    pub new_total: usize,
+    /// "Neu und passend".
+    pub new: NewFitting,
+    /// Some job of the inbox has a score: a usable profile scored them.
+    pub scored: bool,
+    /// Without any score: the unread jobs of the inbox, newest first.
+    pub unscored: Vec<JobRow>,
+    /// The last run that read the mailbox (0 = none): its jobs are new since the last fetch.
+    pub last_run: i64,
 }
 
 /// `match_note` as stored.
@@ -361,23 +393,6 @@ impl Store {
         Ok(at.and_then(from_db))
     }
 
-    /// The jobs for the skill's `top_matches.json`: scored (not excluded), unread or a
-    /// favourite, in the inbox, no duplicate, the ad not closed, the alert mail at most since
-    /// `since`; best first. A fetch without new jobs keeps the list (it does not depend on
-    /// the last run).
-    pub fn skill_matches(&self, since: Timestamp, limit: u32) -> Result<Vec<JobRow>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job
-             WHERE match_status = 'scored' AND dup_of IS NULL AND {INBOX}
-               AND (read_at IS NULL OR app_status IS NOT NULL) AND desc_closed = 0
-               AND COALESCE(mail_date, first_seen_at) >= ?1
-             ORDER BY match_score DESC, first_seen_at DESC, portal, job_id LIMIT ?2"
-        ))?;
-        let rows = stmt.query_map(params![to_db(since), limit], job_row)?;
-        rows.map(|r| r?).collect()
-    }
-
     /// The jobs a mailbox run brought and how many of them are scored in the high band: first
     /// seen in `run`, a job several portals announce once (as its original), excluded ones
     /// left out - the numbers of the run card.
@@ -395,63 +410,102 @@ impl Store {
         ))
     }
 
-    /// The best current matches for a comparison in an AI chat: scored (not excluded), in the
-    /// inbox, not a duplicate, the ad still online and open; the favourites first (like the HTML
-    /// overview's choice), then the highest scores, the newest first among equals.
+    /// "Beste zum Vergleich", the one definition of the best current matches: what counts as
+    /// scored ([`COMPARABLE`]: the engine scores it or the user counts it anyway), in the
+    /// inbox, no duplicate, the ad still online and open, read or not; the favourites first,
+    /// then the list's order by match. The comparison prompt and the skill's
+    /// `top_matches.json` take these.
     pub fn best_matches(&self, limit: u32) -> Result<Vec<JobRow>> {
         let conn = self.conn();
         let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job
-             WHERE match_status = 'scored' AND dup_of IS NULL AND {INBOX}
-               AND desc_status <> 'gone' AND desc_closed = 0
-             ORDER BY (app_status IS NULL), match_score DESC, first_seen_at DESC,
-                      portal, job_id
-             LIMIT ?1"
+            "SELECT {JOB_COLUMNS} FROM job WHERE {COMPARABLE}
+             ORDER BY (app_status IS NULL), {BY_MATCH} LIMIT ?1"
         ))?;
         let rows = stmt.query_map([limit], job_row)?;
         rows.map(|r| r?).collect()
     }
 
-    /// The jobs of the HTML overview, only inbox jobs: the favourites (the star), and the
-    /// new matches as the app's "Neu und passend" lists them - unread and scored, no
-    /// duplicate, no favourite (those stand above) - whatever run brought them: a fetch that
-    /// finds nothing new keeps them. Best first, at most `limit` of them; `new_total` counts
-    /// them all.
+    /// "Neu und passend", the one definition of the new matches ([`NEW_FITTING`]: unread,
+    /// counted as scored, in the inbox, no duplicate), whatever run brought them - a fetch
+    /// that finds nothing new keeps them: at most `limit` in the list's order by match (a
+    /// closed ad after the open ones), with the counts of all of them per band. The app's day
+    /// overview lists the same jobs; the report takes them.
+    pub fn new_fitting(&self, limit: u32) -> Result<NewFitting> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare_cached(&format!(
+            "SELECT {JOB_COLUMNS} FROM job WHERE {NEW_FITTING}
+             ORDER BY (desc_status = 'ok' AND desc_closed = 1), {BY_MATCH} LIMIT ?1"
+        ))?;
+        let jobs: Vec<JobRow> = stmt
+            .query_map([limit], job_row)?
+            .map(|r| r?)
+            .collect::<Result<_>>()?;
+        let (high, mid, low): (i64, i64, i64) = conn.query_row(
+            &format!(
+                "SELECT COALESCE(SUM(match_score >= ?1), 0),
+                        COALESCE(SUM(match_score >= ?2 AND match_score < ?1), 0),
+                        COALESCE(SUM(match_score < ?2 OR match_score IS NULL), 0)
+                 FROM job WHERE {NEW_FITTING}"
+            ),
+            params![HIGH_FROM, MID_FROM],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )?;
+        let count = |n: i64| usize::try_from(n).unwrap_or(0);
+        Ok(NewFitting {
+            jobs,
+            total: count(high + mid + low),
+            high: count(high),
+            mid: count(mid),
+            low: count(low),
+        })
+    }
+
+    /// The jobs of the report (`JobAlerts.html`), only inbox jobs: the favourites, the new
+    /// matches ([`Store::new_fitting`], at most `limit`), the unread jobs by date when no job of
+    /// the inbox has a score (no usable profile), and the last run that read the mailbox.
     pub fn overview_jobs(&self, limit: u32) -> Result<OverviewJobs> {
+        let new = self.new_fitting(limit)?;
         let conn = self.conn();
         let mut pinned = conn.prepare_cached(&format!(
             "SELECT {JOB_COLUMNS} FROM job WHERE app_status IS NOT NULL AND {INBOX}
+               AND dup_of IS NULL
              ORDER BY (match_status IS 'excluded'), match_score DESC, app_status_at DESC"
         ))?;
         let favourites: Vec<JobRow> = pinned
             .query_map([], job_row)?
             .map(|r| r?)
             .collect::<Result<_>>()?;
-        let new = format!(
-            "read_at IS NULL AND match_status = 'scored' AND dup_of IS NULL
-             AND app_status IS NULL AND {INBOX}"
-        );
-        // The order of the list "by match": a closed ad after the open ones, equal scores
-        // by the score before the caps, then the newest mail.
-        let mut best = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job WHERE {new}
-             ORDER BY (desc_status = 'ok' AND desc_closed = 1), match_score DESC,
-                      json_extract(match_note, '$.rank') DESC,
-                      COALESCE(mail_date, first_seen_at) DESC, portal, job_id
-             LIMIT ?1"
-        ))?;
-        let jobs: Vec<JobRow> = best
-            .query_map([limit], job_row)?
-            .map(|r| r?)
-            .collect::<Result<_>>()?;
-        let total: i64 =
-            conn.query_row(&format!("SELECT COUNT(*) FROM job WHERE {new}"), [], |r| {
-                r.get(0)
-            })?;
+        let scored: bool = conn.query_row(
+            &format!(
+                "SELECT EXISTS (SELECT 1 FROM job
+                                WHERE {INBOX} AND dup_of IS NULL AND match_status IS NOT NULL)"
+            ),
+            [],
+            |r| r.get(0),
+        )?;
+        let unscored = if scored {
+            Vec::new()
+        } else {
+            let mut latest = conn.prepare_cached(&format!(
+                "SELECT {JOB_COLUMNS} FROM job
+                 WHERE {INBOX} AND dup_of IS NULL AND read_at IS NULL
+                 ORDER BY COALESCE(mail_date, first_seen_at) DESC, portal, job_id LIMIT ?1"
+            ))?;
+            latest
+                .query_map([limit], job_row)?
+                .map(|r| r?)
+                .collect::<Result<_>>()?
+        };
+        let last_run = super::kv_get_i64(&conn, "last_scan_run")
+            .ok()
+            .flatten()
+            .unwrap_or(0);
         Ok(OverviewJobs {
             favourites,
-            new: jobs,
-            new_total: usize::try_from(total).unwrap_or(0),
+            new,
+            scored,
+            unscored,
+            last_run,
         })
     }
 
@@ -638,9 +692,10 @@ mod tests {
         assert_eq!(store.match_rev(&key).unwrap().as_deref(), Some("r3"));
     }
 
-    /// The HTML overview lists the app's "Neu und passend", not one run's jobs: unread and
-    /// scored whatever run brought them, best first and capped (the total says how many);
-    /// read, excluded or unscorable ones and favourites (listed on their own) are no part.
+    /// "Neu und passend" is the app's, not one run's jobs: unread and scored whatever run
+    /// brought them (a favourite too), best first and capped, counted per band beyond the cap;
+    /// read, excluded or unscorable ones are no part. The report also takes the favourites and
+    /// the last run.
     #[test]
     fn the_overview_lists_the_new_matches_of_every_run() {
         let store = Store::in_memory().unwrap();
@@ -669,16 +724,34 @@ mod tests {
                 now(),
             )
             .unwrap();
+        store.kv_set("last_scan_run", "6").unwrap();
         let overview = store.overview_jobs(2).unwrap();
         let keys_of =
             |jobs: &[JobRow]| -> Vec<JobKey> { jobs.iter().map(|j| j.key.clone()).collect() };
         assert_eq!(keys_of(&overview.favourites), [keys[1].clone()]);
         assert_eq!(
-            keys_of(&overview.new),
-            [keys[2].clone(), keys[0].clone()],
-            "best first"
+            keys_of(&overview.new.jobs),
+            [keys[1].clone(), keys[2].clone()],
+            "best first, the favourite too"
         );
-        assert_eq!(overview.new_total, 3, "the low one beyond the cap counts");
+        let new = &overview.new;
+        assert_eq!(
+            (new.total, new.high, new.mid, new.low),
+            (4, 1, 2, 1),
+            "all of them per band, beyond the cap too"
+        );
+        assert!(overview.scored && overview.unscored.is_empty());
+        assert_eq!(overview.last_run, 6);
+        // The comparison: the favourite first, then the best, read or not, never excluded.
+        assert_eq!(
+            keys_of(&store.best_matches(3).unwrap()),
+            [keys[1].clone(), keys[5].clone(), keys[2].clone()]
+        );
+        // Without any score the unread jobs by date.
+        store.clear_matches().unwrap();
+        let bare = store.overview_jobs(10).unwrap();
+        assert!(!bare.scored && bare.new.jobs.is_empty());
+        assert_eq!(bare.unscored.len(), 5, "the read one is no new job");
     }
 
     #[test]

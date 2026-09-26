@@ -742,21 +742,21 @@ mod tests {
         let listed = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
             jobs.into_iter().map(|j| j.key).collect()
         };
-        let since = super::super::new_since(now());
         let one = std::slice::from_ref(key);
         let overview = || store.overview_jobs(20).unwrap();
-        assert_eq!(listed(store.skill_matches(since, 5).unwrap()), one);
-        assert_eq!(listed(overview().new), one);
+        assert_eq!(listed(store.best_matches(5).unwrap()), one);
+        assert_eq!(listed(overview().new.jobs), one);
         for away in [Place::Archive, Place::Trash] {
             store.move_jobs(one, away, now()).unwrap();
-            assert!(store.skill_matches(since, 5).unwrap().is_empty());
-            assert!(overview().new.is_empty());
+            assert!(store.best_matches(5).unwrap().is_empty());
+            assert!(overview().new.jobs.is_empty());
             // A favourite away from the inbox is none of the overview's either.
             store.set_pinned(key, true, now()).unwrap();
-            assert_eq!(overview(), super::super::matches::OverviewJobs::default());
+            assert!(overview().favourites.is_empty());
+            assert_eq!(overview().new, super::super::matches::NewFitting::default());
             store.set_pinned(key, false, now()).unwrap();
             store.move_jobs(one, Place::Inbox, now()).unwrap();
-            assert_eq!(listed(overview().new), one);
+            assert_eq!(listed(overview().new.jobs), one);
         }
     }
 

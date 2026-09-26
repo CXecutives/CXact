@@ -449,7 +449,7 @@ mod tests {
         assert_eq!(header, en::COLUMNS);
         let first: Vec<&Data> = range.rows().nth(1).unwrap().iter().collect();
         assert_eq!(first[3].to_string(), "Muster GmbH");
-        assert_eq!(first[9].to_string(), "Teaser only");
+        assert_eq!(first[9].to_string(), "Preview");
         let info = book.worksheet_range(en::INFO_SHEET).unwrap();
         assert_eq!(info.get((0, 0)).unwrap().to_string(), en::INFO_LAST_SCAN);
         assert_eq!(info.get((1, 0)).unwrap().to_string(), en::INFO_NOTE_LABEL);
