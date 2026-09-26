@@ -486,7 +486,9 @@ pub(crate) fn evaluate(wishes: &Wishes, ad: &Ad<'_>) -> Vec<WishResult> {
 
 fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
     let code = ReasonCode::DayRateWish;
-    let Some((rate, span)) = facts::stated_rate(ad.job, ad.segments) else {
+    // A wage is employment pay, no day rate.
+    let Some((rate, span)) = facts::stated_rate(ad.job, ad.segments).filter(|(r, _)| !r.wage)
+    else {
         return result(
             code,
             State::Unknown,

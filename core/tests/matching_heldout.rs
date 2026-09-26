@@ -110,8 +110,12 @@ fn run_set(name: &str) -> SetRun {
                 for r in &a.reasons {
                     let evidence = r.evidence.as_ref().map(|e| e.profile.as_str());
                     println!(
-                        "  {:?} {:?} {:?} {:?} <- {evidence:?}",
-                        r.kind, r.weight, r.code, r.label
+                        "  {:?} {:?} {:?} {:?} <- {evidence:?} {}",
+                        r.kind,
+                        r.weight,
+                        r.code,
+                        r.label,
+                        Value::Object(r.params.clone())
                     );
                 }
             }
@@ -179,14 +183,14 @@ const HELDOUT3: Floor = Floor {
     exclusion_recall: 1.0,
     grade3_buried: 0,
 };
-/// Open decision (the ANÜ wage policy): an hourly wage of temporary agency work
-/// (`82 € entspricht dem Bruttostundenlohn`) is read as a day rate x 8, so F03 is excluded
-/// for two profiles by the day rate; the labels read it as employment pay (no rate, and a
-/// salary per year only for F08). The engine keeps its reading until that is decided.
+/// The ANÜ wage policy, decided in version 16: the hourly pay of temporary agency work
+/// (`82 € entspricht dem Bruttostundenlohn`) is employment pay, no day rate, as the labels
+/// read it (F03 is no longer excluded for two profiles by a day rate, F08 is by its salary
+/// per year).
 const HELDOUT6: Floor = Floor {
     ndcg10: 0.90,
     spearman: 0.50,
-    exclusion_precision: 0.98,
+    exclusion_precision: 1.0,
     exclusion_recall: 0.99,
     grade3_buried: 0,
 };
@@ -202,29 +206,35 @@ const HELDOUT5: Floor = Floor {
 };
 /// Set 7 at the level of engine 12 (the hard criteria read only the ad, not the other
 /// listings under it; first contact with engine 10 gave 0.900, 0.438, 0.973 and 3 buried):
-/// the student jobs the labelers exclude by their wage stay in for ten profiles.
+/// the student jobs the labelers exclude by their wage stay in for ten profiles. Recall 0.88
+/// until version 16: the hourly pay of temporary agency work is employment pay, never a day
+/// rate (the user's decision), so the agency jobs L02, L05, M05 and M15 the labels exclude
+/// by that pay x 8 stay in for the freelance profiles that allow ANÜ and set no salary.
 const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.88,
+    exclusion_recall: 0.84,
     grade3_buried: 2,
 };
+/// Recall 0.85 until version 16, for the reason of set 7 (N03, N16, Q15, S05, S16).
 const HELDOUT8: Floor = Floor {
     ndcg10: 0.93,
     spearman: 0.39,
     exclusion_precision: 0.97,
-    exclusion_recall: 0.85,
+    exclusion_recall: 0.81,
     grade3_buried: 1,
 };
 /// Engine 9 moved set 2 from 0.864 to 0.856: a language met is a light fit now, so off-field
 /// ads whose only fitting musts are languages (grade 0 and 1 alike) fall below the cap they
 /// shared, and Y05 loses its German where `Projekt Management` (written apart) stays open.
+/// Recall 1.0 and Spearman 0.64 until version 16, for the reason of set 7 (X06 for P2 is
+/// scored, 0.640 -> 0.639).
 const HELDOUT2: Floor = Floor {
     ndcg10: 0.85,
-    spearman: 0.64,
+    spearman: 0.63,
     exclusion_precision: 1.0,
-    exclusion_recall: 1.0,
+    exclusion_recall: 0.98,
     grade3_buried: 1,
 };
 

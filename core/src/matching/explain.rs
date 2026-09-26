@@ -355,7 +355,8 @@ fn at_least<T: Copy + PartialOrd + Into<u64>>(
 /// for a rate to be agreed.
 fn rate_state(min: i128, ad: &AdFacts, text: &str) -> CriterionState {
     let key = CriterionKey::MinDayRate;
-    if let Some(rate) = &ad.rate {
+    // A wage is no day rate.
+    if let Some(rate) = ad.rate.as_ref().filter(|r| !r.value.wage) {
         let r = rate.value;
         let mut params = json!({ "rate": r.upper, "hourly": r.hourly });
         if let Some(currency) = r.currency {
@@ -393,6 +394,8 @@ fn start_state(ad: &AdFacts, text: &str) -> CriterionState {
 fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<CriterionState> {
     let c = &profile.criteria;
     let permanent = ad.contract == ContractKind::Permanent;
+    // Employment pay: a permanent role or temporary agency work has no day rate.
+    let employment = permanent || ad.contract == ContractKind::Anue;
     let unset = |key| criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
     let remote_full =
         ad_facts::location_remote(&ad.location) || ad.remote.is_some_and(|(from, _)| from >= 100);
@@ -407,7 +410,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         && matches!(ad.contract, ContractKind::Interim | ContractKind::Permanent);
     vec![
         match c.min_rate {
-            Some(min) if !permanent => rate_state(min, ad, text),
+            Some(min) if !employment => rate_state(min, ad, text),
             _ => unset(CriterionKey::MinDayRate),
         },
         match &c.countries {
@@ -447,7 +450,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             start_state(ad, text)
         },
         match c.min_salary {
-            Some(min) if permanent => at_least(
+            Some(min) if employment => at_least(
                 CriterionKey::MinSalary,
                 ad.salary.as_ref(),
                 min,

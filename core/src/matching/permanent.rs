@@ -17,7 +17,7 @@ use serde_json::{Value, json};
 
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
-use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact, rate_in};
+use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact, hourly_pay_in};
 use super::job::contains_word;
 use super::lexicon::engine as lex;
 use super::params::HOURS_PER_YEAR;
@@ -71,7 +71,7 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
             }
         }
         let rest = folded[i..].trim_start();
-        if rest.starts_with('%') {
+        if rest.starts_with('%') || !money_context(folded, start, i) {
             continue;
         }
         let thousands = lex::THOUSAND_SUFFIXES.iter().any(|s| rest.starts_with(s))
@@ -85,6 +85,38 @@ fn amounts(folded: &str) -> Vec<(usize, u64)> {
         out.push((start, value));
     }
     out
+}
+
+/// Is the amount at `start..end` money: a currency or unit after it (past a range), or a
+/// currency or salary word before it (`Gehalt: 120.000`, `€ 95.000`)? A count in the same
+/// sentence (`rund 11.000 Beschäftigte`) is none.
+fn money_context(folded: &str, start: usize, end: usize) -> bool {
+    let number = |c: char| c.is_whitespace() || c.is_ascii_digit() || matches!(c, '.' | ',');
+    let after = folded[end..].trim_start_matches(|c: char| number(c) || matches!(c, '-' | '–'));
+    let after = lex::RATE_RANGE_WORDS
+        .iter()
+        .find_map(|w| after.strip_prefix(w))
+        .map_or(after, |rest| rest.trim_start_matches(number));
+    let before = folded[..start]
+        .trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '~' | '-' | '–'));
+    let before = lex::RATE_RANGE_WORDS
+        .iter()
+        .find_map(|w| before.strip_suffix(w))
+        .map_or(before, |rest| {
+            rest.trim_end_matches(|c: char| number(c) || matches!(c, ':' | '(' | '-' | '–'))
+        });
+    // A unit that ends in a letter is a word of its own (`11.000 Kunden` is no `k`).
+    let unit_after = |u: &&str| {
+        after.strip_prefix(*u).is_some_and(|rest| {
+            !u.ends_with(|c: char| c.is_alphabetic())
+                || rest.chars().next().is_none_or(|c| !c.is_alphanumeric())
+        })
+    };
+    lex::SALARY_UNITS.iter().any(unit_after)
+        || lex::SALARY_UNITS
+            .iter()
+            .chain(lex::SALARY_CUES)
+            .any(|w| before.ends_with(w))
 }
 
 /// Parses a salary statement (a salary word and an amount of at least 10,000 per year or
@@ -136,14 +168,19 @@ pub(crate) fn salary(
     title: &str,
     segments: &[Segment],
 ) -> Vec<Finding> {
-    let (Some(min), Some(may_decide)) = (criteria.min_salary, scope(contract)) else {
+    // The pay of temporary agency work is employment pay too (where ANÜ itself is allowed).
+    let scope = match contract.kind {
+        ContractKind::Anue => (!criteria.anue_excluded).then_some(true),
+        _ => scope(contract),
+    };
+    let (Some(min), Some(may_decide)) = (criteria.min_salary, scope) else {
         return Vec::new();
     };
     let key = Some(CriterionKey::MinSalary);
     // An hourly wage of an employment counts per year (`16,50 € pro Stunde`).
     let hourly = || {
         segments.iter().find_map(|(range, f)| {
-            let rate = rate_in(f).filter(|r| r.hourly)?;
+            let rate = hourly_pay_in(f)?;
             let per_year = rate.upper.saturating_mul(HOURS_PER_YEAR);
             let salary = Salary {
                 upper: Some(per_year),
@@ -455,6 +492,13 @@ mod tests {
         assert_eq!(s("Salary CHF 180,000").unwrap().currency, Some("chf"));
         assert!(s("30 Tage Urlaub und betriebliche Altersvorsorge").is_none());
         assert!(s("Eine Festanstellung in Vollzeit mit attraktiver Vergütung").is_none());
+        // Only money counts: a count in a sentence with a salary word is no salary.
+        assert!(
+            s("Ein Konzern mit rund 11.000 Beschäftigten führt SAP Compensation ein.").is_none()
+        );
+        assert!(s("Salary review for 12,000 employees and 40 countries").is_none());
+        assert_eq!(upper("Gehalt: 120.000 - 140.000"), Some(140_000));
+        assert_eq!(upper("Vergütung 95.000 brutto p.a."), Some(95_000));
     }
 
     #[test]

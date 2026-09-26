@@ -12,7 +12,7 @@ use std::ops::Range;
 use serde_json::Value;
 
 use super::atoms::fold;
-use super::facts::{Finding, JobFacts, Segment, fact, rate_in};
+use super::facts::{Finding, JobFacts, Segment, fact, parse_rate, rate_in, wage_in};
 use super::lexicon::engine as lex;
 use crate::portal::Portal;
 
@@ -69,12 +69,14 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
     let title = fold(job.title);
     // A sentence that denies a contract form gives no contract signal.
     let denied = |f: &str| any(f, lex::CONTRACT_DENIED);
-    let interim_at = |f: &str| !denied(f) && (any(f, lex::INTERIM_CUES) || rate_in(f).is_some());
+    // A wage (`Stundenlohn`, `18,50 € brutto pro Stunde`) is employment pay, no interim cue.
+    let interim_at =
+        |f: &str| !denied(f) && (any(f, lex::INTERIM_CUES) || rate_in(f).is_some_and(|r| !r.wage));
     // A denied or merely possible later permanent position is no statement of one; a comma
-    // between the words is none (`permanent, full-time`).
+    // between the words is none (`permanent, full-time`). A wage states an employment.
     let stated_at = |f: &str| {
         let f = &f.replace(", ", " ");
-        (any(f, lex::PERMANENT_WORDS) || any(f, lex::PERMANENT_STATED))
+        (any(f, lex::PERMANENT_WORDS) || any(f, lex::PERMANENT_STATED) || wage_in(f))
             && !any(f, lex::PERMANENT_NEGATED)
             && !any(f, lex::PERMANENT_OPTION)
     };
@@ -98,12 +100,19 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
     // The page's own field, read by its exact value: LinkedIn's "Befristet" or "Contract"
     // is a limited engagement ("Vollzeit" and "Teilzeit" say nothing about it).
     let limited_fact = lex::LIMITED_CONTRACT_VALUES.contains(&contract_fact.trim());
+    // The page's rate field: a freelance rate is interim work, a wage an employment.
+    let rate_fact = fact(job.facts, super::fact_key::RATE);
+    let fact_wage = rate_fact
+        .and_then(Value::as_str)
+        .and_then(|s| parse_rate(&fold(s)))
+        .is_some_and(|r| r.wage);
     let interim = interim_at(&title)
         || interim_at(&contract_fact)
         || limited_fact
-        || fact(job.facts, super::fact_key::RATE).is_some()
+        || (rate_fact.is_some() && !fact_wage)
         || segments.iter().any(|(_, f)| interim_at(f));
-    let stated = stated_at(&contract_fact) || segments.iter().any(|(_, f)| stated_at(f));
+    let stated =
+        stated_at(&contract_fact) || fact_wage || segments.iter().any(|(_, f)| stated_at(f));
     let hinted = segments.iter().any(|(_, f)| hint_at(f));
     let agency = segments.iter().any(|(_, f)| any(f, lex::AGENCY_CUES));
     let portal_interim = matches!(job.portal, Portal::Freelancermap | Portal::FreelanceDe);

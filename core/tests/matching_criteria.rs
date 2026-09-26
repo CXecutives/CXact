@@ -264,22 +264,26 @@ fn permanent_employment_can_be_excluded() {
 /// as a plain line and as a list item of a page. A real heading still ends the ad.
 #[test]
 fn a_requirement_that_starts_like_other_listings_keeps_the_ad_whole() {
-    let frame = "Rahmendaten:\n- Einsatz über Arbeitnehmerüberlassung\n- Tagessatz: 600 €";
+    // The pay of temporary agency work is no day rate (version 16): one frame each.
+    let frame = "Rahmendaten:\n- Einsatz über Arbeitnehmerüberlassung";
+    let rate = "Rahmendaten:\n- Freiberuflich\n- Tagessatz: 600 €";
     for line in [
         "Ähnliche Projekterfahrung von Vorteil",
         "- Weitere Projekterfahrung wünschenswert",
     ] {
-        let text = format!("Ihr Profil:\n- Erfahrung im Controlling\n{line}\n\n{frame}");
-        let a = run("Hamburg", &text);
-        assert_eq!(a.verdict, Verdict::Excluded, "{line}");
-        assert_eq!(
-            criterion(&a, CriterionKey::NoAnue).status,
-            CriterionStatus::Violated
-        );
-        assert_eq!(
-            criterion(&a, CriterionKey::MinDayRate).status,
-            CriterionStatus::Violated
-        );
+        for (below, key) in [
+            (frame, CriterionKey::NoAnue),
+            (rate, CriterionKey::MinDayRate),
+        ] {
+            let text = format!("Ihr Profil:\n- Erfahrung im Controlling\n{line}\n\n{below}");
+            let a = run("Hamburg", &text);
+            assert_eq!(a.verdict, Verdict::Excluded, "{line}");
+            assert_eq!(
+                criterion(&a, key).status,
+                CriterionStatus::Violated,
+                "{line} {key:?}"
+            );
+        }
     }
     let listings = format!(
         "Ihr Profil:\n- Erfahrung im Controlling\n- Tagessatz: 950 €\n\nÄhnliche Projekte (12)\n{frame}"
@@ -318,4 +322,135 @@ fn country_names_in_a_profile_keep_the_country_rule() {
         criterion(&paris, CriterionKey::Countries).status,
         CriterionStatus::Violated
     );
+}
+
+fn codes(a: &Assessment) -> Vec<(ReasonCode, ReasonKind)> {
+    a.reasons
+        .iter()
+        .filter(|r| matches!(r.kind, ReasonKind::Violation | ReasonKind::Check))
+        .map(|r| (r.code, r.kind))
+        .collect()
+}
+
+/// An ad of employment with an hourly wage (German or English).
+fn wage_ad(pay: &str) -> String {
+    format!(
+        "Für unser Team suchen wir eine Sachbearbeitung Buchhaltung (m/w/d).
+
+Ihre Aufgaben:
+- Kontierung und Buchung von Eingangsrechnungen
+- Mitarbeit im Controlling
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung
+
+{pay}"
+    )
+}
+
+/// An hourly wage of an employee or of temporary agency work is employment pay: the job is
+/// judged as employment (the salary rule with a yearly estimate), never by its day rate.
+#[test]
+fn an_hourly_wage_is_employment_pay_never_a_day_rate() {
+    let profile = compile_profile(&profile());
+    for pay in [
+        "Wir bieten 18,50 € brutto pro Stunde bei 38,5 Stunden pro Woche.",
+        "Stundenlohn: 21 €",
+        "Bruttostundenlohn 19,80 € nach iGZ-Tarif",
+        "We offer €17.50 gross per hour.",
+        "Pay: hourly wage of €16 plus shift allowance.",
+    ] {
+        let a = assess_with(
+            &profile,
+            "Sachbearbeiter Buchhaltung (m/w/d)",
+            &wage_ad(pay),
+        );
+        let found = codes(&a);
+        assert!(
+            !found.iter().any(|(code, _)| *code == ReasonCode::DayRate),
+            "{pay}: {found:?}"
+        );
+        // Employment pay below the minimum salary (a yearly estimate) excludes.
+        assert_eq!(a.verdict, Verdict::Excluded, "{pay}: {found:?}");
+        assert!(
+            found.contains(&(ReasonCode::Salary, ReasonKind::Violation)),
+            "{pay}: {found:?}"
+        );
+        assert_eq!(
+            criterion(&a, CriterionKey::MinDayRate).status,
+            CriterionStatus::Inactive,
+            "{pay}"
+        );
+        assert_eq!(a.facts.contract.as_deref(), Some("permanent"), "{pay}");
+    }
+    // Without a minimum salary the wage excludes nothing.
+    let mut value = self::profile();
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("min_jahresgehalt");
+    let freelance_only = compile_profile(&value);
+    let a = assess_with(
+        &freelance_only,
+        "Sachbearbeiter Buchhaltung (m/w/d)",
+        &wage_ad("Stundenlohn: 21 €"),
+    );
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+}
+
+/// The pay of temporary agency work is employment pay as well: no day rate, the salary rule.
+#[test]
+fn the_pay_of_temporary_agency_work_is_no_day_rate() {
+    let mut value = profile();
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("ausgeschlossene_vertragsarten");
+    let text = wage_ad("Einsatz im Rahmen der Arbeitnehmerüberlassung, Stundensatz 35 €.");
+    let a = assess_with(&compile_profile(&value), "Controller (m/w/d)", &text);
+    let found = codes(&a);
+    assert!(
+        !found.iter().any(|(code, _)| *code == ReasonCode::DayRate),
+        "{found:?}"
+    );
+    assert!(
+        found.contains(&(ReasonCode::Salary, ReasonKind::Violation)),
+        "{found:?}"
+    );
+    value["harte_kriterien"]
+        .as_object_mut()
+        .expect("criteria")
+        .remove("min_jahresgehalt");
+    let a = assess_with(&compile_profile(&value), "Controller (m/w/d)", &text);
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+}
+
+/// A freelance hourly rate stays a rate: times eight it is the day rate.
+#[test]
+fn a_freelance_hourly_rate_counts_eight_times() {
+    let profile = compile_profile(&profile());
+    for pay in [
+        "Stundensatz: 95 €/h",
+        "Vergütung: 95 € pro Stunde zzgl. MwSt.",
+        "Hourly rate: €95 (freelance)",
+        "Stundensatz 95 € brutto",
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &wage_ad(pay));
+        let found = codes(&a);
+        assert!(
+            found.contains(&(ReasonCode::DayRate, ReasonKind::Violation)),
+            "{pay}: {found:?}"
+        );
+        let rate = criterion(&a, CriterionKey::MinDayRate);
+        assert_eq!(rate.status, CriterionStatus::Violated, "{pay}");
+        assert_eq!(
+            (
+                rate.params["rate"].as_u64(),
+                rate.params["hourly"].as_bool()
+            ),
+            (Some(95), Some(true)),
+            "{pay}"
+        );
+    }
 }

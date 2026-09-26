@@ -1216,6 +1216,42 @@ pub(crate) const RATE_WORDS: &[&str] = &[
     "per hour",
     "€/tag",
     "€/h",
+    "stundenlohn",
+    "hourly wage",
+    "hourly pay",
+];
+/// Employment pay (an hourly wage of an employee or of temporary agency work), never a
+/// freelance rate: substrings, then whole words.
+pub(crate) const WAGE_WORDS: &[&str] = &[
+    "stundenlohn",
+    "tariflohn",
+    "mindestlohn",
+    "tarif",
+    "entgelt",
+    "equal pay",
+    "wage",
+    "gross per hour",
+    "per hour gross",
+    "gross hourly",
+    "hourly gross",
+];
+pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["lohn", "igz", "bap", "gvp"];
+/// Words that make a rate employment pay unless the sentence names a freelance rate
+/// (whole words).
+pub(crate) const WAGE_HINTS: &[&str] = &["brutto", "gross"];
+/// A freelance rate: overrules `WAGE_HINTS` (substrings).
+pub(crate) const FREELANCE_RATE_WORDS: &[&str] = &[
+    "stundensatz",
+    "tagessatz",
+    "honorar",
+    "day rate",
+    "daily rate",
+    "freelance",
+    "freiberuf",
+    "zzgl",
+    "mwst",
+    "plus vat",
+    "excl. vat",
 ];
 pub(crate) const SALARY_WORDS: &[&str] = &[
     "gehalt",
@@ -1671,6 +1707,31 @@ pub(crate) const ANUE_NEGATION_PARTS: &[&str] = &[
     "excluded",
     "ruled out",
 ];
+/// ANÜ as a topic of the requirements, not the contract form (experience with it, knowledge
+/// of the law, managing temporary staff): substrings in the clause that names it or at the
+/// start of the sentence.
+pub(crate) const ANUE_TOPIC: &[&str] = &[
+    "erfahrung",
+    "kenntnis",
+    "know-how",
+    "knowhow",
+    "vertraut",
+    "versiert",
+    "expertise",
+    "fachwissen",
+    "von vorteil",
+    "wunschenswert",
+    "idealerweise",
+    "steuerung",
+    "experience",
+    "knowledge",
+    "familiar",
+    "nice to have",
+    "a plus",
+    "an advantage",
+    "managing",
+    "management of",
+];
 /// ANÜ only one option: whole words, then substrings.
 pub(crate) const ANUE_OPTION: &[&str] = &["oder", "or", "wahlweise", "alternativ", "optional"];
 pub(crate) const ANUE_OPTION_PARTS: &[&str] = &["je nach", "moglich"];
@@ -1847,6 +1908,37 @@ pub(crate) const SALARY_CUES: &[&str] = &[
     "p. a.",
     "p.a.",
     "per annum",
+];
+/// Units and currencies that make an amount of a salary sentence money (`95.000 €`, `120k`,
+/// `130.000 brutto p.a.`).
+pub(crate) const SALARY_UNITS: &[&str] = &[
+    "€",
+    "eur",
+    "euro",
+    "chf",
+    "usd",
+    "gbp",
+    "$",
+    "£",
+    "k",
+    "t€",
+    "teur",
+    "tsd",
+    "brutto",
+    "p.a.",
+    "p. a.",
+    "pro jahr",
+    "per year",
+    "per annum",
+    "jahrlich",
+    "im jahr",
+    "a year",
+    "/jahr",
+    "/yr",
+    "/mo",
+    "pro monat",
+    "per month",
+    "monatlich",
 ];
 pub(crate) const MONTHLY_WORDS: &[&str] = &["monat", "month", "/mo"];
 pub(crate) const LOWER_BOUND_WORDS: &[&str] =

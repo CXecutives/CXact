@@ -3,8 +3,8 @@
 //! ANÜ (named, not negated, not optional) · permanent employment (excluded by the profile:
 //! a stated permanent role, not an inferred one or one that offers interim too) · work
 //! country (location, on-site sentence, not fully remote) · day rate (EUR, upper bound,
-//! hourly x 8, not for permanent roles) · availability (never decided: a gap or a vague
-//! start is a check).
+//! hourly x 8; not for employment pay: a permanent role, temporary agency work or a wage) ·
+//! availability (never decided: a gap or a vague start is a check).
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -517,7 +517,8 @@ pub(crate) fn check(
     if let Some(allowed) = &criteria.countries {
         findings.extend(country(criteria, allowed, job, segments, folded));
     }
-    if contract.kind != ContractKind::Permanent {
+    // The pay of an employment or of temporary agency work is no day rate.
+    if !matches!(contract.kind, ContractKind::Permanent | ContractKind::Anue) {
         findings.extend(day_rate(criteria, job, segments));
     }
     if let Availability::From(date) = criteria.available {
@@ -546,6 +547,9 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
         }
     }
     for (range, f) in segments {
+        if anue_topic(f, &named) {
+            continue;
+        }
         if named(f) {
             if negated(f) {
                 continue;
@@ -591,6 +595,24 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     } else {
         Vec::new()
     }
+}
+
+/// Characters at the start of a sentence where a cue of `ANUE_TOPIC` makes the whole
+/// sentence a requirement (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
+const ANUE_TOPIC_HEAD: usize = 24;
+
+/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form: a cue of
+/// `ANUE_TOPIC` in the clause that names it, or at the start of the sentence.
+fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
+    let cue = |s: &str| lex::ANUE_TOPIC.iter().any(|w| s.contains(w));
+    let hidden = |s: &str| lex::ANUE_HIDDEN.iter().any(|w| contains_word(s, w));
+    let head: String = folded.trim_start().chars().take(ANUE_TOPIC_HEAD).collect();
+    let mentions = |s: &str| named(s) || hidden(s);
+    mentions(folded)
+        && (cue(&head)
+            || folded
+                .split([',', ';'])
+                .any(|clause| mentions(clause) && cue(clause)))
 }
 
 /// Countries named in a folded text (names and cities).
@@ -803,12 +825,15 @@ fn country(
     Vec::new()
 }
 
-/// A rate statement: highest amount, hourly or daily, EUR or not.
+/// A rate statement: highest amount, hourly or daily, EUR or not, freelance rate or wage.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Rate {
     pub upper: u64,
     pub hourly: bool,
     pub currency: Option<&'static str>,
+    /// Employment pay (`Stundenlohn`, `brutto pro Stunde`, a pay scale): the job is judged as
+    /// employment, never by its day rate.
+    pub wage: bool,
 }
 
 impl Rate {
@@ -840,15 +865,52 @@ pub(crate) fn stated_rate(
 }
 
 /// The rate of a sentence, clause by clause (`Freelance mit 90 € pro Stunde oder befristet
-/// (Gehaltsband 72-84 T€ p.a.)`: the salary clause does not hide the rate); the highest per
-/// day when clauses name several.
+/// (Gehaltsband 72-84 T€ p.a.)`: the salary clause does not hide the rate); a freelance rate
+/// before a wage, the highest per day when clauses name several.
 pub(crate) fn rate_in(folded: &str) -> Option<Rate> {
+    clause_rates(folded).max_by_key(|r| (!r.wage, r.per_day()))
+}
+
+/// Does a sentence name employment pay (an hourly wage)?
+pub(crate) fn wage_in(folded: &str) -> bool {
+    clause_rates(folded).any(|r| r.wage)
+}
+
+/// The hourly pay of a sentence, a wage before a freelance rate.
+pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
+    clause_rates(folded)
+        .filter(|r| r.hourly)
+        .max_by_key(|r| (r.wage, r.upper))
+}
+
+/// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
+/// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
+fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> + '_ {
+    let whole = is_wage(folded) && !names_freelance_rate(folded);
     folded
         .split([';', '(', ')'])
         .flat_map(|part| part.split(" oder "))
         .flat_map(|part| part.split(" or "))
         .filter_map(parse_rate)
-        .max_by_key(Rate::per_day)
+        .map(move |rate| Rate {
+            wage: rate.wage || whole,
+            ..rate
+        })
+}
+
+fn names_freelance_rate(folded: &str) -> bool {
+    lex::FREELANCE_RATE_WORDS.iter().any(|w| folded.contains(w))
+}
+
+/// Is a rate statement employment pay (`Stundenlohn`, a pay scale, `brutto` without a
+/// freelance rate word) rather than a freelance rate?
+pub(crate) fn is_wage(folded: &str) -> bool {
+    lex::WAGE_WORDS.iter().any(|w| folded.contains(w))
+        || lex::WAGE_WORDS_WHOLE
+            .iter()
+            .any(|w| contains_word(folded, w))
+        || (lex::WAGE_HINTS.iter().any(|w| contains_word(folded, w))
+            && !names_freelance_rate(folded))
 }
 
 /// A currency next to a time unit, also with the amount between them (`110 EUR/h`, `EUR pro
@@ -934,6 +996,7 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
         upper,
         hourly,
         currency,
+        wage: is_wage(folded),
     })
 }
 
@@ -1006,6 +1069,10 @@ fn day_rate(
     let Some((rate, span)) = stated_rate(job, segments) else {
         return Vec::new();
     };
+    // Employment pay is judged as employment (salary rules), never as a day rate.
+    if rate.wage {
+        return Vec::new();
+    }
     let spans: Vec<Range<usize>> = span.into_iter().collect();
     if let Some(currency) = rate.currency {
         let params = json!({ "currency": currency.to_uppercase(), "amount": rate.upper });
@@ -1261,6 +1328,29 @@ mod tests {
             ),
             [(ReasonCode::AnueOptional, false)]
         );
+    }
+
+    /// ANÜ as a topic of the requirements (experience with it, knowledge of the law,
+    /// managing temporary staff) is no contract form of the ad.
+    #[test]
+    fn anue_as_a_topic_of_the_requirements_never_excludes() {
+        for text in [
+            "Erfahrung mit Arbeitnehmerüberlassung von Vorteil.",
+            "Kenntnisse des Arbeitnehmerüberlassungsgesetzes (AÜG) wünschenswert.",
+            "Idealerweise Know-how in der Arbeitnehmerüberlassung und im Tarifrecht",
+            "Sie verantworten die Steuerung der Arbeitnehmerüberlassung an allen Standorten.",
+            "Experience with temporary agency work is a plus.",
+            "Knowledge of temporary agency work rules (AÜG), payroll and works council matters.",
+        ] {
+            assert!(anue_codes(text).is_empty(), "{text}");
+        }
+        // The contract form stays the contract form, also in a list of keywords.
+        for text in [
+            "Die Besetzung erfolgt im Rahmen der Arbeitnehmerüberlassung.",
+            "Arbeitnehmerüberlassung, 6 Monate, Erfahrung mit SAP FI erforderlich",
+        ] {
+            assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
     }
 
     #[test]
