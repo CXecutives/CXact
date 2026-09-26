@@ -76,10 +76,3 @@ export async function withSalary(page: Page): Promise<void> {
       .locator('[data-fact="money"]'),
   ).toBeVisible();
 }
-
-/** A demo job once its page came (a details run, the scripted fetch). */
-export function demoFetched(key: string): JobView {
-  const fetched = DEMO.fetched[keyOf(key)];
-  if (fetched === undefined) throw new Error(`no fetched demo job ${key}`);
-  return fetched.job;
-}
