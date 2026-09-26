@@ -546,9 +546,13 @@ as the parts land on `main`.
   folders (`Documents\Job-Alert-Monitor`), keychain service and the TXT contract stay. The
   NSIS installer speaks German and English and first removes an install named
   Job-Alert-Monitor silently (its data stays).
-- Icon: one flat coral, no gradient, no shadow; on Windows the plate fills the square (48 of
-  48 px, like Claude and Roblox) with Apple's continuous corner; macOS keeps Apple's grid
-  (824 of 1024); macOS 26 gets the Icon Composer format through the macOS CI (actool).
+- Icon: one flat coral, no gradient; on Windows the plate fills the square (48 of 48 px, like
+  Claude and Roblox, every stage) with Apple's continuous corner (UIKit curve, r 22.37 %, the
+  one fit to Apple's own mask), no shadow; exact area coverage (every stage within 1 level of
+  the ideal shape). macOS 14/15 keeps Apple's grid (824 of 1024, fractional margins) over
+  Apple's template shadow (black 30 %, 12 down, blur 12 at 1024; user 2026-09-26); macOS 26 gets
+  the Icon Composer package (tools/icon.py writes src-tauri/icons/CXact.icon) compiled by
+  actool in the macOS CI. The glyph sits 10 grid units lower than before (user 2026-09-26).
 - No fetch at app start (the switch is gone); F5 or Ctrl/Cmd+R and "Abrufen" fetch.
 - The app starts in the **Übersicht**, a view of its own (sidebar: Übersicht, Jobs, Profil,
   Einstellungen; the settings as a gear). Archiv and Papierkorb are tabs of Jobs (Eingang,
