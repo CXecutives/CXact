@@ -2,6 +2,7 @@
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import Disclosure from '$components/Disclosure.svelte';
+  import ListDivider from '$components/ListDivider.svelte';
   import Field from '$components/Field.svelte';
   import MenuButton from '$components/MenuButton.svelte';
   import Segmented from '$components/Segmented.svelte';
@@ -43,6 +44,7 @@
   let search = $state('Controlling');
   let empty = $state('');
   let open = $state(true);
+  let folded = $state(true);
   let tools = $state([...t.chipValues]);
   let industries = $state<string[]>([]);
   let focus = $state([...t.chipsShownValues]);
@@ -218,6 +220,16 @@
     <Disclosure label={t.disclosure} bind:open testid="disclosure">
       <p class="copy">{t.disclosureText}</p>
     </Disclosure>
+    <div>
+      <ListDivider label={t.dividerThin} thin />
+      <ListDivider
+        label={t.divider}
+        count={2}
+        open={!folded}
+        ontoggle={() => (folded = !folded)}
+        testid="list-divider"
+      />
+    </div>
   </div>
 </Section>
 

@@ -1,6 +1,7 @@
 // The handle between the list and the reader: the list keeps 320 px, the reader 440 px, and
 // the list takes at most 60 % of the content; the limits and the first width (40 % of the
-// content, at most 460 px) follow the window and the sidebar; a kept width that does not fit
+// content, at least 520 px where the reader keeps its room, at most 600 px) follow the window
+// and the sidebar and never shrink while the window grows; a kept width that does not fit
 // shows at the limit and comes back when there is room; a tooltip names what it does, over
 // what a double click does.
 
@@ -41,9 +42,9 @@ async function drag(page: Page, dx: number): Promise<void> {
 
 for (const [width, expected] of [
   // content = window - sidebar (196) - hairline: 903, 1163, 1723
-  [1100, { width: 361, min: 320, max: 463 }],
-  [1360, { width: 460, min: 320, max: 698 }],
-  [1920, { width: 460, min: 320, max: 1034 }],
+  [1100, { width: 463, min: 320, max: 463 }],
+  [1360, { width: 520, min: 320, max: 698 }],
+  [1920, { width: 600, min: 320, max: 1034 }],
 ] as const) {
   test(`the list's first width and limits at ${width} px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
@@ -104,13 +105,13 @@ test('the handle says what it does; a double click sets the first width back', a
   await expect(hit).toHaveCSS('cursor', 'col-resize');
 
   await drag(page, -100);
-  await expect.poll(async () => (await handle(page)).width).toBe(360);
+  await expect.poll(async () => (await handle(page)).width).toBe(420);
   await page.reload();
-  expect((await handle(page)).width).toBe(360);
+  expect((await handle(page)).width).toBe(420);
   await page.getByTestId('list-splitter').locator('.hit').dblclick();
-  await expect.poll(async () => (await handle(page)).width).toBe(460);
+  await expect.poll(async () => (await handle(page)).width).toBe(520);
   await page.reload();
-  expect((await handle(page)).width).toBe(460);
+  expect((await handle(page)).width).toBe(520);
 });
 
 test('at its narrowest the list header still shows every control in the column', async ({

@@ -2,7 +2,8 @@
 // below 1100 px the sidebar becomes the icon rail, below 900 px the Jobs view is one column.
 // The width itself is followed too (the list column's limits depend on it).
 
-const RAIL_BELOW = 1100;
+/** Below this width the sidebar is the icon rail (the list's limits look across it). */
+export const RAIL_BELOW = 1100;
 const NARROW_BELOW = 900;
 
 function query(width: number): MediaQueryList {

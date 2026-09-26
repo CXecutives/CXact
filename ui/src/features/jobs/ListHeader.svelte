@@ -2,7 +2,8 @@
   The header of the list column: the places as tabs (Eingang, Archiv, Papierkorb; another
   place starts without the search, like a folder of a mail app), then two rows.
   Row 1: the search, whose placeholder names what it searches ("Jobs durchsuchen", "Archiv
-  durchsuchen", "Papierkorb durchsuchen"), and next to it "Abrufen", the one primary of the
+  durchsuchen", "Papierkorb durchsuchen"; Enter or ArrowDown open its first hit, the focus
+  on its row), and next to it "Abrufen", the one primary of the
   Jobs view, which fills the inbox ("Abbrechen" in its place while a fetch or details run
   goes; locked while the app scores the jobs anew, and without a mailbox, saying why). The
   action slot is as wide as the wider of the two and both fill it, so the search never jumps
@@ -15,12 +16,12 @@
   for every list, kept; without a usable profile by date, saying why). In the Archiv and
   the Papierkorb: how many jobs lie there (during a search, how many it found there), in the
   Papierkorb "Papierkorb leeren" (asks first), and the order, which keeps the end of the row
-  in every place. While two or more jobs are chosen, the selection bar takes this row: how
-  many, the place's actions, "Auswahl aufheben" at its end (Esc too). The row keeps one
-  height in every state: one line in a column wide enough for the segments with four-digit
-  counts and the tools, else always two (the tools on their own line, in every place, also
-  under the selection bar), so the list never jumps and no label shortens (only as a last
-  resort, with still longer counts). The bottom hairline shows only once the list below is
+  in every place. While two or more jobs are chosen, the selection bar takes this row, on one
+  line: how many, the place's actions, the × that ends the choice (Esc too). The row keeps
+  one height otherwise: one line in a column wide enough for the segments with four-digit
+  counts and the tools, else always two (the tools on their own line, in every place), so
+  the list never jumps and no label shortens (only as a last resort, with still longer
+  counts). The bottom hairline shows only once the list below is
   scrolled. Under the rows one sentence says when a job action of the list failed (a move,
   its undo, the star, "all read") or when jobs deleted for good could not leave the Excel
   file; it goes with the next list or the next action that works.
@@ -35,6 +36,7 @@
   import Tabs from '$components/Tabs.svelte';
   import TextField from '$components/TextField.svelte';
   import { tooltip } from '$lib/actions/tooltip';
+  import { chipKeys } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import type { JobSort, Place } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
@@ -50,8 +52,23 @@
   interface Props {
     /** The list below is scrolled away from its top. */
     scrolled?: boolean;
+    /** Enter or ArrowDown in the search: the list opens its first hit (`true` if it had
+     *  one; the focus goes to its row). */
+    onopen?: () => boolean;
   }
-  let { scrolled = false }: Props = $props();
+  let { scrolled = false, onopen }: Props = $props();
+
+  /**
+   * The search's own keys (lib/input/input.ts): Enter and ArrowDown open the first hit, like
+   * the search of a mail app; Backspace and Esc stay the field's (Esc clears it). The keys of
+   * a field with suggestions are the hook input.ts offers for a field.
+   */
+  const searchKeys = {
+    commit: (): boolean => onopen?.() ?? false,
+    removeLast: (): boolean => false,
+    clear: (): boolean => false,
+    step: (by: -1 | 1): boolean => (by === 1 ? (onopen?.() ?? false) : false),
+  };
 
   const place = $derived(placeOf(jobs.facet));
   const inInbox = $derived(place === 'inbox');
@@ -216,7 +233,7 @@
     />
   </div>
   <div class="top" data-tauri-drag-region={dragBands() ? '' : undefined}>
-    <span class="search" bind:this={searchBox}>
+    <span class="search" bind:this={searchBox} use:chipKeys={searchKeys}>
       <TextField
         kind="search"
         value={jobs.search}
@@ -239,8 +256,9 @@
   </div>
   <!-- An empty archive or trash has nothing to show here: no blank band above its empty state
        (a search without hits keeps the row, the list does not jump while typing). -->
-  {#if bulk.active || inInbox || placeHolds > 0}
-    <div class="second">
+  <!-- A list that did not load has nothing to count or order: the row waits for it. -->
+  {#if jobs.status !== 'error' && (bulk.active || inInbox || placeHolds > 0)}
+    <div class="second" class:single={bulk.active}>
       {#if bulk.active}
         <SelectionBar
           count={bulk.chosen.length}
@@ -412,7 +430,7 @@
      count, then the tools), so the list below stands at one height whatever the row holds
      and no label shortens when a count grows. */
   @container (width < 620px) {
-    .second {
+    .second:not(.single) {
       flex-wrap: wrap;
       align-content: flex-start;
       min-height: calc(2 * var(--control-sm) + var(--space-8));

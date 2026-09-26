@@ -87,6 +87,14 @@ export function sameKey(a: JobKey | null, b: JobKey | null): boolean {
 
 export const isExcluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
+/**
+ * The sections of the list, in the order they stand: by match the jobs still waiting for
+ * their score on top ("Noch ohne Passung"), under Neu the jobs first seen in the last fetch
+ * before the older unread ones ("Seit dem letzten Abruf"), the excluded ones last.
+ */
+export type RowGroup = 'pending' | 'fresh' | 'rest' | 'excluded';
+const GROUP_RANK: Record<RowGroup, number> = { pending: 0, fresh: 1, rest: 2, excluded: 3 };
+
 /** Does a job belong to the list of a facet (the backend's rule, store::job_page)? */
 export function inFacet(job: JobView, facet: JobFacet): boolean {
   switch (facet) {
@@ -279,16 +287,42 @@ class JobsStore {
     return app.hasProfile ? this.sortChoice : 'newest';
   }
 
+  /** Scores are on their way (a run goes or a rescore is due): a job without one waits. */
+  get scoring(): boolean {
+    return app.hasProfile && (run.active || (app.state?.matchPending ?? 0) > 0);
+  }
+
+  /** When the last fetch began (its new jobs were first seen since), or null. */
+  readonly #fetchedSince = $derived.by((): number | null => {
+    const last = run.summary ?? app.state?.lastRun ?? null;
+    const at = last === null ? Number.NaN : Date.parse(last.startedAt);
+    return Number.isFinite(at) ? at : null;
+  });
+
+  /** The section of the list a row stands in (RowGroup). */
+  groupOf(job: JobView): RowGroup {
+    if (isExcluded(job)) return 'excluded';
+    if (this.sort === 'match' && job.match === null && this.scoring) return 'pending';
+    const since = this.#fetchedSince;
+    if (this.facet === 'new' && since !== null && Date.parse(job.firstSeenAt) >= since) {
+      return 'fresh';
+    }
+    return 'rest';
+  }
+
   /**
-   * Rows of the list in the order it draws them: the excluded ones last (behind the divider),
-   * also a row whose exclusion changed in place (an override, a run scoring a new job). The
-   * keys, the selection and the next job after a move all count in this order.
+   * Rows of the list in the order it draws them, section by section (RowGroup): the excluded
+   * ones last (behind their divider), also a row whose exclusion changed in place (an
+   * override, a run scoring a new job). The keys, the selection and the next job after a move
+   * all count in this order.
    */
   readonly visible = $derived.by((): JobView[] => {
-    const active = this.rows.filter((job) => !isExcluded(job));
-    return active.length === this.rows.length
-      ? this.rows
-      : [...active, ...this.rows.filter(isExcluded)];
+    const rank = this.rows.map((job) => GROUP_RANK[this.groupOf(job)]);
+    if (rank.every((value, index) => index === 0 || value >= rank[index - 1]!)) return this.rows;
+    return this.rows
+      .map((job, index) => ({ job, rank: rank[index]!, index }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map((entry) => entry.job);
   });
 
   readonly shown = $derived(this.visible.slice(0, this.rendered));

@@ -291,8 +291,6 @@ test('the run status in the sidebar opens the last run', async ({ page }) => {
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   // Seven new in the mails, one of them excluded: the run brought six new jobs.
   await expect(page.getByTestId('run-finished')).toContainText('6 neu');
-  await page.getByTestId('run-toggle').click();
-  await expect(page.getByTestId('last-new')).toHaveCount(0);
   await page.getByTestId('run-close').click();
   await expect(page.getByTestId('run-card')).toHaveCount(0);
 });

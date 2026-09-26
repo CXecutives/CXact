@@ -7,7 +7,9 @@
   When the track has less room than the options want, the labels shorten with an ellipsis
   (the counts stay); nothing ever overlaps. The chosen label is ink and its count a soft
   warm pill, the others stay muted with a plain count (same box, so nothing moves); an option
-  may keep one tone whatever is chosen (the unread count stays warm). An
+  may keep one tone whatever is chosen (the unread count stays warm). A count that goes
+  (`null`: none now, 0 is not shown) keeps its room, unseen, as wide as it was last, so the
+  options keep their widths and nothing jumps ("Alle gelesen" empties Neu). An
   unchosen option washes on hover and darkens while pressed. Counts roll when they change.
   Like native radio buttons the group is one Tab stop and the arrows, Home and End choose.
 -->
@@ -15,6 +17,7 @@
   export interface SegmentedOption<Id extends string = string> {
     id: Id;
     label: string;
+    /** The count; `null` hides it but keeps its room (undefined: the option has none). */
     count?: number | null;
     /** The count's tone whatever is chosen (default: soft when chosen, plain otherwise). */
     tone?: 'soft' | 'plain' | null;
@@ -22,6 +25,7 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
+  import { untrack } from 'svelte';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { settled } from '$lib/motion/settled.svelte';
@@ -37,6 +41,15 @@
   }
 
   let { options, value, label, size = 'md', testid = null, onchange }: Props = $props();
+
+  /** The count each option showed last: a count that goes keeps its room with it. */
+  const kept = $state<Record<string, number>>({});
+  $effect.pre(() => {
+    const shown = options.map((option) => [option.id, option.count] as const);
+    untrack(() => {
+      for (const [id, count] of shown) if (count !== undefined && count !== null) kept[id] = count;
+    });
+  });
 
   /** One Tab stop: the chosen option (the arrows move between them, lib/input/input.ts). */
   const stop = $derived(options.some((option) => option.id === value) ? value : options[0]?.id);
@@ -103,6 +116,10 @@
       >
       {#if option.count !== undefined && option.count !== null}
         <Count value={option.count} tone={option.tone ?? (chosen ? 'soft' : 'plain')} />
+      {:else if option.count === null}
+        <span class="spare" aria-hidden="true"
+          ><Count value={kept[option.id] ?? 0} tone="plain" /></span
+        >
       {/if}
     </button>
   {/each}
@@ -194,6 +211,12 @@
 
   :global(:root[data-window='inactive']) .option[aria-checked='true'] {
     color: var(--text);
+  }
+
+  /* The room of a count that went: unseen, as wide as the count was. */
+  .spare {
+    display: inline-flex;
+    visibility: hidden;
   }
 
   .label {

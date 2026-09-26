@@ -4,7 +4,7 @@
 // English ones show the reader and the settings.
 
 import type { Page } from '@playwright/test';
-import { calls, expect, expectShot, open, test } from './fixtures';
+import { animationsDone, calls, expect, expectShot, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
 const EN = `${WIN}&lang=en`;
@@ -21,6 +21,7 @@ async function readFirst(page: Page): Promise<void> {
   await page.getByTestId('nav-jobs').click();
   await rows(page).first().click();
   await expect(page.getByTestId('reader-ring')).toContainText('91');
+  await animationsDone(page);
 }
 
 test('Sprache switches the whole app to English and back at once', async ({ page }) => {
@@ -102,6 +103,8 @@ test('an exclusion by country names the countries in words, in both languages', 
     [WIN, /Alle/, 'Der Einsatzort liegt außerhalb von Deutschland und Österreich.'],
     [EN, /All/, 'The location is outside Germany and Austria.'],
   ] as const) {
+    // The excluded section open, as a user who opened it once finds it.
+    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
     await open(page, query);
     await page.getByTestId('facet').getByRole('radio', { name: all }).click();
     await page

@@ -383,6 +383,8 @@ test.describe('the list header', () => {
   test('Alle als gelesen markieren stays while Neu lists an unread excluded job', async ({
     page,
   }) => {
+    // The excluded section open, as a user who opened it once finds it.
+    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
     await open(page, WIN);
     // Read every counted job of Neu: only the unread excluded one stays unread.
     const counted = await rows(page).evaluateAll((items) =>

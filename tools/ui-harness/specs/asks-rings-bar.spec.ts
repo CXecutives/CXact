@@ -377,6 +377,8 @@ test('the bar slides to the clicked row like the sidebar pill: 180 ms, emphasize
 });
 
 test('the arrow keys slide the bar; Home and End jump far and place it', async ({ page }) => {
+  // The excluded section open, as a user who opened it once finds it.
+  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await allJobs(page);
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   await page.keyboard.press('ArrowDown');

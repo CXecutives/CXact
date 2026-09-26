@@ -49,8 +49,12 @@ test.describe('the list is one Tab stop', () => {
     // One row takes Tab; the others and every tool are reached otherwise.
     await expect(list(page).locator('.row:not([tabindex="-1"])')).toHaveCount(1);
     await row(page, 'linkedin-4100200301').focus();
+    // The heading of the folded excluded section is the list's one other control.
+    await page.keyboard.press('Tab');
+    await expect(page.getByTestId('excluded-divider')).toBeFocused();
     await page.keyboard.press('Tab');
     expect(await focusInList(page)).toBe(false);
+    await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Shift+Tab');
     await expect(row(page, 'linkedin-4100200301')).toBeFocused();
     // The arrows move within it, and the Tab stop goes along.
@@ -237,9 +241,7 @@ test.describe('dates', () => {
     await expect(date).not.toHaveText(before ?? '');
   });
 
-  test('in the Papierkorb a row shows the day the job went there, and no star', async ({
-    page,
-  }) => {
+  test('in the Papierkorb a row says how long it has left, and no star', async ({ page }) => {
     await open(page, WIN);
     await facet(page, 'Alle').click();
     await expect(row(page, 'linkedin-4100200303').locator('.date')).toHaveText('gestern');
@@ -248,7 +250,8 @@ test.describe('dates', () => {
     await tool(page, 'trash', 'freelancermap-2801');
     await page.getByTestId('place-trash').click();
     await settle(page);
-    await expect(row(page, 'linkedin-4100200303').locator('.date')).toHaveText('jetzt');
+    // The trash empties itself after 30 days: the row counts them down.
+    await expect(row(page, 'linkedin-4100200303').locator('.date')).toHaveText('noch 30 Tage');
     // By date: the day the job went there, which its row shows.
     await page.getByTestId('sort').click();
     await expect(page.getByTestId('menu-item-newest')).toHaveText('Nach Datum');

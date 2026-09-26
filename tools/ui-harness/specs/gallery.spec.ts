@@ -341,10 +341,11 @@ test('the column handle: left drag resizes within its live limits, double click 
   await handle.scrollIntoViewIfNeeded();
   const width = async (): Promise<number> => Math.round((await list.boundingBox())!.width);
   // The demo's limits follow its width like the list's follow the window: at least 320 px,
-  // the reader keeps 440 px, the list at most 60 %; first 40 %, at most 460 px.
+  // the reader keeps 440 px, the list at most 60 %; first 40 %, at least 520 px where the
+  // reader keeps its room, at most 600 px.
   const room = await page.getByTestId('split-demo').evaluate((node) => node.clientWidth);
   const max = Math.max(320, Math.min(room - 440, Math.round(room * 0.6)));
-  const first = Math.max(320, Math.min(max, Math.round(room * 0.4), 460));
+  const first = Math.max(320, Math.min(max, Math.max(Math.round(room * 0.4), 520), 600));
   await expect(splitter).toHaveAttribute('aria-valuemin', '320');
   await expect(splitter).toHaveAttribute('aria-valuemax', String(max));
   await expect.poll(width).toBe(first);

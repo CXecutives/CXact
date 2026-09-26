@@ -21,6 +21,8 @@ const VERDICTS = ['', 'passt', 'passt nicht', 'prüfen', 'offen'];
 /** Opens a job from "Alle" and waits until the reader shows it. */
 async function show(page: Page, key: string): Promise<void> {
   const target = row(page, key);
+  // An excluded job lies in the folded section at the end of the list.
+  if ((await target.count()) === 0) await page.getByTestId('excluded-divider').click();
   await target.click();
   await expect(stage(page).getByTestId('reader-title')).toHaveText(
     await target.locator('.title').innerText(),

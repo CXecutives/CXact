@@ -121,6 +121,8 @@ export const text = {
     search: 'Jobs durchsuchen',
     disclosure: 'Mehr zu diesem Portal',
     disclosureText: 'Die App liest nur Links aus den eigenen Alert-Mails.',
+    divider: 'Ausgeschlossen',
+    dividerThin: 'Seit dem letzten Abruf',
     chips: 'Werkzeuge und Methoden',
     chipsHint: 'Enter fügt hinzu, eine Liste mit Kommas wird aufgeteilt.',
     chipValues: ['SAP S/4HANA', 'LucaNet', 'Power BI'],

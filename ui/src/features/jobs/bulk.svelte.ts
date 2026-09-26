@@ -1,6 +1,8 @@
-// What can be done with all chosen jobs at once, in one place: the list header's selection
-// bar offers the actions that fit every chosen job, then the star (the reader only says how
-// many are chosen), and asks the one question before deleting for good.
+// What can be done with all chosen jobs at once: the list header's selection bar offers the
+// actions that fit every chosen job, then the star, as icons; the pane beside the list (two
+// columns) names the chosen jobs and offers the same with their words, and "Als gelesen"
+// while one of them is unread, and "Details holen" when every one still lacks its full ad.
+// Deleting for good asks the one question first.
 
 import type { SelectionAction } from '$components/SelectionBar.svelte';
 import { t } from '$lib/i18n/t';
@@ -8,7 +10,7 @@ import type { JobView } from '$lib/ipc/types';
 import { isExcluded, jobs } from '$lib/state/jobs.svelte';
 import { run } from '$lib/state/run.svelte';
 import { viewport } from '$lib/state/viewport.svelte';
-import { actionsFor, hasStar, move, purge, toggleStar } from './actions';
+import { actionsFor, detailsWanted, hasStar, move, purge, toggleStar } from './actions';
 import { selection } from './selection.svelte';
 
 class Bulk {
@@ -56,9 +58,36 @@ class Bulk {
       const on = chosen.some((job) => !job.pinned);
       out.push({
         icon: 'star',
-        label: on ? t.reader.pin : t.reader.unpin,
+        label: on ? t.selection.pin : t.reader.unpin,
         testid: 'selection-star',
         onclick: () => toggleStar(this.chosen),
+      });
+    }
+    return out;
+  });
+
+  /** The pane's buttons: the bar's actions, then reading and the full ads where they fit. */
+  readonly paneActions = $derived.by((): SelectionAction[] => {
+    const chosen = this.chosen;
+    const out = [...this.actions];
+    if (chosen.some((job) => job.unread)) {
+      out.push({
+        icon: 'mail-open',
+        label: t.selection.read,
+        testid: 'selection-read',
+        onclick: () => {
+          for (const job of this.chosen) jobs.markSeen(job.key);
+        },
+      });
+    }
+    if (chosen.length > 0 && chosen.every(detailsWanted)) {
+      out.push({
+        icon: 'download',
+        label: t.reader.fetchDetails,
+        testid: 'selection-details',
+        disabled: run.active,
+        disabledReason: run.busyText,
+        onclick: () => void run.start({ kind: 'details', keys: this.chosen.map((job) => job.key) }),
       });
     }
     return out;

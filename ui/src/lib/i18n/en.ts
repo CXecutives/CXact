@@ -603,6 +603,9 @@ export const en: Catalog = {
     hint: (key: string) =>
       `${clickWith(key)} adds or removes a job, ${clickWith(shiftBeside(key))} a whole range.`,
     tip: (key: string) => `Choose several jobs at once with ${clickWith(key)}.`,
+    more: (value: number) => `+${n(value)}`,
+    pin: 'Favourite',
+    read: 'Mark read',
   },
   place: {
     tabs: 'Locations',
@@ -628,10 +631,10 @@ export const en: Catalog = {
       trash: (value: number, query: string) =>
         `${count(value, 'job', 'jobs')} for “${query}” in the trash`,
     } satisfies Record<Place, (value: number, query: string) => string>,
-    alsoIn: {
-      inbox: (value: number) => `Also in Jobs (${n(value)})`,
-      archive: (value: number) => `Also in the archive (${n(value)})`,
-      trash: (value: number) => `Also in the trash (${n(value)})`,
+    hitsIn: {
+      inbox: (value: number) => `In the inbox (${n(value)})`,
+      archive: (value: number) => `In the archive (${n(value)})`,
+      trash: (value: number) => `In the trash (${n(value)})`,
     } satisfies Record<Place, (value: number) => string>,
     inArchive: 'In the archive',
     inTrash: 'In the trash',
@@ -759,6 +762,7 @@ export const en: Catalog = {
     code: reasonCode,
   },
   job: {
+    choose: 'Select',
     included: 'Included',
     workMode: {
       remote: 'Remote',
@@ -785,6 +789,8 @@ export const en: Catalog = {
     closedHint: 'The ad can still be read but no longer takes applications.',
     unread: 'New',
     pinned: 'Favourite',
+    trashLeft: (days: number) => `${count(days, 'day', 'days')} left`,
+    trashSoon: 'deleted soon',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
   },
@@ -822,6 +828,15 @@ export const en: Catalog = {
     newPill: (value: number) => `${n(value)} new`,
     topPill: (value: number) => `${n(value)} high match`,
     resumesIn: (ms: number) => `Resumes in ${formatCountdown(ms)}`,
+    resumesSoon: 'Resuming shortly',
+    portalRuns: 'Running',
+    portalPaused: 'Paused',
+    portalSignIn: 'Sign-in needed',
+    portalLayout: 'Pages look different',
+    portalNew: (value: number) => `${n(value)} new`,
+    portalDup: (value: number) => `${n(value)} duplicates`,
+    portalNoDetails: (value: number) => `${n(value)} without details`,
+    portalNothing: 'nothing new',
     kind: {
       fetch: 'Fetch',
       details: 'Fetch details',
@@ -831,7 +846,6 @@ export const en: Catalog = {
     done: 'Fetch done',
     rescored: 'Scored again',
     nothingNew: 'Nothing new since the last fetch.',
-    showNew: 'Show new jobs',
     cancelled: 'Fetch cancelled',
     failed: 'Fetch failed',
     details: {
@@ -861,8 +875,6 @@ export const en: Catalog = {
     excelRenamed: (name: string) => `The old Excel file is now called ${name}.`,
     openOverview: 'Open report',
     history: 'History',
-    collapse: 'Collapse',
-    expand: 'Expand',
     alert: (portal: Portal, postings: number) =>
       `Alert email from ${portalName[portal]} with ${count(postings, 'job', 'jobs')}`,
     health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {
@@ -883,11 +895,13 @@ export const en: Catalog = {
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
+    pendingSection: 'No match yet',
+    freshSection: 'Since the last fetch',
+    olderSection: 'Earlier',
     formalMissing: {
       degree: 'Degree missing',
       licence: 'Licence missing',
     },
-    emptySources: 'One job alert per portal brings in new jobs.',
     emptyWhileRun: 'The jobs show up here as the fetch goes on.',
     createAlert: (portal: string) => `Create an alert on ${portal}`,
     readOlder: FULL_MAILBOX,
@@ -902,7 +916,7 @@ export const en: Catalog = {
     },
     searchAll: 'Search all',
     showAll: 'Show all',
-    loadFailed: 'The list could not be loaded.',
+    loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',
     createProfile: 'Create profile',
     openProfile: 'Open profile',
@@ -911,6 +925,7 @@ export const en: Catalog = {
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profile without skills',
     profileBrokenText: 'That is why the jobs show no match.',
+    thinProfile: 'Little in the profile, so the match stays rough.',
     connectMailbox: 'Connect mailbox',
   },
   facts: {

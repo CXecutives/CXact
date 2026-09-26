@@ -4,7 +4,8 @@
   read), the ring, then three lines that use the full width: the title on one line, every
   row one height (an unread title is drawn heavier without getting wider, so reading a job never wraps
   its title anew) with the relative date at the end of its first line, on its baseline (in
-  the Papierkorb the day the job went there, the date the trash sorts by), company and
+  the Papierkorb how long it has left before the trash empties itself, "noch 29 Tage", or
+  without that the day the job went there, the date the trash sorts by), company and
   place as one line read left to right and cut at its end (user, 2026-09-25), and one line
   with the ad's key facts ("ab sofort · 6 Monate · 60 % remote · 1.100 €/Tag"; the best
   ad states none, the line stays empty: it holds conditions, never a requirement) and a badge
@@ -27,7 +28,10 @@
   them. An excluded row is muted as a whole, its dot and tools too. When a job is read
   while its row is on screen the dot shrinks away; only the inbox has dots, an excluded row
   none. Relative dates follow the page's clock (they move on while the app stays open). A
-  right click opens the job's menu (`menu`, the app's own). A score from a
+  right click opens the job's menu (`menu`, the app's own). Over the ring a round checkbox
+  shows on hover (and stays, ticked, while the row is among several chosen): a click takes
+  the row in or out of the choice like Ctrl+click (`onchoose`), so choosing several jobs is
+  found without a key, also in one column. A score from a
   teaser rings like any other (its badge says that only a teaser was read). A cut-off
   title or reason shows in full in a tooltip. Layout stays
   inside the row (containment); like the row, its hover rests while the list scrolls
@@ -84,6 +88,9 @@
     ring?: boolean;
     /** Fixed "now" for relative dates (gallery and tests). */
     now?: Date;
+    /** Days after which the Papierkorb empties itself (0: never): a row there says how long
+     *  it has left instead of its date. */
+    trashDays?: number;
     /** A click on the row; `how` says whether it toggles the job in a selection
      *  (Ctrl on Windows, Cmd on macOS) or selects the range up to it (Shift). */
     onselect?: ((job: JobView, how: SelectHow) => void) | null;
@@ -96,6 +103,10 @@
     tools?: readonly RowTool[];
     /** The job's menu on a right click (null: none). */
     menu?: (() => ContextMenu | null) | null;
+    /** The row is among several chosen (its checkbox shows, ticked). */
+    chosen?: boolean;
+    /** The checkbox over the ring takes the row in or out of the choice (null: none). */
+    onchoose?: ((job: JobView) => void) | null;
     /** The row's test id (another list of the same jobs needs its own). */
     testid?: string | null;
     /** The list's one Tab stop is this row (the others are reached with the arrows). */
@@ -109,11 +120,14 @@
     pending = false,
     ring = true,
     now,
+    trashDays = 0,
     onselect = null,
     onpin = null,
     onarchive = null,
     tools = [],
     menu = null,
+    chosen = false,
+    onchoose = null,
     testid = null,
     tabbable = true,
   }: Props = $props();
@@ -128,6 +142,15 @@
   const trashed = $derived(job.place === 'trash' ? job.trashedAt : null);
   const when = $derived(trashed ?? job.mailDate ?? job.firstSeenAt);
   const current = $derived(now ?? clock.now);
+  /** In the Papierkorb: how long until it empties itself (counted from the day the job went
+   *  there, like the reader's line; null without an emptying or a date). */
+  const DAY_MS = 86_400_000;
+  const trashLeft = $derived.by((): string | null => {
+    if (trashed === null || trashDays <= 0) return null;
+    const since = Math.max(0, Math.floor((current.getTime() - Date.parse(trashed)) / DAY_MS));
+    const left = trashDays - since;
+    return left > 0 ? t.job.trashLeft(left) : t.job.trashSoon;
+  });
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   /** How many tools the row has on hover (their room stays free on the title line). */
   const toolCount = $derived(tools.length + (onpin ? 1 : 0) + (onarchive ? 1 : 0));
@@ -220,7 +243,11 @@
             role="img"
             aria-label={t.job.pinned}><Icon name="star" size="sm" filled /></span
           >{/if}
-        <span class="date"><span class="stamp">{formatRelative(when, current, true)}</span></span>
+        <span class="date"
+          ><span class="stamp" data-testid={trashLeft ? 'trash-left' : undefined}
+            >{trashLeft ?? formatRelative(when, current, true)}</span
+          ></span
+        >
       </span>
     </span>
     <span class="meta">
@@ -254,6 +281,21 @@
           />{/if}
       </span>{/if}
   </ListRow>
+  {#if onchoose && ring}
+    <button
+      type="button"
+      class="check"
+      class:on={chosen}
+      role="checkbox"
+      aria-checked={chosen}
+      aria-label={t.job.choose}
+      tabindex="-1"
+      data-testid="check-{job.key.portal}-{job.key.id}"
+      onclick={() => onchoose?.(job)}
+    >
+      <span class="box"><Icon name="check" size="xs" /></span>
+    </button>
+  {/if}
   {#if job.unread && !excluded && job.place === 'inbox'}<span
       class="dot"
       role="img"
@@ -323,6 +365,58 @@
 
   .job:hover:where(:not([data-still])) :global(.row.selected:not(:active)) {
     background-color: var(--surface-selected-hover);
+  }
+
+  /* The checkbox over the ring: unseen until the pointer is on it or the row is among several
+     chosen; the ring gives it its place meanwhile. */
+  .check {
+    position: absolute;
+    top: var(--space-12);
+    left: var(--pane-padding);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--ring-sm);
+    height: var(--ring-sm);
+    border-radius: var(--radius-full);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-standard);
+  }
+
+  .check:hover,
+  .check.on {
+    opacity: 1;
+    transition-duration: var(--dur-hover);
+  }
+
+  .job:has(.check:is(:hover, .on)) :global(.leading) {
+    opacity: 0;
+  }
+
+  .box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--row-check);
+    height: var(--row-check);
+    border: var(--row-check-border) solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background-color: var(--surface);
+    color: transparent;
+    transition:
+      background-color var(--dur-fast) var(--ease-standard),
+      border-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .check:hover .box {
+    border-color: var(--border-input);
+  }
+
+  .on .box,
+  .on:hover .box {
+    border-color: var(--toggle-on);
+    background-color: var(--toggle-on);
+    color: var(--text-on-accent);
   }
 
   /* The unread dot: centred in the pane padding, on the axis of the ring. */

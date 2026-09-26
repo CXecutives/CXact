@@ -1,10 +1,12 @@
 <!--
   The handle between two columns (the job list and the reader, nowhere else): it takes no
-  room of its own, an 8 px strip over the columns' border catches the pointer. Drag it with
-  the left button to resize the column before it between `min` and `max`; a double click
-  sets the width back to the first width. The limits and the first width follow the window
-  and the sidebar (`splitLimits`): the list keeps at least 320 px, the reader at least
-  440 px, and the list takes at most 60 % of the content. The width is kept per user
+  room of its own, an 8 px strip right of the columns' border catches the pointer (over the
+  reader's padding, never over the list's scrollbar); the grip stays centred on the border.
+  Drag it with the left button to resize the column before it between `min` and `max`; a
+  double click sets the width back to the first width. The limits and the first width follow
+  the window and the sidebar (`splitLimits`): the list keeps at least 320 px, the reader at
+  least 440 px, and the list takes at most 60 % of the content; its first width is 40 % of
+  the content, at least 520 px where the reader keeps its room. The width is kept per user
   (`storageKey`, in this browser profile; a store that cannot be read or written simply
   keeps the first width), and a kept width that does not fit is shown at the limit and comes
   back once there is room again. The col-resize cursor and, on hover or while dragging, a
@@ -24,7 +26,8 @@
     initial: number;
   }
 
-  /** The first width takes this share of the content (at most --list-first-max). */
+  /** The first width takes this share of the content (between --list-first-min and
+   *  --list-first-max). */
   const FIRST_SHARE = 0.4;
   /** The list never takes more than this share of the content. */
   const MAX_SHARE = 0.6;
@@ -35,8 +38,26 @@
       min,
       Math.min(width - tokenPx('--reader-min'), Math.round(width * MAX_SHARE)),
     );
-    const first = Math.min(Math.round(width * FIRST_SHARE), tokenPx('--list-first-max'));
+    const first = Math.min(
+      Math.max(Math.round(width * FIRST_SHARE), tokenPx('--list-first-min')),
+      tokenPx('--list-first-max'),
+    );
     return { min, max, initial: Math.max(min, Math.min(max, first)) };
+  }
+
+  /**
+   * The limits of the one limit set that never shrinks while the window grows: `own` (the
+   * content now) capped by `edge` (the content at the next wider layout's narrowest window,
+   * e.g. the full sidebar at the rail's breakpoint). Without the cap the list would be wider
+   * just below the breakpoint, where the rail leaves more content, than just above it.
+   */
+  export function cappedLimits(own: SplitLimits, edge: SplitLimits): SplitLimits {
+    const max = Math.max(own.min, Math.min(own.max, edge.max));
+    return {
+      min: own.min,
+      max,
+      initial: Math.max(own.min, Math.min(own.initial, edge.initial, max)),
+    };
   }
 </script>
 
@@ -178,7 +199,8 @@
 </div>
 
 <style>
-  /* No room of its own: the strip lies over the border between the columns. */
+  /* No room of its own: the strip lies right of the border between the columns, over the
+     next column's padding (the scrollbar of the column before stays its own). */
   .splitter {
     position: relative;
     z-index: var(--z-raised);
@@ -190,23 +212,24 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(-1 * var(--splitter-hit) / 2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    left: 0;
     width: var(--splitter-hit);
     cursor: col-resize;
     touch-action: none;
   }
 
-  /* The grip: a calm pill centred on the border, darker while it is dragged. */
+  /* The grip: a calm pill centred on the border, darker while it is dragged. It takes no
+     pointer, so its half over the column before never catches one. */
   .grip {
-    flex: none;
+    position: absolute;
+    top: calc(50% - var(--grip-height) / 2);
+    left: calc(-1 * var(--grip-width) / 2);
     width: var(--grip-width);
     height: var(--grip-height);
     border-radius: var(--radius-full);
     background-color: var(--grip-rest);
     opacity: 0;
+    pointer-events: none;
     transition:
       opacity var(--dur-base) var(--ease-standard),
       background-color var(--dur-base) var(--ease-standard);

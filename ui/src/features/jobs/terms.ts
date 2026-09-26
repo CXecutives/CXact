@@ -28,7 +28,7 @@ export const TERM_ROWS: readonly TermKey[] = [
   'experience',
 ];
 
-/** How a row fits the profile: passt, passt nicht, prüfen, offen. */
+/** How a row fits the profile: fits, does not fit, check, open. */
 export type Verdict = 'met' | 'violated' | 'unknown' | 'unset';
 
 export interface TermRow {
