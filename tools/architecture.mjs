@@ -3,10 +3,11 @@
 //   layering   components never import features; lib imports neither features nor components
 //              (except the UI helpers named in LIB_UI_HELPERS); a feature imports another
 //              feature only through features/shared and the modules in FEATURE_PUBLIC
-//   size       a .ts or .svelte file of ui/src stays at MAX_LINES; the files in LARGE may not
-//              grow past the count written next to them (they only shrink)
+//   size       a .ts or .svelte file of ui/src stays at MAX_LINES; a file in LARGE stays at
+//              the ceiling written next to it
 //   dead code  no file of ui/src or tools/ui-harness that nothing imports (ENTRIES excepted),
-//              no export that no other file imports
+//              no export that nothing uses (no other file imports it, its own file does not
+//              use it either)
 //
 // It reads the import graph with the TypeScript parser (the <script> blocks of .svelte files
 // included) and resolves `$lib/`, `$components/`, relative paths and the harness's stand-in
@@ -100,10 +101,8 @@ const ENTRIES = {
 /** Playwright finds the specs by their name. */
 const isEntry = (path) => path in ENTRIES || /^tools\/ui-harness\/specs\/.*\.spec\.ts$/.test(path);
 
-/** Exports nothing imports because a tool reads them. */
-const USED_BY_TOOLS = {
-  'tools/ui-harness/playwright.config.ts': ['default'],
-};
+/** Fewer files than this: the UI moved, and the rules would pass on nothing. */
+const MIN_FILES = 200;
 
 /* ------------------------------------------------------------------- files */
 
@@ -262,6 +261,8 @@ for (const [path, { imports }] of parsed) {
 /* ------------------------------------------------------------------- rules */
 
 const problems = [];
+if (parsed.size < MIN_FILES)
+  problems.push(`Scan: only ${parsed.size} files found (at least ${MIN_FILES}): did the UI move?`);
 const report = (rule, fix, list) => {
   if (list.length) problems.push(`${rule}\n  fix: ${fix}\n    ${list.join('\n    ')}`);
 };
@@ -322,7 +323,7 @@ for (const path of Object.keys(LARGE))
   if (!parsed.has(path)) long.push(`${path}: in LARGE but gone (drop the entry)`);
 report(
   `Size: a file of ui/src stays at ${MAX_LINES} lines`,
-  'split it along its parts (a section, a table, a helper); LARGE entries only ever go down',
+  'split it along its parts (a section, a table, a helper); a LARGE ceiling goes down, not up',
   long,
 );
 
@@ -338,10 +339,10 @@ for (const [path, { exports, names }] of parsed) {
   }
   const used = taken.get(path);
   if (used.has('*')) continue;
-  const tools = USED_BY_TOOLS[path] ?? [];
   for (const [name, line] of exports) {
-    if (name === '*' || used.has(name) || tools.includes(name)) continue;
-    if (name === 'default' || (names.get(name) ?? 0) > 1 || temporary(`${path}: ${name}`)) continue;
+    // A default export is the file itself (a component, a config): the file rule covers it.
+    if (name === '*' || name === 'default' || used.has(name)) continue;
+    if ((names.get(name) ?? 0) > 1 || temporary(`${path}: ${name}`)) continue;
     unusedExports.push(`${path}:${line}: ${name}`);
   }
 }
