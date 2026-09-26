@@ -103,7 +103,9 @@ taken back, the job is assessed again at once.
 A list is a place (or the favourites of inbox and archive) plus an `unread` filter ("Neu", no day window) and a sort
 (by match, or by date: the mail's, in the trash the day it went there); the counts per place (inbox, unread,
 favourites, archive, trash) come from the same statement and follow the search, so the page can say "Auch im Archiv
-(n)". "Alle als gelesen markieren" is `mark_all_read(place, search)` (with a search only its hits) with
+(n)". The inbox adds the funnel's filter (`portal`, `minBand` mid|high, `applied`; kept, off in the archive and
+the trash), which narrows the list and all its counts like the search. "Alle als gelesen markieren" is
+`mark_all_read(place, search, portal, minBand, applied)` (with a search or a filter only what the list shows) with
 `mark_unread(keys)` as its undo.
 `top_matches.json` is schema 2 (`appStatus` "saved" for a favourite, the first sighting per job; the unread or
 favourite inbox matches of the last 14 days). The first mailbox scan reads 30 days.
@@ -117,9 +119,9 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands: `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore | fullMailbox})` · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, portal?, minBand?, applied, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
 (list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only) ·
-`job_detail(key)` · `mark_read(key) -> bool` · `mark_all_read(place, search?) -> JobKey[]` · `mark_unread(keys) -> number` ·
+`job_detail(key)` · `mark_read(key) -> bool` · `mark_all_read(place, search?, portal?, minBand?, applied) -> JobKey[]` · `mark_unread(keys) -> number` ·
 `set_pinned(key, on)` · `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·
 `purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
@@ -556,6 +558,10 @@ as the parts land on `main`.
   sort, "…" menus); no OS popup (the Tauri menu API and its permissions are gone). OS file and
   folder pickers, the start failure box, the macOS menu bar and the freelance.de sign-in
   window stay native. Paste reads the clipboard through `clipboard_text`.
+- Filter: one funnel in the inbox's header holds the order and the filter (portal, band from
+  mid or high only, "Nur beworbene Jobs", reset); a dot and its tooltip say when it is on,
+  "Ergebnisse gelesen" marks only what it shows; the archive and the trash keep their order
+  button and have no filter.
 - Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
   S favourite, U unread, B applied, O open the ad; shown in tooltips and menus.
 - Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions

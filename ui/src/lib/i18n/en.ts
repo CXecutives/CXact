@@ -808,6 +808,25 @@ export const en: Catalog = {
       newest: 'By date',
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
+    filter: 'Filter',
+    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
+      const parts = [
+        portal === null ? '' : `only ${portal}`,
+        band === 'mid' ? 'medium or high match' : band === 'high' ? 'only high match' : '',
+        applied ? 'only applied jobs' : '',
+      ].filter((part) => part !== '');
+      const text = parts.join(', ');
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    },
+    allPortals: 'All portals',
+    band: {
+      any: 'Any match',
+      mid: 'Medium or high match',
+      high: 'High match only',
+    } satisfies Record<'any' | 'mid' | 'high', string>,
+    bandNoProfile: 'Without a profile, there is no match.',
+    appliedOnly: 'Applied jobs only',
+    filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
   },
@@ -915,6 +934,7 @@ export const en: Catalog = {
       favourites: (query: string) => `No favourites for “${query}”.`,
     },
     searchAll: 'Search all',
+    noFilterHit: 'No job fits the filter.',
     showAll: 'Show all',
     loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',

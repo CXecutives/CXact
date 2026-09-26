@@ -156,21 +156,19 @@ test('the order menu reorders the list and keeps the selection', async ({ page }
   const before = await rows(page).evaluateAll((els) =>
     els.map((e) => e.getAttribute('data-testid')),
   );
-  // One quiet button names the order; it opens the app's menu with both, the current ticked.
-  const sort = page.getByTestId('sort');
-  await expect(sort).toHaveText('Nach Passung');
-  await expect(sort).toHaveAttribute('aria-haspopup', 'menu');
-  await sort.click();
-  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+  // The funnel of the inbox opens the app's menu: the order first, the current one ticked.
+  const funnel = page.getByTestId('filter');
+  await expect(funnel).toHaveAttribute('aria-haspopup', 'menu');
+  await funnel.click();
+  await expect(page.getByTestId('menu').getByRole('menuitemradio').first()).toHaveText(
     'Nach Passung',
-    'Nach Datum',
-  ]);
+  );
+  await expect(page.getByTestId('menu').getByRole('menuitemradio').nth(1)).toHaveText('Nach Datum');
   await expect(page.getByTestId('menu-item-match')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('menu-item-newest').click();
-  await expect(sort).toHaveText('Nach Datum');
-  // One choice for every list, kept: the archive is in the same order.
+  // One choice for every list, kept: the archive, with its own order button, is in the same.
   await page.getByTestId('place-archive').click();
-  await expect(sort).toHaveText('Nach Datum');
+  await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
   await page.getByTestId('place-inbox').click();
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'freelancermap-2803').click();
@@ -389,10 +387,12 @@ test('without a profile: empty rings, newest first, one line in the list leads t
   // Beside the list, nothing but the way to a job.
   await expect(page.getByTestId('place-reader')).toHaveText('Wähle einen Job aus der Liste.');
   await expect(notice.locator('.btn.primary')).toHaveCount(0);
-  // Without a profile the order is by date; the menu cannot open, its tooltip says why.
-  await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
-  await expect(page.getByTestId('sort')).toHaveAttribute('aria-disabled', 'true');
-  await page.getByTestId('sort').click({ force: true });
+  // Without a profile the order is by date: in the funnel's menu the match order is off and
+  // says why.
+  await page.getByTestId('filter').click();
+  await expect(page.getByTestId('menu-item-newest')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('menu-item-match')).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('menu')).toHaveCount(0);
   // No ring column without a profile: the ad's facts stay.
   await expect(
@@ -793,7 +793,7 @@ test('only a re-sort moves rows: new jobs of a run land in place, the sort switc
   await rowsAtRest(page);
   // Another order is a re-sort: the rows on screen glide to their new place.
   await watchGlides(page, 120);
-  await page.getByTestId('sort').click();
+  await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-newest').click();
   expect(await glides(page)).toBeGreaterThan(0);
 });
@@ -912,7 +912,7 @@ test('the run card: steps side by side, a finished step draws its check once', a
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
 test.fixme('the day overview: its best jobs open the reader', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('sort').click();
+  await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-newest').click();
   const best = page.getByTestId('best').locator('[data-testid^="best-"]').first();
   const title = await best.locator('.title').innerText();
@@ -1223,6 +1223,9 @@ test('under a search all read marks the hits; the trash empties whole and says h
   expect((await calls(page, 'mark_all_read')).at(-1)?.[1]).toEqual({
     place: 'inbox',
     search: 'Interim',
+    portal: null,
+    minBand: null,
+    applied: false,
   });
   await page.getByTestId('search').fill('');
   // The trash: two jobs, a search that finds one: Papierkorb leeren still empties both and

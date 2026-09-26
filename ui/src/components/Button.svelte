@@ -17,6 +17,9 @@
     looks like a secondary toggle, is chosen while `checked`, and only the group's one Tab
     stop (`stop`) is in the Tab order; the arrows move between the options (input.ts).
   - turned: the glyph stands half a turn; it turns in 180 ms.
+  - dot: a small navy dot at the glyph's corner says that something of it is on (the
+    funnel of the list while a filter narrows it); `hint` adds a second, smaller line to
+    the tooltip that says what (the active filters).
   - link: navy text that underlines on hover (a way on, e.g. under a field).
   - inField: a button inside a text field (show password, clear search), like the native
     ones: not in the Tab order, and a click leaves the caret in the field.
@@ -63,6 +66,10 @@
     radio?: { checked: boolean; stop: boolean } | null;
     /** The glyph stands half a turn. */
     turned?: boolean;
+    /** A small dot at the glyph's corner: something of it is on (an active filter). */
+    dot?: boolean;
+    /** A second, smaller line of the tooltip (what is on). */
+    hint?: string | null;
     /** Opens something outside the app (a link shows the hand then). */
     external?: boolean;
     /** Fill the width of the container. */
@@ -96,6 +103,8 @@
     pressed = null,
     radio = null,
     turned = false,
+    dot = false,
+    hint = null,
     external = false,
     wide = false,
     inField = false,
@@ -117,7 +126,13 @@
   };
 
   const inactive = $derived(disabled || loading);
-  const hint = $derived(disabled && disabledReason ? disabledReason : iconOnly ? label : null);
+  const tip = $derived(
+    disabled && disabledReason
+      ? disabledReason
+      : iconOnly
+        ? { text: label, hint: hint ?? null }
+        : null,
+  );
 
   let glyph = $state<HTMLElement | null>(null);
 
@@ -158,7 +173,7 @@
       : undefined}
   data-keep-focus={inField ? '' : undefined}
   data-testid={testid ?? undefined}
-  use:tooltip={hint}
+  use:tooltip={tip}
   onclick={handle}
 >
   <span class="content">
@@ -169,6 +184,7 @@
           size={iconOnly ? ICON_ONLY_SIZE[size] : ICON_SIZE[size]}
           filled={pressed === true}
         />
+        {#if dot}<span class="dot" aria-hidden="true" data-testid="button-dot"></span>{/if}
       </span>
     {/if}
     {#if !iconOnly}
@@ -222,8 +238,21 @@
   }
 
   .glyph {
+    position: relative;
     display: inline-flex;
     transition: transform var(--dur-base) var(--ease-emphasized);
+  }
+
+  /* Something of the button is on: a small navy dot on the glyph's upper corner, like the
+     mark of a filter that is set (navy is the chosen filter's colour). */
+  .dot {
+    position: absolute;
+    top: calc(-1 * var(--space-4));
+    right: calc(-1 * var(--space-4));
+    width: var(--dot-unread);
+    height: var(--dot-unread);
+    border-radius: var(--radius-full);
+    background-color: var(--active-edge);
   }
 
   .busy {

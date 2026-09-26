@@ -139,7 +139,7 @@ test.describe('sections', () => {
     const waiting = (await row(page, 'linkedin-4100200302').boundingBox())!;
     expect(waiting.y).toBeLessThan((await row(page, 'freelancermap-2801').boundingBox())!.y);
     // By date there is no such group.
-    await page.getByTestId('sort').click();
+    await page.getByTestId('filter').click();
     await page.getByTestId('menu-item-newest').click();
     await expect(page.getByTestId('pending-divider')).toHaveCount(0);
   });
@@ -276,7 +276,7 @@ test.describe('choosing several', () => {
 test.describe('run card', () => {
   test('finished: one line per portal; its counts lead to Neu', async ({ page }) => {
     await open(page, WIN);
-    await page.getByTestId('sort').click();
+    await page.getByTestId('filter').click();
     await page.getByTestId('menu-item-newest').click();
     await page.getByTestId('place-archive').click();
     await page.getByTestId('run-status').click();
@@ -292,7 +292,9 @@ test.describe('run card', () => {
     // "2 mit hoher Passung": Neu, the good ones first.
     await page.getByTestId('last-top').click();
     await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByTestId('sort')).toContainText('Nach Passung');
+    await page.getByTestId('filter').click();
+    await expect(page.getByTestId('menu-item-match')).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
     await page.getByTestId('place-trash').click();
     await page.getByTestId('last-new').click();
     await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
@@ -330,7 +332,7 @@ test.describe('states', () => {
     await expect(error).toContainText('Die Jobliste ließ sich nicht laden.');
     await expect(error.getByRole('button', { name: 'Erneut versuchen' })).toBeVisible();
     await expect(page.getByTestId('facet')).toHaveCount(0);
-    await expect(page.getByTestId('sort')).toHaveCount(0);
+    await expect(page.getByTestId('filter')).toHaveCount(0);
     await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
   });
 

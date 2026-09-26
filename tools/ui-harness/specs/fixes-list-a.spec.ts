@@ -271,9 +271,18 @@ test.describe('the keys over the whole list', () => {
     await facet(page, 'Alle').click();
     await rows(page).nth(39).click();
     const key = (await highlighted(page))[0] ?? '';
-    await page.getByTestId('sort').click();
+    await page.getByTestId('filter').click();
     await page.getByTestId('menu-item-newest').click();
-    await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
+    // The list (not a counts-only query) loads by date.
+    await expect
+      .poll(
+        async () =>
+          (await calls(page, 'list_jobs'))
+            .map(([, args]) => (args as { query: { sort: string; limit: number } }).query)
+            .filter((query) => query.limit > 0)
+            .at(-1)?.sort,
+      )
+      .toBe('newest');
     const target = page.getByTestId('job-list').locator(`[data-key="${key}"] .row`);
     await expect(target).toHaveClass(/selected/);
     await expect(target).toBeInViewport();
@@ -324,7 +333,7 @@ test.describe('the list header', () => {
     expect(await labelsCut()).toBe(false);
   });
 
-  test('the selection bar ends where the order does, on one line and on two', async ({ page }) => {
+  test('the selection bar ends where the funnel does, on one line and on two', async ({ page }) => {
     for (const width of [1360, 1600]) {
       await page.setViewportSize({ width, height: 900 });
       if (width === 1600) {
@@ -332,7 +341,7 @@ test.describe('the list header', () => {
       }
       await open(page, WIN);
       await facet(page, 'Alle').click();
-      const end = await rightOf(page, 'sort');
+      const end = await rightOf(page, 'filter');
       await row(page, 'freelancermap-2801').click();
       await row(page, 'linkedin-4100200301').click({ modifiers: ['Control'] });
       await expect(page.getByTestId('selection-bar')).toBeVisible();
@@ -340,10 +349,10 @@ test.describe('the list header', () => {
     }
   });
 
-  test('the order keeps the end of the row in the Papierkorb too', async ({ page }) => {
+  test('the order in the Papierkorb ends the row where the funnel does', async ({ page }) => {
     await open(page, WIN);
     await facet(page, 'Alle').click();
-    const end = await rightOf(page, 'sort');
+    const end = await rightOf(page, 'filter');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
       await row(page, key).hover();
       await page.getByTestId(`trash-${key}`).click();

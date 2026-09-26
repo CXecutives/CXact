@@ -59,14 +59,14 @@ test('one column: the header stays on top while the list scrolls', async ({ page
 test('a search keeps the open job that is a hit beyond the loaded rows', async ({ page }) => {
   await open(page, `${WIN}&scenario=many`);
   await facet(page, 'Alle').click();
-  await page.getByTestId('sort').click();
+  // The order is in the funnel's menu.
+  await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-newest').click();
-  await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
   await row(page, 'linkedin-100006').click();
   await expect(page.getByTestId('reader-title')).toHaveText('Finance Manager 7');
-  await page.getByTestId('sort').click();
+  await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-match').click();
-  await expect(page.getByTestId('sort')).toHaveText('Nach Passung');
+  await expect(page.getByTestId('menu')).toHaveCount(0);
   await page.getByTestId('search').fill('Finance Manager');
   await expect(facet(page, 'Alle')).toContainText('500');
   await page.waitForTimeout(400);
