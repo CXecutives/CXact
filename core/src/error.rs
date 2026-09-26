@@ -39,6 +39,14 @@ pub enum Error {
     #[error("the database comes from a newer version of this app (schema {0})")]
     NewerSchema(i64),
 
+    /// A copy of the database to restore that is not there (any more), by its name.
+    #[error("backup {0} not found")]
+    BackupMissing(String),
+
+    /// A copy of the database to restore that is no readable database of this app.
+    #[error("backup {name} is not a readable database: {detail}")]
+    BackupCorrupt { name: String, detail: String },
+
     /// Input of the user that cannot be used.
     #[error("invalid input: {0}")]
     Invalid(InvalidInput),
@@ -211,8 +219,9 @@ impl Error {
             Error::FileLocked(_) => ErrorKind::FileLocked,
             Error::Io { .. } => ErrorKind::Io,
             Error::Xlsx(_) => ErrorKind::Xlsx,
-            Error::Corrupt(_) => ErrorKind::Corrupt,
+            Error::Corrupt(_) | Error::BackupCorrupt { .. } => ErrorKind::Corrupt,
             Error::NewerSchema(_) => ErrorKind::NewerSchema,
+            Error::BackupMissing(_) => ErrorKind::NotFound,
             Error::Invalid(_) => ErrorKind::Invalid,
             Error::FetchUnavailable { .. } => ErrorKind::PortalUnavailable,
         }
@@ -255,6 +264,10 @@ impl From<&Error> for ErrorInfo {
                 .with("path", path.display().to_string())
                 .with_name_of(path),
             Error::NewerSchema(version) => info.with("schema", *version),
+            // `what` names a backup, so the page says "the backup" and not "the app's data".
+            Error::BackupMissing(name) | Error::BackupCorrupt { name, .. } => {
+                info.with("what", "backup").with("name", name.as_str())
+            }
             Error::Invalid(input) => ErrorInfo::from(input),
             Error::FetchUnavailable { portal, .. } => info.with("portal", portal.key()),
             Error::Db(_) | Error::Xlsx(_) | Error::Corrupt(_) => info,

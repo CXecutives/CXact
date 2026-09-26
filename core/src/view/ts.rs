@@ -25,6 +25,7 @@ use crate::pipeline::{
 };
 use crate::portal::{JobKey, Portal};
 use crate::settings::{Language, Palette};
+use crate::store::{Backup, BackupKind};
 use crate::view::{
     AppState, ClearedTxt, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
@@ -220,6 +221,8 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ProfileDraft>();
     f.add::<ProfileSave>();
     f.add::<ResetSummary>();
+    f.add::<BackupKind>();
+    f.add::<Backup>();
     f.add::<AppState>();
     f.add::<OpenTarget>();
     f.add::<ClearedTxt>();
