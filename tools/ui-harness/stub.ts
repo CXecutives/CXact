@@ -2535,7 +2535,8 @@ const handlers: Handlers = {
     return null;
   },
   save_mailbox: async ({ user, password }) => {
-    // Like mail::check: the shape first, nothing is sent while it cannot be right.
+    // Like the command: the shape first (before the busy check), nothing is sent while it
+    // cannot be right.
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(user)) {
       throw fail('invalid', { reason: 'mailAddress' });
     }

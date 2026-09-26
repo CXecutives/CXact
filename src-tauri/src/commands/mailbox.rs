@@ -12,8 +12,9 @@ use super::app::mailbox;
 use super::{AppState, CmdResult, GmailUser, lock};
 
 /// Saves the Gmail access after a real sign-in (`mail::check`): an address or password
-/// Gmail can never accept is refused before anything is sent; a wrong app password, a
-/// mailbox that is no Gmail or no connection say so and nothing is saved. The sign-in also
+/// Gmail can never accept is refused first, before the app is held or anything is sent
+/// (the stub answers the same way); a wrong app password, a mailbox that is no Gmail or no
+/// connection say so and nothing is saved. The sign-in also
 /// counts the alert mails of the last 30 days per enabled portal (`Mailbox.check`, `null`
 /// when the count did not finish; the sign-in still counts). The app is held meanwhile, so
 /// no run reads the vault half way, and `cancel_run` stops the check. Another account
@@ -27,6 +28,8 @@ pub async fn save_mailbox(
 ) -> CmdResult<Mailbox> {
     state.ensure_real()?;
     let credentials = Credentials::new(&user, &password);
+    // The shape first: a typo is named at once, also while a fetch holds the app.
+    credentials.validate().map_err(|e| ErrorInfo::from(&e))?;
     let portals = state.settings()?.enabled_portals();
     // Held until the account is stored: a run cannot start with the account this replaces.
     let guard = state.claim_mailbox(&app)?;

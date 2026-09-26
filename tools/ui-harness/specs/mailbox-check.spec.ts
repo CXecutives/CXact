@@ -78,3 +78,25 @@ test('CRED-3: signed in but not counted is connected, and says the fetch counts'
   await page.getByTestId('mailbox-save').click();
   await expect(page.getByTestId('mailbox-note')).toHaveText('Postfach verbunden.');
 });
+
+test('CRED-2: a mistyped app password is named at once, also while a fetch runs', async ({
+  page,
+}) => {
+  await changeMailbox(page);
+  // The auto fetch starts while the form is open.
+  await page.evaluate(() => {
+    window.__harness.holdAfter = 1;
+    window.__harness.appRun('fetch');
+  });
+  await page.getByTestId('mailbox-password').fill('kurz');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toContainText(
+    'Ein App-Passwort hat 16 Buchstaben.',
+  );
+  // In the right shape it waits for the fetch, which the form says.
+  await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-form')).toContainText('Gerade läuft schon ein Abruf.');
+  expect(await calls(page, 'save_mailbox')).toHaveLength(2);
+  await page.evaluate(() => (window.__harness.holdAfter = null));
+});

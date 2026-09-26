@@ -148,3 +148,26 @@ fn cred_1_saving_the_mailbox_holds_the_app_and_can_be_stopped() {
         );
     }
 }
+
+/// CRED-2 follow-up: `save_mailbox` looks at the shape of address and app password before
+/// it does anything else, so a typo is named at once, also while a fetch holds the app (the
+/// stub answers the same way), and nothing is sent or held for a password that cannot be
+/// right. `check_mailbox` checks it again (core's tests).
+#[test]
+fn cred_2_the_shape_is_checked_before_the_app_is_held() {
+    let mailbox = read("src-tauri/src/commands/mailbox.rs");
+    let save = body(&mailbox, "save_mailbox");
+    assert!(
+        before(save, "credentials.validate()", "state.claim_mailbox(&app)?"),
+        "the shape comes before the busy check"
+    );
+    assert!(before(save, "credentials.validate()", "check_mailbox("));
+    let stub = read("tools/ui-harness/stub.ts");
+    let stub = &stub[stub
+        .find("  save_mailbox: ")
+        .expect("the stub's save_mailbox")..];
+    assert!(
+        before(stub, "reason: 'appPassword'", "throw fail('busy')"),
+        "the stub answers like the command"
+    );
+}
