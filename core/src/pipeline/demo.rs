@@ -4,17 +4,24 @@
 //! jobs are scored by the real engine against the invented sample profile of the matching
 //! corpus, so the list shows real rings (high, mid, low, excluded and one without details).
 
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
+use jiff::Timestamp;
 use jiff::civil::Date;
+use serde::Deserialize;
+use serde_json::Value;
 use tokio_util::sync::CancellationToken;
 
 use super::{Backends, LocalMatcher, Matcher};
 use crate::fetch::{Cause, PageFetcher, PageOutcome};
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::{RawHead, RawMail, head_part};
-use crate::portal::{FetchPath, JobLink, Portal};
+use crate::model::{AlertMail, Posting};
+use crate::portal::{Facts, FetchPath, JobLink, Portal};
+use crate::store::Store;
 
 /// The profile of the dry run: the invented interim finance profile of the matching corpus.
 pub const PROFILE_JSON: &str = include_str!("../../tests/fixtures/matching/sample_profile.json");
@@ -228,6 +235,247 @@ Rahmenbedingungen:
 - Tagessatz bis 800 €
 - 100 % remote";
 
+// ---------------------------------------------------------------------- Demo workspace
+
+/// The folder of the demo data inside the app's data folder (the `--demo` start): its own
+/// database, its own work folder, never the real ones.
+pub const DEMO_DIR: &str = "demo";
+/// The demo's work folder inside [`DEMO_DIR`].
+pub const DEMO_WORKSPACE: &str = "workspace";
+
+/// A demo data folder made by [`create_demo_data`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DemoData {
+    /// `<data>/demo`.
+    pub dir: PathBuf,
+    /// Its database (`<data>/demo/jobs.db`), opened with `Store::open`.
+    pub database: PathBuf,
+    /// Its work folder, stored in its settings (the profile lies in `profil/`).
+    pub workspace: PathBuf,
+    /// The jobs it holds.
+    pub jobs: usize,
+}
+
+/// One job of a fixture folder's `jobs.json` (the format of the held-out sets).
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FixtureJob {
+    file: String,
+    url: String,
+    title: String,
+    company: String,
+    location: String,
+    mail_date: Option<Timestamp>,
+    first_seen_at: Timestamp,
+    desc_status: String,
+    facts: Option<Value>,
+}
+
+/// Makes a fresh demo data folder `<data_dir>/demo` from ad fixture folders (each with a
+/// `jobs.json` and one text file per job in the text contract format, like
+/// `core/tests/fixtures/matching/heldout8`): a new database with every job in the inbox,
+/// its text (full or teaser) and the facts its page stated, the alert mails dated so the
+/// newest came two hours before `now` (the ads keep their spacing), those older than three
+/// days read, and a finished fetch on record (setup done; the last day's jobs are new since
+/// it). Its settings name its own work folder; `profile` (a profile JSON) is copied there.
+/// The real database, the real work folder, a mailbox and every portal stay untouched: the
+/// function reads the fixtures and writes below `<data_dir>/demo` only, anew on every call.
+pub fn create_demo_data(
+    data_dir: &Path,
+    sources: &[PathBuf],
+    profile: Option<&Path>,
+    now: Timestamp,
+) -> crate::Result<DemoData> {
+    let dir = data_dir.join(DEMO_DIR);
+    std::fs::create_dir_all(&dir).map_err(|e| crate::Error::io(&dir, e))?;
+    let database = dir.join(crate::DB_FILE);
+    for suffix in ["", "-wal", "-shm"] {
+        let file = PathBuf::from(format!("{}{suffix}", database.display()));
+        match std::fs::remove_file(&file) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+                return Err(crate::Error::io(&file, e));
+            }
+            _ => {}
+        }
+    }
+    let workspace = dir.join(DEMO_WORKSPACE);
+    std::fs::create_dir_all(&workspace).map_err(|e| crate::Error::io(&workspace, e))?;
+    if let Some(profile) = profile {
+        let target = workspace
+            .join(crate::profile::PROFILE_DIR)
+            .join(crate::profile::PROFILE_FILE);
+        crate::export::ensure_dir(target.parent().unwrap_or(&workspace))?;
+        std::fs::copy(profile, &target).map_err(|e| crate::Error::io(profile, e))?;
+    }
+    let mut jobs = Vec::new();
+    for source in sources {
+        let list = source.join("jobs.json");
+        let json = std::fs::read_to_string(&list).map_err(|e| crate::Error::io(&list, e))?;
+        let fixtures: Vec<FixtureJob> = serde_json::from_str(&json)
+            .map_err(|e| crate::Error::Corrupt(format!("{}: {e}", list.display())))?;
+        for job in fixtures {
+            let file = source.join(format!("{}.txt", job.file));
+            let text = std::fs::read_to_string(&file).map_err(|e| crate::Error::io(&file, e))?;
+            jobs.push((job, ad_body(&text).to_owned()));
+        }
+    }
+    let store = Store::open(&database)?;
+    let settings = crate::settings::Settings {
+        workspace: Some(workspace.clone()),
+        ..crate::settings::Settings::default()
+    };
+    settings.save(&store)?;
+    let count = fill_demo(&store, jobs, now)?;
+    Ok(DemoData {
+        dir,
+        database,
+        workspace,
+        jobs: count,
+    })
+}
+
+/// The jobs into the demo database as alert mails (one per portal and day) of two runs: the
+/// days before the last and the last day, which the finished fetch brought.
+fn fill_demo(
+    store: &Store,
+    mut jobs: Vec<(FixtureJob, String)>,
+    now: Timestamp,
+) -> crate::Result<usize> {
+    let date = |job: &FixtureJob| job.mail_date.unwrap_or(job.first_seen_at);
+    let Some(newest) = jobs.iter().map(|(job, _)| date(job)).max() else {
+        return Ok(0);
+    };
+    let shift = now
+        .saturating_sub(jiff::SignedDuration::from_hours(2))
+        .unwrap_or(now)
+        .duration_since(newest);
+    let moved = |at: Timestamp| at.checked_add(shift).unwrap_or(at);
+    jobs.sort_by_key(|(job, _)| date(job));
+    let last_day = moved(newest)
+        .saturating_sub(jiff::SignedDuration::from_hours(24))
+        .unwrap_or(now);
+    let read_before = now
+        .saturating_sub(jiff::SignedDuration::from_hours(72))
+        .unwrap_or(now);
+    let (older, recent) = (store.begin_run()?, store.begin_run()?);
+    let mut stored = 0;
+    let mut groups: BTreeMap<(i64, Portal, jiff::civil::Date), Vec<(FixtureJob, String)>> =
+        BTreeMap::new();
+    for (job, text) in jobs {
+        let Some(link) = crate::portal::job_link(&job.url) else {
+            log::warn!("demo: no job link in {}", job.file);
+            continue;
+        };
+        let at = moved(date(&job));
+        let run = if at >= last_day { recent } else { older };
+        groups
+            .entry((run, link.key.portal, crate::time::local_date(at)))
+            .or_default()
+            .push((job, text));
+    }
+    for ((run, portal, day), group) in groups {
+        let at = group
+            .iter()
+            .map(|(job, _)| moved(date(job)))
+            .max()
+            .unwrap_or(now);
+        let postings: Vec<Posting> = group
+            .iter()
+            .filter_map(|(job, _)| {
+                let link = crate::portal::job_link(&job.url)?;
+                Some(Posting::new(
+                    link.key,
+                    link.url,
+                    &job.title,
+                    &job.company,
+                    &job.location,
+                ))
+            })
+            .collect();
+        let alert = AlertMail {
+            key: format!("demo:{}:{day}", portal.key()),
+            portal,
+            subject: DEMO_SUBJECT.to_owned(),
+            sender: portal.label().to_owned(),
+            date: Some(at),
+            gmail_id: None,
+            postings,
+        };
+        store.record_alert(run, &alert, at)?;
+        for ((job, text), posting) in group.iter().zip(&alert.postings) {
+            let key = &posting.key;
+            if job.desc_status == "teaser" {
+                store.record_teaser(key, text, at)?;
+            } else {
+                store.record_text(key, text, false, false, at)?;
+            }
+            let facts = job.facts.as_ref().and_then(page_facts);
+            store.record_parse(key, portal.adapter().parser_version(), facts.as_ref())?;
+            if at < read_before {
+                store.mark_read(key, at)?;
+            }
+            stored += 1;
+        }
+    }
+    // A finished fetch on record: setup is done, and the last day's jobs are its new ones.
+    store.kv_set("last_scan_run", &recent.to_string())?;
+    store.kv_set("last_fetch_at", &crate::time::to_db(now).to_string())?;
+    Ok(stored)
+}
+
+/// Subject of the demo's alert mails (a mail's own words, German like the portals').
+const DEMO_SUBJECT: &str = "Neue Jobs für dich";
+
+/// The ad text of a file in the text contract format: what follows its head (the lines up to
+/// the first empty one).
+fn ad_body(text: &str) -> &str {
+    let text = text.trim_start_matches('\u{feff}');
+    text.find("\n\n")
+        .map(|at| at + 2)
+        .or_else(|| text.find("\r\n\r\n").map(|at| at + 4))
+        .map_or(text, |start| &text[start..])
+        .trim()
+}
+
+/// A fixture's facts (the engine's words: `rate`, `hourly`, `currency`, `start`, `months`,
+/// `remoteFrom`, `contract`) as the facts a job page states, in a page's own words, so the
+/// engine reads them as it reads a real page. `None` without any.
+fn page_facts(value: &Value) -> Option<Facts> {
+    let int = |key: &str| value.get(key).and_then(Value::as_u64);
+    let text = |key: &str| value.get(key).and_then(Value::as_str);
+    // A page's words, German like the portals' (external data, do not translate).
+    let rate = int("rate").map(|rate| {
+        let currency = text("currency").unwrap_or("€");
+        if value.get("hourly").and_then(Value::as_bool) == Some(true) {
+            format!("{rate} {currency}/h")
+        } else {
+            format!("{rate} {currency} pro Tag")
+        }
+    });
+    let start = text("start").map(|start| match start {
+        "now" => "ab sofort".to_owned(),
+        "vague" => "nach Absprache".to_owned(),
+        day => day
+            .parse::<jiff::civil::Date>()
+            .map_or_else(|_| day.to_owned(), |d| d.strftime("%d.%m.%Y").to_string()),
+    });
+    let employment_type = text("contract").and_then(|contract| match contract {
+        "interim" => Some("Freiberuflich".to_owned()),
+        "permanent" => Some("Festanstellung".to_owned()),
+        "anue" => Some("Arbeitnehmerüberlassung".to_owned()),
+        _ => None,
+    });
+    let facts = Facts {
+        rate,
+        start,
+        duration: int("months").map(|months| format!("{months} Monate")),
+        remote_percent: int("remoteFrom").and_then(|p| u8::try_from(p).ok()),
+        employment_type,
+        ..Facts::default()
+    };
+    (!facts.is_empty()).then_some(facts)
+}
+
 async fn pause(length: Duration, cancel: &CancellationToken) -> Result<(), MailError> {
     if crate::time::sleep_cancellable(length, cancel).await {
         Ok(())
@@ -241,6 +489,105 @@ mod tests {
     use super::*;
     use crate::matching::{self, JobInput, TextKind, Verdict};
     use crate::model::{Band, band};
+
+    /// The demo data folder: a fresh database of its own below `<data>/demo` with every job
+    /// of the fixtures in the inbox, its text and page facts, plausible dates up to two hours
+    /// ago (the older ones read), a finished fetch on record and its own work folder with the
+    /// profile; the real database beside it stays as it was, and a second call starts anew.
+    #[test]
+    fn the_demo_data_stand_apart_and_look_real() {
+        let data = tempfile::tempdir().unwrap();
+        let real = data.path().join(crate::DB_FILE);
+        let store = Store::open(&real).unwrap();
+        store.kv_set("mine", "1").unwrap();
+        drop(store);
+        let before = std::fs::read(&real).unwrap();
+        let fixtures =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching/heldout8");
+        let profile = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/matching/sample_profile.json");
+        let now: Timestamp = "2026-10-01T09:00:00Z".parse().unwrap();
+        let demo = create_demo_data(
+            data.path(),
+            std::slice::from_ref(&fixtures),
+            Some(&profile),
+            now,
+        )
+        .unwrap();
+        assert_eq!(demo.dir, data.path().join(DEMO_DIR));
+        assert_eq!(demo.jobs, 64, "every job of the set");
+        assert_eq!(
+            std::fs::read(&real).unwrap(),
+            before,
+            "the real database untouched"
+        );
+        let store = Store::open(&demo.database).unwrap();
+        assert_eq!(store.kv_get("mine").unwrap(), None);
+        let settings = crate::settings::Settings::load(&store).unwrap();
+        assert_eq!(
+            settings.workspace.as_deref(),
+            Some(demo.workspace.as_path())
+        );
+        assert!(
+            demo.workspace
+                .join("profil")
+                .join("beraterprofil.json")
+                .is_file()
+        );
+        let jobs = store.jobs(&crate::store::JobFilter::default()).unwrap();
+        assert_eq!(jobs.len(), 64);
+        let oldest = now - jiff::SignedDuration::from_hours(24 * 10);
+        for job in &jobs {
+            assert_eq!(job.place(), crate::model::Place::Inbox);
+            let at = job.mail_date.unwrap();
+            assert!(at <= now && at > oldest, "{at}");
+            assert!(
+                store.description(&job.key).unwrap().is_some(),
+                "{}",
+                job.key
+            );
+        }
+        let teasers = jobs
+            .iter()
+            .filter(|j| j.desc_status == crate::model::DescStatus::Teaser)
+            .count();
+        assert_eq!(teasers, 16);
+        assert!(jobs.iter().any(|j| j.facts.is_some()), "page facts");
+        assert!(
+            jobs.iter().any(|j| j.read_at.is_some()) && jobs.iter().any(|j| j.read_at.is_none())
+        );
+        assert!(super::super::has_completed_fetch(&store));
+        let last = super::super::last_scan_run(&store).unwrap();
+        assert!(
+            jobs.iter().any(|j| j.first_seen_run == last),
+            "new since the last fetch"
+        );
+        assert!(jobs.iter().any(|j| j.first_seen_run != last));
+        assert!(
+            store.last_alerts().unwrap().len() >= 2,
+            "alert mails per portal"
+        );
+        drop(store);
+        // Anew on every call.
+        let again = create_demo_data(data.path(), &[fixtures], None, now).unwrap();
+        assert_eq!(again.jobs, 64);
+        let store = Store::open(&again.database).unwrap();
+        assert_eq!(store.job_count().unwrap(), 64);
+    }
+
+    #[test]
+    fn a_fixture_s_facts_read_like_a_page() {
+        let facts = page_facts(&serde_json::json!({"rate": 95, "hourly": true,
+            "start": "2026-11-02", "months": 9, "remoteFrom": 20, "contract": "interim"}))
+        .unwrap();
+        assert_eq!(facts.rate.as_deref(), Some("95 €/h"));
+        assert_eq!(facts.start.as_deref(), Some("02.11.2026"));
+        assert_eq!(facts.duration.as_deref(), Some("9 Monate"));
+        assert_eq!(facts.remote_percent, Some(20));
+        assert_eq!(facts.employment_type.as_deref(), Some("Freiberuflich"));
+        assert_eq!(page_facts(&serde_json::json!({"rate": null})), None);
+        assert_eq!(ad_body("Titel: A\nOrt: B\n\nDer Text.\n"), "Der Text.");
+    }
 
     /// The sample ads give every ring the list knows, judged by the real engine.
     #[test]
