@@ -131,6 +131,7 @@ ask which palette is on.
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 - A key of the app is one entry in `ui/src/lib/input/keys.ts`; the card of the keys and
   Einstellungen both show it. Its handling lives in `ui/src/lib/input/input.ts`.
+
 ## What the backend generates for the UI
 
 `cargo test -p jobalert-core ipc_types` writes `ui/src/lib/ipc/types/` from core and fails
@@ -214,3 +215,24 @@ checks the headers like every export text.
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
+
+## The preview's demo data
+
+The browser preview (`tools/ui-preview.cmd`, `npm run harness`) runs the page against a stub
+(`tools/ui-harness/stub.ts`) instead of the backend. Everything the engine computes comes from
+one generated file, `tools/ui-harness/demo/snapshot.json`: the list rows, the reader with its
+reasons and passages, the jobs once their page came ("Details holen", the scripted fetch), the
+Übersicht's numbers, the profile as the app understood it and the AI prompts. Never write a
+score, a reason or a prompt into the stub by hand.
+
+- An engine, view or prompt change: run `cargo test -p jobalert-core --test ui_demo_snapshot`.
+  It rewrites the snapshot and fails while the committed one differs; run it again and commit
+  the file with the change. CI fails while it is stale.
+- Another demo job, other ad words, another demo state (read, favourite, archive, a duplicate,
+  details pending or failed, a job of the scripted fetch): edit
+  `tools/ui-harness/demo/ads.json`, then regenerate. The sample profile is
+  `tools/ui-harness/demo/profile.json`.
+- The stub keeps only state: moving, starring, reading, deleting, runs, scenarios and errors.
+- Specs read engine values (a score, a reason, a count) from the snapshot
+  (`tools/ui-harness/specs/demo.ts`), never as literals, so a regenerated snapshot keeps them
+  green.
