@@ -550,15 +550,18 @@
   /* The text in fields. */
   --font-field: 14px;
   --leading-field: 20px;
-  --font-md: 15px;
-  --leading-md: 22px;
-  /* List titles: 15 px on a tighter 20 px line, so two lines stay one block. */
+  /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
+  --font-md: 14px;
+  --leading-md: 20px;
+  /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
+  --font-title: 15px;
   --leading-title: 20px;
   /* The sidebar entries (14/20, weight 500). */
   --font-tab: 14px;
   --leading-tab: 20px;
-  --font-body: 15px;
-  --leading-body: 24px;
+  /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
+  --font-body: 14px;
+  --leading-body: 22px;
   --font-lg: 17px;
   --leading-lg: 24px;
   --font-xl: 20px;
@@ -572,7 +575,7 @@
   --type-sm: var(--weight-regular) var(--font-sm) / var(--leading-sm) var(--font-sans);
   --type-field: var(--weight-regular) var(--font-field) / var(--leading-field) var(--font-sans);
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
-  --type-title: var(--weight-medium) var(--font-md) / var(--leading-title) var(--font-sans);
+  --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
   --type-tab: var(--weight-medium) var(--font-tab) / var(--leading-tab) var(--font-sans);
   --type-body: var(--weight-regular) var(--font-body) / var(--leading-body) var(--font-sans);
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
