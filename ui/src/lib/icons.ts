@@ -31,10 +31,8 @@ export const ICONS = {
   prompt: 'message-square-text',
   /** Fetch the whole ad (Details holen). */
   details: 'download',
-  markRead: 'check-check',
-  /** Open a job, mark jobs read (an opened letter). */
+  /** Open a job (an opened letter). */
   read: 'mail-open',
-  applied: 'send',
   /** A reason that leads to its passage in the ad. */
   jump: 'arrow-down',
 
