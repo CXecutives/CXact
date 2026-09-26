@@ -188,7 +188,8 @@
         </span>
       {/if}
       {#if checks.length > 0}
-        <span class="check">
+        <!-- Its tooltip names the values, a click goes to the first. -->
+        <span class="check" use:tooltip={checks.join(' ')}>
           <Button
             variant="ghost"
             size="sm"

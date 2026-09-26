@@ -160,7 +160,10 @@
     let used = 0;
     let count = 0;
     for (const [index, chip] of chips.entries()) {
-      const width = chip.offsetWidth + gap;
+      // Its whole width, also while it is shortened (the text clips, its scroll width does not).
+      const text = chip.querySelector<HTMLElement>('.text');
+      const clipped = text === null ? 0 : text.scrollWidth - text.clientWidth;
+      const width = chip.offsetWidth + clipped + gap;
       if (used + width + (index < chips.length - 1 ? more : 0) > room) break;
       used += width;
       count += 1;
