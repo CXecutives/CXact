@@ -367,7 +367,7 @@
     {/if}
 
     <section class="section" data-testid="settings-mailbox">
-      <h2 class="heading">{t.settings.mailbox}</h2>
+      <h2 class="heading" data-first-row>{t.settings.mailbox}</h2>
       <Card padding={cfg.mailbox.user && !editing ? 'rows' : 'md'}>
         {#if cfg.mailbox.user && !editing}
           <SettingRow label={cfg.mailbox.user} copyLabel hint={t.settings.vault[cfg.mailbox.vault]}>

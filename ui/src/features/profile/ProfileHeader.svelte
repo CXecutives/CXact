@@ -165,7 +165,7 @@
 </script>
 
 <Card padding="md" testid="profile-file">
-  <div class="head">
+  <div class="head" data-first-row>
     <div class="file">
       <IconTile tone="navy" icon="file-text" size="md" />
       <div class="facts">
