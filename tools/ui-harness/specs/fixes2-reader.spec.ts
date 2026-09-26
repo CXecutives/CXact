@@ -224,7 +224,9 @@ test.fixme('a pause that resolves itself is a calm note, alert mails without job
 
 test('a pause during a run is a calm note too', async ({ page }) => {
   await open(page, `${WIN}&scenario=running`);
-  await expect(page.getByTestId('pause-freelance')).toHaveClass(/info/);
+  // Its portal's line counts down, calm; no warning.
+  await expect(page.getByTestId('countdown-freelance')).not.toHaveClass(/warns/);
+  await expect(page.getByTestId('pause-freelance')).toHaveCount(0);
 });
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.

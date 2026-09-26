@@ -273,6 +273,54 @@ test.describe('choosing several', () => {
   });
 });
 
+test.describe('run card', () => {
+  test('finished: one line per portal; its counts lead to Neu', async ({ page }) => {
+    await open(page, WIN);
+    await page.getByTestId('sort').click();
+    await page.getByTestId('menu-item-newest').click();
+    await page.getByTestId('place-archive').click();
+    await page.getByTestId('run-status').click();
+    const linkedin = page.getByTestId('portal-line-linkedin');
+    await expect(linkedin).toContainText('linkedin.com');
+    await expect(linkedin).toContainText('2 neu, 1 doppelt, 1 ohne Details');
+    await expect(page.getByTestId('portal-line-freelancermap')).toContainText('3 neu');
+    // One way to close it, no second one to fold it.
+    await expect(
+      page.getByTestId('run-card').getByRole('button', { name: 'Ausblenden' }),
+    ).toHaveCount(1);
+    await expect(page.getByTestId('run-toggle')).toHaveCount(0);
+    // "2 mit hoher Passung": Neu, the good ones first.
+    await page.getByTestId('last-top').click();
+    await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByTestId('sort')).toContainText('Nach Passung');
+    await page.getByTestId('place-trash').click();
+    await page.getByTestId('last-new').click();
+    await expect(facet(page, 'Neu')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('running: one line per portal with its countdown, then it goes on shortly', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=running`);
+    await expect(page.getByTestId('countdown-linkedin')).toHaveText('Weiter in 0:42');
+    await expect(page.getByTestId('countdown-freelance')).toHaveText('Weiter in 12:00');
+    await page.clock.setFixedTime(new Date(NOW.getTime() + 60_000));
+    await expect(page.getByTestId('countdown-linkedin')).toHaveText('Geht gleich weiter');
+    await expect(page.getByTestId('countdown-freelance')).toHaveText('Weiter in 11:00');
+  });
+
+  test('failed: the time of the attempt, why, and a way to try again', async ({ page }) => {
+    await open(page, `${WIN}&scenario=offline`);
+    await page.getByTestId('run-status').click();
+    const card = page.getByTestId('run-finished');
+    await expect(card).toContainText('08:30');
+    const failed = page.getByTestId('run-failed');
+    await expect(failed).toContainText('Gmail ist nicht erreichbar.');
+    await failed.getByRole('button', { name: 'Erneut versuchen' }).click();
+    expect(await calls(page, 'start_run')).toHaveLength(1);
+  });
+});
+
 test.describe('states', () => {
   test('a list that did not load says so, with a retry; the header counts nothing', async ({
     page,

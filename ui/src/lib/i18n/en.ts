@@ -794,6 +794,15 @@ export const en: Catalog = {
     newPill: (value: number) => `${n(value)} new`,
     topPill: (value: number) => `${n(value)} high match`,
     resumesIn: (ms: number) => `Resumes in ${formatCountdown(ms)}`,
+    resumesSoon: 'Resuming shortly',
+    portalRuns: 'Running',
+    portalPaused: 'Paused',
+    portalSignIn: 'Sign-in needed',
+    portalLayout: 'Pages look different',
+    portalNew: (value: number) => `${n(value)} new`,
+    portalDup: (value: number) => `${n(value)} duplicates`,
+    portalNoDetails: (value: number) => `${n(value)} without details`,
+    portalNothing: 'nothing new',
     kind: {
       fetch: 'Fetch',
       details: 'Fetch details',
@@ -803,7 +812,6 @@ export const en: Catalog = {
     done: 'Fetch done',
     rescored: 'Scored again',
     nothingNew: 'Nothing new since the last fetch.',
-    showNew: 'Show new jobs',
     cancelled: 'Fetch cancelled',
     failed: 'Fetch failed',
     details: {
@@ -833,8 +841,6 @@ export const en: Catalog = {
     excelRenamed: (name: string) => `The old Excel file is now called ${name}.`,
     openOverview: 'Open report',
     history: 'History',
-    collapse: 'Collapse',
-    expand: 'Expand',
     alert: (portal: Portal, postings: number) =>
       `Alert email from ${portalName[portal]} with ${count(postings, 'job', 'jobs')}`,
     health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {

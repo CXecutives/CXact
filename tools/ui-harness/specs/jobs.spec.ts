@@ -533,9 +533,13 @@ test('a run in progress after a reload: steps, portals, countdown and pause', as
   await expect(page.getByTestId('step-fetch')).toContainText('5 von 7');
   // The status names the portal it is about.
   await expect(page.getByTestId('run-running')).toContainText('Wartet auf linkedin.com');
-  await expect(page.getByTestId('countdown')).toHaveText('Weiter in 0:42');
-  // The same sentence as the day overview and Einstellungen say it.
-  await expect(page.getByTestId('pause-freelance')).toContainText(
+  // One line per portal: the one it waits for counts down, and so does a pause.
+  await expect(page.getByTestId('countdown-linkedin')).toHaveText('Weiter in 0:42');
+  await expect(page.getByTestId('countdown-freelance')).toHaveText('Weiter in 12:00');
+  await expect(page.getByTestId('portal-line-freelancermap')).toContainText('Läuft');
+  // Why, in the same sentence as the Übersicht and Einstellungen say it.
+  await page.getByTestId('countdown-freelance').hover();
+  await expect(page.getByRole('tooltip')).toContainText(
     'Das Portal bremst die Anfragen, der Abruf macht ab 09:42 von selbst weiter.',
   );
 });
@@ -878,7 +882,7 @@ test('the run card: steps side by side, a finished step draws its check once', a
   );
   expect(new Set(tops).size).toBe(1);
   await expect(page.getByTestId('step-scan').locator('.mark')).not.toHaveClass(/drawn/);
-  await expect(page.getByTestId('countdown')).toHaveText('Weiter in 0:42');
+  await expect(page.getByTestId('countdown-linkedin')).toHaveText('Weiter in 0:42');
   // A step that finishes while the card is on screen draws its check.
   await open(page, `${WIN}&tick=80`);
   await page.getByTestId('fetch').click();
@@ -886,13 +890,11 @@ test('the run card: steps side by side, a finished step draws its check once', a
   await expect(page.getByTestId('step-scan')).toHaveClass(/done/, { timeout: 10_000 });
   await expect(page.getByTestId('step-scan').locator('.mark')).toHaveClass(/drawn/);
   await runFinished(page);
-  // Finished: the time and the pills; the chevron turns when the card collapses.
+  // Finished: the time and the counts; the card stays open, its one × closes it.
   await expect(page.getByTestId('last-new')).toContainText('2 neu');
-  const toggle = page.getByTestId('run-toggle');
-  await expect(toggle).toHaveClass(/turned/);
-  await toggle.click();
-  await expect(toggle).not.toHaveClass(/turned/);
-  await expect(page.getByTestId('last-new')).toHaveCount(0);
+  await expect(page.getByTestId('run-toggle')).toHaveCount(0);
+  await page.getByTestId('run-close').click();
+  await expect(page.getByTestId('run-card')).toHaveCount(0);
 });
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.

@@ -837,6 +837,18 @@ export const de = {
     newPill: (value: number) => `${n(value)} neu`,
     topPill: (value: number) => `${n(value)} mit hoher Passung`,
     resumesIn: (ms: number) => `Weiter in ${formatCountdown(ms)}`,
+    /** A pause whose end has come: the portal goes on in a moment. */
+    resumesSoon: 'Geht gleich weiter',
+    /** A portal's line while a run goes, when it has no countdown. */
+    portalRuns: 'Läuft',
+    portalPaused: 'Pausiert',
+    portalSignIn: 'Anmeldung nötig',
+    portalLayout: 'Seiten sehen anders aus',
+    /** A portal's line after a fetch ("linkedin.com 4 neu, 2 doppelt, 3 ohne Details"). */
+    portalNew: (value: number) => `${n(value)} neu`,
+    portalDup: (value: number) => `${n(value)} doppelt`,
+    portalNoDetails: (value: number) => `${n(value)} ohne Details`,
+    portalNothing: 'nichts Neues',
     kind: {
       fetch: 'Abruf',
       details: 'Details holen',
@@ -846,8 +858,6 @@ export const de = {
     done: 'Abruf fertig',
     rescored: 'Neu bewertet',
     nothingNew: 'Nichts Neues seit dem letzten Abruf.',
-    /** On the card in Archiv or Papierkorb: the way to the new jobs of the fetch. */
-    showNew: 'Neue Jobs zeigen',
     cancelled: 'Abruf abgebrochen',
     failed: 'Abruf fehlgeschlagen',
     /** A details run (the reader's "Details holen"): its title, what it did not get. */
@@ -889,8 +899,6 @@ export const de = {
     excelRenamed: (name: string) => `Die alte Excel-Datei heißt jetzt ${name}.`,
     openOverview: 'Bericht öffnen',
     history: 'Verlauf',
-    collapse: 'Einklappen',
-    expand: 'Ausklappen',
     alert: (portal: Portal, postings: number) =>
       `Alert-Mail von ${portalName[portal]} mit ${count(postings, 'Job', 'Jobs')}`,
     /** A line of the history when a portal's health changes. */
