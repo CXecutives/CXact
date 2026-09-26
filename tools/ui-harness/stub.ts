@@ -1422,14 +1422,22 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
     query.place === 'trash' && !query.favourites
       ? (trashedAt.get(markKey(j.key)) ?? '')
       : (j.mailDate ?? j.firstSeenAt);
+  // store::page_order: the excluded last; by match the jobs without a score first (the list's
+  // "Noch ohne Passung" on top, so every page is complete); a closed ad after the open ones;
+  // then the best score.
   const page = base
     .filter((j) => inQuery(j, query))
     .sort((a, b) => {
       const ex = Number(a.match?.status === 'excluded') - Number(b.match?.status === 'excluded');
       if (ex !== 0) return ex;
-      if (query.sort === 'match') {
-        const na = Number(a.match === null) - Number(b.match === null);
-        if (na !== 0) return na;
+      const byMatch = query.sort === 'match';
+      if (byMatch) {
+        const pending = Number(b.match === null) - Number(a.match === null);
+        if (pending !== 0) return pending;
+      }
+      const closed = Number(a.closed) - Number(b.closed);
+      if (closed !== 0) return closed;
+      if (byMatch) {
         const d = (b.match?.score ?? 0) - (a.match?.score ?? 0);
         if (d !== 0) return d;
       }

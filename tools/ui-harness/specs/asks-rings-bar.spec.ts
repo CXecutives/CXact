@@ -369,8 +369,8 @@ test('the bar slides to the clicked row like the sidebar pill: 180 ms, emphasize
     expect(samples[at]!.top).toBeGreaterThanOrEqual(samples[at - 1]!.top - 0.5);
     expect(samples[at]!.top).toBeLessThanOrEqual(end.top + 0.5);
   }
-  // Back up to a row of 86 px: the height follows.
-  await rowOf(page, 'freelancermap-2801').click();
+  // Back up to the first row (86 px, the job still without a score): the height follows.
+  await rowOf(page, 'linkedin-4100200302').click();
   const back = await resting(page);
   expect(back.height).toBe(86 - 2 * INSET);
   expect(back.top).toBe(INSET);
@@ -381,12 +381,13 @@ test('the arrow keys slide the bar; Home and End jump far and place it', async (
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await allJobs(page);
   await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  // The first row is the job still without a score (by match it stands first).
   await page.keyboard.press('ArrowDown');
-  await expect(rowOf(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
+  await expect(rowOf(page, 'linkedin-4100200302')).toHaveAttribute('aria-current', 'true');
   await resting(page);
   await startSampling(page);
   await page.keyboard.press('ArrowDown');
-  await expect(rowOf(page, 'linkedin-4100200301')).toHaveAttribute('aria-current', 'true');
+  await expect(rowOf(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
   await page.waitForTimeout(350);
   let samples = await stopSampling(page);
   expect(samples.some((sample) => sample.moves.some((move) => move.startsWith('180 ')))).toBe(true);
@@ -407,7 +408,7 @@ test('the arrow keys slide the bar; Home and End jump far and place it', async (
   // And Home again, to the first row.
   await startSampling(page);
   await page.keyboard.press('Home');
-  await expect(rowOf(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
+  await expect(rowOf(page, 'linkedin-4100200302')).toHaveAttribute('aria-current', 'true');
   await page.waitForTimeout(300);
   samples = await stopSampling(page);
   expect(samples.flatMap((sample) => sample.moves)).not.toContainEqual(

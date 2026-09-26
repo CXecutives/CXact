@@ -775,7 +775,8 @@ pub fn job_views(store: &Store, rows: &[JobRow]) -> crate::Result<Vec<JobView>> 
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum JobSort {
-    /// Best match first (excluded jobs behind the others).
+    /// The jobs still without a score first, then the best match (excluded jobs behind the
+    /// others).
     Match,
     /// By date: the alert mail's, in the trash the day the job went there.
     Newest,
@@ -2059,9 +2060,9 @@ mod tests {
             job_page(&store, &q).unwrap()
         };
         let all = page(None, None);
-        assert_eq!(titles(&all), ["B", "A", "E", "D", "C"]);
+        assert_eq!(titles(&all), ["D", "B", "A", "E", "C"]);
         let linkedin = page(Some(Portal::LinkedIn), None);
-        assert_eq!(titles(&linkedin), ["B", "A", "D", "C"]);
+        assert_eq!(titles(&linkedin), ["D", "B", "A", "C"]);
         assert_eq!(linkedin.counts.inbox, 4, "the counts follow");
         let map = page(Some(Portal::Freelancermap), None);
         assert_eq!(titles(&map), ["E"]);
@@ -2344,17 +2345,18 @@ mod tests {
             job_page(&store, &query(Place::Inbox, unread, sort, limit, offset)).unwrap()
         };
         // Unread lists every unread job: the excluded one behind the others (grey in the
-        // list), unscored after scored. Its count leaves the excluded one out.
+        // list), the unscored one first. Its count leaves the excluded one out.
         let new = page(true, JobSort::Match, 50, 0);
-        assert_eq!(titles(&new), ["B", "D", "C"]);
+        assert_eq!(titles(&new), ["D", "B", "C"]);
         assert_eq!(&new.counts, &expected);
-        assert!(new.jobs[0].unread && new.jobs[0].match_.is_some());
+        assert!(new.jobs[0].unread && new.jobs[0].match_.is_none());
+        assert!(new.jobs[1].unread && new.jobs[1].match_.is_some());
         let excluded = new.jobs[2].match_.as_ref().unwrap();
         assert!(new.jobs[2].unread && excluded.status == MatchStatus::Excluded);
         assert_eq!(titles(&page(true, JobSort::Newest, 50, 0)), ["D", "B", "C"]);
         assert_eq!(
             titles(&page(false, JobSort::Match, 50, 0)),
-            ["B", "A", "D", "C"]
+            ["D", "B", "A", "C"]
         );
         let newest = page(false, JobSort::Newest, 50, 0);
         assert_eq!(titles(&newest), ["D", "B", "A", "C"]);
@@ -2432,8 +2434,8 @@ mod tests {
         assert_eq!(titles(&after), ["D", "A"]);
         assert_eq!(
             titles(&page(Place::Trash)),
-            ["A", "D"],
-            "by match the scored first"
+            ["D", "A"],
+            "by match the one without a score first"
         );
         assert_eq!((after.counts.favourites, after.counts.trash), (0, 2));
         let json = serde_json::to_value(&after.jobs[1]).unwrap();

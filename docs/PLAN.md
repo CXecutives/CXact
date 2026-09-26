@@ -161,7 +161,8 @@ score, explain, legacy, pyre.
   shrinkage `P' = (n*P + k*R)/(n + k)`, k = 2000 (calibrated, frozen per ENGINE_VERSION), `score = round_half_even(P'/10)`.
 - Status: excluded if >= 1 decided violation (score kept, ring shows no number) · unscorable if too little text · else scored.
   Band only via `model::band`: >= 80 high, 40-79 mid, < 40 low.
-- Order: `(match_status IS 'excluded'), (match_score IS NULL), match_score DESC, first_seen_at DESC, portal, job_id`.
+- Order: `(match_status IS 'excluded'), (match_score IS NOT NULL), closed, match_score DESC, rank DESC, mail date DESC, portal, job_id`
+  (the jobs still without a score first, the list's "Noch ohne Passung" on top, so every page it loads is complete).
 - Hard criteria (no threshold in code, missing key = inactive). Decided only on clear wording, otherwise `check`:
   ANUE (named, not negated, not optional) · country (location field/line/on-site sentence/facts, remote not full) ·
   day rate (EUR, upper bound, hourly x8, no clear permanent role) · availability gap is a check only (`availabilityGap {days}`, never an exclusion; decided after the corpus review) ·
