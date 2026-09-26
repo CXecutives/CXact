@@ -107,6 +107,20 @@ impl DetailState {
         DetailState::at(job, Timestamp::now())
     }
 
+    /// The state's `kind` as the JSON says it (`ok`, `pending`, `teaser`, `failed`, `gone`,
+    /// `unfetchable`, `onRequest`).
+    pub fn code(self) -> &'static str {
+        match self {
+            DetailState::Ok => "ok",
+            DetailState::Pending { .. } => "pending",
+            DetailState::Teaser => "teaser",
+            DetailState::Failed { .. } => "failed",
+            DetailState::Gone => "gone",
+            DetailState::Unfetchable => "unfetchable",
+            DetailState::OnRequest => "onRequest",
+        }
+    }
+
     /// The state at `now`: a job the automatic fetch does not reach (its mail is older than
     /// it looks back, or a place it leaves out, see `store::jobs::FETCHABLE`) is never
     /// promised for "the next fetch" - it waits for a request.

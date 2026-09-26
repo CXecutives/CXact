@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::error::Result;
 use crate::matching::{Assessment, ReasonCode, ReasonKind};
-use crate::model::{Band, MatchStatus, Notice, band};
+use crate::model::{Band, KeyFacts, MatchStatus, Notice, band};
 use crate::pipeline::Matcher;
 use crate::pipeline::local::{code_name, flat_params, record};
 use crate::store::marks::USER_OVERRIDE;
@@ -21,8 +21,9 @@ use crate::view::JobView;
 pub const TOP_MATCHES_NAME: &str = "top_matches.json";
 /// Most jobs in the file.
 pub const TOP_MATCHES_MAX: u32 = 10;
-/// Version of the file layout (2: `appStatus` and `firstSeenAt` per job).
-pub const TOP_MATCHES_SCHEMA: u32 = 2;
+/// Version of the file layout (2: `appStatus` and `firstSeenAt` per job; 3: `detail` and
+/// `facts` per job, the jobs of the comparison prompt).
+pub const TOP_MATCHES_SCHEMA: u32 = 3;
 /// The `appStatus` of a favourite (the only mark there is).
 const SAVED: &str = "saved";
 
@@ -50,6 +51,9 @@ pub struct TopMatch {
     pub location: String,
     pub portal: String,
     pub url: String,
+    /// State of the ad's details as the list says it: `ok` (full text), `teaser` (only its
+    /// start, a guest's view), `pending`, `failed`, `unfetchable`, `onRequest` (none yet).
+    pub detail: &'static str,
     pub score: u8,
     pub band: Band,
     pub must_met: u16,
@@ -68,6 +72,11 @@ pub struct TopMatch {
     /// counts although the engine excludes it has `userOverride` first, then the codes of the
     /// exclusion (`dayRate`, `permanent`, ...).
     pub checks: Vec<String>,
+    /// The ad's key facts as the engine read them: `rate` (per day, or per hour with
+    /// `hourly`), `currency` (when not EUR), `rateOpen`, `start` (`now`, `vague` or a date),
+    /// `months`, `remoteFrom`/`remoteTo` (percent), `contract`; `null` where the ad says
+    /// nothing.
+    pub facts: KeyFacts,
     /// Name of the job's text file in `beschreibungen_txt`, once written.
     pub txt_file: Option<String>,
 }
@@ -207,6 +216,7 @@ fn entry(job: &JobRow, explained: Option<&Assessment>) -> Option<Found> {
         location: view.location,
         portal: job.key.portal.key().to_owned(),
         url: job.url.to_string(),
+        detail: view.detail.code(),
         score: current.score,
         band: band(current.score),
         must_met: current.must_met,
@@ -217,6 +227,7 @@ fn entry(job: &JobRow, explained: Option<&Assessment>) -> Option<Found> {
         partial: labels(ReasonKind::Partial),
         open: labels(ReasonKind::Open),
         checks,
+        facts: current.facts.clone(),
         txt_file: job.txt_name.clone(),
     };
     Some(Found {
@@ -327,6 +338,7 @@ Rahmenbedingungen:
             location: "Hamburg".into(),
             portal: key.split(':').next().unwrap_or_default().into(),
             url: format!("https://example.org/{key}"),
+            detail: "ok",
             score,
             band: band(score),
             must_met: 3,
@@ -337,6 +349,16 @@ Rahmenbedingungen:
             partial: vec!["Reporting nach IFRS".into()],
             open: vec!["Power BI".into()],
             checks: vec!["availabilityGap".into()],
+            facts: KeyFacts {
+                rate: Some(1100),
+                hourly: Some(false),
+                start: Some("now".into()),
+                months: Some(6),
+                remote_from: Some(60),
+                remote_to: Some(60),
+                contract: Some("interim".into()),
+                ..KeyFacts::default()
+            },
             txt_file: None,
         };
         let top = TopMatches {
@@ -361,5 +383,6 @@ Rahmenbedingungen:
             panic!("regenerated {} - commit it", path.display());
         }
         assert!(json.contains("\"appStatus\": \"saved\"") && json.contains("\"firstSeenAt\""));
+        assert!(json.contains("\"detail\": \"ok\"") && json.contains("\"remoteFrom\": 60"));
     }
 }

@@ -1464,7 +1464,7 @@ async fn the_skill_gets_the_top_matches() {
     assert_eq!(s.outcome, Outcome::Completed);
     let path = dir.path().join(RESULT_DIR).join(export::TOP_MATCHES_NAME);
     let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(file["schema"], 2);
+    assert_eq!(file["schema"], 3);
     assert_eq!(file["rev"], demo::matcher().rev());
     let jobs = file["jobs"].as_array().unwrap();
     let titles: Vec<&str> = jobs.iter().map(|j| j["title"].as_str().unwrap()).collect();

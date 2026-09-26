@@ -246,6 +246,31 @@ def profile_lines(profile: dict) -> list[str]:
     return out
 
 
+def facts_line(facts) -> str:
+    """The app's key facts of an ad in one line (schema 3); empty when it read none."""
+    if not isinstance(facts, dict):
+        return ""
+    parts = []
+    rate = facts.get("rate")
+    if isinstance(rate, (int, float)):
+        unit = "hour" if facts.get("hourly") else "day"
+        parts.append(f"rate {rate} {facts.get('currency') or 'EUR'} per {unit}")
+    elif facts.get("rateOpen"):
+        parts.append("rate negotiable")
+    if facts.get("start"):
+        parts.append(f"start {facts['start']}")
+    if isinstance(facts.get("months"), int):
+        parts.append(f"{facts['months']} months")
+    low, high = facts.get("remoteFrom"), facts.get("remoteTo")
+    if low is not None or high is not None:
+        low = high if low is None else low
+        high = low if high is None else high
+        parts.append(f"remote {low}%" if low == high else f"remote {low} to {high}%")
+    if facts.get("contract"):
+        parts.append(f"contract {facts['contract']}")
+    return ", ".join(parts)
+
+
 def brief(work: Path, top_n: int) -> str:
     top = load_top(work)
     jobs = top["jobs"]
@@ -263,7 +288,7 @@ def brief(work: Path, top_n: int) -> str:
         f"TOP FILE schema {top.get('schema')} generated {top.get('generatedAt')} rev {top.get('rev')}"
         f" jobs {len(jobs)}, analyse the first {n}",
     ]
-    if top.get("schema") not in (1, 2):
+    if top.get("schema") not in (1, 2, 3):
         out.append("NOTE unknown schema, read fields with care")
     out += ["", "PROFILE (personal data left out)"] + profile_lines(load_json(prof_path))
     for i, job in enumerate(jobs[:n], 1):
@@ -279,6 +304,12 @@ def brief(work: Path, top_n: int) -> str:
             out.append(f"stage: {job.get('appStatus')}")
         if job.get("firstSeenAt"):
             out.append(f"first seen: {job.get('firstSeenAt')}")
+        # Schema 3: the state of the ad's details and its key facts as the app read them.
+        if job.get("detail"):
+            out.append(f"details: {job.get('detail')}")
+        facts = facts_line(job.get("facts"))
+        if facts:
+            out.append(f"facts: {facts}")
         for f in ("met", "partial", "open", "checks"):
             vals = job.get(f) or []
             out.append(f"{f}: " + (" || ".join(map(str, vals)) if vals else "-"))
