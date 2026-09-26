@@ -904,7 +904,7 @@ mod tests {
         assert_eq!(optional.path(true), Some(FetchPath::Session));
     }
 
-    /// Every link form of the old engine (`legacy-python`, `alerts.py`) keeps its id - and
+    /// Every link form of the old app (projektscraper's `alerts.py`) keeps its id - and
     /// the forms of one project share one key, so no job appears twice.
     #[test]
     fn every_legacy_url_form_keeps_its_id() {

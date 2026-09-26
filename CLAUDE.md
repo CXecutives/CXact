@@ -3,12 +3,12 @@
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelancermap,
 freelance.de) from Gmail, fetches the job pages, **scores every job against a consultant profile**, and
 writes Excel, TXT (contract with the external `job-matching` skill) and an HTML overview.
-Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git ref `ca9a2cd^`, branch `legacy-python`).
+Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
 **Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
 
 ## Hard rules
-- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/testt`, fast-forward only; never push
-  `legacy-python`; never bypass `.githooks/pre-push`; never force-push.
+- Never modify `CXecutives/projektscraper`. Push only to `origin` = `CXecutives/Project`, fast-forward only; never bypass
+  `.githooks/pre-push`; never force-push. The repo holds CXact only: no old code, branches or history.
 - Secrets: never ask for, read, log, print or commit passwords. The Gmail app password lives only in the OS keychain.
   The repo is public: no real mails, profiles or labels outside `core/tests/fixtures/private/` (ignored).
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
@@ -63,7 +63,8 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
 - Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the report, Excel,
   title bar, window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
-  every screen and button clickable without mails); after a UI change tell them to double-click it.
+  every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with
+  `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.
 - Engine changes: `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` ·
   `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`; every new
   `ENGINE_VERSION` gets its section in `docs/MATCHING.md`.

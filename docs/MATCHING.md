@@ -53,7 +53,7 @@ One documented deviation: `_int_rate("1.200,50")` is 1200 in Rust (a trailing `,
 decimal comma); the old engine read 120050. No corpus, edge or local text contains such a rate.
 
 `legacy.json` and `legacy_edge.json` are frozen by `py -3.14 tools/eval/legacy_baseline.py
-corpus|edge` (old code via `git show ca9a2cd^`, one job per `run_match` call so a crash only
+corpus|edge` (old code via `git show ca9a2cd^` in a clone of CXecutives/projektscraper, `OLD_ENGINE_REPO`, one job per `run_match` call so a crash only
 marks that job); the script refuses to change them.
 
 ## Corpus and gates

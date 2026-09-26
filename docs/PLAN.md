@@ -353,7 +353,7 @@ macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc si
 - [x] Save schema-3 draft, stash and CI v5 commit as patches (scratch), remove 4 worktrees, stash, old branches
 - [x] Archive `.notes` outside the repo, `cargo clean`, remove `__pycache__`, English `.gitignore`
 - [x] `CLAUDE.md` and this file
-- Done when: worktree list = main, stash empty, branches = main + legacy-python, `cargo test --workspace` green.
+- Done when: worktree list = main, stash empty, branches = main, `cargo test --workspace` green.
 
 ### Phase 1 - contracts and foundation (parallel tracks)
 - [x] 1a Contract (merged ab97def; deviations: DetailState.failed={attempts,retryAt}, paused.until nullable, extra OpenTarget variants, app_state(channel) + RunSnapshot; PortalAdapter/prescore still open): IPC v3 in `view.rs` + ts-rs; codes for notices/errors/status; RunEvent v3;

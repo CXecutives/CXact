@@ -2,18 +2,19 @@
 # Push guard (versioned copy: .githooks/pre-push). When in doubt, it blocks.
 # Enable once per clone: git config core.hooksPath .githooks
 #
-# 1. Only the two own repos are targets - never a foreign one.
+# 1. Only the own repo is a target - never a foreign one.
 # 2. Old history stays local: no commit descending from one of the old roots, and no
 #    "legacy-*" branch leaves the machine.
 # 3. Fast-forward only: no force push, no deleting branches/tags on GitHub.
 url="$2"
 case "$url" in
+  https://github.com/CXecutives/Project|https://github.com/CXecutives/Project.git|https://github.com/CXecutives/Project/) ;;
+  git@github.com:CXecutives/Project.git|ssh://git@github.com/CXecutives/Project.git) ;;
+  # The public repo's former name (GitHub forwards it to Project).
   https://github.com/CXecutives/testt|https://github.com/CXecutives/testt.git|https://github.com/CXecutives/testt/) ;;
   git@github.com:CXecutives/testt.git|ssh://git@github.com/CXecutives/testt.git) ;;
-  https://github.com/CXecutives/TEST|https://github.com/CXecutives/TEST.git|https://github.com/CXecutives/TEST/) ;;
-  git@github.com:CXecutives/TEST.git|ssh://git@github.com/CXecutives/TEST.git) ;;
   *)
-    echo "BLOCKED: pushing is allowed only to CXecutives/testt or CXecutives/TEST, not to '$url'." >&2
+    echo "BLOCKED: pushing is allowed only to CXecutives/Project, not to '$url'." >&2
     exit 1 ;;
 esac
 
@@ -23,7 +24,7 @@ OLD_PYTHON=9d3b5434dee0f89a47915aa5c5dcc00c57e02168
 OLD_TEST=07345a331d7342d3296d41247d61f34adf674569
 ZERO=0000000000000000000000000000000000000000
 public=0
-case "$url" in *testt*) public=1 ;; esac
+case "$url" in *Project*|*testt*) public=1 ;; esac
 
 # "|| [ -n ... ]": a last line without a trailing newline is checked too.
 while read -r local_ref local_sha remote_ref remote_sha || [ -n "$local_ref" ]; do

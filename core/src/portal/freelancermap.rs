@@ -142,7 +142,7 @@ impl PortalAdapter for Freelancermap {
 const PARSER_VERSION: u32 = 2;
 
 /// `/nproj/<ID>[.html]` or `/projektboerse/projekte/<category>.../<ID>[-slug][.html]`
-/// (also `<slug>-<ID>`) - the forms of the old engine (`legacy-python`, `alerts.py`).
+/// (also `<slug>-<ID>`) - the forms of the old app (projektscraper's `alerts.py`).
 fn project_id(segments: &[&str]) -> Option<String> {
     match segments {
         ["nproj", file] => {

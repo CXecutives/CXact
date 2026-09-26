@@ -167,6 +167,7 @@ export default ts.config(
       'target/**',
       'test-results/**',
       '.harness/**',
+      '.preview/**',
       'playwright-report/**',
       'src-tauri/**',
       'core/**',

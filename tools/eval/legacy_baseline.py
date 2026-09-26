@@ -1,6 +1,7 @@
 """Freeze the outputs of the old Python matching engine (git ref ca9a2cd^).
 
 The old engine (matcher.py plus the modules it imports) is read with `git show`
+from a clone of CXecutives/projektscraper (read-only; its path in OLD_ENGINE_REPO)
 into a temporary folder and imported from there - the old code is never checked
 out. Every job file is scored on its own through the old entry point
 `matcher.run_match(profile, folder)`, so a crash in one file (the old engine
@@ -27,6 +28,7 @@ import argparse
 import datetime as dt
 import importlib
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -50,7 +52,11 @@ CORPUS_PROFILES = (
 
 
 def git(*args: str) -> bytes:
-    return subprocess.run(["git", *args], cwd=REPO, check=True, capture_output=True).stdout
+    """Git in the old app's clone (OLD_ENGINE_REPO), where the old engine lives."""
+    old = os.environ.get("OLD_ENGINE_REPO")
+    if not old:
+        sys.exit("OLD_ENGINE_REPO must name a clone of CXecutives/projektscraper")
+    return subprocess.run(["git", *args], cwd=old, check=True, capture_output=True).stdout
 
 
 def load_old_engine(target: Path):

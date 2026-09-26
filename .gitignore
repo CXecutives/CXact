@@ -28,3 +28,5 @@ desktop.ini
 # Python caches of the helper scripts
 __pycache__/
 /.harness/
+# The preview copy of the UI (tools/ui-preview.cmd)
+/.preview/
