@@ -16,7 +16,7 @@ inbox: number,
  */
 unread: number, 
 /**
- * Favourites (the star), in the inbox or the archive.
+ * Favourites (the star) in the inbox.
  */
 favourites: number, archive: number, 
 /**

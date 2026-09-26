@@ -145,11 +145,26 @@ class Brief(Base):
         shutil.copy(app_file, self.work / "auswertung" / "top_matches.json")
         out = matching.brief(self.work, matching.TOP_DEFAULT)
         self.assertNotIn("NOTE unknown schema", out)
-        self.assertIn("TOP FILE schema 2", out)
+        self.assertIn("TOP FILE schema 3", out)
         self.assertIn("JOB 1 key freelancermap:2801", out)
         self.assertIn("stage: saved", out)
         self.assertIn("first seen: 2026-09-20T07:30:00Z", out)
         self.assertIn("open: Power BI", out)
+        self.assertIn("details: ok", out)
+        self.assertIn(
+            "facts: rate 1100 EUR per day, start now, 6 months, remote 60%, contract interim", out
+        )
+
+    def test_facts_of_every_form(self):
+        self.assertEqual(matching.facts_line(None), "")
+        self.assertEqual(matching.facts_line({"rate": None, "start": None}), "")
+        self.assertEqual(
+            matching.facts_line(
+                {"rate": 95, "hourly": True, "currency": "CHF", "remoteFrom": 20, "remoteTo": 100}
+            ),
+            "rate 95 CHF per hour, remote 20 to 100%",
+        )
+        self.assertEqual(matching.facts_line({"rateOpen": True, "remoteTo": 0}), "rate negotiable, remote 0%")
 
     def test_text_file_name_cannot_leave_the_text_folder(self):
         self.assertIsNone(matching.txt_path(self.work, "../../profil/beraterprofil.json"))

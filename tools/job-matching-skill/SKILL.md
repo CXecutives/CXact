@@ -48,7 +48,9 @@ python3 <skill folder>/scripts/matching.py brief [WORK_FOLDER] [--top N]
 
 (`python` where `python3` is missing, as on Windows.) One output with the profile (contact data and testimonials left out) and, per job, key, title,
 company, location, URL, app score and band, musts met, the app's `met`, `partial` and `open`
-requirement quotes, its `checks` codes and the ad text. Without Python, read `top_matches.json`,
+requirement quotes, its `checks` codes, the state of the ad's details (`ok` full text, `teaser`
+only its start: judge carefully and say so) and its key facts (rate, start, months, remote share,
+contract) as the app read them, and the ad text. Without Python, read `top_matches.json`,
 the profile and the N TXT files in one message with parallel reads. No jobs in the file: tell the
 user to fetch jobs in the app with a profile first, and stop.
 

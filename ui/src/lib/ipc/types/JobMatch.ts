@@ -17,6 +17,11 @@ score: number, band: Band, status: MatchStatus, note: Notice | null, mustMet: nu
  */
 top: Array<string>, 
 /**
+ * At most two open must requirements, quoted from the ad (empty for a job scored by an
+ * earlier version until it is scored again).
+ */
+open: Array<string>, 
+/**
  * Rate, start, duration, remote share and contract type of the ad.
  */
 facts: KeyFacts, };

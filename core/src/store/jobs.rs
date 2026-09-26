@@ -14,8 +14,8 @@ use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
 use crate::mail::MAIL_PARSER_VERSION;
 use crate::mail::extract::{has_gender_tag, looks_like_job_title};
 use crate::model::{
-    AlertMail, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MatchRecord, Place,
-    Posting, is_usable_title,
+    AlertMail, Band, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MID_FROM,
+    MatchRecord, Place, Posting, is_usable_title,
 };
 use crate::portal::{Facts, JobKey, Portal};
 use crate::text::{one_line, page_location, split_company_location, truncate_chars};
@@ -62,6 +62,9 @@ pub struct JobRow {
     pub read_at: Option<Timestamp>,
     /// `None` = not scored yet.
     pub match_: Option<MatchRecord>,
+    /// Up to two open must requirements of the match, quoted from the ad (empty for a note
+    /// of an earlier version).
+    pub match_open: Vec<String>,
     /// Who scored it; `None` = to be scored (again).
     pub match_rev: Option<String>,
     /// The facts the job page stated (unreadable JSON counts as none).
@@ -74,6 +77,10 @@ pub struct JobRow {
     pub trashed_at: Option<Timestamp>,
     /// The user marked the job as fitting although the engine excludes it.
     pub override_include: bool,
+    /// When the user marked that she applied for the job ("Beworben"); `None` = not.
+    pub applied_at: Option<Timestamp>,
+    /// The user's note (trimmed, at most `marks::MAX_NOTE_CHARS` characters).
+    pub note: Option<String>,
 }
 
 impl JobRow {
@@ -89,25 +96,88 @@ impl JobRow {
     }
 }
 
-/// The skill's top matches take the jobs of this many days (by the date of the alert mail).
-pub const NEW_DAYS: i64 = 14;
+/// The list's filter (the funnel menu) beside the search: one portal, and a lowest band.
+/// Like the search it narrows the list and all its counts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ListFilter {
+    /// Only this portal's jobs (`None` = every portal).
+    pub portal: Option<Portal>,
+    /// Only jobs scored in this band or better (`Mid` = mid and high); unscored and excluded
+    /// jobs pass only without it.
+    pub min_band: Option<Band>,
+}
 
-/// Where the skill's window starts for `now`: [`NEW_DAYS`] back, at the start of that day
-/// (UTC), so the border moves once a day.
-pub fn new_since(now: Timestamp) -> Timestamp {
-    const DAY: i64 = 86_400;
-    let start = now.as_second().div_euclid(DAY) * DAY - NEW_DAYS * DAY;
-    Timestamp::from_second(start).unwrap_or(Timestamp::UNIX_EPOCH)
+impl ListFilter {
+    /// The lowest score of the band filter (`None` = none).
+    pub(super) fn min_score(self) -> Option<u8> {
+        self.min_band.map(|band| match band {
+            Band::High => HIGH_FROM,
+            Band::Mid => MID_FROM,
+            Band::Low => 0,
+        })
+    }
+}
+
+/// The order of a page of the list (`p`: the prefix of its columns). Excluded jobs always
+/// come last; "match" puts the best score first (unscored after scored), "newest" the latest
+/// first sighting. The trash lists the latest trashed first.
+fn page_order(query: &PageQuery, p: &str) -> String {
+    // "By date": the date of the alert mail; in the trash the day it went there.
+    let date = if query.place == Place::Trash && !query.favourites {
+        format!("{p}trashed_at")
+    } else {
+        format!("COALESCE({p}mail_date, {p}first_seen_at)")
+    };
+    let by_match = if query.by_match {
+        // Equal scores follow the score before the caps (`rank` in the note).
+        format!(
+            "({p}match_score IS NULL), {p}match_score DESC, \
+             json_extract({p}match_note, '$.rank') DESC, "
+        )
+    } else {
+        String::new()
+    };
+    // A closed ad (no applications any more) follows the open ones.
+    format!(
+        "({p}match_status IS 'excluded'), ({p}desc_status = 'ok' AND {p}desc_closed = 1), \
+         {by_match}{date} DESC, {p}portal, {p}job_id"
+    )
+}
+
+/// The unread count per portal in the statement of [`Store::job_page`]: one column each, in
+/// the order of `Portal::ALL` (the keys are constants of the code, never input), and the
+/// same columns in its final select.
+fn per_portal_columns(new: &str) -> (String, String) {
+    let mut columns = String::new();
+    let mut out = String::new();
+    for (i, portal) in Portal::ALL.iter().enumerate() {
+        let _ = write!(
+            columns,
+            ",\n COALESCE(SUM({new} AND portal = '{}'), 0) AS n_new_{i}",
+            portal.key()
+        );
+        let _ = write!(out, ", counts.n_new_{i}");
+    }
+    (columns, out)
+}
+
+/// The condition of a [`ListFilter`] on the `job` table: `portal` binds its key, `score` the
+/// lowest score (each `NULL` for no filter).
+pub(super) fn filter_condition(portal: &str, score: &str) -> String {
+    format!(
+        "({portal} IS NULL OR portal = {portal})
+         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))"
+    )
 }
 
 /// One page of the job list: the jobs of one place, optionally only the unread ones. The
-/// counts cover the search, whatever the place and the filter.
+/// counts cover the search and the filter, whatever the place and the unread filter.
 #[derive(Debug, Clone, Default)]
 pub struct PageQuery {
     pub place: Place,
     /// Only unread jobs (the excluded ones last, uncounted).
     pub unread: bool,
-    /// The favourites of the inbox and the archive instead of a place (each keeps its place).
+    /// Only the favourites of the inbox (an archived favourite is found in the archive).
     pub favourites: bool,
     /// Best match first; otherwise by date: the alert mail's, in the trash the day it went
     /// there; excluded jobs last either way.
@@ -115,6 +185,8 @@ pub struct PageQuery {
     /// Search: every word in the portal's name, title, company, location or full text
     /// (case-insensitive, in any order).
     pub search: Option<String>,
+    /// The portal and band filter.
+    pub filter: ListFilter,
     pub limit: u32,
     pub offset: u32,
 }
@@ -129,7 +201,7 @@ pub struct PageCounts {
     pub inbox: u32,
     /// Unread in the inbox and not excluded.
     pub unread: u32,
-    /// Favourites (the star), in the inbox or the archive.
+    /// Favourites (the star) in the inbox.
     pub favourites: u32,
     pub archive: u32,
     pub trash: u32,
@@ -309,34 +381,10 @@ impl Store {
     pub fn job_page(&self, query: &PageQuery) -> Result<(Vec<JobRow>, PageCounts)> {
         let conn = self.conn();
         let words = search_words(query.search.as_deref());
-        // Excluded jobs always come last; "match" puts the best score first (unscored after
-        // scored), "newest" the latest first sighting. The archive lists the latest archived
-        // first, the trash the latest trashed.
-        let order = |p: &str| {
-            // "By date": the date of the alert mail; in the trash the day it went there.
-            let date = if query.place == Place::Trash && !query.favourites {
-                format!("{p}trashed_at")
-            } else {
-                format!("COALESCE({p}mail_date, {p}first_seen_at)")
-            };
-            let by_match = if query.by_match {
-                // Equal scores follow the score before the caps (`rank` in the note).
-                format!(
-                    "({p}match_score IS NULL), {p}match_score DESC, \
-                     json_extract({p}match_note, '$.rank') DESC, "
-                )
-            } else {
-                String::new()
-            };
-            // A closed ad (no applications any more) follows the open ones.
-            format!(
-                "({p}match_status IS 'excluded'), ({p}desc_status = 'ok' AND {p}desc_closed = 1), \
-                 {by_match}{date} DESC, {p}portal, {p}job_id"
-            )
-        };
+        let order = |p: &str| page_order(query, p);
         // The counts of the inbox leave the archive and the trash out. The unread filter lists
         // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. A favourite counts until it goes to the trash.
+        // out. A favourite counts while it is in the inbox.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
         let place = if query.favourites {
@@ -349,21 +397,10 @@ impl Store {
         } else {
             place.to_owned()
         };
-        // Unread per portal: one column each, in the order of `Portal::ALL` (the keys are
-        // constants of the code, never input).
-        let mut per_portal = String::new();
-        let mut per_portal_out = String::new();
-        for (i, portal) in Portal::ALL.iter().enumerate() {
-            let _ = write!(
-                per_portal,
-                ",\n COALESCE(SUM({new} AND portal = '{}'), 0) AS n_new_{i}",
-                portal.key()
-            );
-            let _ = write!(per_portal_out, ", counts.n_new_{i}");
-        }
+        let (per_portal, per_portal_out) = per_portal_columns(&new);
         let sql = format!(
             "WITH base AS (
-                 SELECT * FROM job WHERE dup_of IS NULL AND {words}
+                 SELECT * FROM job WHERE dup_of IS NULL AND {words} AND {filter}
              ), counts AS (
                  SELECT COALESCE(SUM({shown}), 0) AS n_inbox,
                         COALESCE(SUM({new}), 0) AS n_unread,
@@ -389,6 +426,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
+            filter = filter_condition("?5", "?6"),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -397,7 +435,18 @@ impl Store {
         let mut stmt = conn.prepare_cached(&sql)?;
         let mut counts = PageCounts::default();
         let mut jobs = Vec::new();
-        let mut rows = stmt.query(params![words, query.limit, query.offset, HIGH_FROM])?;
+        let (portal, min) = (
+            query.filter.portal.map(Portal::key),
+            query.filter.min_score(),
+        );
+        let mut rows = stmt.query(params![
+            words,
+            query.limit,
+            query.offset,
+            HIGH_FROM,
+            portal,
+            min
+        ])?;
         while let Some(row) = rows.next()? {
             let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());
             for (i, portal) in Portal::ALL.into_iter().enumerate() {
@@ -760,11 +809,12 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
     desc_facts, CASE WHEN app_status IS NOT NULL THEN COALESCE(app_status_at, first_seen_at) END,
-    archived_at, trashed_at, override_include";
-pub(super) const JOB_COLUMN_COUNT: usize = 30;
+    archived_at, trashed_at, override_include, applied_at, note";
+pub(super) const JOB_COLUMN_COUNT: usize = 32;
 
-/// The jobs whose details the app fetches by itself: what the lists show as active - the
-/// inbox and the favourites in the archive - never the trash and never a duplicate (its
+/// The jobs whose details the app fetches by itself: the inbox and the starred jobs of the
+/// archive (she kept the star, so she may still read them; the favourites filter lists only
+/// the inbox's, the archive the rest) - never the trash and never a duplicate (its
 /// original's row stands for it; a merged guest teaser would cost a signed-in request). The
 /// portals' caps are small, so every request belongs to a job the user may still read.
 /// "Details holen" asks for chosen jobs wherever they lie.
@@ -812,6 +862,14 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
             "job row {portal}/{url}/{status}"
         ))));
     };
+    let (match_, match_open) = match super::matches::decode_match(
+        r.get::<_, Option<String>>(col(21))?.as_deref(),
+        r.get(col(22))?,
+        r.get::<_, Option<String>>(col(23))?.as_deref(),
+    ) {
+        Some((record, open)) => (Some(record), open),
+        None => (None, Vec::new()),
+    };
     Ok(Ok(JobRow {
         key: JobKey {
             portal,
@@ -836,11 +894,8 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         txt_name: r.get(col(18))?,
         desc_attempted_at: r.get::<_, Option<i64>>(col(19))?.and_then(from_db),
         read_at: r.get::<_, Option<i64>>(col(20))?.and_then(from_db),
-        match_: super::matches::decode_match(
-            r.get::<_, Option<String>>(col(21))?.as_deref(),
-            r.get(col(22))?,
-            r.get::<_, Option<String>>(col(23))?.as_deref(),
-        ),
+        match_,
+        match_open,
         match_rev: r.get(col(24))?,
         facts: r
             .get::<_, Option<String>>(col(25))?
@@ -849,6 +904,8 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         archived_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
         trashed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
         override_include: r.get::<_, Option<i64>>(col(29))?.is_some(),
+        applied_at: r.get::<_, Option<i64>>(col(30))?.and_then(from_db),
+        note: r.get(col(31))?,
     }))
 }
 

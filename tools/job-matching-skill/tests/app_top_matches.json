@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "generatedAt": "2026-09-24T07:30:00Z",
   "rev": "e3:test",
   "jobs": [
@@ -10,6 +10,7 @@
       "location": "Hamburg",
       "portal": "freelancermap",
       "url": "https://example.org/freelancermap:2801",
+      "detail": "ok",
       "score": 91,
       "band": "high",
       "mustMet": 3,
@@ -28,6 +29,17 @@
       "checks": [
         "availabilityGap"
       ],
+      "facts": {
+        "rate": 1100,
+        "hourly": false,
+        "currency": null,
+        "rateOpen": null,
+        "start": "now",
+        "months": 6,
+        "remoteFrom": 60,
+        "remoteTo": 60,
+        "contract": "interim"
+      },
       "txtFile": null
     },
     {
@@ -37,6 +49,7 @@
       "location": "Hamburg",
       "portal": "linkedin",
       "url": "https://example.org/linkedin:4100200301",
+      "detail": "ok",
       "score": 84,
       "band": "high",
       "mustMet": 3,
@@ -55,6 +68,17 @@
       "checks": [
         "availabilityGap"
       ],
+      "facts": {
+        "rate": 1100,
+        "hourly": false,
+        "currency": null,
+        "rateOpen": null,
+        "start": "now",
+        "months": 6,
+        "remoteFrom": 60,
+        "remoteTo": 60,
+        "contract": "interim"
+      },
       "txtFile": null
     }
   ]

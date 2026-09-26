@@ -10,6 +10,7 @@
 use jiff::Timestamp;
 use rusqlite::{Connection, OptionalExtension, params};
 
+use super::jobs::ListFilter;
 use super::{Store, bump};
 use crate::error::Result;
 use crate::model::Place;
@@ -23,7 +24,7 @@ use crate::time::to_db;
 ///   `interview`, `offer` and `rejected`, which schema 5 turns into favourites); `NULL` =
 ///   none.
 /// - `app_status_at`: when the favourite was set (Unix seconds).
-/// - `note`: unused since schema 5 (the note is gone; the column stays, harmless).
+/// - `note`: unused in schema 5, the user's note again since schema 6.
 /// - `hidden_at`, now `archived_at`: when the job went to the archive (by the user or by
 ///   age); `NULL` = not archived.
 pub const SCHEMA_4_JOB_COLUMNS: &[(&str, &str)] = &[
@@ -62,6 +63,24 @@ CREATE TABLE tombstone (
     PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;";
 
+/// The nullable column schema 6 adds to the `job` table.
+///
+/// - `applied_at`: when the user marked that she applied for the job; `NULL` = not applied.
+///   A column of its own: `app_status` holds the favourite (`saved`), and a job can be both.
+///
+/// The `note` column of schema 4 carries the user's note again (at most
+/// [`MAX_NOTE_CHARS`] characters).
+pub const SCHEMA_6_JOB_COLUMNS: &[(&str, &str)] = &[("applied_at", "INTEGER")];
+
+/// What the migration to schema 6 does beyond the new column: the indexes of the overview's
+/// queries (a date window over the jobs, the last alert mail per portal).
+pub const SCHEMA_6_EXTRA: &str =
+    "CREATE INDEX job_by_date ON job (COALESCE(mail_date, first_seen_at));
+CREATE INDEX alert_by_portal ON alert_mail (portal, mail_date);";
+
+/// Most characters of the user's note on a job.
+pub const MAX_NOTE_CHARS: usize = 2000;
+
 /// The note code of a job the user marked as fitting although the engine excludes it.
 pub const USER_OVERRIDE: &str = "userOverride";
 
@@ -69,8 +88,11 @@ pub const USER_OVERRIDE: &str = "userOverride";
 /// trash's).
 pub(crate) const INBOX: &str = "archived_at IS NULL AND trashed_at IS NULL";
 
-/// The favourites: starred jobs in the inbox or the archive (never the trash).
-pub(crate) const FAVOURITES: &str = "app_status IS NOT NULL AND trashed_at IS NULL";
+/// The favourites filter: starred jobs in the inbox. An archived favourite keeps its star
+/// and lies in the archive (user decision 2026-09-26: Neu, Alle and Favoriten filter the
+/// inbox only); none in the trash.
+pub(crate) const FAVOURITES: &str =
+    "app_status IS NOT NULL AND archived_at IS NULL AND trashed_at IS NULL";
 
 /// The condition of a place on the `job` table.
 pub(crate) const fn place_condition(place: Place) -> &'static str {
@@ -91,6 +113,51 @@ impl Store {
                                 app_status_at = CASE WHEN ?3 THEN ?4 END
                  WHERE portal = ?1 AND job_id = ?2 AND (app_status IS NULL) = ?3",
                 params![key.portal.key(), key.id, on, to_db(now)],
+            )? > 0;
+            if changed {
+                bump(conn)?;
+            }
+            Ok(changed)
+        })
+    }
+
+    /// "Beworben": marks that the user applied for these jobs (`on`, with the time) or takes
+    /// it back. A flag of its own like the favourite, whatever the place; an applied job
+    /// never archives itself. Returns the keys that changed (a job already so or gone is
+    /// not).
+    pub fn set_applied(&self, keys: &[JobKey], on: bool, now: Timestamp) -> Result<Vec<JobKey>> {
+        self.write(|conn| {
+            let mut stmt = conn.prepare_cached(
+                "UPDATE job SET applied_at = CASE WHEN ?3 THEN ?4 END
+                 WHERE portal = ?1 AND job_id = ?2 AND (applied_at IS NULL) = ?3",
+            )?;
+            let mut changed = Vec::new();
+            for key in keys {
+                if stmt.execute(params![key.portal.key(), key.id, on, to_db(now)])? > 0
+                    && !changed.contains(key)
+                {
+                    changed.push(key.clone());
+                }
+            }
+            if !changed.is_empty() {
+                bump(conn)?;
+            }
+            Ok(changed)
+        })
+    }
+
+    /// The user's note on a job: trimmed, at most [`MAX_NOTE_CHARS`] characters (the rest is
+    /// cut), none when empty. `true` if it changed.
+    pub fn set_note(&self, key: &JobKey, note: Option<&str>) -> Result<bool> {
+        let note = note
+            .map(str::trim)
+            .filter(|n| !n.is_empty())
+            .map(|n| n.chars().take(MAX_NOTE_CHARS).collect::<String>())
+            .map(|n| n.trim_end().to_owned());
+        self.write(|conn| {
+            let changed = conn.execute(
+                "UPDATE job SET note = ?3 WHERE portal = ?1 AND job_id = ?2 AND note IS NOT ?3",
+                params![key.portal.key(), key.id, note],
             )? > 0;
             if changed {
                 bump(conn)?;
@@ -198,16 +265,29 @@ impl Store {
         search: Option<&str>,
         now: Timestamp,
     ) -> Result<Vec<JobKey>> {
+        self.mark_all_read_filtered(place, search, ListFilter::default(), now)
+    }
+
+    /// [`Store::mark_all_read`] of what the list shows with its filter too (a portal, a
+    /// lowest band): only those jobs, as the list's counts say.
+    pub fn mark_all_read_filtered(
+        &self,
+        place: Place,
+        search: Option<&str>,
+        filter: ListFilter,
+        now: Timestamp,
+    ) -> Result<Vec<JobKey>> {
         let words = super::jobs::search_words(search);
         self.write(|conn| {
             let keys = keys_where(
                 conn,
                 &format!(
-                    "dup_of IS NULL AND read_at IS NULL AND {} AND {}",
+                    "dup_of IS NULL AND read_at IS NULL AND {} AND {} AND {}",
                     place_condition(place),
-                    super::jobs::matches_words("?1")
+                    super::jobs::matches_words("?1"),
+                    super::jobs::filter_condition("?2", "?3"),
                 ),
-                [words],
+                params![words, filter.portal.map(Portal::key), filter.min_score()],
             )?;
             let mut mark = conn
                 .prepare_cached("UPDATE job SET read_at = ?3 WHERE portal = ?1 AND job_id = ?2")?;
@@ -234,16 +314,16 @@ impl Store {
         })
     }
 
-    /// Moves the inbox jobs that are no favourite to the archive when they are older than
-    /// `before` - counted from their first sighting, or from when the user last moved them
-    /// into the inbox (her choice stands) - "old jobs archive themselves" at the end of a run;
-    /// returns how many.
+    /// Moves the inbox jobs that are no favourite and not applied for to the archive when
+    /// they are older than `before` - counted from their first sighting, or from when the
+    /// user last moved them into the inbox (her choice stands) - "old jobs archive
+    /// themselves" at the end of a run; returns how many.
     pub fn auto_archive(&self, before: Timestamp, now: Timestamp) -> Result<usize> {
         self.write(|conn| {
             let archived = conn.execute(
                 &format!(
                     "UPDATE job SET archived_at = ?2
-                     WHERE {INBOX} AND app_status IS NULL
+                     WHERE {INBOX} AND app_status IS NULL AND applied_at IS NULL
                        AND COALESCE(inbox_at, first_seen_at) < ?1"
                 ),
                 params![to_db(before), to_db(now)],
@@ -596,6 +676,64 @@ mod tests {
         assert!(store.job(&keys[0]).unwrap().unwrap().read_at.is_some());
     }
 
+    /// "Beworben" is a flag of its own with its time, beside the favourite; only real changes
+    /// count, and an applied job never archives itself.
+    #[test]
+    fn applied_is_a_mark_of_its_own() {
+        let (store, keys) = store_with_jobs(3);
+        let at = now();
+        assert!(store.set_pinned(&keys[0], true, at).unwrap());
+        let rev = store.data_rev().unwrap();
+        assert_eq!(store.set_applied(&keys[..2], true, at).unwrap(), &keys[..2]);
+        assert!(store.data_rev().unwrap() > rev, "the Excel file shows it");
+        let later = at + jiff::SignedDuration::from_hours(1);
+        assert!(
+            store
+                .set_applied(&keys[..2], true, later)
+                .unwrap()
+                .is_empty(),
+            "already applied: the first time stays"
+        );
+        let job = store.job(&keys[0]).unwrap().unwrap();
+        assert_eq!((job.pinned_at, job.applied_at), (Some(at), Some(at)));
+        // The oldest jobs archive themselves, but not the applied one (nor the favourite).
+        let cutoff = at + jiff::SignedDuration::from_hours(2);
+        assert_eq!(store.auto_archive(cutoff, later).unwrap(), 1);
+        assert_eq!(place(&store, &keys[1]), Place::Inbox);
+        assert_eq!(place(&store, &keys[2]), Place::Archive);
+        assert_eq!(
+            store
+                .set_applied(std::slice::from_ref(&keys[1]), false, later)
+                .unwrap(),
+            [keys[1].clone()]
+        );
+        assert_eq!(store.job(&keys[1]).unwrap().unwrap().applied_at, None);
+        assert!(
+            store.job(&keys[0]).unwrap().unwrap().pinned_at.is_some(),
+            "the favourite stays"
+        );
+    }
+
+    /// A note is trimmed, cut at 2,000 characters and gone when empty; only a change counts.
+    #[test]
+    fn a_note_is_trimmed_and_bounded() {
+        let (store, keys) = store_with_jobs(1);
+        let key = &keys[0];
+        assert!(store.set_note(key, Some("  Anruf am Montag \n")).unwrap());
+        assert_eq!(
+            store.job(key).unwrap().unwrap().note.as_deref(),
+            Some("Anruf am Montag")
+        );
+        assert!(!store.set_note(key, Some("Anruf am Montag")).unwrap());
+        let long = "ä".repeat(MAX_NOTE_CHARS + 50);
+        assert!(store.set_note(key, Some(&long)).unwrap());
+        let note = store.job(key).unwrap().unwrap().note.unwrap();
+        assert_eq!(note.chars().count(), MAX_NOTE_CHARS);
+        assert!(store.set_note(key, Some("   ")).unwrap());
+        assert_eq!(store.job(key).unwrap().unwrap().note, None);
+        assert!(!store.set_note(key, None).unwrap());
+    }
+
     /// Archive and trash leave the HTML overview and the skill's top matches; back in the
     /// inbox, the job is back.
     #[test]
@@ -618,21 +756,21 @@ mod tests {
         let listed = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
             jobs.into_iter().map(|j| j.key).collect()
         };
-        let since = super::super::new_since(now());
         let one = std::slice::from_ref(key);
         let overview = || store.overview_jobs(20).unwrap();
-        assert_eq!(listed(store.skill_matches(since, 5).unwrap()), one);
-        assert_eq!(listed(overview().new), one);
+        assert_eq!(listed(store.best_matches(5).unwrap()), one);
+        assert_eq!(listed(overview().new.jobs), one);
         for away in [Place::Archive, Place::Trash] {
             store.move_jobs(one, away, now()).unwrap();
-            assert!(store.skill_matches(since, 5).unwrap().is_empty());
-            assert!(overview().new.is_empty());
+            assert!(store.best_matches(5).unwrap().is_empty());
+            assert!(overview().new.jobs.is_empty());
             // A favourite away from the inbox is none of the overview's either.
             store.set_pinned(key, true, now()).unwrap();
-            assert_eq!(overview(), super::super::matches::OverviewJobs::default());
+            assert!(overview().favourites.is_empty());
+            assert_eq!(overview().new, super::super::matches::NewFitting::default());
             store.set_pinned(key, false, now()).unwrap();
             store.move_jobs(one, Place::Inbox, now()).unwrap();
-            assert_eq!(listed(overview().new), one);
+            assert_eq!(listed(overview().new.jobs), one);
         }
     }
 
@@ -829,7 +967,7 @@ mod tests {
         assert_eq!(status(&store), (MatchStatus::Scored, 71, true));
         assert!(
             store
-                .save_match_if(key, &excluded, "r3", Some("r2"), now())
+                .save_match_if(key, &excluded.clone().into(), "r3", Some("r2"), now())
                 .unwrap()
         );
         assert_eq!(status(&store), (MatchStatus::Scored, 71, true));

@@ -12,7 +12,7 @@ use super::{RunEvent, ScoreSummary, StatusCode, Step, status};
 use crate::matching::Assessment;
 use crate::model::{MatchRecord, MatchStatus, Notice};
 use crate::portal::JobKey;
-use crate::store::{JobRow, Store};
+use crate::store::{JobRow, Judgement, Store};
 
 /// Jobs per catch-up page (one transaction each).
 pub const PAGE: u32 = 250;
@@ -24,6 +24,11 @@ pub trait Matcher: Send + Sync {
     /// The match of one job (`text`: its full text, if fetched); `None` = no judgement, the
     /// job stays pending.
     fn assess(&self, job: &JobRow, text: Option<&str>) -> Option<MatchRecord>;
+    /// [`Matcher::assess`] with what the store keeps beside the record: up to two open must
+    /// requirements. By default none.
+    fn judge(&self, job: &JobRow, text: Option<&str>) -> Option<Judgement> {
+        self.assess(job, text).map(Judgement::from)
+    }
     /// The full assessment behind [`Matcher::assess`] (reasons for the exports); `None` if
     /// the matcher has none.
     fn explain(&self, job: &JobRow, text: Option<&str>) -> Option<Assessment> {
@@ -60,6 +65,7 @@ impl Tally {
             unscorable: self.unscorable,
             pending,
             best: self.best,
+            delta: None,
         }
     }
 }
@@ -95,10 +101,11 @@ pub(crate) fn guarded<T>(key: &JobKey, judge: impl FnOnce() -> T) -> Option<T> {
     judged
 }
 
-/// [`Matcher::assess`] that survives a panic of the engine: the job becomes unscorable
+/// [`Matcher::judge`] that survives a panic of the engine: the job becomes unscorable
 /// with [`ENGINE_FAILED`].
-fn assess_guarded(matcher: &dyn Matcher, job: &JobRow, text: Option<&str>) -> Option<MatchRecord> {
-    guarded(&job.key, || matcher.assess(job, text)).unwrap_or_else(|| Some(engine_failed()))
+fn judge_guarded(matcher: &dyn Matcher, job: &JobRow, text: Option<&str>) -> Option<Judgement> {
+    guarded(&job.key, || matcher.judge(job, text))
+        .unwrap_or_else(|| Some(Judgement::from(engine_failed())))
 }
 
 /// Scores one job right after its details changed. Errors only go to the log - the fetch
@@ -113,11 +120,12 @@ pub(super) fn score_one(
     let assessed = store.job(key).and_then(|job| {
         let Some(job) = job else { return Ok(None) };
         let text = store.description(key)?;
-        Ok(assess_guarded(matcher, &job, text.as_deref()))
+        Ok(judge_guarded(matcher, &job, text.as_deref()))
     });
     match assessed {
-        Ok(Some(record)) => {
-            match store.save_matches(&[(key.clone(), record.clone())], matcher.rev(), now) {
+        Ok(Some(judged)) => {
+            let record = judged.record.clone();
+            match store.save_judgements(&[(key.clone(), judged)], matcher.rev(), now) {
                 Ok(()) => tally.count(&record),
                 Err(e) => log::warn!("score of {key} not stored: {e}"),
             }
@@ -154,14 +162,14 @@ pub(super) fn catch_up(
         }
         let mut records = Vec::with_capacity(page.len());
         for (job, text) in &page {
-            match assess_guarded(matcher, job, text.as_deref()) {
-                Some(record) => records.push((job.key.clone(), record)),
+            match judge_guarded(matcher, job, text.as_deref()) {
+                Some(judged) => records.push((job.key.clone(), judged)),
                 None => skipped += 1,
             }
         }
-        store.save_matches(&records, matcher.rev(), clock())?;
-        for (_, record) in &records {
-            tally.count(record);
+        store.save_judgements(&records, matcher.rev(), clock())?;
+        for (_, judged) in &records {
+            tally.count(&judged.record);
         }
         done += page.len();
         emit(RunEvent::Progress {

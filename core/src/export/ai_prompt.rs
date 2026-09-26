@@ -337,6 +337,56 @@ fn wording(language: Language) -> &'static dyn Wording {
     }
 }
 
+/// Every reason code whose sentence a stored note can ask for by its name (the codes of
+/// `matching::ReasonCode`; a new one is said by its sentence once it is listed here).
+const REASON_CODES: [ReasonCode; 31] = [
+    ReasonCode::Requirement,
+    ReasonCode::Term,
+    ReasonCode::Anue,
+    ReasonCode::DayRate,
+    ReasonCode::Availability,
+    ReasonCode::Country,
+    ReasonCode::AnueOptional,
+    ReasonCode::AnueHidden,
+    ReasonCode::CountryUnclear,
+    ReasonCode::DayRateCurrency,
+    ReasonCode::AvailabilityGap,
+    ReasonCode::StartVague,
+    ReasonCode::Permanent,
+    ReasonCode::FormalOpen,
+    ReasonCode::LowEvidence,
+    ReasonCode::ShortText,
+    ReasonCode::Salary,
+    ReasonCode::SalaryUnknown,
+    ReasonCode::PermanentRegion,
+    ReasonCode::PermanentRegionUnclear,
+    ReasonCode::TooJunior,
+    ReasonCode::SeniorityUnclear,
+    ReasonCode::Overqualified,
+    ReasonCode::ContractType,
+    ReasonCode::AnueRisk,
+    ReasonCode::Focus,
+    ReasonCode::TargetRole,
+    ReasonCode::DayRateWish,
+    ReasonCode::RemoteWish,
+    ReasonCode::RegionWish,
+    ReasonCode::IndustryWish,
+];
+
+/// The sentence of a reason by the name of its code (`anueOptional`, the note of a list row)
+/// in the words of the prompts: the report says a job's first point to check with it. `None`
+/// for requirements, terms and a code this version does not know.
+pub(crate) fn reason_sentence(
+    language: Language,
+    code: &str,
+    params: &Map<String, Value>,
+) -> Option<String> {
+    let code = REASON_CODES
+        .into_iter()
+        .find(|c| crate::pipeline::local::code_name(c) == code)?;
+    wording(language).reason(code, params)
+}
+
 // ------------------------------------------------------------------------- the profile
 
 /// The consultant as the prompt reads the profile: its JSON and the thresholds of its hard

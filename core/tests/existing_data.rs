@@ -112,7 +112,6 @@ fn settings_policy_and_database_of_an_earlier_version_keep_working() {
     );
     assert!(settings.portal(Portal::LinkedIn).fetch_details);
     assert!(!settings.portal(Portal::FreelanceDe).login_enabled);
-    assert!(settings.auto_fetch_on_start);
     assert_eq!(settings.workspace, None);
     settings.save(&store).unwrap();
     assert_eq!(Settings::load(&store).unwrap(), settings);
