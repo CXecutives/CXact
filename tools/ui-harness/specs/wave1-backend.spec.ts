@@ -18,29 +18,31 @@ async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
 
-test('the Excel file shows itself in its folder, in the words of the OS', async ({ page }) => {
+test('the Excel file opens, and "Ordner öffnen" shows it in its folder', async ({ page }) => {
   await settings(page);
   const reveal = page.getByTestId('excel').getByTestId('excel-reveal');
-  await expect(reveal).toHaveText('Im Explorer zeigen');
+  await expect(reveal).toHaveText('Ordner öffnen');
   await reveal.click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'excelInFolder' } });
-  // "Öffnen" stays the last button of the row, like every opener of this card.
+  // Every file row the same: "Öffnen", then "Ordner öffnen".
   const labels = await page
     .getByTestId('excel')
     .locator('.btn')
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
-  expect(labels).toEqual(['excel-reveal', 'excel-open']);
+  expect(labels).toEqual(['excel-open', 'excel-reveal']);
 
   await settings(page, MAC);
-  await expect(page.getByTestId('excel-reveal')).toHaveText('Im Finder zeigen');
+  await expect(page.getByTestId('excel-reveal')).toHaveText('Ordner öffnen');
 });
 
-test('no Excel file yet: it can neither open nor show itself, and says why', async ({ page }) => {
+test('no Excel file yet: it cannot open and says why; its folder still opens', async ({ page }) => {
   await settings(page, `${WIN}&scenario=no-files`);
-  const reveal = page.getByTestId('excel-reveal');
-  await expect(reveal).toHaveAttribute('aria-disabled', 'true');
-  await reveal.hover();
+  const excel = page.getByTestId('excel-open');
+  await expect(excel).toHaveAttribute('aria-disabled', 'true');
+  await excel.hover();
   await expect(page.getByRole('tooltip')).toHaveText('Die Excel-Datei entsteht beim ersten Abruf.');
+  // Before the first fetch the folder is the work folder it will be in (backend).
+  await expect(page.getByTestId('excel-reveal')).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 // Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.

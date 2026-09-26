@@ -37,10 +37,17 @@ test('reset names everything it deletes before it asks', async ({ page }) => {
     'Löscht Jobs, Einstellungen, Profil, App-Passwort und Anmeldungen.',
   );
   await page.getByTestId('reset').click();
-  // The files in the user's own work folder go too (core reset: `app_files`).
-  await expect(page.getByTestId('dialog-reset')).toContainText(
-    'Die App startet neu und löscht auch Excel-Datei, Übersicht und Textdateien im Arbeitsordner.',
-  );
+  // The dialog lists everything, the files in the user's own work folder too (core reset:
+  // `app_files`).
+  const dialog = page.getByTestId('dialog-reset');
+  await expect(dialog).toContainText('Die App startet danach neu und löscht');
+  await expect(dialog.getByTestId('dialog-items').locator('li')).toHaveText([
+    'die Jobs und die Einstellungen',
+    'das Profil',
+    'das App-Passwort',
+    'die Anmeldungen bei den Portalen',
+    'Excel-Datei, Bericht und Textdateien im Arbeitsordner',
+  ]);
   // What stays behind need not be a file (the app password, a sign-in).
   await open(page, `${WIN}&scenario=reset`);
   await expect(page.getByTestId('first-reset-report')).not.toContainText('Datei');
@@ -90,21 +97,21 @@ test('an excluded row names a missing degree or licence in short words, never a 
   await expect(row.locator('.foot')).toHaveText('Ausgeschlossen');
 });
 
-test('reading the whole mailbox has one name: in the list, the settings and the run', async ({
+test('fetching every alert mail has one name: in the list, the settings and the run', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=empty`);
-  await expect(page.getByTestId('read-older')).toContainText('Ganzes Postfach lesen');
+  await expect(page.getByTestId('read-older')).toContainText('Alle Alert-Mails abrufen');
   await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('settings-care')).toContainText('Ganzes Postfach lesen');
+  await expect(page.getByTestId('settings-mailbox')).toContainText('Alle Alert-Mails abrufen');
   // The run card names the run by its kind until the first status comes.
   await page.evaluate(() => (window.__harness.holdAfter = 1));
   await page.getByTestId('full-mailbox').click();
   await page
     .getByTestId('dialog-full-mailbox')
-    .getByRole('button', { name: 'Lesen', exact: true })
+    .getByRole('button', { name: 'Abrufen', exact: true })
     .click();
-  await expect(page.getByTestId('run-running')).toContainText('Ganzes Postfach lesen');
+  await expect(page.getByTestId('run-running')).toContainText('Alle Alert-Mails abrufen');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });
@@ -134,15 +141,15 @@ test('the selection bar counts with a thousands separator, like the pane beside 
   await expect(page.getByTestId('reader-pane')).toContainText('1.001 Jobs ausgewählt');
 });
 
-test('the first run names the portals whose alerts belong in the mailbox', async ({ page }) => {
+test('the first run names the portals whose alerts must go to the mailbox', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   // The portals in the app's one order (the settings'), by their web address.
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'Die Alert-Mails von linkedin.com, freelance.de und freelancermap.de gehören hierher.',
+    'Die Alerts von linkedin.com, freelance.de und freelancermap.de müssen an diese Gmail-Adresse gehen.',
   );
   await open(page, `${WIN}&scenario=first-run&lang=en`);
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alert emails from linkedin.com, freelance.de and freelancermap.de belong here.',
+    'The alerts from linkedin.com, freelance.de and freelancermap.de must go to this Gmail address.',
   );
   // "in Gmail" never breaks apart: no line of the intro ends with the preposition.
   const intro = await page.getByTestId('first-run').locator('.benefit').textContent();
@@ -261,6 +268,6 @@ test('a sentence speaks to the user and quotes the control it names', async ({ p
   await settings(page);
   // "Erst Details holen einschalten." read as "first fetch details, then switch on".
   await page.getByTestId('toggle-details-freelance').click();
-  await page.getByTestId('toggle-login-freelance').hover();
+  await page.getByTestId('sign-in-freelance').hover();
   await expect(page.getByRole('tooltip')).toHaveText('Schalte erst „Details holen“ ein.');
 });

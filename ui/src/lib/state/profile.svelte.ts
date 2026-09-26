@@ -292,24 +292,59 @@ export function fieldProblems(
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 
-/** `2026-11-01` -> `01.11.2026`, in English `01/11/2026` (as the field shows a day). */
+/** A day as British English writes it, the month in words (`1 Nov 2026`). */
+const BRITISH_DAY = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+/** `2026-11-01` -> `01.11.2026`, in English `1 Nov 2026` (as the field shows a day). */
 export function shownDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  const mark = language.current === 'de' ? '.' : '/';
-  return match ? `${match[3]}${mark}${match[2]}${mark}${match[1]}` : iso;
+  if (match === null) return iso;
+  const [, year, month, day] = match;
+  return language.current === 'de'
+    ? `${day}.${month}.${year}`
+    : BRITISH_DAY.format(Date.UTC(Number(year), Number(month) - 1, Number(day)));
 }
 
 const GERMAN_DAY = /^(\d{1,2})[./](\d{1,2})[./](\d{2}|\d{4})$/;
 const ISO_DAY = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+/** A day with the month in words, German or English (`1 Nov 2026`, `1. März 2026`). */
+const NAMED_DAY = /^(\d{1,2})\.?\s+(\p{L}+)\.?\s+(\d{4})$/u;
+/** The month of a name by its first three letters (umlauts folded: `mär` is `mar`). */
+const MONTH_OF: Readonly<Record<string, number>> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  mai: 5,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  okt: 10,
+  oct: 10,
+  nov: 11,
+  dez: 12,
+  dec: 12,
+};
+const monthOf = (name: string): number =>
+  MONTH_OF[name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().slice(0, 3)] ?? 0;
 
 /**
- * A typed day (`1.11.2026`, `01.11.26`, `01/11/2026`, `2026-11-01`) as `YYYY-MM-DD`; `null`
- * if it is none. Day first in both languages (German and British English).
+ * A typed day (`1.11.2026`, `01.11.26`, `01/11/2026`, `2026-11-01`, `1 Nov 2026`) as
+ * `YYYY-MM-DD`; `null` if it is none. Day first in both languages (German and British
+ * English).
  */
 export function isoDate(text: string): string | null {
   const value = text.trim();
   const german = GERMAN_DAY.exec(value);
   const iso = ISO_DAY.exec(value);
+  const named = NAMED_DAY.exec(value);
   const [year, month, day] = german
     ? [
         Number(german[3]) + (german[3]!.length === 2 ? 2000 : 0),
@@ -318,7 +353,9 @@ export function isoDate(text: string): string | null {
       ]
     : iso
       ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
-      : [0, 0, 0];
+      : named
+        ? [Number(named[3]), monthOf(named[2]!), Number(named[1])]
+        : [0, 0, 0];
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
   const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1] ?? 0;
   const valid = year > 1900 && day >= 1 && day <= days;
@@ -328,7 +365,7 @@ export function isoDate(text: string): string | null {
 /** A typed day in a form `isoDate` reads, whether or not the calendar has it (`31.02.2026`). */
 export function dayShaped(text: string): boolean {
   const value = text.trim();
-  return GERMAN_DAY.test(value) || ISO_DAY.test(value);
+  return GERMAN_DAY.test(value) || ISO_DAY.test(value) || NAMED_DAY.test(value);
 }
 
 /** The day field's text for a form. */
@@ -413,6 +450,8 @@ class ProfileEditor {
   cleared = $state<UnreadableField[]>([]);
   /** The steps to fill the profile from a CV with an AI are open. */
   pasting = $state(false);
+  /** The setup page asked for those steps: the Profil view opens them when it appears. */
+  cvWanted = $state(false);
   /** The AI's answer as pasted: kept until it fills the form, also when the steps close or
    *  the view changes. */
   answer = $state('');

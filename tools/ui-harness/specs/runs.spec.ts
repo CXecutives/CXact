@@ -152,10 +152,9 @@ test('a failed first fetch does not claim the alert mails were empty', async ({ 
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.getByTestId('first-fetch').click();
   await runFinished(page);
-  await expect(page.getByTestId('run-failed')).toContainText('Gmail ist nicht erreichbar.');
-  await expect(page.getByTestId('empty-all')).toContainText(
-    'Nach dem ersten Abruf stehen die Jobs hier.',
-  );
+  // Only a completed fetch ends the setup: its last step says why this one failed.
+  await expect(page.getByTestId('view-first-run')).toBeVisible();
+  await expect(page.getByTestId('first-fetch-failed')).toContainText('Gmail ist nicht erreichbar.');
   await expect(page.getByText('enthielten bisher keine Jobs')).toHaveCount(0);
 });
 

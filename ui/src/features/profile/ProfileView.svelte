@@ -5,8 +5,11 @@
   (the person, an honest quality, what the app reads, the file actions) and the form with
   the save bar. A chosen file and an AI's answer fill the form for review (an answer for the
   stored profile updates it); nothing is stored before "Speichern". Leaving the view or
-  closing the window with unsaved changes asks once. Removing the profile can be taken back
-  for a moment (a toast with "Rückgängig").
+  closing the window with unsaved changes asks once ("Änderungen speichern?", the heading
+  alone). Removing the profile needs no question: it goes at once and a toast offers
+  "Rückgängig" for a moment. During setup the first save offers "Weiter zum ersten Abruf",
+  which starts the fetch; the setup page asks for the steps with an AI (`cvWanted`), which
+  open when the view appears.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -76,15 +79,12 @@
     saved && app.state?.firstRun && app.hasProfile ? () => void onward() : null,
   );
 
-  /** The button goes with the view: the setup page's next action takes the focus. */
+  /** The first fetch starts at once; the Jobs view shows it (a start that fails is said in
+   *  the last step of the setup page). */
   async function onward(): Promise<void> {
     navigation.go('jobs');
-    await tick();
-    document
-      .querySelector<HTMLElement>('[data-testid="first-run"] [aria-current="step"] button')
-      ?.focus();
+    await run.start({ kind: 'fetch' });
   }
-  let confirmRemove = $state(false);
   /** Where the user wanted to go with unsaved changes (a view, or closing the window). */
   let leaving = $state<ViewId | 'close' | null>(null);
 
@@ -142,6 +142,11 @@
       leaving = next;
       return false;
     });
+    // The setup page asked for the steps with an AI.
+    if (editor.cvWanted) {
+      editor.cvWanted = false;
+      void fromCv();
+    }
     const stopClose = onCloseRequested(() => void closeRequested());
     return () => {
       release();
@@ -313,8 +318,6 @@
     } catch (error) {
       note = () => errorText(error);
     } finally {
-      // The dialog closes either way; a failure shows next to the file.
-      confirmRemove = false;
       busy = null;
     }
   }
@@ -397,24 +400,36 @@
         ? understood.competenceCount
         : local.terms,
   );
-  /** The reasons of "Etwas prüfen": each value that does not read, a region rule that stays
-   *  off. */
-  const checks = $derived(
+  /** What "n Werte prüfen" counts, in the order of the form's fields: each value that does
+   *  not read, a region rule that stays off; each with the field it is said at. */
+  const checkList = $derived(
     [
-      ...problems.map((problem) =>
-        problem.entry
+      ...problems.map((problem) => ({
+        field: problem.field as string,
+        text: problem.entry
           ? problem.field === 'focus'
             ? t.profile.field.unreadableFocus(problem.value)
             : t.profile.field.unreadableRole(problem.value)
           : (warningText(problem.notice) ?? ''),
-      ),
+      })),
       ...(warnings.some((w) => w.code === 'regionWithoutPlaces') &&
       editor.after.criteria.permanentPlaces.length === 0 &&
       editor.after.criteria.permanentRemoteMin !== null
-        ? [t.profile.warning.regionWithoutPlaces]
+        ? [{ field: 'permanentRemoteMin', text: t.profile.warning.regionWithoutPlaces }]
         : []),
-    ].filter((text) => text !== ''),
+    ].filter((check) => check.text !== ''),
   );
+  const checks = $derived(checkList.map((check) => check.text));
+
+  /** "n Werte prüfen": the caret to the first of them, in the order of the form. */
+  function checkFirst(): void {
+    const fields = new Set(checkList.map((check) => check.field));
+    const first = [...document.querySelectorAll<HTMLElement>('[data-field]')].find((node) =>
+      fields.has(node.dataset.field ?? ''),
+    );
+    const field = first?.dataset.field ?? checkList[0]?.field;
+    if (field !== undefined) void panel?.focusField(field);
+  }
   /** Said in the head: what the form cannot change (keys of the file the app does not read). */
   const HEAD = new Set(['ignoredKeys']);
   /** Said elsewhere: the quality at the competences, empty criteria at their section, a
@@ -470,7 +485,6 @@
       competences={hasCompetences}
       {terms}
       focus={editor.after.focus.length}
-      packs={understood?.packs ?? []}
       {checks}
       warnings={headWarnings}
       {rescoring}
@@ -478,9 +492,10 @@
       picking={busy === 'pick'}
       note={note?.() ?? null}
       onpick={() => void pick()}
-      onremove={() => (confirmRemove = true)}
+      onremove={() => void remove()}
       onfromcv={() => void fromCv()}
       onopenfolder={openFolder}
+      oncheck={checkFirst}
     />
     <ProfileEditor
       bind:this={panel}
@@ -499,21 +514,10 @@
   {/if}
 </div>
 
-<Dialog
-  bind:open={confirmRemove}
-  variant="danger"
-  heading={t.profile.removeHeading}
-  text={t.profile.removeText}
-  confirmLabel={t.profile.remove}
-  busy={busy === 'remove'}
-  testid="dialog-remove-profile"
-  onconfirm={() => void remove()}
-/>
-
+<!-- The heading says it all: the dialog does not repeat it. -->
 <Dialog
   open={leaving !== null}
   heading={t.profile.leaveHeading}
-  text={t.profile.leaveText}
   confirmLabel={t.profile.save}
   altLabel={t.profile.discard}
   busy={busy === 'save'}

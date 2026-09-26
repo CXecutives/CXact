@@ -110,8 +110,12 @@ test('ui-core-04: every reference of a field or switch names a text that is ther
     'Sie stützen die Passung, belegen aber keine Anforderung.',
   );
   await expect(page.getByTestId('profile-no-anue')).not.toHaveAttribute('aria-describedby', /./);
-  await expect(page.getByTestId('profile-remote-outside')).toHaveAccessibleDescription(
-    'Ausgeschaltet markiert die App ganz remote Jobs mit Sitz im Ausland zum Prüfen.',
+  await expect(page.getByTestId('profile-remote-outside')).not.toHaveAttribute(
+    'aria-describedby',
+    /./,
+  );
+  await expect(page.getByTestId('profile-no-permanent')).toHaveAccessibleDescription(
+    'Nur bei klarem Wortlaut, sonst markiert die App den Job zum Prüfen.',
   );
   // An error takes the place of the missing hint, and is its description.
   await page.getByTestId('profile-name-field').fill('x'.repeat(10));
@@ -178,14 +182,15 @@ test('live-forms-11: a button that goes hands its focus on', async ({ page }) =>
   await page.keyboard.press('Enter');
   await expect(languages).toHaveCount(0);
   await expect(page.getByTestId('language-add')).toBeFocused();
-  // "Weiter zum ersten Abruf": the setup page's next action.
+  // "Weiter zum ersten Abruf" goes with the view: it starts the first fetch.
   await open(page, `${WIN}&scenario=mailbox-only`);
-  await page.getByTestId('first-profile').click();
+  await page.getByTestId('first-profile-form').click();
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('profile-save').click();
   await page.getByTestId('profile-next').focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('first-fetch')).toBeFocused();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await calls(page, 'start_run')).toHaveLength(1);
 });
 
 test('live-forms-12: the day is judged when it is left or saved, never while typed', async ({
@@ -347,32 +352,15 @@ test('live-forms-15: one choice is one Tab stop, and the arrows choose', async (
   expect(await sent()).toBeNull();
 });
 
-test('live-forms-16: narrow, a Schwerpunkt wraps at its words; a field action ends its line', async ({
+test('live-forms-16: narrow, the synonyms keep one line; a field action ends its line', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 480, height: 640 });
   await profile(page);
-  const chip = page
-    .getByTestId('focus')
-    .locator('.chip .text')
-    .filter({ hasText: 'Konzernrechnungslegung nach IFRS' });
-  await chip.scrollIntoViewIfNeeded();
-  // The long word stands on one line.
-  const lines = await chip.evaluate((node) => {
-    const text = node.firstChild!;
-    const range = document.createRange();
-    const at = text.textContent!.indexOf('Konzernrechnungslegung');
-    range.setStart(text, at);
-    range.setEnd(text, at + 'Konzernrechnungslegung'.length);
-    return new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size;
-  });
-  expect(lines).toBe(1);
-  // Wide, the chips stay beside their label.
+  const aliases = page.getByTestId('competence-aliases').nth(1);
+  await aliases.scrollIntoViewIfNeeded();
+  expect(Math.round((await aliases.boundingBox())!.height)).toBe(32);
   await page.setViewportSize({ width: 1360, height: 900 });
-  const label = (await page.getByTestId('focus-count').boundingBox())!;
-  const first = (await page.getByTestId('focus').locator('.chip').first().boundingBox())!;
-  expect(first.x).toBeGreaterThan(label.x + label.width);
-  expect(Math.abs(first.y + first.height / 2 - (label.y + label.height / 2))).toBeLessThan(2);
   // "Wert entfernen" ends the message line of a half-width field as of a full-width one.
   await profile(page, `${WIN}&scenario=profile-unreadable`);
   for (const field of ['minDayRate', 'regions']) {
@@ -392,7 +380,12 @@ test('live-forms-18: a new form for a file that does not read', async ({ page })
   await expect(page.getByTestId('profile-replaces')).toHaveText(
     'Ein neues Profil ersetzt die Datei.',
   );
-  await page.getByTestId('profile-folder').click();
+  await page.getByTestId('profile-more').click();
+  await expect(page.getByTestId('menu').getByRole('menuitem')).toHaveText([
+    'Profildatei wählen',
+    'Ordner öffnen',
+  ]);
+  await page.getByTestId('menu-item-folder').click();
   expect(await calls(page, 'open_target')).toHaveLength(1);
   // Untouched, "Verwerfen" goes back to the three ways in, whose first takes the focus.
   const discard = page.getByTestId('profile-discard');
@@ -413,5 +406,6 @@ test('live-forms-18: a new form for a file that does not read', async ({ page })
   // A plain new form without a file says nothing of a file.
   await create(page);
   await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
-  await expect(page.getByTestId('profile-folder')).toHaveCount(0);
+  await page.getByTestId('profile-more').click();
+  await expect(page.getByTestId('menu').getByRole('menuitem')).toHaveText(['Profildatei wählen']);
 });

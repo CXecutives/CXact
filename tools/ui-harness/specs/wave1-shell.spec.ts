@@ -152,7 +152,11 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
     await page.mouse.up();
     return [rest, hover, pressed];
   };
-  for (const id of ['toggle-login-freelance', 'toggle-auto-fetch']) {
+  // One switch off (the trash that empties itself, switched off here), one on.
+  const off = page.getByTestId('toggle-auto-empty-trash');
+  await off.click();
+  await expect(off).toHaveAttribute('aria-checked', 'false');
+  for (const id of ['toggle-auto-empty-trash', 'toggle-auto-archive']) {
     const [rest, hover, pressed] = await steps(id);
     expect(new Set([rest, hover, pressed]).size, `${id}: ${rest} ${hover} ${pressed}`).toBe(3);
   }
@@ -184,7 +188,7 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await settings(page);
   await page.getByTestId('full-mailbox').click();
   await expect(page.getByTestId('dialog-full-mailbox').getByTestId('dialog-confirm')).toHaveText(
-    'Lesen',
+    'Abrufen',
   );
   await page.keyboard.press('Escape');
   await page.getByTestId('nav-jobs').click();
@@ -513,8 +517,8 @@ test('ghost buttons at the end of a row end on the edge of the switches', async 
   await settings(page);
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
-  const toggle = await edge(page.getByTestId('toggle-auto-fetch'));
-  for (const id of ['mailbox-remove', 'excel-open', 'logs-open']) {
+  const toggle = await edge(page.getByTestId('toggle-auto-archive'));
+  for (const id of ['mailbox-remove', 'excel-reveal', 'logs-open']) {
     const label = await edge(page.getByTestId(id).locator('.label'));
     expect(Math.abs(label - toggle), id).toBeLessThanOrEqual(0.5);
   }
@@ -533,7 +537,7 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const labelId = await page.getByTestId('toggle-auto-fetch').getAttribute('aria-labelledby');
+  const labelId = await page.getByTestId('toggle-auto-archive').getAttribute('aria-labelledby');
   const label = (await page.locator(`[id="${labelId}"]`).boundingBox())!.x;
   expect(icon).toBe(label);
   const same = async (notice: Locator): Promise<boolean> =>

@@ -18,6 +18,10 @@
   the field and says so (`noMatch`); text that matches only chosen ones says nothing.
   Typed text that is no chip yet is a change of the form around the field (`typedText`), and
   Ctrl/Cmd+S takes it in first, as leaving the field would.
+  The field is as tall as a text field (32 px) with one line of chips. With `oneLine` (the
+  other terms of a competence) it stays one line while it has no focus: the chips that fit,
+  then a quiet "+n" for the rest (their values in its tooltip); with the focus every chip
+  shows, so each can be removed or edited.
 -->
 <script lang="ts" module>
   /** A value a field with options can take: its id, its name, other names to find it by. */
@@ -31,11 +35,32 @@
   export function folded(text: string): string {
     return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/ß/g, 'ss').trim();
   }
+
+  /** The options whose names start with `text` (a whole name first, then a word of one),
+   *  by name; none for no text. Shared with the suggestions of a TextField. */
+  export function suggested(options: readonly ChipOption[], text: string): ChipOption[] {
+    const query = folded(text);
+    if (query === '') return [];
+    const rank = (option: ChipOption): number => {
+      const names = [option.label, option.id, ...(option.terms ?? [])].map(folded);
+      if (names.some((name) => name.startsWith(query))) return 0;
+      if (names.some((name) => name.split(/[\s-]+/).some((word) => word.startsWith(query)))) {
+        return 1;
+      }
+      return 2;
+    };
+    return options
+      .map((option) => ({ option, rank: rank(option) }))
+      .filter((entry) => entry.rank < 2)
+      .sort((a, b) => a.rank - b.rank || a.option.label.localeCompare(b.option.label))
+      .map((entry) => entry.option);
+  }
 </script>
 
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
+  import { untrack } from 'svelte';
   import { chipEdit, chipKeys, FIELD_ATTRIBUTES, type ChipKeyHandlers } from '$lib/input/input';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
@@ -60,6 +85,8 @@
     options?: readonly ChipOption[] | null;
     /** Said under the field while the typed text matches no option. */
     noMatch?: string | null;
+    /** One line without the focus: the chips that fit and "+n" for the rest. */
+    oneLine?: boolean;
     testid?: string | null;
     onchange?: (values: string[]) => void;
   }
@@ -75,6 +102,7 @@
     split = 'list',
     options = null,
     noMatch = null,
+    oneLine = false,
     testid = null,
     onchange,
   }: Props = $props();
@@ -99,31 +127,68 @@
   /** The marked option of the list (Enter takes it). */
   let active = $state(0);
 
-  const known = (list: string[], text: string): boolean =>
-    list.some((value) => value.toLowerCase() === text.toLowerCase());
-
   /** The name a chip shows: its option's, else the value itself. */
   const labelOf = (value: string): string =>
     options?.find((option) => option.id === value)?.label ?? value;
 
-  /** Options whose names start with the typed text (a whole name first), chosen or not. */
-  const found = $derived.by((): ChipOption[] => {
-    const query = folded(draft);
-    if (options === null || query === '') return [];
-    const rank = (option: ChipOption): number => {
-      const names = [option.label, option.id, ...(option.terms ?? [])].map(folded);
-      if (names.some((name) => name.startsWith(query))) return 0;
-      if (names.some((name) => name.split(/[\s-]+/).some((word) => word.startsWith(query)))) {
-        return 1;
-      }
-      return 2;
-    };
-    return options
-      .map((option) => ({ option, rank: rank(option) }))
-      .filter((entry) => entry.rank < 2)
-      .sort((a, b) => a.rank - b.rank || a.option.label.localeCompare(b.option.label))
-      .map((entry) => entry.option);
+  let box = $state<HTMLElement | null>(null);
+  /** One line without the focus: how many chips fit before "+n" (null: all of them). */
+  let fits = $state<number | null>(null);
+  const lined = $derived(oneLine && !focused && values.length > 0);
+  const shown = $derived(lined && fits !== null ? fits : values.length);
+  const hidden = $derived(values.slice(shown).map(labelOf));
+
+  /** The chips that fit on the line with room for "+n" and a caret; at least the first one,
+   *  which shortens with an ellipsis when it is too long alone. Spare chips keep their
+   *  width out of the flow, so they are measured like the shown ones. */
+  function measure(): void {
+    const node = box;
+    if (node === null || !lined) {
+      fits = null;
+      return;
+    }
+    const style = getComputedStyle(node);
+    const gap = Number.parseFloat(style.columnGap) || 0;
+    const caret = input === null ? 0 : Number.parseFloat(getComputedStyle(input).minWidth) || 0;
+    const room =
+      node.clientWidth -
+      (Number.parseFloat(style.paddingLeft) || 0) -
+      (Number.parseFloat(style.paddingRight) || 0) -
+      caret;
+    const chips = [...node.querySelectorAll<HTMLElement>('[data-chip]')];
+    const more = (node.querySelector<HTMLElement>('[data-more]')?.offsetWidth ?? 0) + gap;
+    let used = 0;
+    let count = 0;
+    for (const [index, chip] of chips.entries()) {
+      // Its whole width, also while it is shortened (the text clips, its scroll width does not).
+      const text = chip.querySelector<HTMLElement>('.text');
+      const clipped = text === null ? 0 : text.scrollWidth - text.clientWidth;
+      const width = chip.offsetWidth + clipped + gap;
+      if (used + width + (index < chips.length - 1 ? more : 0) > room) break;
+      used += width;
+      count += 1;
+    }
+    fits = count >= chips.length ? null : Math.max(1, count);
+  }
+
+  $effect(() => {
+    if (!oneLine || box === null) return;
+    const watch = new ResizeObserver(() => measure());
+    watch.observe(box);
+    return () => watch.disconnect();
   });
+  // Again after the chips or the focus changed (effects run once the DOM has them).
+  $effect(() => {
+    void values.length;
+    void lined;
+    untrack(measure);
+  });
+
+  const known = (list: string[], text: string): boolean =>
+    list.some((value) => value.toLowerCase() === text.toLowerCase());
+
+  /** Options whose names start with the typed text (a whole name first), chosen or not. */
+  const found = $derived(options === null ? [] : suggested(options, draft));
   /** The options found that are not chosen yet: the list under the field. */
   const matches = $derived(found.filter((option) => !values.includes(option.id)));
   const listed = $derived(focused && matches.length > 0);
@@ -258,9 +323,10 @@
     queueMicrotask(() => input?.setSelectionRange(value.length, value.length));
   }
 
-  /** A press on the free area of the field puts the caret into its input. */
+  /** A press on the free area of the field (or on "+n") puts the caret into its input. */
   function focusInput(event: PointerEvent): void {
-    if (!entry || event.button !== 0 || event.target !== event.currentTarget) return;
+    const more = event.target instanceof Element && event.target.closest('[data-more]') !== null;
+    if (!entry || event.button !== 0 || (event.target !== event.currentTarget && !more)) return;
     event.preventDefault();
     input?.focus();
   }
@@ -268,17 +334,19 @@
 
 <div class="chip-input" class:suggests={options !== null}>
   <div
+    bind:this={box}
     class="field"
     class:invalid
     class:entry
     class:filled={values.length > 0}
+    class:lined
     role="presentation"
     data-testid={testid ?? undefined}
     onpointerdown={focusInput}
     use:chipEdit={entry && options === null ? edit : null}
   >
     {#each values as value, index (value)}
-      <span class="chip" data-chip={index} data-value={value}>
+      <span class="chip" class:spare={index >= shown} data-chip={index} data-value={value}>
         <span class="text" data-copy>{labelOf(value)}</span>
         <button
           type="button"
@@ -293,6 +361,17 @@
         </button>
       </span>
     {/each}
+    {#if lined}
+      <span
+        class="chip more"
+        class:spare={hidden.length === 0}
+        data-more
+        data-testid={testid ? `${testid}-more` : undefined}
+        use:tooltip={hidden.length > 0 ? hidden.join(', ') : null}
+      >
+        {t.chips.more(Math.max(hidden.length, 1))}
+      </span>
+    {/if}
     {#if entry}
       <input
         bind:this={input}
@@ -357,7 +436,10 @@
 </div>
 
 <style>
+  /* One line of chips inside the 32 px of a field: 32 - 2 x 4 padding - 2 x 1 edge. */
   .chip-input {
+    --chip-line: calc(var(--control-field) - 2 * var(--space-4) - 2 * var(--border-width));
+
     position: relative;
     display: flex;
     flex-direction: column;
@@ -403,7 +485,7 @@
     align-items: center;
     gap: var(--space-2);
     max-width: 100%;
-    min-height: calc(var(--control-sm) - var(--space-4));
+    min-height: var(--chip-line);
     padding: 0 var(--space-2) 0 var(--space-8);
     border-radius: var(--radius-full);
     background-color: var(--active-surface);
@@ -441,7 +523,7 @@
   .input {
     flex: 1 1 0;
     min-width: var(--space-48);
-    height: calc(var(--control-sm) - var(--space-4));
+    height: var(--chip-line);
     padding: 0 var(--space-8);
     border: 0;
     background-color: transparent;
@@ -467,6 +549,38 @@
 
   .input::placeholder {
     color: var(--text-subtle);
+  }
+
+  /* One line without the focus: the first chip shortens with an ellipsis, spare chips keep
+     their width out of the flow (measured, never seen). */
+  .lined {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .lined .chip {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .lined .text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip.spare {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .more {
+    flex: none;
+    padding: 0 var(--space-8);
+    background-color: var(--surface-muted);
+    color: var(--text-muted);
+    font-variant-numeric: var(--numeric);
   }
 
   /* The options drop down under the field, over what follows, like a native menu. */

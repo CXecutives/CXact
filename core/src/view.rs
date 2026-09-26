@@ -2014,7 +2014,7 @@ mod tests {
             .key
             .clone();
         store
-            .set_applied(&[b.clone()], true, Timestamp::now())
+            .set_applied(std::slice::from_ref(&b), true, Timestamp::now())
             .unwrap();
         let applied = JobQuery {
             applied: true,

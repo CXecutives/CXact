@@ -15,6 +15,8 @@
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
   The buttons follow the OS: the action first on Windows (then the third action, then
   cancel), last (right) on macOS with the third action on the far left.
+  The sentence under the heading is left out where the heading says it all; `items` lists
+  what the action concerns (everything a reset deletes) under it.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -31,7 +33,10 @@
     open: boolean;
     variant?: 'confirm' | 'danger';
     heading: string;
-    text: string;
+    /** One sentence under the heading; none where the heading says it all. */
+    text?: string | null;
+    /** What the action concerns, one item each (what a reset deletes). */
+    items?: readonly string[] | null;
     /** The bare verb of the heading ("Postfach entfernen?": Entfernen; "Ganzes Postfach
      *  lesen?": Lesen), the same pattern in every dialog. */
     confirmLabel: string;
@@ -51,7 +56,8 @@
     open = $bindable(),
     variant = 'confirm',
     heading,
-    text,
+    text = null,
+    items = null,
     confirmLabel,
     cancelLabel,
     busy = false,
@@ -125,7 +131,7 @@
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="{id}-heading"
-      aria-describedby="{id}-text"
+      aria-describedby={text !== null || items !== null ? `${id}-text` : undefined}
       tabindex="-1"
       data-testid={testid ?? undefined}
       in:dialogIn
@@ -134,7 +140,16 @@
       use:focusFirst={variant}
     >
       <h2 class="heading" id="{id}-heading">{heading}</h2>
-      <p class="text" id="{id}-text">{text}</p>
+      {#if text !== null || items !== null}
+        <div class="body" id="{id}-text">
+          {#if text !== null}<p class="text">{text}</p>{/if}
+          {#if items !== null}
+            <ul class="items" data-testid="dialog-items">
+              {#each items as item (item)}<li>{item}</li>{/each}
+            </ul>
+          {/if}
+        </div>
+      {/if}
       {#if error}
         <Notice tone="danger" variant="inline" text={error} testid="dialog-error" />
       {/if}
@@ -209,10 +224,24 @@
     letter-spacing: var(--tracking-tight);
   }
 
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
   .text {
     color: var(--text-muted);
     font: var(--type-body);
     text-wrap: balance;
+  }
+
+  /* A plain list of what the action concerns, in the words of the sentence above. */
+  .items {
+    padding-left: var(--space-20);
+    color: var(--text-muted);
+    font: var(--type-body);
+    list-style: disc;
   }
 
   .actions {

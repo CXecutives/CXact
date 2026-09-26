@@ -6,15 +6,21 @@
   Focus turns the edge navy (100 ms), one calm edge and no ring around it; the magnifier
   turns navy. The clear button pops in with the first character and leaves at
   once. `shake()` shakes the field once (a wrong password; never under reduced motion).
+  With `options` (the languages of the profile) it suggests while typing, like the countries
+  field: the options whose names start with the text drop down under it, the arrows move the
+  one mark, Enter or a click takes the marked one, Esc closes the list; any other text stays
+  as typed (the field takes free text).
 -->
 <script lang="ts">
   import { tick } from 'svelte';
-  import { FIELD_ATTRIBUTES, formKeys } from '$lib/input/input';
+  import type { Action } from 'svelte/action';
+  import { chipKeys, FIELD_ATTRIBUTES, formKeys, type ChipKeyHandlers } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
   import { describedBy } from '$lib/state/described';
   import { move, play } from '$lib/motion/motion';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
+  import { folded, suggested, type ChipOption } from './ChipInput.svelte';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -29,6 +35,8 @@
     /** The ids of the texts that describe the field (default: the message of its Field,
      *  while it shows one). */
     describedby?: string | null;
+    /** Names to suggest while typing (free text stays possible). */
+    options?: readonly ChipOption[] | null;
     testid?: string | null;
     oninput?: (value: string) => void;
   }
@@ -42,6 +50,7 @@
     invalid = false,
     disabled = false,
     describedby = null,
+    options = null,
     testid = null,
     oninput,
   }: Props = $props();
@@ -56,6 +65,47 @@
     value = next;
     oninput?.(next);
   }
+
+  // ------------------------------------------------------------ suggestions
+  const own = $props.id();
+  let focused = $state(false);
+  /** Esc or a choice closed the list: it stays closed until the next character. */
+  let closed = $state(false);
+  let active = $state(0);
+  const found = $derived(options === null ? [] : suggested(options, value));
+  /** The text is an option's name as it would be taken: nothing to suggest. */
+  const taken = $derived(found.some((option) => folded(option.label) === folded(value)));
+  const listed = $derived(focused && !closed && !taken && found.length > 0);
+
+  function take(option: ChipOption): void {
+    update(option.label);
+    closed = true;
+  }
+
+  /** Enter takes the marked option, Esc closes the list, the arrows move the mark; with
+   *  no list every key goes on to the field and the form. */
+  const suggestKeys: ChipKeyHandlers = {
+    commit: () => {
+      const option = listed ? (found[active] ?? found[0]) : undefined;
+      if (option === undefined) return false;
+      take(option);
+      return true;
+    },
+    removeLast: () => false,
+    clear: () => {
+      if (!listed) return false;
+      closed = true;
+      return true;
+    },
+    step: (by) => {
+      if (!listed) return false;
+      active = (active + by + found.length) % found.length;
+      return true;
+    },
+  };
+  /** The keys of the list only for a field that suggests. */
+  const suggesting: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =>
+    options === null ? undefined : chipKeys(node, handlers);
 
   function clear(): void {
     update('');
@@ -120,12 +170,51 @@
     placeholder={placeholder ?? undefined}
     {disabled}
     data-testid={testid ?? undefined}
+    role={options !== null ? 'combobox' : undefined}
+    aria-autocomplete={options !== null ? 'list' : undefined}
+    aria-expanded={options !== null ? listed : undefined}
+    aria-controls={options !== null ? `${own}-options` : undefined}
+    aria-activedescendant={listed ? `${own}-option-${active}` : undefined}
     spellcheck={FIELD_ATTRIBUTES.spellcheck}
     autocorrect={FIELD_ATTRIBUTES.autocorrect}
     autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
     autocomplete={FIELD_ATTRIBUTES.autocomplete}
-    oninput={(event) => update(event.currentTarget.value)}
+    use:suggesting={suggestKeys}
+    onfocus={() => (focused = true)}
+    onblur={() => (focused = false)}
+    oninput={(event) => {
+      closed = false;
+      active = 0;
+      update(event.currentTarget.value);
+    }}
   />
+  {#if options !== null}
+    <div
+      class="options"
+      id="{own}-options"
+      role="listbox"
+      aria-label={label ?? placeholder ?? undefined}
+      hidden={!listed}
+      data-testid={testid ? `${testid}-options` : undefined}
+    >
+      {#each listed ? found : [] as option, index (option.id)}
+        <button
+          type="button"
+          class="option"
+          class:active={index === active}
+          id="{own}-option-{index}"
+          role="option"
+          aria-selected={index === active}
+          tabindex="-1"
+          data-keep-focus
+          onpointermove={() => (active = index)}
+          onclick={() => take(option)}
+        >
+          {option.label}
+        </button>
+      {/each}
+    </div>
+  {/if}
   {#if kind === 'password'}
     <span class="trail">
       <Button
@@ -226,5 +315,45 @@
   .trail {
     display: inline-flex;
     padding-right: var(--space-4);
+  }
+
+  /* The suggestions drop down under the field, over what follows, like the countries'. */
+  .options {
+    position: absolute;
+    z-index: var(--z-overlay);
+    top: calc(100% + var(--menu-gap));
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(6 * var(--control-sm) + 2 * var(--space-4));
+    padding: var(--space-4);
+    overflow-y: auto;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-control);
+    background-color: var(--surface);
+    box-shadow: var(--sh-pop);
+  }
+
+  .options[hidden] {
+    display: none;
+  }
+
+  .option {
+    display: flex;
+    flex: none;
+    align-items: center;
+    height: var(--control-sm);
+    padding: 0 var(--space-8);
+    border-radius: var(--radius-xs);
+    color: var(--text);
+    font: var(--type-field);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .option.active {
+    background-color: var(--active-surface);
+    color: var(--active-text);
   }
 </style>

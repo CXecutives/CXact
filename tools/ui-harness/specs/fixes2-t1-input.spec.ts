@@ -83,7 +83,7 @@ test('the right and the middle button never press a control', async ({ page }) =
 test('a switch held with the right button looks at rest and keeps its state', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-fetch');
+  const toggle = page.getByTestId('toggle-auto-archive');
   await expect(toggle).toBeVisible();
   const before = await toggle.getAttribute('aria-checked');
   for (const button of ['right', 'middle'] as const) {
@@ -158,7 +158,7 @@ test('a press on a drag region (the macOS toolbar row) ends the focus of a field
 test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-fetch');
+  const toggle = page.getByTestId('toggle-auto-archive');
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Enter');

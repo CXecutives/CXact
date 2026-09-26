@@ -1,4 +1,4 @@
-<!-- Gallery: toggles, segmented controls, fields, chip fields, disclosure and setting rows. -->
+<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, disclosure and setting rows. -->
 <script lang="ts">
   import ChipInput from '$components/ChipInput.svelte';
   import Disclosure from '$components/Disclosure.svelte';
@@ -6,11 +6,13 @@
   import MenuButton from '$components/MenuButton.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
+  import Tabs from '$components/Tabs.svelte';
   import TextArea from '$components/TextArea.svelte';
   import TextField from '$components/TextField.svelte';
   import Toggle from '$components/Toggle.svelte';
   import Section from './Section.svelte';
   import { text } from './gallery';
+  import { t as app } from '$lib/i18n/t';
 
   const t = text.inputs;
 
@@ -18,6 +20,12 @@
   let other = $state(false);
   let facet = $state<'new' | 'all'>('new');
   let view = $state('new');
+  let place = $state<'inbox' | 'archive' | 'trash'>('inbox');
+  const places = $derived([
+    { id: 'inbox' as const, label: app.place.inbox },
+    { id: 'archive' as const, label: app.place.archive },
+    { id: 'trash' as const, label: app.place.trash },
+  ]);
   let order = $state<'match' | 'date'>('match');
   const orders = [
     { id: 'match', label: t.orders[0] },
@@ -104,6 +112,16 @@
           value={view}
           onchange={(id) => (view = id)}
           testid="segmented-views"
+        />
+      </div>
+      <!-- The places above the list: the line slides to the chosen tab. -->
+      <div class="row">
+        <Tabs
+          label={app.place.tabs}
+          options={places}
+          value={place}
+          onchange={(id) => (place = id)}
+          testid="gallery-tabs"
         />
       </div>
       <div class="row narrow">

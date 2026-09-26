@@ -192,10 +192,12 @@
 
 <style>
   /* Below the scrim of a dialog (--z-toast < --z-overlay): dimmed with the page. */
+  /* A view with a bar at the bottom (the Profil's save bar) lifts the stack above it by
+     setting --toast-bottom on :root while the bar shows. */
   .stack {
     position: fixed;
     right: var(--space-24);
-    bottom: var(--space-24);
+    bottom: var(--toast-bottom, var(--space-24));
     z-index: var(--z-toast);
     display: flex;
     flex-direction: column;

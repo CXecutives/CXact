@@ -30,14 +30,18 @@ test('Sprache switches the whole app to English and back at once', async ({ page
     'aria-checked',
     'true',
   );
-  await expect(page.getByTestId('settings-language')).toContainText('Sprache der App');
+  await expect(page.getByTestId('settings-language')).toContainText(
+    'Excel-Datei und Bericht folgen beim nächsten Abruf.',
+  );
 
   await choice.getByRole('radio', { name: 'English' }).click();
   // The page switches before anything reloads: the sidebar, the headings, the document.
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
   await expect(page.getByTestId('nav-profile')).toContainText('Profile');
-  await expect(page.getByTestId('settings-language')).toContainText('App language');
-  await expect(page.getByTestId('settings-fetch')).toContainText('Fetch on startup');
+  await expect(page.getByTestId('settings-language')).toContainText(
+    'The Excel file and the report switch at the next fetch.',
+  );
+  await expect(page.getByTestId('settings-fetch')).toContainText('Archive jobs after 30 days');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
     'aria-checked',
@@ -47,7 +51,6 @@ test('Sprache switches the whole app to English and back at once', async ({ page
     {
       patch: {
         portals: [],
-        autoFetchOnStart: null,
         autoArchiveDays: null,
         autoEmptyTrashDays: null,
         language: 'en',

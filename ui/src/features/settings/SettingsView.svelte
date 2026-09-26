@@ -1,7 +1,10 @@
 <!--
-  Einstellungen (centred 720): Postfach, Abruf, Portale, Dateien, Sprache, Wartung - each a
-  card of setting rows - and "Alles zurücksetzen" alone on the last card, apart from the
-  harmless rows. Sprache switches the whole app at once (Deutsch, English). Every action
+  Einstellungen (centred 720): Postfach (with "Alle Alert-Mails abrufen"), Automatisch,
+  Portale (one sentence on "Details holen" for all of them), Dateien, Sprache, Tastenkürzel,
+  Wartung - each a card of setting rows - and "Alles zurücksetzen" alone on the last card,
+  apart from the harmless rows; its dialog lists everything it deletes. The buttons of a row
+  are 28 px (sm), 12 apart at its end; what deletes is quiet and turns red (ghost, `warns`).
+  Sprache switches the whole app at once (Deutsch, English). Every action
   answers where it happened (a note rises in there, and fades when it goes); dialogs only to
   confirm, and a confirmed action that fails closes its dialog so the note beside the action
   can say why.
@@ -11,11 +14,10 @@
   failing. The Postfach says when the last fetch could not reach Gmail or Gmail refused the
   password, instead of "Verbunden": a red badge like the sidebar's status, and a sentence
   under the row only where it adds the cause or the next step.
-  Every path row works the same: the path is text to select and copy, the folder opens with
-  "Ordner öffnen", the Excel file with "Öffnen" (and shows in its folder with "Im Explorer
-  zeigen", "Im Finder zeigen"). Textdateien says what they are (the ads as
-  text for an AI); after a change of the folder a note says that they are still in the old
-  one until "Neu schreiben".
+  Every file row works the same: "Öffnen" and "Ordner öffnen"; the path (text to select and
+  copy) stands only at the work folder. Textdateien says what they are (the ads as text for
+  an AI); after a change of the folder a note says that they are still in the old one until
+  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -28,12 +30,12 @@
   import Skeleton from '$components/Skeleton.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { language } from '$lib/i18n/language.svelte';
+  import { keyLabel } from '$lib/platform';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { Language, OpenTarget, SettingsPatch } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
-  import { fileManager } from '$lib/platform';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { tick } from 'svelte';
@@ -46,6 +48,26 @@
 
   /** The app's languages, named in the language of the app. */
   const LANGUAGES: readonly Language[] = ['de', 'en'];
+
+  /** The app's keys in the order of the app: the views, the list, a job, the fetch. */
+  const SHORTCUTS: readonly {
+    name: Exclude<keyof typeof t.settings.keys, 'heading'>;
+    combo: string;
+  }[] = [
+    { name: 'overview', combo: 'mod+1' },
+    { name: 'jobs', combo: 'mod+2' },
+    { name: 'profile', combo: 'mod+3' },
+    { name: 'settings', combo: 'mod+4' },
+    { name: 'search', combo: 'mod+f' },
+    { name: 'undo', combo: 'mod+z' },
+    { name: 'archive', combo: 'e' },
+    { name: 'trash', combo: 'del' },
+    { name: 'favourite', combo: 's' },
+    { name: 'unread', combo: 'u' },
+    { name: 'applied', combo: 'b' },
+    { name: 'openAd', combo: 'o' },
+    { name: 'fetch', combo: 'f5' },
+  ];
 
   const cfg = $derived(app.state);
   let editing = $state(false);
@@ -155,6 +177,7 @@
   const AUTO_ARCHIVE_DAYS = 30;
   const AUTO_EMPTY_TRASH_DAYS = 30;
 
+  /** A switch moves at once; a failure puts it back (reload) and says why below it. */
   function autoArchive(on: boolean): Promise<void> {
     const days = on ? AUTO_ARCHIVE_DAYS : 0;
     if (app.state) app.state.autoArchiveDays = days;
@@ -254,7 +277,7 @@
     confirmFull = false;
     void run.start({ kind: 'fullMailbox' }).then((started) => {
       if (started) navigation.go('jobs');
-      else setCare({ tone: 'danger', text: () => run.startError ?? t.run.failed });
+      else setMailbox({ tone: 'danger', text: () => run.startError ?? t.run.failed });
     });
   }
 
@@ -338,6 +361,19 @@
               />
             </div>
           </SettingRow>
+          <!-- Every alert mail again, not only the new ones: a run of the mailbox. -->
+          <SettingRow label={t.settings.fullMailbox} hint={t.settings.fullMailboxHint}>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="mail"
+              label={t.settings.fullMailboxAction}
+              disabled={run.fetchBlocked !== null}
+              disabledReason={run.fetchBlocked}
+              testid="full-mailbox"
+              onclick={() => (confirmFull = true)}
+            />
+          </SettingRow>
         {:else}
           {#if !cfg.mailbox.user}
             <p class="lead">{t.settings.notConnected}</p>
@@ -347,6 +383,7 @@
           <MailboxForm
             saveLabel={cfg.mailbox.user ? t.common.save : t.settings.connect}
             autofocus={editing}
+            compact
             oncancel={cfg.mailbox.user ? () => void closeForm() : null}
             onsaved={() => {
               mailboxSaved = true;
@@ -403,12 +440,17 @@
     </section>
 
     <section class="section" data-testid="settings-portals">
-      <h2 class="heading">{t.settings.portals}</h2>
+      <div class="title">
+        <h2 class="heading">{t.settings.portals}</h2>
+        <p class="hint" data-testid="portals-hint">{t.settings.portalsHint}</p>
+      </div>
       {#each cfg.portals as portal (portal.portal)}
         <PortalCard {portal} />
       {/each}
     </section>
 
+    <!-- Every file row the same: open it, open its folder (both quiet); the path only at the
+         work folder, where the files are. -->
     <section class="section" data-testid="settings-files">
       <h2 class="heading">{t.settings.files}</h2>
       <Card padding="rows">
@@ -420,7 +462,7 @@
           {/snippet}
           <div class="buttons">
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
               icon="pencil"
               label={t.common.change}
@@ -440,20 +482,10 @@
             />
           </div>
         </SettingRow>
-        <!-- Where the Excel file is (or will be), to find it later or to tell someone; it
-             opens, or shows itself selected in its folder (Explorer, Finder). -->
-        <SettingRow label={t.settings.excel} hint={cfg.settings.excelPath} copy testid="excel">
+        <!-- The Excel file opens, or shows itself selected in its folder (before the first
+             fetch the folder is the work folder it will be in). -->
+        <SettingRow label={t.settings.excel} testid="excel">
           <div class="buttons">
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="folder-open"
-              label={t.common.showInFolder[fileManager()]}
-              disabled={!cfg.settings.excelExists}
-              disabledReason={t.settings.excelMissing}
-              testid="excel-reveal"
-              onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
-            />
             <Button
               variant="ghost"
               size="sm"
@@ -464,10 +496,18 @@
               testid="excel-open"
               onclick={() => open({ kind: 'excel' }, setFiles)}
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="folder-open"
+              label={t.common.openFolder}
+              testid="excel-reveal"
+              onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
+            />
           </div>
         </SettingRow>
-        <!-- The HTML overview next to it: opening writes it first, except in the dry run and
-             while a run holds the files (as in the day overview). -->
+        <!-- The Bericht (the HTML file) beside it: opening writes it first, except in the dry
+             run and while a run holds the files (as in the day overview). -->
         <SettingRow label={t.settings.overview} testid="overview">
           <div class="buttons">
             <Button
@@ -480,12 +520,20 @@
               testid="overview-open"
               onclick={() => open({ kind: 'overview' }, setFiles)}
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="folder-open"
+              label={t.common.openFolder}
+              testid="overview-reveal"
+              onclick={() => open({ kind: 'excelInFolder' }, setFiles)}
+            />
           </div>
         </SettingRow>
         <SettingRow label={t.settings.txt} hint={t.settings.txtCount(cfg.settings.txtFiles)}>
           <div class="buttons">
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
               icon="refresh-cw"
               label={t.settings.txtRewrite}
@@ -515,7 +563,7 @@
     <section class="section" data-testid="settings-language">
       <h2 class="heading">{t.settings.language}</h2>
       <Card padding="rows">
-        <SettingRow label={t.settings.languageLabel} hint={t.settings.languageHint}>
+        <SettingRow hint={t.settings.languageHint}>
           <Segmented
             size="sm"
             options={LANGUAGES.map((id) => ({ id, label: t.settings.languageName[id] }))}
@@ -529,27 +577,28 @@
       </Card>
     </section>
 
+    <!-- The app's keys with the names of the OS (Strg on Windows, the symbols on macOS). -->
+    <section class="section" data-testid="settings-keys">
+      <h2 class="heading">{t.settings.keys.heading}</h2>
+      <Card padding="md">
+        <dl class="keys">
+          {#each SHORTCUTS as shortcut (shortcut.combo)}
+            <dt>{t.settings.keys[shortcut.name]}</dt>
+            <dd class="combo">{keyLabel(shortcut.combo)}</dd>
+          {/each}
+        </dl>
+      </Card>
+    </section>
+
     <section class="section" data-testid="settings-care">
       <h2 class="heading">{t.settings.maintenance}</h2>
       <Card padding="rows">
-        <SettingRow label={t.settings.fullMailbox} hint={t.settings.fullMailboxHint}>
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="mail"
-            label={t.settings.fullMailboxAction}
-            disabled={run.fetchBlocked !== null}
-            disabledReason={run.fetchBlocked}
-            testid="full-mailbox"
-            onclick={() => (confirmFull = true)}
-          />
-        </SettingRow>
-        <SettingRow label={t.settings.logs} hint={cfg.logDir} copy>
+        <SettingRow label={t.settings.logs}>
           <Button
             variant="ghost"
             size="sm"
-            icon="folder-open"
-            label={t.common.openFolder}
+            icon="file-text"
+            label={t.common.openLog}
             testid="logs-open"
             onclick={() => open({ kind: 'logDir' }, setCare)}
           />
@@ -582,7 +631,7 @@
       {/if}
       <SettingRow label={t.settings.reset} hint={t.settings.resetHint}>
         <Button
-          variant="secondary"
+          variant="ghost"
           size="sm"
           icon="rotate-ccw"
           label={t.settings.resetAction}
@@ -631,6 +680,7 @@
   variant="danger"
   heading={t.settings.resetHeading}
   text={t.settings.resetText}
+  items={t.settings.resetItems}
   confirmLabel={t.settings.resetAction}
   busy={busy === 'reset'}
   testid="dialog-reset"
@@ -654,9 +704,20 @@
     gap: var(--space-12);
   }
 
+  .title {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
   .heading {
     color: var(--text-heading);
     font: var(--type-lg);
+  }
+
+  .hint {
+    color: var(--text-muted);
+    font: var(--type-sm);
   }
 
   .lead {
@@ -665,11 +726,27 @@
     font: var(--type-md);
   }
 
+  /* The buttons of a row end on its trailing edge, 12 apart, one size (28). */
   .buttons {
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-8);
+    gap: var(--space-12);
+  }
+
+  /* Tastenkürzel: plain rows, what on the left, the keys on the right. */
+  .keys {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    gap: var(--space-8) var(--space-16);
+    color: var(--text);
+    font: var(--type-sm);
+  }
+
+  .combo {
+    color: var(--text-muted);
+    font-variant-numeric: var(--numeric);
+    text-align: right;
   }
 
   .skeleton {

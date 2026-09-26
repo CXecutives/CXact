@@ -15,9 +15,14 @@
   the marker cross-fades to its check, which draws itself, the line fills downwards, the
   next marker turns navy and the done text rises in. Nothing plays when the page appears.
 
-  Step 2 happens in the Profil view: "Profil anlegen" opens its form at once (no second
-  "Profil anlegen" there); after the first save the Profil view offers "Weiter zum ersten
-  Abruf", which leads back here (the one way back: nothing returns by itself).
+  Step 1 says where the alerts must go; once the mailbox is connected, each portal has its
+  "Alert anlegen" (the portal's page, as in the empty list). Step 2 happens in the Profil
+  view: "Aus Lebenslauf anlegen" opens its steps with an AI at once, "Selbst ausfüllen" the
+  empty form; after the first save the Profil view offers "Weiter zum ersten Abruf", which
+  starts the fetch. Step 3 says that the first fetch reads the alerts of 30 days; a first
+  fetch that failed keeps this page (the app leaves it only after a completed one) and says
+  why in step 3, with the fitting action where there is one besides "Abrufen". Every main
+  action is 32 px.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -29,11 +34,12 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
+  import type { Portal } from '$lib/ipc/types';
   import { rise } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
-  import { run } from '$lib/state/run.svelte';
+  import { failureAction, isFetch, run } from '$lib/state/run.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
   const mailboxDone = $derived(app.hasMailbox);
@@ -79,6 +85,40 @@
   function openProfile(): void {
     if (profile === null && editor.origin === null) editor.create();
     navigation.go('profile');
+  }
+
+  /** The steps with an AI open in the Profil view (it copies the prompt as it appears). */
+  function fromCv(): void {
+    editor.cvWanted = true;
+    navigation.go('profile');
+  }
+
+  /** The portals whose alerts are wanted (the ones switched on), for "Alert anlegen". */
+  const portals = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
+  let portalError = $state<string | null>(null);
+  function openPortal(portal: Portal): void {
+    portalError = null;
+    invoke('open_target', { target: { kind: 'portalHome', portal } }).catch(
+      (error: unknown) => (portalError = errorText(error)),
+    );
+  }
+
+  /** The first fetch that failed (this session, else the last one the app knows): its words
+   *  and the fitting action (none where "Abrufen" is the way on). */
+  const failed = $derived.by(() => {
+    if (run.active) return null;
+    const last = run.summary ?? app.state?.lastRun ?? null;
+    if (last === null || !isFetch(last.kind) || last.outcome.kind !== 'failed') return null;
+    const error = last.outcome.error;
+    return {
+      text: t.error.text(error.kind, error.params),
+      action: failureAction(last, error, () => openLog()),
+    };
+  });
+  function openLog(): void {
+    invoke('open_target', { target: { kind: 'logDir' } }).catch(
+      (error: unknown) => (folderError = errorText(error)),
+    );
   }
 
   /** Where a file the reset could not delete is left; a folder that does not open says so. */
@@ -150,8 +190,29 @@
           <div class="body">
             <h2 class="name">{t.firstRun.mailbox}</h2>
             {#if mailboxDone}
-              <!-- The address the portals' alert mails must go to: text to copy. -->
+              <!-- The address the portals' alert mails must go to: text to copy, then each
+                   portal's page to set up an alert. -->
               <p class="done-text" data-copy in:rise>{app.state?.mailbox.user}</p>
+              <p class="hint">{t.firstRun.mailboxText}</p>
+              <ul class="alerts" data-testid="first-alerts">
+                {#each portals as portal (portal.portal)}
+                  <li class="alert">
+                    <span class="portal">{t.portal[portal.portal]}</span>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      icon="external-link"
+                      external
+                      label={t.firstRun.createAlert}
+                      testid="first-alert-{portal.portal}"
+                      onclick={() => openPortal(portal.portal)}
+                    />
+                  </li>
+                {/each}
+              </ul>
+              {#if portalError}
+                <Notice tone="danger" variant="inline" text={portalError} testid="portal-error" />
+              {/if}
             {:else}
               <p class="hint">{t.firstRun.mailboxText}</p>
               <MailboxForm saveLabel={t.settings.connect} autofocus />
@@ -181,14 +242,34 @@
                 <p class="hint">{t.firstRun.profileText}</p>
               {/if}
               <div class="actions" bind:this={profileActions}>
-                <!-- A new profile is made (plus, as in the Profil view), an existing one opened. -->
-                <Button
-                  variant={current === 2 ? 'primary' : 'secondary'}
-                  icon={profile ? 'file-text' : 'plus'}
-                  label={profile ? t.list.openProfile : t.profile.create}
-                  testid="first-profile"
-                  onclick={openProfile}
-                />
+                <!-- A new profile comes from the CV with an AI (or the empty form); an existing
+                     one that does not count yet opens as it is. -->
+                {#if profile}
+                  <Button
+                    variant={current === 2 ? 'primary' : 'secondary'}
+                    size="field"
+                    icon="file-text"
+                    label={t.list.openProfile}
+                    testid="first-profile"
+                    onclick={openProfile}
+                  />
+                {:else}
+                  <Button
+                    variant={current === 2 ? 'primary' : 'secondary'}
+                    size="field"
+                    icon="clipboard-paste"
+                    label={t.profile.fromCv}
+                    testid="first-profile"
+                    onclick={fromCv}
+                  />
+                  <Button
+                    variant="link"
+                    size="sm"
+                    label={t.firstRun.selfFill}
+                    testid="first-profile-form"
+                    onclick={openProfile}
+                  />
+                {/if}
               </div>
             {/if}
           </div>
@@ -202,6 +283,7 @@
             <div class="actions">
               <Button
                 variant={current === 3 ? 'primary' : 'secondary'}
+                size="field"
                 icon="refresh-cw"
                 label={t.toolbar.fetch}
                 disabled={run.fetchBlocked !== null}
@@ -212,6 +294,14 @@
             </div>
             {#if run.startError}
               <Notice tone="danger" variant="inline" text={run.startError} />
+            {:else if failed}
+              <Notice
+                tone="danger"
+                variant="inline"
+                text={failed.text}
+                action={failed.action}
+                testid="first-fetch-failed"
+              />
             {/if}
           </div>
         </li>
@@ -407,6 +497,27 @@
   .actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-8);
+    align-items: center;
+    gap: var(--space-8) var(--space-16);
+  }
+
+  /* Each portal with its page to set up an alert, one per line. */
+  .alerts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4) var(--space-12);
+  }
+
+  .portal {
+    min-width: var(--stat-min);
+    color: var(--text);
+    font: var(--type-sm);
   }
 </style>

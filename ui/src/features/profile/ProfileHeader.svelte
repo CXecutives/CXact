@@ -1,14 +1,17 @@
 <!--
   The head of the Profil view: the person (name and role, copyable; the file name as the
   tooltip) with the time of the last save, or the draft; how well the form reads (an honest
-  badge, following the form while it changes: "Vollständig" only with competences, else
-  "Wenig Inhalt" or "Ohne Kompetenzen"; "Etwas prüfen" while a value of the file does not
-  read, its tooltip names them); one quiet line of what the app reads (terms, Schwerpunkte,
-  its specialist vocabulary); keys the app does not read; the rescore a save starts; and the
-  actions: another file, an update from a CV, the profile folder, remove. A new form offers
-  the other two ways in (from a CV, a file); while the stored file does not read, it says
-  that saving replaces that file and keeps its folder at hand. Drafts say once that they are
-  to be reviewed.
+  badge, following the form while it changes: "Vollständig" only with competences and nothing
+  to check, else "Wenig Inhalt" or "Ohne Kompetenzen", which says the thin profile in this
+  one place, its tooltip why); "n Werte prüfen" while values of the file do not read (or a
+  rule stays off), a click goes to the first one; one quiet stats line ("42 Suchbegriffe ·
+  2 Schwerpunkte"); keys the app does not read; the rescore a save starts; and the actions:
+  one main button (an update from a CV, or for a new form one from a CV) and the "…" menu of
+  the app with the rest (another file, the profile folder, remove; remove at once, the toast
+  offers Rückgängig). While the form holds changes, what would replace them waits and says
+  "Erst speichern oder verwerfen." While the stored file does not read, a new form says that
+  saving replaces that file and keeps its folder at hand. Drafts say once that they are to be
+  reviewed.
 -->
 <script lang="ts">
   import Badge, { type BadgeTone } from '$components/Badge.svelte';
@@ -22,6 +25,7 @@
   import { formatDate, formatMoment, formatTime } from '$lib/i18n/format';
   import { warningText } from '$lib/i18n/texts';
   import type { Notice as NoticeData, ProfileInfo, ProfileQuality } from '$lib/ipc/types';
+  import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import type { DraftOrigin } from '$lib/state/profile.svelte';
 
   interface Props {
@@ -31,13 +35,11 @@
     quality: ProfileQuality | null;
     /** The form has competences ("Vollständig" needs them). */
     competences: boolean;
-    /** Terms for the match (the engine's count, moved by the changes of the form). */
+    /** Suchbegriffe (the engine's count, moved by the changes of the form). */
     terms: number | null;
     /** Schwerpunkte of the form. */
     focus: number;
-    /** Domain packs the profile switched on. */
-    packs: readonly string[];
-    /** What is still to check, each in one sentence (the badge's tooltip). */
+    /** What is still to check, each in one sentence (the tooltip of "n Werte prüfen"). */
     checks: readonly string[];
     /** Warnings said here: what the form cannot change (keys the app does not read). */
     warnings: readonly NoticeData[];
@@ -50,6 +52,8 @@
     onremove: () => void;
     onfromcv: () => void;
     onopenfolder: () => void;
+    /** "n Werte prüfen": the caret goes to the first one. */
+    oncheck: () => void;
   }
 
   let {
@@ -59,7 +63,6 @@
     competences,
     terms,
     focus,
-    packs,
     checks,
     warnings,
     rescoring,
@@ -70,37 +73,34 @@
     onremove,
     onfromcv,
     onopenfolder,
+    oncheck,
   }: Props = $props();
 
   const stored = $derived(origin === 'stored' && profile !== null);
   /** A new form for a stored file that does not read: saving replaces that file. */
   const replaces = $derived(origin === 'new' && (profile?.parseError ?? null) !== null);
-  /** The badge: honest about competences, "Etwas prüfen" in place of "Vollständig". */
+  /** The badge: honest about competences; with values to check "n Werte prüfen" stands in
+   *  place of "Vollständig". */
   const badge = $derived.by((): { label: string; tone: BadgeTone; hint: string | null } | null => {
     if (quality === null) return null;
     if (!competences || quality === 'empty') {
       return {
         label: t.profile.quality.empty,
         tone: quality === 'empty' ? 'danger' : 'warning',
-        hint: null,
+        hint: t.profile.qualityText.empty,
       };
     }
-    if (quality === 'thin') return { label: t.profile.quality.thin, tone: 'warning', hint: null };
-    if (checks.length > 0) {
-      return { label: t.profile.check, tone: 'warning', hint: checks.join(' ') };
+    if (quality === 'thin') {
+      return { label: t.profile.quality.thin, tone: 'warning', hint: t.profile.qualityText.thin };
     }
+    if (checks.length > 0) return null;
     return { label: t.profile.quality.good, tone: 'success', hint: null };
   });
-  const packNames = $derived(packs.map((pack) => t.profile.pack[pack] ?? pack));
-  /** One separator for the whole line: terms, Schwerpunkte, the vocabulary as one group. */
+  /** One separator for the whole line: Suchbegriffe, Schwerpunkte. */
   const summary = $derived(
     terms === null
       ? null
-      : [
-          t.profile.understood(terms),
-          focus > 0 ? t.profile.focusCount(focus) : '',
-          packNames.length > 0 ? t.profile.packs(packNames) : '',
-        ]
+      : [t.profile.understood(terms), focus > 0 ? t.profile.focusCount(focus) : '']
           .filter((part) => part !== '')
           .join(' · '),
   );
@@ -120,6 +120,48 @@
       : `${formatDate(iso)} ${formatTime(iso)}`;
   }
   const savedAt = $derived(profile?.savedAt ? t.profile.savedAt(moment(profile.savedAt)) : null);
+
+  // ------------------------------------------------------------------ the "…" menu
+  let anchor = $state<HTMLElement | null>(null);
+  let expanded = $state(false);
+
+  /** What the menu holds: for the stored profile another file, its folder and remove; for a
+   *  new form a file (and the folder of a file that does not read). */
+  const entries = $derived.by((): MenuEntry[] => {
+    const pick: MenuEntry = {
+      id: 'pick',
+      label: stored ? t.profile.pickOther : t.profile.pick,
+      icon: 'file-up',
+      disabled: dirty,
+      reason: dirty ? t.profile.saveFirst : null,
+      run: onpick,
+    };
+    const folder: MenuEntry = {
+      id: 'folder',
+      label: t.common.openFolder,
+      icon: 'folder-open',
+      run: onopenfolder,
+    };
+    if (!stored) return replaces ? [pick, folder] : [pick];
+    return [
+      pick,
+      folder,
+      { kind: 'separator' },
+      { id: 'remove', label: t.profile.remove, icon: 'trash-2', danger: true, run: onremove },
+    ];
+  });
+
+  /** The menu opens right below the button, its right edge on the button's. */
+  function more(): void {
+    if (anchor === null || menuState.open !== null) return;
+    expanded = true;
+    openMenu({
+      label: t.profile.more,
+      anchor: { kind: 'below', rect: anchor.getBoundingClientRect(), align: 'end' },
+      entries,
+      onclose: () => (expanded = false),
+    });
+  }
 </script>
 
 <Card padding="md" testid="profile-file">
@@ -145,6 +187,19 @@
           <Badge label={badge.label} tone={badge.tone} hint={badge.hint} />
         </span>
       {/if}
+      {#if checks.length > 0}
+        <!-- Its tooltip names the values, a click goes to the first. -->
+        <span class="check" use:tooltip={checks.join(' ')}>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="triangle-alert"
+            label={t.profile.check(checks.length)}
+            testid="profile-check"
+            onclick={oncheck}
+          />
+        </span>
+      {/if}
     </div>
 
     {#if summary}
@@ -165,81 +220,32 @@
       </p>
     {/if}
 
-    {#if stored}
+    {#if stored || origin === 'new'}
       <div class="actions">
         <Button
           variant="secondary"
-          size="sm"
-          icon="file-up"
-          label={t.profile.pickOther}
-          loading={picking}
-          disabled={dirty}
-          disabledReason={t.profile.leaveText}
-          testid="profile-pick"
-          onclick={onpick}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
+          size="field"
           icon="clipboard-paste"
-          label={t.profile.updateFromCv}
+          label={stored ? t.profile.updateFromCv : t.profile.fromCv}
           disabled={dirty}
-          disabledReason={t.profile.leaveText}
-          testid="profile-update-cv"
+          disabledReason={t.profile.saveFirst}
+          testid={stored ? 'profile-update-cv' : 'profile-from-cv'}
           onclick={onfromcv}
         />
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="folder-open"
-          label={t.common.openFolder}
-          testid="profile-folder"
-          onclick={onopenfolder}
-        />
-        <span class="end">
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="trash-2"
-            label={t.profile.remove}
-            testid="profile-remove"
-            onclick={onremove}
-          />
-        </span>
-      </div>
-    {:else if origin === 'new'}
-      <div class="actions">
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="clipboard-paste"
-          label={t.profile.fromCv}
-          disabled={dirty}
-          disabledReason={t.profile.leaveText}
-          testid="profile-from-cv"
-          onclick={onfromcv}
-        />
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="file-up"
-          label={t.profile.pick}
-          loading={picking}
-          disabled={dirty}
-          disabledReason={t.profile.leaveText}
-          testid="profile-pick"
-          onclick={onpick}
-        />
-        {#if replaces}
+        <span class="more" bind:this={anchor}>
           <Button
             variant="secondary"
-            size="sm"
-            icon="folder-open"
-            label={t.common.openFolder}
-            testid="profile-folder"
-            onclick={onopenfolder}
+            size="field"
+            iconOnly
+            icon="ellipsis"
+            label={t.profile.more}
+            menu
+            {expanded}
+            loading={picking}
+            testid="profile-more"
+            onclick={more}
           />
-        {/if}
+        </span>
       </div>
     {/if}
     {#if note}
@@ -270,8 +276,15 @@
   }
 
   /* The badge's box, no line around it (it stays centred on the person). */
-  .quality {
+  .quality,
+  .check,
+  .more {
     display: flex;
+  }
+
+  /* The ghost button's text ends on the card's edge, like the badge. */
+  .check {
+    margin-right: calc(-1 * var(--ghost-inset));
   }
 
   .role {
@@ -313,11 +326,5 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8);
-  }
-
-  /* The ghost button's text ends on the card's edge, like the badge above it. */
-  .end {
-    margin-right: calc(-1 * var(--ghost-inset));
-    margin-left: auto;
   }
 </style>
