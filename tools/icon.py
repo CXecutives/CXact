@@ -25,10 +25,11 @@ Geometry on the 1024 grid (Windows layout; macOS scales everything with its smal
   the straight edge at 1.6 r with zero curvature, the circular middle keeps radius r.
 - The glyph is drawn on the grid of a 16..1008 plate (GRID) and scales with the plate, so it
   keeps its share of the plate and its optical centre.
-- Folder 181..843 wide; tab 216..290 (45 degree slope 425 -> 499), body 290..768. One radius
+- Folder 181..843 wide; tab 226..300 (45 degree slope 425 -> 499), body 300..778. One radius
   (69) everywhere: the body and tab corners with the same smoothing, the slope with two
-  circular fillets. Lifted 20 above the old position: its mass centre sits at the optical
-  centre of the plate (slightly above the middle).
+  circular fillets. Its bounding box sits 10 of 1024 above the middle (the classical optical
+  centre); the centroid of the white area (folder minus check) lies about 8 below it. 10 lower
+  than before (user, 2026-09-26: the folder looked slightly too high).
 - Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
@@ -68,10 +69,10 @@ GRID = 16
 PLATE = 0
 PLATE_R = 0.2237 * (1024 - 2 * PLATE)
 FOLDER_X0, FOLDER_X1 = 181, 843
-TAB_Y, BODY_Y0, BODY_Y1 = 216, 290, 768
+TAB_Y, BODY_Y0, BODY_Y1 = 226, 300, 778
 SLOPE_X0, SLOPE_X1 = 425, 499
 FOLDER_R = 69
-CHECK_POINTS = [(361, 514), (467, 620), (663, 422)]
+CHECK_POINTS = [(361, 524), (467, 630), (663, 432)]
 CHECK_W = 83
 # macOS: plate 824 of 1024 (margin 100) with the corner of the old macOS plate (184 of 820,
 # close to Apple's template).
