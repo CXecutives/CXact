@@ -28,7 +28,6 @@ export type ShortcutAction =
   | 'archive'
   | 'trash'
   | 'star'
-  | 'unread'
   | 'openAd'
   | 'close';
 
@@ -150,13 +149,6 @@ export const SHORTCUTS: readonly Shortcut[] = [
     scope: 'list',
     label: () => t.keysHelp.star,
     keys: () => ['s'],
-    shows: 'first',
-  },
-  {
-    action: 'unread',
-    scope: 'list',
-    label: () => t.keysHelp.unread,
-    keys: () => ['u'],
     shows: 'first',
   },
   {

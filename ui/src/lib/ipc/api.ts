@@ -10,7 +10,8 @@
 // channel it unregisters the JS one. A shared JS channel therefore swallows every event of
 // the second run (the run finished in the backend, the UI never heard of it).
 //
-// Types: `Commands` is generated from the Rust command table (types/commands.ts).
+// Types: `Commands` is generated from the command table src-tauri/commands.txt
+// (types/commands.ts).
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -21,51 +22,6 @@ export type CommandName = keyof Commands;
 export type CommandArgs<K extends CommandName> = Omit<Commands[K]['args'], 'channel'>;
 export type CommandResult<K extends CommandName> = Commands[K]['result'];
 type Params = ErrorInfo['params'];
-
-/** All commands, in the order of docs/PLAN.md. */
-export const COMMAND_NAMES = [
-  'app_state',
-  'start_run',
-  'cancel_run',
-  'list_jobs',
-  'job_detail',
-  'mark_read',
-  'mark_all_read',
-  'mark_unread',
-  'set_pinned',
-  'move_jobs',
-  'move_back',
-  'restore_jobs',
-  'set_override',
-  'purge_jobs',
-  'empty_trash',
-  'ai_prompt',
-  'ai_prompt_top',
-  'pick_profile',
-  'parse_profile',
-  'profile_prompt',
-  'save_profile',
-  'remove_profile',
-  'restore_profile',
-  'set_unsaved',
-  'close_window',
-  'save_mailbox',
-  'remove_mailbox',
-  'portal_login',
-  'portal_logout',
-  'pick_workspace',
-  'rewrite_txt',
-  'clear_txt',
-  'open_target',
-  'save_settings',
-  'reset_all',
-  'report_ui_error',
-  'clipboard_text',
-  'set_applied',
-  'set_note',
-  'overview_stats',
-  'company_count',
-] as const satisfies readonly CommandName[];
 
 /** Commands that receive the run channel as `channel` argument. */
 const STREAMING: ReadonlySet<CommandName> = new Set<CommandName>(['app_state', 'start_run']);

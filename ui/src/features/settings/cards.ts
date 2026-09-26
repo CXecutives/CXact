@@ -11,6 +11,7 @@
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
 import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
+import { AUTO_ARCHIVE_DAYS, AUTO_EMPTY_TRASH_DAYS } from '$lib/ipc/types/settings';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -210,7 +211,6 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
 });
 
 /** Days after which old jobs archive themselves, and the trash empties itself, when on. */
-const AUTO_DAYS = 30;
 
 const palette: ChoiceRow<Palette> = {
   kind: 'choice',
@@ -243,20 +243,20 @@ export const CARDS: readonly CardSpec[] = [
       {
         kind: 'switch',
         id: 'auto-archive',
-        label: (t) => t.settings.autoArchive,
+        label: (t) => t.settings.autoArchive(AUTO_ARCHIVE_DAYS),
         hint: (t) => t.settings.autoArchiveHint,
         on: (state) => state.autoArchiveDays > 0,
-        patch: (on) => ({ autoArchiveDays: on ? AUTO_DAYS : 0 }),
-        set: (state, on) => void (state.autoArchiveDays = on ? AUTO_DAYS : 0),
+        patch: (on) => ({ autoArchiveDays: on ? AUTO_ARCHIVE_DAYS : 0 }),
+        set: (state, on) => void (state.autoArchiveDays = on ? AUTO_ARCHIVE_DAYS : 0),
       },
       {
         kind: 'switch',
         id: 'auto-empty-trash',
-        label: (t) => t.settings.autoEmptyTrash,
+        label: (t) => t.settings.autoEmptyTrash(AUTO_EMPTY_TRASH_DAYS),
         hint: (t) => t.settings.autoEmptyTrashHint,
         on: (state) => state.autoEmptyTrashDays > 0,
-        patch: (on) => ({ autoEmptyTrashDays: on ? AUTO_DAYS : 0 }),
-        set: (state, on) => void (state.autoEmptyTrashDays = on ? AUTO_DAYS : 0),
+        patch: (on) => ({ autoEmptyTrashDays: on ? AUTO_EMPTY_TRASH_DAYS : 0 }),
+        set: (state, on) => void (state.autoEmptyTrashDays = on ? AUTO_EMPTY_TRASH_DAYS : 0),
       },
     ],
   },

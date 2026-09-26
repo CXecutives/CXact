@@ -588,15 +588,6 @@
         run: () => toggleStar(list),
       });
     }
-    if (job.place === 'inbox') {
-      entries.push({
-        id: 'unread',
-        label: t.menu.unread,
-        icon: 'alertMail',
-        keys: keyLabel('u'),
-        run: () => void jobs.markUnread(list.map((chosen) => chosen.key)).then(report),
-      });
-    }
     entries.push({ kind: 'separator' });
     for (const action of actionsOf(job.place)) {
       const keys = KEYS[action.id];

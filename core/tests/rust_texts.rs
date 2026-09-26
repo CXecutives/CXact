@@ -4,7 +4,9 @@
 //! naming "User-facing text, German" (or "User-facing text, English") and ends at "end of
 //! user-facing text"; every string literal in it is checked, the German ones against the
 //! German glossary, the English ones against the English glossary and for German that
-//! slipped in.
+//! slipped in. A table that holds both languages (the Excel columns) is a block of its own,
+//! "User-facing text, German and English": there the literals after `de:` are German, the
+//! ones after `en:` English, and every other literal is code.
 //!
 //! Every test asserts how many texts it found: a moved block must not turn a rule into a
 //! silent no-op.
@@ -12,8 +14,9 @@
 use std::path::Path;
 
 /// The files with German text blocks, and how many strings each has at least.
-const FILES: [(&str, usize); 5] = [
-    ("core/src/export/texts.rs", 45),
+const FILES: [(&str, usize); 6] = [
+    ("core/src/export/texts.rs", 25),
+    ("core/src/export/xlsx.rs", 20),
     ("src-tauri/src/main.rs", 12),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/platform.rs", 15),
@@ -22,8 +25,9 @@ const FILES: [(&str, usize); 5] = [
 
 /// The files with English text blocks (the words the exports and windows show in the
 /// English app), and how many strings each has at least.
-const FILES_EN: [(&str, usize); 4] = [
-    ("core/src/export/texts.rs", 45),
+const FILES_EN: [(&str, usize); 5] = [
+    ("core/src/export/texts.rs", 25),
+    ("core/src/export/xlsx.rs", 20),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/commands/mod.rs", 3),
     ("src-tauri/src/platform.rs", 15),
@@ -31,6 +35,7 @@ const FILES_EN: [(&str, usize); 4] = [
 
 const START: &str = "User-facing text, German";
 const START_EN: &str = "User-facing text, English";
+const START_BOTH: &str = "User-facing text, German and English";
 const END: &str = "end of user-facing text";
 
 /// Old or foreign words and the English glossary word the texts use instead.
@@ -79,27 +84,38 @@ struct Text {
 
 /// The string literals of the German text blocks of every file.
 fn texts() -> Vec<Text> {
-    texts_of(&FILES, START)
+    texts_of(&FILES, START, "de:")
 }
 
 /// The string literals of the English text blocks of every file.
 fn texts_en() -> Vec<Text> {
-    texts_of(&FILES_EN, START_EN)
+    texts_of(&FILES_EN, START_EN, "en:")
 }
 
-fn texts_of(files: &[(&str, usize)], start: &str) -> Vec<Text> {
+/// The literals of the blocks that start at `start`, and of the two-language blocks those
+/// after `label`.
+fn texts_of(files: &[(&str, usize)], start: &str, label: &str) -> Vec<Text> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let mut out = Vec::new();
     for &(file, min) in files {
         let source =
             std::fs::read_to_string(root.join(file)).unwrap_or_else(|e| panic!("{file}: {e}"));
-        let found = blocks(&source, start)
+        let plain = blocks(&source, start)
             .into_iter()
             .flat_map(|(line, block)| {
                 literals(&block)
                     .into_iter()
                     .map(move |(n, text)| (line + n, text))
-            })
+            });
+        let both = blocks(&source, START_BOTH)
+            .into_iter()
+            .flat_map(|(line, block)| {
+                labelled(&block, label)
+                    .into_iter()
+                    .map(move |(n, text)| (line + n, text))
+            });
+        let found = plain
+            .chain(both)
             .map(|(line, text)| Text {
                 at: format!("{file}:{line}"),
                 text,
@@ -116,7 +132,8 @@ fn texts_of(files: &[(&str, usize)], start: &str) -> Vec<Text> {
 }
 
 /// The text blocks of a file: first line number (1-based) and the lines after the start
-/// marker up to the end marker (or the end of the file).
+/// marker up to the end marker (or the end of the file). A German block is not a
+/// two-language one.
 fn blocks(source: &str, start: &str) -> Vec<(usize, String)> {
     let mut out = Vec::new();
     let mut current: Option<(usize, String)> = None;
@@ -128,11 +145,26 @@ fn blocks(source: &str, start: &str) -> Vec<(usize, String)> {
                 block.push_str(line);
                 block.push('\n');
             }
-        } else if line.contains(start) {
+        } else if line.contains(start) && (start == START_BOTH || !line.contains(START_BOTH)) {
             current = Some((index + 2, String::new()));
         }
     }
     out.extend(current);
+    out
+}
+
+/// The string literals right after `label` (`de:` or `en:`) with their line offset.
+fn labelled(code: &str, label: &str) -> Vec<(usize, String)> {
+    let mut out = Vec::new();
+    for (at, _) in code.match_indices(label) {
+        let rest = code[at + label.len()..].trim_start();
+        if rest.starts_with('"') {
+            let line = code[..at].matches('\n').count();
+            if let Some((_, text)) = literals(rest).into_iter().next() {
+                out.push((line, text));
+            }
+        }
+    }
     out
 }
 
@@ -294,6 +326,11 @@ fn literals_are_read_like_rust_reads_them() {
     };
     assert_eq!(found(START), [(3, "a".to_owned())]);
     assert_eq!(found(START_EN), [(7, "c".to_owned())]);
+    let table = "// User-facing text, German and English.\nX { key: \"k\", de: \"Ja\",\n en: \"Yes\" },\n// end of user-facing text";
+    let (line, block) = blocks(table, START_BOTH).remove(0);
+    assert_eq!(labelled(&block, "de:"), [(0, "Ja".to_owned())]);
+    assert_eq!(labelled(&block, "en:"), [(1, "Yes".to_owned())]);
+    assert_eq!(line, 2);
     assert!(uses_word("Umfang des letzten Laufs", "Lauf"));
     assert!(uses_word("Postfach-Lauf", "Lauf"));
     assert!(!uses_word("Die WebView2-Laufzeit fehlt.", "Lauf"));

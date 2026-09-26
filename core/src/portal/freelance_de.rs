@@ -45,6 +45,9 @@ impl PortalAdapter for FreelanceDe {
     fn label(&self) -> &'static str {
         "freelance.de"
     }
+    fn monogram(&self) -> &'static str {
+        "fd"
+    }
     fn file_tag(&self) -> &'static str {
         "Freelance"
     }

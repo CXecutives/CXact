@@ -26,7 +26,7 @@ pub use ai_prompt::{
 };
 pub use job_txt::{TXT_DIR, write_job_txt};
 pub use overview_html::write_overview_html;
-pub use texts::{COLUMNS, Texts, details_label};
+pub use texts::{Texts, details_label};
 pub use top_matches::{
     Found, TOP_MATCHES_MAX, TOP_MATCHES_NAME, TOP_MATCHES_SCHEMA, TopMatch, TopMatches, findings,
     found, top_matches,

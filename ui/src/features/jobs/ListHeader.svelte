@@ -10,13 +10,11 @@
   when a run starts; the one that comes fades in, the one that goes is gone at once. On
   macOS this row is the list's part of the toolbar row, centred on the traffic lights, and
   its empty parts move the window.
-  Row 2 in the inbox: Neu · Alle · Favoriten with their counts, and at its end "Alle
-  gelesen" (while the list holds unread jobs; under a search or a filter "Ergebnisse
-  gelesen", which marks only what the list shows; the toast takes it back) and the funnel,
+  Row 2 in the inbox: Neu · Alle · Favoriten with their counts, and at its end the funnel,
   a quiet icon button whose menu holds the order and the filter: Nach Passung, Nach Datum
   (one choice for every list, kept), the portal (Alle Portale, then each enabled one in the
   app's order), the lowest band (Jede Passung, Ab mittlerer Passung, Nur hohe Passung),
-  "Nur beworbene Jobs", and "Filter zurücksetzen" while a filter is on. Without a usable
+  and "Filter zurücksetzen" while a filter is on. Without a usable
   profile the match order and the bands are off, saying why. While a filter is on, a small
   dot marks the funnel and its tooltip names the filters. In the Archiv and the Papierkorb
   (no filter there): how many jobs lie there (during a search, how many it found there), in
@@ -47,14 +45,7 @@
   import { fade } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
-  import {
-    jobs,
-    keyOf,
-    NO_FILTER,
-    placeOf,
-    type FilterBand,
-    type JobFacet,
-  } from '$lib/state/jobs.svelte';
+  import { jobs, NO_FILTER, placeOf, type FilterBand, type JobFacet } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -130,12 +121,6 @@
   const placeCount = $derived(
     query === '' ? t.place.count[place](inPlace) : t.place.found[place](inPlace, query),
   );
-  /** "Alle als gelesen markieren" while the list holds an unread job: the count leaves out
-   *  the excluded ones, which Neu lists all the same (and the action marks too). */
-  const unread = $derived(
-    jobs.counts.unread > 0 || jobs.rows.some((job) => job.unread && job.place === 'inbox'),
-  );
-
   let searchBox = $state<HTMLElement | null>(null);
 
   /** Ctrl+F (Cmd+F on macOS, lib/input/input.ts): into the search, its text selected. */
@@ -163,7 +148,7 @@
     const filter = jobs.filter;
     if (!jobs.filtered) return null;
     const portal = filter.portal === null ? null : t.portal[filter.portal];
-    return t.toolbar.filterOn(portal, filter.minBand, filter.applied);
+    return t.toolbar.filterOn(portal, filter.minBand);
   });
 
   let funnelBox = $state<HTMLElement | null>(null);
@@ -171,7 +156,7 @@
 
   /**
    * The funnel's menu below it, its right edge on the button's: the order, the portal, the
-   * band, "Nur beworbene Jobs" and, while a filter is on, the way back. The portals are the
+   * band and, while a filter is on, the way back. The portals are the
    * enabled ones in the app's order, and a chosen one switched off since (so it can be seen
    * and taken off). A second click on the open funnel closes it (the press outside does).
    */
@@ -216,13 +201,6 @@
         reason: profile ? null : t.toolbar.bandNoProfile,
         run: () => jobs.setFilter({ minBand: band }),
       })),
-      { kind: 'separator' },
-      {
-        id: 'applied',
-        label: t.toolbar.appliedOnly,
-        checked: filter.applied,
-        run: () => jobs.setFilter({ applied: !filter.applied }),
-      },
     ];
     if (jobs.filtered) {
       entries.push(
@@ -241,39 +219,6 @@
       entries,
       onclose: () => (funnelOpen = false),
     });
-  }
-
-  /** "Alle als gelesen markieren" is on its way: a second click (a double click) waits. */
-  let marking = false;
-
-  /** "Alle als gelesen markieren": the unread jobs of the list (with a search its hits);
-   *  the toast takes it back. Nothing marked, nothing to say or take back. */
-  async function markAllRead(): Promise<void> {
-    if (marking) return;
-    marking = true;
-    const result = await jobs.markAllRead();
-    marking = false;
-    if ('error' in result) {
-      jobs.actionError = result.error;
-      return;
-    }
-    jobs.actionError = null;
-    if (result.keys.length === 0) return;
-    void jobs.loadOverview();
-    toasts.show(
-      t.toast.allRead,
-      'success',
-      {
-        label: t.common.undo,
-        onclick: () => {
-          void jobs.markUnread(result.keys).then((error) => {
-            jobs.actionError = error;
-            void jobs.loadOverview();
-          });
-        },
-      },
-      result.keys.map(keyOf),
-    );
   }
 
   /* ----------------------------------------------------------------------- trash */
@@ -394,16 +339,6 @@
           {/if}
         {/if}
         <span class="tools">
-          {#if inInbox && jobs.facet !== 'favourites' && unread}
-            <Button
-              variant="ghost"
-              size="sm"
-              icon="markRead"
-              label={query === '' && !jobs.filtered ? t.actions.allRead : t.actions.hitsRead}
-              testid="mark-all-read"
-              onclick={() => void markAllRead()}
-            />
-          {/if}
           {#if place === 'trash' && inTrash > 0}
             <Button
               variant="ghost"

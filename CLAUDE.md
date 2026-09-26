@@ -49,7 +49,8 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
   export) · `export/` xlsx, txt, overview html, top_matches.json, AI prompts · `text/` HTML to text, file names, company
   and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start, `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
-  `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Command names live in 4 places; `core/tests/contract.rs` checks.
+  `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
+  (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).
 - `ui/`: Svelte 5 + Vite + TypeScript. `styles/`, `components/` (design system), `features/` (screens), `lib/`.
 - `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `eval/legacy_baseline.py`, `icon.py`, `third-party.mjs`,
   `job-matching-skill/` (optional stage-2 Claude skill for the top matches; `python tools/job-matching-skill/tests/test_matching.py`).
@@ -69,7 +70,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
 ## Workflow
 - Small English commits, each green on its own. Tick `docs/PLAN.md`. Parallel tracks work in their own worktree with
   disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs`,
-  `src-tauri/src/commands/**`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
+  `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
 - Remove worktrees right after merging and run `cargo clean` there (disk).
 - macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
 

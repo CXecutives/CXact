@@ -2078,7 +2078,7 @@ async fn an_open_excel_file_is_reported_as_locked() {
 }
 
 /// The Excel file follows the user's marks when asked: nothing changed, nothing is written;
-/// a note, "Beworben" or a move writes it (and the report) anew, the run of the last write
+/// a favourite or a move writes it (and the report) anew, the run of the last write
 /// kept; the Gmail links name the account the last scan read. Open in Excel (Windows), it
 /// stays as it is and the error names the file.
 #[tokio::test(start_paused = true)]
@@ -2104,10 +2104,7 @@ async fn the_excel_file_follows_the_marks_when_asked() {
     assert_eq!(unchanged.error, None);
     assert_eq!(std::fs::read(&xlsx).unwrap(), before);
     let key = store.jobs(&JobFilter::default()).unwrap()[0].key.clone();
-    store.set_note(&key, Some("Anruf am Montag")).unwrap();
-    store
-        .set_applied(std::slice::from_ref(&key), true, c())
-        .unwrap();
+    assert!(store.set_pinned(&key, true, c()).unwrap());
     let written = refresh_excel(&store, dir.path(), c(), Language::De);
     assert_eq!(written.overview_xlsx.as_deref(), Some(xlsx.as_path()));
     assert!(written.overview_html.is_some(), "the report with it");
@@ -2115,8 +2112,10 @@ async fn the_excel_file_follows_the_marks_when_asked() {
         use calamine::{Reader, Xlsx, open_workbook};
         let mut book: Xlsx<_> = open_workbook(&xlsx).unwrap();
         let range = book.worksheet_range(texts::JOBS_SHEET).unwrap();
-        let notes: Vec<String> = range.rows().map(|r| r[16].to_string()).collect();
-        assert!(notes.iter().any(|n| n == "Anruf am Montag"), "{notes:?}");
+        let mut rows = range.rows();
+        let header = rows.next().unwrap();
+        let favourite = header.iter().position(|h| *h == "Favorit").unwrap();
+        assert!(rows.any(|r| r[favourite] == "Ja"));
     }
     assert_eq!(
         gmail_account(&store).as_deref(),

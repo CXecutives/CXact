@@ -8,10 +8,7 @@ use std::fmt::Write as _;
 
 use rusqlite::Connection;
 
-use super::marks::{
-    SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS, SCHEMA_6_EXTRA,
-    SCHEMA_6_JOB_COLUMNS,
-};
+use super::marks::{SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS, SCHEMA_6_EXTRA};
 use super::matches::SCHEMA_3_JOB_COLUMNS;
 use crate::error::{Error, Result};
 
@@ -117,16 +114,9 @@ fn migrate_4_to_5() -> String {
     sql
 }
 
-/// From schema 5 to 6: the application mark (a column of its own beside the favourite) and
-/// the indexes of the overview; the note column of schema 4 is used again as it is.
+/// From schema 5 to 6: the indexes of the overview.
 fn migrate_5_to_6() -> String {
-    let mut sql = String::new();
-    for (name, sql_type) in SCHEMA_6_JOB_COLUMNS {
-        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
-    }
-    sql.push_str(SCHEMA_6_EXTRA);
-    sql.push('\n');
-    sql
+    format!("{SCHEMA_6_EXTRA}\n")
 }
 
 /// One step per version: `steps()[v - 1]` leads from `v` to `v + 1`.
@@ -284,9 +274,7 @@ mod tests {
         assert_eq!(indexes(&fixture), indexes(&code));
     }
 
-    /// Schema 5 with data: the favourite, the places and a note written in schema 4 stay; no
-    /// job is applied for; the new mark and the note work, and a job can be a favourite and
-    /// applied at once.
+    /// Schema 5 with data: the favourite, the places and the deleted jobs stay.
     #[test]
     fn a_schema_5_database_is_migrated_and_keeps_its_marks() {
         let dir = tempfile::tempdir().unwrap();
@@ -319,19 +307,9 @@ mod tests {
         };
         let a = store.job(&key("4000000001")).unwrap().unwrap();
         assert_eq!(a.pinned_at, crate::time::from_db(160));
-        assert_eq!(a.note.as_deref(), Some("Rückruf Montag"));
-        assert_eq!(a.applied_at, None);
         let b = store.job(&key("4000000002")).unwrap().unwrap();
         assert_eq!(b.place(), crate::model::Place::Trash);
         assert!(store.is_deleted(&key("4000000009")).unwrap());
-        // Favourite and applied at once.
-        let one = std::slice::from_ref(&a.key);
-        assert_eq!(store.set_applied(one, true, now()).unwrap(), one);
-        let a = store.job(&a.key).unwrap().unwrap();
-        assert_eq!(
-            (a.pinned_at, a.applied_at),
-            (crate::time::from_db(160), Some(now()))
-        );
     }
 
     /// Schema 4 with data: "hidden" is "archived", a pinned job and an application status
@@ -580,7 +558,6 @@ mod tests {
             .iter()
             .chain(SCHEMA_4_JOB_COLUMNS)
             .chain(SCHEMA_5_JOB_COLUMNS)
-            .chain(SCHEMA_6_JOB_COLUMNS)
         {
             let column = if *column == "hidden_at" {
                 "archived_at"

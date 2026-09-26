@@ -375,41 +375,4 @@ test.describe('the list header', () => {
     await page.getByTestId('search').fill('Treasury');
     await expect(page.getByTestId('place-count')).toHaveText('1 Job zu „Treasury“ im Archiv');
   });
-
-  test('a double click on Alle als gelesen markieren marks once; its undo brings Neu back', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const unread = await facet(page, 'Neu').innerText();
-    await page.getByTestId('mark-all-read').dblclick();
-    await expect(page.getByTestId('toast')).toHaveCount(1);
-    expect(await calls(page, 'mark_all_read')).toHaveLength(1);
-    await page.keyboard.press('Control+z');
-    await expect(facet(page, 'Neu')).toHaveText(unread);
-    expect(await calls(page, 'mark_unread')).toHaveLength(1);
-  });
-
-  test('Alle als gelesen markieren stays while Neu lists an unread excluded job', async ({
-    page,
-  }) => {
-    // The excluded section open, as a user who opened it once finds it.
-    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
-    await open(page, WIN);
-    // Read every counted job of Neu: only the unread excluded one stays unread.
-    const counted = await rows(page).evaluateAll((items) =>
-      items.map((item) => item.getAttribute('data-testid') ?? ''),
-    );
-    for (const id of counted) await page.getByTestId('job-list').getByTestId(id).click();
-    // Closed, the last one read leaves Neu too once it is entered again.
-    await page.keyboard.press('Escape');
-    await facet(page, 'Alle').click();
-    await facet(page, 'Neu').click();
-    await expect(rows(page)).toHaveCount(0);
-    await expect(
-      page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]'),
-    ).toHaveCount(1);
-    await page.getByTestId('mark-all-read').click();
-    expect(await calls(page, 'mark_all_read')).toHaveLength(1);
-    await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
-  });
 });

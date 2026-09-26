@@ -329,19 +329,17 @@ export interface ListKeyHandlers {
    *  a click into it the arrows, Home and End scroll it. */
   reader?: () => HTMLElement | null;
   /** Single keys for the open item (or the chosen ones), like a mail app: E archive,
-   *  Entf (Windows) or Backspace/Delete (macOS) trash, S favourite, U unread, B applied,
-   *  O open the ad. Never in a field. */
+   *  Entf (Windows) or Backspace/Delete (macOS) trash, S favourite, O open the ad. Never in
+   *  a field. */
   act?: (action: ListAction) => void;
 }
 
-export type ListAction = 'archive' | 'trash' | 'star' | 'unread' | 'applied' | 'openAd';
+export type ListAction = 'archive' | 'trash' | 'star' | 'openAd';
 
 /** The single keys of a list (lower case, no modifier). */
 const LIST_ACTION_KEYS: Readonly<Record<string, ListAction>> = {
   e: 'archive',
   s: 'star',
-  u: 'unread',
-  b: 'applied',
   o: 'openAd',
 };
 
