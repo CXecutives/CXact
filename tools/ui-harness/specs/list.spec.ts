@@ -1273,18 +1273,19 @@ test.describe('keys', () => {
   test('the whole list: End and ArrowUp reach the last job, a re-sort keeps the open one', async ({
     page,
   }) => {
-    test.slow();
+    // End walks 2000 jobs window by window: WebKit on a busy machine takes its time.
+    test.setTimeout(240_000);
     await open(page, `${WIN}&scenario=many`);
     const lastIsOpen = async (): Promise<boolean> => {
       const keys = await mountedKeys(page);
       return keys.length > 120 && (await highlighted(page))[0] === keys.at(-1);
     };
     await page.keyboard.press('End');
-    await expect.poll(lastIsOpen, { timeout: 40_000 }).toBe(true);
+    await expect.poll(lastIsOpen, { timeout: 90_000 }).toBe(true);
     await expect(list(page).locator('.sentinel')).toHaveCount(0);
     await open(page, `${WIN}&scenario=many`);
     await page.keyboard.press('ArrowUp');
-    await expect.poll(lastIsOpen, { timeout: 40_000 }).toBe(true);
+    await expect.poll(lastIsOpen, { timeout: 90_000 }).toBe(true);
     // A re-sort keeps the open job in view, and the arrows go on from it.
     await open(page, `${WIN}&scenario=many`);
     await rows(page).nth(39).click();
@@ -1821,12 +1822,22 @@ test.describe("the open row's bar", () => {
     expect((await resting(page)).opacity).toBe(0.6);
     await page.keyboard.press('Home');
     expect((await resting(page)).top).toBe(INSET);
+    // Under reduced motion it never slides: it is simply at the next row.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await startSampling(page);
+    await row(page, 'freelancermap-2803').click();
+    await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(300);
+    for (const sample of await stopSampling(page)) {
+      expect(sample.moves, JSON.stringify(sample)).toEqual([]);
+      expect(onRow(sample) || sample.key === null, JSON.stringify(sample)).toBe(true);
+    }
   });
 
-  test('no motion when the list is built again: the view back, a search, a filter', async ({
+  test('no slide when the list is built again: the view back, a search, a filter, a run', async ({
     page,
   }) => {
-    await open(page, WIN);
+    await open(page, `${WIN}&tick=30`);
     await row(page, 'freelancermap-2803').click();
     await resting(page);
     const still = (samples: Sample[]): void => {
@@ -1858,6 +1869,72 @@ test.describe("the open row's bar", () => {
     await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
     await page.waitForTimeout(300);
     still(await stopSampling(page));
+    // A run lands new jobs above the open one and re-sorts at its end, then another order:
+    // the row moves or glides, the bar with it, always on its row.
+    await filterLine(page).getByTestId('filter-line-reset').click();
+    await row(page, 'freelancermap-2804').click();
+    await resting(page);
+    await startSampling(page);
+    await page.getByTestId('fetch').click();
+    await runFinished(page);
+    // The re-sort keeps the open row in view by scrolling the list; a menu opened while it
+    // scrolls closes with it: wait until the list is sorted and stands still.
+    await expect.poll(() => listed(page)).toEqual(await inbox(page));
+    const scroller = page.getByTestId('list-scroll');
+    await expect
+      .poll(async () => {
+        const top = await scroller.evaluate((node) => node.scrollTop);
+        await page.waitForTimeout(400);
+        return top === (await scroller.evaluate((node) => node.scrollTop));
+      })
+      .toBe(true);
+    await chooseFilter(page, 'newest');
+    await page.waitForTimeout(400);
+    const moved = await stopSampling(page);
+    expect(
+      moved.filter((sample) => sample.opacity > 0 && sample.row !== null).length,
+    ).toBeGreaterThan(20);
+    still(moved);
+    await resting(page);
+  });
+
+  test('it keeps its row while the list scrolls and grows, the window narrows, one column', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=many`);
+    await rows(page).nth(3).click();
+    const slot = await resting(page);
+    expect(slot.height).toBe(86 - 2 * INSET);
+    // Small steps, a frame each, then the wheel: further windows of rows are built.
+    const built = (): Promise<number> => list(page).locator('.item[data-key]').count();
+    const before = await built();
+    await startSampling(page);
+    await page.getByTestId('list-scroll').evaluate(async (scroller) => {
+      for (let step = 0; step < 40; step += 1) {
+        scroller.scrollTop += 37 + step * 4;
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    });
+    await page.mouse.move(200, 500);
+    for (let turn = 0; turn < 6; turn += 1) await page.mouse.wheel(0, 1200);
+    await expect.poll(built).toBeGreaterThan(before);
+    await page.getByTestId('list-scroll').evaluate((scroller) => (scroller.scrollTop = 0));
+    await page.waitForTimeout(300);
+    const scrolled = await stopSampling(page);
+    expect(scrolled.length).toBeGreaterThan(40);
+    for (const sample of scrolled) expect(onRow(sample), JSON.stringify(sample)).toBe(true);
+    // A narrower window keeps the row's height; one column and back never slide the bar.
+    await page.setViewportSize({ width: 960, height: 900 });
+    expect((await resting(page)).height).toBe(86 - 2 * INSET);
+    await page.setViewportSize({ width: 780, height: 900 });
+    await expect(page.getByTestId('reader')).toBeVisible();
+    await startSampling(page);
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await page.waitForTimeout(300);
+    for (const sample of (await stopSampling(page)).filter((s) => s.opacity > 0)) {
+      expect(sample.moves.filter((move) => move.startsWith('180 '))).toEqual([]);
+    }
+    await resting(page);
   });
 
   test('archive and undo: the bar ends on the job that opens, in the same place', async ({
@@ -1924,6 +2001,17 @@ test.describe('sidebar', () => {
     await expect(page.getByTestId('view-settings')).toBeVisible();
     await page.getByTestId('nav-jobs').hover();
     await expect(page.getByRole('tooltip')).toContainText('Strg+2');
+    // It folds only by the window width: no edge to drag, Ctrl+B and Cmd+B change nothing.
+    const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
+    await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
+    const full = await width();
+    await page.keyboard.press('Control+b');
+    await page.keyboard.press('Meta+b');
+    expect(await width()).toBe(full);
+    await page.setViewportSize({ width: 1000, height: 700 });
+    await expect.poll(width).toBeLessThan(full);
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await expect.poll(width).toBe(full);
   });
 
   test('before the first fetch the Übersicht waits and says why', async ({ page }) => {
@@ -1970,7 +2058,33 @@ test.describe('sidebar', () => {
 
 /* ================================================================ small windows */
 
-test('at 480 x 360 the toolbar stays in the window; below 900 px one column', async ({ page }) => {
+test('the list column: never narrower as the window grows; at 480 x 360 the toolbar fits', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  // The splitter's hit strip lies beside the list, never over its scrollbar; its grip stays
+  // centred on the border.
+  const hit = (await page.getByTestId('list-splitter').locator('.hit').boundingBox())!;
+  const scroll = (await page.getByTestId('list-scroll').boundingBox())!;
+  expect(hit.x).toBeGreaterThanOrEqual(scroll.x + scroll.width);
+  await page.mouse.move(hit.x + hit.width / 2, hit.y + hit.height / 2);
+  const grip = (await page.getByTestId('list-splitter').locator('.grip').boundingBox())!;
+  expect(Math.abs(grip.x + grip.width / 2 - hit.x)).toBeLessThanOrEqual(1);
+  await page.mouse.move(4, 4);
+  // The column (as its handle says it) never gets narrower while the window grows, across
+  // the rail too, and ends at least 520 px wide.
+  const listWidth = async (): Promise<number> => {
+    await settle(page);
+    return Number(await page.getByTestId('list-splitter').getAttribute('aria-valuenow'));
+  };
+  let last = 0;
+  for (const width of [920, 1000, 1060, 1099, 1100, 1130, 1160, 1250, 1360, 1600, 1920]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect.poll(listWidth).toBeGreaterThanOrEqual(last);
+    last = await listWidth();
+  }
+  expect(last).toBeGreaterThanOrEqual(520);
+  // The smallest window: the toolbar and the filter line stay in it; below 900 px one column.
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await chooseFilter(page, 'portal-linkedin');

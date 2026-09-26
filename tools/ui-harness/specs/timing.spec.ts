@@ -5,6 +5,7 @@
 
 import type { Page } from '@playwright/test';
 import { asReferenceMachine, expect, open, settle, test } from './fixtures';
+import { chooseFilter, lastQuery } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -50,9 +51,12 @@ test('2000 jobs render in windows without long tasks', async ({ page, browserNam
   await asReferenceMachine(page);
   await idle();
   const since = await page.evaluate(() => new Event('start').timeStamp);
-  await expect(
-    page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first(),
-  ).toBeVisible();
+  // Another order builds the list of 2000 jobs anew (a new generation of rows), then the
+  // windows grow while scrolling.
+  await chooseFilter(page, 'newest');
+  await expect.poll(async () => (await lastQuery(page))?.sort).toBe('newest');
+  await expect(rows(page).first()).toBeVisible();
+  await settle(page);
   const count = await page.locator('[data-testid^="job-row-"]').count();
   expect(count).toBeLessThanOrEqual(70);
   for (let i = 0; i < 4; i += 1) {
