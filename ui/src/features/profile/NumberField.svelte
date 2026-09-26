@@ -121,16 +121,17 @@
     min-width: 0;
   }
 
-  /* One width for every number field, the width of the day in Verfügbarkeit too. */
+  /* One width for every number field, the width of the day of Verfügbar ab too. */
   .box {
     flex: none;
     width: min(100%, calc(var(--stat-min) - var(--space-48)));
   }
 
+  /* The unit reads with the value: the 14 px of the field. */
   .unit {
     flex: none;
     color: var(--text-muted);
-    font: var(--type-md);
+    font: var(--type-field);
   }
 
   .note {

@@ -148,10 +148,10 @@ const profileField: Record<string, string> = {
   languages: 'Sprachen',
   minDayRate: 'Mindest-Tagessatz',
   countries: 'Einsatzländer',
-  contracts: 'Arbeitnehmerüberlassung und Festanstellung',
-  remoteOutside: 'Remote-Jobs im Ausland zulassen',
+  contracts: 'Zeitarbeit und Festanstellung',
+  remoteOutside: 'Remote-Jobs im Ausland ausschließen',
   available: 'Verfügbar ab',
-  targetYears: 'Mindest-Erfahrung des Jobs',
+  targetYears: 'Jobs ab',
   minSalary: 'Mindest-Jahresgehalt',
   permanentPlaces: 'Orte für Festanstellung',
   permanentRemoteMin: 'Mindest-Remote-Anteil',
@@ -167,7 +167,7 @@ const fieldName = (value: unknown): string => profileField[str(value)] ?? str(va
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'Mindestens ein Portal muss aktiv sein.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
-  profileNotJson: (p) => `Die Datei ist kein gültiges JSON, Zeile ${str(p.line)}.`,
+  profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
   profileValue: (p) => `Der Wert bei „${fieldName(p.field)}“ passt nicht.`,
   profileAnswer: 'In der Antwort steht kein Profil.',
@@ -1085,12 +1085,12 @@ export const de = {
     fromCv: 'Aus Lebenslauf anlegen',
     /** The same way for a profile that exists: the answer fills the form for review. */
     updateFromCv: 'Aus Lebenslauf aktualisieren',
-    pick: 'Datei wählen',
+    pick: 'Profildatei wählen',
     pickOther: 'Andere Datei wählen',
+    /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Entfernen). */
+    more: 'Weitere Aktionen',
     remove: 'Entfernen',
-    removeHeading: 'Profil entfernen?',
-    removeText:
-      'Die Jobs zeigen danach keine Passung, die Datei bleibt als Sicherung im Profilordner.',
+    /** Removing needs no question: the toast offers Rückgängig. */
     removed: 'Profil entfernt.',
     /** The moment like every moment of the app (`21.09. 09:30`, the time alone today). */
     savedAt: (moment: string) => `Gespeichert ${moment}`,
@@ -1107,13 +1107,13 @@ export const de = {
     } satisfies Record<ProfileQuality, string>,
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
     rescored: 'Gespeichert, Jobs neu bewertet.',
-    /** The badge of a well filled profile with a value to check (its tooltip says which). */
-    check: 'Etwas prüfen',
+    /** Values of the file that do not read and a rule that stays off: a click goes to the
+     *  first one. */
+    check: (value: number) => count(value, 'Wert prüfen', 'Werte prüfen'),
     next: 'Weiter zum ersten Abruf',
-    understood: (terms: number) => `${count(terms, 'Begriff', 'Begriffe')} für die Passung`,
+    /** The head's stats line, the same word as in "So liest die App dein Profil". */
+    understood: (terms: number) => count(terms, 'Suchbegriff', 'Suchbegriffe'),
     focusCount: (focus: number) => count(focus, 'Schwerpunkt', 'Schwerpunkte'),
-    /** The domain packs the profile switched on, by their names. */
-    packs: (packs: string[]) => `Fachwortschatz für ${joined(packs)}`,
     warning,
     /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
     pack: {
@@ -1143,17 +1143,17 @@ export const de = {
     noChanges: 'Noch nichts geändert.',
     saved: 'Gespeichert.',
     leaveHeading: 'Änderungen speichern?',
-    leaveText: 'Die Änderungen am Profil sind nicht gespeichert.',
+    /** Why another file or an update waits while the form holds changes. */
+    saveFirst: 'Erst speichern oder verwerfen.',
     empty: 'Noch leer',
     section: {
       person: 'Person',
+      criteria: 'Konditionen',
       competences: 'Kompetenzen',
       experience: 'Erfahrung und Qualifikation',
       languages: 'Sprachen',
       wishes: 'Wünsche',
-      criteria: 'Ausschlusskriterien',
       permanent: 'Festanstellung',
-      availability: 'Verfügbarkeit',
       understood: 'So liest die App dein Profil',
     },
     /** One sentence per block: what it is for. */
@@ -1165,7 +1165,7 @@ export const de = {
       wishes: 'Wünsche verschieben die Passung leicht, sie schließen nichts aus.',
       criteria: 'Ein Job, der hier nicht passt, gilt als ausgeschlossen.',
       permanent: 'Diese Regeln gelten nur für Festanstellungen.',
-      availability: 'Beginnt ein Job früher, markiert die App ihn zum Prüfen.',
+      understood: 'Damit vergleicht die App jede Anzeige.',
     },
     field: {
       name: 'Name',
@@ -1174,13 +1174,13 @@ export const de = {
       titlePlaceholder: 'z. B. Interim Manager',
       roles: 'Wunschrollen',
       rolesHint: 'Passt der Titel einer Anzeige dazu, steigt die Passung leicht.',
-      rolesPlaceholder: 'z. B. Interim Management',
+      rolesPlaceholder: 'z. B. Interim CFO',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',
       yearsHint: 'Die Jahre zählen, wenn eine Anzeige Erfahrung in Jahren verlangt.',
-      aliases: 'Andere Begriffe',
-      aliasesHint: 'Synonyme oder englische Begriffe.',
+      aliases: 'Synonyme',
+      aliasesHint: 'Andere Wörter für dieselbe Kompetenz, auch englische.',
       aliasesPlaceholder: 'Synonyme',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
@@ -1188,8 +1188,9 @@ export const de = {
       /** The star of a Schwerpunkt, and of a row without a competence yet. */
       unstar: 'Schwerpunkt entfernen',
       starEmpty: 'Trag erst eine Kompetenz ein.',
-      focusCount: (count: number, max: number) => `Schwerpunkte ${count} von ${max}`,
-      focusHint: 'Kompetenzen mit Stern zählen doppelt, höchstens fünf.',
+      /** The Schwerpunkte over the column of their marks (`2/5`). */
+      focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
+      focusHint: 'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
       focusFull: 'Höchstens fünf Schwerpunkte.',
       /** More Schwerpunkte in a file or an answer than count. */
       focusTrimmed: (count: number) =>
@@ -1217,7 +1218,7 @@ export const de = {
       addLanguage: 'Sprache hinzufügen',
       removeLanguage: (name: string) => `${name || 'Sprache'} entfernen`,
       wishRate: 'Wunschtagessatz',
-      wishRateHint: 'Den Mindest-Tagessatz legen die Ausschlusskriterien fest.',
+      wishRateHint: 'Den Mindest-Tagessatz legen die Konditionen fest.',
       remote: 'Remote-Anteil',
       regions: 'Wunschregionen',
       regionsPlaceholder: 'z. B. München',
@@ -1230,21 +1231,22 @@ export const de = {
       countryNone: 'Kein Land mit diesem Namen.',
       /** One click for Deutschland, Österreich and Schweiz. */
       dach: 'DACH hinzufügen',
-      remoteOutside: 'Remote-Jobs im Ausland zulassen',
-      remoteOutsideHint:
-        'Ausgeschaltet markiert die App ganz remote Jobs mit Sitz im Ausland zum Prüfen.',
+      remoteOutside: 'Remote-Jobs im Ausland ausschließen',
       remoteOutsideOff: 'Wähle erst die Einsatzländer.',
-      noAnue: 'Arbeitnehmerüberlassung ausschließen',
+      noAnue: 'Zeitarbeit ausschließen',
       noPermanent: 'Festanstellung ausschließen',
       noPermanentHint: 'Nur bei klarem Wortlaut, sonst markiert die App den Job zum Prüfen.',
       available: 'Verfügbar ab',
+      availableHint: 'Beginnt ein Job früher, markiert die App ihn zum Prüfen.',
+      /** The option of a single choice that leaves it open (Remote-Anteil, Verfügbar ab). */
+      open: 'Offen',
       date: 'Datum',
       datePlaceholder: '01.11.2026',
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
-      targetYears: 'Mindest-Erfahrung des Jobs',
-      targetYearsHint: 'Jobs für deutlich weniger Erfahrung sind ausgeschlossen.',
+      /** "Jobs ab 15 Jahren Erfahrung": jobs for far less experience are excluded. */
+      targetYears: 'Jobs ab',
       minSalary: 'Mindest-Jahresgehalt',
       places: 'Orte für Festanstellung',
       placesPlaceholder: 'z. B. München',
@@ -1264,13 +1266,15 @@ export const de = {
       unreadableValue: (value: string) =>
         `In der Datei stand „${value}“, das kann die App nicht lesen.`,
       unreadableFocus: (value: string) => `„${value}“ steht nicht bei den Kompetenzen.`,
-      unreadableRole: (value: string) => `„${value}“ nennt kein Fachgebiet.`,
+      unreadableRole: (value: string) => `„${value}“ ist keine Rolle, die die App kennt.`,
       removeValue: 'Wert entfernen',
     },
     /** The unit right of a number field. */
     unit: {
       euro: '€',
       years: 'Jahre',
+      /** "Jobs ab 15 Jahren Erfahrung". */
+      experience: 'Jahren Erfahrung',
       percent: '%',
     },
     level: {
@@ -1332,22 +1336,52 @@ export const de = {
       SK: 'Slowakei',
       US: 'USA',
     } as Record<string, string>,
+    /** Common languages, suggested in the language of a row (found by their German and
+     *  English names; any other language can be typed). */
+    languageName: {
+      ar: 'Arabisch',
+      bg: 'Bulgarisch',
+      zh: 'Chinesisch',
+      da: 'Dänisch',
+      de: 'Deutsch',
+      en: 'Englisch',
+      fi: 'Finnisch',
+      fr: 'Französisch',
+      el: 'Griechisch',
+      hi: 'Hindi',
+      it: 'Italienisch',
+      ja: 'Japanisch',
+      ko: 'Koreanisch',
+      hr: 'Kroatisch',
+      nl: 'Niederländisch',
+      no: 'Norwegisch',
+      pl: 'Polnisch',
+      pt: 'Portugiesisch',
+      ro: 'Rumänisch',
+      ru: 'Russisch',
+      sv: 'Schwedisch',
+      sk: 'Slowakisch',
+      sl: 'Slowenisch',
+      es: 'Spanisch',
+      cs: 'Tschechisch',
+      tr: 'Türkisch',
+      uk: 'Ukrainisch',
+      hu: 'Ungarisch',
+    },
     /** "So liest die App dein Profil": what the engine reads in the file. */
     reading: {
-      terms: (value: number) =>
-        `${count(value, 'Begriff zählt', 'Begriffe zählen')} für die Passung.`,
-      termsLabel: 'Begriffe',
+      termsLabel: 'Suchbegriffe',
       more: (value: number) => `und ${n(value)} weitere`,
       sources: 'Gelesen aus',
       /** A part of the file the form does not show (career stations and the like). */
       fileOnly: (name: string) => `${name}, nur in der Datei`,
       years: 'Berufserfahrung',
       yearsValue: (value: number) => count(value, 'Jahr', 'Jahre'),
-      /** A minimum of years (dative): `ab 15 Jahren`. */
-      yearsFrom: (value: number) => `ab ${count(value, 'Jahr', 'Jahren')}`,
+      /** After the label "Jobs ab" (dative): `15 Jahren Erfahrung`. */
+      yearsFrom: (value: number) => `${count(value, 'Jahr', 'Jahren')} Erfahrung`,
       degrees: 'Abschlüsse',
       packs: 'Fachwortschatz',
-      criteria: 'Ausschlusskriterien',
+      criteria: 'Konditionen',
       none: 'Keine',
       from: (value: string) => `ab ${value}`,
       excluded: 'ausgeschlossen',
@@ -1381,6 +1415,8 @@ export const de = {
       take: 'Übernehmen',
       /** Why Übernehmen waits. */
       takeEmpty: 'Füge erst die Antwort der KI ein.',
+      /** The steps close (an answer pasted so far stays for the next time). */
+      close: 'Schließen',
     },
   },
   settings: {

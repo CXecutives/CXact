@@ -1,13 +1,17 @@
 <!--
   The languages: one row each with the language and its level (A1 to C2 or Muttersprache as
   toggle buttons, each explaining itself in a tooltip; pressing the chosen level again
-  clears it, and without one the app assumes B2), then "Sprache hinzufügen". Enter moves
-  through the rows like in the competences (rows.ts); it never saves. A value the backend
-  refused marks its row.
+  clears it, and without one the app assumes B2), then "Sprache hinzufügen". The language
+  field suggests common languages like the countries field (found by their German and
+  English names, taken in the app's language); any other language can be typed. Enter moves
+  through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
+  saves. A value the backend refused marks its row.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import TextField from '$components/TextField.svelte';
+  import { de } from '$lib/i18n/de';
+  import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import type { LanguageLevel, ProfileLanguage } from '$lib/ipc/types';
@@ -33,6 +37,16 @@
     })),
   );
   let list = $state<HTMLElement | null>(null);
+
+  type LanguageCode = keyof typeof de.profile.languageName;
+  /** Common languages, named in the app's language and found by both names. */
+  const LANGUAGES = $derived(
+    (Object.keys(de.profile.languageName) as LanguageCode[]).map((code) => ({
+      id: code,
+      label: t.profile.languageName[code],
+      terms: [de.profile.languageName[code], en.profile.languageName[code]],
+    })),
+  );
 
   const refused = $derived.by((): ProfileLanguage | null => {
     if (error === null || error.row === null) return null;
@@ -78,6 +92,7 @@
         <TextField
           bind:value={row.language}
           label={words.language}
+          options={LANGUAGES}
           placeholder={rows.length === 1 ? words.languagePlaceholder : null}
           invalid={row === refused}
           describedby={row === refused ? `${id}-error` : null}
@@ -141,7 +156,7 @@
   .remove {
     display: flex;
     align-items: center;
-    height: var(--control-md);
+    height: var(--control-field);
   }
 
   .error {

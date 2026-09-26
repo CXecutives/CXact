@@ -1,6 +1,7 @@
 <!--
-  One section of the profile form: the heading (with "Noch leer" when a thin profile leaves
-  it empty), at most one sentence under it, the fields in a card.
+  One section of the profile form: the heading (H2, 17/600; with "Noch leer" when a thin
+  profile leaves it empty: quiet for an optional block, amber only for the one block that is
+  needed), at most one sentence under it, the fields in a card 12 px below.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -13,18 +14,27 @@
     hint?: string | null;
     /** Mark the section as empty (quality guidance for a thin profile). */
     empty?: boolean;
+    /** The block the profile needs (the competences): its "Noch leer" is amber. */
+    required?: boolean;
     testid?: string | null;
     children: Snippet;
   }
 
-  let { heading, hint = null, empty = false, testid = null, children }: Props = $props();
+  let {
+    heading,
+    hint = null,
+    empty = false,
+    required = false,
+    testid = null,
+    children,
+  }: Props = $props();
   const id = $props.id();
 </script>
 
 <section class="section" aria-labelledby="{id}-heading" data-testid={testid ?? undefined}>
   <div class="head">
     <h2 class="heading" id="{id}-heading">{heading}</h2>
-    {#if empty}<Badge label={t.profile.empty} tone="warning" />{/if}
+    {#if empty}<Badge label={t.profile.empty} tone={required ? 'warning' : 'neutral'} />{/if}
   </div>
   {#if hint}<p class="hint">{hint}</p>{/if}
   <Card padding="md">

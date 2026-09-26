@@ -1,15 +1,15 @@
 <!--
-  The core competences: one row each with the star (Schwerpunkt), the competence, its years
-  and other terms for it (`auch`), then "Kompetenz hinzufügen" and the Schwerpunkte with one
-  sentence on what the star does. The star says what a click does (mark, or remove the
-  Schwerpunkt). At most five stars: a sixth star is disabled and its tooltip says why, as
-  does the star of a row without a competence; the count stands at the Schwerpunkte.
-  Renaming or removing a starred competence takes its Schwerpunkt along. A file with more
-  Schwerpunkte says that the first five were taken; one that does not count (no competence
-  of that name) or a value that does not read is said there with "Wert entfernen". A value
-  the backend refused marks its row. Enter goes to the next row, adds one after the last and
-  ends the list on an empty last row (rows.ts); it never saves the profile. A row's focused x
-  hands the focus to the next row (rows.ts). Narrow, the Schwerpunkte go under their label.
+  The core competences: one row each with the target (Schwerpunkt), the competence, its
+  years and its synonyms (`auch`, one line with "+n" for those that do not fit), then
+  "Kompetenz hinzufügen". The target says what a click does (mark, or remove the
+  Schwerpunkt); the count stands over the targets ("2/5", its tooltip says what they do). At
+  most five: a sixth target is disabled and its tooltip says why, as does the target of a
+  row without a competence. Renaming or removing a marked competence takes its Schwerpunkt
+  along. A file with more Schwerpunkte says under the rows that the first five were taken;
+  one that does not count (no competence of that name) or a value that does not read is said
+  there with "Wert entfernen". A value the backend refused marks its row. Enter goes to the
+  next row, adds one after the last and ends the list on an empty last row (rows.ts); it
+  never saves the profile. A row's focused x hands the focus to the next row (rows.ts).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -119,7 +119,9 @@
 <div class="list" bind:this={list} data-testid="competences" data-field="competences">
   {#if rows.length > 0}
     <div class="head" aria-hidden="true">
-      <span></span>
+      <span class="count" data-testid="focus-count" use:tooltip={words.focusHint}>
+        {words.focusCount(focus.length, MAX_FOCUS)}
+      </span>
       <span>{words.competence}</span>
       <span use:tooltip={words.yearsHint}>{words.years}</span>
       <span class="aliases-head" use:tooltip={words.aliasesHint}>{words.aliases}</span>
@@ -134,13 +136,13 @@
       data-testid="competence-row"
       use:formKeys={{ save: () => enter(row) }}
     >
-      <!-- Its words follow its state, like the favourite star of a job. -->
+      <!-- Its words follow its state (the star stays the favourite of a job). -->
       <span class="star">
         <Button
           variant="ghost"
           size="sm"
           iconOnly
-          icon="star"
+          icon="target"
           label={starred(row.name) ? words.unstar : words.star}
           pressed={starred(row.name)}
           disabled={row.name.trim() === '' || (!starred(row.name) && focus.length >= MAX_FOCUS)}
@@ -174,6 +176,7 @@
           bind:values={row.aliases}
           label={words.aliases}
           placeholder={words.aliasesPlaceholder}
+          oneLine
           testid="competence-aliases"
         />
       </span>
@@ -203,31 +206,23 @@
       onclick={() => void add()}
     />
   </span>
-  <div class="focus" data-testid="focus" data-field="focus">
-    <div class="focus-row">
-      <span class="focus-label" data-testid="focus-count">
-        {words.focusCount(focus.length, MAX_FOCUS)}
-      </span>
-      {#if focus.length > 0}
-        <span class="focus-chips">
-          <ChipInput bind:values={focus} entry={false} />
-        </span>
+  <!-- What the file said about the Schwerpunkte that the targets cannot show. -->
+  {#if problems.length > 0 || trimmed !== null}
+    <div class="focus" data-testid="focus" data-field="focus">
+      {#each problems as problem (problem.value)}
+        <ValueNote
+          text={problem.entry
+            ? words.unreadableFocus(problem.value)
+            : words.unreadableValue(problem.value)}
+          testid="focus-unread"
+          onremove={() => drop(problem)}
+        />
+      {/each}
+      {#if trimmed !== null}
+        <p class="focus-hint" data-testid="focus-trimmed">{words.focusTrimmed(trimmed)}</p>
       {/if}
     </div>
-    {#each problems as problem (problem.value)}
-      <ValueNote
-        text={problem.entry
-          ? words.unreadableFocus(problem.value)
-          : words.unreadableValue(problem.value)}
-        testid="focus-unread"
-        onremove={() => drop(problem)}
-      />
-    {/each}
-    {#if trimmed !== null}
-      <p class="focus-hint" data-testid="focus-trimmed">{words.focusTrimmed(trimmed)}</p>
-    {/if}
-    <p class="focus-hint">{words.focusHint}</p>
-  </div>
+  {/if}
 </div>
 
 <style>
@@ -238,13 +233,14 @@
     container-type: inline-size;
   }
 
-  /* star | competence | years | other terms | remove */
+  /* target | competence | years | synonyms | remove: the synonyms take more room than the
+     name, which is one short term. */
   .head,
   .row {
     display: grid;
     grid-template-columns:
-      var(--control-sm) minmax(0, 5fr) calc(var(--space-64) + var(--space-8))
-      minmax(0, 4fr) var(--control-sm);
+      var(--control-sm) minmax(0, 4fr) calc(var(--space-64) + var(--space-8))
+      minmax(0, 5fr) var(--control-sm);
     align-items: start;
     gap: var(--space-8);
   }
@@ -255,11 +251,19 @@
     font-weight: var(--weight-medium);
   }
 
+  /* The count of Schwerpunkte over their targets, centred on them. */
+  .count {
+    color: var(--text-muted);
+    font-variant-numeric: var(--numeric);
+    text-align: center;
+    white-space: nowrap;
+  }
+
   .star,
   .remove {
     display: flex;
     align-items: center;
-    height: var(--control-md);
+    height: var(--control-field);
   }
 
   /* Under the rows the button lines up with the competence column; alone it starts at the
@@ -278,31 +282,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-8);
-    padding-top: var(--space-12);
-    border-top: var(--border-width) solid var(--border);
-  }
-
-  /* The chips stand beside their label while room for a long word is left there, else they
-     go under it (a long Schwerpunkt then wraps at its spaces, not inside a word). */
-  .focus-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8) var(--space-12);
-    min-height: var(--control-sm);
-  }
-
-  .focus-chips {
-    display: flex;
-    flex: 1 1 calc(var(--stat-min) + var(--space-48));
-    min-width: 0;
-  }
-
-  .focus-label {
-    flex: none;
-    color: var(--text);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
   }
 
   .focus-hint {
@@ -310,7 +289,7 @@
     font: var(--type-sm);
   }
 
-  /* Narrow: the other terms go under the competence. */
+  /* Narrow: the synonyms go under the competence. */
   @container (width < 520px) {
     .head .aliases-head {
       display: none;
