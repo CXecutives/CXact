@@ -72,13 +72,8 @@ const FEATURE_PUBLIC = {
  * entry no longer matches anything, so a fixed finding also drops its entry.
  */
 const TEMPORARY = {
-  // TODO(layering): IconName moves to the icons map (ui/src/lib/icons.ts, in flight); then
-  // lib no longer imports the component.
-  'ui/src/lib/facts.ts -> ui/src/components/Icon.svelte': 'IconName lives in Icon.svelte',
-  'ui/src/lib/state/menu.svelte.ts -> ui/src/components/Icon.svelte': 'IconName, as above',
-  'ui/src/lib/state/run.svelte.ts -> ui/src/components/Icon.svelte': 'IconName, as above',
   // TODO(dead code): JobsView registers its one-column Zurück with onBack
-  // (input-final.spec.ts, the fixme test); then the entry goes.
+  // (tools/ui-harness/specs/input.spec.ts, the fixme test); then the entry goes.
   'ui/src/lib/input/input.ts: onBack': 'the back key, not wired yet',
   // TODO(dead code): unused type in a file of the jobs track; delete it there.
   'ui/src/features/jobs/reader-sections.ts: ReaderSection': 'unused type',
