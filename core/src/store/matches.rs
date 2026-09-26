@@ -80,6 +80,9 @@ pub(crate) const NEW_FITTING: &str = "read_at IS NULL AND match_status = 'scored
 pub(crate) const COMPARABLE: &str = "match_status = 'scored' AND dup_of IS NULL
     AND archived_at IS NULL AND trashed_at IS NULL AND desc_status <> 'gone' AND desc_closed = 0";
 
+/// The Excel sheet: the inbox and the archive, no duplicate.
+const SHEET: &str = "trashed_at IS NULL AND dup_of IS NULL";
+
 /// The list's order by match: the best score first, equal scores by the score before the
 /// caps (`rank` in the note), then the newest mail.
 const BY_MATCH: &str = "match_score DESC, json_extract(match_note, '$.rank') DESC,
@@ -423,6 +426,29 @@ impl Store {
         ))?;
         let rows = stmt.query_map([limit], job_row)?;
         rows.map(|r| r?).collect()
+    }
+
+    /// The jobs of the Excel sheet: the inbox and the archive (never the trash), no duplicate
+    /// (its original's row stands for it), in the list's order by match - excluded ones
+    /// after the others, unscored ones after the scored.
+    pub fn sheet_jobs(&self) -> Result<Vec<JobRow>> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare_cached(&format!(
+            "SELECT {JOB_COLUMNS} FROM job WHERE {SHEET}
+             ORDER BY (match_status IS 'excluded'), (match_score IS NULL), {BY_MATCH}"
+        ))?;
+        let rows = stmt.query_map([], job_row)?;
+        rows.map(|r| r?).collect()
+    }
+
+    /// Number of the rows of the Excel sheet ([`Store::sheet_jobs`]).
+    pub fn sheet_count(&self) -> Result<u64> {
+        let count: i64 = self.conn().query_row(
+            &format!("SELECT COUNT(*) FROM job WHERE {SHEET}"),
+            [],
+            |r| r.get(0),
+        )?;
+        Ok(u64::try_from(count).unwrap_or(0))
     }
 
     /// "Neu und passend", the one definition of the new matches ([`NEW_FITTING`]: unread,

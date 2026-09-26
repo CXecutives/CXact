@@ -21,10 +21,13 @@ use std::sync::{Arc, Mutex};
 
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
+use sha2::Digest as _;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{ErrorInfo, InvalidInput};
-use crate::export::{self, RESULT_DIR, TXT_DIR, Texts, texts, write_job_txt, write_xlsx};
+use crate::export::{
+    self, InfoValue, RESULT_DIR, TXT_DIR, Texts, texts, write_job_txt, write_xlsx,
+};
 use crate::fetch::policy::Policy;
 use crate::fetch::{
     FetchEvent, FetchSummary, PageFetcher, PortalHealth, Prescore, Selection, fetch_all,
@@ -34,7 +37,7 @@ use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{FetchPath, JobKey, Portal};
 use crate::settings::Language;
-use crate::store::{JobFilter, JobRow, Store};
+use crate::store::{JobRow, Store};
 use crate::text::truncate_chars;
 use crate::time;
 use crate::view::{Deleted, EmptyAlert, JobView, MAX_SUBJECT_CHARS};
@@ -120,6 +123,9 @@ pub struct RunContext {
     pub auto_empty_trash_days: u32,
     /// Language of the Excel file and the HTML overview (the text files stay German).
     pub language: Language,
+    /// The Gmail address the run reads (`None` without a mailbox step or in the dry run):
+    /// after a successful scan the files link the alert mails in its account.
+    pub mailbox: Option<String>,
 }
 
 impl RunContext {
@@ -478,6 +484,8 @@ pub const MAX_EMPTY_ALERTS: usize = 10;
 pub const MAX_EVENT_BYTES: usize = 7 * 1024;
 /// Start of the last successful mailbox scan (Unix seconds).
 const LAST_FETCH_AT: &str = "last_fetch_at";
+/// The portals' health at the end of the last run, for the Info sheet ([`HealthRow`]).
+const LAST_HEALTH: &str = "last_portal_health";
 /// Label of the mail address row that earlier versions stored - do not translate.
 const LEGACY_ACCOUNT_LABEL: &str = "Gmail-Konto";
 /// Info sheet labels and values earlier versions stored with the last mailbox scan, and
@@ -587,6 +595,7 @@ pub async fn run<B: Backends>(
             summary.outcome = match result {
                 Ok(()) => {
                     remember_scan(store, scope, &scanned, started_at);
+                    remember_account(store, ctx.mailbox.as_deref());
                     scanned_ok = true;
                     Outcome::Completed
                 }
@@ -654,6 +663,7 @@ pub async fn run<B: Backends>(
     }
     auto_archive(store, run, ctx.auto_archive_days, clock());
     auto_empty_trash(store, run, ctx, clock());
+    remember_health(store, policy, ctx, clock());
 
     summary.finished_at = clock();
     if !ctx.dry_run {
@@ -1104,12 +1114,13 @@ impl Target {
 }
 
 /// Text files (exactly once per job, always German) and overview (in `language`). The
-/// overview is only regenerated if something changed - data, run, folder, language - or it
-/// is missing; an Excel file open elsewhere is then not disturbed needlessly.
+/// overview is only regenerated if something changed - data, run, folder, language, the
+/// Gmail account of the links - or it is missing; an Excel file open elsewhere is then not
+/// disturbed needlessly.
 pub fn export_all(
     store: &Store,
     workspace: &Path,
-    info: &[(String, String)],
+    info: &[(String, InfoValue)],
     run: i64,
     now: Timestamp,
     language: Language,
@@ -1136,6 +1147,44 @@ pub fn export_all(
     match write_html_overview(store, &result_dir, now, language) {
         Ok(path) => summary.overview_html = Some(path),
         Err(e) => note_error(&mut summary, &e, Target::OverviewHtml),
+    }
+    summary
+}
+
+/// The Excel file and the report written anew when the user's marks (a move, the star,
+/// "Beworben", a note, "fits anyway", a delete) changed them since the Excel file was last
+/// written - the stamp of the last write says so - and when the file is missing: call it
+/// after marks and right before "open Excel". A run writes both by itself. An Excel file
+/// open in Excel stays as it is: the summary's error is `fileLocked` with `target`
+/// `overview`, `path` and `name` (`JobAlerts.xlsx`); `overviewXlsx` names the file when it
+/// was written.
+pub fn refresh_excel(
+    store: &Store,
+    workspace: &Path,
+    now: Timestamp,
+    language: Language,
+) -> ExportSummary {
+    let result_dir = workspace.join(RESULT_DIR);
+    let mut summary = ExportSummary::default();
+    if !reachable(workspace, &mut summary) {
+        return summary;
+    }
+    let path = export::overview_path(&result_dir);
+    // The run of the last write stays: marks alone change no run number.
+    let run = store
+        .kv_get(&stamp_key(&path))
+        .ok()
+        .flatten()
+        .and_then(|stamp| serde_json::from_str::<serde_json::Value>(&stamp).ok())
+        .and_then(|stamp| stamp["run"].as_i64())
+        .unwrap_or_else(|| last_scan_run(store).unwrap_or(0));
+    let info = info_rows(store, now, Texts::of(language));
+    write_overview(store, &path, &info, (run, language), now, &mut summary);
+    if summary.overview_xlsx.is_some() {
+        match write_html_overview(store, &result_dir, now, language) {
+            Ok(html) => summary.overview_html = Some(html),
+            Err(e) => note_error(&mut summary, &e, Target::OverviewHtml),
+        }
     }
     summary
 }
@@ -1408,19 +1457,24 @@ fn write_txts(
 fn write_overview(
     store: &Store,
     path: &Path,
-    info: &[(String, String)],
+    info: &[(String, InfoValue)],
     (run, language): (i64, Language),
     now: Timestamp,
     summary: &mut ExportSummary,
 ) {
-    // The run number belongs to the sheet "Info" and changes the file on every run.
+    let account = gmail_account(store);
+    // The run number belongs to the sheet "Info" and changes the file on every run; the
+    // account of the Gmail links (only a digest of it) changes their target.
     let stamp = serde_json::json!({
         "rev": store.data_rev().unwrap_or(-1),
         "run": run,
         "language": language,
+        "account": account
+            .as_deref()
+            .map(|a| crate::portal::hex12(&sha2::Sha256::digest(a))),
     })
     .to_string();
-    let key = format!("{EXPORT_STAMP}{}", path.display());
+    let key = stamp_key(path);
     // Without a readable state the ownership of the file is unknown - then it is neither
     // backed up nor replaced. A database error must not back up the app's own overview.
     let last = match store.kv_get(&key) {
@@ -1450,15 +1504,11 @@ fn write_overview(
         }
         summary.backup = Some(backup);
     }
-    // The job sheet lists what the app lists: no archived job, no duplicate row (the
-    // original's row stands for it).
-    let listed = JobFilter {
-        listed: true,
-        ..JobFilter::default()
-    };
+    // The job sheet lists the inbox and the archive, best match first, no duplicate row (the
+    // original's row stands for it) and nothing of the trash.
     let written = store
-        .jobs(&listed)
-        .and_then(|jobs| write_xlsx(path, &jobs, info, language));
+        .sheet_jobs()
+        .and_then(|jobs| write_xlsx(path, &jobs, info, language, account.as_deref()));
     match written {
         Ok(()) => {
             if let Err(e) = store.kv_set(&key, &stamp) {
@@ -1467,6 +1517,68 @@ fn write_overview(
             summary.overview_xlsx = Some(path.to_path_buf());
         }
         Err(e) => note_error(summary, &e, Target::Overview),
+    }
+}
+
+/// The key of the export stamp of an overview file (per path).
+fn stamp_key(path: &Path) -> String {
+    format!("{EXPORT_STAMP}{}", path.display())
+}
+
+/// The Gmail address whose alert mails the files link to: the account of the last successful
+/// mailbox scan.
+fn gmail_account(store: &Store) -> Option<String> {
+    store
+        .kv_get(crate::store::GMAIL_ACCOUNT)
+        .ok()
+        .flatten()
+        .filter(|a| !a.trim().is_empty())
+}
+
+/// After a successful mailbox scan: the account it read is the one the files link to.
+fn remember_account(store: &Store, mailbox: Option<&str>) {
+    if let Some(account) = mailbox.map(str::trim).filter(|a| !a.is_empty())
+        && let Err(e) = store.kv_set(crate::store::GMAIL_ACCOUNT, account)
+    {
+        log::warn!("account of the links not stored: {e}");
+    }
+}
+
+/// The health of every portal at the end of a run, for the Info sheet: switched on or off
+/// and what the safety state says (a pause or a cap with its end, a sign-in needed, alert
+/// mails without jobs of the last mailbox scan).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct HealthRow {
+    portal: Portal,
+    enabled: bool,
+    health: PortalHealth,
+}
+
+/// Remembers the health of every portal at the end of a run (the Info sheet's rows).
+fn remember_health(store: &Store, policy: &Mutex<Policy>, ctx: &RunContext, now: Timestamp) {
+    let empty = store
+        .zero_posting_mails(last_scan_run(store).unwrap_or(0))
+        .unwrap_or_default();
+    let rows: Vec<HealthRow> = {
+        let policy = crate::sync::lock(policy);
+        Portal::ALL
+            .into_iter()
+            .map(|portal| {
+                let mails = empty.iter().filter(|m| m.portal == portal).count();
+                let login = ctx.sign_in.contains(&portal);
+                HealthRow {
+                    portal,
+                    enabled: ctx.portals.contains(&portal),
+                    health: PortalHealth::of(&policy, portal, now, login, mails),
+                }
+            })
+            .collect()
+    };
+    let saved = serde_json::to_string(&rows)
+        .map_err(|e| e.to_string())
+        .and_then(|json| store.kv_set(LAST_HEALTH, &json).map_err(|e| e.to_string()));
+    if let Err(e) = saved {
+        log::warn!("portal health for the Info sheet not stored: {e}");
     }
 }
 
@@ -1551,38 +1663,69 @@ pub fn last_fetch_at(store: &Store) -> Option<Timestamp> {
 }
 
 /// Sheet "Info" of the Excel file (last mailbox fetch, when the file was written, counters,
-/// program). The numbers come from the last successful mailbox scan - after pure detail
-/// runs too; "new" is the run card's number of new jobs. Any run and a delete for good write
-/// the file (`written`: that moment), so it says when, not the time of a fetch: that is the
-/// first row's. The job count is the sheet's rows.
-fn info_rows(store: &Store, written: Timestamp, words: &Texts) -> Vec<(String, String)> {
+/// program, the portals' health at the last fetch). The numbers come from the last
+/// successful mailbox scan - after pure detail runs too; "new" is the run card's number of
+/// new jobs. Any run, a delete for good and a mark write the file (`written`: that moment), so
+/// it says when, not the time of a fetch: that is the first row's. The job count is the
+/// sheet's rows. Numbers and moments are real cells.
+fn info_rows(store: &Store, written: Timestamp, words: &Texts) -> Vec<(String, InfoValue)> {
+    let count = |n: usize| InfoValue::Number(u64::try_from(n).unwrap_or(u64::MAX));
     let mut rows = match scan_facts(store) {
         Some(facts) => {
-            let at = time::from_db(facts.at).map_or_else(String::new, |at| words.moment(at));
             let scope = match facts.scope {
                 Scope::New => words.scope_new,
                 Scope::All => words.scope_all,
             };
-            vec![
-                (words.info_last_scan.to_owned(), at),
-                (words.info_scope.to_owned(), scope.to_owned()),
+            let mut rows = Vec::new();
+            if let Some(at) = time::from_db(facts.at) {
+                rows.push((words.info_last_scan.to_owned(), InfoValue::Moment(at)));
+            }
+            rows.extend([
+                (
+                    words.info_scope.to_owned(),
+                    InfoValue::Text(scope.to_owned()),
+                ),
                 (
                     words.info_new.to_owned(),
-                    facts.jobs.unwrap_or(facts.new).to_string(),
+                    count(facts.jobs.unwrap_or(facts.new)),
                 ),
-                (words.info_known.to_owned(), facts.known.to_string()),
-                (words.info_dup.to_owned(), facts.dup.to_string()),
-            ]
+                (words.info_known.to_owned(), count(facts.known)),
+                (words.info_dup.to_owned(), count(facts.dup)),
+            ]);
+            rows
         }
-        None => legacy_info_rows(store, words),
+        None => legacy_info_rows(store, words)
+            .into_iter()
+            .map(|(label, value)| {
+                let value = value
+                    .parse::<u64>()
+                    .map_or(InfoValue::Text(value), InfoValue::Number);
+                (label, value)
+            })
+            .collect(),
     };
     // "Erstellt am" / "Created on", the HTML overview's word for the same thing.
-    rows.push((words.html_created.into(), words.moment(written)));
+    rows.push((words.html_created.into(), InfoValue::Moment(written)));
     rows.push((
         words.info_jobs_total.into(),
-        store.listed_count().unwrap_or(0).to_string(),
+        InfoValue::Number(store.sheet_count().unwrap_or(0)),
     ));
-    rows.push((words.info_program.into(), texts::PROGRAM_NAME.into()));
+    rows.push((
+        words.info_program.into(),
+        InfoValue::Text(texts::PROGRAM_NAME.into()),
+    ));
+    let health: Vec<HealthRow> = store
+        .kv_get(LAST_HEALTH)
+        .ok()
+        .flatten()
+        .and_then(|json| serde_json::from_str(&json).ok())
+        .unwrap_or_default();
+    for row in health {
+        rows.push((
+            words.info_portal(row.portal.label()),
+            InfoValue::Text(words.health(row.enabled, &row.health)),
+        ));
+    }
     rows
 }
 

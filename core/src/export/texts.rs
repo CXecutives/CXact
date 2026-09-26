@@ -21,30 +21,66 @@ pub const JOBS_SHEET: &str = "Job-Alerts";
 /// Name of the sheet with the run information.
 pub const INFO_SHEET: &str = "Info";
 
-/// Column headers of the Excel file (order as before, plus the job details state). Unlike
-/// the text files nobody reads it by machine - so it says "Portal" like the interface, not
-/// "Quelle" like the skill contract; the first sighting of a job is "Zuerst gesehen" (a
-/// "saved" date would read like the favourite).
-pub const COLUMNS: [&str; 18] = [
-    "Portal",
-    "Datum der Alert-Mail",
+/// Column headers of the Excel file: what decides first (title, match, musts, exclusion),
+/// then who and where, the terms in the app's words, the user's marks, the dates, the links
+/// and the job's key last. Unlike the text files nobody reads it by machine - so it says
+/// "Portal" like the interface, not "Quelle" like the skill contract; "Ablage" is the place
+/// (Jobs or Archiv).
+pub const COLUMNS: [&str; 23] = [
     "Titel",
+    "Passung",
+    "Pflicht erfüllt",
+    "Ausschluss",
     "Unternehmen",
     "Ort",
-    "Link",
-    "Betreff der Alert-Mail",
-    "Alert-Mail in Gmail",
-    "Zuerst gesehen",
-    "Details",
-    "Job-ID",
-    "Passung",
-    "Ausschluss",
-    "Favorit",
-    "Tagessatz (€)",
+    "Tagessatz",
+    "Satz laut Anzeige",
     "Start",
-    "Dauer (Monate)",
-    "Remote (%)",
+    "Laufzeit",
+    "Auslastung",
+    "Remote",
+    "Vertragsart",
+    "Portal",
+    "Ablage",
+    "Beworben am",
+    "Notiz",
+    "Favorit",
+    "Details",
+    "Datum",
+    "Anzeige",
+    "Alert-Mail",
+    "Job-ID",
 ];
+
+/// The link cells' words, the places of the sheet and the contract types (the reader's).
+pub const LINK_AD: &str = "Anzeige öffnen";
+pub const LINK_MAIL: &str = "Alert-Mail öffnen";
+pub const PLACE_INBOX: &str = "Jobs";
+pub const PLACE_ARCHIVE: &str = "Archiv";
+pub const CONTRACT_INTERIM: &str = "Interim";
+pub const CONTRACT_PERMANENT: &str = "Festanstellung";
+pub const CONTRACT_ANUE: &str = "Arbeitnehmerüberlassung";
+/// Why an excluded job the user counts anyway is in the list.
+pub const OVERRIDDEN: &str = "Manuell einbezogen";
+
+/// The health of a portal at the last fetch, a row of the info sheet each.
+pub fn info_portal(label: &str) -> String {
+    format!("{label} beim letzten Abruf")
+}
+pub const HEALTH_OFF: &str = "Ausgeschaltet";
+pub const HEALTH_OK: &str = "Bereit";
+pub fn health_paused(until: Option<&str>) -> String {
+    match until {
+        Some(at) => format!("Pausiert, ab {at} wieder möglich"),
+        None => "Pausiert bis zum nächsten Abruf".to_owned(),
+    }
+}
+pub fn health_quota(until: &str) -> String {
+    format!("Limit erreicht, ab {until} wieder möglich")
+}
+pub const HEALTH_EMPTY_MAILS: &str = "Alert-Mails ohne Jobs";
+pub const HEALTH_EMPTY_PAGES: &str = "Seiten ohne Beschreibung";
+pub const HEALTH_LOGIN: &str = "Anmeldung nötig";
 
 /// Label and warning of the last row of the info sheet. Not only a fetch writes the file: a
 /// rescore, a details run and "Endgültig löschen" do too.
@@ -248,25 +284,57 @@ pub mod en {
     pub const INFO_SHEET: &str = "Info";
 
     pub const COLUMNS: [&str; super::COLUMNS.len()] = [
-        "Portal",
-        "Alert email date",
         "Title",
+        "Match",
+        "Must-haves met",
+        "Exclusion",
         "Company",
         "Location",
-        "Link",
-        "Alert email subject",
-        "Alert email in Gmail",
-        "First seen",
-        "Details",
-        "Job ID",
-        "Match",
-        "Exclusion",
-        "Favourite",
-        "Day rate (€)",
+        "Day rate",
+        "Rate in the ad",
         "Start",
-        "Duration (months)",
-        "Remote (%)",
+        "Duration",
+        "Workload",
+        "Remote",
+        "Contract type",
+        "Portal",
+        "Place",
+        "Applied on",
+        "Note",
+        "Favourite",
+        "Details",
+        "Date",
+        "Ad",
+        "Alert email",
+        "Job ID",
     ];
+
+    pub const LINK_AD: &str = "Open ad";
+    pub const LINK_MAIL: &str = "Open alert email";
+    pub const PLACE_INBOX: &str = "Jobs";
+    pub const PLACE_ARCHIVE: &str = "Archive";
+    pub const CONTRACT_INTERIM: &str = "Interim";
+    pub const CONTRACT_PERMANENT: &str = "Permanent";
+    pub const CONTRACT_ANUE: &str = "Temporary agency work";
+    pub const OVERRIDDEN: &str = "Included by you";
+
+    pub fn info_portal(label: &str) -> String {
+        format!("{label} at the last fetch")
+    }
+    pub const HEALTH_OFF: &str = "Switched off";
+    pub const HEALTH_OK: &str = "Ready";
+    pub fn health_paused(until: Option<&str>) -> String {
+        match until {
+            Some(at) => format!("Paused, possible again from {at}"),
+            None => "Paused until the next fetch".to_owned(),
+        }
+    }
+    pub fn health_quota(until: &str) -> String {
+        format!("Limit reached, possible again from {until}")
+    }
+    pub const HEALTH_EMPTY_MAILS: &str = "Alert emails without jobs";
+    pub const HEALTH_EMPTY_PAGES: &str = "Pages without a description";
+    pub const HEALTH_LOGIN: &str = "Sign-in needed";
 
     pub const INFO_NOTE_LABEL: &str = "Note";
     pub const INFO_NOTE: &str =
@@ -470,6 +538,26 @@ pub struct Texts {
     pub jobs_sheet: &'static str,
     pub info_sheet: &'static str,
     pub columns: [&'static str; COLUMNS.len()],
+    pub link_ad: &'static str,
+    pub link_mail: &'static str,
+    pub place_inbox: &'static str,
+    pub place_archive: &'static str,
+    /// Interim, permanent, temporary agency work.
+    contracts: [&'static str; 3],
+    pub overridden: &'static str,
+    info_portal: fn(&str) -> String,
+    health_off: &'static str,
+    health_ok: &'static str,
+    health_paused: fn(Option<&str>) -> String,
+    health_quota: fn(&str) -> String,
+    health_empty_mails: &'static str,
+    health_empty_pages: &'static str,
+    health_login: &'static str,
+    /// Number formats of the Excel cells: a day, a score, a day rate, a duration.
+    pub excel_day: &'static str,
+    pub excel_score: &'static str,
+    pub excel_rate: &'static str,
+    pub excel_months: &'static str,
     pub info_note_label: &'static str,
     pub info_note: &'static str,
     pub info_last_scan: &'static str,
@@ -540,6 +628,24 @@ pub const DE: Texts = Texts {
     jobs_sheet: JOBS_SHEET,
     info_sheet: INFO_SHEET,
     columns: COLUMNS,
+    link_ad: LINK_AD,
+    link_mail: LINK_MAIL,
+    place_inbox: PLACE_INBOX,
+    place_archive: PLACE_ARCHIVE,
+    contracts: [CONTRACT_INTERIM, CONTRACT_PERMANENT, CONTRACT_ANUE],
+    overridden: OVERRIDDEN,
+    info_portal,
+    health_off: HEALTH_OFF,
+    health_ok: HEALTH_OK,
+    health_paused,
+    health_quota,
+    health_empty_mails: HEALTH_EMPTY_MAILS,
+    health_empty_pages: HEALTH_EMPTY_PAGES,
+    health_login: HEALTH_LOGIN,
+    excel_day: "dd.mm.yyyy",
+    excel_score: "0\" %\"",
+    excel_rate: "#,##0\" €\"",
+    excel_months: "[=1]0\" Monat\";0\" Monate\"",
     info_note_label: INFO_NOTE_LABEL,
     info_note: INFO_NOTE,
     info_last_scan: INFO_LAST_SCAN,
@@ -600,6 +706,28 @@ pub const EN: Texts = Texts {
     jobs_sheet: en::JOBS_SHEET,
     info_sheet: en::INFO_SHEET,
     columns: en::COLUMNS,
+    link_ad: en::LINK_AD,
+    link_mail: en::LINK_MAIL,
+    place_inbox: en::PLACE_INBOX,
+    place_archive: en::PLACE_ARCHIVE,
+    contracts: [
+        en::CONTRACT_INTERIM,
+        en::CONTRACT_PERMANENT,
+        en::CONTRACT_ANUE,
+    ],
+    overridden: en::OVERRIDDEN,
+    info_portal: en::info_portal,
+    health_off: en::HEALTH_OFF,
+    health_ok: en::HEALTH_OK,
+    health_paused: en::health_paused,
+    health_quota: en::health_quota,
+    health_empty_mails: en::HEALTH_EMPTY_MAILS,
+    health_empty_pages: en::HEALTH_EMPTY_PAGES,
+    health_login: en::HEALTH_LOGIN,
+    excel_day: "dd/mm/yyyy",
+    excel_score: "0\"%\"",
+    excel_rate: "\"€\"#,##0",
+    excel_months: "[=1]0\" month\";0\" months\"",
     info_note_label: en::INFO_NOTE_LABEL,
     info_note: en::INFO_NOTE,
     info_last_scan: en::INFO_LAST_SCAN,
@@ -686,6 +814,43 @@ impl Texts {
     /// The day of a moment in local time.
     pub fn day(&self, ts: jiff::Timestamp) -> String {
         crate::time::local(ts).strftime(self.day).to_string()
+    }
+
+    /// A contract type's word (`interim`, `permanent`, `anue`); `None` when unclear.
+    pub fn contract(&self, code: &str) -> Option<&'static str> {
+        match code {
+            "interim" => Some(self.contracts[0]),
+            "permanent" => Some(self.contracts[1]),
+            "anue" => Some(self.contracts[2]),
+            _ => None,
+        }
+    }
+
+    /// The info sheet's label of a portal's health.
+    pub fn info_portal(&self, label: &str) -> String {
+        (self.info_portal)(label)
+    }
+
+    /// A portal's health at the last fetch in words: switched off, ready, paused or capped
+    /// with the moment it is possible again, alert emails or pages without jobs, a sign-in
+    /// needed.
+    pub fn health(&self, enabled: bool, health: &crate::fetch::PortalHealth) -> String {
+        use crate::fetch::PortalHealth;
+        if !enabled {
+            return self.health_off.to_owned();
+        }
+        match health {
+            PortalHealth::Ok => self.health_ok.to_owned(),
+            PortalHealth::Paused { until, .. } => {
+                (self.health_paused)(until.map(|at| self.moment(at)).as_deref())
+            }
+            PortalHealth::QuotaReached { until } => (self.health_quota)(&self.moment(*until)),
+            PortalHealth::LayoutSuspect { empty_mails, .. } if *empty_mails > 0 => {
+                self.health_empty_mails.to_owned()
+            }
+            PortalHealth::LayoutSuspect { .. } => self.health_empty_pages.to_owned(),
+            PortalHealth::LoginRequired => self.health_login.to_owned(),
+        }
     }
 
     /// The rate an ad states in the app's words (`1.100 €/Tag`, `95 €/Std.`), or that it is
@@ -830,7 +995,7 @@ mod tests {
         assert_eq!(EN.from_german("Alle"), Some(en::SCOPE_ALL));
         for (de, en) in DE.columns.iter().zip(EN.columns) {
             // Product and loan words are the same in both.
-            if !["Portal", "Link", "Details", "Start", "Remote (%)"].contains(de) {
+            if !["Portal", "Details", "Start", "Remote"].contains(de) {
                 assert_ne!(*de, en);
             }
         }

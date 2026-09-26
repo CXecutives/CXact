@@ -12,6 +12,7 @@ use crate::error::ErrorKind;
 use crate::export::TXT_DIR;
 use crate::fetch::policy::PauseReason;
 use crate::model::{DescStatus, Place};
+use crate::store::JobFilter;
 
 fn clock() -> impl Fn() -> Timestamp {
     let base = Timestamp::now();
@@ -35,6 +36,7 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         auto_archive_days: 0,
         auto_empty_trash_days: 0,
         language: Language::De,
+        mailbox: None,
     }
 }
 
@@ -844,20 +846,24 @@ async fn the_info_sheet_keeps_the_last_good_scan() {
     .await;
     assert_eq!(store.kv_get(LAST_SCAN_FACTS).unwrap().unwrap(), after_good);
     let rows = info_rows(&store, c(), &texts::DE);
-    assert!(rows.iter().any(|(k, v)| k == texts::INFO_NEW && v == "5"));
+    let text = |s: &str| InfoValue::Text(s.to_owned());
     assert!(
         rows.iter()
-            .any(|(k, v)| k == texts::INFO_SCOPE && v == texts::SCOPE_NEW)
+            .any(|(k, v)| k == texts::INFO_NEW && *v == InfoValue::Number(5))
+    );
+    assert!(
+        rows.iter()
+            .any(|(k, v)| k == texts::INFO_SCOPE && *v == text(texts::SCOPE_NEW))
     );
     // The same scan in English: the words follow the language, the numbers stay.
     let rows = info_rows(&store, c(), &texts::EN);
     assert!(
         rows.iter()
-            .any(|(k, v)| k == texts::en::INFO_NEW && v == "5")
+            .any(|(k, v)| k == texts::en::INFO_NEW && *v == InfoValue::Number(5))
     );
     assert!(
         rows.iter()
-            .any(|(k, v)| k == texts::en::INFO_SCOPE && v == texts::en::SCOPE_NEW)
+            .any(|(k, v)| k == texts::en::INFO_SCOPE && *v == text(texts::en::SCOPE_NEW))
     );
     assert!(
         rows.iter().all(|(k, _)| !k.contains("Postfach")),
@@ -866,22 +872,24 @@ async fn the_info_sheet_keeps_the_last_good_scan() {
 }
 
 /// The Info sheet of the Excel file as `(label, value)` rows.
-fn info_sheet(workspace: &Path) -> Vec<(String, String)> {
+fn info_sheet(workspace: &Path) -> Vec<(String, calamine::Data)> {
     use calamine::{Reader, Xlsx, open_workbook};
     let path = export::overview_path(&workspace.join(RESULT_DIR));
     let mut book: Xlsx<_> = open_workbook(&path).unwrap();
     book.worksheet_range(texts::INFO_SHEET)
         .unwrap()
         .rows()
-        .map(|row| (row[0].to_string(), row[1].to_string()))
+        .map(|row| (row[0].to_string(), row[1].clone()))
         .collect()
 }
 
-/// The Info sheet says what the app says: "new" is the run card's number (one per job, the
-/// excluded one left out), the job count is the sheet's rows, and a rescore writes the
-/// moment the file was made - never a fetch time it did not have.
+/// The Info sheet says what the app says, in real numbers and dates: "new" is the run card's
+/// number (one per job, the excluded one left out), the job count is the sheet's rows (the
+/// inbox and the archive), a rescore writes the moment the file was made - never a fetch
+/// time it did not have - and every portal's health at the last fetch has its row.
 #[tokio::test(start_paused = true)]
 async fn the_info_sheet_says_what_the_app_says() {
+    use calamine::Data;
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
@@ -890,45 +898,54 @@ async fn the_info_sheet_says_what_the_app_says() {
     let (s, _) = go(&mut DemoBackends, &store, &request(), &fetch, &cancel, &c).await;
     let card = s.new_jobs.unwrap().count;
     assert!(card < s.scan.unwrap().new, "the excluded job is no new job");
-    let value = |rows: &[(String, String)], label: &str| -> String {
+    let value = |rows: &[(String, Data)], label: &str| -> Data {
         rows.iter()
             .find(|(k, _)| k == label)
             .map_or_else(|| panic!("{label}: {rows:?}"), |(_, v)| v.clone())
     };
-    assert_eq!(
-        value(&info_sheet(dir.path()), texts::INFO_NEW),
-        card.to_string()
-    );
+    #[expect(clippy::cast_precision_loss, reason = "a handful of jobs")]
+    let card_cell = Data::Float(card as f64);
+    assert_eq!(value(&info_sheet(dir.path()), texts::INFO_NEW), card_cell);
     let listed = store.listed_count().unwrap();
-    let key = store.jobs(&JobFilter::default()).unwrap()[0].key.clone();
+    let jobs = store.jobs(&JobFilter::default()).unwrap();
     store
-        .move_jobs(std::slice::from_ref(&key), Place::Archive, c())
+        .move_jobs(std::slice::from_ref(&jobs[0].key), Place::Archive, c())
+        .unwrap();
+    store
+        .move_jobs(std::slice::from_ref(&jobs[1].key), Place::Trash, c())
         .unwrap();
     // A rescore an hour later writes the file again.
     let later = move || c() + SignedDuration::from_hours(1);
     let rescore = RunRequest {
         kind: RunKind::Rescore,
     };
-    let (r, _) = go(&mut DemoBackends, &store, &rescore, &fetch, &cancel, &later).await;
+    go(&mut DemoBackends, &store, &rescore, &fetch, &cancel, &later).await;
     let rows = info_sheet(dir.path());
+    #[expect(clippy::cast_precision_loss, reason = "a handful of jobs")]
+    let rows_left = Data::Float((listed - 1) as f64);
     assert_eq!(
         value(&rows, texts::INFO_JOBS_TOTAL),
-        (listed - 1).to_string(),
-        "the sheet's rows"
+        rows_left,
+        "the sheet's rows: the archive in, the trash out"
     );
-    assert_eq!(
+    let (created, scanned) = (
         value(&rows, texts::HTML_CREATED),
-        texts::DE.moment(r.finished_at)
-    );
-    assert_ne!(
         value(&rows, texts::INFO_LAST_SCAN),
-        value(&rows, texts::HTML_CREATED),
-        "the fetch keeps its own time"
     );
+    assert!(matches!(created, Data::DateTime(_)) && matches!(scanned, Data::DateTime(_)));
+    assert_ne!(created, scanned, "the fetch keeps its own time");
     assert_eq!(
         value(&rows, texts::INFO_NEW),
-        card.to_string(),
+        card_cell,
         "still the fetch's"
+    );
+    for portal in Portal::ALL {
+        let health = value(&rows, &texts::info_portal(portal.label())).to_string();
+        assert!(!health.is_empty(), "{portal:?}");
+    }
+    assert_eq!(
+        value(&rows, &texts::info_portal(Portal::LinkedIn.label())).to_string(),
+        texts::HEALTH_OK
     );
 }
 
@@ -947,15 +964,20 @@ fn info_rows_of_an_earlier_version_use_todays_words() {
     ]);
     store.kv_set(LAST_SCAN_INFO, &old.to_string()).unwrap();
     let english = info_rows(&store, Timestamp::now(), &texts::EN);
+    let text = |s: &str| InfoValue::Text(s.to_owned());
     assert_eq!(
         english[0],
         (
             texts::en::INFO_LAST_SCAN.to_owned(),
-            "01.09.2026 08:00".to_owned()
+            text("01.09.2026 08:00")
         )
     );
-    assert_eq!(english[1].1, texts::en::SCOPE_NEW);
-    assert_eq!(english[2], (texts::en::INFO_NEW.to_owned(), "3".to_owned()));
+    assert_eq!(english[1].1, text(texts::en::SCOPE_NEW));
+    assert_eq!(
+        english[2],
+        (texts::en::INFO_NEW.to_owned(), InfoValue::Number(3)),
+        "a number, not text"
+    );
     let rows = info_rows(&store, Timestamp::now(), &texts::DE);
     let labels: Vec<&str> = rows.iter().map(|(label, _)| label.as_str()).collect();
     assert_eq!(
@@ -971,8 +993,11 @@ fn info_rows_of_an_earlier_version_use_todays_words() {
             texts::INFO_PROGRAM
         ]
     );
-    assert_eq!(rows[1].1, texts::SCOPE_NEW);
-    assert!(rows.iter().all(|(_, value)| !value.contains('@')));
+    assert_eq!(rows[1].1, text(texts::SCOPE_NEW));
+    assert!(
+        rows.iter()
+            .all(|(_, value)| !matches!(value, InfoValue::Text(t) if t.contains('@')))
+    );
 }
 
 /// Safety invariant: a text file the user deleted or emptied is not recreated by the next
@@ -1992,6 +2017,83 @@ async fn an_open_excel_file_is_reported_as_locked() {
     assert_eq!(std::fs::read(&xlsx).unwrap(), before, "the open file stays");
 }
 
+/// The Excel file follows the user's marks when asked: nothing changed, nothing is written;
+/// a note, "Beworben" or a move writes it (and the report) anew, the run of the last write
+/// kept; the Gmail links name the account the last scan read. Open in Excel (Windows), it
+/// stays as it is and the error names the file.
+#[tokio::test(start_paused = true)]
+async fn the_excel_file_follows_the_marks_when_asked() {
+    let c = clock();
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::in_memory().unwrap();
+    let mut fetch = ctx(dir.path(), false);
+    fetch.mailbox = Some("erika@gmail.com".into());
+    go(
+        &mut DemoBackends,
+        &store,
+        &request(),
+        &fetch,
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    let xlsx = export::overview_path(&dir.path().join(RESULT_DIR));
+    let before = std::fs::read(&xlsx).unwrap();
+    let unchanged = refresh_excel(&store, dir.path(), c(), Language::De);
+    assert_eq!(unchanged.overview_xlsx, None, "nothing changed");
+    assert_eq!(unchanged.error, None);
+    assert_eq!(std::fs::read(&xlsx).unwrap(), before);
+    let key = store.jobs(&JobFilter::default()).unwrap()[0].key.clone();
+    store.set_note(&key, Some("Anruf am Montag")).unwrap();
+    store
+        .set_applied(std::slice::from_ref(&key), true, c())
+        .unwrap();
+    let written = refresh_excel(&store, dir.path(), c(), Language::De);
+    assert_eq!(written.overview_xlsx.as_deref(), Some(xlsx.as_path()));
+    assert!(written.overview_html.is_some(), "the report with it");
+    {
+        use calamine::{Reader, Xlsx, open_workbook};
+        let mut book: Xlsx<_> = open_workbook(&xlsx).unwrap();
+        let range = book.worksheet_range(texts::JOBS_SHEET).unwrap();
+        let notes: Vec<String> = range.rows().map(|r| r[16].to_string()).collect();
+        assert!(notes.iter().any(|n| n == "Anruf am Montag"), "{notes:?}");
+    }
+    assert_eq!(
+        gmail_account(&store).as_deref(),
+        Some("erika@gmail.com"),
+        "the links name the account the scan read"
+    );
+    assert_eq!(
+        refresh_excel(&store, dir.path(), c(), Language::De).overview_xlsx,
+        None,
+        "written once"
+    );
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        store
+            .move_jobs(std::slice::from_ref(&key), Place::Archive, c())
+            .unwrap();
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&xlsx)
+            .unwrap();
+        let locked = refresh_excel(&store, dir.path(), c(), Language::De);
+        drop(lock);
+        let error = locked.error.unwrap();
+        assert_eq!(error.kind, ErrorKind::FileLocked);
+        assert_eq!(
+            (&error.params["target"], &error.params["name"]),
+            (
+                &serde_json::json!("overview"),
+                &serde_json::json!(export::XLSX_NAME)
+            )
+        );
+        assert_eq!(locked.overview_xlsx, None);
+    }
+}
+
 /// Rows of the Excel overview's job sheet (with the header).
 fn overview_rows(workspace: &Path) -> usize {
     use calamine::{Reader, Xlsx, open_workbook};
@@ -2138,10 +2240,10 @@ async fn a_run_archives_old_jobs_without_a_stage() {
     }
 }
 
-/// The Excel sheet lists what the app lists: an archived job leaves it (and comes back when
-/// listed again), a duplicate never has a row of its own.
+/// The Excel sheet lists the inbox and the archive, never the trash (a job back from it is
+/// listed again), and a duplicate never has a row of its own.
 #[tokio::test(start_paused = true)]
-async fn the_excel_sheet_leaves_out_archived_jobs() {
+async fn the_excel_sheet_leaves_out_the_trash() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
@@ -2159,23 +2261,17 @@ async fn the_excel_sheet_leaves_out_archived_jobs() {
     let one = std::slice::from_ref(&key);
     store.move_jobs(one, Place::Archive, c()).unwrap();
     export_all(&store, dir.path(), &[], 2, c(), Language::De);
-    assert_eq!(overview_rows(dir.path()), rows - 1);
+    assert_eq!(overview_rows(dir.path()), rows, "the archive stays in");
     store.move_jobs(one, Place::Trash, c()).unwrap();
     export_all(&store, dir.path(), &[], 3, c(), Language::De);
-    assert_eq!(overview_rows(dir.path()), rows - 1, "nor the trash");
+    assert_eq!(overview_rows(dir.path()), rows - 1, "the trash leaves it");
     store.move_jobs(one, Place::Inbox, c()).unwrap();
     export_all(&store, dir.path(), &[], 3, c(), Language::De);
     assert_eq!(overview_rows(dir.path()), rows);
-    let all = store.jobs(&JobFilter::default()).unwrap().len();
-    let listed = store
-        .jobs(&JobFilter {
-            listed: true,
-            ..JobFilter::default()
-        })
-        .unwrap()
-        .len();
+    let listed = store.sheet_jobs().unwrap().len();
     assert_eq!(rows, 1 + listed, "the header and one row per listed job");
-    assert!(listed <= all);
+    assert!(listed <= store.jobs(&JobFilter::default()).unwrap().len());
+    assert_eq!(u64::try_from(listed).unwrap(), store.sheet_count().unwrap());
 }
 
 /// At the end of a run the trash empties itself of the jobs that lie there long enough

@@ -1,6 +1,7 @@
-//! Generated files in the workspace: `JobAlerts.xlsx` (overview of all jobs) and one text
-//! file per job for the matching. Everything is generated from the database and written
-//! atomically - an open Excel file or a crash never leaves half a file behind.
+//! Generated files in the workspace: `JobAlerts.xlsx` (the jobs of the inbox and the archive),
+//! `JobAlerts.html` (the report), `top_matches.json` and one text file per job for the
+//! matching. Everything is generated from the database and written atomically - an open Excel
+//! file or a crash never leaves half a file behind.
 
 mod ai_prompt;
 mod job_txt;
@@ -15,11 +16,7 @@ use std::collections::HashSet;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use jiff::Timestamp;
-
 use crate::error::{Error, Result};
-use crate::store::JobRow;
-use crate::text::split_company_location;
 
 pub use ai_prompt::{
     MAX_AD_CHARS, MAX_PROFILE_CHARS, MAX_TOP_AD_CHARS, PromptJob, PromptSource, TOP_LIMITS,
@@ -32,7 +29,7 @@ pub use top_matches::{
     Found, TOP_MATCHES_MAX, TOP_MATCHES_NAME, TOP_MATCHES_SCHEMA, TopMatch, TopMatches, findings,
     found, top_matches,
 };
-pub use xlsx::write_xlsx;
+pub use xlsx::{InfoValue, write_xlsx};
 
 /// File and folder names below are a contract with the user's workspace and the matching
 /// skill - do not translate.
@@ -50,42 +47,6 @@ pub const RESULT_DIR: &str = "auswertung";
 /// writing, and they belong to the app.
 const TMP_PREFIX: &str = ".jam-";
 const TMP_SUFFIX: &str = ".tmp";
-
-/// One row of the overview as text. Date columns are missing here: Excel gets them as real
-/// dates, not as text.
-pub(crate) struct Line {
-    pub source: &'static str,
-    pub title: String,
-    pub company: String,
-    pub location: String,
-    pub url: String,
-    pub subject: String,
-    pub gmail_url: String,
-    pub details: &'static str,
-    pub key: String,
-}
-
-impl Line {
-    /// The row of `job`, its details state as of `now`.
-    pub fn of(job: &JobRow, texts: &Texts, now: Timestamp) -> Line {
-        let (company, location) = split_company_location(&job.company, &job.location);
-        Line {
-            source: job.key.portal.label(),
-            title: crate::view::display_title(job),
-            company,
-            location,
-            url: job.url.to_string(),
-            subject: job.mail_subject.clone(),
-            gmail_url: job
-                .gmail_id
-                .and_then(crate::model::gmail_url)
-                .map(|u| u.to_string())
-                .unwrap_or_default(),
-            details: texts.details_label(job, now),
-            key: job.key.to_string(),
-        }
-    }
-}
 
 /// Path of the overview file in the result folder.
 pub fn overview_path(result_dir: &Path) -> PathBuf {
