@@ -29,8 +29,8 @@ Components use roles only; so do the consumers outside the page:
 |---|---|---|
 | Report (`JobAlerts.html`) | `bg`, `surface`, `surface-muted`, `text`, `text-muted`, `text-subtle`, `border`, `icon-accent` (the star), `unread` (the dot of a new job), `score-high-*`, `score-mid-*`, `score-low-*` (text and surface), `score-track`, `danger`, `danger-strong`, `danger-soft`, `score-ring-0` ... `score-ring-9`, and the font `font-sans` | `core/src/export/palette.rs` (`overview_html.rs`) |
 | Excel file (`JobAlerts.xlsx`) | `surface-muted` (header row), `score-excluded` (excluded rows), `score-ring-0` ... `score-ring-9` (score cells) | `palette.rs` (`xlsx.rs`, `scale.rs`) |
-| Windows title bar | `bg` (caption), `text` (title), `text-subtle` (title of an inactive window) | `palette.rs` (`src-tauri/src/platform.rs`) |
-| Window background, both OS | `bg` | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json` |
+| Windows title bar | `bg` (caption), `text` (title), `text-subtle` (title of an inactive window), of the chosen palette | `palette.rs` (`window_colours` in `src-tauri/src/platform.rs`) |
+| Window background, both OS | `bg`: Coast's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 
 Only opaque colour roles leave the page: a role with an alpha (`--selection`), gradients and
@@ -64,6 +64,8 @@ Commit them together with tokens.css.
 
 ### What does not follow the palette
 
+- The report, the Excel file and the app icon keep Coast whatever palette is chosen in
+  Einstellungen (Light and Dark reach only the page and the window).
 - The macOS traffic lights and window frame, and the Windows caption buttons: the system's.
 - `tools/ui-harness/specs/shell.spec.ts` paints Apple's traffic light colours into a screenshot
   for people to look at.
@@ -71,3 +73,44 @@ Commit them together with tokens.css.
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
 - The TXT files have no colours.
+
+## Add or change a palette
+
+The app has three palettes (Einstellungen > Darstellung > Farben): Coast is the `:root` block
+of `ui/src/styles/tokens.css` and the default; Light and Dark are one block each,
+`:root[data-palette='light']` and `:root[data-palette='dark']`, laid over it. Components never
+ask which palette is on.
+
+1. **Change one**: edit its block. It sets the palette entries under Coast's names (`--p-cream`
+   is the window and the sidebar, `--p-white` the sheet and the cards, `--p-ink` the text,
+   `--p-coral` the fills and what is new, `--p-navy` focus, links and progress, ...), so every
+   role follows, and then only the roles whose part differs from Coast (in Dark the washes of
+   the light text, the scrim, the shadows, the text on the tooltip and on the fills). A value
+   of Coast is a change of `:root` and reaches the report, the Excel file and the icon too;
+   Light and Dark reach only the page and the window.
+2. **Add one** (say `sepia`): a block `:root[data-palette='sepia'] { ... }`, then the name in
+   `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
+   (`src-tauri/src/platform.rs`), in `PALETTES` (`ui/src/lib/palette.ts`), in the options of
+   the row `palette` (`ui/src/features/settings/cards.ts`) and its word in
+   `settings.paletteName` of `de.ts` and `en.ts`. `cargo test -p jobalert-core ipc_types`
+   writes the TypeScript type.
+3. Run `npm run regen`: `tools/tokens.mjs` writes the window's colours of every palette
+   (`LIGHT_BG`, `DARK_TEXT`, ... and `WINDOW_PALETTES` in `palette.rs`) and measures every text
+   role on its backgrounds in every palette (`CONTRAST`, WCAG AA 4.5:1). It fails on a pair
+   below; the only exception is Coast's light coral primary, a documented decision
+   (`EXCEPTIONS`). `npm run check` runs the same measurement.
+4. Check: `cargo test -p jobalert-core --test palette --test ui_contract`, the settings spec
+   (`npm run harness -- settings.spec.ts`, its palette and contrast tests), and the page in
+   each palette (`tools/ui-preview.cmd`, add `&palette=dark` to the address).
+
+## Add or change a setting, a first-run step or a key
+
+- A setting of Einstellungen is one entry in `ui/src/features/settings/cards.ts`: its card,
+  its kind (switch, choice, a row of buttons, a value), its texts from the catalog and what it
+  saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked target, or names a
+  command of `SettingsView.svelte`), with `locked` for why it waits. A new stored value also
+  needs its field in `Settings` (`core/src/settings.rs`) and `SettingsPatch` (`view.rs`).
+- A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
+  is done) and its snippet of the same id in `FirstRunView.svelte`.
+- A key of the app is one entry in `ui/src/lib/input/keys.ts`; the card of the keys and
+  Einstellungen both show it. Its handling lives in `ui/src/lib/input/input.ts`.

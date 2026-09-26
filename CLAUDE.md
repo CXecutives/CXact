@@ -15,8 +15,9 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
   modules marked `external contract - do not translate` (TXT header, folder names, profile JSON keys, German mail
   patterns, matching lexicon) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
 - The TXT files stay byte-identical (`header_is_exactly_the_contract`, `txt_is_blind_to_the_match`).
-- UI: light mode only, no theme infrastructure. It must feel like a native app: the native window frame of the OS on
-  both (Windows: its title bar in the app's colours via DWM, named constants in `platform.rs`; macOS: the unified
+- UI: three palettes (Coast, the default, Light and Dark: GitHub's Primer colours), defined only in
+  `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app: the native window frame of the OS on
+  both (Windows: its title bar in the palette's colours via DWM, `window_colours` in `platform.rs`; macOS: the unified
   title bar, traffic lights over the page's 52 px toolbar row whose empty parts move the window; no title bar or
   caption buttons drawn in the page; minimum window 480 x 360 for the snap layouts); the
   content inside the window is identical, and it differs between Windows and macOS only where the OS convention does
