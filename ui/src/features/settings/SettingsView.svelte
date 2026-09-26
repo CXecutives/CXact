@@ -435,9 +435,14 @@
             autofocus={editing}
             compact
             oncancel={cfg.mailbox.user ? () => void closeForm() : null}
-            onsaved={() => {
+            onsaved={(saved) => {
               mailboxSaved = true;
-              mailboxNote = { tone: 'success', text: () => t.settings.mailboxSaved };
+              // Signed in, but the alert mails were not counted in time: the fetch reads them.
+              const counted = saved.check !== null;
+              mailboxNote = {
+                tone: 'success',
+                text: () => (counted ? t.settings.mailboxSaved : t.settings.mailboxNotCounted),
+              };
               void closeForm();
             }}
           />

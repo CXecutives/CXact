@@ -31,7 +31,7 @@ mod schema;
 pub use backup::{BACKUP_DIR, backup_dir};
 pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
 pub use matches::{Judgement, NewFitting, OverviewJobs};
-pub use overview::BandCounts;
+pub use overview::{BandCounts, InboxOpen};
 
 /// Key of the Gmail address whose mails the last mailbox scan read: the files link the
 /// alert mails in that account (`model::gmail_url_for`). Never a password.

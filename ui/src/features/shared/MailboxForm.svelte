@@ -10,7 +10,9 @@
   first on Windows, last on macOS), 12 apart. In Einstellungen (`compact`) they are the 28 px
   buttons of a row and end on the trailing edge of the card; the single "Verbinden" of the
   first run is its step's main action (32 px) and stays under the fields. A saved change
-  says so where the mailbox is (Einstellungen).
+  says so where the mailbox is (Einstellungen). While Verbinden signs in and counts (it can
+  take a while), cancel and Esc stay live: they stop the check (`cancel_run`, the backend
+  holds the app for it) and close the form; the stop itself says nothing.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -21,6 +23,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { formKeys } from '$lib/input/input';
   import { invoke, IpcError } from '$lib/ipc/api';
+  import type { Mailbox } from '$lib/ipc/types';
   import { primaryFirst } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { onMount } from 'svelte';
@@ -33,7 +36,8 @@
     saveLabel: string;
     /** Only when changing an existing mailbox. */
     oncancel?: (() => void) | null;
-    onsaved?: (() => void) | null;
+    /** The mailbox as saved (`check` null: signed in, the alert mails not counted). */
+    onsaved?: ((saved: Mailbox) => void) | null;
     /**
      * The caret starts in the first empty field once the form appears (the first run, where
      * this form is the first step, and "Ändern", which keeps the address): the address, or
@@ -96,15 +100,17 @@
     }
     busy = true;
     try {
-      await invoke('save_mailbox', { user: user.trim(), password });
+      const saved = await invoke('save_mailbox', { user: user.trim(), password });
       password = '';
       await app.load();
-      onsaved?.();
+      onsaved?.(saved);
     } catch (error) {
       const kind = error instanceof IpcError ? error.kind : null;
       const reason = error instanceof IpcError ? error.params.reason : null;
       const words = (): string => errorText(error);
-      if (kind === 'mailAuth') {
+      if (kind === 'mailCancelled') {
+        // Stopped on purpose (cancel, Esc, the window closing): nothing to say.
+      } else if (kind === 'mailAuth') {
         // Gmail refuses address or password: both are marked, the password shakes once.
         refused = true;
         formError = words;
@@ -121,6 +127,15 @@
     }
   }
 
+  /** Cancel and Esc: a check in progress is stopped first (the answer to save_mailbox is then
+   *  `mailCancelled`, said by nobody); the form closes at once either way. */
+  function cancel(): void {
+    if (busy) {
+      invoke('cancel_run').catch((error: unknown) => (formError = () => errorText(error)));
+    }
+    oncancel?.();
+  }
+
   function openPage(kind: 'appPasswordPage' | 'twoStepPage'): void {
     invoke('open_target', { target: { kind } }).catch(
       (error: unknown) => (formError = () => errorText(error)),
@@ -131,9 +146,7 @@
 <div
   class="form"
   data-testid="mailbox-form"
-  use:formKeys={oncancel
-    ? { save: () => void save(), cancel: oncancel }
-    : { save: () => void save() }}
+  use:formKeys={oncancel ? { save: () => void save(), cancel } : { save: () => void save() }}
 >
   <div class="fields">
     <Field label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
@@ -191,9 +204,8 @@
           variant="secondary"
           {size}
           label={t.common.cancel}
-          disabled={busy}
           testid="mailbox-cancel"
-          onclick={() => oncancel?.()}
+          onclick={cancel}
         />
       {/if}
     {/snippet}
