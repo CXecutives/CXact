@@ -4,9 +4,10 @@
 // the passage that states the value. A value the ad does not state says "offen"; a verdict
 // that would only repeat it stays empty. Only the reader uses this module.
 //
-// A new row (Auslastung, Mindestlaufzeit) is one key in TERM_ROWS, its name in the catalog
-// (`reader.term`) and one case in `build`; the reason codes it stands for go into
-// ROW_OF_CODE, its criterion into ROW_OF_CRITERION.
+// A new row is one key in TERM_ROWS, its name in the catalog (`reader.term`) and one case in
+// `build`; the reason codes it stands for go into ROW_OF_CODE, its criterion into
+// ROW_OF_CRITERION. Engine 16 compares the workload (Auslastung) and the duration (Laufzeit)
+// with the profile: a check, never an exclusion.
 
 import { formatDate } from '$lib/i18n/format';
 import type { CriterionKey } from '$lib/i18n/de';
@@ -15,7 +16,7 @@ import { criterionKey } from '$lib/i18n/texts';
 import type { JobView, KeyFacts, ProfileForm, Reason } from '$lib/ipc/types';
 
 export type TermKey =
-  'contract' | 'rate' | 'start' | 'duration' | 'remote' | 'place' | 'experience';
+  'contract' | 'rate' | 'start' | 'duration' | 'workload' | 'remote' | 'place' | 'experience';
 
 /** The rows of the table, in their order. */
 export const TERM_ROWS: readonly TermKey[] = [
@@ -23,6 +24,7 @@ export const TERM_ROWS: readonly TermKey[] = [
   'rate',
   'start',
   'duration',
+  'workload',
   'remote',
   'place',
   'experience',
@@ -73,9 +75,12 @@ const ROW_OF_CODE: Record<string, TermKey> = {
   tooJunior: 'experience',
   seniorityUnclear: 'experience',
   overqualified: 'experience',
+  duration: 'duration',
+  workload: 'workload',
 };
 
-/** The hard criteria of the profile per row (the annual salary has no row). */
+/** The hard criteria of the profile per row (the annual salary and the exclusion words have no
+ *  row: an exclusion word says itself in the exclusion box). */
 const ROW_OF_CRITERION: Record<CriterionKey, TermKey | null> = {
   minDayRate: 'rate',
   countries: 'place',
@@ -85,6 +90,9 @@ const ROW_OF_CRITERION: Record<CriterionKey, TermKey | null> = {
   minSalary: null,
   permanentRegion: 'place',
   targetYears: 'experience',
+  duration: 'duration',
+  workload: 'workload',
+  exclusionWords: null,
 };
 
 /** The row a reason of the match stands for, or null. */
@@ -255,9 +263,29 @@ function build(key: TermKey, input: TermInput): TermRow {
               ),
       });
     }
-    case 'duration':
-      // No rule compares the duration yet (Mindestlaufzeit comes with the engine).
-      return row(facts?.months ? t.facts.months(facts.months) : null, null);
+    case 'duration': {
+      // The minimum duration of the profile: a shorter engagement is a check (a permanent
+      // job has no end, the engine leaves the rule out there).
+      const rule = criterion('duration');
+      const months = num(rule?.params.months) ?? facts?.months ?? null;
+      const min = profile?.criteria.minMonths ?? num(rule?.params.min);
+      return row(months ? t.facts.months(months) : null, rule ? criterionVerdict(rule) : null, {
+        profile: min === null ? null : t.reader.profileSide.duration(min),
+      });
+    }
+    case 'workload': {
+      // The days a week of the profile: a workload outside them is a check.
+      const rule = criterion('workload');
+      const to = num(rule?.params.to) ?? facts?.workloadTo ?? null;
+      const from = rule ? num(rule.params.from) : (facts?.workloadFrom ?? null);
+      const min = profile?.criteria.workloadMinDays ?? num(rule?.params.minDays);
+      const max = profile?.criteria.workloadMaxDays ?? num(rule?.params.maxDays);
+      return row(
+        to === null ? null : t.facts.workload(from, to, false),
+        rule ? criterionVerdict(rule) : null,
+        { profile: min === null && max === null ? null : t.reader.profileSide.workload(min, max) },
+      );
+    }
     case 'remote': {
       const wish = code('remoteWish');
       const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;

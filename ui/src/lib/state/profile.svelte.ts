@@ -66,6 +66,10 @@ export function emptyForm(): ProfileForm {
       minSalary: null,
       permanentPlaces: [],
       permanentRemoteMin: null,
+      workloadMinDays: null,
+      workloadMaxDays: null,
+      minMonths: null,
+      exclusionWords: [],
     },
   };
 }
@@ -82,8 +86,8 @@ export function cleanList(items: readonly string[]): string[] {
   return out;
 }
 
-const positive = (value: number | null): number | null =>
-  value !== null && value > 0 ? value : null;
+const positive = (value: number | null | undefined): number | null =>
+  value !== null && value !== undefined && value > 0 ? value : null;
 
 /** The form the way the backend compares it (trimmed, empty rows and entries gone). */
 export function normalized(form: ProfileForm): ProfileForm {
@@ -126,6 +130,11 @@ export function normalized(form: ProfileForm): ProfileForm {
       minSalary: positive(c.minSalary),
       permanentPlaces: cleanList(c.permanentPlaces),
       permanentRemoteMin: positive(c.permanentRemoteMin),
+      // Engine 16: a profile of an older backend has none of them (the same as none set).
+      workloadMinDays: positive(c.workloadMinDays),
+      workloadMaxDays: positive(c.workloadMaxDays),
+      minMonths: positive(c.minMonths),
+      exclusionWords: cleanList(c.exclusionWords ?? []),
     },
   };
 }
@@ -209,6 +218,10 @@ const FIELDS: readonly UnreadableField[] = [
   'remote',
   'regions',
   'wishIndustries',
+  'workloadMinDays',
+  'workloadMaxDays',
+  'minMonths',
+  'exclusionWords',
 ];
 
 const isField = (value: unknown): value is UnreadableField =>
@@ -249,6 +262,14 @@ function fieldValue(form: ProfileForm, field: UnreadableField): unknown {
       return w.regions;
     case 'wishIndustries':
       return w.industries;
+    case 'workloadMinDays':
+      return c.workloadMinDays ?? null;
+    case 'workloadMaxDays':
+      return c.workloadMaxDays ?? null;
+    case 'minMonths':
+      return c.minMonths ?? null;
+    case 'exclusionWords':
+      return c.exclusionWords ?? [];
   }
 }
 
@@ -432,6 +453,13 @@ export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
   c.minSalary ??= ac.minSalary;
   if (c.permanentPlaces.length === 0) c.permanentPlaces = ac.permanentPlaces;
   c.permanentRemoteMin ??= ac.permanentRemoteMin;
+  // The days a week are one range: the answer's only while the profile sets neither end.
+  if ((c.workloadMinDays ?? null) === null && (c.workloadMaxDays ?? null) === null) {
+    c.workloadMinDays = ac.workloadMinDays ?? null;
+    c.workloadMaxDays = ac.workloadMaxDays ?? null;
+  }
+  c.minMonths ??= ac.minMonths ?? null;
+  if ((c.exclusionWords ?? []).length === 0) c.exclusionWords = ac.exclusionWords ?? [];
   return form;
 }
 

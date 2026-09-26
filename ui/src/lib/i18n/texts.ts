@@ -35,6 +35,7 @@ const ALIASES: Record<string, CriterionKey> = {
   permanent: 'noPermanent',
   salary: 'minSalary',
   tooJunior: 'targetYears',
+  exclusionWord: 'exclusionWords',
 };
 
 export function criterionKey(value: unknown): CriterionKey | null {
@@ -176,15 +177,27 @@ function rateWords(
   );
 }
 
+/** The workload an ad states (percent of a five-day week), short for a row ("Vollzeit",
+ *  "3 Tage/Woche", "50 %") or long for the reader ("3 Tage pro Woche"); null when it says
+ *  nothing. */
+export function workloadWords(
+  facts: Pick<KeyFacts, 'workloadFrom' | 'workloadTo'> | null | undefined,
+  short: boolean,
+): string | null {
+  const to = facts?.workloadTo;
+  if (typeof to !== 'number') return null;
+  return t.facts.workload(facts?.workloadFrom ?? null, to, short);
+}
+
 /**
- * The key facts of an ad for its list row, in this order: start, duration, remote share,
- * rate ("ab sofort", "6 Monate", "60 % remote", "1.100 €/Tag"). What the ad does not say is
- * left out.
+ * The key facts of an ad for its list row, in this order: rate, remote share, duration,
+ * workload, start ("1.100 €/Tag", "60 % remote", "6 Monate", "3 Tage/Woche", "ab sofort").
+ * What the ad does not say is left out.
  */
 export function factWords(facts: KeyFacts | null | undefined): string[] {
   if (!facts) return [];
-  // What a freelancer weighs first comes first: the rate, the remote share, the length, then
-  // the start (a fact that does not fit drops out from the end).
+  // What a freelancer weighs first comes first: the rate, the remote share, the length, the
+  // days a week, then the start (a fact that does not fit drops out from the end).
   const out: string[] = [];
   const terms = termWords(facts);
   if (terms.minDayRate) out.push(terms.minDayRate);
@@ -192,6 +205,8 @@ export function factWords(facts: KeyFacts | null | undefined): string[] {
   const to = facts.remoteTo ?? facts.remoteFrom;
   if (from !== null && to !== null) out.push(t.facts.remote(from, to));
   if (facts.months) out.push(t.facts.months(facts.months));
+  const workload = workloadWords(facts, true);
+  if (workload) out.push(workload);
   if (terms.availability) out.push(terms.availability);
   return out;
 }

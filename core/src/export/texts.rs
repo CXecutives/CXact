@@ -232,6 +232,32 @@ pub fn start_from(day: &str) -> String {
     format!("ab {day}")
 }
 
+/// The workload in percent of a five-day week, as the app's list row says it: `Vollzeit`,
+/// whole days as days (`3 Tage/Woche`, `3 bis 4 Tage/Woche`), any other share as a share
+/// (`50 %`), part-time without a number as such (`Teilzeit`, with full time open too
+/// `Teilzeit möglich`).
+pub fn workload_words(from: Option<u8>, to: u8) -> String {
+    let Some(from) = from else {
+        return if to >= 100 {
+            "Teilzeit möglich"
+        } else {
+            "Teilzeit"
+        }
+        .to_owned();
+    };
+    let low = from.min(to);
+    if low == to && to >= 100 {
+        return "Vollzeit".to_owned();
+    }
+    match workload_days(low, to) {
+        Some((1, 1)) => "1 Tag/Woche".to_owned(),
+        Some((a, b)) if a == b => format!("{b} Tage/Woche"),
+        Some((a, b)) => format!("{a} bis {b} Tage/Woche"),
+        None if low == to => format!("{to}\u{202f}%"),
+        None => format!("{low} bis {to}\u{202f}%"),
+    }
+}
+
 /// Why a job is excluded, by the code of its first violation (the list's `note`), in the
 /// words of the interface's criteria. `None` for a code without a text: the overview then
 /// says only "Ausgeschlossen" - never the code itself.
@@ -245,6 +271,7 @@ pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'sta
         "salary" => "Das Gehalt liegt unter dem Minimum im Profil.",
         "permanentRegion" => "Der Ort liegt außerhalb der Orte für Festanstellung.",
         "tooJunior" => "Der Job verlangt deutlich weniger Erfahrung.",
+        "exclusionWord" => "Die Anzeige nennt ein Ausschlusswort aus dem Profil.",
         "formalOpen" if licence(params) => {
             "Die Anzeige verlangt eine Zulassung, die das Profil nicht nennt."
         }
@@ -460,6 +487,28 @@ pub mod en {
         format!("from {day}")
     }
 
+    pub fn workload_words(from: Option<u8>, to: u8) -> String {
+        let Some(from) = from else {
+            return if to >= 100 {
+                "part-time possible"
+            } else {
+                "part-time"
+            }
+            .to_owned();
+        };
+        let low = from.min(to);
+        if low == to && to >= 100 {
+            return "full-time".to_owned();
+        }
+        match super::workload_days(low, to) {
+            Some((1, 1)) => "1 day/week".to_owned(),
+            Some((a, b)) if a == b => format!("{b} days/week"),
+            Some((a, b)) => format!("{a} to {b} days/week"),
+            None if low == to => format!("{to}%"),
+            None => format!("{low} to {to}%"),
+        }
+    }
+
     pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'static str> {
         Some(match code {
             "dayRate" => "The day rate is below the minimum in the profile.",
@@ -470,6 +519,7 @@ pub mod en {
             "salary" => "The salary is below the minimum in the profile.",
             "permanentRegion" => "The location is outside your locations for permanent jobs.",
             "tooJunior" => "The job asks for much less experience.",
+            "exclusionWord" => "The ad names an exclusion word from the profile.",
             "formalOpen" if licence(params) => {
                 "The ad requires a licence the profile does not name."
             }
@@ -506,6 +556,13 @@ fn group(count: usize, separator: char) -> String {
         out.push(digit);
     }
     out
+}
+
+/// Shares of a five-day week that are whole days (a fifth each), as days: `(3, 4)` for 60 to
+/// 80 percent; `None` when one of them is not.
+fn workload_days(from: u8, to: u8) -> Option<(u8, u8)> {
+    let whole = |share: u8| share > 0 && share.is_multiple_of(20);
+    (whole(from) && whole(to)).then_some((from / 20, to / 20))
 }
 
 /// Does a `formalOpen` violation name a licence (not a degree)?
@@ -607,6 +664,7 @@ pub struct Texts {
     pub rate_open: &'static str,
     remote_words: fn(u8, u8) -> String,
     months_words: fn(u16) -> String,
+    workload_words: fn(Option<u8>, u8) -> String,
     start_from: fn(&str) -> String,
     /// A moment as text (`strftime`): `19.09.2026 14:05`, `19/09/2026 14:05`.
     pub moment: &'static str,
@@ -689,6 +747,7 @@ pub const DE: Texts = Texts {
     rate_open: RATE_OPEN,
     remote_words,
     months_words,
+    workload_words,
     start_from,
     moment: "%d.%m.%Y %H:%M",
     day: "%d.%m.%Y",
@@ -771,6 +830,7 @@ pub const EN: Texts = Texts {
     rate_open: en::RATE_OPEN,
     remote_words: en::remote_words,
     months_words: en::months_words,
+    workload_words: en::workload_words,
     start_from: en::start_from,
     moment: "%d/%m/%Y %H:%M",
     day: "%d/%m/%Y",
@@ -878,6 +938,13 @@ impl Texts {
         facts.months.map(self.months_words)
     }
 
+    /// The workload an ad states (`Vollzeit`, `3 Tage/Woche`, `50 %`).
+    pub fn workload(&self, facts: &KeyFacts) -> Option<String> {
+        facts
+            .workload_to
+            .map(|to| (self.workload_words)(facts.workload_from, to))
+    }
+
     /// The start an ad states: `ab sofort`, `ab 01.11.2026`; a vague one only with `vague`
     /// (`offen`).
     pub fn start(&self, facts: &KeyFacts, vague: bool) -> Option<String> {
@@ -894,13 +961,13 @@ impl Texts {
     }
 
     /// The facts line of a job as the app shows it, in its order: rate, remote share,
-    /// duration, workload, start (what the ad does not state is left out; the workload
-    /// follows once the engine reads it).
+    /// duration, workload, start (what the ad does not state is left out).
     pub fn facts_line(&self, facts: &KeyFacts) -> Vec<String> {
         [
             self.rate(facts),
             self.remote(facts),
             self.duration(facts),
+            self.workload(facts),
             self.start(facts, false),
         ]
         .into_iter()
@@ -959,6 +1026,7 @@ mod tests {
                 ReasonCode::PermanentRegion,
                 ReasonCode::TooJunior,
                 ReasonCode::FormalOpen,
+                ReasonCode::ExclusionWord,
             ] {
                 let name = code_name(&code);
                 assert!(texts.exclusion_reason(&name, &none).is_some(), "{name}");
@@ -969,6 +1037,43 @@ mod tests {
             );
             assert_eq!(texts.exclusion_reason("somethingNew", &none), None);
         }
+    }
+
+    /// The workload in the words of the app's list row (`texts.ts` factWords), placed after
+    /// the duration and before the start.
+    #[test]
+    fn the_workload_reads_like_the_list_row() {
+        let cases = [
+            (Some(100), 100, "Vollzeit", "full-time"),
+            (Some(60), 60, "3 Tage/Woche", "3 days/week"),
+            (Some(20), 20, "1 Tag/Woche", "1 day/week"),
+            (Some(60), 80, "3 bis 4 Tage/Woche", "3 to 4 days/week"),
+            (Some(50), 50, "50\u{202f}%", "50%"),
+            (Some(50), 70, "50 bis 70\u{202f}%", "50 to 70%"),
+            (None, 80, "Teilzeit", "part-time"),
+            (None, 100, "Teilzeit möglich", "part-time possible"),
+        ];
+        for (from, to, de, en) in cases {
+            let facts = KeyFacts {
+                workload_from: from,
+                workload_to: Some(to),
+                ..KeyFacts::default()
+            };
+            assert_eq!(DE.workload(&facts).as_deref(), Some(de));
+            assert_eq!(EN.workload(&facts).as_deref(), Some(en));
+        }
+        assert_eq!(DE.workload(&KeyFacts::default()), None);
+        let facts = KeyFacts {
+            months: Some(6),
+            start: Some("now".into()),
+            workload_from: Some(60),
+            workload_to: Some(60),
+            ..KeyFacts::default()
+        };
+        assert_eq!(
+            DE.facts_line(&facts),
+            ["6 Monate", "3 Tage/Woche", "ab sofort"]
+        );
     }
 
     /// Both languages say the same things: each word has its counterpart, none is left

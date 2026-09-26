@@ -5,7 +5,8 @@
   A decimal part is cut off, never joined to the digits (`7,5` years count 7), and once the
   field is left a note under it says so; in money a group of three digits after a point or
   comma is a thousands separator (`1.100`, `1,100`), one or two digits are cents (`950,50`).
-  Every number field has the same width (or its column's, if that is narrower).
+  Every number field has the same width (or its column's, if that is narrower); a compact one
+  holds a day of the week (the workload's von and bis stand on one line).
 -->
 <script lang="ts">
   import TextField from '$components/TextField.svelte';
@@ -17,6 +18,8 @@
     value: number | null;
     /** Euros: grouped (`1.100`), cents cut off with a note. */
     money?: boolean;
+    /** One or two digits (a day of the week): a narrow field. */
+    compact?: boolean;
     /** The unit right of the field (`€`, `Jahre`, `%`). */
     unit?: string | null;
     id?: string | null;
@@ -30,6 +33,7 @@
   let {
     value = $bindable(),
     money = false,
+    compact = false,
     unit = null,
     id = null,
     label = null,
@@ -81,7 +85,7 @@
     rounded = cut;
   }}
 >
-  <span class="box">
+  <span class="box" class:compact>
     <TextField
       bind:value={text}
       {id}
@@ -125,6 +129,10 @@
   .box {
     flex: none;
     width: min(100%, calc(var(--stat-min) - var(--space-48)));
+  }
+
+  .box.compact {
+    width: var(--space-64);
   }
 
   /* The unit reads with the value: the 14 px of the field. */

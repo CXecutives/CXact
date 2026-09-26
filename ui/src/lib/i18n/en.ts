@@ -194,6 +194,10 @@ const profileField: Record<string, string> = {
   contracts: 'Temporary agency work and permanent jobs',
   remoteOutside: 'Exclude remote jobs abroad',
   available: 'Available from',
+  workloadMinDays: 'Workload',
+  workloadMaxDays: 'Workload',
+  minMonths: 'Minimum duration',
+  exclusionWords: 'Exclusion words',
   targetYears: 'Jobs from',
   minSalary: 'Minimum annual salary',
   permanentPlaces: 'Locations for permanent jobs',
@@ -275,6 +279,53 @@ const PROFILE_UNREADABLE = 'Profile cannot be read';
 const ANUE = 'The ad mentions temporary agency work.';
 const LOW_TEXT = 'The ad has little text.';
 const SHORT_TEXT = 'The ad is very short.';
+const WORKLOAD = 'The workload does not fit the profile.';
+const DURATION = 'The duration is below the minimum in the profile.';
+
+/** Days in a week: "3 days a week", short "3 days/week". */
+const weekDays = (days: number, short: boolean): string =>
+  short ? `${count(days, 'day', 'days')}/week` : `${count(days, 'day', 'days')} a week`;
+
+/** The workload of an ad in words, as in de.ts: "full-time", "3 days a week", "50%". */
+function workloadWords(from: number | null, to: number, short: boolean): string {
+  if (from === null) return to >= 100 ? 'part-time possible' : 'part-time';
+  const low = Math.min(from, to);
+  const whole = (share: number): boolean => share > 0 && share % 20 === 0;
+  if (low === to) {
+    if (to >= 100) return 'full-time';
+    return whole(to) ? weekDays(to / 20, short) : formatPercent(to);
+  }
+  if (whole(low) && whole(to)) return `${n(low / 20)} to ${weekDays(to / 20, short)}`;
+  return `${n(low)} to ${formatPercent(to)}`;
+}
+
+/** The days per week of the profile: "3 to 5 days", "at least 3 days", with `week` "3 to 5
+ *  days a week". */
+function profileDays(min: number | null, max: number | null, week: boolean): string {
+  const days = (value: number): string =>
+    week ? weekDays(value, false) : count(value, 'day', 'days');
+  if (min !== null && max !== null) return min === max ? days(min) : `${n(min)} to ${days(max)}`;
+  if (min !== null) return `at least ${days(min)}`;
+  return max === null ? '' : `at most ${days(max)}`;
+}
+
+const numberOr = (value: unknown): number | null => (typeof value === 'number' ? value : null);
+
+/** The ad's workload against the profile's days (`from`, `to`, `minDays`, `maxDays`). */
+function workloadCheck(p: Params): string {
+  const to = numberOr(p.to);
+  if (to === null) return WORKLOAD;
+  const from = numberOr(p.from);
+  const ad = workloadWords(from, to, false);
+  const max = numberOr(p.maxDays);
+  const min = numberOr(p.minDays);
+  if (max !== null && from !== null && from > max * 20) {
+    return `The ad says ${ad}, but the profile allows at most ${weekDays(max, false)}.`;
+  }
+  return min === null
+    ? WORKLOAD
+    : `The ad says ${ad}, but the profile looks for at least ${weekDays(min, false)}.`;
+}
 
 /** Contract type of an ad (`contractType` params `type`, `inferred`). */
 const contract: Record<ContractKind, string> = {
@@ -440,6 +491,12 @@ const reasonCode = {
   remoteWish,
   regionWish,
   industryWish,
+  workload: workloadCheck,
+  duration: (p) =>
+    typeof p.months === 'number' && typeof p.min === 'number'
+      ? `The duration of ${count(p.months, 'month', 'months')} is below the minimum of ${count(p.min, 'month', 'months')}.`
+      : DURATION,
+  exclusionWord: (p) => `“${str(p.word)}” is on your list of exclusion words.`,
 } satisfies Catalog['reason']['code'];
 
 /**
@@ -487,6 +544,21 @@ const criteria = {
     short: 'Experience does not fit',
     exclusion: 'The job asks for much less experience.',
   },
+  workload: {
+    label: 'Workload',
+    short: 'Workload does not fit',
+    exclusion: WORKLOAD,
+  },
+  duration: {
+    label: 'Duration',
+    short: 'Duration too short',
+    exclusion: DURATION,
+  },
+  exclusionWords: {
+    label: 'Exclusion words',
+    short: 'Exclusion word',
+    exclusion: 'The ad names an exclusion word from the profile.',
+  },
 } satisfies Catalog['reader']['criterion'];
 
 /** `JobMatch.note` / `MatchDetail.summary` codes. */
@@ -521,6 +593,15 @@ const profileKey: Record<string, string> = {
   permanent_remote_min: profileField.permanentRemoteMin!,
   zielprofil_min_jahre: profileField.targetYears!,
   target_min_years: profileField.targetYears!,
+  auslastung_min_tage: profileField.workloadMinDays!,
+  workload_min_days: profileField.workloadMinDays!,
+  auslastung_max_tage: profileField.workloadMaxDays!,
+  workload_max_days: profileField.workloadMaxDays!,
+  min_laufzeit_monate: profileField.minMonths!,
+  min_duration_months: profileField.minMonths!,
+  ausschlusswoerter: profileField.exclusionWords!,
+  ausschlusswörter: profileField.exclusionWords!,
+  exclusion_words: profileField.exclusionWords!,
   schwerpunkte: profileField.focus!,
   focus_areas: profileField.focus!,
   wunschrollen: profileField.roles!,
@@ -965,6 +1046,7 @@ export const en: Catalog = {
     },
     rateOpen: 'Rate negotiable',
     fullRemote: 'fully remote',
+    workload: (from: number | null, to: number, short: boolean) => workloadWords(from, to, short),
   },
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
@@ -982,6 +1064,7 @@ export const en: Catalog = {
       rate: 'Day rate',
       start: 'Start',
       duration: 'Duration',
+      workload: 'Workload',
       remote: 'Remote',
       place: 'Location',
       experience: 'Experience',
@@ -1009,6 +1092,8 @@ export const en: Catalog = {
         return preferred === '' ? minimum : `${minimum}, preferred ${preferred}`;
       },
       start: (date: string | null) => (date === null ? 'Available now' : `Available from ${date}`),
+      workload: (min: number | null, max: number | null) => profileDays(min, max, false),
+      duration: (min: number) => `at least ${count(min, 'month', 'months')}`,
       remote: (level: RemoteWish) => `Preferred ${REMOTE_LEVEL[level] ?? level}`,
       place: (countries: string, regions: readonly string[]) => {
         const where = countries === '' ? '' : countryNames(countries);
@@ -1184,6 +1269,9 @@ export const en: Catalog = {
       sales: 'Sales',
       legal: 'Legal',
       software: 'Software',
+      restructuring: 'Restructuring',
+      consulting: 'Management consulting',
+      energy: 'Energy industry',
     } as Record<string, string>,
     draft: {
       new: 'New profile',
@@ -1286,6 +1374,18 @@ export const en: Catalog = {
       noPermanentHint: 'Only on clear wording, otherwise the app marks the job to check.',
       available: 'Available from',
       availableHint: 'A job that starts earlier is marked to check.',
+      workload: 'Workload',
+      workloadFrom: 'from',
+      workloadTo: 'to',
+      workloadMin: 'Workload from',
+      workloadMax: 'Workload to',
+      workloadHint: 'A job that does not fit is marked to check.',
+      workloadOrder: 'The second value is below the first.',
+      minMonths: 'Minimum duration',
+      minMonthsHint: 'A shorter job is marked to check.',
+      exclusionWords: 'Exclusion words',
+      exclusionWordsHint: 'Jobs with these words in the title or text are excluded.',
+      exclusionWordsPlaceholder: 'e.g. Internship',
       open: 'Open',
       date: 'Date',
       datePlaceholder: '1 Nov 2026',
@@ -1314,6 +1414,8 @@ export const en: Catalog = {
       years: 'years',
       experience: 'years of experience',
       percent: '%',
+      days: 'days a week',
+      months: 'months',
     },
     level: {
       a1: 'A1',
@@ -1382,6 +1484,8 @@ export const en: Catalog = {
       years: 'Professional experience',
       yearsValue: (value: number) => count(value, 'year', 'years'),
       yearsFrom: (value: number) => `${count(value, 'year', 'years')} of experience`,
+      workload: (min: number | null, max: number | null) => profileDays(min, max, true),
+      months: (value: number) => count(value, 'month', 'months'),
       degrees: 'Degrees',
       packs: 'Specialist vocabulary',
       criteria: 'Conditions',

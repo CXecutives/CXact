@@ -66,26 +66,11 @@ fn labels(catalog: &str) -> Vec<String> {
     keys
 }
 
-/// Packs of engine 16 whose names come with the UI integration (the engine track does not
-/// edit the catalogs); the test fails once a catalog names one, so this list goes.
-const PENDING_UI_NAMES: &[&str] = &["consulting", "energy", "restructuring"];
-
 #[test]
 fn every_pack_has_a_name_in_both_catalogs() {
     let ids = pack_ids();
-    assert!(ids.len() >= 11, "{ids:?}");
+    assert!(ids.len() >= 14, "{ids:?}");
     for catalog in ["ui/src/lib/i18n/de.ts", "ui/src/lib/i18n/en.ts"] {
-        let labels = labels(catalog);
-        for pending in PENDING_UI_NAMES {
-            assert!(
-                !labels.iter().any(|l| l == pending),
-                "{catalog} names {pending} now: remove it from PENDING_UI_NAMES"
-            );
-        }
-        let expected: Vec<&String> = ids
-            .iter()
-            .filter(|id| !PENDING_UI_NAMES.contains(&id.as_str()))
-            .collect();
-        assert_eq!(labels.iter().collect::<Vec<_>>(), expected, "{catalog}");
+        assert_eq!(labels(catalog), ids, "{catalog}");
     }
 }
