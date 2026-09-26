@@ -63,7 +63,8 @@ for (const [width, rail] of [
       await expect(label).toHaveAttribute('aria-label', 'Profil');
       await label.hover();
       const tip = page.getByRole('tooltip');
-      await expect(tip).toHaveText('Profil');
+      // The name, and its key as the second line.
+      await expect(tip).toHaveText('ProfilStrg+3');
       // Right of the icon, centred on it, never over the next entry (like a native rail).
       await expect(tip.locator('div')).toHaveCSS('opacity', '1');
       const icon = (await label.boundingBox())!;

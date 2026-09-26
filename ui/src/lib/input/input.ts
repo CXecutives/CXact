@@ -64,6 +64,7 @@ import {
   keyLabel,
   type KeyConventions,
 } from '../platform';
+import { navigation, VIEW_IDS, type ViewId } from '../state/navigation.svelte';
 import {
   chooseEntry,
   closeMenu,
@@ -88,6 +89,10 @@ const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
 /** Controls that Enter presses: buttons only. A switch or a radio toggles with Space, like the
  *  native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES = 'button:not([role="switch"], [role="radio"]), [role="button"]';
+/** The sidebar and the list's header: pressed, not focused (`data-press-only`). */
+const PRESS_ONLY_ZONE = '[data-press-only]';
+/** Controls a press does not focus: in the sidebar and the list's header. */
+const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
 const FOCUSABLE = [
@@ -346,11 +351,12 @@ function shownList(): ListKeyHandlers | null {
   return null;
 }
 
-/** The list the key belongs to: the one around the focus, or the shown one without a focus. */
+/** The list the key belongs to: the one around the focus, or the shown one without a focus
+ *  or with the focus on a control above it (the sidebar, the list's header). */
 function listFor(target: EventTarget | null): ListKeyHandlers | null {
   const node = closest(target, LIST);
   if (node instanceof HTMLElement) return lists.get(node) ?? null;
-  return isNowhere(target) ? shownList() : null;
+  return isNowhere(target) || closest(target, PRESS_ONLY_ZONE) !== null ? shownList() : null;
 }
 
 /** Ctrl+F or Cmd+F (the command key of the OS), without Alt or Shift. */
@@ -369,9 +375,12 @@ const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'H
 /** Arrows, Home, End and Esc outside a field; `true` if a list took the key. */
 function dispatchListKey(event: KeyboardEvent): boolean {
   if (event.isComposing || hasModifier(event)) return false;
-  // The arrows, Home and End of a radio group (the segments) are the group's.
-  if (closest(event.target, '[role="radio"]') !== null && MOVE_KEYS.has(event.key)) {
-    return false;
+  // The arrows, Home and End of a radio group in a form are the group's; above the list
+  // (the tabs, the segments) left and right are.
+  const option = closest(event.target, '[role="radio"], [role="tab"]');
+  const rowOnly = closest(option, PRESS_ONLY_ZONE) !== null;
+  if (option !== null && MOVE_KEYS.has(event.key)) {
+    if (!rowOnly || event.key === 'ArrowLeft' || event.key === 'ArrowRight') return false;
   }
   const list = listFor(event.target);
   if (list === null) return false;
@@ -463,24 +472,29 @@ function isNowhere(target: EventTarget | null): boolean {
  *  tabindex 0). `true` if the group took the key. */
 function dispatchRadioKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
+  const option = closest(event.target, '[role="radio"], [role="tab"]');
+  const role = option?.getAttribute('role') ?? null;
+  const group =
+    option?.closest(role === 'tab' ? '[role="tablist"]' : '[role="radiogroup"]') ?? null;
+  // Above the job list (the tabs, the segments) only left and right choose: up, down, Home
+  // and End belong to the list. A group in a form takes every arrow, Home and End.
+  const rowOnly = role === 'tab' || closest(option, PRESS_ONLY_ZONE) !== null;
   const step =
-    event.key === 'ArrowRight' || event.key === 'ArrowDown'
+    event.key === 'ArrowRight' || (!rowOnly && event.key === 'ArrowDown')
       ? 1
-      : event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+      : event.key === 'ArrowLeft' || (!rowOnly && event.key === 'ArrowUp')
         ? -1
         : 0;
-  const edge = event.key === 'Home' ? 0 : event.key === 'End' ? -1 : null;
-  const radio = closest(event.target, '[role="radio"]');
-  const group = radio?.closest('[role="radiogroup"]') ?? null;
-  if ((step === 0 && edge === null) || radio === null || group === null) return false;
-  const options = [...group.querySelectorAll<HTMLElement>('[role="radio"]')].filter(
+  const edge = rowOnly ? null : event.key === 'Home' ? 0 : event.key === 'End' ? -1 : null;
+  if ((step === 0 && edge === null) || option === null || group === null) return false;
+  const options = [...group.querySelectorAll<HTMLElement>(`[role="${role}"]`)].filter(
     (node) => node.getAttribute('aria-disabled') !== 'true' && !node.matches(':disabled'),
   );
-  const at = options.indexOf(radio as HTMLElement);
+  const at = options.indexOf(option as HTMLElement);
   const next =
     edge === null ? options[(at + step + options.length) % options.length] : options.at(edge);
   event.preventDefault();
-  if (next === undefined || next === radio) return true;
+  if (next === undefined || next === option) return true;
   next.focus();
   next.click();
   return true;
@@ -690,6 +704,13 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isContextMenuKey(event)) {
     event.preventDefault();
     openMenuByKey(event.target);
+    return;
+  }
+  const view = viewShortcut(event);
+  if (view !== null) {
+    // Ctrl/Cmd+1 to 4 and (Windows) Ctrl+, choose a view from anywhere, like the sidebar.
+    event.preventDefault();
+    if (modal === null) navigation.go(view);
     return;
   }
   if (isFindShortcut(event)) {
@@ -1136,6 +1157,17 @@ function openMenuByKey(target: EventTarget | null): void {
   if (host !== null) openHostMenu(host, null);
 }
 
+/** Ctrl/Cmd+1 to 4: the views in the sidebar's order; Ctrl+, the settings on Windows (the
+ *  macOS menu has Cmd+, itself). Matched by the key's code, so every layout works. */
+function viewShortcut(event: KeyboardEvent): ViewId | null {
+  const os = keyConventions();
+  if (!event[os.command] || event.altKey || event.shiftKey) return null;
+  const digit = /^Digit([1-4])$/.exec(event.code)?.[1];
+  if (digit !== undefined) return VIEW_IDS[Number(digit) - 1] ?? null;
+  if (event.key === ',' && os.command === 'ctrlKey') return 'settings';
+  return null;
+}
+
 /** Letters typed quickly one after the other pick the entry that starts with them. */
 let typed = '';
 let typedAt = 0;
@@ -1396,6 +1428,9 @@ export function installInput(): void {
           event.preventDefault();
         } else {
           leaveField(event);
+          // The sidebar and the list's header are pressed, not focused (like Mail and Finder
+          // on both OS): the list keeps its keys after a click there.
+          if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
         }
         return;
       }

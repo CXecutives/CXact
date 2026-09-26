@@ -119,17 +119,16 @@ for (const os of ['windows', 'macos']) {
   });
 }
 
-test('windows: no drag region; the first view is centred on the line of the search field', async ({
+test('windows: no drag region; the first view is centred on the line of the place tabs', async ({
   page,
 }) => {
   await open(page, '?platform=windows');
   await expect(page.locator('[data-tauri-drag-region]')).toHaveCount(0);
-  // The field's frame is the input's parent (the input sits inside its border).
-  // The entry (36 px) and the field (32 px) share their middle.
+  // The first entry (36 px) and the tabs (36 px) share their middle: the first line.
   const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
-  const nav = middle(await page.getByTestId('nav-jobs').boundingBox());
-  const field = middle(await page.getByTestId('search').locator('xpath=..').boundingBox());
-  expect(nav).toBe(field);
+  const nav = middle(await page.getByTestId('nav-overview').boundingBox());
+  const tabs = middle(await page.getByTestId('places').boundingBox());
+  expect(nav).toBe(tabs);
 });
 
 // macOS: the unified toolbar row of a Mac app. The title bar is transparent over the page
@@ -141,12 +140,10 @@ test('macos: the unified toolbar row', async ({ page, browserName }) => {
   const ROW = 52;
   const lightsBand = page.getByTestId('sidebar').getByTestId('drag-band');
   expect(await lightsBand.boundingBox()).toMatchObject({ x: 0, y: 0, height: ROW });
-  const search = (await page.getByTestId('search').locator('xpath=..').boundingBox())!;
-  const fetch = (await page.getByTestId('fetch').boundingBox())!;
-  expect(search.y + search.height / 2).toBe(ROW / 2);
-  expect(fetch.y + fetch.height / 2).toBe(ROW / 2);
-  // The row itself (outside the controls) drags; the reader side keeps a band of the row.
-  await expect(page.getByTestId('list-header').locator('.top')).toHaveAttribute(
+  const tabs = (await page.getByTestId('places').boundingBox())!;
+  expect(tabs.y + tabs.height / 2).toBe(ROW / 2);
+  // The row itself (outside the tabs) drags; the reader side keeps a band of the row.
+  await expect(page.getByTestId('list-header').locator('.places')).toHaveAttribute(
     'data-tauri-drag-region',
     '',
   );

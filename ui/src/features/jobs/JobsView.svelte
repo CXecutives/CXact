@@ -40,7 +40,6 @@
   import { jobs, keyOf, placeOf, sameKey } from '$lib/state/jobs.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
-  import DayOverview from './DayOverview.svelte';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ListHeader from './ListHeader.svelte';
@@ -246,27 +245,30 @@
           <div class="column">
             {#if stage.what === CHOSEN}
               <SelectionPane />
-            {:else if stage.what === OVERVIEW && place !== 'inbox'}
-              <!-- The archive and the trash have no day overview: what lies here, quietly.
-                   Beside an empty list, which shows its own empty state, only the sentence. -->
+            {:else if stage.what === OVERVIEW}
+              <!-- No job open: what lies here, quietly (the day's overview is a place of its
+                   own). Beside an empty list, which shows its own empty state, only the
+                   sentence. -->
               {@const text =
-                place === 'trash' && trashDays > 0
-                  ? t.place.trashFor(trashDays)
-                  : t.place.reader[place]}
+                place === 'inbox'
+                  ? t.place.pickJob
+                  : place === 'trash' && trashDays > 0
+                    ? t.place.trashFor(trashDays)
+                    : t.place.reader[place]}
               <div class="place-reader">
-                {#if placeEmpty}
+                {#if placeEmpty && place === 'inbox'}
+                  <!-- An empty inbox: its list says it all, nothing to choose. -->
+                {:else if placeEmpty}
                   <p class="place-note" data-testid="place-reader">{text}</p>
                 {:else}
                   <EmptyState
-                    icon={place === 'trash' ? 'trash-2' : 'archive'}
+                    icon={place === 'trash' ? 'trash-2' : place === 'archive' ? 'archive' : 'inbox'}
                     tone="neutral"
                     {text}
                     testid="place-reader"
                   />
                 {/if}
               </div>
-            {:else if stage.what === OVERVIEW}
-              <DayOverview />
             {:else}
               <div class="back">
                 <Button

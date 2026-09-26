@@ -1,46 +1,31 @@
-// Which of the three views is shown. No router: the app has exactly these three. The native
-// menu may ask for one too (macOS: Cmd+, opens the settings). A view with unsaved work (the
-// Profil editor) holds a guard: it may keep the switch and ask first, then switch itself;
-// what was to happen with the switch (the place a click in the sidebar chose) waits for it.
-// Also kept here: whether the sidebar shows the places under Jobs (Archiv, Papierkorb).
+// Which of the four views is shown. No router: the app has exactly these. It starts in the
+// Übersicht (the morning's first look); before the first fetch Jobs shows the setup page. The
+// native menu may ask for a view too (macOS: Cmd+, opens the settings). A view with unsaved
+// work (the Profil editor) holds a guard: it may keep the switch and ask first, then switch
+// itself; what was to happen with the switch waits for it. The places of the jobs (Eingang,
+// Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';
 
-export type ViewId = 'jobs' | 'profile' | 'settings';
+export type ViewId = 'overview' | 'jobs' | 'profile' | 'settings';
 
-export const VIEW_IDS: readonly ViewId[] = ['jobs', 'profile', 'settings'];
+/** In the sidebar's order (Ctrl/Cmd+1 to 4 choose them in this order). */
+export const VIEW_IDS: readonly ViewId[] = ['overview', 'jobs', 'profile', 'settings'];
 
 const isView = (value: string): value is ViewId => (VIEW_IDS as readonly string[]).includes(value);
+
+/** The first view: the Übersicht. The preview and the harness may name another in the
+ *  address (`?view=jobs`); the app itself is loaded without one. */
+function firstView(): ViewId {
+  const asked = new URLSearchParams(location.search).get('view');
+  return asked !== null && isView(asked) ? asked : 'overview';
+}
 
 /** `true` lets the switch to `next` happen; `false` keeps the current view. */
 export type LeaveGuard = (next: ViewId) => boolean;
 
-/** Where the folded places are kept (this browser profile). */
-const PLACES_KEPT = 'sidebar-places';
-
-function placesKept(): boolean {
-  try {
-    return localStorage.getItem(PLACES_KEPT) !== 'hidden';
-  } catch {
-    return true;
-  }
-}
-
-function keepPlaces(shown: boolean): void {
-  try {
-    if (shown) localStorage.removeItem(PLACES_KEPT);
-    else localStorage.setItem(PLACES_KEPT, 'hidden');
-  } catch {
-    // Without a store the choice lasts for this session only.
-    return;
-  }
-}
-
 class Navigation {
-  current = $state<ViewId>('jobs');
-  /** The sidebar shows Archiv and Papierkorb under Jobs (the default; kept). While one of
-   *  them is open they show anyway. */
-  placesShown = $state(placesKept());
+  current = $state<ViewId>(firstView());
   #installed = false;
   #guard: LeaveGuard | null = null;
   /** What waits for a switch the guard kept (it runs once that switch happens). */
@@ -69,12 +54,6 @@ class Navigation {
     return () => {
       if (this.#guard === guard) this.#guard = null;
     };
-  }
-
-  /** Show or hide the places under Jobs in the sidebar. */
-  togglePlaces(): void {
-    this.placesShown = !this.placesShown;
-    keepPlaces(this.placesShown);
   }
 
   /** Follow the native menu (App.svelte, once). */

@@ -128,10 +128,10 @@ test.describe('toasts and their undo', () => {
     await page.getByTestId('reader-archive').click();
     await settleMoves(page);
     // Back from the archive with the row tool, nothing open.
-    await page.getByTestId('nav-archive').click();
+    await page.getByTestId('place-archive').click();
     await settle(page);
     await tool(page, 'toInbox', 'linkedin-4100200301');
-    await page.getByTestId('nav-jobs').click();
+    await page.getByTestId('place-inbox').click();
     await settle(page);
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
     // Another job moved and taken back: nothing opens.
@@ -208,7 +208,7 @@ test.describe('toasts and their undo', () => {
     await tool(page, 'archive', 'freelancermap-2803');
     await settleMoves(page);
     await tool(page, 'trash', 'freelancermap-2802');
-    await page.getByTestId('nav-trash').click();
+    await page.getByTestId('place-trash').click();
     await settle(page);
     await tool(page, 'purge', 'freelancermap-2802');
     await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
@@ -218,7 +218,7 @@ test.describe('toasts and their undo', () => {
     await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
     await page.keyboard.press('Control+z');
     await expect(page.getByTestId('toast-action')).toHaveCount(0);
-    await page.getByTestId('nav-jobs').click();
+    await page.getByTestId('place-inbox').click();
     await settle(page);
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
   });
@@ -243,7 +243,7 @@ test.describe('dates', () => {
     await tool(page, 'trash', 'linkedin-4100200303');
     await settleMoves(page);
     await tool(page, 'trash', 'freelancermap-2801');
-    await page.getByTestId('nav-trash').click();
+    await page.getByTestId('place-trash').click();
     await settle(page);
     await expect(row(page, 'linkedin-4100200303').locator('.date')).toHaveText('jetzt');
     // By date: the day the job went there, which its row shows.
@@ -295,7 +295,7 @@ test.describe('the empty list and the search', () => {
     await open(page, WIN);
     await facet(page, 'Alle').click();
     await tool(page, 'trash', 'freelancermap-2803');
-    await page.getByTestId('nav-trash').click();
+    await page.getByTestId('place-trash').click();
     await settle(page);
     await page.evaluate(() => (window.__harness.holdAfter = 1));
     await page.getByTestId('fetch').click();

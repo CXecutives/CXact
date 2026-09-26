@@ -297,17 +297,3 @@ test('keyboard focus stays clear of the edges of its scroll area', async ({ page
   }
   expect(cut).toEqual([]);
 });
-
-test('a waiting fold arrow gives the Jobs entry no hover wash', async ({ page }) => {
-  await open(page, WIN);
-  await page.getByTestId('nav-archive').click();
-  const fold = page.getByTestId('places-toggle');
-  await expect(fold).toHaveAttribute('aria-disabled', 'true');
-  const jobs = page.getByTestId('nav-jobs');
-  await page.mouse.move(4, 600);
-  await page.waitForTimeout(200);
-  const rest = await jobs.evaluate((node) => getComputedStyle(node).backgroundColor);
-  await fold.hover();
-  await page.waitForTimeout(200);
-  expect(await jobs.evaluate((node) => getComputedStyle(node).backgroundColor)).toBe(rest);
-});

@@ -95,7 +95,7 @@ export function inFacet(job: JobView, facet: JobFacet): boolean {
     case 'all':
       return job.place === 'inbox';
     case 'favourites':
-      return job.pinned && job.place !== 'trash';
+      return job.pinned && job.place === 'inbox';
     case 'archived':
       return job.place === 'archive';
     case 'trash':

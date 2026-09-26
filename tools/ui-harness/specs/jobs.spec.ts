@@ -44,10 +44,8 @@ test('core workflow: fetch, rings fill, open the best job, reasons light the ad'
   await runFinished(page);
   await expect(page.getByTestId('run-finished')).toBeVisible();
   await expect(page.getByTestId('fetch')).toBeVisible();
-  // The overview file and the folder have one place: the day overview, not the run card.
-  await expect(page.getByRole('button', { name: 'Übersicht öffnen' })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: 'Ordner öffnen' })).toHaveCount(1);
-  await expect(page.getByTestId('day-overview').getByTestId('overview-open')).toBeVisible();
+  // The report and the folder have one place: the Übersicht, not the run card.
+  await expect(page.getByRole('button', { name: 'Ordner öffnen' })).toHaveCount(0);
   // A history line copies like "Kopieren" does: the time, a space, the text.
   await page.getByTestId('run-history').getByRole('button').first().click();
   const line = await page.getByTestId('run-card').locator('.history li').first().textContent();
@@ -167,9 +165,9 @@ test('the order menu reorders the list and keeps the selection', async ({ page }
   await page.getByTestId('menu-item-newest').click();
   await expect(sort).toHaveText('Nach Datum');
   // One choice for every list, kept: the archive is in the same order.
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(sort).toHaveText('Nach Datum');
-  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-inbox').click();
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'freelancermap-2803').click();
   await expect
@@ -209,7 +207,8 @@ test('a job that cannot be scored says why, once', async ({ page }) => {
   await expect(page.getByTestId('why')).toHaveCount(0);
 });
 
-test('one place for filters: Neu, Alle, Favoriten; the overview says what now', async ({
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('one place for filters: Neu, Alle, Favoriten; the overview says what now', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -381,10 +380,8 @@ test('without a profile: empty rings, newest first, one line in the list leads t
   await expect(notice).toBeVisible();
   await expect(notice).toHaveText(/Ohne Profil gibt es keine Passung\./);
   expect(await page.getByTestId('job-list').getByTestId('no-profile').count()).toBe(1);
-  await expect(page.getByTestId('day-overview').getByTestId('no-profile')).toHaveCount(0);
-  await expect(page.getByTestId('best')).toHaveCount(0);
-  // The open point of the last fetch is what the overview says, no "select a job" beside it.
-  await expect(page.getByTestId('overview-pick')).toHaveCount(0);
+  // Beside the list, nothing but the way to a job.
+  await expect(page.getByTestId('place-reader')).toHaveText('Wähle einen Job aus der Liste.');
   await expect(notice.locator('.btn.primary')).toHaveCount(0);
   // Without a profile the order is by date; the menu cannot open, its tooltip says why.
   await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
@@ -404,7 +401,8 @@ test('without a profile: empty rings, newest first, one line in the list leads t
   await expect(page.getByTestId('profile-name')).toHaveText('Neues Profil');
 });
 
-test('nothing else to say beside a list with jobs: one quiet line, like a mail app', async ({
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('nothing else to say beside a list with jobs: one quiet line, like a mail app', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=no-profile`);
@@ -420,12 +418,8 @@ test('an empty list and a first fetch without news', async ({ page }) => {
   await expect(page.getByTestId('empty-all')).toBeVisible();
   expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
   await expect(page.getByTestId('run-status')).toContainText('Abgerufen');
-  // The overview does not say "nothing new" again; the files keep their place.
-  await expect(page.getByTestId('new-jobs')).toHaveCount(0);
-  await expect(page.getByTestId('day-overview')).not.toContainText('Keine neuen Jobs');
-  await expect(page.getByTestId('overview-open')).toBeVisible();
-  // No "select a job" beside a list without jobs.
-  await expect(page.getByTestId('overview-pick')).toHaveCount(0);
+  // No "choose a job" beside a list without jobs: only the list's own empty state speaks.
+  await expect(page.getByTestId('place-reader')).toHaveCount(0);
 });
 
 test('an unusable profile: the list names it and leads to the Profil view', async ({ page }) => {
@@ -512,7 +506,7 @@ test('under reduced motion a run without progress still shows its bar', async ({
 });
 
 test('offline: the failed run says why, and Abrufen tries again', async ({ page }) => {
-  await open(page, `${WIN}&scenario=offline`);
+  await open(page, `${WIN}&scenario=offline&view=overview`);
   const failed = page.getByTestId('run-failed');
   await expect(failed).toContainText('Gmail ist nicht erreichbar.');
   // The sidebar says the fetch failed; the open point names it once and says why.
@@ -520,6 +514,7 @@ test('offline: the failed run says why, and Abrufen tries again', async ({ page 
   await expect(page.getByTestId('run-status')).toContainText('Fehler 08:30');
   // Like the run card: no second button beside Abrufen that does the same.
   await expect(failed.getByRole('button')).toHaveCount(0);
+  await page.getByTestId('nav-jobs').click();
   await page.getByTestId('fetch').click();
   await runFinished(page);
   expect(await calls(page, 'start_run')).toHaveLength(1);
@@ -632,9 +627,9 @@ test('the close button in the reader leads back to the day overview', async ({ p
   const first = rows(page).first();
   await first.click();
   await expect(page.getByTestId('reader')).toBeVisible();
-  await expect(page.getByTestId('day-overview')).toHaveCount(0);
+  await expect(page.getByTestId('place-reader')).toHaveCount(0);
   await page.getByTestId('reader-close').click();
-  await expect(page.getByTestId('day-overview')).toBeVisible();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
   await expect(page.getByTestId('reader')).toHaveCount(0);
   await expect(first).not.toHaveAttribute('aria-current', 'true');
   // Below 900 px the view's back button does it; the close button steps aside.
@@ -656,7 +651,7 @@ test('a second click on the open row keeps it open; a search that drops it close
   await expect(first).toHaveAttribute('aria-current', 'true');
   // A search that no longer finds the open job goes back to the overview.
   await page.getByTestId('search').fill('Kernfusion');
-  await expect(page.getByTestId('day-overview')).toBeVisible();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
 });
 
 test('switching jobs: never blank, the old text stays put, the new job starts at the top', async ({
@@ -809,7 +804,7 @@ test('the list header: one slot for Abrufen and Abbrechen, a steady second row, 
   // The second row keeps its height whatever it holds (the segments, a place's count).
   const second = header.locator('.second');
   const height = (await second.boundingBox())!.height;
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(page.getByTestId('place-count')).toBeVisible();
   expect((await second.boundingBox())!.height).toBe(height);
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
@@ -892,7 +887,8 @@ test('the run card: steps side by side, a finished step draws its check once', a
   await expect(page.getByTestId('last-new')).toHaveCount(0);
 });
 
-test('the day overview: its best jobs open the reader', async ({ page }) => {
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('the day overview: its best jobs open the reader', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('sort').click();
   await page.getByTestId('menu-item-newest').click();
@@ -979,7 +975,7 @@ test('keys like a mail app: arrows open the next job, Home and End, Esc, Ctrl+F'
   await expect(reader).toHaveText(titles[0]!);
   // Esc closes the job: the day overview again.
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('day-overview')).toBeVisible();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
   // A click on plain text in the reader gives it the arrows (they scroll it, like the message
   // of a mail app); a click on a row gives them back to the list.
   await all.nth(2).click();
@@ -1000,11 +996,11 @@ test('keys like a mail app: arrows open the next job, Home and End, Esc, Ctrl+F'
   await expect(search).toHaveValue('');
   await expect(reader).toHaveText(titles[3]!);
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('day-overview')).toBeVisible();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
   // The arrows inside the search move the caret, not the list.
   await search.fill('Finance');
   await search.press('ArrowLeft');
-  await expect(page.getByTestId('day-overview')).toBeVisible();
+  await expect(page.getByTestId('place-reader')).toBeVisible();
 });
 
 test('Cmd+F is the find key on macOS, Ctrl+F is not', async ({ page }) => {
@@ -1046,14 +1042,14 @@ test('archive from the row: toasts merge, the Archiv sends a job back to the inb
   // Archived again, the job goes back to the inbox from the Archiv, with a toast.
   await row(page, one).hover();
   await page.getByTestId(`archive-${one}`).click();
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(page.getByTestId('place-count')).toContainText('im Archiv');
   await row(page, one).hover();
   await page.getByTestId(`toInbox-${one}`).click();
   await expect(row(page, one)).toHaveCount(0);
   await expect(page.getByTestId('toast').last()).toContainText('zurückgeholt.');
-  // Jobs in the sidebar is the inbox again.
-  await page.getByTestId('nav-jobs').click();
+  // The Eingang tab is the inbox again.
+  await page.getByTestId('place-inbox').click();
   await expect(page.getByTestId('facet')).toBeVisible();
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(row(page, one)).toHaveCount(1);
@@ -1073,11 +1069,10 @@ test('the Papierkorb: delete, restore, delete for good and empty it, asking firs
     await settleMoves(page);
   }
   await expect(page.getByTestId('toast').last()).toContainText('2 Jobs in den Papierkorb gelegt.');
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await expect(page.getByTestId('place-count')).toHaveText('2 Jobs im Papierkorb');
-  // With nothing open the reader says what lies here, not the inbox's day overview.
-  await expect(page.getByTestId('place-reader')).toBeVisible();
-  await expect(page.getByTestId('day-overview')).toHaveCount(0);
+  // With nothing open the reader says what lies here.
+  await expect(page.getByTestId('place-reader')).toContainText('Papierkorb');
   // In the trash: Wiederherstellen and Endgültig löschen, no star; the reader says where.
   await row(page, one).click();
   await expect(page.getByTestId('place-line')).toContainText('Im Papierkorb');
@@ -1099,11 +1094,11 @@ test('the Papierkorb: delete, restore, delete for good and empty it, asking firs
   ]);
   await expect(page.getByTestId('empty-trash')).toHaveCount(0);
   // Papierkorb leeren: again a job there, again the question.
-  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-inbox').click();
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, one).hover();
   await page.getByTestId(`trash-${one}`).click();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await page.getByTestId('empty-trash').click();
   await page
     .getByTestId('dialog-empty-trash')
@@ -1168,10 +1163,10 @@ test('Neu is entered again after another view: read jobs leave it, the open one 
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-jobs').click();
   await expect(rows(page)).toHaveCount(1);
-  // The last tab is kept: Alle, then Archiv, then Jobs is Alle again.
+  // The last tab is kept: Alle, then Archiv, then Eingang is Alle again.
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await page.getByTestId('nav-archive').click();
-  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-archive').click();
+  await page.getByTestId('place-inbox').click();
   await expect(page.getByTestId('facet').getByRole('radio', { name: /Alle/ })).toHaveAttribute(
     'aria-checked',
     'true',
@@ -1185,7 +1180,8 @@ test('a place entered from another view closes the inbox job; an empty place has
   await rows(page).first().click();
   await expect(page.getByTestId('reader-title')).toBeVisible();
   await page.getByTestId('nav-settings').click();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-trash').click();
   // Like a mail of another folder: the reader says where it is, not the job of the inbox.
   await expect(page.getByTestId('place-reader')).toBeVisible();
   await expect(page.getByTestId('reader-title')).toHaveCount(0);
@@ -1213,7 +1209,7 @@ test('under a search all read marks the hits; the trash empties whole and says h
     await page.getByTestId(`trash-${key}`).click();
     await settleMoves(page);
   }
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   // The trash's own list (it arrives from the backend a moment after the click).
   await expect(page.getByTestId('place-count')).toHaveText('2 Jobs im Papierkorb');
   const title = await rows(page).first().locator('.title').innerText();
@@ -1245,7 +1241,8 @@ test('Ctrl+Z takes back the last move while its toast is up; an undo toast stays
   expect(await calls(page, 'move_back')).toHaveLength(1);
 });
 
-test('a job of the day overview opens during a search', async ({ page }) => {
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('a job of the day overview opens during a search', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await page.getByTestId('search').fill('Kaufm');
@@ -1327,7 +1324,7 @@ test('the list header keeps one height in every state of a narrow column', async
   await expect(page.getByTestId('selection-bar')).toBeVisible();
   expect(await listTop()).toBe(neu);
   await page.keyboard.press('Escape');
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   expect(await listTop()).toBe(neu);
 });
 
@@ -1388,7 +1385,8 @@ test('a search looks in its place and names the hits elsewhere, keeping the sear
   await expect(row(page, key)).toHaveCount(1);
 });
 
-test('the best matches as one prompt: at the end of the overview heading', async ({
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('the best matches as one prompt: at the end of the overview heading', async ({
   page,
   browserName,
 }) => {

@@ -1,5 +1,6 @@
 <!--
-  The header of the list column, two rows.
+  The header of the list column: the places as tabs (Eingang, Archiv, Papierkorb; another
+  place starts without the search, like a folder of a mail app), then two rows.
   Row 1: the search, whose placeholder names what it searches ("Jobs durchsuchen", "Archiv
   durchsuchen", "Papierkorb durchsuchen"), and next to it "Abrufen", the one primary of the
   Jobs view, which fills the inbox ("Abbrechen" in its place while a fetch or details run
@@ -31,10 +32,11 @@
   import Notice from '$components/Notice.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SelectionBar from '$components/SelectionBar.svelte';
+  import Tabs from '$components/Tabs.svelte';
   import TextField from '$components/TextField.svelte';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
-  import type { JobSort } from '$lib/ipc/types';
+  import type { JobSort, Place } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
@@ -53,6 +55,19 @@
 
   const place = $derived(placeOf(jobs.facet));
   const inInbox = $derived(place === 'inbox');
+
+  const places = $derived<{ id: Place; label: string; testid: string }[]>([
+    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
+    { id: 'archive', label: t.place.archive, testid: 'place-archive' },
+    { id: 'trash', label: t.place.trash, testid: 'place-trash' },
+  ]);
+
+  /** Another place starts without the search; the inbox comes back on its last tab. */
+  function choosePlace(next: Place): void {
+    const facet: JobFacet =
+      next === 'inbox' ? jobs.inboxFacet : next === 'archive' ? 'archived' : 'trash';
+    if (jobs.facet !== facet) jobs.setFacet(facet, true);
+  }
 
   // Each segment counts its list (they follow the search): the unread ones always in the warm
   // pill, the others plain, whichever is chosen, so the control keeps its width; no zero.
@@ -190,7 +205,16 @@
   />
 {/snippet}
 
-<div class="header" class:scrolled data-testid="list-header">
+<div class="header" class:scrolled data-testid="list-header" data-press-only>
+  <div class="places" data-tauri-drag-region={dragBands() ? '' : undefined}>
+    <Tabs
+      options={places}
+      value={place}
+      label={t.place.tabs}
+      testid="places"
+      onchange={choosePlace}
+    />
+  </div>
   <div class="top" data-tauri-drag-region={dragBands() ? '' : undefined}>
     <span class="search" bind:this={searchBox}>
       <TextField
@@ -333,8 +357,15 @@
     border-bottom-color: var(--border);
   }
 
-  /* The row spans the header's side padding too, so on macOS its empty ends move the window
-     like the rest of the toolbar row. */
+  /* The rows span the header's side padding too, so on macOS their empty ends move the
+     window like the rest of the toolbar row. */
+  .places {
+    display: flex;
+    align-items: flex-end;
+    margin: 0 calc(-1 * var(--pane-padding));
+    padding: 0 var(--pane-padding);
+  }
+
   .top {
     display: flex;
     align-items: center;

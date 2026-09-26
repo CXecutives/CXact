@@ -160,7 +160,8 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
   await runFinished(page);
 });
 
-test('a result file nothing wrote yet cannot be opened and says why', async ({ page }) => {
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('a result file nothing wrote yet cannot be opened and says why', async ({ page }) => {
   // A workspace without files yet (a new work folder): the Excel file waits for the first
   // fetch, as in Einstellungen; the HTML overview is written when it opens.
   await open(page, `${WIN}&scenario=no-files`);
@@ -179,6 +180,7 @@ test('one word per thing: the view switch, the Excel file', async ({ page }) => 
   // "Auswahl" is the word of the multi-selection ("3 ausgewählt", "Auswahl aufheben").
   await expect(page.getByTestId('facet')).toHaveAttribute('aria-label', 'Ansicht');
   // The glossary's Excel-Datei, as in Einstellungen ("Excel öffnen" read as "start Excel").
+  await page.getByTestId('nav-overview').click();
   await expect(page.getByTestId('overview-excel')).toHaveText('Excel-Datei öffnen');
 });
 
@@ -196,7 +198,7 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
 
 test('an archived job is brought back with a verb, not a way back to Jobs', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';
   await page.getByTestId('job-list').getByTestId(`job-row-${key}`).hover();
   // "Zurück zu Jobs" read as navigation; the toast says "zurückgeholt".

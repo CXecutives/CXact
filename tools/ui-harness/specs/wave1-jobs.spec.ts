@@ -85,7 +85,7 @@ function recordFrames(options: { shapes: string; done: string; fromPress: boolea
     if (start !== null) {
       frames.push({
         t: performance.now() - start,
-        overview: document.querySelector('[data-testid="day-overview"]') !== null,
+        overview: document.querySelector('[data-testid="place-reader"]') !== null,
         shape: visible(document.querySelector(options.shapes)),
         done,
       });
@@ -141,7 +141,7 @@ test('deleting for good waits for a run in the reader too', async ({ page }) => 
   await open(page, WIN);
   await facet(page, 'Alle').click();
   await tool(page, 'trash', 'freelancermap-2803');
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await settle(page);
   await row(page, 'freelancermap-2803').click();
   const purge = page.getByTestId('reader-purge');
@@ -457,7 +457,7 @@ test('the trash says in how many days a job goes, following the clock', async ({
   await facet(page, 'Alle').click();
   await tool(page, 'trash', 'freelancermap-2803');
   await settleMoves(page);
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await settle(page);
   await row(page, 'freelancermap-2803').click();
   const line = page.getByTestId('place-line');

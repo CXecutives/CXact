@@ -115,8 +115,8 @@ test.describe('paging and the remembered tab', () => {
     await allReadAtStart(page);
     await open(page, WIN);
     await expect(facet(page, 'Alle')).toHaveAttribute('aria-checked', 'true');
-    await page.getByTestId('nav-archive').click();
-    await page.getByTestId('nav-jobs').click();
+    await page.getByTestId('place-archive').click();
+    await page.getByTestId('place-inbox').click();
     await settle(page);
     await expect(facet(page, 'Alle')).toHaveAttribute('aria-checked', 'true');
     await expect(rows(page).first()).toBeVisible();
@@ -189,10 +189,11 @@ test.describe('choosing several jobs', () => {
       'freelancermap:2804',
       'linkedin:4100200304',
     ]);
-    // A job opened from the day overview starts the range too, not the row clicked before.
+    // A job opened from the Übersicht starts the range too, not the row clicked before.
     await page.keyboard.press('Escape');
     await row(page, 'freelancermap-2806').click();
     await page.getByTestId('reader-close').click();
+    await page.getByTestId('nav-overview').click();
     await page.getByTestId('best').locator('[data-testid^="best-"]').first().click();
     await expect.poll(async () => (await highlighted(page)).length).toBe(1);
     const opened = (await highlighted(page))[0] ?? '';
@@ -348,7 +349,7 @@ test.describe('the list header', () => {
       await page.getByTestId(`trash-${key}`).click();
       await settleMoves(page);
     }
-    await page.getByTestId('nav-trash').click();
+    await page.getByTestId('place-trash').click();
     await expect(page.getByTestId('empty-trash')).toBeVisible();
     expect(await rightOf(page, 'sort')).toBe(end);
     const trash = await page.getByTestId('empty-trash').boundingBox();
@@ -359,7 +360,7 @@ test.describe('the list header', () => {
   test('during a search the place count says what it found there', async ({ page }) => {
     await open(page, WIN);
     await archiveTwo(page);
-    await page.getByTestId('nav-archive').click();
+    await page.getByTestId('place-archive').click();
     // (The sample data keeps one job in the archive already.)
     await expect(page.getByTestId('place-count')).toHaveText('3 Jobs im Archiv');
     await page.getByTestId('search').fill('Treasury');

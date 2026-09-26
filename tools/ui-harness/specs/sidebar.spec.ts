@@ -1,7 +1,7 @@
-// The sidebar: the arrow on Jobs that hides and shows Archiv and Papierkorb (kept, forced open
-// while one of them is open), their grouping in the icon rail, no counts, that the sidebar
-// folds only by the window width, and the order of a click on a place when an unsaved
-// profile asks first.
+// The sidebar: four views (Übersicht, Jobs, Profil, Einstellungen), the app starts in the
+// Übersicht, Ctrl/Cmd+1 to 4 choose them, no counts, the rail at small widths, that the
+// sidebar folds only by the window width, and the order of a click when an unsaved profile
+// asks first. The places of the jobs are tabs above the list.
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, settle, test } from './fixtures';
@@ -31,15 +31,6 @@ async function pillOn(page: Page, id: string): Promise<void> {
     .toEqual([0, 0, 0, 0]);
 }
 
-/** Nothing moves any more (a fade, a slide, a turn). */
-async function still(page: Page): Promise<void> {
-  await expect
-    .poll(() =>
-      page.evaluate(() => document.getAnimations().filter((a) => a.playState === 'running').length),
-    )
-    .toBe(0);
-}
-
 test('the sidebar shows no counts and no dots: the list says how many jobs are new', async ({
   page,
 }) => {
@@ -53,163 +44,74 @@ test('the sidebar shows no counts and no dots: the list says how many jobs are n
   }
 });
 
-test('the arrow hides and shows Archiv and Papierkorb; the choice is kept, at start nothing moves', async ({
+test('the app starts in the Übersicht; Ctrl+1 to 4 choose the views, the keys in the tooltips', async ({
   page,
 }) => {
-  await open(page, WIN);
-  const toggle = page.getByTestId('places-toggle');
-  // Shown by default (the first start and the smoke probe of the app see all five entries).
-  await expect(page.locator('[data-testid^="nav-"]')).toHaveCount(5);
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(toggle).toHaveAttribute('aria-label', 'Archiv und Papierkorb ausblenden');
-  const group = page.getByRole('group', { name: 'Jobs' });
-  await expect(toggle).toHaveAttribute('aria-controls', (await group.getAttribute('id'))!);
-  await expect(group.getByRole('button')).toHaveText(['Archiv', 'Papierkorb']);
-  // At the end of the Jobs row, a button of its own.
-  const jobs = (await page.getByTestId('nav-jobs').boundingBox())!;
-  const arrow = (await toggle.boundingBox())!;
-  const label = (await page.getByTestId('nav-jobs').locator('.label').boundingBox())!;
-  expect(arrow.x).toBeGreaterThan(label.x);
-  expect(arrow.x + arrow.width).toBeLessThanOrEqual(jobs.x + jobs.width);
-  expect(Math.abs(arrow.y + arrow.height / 2 - (jobs.y + jobs.height / 2))).toBeLessThan(1);
-  expect(await page.getByTestId('nav-jobs').locator('button').count()).toBe(0);
-  await toggle.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Archiv und Papierkorb ausblenden');
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(toggle).toHaveAttribute('aria-label', 'Archiv und Papierkorb einblenden');
-  // They fade out, then the entries below move up (no height animation).
-  await expect(page.getByTestId('nav-archive')).toBeHidden();
-  await expect(page.getByTestId('nav-trash')).toBeHidden();
-  await expect(group).toBeHidden();
-  // Hidden, not gone: every entry of the nav always exists (the smoke probe finds five).
-  await expect(page.locator('[data-testid^="nav-"]')).toHaveCount(5);
-  const profile = (await page.getByTestId('nav-profile').boundingBox())!;
-  expect(Math.round(profile.y - jobs.y)).toBe(38);
-  // The arrow points right: a quarter turn.
-  await still(page);
-  const turned = await toggle
-    .locator('.chevron')
-    .evaluate((node) => new DOMMatrix(getComputedStyle(node).transform));
-  expect([Math.round(turned.a), Math.round(turned.b)]).toEqual([0, -1]);
-
-  // Kept across a reload, and simply there: nothing slides, fades or turns at start.
-  await page.reload();
-  await settle(page);
-  expect(
-    await page.evaluate(
-      () => document.getAnimations().filter((a) => a.playState === 'running').length,
-    ),
-  ).toBe(0);
-  await expect(page.getByTestId('places-toggle')).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.getByTestId('nav-archive')).toBeHidden();
-  await page.getByTestId('places-toggle').click();
-  await expect(page.getByTestId('nav-archive')).toBeVisible();
-  await page.reload();
-  await expect(page.getByTestId('nav-archive')).toBeVisible();
+  await open(page, `${WIN}&view=start`);
+  await expect(page.getByTestId('view-overview')).toBeVisible();
+  await expect(page.getByTestId('nav-overview')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('sidebar').locator('nav button')).toHaveText([
+    'Übersicht',
+    'Jobs',
+    'Profil',
+    'Einstellungen',
+  ]);
+  await page.keyboard.press('Control+2');
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await page.keyboard.press('Control+4');
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await page.keyboard.press('Control+3');
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  await page.keyboard.press('Control+1');
+  await expect(page.getByTestId('view-overview')).toBeVisible();
+  // Ctrl+, opens the settings on Windows too (macOS has it in its menu).
+  await page.keyboard.press('Control+,');
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+  await page.getByTestId('nav-jobs').hover();
+  const tip = page.getByRole('tooltip');
+  await expect(tip).toContainText('Jobs');
+  await expect(tip).toContainText('Strg+2');
 });
 
-test('the pill stays on the current entry when the places fold and unfold', async ({ page }) => {
-  await open(page, WIN);
-  await page.getByTestId('nav-settings').click();
-  await pillOn(page, 'nav-settings');
-  const toggle = page.getByTestId('places-toggle');
-  await toggle.click();
-  await pillOn(page, 'nav-settings');
-  await toggle.click();
-  await pillOn(page, 'nav-settings');
-  await page.getByTestId('nav-trash').click();
-  await pillOn(page, 'nav-trash');
-  await page.getByTestId('nav-jobs').click();
-  await pillOn(page, 'nav-jobs');
-});
-
-test('Archiv or Papierkorb open: the places stay, the arrow waits and says why', async ({
+test('before the first fetch the Übersicht waits and says why; Jobs is the setup page', async ({
   page,
 }) => {
-  await open(page, WIN);
-  const toggle = page.getByTestId('places-toggle');
-  await toggle.click();
-  await expect(page.getByTestId('nav-archive')).toBeHidden();
-  // Another way into the archive (a search hit there): the places show at once.
-  await page.getByTestId('search').fill('Kreditoren');
-  await page.getByTestId('also-archive').click();
-  await expect(page.getByTestId('nav-archive')).toHaveAttribute('aria-current', 'page');
-  await pillOn(page, 'nav-archive');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(toggle).toHaveAttribute('aria-disabled', 'true');
-  await toggle.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Bleibt offen, solange du im Archiv bist.');
-  // A click changes nothing (the arrow waits).
-  await toggle.click({ force: true });
-  await page.waitForTimeout(300);
-  await expect(page.getByTestId('nav-archive')).toBeVisible();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await page.getByTestId('nav-trash').click();
-  await toggle.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(
-    'Bleibt offen, solange du im Papierkorb bist.',
-  );
-  // Back to Jobs: they fold away again, as chosen.
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('nav-archive')).toBeHidden();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(toggle).not.toHaveAttribute('aria-disabled');
-  await pillOn(page, 'nav-jobs');
-  // From the archive straight to a view below: they go at once and the pill lands on it.
-  // (Jobs in the sidebar dropped the search: the link needs it again.)
-  await page.getByTestId('search').fill('Kreditoren');
-  await page.getByTestId('also-archive').click();
-  await expect(page.getByTestId('nav-archive')).toHaveAttribute('aria-current', 'page');
+  await open(page, `${WIN}&scenario=first-run&view=start`);
+  await expect(page.getByTestId('view-first-run')).toBeVisible();
+  const overview = page.getByTestId('nav-overview');
+  await expect(overview).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await overview.click({ force: true });
+  await expect(page.getByTestId('view-first-run')).toBeVisible();
+  await page.mouse.move(600, 600);
+  await overview.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('Nach dem ersten Abruf');
   await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('nav-archive')).toBeHidden();
-  await pillOn(page, 'nav-settings');
+  await expect(page.getByTestId('view-settings')).toBeVisible();
 });
 
 for (const os of [WIN, MAC]) {
-  test(`the rail groups the places under Jobs, with the arrow and tooltips ${os}`, async ({
+  test(`the rail: four squares in a column, the names in tooltips on the right ${os}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1000, height: 700 });
     await open(page, os);
     const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
-    const jobs = await box('nav-jobs');
-    const arrow = await box('places-toggle');
-    const archive = await box('nav-archive');
-    const trash = await box('nav-trash');
-    const profile = await box('nav-profile');
-    // Smaller squares right under the Jobs icon, centred on it; the arrow between them.
-    expect([jobs.width, jobs.height, archive.width, archive.height]).toEqual([40, 40, 32, 32]);
+    const ids = ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings'];
+    const boxes = await Promise.all(ids.map(box));
+    for (const b of boxes) expect([b.width, b.height]).toEqual([40, 40]);
     const centre = (b: { x: number; width: number }): number => b.x + b.width / 2;
-    expect(centre(archive)).toBe(centre(jobs));
-    expect(centre(arrow)).toBe(centre(jobs));
-    expect(arrow.y).toBe(jobs.y + jobs.height);
-    expect(archive.y).toBeGreaterThan(arrow.y + arrow.height - 1);
-    // A hairline closes them: the views below stand further off than the places apart.
-    expect(profile.y - (trash.y + trash.height)).toBeGreaterThan(
-      trash.y - (archive.y + archive.height),
-    );
-    for (const [id, name] of [
-      ['nav-archive', 'Archiv'],
-      ['places-toggle', 'Archiv und Papierkorb ausblenden'],
-    ] as const) {
-      await page.getByTestId(id).hover();
-      const tip = page.getByRole('tooltip');
-      await expect(tip).toHaveText(name);
-      await expect(tip.locator('div')).toHaveCSS('opacity', '1');
-      const anchor = await box(id);
-      expect((await tip.locator('div').boundingBox())!.x).toBeGreaterThan(anchor.x + anchor.width);
-    }
-    for (const id of ['nav-archive', 'nav-trash', 'nav-settings', 'nav-jobs']) {
+    for (const b of boxes) expect(centre(b)).toBe(centre(boxes[0]!));
+    await page.getByTestId('nav-profile').hover();
+    const tip = page.getByRole('tooltip');
+    await expect(tip).toContainText('Profil');
+    await expect(tip.locator('div')).toHaveCSS('opacity', '1');
+    const anchor = await box('nav-profile');
+    expect((await tip.locator('div').boundingBox())!.x).toBeGreaterThan(anchor.x + anchor.width);
+    for (const id of ['nav-settings', 'nav-overview', 'nav-jobs']) {
       await page.getByTestId(id).click();
       await pillOn(page, id);
     }
-    // Folded in the rail too: only the arrow stays under the Jobs icon.
-    await page.getByTestId('places-toggle').click();
-    await expect(page.getByTestId('nav-archive')).toBeHidden();
-    await page.getByTestId('nav-profile').click();
-    await pillOn(page, 'nav-profile');
   });
 
   test(`at 480 x 360 the rail keeps every entry and the status in the window ${os}`, async ({
@@ -217,15 +119,7 @@ for (const os of [WIN, MAC]) {
   }) => {
     await page.setViewportSize({ width: 480, height: 360 });
     await open(page, os);
-    const ids = [
-      'nav-jobs',
-      'places-toggle',
-      'nav-archive',
-      'nav-trash',
-      'nav-profile',
-      'nav-settings',
-      'run-status',
-    ];
+    const ids = ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings', 'run-status'];
     const boxes = await Promise.all(
       ids.map(async (id) => (await page.getByTestId(id).boundingBox())!),
     );
@@ -255,12 +149,15 @@ test('the sidebar folds only by the window width: no edge, Ctrl+B and Cmd+B chan
   await expect.poll(() => sidebarWidth(page)).toBe(196);
 });
 
-test('an unsaved profile keeps the place until the question is answered', async ({ page }) => {
+test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
   await open(page, WIN);
+  await page.getByTestId('place-archive').click();
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
+  await page.getByTestId('place-inbox').click();
   await page.getByTestId('nav-profile').click();
   const field = page.getByTestId('view-profile').getByRole('textbox').first();
   await field.fill('Erika Muster');
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('nav-jobs').click();
   const dialog = page.getByTestId('dialog-leave-profile');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Abbrechen' }).click();
@@ -268,34 +165,29 @@ test('an unsaved profile keeps the place until the question is answered', async 
   await expect(page.getByTestId('view-profile')).toBeVisible();
   await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page');
   await expect(field).toHaveValue('Erika Muster');
-  expect(
-    (await calls(page, 'list_jobs')).some(
-      ([, args]) => (args as { query: { place: string } }).query.place === 'archive',
-    ),
-  ).toBe(false);
-  // Asked again and left without saving: the archive it was asked for.
-  await page.getByTestId('nav-archive').click();
+  // Asked again and left without saving: the Jobs view it was asked for, on its inbox.
+  await page.getByTestId('nav-jobs').click();
   await dialog.getByRole('button', { name: 'Verwerfen' }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('nav-archive')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Jobs durchsuchen');
 });
 
-test('a click on the place that is open reloads nothing, like Jobs', async ({ page }) => {
+test('a click on the tab that is open reloads nothing, like Jobs', async ({ page }) => {
   await open(page, WIN);
   const loads = async (place?: string): Promise<number> =>
     (await calls(page, 'list_jobs')).filter(
       ([, args]) =>
         place === undefined || (args as { query: { place: string } }).query.place === place,
     ).length;
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
   await settle(page);
   const archive = await loads('archive');
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await settle(page);
   expect(await loads('archive')).toBe(archive);
-  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-inbox').click();
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Jobs durchsuchen');
   await settle(page);
   const all = await loads();

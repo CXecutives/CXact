@@ -23,7 +23,7 @@ test('undoing Wiederherstellen keeps the trash date and its days', async ({ page
   await expect(row(page, key)).toHaveCount(0);
   // Three days later in the Papierkorb: 27 of the 30 days are left.
   await later(page, 3);
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await row(page, key).click();
   const line = page.getByTestId('place-line');
   await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen gelöscht');
@@ -45,7 +45,7 @@ test('undoing Wiederherstellen keeps the trash date and its days', async ({ page
     },
   ]);
   await page.getByTestId('nav-jobs').click();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await row(page, key).click();
   await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen gelöscht');
 });
@@ -66,9 +66,9 @@ test('Wiederherstellen puts a job thrown away from the Archiv back there', async
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   const key = 'linkedin-4100200301';
   await tool(page, 'archive', key);
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await tool(page, 'trash', key);
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await tool(page, 'restore', key);
   expect((await calls(page, 'restore_jobs')).map(([, args]) => args)).toEqual([
     { keys: [{ portal: 'linkedin', id: '4100200301' }] },
@@ -81,9 +81,9 @@ test('Wiederherstellen puts a job thrown away from the Archiv back there', async
     expect.objectContaining({ jobs: [expect.objectContaining({ to: 'trash' })] }),
   );
   await tool(page, 'restore', key);
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(row(page, key)).toHaveCount(1);
-  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-inbox').click();
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(
     page

@@ -336,6 +336,9 @@
      padding, on macOS centred in the toolbar row next to the traffic lights. */
   --list-header-top: var(--pane-padding);
   --list-toolbar: var(--control-md);
+  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs, a thin line. */
+  --tabs-height: var(--list-toolbar);
+  --tabs-line: 2px;
   /* The white sheet meets the title bar with a hairline and a rounded corner on Windows; on
      macOS it runs up to the window edge. */
   --sheet-top-edge: var(--border-width);

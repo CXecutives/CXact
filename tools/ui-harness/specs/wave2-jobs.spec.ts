@@ -34,11 +34,11 @@ test('a place chosen in the sidebar opens without the search; the link keeps it'
   await search.fill('Kreditoren');
   // The deliberate way: "Auch im Archiv" takes the search along.
   await page.getByTestId('also-archive').click();
-  await expect(page.getByTestId('nav-archive')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-selected', 'true');
   await expect(search).toHaveValue('Kreditoren');
   await expect(rows(page)).toHaveCount(1);
-  // Jobs in the sidebar: the inbox as a whole, like a folder of a mail app.
-  await page.getByTestId('nav-jobs').click();
+  // The Eingang tab: the inbox as a whole, like a folder of a mail app.
+  await page.getByTestId('place-inbox').click();
   await expect(search).toHaveValue('');
   await expect.poll(() => facet.innerText()).toBe(whole);
   // Another view and back keeps the place and its search; another place drops it.
@@ -46,7 +46,7 @@ test('a place chosen in the sidebar opens without the search; the link keeps it'
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-jobs').click();
   await expect(search).toHaveValue('Kreditoren');
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(search).toHaveValue('');
   await expect.poll(lastSearch).toBeNull();
 });
@@ -86,7 +86,8 @@ test('one column: a single chosen row keeps the selection bar; two columns open 
   );
 });
 
-test('the day overview opens its HTML page under the globe, one glyph per file', async ({
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('the day overview opens its HTML page under the globe, one glyph per file', async ({
   page,
 }) => {
   await open(page, WIN);

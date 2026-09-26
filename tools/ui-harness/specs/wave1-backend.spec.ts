@@ -43,7 +43,10 @@ test('no Excel file yet: it can neither open nor show itself, and says why', asy
   await expect(page.getByRole('tooltip')).toHaveText('Die Excel-Datei entsteht beim ersten Abruf.');
 });
 
-test('"Ordner öffnen" of the day overview shows the Excel file in its folder', async ({ page }) => {
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('"Ordner öffnen" of the day overview shows the Excel file in its folder', async ({
+  page,
+}) => {
   await open(page, WIN);
   const folder = page.getByTestId('day-overview').getByTestId('overview-folder');
   await expect(folder).toHaveText('Ordner öffnen');

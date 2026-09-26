@@ -318,7 +318,7 @@ test('an archived job leaves the list and every count but the archive', async ({
   ]);
   expect((await jobOf(page, 'linkedin', '4100200301')).place).toBe('archive');
   // The archive lists it.
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
 

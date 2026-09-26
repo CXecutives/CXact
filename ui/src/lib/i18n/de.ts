@@ -548,16 +548,12 @@ export const de = {
   },
   nav: {
     label: 'Bereiche',
+    overview: 'Übersicht',
     jobs: 'Jobs',
     profile: 'Profil',
     settings: 'Einstellungen',
-    /** The arrow at the end of the Jobs row (kept); while a place is open it stays open. */
-    hidePlaces: 'Archiv und Papierkorb ausblenden',
-    showPlaces: 'Archiv und Papierkorb einblenden',
-    placesStay: {
-      archive: 'Bleibt offen, solange du im Archiv bist.',
-      trash: 'Bleibt offen, solange du im Papierkorb bist.',
-    },
+    /** Why the Übersicht waits during the first run. */
+    overviewLater: 'Nach dem ersten Abruf',
   },
   common: {
     loading: 'Wird geladen',
@@ -604,8 +600,13 @@ export const de = {
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
+    /** The tabs above the job list (their accessible name, and each place). */
+    tabs: 'Orte',
+    inbox: 'Eingang',
     archive: 'Archiv',
     trash: 'Papierkorb',
+    /** The reader beside the inbox while no job is open. */
+    pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
       inbox: 'Jobs durchsuchen',

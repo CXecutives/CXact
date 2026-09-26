@@ -81,8 +81,8 @@ test('the app starts in the language the backend says', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByTestId('nav-jobs')).toContainText('Jobs');
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
-  // Relative dates and the day overview speak English too.
-  await expect(page.getByTestId('day-overview')).not.toContainText('Passung');
+  // Relative dates and the reader beside the list speak English too.
+  await expect(page.getByTestId('place-reader')).toHaveText('Choose a job from the list.');
   await expect(rows(page).first()).not.toContainText(/gestern|vor \d/);
   await page.getByTestId('nav-settings').click();
   await expect(

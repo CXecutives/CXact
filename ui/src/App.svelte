@@ -25,6 +25,7 @@
   import { shell } from '$lib/state/shell.svelte';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
+  import OverviewView from './features/overview/OverviewView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
@@ -35,6 +36,10 @@
   void app.load().then((state) => run.attach(state?.running ?? null));
 
   const firstRun = $derived(shell.firstRun);
+  // Before the first fetch there is nothing to sum up: the app starts on the setup page.
+  $effect(() => {
+    if (firstRun && navigation.current === 'overview') navigation.go('jobs', true);
+  });
   /** macOS: the views keep the toolbar row free (the Jobs view uses it for its list row). */
   const band = dragBands();
   /** Closing while the app is busy: what the window waits for (null: not closing). */
@@ -63,7 +68,12 @@
       {:else}
         <!-- The four views are the branches of one block: a switch between them cross-fades
              (local transitions), while the first view after loading is simply there. -->
-        {#if navigation.current === 'jobs' && firstRun}
+        {#if navigation.current === 'overview' && !firstRun}
+          <section class="view" data-testid="view-overview" transition:fade>
+            {#if band}<DragBand sheet />{/if}
+            <OverviewView />
+          </section>
+        {:else if (navigation.current === 'jobs' || navigation.current === 'overview') && firstRun}
           <section class="view" data-testid="view-first-run" transition:fade>
             {#if band}<DragBand sheet />{/if}
             <FirstRunView />

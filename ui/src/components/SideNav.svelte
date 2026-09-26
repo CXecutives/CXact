@@ -26,6 +26,10 @@
     label: string;
     icon: IconName;
     testid?: string;
+    /** Its shortcut ("Strg+1", "⌘1"), the second line of its tooltip. */
+    hint?: string | null;
+    /** Why it cannot be chosen now (its tooltip); null: it can. */
+    disabled?: string | null;
     /** Quieter entries right under this one (the places of the Jobs view). */
     children?: readonly SideNavItem<Id>[];
   }
@@ -193,9 +197,16 @@
     class:folds={item === parent}
     aria-current={item.id === active ? 'page' : undefined}
     aria-label={collapsed ? item.label : undefined}
+    aria-disabled={item.disabled ? 'true' : undefined}
     data-testid={item.testid}
-    use:tooltip={collapsed ? { text: item.label, placement: 'right' } : null}
-    onclick={() => onselect(item.id)}
+    use:tooltip={item.disabled
+      ? { text: item.disabled, placement: 'right' }
+      : collapsed || item.hint
+        ? { text: item.label, hint: item.hint ?? null, placement: 'right' }
+        : null}
+    onclick={() => {
+      if (!item.disabled) onselect(item.id);
+    }}
   >
     <span class="glyph">
       <Icon name={item.icon} size={sub ? 'sm' : 'md'} />
@@ -320,7 +331,7 @@
 
   /* The parent's row answers the pointer as a whole: over its arrow it keeps its wash, but
      not over an arrow that waits (nothing there reacts to a click). */
-  .item:not([aria-current='page']):hover,
+  .item:not([aria-current='page'], [aria-disabled='true']):hover,
   .parent:hover:not(:has(.fold[aria-disabled='true']:hover)) > .item:not([aria-current='page']) {
     background-color: var(--surface-hover);
     color: var(--text);
@@ -328,7 +339,13 @@
     --nav-glyph: var(--nav-active-icon);
   }
 
-  :global(:where(:root:not([data-aux-press]))) .item:not([aria-current='page']):active:hover {
+  /* An entry that waits (the Übersicht before the first fetch): quiet, no wash. */
+  .item[aria-disabled='true'] {
+    opacity: var(--opacity-disabled);
+  }
+
+  :global(:where(:root:not([data-aux-press])))
+    .item:not([aria-current='page'], [aria-disabled='true']):active:hover {
     background-color: var(--surface-press);
     transition-duration: var(--dur-instant);
   }

@@ -553,15 +553,11 @@ export const en: Catalog = {
   },
   nav: {
     label: 'Sections',
+    overview: 'Overview',
     jobs: 'Jobs',
     profile: 'Profile',
     settings: 'Settings',
-    hidePlaces: 'Hide Archive and Trash',
-    showPlaces: 'Show Archive and Trash',
-    placesStay: {
-      archive: 'Stays open while you are in the archive.',
-      trash: 'Stays open while you are in the trash.',
-    },
+    overviewLater: 'After the first fetch',
   },
   common: {
     loading: 'Loading',
@@ -600,8 +596,11 @@ export const en: Catalog = {
     tip: (key: string) => `Choose several jobs at once with ${key}+click.`,
   },
   place: {
+    tabs: 'Places',
+    inbox: 'Inbox',
     archive: 'Archive',
     trash: 'Trash',
+    pickJob: 'Choose a job from the list.',
     search: {
       inbox: 'Search jobs',
       archive: 'Search the archive',

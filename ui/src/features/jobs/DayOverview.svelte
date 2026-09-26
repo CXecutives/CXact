@@ -24,6 +24,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { EmptyAlert, JobView, OpenTarget, Portal, PortalState } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
+  import { navigation } from '$lib/state/navigation.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { failureAction, run } from '$lib/state/run.svelte';
   import { actionsOf, guarded, move, toggleStar } from './actions';
@@ -255,7 +256,8 @@
             <JobRow
               {job}
               testid="best-{job.key.portal}-{job.key.id}"
-              onselect={(chosen) => void jobs.select(chosen, true)}
+              onselect={(chosen) =>
+                navigation.go('jobs', false, () => void jobs.select(chosen, true))}
               onpin={pin}
               tools={toolsOf(job)}
             />

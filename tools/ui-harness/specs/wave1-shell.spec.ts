@@ -172,7 +172,7 @@ test('only what loses something for good warns: the trash does not, delete for g
   await expect(trash).not.toHaveCSS('color', danger);
   // In the trash the bar's "Endgültig löschen" loses the jobs for good: it warns.
   await trash.click();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await rows(page).first().click();
   await page.keyboard.press('Shift+ArrowDown');
   const purge = page.getByTestId('selection-purge');
@@ -191,7 +191,7 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await row(page, 'freelancermap-2803').hover();
   await page.getByTestId('trash-freelancermap-2803').click();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await page.getByTestId('empty-trash').click();
   await expect(page.getByTestId('dialog-empty-trash').getByTestId('dialog-confirm')).toHaveText(
     'Leeren',
@@ -204,9 +204,7 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   );
 });
 
-test('first run: Einstellungen and Profil open, Jobs and its places lead to the setup', async ({
-  page,
-}) => {
+test('first run: Einstellungen and Profil open, Jobs leads to the setup', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   const nav = page.getByTestId('sidebar').locator('nav');
   await expect(nav.locator('xpath=ancestor-or-self::*[@inert]')).toHaveCount(0);
@@ -219,24 +217,23 @@ test('first run: Einstellungen and Profil open, Jobs and its places lead to the 
   await expect(page.getByTestId('nav-settings')).toContainText('Einstellungen');
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  // The trash leads to the setup page, which Jobs marks as current like any view.
-  await page.getByTestId('nav-trash').click();
+  // Jobs is the setup page, marked as current like any view.
+  await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await expect(page.locator('[data-testid^="nav-"][aria-current="page"]')).toHaveCount(1);
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
 });
 
-test('first run: a place clicked before the first fetch leaves the list in the inbox', async ({
-  page,
-}) => {
+test('first run: after the first fetch the list opens on its inbox', async ({ page }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   await page.getByTestId('first-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.getByTestId('first-fetch').click();
   await runFinished(page);
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
   await expect(rows(page).first()).toBeVisible();
   // Without a profile nothing is excluded.
   await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
@@ -385,21 +382,23 @@ test('Shift with the arrows, Home and End chooses jobs from the open one', async
   await expect(page.getByTestId('selection-pane')).toHaveCount(0);
 });
 
-test('a radio group takes Home and End too; the list does not', async ({ page }) => {
+test('the segments above the list choose with left and right; Home and End go to the list', async ({
+  page,
+}) => {
   await open(page, WIN);
   const facet = page.getByTestId('facet');
   const radios = facet.getByRole('radio');
-  const checked = facet.locator('[aria-checked="true"]');
-  await checked.focus();
+  await facet.locator('[aria-checked="true"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(radios.nth(1)).toHaveAttribute('aria-checked', 'true');
+  await expect(radios.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(radios.first()).toHaveAttribute('aria-checked', 'true');
+  // Up, down, Home and End belong to the list: End opens its last job.
   const before = (await calls(page, 'job_detail')).length;
   await page.keyboard.press('End');
-  await expect(radios.last()).toHaveAttribute('aria-checked', 'true');
-  await expect(radios.last()).toBeFocused();
-  await page.keyboard.press('Home');
   await expect(radios.first()).toHaveAttribute('aria-checked', 'true');
-  await expect(radios.first()).toBeFocused();
-  await expect(page.getByTestId('reader-close')).toHaveCount(0);
-  expect((await calls(page, 'job_detail')).length).toBe(before);
+  await expect.poll(async () => (await calls(page, 'job_detail')).length).toBeGreaterThan(before);
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {
@@ -523,7 +522,7 @@ test('ghost buttons at the end of a row end on the edge of the switches', async 
 
 test('macOS: the first sidebar entry starts on the first line of a view', async ({ page }) => {
   await settings(page, MAC);
-  const nav = (await page.getByTestId('nav-jobs').boundingBox())!.y;
+  const nav = (await page.getByTestId('nav-overview').boundingBox())!.y;
   const heading = (await page.getByTestId('settings-mailbox').locator('h2').boundingBox())!.y;
   expect(nav).toBe(heading);
 });
@@ -558,7 +557,8 @@ test('one glyph per action: retries load again, the reset keeps its own', async 
     'rotate-ccw',
   );
   // Jobs has one glyph: in the sidebar, on "Zurückholen" and on its empty list.
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('nav-jobs').click();
+  await page.getByTestId('place-archive').click();
   await rows(page).first().hover();
   const back = page.locator('[data-testid^="toInbox-"]').first();
   await expect(back.locator('[data-icon]')).toHaveAttribute('data-icon', 'briefcase');
@@ -574,7 +574,7 @@ test('deleting for good names the job like a move; several by their number', asy
     // A click right after the list changed is no click (a double click never hits the next).
     await page.waitForTimeout(600);
   }
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   await row(page, 'freelancermap-2802').hover();
   await page.getByTestId('purge-freelancermap-2802').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();

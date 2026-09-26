@@ -198,7 +198,7 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
     await page.getByTestId(`trash-${key}`).click();
     await page.waitForTimeout(550);
   }
-  await page.getByTestId('nav-trash').click();
+  await page.getByTestId('place-trash').click();
   const first = rows(page).first();
   const firstKey = await first.getAttribute('data-testid');
   const other =
@@ -209,7 +209,8 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
 });
 
-test('the day overview starts without a hairline when only open points are left', async ({
+// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
+test.fixme('the day overview starts without a hairline when only open points are left', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=offline`);
@@ -344,7 +345,7 @@ test('with the focus nowhere the arrows, Home and End scroll Profil too', async 
 
 test('a fetch started from the Archiv leads to its new jobs', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('nav-archive').click();
+  await page.getByTestId('place-archive').click();
   await page.getByTestId('fetch').click();
   await runFinished(page);
   const show = page.getByTestId('run-show-new');

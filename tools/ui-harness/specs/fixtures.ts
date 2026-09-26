@@ -39,7 +39,11 @@ export const NOW = new Date('2026-09-24T09:30:00+02:00');
 /** Open a page of the harness build and wait until fonts and the first frame are ready. */
 export async function open(page: Page, query = ''): Promise<void> {
   await page.clock.setFixedTime(NOW);
-  await page.goto(`/${query}`);
+  // Most specs start in the Jobs view; `view=overview` (or any other) keeps its own.
+  const withView = query.includes('view=')
+    ? query
+    : `${query}${query.includes('?') ? '&' : '?'}view=jobs`;
+  await page.goto(`/${withView}`);
   await settle(page);
 }
 
