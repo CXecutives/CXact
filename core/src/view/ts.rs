@@ -7,7 +7,7 @@
 //! Beside the types, the decisions the interface shares with the backend are written as
 //! values, one lower-case module each (never edited by hand, [`values`]): `bands.ts` (the
 //! band thresholds), `portals.ts` (the portals' names and marks), `settings.ts` (the
-//! defaults of the settings).
+//! defaults of the settings), `profile.ts` (the form's criteria, limits and empty form).
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -347,6 +347,9 @@ fn values() -> BTreeMap<String, String> {
          export const AUTO_EMPTY_TRASH_DAYS = {AUTO_EMPTY_TRASH_DAYS};\n"
     );
     out.insert("settings.ts".to_owned(), settings);
+
+    let profile = value_header("core/src/profile/form.rs") + &crate::profile::form_typescript();
+    out.insert("profile.ts".to_owned(), profile);
     out
 }
 

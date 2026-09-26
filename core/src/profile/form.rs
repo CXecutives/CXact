@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use super::json::Json;
 use crate::error::InvalidInput;
 use crate::matching;
-use crate::matching::facts::{self, Availability};
+use crate::matching::facts::{self, Availability, HardCriteria};
 use crate::matching::lexicon::{self, engine as lex};
 
 const KEY_NAME: &str = "name";
@@ -50,6 +50,176 @@ const MAX_MONTHS: u32 = 120;
 /// A single value and a list stay within what a profile ever holds.
 const MAX_TEXT: usize = 1_000;
 const MAX_ITEMS: usize = 300;
+
+/// The unit a number criterion is shown with (the interface has its words,
+/// `t.profile.unit`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum Unit {
+    Euro,
+    /// Years of experience ("ab 15 Jahren Erfahrung").
+    Experience,
+    Percent,
+    /// Days per week.
+    Days,
+    Months,
+}
+
+/// What a hard criterion holds, and how the form reaches it.
+#[derive(Clone, Copy)]
+enum Kind {
+    /// A whole number up to `max` (zero counts as none), shown with its unit.
+    Number {
+        max: u32,
+        #[cfg_attr(
+            not(test),
+            expect(dead_code, reason = "the interface's description reads it")
+        )]
+        unit: Unit,
+        slot: fn(&mut ProfileCriteria) -> &mut Option<u32>,
+        read: fn(&HardCriteria) -> Option<u32>,
+    },
+    /// Words, each once (`upper`: codes in capitals, the countries).
+    Words {
+        upper: bool,
+        slot: fn(&mut ProfileCriteria) -> &mut Vec<String>,
+        read: fn(&HardCriteria) -> Vec<String>,
+    },
+    /// The switches for ANÜ and permanent employment (`no_anue`, `no_permanent`).
+    Contracts,
+    /// `available`, a day or "now"; read and written in the criteria and the preferences.
+    Available,
+    /// `remote_outside`, yes or no (missing counts as yes).
+    RemoteOutside,
+}
+
+/// One hard criterion of the form: the field that names it, the engine's keys (the first
+/// is written for a new value) and what it holds.
+struct Criterion {
+    field: UnreadableField,
+    keys: &'static [&'static str],
+    kind: Kind,
+}
+
+/// Every hard criterion, in the order a new profile writes them (the skill's template).
+/// Normalizing, the limits, reading, writing, "Wert entfernen" and the interface's
+/// description (`ui/src/lib/ipc/types/profile.ts`) follow this table: a new number or word
+/// criterion is a field of [`ProfileCriteria`], a variant of [`UnreadableField`] and a row
+/// here (`docs/CHANGING.md`).
+const CRITERIA: [Criterion; 13] = [
+    Criterion {
+        field: UnreadableField::MinDayRate,
+        keys: lexicon::KEYS_MIN_RATE,
+        kind: Kind::Number {
+            max: MAX_DAY_RATE,
+            unit: Unit::Euro,
+            slot: |c| &mut c.min_day_rate,
+            read: |h| h.min_rate.and_then(|n| u32::try_from(n).ok()),
+        },
+    },
+    Criterion {
+        field: UnreadableField::Countries,
+        keys: lexicon::KEYS_COUNTRIES,
+        kind: Kind::Words {
+            upper: true,
+            slot: |c| &mut c.countries,
+            read: |h| h.countries.clone().unwrap_or_default(),
+        },
+    },
+    Criterion {
+        field: UnreadableField::Contracts,
+        keys: lexicon::KEYS_EXCLUDED_CONTRACTS,
+        kind: Kind::Contracts,
+    },
+    Criterion {
+        field: UnreadableField::Available,
+        keys: lexicon::KEYS_AVAILABLE,
+        kind: Kind::Available,
+    },
+    Criterion {
+        field: UnreadableField::RemoteOutside,
+        keys: lexicon::KEYS_REMOTE_OUTSIDE,
+        kind: Kind::RemoteOutside,
+    },
+    Criterion {
+        field: UnreadableField::TargetYears,
+        keys: lexicon::KEYS_TARGET_YEARS,
+        kind: Kind::Number {
+            max: MAX_YEARS,
+            unit: Unit::Experience,
+            slot: |c| &mut c.target_years,
+            read: |h| h.target_years,
+        },
+    },
+    Criterion {
+        field: UnreadableField::MinSalary,
+        keys: lexicon::KEYS_MIN_SALARY,
+        kind: Kind::Number {
+            max: MAX_SALARY,
+            unit: Unit::Euro,
+            slot: |c| &mut c.min_salary,
+            read: |h| h.min_salary.and_then(|n| u32::try_from(n).ok()),
+        },
+    },
+    Criterion {
+        field: UnreadableField::PermanentPlaces,
+        keys: lexicon::KEYS_PERMANENT_PLACES,
+        kind: Kind::Words {
+            upper: false,
+            slot: |c| &mut c.permanent_places,
+            read: |h| h.places.clone().unwrap_or_default(),
+        },
+    },
+    Criterion {
+        field: UnreadableField::PermanentRemoteMin,
+        keys: lexicon::KEYS_PERMANENT_REMOTE,
+        kind: Kind::Number {
+            max: MAX_PERCENT,
+            unit: Unit::Percent,
+            slot: |c| &mut c.permanent_remote_min,
+            read: |h| h.remote_min.and_then(|n| u32::try_from(n).ok()),
+        },
+    },
+    Criterion {
+        field: UnreadableField::WorkloadMinDays,
+        keys: lexicon::KEYS_WORKLOAD_MIN,
+        kind: Kind::Number {
+            max: MAX_WEEK_DAYS,
+            unit: Unit::Days,
+            slot: |c| &mut c.workload_min_days,
+            read: |h| h.workload_min.map(u32::from),
+        },
+    },
+    Criterion {
+        field: UnreadableField::WorkloadMaxDays,
+        keys: lexicon::KEYS_WORKLOAD_MAX,
+        kind: Kind::Number {
+            max: MAX_WEEK_DAYS,
+            unit: Unit::Days,
+            slot: |c| &mut c.workload_max_days,
+            read: |h| h.workload_max.map(u32::from),
+        },
+    },
+    Criterion {
+        field: UnreadableField::MinMonths,
+        keys: lexicon::KEYS_MIN_MONTHS,
+        kind: Kind::Number {
+            max: MAX_MONTHS,
+            unit: Unit::Months,
+            slot: |c| &mut c.min_months,
+            read: |h| h.min_months.map(u32::from),
+        },
+    },
+    Criterion {
+        field: UnreadableField::ExclusionWords,
+        keys: lexicon::KEYS_EXCLUSION_WORDS,
+        kind: Kind::Words {
+            upper: false,
+            slot: |c| &mut c.exclusion_words,
+            read: |h| h.exclusion_words.clone(),
+        },
+    },
+];
 
 /// The editable profile.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -278,19 +448,15 @@ pub struct ProfileCriteria {
     pub permanent_remote_min: Option<u32>,
     /// `auslastung_min_tage`, days per week (1 to 5).
     #[serde(default)]
-    #[cfg_attr(test, ts(optional = nullable))]
     pub workload_min_days: Option<u32>,
     /// `auslastung_max_tage`, days per week (1 to 5).
     #[serde(default)]
-    #[cfg_attr(test, ts(optional = nullable))]
     pub workload_max_days: Option<u32>,
     /// `min_laufzeit_monate`, the minimum duration of an engagement in months.
     #[serde(default)]
-    #[cfg_attr(test, ts(optional = nullable))]
     pub min_months: Option<u32>,
     /// `ausschlusswoerter`, words that exclude an ad.
     #[serde(default)]
-    #[cfg_attr(test, ts(as = "Option<Vec<String>>", optional))]
     pub exclusion_words: Vec<String>,
 }
 
@@ -401,28 +567,34 @@ impl UnreadableField {
         UnreadableField::ExclusionWords,
     ];
 
+    /// Where its keys are: a hard criterion's from [`CRITERIA`], the others here.
     fn place(self) -> Place {
         match self {
-            UnreadableField::MinDayRate => Place::Criteria(lexicon::KEYS_MIN_RATE),
-            UnreadableField::Countries => Place::Criteria(lexicon::KEYS_COUNTRIES),
-            UnreadableField::Contracts => Place::Criteria(lexicon::KEYS_EXCLUDED_CONTRACTS),
-            UnreadableField::RemoteOutside => Place::Criteria(lexicon::KEYS_REMOTE_OUTSIDE),
-            UnreadableField::Available => Place::Both(lexicon::KEYS_AVAILABLE),
-            UnreadableField::TargetYears => Place::Criteria(lexicon::KEYS_TARGET_YEARS),
-            UnreadableField::MinSalary => Place::Criteria(lexicon::KEYS_MIN_SALARY),
-            UnreadableField::PermanentPlaces => Place::Criteria(lexicon::KEYS_PERMANENT_PLACES),
-            UnreadableField::PermanentRemoteMin => Place::Criteria(lexicon::KEYS_PERMANENT_REMOTE),
             UnreadableField::Focus => Place::Top(lexicon::KEYS_FOCUS),
             UnreadableField::Roles => Place::Top(lexicon::KEYS_TARGET_ROLES),
             UnreadableField::WishDayRate => Place::Preferences(lexicon::KEYS_RATE_WISH),
             UnreadableField::Remote => Place::Preferences(lexicon::KEYS_REMOTE_WISH),
             UnreadableField::Regions => Place::Preferences(lexicon::KEYS_REGIONS),
             UnreadableField::WishIndustries => Place::Preferences(lexicon::KEYS_INDUSTRIES),
-            UnreadableField::WorkloadMinDays => Place::Criteria(lexicon::KEYS_WORKLOAD_MIN),
-            UnreadableField::WorkloadMaxDays => Place::Criteria(lexicon::KEYS_WORKLOAD_MAX),
-            UnreadableField::MinMonths => Place::Criteria(lexicon::KEYS_MIN_MONTHS),
-            UnreadableField::ExclusionWords => Place::Criteria(lexicon::KEYS_EXCLUSION_WORDS),
+            criterion => {
+                let row = CRITERIA
+                    .iter()
+                    .find(|row| row.field == criterion)
+                    .expect("every other field is a row of CRITERIA");
+                match row.kind {
+                    Kind::Available => Place::Both(row.keys),
+                    _ => Place::Criteria(row.keys),
+                }
+            }
         }
+    }
+
+    /// The name the interface gives the field (the field of the form it belongs to).
+    fn name(self) -> String {
+        serde_json::to_value(self)
+            .ok()
+            .and_then(|value| value.as_str().map(str::to_owned))
+            .unwrap_or_default()
     }
 
     /// The field of a key the engine reports as not understood (`criterionNotUnderstood`);
@@ -443,7 +615,6 @@ impl ProfileForm {
     /// the engine ignores it as none.
     #[must_use]
     pub fn normalized(&self) -> ProfileForm {
-        let c = &self.criteria;
         ProfileForm {
             name: self.name.trim().to_owned(),
             title: self.title.trim().to_owned(),
@@ -483,32 +654,7 @@ impl ProfileForm {
                 regions: clean(&self.wishes.regions),
                 industries: clean(&self.wishes.industries),
             },
-            criteria: ProfileCriteria {
-                min_day_rate: c.min_day_rate.filter(|n| *n > 0),
-                countries: clean(
-                    &c.countries
-                        .iter()
-                        .map(|code| code.trim().to_uppercase())
-                        .collect::<Vec<_>>(),
-                ),
-                no_anue: c.no_anue,
-                no_permanent: c.no_permanent,
-                available: match &c.available {
-                    ProfileAvailability::From { date } => ProfileAvailability::From {
-                        date: date.trim().to_owned(),
-                    },
-                    other => other.clone(),
-                },
-                remote_outside: c.remote_outside,
-                target_years: c.target_years.filter(|n| *n > 0),
-                min_salary: c.min_salary.filter(|n| *n > 0),
-                permanent_places: clean(&c.permanent_places),
-                permanent_remote_min: c.permanent_remote_min.filter(|n| *n > 0),
-                workload_min_days: c.workload_min_days.filter(|n| *n > 0),
-                workload_max_days: c.workload_max_days.filter(|n| *n > 0),
-                min_months: c.min_months.filter(|n| *n > 0),
-                exclusion_words: clean(&c.exclusion_words),
-            },
+            criteria: self.criteria.normalized(),
         }
     }
 
@@ -521,6 +667,38 @@ impl ProfileForm {
             ..ProfileForm::default()
         };
         self.normalized() != empty.normalized()
+    }
+}
+
+impl ProfileCriteria {
+    /// Numbers of zero as none, words trimmed and each once (codes in capitals), the day of
+    /// the availability trimmed.
+    fn normalized(&self) -> ProfileCriteria {
+        let mut out = self.clone();
+        for row in &CRITERIA {
+            match row.kind {
+                Kind::Number { slot, .. } => {
+                    let number = slot(&mut out);
+                    *number = number.filter(|n| *n > 0);
+                }
+                Kind::Words { upper, slot, .. } => {
+                    let words = slot(&mut out);
+                    let typed: Vec<String> = if upper {
+                        words.iter().map(|w| w.trim().to_uppercase()).collect()
+                    } else {
+                        words.clone()
+                    };
+                    *words = clean(&typed);
+                }
+                Kind::Available => {
+                    if let ProfileAvailability::From { date } = &mut out.available {
+                        *date = date.trim().to_owned();
+                    }
+                }
+                Kind::Contracts | Kind::RemoteOutside => {}
+            }
+        }
+        out
     }
 }
 
@@ -552,13 +730,8 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
         items.len() <= MAX_ITEMS && items.iter().all(|t| t.chars().count() <= MAX_TEXT)
     };
     let one = |text: &String| fits(std::slice::from_ref(text));
-    let c = &form.criteria;
     for (value, max, field) in [
         (form.years, MAX_YEARS, "years"),
-        (c.min_day_rate, MAX_DAY_RATE, "minDayRate"),
-        (c.target_years, MAX_YEARS, "targetYears"),
-        (c.min_salary, MAX_SALARY, "minSalary"),
-        (c.permanent_remote_min, MAX_PERCENT, "permanentRemoteMin"),
         (form.wishes.day_rate, MAX_DAY_RATE, "wishDayRate"),
     ] {
         if !within(value, max) {
@@ -615,48 +788,47 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
     if let Some(i) = form.languages.iter().position(|row| !one(&row.language)) {
         return Err(fail("languages", Some(i)));
     }
-    if !fits(&c.countries) {
-        return Err(fail("countries", None));
-    }
-    if !fits(&c.permanent_places) {
-        return Err(fail("permanentPlaces", None));
-    }
-    validate_limits(c)?;
-    if let ProfileAvailability::From { date } = &c.available
-        && date.parse::<Date>().is_err()
-    {
-        return Err(fail("available", None));
-    }
+    validate_criteria(&form.criteria)?;
     Ok(form)
 }
 
-/// The days per week (at most five, the maximum not below the minimum), the minimum
-/// duration and the exclusion words.
-fn validate_limits(c: &ProfileCriteria) -> Result<(), InvalidInput> {
-    let at = |field: &str, max: Option<u32>| InvalidInput::ProfileValue {
-        field: field.to_owned(),
+/// The hard criteria within their limits: every number up to its maximum, the words within
+/// what a profile holds, a day that reads, and the workload's second day not below the
+/// first.
+fn validate_criteria(c: &ProfileCriteria) -> Result<(), InvalidInput> {
+    let at = |field: UnreadableField, max: Option<u32>| InvalidInput::ProfileValue {
+        field: field.name(),
         row: None,
         max,
     };
-    for (value, field) in [
-        (c.workload_min_days, "workloadMinDays"),
-        (c.workload_max_days, "workloadMaxDays"),
-    ] {
-        if value.is_some_and(|n| n > MAX_WEEK_DAYS) {
-            return Err(at(field, Some(MAX_WEEK_DAYS)));
+    let mut c = c.clone();
+    for row in &CRITERIA {
+        match row.kind {
+            Kind::Number { max, slot, .. } => {
+                if slot(&mut c).is_some_and(|n| n > max) {
+                    return Err(at(row.field, Some(max)));
+                }
+            }
+            Kind::Words { slot, .. } => {
+                let words = slot(&mut c);
+                if words.len() > MAX_ITEMS || words.iter().any(|t| t.chars().count() > MAX_TEXT) {
+                    return Err(at(row.field, None));
+                }
+            }
+            Kind::Available => {
+                if let ProfileAvailability::From { date } = &c.available
+                    && date.parse::<Date>().is_err()
+                {
+                    return Err(at(row.field, None));
+                }
+            }
+            Kind::Contracts | Kind::RemoteOutside => {}
         }
     }
     if let (Some(min), Some(max)) = (c.workload_min_days, c.workload_max_days)
         && max < min
     {
-        return Err(at("workloadMaxDays", None));
-    }
-    if c.min_months.is_some_and(|n| n > MAX_MONTHS) {
-        return Err(at("minMonths", Some(MAX_MONTHS)));
-    }
-    let words = &c.exclusion_words;
-    if words.len() > MAX_ITEMS || words.iter().any(|t| t.chars().count() > MAX_TEXT) {
-        return Err(at("exclusionWords", None));
+        return Err(at(UnreadableField::WorkloadMaxDays, None));
     }
     Ok(())
 }
@@ -842,29 +1014,28 @@ fn read_wishes(doc: &Json) -> ProfileWishes {
 }
 
 fn read_criteria(doc: &Json) -> ProfileCriteria {
-    let c = matching::hard_criteria(&doc.to_value());
-    ProfileCriteria {
-        min_day_rate: c.min_rate.and_then(|n| u32::try_from(n).ok()),
-        countries: c.countries.unwrap_or_default(),
-        no_anue: c.anue_excluded,
-        no_permanent: c.permanent_excluded,
-        available: match c.available {
+    let h = matching::hard_criteria(&doc.to_value());
+    let mut c = ProfileCriteria {
+        no_anue: h.anue_excluded,
+        no_permanent: h.permanent_excluded,
+        available: match &h.available {
             Availability::Unset => ProfileAvailability::Unset,
             Availability::Now => ProfileAvailability::Now,
             Availability::From(day) => ProfileAvailability::From {
                 date: day.to_string(),
             },
         },
-        remote_outside: c.remote_outside != Some(false),
-        target_years: c.target_years,
-        min_salary: c.min_salary.and_then(|n| u32::try_from(n).ok()),
-        permanent_places: c.places.unwrap_or_default(),
-        permanent_remote_min: c.remote_min.and_then(|n| u32::try_from(n).ok()),
-        workload_min_days: c.workload_min.map(u32::from),
-        workload_max_days: c.workload_max.map(u32::from),
-        min_months: c.min_months.map(u32::from),
-        exclusion_words: c.exclusion_words,
+        remote_outside: h.remote_outside != Some(false),
+        ..ProfileCriteria::default()
+    };
+    for row in &CRITERIA {
+        match row.kind {
+            Kind::Number { slot, read, .. } => *slot(&mut c) = read(&h),
+            Kind::Words { slot, read, .. } => *slot(&mut c) = read(&h),
+            Kind::Contracts | Kind::Available | Kind::RemoteOutside => {}
+        }
     }
+    c
 }
 
 /// The form of a profile document, read the way the engine reads it. Of more than
@@ -1453,96 +1624,123 @@ fn german_date(iso: &str) -> String {
 }
 
 fn write_criteria(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCriteria) {
-    if after.min_day_rate != before.min_day_rate {
-        write_criterion(
-            doc,
-            lexicon::KEYS_MIN_RATE,
-            after.min_day_rate.map(Json::number),
-        );
-        if after.min_day_rate.is_none() {
-            remove_all(
-                doc,
-                lexicon::KEY_PREFERENCES_ALIASES,
-                &[lexicon::KEY_RATE_FROM],
-            );
+    let (mut old, mut new) = (before.clone(), after.clone());
+    for row in &CRITERIA {
+        match row.kind {
+            Kind::Number { slot, .. } => {
+                let value = *slot(&mut new);
+                if value != *slot(&mut old) {
+                    write_criterion(doc, row.keys, value.map(Json::number));
+                }
+            }
+            Kind::Words { slot, .. } => {
+                let words = slot(&mut new).clone();
+                if words != *slot(&mut old) {
+                    let value = (!words.is_empty()).then(|| Json::texts(&words));
+                    write_criterion(doc, row.keys, value);
+                }
+            }
+            Kind::Contracts => write_contracts(doc, before, after),
+            Kind::Available => {
+                if after.available != before.available {
+                    write_available(
+                        doc,
+                        match &after.available {
+                            ProfileAvailability::Unset => None,
+                            ProfileAvailability::Now => Some(lexicon::AVAILABLE_NOW.to_owned()),
+                            ProfileAvailability::From { date } => Some(german_date(date)),
+                        },
+                    );
+                }
+            }
+            Kind::RemoteOutside => {
+                if after.remote_outside != before.remote_outside {
+                    write_criterion(doc, row.keys, Some(Json::Bool(after.remote_outside)));
+                }
+            }
         }
     }
-    if after.countries != before.countries {
-        let countries = (!after.countries.is_empty()).then(|| Json::texts(&after.countries));
-        write_criterion(doc, lexicon::KEYS_COUNTRIES, countries);
-    }
-    write_contracts(doc, before, after);
-    if after.available != before.available {
-        write_available(
+    // A minimum day rate taken away goes from the preferences too (`tagessatz_ab`).
+    if before.min_day_rate.is_some() && after.min_day_rate.is_none() {
+        remove_all(
             doc,
-            match &after.available {
-                ProfileAvailability::Unset => None,
-                ProfileAvailability::Now => Some(lexicon::AVAILABLE_NOW.to_owned()),
-                ProfileAvailability::From { date } => Some(german_date(date)),
-            },
+            lexicon::KEY_PREFERENCES_ALIASES,
+            &[lexicon::KEY_RATE_FROM],
         );
     }
-    if after.remote_outside != before.remote_outside {
-        write_criterion(
-            doc,
-            lexicon::KEYS_REMOTE_OUTSIDE,
-            Some(Json::Bool(after.remote_outside)),
-        );
+}
+
+/// The interface's description of the form (`ui/src/lib/ipc/types/profile.ts`, written by
+/// `view/ts.rs`): the number criteria with their limit and unit, the word criteria, the
+/// fields whose value of the file can be removed, the limits of the lists and the empty form.
+#[cfg(test)]
+pub(crate) fn typescript() -> String {
+    use std::fmt::Write as _;
+
+    fn json(value: impl Serialize) -> String {
+        serde_json::to_string(&value).unwrap_or_default()
     }
-    if after.target_years != before.target_years {
-        write_criterion(
-            doc,
-            lexicon::KEYS_TARGET_YEARS,
-            after.target_years.map(Json::number),
-        );
-    }
-    if after.min_salary != before.min_salary {
-        write_criterion(
-            doc,
-            lexicon::KEYS_MIN_SALARY,
-            after.min_salary.map(Json::number),
-        );
-    }
-    if after.permanent_places != before.permanent_places {
-        let places =
-            (!after.permanent_places.is_empty()).then(|| Json::texts(&after.permanent_places));
-        write_criterion(doc, lexicon::KEYS_PERMANENT_PLACES, places);
-    }
-    if after.permanent_remote_min != before.permanent_remote_min {
-        write_criterion(
-            doc,
-            lexicon::KEYS_PERMANENT_REMOTE,
-            after.permanent_remote_min.map(Json::number),
-        );
-    }
-    for (keys, old, new) in [
-        (
-            lexicon::KEYS_WORKLOAD_MIN,
-            before.workload_min_days,
-            after.workload_min_days,
-        ),
-        (
-            lexicon::KEYS_WORKLOAD_MAX,
-            before.workload_max_days,
-            after.workload_max_days,
-        ),
-    ] {
-        if new != old {
-            write_criterion(doc, keys, new.map(Json::number));
+    let quoted = |value: String| format!("\"{value}\"");
+    let mut numbers = String::new();
+    let mut words = String::new();
+    for row in &CRITERIA {
+        match row.kind {
+            Kind::Number { max, unit, .. } => {
+                let _ = writeln!(
+                    numbers,
+                    "  {}: {{ max: {max}, unit: {} }},",
+                    row.field.name(),
+                    json(unit)
+                );
+            }
+            Kind::Words { upper, .. } => {
+                let _ = writeln!(words, "  {}: {{ upper: {upper} }},", row.field.name());
+            }
+            Kind::Contracts | Kind::Available | Kind::RemoteOutside => {}
         }
     }
-    if after.min_months != before.min_months {
-        write_criterion(
-            doc,
-            lexicon::KEYS_MIN_MONTHS,
-            after.min_months.map(Json::number),
-        );
-    }
-    if after.exclusion_words != before.exclusion_words {
-        let words =
-            (!after.exclusion_words.is_empty()).then(|| Json::texts(&after.exclusion_words));
-        write_criterion(doc, lexicon::KEYS_EXCLUSION_WORDS, words);
-    }
+    let units: Vec<String> = [
+        Unit::Euro,
+        Unit::Experience,
+        Unit::Percent,
+        Unit::Days,
+        Unit::Months,
+    ]
+    .iter()
+    .map(json)
+    .collect();
+    let fields: Vec<String> = UnreadableField::ALL
+        .iter()
+        .map(|field| quoted(field.name()))
+        .collect();
+    let empty = serde_json::to_string_pretty(&ProfileForm::default()).unwrap_or_default();
+    format!(
+        "import type {{ ProfileForm }} from \"./ProfileForm\";\n\
+         import type {{ UnreadableField }} from \"./UnreadableField\";\n\n\
+         /** The unit a number criterion is shown with (the catalog's `profile.unit`). */\n\
+         export type CriterionUnit = {};\n\n\
+         /** The number criteria of the form: the largest value the backend takes, the unit. */\n\
+         export const NUMBER_CRITERIA = {{\n{numbers}}} as const satisfies Record<string, \
+         {{ max: number; unit: CriterionUnit }}>;\n\
+         export type NumberCriterion = keyof typeof NUMBER_CRITERIA;\n\n\
+         /** The word criteria of the form (`upper`: codes in capitals). */\n\
+         export const WORD_CRITERIA = {{\n{words}}} as const satisfies Record<string, \
+         {{ upper: boolean }}>;\n\
+         export type WordCriterion = keyof typeof WORD_CRITERIA;\n\n\
+         /** Every field whose value of the file can be removed on its own. */\n\
+         export const UNREADABLE_FIELDS: readonly UnreadableField[] = [{}];\n\n\
+         /** At most this many competences are Schwerpunkte. */\n\
+         export const MAX_FOCUS = {MAX_FOCUS};\n\
+         /** The most years of experience, in total and per competence. */\n\
+         export const MAX_YEARS = {MAX_YEARS};\n\
+         /** The most entries of a list, and characters of an entry. */\n\
+         export const MAX_ITEMS = {MAX_ITEMS};\n\
+         export const MAX_TEXT = {MAX_TEXT};\n\n\
+         /** The empty form (`ProfileForm::default()`). */\n\
+         export const EMPTY_FORM: ProfileForm = {empty};\n",
+        units.join(" | "),
+        fields.join(", "),
+    )
 }
 
 #[cfg(test)]
@@ -1554,6 +1752,29 @@ mod tests {
 
     fn doc(value: &Value) -> Json {
         serde_json::from_str(&value.to_string()).unwrap()
+    }
+
+    /// `UnreadableField::ALL` names every field once (the interface's list is written from
+    /// it), each has its keys, and a hard criterion is one row of `CRITERIA`.
+    #[test]
+    fn every_field_is_listed_once_and_has_its_keys() {
+        use std::collections::BTreeSet;
+        use ts_rs::TS as _;
+
+        let union = UnreadableField::inline(&ts_rs::Config::new());
+        let variants: BTreeSet<&str> = union.split(" | ").collect();
+        let listed: Vec<String> = UnreadableField::ALL
+            .iter()
+            .map(|field| format!("\"{}\"", field.name()))
+            .collect();
+        let unique: BTreeSet<&str> = listed.iter().map(String::as_str).collect();
+        assert_eq!(unique.len(), listed.len(), "each field once");
+        assert_eq!(unique, variants, "ALL names every variant");
+        for field in UnreadableField::ALL {
+            let _ = field.place();
+            let rows = CRITERIA.iter().filter(|row| row.field == field).count();
+            assert!(rows <= 1, "{field:?} is one row");
+        }
     }
 
     /// Without the origins of the rows (a form read back from a written file has new ones).

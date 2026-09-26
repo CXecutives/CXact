@@ -75,6 +75,16 @@ import type {
 } from '../../ui/src/lib/ipc/types';
 import { BAND_FROM, bandOf, HIGH_FROM, MID_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
+import {
+  MAX_FOCUS,
+  MAX_ITEMS,
+  MAX_TEXT,
+  MAX_YEARS,
+  NUMBER_CRITERIA,
+  WORD_CRITERIA,
+  type NumberCriterion,
+  type WordCriterion,
+} from '../../ui/src/lib/ipc/types/profile';
 
 interface Harness {
   calls: [string, unknown][];
@@ -2603,23 +2613,23 @@ const handlers: Handlers = {
     const refuse = (field: string, max: number | null, row: number | null = null): never => {
       throw fail('invalid', { reason: 'profileValue', field, row, max });
     };
-    if ((after.criteria.minDayRate ?? 0) > 100_000) refuse('minDayRate', 100_000);
-    // Hidden or not, like core's validation.
-    if ((after.criteria.permanentRemoteMin ?? 0) > 100) refuse('permanentRemoteMin', 100);
-    const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > 70);
-    if (tooLong >= 0) refuse('competences', 70, tooLong);
-    if (after.focus.length > 5) refuse('focus', 5);
-    // Engine 16 (core form::validate_limits): at most five days a week, the second day not
-    // below the first, at most 120 months, and words within what a profile holds.
+    const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > MAX_YEARS);
+    if (tooLong >= 0) refuse('competences', MAX_YEARS, tooLong);
+    if (after.focus.length > MAX_FOCUS) refuse('focus', MAX_FOCUS);
+    // Like core (form::validate_criteria, the limits of types/profile.ts), hidden or not:
+    // every number up to its limit, words within what a profile holds, the second day of the
+    // workload not below the first.
     const c = after.criteria;
-    const minDays = c.workloadMinDays ?? null;
-    const maxDays = c.workloadMaxDays ?? null;
-    if ((minDays ?? 0) > 5) refuse('workloadMinDays', 5);
-    if ((maxDays ?? 0) > 5) refuse('workloadMaxDays', 5);
+    for (const key of Object.keys(NUMBER_CRITERIA) as NumberCriterion[]) {
+      const { max } = NUMBER_CRITERIA[key];
+      if ((c[key] ?? 0) > max) refuse(key, max);
+    }
+    for (const key of Object.keys(WORD_CRITERIA) as WordCriterion[]) {
+      const words = c[key];
+      if (words.length > MAX_ITEMS || words.some((w) => w.length > MAX_TEXT)) refuse(key, null);
+    }
+    const [minDays, maxDays] = [c.workloadMinDays, c.workloadMaxDays];
     if (minDays !== null && maxDays !== null && maxDays < minDays) refuse('workloadMaxDays', null);
-    if ((c.minMonths ?? 0) > 120) refuse('minMonths', 120);
-    const words = c.exclusionWords ?? [];
-    if (words.length > 300 || words.some((w) => w.length > 1000)) refuse('exclusionWords', null);
     const form = savedForm(after);
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';

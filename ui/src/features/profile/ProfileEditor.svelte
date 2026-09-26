@@ -39,6 +39,7 @@
     RemoteWish,
     UnreadableField,
   } from '$lib/ipc/types';
+  import { NUMBER_CRITERIA, type NumberCriterion } from '$lib/ipc/types/profile';
   import { primaryFirst } from '$lib/platform';
   import {
     dayShaped,
@@ -96,6 +97,8 @@
   editor.typed.share();
 
   const words = $derived(t.profile.field);
+  /** The unit beside a number criterion, as core describes it (`types/profile.ts`). */
+  const unitOf = (key: NumberCriterion): string => t.profile.unit[NUMBER_CRITERIA[key].unit];
   const id = $props.id();
   const form = $derived(editor.after);
   const c = $derived(editor.after.criteria);
@@ -436,7 +439,7 @@
           <NumberField
             id="{id}-min-rate"
             money
-            unit={t.profile.unit.euro}
+            unit={unitOf('minDayRate')}
             bind:value={c.minDayRate}
             invalid={errorOf('minDayRate') !== null}
             testid="profile-min-rate"
@@ -452,7 +455,7 @@
         >
           <NumberField
             id="{id}-target"
-            unit={t.profile.unit.experience}
+            unit={unitOf('targetYears')}
             bind:value={c.targetYears}
             invalid={errorOf('targetYears') !== null}
             testid="profile-target-years"
@@ -534,7 +537,7 @@
               <NumberField
                 compact
                 label={words.workloadMax}
-                unit={t.profile.unit.days}
+                unit={unitOf('workloadMaxDays')}
                 bind:value={() => c.workloadMaxDays ?? null, (next) => (c.workloadMaxDays = next)}
                 invalid={workloadInvalid('workloadMaxDays')}
                 testid="profile-workload-max"
@@ -553,7 +556,7 @@
         >
           <NumberField
             id="{id}-min-months"
-            unit={t.profile.unit.months}
+            unit={unitOf('minMonths')}
             bind:value={() => c.minMonths ?? null, (next) => (c.minMonths = next)}
             invalid={errorOf('minMonths') !== null}
             testid="profile-min-months"
@@ -679,7 +682,7 @@
             <NumberField
               id="{id}-salary"
               money
-              unit={t.profile.unit.euro}
+              unit={unitOf('minSalary')}
               bind:value={c.minSalary}
               invalid={errorOf('minSalary') !== null}
               testid="profile-min-salary"
@@ -697,7 +700,7 @@
           >
             <NumberField
               id="{id}-remote-min"
-              unit={t.profile.unit.percent}
+              unit={unitOf('permanentRemoteMin')}
               bind:value={c.permanentRemoteMin}
               invalid={errorOf('permanentRemoteMin') !== null || regionWithoutPlaces}
               testid="profile-remote-min"
