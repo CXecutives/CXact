@@ -32,7 +32,7 @@
   at most one way out, centred.
 -->
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
@@ -71,6 +71,7 @@
     purge,
     toggleStar,
   } from './actions';
+  import { glideIntoView } from '$lib/motion/scroll';
   import { bulk } from './bulk.svelte';
   import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
@@ -120,6 +121,19 @@
       return;
     }
   }
+  /** The Übersicht's "Ansehen" of the excluded jobs: the section opens and comes into view
+   *  once its divider is there (the backend lists the excluded jobs last). */
+  let excludedDivider: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!jobs.revealExcluded || excludedDivider === undefined) return;
+    untrack(() => {
+      jobs.revealExcluded = false;
+      if (!excludedOpen) toggleExcluded();
+      void tick().then(() => {
+        if (excludedDivider !== undefined) glideIntoView(excludedDivider, 'center');
+      });
+    });
+  });
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
@@ -801,13 +815,15 @@
           {@render group(active)}
         </div>
         {#if excluded.length > 0}
-          <ListDivider
-            label={t.list.excluded}
-            count={excludedCount}
-            open={excludedOpen}
-            ontoggle={toggleExcluded}
-            testid="excluded-divider"
-          />
+          <div bind:this={excludedDivider}>
+            <ListDivider
+              label={t.list.excluded}
+              count={excludedCount}
+              open={excludedOpen}
+              ontoggle={toggleExcluded}
+              testid="excluded-divider"
+            />
+          </div>
           {#if excludedOpen}
             <div class="rows" data-testid="excluded-rows">
               {@render group(excluded)}
