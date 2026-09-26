@@ -1,17 +1,18 @@
 <!--
-  The head of the Profil view: the person (name and role, copyable; the file name as the
-  tooltip) with the time of the last save, or the draft; how well the form reads (an honest
-  badge, following the form while it changes: "Vollständig" only with competences and nothing
-  to check, else "Wenig Inhalt" or "Ohne Kompetenzen", which says the thin profile in this
-  one place, its tooltip why); "n Werte prüfen" while values of the file do not read (or a
-  rule stays off), a click goes to the first one; one quiet stats line ("42 Suchbegriffe ·
-  2 Schwerpunkte"); keys the app does not read; the rescore a save starts; and the actions:
-  one main button (an update from a CV, or for a new form one from a CV) and the "…" menu of
-  the app with the rest (another file, the profile folder, remove; remove at once, the toast
-  offers Rückgängig). While the form holds changes, what would replace them waits and says
-  "Erst speichern oder verwerfen." While the stored file does not read, a new form says that
-  saving replaces that file and keeps its folder at hand. Drafts say once that they are to be
-  reviewed.
+  The head of the Profil view. Its first line sits on the first row of the window
+  (`data-first-row`, like the first heading of Übersicht and Einstellungen): the file's tile,
+  the person (name and role, copyable; the file name as the tooltip) or the draft, how well
+  the form reads (an honest badge that follows the form: "Vollständig" only with competences
+  and nothing to check, else "Wenig Inhalt" or "Ohne Kompetenzen", red only when nothing at
+  all can be scored, its tooltip why) and "n Werte prüfen" while values of the file do not
+  read (a click goes to the first one). Under it a card: when it was saved and how many
+  Suchbegriffe the app reads (the Schwerpunkte are said at their "2/5"), keys the app does
+  not read (with the folder at hand), the rescore a save starts, and the actions: one main
+  button (an update from a CV, or for a new form one from a CV) and the "…" menu with the
+  rest (another file, the profile folder, remove; remove goes at once, the toast offers
+  Rückgängig). While the form holds changes, what would replace or drop them waits and says
+  "Erst speichern oder verwerfen." Drafts say once that they are to be reviewed, a draft that
+  replaces a profile says that saving replaces it.
 -->
 <script lang="ts">
   import Badge, { type BadgeTone } from '$components/Badge.svelte';
@@ -37,15 +38,15 @@
     competences: boolean;
     /** Suchbegriffe (the engine's count, moved by the changes of the form). */
     terms: number | null;
-    /** Schwerpunkte of the form. */
-    focus: number;
-    /** What is still to check, each in one sentence (the tooltip of "n Werte prüfen"). */
-    checks: readonly string[];
+    /** How many values are still to check. */
+    checks: number;
     /** Warnings said here: what the form cannot change (keys the app does not read). */
     warnings: readonly NoticeData[];
     rescoring: boolean;
-    /** Unsaved changes: another file or an update would replace them. */
+    /** Unsaved changes: another file, an update or a removal would drop them. */
     dirty: boolean;
+    /** Saving the draft replaces the stored profile (another file). */
+    replacing: boolean;
     picking: boolean;
     note: string | null;
     onpick: () => void;
@@ -62,11 +63,11 @@
     quality,
     competences,
     terms,
-    focus,
     checks,
     warnings,
     rescoring,
     dirty,
+    replacing,
     picking,
     note,
     onpick,
@@ -78,36 +79,28 @@
 
   const stored = $derived(origin === 'stored' && profile !== null);
   /** A new form for a stored file that does not read: saving replaces that file. */
-  const replaces = $derived(origin === 'new' && (profile?.parseError ?? null) !== null);
+  const replacesBroken = $derived(origin === 'new' && (profile?.parseError ?? null) !== null);
   /** The badge: honest about competences; with values to check "n Werte prüfen" stands in
-   *  place of "Vollständig". */
+   *  place of "Vollständig". Without competence rows but with other terms the match is only
+   *  rough (amber); red only when nothing can be scored. */
   const badge = $derived.by((): { label: string; tone: BadgeTone; hint: string | null } | null => {
     if (quality === null) return null;
-    if (!competences || quality === 'empty') {
-      return {
-        label: t.profile.quality.empty,
-        tone: quality === 'empty' ? 'danger' : 'warning',
-        hint: t.profile.qualityText.empty,
-      };
+    if (quality === 'empty') {
+      return { label: t.profile.quality.empty, tone: 'danger', hint: t.profile.qualityText.empty };
+    }
+    if (!competences) {
+      return { label: t.profile.quality.empty, tone: 'warning', hint: t.profile.noRowsText };
     }
     if (quality === 'thin') {
       return { label: t.profile.quality.thin, tone: 'warning', hint: t.profile.qualityText.thin };
     }
-    if (checks.length > 0) return null;
+    if (checks > 0) return null;
     return { label: t.profile.quality.good, tone: 'success', hint: null };
   });
-  /** One separator for the whole line: Suchbegriffe, Schwerpunkte. */
-  const summary = $derived(
-    terms === null
-      ? null
-      : [t.profile.understood(terms), focus > 0 ? t.profile.focusCount(focus) : '']
-          .filter((part) => part !== '')
-          .join(' · '),
-  );
   const notes = $derived(
     warnings.flatMap((notice) => {
       const text = warningText(notice);
-      return text === null ? [] : [text];
+      return text === null ? [] : [{ text, folder: notice.code === 'ignoredKeys' }];
     }),
   );
   /** The person first: the name (the file name only as its tooltip), the role muted. */
@@ -119,21 +112,25 @@
       ? formatMoment(iso)
       : `${formatDate(iso)} ${formatTime(iso)}`;
   }
-  const savedAt = $derived(profile?.savedAt ? t.profile.savedAt(moment(profile.savedAt)) : null);
+  const savedAt = $derived(
+    stored && profile?.savedAt ? t.profile.savedAt(moment(profile.savedAt)) : null,
+  );
+  const summary = $derived(terms === null ? null : t.profile.understood(terms));
 
   // ------------------------------------------------------------------ the "…" menu
   let anchor = $state<HTMLElement | null>(null);
   let expanded = $state(false);
 
-  /** What the menu holds: for the stored profile another file, its folder and remove; for a
-   *  new form a file (and the folder of a file that does not read). */
+  /** What the menu holds: for the stored profile another file, its folder and remove (all
+   *  wait while the form holds changes, the folder aside; remove can be undone, so it is no
+   *  warning); for a new form a file (and the folder of a file that does not read). */
   const entries = $derived.by((): MenuEntry[] => {
+    const held = { disabled: dirty, reason: dirty ? t.profile.saveFirst : null };
     const pick: MenuEntry = {
       id: 'pick',
       label: stored ? t.profile.pickOther : t.profile.pick,
       icon: 'file-up',
-      disabled: dirty,
-      reason: dirty ? t.profile.saveFirst : null,
+      ...held,
       run: onpick,
     };
     const folder: MenuEntry = {
@@ -142,12 +139,12 @@
       icon: 'folder-open',
       run: onopenfolder,
     };
-    if (!stored) return replaces ? [pick, folder] : [pick];
+    if (!stored) return replacesBroken ? [pick, folder] : [pick];
     return [
       pick,
       folder,
       { kind: 'separator' },
-      { id: 'remove', label: t.profile.remove, icon: 'trash-2', danger: true, run: onremove },
+      { id: 'remove', label: t.profile.remove, icon: 'trash-2', ...held, run: onremove },
     ];
   });
 
@@ -164,95 +161,110 @@
   }
 </script>
 
-<Card padding="md" testid="profile-file">
-  <div class="head">
-    <div class="file">
-      <IconTile tone="navy" icon="file-text" size="md" />
-      <div class="facts">
-        {#if stored && profile}
-          <h2 class="name" data-copy use:tooltip={profile.fileName}>
-            <span data-testid="profile-name">{person?.name || t.profile.unnamed}</span>
-            {#if person?.title}<span class="role" data-testid="profile-role">{person.title}</span
-              >{/if}
-          </h2>
-          {#if savedAt}<p class="meta" data-testid="profile-saved-at">{savedAt}</p>{/if}
-        {:else}
-          <h2 class="name" data-testid="profile-name">
-            {t.profile.draft[origin === 'stored' ? 'new' : origin]}
-          </h2>
-        {/if}
-      </div>
-      {#if badge}
-        <span class="quality" data-testid="profile-quality">
-          <Badge label={badge.label} tone={badge.tone} hint={badge.hint} />
-        </span>
-      {/if}
-      {#if checks.length > 0}
-        <!-- Its tooltip names the values, a click goes to the first. -->
-        <span class="check" use:tooltip={checks.join(' ')}>
-          <Button
-            variant="ghost"
-            size="sm"
-            icon="triangle-alert"
-            label={t.profile.check(checks.length)}
-            testid="profile-check"
-            onclick={oncheck}
-          />
-        </span>
-      {/if}
-    </div>
-
-    {#if summary}
-      <p class="summary" data-testid="profile-understood">{summary}</p>
+<div class="head" data-testid="profile-file">
+  <div class="first" data-first-row>
+    <IconTile tone="navy" icon="file-text" size="sm" />
+    {#if stored && profile}
+      <h2 class="name" data-copy use:tooltip={profile.fileName}>
+        <span data-testid="profile-name">{person?.name || t.profile.unnamed}</span>
+        {#if person?.title}<span class="role" data-testid="profile-role">{person.title}</span>{/if}
+      </h2>
+    {:else}
+      <h2 class="name" data-testid="profile-name">
+        {t.profile.draft[origin === 'stored' ? 'new' : origin]}
+      </h2>
     {/if}
-    {#each notes as text, index (index)}
-      <Notice tone="info" variant="inline" {text} testid="profile-warning" />
-    {/each}
-    {#if origin === 'file' || origin === 'answer' || origin === 'update'}
-      <Notice tone="info" variant="inline" text={t.profile.review} testid="profile-review" />
+    {#if badge}
+      <span class="quality" data-testid="profile-quality">
+        <Badge label={badge.label} tone={badge.tone} hint={badge.hint} />
+      </span>
     {/if}
-    {#if replaces}
-      <Notice tone="info" variant="inline" text={t.profile.replaces} testid="profile-replaces" />
-    {/if}
-    {#if rescoring}
-      <p class="status" data-testid="profile-rescoring">
-        <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
-      </p>
-    {/if}
-
-    {#if stored || origin === 'new'}
-      <div class="actions">
+    {#if checks > 0}
+      <span class="check">
         <Button
-          variant="secondary"
-          size="field"
-          icon="clipboard-paste"
-          label={stored ? t.profile.updateFromCv : t.profile.fromCv}
-          disabled={dirty}
-          disabledReason={t.profile.saveFirst}
-          testid={stored ? 'profile-update-cv' : 'profile-from-cv'}
-          onclick={onfromcv}
+          variant="ghost"
+          size="sm"
+          icon="triangle-alert"
+          label={t.profile.check(checks)}
+          testid="profile-check"
+          onclick={oncheck}
         />
-        <span class="more" bind:this={anchor}>
+      </span>
+    {/if}
+  </div>
+
+  <Card padding="md">
+    <div class="body">
+      {#if savedAt || summary}
+        <p class="meta">
+          {#if savedAt}<span data-testid="profile-saved-at">{savedAt}</span>{/if}
+          {#if summary}<span data-testid="profile-understood">{summary}</span>{/if}
+        </p>
+      {/if}
+      {#each notes as warning, index (index)}
+        <Notice
+          tone="info"
+          variant="inline"
+          text={warning.text}
+          action={warning.folder
+            ? { label: t.common.openFolder, icon: 'folder-open', onclick: onopenfolder }
+            : null}
+          testid="profile-warning"
+        />
+      {/each}
+      {#if replacing}
+        <Notice
+          tone="info"
+          variant="inline"
+          text={t.profile.replacesStored}
+          testid="profile-replaces"
+        />
+      {:else if origin === 'file' || origin === 'answer' || origin === 'update'}
+        <Notice tone="info" variant="inline" text={t.profile.review} testid="profile-review" />
+      {/if}
+      {#if replacesBroken}
+        <Notice tone="info" variant="inline" text={t.profile.replaces} testid="profile-replaces" />
+      {/if}
+      {#if rescoring}
+        <p class="status" data-testid="profile-rescoring">
+          <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
+        </p>
+      {/if}
+
+      {#if stored || origin === 'new'}
+        <div class="actions">
           <Button
             variant="secondary"
             size="field"
-            iconOnly
-            icon="ellipsis"
-            label={t.profile.more}
-            menu
-            {expanded}
-            loading={picking}
-            testid="profile-more"
-            onclick={more}
+            icon="clipboard-paste"
+            label={stored ? t.profile.updateFromCv : t.profile.fromCv}
+            disabled={dirty}
+            disabledReason={t.profile.saveFirst}
+            testid={stored ? 'profile-update-cv' : 'profile-from-cv'}
+            onclick={onfromcv}
           />
-        </span>
-      </div>
-    {/if}
-    {#if note}
-      <Notice tone="danger" variant="inline" text={note} testid="profile-note" />
-    {/if}
-  </div>
-</Card>
+          <span class="more" bind:this={anchor}>
+            <Button
+              variant="secondary"
+              size="field"
+              iconOnly
+              icon="ellipsis"
+              label={t.profile.more}
+              menu
+              {expanded}
+              loading={picking}
+              testid="profile-more"
+              onclick={more}
+            />
+          </span>
+        </div>
+      {/if}
+      {#if note}
+        <Notice tone="danger" variant="inline" text={note} testid="profile-note" />
+      {/if}
+    </div>
+  </Card>
+</div>
 
 <style>
   .head {
@@ -261,30 +273,36 @@
     gap: var(--space-12);
   }
 
-  .file {
-    display: flex;
-    align-items: center;
+  .first {
     gap: var(--space-12);
   }
 
-  .facts {
+  .body {
     display: flex;
-    flex: 1;
     flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
+    gap: var(--space-12);
   }
 
-  /* The badge's box, no line around it (it stays centred on the person). */
+  /* The badge's box, no line around it. */
   .quality,
   .check,
   .more {
     display: flex;
   }
 
-  /* The ghost button's text ends on the card's edge, like the badge. */
+  /* The ghost button's text ends on the column's edge, like the badge. */
   .check {
     margin-right: calc(-1 * var(--ghost-inset));
+  }
+
+  .name {
+    flex: 1;
+    overflow: hidden;
+    min-width: 0;
+    color: var(--text-heading);
+    font: var(--type-lg);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .role {
@@ -293,24 +311,13 @@
     font: var(--type-md);
   }
 
-  .name {
-    overflow: hidden;
-    color: var(--text-heading);
-    font: var(--type-lg);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .meta,
-  .summary {
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-16);
     color: var(--text-muted);
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);
-  }
-
-  .summary {
-    padding-top: var(--space-12);
-    border-top: var(--border-width) solid var(--border);
   }
 
   .status {

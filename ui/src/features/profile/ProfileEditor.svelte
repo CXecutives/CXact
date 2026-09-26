@@ -1,18 +1,17 @@
 <!--
-  The profile as a form, in the order a consultant thinks: person, the conditions (what
-  excludes a job, and from when she is free), competences with their Schwerpunkte, experience
-  and qualifications, languages, wishes (they only nudge the score) and at the end what the
-  app reads in the file. Each block says in one sentence what it is for. Every field of a
-  block is 32 px high, the choices too (14 px text), every control label 13/500, and every
-  number field has one width with its unit beside it. The countries are a field that
-  suggests the countries the engine knows (by their German and English names and the other
-  names people use), with DACH in one click; a country of a file the app does not know stays
-  as it is. A single choice (Remote-Anteil, Verfügbar ab) is cleared by its option "Offen".
-  The day of "Ab Datum" exists only while it is chosen and gets the caret when it is; it is
-  judged when the field is left or on saving, never while it is typed. An empty optional
-  block says "Noch leer" quietly (the thin profile itself is said once, in the head). A value
-  of the file the app could not read is said at its field with "Wert entfernen"; a value the
-  backend refused is said there too, and the field gets the caret (said once, at the field).
+  The profile as a form: the sections of `sections.ts` in their order, each field as the
+  table describes it, and at the end what the app reads in the file ("So liest die App dein
+  Profil"). Each block says in one sentence what it is for. Every field of a block is 32 px
+  high, the choices too (14 px text), every control label 13/500, and every number field has
+  one width with its unit beside it. A single choice (Remote-Anteil, Verfügbar ab) is cleared
+  by its option "Offen". An empty optional block says "Noch leer" quietly (the thin profile
+  itself is said once, in the head). A value of the file the app could not read is said at
+  its field with "Wert entfernen"; a value the backend refused is said there too, and the
+  field gets the caret (said once, at the field). Values that contradict each other say so
+  quietly in the hint's place (a wished rate under the minimum, jobs for more years than her
+  experience), and the remote share of permanent roles waits for their places. The rules
+  for permanent roles hide while those are excluded, unless one of their values does not
+  read or a save refused one (then they stay until the form is saved or discarded).
   The save bar stays at the bottom of the view: "Speichern" (the one primary, only with a
   change) and "Verwerfen"; without a change both say why they wait. While it shows, the
   toasts rise above it (the toast stack measures it). An untouched new form goes back to the
@@ -24,12 +23,11 @@
   import Button from '$components/Button.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import Field from '$components/Field.svelte';
+  import type { IconName } from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import TextField from '$components/TextField.svelte';
   import Toggle from '$components/Toggle.svelte';
-  import { de } from '$lib/i18n/de';
-  import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import type {
@@ -37,32 +35,43 @@
     ProfileQuality,
     ProfileUnderstanding,
     RemoteWish,
-    UnreadableField,
   } from '$lib/ipc/types';
-  import { NUMBER_CRITERIA, type NumberCriterion } from '$lib/ipc/types/profile';
+  import { NUMBER_CRITERIA } from '$lib/ipc/types/profile';
   import { primaryFirst } from '$lib/platform';
-  import {
-    dayShaped,
-    editor,
-    isoDate,
-    type FieldError,
-    type FieldProblem,
-  } from '$lib/state/profile.svelte';
-  import { tick } from 'svelte';
+  import { editor, type FieldError, type FieldProblem } from '$lib/state/profile.svelte';
+  import { tick, untrack } from 'svelte';
+  import AvailableField from './AvailableField.svelte';
   import ChoiceButtons from './ChoiceButtons.svelte';
   import CompetenceList from './CompetenceList.svelte';
+  import CountriesField from './CountriesField.svelte';
   import LanguageList from './LanguageList.svelte';
   import NumberField from './NumberField.svelte';
   import ProfileReading from './ProfileReading.svelte';
   import ProfileSection from './ProfileSection.svelte';
+  import {
+    SECTIONS,
+    blank,
+    controlsOf,
+    fieldsOf,
+    listOf,
+    numberOf,
+    setList,
+    setNumber,
+    switchField,
+    unitOf,
+    type Control,
+    type Line,
+    type Section,
+  } from './sections';
   import ValueNote from './ValueNote.svelte';
+  import WorkloadField from './WorkloadField.svelte';
 
   interface Props {
     /** How much the engine understands of the form as it is (guidance for a thin profile). */
     quality: ProfileQuality | null;
     /** Values of the file the app could not read that are still there. */
     problems: readonly FieldProblem[];
-    /** The engine's warnings of the profile (Schwerpunkte taken over, a region rule). */
+    /** The engine's warnings of the profile (Schwerpunkte taken over). */
     warnings: readonly NoticeData[];
     /** What the app reads in the file ("So liest die App dein Profil"); `null` for a new one. */
     understood: ProfileUnderstanding | null;
@@ -74,7 +83,7 @@
     /** The outcome of the last save (until the next change). */
     result: string | null;
     /** The way on after the first save during setup (next to the result); `null` otherwise. */
-    onnext: (() => void) | null;
+    next: { label: string; icon: IconName; onclick: () => void } | null;
     onsave: () => void;
     ondiscard: () => void;
   }
@@ -88,7 +97,7 @@
     busy,
     note,
     result,
-    onnext,
+    next,
     onsave,
     ondiscard,
   }: Props = $props();
@@ -97,47 +106,28 @@
   editor.typed.share();
 
   const words = $derived(t.profile.field);
-  /** The unit beside a number criterion, as core describes it (`types/profile.ts`). */
-  const unitOf = (key: NumberCriterion): string => t.profile.unit[NUMBER_CRITERIA[key].unit];
   const id = $props.id();
   const form = $derived(editor.after);
-  const c = $derived(editor.after.criteria);
 
-  /** The words of a value the app could not read, by the kind of its field. */
+  /** The words of a value the app could not read, by the kind of its field: a number that is
+   *  none, or (digits out of range, anything else) a value the app cannot read. */
   function unreadText(problem: FieldProblem): string {
-    switch (problem.field) {
-      case 'minDayRate':
-      case 'targetYears':
-      case 'minSalary':
-      case 'permanentRemoteMin':
-      case 'wishDayRate':
-        return words.unreadableNumber(problem.value);
-      // A number out of its range (9 days a week) is a number all the same.
-      case 'workloadMinDays':
-      case 'workloadMaxDays':
-      case 'minMonths':
-        return /^\d+$/.test(problem.value)
-          ? words.unreadableValue(problem.value)
-          : words.unreadableNumber(problem.value);
-      case 'available':
-        return words.unreadableDate(problem.value);
-      case 'roles':
-        return problem.entry
-          ? words.unreadableRole(problem.value)
-          : words.unreadableValue(problem.value);
-      default:
-        return words.unreadableValue(problem.value);
-    }
+    if (problem.field === 'available') return words.unreadableDate(problem.value);
+    if (problem.entry && problem.field === 'roles') return words.unreadableRole(problem.value);
+    const number = problem.field in NUMBER_CRITERIA || problem.field === 'wishDayRate';
+    return number && !/^\d+$/.test(problem.value)
+      ? words.unreadableNumber(problem.value)
+      : words.unreadableValue(problem.value);
   }
 
-  const problemsOf = (field: UnreadableField): FieldProblem[] =>
+  const problemsOf = (field: string): FieldProblem[] =>
     problems.filter((problem) => problem.field === field);
 
   /** "Wert entfernen": an entry of a list goes at once, a whole value when saving. */
   function drop(problem: FieldProblem): void {
-    const same = (entry: string): boolean => entry.toLowerCase() !== problem.value.toLowerCase();
-    if (problem.entry && problem.field === 'roles') form.roles = form.roles.filter(same);
-    else if (problem.entry && problem.field === 'focus') form.focus = form.focus.filter(same);
+    const other = (entry: string): boolean => entry.toLowerCase() !== problem.value.toLowerCase();
+    if (problem.entry && problem.field === 'roles') form.roles = form.roles.filter(other);
+    else if (problem.entry && problem.field === 'focus') form.focus = form.focus.filter(other);
     else editor.clear(problem.field);
   }
 
@@ -145,15 +135,12 @@
    *  that does not read (said by `Field` with "Wert entfernen" as its way on). */
   function errorOf(field: string): string | null {
     if (fieldError?.field === field) return fieldError.text();
-    const first = problemsOf(field as UnreadableField).find((problem) => !problem.entry);
+    const first = problemsOf(field).find((problem) => !problem.entry);
     return first ? unreadText(first) : null;
   }
 
-  function removeOf(field: UnreadableField): {
-    label: string;
-    testid: string;
-    onclick: () => void;
-  } | null {
+  type Remove = { label: string; testid: string; onclick: () => void };
+  function removeOf(field: string): Remove | null {
     if (fieldError?.field === field) return null;
     const first = problemsOf(field).find((problem) => !problem.entry);
     return first
@@ -161,74 +148,38 @@
       : null;
   }
 
+  /** Values of the file said under a control of their own (a switch, a choice, a day, an
+   *  entry of a list), each with "Wert entfernen". */
+  const notesOf = (field: string, entries = false): { text: string; onremove: () => void }[] =>
+    problemsOf(field)
+      .filter((problem) => !entries || problem.entry)
+      .map((problem) => ({ text: unreadText(problem), onremove: () => drop(problem) }));
+
   const listError = (field: string): { row: number | null; text: string } | null =>
     fieldError?.field === field ? { row: fieldError.row, text: fieldError.text() } : null;
 
   /** The workload is one field of two days (von, bis): one message for both, and "Wert
    *  entfernen" takes every value of the file behind it. A refusal of either day comes
    *  first, as at every field, before a value of the file that does not read. */
-  const WORKLOAD: readonly UnreadableField[] = ['workloadMinDays', 'workloadMaxDays'];
+  const WORKLOAD = ['workloadMinDays', 'workloadMaxDays'];
   const workloadError = (): string | null =>
-    (fieldError !== null && WORKLOAD.includes(fieldError.field as UnreadableField)
-      ? fieldError.text()
-      : null) ??
+    (fieldError !== null && WORKLOAD.includes(fieldError.field) ? fieldError.text() : null) ??
     errorOf('workloadMinDays') ??
     errorOf('workloadMaxDays');
-  function workloadRemove(): { label: string; testid: string; onclick: () => void } | null {
-    if (WORKLOAD.includes(fieldError?.field as UnreadableField)) return null;
+  function workloadRemove(): Remove | null {
+    if (WORKLOAD.includes(fieldError?.field ?? '')) return null;
     const found = WORKLOAD.flatMap(problemsOf).filter((problem) => !problem.entry);
     return found.length === 0
       ? null
       : { label: words.removeValue, testid: 'value-remove', onclick: () => found.forEach(drop) };
   }
-  const workloadInvalid = (field: UnreadableField): boolean =>
+  const invalid = (field: string): boolean =>
     fieldError?.field === field || problemsOf(field).length > 0;
 
   const trimmed = $derived.by((): number | null => {
     const notice = warnings.find((w) => w.code === 'focusTrimmed');
     return notice ? Number(notice.params.count) : null;
   });
-  /** The minimum remote share of permanent roles without places (the rule stays off). */
-  const regionWithoutPlaces = $derived(
-    warnings.some((w) => w.code === 'regionWithoutPlaces') &&
-      c.permanentPlaces.length === 0 &&
-      c.permanentRemoteMin !== null,
-  );
-
-  const thin = $derived(quality === 'thin' || quality === 'empty');
-  const actionFirst = primaryFirst();
-
-  /** Other names people type for a country (the engine reads most of them too,
-   *  core/src/matching/lexicon/engine.rs); the chip holds the code either way. */
-  const COUNTRY_TERMS: Readonly<Record<string, readonly string[]>> = {
-    CZ: ['Czech Republic', 'Tschechische Republik'],
-    GB: ['UK', 'England', 'Great Britain', 'Vereinigtes Königreich'],
-    NL: ['Holland'],
-    US: ['United States', 'Vereinigte Staaten', 'America', 'Amerika'],
-  };
-  /** Every country the engine knows, named in the app's language and found by every name. */
-  const COUNTRIES = $derived(
-    Object.keys(de.profile.country).map((code) => ({
-      id: code,
-      label: t.profile.country[code] ?? code,
-      terms: [
-        de.profile.country[code] ?? code,
-        en.profile.country[code] ?? code,
-        ...(COUNTRY_TERMS[code] ?? []),
-      ],
-    })),
-  );
-  /** Deutschland, Österreich and Schweiz in one click. */
-  const DACH = ['DE', 'AT', 'CH'];
-  const dachMissing = $derived(DACH.some((code) => !c.countries.includes(code)));
-  /** The button goes once they are in: the focus it had moves into the countries field. */
-  async function addDach(event: MouseEvent): Promise<void> {
-    const focused = event.currentTarget === document.activeElement;
-    c.countries = [...c.countries, ...DACH.filter((code) => !c.countries.includes(code))];
-    if (!focused) return;
-    await tick();
-    document.getElementById(`${id}-countries`)?.focus();
-  }
 
   const REMOTE = $derived<{ id: RemoteWish; label: string }[]>(
     (['full', 'mostly', 'partly', 'onSite'] as const).map((wish) => ({
@@ -236,52 +187,55 @@
       label: t.profile.remoteWish[wish],
     })),
   );
-  const AVAILABLE = $derived<{ id: 'now' | 'from'; label: string }[]>(
-    (['now', 'from'] as const).map((kind) => ({
-      id: kind,
-      label: t.profile.availability[kind],
-    })),
-  );
 
-  /** "Offen" is no availability. "Ab Datum" puts the caret into its day, which is judged
-   *  anew when it is left. */
-  async function setAvailable(chosen: string[]): Promise<void> {
-    const kind = chosen[0];
-    c.available =
-      kind === 'from'
-        ? { kind, date: isoDate(editor.dateText) ?? editor.dateText.trim() }
-        : kind === 'now'
-          ? { kind }
-          : { kind: 'unset' };
-    judged = false;
-    if (kind !== 'from') return;
-    await tick();
-    root?.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus();
+  const unreadIn = (fields: readonly string[]): boolean =>
+    problems.some((problem) => fields.includes(problem.field));
+
+  /** "Noch leer" follows one rule in every section: nothing in it while the profile is thin
+   *  or new, and never above a value of the file that does not read. */
+  const thin = $derived(quality === 'thin' || quality === 'empty');
+  const guide = $derived(thin || editor.origin === 'new');
+  function emptySection(section: Section): boolean {
+    const controls = controlsOf(section.lines);
+    return (
+      guide &&
+      controls.every((control) => blank(form, control)) &&
+      !unreadIn(controls.flatMap(fieldsOf))
+    );
   }
 
-  function setDate(text: string): void {
-    editor.dateText = text;
-    c.available = { kind: 'from', date: isoDate(text) ?? text.trim() };
-    judged = false;
-  }
-
-  /** The day is judged when its field is left with text in it or on saving; typing waits
-   *  for the next judgement, so nothing flashes while a valid day is typed. */
-  let judged = $state(false);
-  const dateError = $derived(
-    judged && editor.dateInvalid
-      ? dayShaped(editor.dateText)
-        ? words.dateImpossible
-        : words.dateInvalid
-      : null,
+  /** A group whose values a save refused stays until the form is saved or discarded, so it
+   *  can be put right; one with a value of the file that does not read stays too, so the
+   *  head's "n Werte prüfen" always leads to it. */
+  type Group = Extract<Line, { kind: 'group' }>;
+  const fieldsIn = (group: Group): string[] => controlsOf(group.lines).flatMap(fieldsOf);
+  const GROUPS = SECTIONS.flatMap((section) => section.lines).filter(
+    (line): line is Group => line.kind === 'group',
   );
-  const dateSaid = $derived(dateError !== null || fieldError?.field === 'available');
+  let held = $state<string[]>([]);
+  $effect(() => {
+    const refused = fieldError?.field ?? '';
+    const dirty = editor.dirty;
+    const now = GROUPS.map((group) => ({
+      id: group.id,
+      refused: fieldsIn(group).includes(refused),
+      hidden: group.hidden(form),
+    }));
+    untrack(() => {
+      held = now
+        .filter((group) => group.refused || (held.includes(group.id) && dirty && group.hidden))
+        .map((group) => group.id);
+    });
+  });
+  const shown = (group: Group): boolean =>
+    !group.hidden(form) || held.includes(group.id) || unreadIn(fieldsIn(group));
 
+  const actionFirst = primaryFirst();
   let root = $state<HTMLElement | null>(null);
 
   /** Ready to save: a day that does not read is said at its field, which gets the caret. */
   export function ready(): boolean {
-    judged = true;
+    editor.judged = true;
     if (!editor.dateInvalid) return true;
     document.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus();
     return false;
@@ -315,17 +269,6 @@
     });
   }
 
-  /** The rules for permanent roles hide while those are excluded, unless a save refused one
-   *  of their values: then they stay until the form is saved or discarded, so it can be put
-   *  right. */
-  const PERMANENT: readonly string[] = ['minSalary', 'permanentRemoteMin', 'permanentPlaces'];
-  let permanentHeld = $state(false);
-  $effect(() => {
-    if (PERMANENT.includes(fieldError?.field ?? '')) permanentHeld = true;
-    else if (!editor.dirty || !c.noPermanent) permanentHeld = false;
-  });
-  const permanentShown = $derived(!c.noPermanent || permanentHeld);
-
   function save(): void {
     if (!editor.dirty || busy) return;
     if (ready()) onsave();
@@ -334,34 +277,7 @@
   /** A new form nothing was typed into: "Verwerfen" and Esc go back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
 
-  const empty = (...values: unknown[]): boolean =>
-    values.every(
-      (value) => value === null || value === '' || (Array.isArray(value) && value.length === 0),
-    );
-  const noCriteria = $derived(
-    empty(
-      c.minDayRate,
-      c.countries,
-      c.targetYears,
-      c.minSalary,
-      c.permanentPlaces,
-      c.workloadMinDays ?? null,
-      c.workloadMaxDays ?? null,
-      c.minMonths ?? null,
-      c.exclusionWords ?? [],
-    ) &&
-      !c.noAnue &&
-      !c.noPermanent &&
-      c.available.kind === 'unset',
-  );
-
-  /** "Noch leer" follows one rule in every section: nothing in it while the profile is thin
-   *  or new, and never above a value of the file that does not read. */
-  const guide = $derived(thin || editor.origin === 'new');
-  const unreadIn = (...fields: string[]): boolean =>
-    problems.some((problem) => fields.includes(problem.field));
-  const noRows = (rows: { name?: string; language?: string }[]): boolean =>
-    rows.every((row) => (row.name ?? row.language ?? '').trim() === '');
+  const kebab = (text: string): string => text.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 </script>
 
 <div
@@ -371,369 +287,142 @@
   onfocusin={keepClear}
   data-testid="profile-form"
 >
-  <ProfileSection
-    heading={t.profile.section.person}
-    hint={t.profile.sectionHint.person}
-    empty={guide && empty(form.name, form.title) && !unreadIn('name', 'title')}
-    testid="section-person"
-  >
-    <div class="pair">
-      <div data-field="name">
-        <Field label={words.name} for="{id}-name" error={errorOf('name')}>
-          <TextField
-            id="{id}-name"
-            bind:value={form.name}
-            placeholder={words.namePlaceholder}
-            invalid={fieldError?.field === 'name'}
-            testid="profile-name-field"
-          />
-        </Field>
-      </div>
-      <div data-field="title">
-        <Field label={words.title} for="{id}-title" error={errorOf('title')}>
-          <TextField
-            id="{id}-title"
-            bind:value={form.title}
-            placeholder={words.titlePlaceholder}
-            invalid={fieldError?.field === 'title'}
-            testid="profile-title"
-          />
-        </Field>
-      </div>
-    </div>
-  </ProfileSection>
+  {#each SECTIONS as section (section.id)}
+    <ProfileSection
+      heading={t.profile.section[section.id]}
+      hint={t.profile.sectionHint[section.id]}
+      empty={emptySection(section)}
+      required={section.required ?? false}
+      testid="section-{section.id}"
+    >
+      {#each section.lines as line, index (index)}
+        {@render lineOf(line)}
+      {/each}
+    </ProfileSection>
+  {/each}
 
-  <!-- Konditionen: what excludes a job, and from when she is free; after the start the rules
-       of engine 16: the workload in days per week (von, bis) beside the minimum duration in
-       months, both checks, then the words that exclude a job. -->
-  <ProfileSection
-    heading={t.profile.section.criteria}
-    hint={t.profile.sectionHint.criteria}
-    empty={guide &&
-      noCriteria &&
-      !unreadIn(
-        'minDayRate',
-        'countries',
-        'contracts',
-        'remoteOutside',
-        'targetYears',
-        'minSalary',
-        'permanentPlaces',
-        'permanentRemoteMin',
-        'available',
-        'workloadMinDays',
-        'workloadMaxDays',
-        'minMonths',
-        'exclusionWords',
-      )}
-    testid="section-criteria"
-  >
+  {#if understood}
+    <ProfileReading {understood} {form} stale={editor.changed} />
+  {/if}
+</div>
+
+{#snippet lineOf(line: Line)}
+  {#if line.kind === 'pair'}
     <div class="pair">
-      <div data-field="minDayRate">
-        <Field
-          label={words.minDayRate}
-          for="{id}-min-rate"
-          error={errorOf('minDayRate')}
-          action={removeOf('minDayRate')}
-        >
-          <NumberField
-            id="{id}-min-rate"
-            money
-            unit={unitOf('minDayRate')}
-            bind:value={c.minDayRate}
-            invalid={errorOf('minDayRate') !== null}
-            testid="profile-min-rate"
-          />
-        </Field>
-      </div>
-      <div data-field="targetYears">
-        <Field
-          label={words.targetYears}
-          for="{id}-target"
-          error={errorOf('targetYears')}
-          action={removeOf('targetYears')}
-        >
-          <NumberField
-            id="{id}-target"
-            unit={unitOf('targetYears')}
-            bind:value={c.targetYears}
-            invalid={errorOf('targetYears') !== null}
-            testid="profile-target-years"
-          />
-        </Field>
-      </div>
+      {#each line.fields as field, index (index)}{@render control(field)}{/each}
     </div>
-    <div class="block" data-field="available">
-      <span class="label">{words.available}</span>
-      <div class="available">
-        <ChoiceButtons
-          options={AVAILABLE}
-          selected={c.available.kind === 'unset' ? [] : [c.available.kind]}
-          label={words.available}
-          none={words.open}
-          testid="profile-available"
-          onchange={setAvailable}
-        />
-        {#if c.available.kind === 'from'}
-          <span
-            class="date"
-            role="presentation"
-            onfocusout={() => (judged = editor.dateText.trim() !== '')}
+  {:else if line.kind === 'switches'}
+    <div class="switches">
+      {#each line.fields as field, index (field.key)}
+        {@const value = switchField(field.key)}
+        {@const off = field.off?.(form) ?? null}
+        <div class="switch" data-field={value}>
+          <SettingRow
+            label={words[field.label]}
+            hint={field.hint ? words[field.hint] : null}
+            for="{id}-{field.key}"
           >
-            <TextField
-              value={editor.dateText}
-              label={words.date}
-              placeholder={words.datePlaceholder}
-              invalid={dateSaid}
-              describedby={dateSaid ? `${id}-date-message` : null}
-              testid="profile-date"
-              oninput={setDate}
+            <Toggle
+              id="{id}-{field.key}"
+              checked={field.key === 'remoteOutside'
+                ? !form.criteria.remoteOutside
+                : form.criteria[field.key]}
+              label={words[field.label]}
+              disabled={off !== null}
+              disabledReason={off === null ? null : words[off]}
+              testid={field.testid}
+              onchange={(on) => {
+                if (field.key === 'remoteOutside') form.criteria.remoteOutside = !on;
+                else form.criteria[field.key] = on;
+              }}
             />
-          </span>
-        {/if}
-      </div>
-      {#if dateSaid}
-        <div id="{id}-date-message">
-          {#if dateError}
-            <Notice tone="danger" variant="inline" text={dateError} testid="profile-date-error" />
-          {:else if fieldError?.field === 'available'}
-            <Notice tone="danger" variant="inline" text={fieldError.text()} />
+          </SettingRow>
+          <!-- What the file had behind the switches of one key, after the last of them. -->
+          {#if line.fields.findLastIndex((other) => switchField(other.key) === value) === index}
+            {#each notesOf(value) as unread (unread.text)}
+              <ValueNote
+                text={unread.text}
+                testid="{kebab(value)}-unread"
+                onremove={unread.onremove}
+              />
+            {/each}
           {/if}
         </div>
-      {:else}
-        <p class="hint">{words.availableHint}</p>
-      {/if}
-      {#each problemsOf('available') as problem (problem.value)}
-        <ValueNote
-          text={unreadText(problem)}
-          testid="profile-available-unread"
-          onremove={() => drop(problem)}
-        />
       {/each}
     </div>
-    <div class="pair">
-      <div data-field="workload">
-        <Field
-          label={words.workload}
-          for="{id}-workload-min"
-          hint={words.workloadHint}
-          error={workloadError()}
-          action={workloadRemove()}
-        >
-          <div class="range" data-testid="profile-workload">
-            <span class="word">{words.workloadFrom}</span>
-            <div class="day" data-field="workloadMinDays">
-              <NumberField
-                id="{id}-workload-min"
-                compact
-                label={words.workloadMin}
-                bind:value={() => c.workloadMinDays ?? null, (next) => (c.workloadMinDays = next)}
-                invalid={workloadInvalid('workloadMinDays')}
-                testid="profile-workload-min"
-              />
-            </div>
-            <span class="word">{words.workloadTo}</span>
-            <div class="day" data-field="workloadMaxDays">
-              <NumberField
-                compact
-                label={words.workloadMax}
-                unit={unitOf('workloadMaxDays')}
-                bind:value={() => c.workloadMaxDays ?? null, (next) => (c.workloadMaxDays = next)}
-                invalid={workloadInvalid('workloadMaxDays')}
-                testid="profile-workload-max"
-              />
-            </div>
-          </div>
-        </Field>
+  {:else if line.kind === 'group'}
+    {#if shown(line)}
+      <div class="sub" data-testid="profile-{line.id}">
+        <h3 class="sub-heading">{t.profile.section[line.id]}</h3>
+        <p class="hint">{t.profile.sectionHint[line.id]}</p>
       </div>
-      <div data-field="minMonths">
-        <Field
-          label={words.minMonths}
-          for="{id}-min-months"
-          hint={words.minMonthsHint}
-          error={errorOf('minMonths')}
-          action={removeOf('minMonths')}
-        >
-          <NumberField
-            id="{id}-min-months"
-            unit={unitOf('minMonths')}
-            bind:value={() => c.minMonths ?? null, (next) => (c.minMonths = next)}
-            invalid={errorOf('minMonths') !== null}
-            testid="profile-min-months"
-          />
-        </Field>
-      </div>
-    </div>
-    <div data-field="exclusionWords">
-      <Field
-        label={words.exclusionWords}
-        for="{id}-exclusion-words"
-        hint={words.exclusionWordsHint}
-        error={errorOf('exclusionWords')}
-        action={removeOf('exclusionWords')}
-      >
-        <ChipInput
-          id="{id}-exclusion-words"
-          bind:values={() => c.exclusionWords ?? [], (next) => (c.exclusionWords = next)}
-          placeholder={words.exclusionWordsPlaceholder}
-          invalid={errorOf('exclusionWords') !== null}
-          testid="profile-exclusion-words"
+      {#each line.lines as sub, index (index)}{@render lineOf(sub)}{/each}
+    {/if}
+  {:else}
+    {@render control(line)}
+  {/if}
+{/snippet}
+
+{#snippet control(c: Control)}
+  {#if c.kind === 'text'}
+    <div data-field={c.key}>
+      <Field label={words[c.label]} for="{id}-{c.key}" error={errorOf(c.key)}>
+        <TextField
+          id="{id}-{c.key}"
+          bind:value={form[c.key]}
+          placeholder={words[c.placeholder]}
+          invalid={fieldError?.field === c.key}
+          testid={c.testid}
         />
       </Field>
     </div>
-    <div data-field="countries">
+  {:else if c.kind === 'number'}
+    {@const unit = unitOf(c)}
+    {@const error = errorOf(c.key)}
+    {@const advice = c.advice?.(form) ?? null}
+    <div data-field={c.key}>
       <Field
-        label={words.countries}
-        for="{id}-countries"
-        error={errorOf('countries')}
-        action={removeOf('countries')}
+        label={words[c.label]}
+        for="{id}-{c.key}"
+        hint={advice !== null ? words[advice] : c.hint ? words[c.hint] : null}
+        {error}
+        action={removeOf(c.key)}
       >
-        <div class="countries">
-          <ChipInput
-            id="{id}-countries"
-            bind:values={c.countries}
-            options={COUNTRIES}
-            noMatch={words.countryNone}
-            placeholder={words.countriesPlaceholder}
-            invalid={errorOf('countries') !== null}
-            testid="profile-countries"
-          />
-          {#if dachMissing}
-            <Button
-              variant="secondary"
-              size="sm"
-              icon="plus"
-              label={words.dach}
-              testid="profile-dach"
-              onclick={(event) => void addDach(event)}
-            />
-          {/if}
-        </div>
+        <NumberField
+          id="{id}-{c.key}"
+          money={unit === 'euro'}
+          unit={unit === null ? null : t.profile.unit[unit]}
+          bind:value={() => numberOf(form, c.key), (value) => setNumber(form, c.key, value)}
+          invalid={error !== null}
+          disabled={error === null && (c.off?.(form) ?? false)}
+          testid={c.testid}
+        />
       </Field>
     </div>
-    <div class="toggles">
-      <div data-field="remoteOutside">
-        <!-- On excludes: the file's "allowed" is the switch turned off. -->
-        <SettingRow label={words.remoteOutside} for="{id}-remote-outside" form>
-          <Toggle
-            id="{id}-remote-outside"
-            checked={!c.remoteOutside}
-            label={words.remoteOutside}
-            disabled={c.countries.length === 0}
-            disabledReason={words.remoteOutsideOff}
-            testid="profile-remote-outside"
-            onchange={(on) => (c.remoteOutside = !on)}
-          />
-        </SettingRow>
-        {#each problemsOf('remoteOutside') as problem (problem.value)}
-          <ValueNote
-            text={unreadText(problem)}
-            testid="remote-outside-unread"
-            onremove={() => drop(problem)}
-          />
-        {/each}
-      </div>
-      <div data-field="contracts">
-        <SettingRow label={words.noAnue} for="{id}-no-anue" form>
-          <Toggle
-            id="{id}-no-anue"
-            checked={c.noAnue}
-            label={words.noAnue}
-            testid="profile-no-anue"
-            onchange={(on) => (c.noAnue = on)}
-          />
-        </SettingRow>
-        <SettingRow
-          label={words.noPermanent}
-          hint={words.noPermanentHint}
-          for="{id}-no-permanent"
-          form
-        >
-          <Toggle
-            id="{id}-no-permanent"
-            checked={c.noPermanent}
-            label={words.noPermanent}
-            testid="profile-no-permanent"
-            onchange={(on) => (c.noPermanent = on)}
-          />
-        </SettingRow>
-        {#each problemsOf('contracts') as problem (problem.value)}
-          <ValueNote
-            text={unreadText(problem)}
-            testid="contracts-unread"
-            onremove={() => drop(problem)}
-          />
-        {/each}
-      </div>
+  {:else if c.kind === 'chips'}
+    {@const error = errorOf(c.key)}
+    <div data-field={c.key}>
+      <Field
+        label={words[c.label]}
+        for="{id}-{c.key}"
+        hint={c.hint ? words[c.hint] : null}
+        {error}
+        action={removeOf(c.key)}
+      >
+        <ChipInput
+          id="{id}-{c.key}"
+          bind:values={() => listOf(form, c.key), (values) => setList(form, c.key, values)}
+          split={c.lines ? 'lines' : 'list'}
+          placeholder={words[c.placeholder]}
+          invalid={error !== null}
+          testid={c.testid}
+        />
+      </Field>
+      {#each notesOf(c.key, true) as unread (unread.text)}
+        <ValueNote text={unread.text} testid="{kebab(c.key)}-unread" onremove={unread.onremove} />
+      {/each}
     </div>
-    {#if permanentShown}
-      <div class="sub" data-testid="profile-permanent">
-        <h3 class="sub-heading">{t.profile.section.permanent}</h3>
-        <p class="hint">{t.profile.sectionHint.permanent}</p>
-      </div>
-      <div class="pair">
-        <div data-field="minSalary">
-          <Field
-            label={words.minSalary}
-            for="{id}-salary"
-            error={errorOf('minSalary')}
-            action={removeOf('minSalary')}
-          >
-            <NumberField
-              id="{id}-salary"
-              money
-              unit={unitOf('minSalary')}
-              bind:value={c.minSalary}
-              invalid={errorOf('minSalary') !== null}
-              testid="profile-min-salary"
-            />
-          </Field>
-        </div>
-        <div data-field="permanentRemoteMin">
-          <Field
-            label={words.remoteMin}
-            for="{id}-remote-min"
-            hint={words.remoteMinHint}
-            error={errorOf('permanentRemoteMin') ??
-              (regionWithoutPlaces ? t.profile.warning.regionWithoutPlaces : null)}
-            action={removeOf('permanentRemoteMin')}
-          >
-            <NumberField
-              id="{id}-remote-min"
-              unit={unitOf('permanentRemoteMin')}
-              bind:value={c.permanentRemoteMin}
-              invalid={errorOf('permanentRemoteMin') !== null || regionWithoutPlaces}
-              testid="profile-remote-min"
-            />
-          </Field>
-        </div>
-      </div>
-      <div data-field="permanentPlaces">
-        <Field
-          label={words.places}
-          for="{id}-places"
-          error={errorOf('permanentPlaces')}
-          action={removeOf('permanentPlaces')}
-        >
-          <ChipInput
-            id="{id}-places"
-            bind:values={c.permanentPlaces}
-            invalid={errorOf('permanentPlaces') !== null}
-            placeholder={words.placesPlaceholder}
-            testid="profile-places"
-          />
-        </Field>
-      </div>
-    {/if}
-  </ProfileSection>
-
-  <ProfileSection
-    heading={t.profile.section.competences}
-    hint={t.profile.sectionHint.competences}
-    empty={guide && noRows(form.competences) && !unreadIn('competences', 'focus')}
-    required
-    testid="section-competences"
-  >
+  {:else if c.kind === 'competences'}
     <CompetenceList
       bind:rows={form.competences}
       bind:focus={form.focus}
@@ -742,173 +431,31 @@
       onclear={() => editor.clear('focus')}
       error={listError('competences') ?? listError('focus')}
     />
-    <div data-field="strengths">
-      <Field
-        label={words.strengths}
-        for="{id}-strengths"
-        hint={words.strengthsHint}
-        error={errorOf('strengths')}
-      >
-        <ChipInput
-          id="{id}-strengths"
-          bind:values={form.strengths}
-          split="lines"
-          placeholder={words.strengthsPlaceholder}
-          invalid={fieldError?.field === 'strengths'}
-          testid="profile-strengths"
-        />
-      </Field>
-    </div>
-    <div data-field="keywords">
-      <Field
-        label={words.keywords}
-        for="{id}-keywords"
-        hint={words.keywordsHint}
-        error={errorOf('keywords')}
-      >
-        <ChipInput
-          id="{id}-keywords"
-          bind:values={form.keywords}
-          placeholder={words.keywordsPlaceholder}
-          invalid={fieldError?.field === 'keywords'}
-          testid="profile-keywords"
-        />
-      </Field>
-    </div>
-  </ProfileSection>
-
-  <ProfileSection
-    heading={t.profile.section.experience}
-    hint={t.profile.sectionHint.experience}
-    empty={guide &&
-      empty(form.years, form.degrees, form.certificates, form.tools, form.industries) &&
-      !unreadIn('years', 'degrees', 'certificates', 'tools', 'industries')}
-    testid="section-experience"
-  >
-    <div data-field="years">
-      <Field
-        label={words.totalYears}
-        for="{id}-years"
-        hint={words.totalYearsHint}
-        error={errorOf('years')}
-      >
-        <NumberField
-          id="{id}-years"
-          unit={t.profile.unit.years}
-          bind:value={form.years}
-          invalid={fieldError?.field === 'years'}
-          testid="profile-years"
-        />
-      </Field>
-    </div>
-    <div data-field="degrees">
-      <Field label={words.degrees} for="{id}-degrees" error={errorOf('degrees')}>
-        <ChipInput
-          id="{id}-degrees"
-          bind:values={form.degrees}
-          split="lines"
-          placeholder={words.degreesPlaceholder}
-          invalid={fieldError?.field === 'degrees'}
-          testid="profile-degrees"
-        />
-      </Field>
-    </div>
-    <div data-field="certificates">
-      <Field label={words.certificates} for="{id}-certificates" error={errorOf('certificates')}>
-        <ChipInput
-          id="{id}-certificates"
-          bind:values={form.certificates}
-          split="lines"
-          placeholder={words.certificatesPlaceholder}
-          invalid={fieldError?.field === 'certificates'}
-          testid="profile-certificates"
-        />
-      </Field>
-    </div>
-    <div data-field="tools">
-      <Field label={words.tools} for="{id}-tools" error={errorOf('tools')}>
-        <ChipInput
-          id="{id}-tools"
-          bind:values={form.tools}
-          placeholder={words.toolsPlaceholder}
-          invalid={fieldError?.field === 'tools'}
-          testid="profile-tools"
-        />
-      </Field>
-    </div>
-    <div data-field="industries">
-      <Field label={words.industries} for="{id}-industries" error={errorOf('industries')}>
-        <ChipInput
-          id="{id}-industries"
-          bind:values={form.industries}
-          placeholder={words.industriesPlaceholder}
-          invalid={fieldError?.field === 'industries'}
-          testid="profile-industries"
-        />
-      </Field>
-    </div>
-  </ProfileSection>
-
-  <ProfileSection
-    heading={t.profile.section.languages}
-    hint={t.profile.sectionHint.languages}
-    empty={guide && noRows(form.languages) && !unreadIn('languages')}
-    testid="section-languages"
-  >
+  {:else if c.kind === 'languages'}
     <LanguageList bind:rows={form.languages} error={listError('languages')} />
-  </ProfileSection>
-
-  <ProfileSection
-    heading={t.profile.section.wishes}
-    hint={t.profile.sectionHint.wishes}
-    empty={guide &&
-      empty(form.roles, form.wishes.dayRate, form.wishes.regions, form.wishes.industries) &&
-      form.wishes.remote === null &&
-      !unreadIn('roles', 'wishDayRate', 'remote', 'regions', 'wishIndustries')}
-    testid="section-wishes"
-  >
-    <div data-field="roles">
-      <Field
-        label={words.roles}
-        for="{id}-roles"
-        hint={words.rolesHint}
-        error={errorOf('roles')}
-        action={removeOf('roles')}
-      >
-        <ChipInput
-          id="{id}-roles"
-          bind:values={form.roles}
-          placeholder={words.rolesPlaceholder}
-          invalid={errorOf('roles') !== null}
-          testid="profile-roles"
-        />
-      </Field>
-      {#each problemsOf('roles').filter((problem) => problem.entry) as problem (problem.value)}
-        <ValueNote
-          text={unreadText(problem)}
-          testid="roles-unread"
-          onremove={() => drop(problem)}
-        />
-      {/each}
-    </div>
-    <div data-field="wishDayRate">
-      <Field
-        label={words.wishRate}
-        for="{id}-wish-rate"
-        hint={words.wishRateHint}
-        error={errorOf('wishDayRate')}
-        action={removeOf('wishDayRate')}
-      >
-        <NumberField
-          id="{id}-wish-rate"
-          money
-          unit={t.profile.unit.euro}
-          bind:value={form.wishes.dayRate}
-          invalid={errorOf('wishDayRate') !== null}
-          testid="profile-wish-rate"
-        />
-      </Field>
-    </div>
+  {:else if c.kind === 'countries'}
+    <CountriesField
+      id="{id}-countries"
+      bind:values={form.criteria.countries}
+      error={errorOf('countries')}
+      action={removeOf('countries')}
+    />
+  {:else if c.kind === 'available'}
+    <AvailableField
+      refused={fieldError?.field === 'available' ? fieldError.text() : null}
+      notes={notesOf('available')}
+    />
+  {:else if c.kind === 'workload'}
+    <WorkloadField
+      id="{id}-workload"
+      bind:min={form.criteria.workloadMinDays}
+      bind:max={form.criteria.workloadMaxDays}
+      error={workloadError()}
+      action={workloadRemove()}
+      invalidMin={invalid('workloadMinDays')}
+      invalidMax={invalid('workloadMaxDays')}
+    />
+  {:else if c.kind === 'remote'}
     <div class="block" data-field="remote">
       <span class="label">{words.remote}</span>
       <ChoiceButtons
@@ -917,54 +464,14 @@
         label={words.remote}
         none={words.open}
         testid="profile-remote"
-        onchange={(next) => (form.wishes.remote = (next[0] as RemoteWish | undefined) ?? null)}
+        onchange={(chosen) => (form.wishes.remote = (chosen[0] as RemoteWish | undefined) ?? null)}
       />
-      {#each problemsOf('remote') as problem (problem.value)}
-        <ValueNote
-          text={unreadText(problem)}
-          testid="remote-unread"
-          onremove={() => drop(problem)}
-        />
+      {#each notesOf('remote') as unread (unread.text)}
+        <ValueNote text={unread.text} testid="remote-unread" onremove={unread.onremove} />
       {/each}
     </div>
-    <div data-field="regions">
-      <Field
-        label={words.regions}
-        for="{id}-regions"
-        error={errorOf('regions')}
-        action={removeOf('regions')}
-      >
-        <ChipInput
-          id="{id}-regions"
-          bind:values={form.wishes.regions}
-          placeholder={words.regionsPlaceholder}
-          invalid={errorOf('regions') !== null}
-          testid="profile-regions"
-        />
-      </Field>
-    </div>
-    <div data-field="wishIndustries">
-      <Field
-        label={words.wishIndustries}
-        for="{id}-wish-industries"
-        error={errorOf('wishIndustries')}
-        action={removeOf('wishIndustries')}
-      >
-        <ChipInput
-          id="{id}-wish-industries"
-          bind:values={form.wishes.industries}
-          placeholder={words.wishIndustriesPlaceholder}
-          invalid={errorOf('wishIndustries') !== null}
-          testid="profile-wish-industries"
-        />
-      </Field>
-    </div>
-  </ProfileSection>
-
-  {#if understood}
-    <ProfileReading {understood} stale={editor.dirty} />
   {/if}
-</div>
+{/snippet}
 
 <div class="bar" bind:this={bar} data-testid="profile-save-bar">
   <div class="status" data-testid="profile-save-status">
@@ -975,14 +482,14 @@
     {:else if result}
       <span class="result">
         <Notice tone="success" variant="inline" text={result} testid="profile-saved" />
-        {#if onnext}
+        {#if next}
           <Button
             variant="secondary"
             size="field"
-            icon="arrow-right"
-            label={t.profile.next}
+            icon={next.icon}
+            label={next.label}
             testid="profile-next"
-            onclick={onnext}
+            onclick={next.onclick}
           />
         {/if}
       </span>
@@ -1054,63 +561,25 @@
     font: var(--type-sm);
   }
 
-  .available {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-12);
-  }
-
-  /* The workload reads as one line: von, the first day, bis, the second day and its unit
-     (it wraps only where the column is narrow). */
-  .range {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8);
-    min-width: 0;
-  }
-
-  .word {
-    color: var(--text-muted);
-    font: var(--type-field);
-  }
-
-  .day {
-    min-width: 0;
-  }
-
-  /* The day is as wide as every number field. */
-  .date {
-    width: calc(var(--stat-min) - var(--space-48));
-  }
-
-  /* Narrow, DACH sits under the field, which keeps the full width of its neighbours. */
-  .countries {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-12);
-  }
-
-  @container (width >= 520px) {
-    .countries {
-      flex-direction: row;
-      align-items: center;
-    }
-  }
-
-  .countries > :global(:first-child) {
-    flex: 1;
-    align-self: stretch;
-    min-width: 0;
-  }
-
-  .toggles {
+  /* The switches are one list between two hairlines: each row but the last has its own
+     (the wrappers that name a row's field take no box of their own). */
+  .switches {
     display: flex;
     flex-direction: column;
     border-top: var(--border-width) solid var(--border);
     border-bottom: var(--border-width) solid var(--border);
+  }
+
+  .switch {
+    display: contents;
+  }
+
+  .switches > .switch :global([data-setting-row]) {
+    border-bottom: var(--border-width) solid var(--border);
+  }
+
+  .switches > .switch:last-child :global([data-setting-row]:last-of-type) {
+    border-bottom: 0;
   }
 
   /* Festanstellung: its own group below the switches' hairline, a real subheading (H3). */

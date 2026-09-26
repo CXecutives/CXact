@@ -2,24 +2,26 @@
   "So liest die App dein Profil", the last block of the form (a heading and a card like the
   others): what the engine reads in the file, which explains the Suchbegriffe of the head.
   The Suchbegriffe themselves (the first 40), where in the file they come from (also parts
-  the form does not show, such as career stations), the years and degrees it found, its
-  specialist vocabulary and the conditions it applies. While the form holds changes its
-  sentence says that this is the saved profile.
+  the form does not show, such as career stations) and its specialist vocabulary. What the
+  form shows anyway is not said again: the years only while the form's field is empty, the
+  degrees only those the form lacks. While the form holds changes its sentence says that
+  this reading does not include them.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
-  import { formatEuro, formatNumber } from '$lib/i18n/format';
-  import type { Notice, ProfileUnderstanding } from '$lib/ipc/types';
-  import { shownDate } from '$lib/state/profile.svelte';
+  import { formatNumber } from '$lib/i18n/format';
+  import type { ProfileForm, ProfileUnderstanding } from '$lib/ipc/types';
   import ProfileSection from './ProfileSection.svelte';
 
   interface Props {
     understood: ProfileUnderstanding;
+    /** The form as it is. */
+    form: ProfileForm;
     /** The form holds changes this reading does not know yet. */
     stale: boolean;
   }
 
-  let { understood, stale }: Props = $props();
+  let { understood, form, stale }: Props = $props();
 
   const words = $derived(t.profile.reading);
 
@@ -59,80 +61,11 @@
 
   const more = $derived(Math.max(0, understood.competenceCount - understood.competences.length));
   const packs = $derived(understood.packs.map((pack) => t.profile.pack[pack] ?? pack));
-
-  const str = (value: unknown): string =>
-    typeof value === 'string' || typeof value === 'number' ? String(value) : '';
-
-  /** The form's label of each criterion (the one word for it on this page); the contract
-   *  types keep their name, their value says "ausgeschlossen". */
-  const FIELD: Record<string, string> = $derived({
-    minDayRate: t.profile.field.minDayRate,
-    countries: t.profile.field.countries,
-    availability: t.profile.field.available,
-    minSalary: t.profile.field.minSalary,
-    permanentRegion: t.profile.field.places,
-    targetYears: t.profile.field.targetYears,
-    workload: t.profile.field.workload,
-    duration: t.profile.field.minMonths,
-    exclusionWords: t.profile.field.exclusionWords,
-  });
-
-  /** A whole number of the engine's params (`null`, a missing one or text is none). */
-  const whole = (value: unknown): number | null =>
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string' && /^\d+$/.test(value)
-        ? Number(value)
-        : null;
-
-  /** A set criterion as the engine applies it: its name and its value. */
-  function criterion(notice: Notice): { label: string; value: string } | null {
-    const p = notice.params;
-    if (p.set !== true) return null;
-    const key = notice.code as keyof typeof t.reader.criterion;
-    const label = FIELD[notice.code] ?? t.reader.criterion[key]?.label ?? notice.code;
-    switch (notice.code) {
-      case 'minDayRate':
-      case 'minSalary':
-        return { label, value: words.from(formatEuro(Number(p.min))) };
-      case 'countries':
-        return {
-          label,
-          value: str(p.countries)
-            .split(',')
-            .map((code) => code.trim())
-            .map((code) => t.profile.country[code] ?? code)
-            .join(', '),
-        };
-      case 'noAnue':
-      case 'noPermanent':
-        return { label, value: words.excluded };
-      case 'availability':
-        return {
-          label,
-          value: p.from === 'now' ? t.profile.availability.now : shownDate(str(p.from)),
-        };
-      case 'permanentRegion':
-        return { label, value: str(p.places) };
-      case 'targetYears':
-        return { label, value: words.yearsFrom(Number(p.min)) };
-      // Engine 16: the days per week, the minimum duration and the exclusion words.
-      case 'workload':
-        return { label, value: words.workload(whole(p.minDays), whole(p.maxDays)) };
-      case 'duration':
-        return { label, value: words.months(Number(p.min)) };
-      case 'exclusionWords':
-        return { label, value: str(p.words) };
-      default:
-        return { label, value: '' };
-    }
-  }
-
-  const criteria = $derived(
-    understood.criteria.flatMap((notice) => {
-      const row = criterion(notice);
-      return row === null ? [] : [row];
-    }),
+  const years = $derived(form.years === null ? understood.years : null);
+  const degrees = $derived(
+    understood.degrees.filter(
+      (degree) => !form.degrees.some((own) => own.trim().toLowerCase() === degree.toLowerCase()),
+    ),
   );
 </script>
 
@@ -154,30 +87,18 @@
         <dt>{words.sources}</dt>
         <dd data-testid="reading-sources">{sources.join(' · ')}</dd>
       {/if}
-      {#if understood.years !== null}
+      {#if years !== null}
         <dt>{words.years}</dt>
-        <dd>{words.yearsValue(understood.years)}</dd>
+        <dd data-testid="reading-years">{words.yearsValue(years)}</dd>
       {/if}
-      {#if understood.degrees.length > 0}
+      {#if degrees.length > 0}
         <dt>{words.degrees}</dt>
-        <dd data-copy>{understood.degrees.join(' · ')}</dd>
+        <dd data-copy data-testid="reading-degrees">{degrees.join(' · ')}</dd>
       {/if}
       {#if packs.length > 0}
         <dt>{words.packs}</dt>
-        <dd>{packs.join(' · ')}</dd>
+        <dd data-testid="reading-packs">{packs.join(' · ')}</dd>
       {/if}
-      <dt>{words.criteria}</dt>
-      <dd data-testid="reading-criteria">
-        {#if criteria.length === 0}
-          {words.none}
-        {:else}
-          <ul class="criteria">
-            {#each criteria as row (row.label)}
-              <li><span class="criterion">{row.label}</span> {row.value}</li>
-            {/each}
-          </ul>
-        {/if}
-      </dd>
     </dl>
   </div>
 </ProfileSection>
@@ -202,16 +123,6 @@
 
   .more {
     margin-left: var(--space-4);
-    color: var(--text-muted);
-  }
-
-  .criteria {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .criterion {
     color: var(--text-muted);
   }
 </style>
