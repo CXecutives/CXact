@@ -1597,6 +1597,8 @@ pub struct ResetSummary {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct AppState {
     pub platform: Platform,
+    /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
+    pub version: String,
     pub dry_run: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,

@@ -1470,6 +1470,7 @@ export const en: Catalog = {
     fullMailboxText: 'This takes longer and fetches more pages from the portals.',
     logs: 'Log',
     data: 'App data',
+    version: 'Version',
     reset: 'Reset everything',
     resetHint: 'Deletes jobs, settings, profile, app password and sign-ins.',
     resetAction: 'Reset',

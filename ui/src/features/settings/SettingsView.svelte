@@ -17,7 +17,8 @@
   Every file row works the same: "Öffnen" and "Ordner öffnen"; the path (text to select and
   copy) stands only at the work folder. Textdateien says what they are (the ads as text for
   an AI); after a change of the folder a note says that they are still in the old one until
-  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them.
+  "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them; Wartung ends with
+  the app's version.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -613,6 +614,9 @@
             onclick={() => open({ kind: 'dataDir' }, setCare)}
           />
         </SettingRow>
+        <SettingRow label={t.settings.version} testid="version">
+          <span class="value" data-copy>{cfg.version}</span>
+        </SettingRow>
         {@render note(careNote, 'care-note')}
       </Card>
     </section>
@@ -747,6 +751,13 @@
     color: var(--text-muted);
     font-variant-numeric: var(--numeric);
     text-align: right;
+  }
+
+  /* The app's version: a value to copy, quiet like the keys. */
+  .value {
+    color: var(--text-muted);
+    font: var(--type-sm);
+    font-variant-numeric: var(--numeric);
   }
 
   .skeleton {

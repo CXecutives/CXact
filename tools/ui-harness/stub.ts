@@ -1008,6 +1008,8 @@ function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
   state = {
     platform: MAC ? 'macos' : 'windows',
+    // The app's version (src-tauri's CARGO_PKG_VERSION, the workspace's).
+    version: '3.0.0',
     dryRun: false,
     firstRun: false,
     running: null,

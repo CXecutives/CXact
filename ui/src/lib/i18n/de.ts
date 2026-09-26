@@ -1666,6 +1666,8 @@ export const de = {
     fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
     logs: 'Protokoll',
     data: 'Daten der App',
+    /** The row of the app's version in Wartung. */
+    version: 'Version',
     reset: 'Alles zurücksetzen',
     /** Everything core's reset deletes: the database, the profile, the keychain entry, the
      *  portal sign-ins; the dialog adds the app's files in the work folder. */

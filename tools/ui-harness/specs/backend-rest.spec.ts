@@ -1,5 +1,6 @@
 // The remaining backend pieces and their small UI ends: the excluded jobs counted per place
-// (the section says its number in Archiv and Papierkorb before every page is there).
+// (the section says its number in Archiv and Papierkorb before every page is there) and the
+// app's version in Wartung.
 
 import type { Page } from '@playwright/test';
 import type { Place, Portal } from '../../../ui/src/lib/ipc/types';
@@ -68,3 +69,10 @@ for (const [place, tab] of [
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
   });
 }
+
+test('Wartung names the version of the app, to copy', async ({ page }) => {
+  await open(page, `${WIN}&view=settings`);
+  const row = page.getByTestId('settings-care').getByTestId('version');
+  await expect(row).toContainText('Version');
+  await expect(row.locator('[data-copy]')).toHaveText('3.0.0');
+});

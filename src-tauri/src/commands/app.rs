@@ -132,6 +132,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     };
     Ok(view::AppState {
         platform: crate::platform::platform(),
+        version: env!("CARGO_PKG_VERSION").to_owned(),
         dry_run: state.dry_run,
         // The dry run is a demo with a mailbox and a sample profile: it starts in the app itself,
         // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
