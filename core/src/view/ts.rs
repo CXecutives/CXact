@@ -23,11 +23,12 @@ use crate::settings::Language;
 use crate::view::{
     AppState, ClearedTxt, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
-    MatchDetail, MoveBack, OpenTarget, Platform, PortalLogin, PortalNew, PortalPatch, PortalState,
-    ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileDraft, ProfileForm,
-    ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave, ProfileSource, ProfileUnderstanding,
-    ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight, RemoteWish, ResetSummary,
-    SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind, WorkMode,
+    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin, PortalNew,
+    PortalPatch, PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria,
+    ProfileDraft, ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave,
+    ProfileSource, ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight,
+    RemoteWish, ResetSummary, SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind,
+    WorkMode,
 };
 
 /// A portal key.
@@ -163,6 +164,8 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<Language>();
     f.add::<VaultKind>();
     f.add::<Mailbox>();
+    f.add::<PortalCount>();
+    f.add::<MailboxCheck>();
     f.add::<SettingsView>();
     f.add::<SettingsPatch>();
     f.add::<PortalPatch>();

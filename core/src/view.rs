@@ -932,6 +932,28 @@ pub struct Mailbox {
     pub error: Option<ErrorInfo>,
 }
 
+/// "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals
+/// lie in the mailbox from the last `days` days (`mail::check::check_mailbox`; its errors
+/// are the mail error codes).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct MailboxCheck {
+    pub days: u32,
+    pub total: u32,
+    /// Every portal asked for, in the order of `Portal::ALL`.
+    pub per_portal: Vec<PortalCount>,
+}
+
+/// A number of a portal.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct PortalCount {
+    pub portal: Portal,
+    pub count: u32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]

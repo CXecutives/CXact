@@ -1,5 +1,6 @@
 //! Alert mails: take them apart, pull out the jobs, assign them to a portal.
 
+pub mod check;
 mod classify;
 pub(crate) mod extract;
 pub mod imap;
