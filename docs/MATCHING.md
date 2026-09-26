@@ -621,6 +621,129 @@ reaches the engine as such a bare line.
 The corpus rows and held-out sets 1 to 8 are unchanged; the golden digest changed only by its version line. The app
 scores every stored job again after the update.
 
+### Version 16: employment pay, the limits of an engagement, exclusion words, set 9
+
+One bump for all of it; the app scores every stored job again (revision `e16.5:{fingerprint}`,
+`INPUTS` 5: the stored key facts carry the workload).
+
+**ANÜ as a topic.** ANÜ named with an experience, knowledge or management cue in its clause
+(`Erfahrung mit Arbeitnehmerüberlassung von Vorteil`, `Kenntnisse des AÜG`, `Steuerung der
+Arbeitnehmerüberlassung`), or with such a cue at the start of the sentence, is a requirement,
+not the contract form (`lexicon::ANUE_TOPIC`). So is ANÜ as the business of the hiring company
+(`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`, `ANUE_BUSINESS`) unless the sentence also
+places the job in it (`im Rahmen`, `Einsatz`, `suchen wir`, `ANUE_CONTRACT`). `möglich` offers
+ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not).
+
+**Employment pay (the user's decision on the open wage question of sets 5 to 8).** An hourly
+wage (`Stundenlohn`, `Bruttostundenlohn`, `18,50 € brutto pro Stunde`, a pay scale, `iGZ`,
+`gross per hour`, `hourly wage`; `brutto` and `gross` only without a freelance rate word) is
+employment pay (`Rate::wage`): it states an employment (contract type permanent, stated), it is
+no interim cue, never a day rate, and the salary rule reads it per year (x 2,080 hours). The pay
+of temporary agency work is employment pay too: no day rate, and the salary rule applies where
+the profile allows ANÜ. A freelance hourly rate (`95 €/h`, `Stundensatz`, `zzgl. MwSt.`) stays x 8.
+A stated permanent role whose only interim cue is an amount (`31,50 €/Std. · Vollzeit ·
+Festanstellung`) is that role's pay. Amounts of a salary's size (10,000 or more) and pay by
+commission (`Provisionsbasis`) are no rate; salary amounts need a money context (a currency, a
+unit or a salary word next to them), so a head count in a sentence with `Compensation` is no
+salary.
+
+**New profile keys** (`harte_kriterien`, English aliases under `hard_criteria`; missing = rule off):
+
+| Key | Alias | Form field | Meaning |
+|---|---|---|---|
+| `auslastung_min_tage` | `workload_min_days` | `workloadMinDays` | days per week (1 to 5) at least |
+| `auslastung_max_tage` | `workload_max_days` | `workloadMaxDays` | days per week (1 to 5) at most, not below the minimum |
+| `min_laufzeit_monate` | `min_duration_months` | `minMonths` | minimum duration in months (1 to 120) |
+| `ausschlusswoerter` | `exclusion_words` | `exclusionWords` | words that exclude an ad (a list or one text) |
+
+A value out of range is `criterionNotUnderstood {key, value}`. The form fields are optional in
+TypeScript (`?:`), so a UI that does not send them changes nothing.
+
+**Workload** (`limits.rs`), a share of a five-day week in `KeyFacts.workloadFrom`/`workloadTo`
+(left out when unknown): full-time 100, days x 20 (`3 Tage/Woche`, `drei Tagen pro Woche`),
+hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80), a percentage in a clause with a workload word
+(`Auslastung 80 %`, `80-100 %`), part-time without a number up to 80 with no lower bound,
+part-time as an option (`Vollzeit, Teilzeit möglich`) up to 100. A number of days or a share next
+to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work. The first sentence
+with a number wins, then the page's employment type (LinkedIn `Vollzeit`), then the words. Outside
+the profile's days (the ad asks for more than the maximum or offers less than the minimum) it is
+the check `workload {from?, to, minDays?, maxDays?}` (percent, days), never an exclusion; the
+strip key `c:workload` is met with the ad's share inside the days.
+
+**Duration**: an engagement whose months are known and shorter than `min_laufzeit_monate` is the
+check `duration {months, min}`; the strip key `c:duration` is met at or above the minimum and not
+set for a permanent role.
+
+**Exclusion words** (`exclusion.rs`): a word in the title or the ad's own text excludes,
+`exclusionWord {word}` (as the profile writes it) with the sentences that name it; strip key
+`c:exclusionWords`, shown only when violated. Case-insensitive whole words with their German
+forms: inflections and the compounds a word starts (`Werkstudent`: `Werkstudentin`,
+`Werkstudenten-Job`, `Werkstudentenstelle`), from eight letters also the compounds it ends
+(`Pflichtpraktikum`), the participle of an `-ent` noun from seven letters (`Werkstudierende`, not
+`agierend` for `Agent`), `-mann` as `-frau`/`-leute`, `-um` as `-a`; a female form in the
+profile matches the male one; a phrase matches word by word or as one word (`Call Center`,
+`Callcenter`). Words under four letters match only whole (`IT`).
+
+**Rules from set 9** (one correction round, general rules only, each with a unit test):
+the job's own place on site makes other countries of the same sentence second sites (a check:
+`on site in Leverkusen and at the plants in Belgium`); remote work for a place abroad is decided
+where the profile rules it out (`remote_ausserhalb_erlaubt: false`), and a location that says
+remote (`Wien, Österreich (Remote)`) or `remote 100 %` is remote work; a heading in two languages
+(`Aufgaben / Tasks`) is a heading; an item that names a language among four or more other atoms is
+a skill line, not a language requirement; `Vollzeit`, `Teilzeit`, `Verlängerung` and
+`Beauftragung` make a frame line; `Vakanzüberbrückung`, `Übergangsgeschäftsführung`,
+`übergangsweise` and `fractional` are interim wording. Three domain packs where the report showed
+a field gap: `restructuring` (CRO, Sanierungsgeschäftsführung, Sanierungskonzept and IDW S6 as
+restructuring, bank negotiations, StaRUG and Eigenverwaltung as insolvency law, the 13-week
+liquidity plan), `consulting` (performance and profit improvement, cost reduction, pricing,
+management consulting, strategy, business case) and `energy` (Messstellenbetreiber, smart meter
+rollout, BNetzA, EEG, redispatch, market communication, grid operators). Interim wording stays a
+contract word of the core: it never matches a profile's `Interim Management`. No pack for AI,
+construction, embedded or IT infrastructure: their profiles showed no gap (NDCG@10 0.84 to 0.95).
+Left as it is: the target years the labels read differently between profiles (`tooJunior` for
+P7 and P8 against the labels, a senior title with fewer years than P9 and P12 ask for left in).
+
+Held-out set 9 (`heldout9/`): 96 invented ads (S011 to S128) for 12 new profiles with the new keys,
+1,152 pairs, blind labels (the writer's intention agreed on 88 of 96 own pairs; disagreeing
+pairs were never tuned for). Old = the old engine; v15 = engine 15 (it ignores the new keys);
+first contact = engine 16 before the correction round:
+
+| Metric | Old | v15 | first contact | v16 |
+|---|---|---|---|---|
+| NDCG@10 | 0.568 | 0.814 | 0.828 | 0.876 |
+| NDCG@20 | 0.635 | 0.832 | 0.851 | 0.905 |
+| P@5 (reachable) | 0.449 | 0.764 | 0.801 | 0.867 |
+| Spearman, all pairs | 0.289 | 0.387 | 0.407 | 0.442 |
+| Spearman, relevant pairs | 0.454 | 0.481 | 0.492 | 0.636 |
+| Concordance 0v3 / 1v3 / 2v3 | 0.927 / 0.750 / 0.683 | 0.975 / 0.848 / 0.708 | 0.975 / 0.848 / 0.708 | 0.976 / 0.854 / 0.717 |
+| grade-3 jobs buried | 23 | 5 | 4 | 0 |
+| exclusion precision / recall | | 0.860 / 0.908 | 0.908 / 0.923 | 0.989 / 0.962 |
+
+`HELDOUT9`: NDCG@10 0.87, Spearman 0.44, exclusion precision 0.98, recall 0.96, none buried.
+
+Floors of the older sets, re-frozen for the wage decision (the labels of sets 2, 7 and 8 exclude
+agency jobs of freelance profiles that allow ANÜ and set no salary by that pay x 8): set 2
+exclusion recall 1.0 -> 0.98 and Spearman 0.64 -> 0.63 (X06 for P2), set 7 recall 0.88 -> 0.86
+(L02, L05, M05, M15; the remote-abroad rule wins back 0.019), set 8 recall stays 0.85 (0.815 after
+the wage rule, 0.850 after set 9's rules). Set 6's labels read the agency wage as employment pay
+already: its precision floor rises to 1.0. The corpus rows are unchanged (the golden digest
+changed only by its version line; `V3_ROWS_DIGEST` unchanged). All sets at version 16:
+
+| Set | NDCG@10 | P@5 | Spearman relevant | Concordance 2v3 | Concordance 1v2 | Buried | Exclusions P / R |
+|---|---|---|---|---|---|---|---|
+| heldout1 | 0.928 | 1.000 | 0.767 | 0.734 | 0.594 | 0 | 1.000 / 1.000 |
+| heldout2 | 0.856 | 0.875 | 0.657 | 0.567 | 0.714 | 1 | 1.000 / 0.983 |
+| heldout3 | 0.955 | 0.967 | 0.589 | 0.586 | 0.731 | 0 | 1.000 / 1.000 |
+| heldout4 | 0.821 | 0.843 | 0.563 | 0.472 | 0.806 | 0 | 1.000 / 0.983 |
+| heldout5 | 0.819 | 0.967 | 0.683 | 0.772 | 0.667 | 0 | 0.988 / 1.000 |
+| heldout6 | 0.905 | 0.950 | 0.805 | 0.824 | 0.814 | 0 | 1.000 / 0.994 |
+| heldout7 | 0.915 | 0.852 | 0.656 | 0.824 | 0.588 | 2 | 0.988 / 0.863 |
+| heldout8 | 0.938 | 0.943 | 0.776 | 0.829 | 0.767 | 1 | 0.980 / 0.850 |
+| heldout9 | 0.876 | 0.867 | 0.636 | 0.717 | 0.680 | 0 | 0.989 / 0.962 |
+
+Test profiles for the user: `tools/test-profiles/` (five invented profiles with the new keys;
+`the_test_profiles_load_and_score` loads each the way the file picker does).
+
 ### Rubric of the AI prompts
 
 `core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts and the
@@ -829,7 +952,7 @@ unchanged.
 `pipeline::LocalMatcher` wraps one compiled profile; revision `e{ENGINE_VERSION}.{INPUTS}:{fingerprint}`
 (a stored score of another revision is stale; `INPUTS` counts what a stored job hands the engine besides
 its text - since 2 the page facts under `matching::fact_key` and the teaser flag, since 4 the career level, the
-industries and a remote field in words). A panic of the engine
+industries and a remote field in words, since 5 the stored key facts carry the workload). A panic of the engine
 leaves the job `unscorable` with the note `engineFailed` and the run goes on. The profile is compiled once and kept until its file changes
 (`src-tauri/src/commands/scoring.rs`); an empty profile or a parse error means no matcher, so nothing is
 scored and nothing is pending. Jobs without text are judged from title and location (usually
