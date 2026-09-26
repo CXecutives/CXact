@@ -1,6 +1,9 @@
 <!--
-  The reader's empty state: what the sheet shows while no job is selected, unboxed like the
-  reader. It answers "what now" in a short list, no counts (the list header counts): "Neu
+  The Übersicht (a place of its own, where the app starts): what is new since the last fetch
+  (three counts that lead into the list, the time, Abrufen), the best new jobs to look at
+  today, the favourites, what needs a decision (jobs without their full ad, excluded ones),
+  the open points and the files. Each block shows only with content; a click on a job opens
+  it in Jobs. Former notes below (the day overview beside the list): It answers "what now" in a short list, no counts (the list header counts): "Neu
   und passend" with the prompt of the best matches for any AI chat at the end of its heading
   (the three best scored new jobs as list rows with the list's tools, a click opens the
   job; only where the list beside does not show them on top already, else one quiet line;
@@ -18,6 +21,8 @@
   import Button from '$components/Button.svelte';
   import JobRow, { type RowTool } from '$components/JobRow.svelte';
   import Notice from '$components/Notice.svelte';
+  import StatTile from '$components/StatTile.svelte';
+  import { formatMoment } from '$lib/i18n/format';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { errorText, healthAdvice } from '$lib/i18n/texts';
@@ -35,7 +40,8 @@
   const portals = $derived(
     (app.state?.portals ?? []).filter((p) => p.enabled).map((p) => p.portal),
   );
-  const BEST = 3;
+  const BEST = 5;
+  const FAVOURITES = 5;
   /** The best scored new jobs (one small query; again whenever the counts move). */
   let top = $state.raw<JobView[]>([]);
   let topRequest = 0;
@@ -70,11 +76,63 @@
       });
   }
 
+  /** The favourites of the inbox, newest first (one small query, like the best). */
+  let saved = $state.raw<JobView[]>([]);
+  function loadSaved(): void {
+    invoke('list_jobs', {
+      query: {
+        place: 'inbox',
+        unread: false,
+        favourites: true,
+        sort: 'newest',
+        search: null,
+        limit: FAVOURITES,
+        offset: 0,
+      },
+    })
+      .then((page) => (saved = page.jobs))
+      .catch(() => (saved = []));
+  }
+
   $effect(() => {
     void jobs.overviewCounts;
     void app.hasProfile;
     untrack(loadTop);
+    untrack(loadSaved);
   });
+  const favourites = $derived(
+    saved.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
+  );
+
+  /** Into the list: the view first (an unsaved Profil may ask), then the tab and order. */
+  function toList(facet: 'new' | 'all', sort: 'match' | 'newest' | null = null): void {
+    navigation.go('jobs', false, () => {
+      if (jobs.facet !== facet) jobs.setFacet(facet, true);
+      if (sort !== null && app.hasProfile && jobs.sortChoice !== sort) jobs.setSort(sort);
+    });
+  }
+
+  /** "Details holen" for every inbox job without its full ad: the keys of one page. */
+  async function fetchMissing(): Promise<void> {
+    try {
+      const page = await invoke('list_jobs', {
+        query: {
+          place: 'inbox',
+          unread: false,
+          favourites: false,
+          sort: 'newest',
+          search: null,
+          limit: 500,
+          offset: 0,
+        },
+      });
+      const keys = page.jobs.filter((job) => job.detail.kind !== 'ok').map((job) => job.key);
+      if (keys.length > 0) await run.start({ kind: 'details', keys });
+    } catch (error) {
+      actionError = errorText(error);
+    }
+  }
+  const lastFetch = $derived(run.summary?.finishedAt ?? app.state?.lastRun?.finishedAt ?? null);
   // As the list knows them now (read, pinned); only scored ones are a match.
   const best = $derived(
     top
@@ -158,19 +216,6 @@
   });
   const hasIssues = $derived(portalIssues.length > 0 || lastFailure !== null);
   const fetchedOnce = $derived((run.summary ?? app.state?.lastRun ?? null) !== null);
-  /** The list beside shows the best new jobs on top already (Neu, by fit, no search). */
-  const listShowsBest = $derived(
-    jobs.facet === 'new' && jobs.sortChoice === 'match' && jobs.search.trim() === '',
-  );
-  /** Nothing else to say while the list beside holds jobs: a quiet "select one" (never beside
-   *  an empty list, which says where jobs come from). */
-  const pick = $derived(
-    !topError &&
-      best.length === 0 &&
-      !hasIssues &&
-      jobs.status === 'ready' &&
-      jobs.visible.length > 0,
-  );
   let actionError = $state<string | null>(null);
 
   function open(target: OpenTarget): void {
@@ -233,6 +278,53 @@
 {/snippet}
 
 <div class="overview" data-testid="day-overview" aria-label={t.overview.label}>
+  {#if counts !== null}
+    <section class="block" data-testid="since">
+      <div class="heading-line">
+        <h2 class="heading">{t.overview.since}</h2>
+        <span class="heading-action">
+          <Button
+            variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
+            size="sm"
+            icon="refresh-cw"
+            label={t.toolbar.fetch}
+            disabled={run.fetchBlocked !== null}
+            disabledReason={run.fetchBlocked}
+            loading={run.fetching}
+            testid="overview-fetch"
+            onclick={() => void run.start({ kind: 'fetch' })}
+          />
+        </span>
+      </div>
+      <div class="tiles">
+        <StatTile
+          label={t.overview.tileNew}
+          value={counts.unread}
+          tone="coral"
+          testid="tile-new"
+          onclick={() => toList('new')}
+        />
+        {#if app.hasProfile}
+          <StatTile
+            label={t.overview.tileHigh}
+            value={counts.high}
+            tone="success"
+            testid="tile-high"
+            onclick={() => toList('new', 'match')}
+          />
+          <StatTile
+            label={t.overview.tileExcluded}
+            value={counts.excluded}
+            testid="tile-excluded"
+            onclick={() => toList('all')}
+          />
+        {/if}
+      </div>
+      {#if lastFetch}<p class="quiet" data-testid="since-when">
+          {t.overview.fetchedAt(formatMoment(lastFetch))}
+        </p>{/if}
+    </section>
+  {/if}
   {#if topError && jobs.status !== 'error'}
     <section class="block" data-testid="best-error">
       <Notice
@@ -245,25 +337,80 @@
   {:else if best.length > 0}
     <section class="block" data-testid="best">
       <div class="heading-line">
-        <h2 class="heading">{t.overview.best}</h2>
+        <h2 class="heading">{t.overview.today}</h2>
         {#if canCompare}<span class="heading-action">{@render comparePrompt()}</span>{/if}
       </div>
-      {#if listShowsBest}
-        <p class="quiet" data-testid="top-in-list">{t.overview.bestInList}</p>
-      {:else}
-        <div class="best">
-          {#each best as job (keyOf(job.key))}
-            <JobRow
-              {job}
-              testid="best-{job.key.portal}-{job.key.id}"
-              onselect={(chosen) =>
-                navigation.go('jobs', false, () => void jobs.select(chosen, true))}
-              onpin={pin}
-              tools={toolsOf(job)}
-            />
-          {/each}
-        </div>
+      <div class="best">
+        {#each best as job (keyOf(job.key))}
+          <JobRow
+            {job}
+            testid="best-{job.key.portal}-{job.key.id}"
+            onselect={(chosen) =>
+              navigation.go('jobs', false, () => void jobs.select(chosen, true))}
+            onpin={pin}
+            tools={toolsOf(job)}
+          />
+        {/each}
+      </div>
+      {#if counts !== null && counts.unread > best.length}
+        <span class="more"
+          ><Button
+            variant="link"
+            size="sm"
+            label={t.overview.allNew(counts.unread)}
+            testid="overview-all-new"
+            onclick={() => toList('new', 'match')}
+          /></span
+        >
       {/if}
+    </section>
+  {/if}
+
+  {#if favourites.length > 0}
+    <section class="block" data-testid="favourites">
+      <h2 class="heading">{t.overview.favourites}</h2>
+      <div class="best">
+        {#each favourites as job (keyOf(job.key))}
+          <JobRow
+            {job}
+            testid="favourite-{job.key.portal}-{job.key.id}"
+            onselect={(chosen) =>
+              navigation.go('jobs', false, () => void jobs.select(chosen, true))}
+            onpin={pin}
+            tools={toolsOf(job)}
+          />
+        {/each}
+      </div>
+    </section>
+  {/if}
+
+  {#if counts !== null && (counts.noDetail > 0 || (app.hasProfile && counts.excluded > 0))}
+    <section class="block" data-testid="decide">
+      <h2 class="heading">{t.overview.decide}</h2>
+      <div class="rows">
+        {#if counts.noDetail > 0}
+          <Notice
+            tone="info"
+            variant="row"
+            text={t.overview.noDetail(counts.noDetail)}
+            action={{
+              label: t.overview.fetchDetails,
+              icon: 'download',
+              onclick: () => void fetchMissing(),
+            }}
+            testid="decide-details"
+          />
+        {/if}
+        {#if app.hasProfile && counts.excluded > 0}
+          <Notice
+            tone="info"
+            variant="row"
+            text={t.overview.excludedCheck(counts.excluded)}
+            action={{ label: t.overview.look, icon: 'ban', onclick: () => toList('all') }}
+            testid="decide-excluded"
+          />
+        {/if}
+      </div>
     </section>
   {/if}
 
@@ -299,10 +446,6 @@
         {/each}
       </div>
     </section>
-  {/if}
-
-  {#if pick}
-    <p class="pick" data-testid="overview-pick">{t.overview.pick}</p>
   {/if}
 
   <!-- Nothing new to show: the comparison of the best jobs stays within reach. -->
@@ -392,6 +535,16 @@
     font: var(--type-lg);
   }
 
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--tile-min), 1fr));
+    gap: var(--space-12);
+  }
+
+  .more {
+    display: flex;
+  }
+
   /* A heading with its one action at the end (the prompt of the best matches); the button
      is centred on the heading's line and adds no height, so the heading starts where the
      reader's title does. */
@@ -425,12 +578,6 @@
   }
 
   /* Nothing else to say: a quiet line like a mail app's empty reader, the file actions below. */
-  .pick {
-    margin-block: var(--space-48);
-    color: var(--text-subtle);
-    font: var(--type-md);
-    text-align: center;
-  }
 
   /* Quiet file actions below everything; their icons start on the edge of the column (the
      buttons' padding and border hang out). */

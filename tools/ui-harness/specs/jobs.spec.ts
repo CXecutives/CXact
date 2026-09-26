@@ -511,7 +511,7 @@ test('offline: the failed run says why, and Abrufen tries again', async ({ page 
   await expect(failed).toContainText('Gmail ist nicht erreichbar.');
   // The sidebar says the fetch failed; the open point names it once and says why.
   await expect(failed).toContainText('Letzter Abruf');
-  await expect(page.getByTestId('run-status')).toContainText('Fehler 08:30');
+  await expect(page.getByTestId('run-status')).toContainText('Fehlgeschlagen 08:30');
   // Like the run card: no second button beside Abrufen that does the same.
   await expect(failed.getByRole('button')).toHaveCount(0);
   await page.getByTestId('nav-jobs').click();

@@ -49,7 +49,7 @@
   class:collapsed
   aria-label={collapsed ? `${label} ${text}` : label}
   data-testid={testid ?? undefined}
-  use:tooltip={collapsed ? { text, placement: 'right' } : null}
+  use:tooltip={collapsed ? { text, placement: 'right' } : { text, truncated: true }}
   onclick={() => onclick()}
 >
   <span class="line">
@@ -141,11 +141,11 @@
     transition-duration: var(--dur-hover);
   }
 
+  /* One line, cut at its end; the whole sentence is its tooltip. */
   .text {
-    display: -webkit-box;
+    min-width: 0;
     overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

@@ -877,7 +877,7 @@ export const de = {
       count(value, 'Datei ließ', 'Dateien ließen') + ' sich nicht schreiben.',
     /** The old program's Excel file, renamed before the app wrote its own (by its name). */
     excelRenamed: (name: string) => `Die alte Excel-Datei heißt jetzt ${name}.`,
-    openOverview: 'Übersicht öffnen',
+    openOverview: 'Bericht öffnen',
     history: 'Verlauf',
     collapse: 'Einklappen',
     expand: 'Ausklappen',
@@ -1050,7 +1050,23 @@ export const de = {
   overview: {
     noProfileText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
     profileUnreadable: PROFILE_UNREADABLE,
-    label: 'Tagesüberblick',
+    label: 'Übersicht',
+    /** The first block: what is new since the last fetch, as counts that lead into the list. */
+    since: 'Seit dem letzten Abruf',
+    tileNew: 'Neu',
+    tileHigh: 'Hohe Passung',
+    tileExcluded: 'Ausgeschlossen',
+    fetchedAt: (when: string) => `Abgerufen ${when}`,
+    today: 'Heute ansehen',
+    allNew: (value: number) => `Alle ${n(value)} neuen`,
+    favourites: 'Favoriten',
+    decide: 'Braucht eine Entscheidung',
+    noDetail: (value: number) =>
+      value === 1 ? '1 Job ohne ganze Anzeige' : `${n(value)} Jobs ohne ganze Anzeige`,
+    fetchDetails: 'Details holen',
+    excludedCheck: (value: number) =>
+      value === 1 ? '1 Job ausgeschlossen' : `${n(value)} Jobs ausgeschlossen`,
+    look: 'Ansehen',
     /** Shown in the empty reader when the overview has nothing else to say (like Mail's "no message selected"). */
     pick: 'Wähle links einen Job aus.',
     issues: 'Offene Punkte',
@@ -1523,7 +1539,7 @@ export const de = {
     /** The sidebar's run status, one line: the time today, the date on another day. */
     last: (iso: string) => `Abgerufen ${formatStamp(iso)}`,
     showRun: 'Abruf anzeigen',
-    runFailed: (iso: string) => `Fehler ${formatStamp(iso)}`,
+    runFailed: (iso: string) => `Fehlgeschlagen ${formatStamp(iso)}`,
     runCancelled: (iso: string) => `Abgebrochen ${formatStamp(iso)}`,
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],

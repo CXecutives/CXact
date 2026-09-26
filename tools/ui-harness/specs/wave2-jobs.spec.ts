@@ -17,7 +17,7 @@ test('the run card names the day of its fetch once midnight has passed', async (
   // The next day: the shared clock moves on when the window comes back to the front.
   await page.clock.setFixedTime(new Date(NOW.getTime() + DAY));
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(time).toHaveText('24.09. 09:30');
+  await expect(time).toHaveText(/^gestern\s09:30$/);
 });
 
 test('a place chosen in the sidebar opens without the search; the link keeps it', async ({

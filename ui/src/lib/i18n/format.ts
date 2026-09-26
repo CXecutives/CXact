@@ -111,28 +111,39 @@ export function formatDate(iso: string): string {
   return Number.isNaN(date.getTime()) ? '' : formats().dayMonthYear.format(date);
 }
 
+/** The day of a moment in words while it is recent: `gestern`, `vorgestern` (`yesterday`,
+ *  `2 days ago`), the weekday up to a week back (`Mo`), then the date; null for today. */
+function dayOf(date: Date, now: Date): string | null {
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
+  if (days <= 0) return null;
+  const { relative, weekday, dayMonth } = formats();
+  if (days <= RELATIVE_DAYS) return relative.format(-days, 'day');
+  if (days < 7) return weekday.format(date).replace(/\.$/, '');
+  return dayMonth.format(date);
+}
+
 /**
- * `14:05` today, `25.09. 14:05` (`25/09 14:05`) on another day; one unit a line never
- * breaks (a sentence wraps before the date, not between date and time).
+ * `14:05` today, `gestern 14:05`, `vorgestern 14:05`, `Mo 14:05` up to a week back, then
+ * `25.09. 14:05` (`25/09 14:05`); one unit a line never breaks (a sentence wraps before the
+ * day, not between day and time).
  */
 export function formatMoment(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  const { clock, dayMonth } = formats();
-  return startOfDay(date) === startOfDay(now)
-    ? clock.format(date)
-    : `${dayMonth.format(date)} ${clock.format(date)}`.replace(/ /g, NBSP);
+  const { clock } = formats();
+  const day = dayOf(date, now);
+  return day === null ? clock.format(date) : `${day} ${clock.format(date)}`.replace(/ /g, NBSP);
 }
 
 /**
- * `08:30` today, `24.09.` (`24/09`) on another day: when something happened, in the fewest
- * characters (the sidebar's run status keeps to one line; the run card has the time).
+ * `08:30` today, `gestern`, `vorgestern`, `Mo` up to a week back, then `24.09.` (`24/09`):
+ * when something happened, in the fewest characters (the sidebar's run status keeps to one
+ * line; the run card has the time).
  */
 export function formatStamp(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  const { clock, dayMonth } = formats();
-  return startOfDay(date) === startOfDay(now) ? clock.format(date) : dayMonth.format(date);
+  return dayOf(date, now) ?? formats().clock.format(date);
 }
 
 /** `18 KB`, `1,2 MB` (`1.2 MB`) */

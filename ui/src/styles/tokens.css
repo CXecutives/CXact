@@ -406,6 +406,8 @@
   --brand-mark-sm: 24px;
   --brand-mark: 28px;
   --brand-mark-lg: 40px;
+  /* The smallest width of a count tile in a row of tiles (the Übersicht). */
+  --tile-min: 140px;
   --tile-sm: 32px;
   --tile-md: 40px;
   --tile-lg: 56px;

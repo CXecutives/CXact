@@ -279,17 +279,17 @@ test('the run status is one line as high as a nav entry, today and on another da
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   };
   for (const [lang, fetched, failed, cancelled] of [
-    ['de', 'Abgerufen', 'Fehler', 'Abgebrochen'],
+    ['de', 'Abgerufen', 'Fehlgeschlagen', 'Abgebrochen'],
     ['en', 'Fetched', 'Failed', 'Cancelled'],
   ] as const) {
     await settings(page, `${WIN}&lang=${lang}`);
     await check(`${fetched} 08:30`);
     await nextDay();
-    await check(`${fetched} ${lang === 'de' ? '24.09.' : '24/09'}`);
+    await check(`${fetched} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
     await settings(page, `${WIN}&lang=${lang}&scenario=offline`);
     await check(`${failed} 08:30`);
     await nextDay();
-    await check(`${failed} ${lang === 'de' ? '24.09.' : '24/09'}`);
+    await check(`${failed} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
     // A fetch cancelled: the status says so, not that it fetched.
     await open(page, `${WIN}&lang=${lang}`);
     await page.evaluate(() => (window.__harness.holdAfter = 4));
@@ -299,7 +299,7 @@ test('the run status is one line as high as a nav entry, today and on another da
     await page.getByTestId('nav-settings').click();
     await check(cancelled);
     await nextDay();
-    await check(`${cancelled} ${lang === 'de' ? '24.09.' : '24/09'}`);
+    await check(`${cancelled} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
   }
 });
 
