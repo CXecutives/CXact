@@ -347,7 +347,7 @@
             variant="ghost"
             size="sm"
             iconOnly
-            icon={job.place === 'archive' ? 'archive-restore' : 'archive'}
+            icon={job.place === 'archive' ? 'inbox' : 'archive'}
             label={job.place === 'archive' ? t.reader.restore : t.reader.archive}
             testid="archive-{job.key.portal}-{job.key.id}"
             onclick={() => onarchive?.(job)}

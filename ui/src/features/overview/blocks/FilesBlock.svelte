@@ -28,7 +28,7 @@
     <Button
       variant="ghost"
       size="sm"
-      icon="file-text"
+      icon="document"
       label={t.run.openOverview}
       disabled={noFiles && (dryRun || run.active)}
       disabledReason={dryRun ? dryRunReason : run.busyText}
@@ -38,7 +38,7 @@
     <Button
       variant="ghost"
       size="sm"
-      icon="file-spreadsheet"
+      icon="excel"
       label={t.overview.excel}
       disabled={noFiles}
       disabledReason={dryRun ? dryRunReason : t.settings.excelMissing}
@@ -48,7 +48,7 @@
     <Button
       variant="ghost"
       size="sm"
-      icon="folder-open"
+      icon="folder"
       label={t.common.openFolder}
       testid="overview-folder"
       onclick={() => open({ kind: 'excelInFolder' })}

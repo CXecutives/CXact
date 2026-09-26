@@ -31,7 +31,7 @@
     onclick={() => (open = !open)}
   >
     <span class="label">{label}</span>
-    <span class="chevron"><Icon name="chevron-down" size="sm" /></span>
+    <span class="chevron"><Icon name="expand" size="sm" /></span>
   </button>
   <div class="panel" id="{id}-panel" role="region">
     {#if open}
@@ -57,7 +57,7 @@
   }
 
   .head:hover {
-    color: var(--text);
+    color: var(--label-hover);
     transition-duration: var(--dur-hover);
   }
 
@@ -76,12 +76,12 @@
   }
 
   .head:hover .chevron {
-    color: var(--icon-accent);
+    color: var(--label-glyph-hover);
   }
 
-  /* Pressed, the chevron darkens one step (the head has no background). */
+  /* The label kind (tokens.css): pressed, the chevron darkens one step (no background). */
   :global(:where(:root:not([data-aux-press]))) .head:active:hover .chevron {
-    color: var(--pressed);
+    color: var(--label-press);
     transition-duration: var(--dur-instant);
   }
 

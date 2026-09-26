@@ -57,33 +57,33 @@ const filesHeld = ({ state, t, running, busyText }: Lock): string | null =>
 export const ACTIONS = {
   workspaceChange: {
     label: (t) => t.common.change,
-    icon: 'pencil',
+    icon: 'edit',
     variant: 'secondary',
     locked: ownOnly,
   },
   workspaceOpen: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'workspace' },
   },
   excelOpen: {
     label: (t) => t.common.open,
-    icon: 'file-spreadsheet',
+    icon: 'excel',
     variant: 'ghost',
     open: { kind: 'excel' },
     locked: ({ state, t }) => (state.settings.excelExists ? null : t.settings.excelMissing),
   },
   excelReveal: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'excelInFolder' },
   },
   // Opening writes the report first, except in the dry run and while a run holds the files.
   overviewOpen: {
     label: (t) => t.common.open,
-    icon: 'file-text',
+    icon: 'document',
     variant: 'ghost',
     open: { kind: 'overview' },
     locked: (lock) =>
@@ -95,19 +95,19 @@ export const ACTIONS = {
   },
   overviewReveal: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'overviewInFolder' },
   },
   txtRewrite: {
     label: (t) => t.settings.txtRewrite,
-    icon: 'file-pen-line',
+    icon: 'rewrite',
     variant: 'ghost',
     locked: (lock) => (lock.beforeFirstFetch ? lock.t.settings.txtLater : filesHeld(lock)),
   },
   txtReveal: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'txtDir' },
     locked: ({ state, t }) => (state.settings.txtFiles > 0 ? null : t.settings.txtNone),
@@ -115,26 +115,26 @@ export const ACTIONS = {
   // Can be undone (its toast writes them again): no dialog, no warning colour.
   txtClear: {
     label: (t) => t.settings.txtClear,
-    icon: 'trash-2',
+    icon: 'trash',
     variant: 'ghost',
     locked: (lock) =>
       filesHeld(lock) ?? (lock.state.settings.txtFiles > 0 ? null : lock.t.settings.txtNone),
   },
   logsOpen: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'logDir' },
   },
   dataOpen: {
     label: (t) => t.common.openFolder,
-    icon: 'folder-open',
+    icon: 'folder',
     variant: 'ghost',
     open: { kind: 'dataDir' },
   },
   reset: {
     label: (t) => t.settings.resetAction,
-    icon: 'rotate-ccw',
+    icon: 'reset',
     variant: 'ghost',
     warns: true,
     locked: ownOnly,

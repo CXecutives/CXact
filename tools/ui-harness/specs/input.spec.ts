@@ -1,11 +1,152 @@
+// The input policy of lib/input/input.ts, in one place: like a native app. Controls react to
+// the left button only, the middle button scrolls scroll areas (and its autoscroll's end
+// presses nothing), the wheel scrolls what lies under the pointer, text a user would copy
+// selects and copies. Keys: Tab moves the focus, Space presses controls and Enter buttons;
+// fields take every character of the keyboard layout (AltGr, Option) and the editing keys of
+// the OS; dialogs hold the focus; the app's shortcuts come from one table (lib/input/keys.ts)
+// that the card of the keys lists; everything else is swallowed.
+
+import type { Locator, Page } from '@playwright/test';
+import { calls, expect, open, settle, test } from './fixtures';
+
+/** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
+async function menuEntries(page: Page): Promise<string[]> {
+  return page
+    .getByTestId('menu')
+    .getByRole('menuitem')
+    .evaluateAll((nodes) =>
+      nodes.map(
+        (node) =>
+          `${node.querySelector('.label')?.textContent ?? ''}${
+            node.getAttribute('aria-disabled') === 'true' ? ' (aus)' : ''
+          }`,
+      ),
+    );
+}
+
+/** The parts of a KeyboardEventInit the tests use (serialisable into the page). */
+interface Key {
+  key: string;
+  code?: string;
+  ctrlKey?: boolean;
+  altKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
+  modifierAltGraph?: boolean;
+}
+
+/**
+ * Dispatch keydowns (each `[label, init]`) on a fresh field, the jobs view or the Abrufen
+ * button and report which ones the page cancelled.
+ */
+async function prevented(
+  page: Page,
+  where: 'field' | 'view' | 'button',
+  keys: [string, Key][],
+): Promise<Record<string, boolean>> {
+  return page.evaluate(
+    ({ where, keys }) => {
+      getSelection()?.removeAllRanges();
+      const field = document.body.appendChild(document.createElement('input'));
+      const target =
+        where === 'field'
+          ? field
+          : where === 'button'
+            ? document.querySelector('[data-testid="fetch"]')!
+            : document.querySelector('[data-testid="view-jobs"]')!;
+      const out: Record<string, boolean> = {};
+      for (const [label, init] of keys) {
+        const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+        target.dispatchEvent(event);
+        out[label] = event.defaultPrevented;
+      }
+      field.remove();
+      return out;
+    },
+    { where, keys },
+  );
+}
+
+const plain = (key: string): [string, Key] => [key, { key }];
+
+/** Characters of the Option (macOS) and AltGr (Windows) layer of German and other layouts. */
+const LAYER = ['@', '€', '{', '}', '[', ']', '|', '~', '\\', 'µ', '²', 'ą'];
+
+const WIN = '?platform=windows';
+
+const rows = (page: Page) => page.locator('[data-testid^="job-row-"]');
+
+/** The scroll position of the shown view (or of an element). */
+const scrollTop = (page: Page, testid: string): Promise<number> =>
+  page.getByTestId(testid).evaluate((node) => node.scrollTop);
+
+/** The job list's own scroll area (the element that scrolls around the rows). */
+const listScroll = (page: Page): Promise<number> =>
+  rows(page)
+    .first()
+    .evaluate((row) => {
+      for (let node = row.parentElement; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (/auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight) {
+          return node.scrollTop;
+        }
+      }
+      return -1;
+    });
+
+/** Wheel over the middle of an element. */
+async function wheelOver(page: Page, testid: string, dy = 240): Promise<void> {
+  const box = (await page.getByTestId(testid).first().boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, dy);
+  await page.waitForTimeout(300);
+}
+
+const GALLERY = '?gallery&platform=windows';
+
+/** What a pressed look changes: the colours and the scale of the control and its track. */
+async function look(target: Locator): Promise<string> {
+  return target.evaluate((node) => {
+    const parts = [node, ...node.querySelectorAll('.track, .pill')];
+    return parts
+      .map((part) => {
+        const style = getComputedStyle(part);
+        return `${style.backgroundColor} ${style.color} ${style.transform}`;
+      })
+      .join(' | ');
+  });
+}
+
+/** The look under the pointer at rest, and while the given button is held on it. */
+async function heldLook(
+  page: Page,
+  target: Locator,
+  button: 'right' | 'middle',
+): Promise<{ hover: string; held: string; after: string }> {
+  const box = (await target.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(200);
+  const hover = await look(target);
+  await page.mouse.down({ button });
+  await page.waitForTimeout(200);
+  const held = await look(target);
+  await page.mouse.up({ button });
+  await page.waitForTimeout(200);
+  const after = await look(target);
+  // Away, so the next control starts at rest (and a started autoscroll ends).
+  await page.mouse.move(box.x + box.width / 2 + 1, box.y + box.height / 2 + 1);
+  await page.mouse.move(4, 4);
+  await page.waitForTimeout(200);
+  return { hover, held, after };
+}
+
+/* -------------------------------------------------------- Buttons, fields, copy and keys */
+
 // The input policy of lib/input/input.ts: like a native app. Controls react to the left
 // button only, the middle button scrolls scroll areas, text a user would copy selects and
 // copies. Keys: Tab moves the focus, Space presses controls and Enter buttons; fields take
 // every character of the keyboard layout (AltGr, Option) and the editing keys of the OS;
 // dialogs hold the focus; everything else is swallowed.
-
-import type { Page } from '@playwright/test';
-import { calls, expect, open, test } from './fixtures';
 
 test.beforeEach(async ({ page }) => {
   await open(page, '?platform=windows');
@@ -92,21 +233,6 @@ test('right click, middle click and drag: what the page lets through', async ({ 
     metaWheelAfterPlain: false,
   });
 });
-
-/** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
-async function menuEntries(page: Page): Promise<string[]> {
-  return page
-    .getByTestId('menu')
-    .getByRole('menuitem')
-    .evaluateAll((nodes) =>
-      nodes.map(
-        (node) =>
-          `${node.querySelector('.label')?.textContent ?? ''}${
-            node.getAttribute('aria-disabled') === 'true' ? ' (aus)' : ''
-          }`,
-      ),
-    );
-}
 
 test("the right click: the app's menu in fields and on selected copyable text, nowhere else", async ({
   page,
@@ -314,51 +440,6 @@ test('controls react to the left button only', async ({ page }) => {
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
 });
 
-/** The parts of a KeyboardEventInit the tests use (serialisable into the page). */
-interface Key {
-  key: string;
-  code?: string;
-  ctrlKey?: boolean;
-  altKey?: boolean;
-  shiftKey?: boolean;
-  metaKey?: boolean;
-  modifierAltGraph?: boolean;
-}
-
-/**
- * Dispatch keydowns (each `[label, init]`) on a fresh field, the jobs view or the Abrufen
- * button and report which ones the page cancelled.
- */
-async function prevented(
-  page: Page,
-  where: 'field' | 'view' | 'button',
-  keys: [string, Key][],
-): Promise<Record<string, boolean>> {
-  return page.evaluate(
-    ({ where, keys }) => {
-      getSelection()?.removeAllRanges();
-      const field = document.body.appendChild(document.createElement('input'));
-      const target =
-        where === 'field'
-          ? field
-          : where === 'button'
-            ? document.querySelector('[data-testid="fetch"]')!
-            : document.querySelector('[data-testid="view-jobs"]')!;
-      const out: Record<string, boolean> = {};
-      for (const [label, init] of keys) {
-        const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
-        target.dispatchEvent(event);
-        out[label] = event.defaultPrevented;
-      }
-      field.remove();
-      return out;
-    },
-    { where, keys },
-  );
-}
-
-const plain = (key: string): [string, Key] => [key, { key }];
-
 test('keys outside fields: Tab moves, Enter and Space press, everything else is swallowed', async ({
   page,
 }) => {
@@ -440,9 +521,6 @@ test('fields keep typing, the clipboard keys and the editing keys; shortcuts sta
   ]);
   expect(Object.entries(blocked).filter(([, cancelled]) => !cancelled)).toEqual([]);
 });
-
-/** Characters of the Option (macOS) and AltGr (Windows) layer of German and other layouts. */
-const LAYER = ['@', '€', '{', '}', '[', ']', '|', '~', '\\', 'µ', '²', 'ą'];
 
 test('Windows: AltGr (and Ctrl+Alt) characters type; Alt alone and Alt+Arrow do not', async ({
   page,
@@ -711,4 +789,509 @@ test('native cursor: the arrow on controls, the text cursor on copyable text', a
   await expect(page.getByTestId('nav-profile')).toHaveCSS('cursor', 'default');
   await page.getByTestId('job-row-freelancermap-2801').click();
   await expect(page.getByTestId('ad-text')).toHaveCSS('cursor', 'text');
+});
+
+/* ----------------------------- The wheel, the mouse buttons, the way back, key scrolling */
+
+// Final round, shell track (input): the wheel and the mouse buttons do only what they should.
+// The wheel never changes a value and scrolls what lies under the pointer; over an open menu
+// only the menu scrolls, behind a modal dialog nothing does. A right click without a menu, a
+// middle click on a button, a link-like button or a row do nothing; the back button and the
+// back key go back only where a view has a way back; single list keys type in the search;
+// key scrolling glides in one short tween (a jump under reduced motion).
+
+test('the wheel over a switch changes nothing and scrolls the page', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=settings`);
+  const toggle = page.getByTestId('toggle-auto-archive');
+  const before = await toggle.getAttribute('aria-checked');
+  await wheelOver(page, 'toggle-auto-archive');
+  await expect(toggle).toHaveAttribute('aria-checked', before ?? 'false');
+  expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(0);
+});
+
+test('the wheel over a field and a choice changes nothing and scrolls the page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  const rate = page.locator(
+    '[data-testid="profile-min-rate"] input, input[data-testid="profile-min-rate"]',
+  );
+  await rate.fill('950');
+  await wheelOver(page, 'profile-min-rate');
+  await expect(rate).toHaveValue('950');
+  const view = await scrollTop(page, 'view-profile');
+  expect(view).toBeGreaterThan(0);
+  // A choice (a radio group): the chosen option stays chosen.
+  const group = page.locator('[data-testid="view-profile"] [role="radiogroup"]').first();
+  await group.scrollIntoViewIfNeeded();
+  const chosen = await group.locator('[aria-checked="true"]').allTextContents();
+  const box = (await group.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(300);
+  expect(await group.locator('[aria-checked="true"]').allTextContents()).toEqual(chosen);
+});
+
+test('over an open menu only the menu scrolls; the list behind stays and the menu stays open', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await rows(page).nth(1).click({ button: 'right' });
+  const menu = page.getByTestId('menu');
+  await expect(menu).toBeVisible();
+  const list = await listScroll(page);
+  const box = (await menu.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(300);
+  await expect(menu).toBeVisible();
+  expect(await listScroll(page)).toBe(list);
+  // Outside the menu the page scrolls again, and the scroll closes the menu.
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+});
+
+test('behind a modal dialog nothing scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=settings`);
+  await page.keyboard.press('Control+/');
+  await expect(page.getByTestId('keys-help')).toBeVisible();
+  // Over the scrim, away from the card.
+  await page.mouse.move(300, 60);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(300);
+  expect(await scrollTop(page, 'view-settings')).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('keys-help')).toHaveCount(0);
+});
+
+test('a right click where nothing offers a menu does nothing', async ({ page }) => {
+  await open(page, `${WIN}&view=settings`);
+  const heading = page.locator('[data-testid="view-settings"] h2').first();
+  await heading.click({ button: 'right' });
+  await page.waitForTimeout(150);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
+  expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+});
+
+test('a middle click on a button, a link-like button or a row does nothing', async ({
+  page,
+  context,
+}) => {
+  await open(page, WIN);
+  const pages = context.pages().length;
+  await page.getByTestId('fetch').click({ button: 'middle' });
+  await rows(page).first().click({ button: 'middle' });
+  await page.waitForTimeout(200);
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+  expect(await calls(page, 'job_detail')).toHaveLength(0);
+  // The middle press in the list, which scrolls, started the OS autoscroll: a click on the
+  // empty reader ends it (and presses nothing).
+  await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
+  // The ad's link (it opens the page outside the app on a left click only).
+  await rows(page).first().click();
+  const openAd = page.getByTestId('open-ad');
+  await openAd.scrollIntoViewIfNeeded();
+  await openAd.click({ button: 'middle' });
+  await page.waitForTimeout(200);
+  expect(await calls(page, 'open_target')).toHaveLength(0);
+  expect(context.pages()).toHaveLength(pages);
+});
+
+test('the back button and the back key do nothing where no view has a way back', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const url = page.url();
+  await rows(page).first().click();
+  await expect(page.getByTestId('reader')).toBeVisible();
+  // The mouse's back and forward buttons (3 and 4) and Alt+Left/Right.
+  await page.evaluate(() => {
+    for (const button of [3, 4]) {
+      const init = { bubbles: true, cancelable: true, button };
+      document.body.dispatchEvent(new MouseEvent('mousedown', init));
+      document.body.dispatchEvent(new MouseEvent('mouseup', init));
+    }
+  });
+  await page.keyboard.press('Alt+ArrowLeft');
+  await page.keyboard.press('Alt+ArrowRight');
+  await page.waitForTimeout(200);
+  expect(page.url()).toBe(url);
+  // The wide Jobs view has no Zurück: the open job stays.
+  await expect(page.getByTestId('reader')).toBeVisible();
+});
+
+// JobsView registers its Zurück of one column with `onBack` (lib/input/input.ts); until it
+// does, the back button has nothing to go back to.
+test.fixme('the back button goes back where the reader in one column has Zurück', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 780, height: 560 });
+  await open(page, WIN);
+  await rows(page).first().click();
+  await expect(page.getByTestId('back')).toBeVisible();
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect(page.getByTestId('back')).toHaveCount(0);
+  await expect(rows(page).first()).toBeVisible();
+});
+
+test('single list keys type inside the search field', async ({ page }) => {
+  await open(page, WIN);
+  await rows(page).first().click();
+  const search = page.getByTestId('search');
+  await search.click();
+  await page.keyboard.type('esub o');
+  await expect(search).toHaveValue('esub o');
+  for (const command of ['move_jobs', 'set_pinned', 'open_target']) {
+    expect(await calls(page, command), command).toHaveLength(0);
+  }
+});
+
+test('nothing drags but the handle and the drag regions; a double click selects only copyable text', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  // No ghost of a row, an icon or plain text.
+  const dragged = await page.evaluate(() =>
+    ['[data-testid^="job-row-"]', '[data-testid="nav-jobs"] svg', '[data-testid="places"]'].map(
+      (css) => {
+        const node = document.querySelector(css)!;
+        const event = new DragEvent('dragstart', { bubbles: true, cancelable: true });
+        node.dispatchEvent(event);
+        return event.defaultPrevented;
+      },
+    ),
+  );
+  expect(dragged).toEqual([true, true, true]);
+  // A double click on a control selects nothing; on the job's title (copyable) a word.
+  await page.getByTestId('nav-jobs').dblclick();
+  expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
+  await rows(page).first().click();
+  const title = page.locator('[data-testid="reader"] [data-copy]').first();
+  await title.dblclick();
+  expect((await page.evaluate(() => getSelection()?.toString() ?? '')).trim()).not.toBe('');
+});
+
+test('the page keys glide in one short tween; under reduced motion they jump', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=settings`);
+  // A click on plain text: the focus is nowhere, the keys scroll the pane clicked last.
+  await page.locator('[data-testid="view-settings"] h2').first().click();
+  await page.keyboard.press('PageDown');
+  const early = await scrollTop(page, 'view-settings');
+  await page.waitForTimeout(400);
+  const end = await scrollTop(page, 'view-settings');
+  expect(end).toBeGreaterThan(300);
+  expect(early).toBeLessThan(end);
+  // Reduced motion: at once.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await open(page, `${WIN}&view=settings`);
+  await settle(page);
+  await page.locator('[data-testid="view-settings"] h2').first().click();
+  await page.keyboard.press('PageDown');
+  expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(300);
+});
+
+/* -------------------------------- Presses, radio groups, window menus, the focus in view */
+
+// Final round, team T1 (input): only the left button presses, a click beside a field ends its
+// focus, Enter presses buttons only, the arrows choose in a radio group, the middle button
+// stays out of dialogs and fields, the keys of the Windows window menus reach the OS, and
+// keyboard focus stays clear of the scroll edges.
+
+test('the right and the middle button never press a control', async ({ page }) => {
+  // Eight held presses, each waiting for the transitions to settle.
+  test.setTimeout(60_000);
+  await open(page, WIN);
+  const targets = [
+    page.getByTestId('fetch'),
+    page.locator('[data-testid^="job-row-"]').first(),
+    page.getByTestId('nav-settings'),
+    page.getByTestId('place-archive'),
+  ];
+  for (const [at, target] of targets.entries()) {
+    // A row answers the right button with its menu (checked in menu specs), not a press.
+    for (const button of at === 1 ? (['middle'] as const) : (['right', 'middle'] as const)) {
+      const { hover, held, after } = await heldLook(page, target, button);
+      expect(held, `${button} held on ${String(target)}`).toBe(hover);
+      expect(after).toBe(hover);
+    }
+    // A middle press in the list, which scrolls, starts the OS autoscroll: a click on the
+    // empty reader ends it (and presses nothing).
+    if (at === 1) await page.getByTestId('reader-pane').click({ position: { x: 20, y: 5 } });
+  }
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+  await expect(page.getByTestId('reader')).toHaveCount(0);
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  // The left button still presses.
+  const fetch = page.getByTestId('fetch');
+  const box = (await fetch.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(200);
+  const hover = await look(fetch);
+  await page.mouse.down();
+  await page.waitForTimeout(200);
+  expect(await look(fetch)).not.toBe(hover);
+  await page.mouse.move(4, 4, { steps: 4 });
+  await page.mouse.up();
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+});
+
+test('a switch held with the right button looks at rest and keeps its state', async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  const toggle = page.getByTestId('toggle-auto-archive');
+  await expect(toggle).toBeVisible();
+  const before = await toggle.getAttribute('aria-checked');
+  for (const button of ['right', 'middle'] as const) {
+    const { hover, held } = await heldLook(page, toggle, button);
+    expect(held).toBe(hover);
+  }
+  await expect(toggle).toHaveAttribute('aria-checked', before!);
+});
+
+test('a click beside a focused field ends its focus', async ({ page }) => {
+  await open(page, GALLERY);
+  const field = page.locator('#gallery-address');
+  await field.scrollIntoViewIfNeeded();
+  const box = (await field.boundingBox())!;
+  const label = page.locator('label[for="gallery-address"]');
+  const labelBox = (await label.boundingBox())!;
+  const beside: [string, () => Promise<void>][] = [
+    [
+      'the empty part of the label line',
+      () => page.mouse.click(box.x + box.width - 4, labelBox.y + labelBox.height / 2),
+    ],
+    ['the hint below', () => page.locator('#gallery-address-message').click()],
+    ['the heading', () => page.getByTestId('gallery-inputs').getByRole('heading').first().click()],
+    [
+      'the empty area to the right',
+      () => page.mouse.click(box.x + box.width + 24, box.y + box.height / 2),
+    ],
+  ];
+  for (const [where, click] of beside) {
+    await field.click();
+    await expect(field).toBeFocused();
+    await click();
+    await expect(field, where).not.toBeFocused();
+  }
+  // The words of its own label still lead into the field.
+  await field.click();
+  await page.mouse.click(labelBox.x + 4, labelBox.y + labelBox.height / 2);
+  await expect(field).toBeFocused();
+  // The chips and the empty part of a chip field keep its caret.
+  const chips = page.locator('#gallery-chips');
+  await chips.click();
+  const chipBox = (await page.getByTestId('gallery-chips').boundingBox())!;
+  await page.mouse.click(chipBox.x + chipBox.width - 6, chipBox.y + chipBox.height / 2);
+  await expect(chips).toBeFocused();
+});
+
+test('a press on a drag region (the macOS toolbar row) ends the focus of a field', async ({
+  page,
+}) => {
+  // Tauri's drag script cancels the press on a drag region (the window moves instead):
+  // stand in for it, after the input policy's own listener like in the app.
+  await page.addInitScript(() => {
+    document.addEventListener('mousedown', (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      // Like Tauri's script: only a press on the region itself (not on a field or a
+      // button inside its row) moves the window.
+      if (event.button === 0 && target?.hasAttribute('data-tauri-drag-region')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    });
+  });
+  await open(page, '?platform=macos');
+  const search = page.getByTestId('search');
+  await search.click();
+  await expect(search).toBeFocused();
+  const bar = (await page.getByTestId('sidebar').getByTestId('drag-band').boundingBox())!;
+  await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await expect(search).not.toBeFocused();
+});
+
+test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  const toggle = page.getByTestId('toggle-auto-archive');
+  const before = await toggle.getAttribute('aria-checked');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  await expect(toggle).toHaveAttribute('aria-checked', before!);
+  await page.keyboard.press('Space');
+  await expect(toggle).not.toHaveAttribute('aria-checked', before!);
+});
+
+test('a radio group is one Tab stop and the arrows choose', async ({ page }) => {
+  await open(page, '?gallery&platform=windows');
+  const group = page.getByTestId('segmented-facet');
+  await group.scrollIntoViewIfNeeded();
+  const radios = group.getByRole('radio');
+  const count = await radios.count();
+  expect(count).toBeGreaterThan(1);
+  const stops = await radios.evaluateAll((nodes) =>
+    nodes.map((node) => `${node.getAttribute('aria-checked')}:${(node as HTMLElement).tabIndex}`),
+  );
+  expect(stops.filter((stop) => stop.endsWith(':0'))).toEqual(['true:0']);
+  const checked = radios.and(page.locator('[aria-checked="true"]'));
+  const first = await checked.textContent();
+  await checked.focus();
+  await page.keyboard.press('ArrowRight');
+  const now = group.locator('[aria-checked="true"]');
+  await expect(now).not.toHaveText(first!);
+  await expect(now).toBeFocused();
+  await page.keyboard.press('ArrowLeft');
+  await expect(group.locator('[aria-checked="true"]')).toHaveText(first!);
+  // Left from the first option wraps to the last.
+  await radios.first().click();
+  await radios.first().focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(radios.last()).toHaveAttribute('aria-checked', 'true');
+});
+
+test('the middle button stays out of dialogs and fields', async ({ page }) => {
+  await open(page, GALLERY);
+  await page.getByTestId('open-danger').click();
+  const dialog = page.getByTestId('dialog-danger');
+  await expect(dialog).toBeVisible();
+  const prevented = await page.evaluate(() => {
+    const scrim = document.querySelector('[aria-modal="true"]')!.parentElement!;
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 1 });
+    scrim.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+  // A real middle click on the backdrop: Enter then still answers the dialog.
+  await page.mouse.click(8, 200, { button: 'middle' });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(dialog).toHaveCount(0);
+  // A middle click on a field in a scrolling view does not focus it.
+  await page.mouse.click(4, 4);
+  const field = page.locator('#gallery-address');
+  await field.scrollIntoViewIfNeeded();
+  await field.click({ button: 'middle' });
+  await page.waitForTimeout(100);
+  await expect(field).not.toBeFocused();
+});
+
+test("Windows: Alt+Space reaches the OS, Shift+F10 opens the app's menu", async ({ page }) => {
+  await open(page, WIN);
+  const results = await page.evaluate(() => {
+    const field = document.querySelector<HTMLInputElement>('[data-testid="search"]')!;
+    const button = document.querySelector<HTMLElement>('[data-testid="fetch"]')!;
+    const press = (target: Element, init: KeyboardEventInit): boolean => {
+      const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    const altSpace = { key: ' ', code: 'Space', altKey: true };
+    const shiftF10 = { key: 'F10', code: 'F10', shiftKey: true };
+    return {
+      altSpaceBody: press(document.body, altSpace),
+      altSpaceField: press(field, altSpace),
+      altSpaceButton: press(button, altSpace),
+      shiftF10Field: press(field, shiftF10),
+      f10Field: press(field, { key: 'F10', code: 'F10' }),
+    };
+  });
+  expect(results).toEqual({
+    altSpaceBody: false,
+    altSpaceField: false,
+    altSpaceButton: false,
+    shiftF10Field: true,
+    f10Field: true,
+  });
+  await expect(page.getByTestId('menu')).toBeVisible();
+});
+
+test('a field menu greys out Undo while there is nothing to undo', async ({ page }) => {
+  await open(page, WIN);
+  const search = page.getByTestId('search');
+  const undo = page.getByTestId('menu-item-undo');
+  await search.click({ button: 'right' });
+  await expect(undo).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
+  await search.click();
+  await page.keyboard.type('CFO');
+  await search.click({ button: 'right' });
+  await expect(undo).not.toHaveAttribute('aria-disabled', 'true');
+});
+
+test('keyboard focus stays clear of the edges of its scroll area', async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 600 });
+  await open(page, WIN);
+  await page.getByTestId('nav-settings').click();
+  await page.getByTestId('nav-settings').focus();
+  const cut: string[] = [];
+  for (let stop = 0; stop < 30; stop += 1) {
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(60);
+    const gap = await page.evaluate(() => {
+      const node = document.activeElement;
+      if (!(node instanceof HTMLElement)) return null;
+      let pane = node.parentElement;
+      while (
+        pane &&
+        !(
+          /auto|scroll/.test(getComputedStyle(pane).overflowY) &&
+          pane.scrollHeight > pane.clientHeight
+        )
+      ) {
+        pane = pane.parentElement;
+      }
+      if (pane === null) return null;
+      const box = node.getBoundingClientRect();
+      const view = pane.getBoundingClientRect();
+      const top = view.top + pane.clientTop;
+      return {
+        id: node.getAttribute('data-testid') ?? node.tagName,
+        above: box.top - top,
+        below: top + pane.clientHeight - box.bottom,
+      };
+    });
+    if (gap !== null && (gap.above < 4 || gap.below < 4)) cut.push(JSON.stringify(gap));
+  }
+  expect(cut).toEqual([]);
+});
+
+/* ------------------------------------------------------------- The end of the autoscroll */
+
+// The press that ends the OS autoscroll ends only the autoscroll: it presses nothing,
+// whichever button it is, like the native scrolling of Windows.
+
+test('the click that ends the autoscroll presses nothing; a dragged middle press leaves no mode', async ({
+  page,
+  browserName,
+}) => {
+  // The autoscroll is Windows' (WebView2, a Chromium): WebKit has none to end.
+  test.skip(browserName === 'webkit', 'no autoscroll in WebKit');
+  await open(page, '?platform=windows&scenario=many');
+  const archive = page.getByTestId('place-archive');
+  const list = (await page.getByTestId('job-list').boundingBox())!;
+  const inList = { x: list.x + list.width / 2, y: list.y + list.height / 2 };
+  // A middle click in the list: the autoscroll runs until the next press.
+  await page.mouse.move(inList.x, inList.y);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.up({ button: 'middle' });
+  await archive.click();
+  await expect(archive).not.toHaveAttribute('aria-selected', 'true');
+  // The next click is an ordinary one again.
+  await archive.click();
+  await expect(archive).toHaveAttribute('aria-selected', 'true');
+  // Held and dragged, the middle button scrolled while held: no mode is left.
+  const inbox = page.getByTestId('place-inbox');
+  await page.mouse.move(inList.x, inList.y);
+  await page.mouse.down({ button: 'middle' });
+  await page.mouse.move(inList.x, inList.y + 60, { steps: 4 });
+  await page.mouse.up({ button: 'middle' });
+  await inbox.click();
+  await expect(inbox).toHaveAttribute('aria-selected', 'true');
 });

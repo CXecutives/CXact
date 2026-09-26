@@ -357,7 +357,7 @@
           use:tooltip={t.chips.remove(labelOf(value))}
           onclick={() => remove(index)}
         >
-          <Icon name="x" size="xs" />
+          <Icon name="close" size="xs" />
         </button>
       </span>
     {/each}
@@ -468,7 +468,7 @@
   }
 
   .entry:hover {
-    border-color: var(--border-input);
+    border-color: var(--control-hover-edge);
   }
 
   .entry:focus-within {
