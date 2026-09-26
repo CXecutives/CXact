@@ -277,10 +277,16 @@ test('a job excluded by an exclusion word says the word and shows it in the ad',
   );
   // Not said twice among the reasons.
   await expect(stage(page).getByTestId('why')).not.toContainText('Liste der Ausschlusswörter');
+  // The sentence that names the word is marked, as the engine marks it.
   await box.getByTestId('show-in-ad').click();
   await page.mouse.move(0, 0);
-  await expect(page.locator('mark.active').first()).toHaveText('Werkstudent');
-  await expect(page.locator('mark.active').first()).toBeInViewport();
+  const active = page.locator('mark.active');
+  await expect
+    .poll(async () => (await active.allTextContents()).join(''))
+    .toBe(
+      'Für Elbufer Handel GmbH suchen wir Unterstützung als Werkstudent Controlling (m/w/d) in Hamburg.',
+    );
+  await expect(active.first()).toBeInViewport();
 });
 
 test('a list row shows the workload after the duration, short', async ({ page }) => {

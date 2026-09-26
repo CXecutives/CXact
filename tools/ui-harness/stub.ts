@@ -1821,9 +1821,22 @@ function detailOf(j: JobView): JobDetail {
   if (excludedBy === 'dayRate') {
     add('violation', 'hard', 'dayRate', '', { rate: facts.rate, min }, rangeOf(frame.rate));
   }
-  // An exclusion word of the profile, where the title or the ad says it (engine 16).
+  // An exclusion word of the profile, where the title or the ad says it (engine 16). Like
+  // core matching::exclusion the sentence that names it is marked, not the word; every
+  // sentence of a stub ad is a line of its own (a point without its bullet).
   const word = excludedBy === 'exclusionWord' ? String(notes.word ?? '') : null;
-  const wordRange = word === null ? [] : rangeOf(word);
+  const sentenceOf = (words: string): { start: number; end: number }[] => {
+    const found = text.indexOf(words);
+    if (words === '' || found < 0) return [];
+    const from = text.lastIndexOf('\n', found) + 1;
+    const to = text.indexOf('\n', found);
+    const line = text
+      .slice(from, to < 0 ? text.length : to)
+      .replace(/^•\s*/, '')
+      .trim();
+    return rangeOf(line, from);
+  };
+  const wordRange = word === null ? [] : sentenceOf(word);
   const wordReason = word === null ? null : String(reasons.length);
   if (word !== null) add('violation', 'hard', 'exclusionWord', '', { word }, wordRange);
   // The profile's days a week and minimum duration (engine 16) are checks, never an
