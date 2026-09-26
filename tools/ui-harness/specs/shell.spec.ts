@@ -362,7 +362,8 @@ test('icon-only buttons show a styled tooltip after the delay', async ({ page })
   await page.locator('[data-testid^="job-row-"]').first().click();
   const close = page.getByTestId('reader-close');
   await close.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Schließen');
+  // Its name, then its key.
+  await expect(page.getByRole('tooltip')).toHaveText(/^Schließen\s*Esc$/);
   await expect(close).not.toHaveAttribute('title');
 });
 
