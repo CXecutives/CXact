@@ -22,6 +22,7 @@ use jobalert_core::model::Place;
 use jobalert_core::pipeline::{self, Matcher as _, RunEvent, demo};
 use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
+use jobalert_core::store::Backup;
 use jobalert_core::view::{
     self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
     WorkspacePick, WorkspaceProfile,
@@ -385,6 +386,40 @@ pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<
     log::info!("reset requested, restarting");
     app.request_restart();
     Ok(())
+}
+
+/// The copies of the database in the data folder, newest first ("Sicherung
+/// wiederherstellen"): the daily ones, the ones before an update and before a restore. None in
+/// the dry run, whose database lives in memory.
+#[tauri::command]
+pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Vec<Backup>> {
+    Ok(state.store.backups()?)
+}
+
+/// Restores the database from its copy `id` (a name of `list_backups`). The state it replaces
+/// is copied first and that copy returned: restoring it is the undo. The app is held
+/// meanwhile like a file command (no run, sign-in or file command writes the database), and
+/// neither the dry run nor the demo restores. Afterwards the scores follow the profile (a
+/// rescore when the copy's are of another profile or engine) and the files follow the jobs;
+/// the page loads everything again.
+#[tauri::command]
+pub async fn restore_backup(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+) -> CmdResult<Backup> {
+    state.ensure_real()?;
+    state.ensure_not_demo()?;
+    let files = state.claim_files(&app)?;
+    let before = state.store.restore_backup(&id, Timestamp::now())?;
+    log::info!(
+        "database restored from {id}, the state before is {}",
+        before.id
+    );
+    drop(files);
+    scoring::rescore_if_pending(&app, &state);
+    super::files::marked(&app);
+    Ok(before)
 }
 
 /// Errors of the page into the log (cut, single line, at most ten per minute).
