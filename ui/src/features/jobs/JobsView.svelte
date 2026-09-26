@@ -13,11 +13,12 @@
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps what it shows (the overview or the previous job), so it
-  never goes blank. The new stage rises in over the old one, which keeps its own scroll
-  position and fades: the new job starts at the top and the old text never jumps. The old
-  stage is the real one on its way out (nothing is copied or laid out again); it answers no
-  pointer and drops its test ids. The close "×" in the reader head (at every width), Esc and a
-  search that no longer finds the job go back to the day overview.
+  never goes blank. The old stage fades out first (100 ms, at its own scroll position: the old
+  text never jumps), then the new one rises in (150 ms), so two texts are never readable at
+  once; the new job starts at the top. The old stage is the real one on its way out (nothing is
+  copied or laid out again); it answers no pointer and drops its test ids. The close "×" in the
+  reader head (at every width), Esc and a search that no longer finds the job go back to the
+  day overview.
   The keys of a mail app (lib/input/input.ts): ArrowUp/ArrowDown open the previous/next job,
   Home/End the first/last, with Shift they choose from the open job on; Space on the open
   job's row pages through the reader, and after a click into the reader the arrows, Home and
@@ -32,6 +33,7 @@
   import EmptyState from '$components/EmptyState.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import { t } from '$lib/i18n/t';
+  import { duration } from '$lib/motion/motion';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
   import { listKeys, onBack, type ListAction } from '$lib/input/input';
@@ -219,16 +221,18 @@
     });
   });
 
-  /** A job rises in (4 px, 150 ms); the overview and the placeholders only fade (100 ms). */
+  /** A job rises in (2 px, 150 ms), the overview and the placeholders only fade (100 ms),
+   *  each once the old stage has faded out (the one-column layout has none to wait for). */
   function enter(node: Element, job: boolean): ReturnType<typeof fade> {
+    const delay = viewport.narrow ? 0 : duration('fast');
     return job
-      ? rise(node, { distance: 'sm', duration: 'base', easing: 'out' })
-      : fade(node, { duration: 'fast' });
+      ? rise(node, { distance: 'sm', duration: 'base', easing: 'out', delay })
+      : fade(node, { duration: 'fast', delay });
   }
 
   /**
-   * The stage that leaves stays where it is, at its own scroll position, and fades (150 ms,
-   * ease-in) while the next one rises over it. On its way out it is hidden from assistive
+   * The stage that leaves stays where it is, at its own scroll position, and fades out (100
+   * ms, ease-in) before the next one comes in. On its way out it is hidden from assistive
    * technology and drops its test ids, so nothing on the page exists twice. The one-column
    * layout switches columns instead: there the old stage simply goes.
    */
@@ -238,7 +242,7 @@
       element.removeAttribute('data-testid');
     }
     node.setAttribute('aria-hidden', 'true');
-    return fade(node, { duration: 'base', easing: 'in' });
+    return fade(node, { duration: 'fast', easing: 'in' });
   }
 </script>
 

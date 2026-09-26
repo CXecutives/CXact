@@ -3,8 +3,8 @@
 // excluded job, the four actions and their "…" menu per place, the Jobdetails (the order and
 // icons of lib/facts.ts, "/" for what the ad does not say, verdicts as icons whose tooltip is
 // the reason), the Anforderungen (only requirements, a quiet count, "+" for a missing term),
-// the ad as plain text with its one note. At the end what the reader's rounds of fixes carried
-// around it (one column, the run card, the focus).
+// the ad as plain text with its one note, and the switch between two jobs. At the end what the
+// reader's rounds of fixes carried around it (one column, the run card, the focus).
 //
 // The stub's demo profile: a minimum day rate of 1.100 € and a wish of 1.200 €, mostly remote,
 // three to five days a week for at least six months, 15 years of experience, no temporary
@@ -695,6 +695,32 @@ test.describe('the ad', () => {
     await expect(stage(page).getByTestId('detail-note')).toHaveText('Keine Bewerbung mehr möglich');
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
+});
+
+test('switching jobs fades the old one out before the new one comes in', async ({ page }) => {
+  await openAt(page, 'freelancermap-2801');
+  // Every frame from the click on: how many stages show at once, and whether two were there.
+  await page.evaluate(() => {
+    const seen = { most: 0, both: false };
+    (window as unknown as { __stages: typeof seen }).__stages = seen;
+    const until = performance.now() + 700;
+    const look = (): void => {
+      const all = [...document.querySelectorAll('.stage')];
+      if (all.length > 1) seen.both = true;
+      const shown = all.filter((stage) => Number(getComputedStyle(stage).opacity) > 0.02);
+      seen.most = Math.max(seen.most, shown.length);
+      if (performance.now() < until) requestAnimationFrame(look);
+    };
+    requestAnimationFrame(look);
+  });
+  await row(page, 'freelancermap-2802').click();
+  await expect(stage(page).getByTestId('reader-title')).toHaveText('Interim Head of Finance');
+  await page.waitForTimeout(700);
+  const seen = await page.evaluate(
+    () => (window as unknown as { __stages: { most: number; both: boolean } }).__stages,
+  );
+  expect(seen.both).toBe(true);
+  expect(seen.most).toBe(1);
 });
 
 // Carried over from the reader's rounds of fixes: the column, the run card and the trash
