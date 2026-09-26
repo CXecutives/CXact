@@ -1287,35 +1287,32 @@ export const de = {
     noProfileText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
     profileUnreadable: PROFILE_UNREADABLE,
     label: 'Übersicht',
-    /** The first block: what is new since the last fetch, as counts that lead into the list. */
-    since: 'Seit dem letzten Abruf',
+    /** The first block: the inbox as counts that lead into the list (its name in Jobs). */
+    since: 'Eingang',
     tileNew: 'Neu',
     tileHigh: 'Hohe Passung',
-    tileExcluded: 'Ausgeschlossen',
-    fetchedAt: (when: string) => `Abgerufen ${when}`,
     today: 'Heute ansehen',
-    allNew: (value: number) => `Alle ${n(value)} neuen`,
     favourites: 'Favoriten',
-    decide: 'Braucht eine Entscheidung',
+    /** More favourites than the block shows: all of them in Jobs. */
+    allFavourites: (value: number) => `Alle ${n(value)} Favoriten`,
     noDetail: (value: number) =>
       value === 1 ? '1 Job ohne ganze Anzeige' : `${n(value)} Jobs ohne ganze Anzeige`,
     fetchDetails: 'Details holen',
-    excludedCheck: (value: number) =>
-      value === 1 ? '1 Job ausgeschlossen' : `${n(value)} Jobs ausgeschlossen`,
+    /** Excluded jobs not opened yet, an open point until she has looked at them. */
+    excludedNew: (value: number) =>
+      value === 1 ? '1 neuer Job ausgeschlossen' : `${n(value)} neue Jobs ausgeschlossen`,
     look: 'Ansehen',
-    /** Shown in the empty reader when the overview has nothing else to say (like Mail's "no message selected"). */
-    pick: 'Wähle links einen Job aus.',
+    /** The open points, the most important first. */
     issues: 'Offene Punkte',
-    best: 'Neu und passend',
     excel: 'Excel-Datei öffnen',
     /** The best matches as one prompt for any AI chat. */
-    promptTop: 'Prompt für KI-Vergleich kopieren',
+    promptTop: 'KI-Prompt kopieren',
     /** Its tooltip: what goes into it (favourites first, read or not). */
     promptTopHint: 'Kopiert deine Favoriten und die besten Jobs mit dem Profil als einen Prompt.',
     /** No scored job and no favourite to compare yet. */
     promptTopNone: 'Noch ist kein Job bewertet.',
-    /** When the list beside shows the best new jobs on top already. */
-    bestInList: 'Die besten neuen Jobs stehen oben in der Liste.',
+    /** A portal that never sent an alert mail: its site, where the alert is made. */
+    createAlert: 'Alert anlegen',
     files: 'Dateien',
     /** Under the portal's name, so the sentence does not name it again; next to the button
      *  that opens the mail. */
@@ -1334,12 +1331,12 @@ export const de = {
     openMusts: 'Oft verlangt, nicht im Profil',
     inJobs: (value: number) => `in ${n(value)} Jobs`,
     addToProfile: 'Zum Profil hinzufügen',
-    /** The market of the last seven days. */
-    market: 'Markt',
-    marketNew: 'Neu in 7 Tagen',
+    /** The market of the last 30 days, every row over the same days. */
+    market: 'Markt der letzten 30 Tage',
+    marketNew: 'Jobs je Portal',
     marketRate: 'Tagessatz passender Jobs',
     marketRateValue: (median: string, jobs: number) =>
-      `${median} im Mittel aus ${count(jobs, 'Job', 'Jobs')}`,
+      `${median} im Median aus ${count(jobs, 'Job', 'Jobs')}`,
     marketMin: (value: string) => `dein Minimum ${value}`,
     marketRemote: 'Überwiegend remote',
     marketRemoteValue: (share: number, known: number) =>

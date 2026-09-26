@@ -190,7 +190,7 @@ test('the demo fetches no full ads: Details holen is off with its reason, the Ü
   expect(await calls(page, 'start_run')).toEqual([]);
   await page.getByTestId('nav-overview').click();
   await expect(page.getByTestId('tile-new')).toBeVisible();
-  await expect(page.getByTestId('decide-details')).toHaveCount(0);
+  await expect(page.getByTestId('issue-details')).toHaveCount(0);
 });
 
 test('the demo starts without a profile: nothing scored, the list by date, Profil offers a file', async ({
