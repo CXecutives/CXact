@@ -1612,6 +1612,8 @@ async fn the_same_job_on_two_portals_is_one_row() {
             favourites: false,
             sort: JobSort::Newest,
             search: None,
+            portal: None,
+            min_band: None,
             limit: 50,
             offset: 0,
         },

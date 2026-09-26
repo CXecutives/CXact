@@ -10,6 +10,7 @@
 use jiff::Timestamp;
 use rusqlite::{Connection, OptionalExtension, params};
 
+use super::jobs::ListFilter;
 use super::{Store, bump};
 use crate::error::Result;
 use crate::model::Place;
@@ -264,16 +265,29 @@ impl Store {
         search: Option<&str>,
         now: Timestamp,
     ) -> Result<Vec<JobKey>> {
+        self.mark_all_read_filtered(place, search, ListFilter::default(), now)
+    }
+
+    /// [`Store::mark_all_read`] of what the list shows with its filter too (a portal, a
+    /// lowest band): only those jobs, as the list's counts say.
+    pub fn mark_all_read_filtered(
+        &self,
+        place: Place,
+        search: Option<&str>,
+        filter: ListFilter,
+        now: Timestamp,
+    ) -> Result<Vec<JobKey>> {
         let words = super::jobs::search_words(search);
         self.write(|conn| {
             let keys = keys_where(
                 conn,
                 &format!(
-                    "dup_of IS NULL AND read_at IS NULL AND {} AND {}",
+                    "dup_of IS NULL AND read_at IS NULL AND {} AND {} AND {}",
                     place_condition(place),
-                    super::jobs::matches_words("?1")
+                    super::jobs::matches_words("?1"),
+                    super::jobs::filter_condition("?2", "?3"),
                 ),
-                [words],
+                params![words, filter.portal.map(Portal::key), filter.min_score()],
             )?;
             let mut mark = conn
                 .prepare_cached("UPDATE job SET read_at = ?3 WHERE portal = ?1 AND job_id = ?2")?;

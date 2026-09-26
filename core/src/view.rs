@@ -28,7 +28,7 @@ pub use crate::profile::{
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
 use crate::settings::{Language, PortalSwitches, Settings};
-use crate::store::{AlertMailRow, JobRow, PageQuery, Store};
+use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
 #[cfg(test)]
@@ -795,9 +795,27 @@ pub struct JobQuery {
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
     pub search: Option<String>,
+    /// The filter (funnel menu): only this portal's jobs; `null` = every portal. Like the
+    /// search it narrows the list and all its counts.
+    #[serde(default)]
+    pub portal: Option<Portal>,
+    /// The filter: only jobs scored in this band or better (`mid` = mid and high, `high` =
+    /// high only); unscored and excluded jobs pass only with `null`.
+    #[serde(default)]
+    pub min_band: Option<Band>,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
+}
+
+impl JobQuery {
+    /// The portal and band filter of the query (for [`Store::mark_all_read_filtered`] too).
+    pub fn filter(&self) -> ListFilter {
+        ListFilter {
+            portal: self.portal,
+            min_band: self.min_band,
+        }
+    }
 }
 
 /// Counts of the list (with the search applied, whatever the place and the filter), from
@@ -853,6 +871,7 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
         favourites: query.favourites,
         by_match: query.sort == JobSort::Match,
         search: query.search.clone(),
+        filter: query.filter(),
         limit: query.limit.min(MAX_PAGE),
         offset: query.offset,
     })?;
@@ -1750,8 +1769,91 @@ mod tests {
             favourites: false,
             sort,
             search: None,
+            portal: None,
+            min_band: None,
             limit,
             offset,
+        }
+    }
+
+    /// The filter narrows the list and every count like the search: one portal's jobs, or
+    /// only jobs scored in a band or better (unscored and excluded ones only without it);
+    /// "all read" marks only what the filter shows. A query without the fields reads as none.
+    #[test]
+    fn the_filter_narrows_list_and_counts() {
+        let store = four_jobs();
+        let run = store.begin_run().unwrap();
+        let link = job_link("https://www.freelancermap.de/nproj/12345.html").unwrap();
+        let other = link.key.clone();
+        let posting = Posting::new(link.key, link.url, "E", "", "");
+        let mail = MailRef {
+            subject: "x",
+            date: None,
+            gmail_id: None,
+        };
+        store
+            .upsert_posting(run, &posting, mail, Timestamp::now())
+            .unwrap();
+        store
+            .save_matches(
+                &[(other.clone(), record(MatchStatus::Scored, 45))],
+                "r",
+                Timestamp::now(),
+            )
+            .unwrap();
+        let page = |portal, min_band| {
+            let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+            q.portal = portal;
+            q.min_band = min_band;
+            job_page(&store, &q).unwrap()
+        };
+        let all = page(None, None);
+        assert_eq!(titles(&all), ["B", "A", "E", "D", "C"]);
+        let linkedin = page(Some(Portal::LinkedIn), None);
+        assert_eq!(titles(&linkedin), ["B", "A", "D", "C"]);
+        assert_eq!(linkedin.counts.inbox, 4, "the counts follow");
+        let map = page(Some(Portal::Freelancermap), None);
+        assert_eq!(titles(&map), ["E"]);
+        assert_eq!(
+            (map.counts.inbox, map.counts.unread, map.counts.excluded),
+            (1, 1, 0)
+        );
+        // A: 50, B: 85, C: excluded 95, D: unscored, E: 45.
+        let mid = page(None, Some(Band::Mid));
+        assert_eq!(titles(&mid), ["B", "A", "E"], "no unscored, no excluded");
+        assert_eq!((mid.counts.inbox, mid.counts.excluded), (3, 0));
+        let high = page(None, Some(Band::High));
+        assert_eq!(titles(&high), ["B"]);
+        assert_eq!(high.counts.high, 1);
+        assert_eq!(titles(&page(None, Some(Band::Low))), ["B", "A", "E"]);
+        assert_eq!(
+            titles(&page(Some(Portal::LinkedIn), Some(Band::Mid))),
+            ["B", "A"]
+        );
+        // "All read" follows the filter: only the freelancermap job.
+        let marked = store
+            .mark_all_read_filtered(Place::Inbox, None, map_filter(), Timestamp::now())
+            .unwrap();
+        assert_eq!(marked, [other]);
+        assert_eq!(page(None, None).counts.unread, 2, "B and D stay unread");
+        // The fields may be missing (an older page): no filter.
+        let json = r#"{"place":"inbox","unread":false,"favourites":false,"sort":"match",
+                       "search":null,"limit":10,"offset":0}"#;
+        let old: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(old.filter(), ListFilter::default());
+        let json = r#"{"place":"inbox","unread":false,"favourites":false,"sort":"match",
+                       "search":null,"portal":"freelance","minBand":"high","limit":10,"offset":0}"#;
+        let new: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            (new.portal, new.min_band),
+            (Some(Portal::FreelanceDe), Some(Band::High))
+        );
+    }
+
+    fn map_filter() -> ListFilter {
+        ListFilter {
+            portal: Some(Portal::Freelancermap),
+            min_band: None,
         }
     }
 
@@ -1951,6 +2053,8 @@ mod tests {
                     favourites: false,
                     sort: JobSort::Match,
                     search: search.map(str::to_owned),
+                    portal: None,
+                    min_band: None,
                     limit: 0,
                     offset: 0,
                 },
