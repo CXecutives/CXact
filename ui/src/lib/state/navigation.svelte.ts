@@ -7,11 +7,12 @@
 
 import { onNavigate } from '../ipc/api';
 import type { Portal } from '../ipc/types';
+import { VIEWS, type ViewId } from '../views';
 
-export type ViewId = 'overview' | 'jobs' | 'profile' | 'settings';
+export type { ViewId };
 
-/** In the sidebar's order (Ctrl/Cmd+1 to 4 choose them in this order). */
-export const VIEW_IDS: readonly ViewId[] = ['overview', 'jobs', 'profile', 'settings'];
+/** In the sidebar's order (lib/views.ts; Ctrl/Cmd+1 to 4 choose them in this order). */
+export const VIEW_IDS: readonly ViewId[] = VIEWS.map((view) => view.id);
 
 const isView = (value: string): value is ViewId => (VIEW_IDS as readonly string[]).includes(value);
 

@@ -28,41 +28,21 @@
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
+  import { VIEWS } from '$lib/views';
 
   const setup = $derived(shell.firstRun);
-  /** The four views. Before the first fetch the Übersicht waits (nothing to sum up yet) and
-   *  Jobs is the setup page. */
-  const items = $derived<SideNavItem<ViewId>[]>([
-    {
-      id: 'overview',
-      label: t.nav.overview,
-      icon: 'layout-dashboard',
-      testid: 'nav-overview',
-      hint: keyLabel('mod+1'),
-      disabled: setup ? t.nav.overviewLater : null,
-    },
-    {
-      id: 'jobs',
-      label: t.nav.jobs,
-      icon: 'briefcase',
-      testid: 'nav-jobs',
-      hint: keyLabel('mod+2'),
-    },
-    {
-      id: 'profile',
-      label: t.nav.profile,
-      icon: 'user-round',
-      testid: 'nav-profile',
-      hint: keyLabel('mod+3'),
-    },
-    {
-      id: 'settings',
-      label: t.nav.settings,
-      icon: 'settings',
-      testid: 'nav-settings',
-      hint: keyLabel('mod+4'),
-    },
-  ]);
+  /** The four views of lib/views.ts (name, icon, key). Before the first fetch the Übersicht
+   *  waits (nothing to sum up yet) and Jobs is the setup page. */
+  const items = $derived<SideNavItem<ViewId>[]>(
+    VIEWS.map((view) => ({
+      id: view.id,
+      label: t.nav[view.label],
+      icon: view.icon,
+      testid: `nav-${view.id}`,
+      hint: keyLabel(view.keys),
+      disabled: setup && view.id === 'overview' ? t.nav.overviewLater : null,
+    })),
+  );
   // The last fetch: a rescore of this session is no fetch.
   const fetched = $derived(run.summary?.kind === 'rescore' ? null : run.summary);
   const last = $derived(fetched ?? app.state?.lastRun ?? null);
