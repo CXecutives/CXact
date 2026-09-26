@@ -15,7 +15,16 @@ const facet = (page: Page, name: string) =>
 const stage = (page: Page) => page.getByTestId('stage');
 const terms = (page: Page) => stage(page).getByTestId('criteria');
 
-const ROWS = ['Vertragsart', 'Tagessatz', 'Start', 'Laufzeit', 'Remote', 'Ort', 'Erfahrung'];
+const ROWS = [
+  'Vertragsart',
+  'Tagessatz',
+  'Start',
+  'Laufzeit',
+  'Auslastung',
+  'Remote',
+  'Ort',
+  'Erfahrung',
+];
 const VERDICTS = ['', 'passt', 'passt nicht', 'prüfen', 'offen'];
 
 /** Opens a job from "Alle" and waits until the reader shows it. */
@@ -324,9 +333,10 @@ test('a value with a passage is underlined dotted and jumps; a plain value is pl
     'text-decoration-style',
     'dotted',
   );
-  const duration = terms(page).getByTestId('term-duration');
-  await expect(duration.locator('button')).toHaveCount(0);
-  await expect(duration.locator('.plain')).toHaveCSS('text-decoration-line', 'none');
+  // The ad says nothing of its workload: a plain "offen".
+  const workload = terms(page).getByTestId('term-workload');
+  await expect(workload.locator('button')).toHaveCount(0);
+  await expect(workload.locator('.plain')).toHaveCSS('text-decoration-line', 'none');
   await rate.locator('button.chip').click();
   await page.mouse.move(0, 0);
   await expect(page.locator('mark.active').first()).toContainText('Tagessatz 1.200');
@@ -494,9 +504,11 @@ test('an offline ad says since when; the trash says what the trash says', async 
   await expect(stage(page).getByTestId('place-line')).toHaveText(
     'Im Papierkorb, wird in 30 Tagen endgültig gelöscht',
   );
-  // The trash's own actions stay labelled; the menu has no trash of its own.
-  await expect(stage(page).getByTestId('reader-restore')).toHaveText('Wiederherstellen');
-  await expect(stage(page).getByTestId('reader-purge')).toHaveText('Endgültig löschen');
+  // The trash's own actions stay named; the menu has no trash of its own. Where the labels do
+  // not fit the row (WebKit keeps the room of its scrollbar), they are icon buttons with the
+  // same names, as the reader's actions row is designed.
+  await expect(stage(page).getByTestId('reader-restore')).toHaveAccessibleName('Wiederherstellen');
+  await expect(stage(page).getByTestId('reader-purge')).toHaveAccessibleName('Endgültig löschen');
   await stage(page).getByTestId('reader-more').click();
   await expect(page.getByTestId('menu-item-trash')).toHaveCount(0);
   await expect(page.getByTestId('menu-item-unread')).toHaveCount(0);

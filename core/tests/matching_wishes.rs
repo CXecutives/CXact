@@ -559,18 +559,7 @@ fn every_engine_code_has_a_catalog_text() {
         for code in variants(enum_name) {
             let listed =
                 block.contains(&format!("\n  {code}:")) || block.contains(&format!("\n  {code},"));
-            if PENDING_UI_TEXTS.contains(&code.as_str()) {
-                assert!(
-                    !listed,
-                    "{code} has its text in de.ts now: remove it from PENDING_UI_TEXTS"
-                );
-                continue;
-            }
             assert!(listed, "{enum_name}::{code} has no text in de.ts");
         }
     }
 }
-
-/// Codes of engine 16 whose catalog texts come with the UI integration (the engine track
-/// does not edit the catalog); the test above fails once a text exists, so this list goes.
-const PENDING_UI_TEXTS: &[&str] = &["workload", "duration", "exclusionWord"];
