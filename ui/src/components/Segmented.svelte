@@ -229,10 +229,11 @@
     box-shadow: var(--focus-ring-inset);
   }
 
-  /* A choice reads like a field (14 px) at either height (28 or 32 px, like the buttons). */
+  /* 28 or 32 px, like the buttons; the small one keeps the small type (it sits in the
+     list's header), the other reads like a field. */
   .sm {
     --seg-height: var(--control-sm);
-    --seg-type: var(--type-field);
+    --seg-type: var(--type-sm);
   }
 
   .field {
