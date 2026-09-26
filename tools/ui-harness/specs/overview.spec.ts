@@ -36,7 +36,7 @@ test('an open must goes into the profile at once and comes out with the undo', a
   const term = (await first.locator('[data-copy]').textContent())?.trim() ?? '';
   expect(term).not.toBe('');
   await first.getByTestId('add-must').click();
-  await expect(page.getByTestId('toast')).toContainText(`„${term}“ steht jetzt im Profil.`);
+  await expect(page.getByTestId('toast')).toContainText(`„${term}“ zum Profil hinzugefügt.`);
   const saved = await calls(page, 'save_profile');
   expect(saved).toHaveLength(1);
   const after = (saved[0]![1] as { save: { after: { keywords: string[] } } }).save.after;

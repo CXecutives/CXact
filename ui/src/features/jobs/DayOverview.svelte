@@ -40,10 +40,9 @@
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
-  import { addToProfile, editor } from '$lib/state/profile.svelte';
   import { failureAction, run } from '$lib/state/run.svelte';
-  import { toasts } from '$lib/state/toasts.svelte';
   import { actionsOf, guarded, move, toggleStar } from './actions';
+  import { addToProfile, isAdded } from './addToProfile';
   import { copyTopPrompt } from './prompt';
 
   // The one order of the portals (the backend's, as in the settings); a portal switched off
@@ -164,31 +163,6 @@
   const applied = $derived(
     appliedRows.map((job) => jobs.rows.find((row) => sameKey(row.key, job.key)) ?? job),
   );
-
-  /** "Zum Profil hinzufügen": saved at once, with an undo in the toast. */
-  let adding = $state<string | null>(null);
-  async function addTerm(term: string): Promise<void> {
-    if (editor.dirty) {
-      actionError = t.profile.saveFirst;
-      return;
-    }
-    adding = term;
-    actionError = null;
-    try {
-      const undo = await addToProfile(term);
-      if (undo !== null) {
-        toasts.show(t.overview.added(term), 'success', {
-          label: t.common.undo,
-          onclick: () => void undo().catch((error: unknown) => (actionError = errorText(error))),
-        });
-      }
-      loadStats();
-    } catch (error) {
-      actionError = errorText(error);
-    } finally {
-      adding = null;
-    }
-  }
 
   // The market: new jobs per portal this week, the median day rate of fitting jobs beside
   // the profile's minimum, the share of mostly remote jobs.
@@ -540,15 +514,18 @@
               ><span class="must-label" data-copy>{must.label}</span>
               <span class="quiet">{t.overview.inJobs(must.count)}</span></span
             >
-            <Button
-              variant="secondary"
-              size="sm"
-              icon="plus"
-              label={t.overview.addToProfile}
-              loading={adding === must.label}
-              testid="add-must"
-              onclick={() => void addTerm(must.label)}
-            />
+            {#if isAdded(must.label)}
+              <span class="quiet" data-testid="added-must">{t.reader.added}</span>
+            {:else}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="plus"
+                label={t.overview.addToProfile}
+                testid="add-must"
+                onclick={() => addToProfile(must.label)}
+              />
+            {/if}
           </div>
         {/each}
       </div>

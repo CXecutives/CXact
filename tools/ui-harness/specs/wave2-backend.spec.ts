@@ -26,7 +26,7 @@ test('undoing Wiederherstellen keeps the trash date and its days', async ({ page
   await page.getByTestId('place-trash').click();
   await row(page, key).click();
   const line = page.getByTestId('place-line');
-  await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen endgültig gelöscht');
   await page.getByTestId('reader-restore').click();
   await expect(row(page, key)).toHaveCount(0);
   const toast = page.getByTestId('toast').filter({ hasText: 'wiederhergestellt' });
@@ -47,7 +47,7 @@ test('undoing Wiederherstellen keeps the trash date and its days', async ({ page
   await page.getByTestId('nav-jobs').click();
   await page.getByTestId('place-trash').click();
   await row(page, key).click();
-  await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen gelöscht');
+  await expect(line).toHaveText('Im Papierkorb, wird in 27 Tagen endgültig gelöscht');
 });
 
 /** Waits out the moment after a move in which a click does nothing (actions.ts GUARD_MS). */

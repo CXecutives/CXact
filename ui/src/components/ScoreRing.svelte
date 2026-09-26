@@ -1,11 +1,11 @@
 <!--
   The match of a job as a ring: sm 40 (list rows), md 56 (reader), lg 96.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
-  (360 ms, ease-out) with the number counting along only when that means something: when a
-  score arrives while the ring is on screen (live scoring during a run), or the first time a
-  job is opened (`animate` names the job; once per job and session). A view that comes back
-  shows its rings as they are. At most 10 rings fill at the same time, the others are placed
-  at once.
+  (360 ms, ease-out) only when that means something: when a score arrives while the ring is
+  on screen (live scoring during a run; the number counts along), or the first time a job is
+  opened (`animate` names the job; once per job and session; the number stands at once, only
+  the arc fills). A view that comes back shows its rings as they are. At most 10 rings fill
+  at the same time, the others are placed at once.
   A scored ring takes the colour of its decile (ten steps, red through orange and yellow
   to green; `d0` ... `d9`) with ink digits; the tinted disc of the larger rings follows
   the band. Every ring has the same solid track; the centre and the arc say the state:
@@ -119,13 +119,21 @@
     shown = value;
   }
 
+  /** The job the ring showed last (`animate`): another one is an opening. */
+  let opened: string | null = null;
+
   $effect(() => {
     const scored = valued;
     const value = score;
+    const job = animate;
     untrack(() => {
-      const first = !mounted && animate !== null && !(animate in filled);
-      if (first && scored && animate !== null) filled[animate] = true;
-      const grow = scored && (first || (mounted && !wasScored));
+      // Opening a job (the reader passes it as `animate`) for the first time this session.
+      const first = job !== null && job !== opened && !(job in filled);
+      opened = job;
+      if (first && scored) filled[job] = true;
+      // A score that arrives while the ring is on screen (the same job, scored live).
+      const live = mounted && !wasScored && !first;
+      const grow = scored && (first || live);
       mounted = true;
       wasScored = scored;
       if (!scored || counting) return;
@@ -138,7 +146,9 @@
       // The arc holds its final value in CSS; the fill is one Web Animation from empty, so
       // it cannot depend on when the engine first computes the style of a new circle.
       shown = value;
-      void number.set(0, { duration: 0 });
+      // Opening a job: the number stands at once, only the arc fills. A live score counts
+      // along with its arc.
+      void number.set(live ? 0 : value, { duration: 0 });
       number.target = value;
       let fill: Animation | null = null;
       // After the flush: a circle that was just created is bound by then.

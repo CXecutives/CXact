@@ -215,7 +215,12 @@ const later = (minutes: number): string => new Date(NOW + minutes * 60_000).toIS
 
 type Match = NonNullable<JobView['match']>;
 
-const OPEN_MUSTS = ['Erfahrung mit Power BI', 'Kenntnisse in LucaNet', 'Branchenerfahrung Energie'];
+/** Requirements the sample profile does not name (no competence, tool or keyword of it). */
+const OPEN_MUSTS = [
+  'Branchenerfahrung Energie',
+  'Erfahrung mit SAP Analytics Cloud',
+  'Kenntnisse in Anaplan',
+];
 
 /** A job whose ad states no key facts. */
 const NO_FACTS = {
@@ -439,6 +444,8 @@ function sampleJobs(): JobView[] {
       50,
       {
         workMode: 'onsite',
+        // Its page takes no applications any more (the reader says since when).
+        closed: true,
         match: scored(45, ['Jahresabschluss nach HGB'], 2, 4),
       },
     ),
@@ -1436,9 +1443,68 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 const AD_INTRO = (j: JobView): string =>
   `Für ${j.company} suchen wir Unterstützung als ${j.title} in ${j.location || 'Deutschland'}.\n\n`;
 
+/** Contract type per stub ad, as the engine reads it (`contractType` params): interim unless
+ *  listed; a permanent job the engine only infers from the words of the ad. */
+const CONTRACTS: Record<string, { type: string; inferred: boolean }> = {
+  '4100200304': { type: 'permanent', inferred: false },
+  '4100200305': { type: 'permanent', inferred: false },
+  '4100200306': { type: 'permanent', inferred: false },
+  '4100200303': { type: 'permanent', inferred: true },
+  '900412': { type: 'anue', inferred: false },
+  '2803': { type: 'freelance', inferred: false },
+  '2805': { type: 'freelance', inferred: false },
+  '900413': { type: 'freelance', inferred: false },
+  '2806': { type: 'unclear', inferred: false },
+};
+
+function contractOf(j: JobView): { type: string; inferred: boolean } {
+  return CONTRACTS[j.key.id] ?? { type: 'interim', inferred: false };
+}
+
+/** How each contract type reads in an ad (the passage of the row "Vertragsart"). */
+function contractWords(contract: { type: string; inferred: boolean }): string {
+  switch (contract.type) {
+    case 'interim':
+      return 'Interim-Mandat in Vollzeit';
+    case 'freelance':
+      return 'Freiberufliche Mitarbeit im Projekt';
+    case 'permanent':
+      return contract.inferred ? 'Unbefristete Position in Vollzeit' : 'Festanstellung in Vollzeit';
+    case 'anue':
+      return 'Einsatz über Arbeitnehmerüberlassung';
+    default:
+      return '';
+  }
+}
+
+/** The experience an ad asks for: stated in its text (a passage), or the engine's estimate
+ *  from the title and the tasks. The profile aims at 15 years (`zielprofil_min_jahre`). */
+const YEARS: Record<string, { years: number; stated: boolean }> = {
+  '2801': { years: 15, stated: true },
+  '4100200301': { years: 12, stated: true },
+  '900411': { years: 10, stated: false },
+  '2802': { years: 10, stated: true },
+  '2803': { years: 8, stated: false },
+  '900412': { years: 3, stated: true },
+  '4100200303': { years: 5, stated: false },
+  '2804': { years: 7, stated: false },
+  '4100200306': { years: 2, stated: false },
+  '4100200304': { years: 10, stated: true },
+  '900413': { years: 6, stated: false },
+  '2805': { years: 5, stated: false },
+  '4100200305': { years: 4, stated: false },
+};
+
+function yearsOf(j: JobView): { years: number; stated: boolean } {
+  return YEARS[j.key.id] ?? { years: 5 + (Number(j.key.id) % 11), stated: false };
+}
+
 /** The passages of an ad's frame, as its facts say them (the engine reads the facts from
  *  them): a job's row, its reader and its prompt say the same. */
-function frameOf(facts: Match['facts']): { start: string; rate: string; text: string } {
+function frameOf(
+  facts: Match['facts'],
+  contract: string,
+): { start: string; rate: string; remote: string; text: string } {
   const start = facts.start === 'now' ? 'Start ab sofort' : 'Start zum nächstmöglichen Zeitpunkt';
   const rate =
     facts.rate === null
@@ -1450,9 +1516,15 @@ function frameOf(facts: Match['facts']): { start: string; rate: string; text: st
     facts.remoteFrom === null
       ? ''
       : facts.remoteFrom >= 100
-        ? ', vollständig remote'
-        : `, Einsatz zu ${facts.remoteFrom} Prozent remote`;
-  return { start, rate, text: `\nRahmen\n${start}${months}. ${rate}${remote}.\n` };
+        ? 'vollständig remote'
+        : `Einsatz zu ${facts.remoteFrom} Prozent remote`;
+  const lead = contract === '' ? '' : `${contract}. `;
+  return {
+    start,
+    rate,
+    remote,
+    text: `\nRahmen\n${lead}${start}${months}. ${rate}${remote === '' ? '' : `, ${remote}`}.\n`,
+  };
 }
 
 /** The profile's wishes next to an ad's facts, in the engine's states (met, near, missed). */
@@ -1486,51 +1558,87 @@ function wishesOf(facts: Match['facts']): {
 const wishKind = (state: string): Reason['kind'] =>
   state === 'met' ? 'met' : state === 'near' ? 'partial' : 'open';
 
-/** Requirements the stub ads ask for, beyond the job's own top reasons. */
+/** Requirements the stub ads ask for, beyond the job's own top reasons; all of them in the
+ *  sample profile (a competence, a keyword, a tool or a language). */
 const MORE_MUSTS = [
-  'Führung eines Finanzteams',
-  'Erfahrung mit Abschlussprüfungen',
   'Reporting nach IFRS',
+  'Erfahrung in der Konsolidierung',
+  'Restrukturierung und Sanierung',
   'Verhandlungssicheres Deutsch',
 ];
 const PARTIAL_MUST = 'Aufbau und Weiterentwicklung des Reportings';
 const NICE_MET = 'Konzernabschluss nach HGB';
-const NICE_OPEN = 'Verhandlungssicheres Englisch';
+const NICE_OPEN = 'Französisch in Wort und Schrift';
 
-/** Contract type per job: interim unless the title says otherwise (one inferred). */
-function contractOf(j: JobView): { type: string; inferred: boolean } {
-  if (j.key.id === '4100200304') return { type: 'permanent', inferred: false };
-  if (j.key.id === '900412') return { type: 'anue', inferred: false };
-  if (j.key.id === '4100200303') return { type: 'permanent', inferred: true };
-  return { type: 'interim', inferred: false };
-}
+/** The profile's words behind a met requirement (the reason's evidence), by the ad's words. */
+const EVIDENCE: Record<string, string> = {
+  'Interim-Management im Mittelstand': 'Interim Management',
+  'Controlling mit SAP S/4HANA': 'SAP S/4HANA',
+  'Projektleitung SAP Finance': 'SAP S/4HANA',
+  'Finanzplanung und Liquidität': 'Liquiditätsplanung',
+  Projektcontrolling: 'Controlling',
+  Konzernberichtswesen: 'Konsolidierung',
+  Liquiditätsplanung: 'Liquiditätsplanung',
+  'Jahresabschluss nach HGB': 'HGB',
+  'SAP FI': 'SAP S/4HANA',
+  'Controlling im Konzern': 'Financial Controlling',
+  'Reporting nach IFRS': 'Konzernrechnungslegung nach IFRS',
+  'Erfahrung in der Konsolidierung': 'Konsolidierung',
+  'Restrukturierung und Sanierung': 'Restrukturierung',
+  'Verhandlungssicheres Deutsch': 'Deutsch',
+  [PARTIAL_MUST]: 'Aufbau von Konzernreportings in weniger als 100 Tagen',
+  [NICE_MET]: 'Konzernabschluss',
+};
 
 /**
  * The detail of a job. Its reasons agree with the list numbers: exactly `mustMet` met must
  * requirements, and `mustTotal - mustMet` that are not met (the first of two or more is
- * partial, the rest open), plus one met and one open nice-to-have.
+ * partial, the rest open), plus one met and one open nice-to-have. The terms follow the
+ * engine's verdict, also for a job included by hand ("Trotzdem einbeziehen" keeps what the
+ * engine found: a violation stays a violation, core view::overridden).
  */
 function detailOf(j: JobView): JobDetail {
   const m = j.match;
+  // The engine's own verdict, before the user counted the job anyway.
+  const engine = overridden.get(markKey(j.key)) ?? m;
+  const excludedBy = engine?.status === 'excluded' ? (engine.note?.code ?? null) : null;
+  const notes = engine?.note?.params ?? {};
   const mustMet = m?.mustMet ?? 0;
   const missing = Math.max(0, (m?.mustTotal ?? 0) - mustMet);
   const metMusts = [...(m?.top.slice(0, 1) ?? []), ...MORE_MUSTS].slice(0, mustMet);
   const partial = missing >= 2 ? [PARTIAL_MUST] : [];
   const openMusts = OPEN_MUSTS.slice(0, missing - partial.length);
   const tasks = ['Führung eines Teams von sechs Personen', 'Monatsabschluss und Forecast'];
+  const contract = contractOf(j);
+  const years = yearsOf(j);
+  const yearsWords = `Mindestens ${years.years} Jahre Berufserfahrung in Finanzfunktionen`;
 
-  const facts = m?.facts ?? NO_FACTS;
-  const frame = frameOf(facts);
+  // A day rate that excludes the job is one the ad states.
+  const facts = {
+    ...(m?.facts ?? NO_FACTS),
+    ...(excludedBy === 'dayRate' && typeof notes.rate === 'number' ? { rate: notes.rate } : {}),
+  };
+  const frame = frameOf(facts, contractWords(contract));
   const parts: string[] = [AD_INTRO(j), 'Ihre Aufgaben\n'];
   for (const t of [...tasks, ...partial]) parts.push(`• ${t}\n`);
   parts.push('\nIhr Profil\n');
+  if (years.stated) parts.push(`• ${yearsWords}\n`);
   for (const r of [...metMusts, NICE_MET, ...openMusts, NICE_OPEN]) parts.push(`• ${r}\n`);
-  // An interim contract the ad states leaves agency work out (the engine meets `noAnue`).
-  if (facts.contract !== 'interim') {
-    parts.push('• Erfahrung mit Arbeitnehmerüberlassung von Vorteil\n');
-  }
   parts.push(frame.text);
   const text = parts.join('');
+  // The text the reader gets: all of it, the start of a preview, or none yet.
+  const ok = j.detail.kind === 'ok';
+  const shown = ok ? text : j.detail.kind === 'teaser' ? AD_INTRO(j).trim() : null;
+  /** The first range of words in the text shown (none for no words, words it lacks or words
+   *  past the end of a preview). */
+  const rangeOf = (words: string, from = 0): { start: number; end: number }[] => {
+    const start = words === '' || shown === null ? -1 : text.indexOf(words, from);
+    const end = start + words.length;
+    return start >= 0 && end <= (shown?.length ?? 0) ? [{ start, end }] : [];
+  };
+  // The place as the intro says it ("… in Hamburg.").
+  const placeAt = text.indexOf(` in ${j.location}`);
+  const place = placeAt >= 0 && j.location !== '' ? rangeOf(j.location, placeAt) : [];
 
   const reasons: Reason[] = [];
   const highlights: Highlight[] = [];
@@ -1539,12 +1647,10 @@ function detailOf(j: JobView): JobDetail {
     weight: Reason['weight'],
     code: string,
     label: string,
-    profile: string | null,
     extra: Record<string, string | number | boolean | null> = {},
+    ranges = rangeOf(label),
   ): void => {
     const id = String(reasons.length);
-    const start = label ? text.indexOf(label) : -1;
-    const ranges = start >= 0 ? [{ start, end: start + label.length }] : [];
     for (const r of ranges) {
       highlights.push({
         id: String(highlights.length),
@@ -1554,87 +1660,147 @@ function detailOf(j: JobView): JobDetail {
         reason: id,
       });
     }
+    const profile = EVIDENCE[label];
     reasons.push({
       id,
       kind,
       weight,
       code,
       label,
-      evidence: profile
-        ? { profile, path: 'kernkompetenzen[2].kompetenz', via: 'synonym', quote: label }
-        : null,
+      evidence:
+        profile && (kind === 'met' || kind === 'partial')
+          ? { profile, path: 'kernkompetenzen[2].kompetenz', via: 'synonym', quote: label }
+          : null,
       params: extra,
       ranges,
     });
   };
-  const contract = contractOf(j);
-  add(contract.type === 'interim' ? 'met' : 'partial', 'info', 'contractType', '', null, contract);
-  metMusts.forEach((r, i) =>
-    add('met', 'must', 'requirement', r, i === 0 ? 'Interim-Management' : 'Controlling'),
+  // Included by hand: the user's word comes first (core view::overridden); no words of its own.
+  if (j.overridden) add('met', 'info', 'userOverride', '', {}, []);
+  const contractRange = rangeOf(contractWords(contract));
+  add(
+    contract.inferred || contract.type === 'unclear' ? 'check' : 'met',
+    'info',
+    'contractType',
+    '',
+    contract,
+    contractRange,
   );
-  for (const r of partial) add('partial', 'must', 'requirement', r, 'Reporting');
-  for (const r of openMusts) add('open', 'must', 'requirement', r, null);
-  add('met', 'nice', 'requirement', NICE_MET, 'Konzernabschluss nach HGB');
-  add('open', 'nice', 'requirement', NICE_OPEN, null);
-  if (facts.start !== 'now') add('check', 'info', 'startVague', frame.start, null);
-  const excluded = m?.status === 'excluded';
-  if (excluded) add('violation', 'hard', 'anue', 'Arbeitnehmerüberlassung', null);
+  for (const r of metMusts) add('met', 'must', 'requirement', r);
+  for (const r of partial) add('partial', 'must', 'requirement', r);
+  for (const r of openMusts) add('open', 'must', 'requirement', r);
+  add('met', 'nice', 'requirement', NICE_MET);
+  add('open', 'nice', 'requirement', NICE_OPEN);
+  if (facts.start !== 'now') add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  // The engine's violation, where the ad says it.
+  const min = PROFILE_FORM.criteria.minDayRate ?? 0;
+  if (excludedBy === 'anue') add('violation', 'hard', 'anue', '', {}, contractRange);
+  if (excludedBy === 'country') {
+    add('violation', 'hard', 'country', '', { allowed: 'DE, AT', location: j.location }, place);
+  }
+  if (excludedBy === 'dayRate') {
+    add('violation', 'hard', 'dayRate', '', { rate: facts.rate, min }, rangeOf(frame.rate));
+  }
+  // The experience against the profile's target of 15 years: enough, or a senior title that
+  // asks for fewer (the profile brings more); an estimate below it is a point to check, and
+  // stated below it for a junior role it excludes.
+  const target = PROFILE_FORM.criteria.targetYears ?? 0;
+  const senior = /Head|Leitung|Leiter|CFO|Manager/.test(j.title);
+  const yearsRange = years.stated ? rangeOf(yearsWords) : [];
+  const yearsKind: Reason['kind'] =
+    years.years >= target ? 'met' : !years.stated ? 'check' : senior ? 'partial' : 'violation';
+  if (yearsKind === 'partial') {
+    add('partial', 'info', 'overqualified', '', { years: years.years, target }, yearsRange);
+  } else if (yearsKind === 'violation') {
+    add('violation', 'hard', 'tooJunior', '', { years: years.years, target }, yearsRange);
+  }
   // Wishes of the profile (engine v4), next to what the ad states.
   const wishes = wishesOf(facts);
   if (wishes.rate !== null) {
-    const wish = `Tagessatz ab ${wishes.rate.wish.toLocaleString('de-DE')} €`;
-    add(wishKind(wishes.rate.state), 'info', 'dayRateWish', '', wish, wishes.rate);
+    add(wishKind(wishes.rate.state), 'info', 'dayRateWish', '', wishes.rate, rangeOf(frame.rate));
   }
   if (wishes.remote !== null) {
-    add(wishKind(wishes.remote.state), 'info', 'remoteWish', '', 'überwiegend remote', {
-      ...wishes.remote,
-    });
+    add(
+      wishKind(wishes.remote.state),
+      'info',
+      'remoteWish',
+      '',
+      { ...wishes.remote },
+      rangeOf(frame.remote),
+    );
   }
-  // The strip shows the criteria the profile sets (the engine leaves out the others), with
+  // The terms show the criteria the profile sets (the engine leaves out the others), with
   // the ad's value and the passage that states it; `open` = the ad does not say.
   const criterion = (
     id: string,
     kind: Reason['kind'],
     code: string,
     params: Record<string, string | number | boolean> = {},
-    passage: string | null = null,
-  ): Reason => {
-    const start = passage ? text.indexOf(passage) : -1;
-    return {
-      id,
-      kind,
-      weight: 'hard',
-      code,
-      label: '',
-      evidence: null,
-      params,
-      ranges: start >= 0 && passage ? [{ start, end: start + passage.length }] : [],
-    };
-  };
-  // The criteria of the profile against what the ad states (4100200301 states every one
-  // cleanly, most ads leave the rate and the start open).
-  const min = PROFILE_FORM.criteria.minDayRate ?? 0;
-  const interim = facts.contract === 'interim' && !excluded;
+    ranges: { start: number; end: number }[] = [],
+  ): Reason => ({
+    id,
+    kind,
+    weight: 'hard',
+    code,
+    label: '',
+    evidence: null,
+    params,
+    ranges,
+  });
+  // The contract says whether it is temporary agency work: stated as another type it is not;
+  // inferred or unclear it is a point to check.
+  const agency: Reason['kind'] =
+    excludedBy === 'anue'
+      ? 'violation'
+      : contract.inferred || contract.type === 'unclear'
+        ? 'check'
+        : 'met';
   const criteria: Reason[] = [
     facts.rate === null
-      ? criterion('c:minDayRate', 'open', 'minDayRate', { rateOpen: true, min }, frame.rate)
+      ? criterion(
+          'c:minDayRate',
+          'open',
+          'minDayRate',
+          { rateOpen: true, min },
+          rangeOf(frame.rate),
+        )
       : criterion(
           'c:minDayRate',
           facts.rate >= min ? 'met' : 'violation',
           'minDayRate',
           { rate: facts.rate, min },
-          frame.rate,
+          rangeOf(frame.rate),
         ),
-    criterion('c:countries', 'met', 'countries', { location: j.location }),
-    interim
-      ? criterion('c:noAnue', 'met', 'noAnue', { contract: 'interim' })
-      : criterion('c:noAnue', excluded ? 'violation' : 'check', 'noAnue'),
+    criterion(
+      'c:countries',
+      excludedBy === 'country' ? 'violation' : 'met',
+      'countries',
+      { location: j.location, countries: 'DE, AT' },
+      place,
+    ),
+    criterion(
+      'c:noAnue',
+      agency,
+      'noAnue',
+      agency === 'check' ? {} : { contract: contract.type },
+      contractRange,
+    ),
     facts.start === 'now'
-      ? criterion('c:availability', 'met', 'availability', { start: 'now' }, frame.start)
-      : criterion('c:availability', 'open', 'availability', { start: 'vague' }, frame.start),
-    ...(j.key.id === '4100200301'
-      ? []
-      : [criterion('c:targetYears', 'met', 'targetYears', { years: 10 })]),
+      ? criterion('c:availability', 'met', 'availability', { start: 'now' }, rangeOf(frame.start))
+      : criterion(
+          'c:availability',
+          'open',
+          'availability',
+          { start: 'vague' },
+          rangeOf(frame.start),
+        ),
+    criterion(
+      'c:targetYears',
+      yearsKind,
+      'targetYears',
+      { years: years.years, target },
+      yearsRange,
+    ),
   ].filter(
     // Like the engine, a criterion the profile does not set is left out (the sample profile's
     // start counts as set, except in no-minimum).
@@ -1642,12 +1808,13 @@ function detailOf(j: JobView): JobDetail {
       (c.code !== 'minDayRate' || state.profile?.form?.criteria.minDayRate !== null) &&
       (c.code !== 'availability' || scenario !== 'no-minimum'),
   );
-  const ok = j.detail.kind === 'ok';
+  // A closed ad was last fetched when its page said so.
+  const fetchedAt = ok ? (j.closed ? at(20) : j.firstSeenAt) : null;
   return {
     job: j,
-    text: ok ? text : j.detail.kind === 'teaser' ? AD_INTRO(j).trim() : null,
+    text: shown,
     url: `https://example.com/${j.portal}/${j.key.id}`,
-    fetchedAt: ok ? j.firstSeenAt : null,
+    fetchedAt,
     mail: {
       subject: 'Neue Jobs für Ihr Profil',
       gmailUrl: 'https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a3',
@@ -1663,7 +1830,7 @@ function detailOf(j: JobView): JobDetail {
             at: at(1),
             summary: m.note,
             reasons: m.status === 'unscorable' ? [] : reasons,
-            highlights: ok ? highlights : [],
+            highlights,
             criteria,
           },
   };

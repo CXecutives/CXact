@@ -81,7 +81,7 @@ for (const width of [900, 960, 1000, 1100]) {
     await rows(page).first().click();
     const top = async (id: string): Promise<number> =>
       (await page.getByTestId(id).boundingBox())?.y ?? -1;
-    await expect.poll(async () => (await top('prompt')) === (await top('open-ad'))).toBe(true);
+    await expect.poll(async () => (await top('reader-more')) === (await top('open-ad'))).toBe(true);
   });
 }
 
@@ -89,26 +89,29 @@ test('the date of a job names the day and the time of its alert mail', async ({ 
   await open(page, WIN);
   await facet(page, 'Alle').click();
   await row(page, 'freelancermap-2801').click();
-  await page.locator('.head .facts .fact:last-child > span:last-child').hover();
+  await page.getByTestId('stage').getByTestId('reader-when').hover();
   await expect(page.getByRole('tooltip')).toHaveText(/^Alert-Mail vom 24\.09\.2026 um \d\d:\d\d$/);
 });
 
-test('a value of the terms table says criterion and state in one phrase under the pointer', async ({
+test('a passage of a term says its row and verdict in one phrase under the pointer', async ({
   page,
 }) => {
   await open(page, WIN);
   await facet(page, 'Alle').click();
   // An ad that leaves the rate open.
   await row(page, 'freelancermap-2802').click();
-  const tip = async (id: string): Promise<string> => {
-    await page.getByTestId(`criterion-${id}`).locator('.term-value .chip').hover();
+  const tip = async (words: string): Promise<string> => {
+    const mark = page.getByTestId('ad-text').locator('mark', { hasText: words });
+    await mark.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(250);
+    await mark.hover();
     const text = (await page.getByRole('tooltip').textContent()) ?? '';
     await page.mouse.move(0, 0);
     return text;
   };
   // The ad names the rate, only not as an amount: open, not "not mentioned".
-  expect(await tip('c:minDayRate')).toBe('Tagessatz offen');
-  expect(await tip('c:countries')).toBe('Einsatzländer erfüllt');
+  expect(await tip('Tagessatz nach Absprache')).toBe('Tagessatz · offen');
+  expect(await tip('Berlin')).toBe('Ort · passt');
 });
 
 test('the facts copy as one line with their dots', async ({ page }) => {

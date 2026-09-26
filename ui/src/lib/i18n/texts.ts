@@ -12,7 +12,6 @@ import { formatDate } from './format';
 import {
   textOf,
   type CriterionKey,
-  type CriterionState,
   type MatchNote,
   type ProfileWarning,
   type ReasonCode,
@@ -55,15 +54,23 @@ export function reasonText(reason: Reason): string {
 
 /** Wishes of the profile: their sentence names the wish already. */
 const WISH_CODES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish', 'industryWish'];
-const same = (a: string, b: string): boolean =>
-  a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+/** Words only, folded ("Interim-Management" reads like "interim management"). */
+const plain = (text: string): string =>
+  text
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+/** The requirement's own words hold the profile's phrase already (whole words). */
+const within = (profile: string, words: string): boolean =>
+  plain(profile) !== '' && ` ${plain(words)} `.includes(` ${plain(profile)} `);
 
 /** The line under a reason: the profile's side of its evidence; null without one, for a wish
- *  and when the profile says the very words of the reason. */
+ *  and when the profile's phrase is no other than the requirement's own words ("Passt zu
+ *  „HGB“ im Profil" under "Konzernabschluss nach HGB" says nothing new). */
 export function reasonEvidence(reason: Reason): string | null {
   const profile = reason.evidence?.profile;
   if (!profile || WISH_CODES.includes(reason.code)) return null;
-  if (same(profile, reason.label) || same(profile, reason.evidence?.quote ?? '')) return null;
+  if (within(profile, reason.label) || within(profile, reason.evidence?.quote ?? '')) return null;
   return t.reason.evidenceLine(profile, reason.kind === 'partial');
 }
 
@@ -146,10 +153,10 @@ function exclusionWords(note: Notice | null): string {
   return t.score.excluded;
 }
 
-/** The start of an ad in words (`now`, `vague` or an ISO date); `vague` only when asked. */
-function startWords(start: unknown, vague: boolean): string | null {
+/** The start of an ad in words (`now` or an ISO date; `vague` says nothing). */
+function startWords(start: unknown): string | null {
   if (start === 'now') return t.facts.now;
-  if (start === 'vague') return vague ? t.facts.vague : null;
+  if (start === 'vague') return null;
   if (typeof start === 'string' && start !== '') return t.facts.from(formatDate(start));
   return null;
 }
@@ -190,7 +197,7 @@ export function factWords(facts: KeyFacts | null | undefined): string[] {
 }
 
 /** The rate and the start an ad states ("1.100 €/Tag", "ab sofort"), by the criterion they
- *  stand for: the reader's strip shows them where the profile sets no such criterion. */
+ *  stand for (the row's facts). */
 export function termWords(
   facts: KeyFacts | null | undefined,
 ): Record<'minDayRate' | 'availability', string | null> {
@@ -199,67 +206,8 @@ export function termWords(
     minDayRate:
       rateWords(facts.rate, facts.hourly, facts.currency, true) ??
       (facts.rateOpen ? t.facts.rateOpen : null),
-    availability: startWords(facts.start, false),
+    availability: startWords(facts.start),
   };
-}
-
-/** The duration and remote share of an ad (the reader's facts line, in place of the work
- *  mode when the ad says more). */
-export function workWords(facts: KeyFacts | null | undefined): string[] {
-  if (!facts) return [];
-  const out: string[] = [];
-  if (facts.months) out.push(t.facts.months(facts.months));
-  const from = facts.remoteFrom ?? facts.remoteTo;
-  const to = facts.remoteTo ?? facts.remoteFrom;
-  if (from !== null && to !== null) out.push(t.facts.remote(from, to));
-  return out;
-}
-
-/**
- * What the ad says about a hard criterion, in its own value ("1.100 €/Tag", "ab sofort",
- * "Hamburg", "Interim"); `null` when it says nothing (the chip then names the criterion).
- */
-export function criterionValue(reason: Reason): string | null {
-  const p = reason.params;
-  switch (criterionKey(reason.code)) {
-    case 'minDayRate':
-      return (
-        rateWords(p.rate, p.hourly, p.currency, true) ??
-        (p.rateOpen === true ? t.facts.rateOpen : null)
-      );
-    case 'countries':
-    case 'permanentRegion':
-      if (p.remote === true) return t.facts.fullRemote;
-      return typeof p.location === 'string' && p.location !== '' ? p.location : null;
-    case 'noAnue':
-    case 'noPermanent':
-      return typeof p.contract === 'string' && has(t.facts.contract, p.contract)
-        ? t.facts.contract[p.contract]
-        : null;
-    case 'availability':
-      return startWords(p.start, true);
-    case 'minSalary':
-      return typeof p.salary === 'number' ? t.facts.salary(p.salary) : null;
-    case 'targetYears':
-      return typeof p.years === 'number' ? t.facts.years(p.years) : null;
-    default:
-      return null;
-  }
-}
-
-/** A criterion of the reader strip (kind met = fulfilled with the ad as evidence, violation, check = unclear, open = the ad does not mention it). */
-export function criterionState(reason: Reason): CriterionState {
-  switch (reason.kind) {
-    case 'met':
-    case 'partial':
-      return 'met';
-    case 'violation':
-      return 'violated';
-    case 'check':
-      return 'unknown';
-    default:
-      return 'unset';
-  }
 }
 
 export function warningText(notice: Notice): string | null {

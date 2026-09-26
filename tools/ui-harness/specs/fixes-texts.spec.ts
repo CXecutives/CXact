@@ -237,13 +237,13 @@ test('an ad that could not be fetched says so with the one verb for details', as
   );
 });
 
-test('the teaser badge says what "Anriss" is', async ({ page }) => {
+test('the teaser badge says what "Vorschau" is', async ({ page }) => {
   await open(page, WIN);
   const badge = page
     .getByTestId('job-rows')
     .getByTestId('job-row-freelance-900411')
     .locator('.badge');
-  await expect(badge).toHaveText('Nur Anriss');
+  await expect(badge).toHaveText('Nur Vorschau');
   await badge.hover();
   await expect(page.getByRole('tooltip')).toHaveText(
     'Ohne Anmeldung zeigt das Portal nur den Anfang der Anzeige.',
@@ -257,10 +257,11 @@ test('English names agency work and the preferred rate one way everywhere', asyn
   await expect(
     page.getByTestId('excluded-rows').getByTestId('job-row-freelance-900412').locator('.foot'),
   ).toHaveText('Temporary agency work');
-  // The field is "Preferred day rate"; "target" is the word of the target roles.
+  // The field is "Preferred day rate"; "target" is the word of the target roles. The
+  // preference stands in the row of the rate, beside the minimum.
   await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('reader')).toContainText(
-    'The day rate of €1,200 meets your preferred rate of €1,200.',
+  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText(
+    'Minimum €1,100, preferred €1,200',
   );
 });
 
