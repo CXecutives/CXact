@@ -455,6 +455,91 @@ fn a_freelance_hourly_rate_counts_eight_times() {
     }
 }
 
+/// E16-3: a freelance rate next to a word that merely holds a wage word (`Volkswagen`,
+/// `Entgeltabrechnung`) or names a pay scale beside a freelance rate word stays a rate: the
+/// day rate rule applies and the role is no stated employment.
+#[test]
+fn e16_3_a_freelance_rate_next_to_wage_like_words_stays_a_rate() {
+    let ad = |pay: &str| {
+        format!(
+            "Wir suchen einen Interim Controller (m/w/d).
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung
+
+Rahmendaten:
+- {pay}
+- Laufzeit: 6 Monate"
+        )
+    };
+    let profile = compile_profile(&profile());
+    // Below the minimum of 800 per day (an hourly rate times eight).
+    for (pay, amount) in [
+        ("Tagessatz 700 € für den Einsatz bei Volkswagen", 700),
+        ("Einsatz bei der Volkswagen AG in Wolfsburg, 60 €/h", 60),
+        ("Entgelt: 95 €/h zzgl. MwSt.", 95),
+        (
+            "Stundensatz 90 € für die Einführung der Entgeltabrechnung",
+            90,
+        ),
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &ad(pay));
+        let rate = criterion(&a, CriterionKey::MinDayRate);
+        assert_eq!(
+            rate.status,
+            CriterionStatus::Violated,
+            "{pay}: {:?}",
+            codes(&a)
+        );
+        assert_eq!(rate.params["rate"].as_u64(), Some(amount), "{pay}");
+        assert_ne!(a.facts.contract.as_deref(), Some("permanent"), "{pay}");
+    }
+    // A profile that rules out permanent roles keeps a freelance project at Volkswagen.
+    let mut value = self::profile();
+    value["harte_kriterien"]["ausgeschlossene_vertragsarten"] = json!(["festanstellung"]);
+    let a = assess_with(
+        &compile_profile(&value),
+        "SAP Cloud Architect (m/w/d)",
+        &ad("Projekt bei Volkswagen in Wolfsburg, 110 €/h, 6 Monate"),
+    );
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+    assert_ne!(a.facts.contract.as_deref(), Some("permanent"));
+}
+
+/// E16-7: ANÜ named only in the title excludes for a profile that rules ANÜ out, on a
+/// freelance portal too, and the contract row says ANÜ, not interim.
+#[test]
+fn e16_7_anue_in_the_title_alone_excludes() {
+    let text = "Wir suchen einen SAP FI/CO Berater für unseren Kunden.
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung";
+    let job = JobInput {
+        title: "SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung",
+        company: "Muster AG",
+        location: "Hamburg",
+        portal: Portal::FreelanceDe,
+        text,
+        facts: None,
+        posted: None,
+        kind: TextKind::Full,
+    };
+    let a = assess(&compile_profile(&profile()), &job, None).expect("assessed");
+    assert_eq!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+    assert!(
+        codes(&a).contains(&(ReasonCode::Anue, ReasonKind::Violation)),
+        "{:?}",
+        codes(&a)
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::NoAnue).status,
+        CriterionStatus::Violated
+    );
+    assert_eq!(a.facts.contract.as_deref(), Some("anue"));
+}
+
 /// The profile with the limits of an engagement and exclusion words.
 fn limited(extra: &Value) -> CompiledProfile {
     let mut value = profile();
@@ -552,6 +637,65 @@ fn a_workload_outside_the_days_per_week_is_a_check() {
     assert_eq!(a.facts.workload_to, Some(100));
 }
 
+/// E16-8: part-time hours without the week (`Teilzeit (20 h)`) are 50 % of a week, below a
+/// minimum of three days: a check, not a met criterion.
+#[test]
+fn e16_8_part_time_hours_without_the_week_are_a_workload() {
+    let profile = limited(&json!({ "auslastung_min_tage": 3 }));
+    for frame in [
+        "- Teilzeit (20 h)",
+        "- Teilzeit mit 20 Stunden",
+        "- Arbeitszeit: 20 Stunden",
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &frame_ad(frame));
+        let state = criterion(&a, CriterionKey::Workload);
+        assert_eq!(
+            state.status,
+            CriterionStatus::Check,
+            "{frame}: {:?}",
+            codes(&a)
+        );
+        assert_eq!(
+            (a.facts.workload_from, a.facts.workload_to),
+            (Some(50), Some(50)),
+            "{frame}"
+        );
+    }
+}
+
+/// E16-6: a lead time or a notice period before the duration is no duration; the Laufzeit
+/// decides, with its sentence as the passage.
+#[test]
+fn e16_6_a_lead_time_is_no_duration() {
+    let profile = limited(&json!({ "min_laufzeit_monate": 6 }));
+    for frame in [
+        "- Start: in 2 Wochen\n- Laufzeit: 12 Monate",
+        "- Start ab sofort, Kündigungsfrist 2 Wochen\n- Laufzeit: 12 Monate",
+    ] {
+        let text = frame_ad(frame);
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &text);
+        let state = criterion(&a, CriterionKey::Duration);
+        assert_eq!(
+            state.status,
+            CriterionStatus::Ok,
+            "{frame}: {:?}",
+            codes(&a)
+        );
+        assert!(passage(&text, state).contains("12 Monate"), "{frame}");
+        assert_eq!(a.facts.months, Some(12), "{frame}");
+    }
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &frame_ad("- Sie haben 5 Jahre Erfahrung in einem Start-up.\n- Laufzeit: 2 Monate"),
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Duration).status,
+        CriterionStatus::Check
+    );
+    assert_eq!(a.facts.months, Some(2));
+}
+
 /// An engagement shorter than the minimum is a check (`duration {months, min}`).
 #[test]
 fn an_engagement_shorter_than_the_minimum_is_a_check() {
@@ -617,7 +761,10 @@ fn an_exclusion_word_excludes_in_its_forms() {
         criterion(&a, CriterionKey::ExclusionWords).status,
         CriterionStatus::Violated
     );
-    let text = frame_ad("- Wir bieten ein Pflichtpraktikum im Controlling");
+    let text = frame_ad(
+        "- Betreuung von Werkstudenten\n- Wir suchen außerdem eine/n Praktikant/in für ein \
+         Pflichtpraktikum im Controlling",
+    );
     let a = assess_with(&profile, "Controlling (m/w/d)", &text);
     assert_eq!(a.verdict, Verdict::Excluded);
     // The strip links the reason, whose highlight is the sentence that names the word.
@@ -636,6 +783,15 @@ fn an_exclusion_word_excludes_in_its_forms() {
     let marked = String::from_utf16(&units[highlight.start as usize..highlight.end as usize])
         .expect("utf-16");
     assert!(marked.contains("Pflichtpraktikum"), "{marked}");
+    assert_eq!(
+        a.reasons
+            .iter()
+            .filter(|r| r.code == ReasonCode::ExclusionWord)
+            .map(|r| r.params["word"].as_str().unwrap_or(""))
+            .collect::<Vec<_>>(),
+        ["Praktikum"],
+        "the mention of the Werkstudenten one supervises excludes nothing"
+    );
     let a = assess_with(
         &profile,
         "Interim Controller (m/w/d)",
@@ -646,6 +802,42 @@ fn an_exclusion_word_excludes_in_its_forms() {
         criterion(&a, CriterionKey::ExclusionWords).status,
         CriterionStatus::Inactive
     );
+}
+
+/// E16-1: in the ad of a senior role, a position word that is only mentioned (the team, the
+/// people one supervises or trains, the company's offers) excludes nothing; the title and a
+/// sentence that states the offered role still do.
+#[test]
+fn e16_1_a_passing_mention_of_an_exclusion_word_excludes_nothing() {
+    let profile = limited(&json!({ "ausschlusswoerter": ["Werkstudent", "Praktikum"] }));
+    for line in [
+        "- Sie führen ein Team von acht Mitarbeitenden inkl. zwei Werkstudenten",
+        "- Betreuung von Praktikanten im Finanzbereich",
+        "- Erfahrung in der Ausbildung von Werkstudierenden wünschenswert",
+        "- Personalverantwortung inkl. Praktikumsbetreuung",
+        "Wir bieten jedes Jahr Praktika und Werkstudentenstellen an.",
+        "- Sie entwickeln pragmatische und praktikable Lösungen",
+    ] {
+        let a = assess_with(&profile, "Interim CFO (m/w/d)", &frame_ad(line));
+        assert_ne!(a.verdict, Verdict::Excluded, "{line}: {:?}", codes(&a));
+        assert_eq!(
+            criterion(&a, CriterionKey::ExclusionWords).status,
+            CriterionStatus::Inactive,
+            "{line}"
+        );
+    }
+    let a = assess_with(
+        &profile,
+        "Werkstudent Controlling (m/w/d)",
+        &frame_ad("- Start: sofort"),
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
+    let a = assess_with(
+        &profile,
+        "Controlling (m/w/d)",
+        &frame_ad("Pflichtpraktikum im Finanzbereich (m/w/d)"),
+    );
+    assert_eq!(a.verdict, Verdict::Excluded);
 }
 
 /// The new keys under their English names and values the engine cannot read.

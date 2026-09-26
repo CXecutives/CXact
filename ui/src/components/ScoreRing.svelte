@@ -44,8 +44,12 @@
   ): RingState {
     if (match === null) return pending ? { status: 'pending' } : { status: 'none' };
     if (match.status === 'excluded') return { status: 'excluded', score: match.score };
+    // No text, no verdict: an ad still to come (or to fetch again, or on request) is scored
+    // once it is there; only an ad that cannot be fetched at all is not scorable.
     if (match.status === 'unscorable') {
-      return detail === 'pending' ? { status: 'none' } : { status: 'unscorable' };
+      return detail === 'pending' || detail === 'failed' || detail === 'onRequest'
+        ? { status: 'none' }
+        : { status: 'unscorable' };
     }
     if (detail === 'teaser') {
       return { status: 'provisional', score: match.score, band: match.band };

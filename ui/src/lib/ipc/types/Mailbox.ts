@@ -13,6 +13,14 @@ user: string | null, vault: VaultKind,
  */
 error: ErrorInfo | null, 
 /**
- * What "Verbinden" found in the mailbox in this session (the sign-in worked).
+ * What "Verbinden" found in the mailbox in this session (the sign-in worked). `null`
+ * before a "Verbinden", and when it signed in but could not count (too slow, or Gmail
+ * failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
+ * and the next fetch reads the alert mails anyway.
  */
-check: MailboxCheck | null, };
+check: MailboxCheck | null, 
+/**
+ * When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
+ * fetch that finished before it is past.
+ */
+checkedAt: string | null, };

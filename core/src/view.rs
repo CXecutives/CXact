@@ -27,7 +27,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{Language, PortalSwitches, Settings};
+use crate::settings::{Language, Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -910,8 +910,7 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
 
 /// Days the overview's open points and market numbers look back.
 pub const OVERVIEW_DAYS: i64 = 30;
-/// Days the new jobs per portal look back, and after which a portal without an alert mail
-/// counts as quiet.
+/// Days after which a portal without an alert mail counts as quiet.
 pub const RECENT_DAYS: i64 = 7;
 /// Most open points the overview names; each is open in at least two jobs.
 const MAX_OPEN_MUSTS: usize = 5;
@@ -928,6 +927,13 @@ pub struct OverviewStats {
     pub market: Market,
     /// Every enabled portal (in the order of `Portal::ALL`) with its last alert mail.
     pub quiet_portals: Vec<QuietPortal>,
+    /// Jobs of the inbox whose full ad "Details holen" can still fetch: not fetched yet or
+    /// failed so far, of an enabled portal with its details switched on; one with only the
+    /// teaser where the sign-in is switched on too. Ads that are gone or given up on are
+    /// none of them.
+    pub details_wanted: u32,
+    /// Excluded jobs of the inbox not opened yet.
+    pub excluded_new: u32,
 }
 
 /// A must requirement open in `count` jobs.
@@ -944,8 +950,9 @@ pub struct OpenMust {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Market {
-    /// New jobs per portal of the last [`RECENT_DAYS`] days (by the alert mail's date; a job
-    /// two portals announced counts for each), every portal in the order of `Portal::ALL`.
+    /// New jobs per portal of the last [`OVERVIEW_DAYS`] days, the window of the rate and
+    /// the remote share (by the alert mail's date, else the first sighting; a job two
+    /// portals announced counts for each), every portal in the order of `Portal::ALL`.
     pub new_by_portal: Vec<PortalCount>,
     /// The median day rate in euros of the jobs scored high or medium in the last
     /// [`OVERVIEW_DAYS`] days whose ad states one (an hourly rate x 8, other currencies
@@ -973,8 +980,9 @@ pub struct QuietPortal {
 }
 
 /// The numbers of the "Übersicht" page at `now`: the most frequent open must requirements,
-/// the market (new jobs per portal, median day rate, remote share) and the enabled portals
-/// with their last alert mail. The jobs of the window come from one indexed query.
+/// the market (new jobs per portal, median day rate, remote share), the enabled portals
+/// with their last alert mail and what the inbox leaves open (ads to fetch, excluded jobs
+/// not opened). The jobs of the window come from one indexed query.
 pub fn overview_stats(
     store: &Store,
     settings: &Settings,
@@ -1014,7 +1022,7 @@ pub fn overview_stats(
         .take(MAX_OPEN_MUSTS)
         .map(|(_, label, count)| OpenMust { label, count })
         .collect();
-    let recent = store.new_per_portal(week)?;
+    let recent = store.new_per_portal(month)?;
     let new_by_portal = Portal::ALL
         .into_iter()
         .map(|portal| PortalCount {
@@ -1051,6 +1059,23 @@ pub fn overview_stats(
             }
         })
         .collect();
+    // The rule of the UI's `detailsWanted` (features/jobs/actions.ts), per portal.
+    let open = store.inbox_open()?;
+    let details_wanted = open
+        .iter()
+        .map(|(portal, open)| {
+            let switches = settings.portal(*portal);
+            match (
+                switches.enabled && switches.fetch_details,
+                switches.login_enabled,
+            ) {
+                (false, _) => 0,
+                (true, false) => open.no_ad,
+                (true, true) => open.no_ad + open.teaser,
+            }
+        })
+        .sum();
+    let excluded_new = open.iter().map(|(_, open)| open.excluded_unread).sum();
     Ok(OverviewStats {
         open_musts,
         market: Market {
@@ -1062,6 +1087,8 @@ pub fn overview_stats(
             remote_known: count(remote.len()),
         },
         quiet_portals,
+        details_wanted,
+        excluded_new,
     })
 }
 
@@ -1177,13 +1204,19 @@ pub struct Mailbox {
     pub vault: VaultKind,
     /// The vault could not be read.
     pub error: Option<ErrorInfo>,
-    /// What "Verbinden" found in the mailbox in this session (the sign-in worked).
+    /// What "Verbinden" found in the mailbox in this session (the sign-in worked). `null`
+    /// before a "Verbinden", and when it signed in but could not count (too slow, or Gmail
+    /// failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
+    /// and the next fetch reads the alert mails anyway.
     pub check: Option<MailboxCheck>,
+    /// When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
+    /// fetch that finished before it is past.
+    pub checked_at: Option<Timestamp>,
 }
 
 /// "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals
 /// lie in the mailbox from the last `days` days (`mail::check::check_mailbox`; its errors
-/// are the mail error codes).
+/// are `invalid` for the shape of the input and the mail error codes of the sign-in).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -1217,6 +1250,28 @@ pub struct SettingsView {
     pub excel_exists: bool,
 }
 
+/// Another work folder (`pick_workspace`): the folder, and what became of the profile there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct WorkspacePick {
+    pub folder: PathBuf,
+    pub profile: WorkspaceProfile,
+}
+
+/// The profile after a change of the work folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum WorkspaceProfile {
+    /// The new folder had none: the old folder's `profil/` came along.
+    Copied,
+    /// The new folder brings its own profile, which the app uses from now on.
+    Own,
+    /// Neither folder has a profile.
+    None,
+}
+
 /// Changes of the settings. `null` = unchanged; the workspace only changes through the
 /// folder dialog (`pick_workspace`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1230,6 +1285,8 @@ pub struct SettingsPatch {
     pub auto_empty_trash_days: Option<u32>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
+    /// The palette the user chose (Einstellungen, Darstellung).
+    pub palette: Option<Palette>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1264,6 +1321,9 @@ impl SettingsPatch {
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
+        }
+        if let Some(palette) = self.palette {
+            settings.palette = palette;
         }
     }
 }
@@ -1624,6 +1684,8 @@ pub struct AppState {
     pub auto_empty_trash_days: u32,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
+    /// The colours of the page and the window (the report, Excel and the icon keep Coast).
+    pub palette: Palette,
     /// The last fetch (fetch or whole mailbox) - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
     pub counts: JobCounts,
@@ -1678,6 +1740,10 @@ pub enum OpenTarget {
         name: String,
     },
     Overview,
+    /// The report shown selected in its folder; the workspace while there is none yet.
+    OverviewInFolder,
+    /// The folder of the text files (`auswertung/beschreibungen_txt`).
+    TxtDir,
     LogDir,
 }
 
@@ -2198,7 +2264,7 @@ mod tests {
     }
 
     /// The overview's numbers: open points over the scored inbox jobs of 30 days (in two jobs
-    /// at least, however written, most frequent first), new jobs per portal of 7 days, the
+    /// at least, however written, most frequent first), new jobs per portal of 30 days, the
     /// median day rate of the high and medium ones (hourly x 8), the remote share where it is
     /// known, and the enabled portals with their last alert mail (quiet after 7 days).
     #[test]
@@ -2229,7 +2295,7 @@ mod tests {
         assert_eq!(
             new,
             [
-                (Portal::LinkedIn, 2),
+                (Portal::LinkedIn, 3),
                 (Portal::FreelanceDe, 0),
                 (Portal::Freelancermap, 1)
             ]
@@ -2273,6 +2339,88 @@ mod tests {
         assert_eq!(company_count(&store, "FIRMA GmbH", 60, now).unwrap(), 5);
         assert_eq!(median(&[1, 2, 3, 4]), Some(2));
         assert_eq!(median(&[]), None);
+    }
+
+    /// "Details holen" counts only the ads it can still fetch, by the portal's switches (the
+    /// UI's `detailsWanted`), and the excluded jobs count while they are not opened.
+    #[test]
+    fn the_overview_counts_what_the_inbox_leaves_open() {
+        let store = Store::in_memory().unwrap();
+        let now = Timestamp::now();
+        let run = store.begin_run().unwrap();
+        let add = |url: &str| {
+            let link = job_link(url).unwrap();
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
+            let mail = MailRef {
+                subject: "x",
+                date: Some(now),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &posting, mail, now).unwrap();
+            link.key
+        };
+        let li = "https://www.linkedin.com/jobs/view/";
+        let _missing = add(&format!("{li}4200000001/"));
+        let failed = add(&format!("{li}4200000002/"));
+        let gone = add(&format!("{li}4200000003/"));
+        let fetched = add(&format!("{li}4200000004/"));
+        let archived = add(&format!("{li}4200000005/"));
+        let teaser = add("https://www.freelance.de/project/index.php?id=1255067");
+        let excluded = add("https://www.freelancermap.de/nproj/22001.html");
+        let seen = add("https://www.freelancermap.de/nproj/22002.html");
+        store.record_failed(&failed, "no text", now).unwrap();
+        store.record_gone(&gone, now).unwrap();
+        store
+            .record_text(&fetched, "Der ganze Text", false, false, now)
+            .unwrap();
+        store.record_teaser(&teaser, "Nur ein Anriss", now).unwrap();
+        store
+            .move_jobs(std::slice::from_ref(&archived), Place::Archive, now)
+            .unwrap();
+        let out = |key: &JobKey| {
+            (
+                key.clone(),
+                crate::store::Judgement {
+                    record: record(MatchStatus::Excluded, 70),
+                    open: Vec::new(),
+                },
+            )
+        };
+        store
+            .save_judgements(&[out(&excluded), out(&seen)], "r", now)
+            .unwrap();
+        store.mark_read(&seen, now).unwrap();
+
+        let stats = overview_stats(&store, &Settings::default(), now).unwrap();
+        // Not fetched yet and failed so far, the two freelancermap jobs too; never the gone,
+        // the fetched or the archived ad, nor the teaser without a sign-in.
+        assert_eq!(stats.details_wanted, 4);
+        assert_eq!(stats.excluded_new, 1);
+
+        let mut settings = Settings::default();
+        settings
+            .portals
+            .get_mut(&Portal::FreelanceDe)
+            .unwrap()
+            .login_enabled = true;
+        let stats = overview_stats(&store, &settings, now).unwrap();
+        assert_eq!(stats.details_wanted, 5, "the teaser, with the sign-in on");
+        settings
+            .portals
+            .get_mut(&Portal::LinkedIn)
+            .unwrap()
+            .fetch_details = false;
+        settings
+            .portals
+            .get_mut(&Portal::Freelancermap)
+            .unwrap()
+            .enabled = false;
+        let stats = overview_stats(&store, &settings, now).unwrap();
+        assert_eq!(
+            stats.details_wanted, 1,
+            "only the portal that still fetches"
+        );
+        assert_eq!(stats.excluded_new, 1, "the inbox's, whatever the switches");
     }
 
     /// At 2,000 jobs the overview's numbers and a company count take moments, not seconds.

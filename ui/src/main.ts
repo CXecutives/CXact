@@ -1,4 +1,4 @@
-// Entry point. Order matters: styles, platform, motion (reads the tokens), input policy,
+// Entry point. Order matters: styles, platform and palette, motion (reads the tokens), input policy,
 // error reporting - then mount. `?gallery` mounts the component gallery instead; it exists
 // only in development and harness builds (`__GALLERY__` is false in the release build, so
 // the dynamic import and its chunk are removed).
@@ -11,9 +11,11 @@ import App from './App.svelte';
 import { installInput } from './lib/input/input';
 import { installErrorReporting } from './lib/ipc/api';
 import { installMotion } from './lib/motion/motion';
+import { restorePalette } from './lib/palette';
 import { applyPlatform, trackWindowFocus } from './lib/platform';
 
 applyPlatform();
+restorePalette();
 trackWindowFocus();
 installMotion();
 installInput();

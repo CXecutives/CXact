@@ -2,10 +2,11 @@
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
-// app's language, which the whole page follows at once.
+// app's language and palette, which the whole page follows at once.
 
 import { language } from '../i18n/language.svelte';
 import { invoke } from '../ipc/api';
+import { applyPalette } from '../palette';
 import type { AppState, Portal, PortalHealth } from '../ipc/types';
 import { tokenMs } from '../tokens';
 
@@ -22,8 +23,7 @@ class AppStore {
     const timer = setTimeout(() => (this.slow = true), tokenMs('--dur-fast'));
     try {
       const next = await invoke('app_state');
-      this.state = next;
-      language.set(next.language);
+      this.set(next);
       return next;
     } catch (error) {
       this.error = error;
@@ -39,6 +39,7 @@ class AppStore {
   set(next: AppState): void {
     this.state = next;
     language.set(next.language);
+    applyPalette(next.palette);
   }
 
   /** Portal health from a run event, without a reload. */

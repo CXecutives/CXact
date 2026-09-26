@@ -9,7 +9,7 @@
 )]
 
 use std::collections::VecDeque;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -24,6 +24,7 @@ use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
 use jobalert_core::view::{
     self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
+    WorkspacePick, WorkspaceProfile,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
@@ -49,11 +50,22 @@ pub(super) fn mailbox(state: &AppState) -> Mailbox {
     } else {
         state.gmail_user()
     };
+    let checked_at = if state.dry_run || state.demo {
+        None
+    } else {
+        state
+            .store
+            .kv_get(super::mailbox::CHECKED_AT)
+            .ok()
+            .flatten()
+            .and_then(|at| at.parse::<Timestamp>().ok())
+    };
     Mailbox {
         user,
         vault: crate::platform::vault_kind(),
         error,
         check: lock(&state.mailbox_check).clone(),
+        checked_at,
     }
 }
 
@@ -158,6 +170,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         auto_archive_days: settings.auto_archive_days,
         auto_empty_trash_days: settings.auto_empty_trash_days,
         language: settings.language_or(state.system_language),
+        palette: settings.palette,
         last_run,
         counts,
         match_pending: state.match_pending(),
@@ -229,26 +242,40 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// Saves portal switches, the automatic archive and trash, and the language. The workspace
-/// only changes through the dialog.
+/// Saves portal switches, the automatic archive and trash, the language and the palette. The
+/// workspace only changes through the dialog. Another language rewrites the Excel file and
+/// the report a moment later (like a mark); another palette dresses the window at once.
 #[tauri::command]
 pub async fn save_settings(
+    app: AppHandle,
+    window: WebviewWindow,
     state: State<'_, AppState>,
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
+    let language = settings.language_or(state.system_language);
     patch.apply(&mut settings);
     settings.save(&state.store)?;
+    if patch.palette.is_some() {
+        crate::platform::dress(&window, settings.palette);
+    }
+    if settings.language_or(state.system_language) != language {
+        super::files::marked(&app);
+    }
     build_state(&state)
 }
 
-/// Folder dialog for the workspace; `None` if cancelled.
+/// Folder dialog for the workspace; `None` if cancelled. The work moves along (user decision
+/// 2026-09-26): a folder without a profile gets a copy of the old folder's `profil/`, one
+/// with a profile of its own keeps it and the app uses it from now on; the Excel file, the
+/// report and the text files are written in the new folder at once. The app is held
+/// meanwhile, like a file command.
 #[tauri::command]
 pub async fn pick_workspace(
     app: AppHandle,
     window: WebviewWindow,
     state: State<'_, AppState>,
-) -> CmdResult<Option<PathBuf>> {
+) -> CmdResult<Option<WorkspacePick>> {
     state.ensure_idle()?;
     // The demo keeps to its own work folder.
     state.ensure_not_demo()?;
@@ -271,15 +298,78 @@ pub async fn pick_workspace(
             .map_err(|e| ErrorInfo::from(jobalert_core::Error::io(&folder, e)))?;
         let _ = std::fs::remove_file(probe);
     }
+    let files = state.claim_files(&app)?;
+    let profile = if state.dry_run {
+        WorkspaceProfile::None
+    } else {
+        take_profile(&current, &folder)?
+    };
     let before = state.matcher().map(|m| m.rev().to_owned());
     let mut settings = state.settings()?;
     settings.workspace = Some(folder.clone());
     settings.save(&state.store)?;
-    // The profile lives in the workspace: another folder can mean another profile.
+    if !state.dry_run {
+        write_files(&state, &folder, settings.language_or(state.system_language));
+    }
+    // The profile lives in the workspace: another folder can mean another profile (its
+    // rescore starts once the files are written and the app is free).
     if state.matcher().map(|m| m.rev().to_owned()) != before {
         scoring::profile_changed(&app, &state);
     }
-    Ok(Some(folder))
+    drop(files);
+    Ok(Some(WorkspacePick { folder, profile }))
+}
+
+/// The profile of a new work folder: its own, else a copy of the old folder's `profil/` (its
+/// files; nothing in the new folder is overwritten).
+fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
+    if profile::profile_path(new).is_file() {
+        return Ok(WorkspaceProfile::Own);
+    }
+    if old == new || !profile::profile_path(old).is_file() {
+        return Ok(WorkspaceProfile::None);
+    }
+    let io = |path: &Path, e| ErrorInfo::from(jobalert_core::Error::io(path, e));
+    let (from, to) = (
+        old.join(profile::PROFILE_DIR),
+        new.join(profile::PROFILE_DIR),
+    );
+    std::fs::create_dir_all(&to).map_err(|e| io(&to, e))?;
+    for entry in std::fs::read_dir(&from).map_err(|e| io(&from, e))? {
+        let entry = entry.map_err(|e| io(&from, e))?;
+        let target = to.join(entry.file_name());
+        if entry.path().is_file() && !target.exists() {
+            std::fs::copy(entry.path(), &target).map_err(|e| io(&target, e))?;
+        }
+    }
+    log::info!("profile copied into the new work folder");
+    Ok(WorkspaceProfile::Copied)
+}
+
+/// The Excel file, the report and the text files in the (new) work folder, now; a file that
+/// cannot be written says so in the log and is written by the next fetch.
+fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::settings::Language) {
+    let now = Timestamp::now();
+    let txt = pipeline::rewrite_txt(&state.store, workspace, now);
+    let matcher = state.matcher();
+    pipeline::refresh_exports(
+        &state.store,
+        workspace,
+        matcher.as_deref().map(|m| m as &dyn pipeline::Matcher),
+        now,
+        language,
+    );
+    let excel = pipeline::refresh_excel(&state.store, workspace, now, language);
+    log::info!(
+        "files written in the new work folder: {} text files, {} failed, Excel {}",
+        txt.txt_written,
+        txt.txt_failed,
+        if excel.error.is_none() {
+            "written"
+        } else {
+            "not written"
+        }
+    );
 }
 
 /// "Reset everything": leave the order, then restart - deleting happens at the start.

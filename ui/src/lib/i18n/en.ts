@@ -22,6 +22,7 @@ import type {
   InvalidInput,
   JobSort,
   Language,
+  Palette,
   PauseReason,
   Place,
   Portal,
@@ -38,7 +39,7 @@ import type {
   VaultKind,
   WorkMode,
 } from '../ipc/types';
-import { textOf, type Catalog, type ContractKind, type CriterionState } from './de';
+import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
 import {
   NBSP,
   formatCountdown,
@@ -120,11 +121,9 @@ const countryNames = (value: unknown): string =>
 const INTERNAL = 'An internal error occurred, and the log has the details.';
 
 /** What holds the app (as de.ts). */
-type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files';
-const busyOf = (value: unknown): Busy =>
-  value === 'details' || value === 'rescore' || value === 'session' || value === 'files'
-    ? value
-    : 'fetch';
+type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
+const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
+const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
   fetch: 'A fetch is running already.',
@@ -132,6 +131,7 @@ const busy: Record<Busy, string> = {
   rescore: 'The jobs are being scored again.',
   session: 'A sign-in is running.',
   files: 'The app is writing its files.',
+  mailbox: 'The mailbox is being checked.',
 };
 
 const closing: Record<Busy, string> = {
@@ -140,6 +140,7 @@ const closing: Record<Busy, string> = {
   rescore: 'Scoring is stopping, and then the app closes.',
   session: 'The sign-in is stopping, and then the app closes.',
   files: 'The app is finishing its files, and then it closes.',
+  mailbox: 'The mailbox check is stopping, and then the app closes.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -278,7 +279,7 @@ const emptyMails = (mails: number): string =>
 const PROFILE_UNREADABLE = 'Profile cannot be read';
 
 const ANUE = 'The ad mentions temporary agency work.';
-const LOW_TEXT = 'The ad has little text.';
+const LOW_TEXT = 'The ad names few clear requirements.';
 const SHORT_TEXT = 'The ad is very short.';
 const WORKLOAD = 'The workload does not fit the profile.';
 const DURATION = 'The duration is below the minimum in the profile.';
@@ -1059,10 +1060,7 @@ export const en: Catalog = {
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
       `${n(met)} of ${n(total)} must-haves met` + (partial > 0 ? `, ${n(partial)} partly` : ''),
-    noMust: 'No must-have requirements found',
-    requirements: 'Requirements',
-    requirementsLine: (must: string, niceMissing: number) =>
-      niceMissing > 0 ? `${must} · ${n(niceMissing)} optional missing` : must,
+    noMust: 'No must-haves found',
     addToProfile: 'Add to profile',
     added: 'Added',
     addedToProfile: (term: string) => `“${term}” added to the profile.`,
@@ -1075,6 +1073,7 @@ export const en: Catalog = {
       workload: 'Workload',
       remote: 'Remote',
       place: 'Location',
+      industry: 'Industry',
       experience: 'Experience',
     },
     termOpen: 'open',
@@ -1086,38 +1085,29 @@ export const en: Catalog = {
       unclear: 'unclear',
     },
     rateOpen: 'negotiable',
+    startNow: 'immediately',
     salaryName: 'Salary',
-    salary: (amount: number) => `${formatMoney(amount, null)}/year`,
+    salary: (amount: number, lowerBound: boolean) =>
+      lowerBound ? `from ${formatEuro(amount)}/year` : `${formatEuro(amount)}/year`,
+    unlimited: 'open-ended',
+    workMode: {
+      remote: 'fully remote',
+      hybrid: 'partly remote',
+      onsite: 'on site',
+    } satisfies Record<WorkMode, string>,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} to ${count(max, 'year', 'years')}`
         : count(min, 'year', 'years'),
     estimated: 'estimated',
     assumed: 'assumed',
-    profileSide: {
-      rate: (min: number | null, wish: number | null) => {
-        const preferred = wish === null ? '' : formatEuro(wish);
-        if (min === null) return preferred === '' ? '' : `Preferred ${preferred}`;
-        const minimum = `Minimum ${formatEuro(min)}`;
-        return preferred === '' ? minimum : `${minimum}, preferred ${preferred}`;
-      },
-      start: (date: string | null) => (date === null ? 'Available now' : `Available from ${date}`),
-      workload: (min: number | null, max: number | null) => profileDays(min, max, false),
-      duration: (min: number) => `at least ${count(min, 'month', 'months')}`,
-      remote: (level: RemoteWish) => `Preferred ${REMOTE_LEVEL[level] ?? level}`,
-      place: (countries: string, regions: readonly string[]) => {
-        const where = countries === '' ? '' : countryNames(countries);
-        const preferred = joined([...regions]);
-        if (preferred === '') return where;
-        return where === '' ? `Preferred ${preferred}` : `${where}, preferred ${preferred}`;
-      },
-    },
     verdict: {
       met: 'fits',
+      partial: 'partly fits',
       violated: 'does not fit',
       unknown: 'check',
       unset: 'open',
-    } satisfies Record<CriterionState, string>,
+    } satisfies Record<TermVerdict, string>,
     markHint: (what: string, state: string) => `${what} · ${state}`,
     criterion: criteria,
     note,
@@ -1129,7 +1119,6 @@ export const en: Catalog = {
     archive: 'Archive',
     restore: 'Restore',
     more: 'More actions',
-    markUnread: 'Mark as unread',
     showInAd: 'Show in the ad',
     override: 'Include anyway',
     overrideUndo: 'Undo',
@@ -1137,6 +1126,7 @@ export const en: Catalog = {
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
     preliminary: 'Provisional, preview only',
+    lowEvidence: 'The ad names few clear requirements, so the match stays rough.',
     scoredLater: 'Scored once the ad is in',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
@@ -1146,13 +1136,11 @@ export const en: Catalog = {
     promptNoText: 'The text of the ad is still missing.',
     mailAt: (date: string, time: string) => `Alert email from ${date} at ${time}`,
     fetchDetails: 'Fetch details',
-    fetchNow: 'Fetch now',
-    why: 'Requirements in detail',
+    why: 'Requirements',
     met: 'Met',
     partial: 'Partly met',
     missing: 'Not in the profile',
     check: 'To check',
-    violations: 'Excluded',
     noReasons: 'The ad names no clear requirements.',
     ad: 'Ad',
     detail: {
@@ -1163,8 +1151,7 @@ export const en: Catalog = {
       gone: detailSays.gone,
       onRequest: detailSays.onRequest,
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    offline: 'Ad offline',
-    offlineSince: (date: string) => `Ad offline since ${date}`,
+    checkedAt: (when: string) => `Last checked ${when}`,
     detailsOff: '“Fetch details” is off for this portal.',
     short: SHORT_TEXT,
     loadFailed: 'The job could not be loaded.',
@@ -1173,29 +1160,24 @@ export const en: Catalog = {
     noProfileText: 'With a profile, every job shows how well it fits.',
     profileUnreadable: PROFILE_UNREADABLE,
     label: 'Overview',
-    since: 'Since the last fetch',
+    since: 'Inbox',
     tileNew: 'New',
     tileHigh: 'High match',
-    tileExcluded: 'Excluded',
-    fetchedAt: (when: string) => `Fetched ${when}`,
-    today: 'To look at today',
-    allNew: (value: number) => `All ${n(value)} new`,
+    today: 'Worth a look today',
     favourites: 'Favourites',
-    decide: 'Needs a decision',
+    allFavourites: (value: number) => `All ${n(value)} favourites`,
     noDetail: (value: number) =>
       value === 1 ? '1 job without its full ad' : `${n(value)} jobs without their full ad`,
     fetchDetails: 'Fetch details',
-    excludedCheck: (value: number) =>
-      value === 1 ? '1 job excluded' : `${n(value)} jobs excluded`,
+    excludedNew: (value: number) =>
+      value === 1 ? '1 new job excluded' : `${n(value)} new jobs excluded`,
     look: 'Look',
-    pick: 'Select a job on the left.',
     issues: 'Needs attention',
-    best: 'Best new matches',
     excel: 'Open Excel file',
-    promptTop: 'Copy prompt for AI comparison',
+    promptTop: 'Copy AI prompt',
     promptTopHint: 'Copies your favourites and the best jobs with the profile as one prompt.',
     promptTopNone: 'No job is scored yet.',
-    bestInList: 'The best new jobs are at the top of the list.',
+    createAlert: 'Create alert',
     files: 'Files',
     emptyAlerts: emptyMails,
     lastRun: 'Last fetch',
@@ -1210,8 +1192,8 @@ export const en: Catalog = {
     openMusts: 'Often required, not in the profile',
     inJobs: (value: number) => `in ${n(value)} jobs`,
     addToProfile: 'Add to profile',
-    market: 'Market',
-    marketNew: 'New in 7 days',
+    market: 'Market of the last 30 days',
+    marketNew: 'Jobs per portal',
     marketRate: 'Day rate of fitting jobs',
     marketRateValue: (median: string, jobs: number) =>
       `${median} median of ${count(jobs, 'job', 'jobs')}`,
@@ -1558,7 +1540,7 @@ export const en: Catalog = {
     passwordMissing: 'The app password is missing.',
     twoStepAction: 'Turn on 2-Step Verification',
     connect: 'Connect',
-    mailboxSaved: 'Mailbox connected.',
+    mailboxNotCounted: 'Mailbox connected, the next fetch counts the alert emails.',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
     autoArchive: 'Archive jobs after 30 days',
@@ -1586,17 +1568,20 @@ export const en: Catalog = {
     excel: 'Excel file',
     excelMissing: 'The Excel file is created at the first fetch.',
     overview: 'Report',
+    overviewLater: 'The report is created at the first fetch.',
     txt: 'Text files',
     txtCount: (value: number) => `${count(value, 'ad', 'ads')} as text for an AI assessment`,
-    txtLeftBehind: 'The text files are still in the old folder, and “Write again” puts them here.',
+    txtLater: 'The text files are created at the first fetch.',
     txtNone: 'There are no text files.',
     txtRewrite: 'Write again',
     txtClear: 'Delete',
-    txtWritten: (value: number) => `${count(value, 'file', 'files')} written.`,
+    txtRewritten: 'Text files written again.',
+    txtNothing: 'No ad has its details yet.',
+    txtCleared: 'Text files deleted.',
     txtFailed: (value: number) => `${count(value, 'file is', 'files are')} open right now.`,
-    txtCleared: (value: number) => `${count(value, 'file', 'files')} deleted.`,
-    txtClearHeading: 'Delete text files?',
-    txtClearText: 'Only “Write again” brings them back.',
+    workspaceMoved: 'The profile and the files are in the new folder now.',
+    workspaceFiles: 'The files are in the new folder now.',
+    workspaceOwnProfile: 'The app now uses the profile in this folder.',
     fullMailbox: FULL_MAILBOX,
     fullMailboxHint: 'Reads all alert emails, not only the new ones.',
     fullMailboxAction: 'Fetch',
@@ -1607,7 +1592,8 @@ export const en: Catalog = {
     data: 'App data',
     version: 'Version',
     reset: 'Reset everything',
-    resetHint: 'Deletes jobs, settings, profile, app password and sign-ins.',
+    resetHint:
+      'Deletes jobs, settings, profile, app password, sign-ins and the app’s files in the work folder.',
     resetAction: 'Reset',
     resetHeading: 'Reset everything?',
     resetText: 'The app then restarts and deletes',
@@ -1624,28 +1610,19 @@ export const en: Catalog = {
     running: 'A fetch is running right now.',
     dryRun: 'Dry run, so no data is changed.',
     demo: 'Demo with sample data, without the mailbox or the portals.',
+    look: 'Appearance',
+    palette: 'Colours',
+    paletteName: {
+      coast: 'Coast',
+      light: 'Light',
+      dark: 'Dark',
+    } satisfies Record<Palette, string>,
     language: 'Language',
-    languageHint: 'The Excel file and the report switch at the next fetch.',
     languageName: {
       de: 'Deutsch',
       en: 'English',
     } satisfies Record<Language, string>,
-    keys: {
-      heading: 'Keyboard shortcuts',
-      overview: 'Overview',
-      jobs: 'Jobs',
-      profile: 'Profile',
-      settings: 'Settings',
-      search: 'Search',
-      undo: 'Undo',
-      archive: 'Archive',
-      trash: 'Move to trash',
-      favourite: 'Favourite',
-      unread: 'Read or unread',
-      applied: 'Applied',
-      openAd: 'Open ad',
-      fetch: 'Fetch',
-    },
+    keys: 'Keyboard shortcuts',
   },
   firstRun: {
     // "in Gmail" stays on one line: a line never ends with the preposition.
@@ -1653,13 +1630,18 @@ export const en: Catalog = {
     privacy: 'Everything stays on this computer.',
     steps: 'First steps',
     mailbox: 'Mailbox',
-    mailboxText: `The alerts from ${joined(Object.values(portalName))} must go to this Gmail${NBSP}address.`,
+    mailboxText: (portals: readonly Portal[]) =>
+      `The alert emails from ${joined(portals.map((p) => portalName[p]))} must go to this Gmail${NBSP}address.`,
+    noPortal: 'Turn on a portal first.',
+    openSettings: 'Open settings',
+    alertMails: (value: number) => count(value, 'alert email', 'alert emails'),
     createAlert: 'Create alert',
+    noAlerts: 'No alert email arrived in the last 30 days, so create an alert first.',
     profile: 'Profile',
     profileText: 'You create the profile in the app, from your CV if you like.',
     fetch: 'First fetch',
-    selfFill: 'Fill in yourself',
-    fetchHint: 'The first fetch reads the alerts of the last 30 days and takes a few minutes.',
+    fetchHint:
+      'The first fetch reads the alert emails of the last 30 days and takes a few minutes.',
   },
   shell: {
     loadFailed: 'The app could not load its data.',

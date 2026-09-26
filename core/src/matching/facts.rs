@@ -625,7 +625,22 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     let contract = fact(job.facts, super::fact_key::CONTRACT)
         .and_then(Value::as_str)
         .map(fold);
-    if let Some(f) = contract.as_deref().filter(|f| named(f) && !negated(f)) {
+    // The title counts like a contract sentence (E16-7):
+    // `SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung`. It does not where it names ANÜ
+    // as a topic or as the field of a role in the staffing business:
+    // `Disponent (m/w/d) Arbeitnehmerüberlassung`.
+    let title = fold(job.title);
+    let title_says = (named(&title)
+        && !negated(&title)
+        && !anue_topic(&title, &named)
+        && !lex::ANUE_FIELD_ROLES.iter().any(|w| title.contains(w)))
+    .then_some(title.as_str());
+    for f in contract
+        .as_deref()
+        .filter(|f| named(f) && !negated(f))
+        .into_iter()
+        .chain(title_says)
+    {
         if optional(f) {
             option.push(0..0);
         } else {
@@ -683,26 +698,95 @@ pub(crate) fn anue(job: &JobFacts<'_>, segments: &[Segment]) -> Vec<Finding> {
     }
 }
 
-/// Characters at the start of a sentence where a cue of `ANUE_TOPIC` makes the whole
-/// sentence a requirement (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
-const ANUE_TOPIC_HEAD: usize = 24;
+/// Words at the start of a sentence where a cue of `ANUE_TOPIC` governs a list that names
+/// the contract form (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`).
+const ANUE_TOPIC_HEAD: usize = 3;
+/// Words before an ANÜ mention in which a cue governs it (`Erfahrung im Einsatz von ANÜ`).
+const ANUE_TOPIC_REACH: usize = 4;
 
-/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form: a cue of
-/// `ANUE_TOPIC` in the clause that names it, or at the start of the sentence.
+/// ANÜ (or its hidden signs) as a topic of the requirements, not the contract form (E16-4):
+/// only where a cue governs the mention (`Erfahrung mit Arbeitnehmerüberlassung`,
+/// `Kenntnisse des AÜG`, `Steuerung der Arbeitnehmerüberlassung`, `... von Vorteil`), or a
+/// cue at the start of the sentence governs a list that names it and no clause that names
+/// it places the job in it. A clause that offers the contract
+/// (`Einsatz über Arbeitnehmerüberlassung`, `im Rahmen der ANÜ`, `ANUE_CONTRACT`) stays
+/// the contract even with a cue elsewhere in it (`... einen Controller mit Berufserfahrung`).
+/// ANÜ as the business of the hiring company is no contract form either.
 fn anue_topic(folded: &str, named: &dyn Fn(&str) -> bool) -> bool {
-    let cue = |s: &str| lex::ANUE_TOPIC.iter().any(|w| s.contains(w));
     let hidden = |s: &str| lex::ANUE_HIDDEN.iter().any(|w| contains_word(s, w));
-    let head: String = folded.trim_start().chars().take(ANUE_TOPIC_HEAD).collect();
     let mentions = |s: &str| named(s) || hidden(s);
+    if !mentions(folded) {
+        return false;
+    }
     // The business of a company (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`).
-    let business = lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w))
-        && !lex::ANUE_CONTRACT.iter().any(|w| contains_word(folded, w));
-    mentions(folded)
-        && (cue(&head)
-            || business
-            || folded
-                .split([',', ';'])
-                .any(|clause| mentions(clause) && cue(clause)))
+    let placed = |s: &str| lex::ANUE_CONTRACT.iter().any(|w| contains_word(s, w));
+    if lex::ANUE_BUSINESS.iter().any(|w| folded.contains(w)) && !placed(folded) {
+        return true;
+    }
+    let clauses: Vec<&str> = folded.split([',', ';']).filter(|c| mentions(c)).collect();
+    if clauses.iter().any(|c| anue_governed(c)) {
+        return true;
+    }
+    let head = folded
+        .split_whitespace()
+        .take(ANUE_TOPIC_HEAD)
+        .any(topic_cue);
+    head && !clauses.iter().any(|c| placed(c))
+}
+
+/// A word that starts with a cue of `ANUE_TOPIC` (`Kenntnisse`, not `SAP-Kenntnisse`).
+fn topic_cue(word: &str) -> bool {
+    let word = word.trim_start_matches(|c: char| !c.is_alphanumeric());
+    lex::ANUE_TOPIC.iter().any(|w| word.starts_with(w))
+}
+
+/// Does a cue govern the first ANÜ mention of the clause: in its own word (`ANÜ-Erfahrung`),
+/// before it with only linking words between (`Erfahrung im Einsatz von`), or a requirement
+/// right after it (`Arbeitnehmerüberlassung von Vorteil`)?
+fn anue_governed(clause: &str) -> bool {
+    let word_at = |w: &str| {
+        clause.match_indices(w).map(|(at, _)| at).find(|&at| {
+            clause[..at]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_alphanumeric())
+                && clause[at + w.len()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|c| !c.is_alphanumeric())
+        })
+    };
+    let parts = lex::ANUE_PARTS.iter().filter_map(|p| clause.find(p));
+    let words = lex::ANUE_WORDS
+        .iter()
+        .chain(lex::ANUE_HIDDEN)
+        .filter_map(|w| word_at(w));
+    let Some(at) = parts.chain(words).min() else {
+        return false;
+    };
+    let tokens: Vec<(usize, &str)> = clause
+        .split_whitespace()
+        .map(|w| (w.as_ptr() as usize - clause.as_ptr() as usize, w))
+        .collect();
+    let Some(m) = tokens.iter().rposition(|&(start, _)| start <= at) else {
+        return false;
+    };
+    let link = |w: &str| {
+        let w = w.trim_matches(|c: char| !c.is_alphanumeric());
+        lex::ANUE_TOPIC_LINKS.contains(&w)
+    };
+    let own = lex::ANUE_TOPIC.iter().any(|w| tokens[m].1.contains(w));
+    let before = (m.saturating_sub(ANUE_TOPIC_REACH)..m)
+        .any(|j| topic_cue(tokens[j].1) && tokens[j + 1..m].iter().all(|(_, w)| link(w)));
+    let next: Vec<&str> = tokens[m + 1..]
+        .iter()
+        .take(ANUE_TOPIC_REACH)
+        .map(|(_, w)| *w)
+        .collect();
+    let after = lex::ANUE_TOPIC_AFTER
+        .iter()
+        .any(|w| next.join(" ").contains(w));
+    own || before || after
 }
 
 /// Countries named in a folded text (names and cities).
@@ -1022,32 +1106,82 @@ pub(crate) fn hourly_pay_in(folded: &str) -> Option<Rate> {
 
 /// The rates of the clauses of a sentence. A sentence that is employment pay as a whole
 /// (`18,50 € pro Stunde (brutto)`) makes every rate in it a wage.
-fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> + '_ {
-    let whole = is_wage(folded) && !names_freelance_rate(folded);
-    folded
+fn clause_rates(folded: &str) -> impl Iterator<Item = Rate> {
+    let rates: Vec<Rate> = folded
         .split([';', '(', ')'])
         .flat_map(|part| part.split(" oder "))
         .flat_map(|part| part.split(" or "))
         .filter_map(parse_rate)
-        .map(move |rate| Rate {
-            wage: rate.wage || whole,
-            ..rate
-        })
+        .collect();
+    // Only a sentence with a rate is read for employment pay.
+    let whole = !rates.is_empty() && is_wage(folded) && !names_freelance_rate(folded);
+    rates.into_iter().map(move |rate| Rate {
+        wage: rate.wage || whole,
+        ..rate
+    })
 }
 
 fn names_freelance_rate(folded: &str) -> bool {
     lex::FREELANCE_RATE_WORDS.iter().any(|w| folded.contains(w))
 }
 
-/// Is a rate statement employment pay (`Stundenlohn`, a pay scale, `brutto` without a
-/// freelance rate word) rather than a freelance rate?
+/// Is a rate statement employment pay (`Stundenlohn`, `hourly wage`, or a pay scale or
+/// `brutto` without a freelance rate word) rather than a freelance rate? Words and phrases
+/// only, never inside another word (`Volkswagen`, `Entgeltabrechnung`, `Tarifsystem`).
 pub(crate) fn is_wage(folded: &str) -> bool {
-    lex::WAGE_WORDS.iter().any(|w| folded.contains(w))
+    let explicit = lex::WAGE_PHRASES.iter().any(|w| contains_phrase(folded, w))
         || lex::WAGE_WORDS_WHOLE
             .iter()
             .any(|w| contains_word(folded, w))
-        || (lex::WAGE_HINTS.iter().any(|w| contains_word(folded, w))
-            && !names_freelance_rate(folded))
+        || lex::WAGE_HEADS.iter().any(|w| ends_a_word(folded, w));
+    let scale = || {
+        lex::PAY_SCALE_WORDS
+            .iter()
+            .any(|w| contains_word_form(folded, w))
+            || lex::PAY_SCALE_HEADS.iter().any(|w| ends_a_word(folded, w))
+    };
+    explicit || (scale() && !names_freelance_rate(folded))
+}
+
+/// A phrase with word boundaries; one that starts with a sign (`/h gross`) needs only the
+/// boundary after it (`€18/h gross`).
+fn contains_phrase(folded: &str, phrase: &str) -> bool {
+    if phrase.starts_with(char::is_alphanumeric) {
+        return contains_word(folded, phrase);
+    }
+    folded.match_indices(phrase).any(|(at, _)| {
+        folded[at + phrase.len()..]
+            .chars()
+            .next()
+            .is_none_or(|c| !c.is_alphanumeric())
+    })
+}
+
+/// A word (or phrase) whose last word may take an ending of `PAY_SCALE_ENDINGS`
+/// (`tarifliche`, `nach Tarifvertrages`), never inside another word.
+fn contains_word_form(folded: &str, word: &str) -> bool {
+    folded.match_indices(word).any(|(start, _)| {
+        let end = start + word.len();
+        let before = folded[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| !c.is_alphanumeric());
+        let rest = &folded[end..];
+        let tail = &rest[..rest
+            .find(|c: char| !c.is_alphanumeric())
+            .unwrap_or(rest.len())];
+        before && lex::PAY_SCALE_ENDINGS.contains(&tail)
+    })
+}
+
+/// A word of the text that ends with `head` and an ending of `WAGE_HEAD_ENDINGS`
+/// (`Bruttostundenlohn`, `Stundenentgelts`).
+fn ends_a_word(folded: &str, head: &str) -> bool {
+    folded.split(|c: char| !c.is_alphanumeric()).any(|word| {
+        lex::WAGE_HEAD_ENDINGS
+            .iter()
+            .any(|e| word.strip_suffix(e).is_some_and(|w| w.ends_with(head)))
+    })
 }
 
 /// A currency next to a time unit, also with the amount between them (`110 EUR/h`, `EUR pro
@@ -1501,6 +1635,88 @@ mod tests {
         }
     }
 
+    /// E16-7: ANÜ named only in the title is read like a contract sentence; a denial, an
+    /// option or the field of a staffing role in the title decides nothing.
+    #[test]
+    fn e16_7_anue_named_only_in_the_title_is_read() {
+        let codes = |title: &str| {
+            let text = "Wir suchen einen SAP FI/CO Berater für unseren Kunden.\n\
+                        - Erfahrung mit SAP FI/CO";
+            let job = JobFacts {
+                title,
+                text,
+                location: "",
+                portal: Portal::FreelanceDe,
+                facts: None,
+                posted: None,
+            };
+            anue(&job, &segments(text))
+                .into_iter()
+                .map(|f| (f.code, f.decided))
+                .collect::<Vec<_>>()
+        };
+        for title in [
+            "SAP FI/CO Berater (m/w/d) in Arbeitnehmerüberlassung",
+            "SAP FI/CO Berater (m/w/d) - ANÜ",
+            "SAP FI/CO Consultant (m/f/d) - temporary agency work",
+        ] {
+            assert_eq!(codes(title), [(ReasonCode::Anue, true)], "{title}");
+        }
+        assert_eq!(
+            codes("SAP FI/CO Berater (m/w/d) - freiberuflich oder ANÜ"),
+            [(ReasonCode::AnueOptional, false)]
+        );
+        for title in [
+            "SAP FI/CO Berater (m/w/d) - keine ANÜ",
+            "Disponent (m/w/d) Arbeitnehmerüberlassung",
+            "SAP FI/CO Berater (m/w/d)",
+        ] {
+            assert!(codes(title).is_empty(), "{title}");
+        }
+    }
+
+    /// E16-4: a sentence that offers the contract through ANÜ stays the contract even with a
+    /// cue elsewhere in its clause or at its start; ANÜ is a topic only where the cue
+    /// governs it.
+    #[test]
+    fn e16_4_anue_is_a_topic_only_where_a_cue_governs_it() {
+        for text in [
+            "Erfahrung im Controlling erforderlich, die Anstellung erfolgt über \
+             Arbeitnehmerüberlassung.",
+            "Idealerweise Start zum 01.11., der Einsatz erfolgt in Arbeitnehmerüberlassung.",
+            "Für unseren Kunden suchen wir im Rahmen der Arbeitnehmerüberlassung einen \
+             Controller mit Berufserfahrung in der Konsolidierung.",
+            "Wir suchen im Rahmen der Arbeitnehmerüberlassung einen Controller (m/w/d) für die \
+             Unternehmenssteuerung.",
+            "Wir suchen im Wege der Arbeitnehmerüberlassung einen Controller mit fundierten \
+             SAP-Kenntnissen.",
+            "Ihre Expertise ist gefragt: Einsatz im Rahmen der Arbeitnehmerüberlassung.",
+            "Profitieren Sie von unserer Erfahrung: Wir besetzen die Position im Rahmen der \
+             Arbeitnehmerüberlassung.",
+            "Im Rahmen der Arbeitnehmerüberlassung suchen wir einen Referent Konzernsteuerung \
+             (m/w/d).",
+            "We are looking for an experienced SAP FI/CO consultant via temporary agency work.",
+            "For our client we are looking for a controller with SAP knowledge on a temporary \
+             agency basis.",
+            "Controller mit SAP-Kenntnissen in Arbeitnehmerüberlassung",
+            "Anstellung bei unserem Partner, Überlassung an den Kunden, Erfahrung mit SAP \
+             erforderlich.",
+        ] {
+            assert_eq!(anue_codes(text), [(ReasonCode::Anue, true)], "{text}");
+        }
+        for text in [
+            "Sie haben Erfahrung im Einsatz von Arbeitnehmerüberlassung.",
+            "Sie verantworten die Steuerung der Arbeitnehmerüberlassung und den Einsatz von \
+             Fremdpersonal.",
+            "Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und im Tarifrecht",
+            "Erfahrung mit SAP und Arbeitnehmerüberlassung",
+            "Personalwesen und Arbeitnehmerüberlassung von Vorteil",
+            "ANÜ-Erfahrung wünschenswert",
+        ] {
+            assert!(anue_codes(text).is_empty(), "{text}");
+        }
+    }
+
     /// ANÜ as the business of the hiring company is no contract form; the contract wording
     /// in the same kind of sentence stays one, and `nächstmöglich` offers no option.
     #[test]
@@ -1589,6 +1805,46 @@ mod tests {
         ))
         .unwrap();
         assert_eq!((r.upper, r.hourly), (90, true));
+    }
+
+    /// E16-3: a wage word counts only as a word or a phrase, never inside another word
+    /// (`Volkswagen`, `Entgeltabrechnung`, `Tarifsystem`, `groß` folded to `gross`); a pay
+    /// scale or `Entgelt` next to a freelance rate word stays a rate.
+    #[test]
+    fn e16_3_wage_words_are_words_not_parts_of_words() {
+        let wage = |s: &str| rate_in(&fold(s)).map(|r| r.wage);
+        for text in [
+            "Tagessatz 700 € für den Einsatz bei Volkswagen",
+            "Einsatz bei der Volkswagen AG in Wolfsburg, 60 €/h",
+            "Projekt bei Volkswagen in Wolfsburg, 110 €/h, 6 Monate",
+            "Entgelt: 95 €/h zzgl. MwSt.",
+            "Unterstützung der Entgeltabrechnung, 70 €/h remote",
+            "Projekt Tarifsystem-Migration, 70 €/h",
+            "Das Projekt ist groß, 70 €/h",
+            "Stundensatz 90 € für die Einführung der Entgeltabrechnung",
+            "Stundensatz 70 € zzgl. MwSt., kein Dienstwagen",
+            "Customs tariff project, 70 €/h",
+            "Einführung eines neuen Tarifvertrags im SAP HCM, 90 €/h",
+            "Lohnbuchhaltung im Mittelstand, 85 €/h",
+        ] {
+            assert_eq!(wage(text), Some(false), "{text}");
+        }
+        for text in [
+            "Übertarifliche Bezahlung ab 32 € pro Stunde",
+            "Tarifvertragliche Vergütung 26 €/Std.",
+            "Vergütung nach Tarifvertrag: 21 €/h",
+            "Vergütung nach Tarif: 24 € pro Stunde",
+            "We pay €18/h gross.",
+            "We offer €17.50 gross per hour.",
+            "Entgelt: 22 € pro Stunde",
+            "Bruttostundenlohn 19,80 € nach iGZ-Tarif",
+            "Stundenlohn: 21 €",
+            "18,50 € brutto pro Stunde",
+            "Minimum wage €13 per hour",
+            "Pay: hourly wage of €16 plus shift allowance.",
+        ] {
+            assert_eq!(wage(text), Some(true), "{text}");
+        }
     }
 
     #[test]

@@ -1,31 +1,37 @@
 <!--
   First run (full page) on the white sheet, in the column of every view: the app mark beside
-  its name, one sentence of what the app does, one about privacy, and three real steps that
-  tick themselves: connect the mailbox, a usable profile (made in the Profil view, whose
+  its name, one sentence of what the app does, one about privacy, and the steps of steps.ts
+  that tick themselves: connect the mailbox, a usable profile (made in the Profil view, whose
   editor also imports a file or a CV), fetch. The next open step carries the one primary
   button; "Abrufen" stays locked with its reason until a mailbox is connected. After "Alles
-  zurücksetzen" the app starts here again, so this is where the reset reports. Compact enough
-  that all three steps are in view at 1280 x 720 on both OS (after a reset its report stands
-  above them; the current step's action is in view then too); the sidebar is inert here (the
-  Profil view frees it again).
+  zurücksetzen" the app starts here again: a clean reset says so once in a toast, one that
+  left something stands as a warning above the steps with the way to the log. Compact enough
+  that all three steps are in view at 1280 x 720 on both OS; the sidebar is inert here (the
+  Profil view frees it again), and its run status waits until the setup is done.
 
-  A vertical stepper: 28 px markers (the current one deep navy, "you are here"; upcoming
-  ones outlined; done ones green with a check) joined by a hairline that fills green below
-  a done step. Ticking a step is a class change, so it moves only while the page is open:
-  the marker cross-fades to its check, which draws itself, the line fills downwards, the
-  next marker turns navy and the done text rises in. Nothing plays when the page appears.
+  A vertical stepper: 28 px markers (the current one in the tooltip's dark, "you are here";
+  upcoming ones outlined; done ones green with a check) joined by a hairline that fills green
+  below a done step. Ticking a step is a class change, so it moves only while the page is
+  open: the marker cross-fades to its check, which draws itself, the line fills downwards,
+  the next marker turns dark and the done text rises in. Nothing plays when the page appears.
 
-  Step 1 says where the alerts must go; once the mailbox is connected, each portal has its
-  "Alert anlegen" (the portal's page, as in the empty list). Step 2 happens in the Profil
-  view: "Aus Lebenslauf anlegen" opens its steps with an AI at once, "Selbst ausfüllen" the
-  empty form; after the first save the Profil view offers "Weiter zum ersten Abruf", which
-  starts the fetch. Step 3 says that the first fetch reads the alerts of 30 days; a first
+  Step 1 names the portals that are on (none on: a warning with "Einstellungen öffnen");
+  connected, each of them shows the alert mails "Verbinden" found in the last 30 days, or
+  "Alert anlegen" (the portal's page) where it found none. Step 2 happens in the Profil view:
+  "Aus Lebenslauf anlegen" opens its steps with an AI at once, "Profil anlegen" the empty
+  form; after the first save the Profil view offers the way on. Step 3 says that the first
+  fetch reads the alert mails of 30 days (or that none came, so an alert comes first); a first
   fetch that failed keeps this page (the app leaves it only after a completed one) and says
   why in step 3, with the fitting action where there is one besides "Abrufen". Every main
   action is 32 px.
 -->
+<script lang="ts" module>
+  /** The toast of a clean reset shows once per start of the app. */
+  let told = false;
+</script>
+
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import BrandMark from '$components/BrandMark.svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
@@ -34,50 +40,63 @@
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
-  import type { Portal } from '$lib/ipc/types';
+  import type { OpenTarget, Portal } from '$lib/ipc/types';
   import { rise } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { failureAction, isFetch, run } from '$lib/state/run.svelte';
+  import { toasts } from '$lib/state/toasts.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
+  import { STEPS, type StepId } from './steps';
 
-  const mailboxDone = $derived(app.hasMailbox);
-  /** Only a profile the engine can use counts; a broken or empty one keeps step 2 open. */
-  const profileDone = $derived(app.hasProfile);
+  /** Done, per step, as the page shows it now. */
+  const done = $derived(
+    Object.fromEntries(STEPS.map((step) => [step.id, step.done()])) as Record<StepId, boolean>,
+  );
+  /** The step whose action is the primary one: the first that is not done. */
+  const current = $derived(STEPS.find((step) => !done[step.id])?.id ?? null);
+
   const profile = $derived(app.state?.profile ?? null);
   /** Why an existing profile does not count yet (null: there is none, or it is fine). */
   const profileProblem = $derived(
-    profile === null || profileDone
+    profile === null || done.profile
       ? null
       : profile.parseError
         ? t.overview.profileUnreadable
         : t.profile.qualityText.empty,
   );
-  /** The step whose action is the primary one. */
-  const current = $derived(!mailboxDone ? 1 : !profileDone ? 2 : 3);
-  const reset = $derived(app.state?.resetReport ?? null);
-
   /** Who the profile is about: the name, else the role, else what the Profil view calls a
    *  profile without a name. */
   const profileName = $derived(
     profile?.form?.name.trim() || profile?.form?.title.trim() || t.profile.unnamed,
   );
-  let profileActions = $state<HTMLElement | null>(null);
+
+  /** The portals whose alerts are wanted (the ones switched on), in the app's order. */
+  const portals = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
+  /** What "Verbinden" found per portal in this session (null: not asked in this session). */
+  const check = $derived(app.state?.mailbox.check ?? null);
+  const mailsOf = (portal: Portal): number | null =>
+    check?.perPortal.find((count) => count.portal === portal)?.count ?? null;
+  /** "Verbinden" found no alert mail of any portal: a fetch would find nothing yet. */
+  const noAlerts = $derived(check !== null && check.total === 0);
 
   /** Steps ticked while this page is open: only their check draws (never at mount). */
-  let ticked = $state({ mailbox: false, profile: false });
-  let before = untrack(() => ({ mailbox: mailboxDone, profile: profileDone }));
+  let ticked = $state<Partial<Record<StepId, boolean>>>({});
+  let before = untrack(() => ({ ...done }));
+  /** Where each step's actions are: a step's form that had the focus goes, the next one's
+   *  first button takes it. */
+  const actions: Partial<Record<StepId, HTMLElement>> = {};
   $effect(() => {
-    const now = { mailbox: mailboxDone, profile: profileDone };
-    if (now.mailbox && !before.mailbox) {
-      ticked.mailbox = true;
-      // The form that had the focus is gone: the next step's action takes it.
-      if (document.activeElement === document.body) {
-        queueMicrotask(() => profileActions?.querySelector('button')?.focus());
+    const now = { ...done };
+    for (const [index, step] of STEPS.entries()) {
+      if (!now[step.id] || before[step.id]) continue;
+      ticked[step.id] = true;
+      const next = STEPS[index + 1];
+      if (next !== undefined && document.activeElement === document.body) {
+        queueMicrotask(() => actions[next.id]?.querySelector('button')?.focus());
       }
     }
-    if (now.profile && !before.profile) ticked.profile = true;
     before = now;
   });
 
@@ -93,13 +112,12 @@
     navigation.go('profile');
   }
 
-  /** The portals whose alerts are wanted (the ones switched on), for "Alert anlegen". */
-  const portals = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
-  let portalError = $state<string | null>(null);
-  function openPortal(portal: Portal): void {
-    portalError = null;
-    invoke('open_target', { target: { kind: 'portalHome', portal } }).catch(
-      (error: unknown) => (portalError = errorText(error)),
+  /** Where the step's link or button failed to open (said in the step). */
+  let openError = $state<{ step: StepId; text: () => string } | null>(null);
+  function open(step: StepId, target: OpenTarget): void {
+    openError = null;
+    invoke('open_target', { target }).catch(
+      (error: unknown) => (openError = { step, text: () => errorText(error) }),
     );
   }
 
@@ -112,43 +130,191 @@
     const error = last.outcome.error;
     return {
       text: t.error.text(error.kind, error.params),
-      action: failureAction(last, error, () => openLog()),
+      action: failureAction(last, error, () => open('fetch', { kind: 'logDir' })),
     };
   });
-  function openLog(): void {
-    invoke('open_target', { target: { kind: 'logDir' } }).catch(
-      (error: unknown) => (folderError = errorText(error)),
-    );
-  }
 
-  /** Where a file the reset could not delete is left; a folder that does not open says so. */
-  let folderError = $state<string | null>(null);
-  function openDataDir(): void {
-    folderError = null;
-    invoke('open_target', { target: { kind: 'dataDir' } }).catch(
-      (error: unknown) => (folderError = errorText(error)),
-    );
-  }
+  /** After "Alles zurücksetzen": what it could not delete stays a warning with the way to
+   *  the log (each item is named there); a clean reset says so once. */
+  const reset = $derived(app.state?.resetReport ?? null);
+  const resetLeft = $derived(reset !== null && reset.failed > 0 && !done.mailbox);
+  onMount(() => {
+    if (reset !== null && reset.failed === 0 && !told) {
+      told = true;
+      toasts.show(t.settings.resetDone);
+    }
+  });
 </script>
 
-{#snippet marker(step: number, done: boolean, drawn: boolean)}
+{#snippet marker(index: number, id: StepId)}
   <span
     class="marker"
-    class:done
-    class:drawn
-    class:current={current === step && !done}
+    class:done={done[id]}
+    class:drawn={ticked[id] === true}
+    class:current={current === id}
     aria-hidden="true"
   >
-    <span class="number">{step}</span>
+    <span class="number">{index + 1}</span>
     <span class="check"><Icon name="check" size="sm" /></span>
   </span>
 {/snippet}
 
-{#snippet rail(step: number, done: boolean, drawn = false, last = false)}
-  <div class="rail">
-    {@render marker(step, done, drawn)}
-    {#if !last}<span class="line"><span class="fill"></span></span>{/if}
+{#snippet problem(text: string, testid: string)}
+  <!-- In the place and size of the hint, with the glyph and tone of a warning. -->
+  <p class="hint problem" data-testid={testid}>
+    <Icon name="triangle-alert" size="sm" /><span>{text}</span>
+  </p>
+{/snippet}
+
+{#snippet mailbox()}
+  {#if done.mailbox}
+    <!-- The address the portals' alert mails must go to (text to copy), then per portal what
+         "Verbinden" found, or its page to set up an alert. -->
+    <div class="head">
+      <h2 class="name">{t.firstRun.mailbox}</h2>
+      <p class="done-text" data-copy in:rise>{app.state?.mailbox.user}</p>
+    </div>
+    {#if portals.length > 0}
+      <p class="hint">{t.firstRun.mailboxText(portals.map((p) => p.portal))}</p>
+      <ul class="alerts" data-testid="first-alerts">
+        {#each portals as portal (portal.portal)}
+          {@const mails = mailsOf(portal.portal)}
+          <li class="alert" data-testid="first-portal-{portal.portal}">
+            <span class="portal">{t.portal[portal.portal]}</span>
+            {#if mails !== null && mails > 0}
+              <span class="count" data-testid="first-mails-{portal.portal}"
+                >{t.firstRun.alertMails(mails)}</span
+              >
+            {:else}
+              <Button
+                variant="link"
+                size="sm"
+                icon="external-link"
+                external
+                label={t.firstRun.createAlert}
+                testid="first-alert-{portal.portal}"
+                onclick={() => open('mailbox', { kind: 'portalHome', portal: portal.portal })}
+              />
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {:else}
+    <div class="head">
+      <h2 class="name">{t.firstRun.mailbox}</h2>
+      {#if portals.length > 0}
+        <p class="hint">{t.firstRun.mailboxText(portals.map((p) => p.portal))}</p>
+      {/if}
+    </div>
+    <MailboxForm saveLabel={t.settings.connect} autofocus />
+  {/if}
+  {#if portals.length === 0}
+    <!-- Every portal is off: nothing would be read. -->
+    {@render problem(t.firstRun.noPortal, 'first-no-portal')}
+    <div class="actions">
+      <Button
+        variant="secondary"
+        size="field"
+        icon="settings"
+        label={t.firstRun.openSettings}
+        testid="first-open-settings"
+        onclick={() => navigation.go('settings')}
+      />
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet profileStep()}
+  <div class="head">
+    <h2 class="name">{t.firstRun.profile}</h2>
+    {#if done.profile}
+      <p class="done-text" in:rise>{profileName}</p>
+    {:else if profileProblem}
+      {@render problem(profileProblem, 'first-profile-problem')}
+    {:else}
+      <p class="hint">{t.firstRun.profileText}</p>
+    {/if}
   </div>
+  {#if !done.profile}
+    <!-- A new profile comes from the CV with an AI (the recommended way) or the empty form; an
+         existing one that does not count yet opens as it is. -->
+    <div class="actions" bind:this={actions.profile}>
+      {#if profile}
+        <Button
+          variant={current === 'profile' ? 'primary' : 'secondary'}
+          size="field"
+          icon="file-text"
+          label={t.list.openProfile}
+          testid="first-profile"
+          onclick={openProfile}
+        />
+      {:else}
+        <Button
+          variant={current === 'profile' ? 'primary' : 'secondary'}
+          size="field"
+          icon="clipboard-paste"
+          label={t.profile.fromCv}
+          testid="first-profile"
+          onclick={fromCv}
+        />
+        <Button
+          variant="link"
+          size="sm"
+          label={t.profile.create}
+          testid="first-profile-form"
+          onclick={openProfile}
+        />
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet fetch()}
+  <div class="head">
+    <h2 class="name">{t.firstRun.fetch}</h2>
+    {#if noAlerts}
+      {@render problem(t.firstRun.noAlerts, 'first-no-alerts')}
+    {:else}
+      <p class="hint">{t.firstRun.fetchHint}</p>
+    {/if}
+  </div>
+  <div class="actions" bind:this={actions.fetch}>
+    <Button
+      variant={current === 'fetch' ? 'primary' : 'secondary'}
+      size="field"
+      icon="refresh-cw"
+      label={t.toolbar.fetch}
+      disabled={run.fetchBlocked !== null}
+      disabledReason={run.fetchBlocked}
+      testid="first-fetch"
+      onclick={() => void run.start({ kind: 'fetch' })}
+    />
+  </div>
+  {#if run.startError}
+    <Notice tone="danger" variant="inline" text={run.startError} />
+  {:else if failed}
+    <Notice
+      tone="danger"
+      variant="inline"
+      text={failed.text}
+      action={failed.action}
+      testid="first-fetch-failed"
+    />
+  {/if}
+{/snippet}
+
+{#snippet body(id: StepId)}
+  {#if id === 'mailbox'}
+    {@render mailbox()}
+  {:else if id === 'profile'}
+    {@render profileStep()}
+  {:else}
+    {@render fetch()}
+  {/if}
+  {#if openError?.step === id}
+    <Notice tone="danger" variant="inline" text={openError.text()} testid="open-error" />
+  {/if}
 {/snippet}
 
 <div class="hero" data-testid="first-run">
@@ -162,149 +328,37 @@
       <p class="privacy"><Icon name="shield" size="sm" />{t.firstRun.privacy}</p>
     </header>
 
-    <!-- Until the setup goes on; a file left behind can be found in the app's folder. -->
-    {#if reset && !mailboxDone}
+    {#if resetLeft && reset}
       <Notice
-        tone={reset.failed > 0 ? 'warning' : 'success'}
-        text={reset.failed > 0 ? t.settings.resetPartly(reset.failed) : t.settings.resetDone}
-        action={reset.failed > 0
-          ? { label: t.common.openFolder, icon: 'folder-open', onclick: openDataDir }
-          : null}
+        tone="warning"
+        text={t.settings.resetPartly(reset.failed)}
+        action={{
+          label: t.common.openLog,
+          icon: 'folder-open',
+          onclick: () => open('mailbox', { kind: 'logDir' }),
+        }}
         testid="first-reset-report"
       />
-      {#if folderError}
-        <Notice tone="danger" variant="inline" text={folderError} testid="folder-error" />
-      {/if}
     {/if}
 
     <Card padding="md">
       <ol class="steps" aria-label={t.firstRun.steps}>
-        <li
-          class="step"
-          class:done={mailboxDone}
-          aria-current={current === 1 ? 'step' : undefined}
-          data-testid="step-mailbox"
-          data-done={mailboxDone}
-        >
-          {@render rail(1, mailboxDone, ticked.mailbox)}
-          <div class="body">
-            <h2 class="name">{t.firstRun.mailbox}</h2>
-            {#if mailboxDone}
-              <!-- The address the portals' alert mails must go to: text to copy, then each
-                   portal's page to set up an alert. -->
-              <p class="done-text" data-copy in:rise>{app.state?.mailbox.user}</p>
-              <p class="hint">{t.firstRun.mailboxText}</p>
-              <ul class="alerts" data-testid="first-alerts">
-                {#each portals as portal (portal.portal)}
-                  <li class="alert">
-                    <span class="portal">{t.portal[portal.portal]}</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      icon="external-link"
-                      external
-                      label={t.firstRun.createAlert}
-                      testid="first-alert-{portal.portal}"
-                      onclick={() => openPortal(portal.portal)}
-                    />
-                  </li>
-                {/each}
-              </ul>
-              {#if portalError}
-                <Notice tone="danger" variant="inline" text={portalError} testid="portal-error" />
-              {/if}
-            {:else}
-              <p class="hint">{t.firstRun.mailboxText}</p>
-              <MailboxForm saveLabel={t.settings.connect} autofocus />
-            {/if}
-          </div>
-        </li>
-
-        <li
-          class="step"
-          class:done={profileDone}
-          aria-current={current === 2 ? 'step' : undefined}
-          data-testid="step-profile"
-          data-done={profileDone}
-        >
-          {@render rail(2, profileDone, ticked.profile)}
-          <div class="body">
-            <h2 class="name">{t.firstRun.profile}</h2>
-            {#if profileDone}
-              <p class="done-text" in:rise>{profileName}</p>
-            {:else}
-              {#if profileProblem}
-                <!-- In the place and size of the hint, with the glyph and tone of a warning. -->
-                <p class="hint problem" data-testid="first-profile-problem">
-                  <Icon name="triangle-alert" size="sm" /><span>{profileProblem}</span>
-                </p>
-              {:else}
-                <p class="hint">{t.firstRun.profileText}</p>
-              {/if}
-              <div class="actions" bind:this={profileActions}>
-                <!-- A new profile comes from the CV with an AI (or the empty form); an existing
-                     one that does not count yet opens as it is. -->
-                {#if profile}
-                  <Button
-                    variant={current === 2 ? 'primary' : 'secondary'}
-                    size="field"
-                    icon="file-text"
-                    label={t.list.openProfile}
-                    testid="first-profile"
-                    onclick={openProfile}
-                  />
-                {:else}
-                  <Button
-                    variant={current === 2 ? 'primary' : 'secondary'}
-                    size="field"
-                    icon="clipboard-paste"
-                    label={t.profile.fromCv}
-                    testid="first-profile"
-                    onclick={fromCv}
-                  />
-                  <Button
-                    variant="link"
-                    size="sm"
-                    label={t.firstRun.selfFill}
-                    testid="first-profile-form"
-                    onclick={openProfile}
-                  />
-                {/if}
-              </div>
-            {/if}
-          </div>
-        </li>
-
-        <li class="step" aria-current={current === 3 ? 'step' : undefined} data-testid="step-fetch">
-          {@render rail(3, false, false, true)}
-          <div class="body">
-            <h2 class="name">{t.firstRun.fetch}</h2>
-            <p class="hint">{t.firstRun.fetchHint}</p>
-            <div class="actions">
-              <Button
-                variant={current === 3 ? 'primary' : 'secondary'}
-                size="field"
-                icon="refresh-cw"
-                label={t.toolbar.fetch}
-                disabled={run.fetchBlocked !== null}
-                disabledReason={run.fetchBlocked}
-                testid="first-fetch"
-                onclick={() => void run.start({ kind: 'fetch' })}
-              />
+        {#each STEPS as step, index (step.id)}
+          <li
+            class="step"
+            class:done={done[step.id]}
+            aria-current={current === step.id ? 'step' : undefined}
+            data-testid="step-{step.id}"
+            data-done={done[step.id]}
+          >
+            <div class="rail">
+              {@render marker(index, step.id)}
+              {#if index < STEPS.length - 1}<span class="line"><span class="fill"></span></span
+                >{/if}
             </div>
-            {#if run.startError}
-              <Notice tone="danger" variant="inline" text={run.startError} />
-            {:else if failed}
-              <Notice
-                tone="danger"
-                variant="inline"
-                text={failed.text}
-                action={failed.action}
-                testid="first-fetch-failed"
-              />
-            {/if}
-          </div>
-        </li>
+            <div class="body">{@render body(step.id)}</div>
+          </li>
+        {/each}
       </ol>
     </Card>
   </div>
@@ -360,7 +414,7 @@
     align-items: center;
     gap: var(--space-6);
     color: var(--text-muted);
-    font: var(--type-md);
+    font: var(--type-sm);
   }
 
   /* No gap between the steps: the hairline runs on from one marker to the next. */
@@ -471,12 +525,24 @@
     padding-bottom: 0;
   }
 
+  /* The step's name and, 4 px below it, its hint or what is done. */
+  .head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
   .name {
     color: var(--text-heading);
     font: var(--type-lg);
   }
 
   .hint,
+  .count {
+    color: var(--text-muted);
+    font: var(--type-sm);
+  }
+
   .done-text {
     color: var(--text-muted);
     font: var(--type-md);
@@ -491,7 +557,7 @@
   }
 
   .problem > :global(:first-child) {
-    margin-top: calc((var(--leading-md) - var(--icon-sm)) / 2);
+    margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
   }
 
   .actions {
@@ -501,7 +567,7 @@
     gap: var(--space-8) var(--space-16);
   }
 
-  /* Each portal with its page to set up an alert, one per line. */
+  /* Each portal with what "Verbinden" found, or its page to set up an alert, one per line. */
   .alerts {
     display: flex;
     flex-direction: column;
@@ -513,6 +579,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4) var(--space-12);
+    min-height: var(--control-sm);
   }
 
   .portal {

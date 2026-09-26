@@ -125,10 +125,11 @@ export const FACTS = [
     },
     term: 'duration',
   },
-  { key: 'workload', icon: 'clock', format: workload, term: null },
+  { key: 'workload', icon: 'clock', format: workload, term: 'workload' },
   { key: 'remote', icon: 'house', format: remote, term: 'remote' },
   { key: 'mode', icon: 'building-2', format: mode, term: 'remote' },
   { key: 'place', icon: 'map-pin', format: readerOnly, term: 'place' },
+  { key: 'industry', icon: 'factory', format: readerOnly, term: 'industry' },
   { key: 'experience', icon: 'award', format: readerOnly, term: 'experience' },
 ] as const satisfies readonly Fact[];
 

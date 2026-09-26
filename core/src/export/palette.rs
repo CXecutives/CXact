@@ -53,7 +53,7 @@ pub const ACCENT: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 /// `--accent-soft` (`--p-accent-soft`).
 pub const ACCENT_SOFT: Colour = Colour::new("hsl(20 62% 91%)", [0xF6, 0xE3, 0xDA]);
 /// `--accent-text` (`--p-coral-800`).
-pub const ACCENT_TEXT: Colour = Colour::new("hsl(13 62% 45%)", [0xBA, 0x4A, 0x2C]);
+pub const ACCENT_TEXT: Colour = Colour::new("hsl(13 62% 42%)", [0xAE, 0x45, 0x29]);
 /// `--primary` (`--p-coral`).
 pub const PRIMARY: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 /// `--primary-hover` (`--p-coral-variant`).
@@ -87,7 +87,7 @@ pub const NAV_ACTIVE_ICON: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 
 /// `--count-soft-bg` (`--p-coral-40`).
 pub const COUNT_SOFT_BG: Colour = Colour::new("hsl(22 72% 95%)", [0xFB, 0xF0, 0xE9]);
 /// `--count-soft-fg` (`--p-coral-800`).
-pub const COUNT_SOFT_FG: Colour = Colour::new("hsl(13 62% 45%)", [0xBA, 0x4A, 0x2C]);
+pub const COUNT_SOFT_FG: Colour = Colour::new("hsl(13 62% 42%)", [0xAE, 0x45, 0x29]);
 /// `--count-soft-hover` (`--p-coral-70`).
 pub const COUNT_SOFT_HOVER: Colour = Colour::new("hsl(21 68% 93%)", [0xF9, 0xEA, 0xE1]);
 /// `--icon-accent` (`--p-navy`).
@@ -310,4 +310,29 @@ pub const TOKENS: [(&str, Colour); 94] = [
     ("border-focus", BORDER_FOCUS),
     ("grip-rest", GRIP_REST),
     ("grip-drag", GRIP_DRAG),
+];
+
+// The window's colours in the other palettes (`:root[data-palette='…']`): `--bg`, `--text`
+// and `--text-subtle`, which the window and the Windows title bar wear (Coast's are above).
+/// `--bg` of light (`--p-cream`).
+pub const LIGHT_BG: Colour = Colour::new("hsl(210 28.6% 97.3%)", [0xF6, 0xF8, 0xFA]);
+/// `--text` of light (`--p-ink`).
+pub const LIGHT_TEXT: Colour = Colour::new("hsl(213 13% 14%)", [0x1F, 0x23, 0x28]);
+/// `--text-subtle` of light (`--p-fg-subtle`).
+pub const LIGHT_TEXT_SUBTLE: Colour = Colour::new("hsl(212 8% 43%)", [0x65, 0x6D, 0x76]);
+/// `--bg` of dark (`--p-cream`).
+pub const DARK_BG: Colour = Colour::new("hsl(218 80% 2%)", [0x01, 0x04, 0x09]);
+/// `--text` of dark (`--p-ink`).
+pub const DARK_TEXT: Colour = Colour::new("hsl(210 66.7% 96.5%)", [0xF0, 0xF6, 0xFC]);
+/// `--text-subtle` of dark (`--p-fg-subtle`).
+pub const DARK_TEXT_SUBTLE: Colour = Colour::new("hsl(214 8% 55%)", [0x83, 0x8B, 0x95]);
+
+/// The constants above by palette and token.
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 6] = [
+    ("light", "bg", LIGHT_BG),
+    ("light", "text", LIGHT_TEXT),
+    ("light", "text-subtle", LIGHT_TEXT_SUBTLE),
+    ("dark", "bg", DARK_BG),
+    ("dark", "text", DARK_TEXT),
+    ("dark", "text-subtle", DARK_TEXT_SUBTLE),
 ];

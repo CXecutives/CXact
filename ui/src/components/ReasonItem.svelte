@@ -23,7 +23,7 @@
   export const REASON_WEIGHTS: readonly ReasonWeight[] = ['must', 'nice', 'hard'];
 
   const ICON: Record<ReasonKind, IconName> = {
-    met: 'check',
+    met: 'circle-check',
     partial: 'circle-half',
     open: 'circle-dashed',
     violation: 'ban',
@@ -269,11 +269,11 @@
 
   /* A missing must stands out in its group: its mark and its words in ink. */
   .strong {
-    --reason-color: var(--text-heading);
+    --reason-color: var(--text);
   }
 
   .strong .label {
-    color: var(--text-heading);
+    color: var(--text);
     font-weight: var(--weight-medium);
   }
 

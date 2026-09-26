@@ -4,7 +4,7 @@
 //   development  `npm run dev` - dev server for `tauri dev`, gallery available via `?gallery`.
 //   production   `npm run build` - what the app ships; the gallery is compiled out.
 //   harness      `vite build --mode harness` - Playwright harness: `@tauri-apps/api` is replaced by a
-//                typed stub, the gallery is included, output goes to node_modules/.ui-harness.
+//                typed stub, the gallery is included, output goes to .harness/ of this checkout (never shared through a node_modules junction).
 //
 // `vite preview` always sends the production Content-Security-Policy of the app (read from
 // src-tauri/tauri.conf.json), so the harness sees exactly the policy the WebView enforces.
@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
       ],
     },
     build: {
-      outDir: harness ? here('../node_modules/.ui-harness/dist') : here('dist'),
+      outDir: harness ? here('../.harness/dist') : here('dist'),
       emptyOutDir: true,
       target: ['safari17', 'chrome120'],
       cssTarget: 'safari17',

@@ -154,7 +154,9 @@
       flex-basis: 100%;
     }
 
+    /* The buttons wrap within the row's width rather than run past its edge. */
     .row:not([data-toggle-row]) .control {
+      max-width: 100%;
       margin-left: auto;
     }
   }

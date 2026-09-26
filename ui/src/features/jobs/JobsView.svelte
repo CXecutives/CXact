@@ -34,11 +34,10 @@
   import { t } from '$lib/i18n/t';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { listKeys, onFetchKey, type ListAction } from '$lib/input/input';
+  import { listKeys, type ListAction } from '$lib/input/input';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobView } from '$lib/ipc/types';
-  import { run } from '$lib/state/run.svelte';
   import { move, toggleStar } from './actions';
   import { dragBands } from '$lib/platform';
   import { tokenPx } from '$lib/tokens';
@@ -97,13 +96,6 @@
     };
   });
   const place = $derived(placeOf(jobs.facet));
-
-  // F5, Ctrl/Cmd+R: Abrufen, like the button (while it is allowed).
-  $effect(() =>
-    onFetchKey(() => {
-      if (run.fetchBlocked === null && !run.active) void run.start({ kind: 'fetch' });
-    }),
-  );
 
   /** The jobs a single key acts on: the chosen ones, else the open one. */
   function targets(): JobView[] {

@@ -21,6 +21,7 @@ import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
 import type { RunRequest } from "./RunRequest";
 import type { SettingsPatch } from "./SettingsPatch";
+import type { WorkspacePick } from "./WorkspacePick";
 
 /** Every IPC command: its arguments and its result. */
 export type Commands = {
@@ -53,7 +54,7 @@ export type Commands = {
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };
   portal_logout: { args: { portal: Portal }; result: boolean };
-  pick_workspace: { args: Record<string, never>; result: string | null };
+  pick_workspace: { args: Record<string, never>; result: WorkspacePick | null };
   rewrite_txt: { args: Record<string, never>; result: ExportSummary };
   clear_txt: { args: Record<string, never>; result: ClearedTxt };
   open_target: { args: { target: OpenTarget }; result: null };

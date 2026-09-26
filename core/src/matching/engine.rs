@@ -570,16 +570,24 @@ fn final_score(adjusted: u64, cap: Option<u8>, unscorable: bool) -> (u8, u16) {
     (score, u16::try_from(adjusted).unwrap_or(1000))
 }
 
-/// The limits of an engagement (checks) and the exclusion words (they exclude).
+/// The limits of an engagement (checks) and the exclusion words (they exclude where they
+/// name the job itself: the title, the page's level, a sentence that states the role).
 fn limit_findings(
     criteria: &HardCriteria,
-    title: &str,
+    job: &JobInput<'_>,
     segments: &[Segment],
     ad: &AdFacts,
+    doc: &job::JobDoc,
 ) -> Vec<Finding> {
     let mut findings = limits::workload(criteria, ad);
     findings.extend(limits::duration(criteria, ad));
-    findings.extend(exclusion::check(criteria, title, segments));
+    findings.extend(exclusion::check(
+        criteria,
+        job.title,
+        &page_levels(job),
+        segments,
+        &doc.requirement_lines,
+    ));
     findings
 }
 
@@ -614,7 +622,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         &page_levels(job),
     ));
     let ad_facts = ad_facts::read(&facts, &segments, &folded, &stated_contract, &doc);
-    findings.extend(limit_findings(criteria, job.title, &segments, &ad_facts));
+    findings.extend(limit_findings(criteria, job, &segments, &ad_facts, &doc));
     let requirement_lines = doc.requirement_lines;
     let items = scored(profile, doc.items);
     let (fit_score, must_weight, nice_count) = fit_score(&items);

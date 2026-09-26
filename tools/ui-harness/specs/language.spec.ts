@@ -31,17 +31,14 @@ test('Sprache switches the whole app to English and back at once', async ({ page
     'aria-checked',
     'true',
   );
-  await expect(page.getByTestId('settings-language')).toContainText(
-    'Excel-Datei und Bericht folgen beim nächsten Abruf.',
-  );
+  // No hint: the Excel file and the report follow by themselves (settings.spec.ts).
+  await expect(page.getByTestId('settings-look')).toContainText('Sprache');
 
   await choice.getByRole('radio', { name: 'English' }).click();
   // The page switches before anything reloads: the sidebar, the headings, the document.
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
   await expect(page.getByTestId('nav-profile')).toContainText('Profile');
-  await expect(page.getByTestId('settings-language')).toContainText(
-    'The Excel file and the report switch at the next fetch.',
-  );
+  await expect(page.getByTestId('settings-look')).toContainText('Appearance');
   await expect(page.getByTestId('settings-fetch')).toContainText('Archive jobs after 30 days');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
@@ -55,6 +52,7 @@ test('Sprache switches the whole app to English and back at once', async ({ page
         autoArchiveDays: null,
         autoEmptyTrashDays: null,
         language: 'en',
+        palette: null,
       },
     },
   ]);
@@ -125,6 +123,6 @@ test('baseline: jobs with the reader in English', async ({ page }) => {
 
 test('baseline: settings in English', async ({ page }) => {
   await settings(page, EN);
-  await page.getByTestId('settings-language').scrollIntoViewIfNeeded();
+  await page.getByTestId('settings-look').scrollIntoViewIfNeeded();
   await expectShot(page, 'settings-en');
 });
