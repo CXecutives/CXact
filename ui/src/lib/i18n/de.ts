@@ -578,6 +578,8 @@ export const de = {
   portal: portalName,
   chips: {
     remove: (value: string) => `${value} entfernen`,
+    /** The chips a one-line field does not show (their values in its tooltip). */
+    more: (value: number) => `+${n(value)}`,
   },
   splitter: {
     label: 'Breite der Liste',

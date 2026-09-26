@@ -6,13 +6,15 @@
      With `for` (the id of its switch) the row works like a row of the system settings of
      Windows 11 and macOS: only the switch switches (user decision). The label names the
      switch and the hint describes it (`{for}-label`, and `{for}-hint` while there is a hint,
-     read by Toggle), but neither is a click target, and the row never reacts to the pointer. -->
+     read by Toggle), but neither is a click target, and the row never reacts to the pointer.
+     In a form (`form`, the switches of the Profil view) the label has the 13/500 of every
+     control label there. A row without a label (the language) leads with its hint. -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
 
   interface Props {
-    label: string;
+    label?: string | null;
     hint?: string | null;
     /** Badges next to the label (e.g. Verbunden). */
     badges?: Snippet | null;
@@ -22,17 +24,20 @@
     copyLabel?: boolean;
     /** The id of the switch this row labels (Toggle `id`). */
     for?: string | null;
+    /** A row of a form: the label in the size of every control label there (13/500). */
+    form?: boolean;
     testid?: string | null;
     children: Snippet;
   }
 
   let {
-    label,
+    label = null,
     hint = null,
     badges = null,
     copy = false,
     copyLabel = false,
     for: control = null,
+    form = false,
     testid = null,
     children,
   }: Props = $props();
@@ -47,15 +52,18 @@
   data-testid={testid ?? undefined}
 >
   <div class="text">
-    <span class="title">
-      <span
-        class="label"
-        class:path={copyLabel}
-        id={control !== null ? `${control}-label` : undefined}
-        data-copy={copyLabel ? '' : undefined}>{label}</span
-      >
-      {#if badges}{@render badges()}{/if}
-    </span>
+    {#if label !== null || badges}
+      <span class="title">
+        {#if label !== null}<span
+            class="label"
+            class:form
+            class:path={copyLabel}
+            id={control !== null ? `${control}-label` : undefined}
+            data-copy={copyLabel ? '' : undefined}>{label}</span
+          >{/if}
+        {#if badges}{@render badges()}{/if}
+      </span>
+    {/if}
     {#if hint}<p
         class="hint"
         class:path={copy}
@@ -104,6 +112,11 @@
   .label {
     color: var(--text);
     font: var(--type-md);
+    font-weight: var(--weight-medium);
+  }
+
+  .label.form {
+    font: var(--type-sm);
     font-weight: var(--weight-medium);
   }
 

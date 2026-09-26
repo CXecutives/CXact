@@ -1,7 +1,8 @@
 <!--
   Multi-line field for a longer text to paste or write (Claude's answer in the Profil view).
   Enter makes a new line; spellcheck, autocorrect and autocapitalize are off, like in every
-  field. Use inside Field for label, hint and error.
+  field, and its text has the 14 px of every field. Use inside Field for label, hint and
+  error.
 -->
 <script lang="ts">
   import { FIELD_ATTRIBUTES } from '$lib/input/input';
@@ -69,7 +70,7 @@
     border-radius: var(--radius-control);
     background-color: var(--surface);
     color: var(--text);
-    font: var(--type-md);
+    font: var(--type-field);
     resize: vertical;
     outline: none;
     transition: border-color var(--dur-fast) var(--ease-standard);

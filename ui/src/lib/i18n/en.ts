@@ -581,6 +581,7 @@ export const en: Catalog = {
   portal: portalName,
   chips: {
     remove: (value: string) => `Remove ${value}`,
+    more: (value: number) => `+${n(value)}`,
   },
   splitter: {
     label: 'Width of the list',
