@@ -69,3 +69,18 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
   `src-tauri/src/commands/**`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
 - Remove worktrees right after merging and run `cargo clean` there (disk).
 - macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
+
+## Speed and tokens (project rules, user 2026-09-26)
+Fast AND lean: the cost comes from extra work, not from speed. So:
+- Only what pays off. Decide before building (product questions in one round, with a recommendation), so nothing
+  is built twice. Deliver what the user can see first (preview early), background work after.
+- Small UI changes (text, colour, spacing, order, a fact, an icon): the main session edits directly, no subagent,
+  no worktree, only the affected specs in Chromium, rebuild the preview; minutes, not hours.
+- Subagents only for large, independent chunks with disjoint files and a precise brief. No review or audit agents
+  except for data safety, security and backend removals; never confirmation audits.
+- Verify where it is uncertain: cheap gates always (`npm run check`, clippy, Rust tests); UI specs of the changed
+  area only; the full harness in both engines once before a push; never re-verify what is proven.
+- One source per decision: the palette in `ui/src/styles/tokens.css` (+ `npm run regen`), decision tables such as
+  `ui/src/lib/facts.ts`, one command table. `docs/CHANGING.md` says where each kind of change goes.
+- Tests check behaviour through shared helpers and read texts from the catalog; screenshot baselines run on request.
+- Report at milestones only, state durations honestly beforehand, watch the plan's token use.
