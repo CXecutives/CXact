@@ -30,7 +30,8 @@ months: number | null,
  */
 remoteFrom: number | null, remoteTo: number | null, 
 /**
- * Contract type: `interim`, `permanent` or `anue` (`null` when unclear).
+ * Contract type: `interim` (management), `freelance` (a project), `permanent` or `anue`
+ * (`null` when unclear).
  */
 contract: string | null, 
 /**

@@ -49,6 +49,8 @@ pub(crate) struct AdFacts {
     pub contract: ContractKind,
     /// The contract type rests on a statement (a page fact or a sentence), not on hints.
     pub contract_stated: bool,
+    /// The contract type as the interface names it (`Contract::code`).
+    pub contract_code: &'static str,
     pub contract_span: Option<Range<usize>>,
     /// Stated annual salary (a monthly one times twelve).
     pub salary: Option<Stated<u64>>,
@@ -107,6 +109,7 @@ pub(crate) fn read(
         location,
         contract: contract.kind,
         contract_stated: !contract.inferred && (contract_fact || contract_span.is_some()),
+        contract_code: contract.code,
         contract_span,
         salary: salary
             .as_ref()
@@ -357,7 +360,7 @@ impl AdFacts {
             remote_from: self.remote.map(|(from, _)| percent(from)),
             remote_to: self.remote.map(|(_, to)| percent(to)),
             contract: match self.contract {
-                ContractKind::Interim if self.contract_stated => Some("interim".into()),
+                ContractKind::Interim if self.contract_stated => Some(self.contract_code.into()),
                 ContractKind::Permanent if self.contract_stated => Some("permanent".into()),
                 ContractKind::Anue => Some("anue".into()),
                 _ => None,

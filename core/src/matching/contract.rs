@@ -44,6 +44,10 @@ pub(crate) struct Contract {
     pub inferred: bool,
     /// A staffing agency without contract details.
     pub agency: bool,
+    /// The contract type as the interface names it: interim work is `interim` when it is
+    /// interim management (`Interim`, `Management auf Zeit`), else `freelance` (a project);
+    /// the others by their kind.
+    pub code: &'static str,
     /// The ad states a permanent role (also when interim wording contradicts it).
     pub stated_permanent: bool,
     /// Sentences with the deciding cues.
@@ -124,10 +128,18 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
     let portal_interim = matches!(job.portal, Portal::Freelancermap | Portal::FreelanceDe);
     let decided_anue = anue.iter().any(|f| f.decided);
     let student = student_role(job.title);
+    let management = any(&title, lex::INTERIM_MANAGEMENT_CUES)
+        || segments
+            .iter()
+            .any(|(_, f)| !denied(f) && any(f, lex::INTERIM_MANAGEMENT_CUES));
     let contract = |kind, inferred, spans| Contract {
         kind,
         inferred,
         agency: agency && kind == ContractKind::Unclear,
+        code: match kind {
+            ContractKind::Interim if !management => "freelance",
+            kind => kind.name(),
+        },
         stated_permanent: stated,
         spans,
     };

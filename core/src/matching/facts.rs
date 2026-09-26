@@ -569,7 +569,7 @@ pub(crate) fn check(
         ReasonCode::ContractType,
         row,
         None,
-        json!({ "type": contract.kind.name(), "inferred": inferred }),
+        json!({ "type": contract.code, "inferred": inferred }),
         contract.spans.clone(),
     ));
     if contract.kind == ContractKind::Permanent || contract.stated_permanent {

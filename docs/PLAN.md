@@ -591,9 +591,8 @@ as the parts land on `main`.
   Konditionen read the same table (one icon per value). An excluded row names why on line 3
   with the ban icon (its ring is a grey number without a mark); "Einbezogen" for a job counted
   anyway; dots only in the inbox. `KeyFacts` carries the stated annual salary in euros
-  (`salary`, `salaryLowerBound`) since 2026-09-26. Open for the backend: a `freelance` contract kind (core sends interim, permanent,
-  anue; the stub shows Freiberuflich), and the contract of an inferred type (core sends none,
-  the stub shows it).
+  (`salary`, `salaryLowerBound`) since 2026-09-26. The contract kind names interim
+  management `interim` and a freelance project `freelance` (the rules read both as one kind).
   S favourite, O open the ad; shown in tooltips and menus.
 - Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions
   only (rate first), an excluded row names why and keeps its fit as a grey number with a ban

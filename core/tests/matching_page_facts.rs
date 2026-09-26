@@ -91,13 +91,15 @@ fn an_associate_level_is_a_check_and_a_senior_one_nothing() {
 }
 
 #[test]
-fn a_limited_employment_type_is_interim() {
+fn a_limited_employment_type_is_project_work() {
+    // LinkedIn's "Befristet" is interim work; without interim management words it is named a
+    // freelance project.
     assert_eq!(
         run(&json!({ "contract": "Befristet" }))
             .facts
             .contract
             .as_deref(),
-        Some("interim")
+        Some("freelance")
     );
     assert_ne!(
         run(&json!({ "contract": "Vollzeit" }))

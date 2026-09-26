@@ -423,7 +423,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
         },
         if c.anue_excluded {
             let params = if anue_ok {
-                json!({ "contract": ad.contract.name() })
+                json!({ "contract": ad.contract_code })
             } else {
                 json!({})
             };
@@ -436,7 +436,7 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             // Met only where the ad states an interim role.
             let ok = ad.contract_stated && ad.contract == ContractKind::Interim;
             let params = if ok {
-                json!({ "contract": ad.contract.name() })
+                json!({ "contract": ad.contract_code })
             } else {
                 json!({})
             };

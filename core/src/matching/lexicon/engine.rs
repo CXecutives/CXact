@@ -2220,6 +2220,16 @@ pub(crate) const INTERIM_CUES: &[&str] = &[
     "ubergangsweise",
     "fractional",
 ];
+/// Interim management among the interim cues (the rest is freelance project work): only
+/// the name of the contract type shown differs, the rules read both as one kind.
+pub(crate) const INTERIM_MANAGEMENT_CUES: &[&str] = &[
+    "interim",
+    "auf zeit",
+    "vakanzuberbruckung",
+    "ubergangsgeschaftsfuhr",
+    "ubergangsweise",
+    "fractional",
+];
 /// A stated permanent position (in addition to [`PERMANENT_WORDS`]).
 pub(crate) const PERMANENT_STATED: &[&str] = &[
     "festangestellt",

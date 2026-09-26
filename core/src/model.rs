@@ -269,7 +269,8 @@ pub struct KeyFacts {
     /// Remote share in percent, from and to (equal when the ad states one share).
     pub remote_from: Option<u8>,
     pub remote_to: Option<u8>,
-    /// Contract type: `interim`, `permanent` or `anue` (`null` when unclear).
+    /// Contract type: `interim` (management), `freelance` (a project), `permanent` or `anue`
+    /// (`null` when unclear).
     pub contract: Option<String>,
     /// Workload in percent of a five-day week, from and to (full-time 100, `3 Tage/Woche`
     /// 60, `20 h/Woche` 50; part-time without a number has no `from` and `to` 80); left out

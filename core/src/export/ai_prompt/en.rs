@@ -292,6 +292,7 @@ impl Wording for English {
     fn contract(&self, kind: &str, inferred: bool) -> String {
         let name = match kind {
             "interim" => "interim",
+            "freelance" => "freelance",
             "permanent" => "permanent",
             "anue" => "temporary agency work",
             _ => return "unclear".to_owned(),
@@ -646,11 +647,13 @@ impl Wording for English {
             ReasonCode::ContractType => {
                 let inferred = flag(p, "inferred");
                 match (text_param(p, "type"), inferred) {
-                    (Some(kind @ ("interim" | "permanent" | "anue")), true) => format!(
-                        "The contract type is presumably {}; the ad does not say so explicitly.",
-                        self.contract(kind, false)
-                    ),
-                    (Some(kind @ ("interim" | "permanent" | "anue")), false) => {
+                    (Some(kind @ ("interim" | "freelance" | "permanent" | "anue")), true) => {
+                        format!(
+                            "The contract type is presumably {}; the ad does not say so explicitly.",
+                            self.contract(kind, false)
+                        )
+                    }
+                    (Some(kind @ ("interim" | "freelance" | "permanent" | "anue")), false) => {
                         format!("The contract type is {}.", self.contract(kind, false))
                     }
                     _ => "The contract type is unclear.".to_owned(),

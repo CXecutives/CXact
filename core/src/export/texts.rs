@@ -29,6 +29,7 @@ pub const PLACE_ARCHIVE: &str = "Archiv";
 pub const CONTRACT_INTERIM: &str = "Interim";
 pub const CONTRACT_PERMANENT: &str = "Festanstellung";
 pub const CONTRACT_ANUE: &str = "Arbeitnehmerüberlassung";
+pub const CONTRACT_FREELANCE: &str = "Freiberuflich";
 /// Why an excluded job the user counts anyway is in the list.
 pub const OVERRIDDEN: &str = "Manuell einbezogen";
 
@@ -286,6 +287,7 @@ pub mod en {
     pub const CONTRACT_INTERIM: &str = "Interim";
     pub const CONTRACT_PERMANENT: &str = "Permanent";
     pub const CONTRACT_ANUE: &str = "Temporary agency work";
+    pub const CONTRACT_FREELANCE: &str = "Freelance";
     pub const OVERRIDDEN: &str = "Included by you";
 
     pub fn info_portal(label: &str) -> String {
@@ -542,7 +544,7 @@ pub struct Texts {
     pub place_inbox: &'static str,
     pub place_archive: &'static str,
     /// Interim, permanent, temporary agency work.
-    contracts: [&'static str; 3],
+    contracts: [&'static str; 4],
     pub overridden: &'static str,
     info_portal: fn(&str) -> String,
     health_off: &'static str,
@@ -631,7 +633,12 @@ pub const DE: Texts = Texts {
     link_mail: LINK_MAIL,
     place_inbox: PLACE_INBOX,
     place_archive: PLACE_ARCHIVE,
-    contracts: [CONTRACT_INTERIM, CONTRACT_PERMANENT, CONTRACT_ANUE],
+    contracts: [
+        CONTRACT_INTERIM,
+        CONTRACT_PERMANENT,
+        CONTRACT_ANUE,
+        CONTRACT_FREELANCE,
+    ],
     overridden: OVERRIDDEN,
     info_portal,
     health_off: HEALTH_OFF,
@@ -713,6 +720,7 @@ pub const EN: Texts = Texts {
         en::CONTRACT_INTERIM,
         en::CONTRACT_PERMANENT,
         en::CONTRACT_ANUE,
+        en::CONTRACT_FREELANCE,
     ],
     overridden: en::OVERRIDDEN,
     info_portal: en::info_portal,
@@ -816,12 +824,14 @@ impl Texts {
         crate::time::local(ts).strftime(self.day).to_string()
     }
 
-    /// A contract type's word (`interim`, `permanent`, `anue`); `None` when unclear.
+    /// A contract type's word (`interim`, `freelance`, `permanent`, `anue`); `None` when
+    /// unclear.
     pub fn contract(&self, code: &str) -> Option<&'static str> {
         match code {
             "interim" => Some(self.contracts[0]),
             "permanent" => Some(self.contracts[1]),
             "anue" => Some(self.contracts[2]),
+            "freelance" => Some(self.contracts[3]),
             _ => None,
         }
     }

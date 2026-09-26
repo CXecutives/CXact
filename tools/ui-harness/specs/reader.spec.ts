@@ -487,6 +487,14 @@ test.describe('Konditionen', () => {
     }
   });
 
+  test('interim management is Interim, a freelance project Freiberuflich', async ({ page }) => {
+    await open(page, WIN);
+    await openJob(page, 'freelancermap-2801');
+    expect((await cell(page, 'contract'))[0]).toBe('Interim');
+    await openJob(page, 'freelance-900413');
+    expect((await cell(page, 'contract'))[0]).toBe('Freiberuflich');
+  });
+
   test('a permanent job: its salary, no end, the type its salary states', async ({ page }) => {
     await open(page, WIN);
     await openJob(page, 'linkedin-4100200303');
