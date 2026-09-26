@@ -6,7 +6,9 @@
 // A change is one entry here: a new fact is a new entry (its words in the catalog `facts`), a
 // fact moves by moving its entry, another icon is another name here (Icon.svelte holds the
 // glyphs). The row shows every fact the ad names, as many as fit whole; the reader's rows are
-// the entries with a `term`.
+// the `term`s of the entries, in their order. Several entries may stand for one reader row
+// (the pay in euros or in another currency, the remote share or the work mode): the row then
+// takes the icon of the entry whose value it shows, so a value has one icon everywhere.
 
 import type { IconName } from '$components/Icon.svelte';
 import { formatShortDate } from '$lib/i18n/format';
@@ -17,7 +19,8 @@ import type { JobView, KeyFacts } from '$lib/ipc/types';
 export type TermKey = keyof typeof t.reader.term;
 
 /** The facts as the row reads them. `salary` (the annual pay of a permanent job) is not yet a
- *  field of the backend's KeyFacts: the row shows it as soon as the facts carry it. */
+ *  field of the backend's KeyFacts (open in docs/PLAN.md): the row and the reader show it as
+ *  soon as the facts carry it under this name. */
 type Facts = KeyFacts & { salary?: number | null };
 
 export interface Fact {
@@ -26,13 +29,17 @@ export interface Fact {
   /** The fact in the words of a list row ("1.200/Tag"); null when the ad does not say it
    *  (and for a row of the reader the list row leaves out). */
   format: (job: JobView) => string | null;
-  /** The reader's row that stands for it; null: the list row only. */
+  /** The reader's row it stands for (several entries may share one); null: the list row
+   *  only. */
   term: TermKey | null;
   /** Drawn in ink (the pay); the other facts are muted. */
   ink?: boolean;
 }
 
 const factsOf = (job: JobView): Facts | null => job.match?.facts ?? null;
+
+/** The annual salary a permanent job states, or null. */
+export const salaryOf = (job: JobView): number | null => factsOf(job)?.salary ?? null;
 
 /** The remote share, from and to (one of the two stands for both), or null. */
 function share(facts: Facts | null): [number, number] | null {
@@ -51,7 +58,7 @@ function pay(job: JobView, currency: 'euro' | 'other'): string | null {
     if (euro !== (currency === 'euro')) return null;
     return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', code);
   }
-  const salary = facts.salary ?? null;
+  const salary = salaryOf(job);
   return salary !== null && currency === 'euro' ? t.facts.pay(salary, 'year', null) : null;
 }
 
@@ -105,7 +112,7 @@ export const FACTS = [
     key: 'foreignMoney',
     icon: 'banknote',
     format: (job) => pay(job, 'other'),
-    term: null,
+    term: 'rate',
     ink: true,
   },
   { key: 'start', icon: 'calendar', format: start, term: 'start' },
@@ -120,7 +127,7 @@ export const FACTS = [
   },
   { key: 'workload', icon: 'clock', format: workload, term: null },
   { key: 'remote', icon: 'house', format: remote, term: 'remote' },
-  { key: 'mode', icon: 'building-2', format: mode, term: null },
+  { key: 'mode', icon: 'building-2', format: mode, term: 'remote' },
   { key: 'place', icon: 'map-pin', format: readerOnly, term: 'place' },
   { key: 'experience', icon: 'award', format: readerOnly, term: 'experience' },
 ] as const satisfies readonly Fact[];
@@ -148,12 +155,15 @@ export function rowFacts(job: JobView): RowFact[] {
   return out;
 }
 
-/** The reader's rows in their order (the entries with a `term`). */
-export const TERM_ROWS: readonly TermKey[] = (FACTS as readonly Fact[]).flatMap((fact) =>
-  fact.term === null ? [] : [fact.term],
-);
+/** The reader's rows in their order (each `term` of the table once, where it first stands). */
+export const TERM_ROWS: readonly TermKey[] = [
+  ...new Set((FACTS as readonly Fact[]).flatMap((fact) => (fact.term === null ? [] : [fact.term]))),
+];
 
-/** The icon of a reader row: the icon of its fact. */
-export function termIcon(term: TermKey): IconName {
-  return (FACTS as readonly Fact[]).find((fact) => fact.term === term)?.icon ?? 'info';
+/** The icon of a reader row for a job: the icon of the entry whose value the job has (a CHF
+ *  rate its banknote, a hybrid job its building), else of the row's first entry. */
+export function termIcon(term: TermKey, job: JobView | null = null): IconName {
+  const entries = (FACTS as readonly Fact[]).filter((fact) => fact.term === term);
+  const shown = job === null ? undefined : entries.find((fact) => fact.format(job) !== null);
+  return (shown ?? entries[0])?.icon ?? 'info';
 }

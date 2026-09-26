@@ -347,7 +347,7 @@ test('the star pins from the list without opening the job', async ({ page }) => 
   await expect(job.locator('.tools')).toHaveCount(0);
   await row(page, key).hover();
   await expect(star).toHaveCSS('opacity', '1');
-  await expect(job.locator('.end')).toHaveCSS('opacity', '0');
+  await expect(job.locator('.date')).toHaveCSS('opacity', '0');
   await pin.click();
   await expect(pin).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('reader')).toHaveCount(0);
@@ -362,7 +362,7 @@ test('the star pins from the list without opening the job', async ({ page }) => 
       [...node.querySelectorAll('.tool')].some((tool) => getComputedStyle(tool).opacity !== '0'),
     );
   await expect.poll(toolShown).toBe(false);
-  await expect(job.locator('.end')).toHaveCSS('opacity', '1');
+  await expect(job.locator('.date')).toHaveCSS('opacity', '1');
   await expect(job.locator('.mark')).toBeVisible();
 });
 

@@ -285,7 +285,9 @@ test('Konditionen: fixed rows in a fixed order, verdicts in words, never "genann
     'freelancermap-2803',
   ]) {
     await show(page, key);
-    expect(await terms(page).locator('.term-name').allInnerTexts(), key).toEqual(ROWS);
+    // A permanent job that states its salary names its pay row so.
+    const names = key === 'linkedin-4100200303' ? ROWS.with(1, 'Gehalt') : ROWS;
+    expect(await terms(page).locator('.term-name').allInnerTexts(), key).toEqual(names);
     await expect(terms(page)).not.toContainText('genannt');
     for (const cell of await cells(page)) {
       expect(VERDICTS, `${key} ${cell.name}`).toContain(cell.verdict);

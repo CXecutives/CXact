@@ -1033,8 +1033,9 @@ export const de = {
   facts: {
     now: 'ab sofort',
     from: (date: string) => `ab ${date}`,
-    /** A start the ad leaves to the earliest date ("zum nächstmöglichen Zeitpunkt"). */
-    soon: 'nächstmöglich',
+    /** A start still to be agreed (the engine's `vague`: "nach Absprache", "flexibel",
+     *  "zeitnah"). */
+    soon: 'nach Absprache',
     months: (value: number) => count(value, 'Monat', 'Monate'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'voll remote';
@@ -1107,6 +1108,9 @@ export const de = {
       unclear: 'unklar',
     },
     rateOpen: 'nach Absprache',
+    /** The row "Tagessatz" of a permanent job that states its annual salary instead. */
+    salaryName: 'Gehalt',
+    salary: (amount: number) => `${formatMoney(amount, null)}/Jahr`,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`

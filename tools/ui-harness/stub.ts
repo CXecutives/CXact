@@ -235,11 +235,10 @@ const NO_FACTS = {
   contract: null,
 };
 
-/** A permanent job's facts: its annual salary (`salary`, beside the backend's key facts), a
- *  start date and a remote share. */
+/** A permanent job's facts: its annual salary (`salary`, beside the backend's key facts; open
+ *  in docs/PLAN.md), a start date and a remote share. */
 const SALARIED = {
   ...NO_FACTS,
-  contract: 'permanent',
   salary: 95_000,
   start: '2026-11-01',
   remoteFrom: 40,
@@ -297,9 +296,9 @@ function contractOf(j: JobView): { type: string; inferred: boolean } {
   return CONTRACTS[j.key.id] ?? { type: 'interim', inferred: false };
 }
 
-/** A match whose facts name the contract of its ad (CONTRACTS) where they name none. */
+/** A match whose facts name the contract of its ad (CONTRACTS; none while it is unclear). */
 function contracted(match: Match | null, id: string): Match | null {
-  if (match === null || match.facts.contract !== null) return match;
+  if (match === null) return null;
   const type = CONTRACTS[id]?.type ?? 'interim';
   return { ...match, facts: { ...match.facts, contract: type === 'unclear' ? null : type } };
 }
@@ -373,7 +372,6 @@ function sampleJobs(): JobView[] {
             months: 6,
             remoteFrom: 60,
             remoteTo: 60,
-            contract: 'interim',
           },
         },
       },
@@ -397,7 +395,6 @@ function sampleJobs(): JobView[] {
             start: 'now',
             remoteFrom: 100,
             remoteTo: 100,
-            contract: 'interim',
           },
         },
       },
@@ -1555,7 +1552,7 @@ function frameOf(
     facts.start === 'now'
       ? 'Start ab sofort'
       : facts.start === 'vague'
-        ? 'Start zum nächstmöglichen Zeitpunkt'
+        ? 'Start nach Absprache'
         : facts.start === null
           ? ''
           : `Start zum ${new Date(facts.start).toLocaleDateString('de-DE')}`;
@@ -1588,6 +1585,8 @@ function frameOf(
     [start, months].filter((part) => part !== '').join(', '),
     [rate, workload, remote].filter((part) => part !== '').join(', '),
   ].filter((sentence) => sentence !== '');
+  // An ad that states no frame has no block for it.
+  if (sentences.length === 0) return { start: '', rate: '', remote: '', text: '' };
   return {
     start,
     rate,

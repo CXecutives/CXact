@@ -951,7 +951,7 @@ export const en: Catalog = {
   facts: {
     now: 'starts now',
     from: (date: string) => `from ${date}`,
-    soon: 'as soon as possible',
+    soon: 'to be agreed',
     months: (value: number) => count(value, 'month', 'months'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'fully remote';
@@ -1009,6 +1009,8 @@ export const en: Catalog = {
       unclear: 'unclear',
     },
     rateOpen: 'negotiable',
+    salaryName: 'Salary',
+    salary: (amount: number) => `${formatMoney(amount, null)}/year`,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} to ${count(max, 'year', 'years')}`

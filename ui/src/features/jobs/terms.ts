@@ -10,7 +10,7 @@
 // ROW_OF_CODE, its criterion into ROW_OF_CRITERION.
 
 import type { IconName } from '$components/Icon.svelte';
-import { TERM_ROWS, termIcon, type TermKey } from '$lib/facts';
+import { salaryOf, TERM_ROWS, termIcon, type TermKey } from '$lib/facts';
 import { formatDate } from '$lib/i18n/format';
 import type { CriterionKey } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
@@ -177,14 +177,14 @@ function build(key: TermKey, input: TermInput): TermRow {
   const row = (
     value: string | null,
     verdict: Verdict | null,
-    extra: { note?: string | null; profile?: string | null } = {},
+    extra: { note?: string | null; profile?: string | null; name?: string } = {},
   ): TermRow => {
     const open = value === null;
     const judged = withVerdict ? verdict : null;
     return {
       key,
-      name: t.reader.term[key],
-      icon: termIcon(key),
+      name: extra.name ?? t.reader.term[key],
+      icon: termIcon(key, job),
       value: value ?? t.reader.termOpen,
       open,
       note: open ? null : (extra.note ?? null),
@@ -226,6 +226,10 @@ function build(key: TermKey, input: TermInput): TermRow {
             : null;
       const min = profile?.criteria.minDayRate ?? num(p.min);
       const wished = profile?.wishes.dayRate ?? num(wish?.params.wish);
+      // A permanent job that states its annual salary instead: the row names it (as the list
+      // row does, lib/facts.ts).
+      const salary = value === null ? salaryOf(job) : null;
+      if (salary !== null) return row(t.reader.salary(salary), null, { name: t.reader.salaryName });
       return row(value, rule ? criterionVerdict(rule) : wish ? wishVerdict(wish) : null, {
         profile: min === null && wished === null ? null : t.reader.profileSide.rate(min, wished),
       });
@@ -233,12 +237,15 @@ function build(key: TermKey, input: TermInput): TermRow {
     case 'start': {
       const rule = criterion('availability');
       const start = text(rule?.params.start) ?? facts?.start ?? null;
+      // The words of the list row (lib/facts.ts); a date in full.
       const value =
-        start === 'now'
-          ? t.facts.now
-          : start !== null && start !== 'vague'
-            ? t.facts.from(formatDate(start))
-            : null;
+        start === null
+          ? null
+          : start === 'now'
+            ? t.facts.now
+            : start === 'vague'
+              ? t.facts.soon
+              : t.facts.from(formatDate(start));
       const available = profile?.criteria.available;
       return row(value, rule ? criterionVerdict(rule) : null, {
         profile:

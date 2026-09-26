@@ -19,8 +19,9 @@
      why instead, with the ban icon (its ring is grey, without a mark).
   Without a usable profile the ring stays, empty (a dash), and the row keeps its facts.
   Like Mail and Gmail, the row's tools sit over the end of the title line: on hover (or when
-  a tool has the keyboard focus) star, tile and date fade out and the tools (archive or bring
-  back, delete, the star) fade in (100 ms); the title line keeps their room free. A pinned job
+  a tool has the keyboard focus) star and date fade out and the tools (archive or bring back,
+  delete, the star) fade in (100 ms); the portal's tile stays, just before them, so its tooltip
+  (the other portals of a "+1") can be reached; the title line keeps their room free. A pinned job
   shows its star there (not in the Papierkorb, where no job is a favourite). The list is one
   Tab stop (the row the list names with `tabbable`; the arrows move in it): the tools are
   for the pointer and stay out of the Tab order, the reader offers the same actions.
@@ -523,35 +524,38 @@
   }
 
   .end {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
     justify-content: flex-end;
     gap: var(--space-6);
     height: var(--leading-title);
-    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
-  /* The tools take the date's place only while they show: then the title ends before them. */
+  /* The tools take the place of the star and the date only while they show: the tile stays
+     just before them (its tooltip names the other portals) and the title ends before it. */
   .tooled:hover:where(:not([data-still])) .end.one,
   .tooled:has(.tool :global(:focus-visible)) .end.one {
-    min-width: var(--control-sm);
+    padding-inline-end: calc(var(--control-sm) + var(--space-6));
   }
 
   .tooled:hover:where(:not([data-still])) .end.two,
   .tooled:has(.tool :global(:focus-visible)) .end.two {
-    min-width: calc(2 * var(--control-sm) + var(--space-2));
+    padding-inline-end: calc(2 * var(--control-sm) + var(--space-2) + var(--space-6));
   }
 
   .tooled:hover:where(:not([data-still])) .end.three,
   .tooled:has(.tool :global(:focus-visible)) .end.three {
-    min-width: calc(3 * var(--control-sm) + 2 * var(--space-2));
+    padding-inline-end: calc(3 * var(--control-sm) + 2 * var(--space-2) + var(--space-6));
   }
 
   /* A pinned job: a small star before the portal's tile and the date. */
   .mark {
     display: inline-flex;
+    align-items: center;
     color: var(--pressed);
+    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
   /* The relative date at the end of the title line; it steps up from subtle to muted on
@@ -561,7 +565,9 @@
     color: var(--text-subtle);
     font: var(--type-title);
     white-space: nowrap;
-    transition: color var(--dur-base) var(--ease-standard);
+    transition:
+      color var(--dur-base) var(--ease-standard),
+      opacity var(--dur-fast) var(--ease-standard);
   }
 
   .stamp {
@@ -662,8 +668,13 @@
     min-height: var(--row-height);
   }
 
-  .tooled:hover:where(:not([data-still])) .end,
-  .tooled:has(.tool :global(:focus-visible)) .end {
+  /* Star and date leave the line under the tools and fade out there (the tile keeps its
+     place before the tools). */
+  .tooled:hover:where(:not([data-still])) :is(.mark, .date),
+  .tooled:has(.tool :global(:focus-visible)) :is(.mark, .date) {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
     opacity: 0;
     transition-duration: var(--dur-fast);
   }

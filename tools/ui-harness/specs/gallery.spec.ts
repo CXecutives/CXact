@@ -261,18 +261,23 @@ test('a row: the date ends the title line, the tools take its place on hover', a
   const foot = await box('.foot');
   expect(meta.x + meta.width).toBeGreaterThan(date.x + date.width - 1);
   expect(foot.x + foot.width).toBeGreaterThan(date.x + date.width - 1);
-  // On hover the date and its star give way to the tools, which sit over them.
-  const end = job.locator('.end');
+  // On hover the date and its star give way to the tools, which sit over them; the portal's
+  // tile stays, just before them.
+  const end = job.locator('.date');
   const tools = job.locator('.tools');
   await expect(end).toHaveCSS('opacity', '1');
   await job.hover({ position: { x: 120, y: 30 } });
   await expect(end).toHaveCSS('opacity', '0');
+  await expect(job.locator('.mark')).toHaveCSS('opacity', '0');
+  await expect(job.locator('.portal')).toHaveCSS('opacity', '1');
   await expect(tools.locator('.tool').last()).toHaveCSS('opacity', '1');
   const over = (await tools.boundingBox())!;
   expect(Math.abs(over.x + over.width - (date.x + date.width))).toBeLessThan(1);
   expect(Math.abs(over.y + over.height / 2 - (date.y + date.height / 2))).toBeLessThan(2);
   // The title never runs under them: its line keeps their room free.
   expect(title.x + title.width).toBeLessThanOrEqual(over.x);
+  const tile = await box('.portal');
+  expect(tile.x + tile.width).toBeLessThanOrEqual(over.x);
   // The tools are for the pointer: Tab leaves the row (the list is one Tab stop), the date
   // stays.
   await page.mouse.move(0, 0);
