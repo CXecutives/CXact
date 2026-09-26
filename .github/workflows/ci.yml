@@ -205,6 +205,55 @@ jobs:
         working-directory: src-tauri
         run: npx --no-install tauri build --bundles nsis
 
+      # macOS 26 draws the app icon from an Icon Composer package (src-tauri/icons/CXact.icon,
+      # written by tools/icon.py): the system adds shape, glass and shadow. macOS 14 and 15 keep
+      # icon.icns (CFBundleIconFile). `tauri build` crashes when bundle.icon lists a .icon
+      # (tauri-apps/tauri#15315), so actool (Xcode 26 or later) compiles it here and the
+      # release build gets the result through a config overlay: Tauri 2.11 copies a .car from
+      # bundle.icon to Contents/Resources, and the overlay's Info.plist adds
+      # CFBundleIconName = CXact. Merged configs replace arrays, so the overlay repeats the
+      # macOS config's icons. Xcode 26 serves actool only: the app itself keeps being built
+      # with the runner's default Xcode and SDK.
+      - name: Compile the macOS 26 icon (Icon Composer)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          actool_major() {
+            xcrun actool --version --output-format human-readable-text 2>/dev/null \
+              | awk '/short-bundle-version/ { split($2, v, "."); print v[1] }' || true
+          }
+          major=$(actool_major)
+          if [ "${major:-0}" -lt 26 ]; then
+            xcode=$(ls -d /Applications/Xcode_26*.app /Applications/Xcode-26*.app 2>/dev/null \
+              | sort -V | tail -n 1 || true)
+            if [ -z "$xcode" ]; then
+              echo "::error::no Xcode 26 on the runner (actool ${major:-unknown}) - the .icon cannot be compiled."
+              exit 1
+            fi
+            export DEVELOPER_DIR="$xcode/Contents/Developer"
+          fi
+          xcrun actool --version --output-format human-readable-text
+          out="$RUNNER_TEMP/icon-composer"
+          mkdir -p "$out"
+          xcrun actool src-tauri/icons/CXact.icon --compile "$out" \
+            --output-format human-readable-text --notices --warnings --errors \
+            --output-partial-info-plist "$out/partial.plist" \
+            --app-icon CXact --include-all-app-icons \
+            --enable-on-demand-resources NO --development-region en \
+            --target-device mac --minimum-deployment-target 26.0 --platform macosx
+          ls -l "$out"
+          cp "$out/partial.plist" artifacts/logs/icon-composer-partial.plist
+          test -s "$out/Assets.car"
+          xcrun assetutil --info "$out/Assets.car" > artifacts/logs/icon-composer-assets.json
+          head -c 2000 artifacts/logs/icon-composer-assets.json
+          /usr/libexec/PlistBuddy -c 'Add :CFBundleIconName string CXact' "$out/icon-name.plist"
+          jq --arg car "$out/Assets.car" --arg plist "$out/icon-name.plist" \
+            '{bundle: {icon: (.bundle.icon + [$car]), macOS: {infoPlist: $plist}}}' \
+            src-tauri/tauri.macos.conf.json > "$out/tauri.icon.conf.json"
+          cat "$out/tauri.icon.conf.json"
+          echo "ICON_CONFIG=$out/tauri.icon.conf.json" >> "$GITHUB_ENV"
+
       # The ad-hoc signature ("-") is set in tauri.macos.conf.json: on Apple silicon an
       # unsigned bundle does not run at all. No developer account, no notarization.
       - name: Release bundle (macOS)
@@ -213,11 +262,41 @@ jobs:
         working-directory: src-tauri
         run: |
           code=0
-          npx --no-install tauri build --target aarch64-apple-darwin --bundles app,dmg || code=$?
+          npx --no-install tauri build --target aarch64-apple-darwin --bundles app,dmg \
+            --config "$ICON_CONFIG" || code=$?
           if [ "$code" -ne 0 ]; then
             echo "::warning::dmg failed on the runner - building the .app only."
-            npx --no-install tauri build --target aarch64-apple-darwin --bundles app
+            npx --no-install tauri build --target aarch64-apple-darwin --bundles app \
+              --config "$ICON_CONFIG"
           fi
+
+      # Both icons are in the .app: Assets.car named by CFBundleIconName for macOS 26 and
+      # icon.icns as CFBundleIconFile for macOS 14 and 15.
+      - name: Check the app icons (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -u
+          app=target/aarch64-apple-darwin/release/bundle/macos/CXact.app
+          plist="$app/Contents/Info.plist"
+          name=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$plist" 2>/dev/null || true)
+          file=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$plist" 2>/dev/null || true)
+          echo "CFBundleIconName '$name', CFBundleIconFile '$file'"
+          ls -l "$app/Contents/Resources"
+          failed=0
+          if [ ! -s "$app/Contents/Resources/Assets.car" ]; then
+            echo "::error::the app has no Contents/Resources/Assets.car."
+            failed=1
+          fi
+          if [ "$name" != "CXact" ]; then
+            echo "::error::Info.plist has CFBundleIconName '$name', not CXact."
+            failed=1
+          fi
+          if [ "$file" != "icon.icns" ] || [ ! -s "$app/Contents/Resources/icon.icns" ]; then
+            echo "::error::CFBundleIconFile is '$file', the macOS 14 and 15 icon is missing."
+            failed=1
+          fi
+          exit $failed
 
       # The release binary (the one inside the installer) starts and stays up.
       - name: Release probe (Windows)

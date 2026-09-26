@@ -5,39 +5,52 @@ One geometry, every output:
                               apps on the desktop and in the taskbar (48 of 48 px). One stage
                               for every size the shell asks for at 100 to 200 % (see SIZES),
                               48 first: Tauri takes the first entry as the window icon
-  src-tauri/icons/icon.icns   macOS: plate 824 of 1024 with Apple's margin, no shadow (macOS
-                              draws depth itself)
+  src-tauri/icons/icon.icns   macOS 14 and 15: Apple's grid - plate 824 of 1024, margin 100,
+                              fractional at the smaller entries - over Apple's template drop
+                              shadow, which those systems do not draw themselves (see
+                              SHADOW_OPACITY). The plate itself is the Windows plate scaled
   src-tauri/icons/icon.png    the 1024 macOS entry (macOS bundle icon, window and Dock icon of
                               `tauri dev`). Deliberately macOS only: no Windows config lists it,
                               Windows takes every size from icon.ico
+  src-tauri/icons/CXact.icon  macOS 26: an Icon Composer package (the coral fill and the white
+                              glyph as a vector); the system draws shape, glass and shadow. The
+                              macOS CI compiles it into Assets.car (see build_icon_composer)
   ui/src/assets/app-icon.svg  the same paths as a vector (brand mark in the title bar)
 
-Edges, in every raster output: colour and coverage are rendered apart, so a partly covered
-pixel carries the plate colour under it (straight alpha), and every fully transparent pixel
-takes the colour of its nearest visible neighbours (colour bleed). A scaler that filters
-without premultiplying - the Windows shell whenever it has no stage of the wanted size - then
-mixes plate colour into the edge instead of black: no dark fringe on any background.
+Edges, in every raster output: coverage is exact - the share of each pixel inside the outline,
+from the curves flattened far below a level (see `coverage`), not a supersampled polygon - so
+an edge pixel is neither too light nor too dark and the outline stays symmetric. Colour and
+coverage are rendered apart, so a partly covered pixel carries the plate colour under it
+(straight alpha), and every fully transparent pixel takes the colour of its nearest visible
+neighbours (colour bleed). A scaler that filters without premultiplying - the Windows shell
+whenever it has no stage of the wanted size - then mixes plate colour into the edge instead of
+black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
 - Plate 0..1024 (full bleed: the desktop and the taskbar show it exactly as large as the
-  other apps, measured against Claude and Roblox at 48 px), corner radius 22.37 % of the plate
-  with 60 % corner smoothing (Apple's continuous corner, as iOS and Figma): the curve leaves
-  the straight edge at 1.6 r with zero curvature, the circular middle keeps radius r.
+  other apps, measured against Claude and Roblox at 48 px) with Apple's continuous corner,
+  the curve UIKit draws for app icons (APPLE_CORNER): it leaves the straight edge 1.53 r
+  before the corner and bends with continuous curvature. r is 22.37 % of the plate, Mike
+  Swanson's fit to Apple's own AppIconMask (34 of 152); Apple publishes no number.
 - The glyph is drawn on the grid of a 16..1008 plate (GRID) and scales with the plate, so it
   keeps its share of the plate and its optical centre.
-- Folder 181..843 wide; tab 216..290 (45 degree slope 425 -> 499), body 290..768. One radius
-  (69) everywhere: the body and tab corners with the same smoothing, the slope with two
-  circular fillets. Lifted 20 above the old position: its mass centre sits at the optical
-  centre of the plate (slightly above the middle).
+- Folder 181..843 wide; tab 226..300 (45 degree slope 425 -> 499), body 300..778. One radius
+  (69) everywhere: the body and tab corners with 60 % corner smoothing (SMOOTHING, as Figma:
+  the curve leaves the straight edge at 1.6 r with zero curvature, the circular middle keeps
+  radius r), the slope with two circular fillets. Its bounding box sits 10 of 1024 above the
+  middle (the classical optical centre); the centroid of the white area (folder minus check)
+  lies about 8 below it. 10 lower than before (user, 2026-09-26: the folder looked slightly
+  too high).
 - Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
-- One flat colour: the app's coral hsl(13 73% 63%) (#E67A5C), no gradient, no shadow.
+- One flat colour: the app's coral hsl(13 73% 63%) (#E67A5C), no gradient. No shadow on
+  Windows; Apple's template shadow under the macOS plate.
 
 Small stages are hinted: straight edges on whole pixels (proportional positions, rounded
 symmetrically), check vertices on half pixels, the check bolder up to 40 px.
 
-    python tools/icon.py                        writes all four files, then checks icon.ico
+    python tools/icon.py                        writes every output, then checks icon.ico
                                                 (needs Pillow)
     python tools/icon.py --compare OUT OLD.py   comparison sheet against an older generator
     python tools/icon.py --fringe-sheet OUT [OLD.ico]
@@ -45,22 +58,23 @@ symmetrically), check vertices on half pixels, the check bolder up to 40 px.
                                                 1:1, zoomed and scaled as the shell scales;
                                                 with OLD.ico as the row before
 """
+import json
 import math
 import struct
 import sys
 from io import BytesIO
+from itertools import accumulate
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-# One flat colour, the app's coral token --p-coral hsl(13 73% 63%): no gradient, no shadow
-# (user, 2026-09-25 and 2026-09-26). core/tests/icon.rs reads CORAL as a tuple.
+# One flat colour, the app's coral token --p-coral hsl(13 73% 63%), no gradient (user,
+# 2026-09-25). core/tests/icon.rs reads CORAL as a tuple.
 CORAL = (0xE6, 0x7A, 0x5C)
 WHITE = (255, 255, 255)
+# Corner smoothing of the folder's corners (see `smooth_corner`). The plate has Apple's own
+# continuous corner instead (see `apple_corner`), with a radius of 22.37 % of the plate.
 SMOOTHING = 0.6
-# The plate has the macOS app-icon shape: straight sides and Apple's continuous corners
-# (see `apple_corner`) with a radius of 22.37 % of the plate.
-PLATE_SMOOTHING = 0.6  # used by the folder corners only
 
 # 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID;
 # the Windows plate itself runs from PLATE (0: full bleed) to 1024 - PLATE.
@@ -68,15 +82,23 @@ GRID = 16
 PLATE = 0
 PLATE_R = 0.2237 * (1024 - 2 * PLATE)
 FOLDER_X0, FOLDER_X1 = 181, 843
-TAB_Y, BODY_Y0, BODY_Y1 = 216, 290, 768
+TAB_Y, BODY_Y0, BODY_Y1 = 226, 300, 778
 SLOPE_X0, SLOPE_X1 = 425, 499
 FOLDER_R = 69
-CHECK_POINTS = [(361, 514), (467, 620), (663, 422)]
+CHECK_POINTS = [(361, 524), (467, 630), (663, 432)]
 CHECK_W = 83
-# macOS: plate 824 of 1024 (margin 100) with the corner of the old macOS plate (184 of 820,
-# close to Apple's template).
+# macOS: Apple's grid, plate 824 of 1024 (margin 100, fractional at the smaller sizes) with the
+# same corner, 22.37 % of the plate.
 MAC_PLATE = 100
 MAC_PLATE_R = 0.2237 * (1024 - 2 * MAC_PLATE)
+# macOS 11 to 15 draw no shadow under an app icon: it is part of the artwork. Apple's template
+# shadow, as iccir reverse-engineered it from Apple's own templates (206 plate on a 256 canvas:
+# opacity 0.3, offset 3, CIGaussianBlur radius 3), on the 1024 grid: the plate in black at
+# 30 %, 12 down, blurred by a Gaussian with a standard deviation (CIGaussianBlur's radius) of
+# 12. It stays inside the canvas: its visible part ends near 972 (936 + 3 deviations).
+SHADOW_OPACITY = 0.3
+SHADOW_OFFSET = 12
+SHADOW_BLUR = 12
 
 # ICO stages. The shell asks for these at 100/125/150/175/200 %: small icons 16 20 24 32,
 # taskbar 24 30 36 48, desktop 48 60 72 96, Start and Alt+Tab in between, large and extra large
@@ -96,7 +118,9 @@ FRINGE_TOLERANCE = 2
 # iconutil writes them; PNG types only (macOS draws 16 from ic11 = 16@2x).
 ICNS_ENTRIES = [('ic11', 32), ('ic12', 64), ('ic07', 128), ('ic13', 256),
                 ('ic08', 256), ('ic14', 512), ('ic09', 512), ('ic10', 1024)]
-SS = 16  # supersampling of the raster stages
+# Flattening of the curves for the exact coverage (see Path2.points).
+CHORDS = 256
+ARC_STEP = math.radians(0.25)
 
 
 # ----------------------------------------------------------------------------- paths
@@ -132,13 +156,22 @@ class Path2:
             elif seg[0] == 'C':
                 out.append('C' + ' '.join(f'{fmt(x)} {fmt(y)}' for x, y in seg[1:]))
             else:
-                _, _, r, a0, a1, p = seg
-                large = 1 if abs(a1 - a0) > math.pi else 0
-                sweep = 1 if a1 > a0 else 0
-                out.append(f'A{fmt(r)} {fmt(r)} 0 {large} {sweep} {fmt(p[0])} {fmt(p[1])}')
+                _, (cx, cy), r, a0, a1, _ = seg
+                # An SVG arc is given by its end points: near a half circle a rounded end point
+                # moves the implied centre a lot (0.6 px for the check's caps at 1024), so an
+                # arc is written in parts of at most a quarter circle.
+                parts = max(1, math.ceil(abs(a1 - a0) / (math.pi / 2) - 1e-9))
+                for i in range(1, parts + 1):
+                    a = a0 + (a1 - a0) * i / parts
+                    sweep = 1 if a1 > a0 else 0
+                    out.append(f'A{fmt(r)} {fmt(r)} 0 0 {sweep} '
+                               f'{fmt(cx + r * math.cos(a))} {fmt(cy + r * math.sin(a))}')
         return ''.join(out) + 'Z'
 
     def points(self):
+        """The outline as a polygon: CHORDS chords per cubic, one chord per ARC_STEP of an arc.
+        The chords stay less than 0.001 px inside the curve at 1024, far below one level of
+        coverage."""
         pts = [self.start]
         pos = self.start
         for seg in self.segs:
@@ -146,14 +179,14 @@ class Path2:
                 pts.append(seg[1])
             elif seg[0] == 'C':
                 (x0, y0), (x1, y1), (x2, y2), (x3, y3) = pos, *seg[1:]
-                for i in range(1, 49):
-                    t = i / 48
+                for i in range(1, CHORDS + 1):
+                    t = i / CHORDS
                     u = 1 - t
                     pts.append((u**3 * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t**3 * x3,
                                 u**3 * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t**3 * y3))
             else:
                 _, (cx, cy), r, a0, a1, _ = seg
-                n = max(2, math.ceil(abs(a1 - a0) / math.radians(1.5)))
+                n = max(2, math.ceil(abs(a1 - a0) / ARC_STEP))
                 for i in range(1, n + 1):
                     a = a0 + (a1 - a0) * i / n
                     pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
@@ -322,11 +355,10 @@ def layout(s, mac=False):
     """Geometry of one stage in target pixels. Straight edges are placed proportionally on
     the plate and rounded symmetrically to whole pixels; radii and the check scale freely
     (check vertices on half pixels at small sizes)."""
-    k = s / 1024
-    inset = MAC_PLATE if mac else PLATE
-    # Windows: the plate runs to the edge of the small stages (like the other apps in the
-    # taskbar); macOS keeps Apple's margin.
-    margin = (max(1, round(inset * k)) if mac else round(inset * k)) if s < 1024 else inset
+    # Windows: the plate runs to the edge of every stage (like the other apps in the taskbar);
+    # macOS keeps Apple's margin, fractional below 1024 (3.125 at 32): its edge is anti-aliased
+    # like any other, so every entry is the same icon scaled.
+    margin = (MAC_PLATE if mac else PLATE) * s / 1024
     plate = s - 2 * margin
     unit_ = plate / (1024 - 2 * GRID)  # one unit of the glyph's grid on this plate
 
@@ -340,7 +372,7 @@ def layout(s, mac=False):
     g = dict(
         s=s,
         plate=(margin, margin, s - margin, s - margin),
-        plate_r=(MAC_PLATE_R if mac else PLATE_R) * plate / (1024 - 2 * inset),
+        plate_r=(MAC_PLATE_R if mac else PLATE_R) * s / 1024,
         x0=margin + side,
         x1=s - margin - side,
         tab_y=snap(TAB_Y),
@@ -370,28 +402,129 @@ def layout(s, mac=False):
 
 # --------------------------------------------------------------------------- raster
 
-def render(s, mac=False, ss=None):
+def coverage(s, shapes):
+    """Exact area coverage of every pixel of an s x s canvas: [(points, weight), ...] summed
+    per pixel, row by row, as floats. Each polygon counts with its weight whatever its
+    orientation, so a cut-out that lies inside its shape is `(cut, -1)`.
+
+    Signed-area accumulation (as font-rs): every edge adds, to each cell it crosses in a row,
+    the signed area between itself and the cell's right side; a running sum along the row then
+    gives the covered share of each pixel. Exact for polygons - no supersampling, no rounding
+    before the end, so an edge pixel is neither too light nor too dark and the outline stays
+    symmetric."""
+    stride = s + 2
+    acc = [0.0] * (s * stride + 2)
+    for pts, weight in shapes:
+        xs = [x for x, _ in pts]
+        assert min(xs) > -1e-9 and max(xs) < s + 1e-9, 'shape leaves the canvas sideways'
+        pts = [(min(max(x, 0.0), float(s)), y) for x, y in pts]
+        n = len(pts)
+        area = sum(pts[i][0] * pts[(i + 1) % n][1] - pts[(i + 1) % n][0] * pts[i][1]
+                   for i in range(n))
+        # A clockwise outline on screen (positive shoelace area, y down) sums to -1 inside.
+        orient = -weight if area > 0 else weight
+        for i in range(n):
+            (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % n]
+            if y0 == y1:
+                continue
+            sign = orient
+            if y0 > y1:
+                x0, y0, x1, y1, sign = x1, y1, x0, y0, -orient
+            dxdy = (x1 - x0) / (y1 - y0)
+            x = x0 - (y0 * dxdy if y0 < 0 else 0)
+            for y in range(max(0, math.floor(y0)), min(s, math.ceil(y1))):
+                row = y * stride
+                dy = min(y + 1.0, y1) - max(float(y), y0)
+                xn = x + dxdy * dy
+                d = dy * sign
+                xa, xb = (x, xn) if x < xn else (xn, x)
+                fa = math.floor(xa)
+                ia, ib = int(fa), int(math.ceil(xb))
+                if ib <= ia + 1:
+                    m = 0.5 * (x + xn) - fa
+                    acc[row + ia] += d - d * m
+                    acc[row + ia + 1] += d * m
+                else:
+                    inv = 1.0 / (xb - xa)
+                    f0 = xa - fa
+                    a0 = 0.5 * inv * (1 - f0) ** 2
+                    f1 = xb - ib + 1
+                    am = 0.5 * inv * f1 * f1
+                    acc[row + ia] += d * a0
+                    if ib == ia + 2:
+                        acc[row + ia + 1] += d * (1 - a0 - am)
+                    else:
+                        a1 = inv * (1.5 - f0)
+                        acc[row + ia + 1] += d * (a1 - a0)
+                        for xi in range(ia + 2, ib - 1):
+                            acc[row + xi] += d * inv
+                        acc[row + ib - 1] += d * (1 - (a1 + (ib - ia - 3) * inv) - am)
+                    acc[row + ib] += d * am
+                x = xn
+    out = []
+    for y in range(s):
+        out.extend(accumulate(acc[y * stride:y * stride + s]))
+    return out
+
+
+def level(v):
+    """A share 0..1 as an 8 bit value."""
+    return 0 if v <= 0 else 255 if v >= 1 else int(v * 255 + 0.5)
+
+
+def glyph_colour(w):
+    """The coral mixed with white by the glyph's coverage w."""
+    if w <= 0:
+        return CORAL
+    if w >= 1:
+        return WHITE
+    return tuple(int(c + (h - c) * w + 0.5) for c, h in zip(CORAL, WHITE))
+
+
+def shadow(s, g):
+    """macOS: Apple's template shadow under the plate of layout `g`, as a share 0..1 per pixel
+    (see SHADOW_OPACITY). The moved plate's exact coverage, blurred by a Gaussian."""
+    k = s / 1024
+    x0, y0, x1, y1 = g['plate']
+    dy = SHADOW_OFFSET * k
+    moved = coverage(s, [(squircle(x0, y0 + dy, x1, y1 + dy, g['plate_r']).points(), 1)])
+    mask = Image.new('L', (s, s))
+    mask.putdata([level(v) for v in moved])
+    blurred = pixels(mask.filter(ImageFilter.GaussianBlur(SHADOW_BLUR * k)))
+    border = [blurred[i] for i in range(s)] + [blurred[i] for i in range(s * (s - 1), s * s)]
+    border += [blurred[y * s + x] for y in range(s) for x in (0, s - 1)]
+    assert not any(border), f'{s}: the shadow reaches the edge of the canvas'
+    return [SHADOW_OPACITY * v / 255 for v in blurred]
+
+
+def render(s, mac=False):
     """One stage as straight (not premultiplied) RGBA. Colour and coverage are rendered apart:
-    the colour layer is opaque everywhere (the coral over the whole canvas, the folder in
-    white), so a partly covered edge pixel gets the plate colour under it, never a mix with the
-    black of an empty canvas. Transparent pixels are coloured by `bleed`. macOS differs only by
-    Apple's margin; neither OS gets a shadow."""
-    ss = ss or min(SS, max(4, 4096 // s))
+    the colour is the coral, mixed with white by the glyph's exact coverage (folder minus the
+    check), everywhere on the canvas; the alpha is the plate's exact coverage. A partly
+    covered edge pixel therefore carries the plate colour, never a mix with the black of an
+    empty canvas. Transparent pixels are coloured by `bleed`.
+
+    macOS puts the plate over Apple's black template shadow (`shadow`), composited exactly:
+    alpha = plate + shadow x (1 - plate), colour = plate colour x plate / alpha. The plate itself
+    is the same as without the shadow; around it only black shows through."""
     g = layout(s, mac)
-    S = s * ss
-    scale = lambda pts: [(x * ss, y * ss) for x, y in pts]
-    plate_mask = Image.new('L', (S, S), 0)
-    ImageDraw.Draw(plate_mask).polygon(scale(squircle(*g['plate'], g['plate_r']).points()), fill=255)
-    folder_mask = Image.new('L', (S, S), 0)
-    draw = ImageDraw.Draw(folder_mask)
-    draw.polygon(scale(folder(g).points()), fill=255)
-    draw.polygon(scale(check(g).points()), fill=0)
-    colour = Image.new('RGB', (S, S), CORAL)
-    colour.paste(Image.new('RGB', (S, S), WHITE), (0, 0), folder_mask)
-    rgb = colour.resize((s, s), Image.BOX)
-    cover = plate_mask.resize((s, s), Image.BOX)
-    img = rgb.convert('RGBA')
-    img.putalpha(cover)
+    plate = coverage(s, [(squircle(*g['plate'], g['plate_r']).points(), 1)])
+    glyph = coverage(s, [(folder(g).points(), 1), (check(g).points(), -1)])
+    if not mac:
+        data = [(*glyph_colour(w), level(c)) for c, w in zip(plate, glyph)]
+    else:
+        data = []
+        for c, w, below in zip(plate, glyph, shadow(s, g)):
+            c = min(max(c, 0.0), 1.0)
+            a = c + below * (1 - c)
+            rgb = glyph_colour(w)
+            if 0 < c < 1:
+                rgb = tuple(int(v * c / a + 0.5) for v in rgb)
+            elif c <= 0:
+                rgb = (0, 0, 0)
+            data.append((*rgb, level(a)))
+    img = Image.new('RGBA', (s, s))
+    img.putdata(data)
     return bleed(img)
 
 
@@ -504,7 +637,7 @@ def read_ico(path):
 
 def dark_pixels(img, visible_only=False):
     """Pixels darker than the plate's colour (any channel below CORAL by more than
-    FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - gradient, white and
+    FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - the coral, white and
     their mixes - lies at or above CORAL in each channel."""
     floor = [v - FRINGE_TOLERANCE for v in CORAL]
     s = img.width
@@ -606,18 +739,63 @@ def build_mac(icns_out, png_out):
     png_out.write_bytes(frames[1024])
 
 
+def svg_number(v):
+    return f'{v:.2f}'.rstrip('0').rstrip('.')
+
+
+def hex_colour(c):
+    return '#' + ''.join(f'{v:02X}' for v in c)
+
+
 def build_svg(out):
     g = layout(1024)
-    fmt = lambda v: f'{v:.2f}'.rstrip('0').rstrip('.')
+    fmt = svg_number
     x0, y0, x1, y1 = g['plate']
-    hexa = lambda c: '#' + ''.join(f'{v:02X}' for v in c)
-    out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x0} {y0} {x1 - x0} {y1 - y0}" width="{x1 - x0}" height="{y1 - y0}">
+    out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{fmt(x0)} {fmt(y0)} {fmt(x1 - x0)} {fmt(y1 - y0)}" width="{fmt(x1 - x0)}" height="{fmt(y1 - y0)}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
        icon.ico, icon.icns and icon.png; the check is cut out of the folder (even-odd). -->
-  <path fill="{hexa(CORAL)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
-  <path fill="{hexa(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+  <path fill="{hex_colour(CORAL)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
+  <path fill="{hex_colour(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')
+
+
+def build_icon_composer(package):
+    """macOS 26: an Icon Composer package (`<name>.icon`: icon.json and its Assets). The system
+    draws the shape, the glass, the lighting and the shadow itself, so the package holds only
+    the background fill (the coral) and one group with one layer, the white glyph with the
+    check cut out. The glyph is laid out on the full 1024 square as on the full-bleed plate:
+    the system's own mask takes the plate's place. No mask, no shadow baked in. The macOS CI
+    compiles it with actool into Assets.car (see .github/workflows/ci.yml); icon.icns stays
+    the icon of macOS 14 and 15. The keys follow Tauri's own example (examples/.icons)."""
+    g = layout(1024)
+    fmt = svg_number
+    (package / 'Assets').mkdir(parents=True, exist_ok=True)
+    (package / 'Assets' / 'glyph.svg').write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Generated by tools/icon.py - do not edit. The glyph of the macOS 26 icon: the same path
+       as in app-icon.svg, on the full square; the check is cut out of the folder. -->
+  <path fill="{hex_colour(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+</svg>
+''', encoding='utf-8', newline='\n')
+    coral = ','.join(f'{c / 255:.5f}' for c in CORAL)
+    spec = {
+        'fill': {'solid': f'extended-srgb:{coral},1.00000'},
+        'groups': [{
+            'layers': [{
+                'blend-mode': 'normal',
+                'glass': False,
+                'hidden': False,
+                'image-name': 'glyph.svg',
+                'name': 'glyph',
+                'position': {'scale': 1, 'translation-in-points': [0, 0]},
+            }],
+            'shadow': {'kind': 'neutral', 'opacity': 0.5},
+            'translucency': {'enabled': True, 'value': 0.5},
+        }],
+        'supported-platforms': {'squares': 'shared'},
+    }
+    (package / 'icon.json').write_text(json.dumps(spec, indent=2) + '\n', encoding='utf-8',
+                                       newline='\n')
 
 
 # ----------------------------------------------------------------------- comparison
@@ -633,16 +811,15 @@ def compare(out, old_generator):
     small = [16, 24, 32, 48]
     gap = 24
 
-    def stages(mod, new):
+    def stages(mod):
         imgs = [mod.render(s) for s in small]
         imgs += [i.resize((i.width * 4, i.width * 4), Image.NEAREST) for i in imgs]
         imgs.append(mod.render(256))
-        big_mac = mod.render(1024, mac=True, ss=4) if new else mod.mac_stage(1024)
-        imgs += [mod.render(1024, ss=4).resize((512, 512), Image.LANCZOS),
-                 big_mac.resize((512, 512), Image.LANCZOS)]
+        imgs += [mod.render(1024).resize((512, 512), Image.LANCZOS),
+                 mod.render(1024, mac=True).resize((512, 512), Image.LANCZOS)]
         return imgs
 
-    rows = [('old', stages(old, False)), ('new', stages(sys.modules[__name__], True))]
+    rows = [('old', stages(old)), ('new', stages(sys.modules[__name__]))]
     width = gap + sum(i.width + gap for i in rows[0][1])
     row_h = 512 + 2 * gap
     sheet = Image.new('RGB', (width, 4 * row_h), WHITE)
@@ -671,6 +848,7 @@ if __name__ == '__main__':
         build_ico(icons / 'icon.ico')
         build_mac(icons / 'icon.icns', icons / 'icon.png')
         build_svg(root / 'ui' / 'src' / 'assets' / 'app-icon.svg')
+        build_icon_composer(icons / 'CXact.icon')
         problems = check_ico(icons / 'icon.ico')
         if problems:
             sys.exit('icon.ico failed its check:\n  ' + '\n  '.join(problems))
