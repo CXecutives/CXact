@@ -546,7 +546,7 @@ test('the app starts in the Übersicht; Ctrl+1 to 4 choose the views, the keys i
   await expect(page.getByTestId('view-settings')).toBeVisible();
   await page.getByTestId('nav-jobs').hover();
   const tip = page.getByRole('tooltip');
-  await expect(tip).toContainText('Jobs');
+  await expect(tip).toContainText(await text(page, 'nav.jobs'));
   await expect(tip).toContainText('Strg+2');
 });
 
@@ -562,7 +562,7 @@ test('before the first fetch the Übersicht waits and says why; Jobs is the setu
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.mouse.move(600, 600);
   await overview.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Nach dem ersten Abruf');
+  await expect(page.getByRole('tooltip')).toHaveText(await text(page, 'nav.overviewLater'));
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
 });
@@ -581,7 +581,7 @@ for (const os of [WIN, MAC]) {
     for (const b of boxes) expect(centre(b)).toBe(centre(boxes[0]!));
     await page.getByTestId('nav-profile').hover();
     const tip = page.getByRole('tooltip');
-    await expect(tip).toContainText('Profil');
+    await expect(tip).toContainText(await text(page, 'nav.profile'));
     await expect(tip.locator('div')).toHaveCSS('opacity', '1');
     const anchor = await box('nav-profile');
     expect((await tip.locator('div').boundingBox())!.x).toBeGreaterThan(anchor.x + anchor.width);
@@ -690,15 +690,15 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
   // Not at once: after the same delay as hovering.
   await page.waitForTimeout(150);
   await expect(tooltip(page)).toHaveCount(0);
-  await expect(tooltip(page)).toContainText('Übersicht');
+  await expect(tooltip(page)).toContainText(await text(page, 'nav.overview'));
   await expect(tooltip(page)).toContainText('Strg+1');
   // Blur: the focus moves on, the next one waits for its delay again.
   await page.keyboard.press('Tab');
-  await expect(tooltip(page)).toContainText('Jobs');
+  await expect(tooltip(page)).toContainText(await text(page, 'nav.jobs'));
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(tooltip(page)).toHaveCount(0);
   await page.keyboard.press('Shift+Tab');
-  await expect(tooltip(page)).toContainText('Übersicht');
+  await expect(tooltip(page)).toContainText(await text(page, 'nav.overview'));
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(tooltip(page)).toHaveCount(0);
 });
@@ -710,7 +710,7 @@ test('a disabled entry that says why stays a Tab stop; its reason shows on focus
   await page.getByTestId('nav-jobs').focus();
   await page.keyboard.press('Shift+Tab');
   await expect(page.getByTestId('nav-overview')).toBeFocused();
-  await expect(tooltip(page)).toHaveText('Nach dem ersten Abruf');
+  await expect(tooltip(page)).toHaveText(await text(page, 'nav.overviewLater'));
 });
 
 test('the focus goes back to the trigger after a menu, a dialog and a toast', async ({ page }) => {
@@ -889,8 +889,14 @@ test('Ctrl+/ shows the card of the keys, named as the OS names them; Esc closes 
   await page.keyboard.press('Control+/');
   const card = page.getByTestId('keys-help');
   await expect(card).toBeVisible();
-  await expect(card.getByRole('heading', { name: 'Tastenkürzel' })).toBeVisible();
-  await expect(page.getByTestId('key-views')).toContainText('Strg+1 bis Strg+4');
+  await expect(
+    card.getByRole('heading', { name: await text(page, 'keysHelp.heading') }),
+  ).toBeVisible();
+  // Each row of the table (lib/input/keys.ts) names what it does and its key as Windows does.
+  await expect(card.getByTestId('key-views')).toContainText(await text(page, 'keysHelp.views'));
+  await expect(card.getByTestId('key-views')).toContainText(
+    await text(page, 'keysHelp.range', 'Strg+1', 'Strg+4'),
+  );
   await expect(page.getByTestId('key-search')).toContainText('Strg+F');
   await expect(page.getByTestId('key-fetch')).toContainText('F5');
   await expect(page.getByTestId('key-undo')).toContainText('Strg+Z');
@@ -919,14 +925,14 @@ test('macOS: the multi-select hints write ⌘-Klick and ⇧-Klick', async ({ pag
 test('a start whose data cannot load: try again, the log, the data folder', async ({ page }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
-  await expect(failed).toContainText('Die App konnte ihre Daten nicht laden.');
+  await expect(failed).toContainText(await text(page, 'shell.loadFailed'));
   await page.getByTestId('open-log').click();
   await page.getByTestId('open-data').click();
   const targets = (await calls(page, 'open_target')).map(
     ([, args]) => (args as { target: { kind: string } }).target.kind,
   );
   expect(targets).toEqual(['logDir', 'dataDir']);
-  await failed.getByRole('button', { name: 'Erneut versuchen' }).click();
+  await failed.getByRole('button', { name: await text(page, 'common.retry') }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
@@ -1762,11 +1768,11 @@ for (const [width, rail] of [
     expect(sidebar?.width).toBe(rail ? 64 : 196);
     const label = page.getByTestId('nav-profile');
     if (rail) {
-      await expect(label).toHaveAttribute('aria-label', 'Profil');
+      await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));
       await label.hover();
       const tip = page.getByRole('tooltip');
       // The name, and its key as the second line.
-      await expect(tip).toHaveText('ProfilStrg+3');
+      await expect(tip).toHaveText(`${await text(page, 'nav.profile')}Strg+3`);
       // Right of the icon, centred on it, never over the next entry (like a native rail).
       await expect(tip.locator('div')).toHaveCSS('opacity', '1');
       const icon = (await label.boundingBox())!;
@@ -1774,7 +1780,7 @@ for (const [width, rail] of [
       expect(bubble.x).toBeGreaterThan(icon.x + icon.width);
       expect(Math.abs(bubble.y + bubble.height / 2 - (icon.y + icon.height / 2))).toBeLessThan(2);
     } else {
-      await expect(label).toHaveText('Profil');
+      await expect(label).toHaveText(await text(page, 'nav.profile'));
     }
   });
 }
