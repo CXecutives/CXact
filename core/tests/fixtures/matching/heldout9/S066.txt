@@ -1,0 +1,69 @@
+Titel: Kubernetes Engineer (m/w/d) – Rancher, ArgoCD, Terraform – 100 % remote
+Unternehmen: Pleißeland Systemhaus GmbH
+Ort: D-04109 Leipzig
+Quelle: Freelance
+Link: https://www.freelance.de/project/index.php?id=1321307
+Abgerufen am: 22.09.2026 18:40
+
+Projekt-ID: 1321307
+Ort: Leipzig
+Remote: 100 %
+Start: 01.12.2026
+Dauer: 12 Monate
+Vertragsart: Freiberuflich
+Honorar: max. 75 € pro Stunde
+Letztes Update: 22.09.2026
+
+Projektbeschreibung
+Die Pleißeland Systemhaus GmbH ist ein mittelständischer IT-Dienstleister mit Sitz in Leipzig und weiteren Standorten in Dresden, Chemnitz und Halle. Seit unserer Gründung im Jahr 1998 begleiten wir Kommunen, Stadtwerke, Wohnungsbaugesellschaften und mittelständische Unternehmen auf ihrem Weg in die digitale Zukunft. Mit über 280 Mitarbeiterinnen und Mitarbeitern bieten wir ein breites Leistungsspektrum von der klassischen IT-Infrastruktur über Managed Services und Cloud-Lösungen bis hin zu individueller Softwareentwicklung. Unsere beiden ISO-27001-zertifizierten Rechenzentren in Leipzig bilden das Rückgrat unserer Managed-Services-Angebote. Als regional verwurzeltes Unternehmen legen wir großen Wert auf Nähe zu unseren Kunden, Verlässlichkeit und nachhaltiges Wirtschaften. Wir sind Ausbildungsbetrieb, engagieren uns in der Region und sind stolz darauf, seit Jahren zu den attraktivsten Arbeitgebern in Mitteldeutschland zu gehören.
+
+Für den Ausbau unserer Container-Plattform, auf der wir Anwendungen für unsere kommunalen Kunden betreiben, suchen wir Unterstützung durch einen freiberuflichen Kubernetes Engineer (m/w/d).
+
+Ihre Aufgaben:
+- Betrieb und Weiterentwicklung unserer Kubernetes-Cluster (RKE2, verwaltet mit Rancher) in unseren eigenen Rechenzentren
+- Aufbau von GitOps-Workflows mit ArgoCD
+- Automatisierung der Infrastruktur mit Terraform und Ansible
+- Unterstützung bei der Einführung von Monitoring mit Prometheus und Grafana
+- Mitarbeit im Betrieb und in der Störungsbearbeitung
+- Weitere Aufgaben im Umfeld der Container-Plattform
+
+Ihr Profil:
+- Mehrjährige Erfahrung mit Kubernetes im produktiven Betrieb
+- Kenntnisse in Rancher, ArgoCD und Terraform
+- Gute Linux-Kenntnisse
+- Erfahrung mit Helm und GitLab
+- Selbstständige und strukturierte Arbeitsweise
+- Gute Deutschkenntnisse
+
+Konditionen:
+- Start 01.12.2026, Laufzeit 12 Monate, Verlängerung möglich
+- Auslastung 5 Tage/Woche (Vollzeit)
+- 100 % remote, Anreise nur zum Kick-off
+- Stundensatz max. 75 €/h all-in, bitte nur Profile in diesem Budgetrahmen, da das Budget durch unseren kommunalen Rahmenvertrag fest vorgegeben ist
+
+Wir freuen uns auf Ihre Bewerbung mit Profil und Verfügbarkeit.
+
+Kategorien und Skills
+Kubernetes
+Rancher
+ArgoCD
+Terraform
+Ansible
+Helm
+GitOps
+Linux
+
+Projektanbieter
+Pleißeland Systemhaus GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+DevOps Engineer (m/w/d) Kommunal-IT
+Dresden · 01.2027 · 12 Monate
+Linux Administrator (m/w/d)
+Halle (Saale) · ab sofort
+Cloud Engineer OpenStack (m/w/d)
+Remote · 11.2026
+Alle Projekte in DevOps anzeigen

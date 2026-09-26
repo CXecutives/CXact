@@ -1,0 +1,89 @@
+Titel: Informationssicherheitsbeauftragter (m/w/d) auf Zeit – ISO 27001 auf Basis von IT-Grundschutz
+Unternehmen: Hellweg Consulting Partner GmbH
+Ort: Gelsenkirchen
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/informationssicherheitsbeauftragter-m-w-d-auf-zeit-iso-27001-auf-basis-von-it-grundschutz-2923714
+Abgerufen am: 18.09.2026 07:38
+
+Projektdetails
+Start
+01.11.2026
+Dauer
+5 Monate
+Von
+Hellweg Consulting Partner GmbH
+Eingestellt
+17.09.2026
+Projekt-ID
+2923714
+Branche
+Energie, Wasser und Umwelt
+Vertragsart
+Freiberuflich
+Einsatzart
+50 % Remote
+Stundensatz
+nach Absprache
+
+Beschreibung
+Für unseren Kunden, ein Stadtwerk im Ruhrgebiet mit den Sparten Strom, Gas, Wasser und Fernwärme und rund 900 Mitarbeitenden, suchen wir einen Informationssicherheitsbeauftragten (m/w/d) im Rahmen von Management auf Zeit. Der bisherige ISB hat das Unternehmen verlassen, eine Festbesetzung ist eingeleitet, wird aber nicht vor dem Frühjahr besetzt sein. Der Kunde ist KRITIS-Betreiber und muss zudem die Anforderungen aus der NIS2-Umsetzung erfüllen.
+
+Das ISMS wurde vor zwei Jahren nach ISO 27001 auf Basis von IT-Grundschutz aufgebaut, das Überwachungsaudit steht im März 2027 an. Einige Maßnahmen aus dem letzten Audit sind noch offen, außerdem muss die Modellierung nach dem aktuellen IT-Grundschutz-Kompendium überarbeitet werden.
+
+Aufgaben
+- Wahrnehmung der Rolle des ISB inklusive Berichterstattung an die Geschäftsführung
+- Aktualisierung von Strukturanalyse, Schutzbedarfsfeststellung, Modellierung und Grundschutz-Check in verinice
+- Nachverfolgung der offenen Abweichungen aus dem letzten Audit und Vorbereitung des Überwachungsaudits
+- Durchführung interner Audits und Sensibilisierungsmaßnahmen
+- Bewertung von Sicherheitsvorfällen gemeinsam mit IT-Betrieb und Dienstleistern, Meldungen an das BSI
+- Abstimmung mit der IT zu technischen Themen (Active Directory, Netzsegmentierung, Firewall-Regelwerke, Backup)
+- Umsetzung der Anforderungen aus dem IT-Sicherheitskatalog nach § 11 Abs. 1a EnWG
+
+Anforderungen
+- Mindestens 8 Jahre Berufserfahrung in der Informationssicherheit
+- Fundierte Kenntnisse von ISO 27001 und der BSI-Standards 200-1 bis 200-3
+- Zertifizierung als IT-Grundschutz-Praktiker oder ISO 27001 Lead Auditor wünschenswert
+- Technisches Verständnis für Windows-Infrastrukturen und Netzwerke
+- Erfahrung mit verinice von Vorteil
+- Erfahrung bei Energieversorgern oder anderen KRITIS-Betreibern von Vorteil
+- Sehr gute Deutschkenntnisse
+
+Rahmendaten
+Start: 01.11.2026
+Laufzeit: bis 31.03.2027, eine Verlängerung ist möglich
+Auslastung: Vollzeit
+Einsatzort: Gelsenkirchen, ca. 50 % vor Ort
+Vergütung: nach Absprache
+Vertragsform: freiberuflich über uns
+
+Schlagworte
+Informationssicherheit
+ISB
+ISO 27001
+IT-Grundschutz
+KRITIS
+NIS2
+verinice
+Management auf Zeit
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Hellweg Consulting Partner GmbH
+Beratung und Projektbesetzung für IT und Energiewirtschaft
+27 veröffentlichte Projekte
+Mitglied seit 2019
+Firmenprofil ansehen
+
+Ähnliche Projekte
+IT-Sicherheitsberater BSI IT-Grundschutz (m/w/d)
+Düsseldorf · 12.2026 · 6 Monate
+ISMS-Auditor ISO 27001 (m/w/d)
+Remote · ab sofort
+Datenschutzkoordinator (m/w/d) Stadtwerke
+Münster · 4 Monate
+Mehr Projekte anzeigen
+
+Sie sind Freelancer im Bereich IT-Sicherheit? Jetzt kostenlos registrieren und Projekte per E-Mail erhalten.

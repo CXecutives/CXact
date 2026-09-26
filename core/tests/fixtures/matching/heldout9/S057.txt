@@ -1,0 +1,71 @@
+Titel: JAVA ENTWICKLER (m/w/d) Spring Boot / Kotlin - ANÜ - AB SOFORT!!
+Unternehmen: Emscherblick Personal & Technik GmbH
+Ort: D-44137 Dortmund
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1320942-JAVA-ENTWICKLER-m-w-d-Spring-Boot-Kotlin-ANUe-AB-SOFORT
+Abgerufen am: 24.09.2026 07:26
+
+Projekt-ID: 1320942
+Ort: Dortmund
+Remote: 40 %
+Start: ab sofort
+Dauer: 6 Monate
+Vertragsart: Arbeitnehmerüberlassung
+Honorar: 34 € pro Stunde
+Letztes Update: 24.09.2026
+
+Projektbeschreibung
+!!! DRINGEND !!! für unseren Top-Kunden (Logistik / Paketdienst, Raum Dortmund) suchen wir ab SOFORT Java Entwickler m/w/d
+
+JAVA / SPRING BOOT / KOTLIN / MICROSERVICES / REST / KAFKA / POSTGRES / DOCKER / KUBERNETES / ANGULAR nice to have
+
+your tasks:
+entwicklung von microservices fuer die sendungsverfolgung, REST Apis, kafka topics, bugfixing, support fuer 2nd level, teilweise rufbereitschaft
+work in agile team (scrum) mit ca 8 devs, tickets in jira
+
+must have:
+java 11+ spring boot min 3 jahre
+kotlin von vorteil
+REST, microservcies
+postgres o. oracle
+english b2 / deutsch C1 (MUSS!!)
+
+nice to have: angular, typescript, k8s, gitlab ci
+
+Konditionen:
+- ANÜ (AÜG) - Anstellung bei der Emscherblick Personal & Technik GmbH, Einsatz beim Kunden
+- Bruttostundenlohn 34,00 EUR + Fahrgeld, Equal Pay nach 9 Monaten
+- 40 Std/Woche, Gleitzeit, 2 Tage home office möglich
+- Laufzeit 6 Monate+, Übernahme durch Kunden möglich!!
+- start: ASAP
+
+!!! DRINGEND !!! für unseren Top-Kunden (Logistik / Paketdienst, Raum Dortmund) suchen wir ab SOFORT Java Entwickler m/w/d
+
+JAVA / SPRING BOOT / KOTLIN / MICROSERVICES / REST / KAFKA / POSTGRES / DOCKER / KUBERNETES / ANGULAR nice to have
+
+bewerbung bitte NUR mit lebenslauf + gehaltsvorstellung + kündigungsfrist, keine Profile von Vermittlern!! Freiberufler bitte nicht bewerben, es handelt sich um ANÜ.
+
+Kategorien und Skills
+Java
+Spring Boot
+Kotlin
+Microservices
+REST
+Kafka
+PostgreSQL
+ANÜ
+
+Projektanbieter
+Emscherblick Personal & Technik GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Java Backend Entwickler (m/w/d)
+Essen · ab sofort · 12 Monate
+Kotlin Entwickler (m/w/d) ANÜ
+Bochum · 11.2026
+Fullstack Entwickler Java/Angular (m/w/d)
+Dortmund · 01.2027
+Alle Projekte in Java anzeigen

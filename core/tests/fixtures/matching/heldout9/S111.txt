@@ -1,0 +1,78 @@
+Titel: Freelance Testmanager (m/w/d) SAP S/4HANA – Teststrategie, Automatisierung und Quality Gates
+Unternehmen: Neckarhafen Pharmahandel GmbH
+Ort: Mannheim, Baden-Württemberg, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4349912057/
+Abgerufen am: 15.09.2026 07:44
+
+Neckarhafen Pharmahandel GmbH
+Mannheim, Baden-Württemberg, Deutschland (Hybrid)
+Vor 2 Tagen · 37 Bewerber
+Hybrid · Freiberuflich · Mittlere bis Senior-Ebene
+Bewerben
+Speichern
+
+Über die Stelle
+Die Neckarhafen Pharmahandel GmbH beliefert rund 4.800 Apotheken und Kliniken in Süd- und Westdeutschland mit Arzneimitteln und Medizinprodukten. Wir beschäftigen 1.300 Mitarbeitende in fünf Logistikzentren. Derzeit lösen wir unser SAP ECC im Greenfield-Ansatz durch SAP S/4HANA ab, der Go-live der ersten Welle (Finanzen, Einkauf, Vertrieb, zwei Lager) ist für April 2027 geplant.
+
+Für die Testphase suchen wir einen freiberuflichen Testmanager (m/w/d), der Teststrategie, Testautomatisierung und die Qualitätssicherung über das gesamte Programm verantwortet und eng mit Programmleitung, Fachbereichen und unserem Implementierungspartner zusammenarbeitet.
+
+Ihre Aufgaben
+• Erstellung und Abstimmung der Teststrategie und des Master-Testplans für Integrationstests, Regressionstests und User Acceptance Tests
+• Steuerung eines Testteams aus fünf internen Testerinnen und Testern, rund 30 Key Usern und dem Testteam des Implementierungspartners
+• Planung und Durchführung der Integrationstestzyklen für SD, MM, EWM und FI einschließlich der Schnittstellen zum Webshop und zu den Warenwirtschaftssystemen der Apotheken
+• Aufbau der Testautomatisierung: Regressionstests der Fiori-Oberflächen mit Tricentis Tosca, End-to-End-Tests des Bestellportals mit Playwright in unserer GitLab-CI-Pipeline
+• Definition und Überwachung der Quality Gates je Testphase sowie Mitwirkung an der Go-live-Entscheidung
+• Fehlermanagement in Jira und Xray, wöchentliches Testreporting an die Programmleitung und den Lenkungsausschuss
+• Abstimmung mit dem Release-Management zu Transporten, Testsystemen und Cut-over-Proben
+
+Ihr Profil
+• Mindestens 8 Jahre Erfahrung im Testmanagement, davon mindestens zwei SAP-S/4HANA-Projekte
+• ISTQB Certified Tester Advanced Level Test Manager
+• Praktische Erfahrung mit Testautomatisierung, idealerweise mit Playwright, Selenium oder Tosca
+• Erfahrung in agilen oder hybriden Projekten, gern im Umfeld von SAFe
+• Erfahrung im regulierten Umfeld (GDP, GxP) von Vorteil
+• Sehr gutes Deutsch und gutes Englisch
+
+Rahmenbedingungen
+• Start: 01.11.2026
+• Laufzeit: 9 Monate bis 31.07.2027, eine Verlängerung für die zweite Welle ist wahrscheinlich
+• Auslastung: 4 Tage pro Woche (80 %)
+• Einsatz: 60 % remote, während der Testzyklen zwei Tage pro Woche vor Ort in Mannheim
+• Tagessatz: 850 bis 950 € zzgl. MwSt. und Reisekosten
+• Vertragsform: Dienstvertrag direkt mit der Neckarhafen Pharmahandel GmbH, keine Vermittlung
+
+Wir freuen uns auf Ihr Profil mit Verfügbarkeit und Tagessatzvorstellung. Ansprechpartnerin ist Frau S. Beispielmann aus dem Programmmanagement.
+
+Weniger anzeigen
+Senioritätsstufe
+Mittlere bis Senior-Ebene
+Beschäftigungsverhältnis
+Freiberuflich
+Tätigkeitsbereich
+Informationstechnologie und Qualitätssicherung
+Branchen
+Pharmazeutischer Großhandel
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Neckarhafen Pharmahandel GmbH kennen
+Anmelden
+
+Jobbenachrichtigung für Testmanager in Mannheim aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+SAP Testkoordinator (m/w/d)
+Heidelberg, Baden-Württemberg, Deutschland
+Vor 1 Woche
+Testautomatisierer Playwright (m/w/d)
+Karlsruhe, Baden-Württemberg, Deutschland
+Vor 3 Tagen
+SAP EWM Berater (m/w/d)
+Ludwigshafen am Rhein, Rheinland-Pfalz, Deutschland
+Vor 5 Tagen
+
+Personen haben auch gesucht
+Testmanager
+QA Lead
+SAP Test

@@ -69,9 +69,11 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
     let title = fold(job.title);
     // A sentence that denies a contract form gives no contract signal.
     let denied = |f: &str| any(f, lex::CONTRACT_DENIED);
-    // A wage (`Stundenlohn`, `18,50 € brutto pro Stunde`) is employment pay, no interim cue.
-    let interim_at =
-        |f: &str| !denied(f) && (any(f, lex::INTERIM_CUES) || rate_in(f).is_some_and(|r| !r.wage));
+    // Interim wording; a rate is a cue of its own, a wage (`Stundenlohn`, `18,50 € brutto
+    // pro Stunde`) is employment pay and none.
+    let worded_at = |f: &str| !denied(f) && any(f, lex::INTERIM_CUES);
+    let rate_at = |f: &str| !denied(f) && rate_in(f).is_some_and(|r| !r.wage);
+    let interim_at = |f: &str| worded_at(f) || rate_at(f);
     // A denied or merely possible later permanent position is no statement of one; a comma
     // between the words is none (`permanent, full-time`). A wage states an employment.
     let stated_at = |f: &str| {
@@ -106,11 +108,15 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
         .and_then(Value::as_str)
         .and_then(|s| parse_rate(&fold(s)))
         .is_some_and(|r| r.wage);
-    let interim = interim_at(&title)
-        || interim_at(&contract_fact)
+    let worded = worded_at(&title)
+        || worded_at(&contract_fact)
         || limited_fact
+        || segments.iter().any(|(_, f)| worded_at(f));
+    let interim = worded
+        || rate_at(&title)
+        || rate_at(&contract_fact)
         || (rate_fact.is_some() && !fact_wage)
-        || segments.iter().any(|(_, f)| interim_at(f));
+        || segments.iter().any(|(_, f)| rate_at(f));
     let stated =
         stated_at(&contract_fact) || fact_wage || segments.iter().any(|(_, f)| stated_at(f));
     let hinted = segments.iter().any(|(_, f)| hint_at(f));
@@ -139,6 +145,9 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
         return contract(ContractKind::Permanent, !stated, spans_of(&stated_at));
     }
     match (stated, interim) {
+        // A stated permanent role whose only interim cue is an amount per hour or day: the
+        // amount is its pay (`31,50 €/Std. · Vollzeit · Festanstellung`).
+        (true, true) if !worded => contract(ContractKind::Permanent, false, spans_of(&stated_at)),
         (true, true) => contract(ContractKind::Unclear, false, spans_of(&stated_at)),
         (true, false) => contract(ContractKind::Permanent, false, spans_of(&stated_at)),
         (false, true) => contract(ContractKind::Interim, false, spans_of(&interim_at)),
@@ -329,6 +338,15 @@ mod tests {
         assert_eq!(
             trainee("Unbefristeter Vertrag ab dem ersten Tag."),
             (Permanent, false)
+        );
+        // An amount per hour is the pay of a stated permanent role without interim wording.
+        assert_eq!(
+            kind(
+                "Entwicklungstechniker (m/w/d)",
+                "31,50 €/Std. · Vollzeit · Festanstellung",
+                li
+            ),
+            Permanent
         );
         // The contract field decides over a rate label and interim wording elsewhere.
         assert_eq!(

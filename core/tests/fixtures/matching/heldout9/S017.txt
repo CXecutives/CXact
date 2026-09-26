@@ -1,0 +1,78 @@
+Titel: Automation Consultant n8n / Make (m/w/d) – REMOTE – E-Commerce
+Unternehmen: Wienerberg Talent Partners GmbH
+Ort: Wien, Wien, Österreich (Remote)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4354102238/
+Abgerufen am: 23.09.2026 07:51
+
+Wienerberg Talent Partners GmbH
+Wien, Wien, Österreich (Remote)
+Vor 5 Tagen · 23 Bewerber
+Remote · Vertrag · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+!!! FREELANCE AUTOMATION CONSULTANT GESUCHT !!!
+
+hi zusammen, for our client, a fast growing e-commerce brand (Home & Living, ca 80 Mitarbeiter, Shopify Plus, Sitz Wien) we are looking for an automation expert ASAP.
+
+what you do:
+- build and maintain Workfows in n8n and/or Make (client has both, will be consolidated to n8n in Q1)
+- integrations Shopify <-> Pipedrive <-> Xentral <-> Slack
+- AI agents for support tickets (Zendesk) + product descriptions with GPT, DE/EN/IT
+- JS code nodes, webhooks, error handling, monitoring, retry logic
+- dokumentation + handover to inhouse team (2 ppl, junior)
+
+MUST HAVE:
+n8n, Make, REST API, JSON, JavaScript, webhooks, OpenAI API, prompt engineering, Shopify
+NICE TO HAVE:
+Airtable, Python, Zapier, HubSpot, Klaviyo
+
+KEYWORDS: n8n | make.com | integromat | zapier | automation | workflow automatisierung | KI agenten | AI | LLM | GPT | e-commerce | shopify | pipedrive | xentral | API | no-code | low-code
+
+Rahmen / details:
+start: ASAP / ab sofort
+dauer: 3 monate mit option auf verlängerung
+auslastung: 3-4 tage/woche
+remote 100%, team sitzt in wien, onsite NICHT nötig
+rate: 850 - 950 EUR/Tag (depending on expirience)
+contract: freelance / Werkvertrag or Dienstvertrag, invoice monthly
+
+what you do:
+- build and maintain Workfows in n8n and/or Make (client has both, will be consolidated to n8n in Q1)
+- integrations Shopify <-> Pipedrive <-> Xentral <-> Slack
+- AI agents for support tickets (Zendesk) + product descriptions with GPT, DE/EN/IT
+- JS code nodes, webhooks, error handling, monitoring, retry logic
+- dokumentation + handover to inhouse team (2 ppl, junior)
+
+WICHTIG: pls send CV + 2-3 refrences of workflows you built (screenshots ok, loom video even better) - we answer within 48h!! no agencies pls, only direct freelancers.
+
+Wienerberg Talent Partners – your partner for tech freelancers in DACH
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Vertrag
+Tätigkeitsbereich
+Informationstechnologie
+Branchen
+Einzelhandel
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Wienerberg Talent Partners GmbH kennen
+Anmelden
+
+Ähnliche Jobs
+n8n Developer (Freelance)
+Wien, Wien, Österreich
+Vor 1 Woche
+Marketing Automation Manager (m/w/d)
+Graz, Steiermark, Österreich
+Vor 3 Tagen
+
+Personen haben auch gesucht
+Automation Engineer
+n8n
+No-Code Developer

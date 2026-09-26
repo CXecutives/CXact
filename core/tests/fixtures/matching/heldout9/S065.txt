@@ -1,0 +1,96 @@
+Titel: DevOps Engineer (m/f/d) – remote possible
+Unternehmen: Rheinkiesel Tech Talents GmbH
+Ort: Düsseldorf
+Quelle: Freelancermap
+Link: https://www.freelancermap.com/project/devops-engineer-m-f-d-remote-possible-2918102
+Abgerufen am: 20.09.2026 07:28
+
+Project details
+Start
+11/2026
+Duration
+6+ months
+From
+Rheinkiesel Tech Talents GmbH
+Posted
+19.09.2026
+Project ID
+2918102
+Industry
+Telecommunications
+Contract type
+Freelance
+Work type
+70 % remote
+Hourly rate
+on request
+
+Description
+About us: Rheinkiesel Tech Talents is a fast-growing, award-winning IT staffing and project partner headquartered in Düsseldorf with offices in Berlin, Munich, Vienna and Lisbon. Since 2013 we have been connecting outstanding tech professionals with exciting projects at leading companies across Europe. Our passionate team of more than 60 consultants covers everything from software development and cloud to data, SAP and cyber security. We believe that great projects start with great people, and we take the time to understand what really matters to you. Whether you are an experienced freelancer or looking for your next challenge, we are here to support you every step of the way. Join our community of 25,000+ tech experts and let us shape the future of IT together!
+
+For our client, a well-known telecommunications company in North Rhine-Westphalia, we are currently looking for a DevOps Engineer (m/f/d) to support an exciting project in the area of IT operations and automation.
+
+Your tasks:
+- Support the team in DevOps topics
+- Further development of the existing CI/CD pipelines (Jenkins)
+- Automation of recurring tasks with Ansible
+- Operation and support of containerised applications on OpenShift
+- Troubleshooting and 3rd level support
+- Creation of documentation
+- Close cooperation with development and operations
+
+Your profile:
+- Several years of experience as DevOps Engineer or in a comparable role
+- Very good knowledge of Linux
+- Experience with Jenkins, Ansible and Docker
+- Knowledge of OpenShift or Kubernetes
+- Cloud knowledge (AWS or Azure) nice to have
+- Experience with monitoring tools (e.g. Dynatrace, Splunk) is an advantage
+- Scripting skills (Bash, Python)
+- Hands-on mentality, team player
+- Fluent German and English
+
+General conditions:
+- Start: 11/2026
+- Duration: 6+ months, extension planned
+- Workload: full time
+- Location: Düsseldorf area, approx. 70 % remote
+- Rate: on request
+
+Why work with us?
+- Personal support from your dedicated account manager
+- Payment of your invoices within 10 days
+- Access to our exclusive project network
+- Community events, meetups and free trainings
+
+Are you interested? Then send us your CV in Word format including your hourly rate and availability. We look forward to hearing from you! Even if you do not meet all requirements, we are happy to talk to you.
+
+Keywords
+DevOps
+Jenkins
+Ansible
+OpenShift
+Docker
+Linux
+CI/CD
+Telecommunications
+
+Apply now
+Save project
+Share project
+
+Provider
+Rheinkiesel Tech Talents GmbH
+IT staffing and project partner
+3,412 published projects
+Member since 2013
+View company profile
+
+Similar projects
+Linux Administrator (m/f/d)
+Cologne · from now · 12 months
+OpenShift Engineer (m/f/d)
+Remote · 12/2026
+Ansible Automation Engineer (m/f/d)
+Bonn · 01/2027
+Show more projects

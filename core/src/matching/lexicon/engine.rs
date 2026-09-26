@@ -346,6 +346,7 @@ pub(crate) const SOFT_SKILLS: &[&str] = &[
 pub(crate) const FRAME_WORDS: &[&str] = &[
     "auslastung",
     "availability",
+    "beauftragung",
     "bereitschaft",
     "dauer",
     "duration",
@@ -371,10 +372,13 @@ pub(crate) const FRAME_WORDS: &[&str] = &[
     "start",
     "stundensatz",
     "tagessatz",
+    "teilzeit",
     "travel",
     "verfugbar",
     "vergutung",
+    "verlangerung",
     "vertragsart",
+    "vollzeit",
     "vor-ort-prasenz",
     "willingness",
     "workload",
@@ -1799,6 +1803,8 @@ pub(crate) const FULL_REMOTE: &[&str] = &[
     "vollstandig remote",
     "voll remote",
     "remote only",
+    "remote 100 %",
+    "remote 100%",
 ];
 
 /// ANÜ named: whole words, then substrings (case-folded, without umlauts).
@@ -1844,8 +1850,55 @@ pub(crate) const ANUE_TOPIC: &[&str] = &[
     "management of",
 ];
 /// ANÜ only one option: whole words, then substrings.
-pub(crate) const ANUE_OPTION: &[&str] = &["oder", "or", "wahlweise", "alternativ", "optional"];
-pub(crate) const ANUE_OPTION_PARTS: &[&str] = &["je nach", "moglich"];
+pub(crate) const ANUE_OPTION: &[&str] = &[
+    "oder",
+    "or",
+    "wahlweise",
+    "alternativ",
+    "optional",
+    "moglich",
+];
+pub(crate) const ANUE_OPTION_PARTS: &[&str] = &["je nach"];
+/// ANÜ as the business of a company, not the contract form (its core business, a group
+/// active in it): substrings of the sentence, unless it also names the contract
+/// (`ANUE_CONTRACT`).
+pub(crate) const ANUE_BUSINESS: &[&str] = &[
+    "kerngeschaft",
+    "geschaftsfeld",
+    "geschaftsbereich",
+    "tatig",
+    "spezialisiert",
+    "marktfuhrer",
+    "anbieter von",
+    "anbieter fur",
+    "active in",
+    "specialis",
+    "specializ",
+    "provider of",
+];
+/// A sentence that places the job itself in ANÜ (whole words or phrases).
+pub(crate) const ANUE_CONTRACT: &[&str] = &[
+    "im rahmen",
+    "im wege",
+    "auf basis",
+    "einsatz",
+    "besetzung",
+    "anstellung",
+    "vertragsart",
+    "suchen wir",
+    "wir suchen",
+    "we are looking",
+    "we seek",
+    "fur unseren kunden",
+    "for our client",
+    "uber anu",
+    "per anu",
+    "via anu",
+];
+/// Pay by commission or by result is no day rate (substrings; `provisionsfrei` is none).
+pub(crate) const NO_RATE_WORDS: &[&str] =
+    &["provision", "commission", "erfolgshonorar", "success fee"];
+pub(crate) const NO_RATE_EXCEPT: &[&str] = &["provisionsfrei", "ohne provision", "no commission"];
 
 /// Permanent position.
 pub(crate) const PERMANENT_WORDS: &[&str] = &[
@@ -1884,6 +1937,10 @@ pub(crate) const INTERIM_CUES: &[&str] = &[
     "auf zeit",
     "projektbasis",
     "project basis",
+    "vakanzuberbruckung",
+    "ubergangsgeschaftsfuhr",
+    "ubergangsweise",
+    "fractional",
 ];
 /// A stated permanent position (in addition to [`PERMANENT_WORDS`]).
 pub(crate) const PERMANENT_STATED: &[&str] = &[

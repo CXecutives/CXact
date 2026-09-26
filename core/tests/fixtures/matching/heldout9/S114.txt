@@ -1,0 +1,85 @@
+Titel: Release Manager (f/m/d) – fractional, 3 days per week, commerce platform
+Unternehmen: Donaukanal Commerce Solutions GmbH
+Ort: Wien
+Quelle: Freelancermap
+Link: https://www.freelancermap.com/project/release-manager-f-m-d-fractional-3-days-per-week-commerce-platform-2916542
+Abgerufen am: 22.09.2026 07:27
+
+Project details
+Start
+16.11.2026
+Duration
+3 months
+From
+Donaukanal Commerce Solutions GmbH
+Posted
+21.09.2026
+Project ID
+2916542
+Industry
+Retail
+Contract type
+Freelance
+Work type
+70 % remote
+Hourly rate
+105 - 115 €/h
+
+Description
+Donaukanal Commerce Solutions runs the online shops and the marketplace platform of an Austrian retail group with four brands and around 2.3 million orders per year. The platform consists of about 40 services, owned by twelve product teams in Vienna and Bratislava. Teams deploy on their own, but larger changes that touch checkout, payment or the order interface to the ERP are bundled into a joint release every two weeks.
+
+Our Head of Delivery is on parental leave until February. We are looking for an experienced release manager on a fractional basis to keep the release train running and to tidy up the process on the way.
+
+Your tasks
+• Own the release calendar and the joint releases every two weeks, including go/no-go meetings
+• Coordinate the release scope with the product owners and check the readiness criteria of each team
+• Work with the QA chapter on the quality gates in the GitLab pipelines and on the regression scope before each joint release
+• Run the change advisory board for changes to payment and ERP interfaces
+• Plan and coordinate the release for the peak season (Black Friday freeze and the first releases in January)
+• Maintain release notes and the communication to customer service and the brand teams
+• Propose improvements to reduce the share of changes that still need a joint release
+
+Your profile
+• At least 5 years of experience as release manager or in a similar delivery role in agile teams
+• Good understanding of CI/CD, GitLab pipelines and container-based deployments
+• Experience with quality gates and test strategies in agile environments; a background in testing or QA is welcome
+• Experience with change management according to ITIL
+• Structured, calm and confident in front of product owners and management
+• Fluent English; German is an advantage
+
+Conditions
+Location: Vienna, one day per week on site, the rest remote
+Workload: 3 days per week
+Start: 16.11.2026
+Duration: 3 months with option to extend until the return of our Head of Delivery
+Contract: freelance, service contract directly with Donaukanal Commerce Solutions GmbH
+Rate: 105 - 115 €/h depending on experience
+
+Keywords
+Release Management
+Release Manager
+Quality Gates
+GitLab CI
+ITIL Change Management
+Agile
+E-Commerce
+
+Apply now
+Save project
+Share project
+
+Provider
+Donaukanal Commerce Solutions GmbH
+Commerce platforms for retail brands
+6 published projects
+Member since 2023
+View company profile
+
+Similar projects
+Delivery Manager E-Commerce (f/m/d)
+Vienna · 01/2027 · 6 months
+QA Engineer Playwright (f/m/d)
+Remote · from now
+Scrum Master (f/m/d)
+Graz · 12/2026
+Show more projects

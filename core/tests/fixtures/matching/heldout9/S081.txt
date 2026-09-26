@@ -1,0 +1,78 @@
+Titel: Functional Safety Manager ISO 26262 (f/m/d) – interim assignment, battery management system
+Unternehmen: Filderhöhe Batteriesysteme GmbH
+Ort: Leinfelden-Echterdingen, Baden-Württemberg, Germany (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4358801947/
+Abgerufen am: 14.09.2026 07:41
+
+Filderhöhe Batteriesysteme GmbH
+Leinfelden-Echterdingen, Baden-Württemberg, Germany (Hybrid)
+3 days ago · 19 applicants
+Hybrid · Contract · Mid-Senior level
+Apply
+Save
+
+About the job
+Filderhöhe Batteriesysteme develops high-voltage battery systems for sports cars, light commercial vehicles and construction machinery. About 650 people work at our development centre near Stuttgart airport and at our pilot plant in Heilbronn. Our battery management system (BMS) is developed in house, from the hardware to the AUTOSAR-based software.
+
+Our Functional Safety Manager has moved to a customer project abroad, and the permanent successor will join in May 2027. The start of production of our next BMS generation is planned for autumn 2027, and the functional safety audit by an external assessor is scheduled for March 2027. For this interim assignment we are looking for an experienced functional safety expert who takes over the role right away.
+
+Your responsibilities
+• Own the safety plan and the safety case for the BMS (ASIL C and ASIL D goals) and track all safety activities across system, hardware and software
+• Review the item definition and the hazard analysis and risk assessment (HARA) for the new generation
+• Update the functional and technical safety concept, including the safety mechanisms for cell voltage and temperature monitoring and contactor control
+• Coordinate FMEA, FTA, FMEDA and dependent failure analysis with the hardware and software teams
+• Manage safety requirements and their traceability in Polarion
+• Prepare confirmation reviews and the functional safety audit together with the external assessor
+• Align safety work products with our Automotive SPICE Level 2 process landscape
+• Support integration topics on the CAN FD network and diagnostics with the vehicle manufacturers
+
+Your profile
+• 8+ years in automotive E/E development, of which at least 5 years in functional safety according to ISO 26262
+• Solid background in embedded software, ideally with embedded C and AUTOSAR Classic
+• Hands-on experience with safety analyses and technical safety concepts up to ASIL D
+• Experience with battery management systems or other high-voltage systems is a plus
+• A functional safety certificate (for example TÜV) is a plus
+• Fluent German and English
+
+What we offer
+• Start: 1 December 2026
+• Duration: 7 months until the end of June 2027, extension possible
+• Full-time, three days per week on site in Leinfelden-Echterdingen, two days remote
+• Day rate EUR 950 to 1,100 plus VAT
+• Freelance service contract directly with Filderhöhe Batteriesysteme GmbH
+
+Please send us your profile with your availability and day rate. Your contact is our Head of System Engineering.
+
+Show less
+Seniority level
+Mid-Senior level
+Employment type
+Contract
+Job function
+Engineering
+Industries
+Motor Vehicle Manufacturing
+
+Referrals increase your chances of interviewing at Filderhöhe Batteriesysteme GmbH
+See who you know
+Sign in
+
+Get notified about new Functional Safety Manager jobs in Leinfelden-Echterdingen
+Sign in to create job alert
+
+Similar jobs
+Functional Safety Engineer (m/w/d)
+Stuttgart, Baden-Württemberg, Germany
+1 week ago
+Systems Engineer BMS (f/m/d)
+Heilbronn, Baden-Württemberg, Germany
+4 days ago
+Safety Manager E/E (m/w/d)
+Sindelfingen, Baden-Württemberg, Germany
+2 days ago
+
+People also searched
+Functional Safety
+ISO 26262
+Battery Management System

@@ -1,0 +1,75 @@
+Titel: Interim ASPICE Process Lead (m/w/d) – Vorbereitung Assessment Level 2 und CSMS
+Unternehmen: Allgäuer Fahrzeugelektronik GmbH & Co. KG
+Ort: Kempten (Allgäu), Bayern, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4358766230/
+Abgerufen am: 17.09.2026 07:23
+
+Allgäuer Fahrzeugelektronik GmbH & Co. KG
+Kempten (Allgäu), Bayern, Deutschland (Hybrid)
+Vor 6 Tagen · 14 Bewerber
+Hybrid · Freiberuflich · Direktor
+Bewerben
+Speichern
+
+Info zum Job
+Wir sind ein familiengeführter Hersteller von Bedienelementen, Lichtsteuergeräten und Sensorik für Landmaschinen, Nutzfahrzeuge und Pkw. Rund 850 Mitarbeitende, davon 160 in der Entwicklung, arbeiten in Kempten und in unserem Werk in Oberösterreich.
+
+Ein großer Fahrzeughersteller hat uns ein neues Lichtsteuergerät beauftragt und fordert für die Serienfreigabe ein Automotive-SPICE-Assessment auf Level 2 sowie den Nachweis eines Cybersecurity-Managementsystems nach ISO/SAE 21434. Unsere Prozesslandschaft ist historisch gewachsen und in Teilen noch nicht auf dem Stand, den unsere Kunden erwarten. Für dieses Interimsmandat suchen wir eine erfahrene Persönlichkeit, die unsere Entwicklungsprozesse fit macht. Wir denken an ein fractional Mandat mit drei Tagen pro Woche.
+
+Deine Aufgaben
+• Gap-Analyse unserer Entwicklungsprozesse gegen Automotive SPICE 4.0 (SYS.1 bis SYS.5, SWE.1 bis SWE.6, SUP.1, SUP.8 bis SUP.10, MAN.3)
+• Aufbau einer schlanken Prozesslandkarte mit Rollen, Vorlagen und Checklisten
+• Coaching der Projektteams und der Projektleitungen in der täglichen Arbeit
+• Einführung von Workflows für Anforderungen, Änderungen und Traceability in Polarion
+• Aufbau der Grundlagen für ein Cybersecurity-Managementsystem nach ISO/SAE 21434 gemeinsam mit unserer IT
+• Vorbereitung und Begleitung des Assessments durch den Kunden im Mai 2027
+• Schulungen für Entwicklung und Qualitätsmanagement
+
+Dein Profil
+• Mindestens 8 Jahre Erfahrung in der Automobilelektronik, davon mehrere Jahre in Prozessverbesserung oder Qualitätsmanagement der Entwicklung
+• Sehr gute Kenntnisse von Automotive SPICE und Erfahrung mit Assessments
+• Eine intacs-Zertifizierung als Provisional oder Competent Assessor ist wünschenswert
+• Erfahrung mit ISO/SAE 21434 und ISO 26262 von Vorteil
+• Erfahrung mit Polarion oder einem vergleichbaren ALM-Werkzeug
+• Überzeugendes Auftreten gegenüber Teams, Geschäftsführung und Kunden
+
+Rahmenbedingungen
+• Start: 01.12.2026
+• Laufzeit: bis 30.06.2027
+• Umfang: 3 Tage/Woche, davon in der Regel zwei Tage vor Ort in Kempten
+• Vergütung: nach Absprache
+• Vertragsform: Beratervertrag direkt mit uns
+
+Weniger anzeigen
+Senioritätsstufe
+Direktor
+Beschäftigungsverhältnis
+Freiberuflich
+Tätigkeitsbereich
+Qualitätssicherung und Ingenieurwesen
+Branchen
+Herstellung von Kraftfahrzeugteilen
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Allgäuer Fahrzeugelektronik GmbH & Co. KG kennen
+Anmelden
+
+Jobbenachrichtigung für ASPICE in Kempten aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+Prozessberater Automotive SPICE (m/w/d)
+Memmingen, Bayern, Deutschland
+Vor 2 Wochen
+Cybersecurity Manager ISO 21434 (m/w/d)
+Ulm, Baden-Württemberg, Deutschland
+Vor 5 Tagen
+Qualitätsmanager Entwicklung (m/w/d)
+Kempten (Allgäu), Bayern, Deutschland
+Vor 1 Woche
+
+Personen haben auch gesucht
+Automotive SPICE
+Prozessmanagement
+Cybersecurity

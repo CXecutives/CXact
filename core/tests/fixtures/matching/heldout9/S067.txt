@@ -1,0 +1,83 @@
+Titel: Azure Cloud Engineer M365 / INTUNE + Terraform (m/w/d) remote!!
+Unternehmen: Kurpfalz IT Solutions UG (haftungsbeschränkt)
+Ort: Mannheim
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/nproj/2919204.html
+Abgerufen am: 24.09.2026 07:19
+
+Projektdetails
+Start
+11/2026
+Dauer
+3 Monate
+Von
+Kurpfalz IT Solutions UG (haftungsbeschränkt)
+Eingestellt
+23.09.2026
+Projekt-ID
+2919204
+Branche
+Pharma
+Vertragsart
+Freiberuflich
+Einsatzart
+80 % Remote
+Stundensatz
+120 - 130 €/h
+
+Beschreibung
+Hallo zusammen,
+
+für einen Endkunden (Pharma / Mittelstand, Rhein-Neckar) suchen wir ASAP bzw spätestens 11/2026 einen AZURE CLOUD ENGINEER mit starkem M365 background!!!
+
+Keywords: Azure, Entra ID (ex Azure AD), Intune, M365, Exchange Online, Conditional Access, Autopilot, Azure Landing Zone, Terraform, Azure DevOps Pipelines, PowerShell, Defender for Endpoint
+
+tasks:
+- azure landing zone erweitern (hub/spoke, private endpoints) mit terraform, pipelines in azure devops
+- 2-3 fachanwendungen nach AKS bringen (helm), monitoring mit azure monitor
+- Intune rollout for ~1.800 clients (Win11), Autopilot, compliance policys
+- Conditional Access / MFA konzept + umsetzung
+- migration exchange onprem -> exchange online (hybrid)
+- doku + übergabe an interne IT
+
+MUST: Azure + Terraform min 3 jahre, Entra ID / Conditional Access, Intune + M365 erfahrung, Deutsch fliessend (Kunde spricht kaum englisch)
+NICE: AKS, GitHub Actions, AZ-104 / AZ-305 / MD-102 certs
+
+Conditions:
+start 11/2026 (ASAP wäre super), laufzeit 3 monate + verlängerung sehr wahrscheinlich, 80% = 4 Tage/Woche, 80 % remote, 1x Woche onsite in Mannheim in der Rolloutphase, ca. 1.000 EUR Tagessatz (120-130€/h)
+
+für einen Endkunden (Pharma / Mittelstand, Rhein-Neckar) suchen wir ASAP bzw spätestens 11/2026 einen AZURE CLOUD ENGINEER mit starkem M365 background!!!
+
+Keywords: Azure, Entra ID (ex Azure AD), Intune, M365, Exchange Online, Conditional Access, Autopilot, Azure Landing Zone, Terraform, Azure DevOps Pipelines, PowerShell, Defender for Endpoint
+
+bitte CV (word!) + rate + verfügbarkeit an uns, danke!!
+LG
+
+Schlagworte
+Azure
+Intune
+M365
+Entra ID
+Terraform
+PowerShell
+Exchange Online
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Kurpfalz IT Solutions UG (haftungsbeschränkt)
+IT-Projektvermittlung
+58 veröffentlichte Projekte
+Mitglied seit 2021
+Firmenprofil ansehen
+
+Ähnliche Projekte
+M365 Engineer (m/w/d)
+Heidelberg · ab sofort · 6 Monate
+Intune Spezialist (m/w/d)
+Remote · 11/2026
+Azure Architekt (m/w/d)
+Frankfurt am Main · 01/2027
+Weitere Projekte anzeigen

@@ -1,0 +1,97 @@
+Titel: DevOps Engineer (m/w/d) CI/CD und Kubernetes – 100 % Remote
+Unternehmen: Alsterblick Talent Solutions GmbH
+Ort: Hamburg
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/devops-engineer-m-w-d-ci-cd-und-kubernetes-100-remote-2915873
+Abgerufen am: 18.09.2026 07:49
+
+Projektdetails
+Start
+ab sofort
+Dauer
+12 Monate
+Von
+Alsterblick Talent Solutions GmbH
+Eingestellt
+17.09.2026
+Projekt-ID
+2915873
+Branche
+IT-Dienstleistung
+Vertragsart
+Freiberuflich
+Einsatzart
+100 % Remote
+Stundensatz
+auf Anfrage
+
+Beschreibung
+Wer wir sind
+Die Alsterblick Talent Solutions GmbH ist ein inhabergeführtes Beratungs- und Vermittlungshaus mit Sitz in Hamburg und Niederlassungen in Berlin, Köln und München. Seit über 20 Jahren bringen wir hochqualifizierte IT-Expertinnen und IT-Experten mit spannenden Unternehmen zusammen, vom agilen Start-up bis zum DAX-Konzern. Unser Anspruch ist es, nicht nur Profile zu versenden, sondern echte Partnerschaften zu leben. Dafür steht unser Team aus über 70 erfahrenen Recruiterinnen und Recruitern, die ihre Kundinnen und Kunden und ihre Freelancer persönlich kennen. Mehr als 1.400 erfolgreich besetzte Projekte im Jahr sprechen für sich. Wir zahlen pünktlich, wir kommunizieren transparent und wir begleiten Sie auch nach dem Projektstart.
+
+Das Projekt
+Für unseren Kunden, ein etabliertes Unternehmen aus dem Umfeld digitaler Dienstleistungen, suchen wir ab sofort einen DevOps Engineer (m/w/d) zur Verstärkung eines bestehenden Plattformteams. Das Team betreibt eine moderne, cloudbasierte Plattform und entwickelt diese kontinuierlich weiter.
+
+Ihre Aufgaben
+• Mitarbeit im Plattformteam und Weiterentwicklung der bestehenden Infrastruktur
+• Betreuung und Optimierung der CI/CD-Pipelines
+• Unterstützung der Entwicklungsteams bei Themen rund um Deployment und Betrieb
+• Automatisierung wiederkehrender Aufgaben
+• Mitwirkung an Monitoring und Logging
+• Dokumentation der Arbeitsergebnisse
+
+Ihr Profil
+• Mehrjährige Erfahrung als DevOps Engineer oder in einer vergleichbaren Rolle
+• Sehr gute Kenntnisse in Kubernetes, Helm und Terraform
+• Erfahrung mit GitLab CI oder GitHub Actions sowie Argo CD
+• Kenntnisse in AWS, idealerweise zertifiziert
+• Erfahrung mit Prometheus und Grafana
+• Hands-on-Mentalität, Teamfähigkeit und Eigeninitiative
+• Gute Deutsch- oder Englischkenntnisse
+
+Rahmendaten
+• Start: ab sofort
+• Laufzeit: 12 Monate mit Option auf Verlängerung
+• Auslastung: Vollzeit
+• Einsatzort: 100 % remote
+• Stundensatz: auf Anfrage
+
+Was wir Ihnen bieten
+• Persönliche Betreuung durch Ihre feste Ansprechpartnerin
+• Schnelle Zahlung innerhalb von 14 Tagen
+• Zugang zu unserem exklusiven Projektnetzwerk
+• Regelmäßige Freelancer-Events und Weiterbildungsangebote
+
+Sie sind interessiert? Dann freuen wir uns auf Ihr aktuelles Profil mit Stundensatz und Verfügbarkeit. Auch wenn dieses Projekt nicht ganz passt, lohnt sich eine Kontaktaufnahme, denn wir haben laufend weitere Projekte im Bereich Cloud und DevOps.
+
+Schlagworte
+DevOps
+Kubernetes
+Terraform
+Helm
+CI/CD
+GitLab
+AWS
+Remote
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Alsterblick Talent Solutions GmbH
+IT-Projektvermittlung und Personalberatung
+312 veröffentlichte Projekte
+Mitglied seit 2014
+Firmenprofil ansehen
+
+Ähnliche Projekte
+Cloud Engineer AWS (m/w/d)
+Remote · 11.2026 · 6 Monate
+Platform Engineer Kubernetes (m/w/d)
+Berlin · ab sofort
+Site Reliability Engineer (m/w/d)
+München · 01.2027
+Mehr Projekte anzeigen
+
+Sie sind Freelancer im Bereich DevOps? Jetzt kostenlos registrieren und Projekte per E-Mail erhalten.

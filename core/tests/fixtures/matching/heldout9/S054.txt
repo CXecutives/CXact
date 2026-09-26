@@ -1,0 +1,71 @@
+Titel: Angular-Entwickler (m/w/d) freiberuflich – Teilzeit, 20 h/Woche, remote
+Unternehmen: Nidda Energiehandel GmbH
+Ort: Frankfurt am Main, Hessen, Deutschland (Remote)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4351862290/
+Abgerufen am: 20.09.2026 07:47
+
+Nidda Energiehandel GmbH
+Frankfurt am Main, Hessen, Deutschland (Remote)
+Vor 5 Tagen · 34 Bewerber
+95 €/Std. - 105 €/Std. · Remote · Teilzeit · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+Wir sind ein unabhängiger Energiehändler und beliefern rund 180.000 Haushalte und 6.000 Gewerbekunden mit Strom und Gas. Unser Kundenportal und unser Partnerportal für Makler und Stadtwerke entwickeln wir selbst, mit einem Team aus sechs Leuten.
+
+Warum wir suchen: Unsere Frontend-Entwicklerin geht Mitte November in Elternzeit. Die Backend-Seite (.NET 8, C#) ist gut besetzt, im Frontend fehlt uns für die nächsten Monate eine erfahrene Hand. Wir suchen deshalb eine freiberufliche Angular-Entwicklerin oder einen freiberuflichen Angular-Entwickler für ungefähr 20 Stunden pro Woche. Die Tage kannst du dir selbst einteilen, wichtig sind uns die Teilnahme am Daily (9:15 Uhr) und am Sprint Review alle zwei Wochen.
+
+Das erwartet dich
+Im Kundenportal steht der neue Tarifrechner mit Vertragsabschluss an, dazu die Umstellung von Angular 15 auf Angular 18 mit Standalone Components und Signals. Im Partnerportal sollen Makler ihre Provisionen einsehen und Angebote als PDF erzeugen können. Außerdem wollen wir die Testabdeckung im Frontend deutlich erhöhen, derzeit gibt es kaum Unit-Tests.
+
+• Umsetzung neuer Features in Angular und TypeScript
+• Migration auf Angular 18, Ablösung alter Module
+• State Management mit NgRx
+• Unit-Tests mit Jest, End-to-End-Tests mit Playwright
+• Abstimmung der REST-Schnittstellen mit dem .NET-Team
+• Barrierefreiheit nach WCAG 2.1 AA (BFSG)
+
+Was du mitbringen solltest
+• Mindestens 5 Jahre Erfahrung mit Angular und TypeScript
+• Sicherer Umgang mit RxJS und NgRx
+• Erfahrung mit Nx-Monorepos ist ein Plus
+• Du verstehst REST-APIs und kannst mit Backend-Leuten auf Augenhöhe sprechen. .NET-Kenntnisse brauchst du nicht.
+• Gutes Deutsch
+
+Rahmenbedingungen
+Freiberuflicher Einsatz für 6 Monate, Start am 16.11.2026. Teilzeit mit 20 h/Woche, komplett remote. Stundensatz 95 bis 105 € je nach Erfahrung. Eine Verlängerung ist möglich, ebenso eine Erhöhung auf mehr Stunden im Frühjahr 2027.
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Teilzeit
+Tätigkeitsbereich
+Informationstechnologie und Softwareentwicklung
+Branchen
+Versorgungsunternehmen
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Nidda Energiehandel GmbH kennen
+Anmelden
+
+Jobbenachrichtigung für Angular Entwickler in Frankfurt am Main aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+Frontend Developer Angular (m/w/d)
+Wiesbaden, Hessen, Deutschland (Hybrid)
+Vor 1 Woche
+Senior TypeScript Engineer (m/w/d)
+Darmstadt, Hessen, Deutschland
+Vor 3 Tagen
+UI Engineer React (m/w/d)
+Remote
+Vor 2 Tagen
+
+Personen haben auch gesucht
+Frontend Entwickler
+Angular Developer
+TypeScript Entwickler

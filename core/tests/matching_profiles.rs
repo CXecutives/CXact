@@ -105,7 +105,7 @@ fn the_core_alone_serves_an_unrelated_field() {
 #[test]
 fn packs_follow_the_competences() {
     let senior = compile_profile(&fixture("sample_profile_senior.json"));
-    assert_eq!(senior.summary().packs, ["finance", "sap"]);
+    assert_eq!(senior.summary().packs, ["finance", "sap", "restructuring"]);
     let sap = compile_profile(&fixture("sample_profile_sap.json"));
     assert_eq!(sap.summary().packs, ["finance", "sap", "itProject"]);
     let it = compile_profile(&fixture("sample_profile_it.json"));

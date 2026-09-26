@@ -1,0 +1,276 @@
+{
+  "name": "Stefan Beispielberg",
+  "email": "stefan.beispielberg@example.invalid",
+  "telefon": "+49 171 0000000",
+  "titel": "Interim Manager und Berater für Ertragssteigerung im Mittelstand",
+  "abschluss": "Diplom-Wirtschaftsingenieur (Univ.)",
+  "berufserfahrung_jahre": 24,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Wirtschaftsingenieur (Univ.)",
+      "fach": "Wirtschaftsingenieurwesen mit den Schwerpunkten Controlling und Produktionswirtschaft",
+      "hochschule": "Beispieluniversität",
+      "jahr": 2002
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2014 - heute",
+      "rolle": "Interim Manager und Berater für Ergebnisverbesserung (selbstständig)",
+      "schwerpunkte": [
+        "Neunzehn Interimsmandate und Projekte in inhabergeführten Industrie- und Handelsunternehmen mit 80 bis 1.200 Mitarbeitenden",
+        "Ergebnisverbesserungsprogramme mit durchschnittlich 3,5 Prozentpunkten EBIT-Steigerung innerhalb von zwölf Monaten",
+        "Neuaufstellung von Preisstrategie, Kalkulation und Konditionensystemen",
+        "Aufbau von Controlling, Deckungsbeitragsrechnung und KPI-Cockpits",
+        "Restrukturierung light mit Kostensenkung, Liquiditätssicherung und Bankenkommunikation",
+        "Mehrere Mandate als Interim kaufmännischer Geschäftsführer"
+      ]
+    },
+    {
+      "zeitraum": "2008 - 2014",
+      "rolle": "Kaufmännischer Geschäftsführer eines Familienunternehmens der Metallverarbeitung mit 650 Mitarbeitenden",
+      "schwerpunkte": [
+        "Verantwortung für Finanzen, Controlling, Einkauf, IT und Personal",
+        "Einführung einer Deckungsbeitragsrechnung je Kunde und Produktgruppe",
+        "Kostensenkungsprogramm über 6 Mio. EUR in der Krise 2009",
+        "Strategieprozess mit der Gesellschafterfamilie und Nachfolgeregelung"
+      ]
+    },
+    {
+      "zeitraum": "2002 - 2008",
+      "rolle": "Berater und zuletzt Senior Manager bei einer Mittelstandsberatung",
+      "schwerpunkte": [
+        "Kostenmanagement und Gemeinkostensenkung",
+        "Pricing-Projekte in Industrie und Großhandel",
+        "Vertriebseffizienz und Vertriebscontrolling"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Ergebnisverbesserung",
+      "jahre": 12,
+      "auch": ["Ertragssteigerung", "Profitabilitätssteigerung", "Performance Improvement", "EBIT-Verbesserung"]
+    },
+    {
+      "kompetenz": "Kostensenkung",
+      "jahre": 18,
+      "auch": ["Kostenmanagement", "Kostenreduktion", "Cost Reduction", "Gemeinkostensenkung"]
+    },
+    {
+      "kompetenz": "Pricing",
+      "jahre": 14,
+      "auch": ["Preisstrategie", "Preismanagement", "Pricing Excellence", "Konditionenmanagement"]
+    },
+    {
+      "kompetenz": "Aufbau Controlling",
+      "jahre": 15,
+      "auch": ["Controlling-Aufbau", "Controllingsystem", "Unternehmenssteuerung"]
+    },
+    {
+      "kompetenz": "KPI-Systeme",
+      "jahre": 14,
+      "auch": ["Kennzahlensysteme", "KPI-Cockpit", "Balanced Scorecard", "Kennzahlen"]
+    },
+    {
+      "kompetenz": "Vertriebssteuerung",
+      "jahre": 10,
+      "auch": ["Sales Performance", "Vertriebscontrolling", "Vertriebseffizienz"]
+    },
+    {
+      "kompetenz": "Restrukturierung",
+      "jahre": 10,
+      "auch": ["Sanierung", "Turnaround", "Restrukturierung light"]
+    },
+    {
+      "kompetenz": "Strategie für inhabergeführte Unternehmen",
+      "jahre": 12,
+      "auch": ["Unternehmensstrategie", "Strategieentwicklung", "Familienunternehmen"]
+    },
+    {
+      "kompetenz": "Interim Management",
+      "jahre": 12,
+      "auch": ["Management auf Zeit", "Interimsmandate", "Interim-Geschäftsführung"]
+    },
+    {
+      "kompetenz": "Deckungsbeitragsrechnung",
+      "jahre": 18,
+      "auch": ["Produktkalkulation", "Kalkulation", "Margenanalyse"]
+    },
+    {
+      "kompetenz": "Liquiditätsplanung",
+      "jahre": 15,
+      "auch": ["Liquiditätsmanagement", "13-Wochen-Liquiditätsplanung", "Working Capital Management"]
+    },
+    {
+      "kompetenz": "Unternehmensplanung",
+      "jahre": 18,
+      "auch": ["Budgetierung", "Mittelfristplanung", "Forecast"]
+    },
+    {
+      "kompetenz": "Einkaufsoptimierung",
+      "jahre": 9,
+      "auch": ["Materialkostensenkung", "Einkauf"]
+    },
+    {
+      "kompetenz": "Produktivitätssteigerung",
+      "jahre": 8,
+      "auch": ["Lean Management", "Operational Excellence"]
+    },
+    {
+      "kompetenz": "Management Reporting",
+      "jahre": 18,
+      "auch": ["Berichtswesen", "Reporting"]
+    },
+    {
+      "kompetenz": "Bankenkommunikation",
+      "jahre": 10,
+      "auch": ["Finanzierung", "Bankengespräche"]
+    },
+    {
+      "kompetenz": "Kaufmännische Leitung",
+      "jahre": 9,
+      "auch": ["kaufmännische Geschäftsführung", "CFO-Funktion"]
+    },
+    {
+      "kompetenz": "Changemanagement",
+      "jahre": 12,
+      "auch": ["Change Management", "Veränderungsmanagement"]
+    }
+  ],
+  "methoden_tools": [
+    {
+      "name": "Excel"
+    },
+    {
+      "name": "Power BI"
+    },
+    {
+      "name": "Qlik Sense"
+    },
+    {
+      "name": "Microsoft Dynamics 365 Business Central"
+    },
+    {
+      "name": "SAP Business One"
+    },
+    {
+      "name": "DATEV"
+    },
+    {
+      "name": "Corporate Planner"
+    },
+    {
+      "name": "LucaNet"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "Zertifizierter Restrukturierungs- und Sanierungsberater"
+    },
+    {
+      "name": "Controller (IHK)"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Metallverarbeitung"
+    },
+    {
+      "branche": "Maschinenbau"
+    },
+    {
+      "branche": "Kunststofftechnik"
+    },
+    {
+      "branche": "Baustoffe"
+    },
+    {
+      "branche": "Großhandel"
+    },
+    {
+      "branche": "Lebensmittelherstellung"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Neunzehn Mandate zur Ergebnisverbesserung in inhabergeführten Unternehmen",
+    "Setzt Preiserhöhungen durch, ohne die wichtigsten Kunden zu verlieren",
+    "Hat selbst sechs Jahre ein Familienunternehmen kaufmännisch geführt"
+  ],
+  "keywords": [
+    "Ergebnisverbesserung",
+    "Kostensenkung",
+    "Pricing",
+    "Controlling",
+    "KPI",
+    "Deckungsbeitragsrechnung",
+    "Restrukturierung",
+    "Interim Management",
+    "Mittelstand",
+    "Familienunternehmen"
+  ],
+  "schwerpunkte": [
+    "Ergebnisverbesserung",
+    "Pricing",
+    "Aufbau Controlling",
+    "Restrukturierung light"
+  ],
+  "wunschrollen": [
+    "Interim Manager Ergebnisverbesserung",
+    "Interim kaufmännischer Geschäftsführer",
+    "Projektleitung Performance Improvement",
+    "Berater Pricing und Controlling"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 1250,
+    "remote": "teilweise",
+    "regionen": [
+      "Baden-Württemberg",
+      "Bayern",
+      "DACH"
+    ],
+    "branchen": [
+      "Maschinenbau",
+      "Metallverarbeitung",
+      "Großhandel"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 1100,
+    "laender": [
+      "DE",
+      "AT",
+      "CH"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue"
+    ],
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "ab 15.10.2026",
+    "min_jahresgehalt": 170000,
+    "festanstellung_orte": [
+      "Stuttgart",
+      "Esslingen am Neckar",
+      "Ludwigsburg",
+      "Böblingen",
+      "Sindelfingen",
+      "Leonberg",
+      "Waiblingen",
+      "Fellbach",
+      "Filderstadt",
+      "Leinfelden-Echterdingen"
+    ],
+    "festanstellung_remote_min": 60,
+    "zielprofil_min_jahre": 10
+  }
+}

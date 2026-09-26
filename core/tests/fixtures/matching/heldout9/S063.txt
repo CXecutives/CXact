@@ -1,0 +1,66 @@
+Titel: Azure Cloud & DevOps Engineer (m/w/d) – AKS, Terraform, GitLab CI
+Unternehmen: Weserbergland IT-Consulting GmbH
+Ort: D-28195 Bremen
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1320518-Azure-Cloud-DevOps-Engineer-m-w-d-AKS-Terraform-GitLab-CI
+Abgerufen am: 21.09.2026 18:14
+
+Projekt-ID: 1320518
+Ort: Bremen
+Remote: 90 %
+Start: 02.11.2026
+Dauer: bis 31.03.2027
+Vertragsart: Freiberuflich
+Honorar: 125 € pro Stunde
+Letztes Update: 21.09.2026
+
+Projektbeschreibung
+Für einen regionalen Energieversorger und Netzbetreiber aus Norddeutschland suchen wir eine/n erfahrene/n Azure Cloud & DevOps Engineer. Der Kunde verlagert gerade seine Fachanwendungen (Netzleitstelle ausgenommen) aus dem eigenen Rechenzentrum nach Azure. Die Landing Zone steht, die ersten 20 Anwendungen laufen bereits. Bis Ende März sollen weitere 35 Anwendungen folgen, viele davon als Container auf AKS.
+
+Das interne Cloud-Team hat zu wenig Kapazität, deshalb soll ein externer Engineer das Team für einige Monate verstärken. Wichtig ist dem Kunden jemand, der nicht nur umsetzt, sondern die internen Kollegen mitnimmt.
+
+Aufgaben:
+- Aufbau und Betrieb von AKS-Clustern inkl. Ingress, Zertifikatsmanagement und Netzwerkanbindung (Hub-and-Spoke)
+- Erweiterung der Terraform-Codebasis (Module für AKS, Azure SQL, Key Vault, Storage, Private Endpoints)
+- Aufbau von CI/CD-Pipelines in GitLab CI für die Anwendungsteams, Container-Builds und Deployments mit Helm
+- Monitoring und Alerting mit Azure Monitor, Prometheus und Grafana
+- Unterstützung bei der Migration einzelner Anwendungen (Containerisierung, Tests, Cut-over am Wochenende nach Absprache)
+- Dokumentation im Confluence und Wissenstransfer ans interne Team
+
+Anforderungen:
+- Mehrjährige Erfahrung mit Microsoft Azure, insbesondere AKS und Netzwerk
+- Sehr gute Kenntnisse in Terraform
+- Erfahrung mit GitLab CI oder GitHub Actions
+- Kubernetes und Helm in Produktion
+- Erfahrung in regulierten Umgebungen (KRITIS) von Vorteil
+- Azure-Zertifizierung (AZ-104, AZ-305 oder AZ-400) wünschenswert
+- Deutsch fließend
+
+Sonstiges:
+Auslastung 3 Tage/Woche, die Tage sind grundsätzlich frei wählbar, dienstags ist Team-Tag. Vor Ort in Bremen ca. zweimal im Monat, sonst remote. Start 02.11.2026, Laufzeit bis 31.03.2027, eine Verlängerung für die zweite Migrationswelle ist wahrscheinlich. Stundensatz 125 € all-in, abgerechnet wird nach Stunden. Sicherheitsüberprüfung nach SÜG (Ü1) wird vom Kunden veranlasst.
+
+Kategorien und Skills
+Azure
+AKS
+Kubernetes
+Terraform
+GitLab CI
+Helm
+DevOps
+Cloud-Migration
+Energiewirtschaft
+
+Projektanbieter
+Weserbergland IT-Consulting GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Azure Architect (m/w/d) Landing Zone
+Hannover · 01.2027 · 9 Monate
+DevOps Engineer Kubernetes (m/w/d)
+Remote · ab sofort
+Cloud Engineer AWS (m/w/d)
+Hamburg · 11.2026
+Alle Projekte in Cloud Computing anzeigen

@@ -279,7 +279,7 @@ pub(crate) fn percents(folded: &str) -> Vec<u64> {
 }
 
 /// Words of a location that name a place (no country, state, postal code or work mode).
-fn place_words(folded: &str) -> Vec<&str> {
+pub(crate) fn place_words(folded: &str) -> Vec<&str> {
     folded
         .split(|c: char| !c.is_alphanumeric() && c != '-')
         .filter(|w| w.len() > 1)

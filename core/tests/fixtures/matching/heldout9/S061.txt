@@ -1,0 +1,76 @@
+Titel: Senior Platform Engineer (m/w/d) – Kubernetes, Terraform und AWS
+Unternehmen: Elbkai Logistik Digital GmbH
+Ort: Hamburg, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4351590832/
+Abgerufen am: 15.09.2026 07:36
+
+Elbkai Logistik Digital GmbH
+Hamburg, Deutschland (Hybrid)
+Vor 2 Tagen · 96 Bewerber
+88.000 €/Jahr - 102.000 €/Jahr · Hybrid · Vollzeit · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+Die Elbkai Logistik Digital GmbH ist die Digitaleinheit einer Hamburger Hafen- und Kontraktlogistikgruppe mit 5.200 Beschäftigten. Wir entwickeln die Software, mit der Container am Terminal disponiert, Lkw-Slots vergeben und Lagerbestände für mehr als 300 Kunden gesteuert werden. Unsere 14 Produktteams deployen täglich, und das soll auch so bleiben.
+
+Das Platform Team stellt allen Produktteams eine gemeinsame Plattform auf AWS bereit: Kubernetes-Cluster auf EKS, Infrastruktur mit Terraform, Pipelines mit GitHub Actions, Deployments über ArgoCD und ein Observability-Stack aus Prometheus, Grafana und OpenTelemetry. Wir erweitern das Team dauerhaft und suchen eine Senior Platform Engineerin oder einen Senior Platform Engineer in unbefristeter Festanstellung.
+
+Deine Aufgaben
+• Betrieb und Weiterentwicklung unserer EKS-Cluster in drei AWS-Regionen, inklusive Upgrades und Kapazitätsplanung
+• Entwicklung wiederverwendbarer Terraform-Module für Datenbanken, Queues und Netzwerke
+• Ausbau unserer internen Developer Platform auf Basis von Backstage, damit Teams neue Services selbst anlegen können
+• Standardisierung der CI/CD-Pipelines mit GitHub Actions und ArgoCD
+• Weiterentwicklung von Monitoring, Logging und Tracing sowie Definition von SLOs mit den Produktteams
+• Teilnahme an der Rufbereitschaft (etwa eine Woche pro Quartal, gesondert vergütet)
+• Mentoring von zwei Junior-Kolleginnen im Team
+
+Dein Profil
+• Mindestens 6 Jahre Erfahrung im Betrieb von Cloud-Infrastruktur, davon mindestens 3 Jahre mit Kubernetes in Produktion
+• Sehr gute Kenntnisse in AWS und Terraform
+• Erfahrung mit GitOps, idealerweise mit ArgoCD
+• Programmiererfahrung in Go oder Python
+• Erfahrung mit Observability-Werkzeugen und SRE-Praktiken
+• Gutes Deutsch und Englisch, unsere Teamsprache ist Englisch
+
+Was wir bieten
+• Unbefristete Festanstellung in Vollzeit (40 Stunden)
+• Jahresgehalt zwischen 88.000 und 102.000 € je nach Erfahrung
+• 30 Tage Urlaub, betriebliche Altersvorsorge, Deutschlandticket
+• 60 % mobiles Arbeiten, Büro in der HafenCity
+• 3.000 € Weiterbildungsbudget pro Jahr und Zeit für Zertifizierungen
+• Start zum 01.01.2027 oder nach Vereinbarung
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Vollzeit
+Tätigkeitsbereich
+Informationstechnologie
+Branchen
+Transport, Logistik, Lieferkette und Lagerung
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Elbkai Logistik Digital GmbH kennen
+Anmelden
+
+Jobbenachrichtigung für Platform Engineer in Hamburg aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+DevOps Engineer (m/w/d)
+Hamburg, Deutschland (Hybrid)
+Vor 4 Tagen
+Site Reliability Engineer (m/w/d)
+Lübeck, Schleswig-Holstein, Deutschland
+Vor 1 Woche
+Cloud Architect AWS (m/w/d)
+Remote
+Vor 3 Tagen
+
+Personen haben auch gesucht
+Platform Engineer
+Kubernetes Engineer
+DevOps Engineer

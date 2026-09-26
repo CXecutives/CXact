@@ -1,0 +1,64 @@
+Titel: Full-Stack Entwickler Java / Angular (m/w/d) – Einsatzplanungsportal für Personaldienstleistung
+Unternehmen: Leinebogen Personalgruppe GmbH & Co. KG
+Ort: D-30159 Hannover
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1321164-Full-Stack-Entwickler-Java-Angular-m-w-d-Einsatzplanungsportal
+Abgerufen am: 19.09.2026 18:05
+
+Projekt-ID: 1321164
+Ort: Hannover
+Remote: 100 %
+Start: ab sofort
+Dauer: 3 Monate mit Option auf Verlängerung
+Vertragsart: Freiberuflich
+Honorar: 850 € pro Tag
+Letztes Update: 19.09.2026
+
+Projektbeschreibung
+Wir sind eine inhabergeführte Unternehmensgruppe mit 14 Niederlassungen in Niedersachsen und Bremen. Unser Kerngeschäft ist die Arbeitnehmerüberlassung in Industrie und Logistik, dazu kommen Personalvermittlung und Onsite-Management bei großen Kunden. Heute planen wir die Einsätze von rund 2.600 Mitarbeitenden mit einer Eigenentwicklung aus dem Jahr 2015 und sehr vielen Excel-Listen. Das wollen wir ändern.
+
+Seit Anfang 2026 baut unser kleines internes Entwicklungsteam (zwei Backend-Entwickler, eine Frontend-Entwicklerin, ein Product Owner) ein neues Einsatzplanungsportal. Kunden sollen darüber Bedarfe melden, Disponenten die Einsätze planen und Mitarbeitende ihre Schichten und Stundenzettel in einer App sehen. Das Backend besteht aus mehreren Spring-Boot-Services, das Frontend ist eine Angular-Anwendung. Wir suchen zur Verstärkung eine erfahrene Person (m/w/d) für Backend und Frontend, die mit anpackt und dem Team Architekturentscheidungen abnimmt.
+
+Was du machst:
+- Weiterentwicklung der Services für Einsatzplanung, Zeiterfassung und Abrechnungsvorbereitung (Java 21, Spring Boot 3, Spring Security mit Keycloak)
+- REST-Schnittstellen zu unserem Lohnabrechnungssystem und zum Kundenportal
+- Datenmodell und Migrationen in PostgreSQL
+- Neue Masken und Workflows im Angular-Frontend (Angular 18, NgRx, Angular Material)
+- Aufbau von automatisierten Tests und Verbesserung der GitLab-Pipelines
+- Mitgestaltung der Zielarchitektur, wenn nötig auch Aufteilung in weitere Microservices
+
+Was du mitbringst:
+- Mehrjährige Erfahrung mit Java und Spring Boot
+- Sicher in TypeScript und Angular
+- Erfahrung mit REST, PostgreSQL und Docker
+- Du arbeitest gern selbstständig und erklärst deine Entscheidungen
+- Erfahrung mit Arbeitnehmerüberlassung von Vorteil, etwa mit Equal Pay, Höchstüberlassungsdauer und Branchenzuschlägen, damit du die Fachlichkeit schnell verstehst. Das ist aber kein Muss, unser Product Owner erklärt alles.
+- Deutsch fließend, da die Fachbereiche nur Deutsch sprechen
+
+Zum Rahmen: Wir starten mit 3 Monaten und wollen danach verlängern, wenn es für beide Seiten passt. Das Projekt ist bis mindestens Mitte 2027 geplant. Die Zusammenarbeit ist freiberuflich und direkt mit uns, kein Vermittler dazwischen. Gearbeitet wird komplett remote, einmal im Monat gibt es einen Workshop-Tag in Hannover (Reisekosten übernehmen wir). Auslastung Vollzeit, gern ab sofort. Der Tagessatz liegt bei 850 € netto, bei sehr guter Erfahrung sprechen wir auch über mehr.
+
+Kategorien und Skills
+Java
+Spring Boot
+Angular
+TypeScript
+PostgreSQL
+REST
+Keycloak
+Microservices
+Full-Stack
+
+Projektanbieter
+Leinebogen Personalgruppe GmbH & Co. KG
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Java Entwickler Spring Boot (m/w/d) Logistik
+Bremen · 01.12.2026 · 6 Monate
+Angular Entwickler (m/w/d) remote
+Remote · ab sofort
+Softwarearchitekt Java (m/w/d)
+Hamburg · 01.2027
+Alle Projekte in Java anzeigen

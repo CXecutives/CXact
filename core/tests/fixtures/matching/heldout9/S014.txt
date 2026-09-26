@@ -1,0 +1,72 @@
+Titel: Power Platform Entwickler (m/w/d) Power Automate / Power Apps – Arbeitnehmerüberlassung
+Unternehmen: Kinzigtal Personalservice GmbH
+Ort: Offenburg, Baden-Württemberg, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4353296581/
+Abgerufen am: 18.09.2026 07:29
+
+Kinzigtal Personalservice GmbH
+Offenburg, Baden-Württemberg, Deutschland (Hybrid)
+Vor 1 Tag · Über 100 Bewerber
+Hybrid · Vollzeit · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+Für unseren Kunden, einen regionalen Energieversorger in der Ortenau, suchen wir im Rahmen der Arbeitnehmerüberlassung zum nächstmöglichen Zeitpunkt einen Power Platform Entwickler (m/w/d) in Vollzeit. Unser Kunde versorgt rund 180.000 Haushalte mit Strom, Gas und Wärme und digitalisiert gerade viele seiner internen Abläufe mit der Microsoft Power Platform.
+
+Ihre Aufgaben
+- Entwicklung und Pflege von Workflows mit Power Automate für Fachbereiche wie Kundenservice, Netzbetrieb und Einkauf
+- Umsetzung von Power Apps (Canvas und Model-driven) auf Basis von Dataverse
+- Anbindung an SAP IS-U und SharePoint über Standard- und Custom Connectors
+- Umsetzung erster Anwendungsfälle mit Copilot Studio, zum Beispiel ein interner Wissens-Chatbot für den Kundenservice
+- Dokumentation, Tests und Betreuung der Lösungen im Second-Level-Support
+- Enge Zusammenarbeit mit dem Center of Excellence der Power Platform und der IT-Sicherheit
+
+Ihr Profil
+- Abgeschlossene Ausbildung zum Fachinformatiker (m/w/d) für Anwendungsentwicklung oder ein Studium der (Wirtschafts-)Informatik
+- 3 bis 5 Jahre Erfahrung mit Power Automate und Power Apps
+- Kenntnisse in Dataverse und Power Fx, gerne auch Azure Logic Apps
+- Microsoft-Zertifizierung PL-400 wünschenswert
+- Strukturierte Arbeitsweise und Spaß an der Zusammenarbeit mit Fachbereichen
+- Gute Deutschkenntnisse in Wort und Schrift
+
+Wir bieten
+- Einsatz im Rahmen der Arbeitnehmerüberlassung nach AÜG, unbefristeter Arbeitsvertrag mit der Kinzigtal Personalservice GmbH
+- Vergütung 52,00 € brutto pro Stunde, dazu Branchenzuschläge nach Tarifvertrag
+- 30 Urlaubstage, Weihnachts- und Urlaubsgeld
+- Hybrides Arbeiten mit bis zu zwei Tagen mobiler Arbeit pro Woche
+- Einsatzdauer zunächst 12 Monate, eine Übernahme durch den Kunden ist ausdrücklich möglich
+- Persönliche Betreuung durch unser Team in Offenburg
+
+Klingt gut? Dann bewirb dich einfach über den Button „Bewerben“. Fragen beantwortet dir gerne unser Recruiting-Team in Offenburg, auch telefonisch unter +49 781 0000000.
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Vollzeit
+Tätigkeitsbereich
+Informationstechnologie
+Branchen
+Personaldienstleistungen
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Kinzigtal Personalservice GmbH kennen
+Anmelden
+
+Jobbenachrichtigung für Power Platform Entwickler in Offenburg aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+Power Apps Developer (m/w/d)
+Freiburg im Breisgau, Baden-Württemberg, Deutschland
+Vor 4 Tagen
+Low-Code Entwickler (m/w/d)
+Karlsruhe, Baden-Württemberg, Deutschland
+Vor 2 Tagen
+
+Personen haben auch gesucht
+Power Platform
+Power Automate Entwickler
+Low-Code Developer

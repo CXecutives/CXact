@@ -1,0 +1,76 @@
+Titel: Senior Machine Learning Engineer (m/w/d) – LLM-Plattform und MLOps (Freelance)
+Unternehmen: Rheinauhafen Versicherungsgruppe AG
+Ort: Köln, Nordrhein-Westfalen, Deutschland (Hybrid)
+Quelle: LinkedIn
+Link: https://www.linkedin.com/jobs/view/4352817406/
+Abgerufen am: 16.09.2026 07:44
+
+Rheinauhafen Versicherungsgruppe AG
+Köln, Nordrhein-Westfalen, Deutschland (Hybrid)
+Vor 2 Tagen · 41 Bewerber
+Hybrid · Vertrag · Mid-Senior-Level
+Bewerben
+Speichern
+
+Über die Stelle
+Die Rheinauhafen Versicherungsgruppe ist ein Kompositversicherer mit rund 3.100 Mitarbeitenden und Schwerpunkt auf Gewerbe- und Kfz-Versicherungen. Seit 2025 baut unser Team KI-Plattform zentrale Dienste auf Basis großer Sprachmodelle auf, die inzwischen in der Schadenbearbeitung, im Kundenservice und in der Vertragsprüfung produktiv laufen. Für die nächste Ausbaustufe verstärken wir das Team für neun Monate mit einem erfahrenen Machine Learning Engineer (m/w/d) auf freiberuflicher Basis.
+
+Deine Aufgaben
+• Weiterentwicklung unserer Retrieval-Augmented-Generation-Pipeline auf Azure (Azure OpenAI, Azure AI Search, Databricks)
+• Aufbau von Evaluations- und Monitoring-Pipelines für LLM-Anwendungen (Antwortqualität, Halluzinationsrate, Latenz, Kosten)
+• Fine-Tuning und Distillation kleinerer Open-Weight-Modelle für die Klassifikation eingehender Schadenmeldungen
+• Containerisierung und Deployment auf Kubernetes (AKS) mit Terraform und GitHub Actions
+• Code Reviews und Pairing mit unseren internen Data Scientists, Dokumentation der Architekturentscheidungen
+• Umsetzung der Anforderungen aus dem EU AI Act und den aufsichtsrechtlichen Vorgaben zu KI gemeinsam mit IT-Sicherheit und Compliance
+
+Dein Profil
+• Mindestens 5 Jahre Erfahrung als ML Engineer oder Data Scientist mit Verantwortung für Modelle in Produktion
+• Sehr gute Kenntnisse in Python, PyTorch, MLflow und Kubernetes
+• Nachweisbare Erfahrung mit LLMs, RAG-Architekturen, Vektordatenbanken und der Evaluation von Sprachmodellen
+• Sicherer Umgang mit Infrastructure as Code und CI/CD
+• Erfahrung in regulierten Branchen wie Versicherung oder Bank von Vorteil
+• Fließend Deutsch und Englisch, unsere Dokumentation ist englisch
+
+Rahmenbedingungen
+• Start: 01.11.2026
+• Laufzeit: 9 Monate mit Option auf Verlängerung
+• Auslastung: 80 % (vier Tage pro Woche)
+• Hybrid: in der Regel ein Tag pro Woche im Büro am Rheinauhafen, sonst remote
+• Stundensatz: 105 bis 120 € netto
+• Beauftragung direkt oder über einen unserer Rahmenvertragspartner
+
+Wir arbeiten in einem Team aus zwölf Engineers, Data Scientists und Product Ownern nach Scrum mit zweiwöchigen Sprints. Du bekommst vom ersten Tag an Zugriff auf unsere Entwicklungsumgebung und eine feste Ansprechperson im Team.
+
+Weniger anzeigen
+Senioritätsstufe
+Mid-Senior-Level
+Beschäftigungsverhältnis
+Vertrag
+Tätigkeitsbereich
+Informationstechnologie und Engineering
+Branchen
+Versicherungen
+
+Empfehlung erhalten
+Sehen Sie, wen Sie bei Rheinauhafen Versicherungsgruppe AG kennen
+Anmelden
+
+Jobbenachrichtigung für Machine Learning Engineer in Köln aktivieren
+Anmelden, um Jobbenachrichtigungen zu erstellen
+
+Ähnliche Jobs
+Data Scientist GenAI (m/w/d)
+Düsseldorf, Nordrhein-Westfalen, Deutschland
+Vor 3 Tagen
+MLOps Engineer (m/w/d) Freelance
+Bonn, Nordrhein-Westfalen, Deutschland
+Vor 1 Woche
+AI Engineer LLM Applications (m/w/d)
+Köln, Nordrhein-Westfalen, Deutschland
+Vor 5 Tagen
+
+Personen haben auch gesucht
+Machine Learning Engineer
+Data Scientist
+MLOps
+AI Engineer

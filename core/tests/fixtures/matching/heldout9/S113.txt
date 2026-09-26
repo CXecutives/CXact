@@ -1,0 +1,63 @@
+Titel: Testkoordinator (m/w/d) Migration Kernbankensystem
+Unternehmen: Münsterland Finanz-IT Beratung GmbH
+Ort: D-48143 Münster
+Quelle: Freelance
+Link: https://www.freelance.de/projekte/projekt-1318764-Testkoordinator-m-w-d-Migration-Kernbankensystem
+Abgerufen am: 14.09.2026 07:58
+
+Projekt-ID: 1318764
+Ort: Münster
+Remote: 40 %
+Start: Q1 2027
+Dauer: 6 Monate
+Vertragsart: Freiberuflich
+Honorar: nach Absprache
+Letztes Update: 13.09.2026
+
+Projektbeschreibung
+Für eine genossenschaftliche Regionalbank mit rund 60 Filialen im Münsterland suchen wir einen Testkoordinator (m/w/d) zur Unterstützung der Migration auf ein neues Kernbankensystem. Die Migration umfasst Kontoführung, Zahlungsverkehr, Kreditgeschäft und Meldewesen und ist für das Wochenende nach Pfingsten 2027 geplant. Die Bank arbeitet dabei mit ihrem Rechenzentrumsdienstleister und einem externen Migrationspartner zusammen.
+
+Das Projektteam auf Seiten der Bank besteht aus etwa 25 Personen aus Fachbereichen und Organisation. Die Tests werden überwiegend manuell durchgeführt, für ausgewählte Geschäftsvorfälle stehen automatisierte Vergleichsläufe des Rechenzentrums zur Verfügung.
+
+Aufgaben:
+- Koordination der Testphasen Funktionstest, Migrationstest und Abnahmetest auf Seiten der Bank
+- Planung der Testdurchführung mit den Fachbereichen und Erstellung von Testfällen gemeinsam mit den Key Usern
+- Nachverfolgung von Testfortschritt und Fehlern im Testmanagement-Tool des Rechenzentrums
+- Durchführung von Fehler-Triage-Terminen mit Rechenzentrum und Migrationspartner
+- Abstimmung der Testdaten und Plausibilisierung der Migrationsergebnisse (Salden, Konten, Konditionen)
+- Erstellung des wöchentlichen Teststatus für die Projektleitung
+- Unterstützung bei der Generalprobe und dem Migrationswochenende
+
+Anforderungen:
+- Mehrjährige Erfahrung als Testkoordinator oder Testmanager in IT-Projekten
+- Erfahrung mit Migrationsprojekten, idealerweise im Bankenumfeld
+- Kenntnisse der Bankprozesse (Kontoführung, Zahlungsverkehr, Kredit) von Vorteil
+- ISTQB Foundation Level oder vergleichbare Qualifikation
+- Sicherer Umgang mit Excel und gängigen Testmanagement-Tools (z. B. Jira, ALM)
+- Kommunikationsstärke im Umgang mit Fachbereichen
+
+Einsatz in Vollzeit, davon etwa drei Tage pro Woche vor Ort in Münster, in den Testphasen häufiger. Eine Verlängerung bis zur Nachbetreuung nach der Migration ist möglich. Honorar nach Absprache, bitte Stundensatzvorstellung mitsenden.
+
+Kategorien und Skills
+Testkoordination
+Testmanagement
+Migrationstest
+Abnahmetest
+Kernbankensystem
+Banken
+Jira
+
+Projektanbieter
+Münsterland Finanz-IT Beratung GmbH
+Die Kontaktdaten des Projektanbieters sind nur für angemeldete Freelancer sichtbar.
+Projekt merken
+Jetzt bewerben
+
+Ähnliche Projekte
+Business Analyst Zahlungsverkehr (m/w/d)
+Düsseldorf · 01.2027 · 9 Monate
+Testmanager Meldewesen (m/w/d)
+Frankfurt am Main · ab sofort
+Projektleiter Filialmigration (m/w/d)
+Osnabrück · 02.2027
+Alle Projekte in Banken und Finanzen anzeigen

@@ -1,0 +1,98 @@
+Titel: SIEM Engineer (m/w/d) Splunk / Microsoft Sentinel – Use-Case-Entwicklung
+Unternehmen: Vireo Talent Solutions GmbH
+Ort: Köln
+Quelle: Freelancermap
+Link: https://www.freelancermap.de/projekt/siem-engineer-m-w-d-splunk-microsoft-sentinel-use-case-entwicklung-2923588
+Abgerufen am: 22.09.2026 07:47
+
+Projektdetails
+Start
+10/2026
+Dauer
+6 Monate+
+Von
+Vireo Talent Solutions GmbH
+Eingestellt
+21.09.2026
+Projekt-ID
+2923588
+Branche
+IT
+Vertragsart
+Freiberuflich
+Einsatzart
+100 % Remote
+Stundensatz
+auf Anfrage
+
+Beschreibung
+Über uns: Vireo Talent Solutions ist seit 2009 Ihr verlässlicher Partner, wenn es um die Besetzung anspruchsvoller Projekte in IT, Engineering und Life Sciences geht. Mit mehr als 12.000 Freelancern in unserem Netzwerk, zehn Standorten in der DACH-Region und einem Team aus über 150 Recruiting-Expertinnen und -Experten bringen wir die richtigen Menschen mit den richtigen Projekten zusammen. Wir leben Vielfalt, Wertschätzung und Partnerschaft auf Augenhöhe, und das seit über fünfzehn Jahren. Unser Qualitätsmanagement ist nach ISO 9001 zertifiziert, und in unabhängigen Umfragen bewerten uns Freelancer regelmäßig mit Bestnoten.
+
+Für unseren Kunden, ein namhaftes Unternehmen aus dem Finanzsektor, suchen wir aktuell einen SIEM Engineer (m/w/d) zur Verstärkung eines bestehenden Teams.
+
+Ihre Aufgaben:
+- Unterstützung des Teams bei verschiedenen SIEM-Themen
+- Mitarbeit im Security-Operations-Umfeld
+- Erstellung und Optimierung von Use Cases und Detection Rules
+- Anbindung von Logquellen
+- Dokumentation der Ergebnisse
+- Abstimmung mit verschiedenen Stakeholdern
+- Weitere Aufgaben nach Absprache
+
+Ihr Profil:
+- Mehrjährige Erfahrung (mind. 6 Jahre) im IT-Security-Umfeld
+- Kenntnisse in Splunk Enterprise Security und/oder Microsoft Sentinel
+- Erfahrung mit SPL und/oder KQL
+- Kenntnisse des MITRE-ATT&CK-Frameworks
+- Erfahrung im Incident Response ist wünschenswert
+- Idealerweise Zertifizierungen im Security-Bereich
+- Sehr gute Deutsch- und gute Englischkenntnisse
+- Teamfähigkeit, Eigeninitiative und eine strukturierte Arbeitsweise
+
+Eckdaten:
+- Start: 10/2026
+- Laufzeit: 6 Monate mit Option auf Verlängerung
+- Auslastung: Vollzeit (40 h/Woche)
+- Remote: 100 %
+- Stundensatz: auf Anfrage
+
+Ihre Vorteile mit Vireo:
+- Persönliche Betreuung durch Ihren festen Ansprechpartner
+- Zahlung innerhalb von 14 Tagen nach Rechnungseingang
+- Zugang zu exklusiven Projekten bei Top-Kunden
+- Regelmäßige Community-Events und Weiterbildungsangebote
+
+Klingt spannend? Dann senden Sie uns Ihr aktuelles Profil inklusive Stundensatz und frühestmöglicher Verfügbarkeit unter Angabe der Referenznummer VTS-44871. Wir melden uns innerhalb von 48 Stunden bei Ihnen. Bitte haben Sie Verständnis dafür, dass wir nur Bewerbungen berücksichtigen können, die zu den Anforderungen passen.
+
+Vireo Talent Solutions GmbH – Menschen. Projekte. Erfolg.
+
+Schlagworte
+SIEM
+Splunk
+Microsoft Sentinel
+KQL
+SOC
+Use Cases
+Security Engineering
+
+Jetzt bewerben
+Projekt merken
+Projekt teilen
+
+Anbieter
+Vireo Talent Solutions GmbH
+Personaldienstleistungen und Projektbesetzung
+1.284 veröffentlichte Projekte
+Mitglied seit 2012
+Firmenprofil ansehen
+
+Ähnliche Projekte
+Security Analyst SOC (m/w/d)
+Frankfurt am Main · ab sofort
+Splunk Engineer (m/w/d)
+Remote · 12 Monate
+Detection Engineer Microsoft Defender (m/w/d)
+München · 11.2026
+Mehr Projekte anzeigen
+
+Sie sind Freelancer im Bereich IT-Security? Jetzt kostenlos registrieren und Projekte per E-Mail erhalten.

@@ -1,0 +1,289 @@
+{
+  "name": "Andrea Musterhuber",
+  "email": "andrea.musterhuber@example.invalid",
+  "telefon": "+49 151 0000000",
+  "titel": "Freiberufliche Embedded- und Functional-Safety-Ingenieurin Automotive",
+  "abschluss": "Diplom-Ingenieurin (FH) Elektrotechnik",
+  "berufserfahrung_jahre": 18,
+  "ausbildung": [
+    {
+      "abschluss": "Diplom-Ingenieurin (FH)",
+      "fach": "Elektrotechnik mit dem Schwerpunkt Automatisierungs- und Informationstechnik",
+      "hochschule": "Beispielhochschule für Technik",
+      "jahr": 2008
+    },
+    {
+      "abschluss": "Functional Safety Engineer (TÜV)",
+      "fach": "Funktionale Sicherheit im Automobilbereich nach ISO 26262",
+      "jahr": 2016
+    }
+  ],
+  "stationen": [
+    {
+      "zeitraum": "2017 - heute",
+      "rolle": "Freiberufliche Embedded- und Functional-Safety-Ingenieurin",
+      "schwerpunkte": [
+        "Technische Sicherheitskonzepte und Sicherheitsanalysen (FMEA, FTA, FMEDA, DFA) für Lenkungs-, Brems- und Batteriesteuergeräte bis ASIL D",
+        "AUTOSAR-Classic-Basissoftware-Konfiguration und Integration mit Vector MICROSAR und EB tresos auf Infineon AURIX",
+        "Hardware-Software-Integration und Inbetriebnahme von Steuergeräte-Mustern, Fehlersuche mit Lauterbach TRACE32",
+        "Anforderungsmanagement in IBM DOORS und Polarion ALM, Traceability bis zum Test",
+        "Vorbereitung von Automotive-SPICE-Assessments auf Level 2 in drei Projekten",
+        "Technische Teilprojektleitung für ein Batteriemanagementsystem eines Nutzfahrzeugherstellers"
+      ]
+    },
+    {
+      "zeitraum": "2012 - 2017",
+      "rolle": "Software-Entwicklerin Steuergeräte bei einem Tier-1-Zulieferer für Fahrwerkssysteme",
+      "schwerpunkte": [
+        "Embedded-C-Entwicklung nach MISRA C für ein elektrisches Lenkungssteuergerät",
+        "Konfiguration der AUTOSAR-Kommunikationsstacks für CAN und LIN",
+        "Diagnose nach UDS und Software-Integrationstests am HIL"
+      ]
+    },
+    {
+      "zeitraum": "2008 - 2012",
+      "rolle": "Entwicklungsingenieurin Hardware-Software-Integration bei einem Zulieferer für Karosserieelektronik",
+      "schwerpunkte": [
+        "Inbetriebnahme von Mikrocontroller-Plattformen (NXP, Renesas) für Tür- und Sitzsteuergeräte",
+        "LIN-Kommunikation und Busanalyse mit CANoe",
+        "Erstellung von Testspezifikationen und Prüfberichten"
+      ]
+    }
+  ],
+  "kernkompetenzen": [
+    {
+      "kompetenz": "Embedded-C-Programmierung",
+      "jahre": 18,
+      "auch": ["Embedded C", "C", "Embedded Software", "Embedded-Softwareentwicklung", "Mikrocontroller-Programmierung"]
+    },
+    {
+      "kompetenz": "AUTOSAR Classic",
+      "jahre": 12,
+      "auch": ["AUTOSAR", "AUTOSAR-Basissoftware", "BSW-Konfiguration", "RTE", "MICROSAR"]
+    },
+    {
+      "kompetenz": "Funktionale Sicherheit nach ISO 26262",
+      "jahre": 10,
+      "auch": ["ISO 26262", "Functional Safety", "FuSa", "Safety Engineering", "funktionale Sicherheit"]
+    },
+    {
+      "kompetenz": "Automotive SPICE",
+      "jahre": 9,
+      "auch": ["ASPICE", "SPICE", "Automotive-SPICE-Assessments"]
+    },
+    {
+      "kompetenz": "CAN und LIN",
+      "jahre": 18,
+      "auch": ["CAN", "LIN", "CAN FD", "Bussysteme", "Fahrzeugbussysteme"]
+    },
+    {
+      "kompetenz": "Hardware-Software-Integration",
+      "jahre": 16,
+      "auch": ["HW/SW-Integration", "Steuergeräte-Integration", "ECU-Integration", "Inbetriebnahme von Steuergeräten"]
+    },
+    {
+      "kompetenz": "Requirements Engineering",
+      "jahre": 12,
+      "auch": ["Anforderungsmanagement", "Requirements Management", "Anforderungsanalyse"]
+    },
+    {
+      "kompetenz": "IBM DOORS",
+      "jahre": 11,
+      "auch": ["DOORS", "DOORS Next"]
+    },
+    {
+      "kompetenz": "Polarion ALM",
+      "jahre": 5,
+      "auch": ["Polarion"]
+    },
+    {
+      "kompetenz": "Sicherheitsanalysen",
+      "jahre": 10,
+      "auch": ["FMEA", "FTA", "Fehlerbaumanalyse", "FMEDA", "DFA"]
+    },
+    {
+      "kompetenz": "Technisches Sicherheitskonzept",
+      "jahre": 8,
+      "auch": ["Technical Safety Concept", "Functional Safety Concept", "Sicherheitskonzept", "Safety Case"]
+    },
+    {
+      "kompetenz": "Software-Integrationstest und Verifikation",
+      "jahre": 13,
+      "auch": ["Integrationstest", "HIL-Test", "Unit-Test", "Verifikation und Validierung"]
+    },
+    {
+      "kompetenz": "MISRA C",
+      "jahre": 13,
+      "auch": ["MISRA", "statische Codeanalyse"]
+    },
+    {
+      "kompetenz": "Fahrzeugdiagnose nach UDS",
+      "jahre": 9,
+      "auch": ["UDS", "ISO 14229", "Diagnose"]
+    },
+    {
+      "kompetenz": "Mikrocontroller-Plattformen",
+      "jahre": 16,
+      "auch": ["Infineon AURIX", "TriCore", "NXP S32K", "Renesas RH850"]
+    },
+    {
+      "kompetenz": "Batteriemanagementsysteme",
+      "jahre": 4,
+      "auch": ["BMS", "Hochvoltbatterie"]
+    },
+    {
+      "kompetenz": "Technische Teilprojektleitung",
+      "jahre": 5,
+      "auch": ["Teilprojektleitung", "technische Projektleitung"]
+    }
+  ],
+  "methoden_tools": [
+    {
+      "name": "Vector CANoe"
+    },
+    {
+      "name": "Vector CANalyzer"
+    },
+    {
+      "name": "Vector DaVinci Configurator"
+    },
+    {
+      "name": "EB tresos"
+    },
+    {
+      "name": "IBM DOORS"
+    },
+    {
+      "name": "Polarion ALM"
+    },
+    {
+      "name": "Lauterbach TRACE32"
+    },
+    {
+      "name": "Tessy"
+    },
+    {
+      "name": "Polyspace"
+    },
+    {
+      "name": "medini analyze"
+    },
+    {
+      "name": "dSPACE HIL"
+    },
+    {
+      "name": "Git"
+    },
+    {
+      "name": "Jenkins"
+    }
+  ],
+  "zertifizierungen": [
+    {
+      "name": "Functional Safety Engineer Automotive (TÜV)"
+    },
+    {
+      "name": "IREB CPRE Foundation Level"
+    },
+    {
+      "name": "ISTQB Certified Tester Foundation Level"
+    }
+  ],
+  "branchen": [
+    {
+      "branche": "Automobilindustrie"
+    },
+    {
+      "branche": "Automobilzulieferer"
+    },
+    {
+      "branche": "Nutzfahrzeuge"
+    },
+    {
+      "branche": "Elektromobilität"
+    }
+  ],
+  "sprachen": [
+    {
+      "sprache": "Deutsch",
+      "niveau": "Muttersprache"
+    },
+    {
+      "sprache": "Englisch",
+      "niveau": "C1"
+    }
+  ],
+  "alleinstellungsmerkmale": [
+    "Verbindet Embedded-C- und AUTOSAR-Praxis mit funktionaler Sicherheit bis ASIL D",
+    "Hat Steuergeräte vom ersten Muster bis zur Serienfreigabe integriert",
+    "Drei Projekte erfolgreich durch Automotive-SPICE-Assessments auf Level 2 gebracht"
+  ],
+  "keywords": [
+    "Embedded C",
+    "AUTOSAR",
+    "ISO 26262",
+    "ASPICE",
+    "CAN",
+    "LIN",
+    "Steuergeräte",
+    "DOORS",
+    "Polarion",
+    "Functional Safety"
+  ],
+  "schwerpunkte": [
+    "Funktionale Sicherheit nach ISO 26262",
+    "AUTOSAR Classic und Embedded C",
+    "Hardware-Software-Integration",
+    "Requirements Engineering mit DOORS und Polarion"
+  ],
+  "wunschrollen": [
+    "Functional Safety Engineer",
+    "Functional Safety Manager",
+    "AUTOSAR-Integratorin",
+    "Embedded-Software-Entwicklerin Automotive",
+    "Technische Teilprojektleitung Steuergeräte"
+  ],
+  "einsatzpraeferenzen": {
+    "tagessatz_wunsch": 950,
+    "remote": "hybrid, bis 50 % remote",
+    "regionen": [
+      "Baden-Württemberg",
+      "Bayern",
+      "Region Stuttgart",
+      "München"
+    ],
+    "branchen": [
+      "Automobilzulieferer",
+      "Elektromobilität"
+    ]
+  },
+  "harte_kriterien": {
+    "min_tagessatz": 850,
+    "laender": [
+      "DE",
+      "AT"
+    ],
+    "ausgeschlossene_vertragsarten": [
+      "anue"
+    ],
+    "remote_ausserhalb_erlaubt": false,
+    "verfuegbar_ab": "2026-11-01",
+    "min_jahresgehalt": 110000,
+    "festanstellung_orte": [
+      "Stuttgart",
+      "Sindelfingen",
+      "Böblingen",
+      "Leonberg",
+      "Ludwigsburg",
+      "Esslingen am Neckar",
+      "Leinfelden-Echterdingen",
+      "Weissach",
+      "Heilbronn",
+      "Ulm",
+      "München",
+      "Ingolstadt"
+    ],
+    "festanstellung_remote_min": 60,
+    "zielprofil_min_jahre": 6
+  }
+}
