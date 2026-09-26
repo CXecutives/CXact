@@ -1345,6 +1345,117 @@ pub(crate) const DURATION_WORDS: &[&str] = &[
     "length",
 ];
 pub(crate) const MONTH_UNITS: &[&str] = &["monat", "month"];
+/// Workload (share of a five-day week). Words that make a percentage a workload
+/// (`Auslastung 80 %`), substrings.
+pub(crate) const WORKLOAD_CUES: &[&str] = &[
+    "auslastung",
+    "arbeitspensum",
+    "pensum",
+    "einsatzumfang",
+    "stellenumfang",
+    "beschaftigungsumfang",
+    "arbeitszeit",
+    "teilzeit",
+    "vollzeit",
+    "workload",
+    "utilisation",
+    "utilization",
+    "capacity",
+    "part-time",
+    "full-time",
+    "part time",
+    "full time",
+];
+/// Full-time work (whole words or phrases).
+pub(crate) const WORKLOAD_FULL: &[&str] = &[
+    "vollzeit",
+    "vollzeitstelle",
+    "vollzeitposition",
+    "vollzeittatigkeit",
+    "vollzeitbeschaftigung",
+    "vollauslastung",
+    "volle auslastung",
+    "full-time",
+    "full time",
+    "fulltime",
+];
+/// Part-time work (whole words or phrases): up to `WORKLOAD_PART` percent.
+pub(crate) const WORKLOAD_PART_WORDS: &[&str] = &[
+    "teilzeit",
+    "teilzeitstelle",
+    "teilzeittatigkeit",
+    "teilzeitbeschaftigung",
+    "part-time",
+    "part time",
+    "parttime",
+];
+/// Part-time only as an option (`Vollzeit, Teilzeit möglich`, `Voll- oder Teilzeit`): any
+/// workload up to full time.
+pub(crate) const WORKLOAD_PART_OPTION: &[&str] = &[
+    "moglich",
+    "possible",
+    "optional",
+    "denkbar",
+    "voll- oder teilzeit",
+    "voll- und teilzeit",
+    "teil- oder vollzeit",
+    "teil- und vollzeit",
+];
+/// Words near a number of days or a percentage that make it the place of work, not the
+/// workload (`3 Tage/Woche vor Ort`, `remote 2 Tage`, `80 % remote`): whole words or phrases.
+pub(crate) const WORKLOAD_PLACE_WORDS: &[&str] = &[
+    "vor ort",
+    "onsite",
+    "on-site",
+    "on site",
+    "remote",
+    "homeoffice",
+    "home office",
+    "home-office",
+    "mobil",
+    "mobile",
+    "mobiles",
+    "mobilem",
+    "buro",
+    "office",
+    "prasenz",
+    "beim kunden",
+    "at the client",
+    "anwesenheit",
+    "hybrid",
+    "reise",
+    "reisen",
+    "reiseanteil",
+    "reisetatigkeit",
+    "travel",
+];
+/// Days and weeks of a workload (`3 Tage/Woche`, `4 days per week`), and the hours.
+pub(crate) const WORKLOAD_DAY_UNITS: &[&str] = &["tage", "tagen", "tag", "days", "day", "pt"];
+pub(crate) const WORKLOAD_HOUR_UNITS: &[&str] =
+    &["stunden", "std.", "std", "hours", "hour", "hrs", "h"];
+/// Words between the unit and the week (`Tage pro Woche`, `days a week`, `Tage in der Woche`).
+pub(crate) const WORKLOAD_PER: &[&str] = &[
+    "/", "pro", "per", "je", "in", "der", "die", "a", "each", "im", "the",
+];
+pub(crate) const WORKLOAD_WEEK: &[&str] = &["woche", "week", "wk"];
+/// Hours per week in one word (`20 Wochenstunden`).
+pub(crate) const WORKLOAD_WEEKLY_HOURS: &[&str] = &["wochenstunden", "weekly hours"];
+/// Small numbers written as words (days per week).
+pub(crate) const WORKLOAD_NUMBER_WORDS: &[(&str, u32)] = &[
+    ("einen", 1),
+    ("ein", 1),
+    ("one", 1),
+    ("zwei", 2),
+    ("two", 2),
+    ("drei", 3),
+    ("three", 3),
+    ("vier", 4),
+    ("four", 4),
+    ("funf", 5),
+    ("five", 5),
+];
+/// Separators of a range of numbers (`3-4`, `3 bis 4`, `16 to 20`).
+pub(crate) const WORKLOAD_RANGE: &[&str] = &["-", "–", "bis", "to", "oder", "or"];
 pub(crate) const WEEK_UNITS: &[&str] = &["woche", "week"];
 pub(crate) const HOURLY_WORDS: &[&str] = &["stunde", "std", "hour", "/h", "stundensatz"];
 /// A day rate named in the value of a rate line.

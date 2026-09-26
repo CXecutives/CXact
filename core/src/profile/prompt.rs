@@ -68,7 +68,11 @@ const SKELETON_SETTINGS: &str = r#",
     "min_tagessatz": null,
     "laender": [],
     "ausgeschlossene_vertragsarten": [],
-    "verfuegbar_ab": ""
+    "verfuegbar_ab": "",
+    "auslastung_min_tage": null,
+    "auslastung_max_tage": null,
+    "min_laufzeit_monate": null,
+    "ausschlusswoerter": []
   }"#;
 
 /// The skeleton the AI fills, with or without the user's settings.
@@ -122,7 +126,10 @@ Die Felder unter einsatzpraeferenzen und harte_kriterien füllst du nur, wenn de
 - min_tagessatz ist ein Tagessatz, unter dem ich ausdrücklich nicht arbeite.
 - laender sind Ländercodes wie \"DE\", \"AT\" und \"CH\", wenn ich Einsätze auf diese Länder beschränke.
 - ausgeschlossene_vertragsarten nennt \"anue\", wenn ich Arbeitnehmerüberlassung ausschließe, und \"festanstellung\", wenn ich keine Festanstellung will.
-- verfuegbar_ab ist \"sofort\" oder ein Datum wie \"01.11.2026\"; ein Monat ohne Tag wird zum Ersten des Monats.";
+- verfuegbar_ab ist \"sofort\" oder ein Datum wie \"01.11.2026\"; ein Monat ohne Tag wird zum Ersten des Monats.
+- auslastung_min_tage und auslastung_max_tage sind die Tage pro Woche von 1 bis 5, die ich mindestens und höchstens arbeiten will.
+- min_laufzeit_monate ist die kürzeste Laufzeit eines Einsatzes in Monaten, die ich annehme.
+- ausschlusswoerter sind Wörter, die eine Anzeige für mich ausschließen, etwa Werkstudent oder Praktikum.";
 
 const ANSWER: &str = "Die Antwort
 Antworte nur mit dem JSON in einem einzigen Codeblock, ohne Text davor oder danach. Behalte jeden Schlüssel des Aufbaus unten, seine Schreibweise und die Reihenfolge. Ein Objekt in einer Liste zeigt den Aufbau eines Eintrags; wiederhole es für jeden Eintrag. Zahlen stehen ohne Anführungszeichen und ohne Einheit. Das JSON muss gültig sein, mit geraden doppelten Anführungszeichen, ohne Kommentare und ohne Komma vor einer schließenden Klammer.";
@@ -205,7 +212,10 @@ Fill the fields under einsatzpraeferenzen and harte_kriterien only if the CV or 
 - min_tagessatz is a day rate below which I explicitly do not work.
 - laender are country codes such as \"DE\", \"AT\" and \"CH\" if I limit assignments to these countries.
 - ausgeschlossene_vertragsarten names \"anue\" if I rule out temporary agency work and \"festanstellung\" if I do not want a permanent role.
-- verfuegbar_ab is \"sofort\" (immediately) or a date such as \"01.11.2026\", day first; a month without a day becomes the first of that month.";
+- verfuegbar_ab is \"sofort\" (immediately) or a date such as \"01.11.2026\", day first; a month without a day becomes the first of that month.
+- auslastung_min_tage and auslastung_max_tage are the days a week from 1 to 5 I want to work at least and at most.
+- min_laufzeit_monate is the shortest duration of an assignment in months that I accept.
+- ausschlusswoerter are words that rule an ad out for me, such as Werkstudent or Praktikum.";
 
     pub(super) const ANSWER: &str = "The answer
 Answer only with the JSON in one single code block, without any text before or after it. Keep every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
@@ -513,7 +523,11 @@ mod tests {
     "min_tagessatz": 1000,
     "laender": ["DE"],
     "ausgeschlossene_vertragsarten": ["anue"],
-    "verfuegbar_ab": "sofort"
+    "verfuegbar_ab": "sofort",
+    "auslastung_min_tage": 3,
+    "auslastung_max_tage": 5,
+    "min_laufzeit_monate": 6,
+    "ausschlusswoerter": ["Werkstudent"]
   }
 }"#;
 
@@ -670,6 +684,10 @@ mod tests {
             ("countries", c.countries.is_empty()),
             ("noAnue", !c.no_anue),
             ("available", c.available == form::ProfileAvailability::Unset),
+            ("workloadMinDays", c.workload_min_days.is_none()),
+            ("workloadMaxDays", c.workload_max_days.is_none()),
+            ("minMonths", c.min_months.is_none()),
+            ("exclusionWords", c.exclusion_words.is_empty()),
         ] {
             assert!(!is_empty, "{field} not read from the skeleton");
         }
@@ -746,7 +764,7 @@ mod tests {
                     let mut settings = Vec::new();
                     all_keys(&full, &mut settings);
                     settings.retain(|key| !keys.contains(key));
-                    assert_eq!(settings.len(), 9, "{settings:?}");
+                    assert_eq!(settings.len(), 13, "{settings:?}");
                     for key in settings {
                         assert!(!names(&text, &key), "{language:?}: {key}");
                     }

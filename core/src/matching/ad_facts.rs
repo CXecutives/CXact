@@ -11,6 +11,7 @@ use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
 use super::job::{JobDoc, contains_word};
 use super::lexicon::engine as lex;
+use super::limits::{self, Workload};
 use super::permanent::parse_salary;
 use super::seniority::experience_years;
 use super::types::KeyFacts;
@@ -50,6 +51,8 @@ pub(crate) struct AdFacts {
     pub salary: Option<Stated<u64>>,
     /// The most years of experience a requirement line asks for.
     pub years: Option<Stated<u32>>,
+    /// The workload in percent of a five-day week.
+    pub workload: Option<Stated<Workload>>,
 }
 
 /// Reads the key facts of an ad.
@@ -100,6 +103,7 @@ pub(crate) fn read(
             Some(stated(per_year, Some(range.clone())))
         }),
         years: years(job.text, doc),
+        workload: limits::read(job, segments),
     }
 }
 
@@ -205,6 +209,8 @@ impl AdFacts {
                 ContractKind::Anue => Some("anue".into()),
                 _ => None,
             },
+            workload_from: self.workload.as_ref().and_then(|w| w.value.from),
+            workload_to: self.workload.as_ref().map(|w| w.value.to),
         }
     }
 }

@@ -177,6 +177,15 @@ pub enum ReasonCode {
     RegionWish,
     /// Industry wish (`state`, `points`, `industry`, `wish`).
     IndustryWish,
+    /// The ad's workload is outside the profile's days per week (`from`, `to`: percent of a
+    /// five-day week, `from` left out when unknown; `minDays`, `maxDays` as the profile sets
+    /// them); a check, never an exclusion.
+    Workload,
+    /// The engagement is shorter than the profile's minimum (`months`, `min`); a check.
+    Duration,
+    /// An exclusion word of the profile stands in the title or the ad (`word`, as the
+    /// profile writes it); excludes.
+    ExclusionWord,
 }
 
 /// How a profile entry met a requirement.
@@ -249,6 +258,12 @@ pub enum CriterionKey {
     TargetYears,
     /// Permanent employment excluded (`ausgeschlossene_vertragsarten` names `festanstellung`).
     NoPermanent,
+    /// Days per week the consultant works (`auslastung_min_tage`, `auslastung_max_tage`).
+    Workload,
+    /// Minimum duration of an engagement (`min_laufzeit_monate`).
+    Duration,
+    /// Words that exclude an ad (`ausschlusswoerter`).
+    ExclusionWords,
 }
 
 /// State of one hard criterion for a job.
@@ -274,7 +289,8 @@ pub struct CriterionState {
     pub reason: Option<u16>,
     /// The ad's value: `rate`, `hourly`, `currency`, `rateOpen` (day rate); `start` (`now`,
     /// `vague` or an ISO date); `location` or `remote` (countries, region); `contract`
-    /// (ANUE); `salary`; `years` (target years).
+    /// (ANUE); `salary`; `years` (target years); `from`, `to` (workload in percent);
+    /// `months` (duration).
     pub params: Map<String, Value>,
     /// Where the ad states it, in UTF-16 offsets (start, end).
     pub range: Option<(u32, u32)>,

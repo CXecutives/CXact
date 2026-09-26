@@ -41,6 +41,10 @@ const MAX_YEARS: u32 = 70;
 const MAX_DAY_RATE: u32 = 100_000;
 const MAX_SALARY: u32 = 10_000_000;
 const MAX_PERCENT: u32 = 100;
+/// Days of a working week (the workload in days per week).
+const MAX_WEEK_DAYS: u8 = 5;
+/// Longest minimum duration of an engagement in months.
+const MAX_MONTHS: u16 = 120;
 /// A single value and a list stay within what a profile ever holds.
 const MAX_TEXT: usize = 1_000;
 const MAX_ITEMS: usize = 300;
@@ -270,6 +274,22 @@ pub struct ProfileCriteria {
     pub permanent_places: Vec<String>,
     /// `festanstellung_remote_min`, percent (permanent roles).
     pub permanent_remote_min: Option<u32>,
+    /// `auslastung_min_tage`, days per week (1 to 5).
+    #[serde(default)]
+    #[cfg_attr(test, ts(optional = nullable))]
+    pub workload_min_days: Option<u8>,
+    /// `auslastung_max_tage`, days per week (1 to 5).
+    #[serde(default)]
+    #[cfg_attr(test, ts(optional = nullable))]
+    pub workload_max_days: Option<u8>,
+    /// `min_laufzeit_monate`, the minimum duration of an engagement in months.
+    #[serde(default)]
+    #[cfg_attr(test, ts(optional = nullable))]
+    pub min_months: Option<u16>,
+    /// `ausschlusswoerter`, words that exclude an ad.
+    #[serde(default)]
+    #[cfg_attr(test, ts(as = "Option<Vec<String>>", optional))]
+    pub exclusion_words: Vec<String>,
 }
 
 impl Default for ProfileCriteria {
@@ -285,6 +305,10 @@ impl Default for ProfileCriteria {
             min_salary: None,
             permanent_places: Vec::new(),
             permanent_remote_min: None,
+            workload_min_days: None,
+            workload_max_days: None,
+            min_months: None,
+            exclusion_words: Vec::new(),
         }
     }
 }
@@ -462,6 +486,10 @@ impl ProfileForm {
                 min_salary: c.min_salary.filter(|n| *n > 0),
                 permanent_places: clean(&c.permanent_places),
                 permanent_remote_min: c.permanent_remote_min.filter(|n| *n > 0),
+                workload_min_days: c.workload_min_days.filter(|n| *n > 0),
+                workload_max_days: c.workload_max_days.filter(|n| *n > 0),
+                min_months: c.min_months.filter(|n| *n > 0),
+                exclusion_words: clean(&c.exclusion_words),
             },
         }
     }
@@ -575,12 +603,44 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
     if !fits(&c.permanent_places) {
         return Err(fail("permanentPlaces", None));
     }
+    validate_limits(c)?;
     if let ProfileAvailability::From { date } = &c.available
         && date.parse::<Date>().is_err()
     {
         return Err(fail("available", None));
     }
     Ok(form)
+}
+
+/// The days per week (at most five, the maximum not below the minimum), the minimum
+/// duration and the exclusion words.
+fn validate_limits(c: &ProfileCriteria) -> Result<(), InvalidInput> {
+    let at = |field: &str, max: Option<u32>| InvalidInput::ProfileValue {
+        field: field.to_owned(),
+        row: None,
+        max,
+    };
+    for (value, field) in [
+        (c.workload_min_days, "workloadMinDays"),
+        (c.workload_max_days, "workloadMaxDays"),
+    ] {
+        if value.is_some_and(|n| n > MAX_WEEK_DAYS) {
+            return Err(at(field, Some(u32::from(MAX_WEEK_DAYS))));
+        }
+    }
+    if let (Some(min), Some(max)) = (c.workload_min_days, c.workload_max_days)
+        && max < min
+    {
+        return Err(at("workloadMaxDays", None));
+    }
+    if c.min_months.is_some_and(|n| n > MAX_MONTHS) {
+        return Err(at("minMonths", Some(u32::from(MAX_MONTHS))));
+    }
+    let words = &c.exclusion_words;
+    if words.len() > MAX_ITEMS || words.iter().any(|t| t.chars().count() > MAX_TEXT) {
+        return Err(at("exclusionWords", None));
+    }
+    Ok(())
 }
 
 // ------------------------------------------------------------------------------ reading
@@ -782,6 +842,10 @@ fn read_criteria(doc: &Json) -> ProfileCriteria {
         min_salary: c.min_salary.and_then(|n| u32::try_from(n).ok()),
         permanent_places: c.places.unwrap_or_default(),
         permanent_remote_min: c.remote_min.and_then(|n| u32::try_from(n).ok()),
+        workload_min_days: c.workload_min,
+        workload_max_days: c.workload_max,
+        min_months: c.min_months,
+        exclusion_words: c.exclusion_words,
     }
 }
 
@@ -1432,6 +1496,34 @@ fn write_criteria(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCrite
             lexicon::KEYS_PERMANENT_REMOTE,
             after.permanent_remote_min.map(Json::number),
         );
+    }
+    for (keys, old, new) in [
+        (
+            lexicon::KEYS_WORKLOAD_MIN,
+            before.workload_min_days,
+            after.workload_min_days,
+        ),
+        (
+            lexicon::KEYS_WORKLOAD_MAX,
+            before.workload_max_days,
+            after.workload_max_days,
+        ),
+    ] {
+        if new != old {
+            write_criterion(doc, keys, new.map(|n| Json::number(u32::from(n))));
+        }
+    }
+    if after.min_months != before.min_months {
+        write_criterion(
+            doc,
+            lexicon::KEYS_MIN_MONTHS,
+            after.min_months.map(|n| Json::number(u32::from(n))),
+        );
+    }
+    if after.exclusion_words != before.exclusion_words {
+        let words =
+            (!after.exclusion_words.is_empty()).then(|| Json::texts(&after.exclusion_words));
+        write_criterion(doc, lexicon::KEYS_EXCLUSION_WORDS, words);
     }
 }
 

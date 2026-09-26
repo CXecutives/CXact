@@ -9,8 +9,9 @@ use serde_json::{Map, Value, json};
 use super::ad_facts::{self, AdFacts, Stated, currency_code, start_code};
 use super::contract::ContractKind;
 use super::engine::{EngineProfile, Evaluation};
-use super::facts::{Availability, Start};
+use super::facts::{Availability, HardCriteria, Start};
 use super::job::{Class, Stage};
+use super::limits;
 use super::normalize::{char_len, strip};
 use super::params::{E_FULL, E_NONE, W_MUST};
 use super::sections::ReqKind;
@@ -475,5 +476,40 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             ),
             None => unset(CriterionKey::TargetYears),
         },
+        workload_state(c, ad, text),
+        match c.min_months {
+            // A permanent role has no end.
+            Some(min) if !permanent => at_least(
+                CriterionKey::Duration,
+                ad.months.as_ref(),
+                min,
+                "months",
+                text,
+            ),
+            _ => unset(CriterionKey::Duration),
+        },
+        // Only a hit shows (a violation); no word is no evidence.
+        unset(CriterionKey::ExclusionWords),
     ]
+}
+
+/// The workload: `Ok` for a stated workload within the profile's days per week (`from`,
+/// `to` in percent), `NotMentioned` for none; one outside is a check (a finding).
+fn workload_state(c: &HardCriteria, ad: &AdFacts, text: &str) -> CriterionState {
+    let key = CriterionKey::Workload;
+    let (min, max) = (c.workload_min, c.workload_max);
+    if min.is_none() && max.is_none() {
+        return criterion(key, CriterionStatus::Inactive, &json!({}), None, text);
+    }
+    match &ad.workload {
+        Some(stated) => {
+            let mut params = json!({ "to": stated.value.to });
+            if let Some(from) = stated.value.from {
+                params["from"] = json!(from);
+            }
+            let ok = limits::workload_fits(stated.value, min, max);
+            criterion(key, told(ok), &params, stated.span.as_ref(), text)
+        }
+        None => criterion(key, CriterionStatus::NotMentioned, &json!({}), None, text),
+    }
 }

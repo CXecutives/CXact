@@ -982,6 +982,9 @@ fn every_code() -> Vec<ReasonCode> {
         C::RemoteWish,
         C::RegionWish,
         C::IndustryWish,
+        C::Workload,
+        C::Duration,
+        C::ExclusionWord,
     ];
     for code in &all {
         match code {
@@ -1015,7 +1018,10 @@ fn every_code() -> Vec<ReasonCode> {
             | C::DayRateWish
             | C::RemoteWish
             | C::RegionWish
-            | C::IndustryWish => {}
+            | C::IndustryWish
+            | C::Workload
+            | C::Duration
+            | C::ExclusionWord => {}
         }
     }
     all
@@ -1061,6 +1067,9 @@ fn every_reason() -> Assessment {
         CriterionKey::MinSalary,
         CriterionKey::PermanentRegion,
         CriterionKey::TargetYears,
+        CriterionKey::Workload,
+        CriterionKey::Duration,
+        CriterionKey::ExclusionWords,
     ];
     let statuses = [
         CriterionStatus::Ok,

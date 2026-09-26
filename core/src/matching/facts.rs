@@ -51,8 +51,36 @@ pub(crate) struct HardCriteria {
     pub remote_min: Option<u64>,
     /// Minimum years the target profile of an ad must ask for.
     pub target_years: Option<u32>,
+    /// Days per week (1 to 5) the consultant works at least and at most.
+    pub workload_min: Option<u8>,
+    pub workload_max: Option<u8>,
+    /// Minimum duration of an engagement in months.
+    pub min_months: Option<u16>,
+    /// Words that exclude an ad, as written.
+    pub exclusion_words: Vec<String>,
     /// Keys present with a value that cannot be read: (key, value).
     pub not_understood: Vec<(&'static str, String)>,
+}
+
+/// Longest minimum duration read (ten years).
+const MAX_MIN_MONTHS: u64 = 120;
+/// Days of a working week.
+const WEEK_DAYS: u64 = 5;
+
+/// A list of texts or one text split at `,` and `;` (trimmed, without empty entries).
+fn texts_of(value: &Value) -> Option<Vec<String>> {
+    let entries: Vec<&str> = match value {
+        Value::Array(items) => items.iter().map(Value::as_str).collect::<Option<_>>()?,
+        Value::String(text) => text.split([',', ';']).collect(),
+        _ => return None,
+    };
+    let mut out: Vec<String> = Vec::new();
+    for entry in entries.iter().map(|e| e.trim()).filter(|e| !e.is_empty()) {
+        if !out.iter().any(|o| fold(o) == fold(entry)) {
+            out.push(entry.to_owned());
+        }
+    }
+    Some(out)
 }
 
 /// A profile value of the new criteria: first key found in `harte_kriterien` (or the
@@ -269,23 +297,9 @@ impl HardCriteria {
         let min_salary = read(lexicon::KEYS_MIN_SALARY);
         let remote_min = read(lexicon::KEYS_PERMANENT_REMOTE).map(|p| p.min(100));
         let target_years = read(lexicon::KEYS_TARGET_YEARS).and_then(|y| u32::try_from(y).ok());
-        let places = criterion(data, lexicon::KEYS_PERMANENT_PLACES).and_then(|(key, value)| {
-            let list: Vec<String> = value
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(Value::as_str)
-                .map(str::trim)
-                .filter(|p| !p.is_empty())
-                .map(str::to_owned)
-                .collect();
-            if list.is_empty() {
-                not_understood.push((key, value.to_string()));
-                None
-            } else {
-                Some(list)
-            }
-        });
+        let places = places_of(data, &mut not_understood);
+        let (workload_min, workload_max, min_months, exclusion_words) =
+            engagement_limits(data, &mut not_understood);
         Self {
             min_rate,
             countries,
@@ -297,9 +311,81 @@ impl HardCriteria {
             places,
             remote_min,
             target_years,
+            workload_min,
+            workload_max,
+            min_months,
+            exclusion_words,
             not_understood,
         }
     }
+}
+
+/// The places of the region for permanent roles (a list of texts; an empty one is not
+/// understood).
+fn places_of(
+    data: &Value,
+    not_understood: &mut Vec<(&'static str, String)>,
+) -> Option<Vec<String>> {
+    criterion(data, lexicon::KEYS_PERMANENT_PLACES).and_then(|(key, value)| {
+        let list: Vec<String> = value
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|p| !p.is_empty())
+            .map(str::to_owned)
+            .collect();
+        if list.is_empty() {
+            not_understood.push((key, value.to_string()));
+            None
+        } else {
+            Some(list)
+        }
+    })
+}
+
+/// Days per week (at least, at most), the minimum duration in months and the exclusion
+/// words of a profile; values that cannot be read go to `not_understood`.
+fn engagement_limits(
+    data: &Value,
+    not_understood: &mut Vec<(&'static str, String)>,
+) -> (Option<u8>, Option<u8>, Option<u16>, Vec<String>) {
+    let mut days = |keys: &[&'static str]| {
+        let (key, value) = criterion(data, keys)?;
+        let n = number(value).filter(|n| (1..=WEEK_DAYS).contains(n));
+        if n.is_none() {
+            not_understood.push((key, value.to_string()));
+        }
+        n.and_then(|n| u8::try_from(n).ok())
+    };
+    let workload_min = days(lexicon::KEYS_WORKLOAD_MIN);
+    let mut workload_max = days(lexicon::KEYS_WORKLOAD_MAX);
+    // A maximum below the minimum is no range.
+    if let (Some(min), Some(max)) = (workload_min, workload_max)
+        && max < min
+        && let Some((key, value)) = criterion(data, lexicon::KEYS_WORKLOAD_MAX)
+    {
+        not_understood.push((key, value.to_string()));
+        workload_max = None;
+    }
+    let min_months = criterion(data, lexicon::KEYS_MIN_MONTHS).and_then(|(key, value)| {
+        let n = number(value).filter(|n| (1..=MAX_MIN_MONTHS).contains(n));
+        if n.is_none() {
+            not_understood.push((key, value.to_string()));
+        }
+        n.and_then(|n| u16::try_from(n).ok())
+    });
+    let exclusion_words = criterion(data, lexicon::KEYS_EXCLUSION_WORDS)
+        .and_then(|(key, value)| {
+            let words = texts_of(value);
+            if words.is_none() {
+                not_understood.push((key, value.to_string()));
+            }
+            words
+        })
+        .unwrap_or_default();
+    (workload_min, workload_max, min_months, exclusion_words)
 }
 
 /// Keys of the criteria sections the engine does not read (a typo, an unknown rule).
