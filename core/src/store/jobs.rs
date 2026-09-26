@@ -62,6 +62,9 @@ pub struct JobRow {
     pub read_at: Option<Timestamp>,
     /// `None` = not scored yet.
     pub match_: Option<MatchRecord>,
+    /// Up to two open must requirements of the match, quoted from the ad (empty for a note
+    /// of an earlier version).
+    pub match_open: Vec<String>,
     /// Who scored it; `None` = to be scored (again).
     pub match_rev: Option<String>,
     /// The facts the job page stated (unreadable JSON counts as none).
@@ -816,6 +819,14 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
             "job row {portal}/{url}/{status}"
         ))));
     };
+    let (match_, match_open) = match super::matches::decode_match(
+        r.get::<_, Option<String>>(col(21))?.as_deref(),
+        r.get(col(22))?,
+        r.get::<_, Option<String>>(col(23))?.as_deref(),
+    ) {
+        Some((record, open)) => (Some(record), open),
+        None => (None, Vec::new()),
+    };
     Ok(Ok(JobRow {
         key: JobKey {
             portal,
@@ -840,11 +851,8 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         txt_name: r.get(col(18))?,
         desc_attempted_at: r.get::<_, Option<i64>>(col(19))?.and_then(from_db),
         read_at: r.get::<_, Option<i64>>(col(20))?.and_then(from_db),
-        match_: super::matches::decode_match(
-            r.get::<_, Option<String>>(col(21))?.as_deref(),
-            r.get(col(22))?,
-            r.get::<_, Option<String>>(col(23))?.as_deref(),
-        ),
+        match_,
+        match_open,
         match_rev: r.get(col(24))?,
         facts: r
             .get::<_, Option<String>>(col(25))?

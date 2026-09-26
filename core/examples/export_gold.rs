@@ -216,6 +216,7 @@ fn read_db(conn: &Connection) -> Res<(Vec<DbJob>, usize)> {
                 desc_attempted_at: None,
                 read_at: None,
                 match_: None,
+                match_open: Vec::new(),
                 match_rev: None,
                 facts: None,
                 pinned_at: None,

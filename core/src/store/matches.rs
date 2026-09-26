@@ -21,8 +21,8 @@ use crate::time::{from_db, to_db};
 ///
 /// - `match_score`: score 0-100.
 /// - `match_status`: `scored`, `excluded` or `unscorable`.
-/// - `match_note`: JSON `{code, params, mustMet, mustTotal, top[<=2], facts}`, at most 400
-///   bytes.
+/// - `match_note`: JSON `{code, params, mustMet, mustTotal, top[<=2], open[<=2], facts,
+///   rank}`, at most 640 bytes.
 /// - `match_at`: when the job was scored.
 /// - `match_rev`: revision of engine, profile and model that produced the score; `NULL`
 ///   after a change of title or text (the job is scored again).
@@ -45,11 +45,29 @@ pub const SCHEMA_3_JOB_COLUMNS: &[(&str, &str)] = &[
 ];
 
 /// Most bytes a stored note takes.
-const MAX_NOTE_BYTES: usize = 400;
+const MAX_NOTE_BYTES: usize = 640;
 /// Most characters of one quoted requirement in the note.
 const MAX_TOP_CHARS: usize = 80;
-/// Most quoted requirements in the note.
+/// Most quoted requirements in the note, met ones and open ones each.
 const MAX_TOP: usize = 2;
+
+/// A match as the store keeps it: what the matcher says ([`MatchRecord`]) and up to two open
+/// must requirements quoted from the ad (the list's `open`, the overview's open points).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Judgement {
+    pub record: MatchRecord,
+    pub open: Vec<String>,
+}
+
+impl From<MatchRecord> for Judgement {
+    /// A record without open requirements (a matcher that names none).
+    fn from(record: MatchRecord) -> Judgement {
+        Judgement {
+            record,
+            open: Vec::new(),
+        }
+    }
+}
 
 /// The jobs of the HTML overview ([`Store::overview_jobs`]).
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -71,6 +89,9 @@ struct StoredNote {
     must_met: u16,
     must_total: u16,
     top: Vec<String>,
+    /// Open must requirements (quoted); older notes have none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    open: Vec<String>,
     #[serde(skip_serializing_if = "KeyFacts::is_empty", serialize_with = "compact")]
     facts: KeyFacts,
     /// Per-mille score before caps (tie-breaker of the list order).
@@ -86,9 +107,16 @@ fn compact<S: serde::Serializer>(facts: &KeyFacts, serializer: S) -> Result<S::O
     value.serialize(serializer)
 }
 
-/// The note of a match as JSON of at most 400 bytes (quotes are cut, then dropped; the key
-/// facts stay).
-pub(super) fn encode_note(record: &MatchRecord) -> String {
+/// The note of a match as JSON of at most [`MAX_NOTE_BYTES`] bytes (quotes are cut, then
+/// dropped - the open ones first, then the met ones, then the note's params; the key facts
+/// stay).
+pub(super) fn encode_note(record: &MatchRecord, open: &[String]) -> String {
+    let quotes = |list: &[String]| -> Vec<String> {
+        list.iter()
+            .take(MAX_TOP)
+            .map(|t| truncate_chars(t, MAX_TOP_CHARS))
+            .collect()
+    };
     let mut note = StoredNote {
         code: record.note.as_ref().map(|n| n.code.clone()),
         params: record
@@ -98,37 +126,35 @@ pub(super) fn encode_note(record: &MatchRecord) -> String {
             .unwrap_or_default(),
         must_met: record.must_met,
         must_total: record.must_total,
-        top: record
-            .top
-            .iter()
-            .take(MAX_TOP)
-            .map(|t| truncate_chars(t, MAX_TOP_CHARS))
-            .collect(),
+        top: quotes(&record.top),
+        open: quotes(open),
         facts: record.facts.clone(),
         rank: record.rank,
     };
     loop {
         let json = serde_json::to_string(&note).unwrap_or_default();
-        if json.len() <= MAX_NOTE_BYTES || (note.top.is_empty() && note.params.is_empty()) {
+        let nothing_left = note.open.is_empty() && note.top.is_empty() && note.params.is_empty();
+        if json.len() <= MAX_NOTE_BYTES || nothing_left {
             return json;
         }
-        if note.top.pop().is_none() {
+        if note.open.pop().is_none() && note.top.pop().is_none() {
             note.params.clear();
         }
     }
 }
 
-/// A match from its stored columns; `None` without a status (not scored).
+/// A match from its stored columns with its open must requirements; `None` without a status
+/// (not scored).
 pub(super) fn decode_match(
     status: Option<&str>,
     score: Option<i64>,
     note: Option<&str>,
-) -> Option<MatchRecord> {
+) -> Option<(MatchRecord, Vec<String>)> {
     let status = MatchStatus::parse(status?)?;
     let note: StoredNote = note
         .and_then(|n| serde_json::from_str(n).ok())
         .unwrap_or_default();
-    Some(MatchRecord {
+    let record = MatchRecord {
         status,
         score: score
             .and_then(|s| u8::try_from(s.clamp(0, 100)).ok())
@@ -142,7 +168,8 @@ pub(super) fn decode_match(
         top: note.top,
         facts: note.facts,
         rank: note.rank,
-    })
+    };
+    Some((record, note.open))
 }
 
 impl Store {
@@ -155,14 +182,41 @@ impl Store {
         )? > 0)
     }
 
-    /// Stores the matches of a page of jobs as one change (`rev`: who scored them).
+    /// Stores the matches of a page of jobs as one change (`rev`: who scored them), without
+    /// open requirements (see [`Store::save_judgements`]).
     pub fn save_matches(
         &self,
         matches: &[(JobKey, MatchRecord)],
         rev: &str,
         now: Timestamp,
     ) -> Result<()> {
-        if matches.is_empty() {
+        self.save_all(matches.iter().map(|(key, r)| (key, r, &[][..])), rev, now)
+    }
+
+    /// Stores the matches of a page of jobs with their open must requirements as one change
+    /// (`rev`: who scored them).
+    pub fn save_judgements(
+        &self,
+        judged: &[(JobKey, Judgement)],
+        rev: &str,
+        now: Timestamp,
+    ) -> Result<()> {
+        self.save_all(
+            judged
+                .iter()
+                .map(|(key, j)| (key, &j.record, j.open.as_slice())),
+            rev,
+            now,
+        )
+    }
+
+    fn save_all<'a>(
+        &self,
+        matches: impl ExactSizeIterator<Item = (&'a JobKey, &'a MatchRecord, &'a [String])>,
+        rev: &str,
+        now: Timestamp,
+    ) -> Result<()> {
+        if matches.len() == 0 {
             return Ok(());
         }
         self.write(|conn| {
@@ -173,13 +227,13 @@ impl Store {
                                 match_rev = ?6, match_at = ?7
                  WHERE portal = ?1 AND job_id = ?2",
             )?;
-            for (key, record) in matches {
+            for (key, record, open) in matches {
                 stmt.execute(params![
                     key.portal.key(),
                     key.id,
                     record.score,
                     record.status.as_str(),
-                    encode_note(record),
+                    encode_note(record, open),
                     rev,
                     to_db(now),
                 ])?;
@@ -194,11 +248,12 @@ impl Store {
     pub fn save_match_if(
         &self,
         key: &JobKey,
-        record: &MatchRecord,
+        judged: &Judgement,
         rev: &str,
         expected: Option<&str>,
         now: Timestamp,
     ) -> Result<bool> {
+        let record = &judged.record;
         self.write(|conn| {
             let changed = conn.execute(
                 "UPDATE job SET match_score = ?3, match_note = ?5,
@@ -211,7 +266,7 @@ impl Store {
                     key.id,
                     record.score,
                     record.status.as_str(),
-                    encode_note(record),
+                    encode_note(record, &judged.open),
                     rev,
                     to_db(now),
                     expected,
@@ -480,14 +535,14 @@ mod tests {
         assert_eq!(back.note, scored.note);
         assert_eq!(back.top.len(), 2);
         assert!(back.top[1].chars().count() <= MAX_TOP_CHARS);
-        assert!(encode_note(&scored).len() <= MAX_NOTE_BYTES);
+        assert!(encode_note(&scored, &[]).len() <= MAX_NOTE_BYTES);
         let mut huge = scored;
         huge.note
             .as_mut()
             .unwrap()
             .params
             .insert("x".into(), "y".repeat(600).into());
-        assert!(encode_note(&huge).len() <= MAX_NOTE_BYTES);
+        assert!(encode_note(&huge, &[]).len() <= MAX_NOTE_BYTES);
         // The key facts come back; the note keeps them without null values.
         let mut with_facts = record(MatchStatus::Scored, 83);
         with_facts.facts = crate::model::KeyFacts {
@@ -500,22 +555,51 @@ mod tests {
             contract: Some("interim".into()),
             ..crate::model::KeyFacts::default()
         };
-        let json = encode_note(&with_facts);
+        let json = encode_note(&with_facts, &[]);
         assert!(
             json.len() <= MAX_NOTE_BYTES && !json.contains("null"),
             "{json}"
         );
-        let back = decode_match(Some("scored"), Some(83), Some(&json)).unwrap();
+        let back = decode_match(Some("scored"), Some(83), Some(&json))
+            .unwrap()
+            .0;
         assert_eq!(back.facts, with_facts.facts);
         // The rank (tie-breaker of equal scores) comes back.
         let mut ranked = record(MatchStatus::Scored, 40);
         ranked.rank = 437;
-        let json = encode_note(&ranked);
+        let json = encode_note(&ranked, &[]);
         assert_eq!(
             decode_match(Some("scored"), Some(40), Some(&json))
                 .unwrap()
+                .0
                 .rank,
             437
+        );
+        // Open must requirements come back, at most two, and go first when the note is full.
+        let open = [
+            "Power BI".to_owned(),
+            "Zollabwicklung".into(),
+            "drittes".into(),
+        ];
+        let json = encode_note(&ranked, &open);
+        let (_, back) = decode_match(Some("scored"), Some(40), Some(&json)).unwrap();
+        assert_eq!(back, ["Power BI", "Zollabwicklung"]);
+        let long: Vec<String> = vec!["ö".repeat(200); 2];
+        let mut full = record(MatchStatus::Scored, 40);
+        full.top = vec!["ü".repeat(200); 2];
+        full.facts = with_facts.facts.clone();
+        let json = encode_note(&full, &long);
+        assert!(json.len() <= MAX_NOTE_BYTES, "{}", json.len());
+        let (kept, open) = decode_match(Some("scored"), Some(40), Some(&json)).unwrap();
+        assert!(open.len() < 2 && kept.top.len() == 2, "{json}");
+        assert_eq!(kept.facts, with_facts.facts, "the facts stay");
+        // A note of an earlier version has none.
+        let old = r#"{"code":null,"params":{},"mustMet":1,"mustTotal":2,"top":["A"]}"#;
+        assert!(
+            decode_match(Some("scored"), Some(40), Some(old))
+                .unwrap()
+                .1
+                .is_empty()
         );
         // A new text or title makes the job pending again.
         store
@@ -538,7 +622,7 @@ mod tests {
         let stale = record(MatchStatus::Scored, 10);
         assert!(
             !store
-                .save_match_if(&key, &stale, "r1", None, now())
+                .save_match_if(&key, &stale.clone().into(), "r1", None, now())
                 .unwrap()
         );
         let job = store.job(&key).unwrap().unwrap();
@@ -548,7 +632,7 @@ mod tests {
         );
         assert!(
             store
-                .save_match_if(&key, &stale, "r3", Some("r2"), now())
+                .save_match_if(&key, &stale.clone().into(), "r3", Some("r2"), now())
                 .unwrap()
         );
         assert_eq!(store.match_rev(&key).unwrap().as_deref(), Some("r3"));

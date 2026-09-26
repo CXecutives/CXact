@@ -950,7 +950,7 @@ mod tests {
         assert_eq!(status(&store), (MatchStatus::Scored, 71, true));
         assert!(
             store
-                .save_match_if(key, &excluded, "r3", Some("r2"), now())
+                .save_match_if(key, &excluded.clone().into(), "r3", Some("r2"), now())
                 .unwrap()
         );
         assert_eq!(status(&store), (MatchStatus::Scored, 71, true));

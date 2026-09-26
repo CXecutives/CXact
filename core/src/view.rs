@@ -151,6 +151,9 @@ pub struct JobMatch {
     pub must_total: u16,
     /// At most two met requirements, quoted from the ad.
     pub top: Vec<String>,
+    /// At most two open must requirements, quoted from the ad (empty for a job scored by an
+    /// earlier version until it is scored again).
+    pub open: Vec<String>,
     /// Rate, start, duration, remote share and contract type of the ad.
     pub facts: KeyFacts,
 }
@@ -235,7 +238,7 @@ impl From<&JobRow> for JobView {
             short: job.desc_status == DescStatus::Ok && job.desc_short,
             closed: job.desc_status == DescStatus::Ok && job.desc_closed,
             match_: job.match_.as_ref().map(|record| {
-                let mut shown = JobMatch::from(record);
+                let mut shown = JobMatch::of(record, &job.match_open);
                 if job.override_include {
                     shown.status = MatchStatus::Scored;
                     shown.note = Some(Notice {
@@ -255,8 +258,9 @@ impl From<&JobRow> for JobView {
     }
 }
 
-impl From<&MatchRecord> for JobMatch {
-    fn from(record: &MatchRecord) -> JobMatch {
+impl JobMatch {
+    /// The list's match of a stored record and its open must requirements.
+    pub fn of(record: &MatchRecord, open: &[String]) -> JobMatch {
         JobMatch {
             score: record.score,
             band: band(record.score),
@@ -265,6 +269,7 @@ impl From<&MatchRecord> for JobMatch {
             must_met: record.must_met,
             must_total: record.must_total,
             top: record.top.clone(),
+            open: open.to_vec(),
             facts: record.facts.clone(),
         }
     }
@@ -502,13 +507,13 @@ pub fn job_detail(
             let at = if job.match_rev.as_deref() == Some(matcher.rev()) {
                 store.match_at(key)?.unwrap_or(now)
             } else {
-                let record = local::record(&assessment);
+                let judged = local::judgement(&assessment);
                 // Only over the score read above: a run that started meanwhile may have
                 // stored its own (compare and set).
                 if save
                     && let Err(e) = store.save_match_if(
                         key,
-                        &record,
+                        &judged,
                         matcher.rev(),
                         job.match_rev.as_deref(),
                         now,
@@ -516,7 +521,8 @@ pub fn job_detail(
                 {
                     log::warn!("fresh score of {key} not stored: {e}");
                 }
-                job.match_ = Some(record);
+                job.match_ = Some(judged.record);
+                job.match_open = judged.open;
                 job.match_rev = Some(matcher.rev().to_owned());
                 now
             };

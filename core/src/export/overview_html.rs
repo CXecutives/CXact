@@ -310,6 +310,7 @@ mod tests {
             desc_attempted_at: None,
             read_at: None,
             match_: record,
+            match_open: Vec::new(),
             match_rev: None,
             facts: None,
             pinned_at: None,

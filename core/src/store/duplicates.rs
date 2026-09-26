@@ -469,7 +469,7 @@ mod tests {
         // The reader's fresh score (compare and set on "never scored") skips it too.
         assert!(
             !store
-                .save_match_if(&second.key, &record, "r2", None, now())
+                .save_match_if(&second.key, &record.clone().into(), "r2", None, now())
                 .unwrap()
         );
         let dup = store.job(&second.key).unwrap().unwrap();

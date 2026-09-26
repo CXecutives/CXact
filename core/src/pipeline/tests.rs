@@ -1400,6 +1400,35 @@ async fn txt_is_blind_to_the_match() {
     assert_eq!(strip(&a), strip(&b));
 }
 
+/// A run keeps up to two open must requirements per job next to the met ones: the list row
+/// and the event carry them, quoted from the ad.
+#[tokio::test(start_paused = true)]
+async fn a_run_keeps_the_open_musts() {
+    let c = clock();
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::in_memory().unwrap();
+    let (_, events) = go(
+        &mut DemoBackends,
+        &store,
+        &request(),
+        &ctx(dir.path(), true),
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    let key = crate::portal::job_link("https://www.linkedin.com/jobs/view/4999000002/")
+        .unwrap()
+        .key;
+    let row = store.job(&key).unwrap().unwrap();
+    assert_eq!(row.match_open.len(), 2, "{:?}", row.match_open);
+    assert!(row.match_open.iter().all(|o| !o.is_empty()));
+    let shown = events.iter().rev().find_map(|e| match e {
+        RunEvent::JobUpdated { job, .. } if job.key == key => job.match_.clone(),
+        _ => None,
+    });
+    assert_eq!(shown.unwrap().open, row.match_open);
+}
+
 /// The request JSON is flat, and every kind round-trips.
 #[test]
 fn run_requests_are_flat_json() {

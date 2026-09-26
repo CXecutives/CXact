@@ -12,7 +12,7 @@ use crate::matching::{
 };
 use crate::model::{DescStatus, MatchRecord, MatchStatus, Notice, is_usable_title};
 use crate::portal::Facts;
-use crate::store::JobRow;
+use crate::store::{JobRow, Judgement};
 
 /// Met requirements quoted in the list row.
 const TOP: usize = 2;
@@ -90,6 +90,10 @@ impl Matcher for LocalMatcher {
 
     fn assess(&self, job: &JobRow, text: Option<&str>) -> Option<MatchRecord> {
         self.assessment(job, text).map(|a| record(&a))
+    }
+
+    fn judge(&self, job: &JobRow, text: Option<&str>) -> Option<Judgement> {
+        self.assessment(job, text).map(|a| judgement(&a))
     }
 
     fn explain(&self, job: &JobRow, text: Option<&str>) -> Option<Assessment> {
@@ -210,6 +214,31 @@ fn note(assessment: &Assessment) -> Option<Notice> {
         code: code_name(&reason.code),
         params: flat_params(&reason.params),
     })
+}
+
+/// What the store keeps of an assessment: its [`record`] and up to two open must
+/// requirements ([`open`]).
+pub fn judgement(assessment: &Assessment) -> Judgement {
+    Judgement {
+        record: record(assessment),
+        open: open(assessment),
+    }
+}
+
+/// Up to two open must requirements quoted from the ad, in the ad's order: what the list's
+/// `open` shows and the overview counts across jobs.
+pub fn open(assessment: &Assessment) -> Vec<String> {
+    assessment
+        .reasons
+        .iter()
+        .filter(|r| {
+            r.kind == ReasonKind::Open
+                && r.weight == Weight::Must
+                && matches!(r.code, ReasonCode::Requirement | ReasonCode::Term)
+        })
+        .filter_map(|r| r.label.clone())
+        .take(TOP)
+        .collect()
 }
 
 /// Up to two met requirements quoted from the ad, musts first.
@@ -354,6 +383,12 @@ Rahmenbedingungen:
             ]
         );
         assert_eq!(record.note, None, "nothing to check");
+        // The one open must, quoted like the met ones; the judgement keeps the same record.
+        let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", FIT);
+        let row = store.job(&key).unwrap().unwrap();
+        let judged = matcher.judge(&row, Some(FIT)).unwrap();
+        assert_eq!(judged.record, record);
+        assert_eq!(judged.open, ["Kenntnisse in Zollabwicklung"]);
     }
 
     #[test]
