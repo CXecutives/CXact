@@ -48,7 +48,6 @@
 
 import type {
   AppState,
-  Band,
   Commands,
   Deleted,
   ErrorInfo,
@@ -64,7 +63,6 @@ import type {
   Notice,
   OverviewStats,
   Place,
-  Portal,
   PortalState,
   ProfileDraft,
   ProfileForm,
@@ -75,6 +73,8 @@ import type {
   RunRequest,
   RunSummary,
 } from '../../ui/src/lib/ipc/types';
+import { BAND_FROM, bandOf, HIGH_FROM, MID_FROM } from '../../ui/src/lib/ipc/types/bands';
+import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 
 interface Harness {
   calls: [string, unknown][];
@@ -210,8 +210,6 @@ const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
-/** The order of the backend (`Portal::ALL`), on every screen. */
-const PORTALS: readonly Portal[] = ['linkedin', 'freelance', 'freelancermap'];
 
 const NOW = new Date('2026-09-24T09:30:00+02:00').getTime();
 const HOUR = 3_600_000;
@@ -244,7 +242,7 @@ const NO_FACTS = {
 
 const scored = (score: number, top: string[], mustMet = 3, mustTotal = 4): Match => ({
   score,
-  band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+  band: bandOf(score),
   status: 'scored',
   note: null,
   mustMet,
@@ -262,7 +260,7 @@ const excludedBy = (
   params: Record<string, string | number> = {},
 ): Match => ({
   score,
-  band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+  band: bandOf(score),
   status: 'excluded',
   note: { code, params },
   mustMet: 2,
@@ -1314,7 +1312,7 @@ function countsOf(list: JobView[]): JobCounts {
     c.inbox += 1;
     c.unread += isNew ? 1 : 0;
     c.excluded += out ? 1 : 0;
-    c.high += j.match?.status === 'scored' && j.match.score >= 80 ? 1 : 0;
+    c.high += j.match?.status === 'scored' && j.match.score >= HIGH_FROM ? 1 : 0;
     c.noDetail += j.detail.kind !== 'ok' ? 1 : 0;
     const line = c.newByPortal.find((p) => p.portal === j.portal);
     if (line && isNew) line.new += 1;
@@ -1337,8 +1335,6 @@ function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread' | 'favouri
   const where = query.favourites ? j.pinned && j.place !== 'trash' : j.place === query.place;
   return where && (!query.unread || j.unread);
 }
-
-const BAND_FROM: Record<Band, number> = { high: 80, mid: 40, low: 0 };
 
 /** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
 function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
@@ -1372,7 +1368,7 @@ function overviewStats(): OverviewStats {
     .slice(0, 5)
     .map(([label, count]) => ({ label, count }));
   const rates = scoredJobs
-    .filter((j) => (j.match?.score ?? 0) >= 40 && j.match?.facts.rate !== null)
+    .filter((j) => (j.match?.score ?? 0) >= MID_FROM && j.match?.facts.rate !== null)
     .map((j) => {
       const f = j.match!.facts;
       return f.hourly === true ? f.rate! * 8 : f.rate!;
@@ -1485,13 +1481,6 @@ const fold = (text: string): string =>
     .toLocaleLowerCase('de')
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
-
-/** The portals' names as the store's search column holds them (`Portal::label`). */
-const PORTAL_LABEL: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
 
 /** Like store::search_words: every word of a search (at most 8) is in the portal's name, the
  *  title, the company or the location, in any order; an empty search matches everything. */

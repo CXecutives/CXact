@@ -39,6 +39,7 @@ import type {
   VaultKind,
   WorkMode,
 } from '../ipc/types';
+import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
   formatCountdown,
@@ -68,12 +69,9 @@ const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : 
 /** Shift in the same writing as the command key it stands beside. */
 const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
 
-/** The portals by their web address, everywhere (a sentence never starts with one). */
-const portalName: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
+/** The portals by their web address, everywhere (a sentence never starts with one); the
+ *  names come from the portal registry, no catalog translates them. */
+const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
@@ -1748,9 +1746,9 @@ export const de = {
     mailboxSaved: 'Postfach verbunden.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoArchive: 'Jobs nach 30 Tagen archivieren',
+    autoArchive: (days: number) => `Jobs nach ${n(days)} Tagen archivieren`,
     autoArchiveHint: 'Favoriten werden nie archiviert.',
-    autoEmptyTrash: 'Papierkorb nach 30 Tagen leeren',
+    autoEmptyTrash: (days: number) => `Papierkorb nach ${n(days)} Tagen leeren`,
     autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
     active: 'Aktiv',
     details: 'Details holen',

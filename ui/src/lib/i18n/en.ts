@@ -39,6 +39,7 @@ import type {
   WorkMode,
 } from '../ipc/types';
 import { textOf, type Catalog, type ContractKind, type CriterionState } from './de';
+import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
   formatCountdown,
@@ -68,11 +69,7 @@ const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-click` : 
 /** Shift in the same writing as the command key it stands beside. */
 const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Shift');
 
-const portalName: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
+const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 const joined = (items: string[]): string =>
@@ -1537,9 +1534,9 @@ export const en: Catalog = {
     mailboxSaved: 'Mailbox connected.',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
-    autoArchive: 'Archive jobs after 30 days',
+    autoArchive: (days: number) => `Archive jobs after ${n(days)} days`,
     autoArchiveHint: 'Favourites are never archived.',
-    autoEmptyTrash: 'Empty the trash after 30 days',
+    autoEmptyTrash: (days: number) => `Empty the trash after ${n(days)} days`,
     autoEmptyTrashHint: 'Jobs in the trash are then deleted forever.',
     active: 'Active',
     details: 'Fetch details',

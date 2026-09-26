@@ -14,8 +14,8 @@ use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
 use crate::mail::MAIL_PARSER_VERSION;
 use crate::mail::extract::{has_gender_tag, looks_like_job_title};
 use crate::model::{
-    AlertMail, Band, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MID_FROM,
-    MatchRecord, Place, Posting, is_usable_title,
+    AlertMail, Band, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MatchRecord, Place,
+    Posting, is_usable_title,
 };
 use crate::portal::{Facts, JobKey, Portal};
 use crate::text::{one_line, page_location, split_company_location, truncate_chars};
@@ -106,11 +106,7 @@ pub struct ListFilter {
 impl ListFilter {
     /// The lowest score of the band filter (`None` = none).
     pub(super) fn min_score(self) -> Option<u8> {
-        self.min_band.map(|band| match band {
-            Band::High => HIGH_FROM,
-            Band::Mid => MID_FROM,
-            Band::Low => 0,
-        })
+        self.min_band.map(Band::lowest)
     }
 }
 

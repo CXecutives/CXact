@@ -205,6 +205,21 @@ pub const HIGH_FROM: u8 = 80;
 /// Minimum score of the mid band.
 pub const MID_FROM: u8 = 40;
 
+impl Band {
+    /// Every band, from the highest down.
+    pub const ALL: [Band; 3] = [Band::High, Band::Mid, Band::Low];
+
+    /// The lowest score of the band (the list's band filter, the interface's bands:
+    /// `ui/src/lib/ipc/types/bands.ts` is written from it).
+    pub const fn lowest(self) -> u8 {
+        match self {
+            Band::High => HIGH_FROM,
+            Band::Mid => MID_FROM,
+            Band::Low => 0,
+        }
+    }
+}
+
 /// The band of a score - the only place with the thresholds (80 and 40).
 pub const fn band(score: u8) -> Band {
     if score >= HIGH_FROM {

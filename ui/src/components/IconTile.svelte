@@ -1,8 +1,6 @@
 <!-- A soft tinted tile holding an icon or a portal monogram (in / fd / fm). Data sources
      (portals, the profile file) take the navy tone. -->
 <script lang="ts" module>
-  import type { Portal } from '$lib/ipc/types';
-
   export type TileTone = 'coral' | 'navy' | 'success' | 'warning' | 'danger' | 'neutral';
   export type TileSize = 'sm' | 'md' | 'lg';
   export const TILE_TONES: readonly TileTone[] = [
@@ -13,13 +11,6 @@
     'danger',
     'neutral',
   ];
-
-  /** Two-letter marks of the portals (brand-neutral, no logos). */
-  export const PORTAL_MONOGRAM: Record<Portal, string> = {
-    linkedin: 'in',
-    freelance: 'fd',
-    freelancermap: 'fm',
-  };
 </script>
 
 <script lang="ts">

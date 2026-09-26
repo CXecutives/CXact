@@ -47,6 +47,7 @@ import type {
   RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
+import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
 import { run } from './run.svelte';
 
@@ -57,7 +58,6 @@ export const WINDOW = 60;
 /** Rows mounted per frame while a window fills (small: every frame stays well below 50 ms
  *  on a slow machine, the window still fills within a few frames). */
 const CHUNK = 6;
-const HIGH = 80;
 /** At most one counts query per this many ms while a run updates jobs. */
 const COUNTS_EVERY = 400;
 
@@ -159,7 +159,7 @@ function add(
   const shown = job.place === 'inbox' ? sign : 0;
   const out = isExcluded(job);
   const isNew = job.unread && !out ? shown : 0;
-  const high = job.match?.status === 'scored' && job.match.score >= HIGH;
+  const high = job.match?.status === 'scored' && job.match.score >= HIGH_FROM;
   return {
     inbox: counts.inbox + shown,
     unread: counts.unread + isNew,

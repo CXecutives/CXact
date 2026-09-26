@@ -33,6 +33,9 @@ impl PortalAdapter for Freelancermap {
     fn label(&self) -> &'static str {
         "freelancermap.de"
     }
+    fn monogram(&self) -> &'static str {
+        "fm"
+    }
     fn file_tag(&self) -> &'static str {
         "Freelancermap"
     }

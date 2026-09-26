@@ -2,6 +2,7 @@
 // build). The German sample texts are allowed here, like in de.ts.
 
 import type { JobView } from '$lib/ipc/types';
+import { bandOf } from '$lib/ipc/types/bands';
 
 export const text = {
   title: 'Galerie',
@@ -238,7 +239,7 @@ const NO_FACTS = {
 
 const scored = (score: number, top: string): JobView['match'] => ({
   score,
-  band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
+  band: bandOf(score),
   status: 'scored',
   note: null,
   mustMet: 3,

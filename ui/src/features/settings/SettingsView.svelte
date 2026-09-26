@@ -38,6 +38,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { Language, OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import { AUTO_ARCHIVE_DAYS, AUTO_EMPTY_TRASH_DAYS } from '$lib/ipc/types/settings';
   import { glideIntoView } from '$lib/motion/scroll';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -180,10 +181,6 @@
       () => (confirmRemove = false),
     );
   }
-
-  /** Days after which old jobs archive themselves, and the trash empties itself, when on. */
-  const AUTO_ARCHIVE_DAYS = 30;
-  const AUTO_EMPTY_TRASH_DAYS = 30;
 
   /** A switch moves at once; a failure puts it back (reload) and says why below it. */
   function autoArchive(on: boolean): Promise<void> {
@@ -458,27 +455,27 @@
       <h2 class="heading">{t.settings.automatic}</h2>
       <Card padding="rows">
         <SettingRow
-          label={t.settings.autoArchive}
+          label={t.settings.autoArchive(AUTO_ARCHIVE_DAYS)}
           hint={t.settings.autoArchiveHint}
           for="switch-auto-archive"
         >
           <Toggle
             id="switch-auto-archive"
             checked={cfg.autoArchiveDays > 0}
-            label={t.settings.autoArchive}
+            label={t.settings.autoArchive(AUTO_ARCHIVE_DAYS)}
             testid="toggle-auto-archive"
             onchange={autoArchive}
           />
         </SettingRow>
         <SettingRow
-          label={t.settings.autoEmptyTrash}
+          label={t.settings.autoEmptyTrash(AUTO_EMPTY_TRASH_DAYS)}
           hint={t.settings.autoEmptyTrashHint}
           for="switch-auto-empty-trash"
         >
           <Toggle
             id="switch-auto-empty-trash"
             checked={cfg.autoEmptyTrashDays > 0}
-            label={t.settings.autoEmptyTrash}
+            label={t.settings.autoEmptyTrash(AUTO_EMPTY_TRASH_DAYS)}
             testid="toggle-auto-empty-trash"
             onchange={autoEmptyTrash}
           />
