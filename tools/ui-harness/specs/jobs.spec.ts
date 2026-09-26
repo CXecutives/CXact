@@ -1223,6 +1223,9 @@ test('under a search all read marks the hits; the trash empties whole and says h
   expect((await calls(page, 'mark_all_read')).at(-1)?.[1]).toEqual({
     place: 'inbox',
     search: 'Interim',
+    portal: null,
+    minBand: null,
+    applied: false,
   });
   await page.getByTestId('search').fill('');
   // The trash: two jobs, a search that finds one: Papierkorb leeren still empties both and

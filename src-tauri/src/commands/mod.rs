@@ -50,7 +50,7 @@ pub const COMMANDS: [(&str, &str, &str); 41] = [
     ("mark_read", "{ key: JobKey }", "boolean"),
     (
         "mark_all_read",
-        "{ place: Place; search: string | null }",
+        "{ place: Place; search: string | null; portal: Portal | null; minBand: Band | null; applied: boolean }",
         "JobKey[]",
     ),
     ("mark_unread", "{ keys: JobKey[] }", "number"),

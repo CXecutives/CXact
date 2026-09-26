@@ -2349,9 +2349,16 @@ const handlers: Handlers = {
   move_jobs: ({ keys, to }) => moveJobs(keys, to),
   move_back: ({ jobs: back }) => moveBack(back),
   restore_jobs: ({ keys }) => restoreJobs(keys),
-  // With a search only its hits (store::mark_all_read).
-  mark_all_read: ({ place, search }) => {
-    const marked = jobs.filter((j) => j.unread && j.place === place && matchesSearch(j, search));
+  // What the list shows: with a search only its hits, with the filter only its jobs
+  // (store::mark_all_read_filtered).
+  mark_all_read: ({ place, search, portal, minBand, applied }) => {
+    const marked = jobs.filter(
+      (j) =>
+        j.unread &&
+        j.place === place &&
+        matchesSearch(j, search) &&
+        inFilter(j, { portal, minBand, applied }),
+    );
     for (const j of marked) j.unread = false;
     refresh();
     return marked.map((j) => structuredClone(j.key));

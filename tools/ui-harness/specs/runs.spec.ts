@@ -329,7 +329,7 @@ test('all read under a search marks only the hits', async ({ page }) => {
   await expect.poll(() => segmentCount(page, 'Neu')).toBe(2);
   await page.getByTestId('mark-all-read').click();
   expect((await calls(page, 'mark_all_read')).map(([, args]) => args)).toEqual([
-    { place: 'inbox', search: 'Interim' },
+    { place: 'inbox', search: 'Interim', portal: null, minBand: null, applied: false },
   ]);
   // Once the backend has answered: the unread job that is no hit stays unread.
   await expect.poll(async () => (await jobOf(page, 'freelancermap', '2801')).unread).toBe(false);

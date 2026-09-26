@@ -771,7 +771,13 @@ class JobsStore {
   async markAllRead(): Promise<{ keys: JobKey[] } | { error: string }> {
     const search = this.search.trim() === '' ? null : this.search.trim();
     try {
-      const keys = await invoke('mark_all_read', { place: placeOf(this.facet), search });
+      const keys = await invoke('mark_all_read', {
+        place: placeOf(this.facet),
+        search,
+        portal: null,
+        minBand: null,
+        applied: false,
+      });
       this.patchAll(keys, { unread: false });
       void this.refreshCounts();
       return { keys };

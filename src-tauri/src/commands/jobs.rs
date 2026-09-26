@@ -2,10 +2,11 @@
 
 use jiff::Timestamp;
 use jobalert_core::export;
-use jobalert_core::model::Place;
+use jobalert_core::model::{Band, Place};
 use jobalert_core::pipeline::{self, Matcher, demo};
-use jobalert_core::portal::JobKey;
+use jobalert_core::portal::{JobKey, Portal};
 use jobalert_core::profile;
+use jobalert_core::store::ListFilter;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
 use tauri::{AppHandle, State};
 
@@ -226,18 +227,28 @@ pub async fn ai_prompt_top(state: State<'_, AppState>, limit: u32) -> CmdResult<
     Ok(export::ai_prompt_top(&profile, &items, state.language()?))
 }
 
-/// "All read": every unread job of a place - with a search only its hits; the keys come
-/// back for the undo.
+/// "All read": every unread job of a place as the list shows it - with a search only its
+/// hits, with the filter (a portal, a lowest band, the jobs marked applied) only its jobs;
+/// the keys come back for the undo.
 #[tauri::command]
 pub async fn mark_all_read(
     app: AppHandle,
     state: State<'_, AppState>,
     place: Place,
     search: Option<String>,
+    portal: Option<Portal>,
+    min_band: Option<Band>,
+    applied: bool,
 ) -> CmdResult<Vec<JobKey>> {
-    let marked = state
-        .store
-        .mark_all_read(place, search.as_deref(), Timestamp::now())?;
+    let filter = ListFilter {
+        portal,
+        min_band,
+        applied,
+    };
+    let marked =
+        state
+            .store
+            .mark_all_read_filtered(place, search.as_deref(), filter, Timestamp::now())?;
     if !marked.is_empty() {
         files::marked(&app);
     }
