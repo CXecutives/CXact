@@ -17,6 +17,7 @@ import {
   runFinished,
   settle,
   test,
+  text,
   viewsSettled,
 } from './fixtures';
 
@@ -483,7 +484,10 @@ test('icon-only buttons show a styled tooltip after the delay', async ({ page })
   await page.locator('[data-testid^="job-row-"]').first().click();
   const close = page.getByTestId('reader-close');
   await close.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Schließen');
+  // The name of the button, and its key on a second line.
+  const tip = page.getByRole('tooltip');
+  await expect(tip).toContainText(await text(page, 'reader.close'));
+  await expect(tip.locator('.hint')).toHaveText('Esc');
   await expect(close).not.toHaveAttribute('title');
 });
 
