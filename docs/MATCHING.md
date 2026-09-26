@@ -635,9 +635,14 @@ places the job in it (`im Rahmen`, `Einsatz`, `suchen wir`, `ANUE_CONTRACT`). `m
 ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not).
 
 **Employment pay (the user's decision on the open wage question of sets 5 to 8).** An hourly
-wage (`Stundenlohn`, `Bruttostundenlohn`, `18,50 € brutto pro Stunde`, a pay scale, `iGZ`,
-`gross per hour`, `hourly wage`; `brutto` and `gross` only without a freelance rate word) is
-employment pay (`Rate::wage`): it states an employment (contract type permanent, stated), it is
+wage (`Stundenlohn`, `Bruttostundenlohn`, `iGZ`, `equal pay`, `gross per hour`, `€18/h gross`,
+`hourly wage`; a pay scale, `Entgelt` and `brutto` only without a freelance rate word:
+`18,50 € brutto pro Stunde`, `Übertarifliche Bezahlung`, `Vergütung nach Tarifvertrag`) is
+employment pay (`Rate::wage`). These are words and phrases, never parts of other words
+(E16-3): `Volkswagen`, `Dienstwagen`, `Entgeltabrechnung`, `Lohnbuchhaltung`,
+`Tarifsystem`, a `Tarifvertrag` as a topic and `groß` (folded to `gross`) name no wage, and
+`Entgelt: 95 €/h zzgl. MwSt.` is a rate. Employment pay states an employment (contract type
+permanent, stated), it is
 no interim cue, never a day rate, and the salary rule reads it per year (x 2,080 hours). The pay
 of temporary agency work is employment pay too: no day rate, and the salary rule applies where
 the profile allows ANÜ. A freelance hourly rate (`95 €/h`, `Stundensatz`, `zzgl. MwSt.`) stays x 8.

@@ -455,6 +455,58 @@ fn a_freelance_hourly_rate_counts_eight_times() {
     }
 }
 
+/// E16-3: a freelance rate next to a word that merely holds a wage word (`Volkswagen`,
+/// `Entgeltabrechnung`) or names a pay scale beside a freelance rate word stays a rate: the
+/// day rate rule applies and the role is no stated employment.
+#[test]
+fn e16_3_a_freelance_rate_next_to_wage_like_words_stays_a_rate() {
+    let ad = |pay: &str| {
+        format!(
+            "Wir suchen einen Interim Controller (m/w/d).
+
+Ihr Profil:
+- Erfahrung im Controlling
+- Budgetierung
+
+Rahmendaten:
+- {pay}
+- Laufzeit: 6 Monate"
+        )
+    };
+    let profile = compile_profile(&profile());
+    // Below the minimum of 800 per day (an hourly rate times eight).
+    for (pay, amount) in [
+        ("Tagessatz 700 € für den Einsatz bei Volkswagen", 700),
+        ("Einsatz bei der Volkswagen AG in Wolfsburg, 60 €/h", 60),
+        ("Entgelt: 95 €/h zzgl. MwSt.", 95),
+        (
+            "Stundensatz 90 € für die Einführung der Entgeltabrechnung",
+            90,
+        ),
+    ] {
+        let a = assess_with(&profile, "Interim Controller (m/w/d)", &ad(pay));
+        let rate = criterion(&a, CriterionKey::MinDayRate);
+        assert_eq!(
+            rate.status,
+            CriterionStatus::Violated,
+            "{pay}: {:?}",
+            codes(&a)
+        );
+        assert_eq!(rate.params["rate"].as_u64(), Some(amount), "{pay}");
+        assert_ne!(a.facts.contract.as_deref(), Some("permanent"), "{pay}");
+    }
+    // A profile that rules out permanent roles keeps a freelance project at Volkswagen.
+    let mut value = self::profile();
+    value["harte_kriterien"]["ausgeschlossene_vertragsarten"] = json!(["festanstellung"]);
+    let a = assess_with(
+        &compile_profile(&value),
+        "SAP Cloud Architect (m/w/d)",
+        &ad("Projekt bei Volkswagen in Wolfsburg, 110 €/h, 6 Monate"),
+    );
+    assert_ne!(a.verdict, Verdict::Excluded, "{:?}", codes(&a));
+    assert_ne!(a.facts.contract.as_deref(), Some("permanent"));
+}
+
 /// The profile with the limits of an engagement and exclusion words.
 fn limited(extra: &Value) -> CompiledProfile {
     let mut value = profile();

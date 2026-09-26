@@ -1225,25 +1225,48 @@ pub(crate) const RATE_WORDS: &[&str] = &[
     "hourly pay",
 ];
 /// Employment pay (an hourly wage of an employee or of temporary agency work), never a
-/// freelance rate: substrings, then whole words.
-pub(crate) const WAGE_WORDS: &[&str] = &[
-    "stundenlohn",
-    "tariflohn",
-    "mindestlohn",
-    "tarif",
-    "entgelt",
+/// freelance rate. Phrases, whole words (never inside another word: `Volkswagen`), and the
+/// head of a word with an inflection (`Lohn`, `Stundenlohn`, `Bruttostundenlohn`,
+/// `Mindestlöhne`; not `Lohnbuchhaltung`). `groß` folds to `gross`, so English `gross` is
+/// employment pay only in a phrase.
+pub(crate) const WAGE_PHRASES: &[&str] = &[
     "equal pay",
-    "wage",
     "gross per hour",
     "per hour gross",
     "gross hourly",
     "hourly gross",
+    "an hour gross",
+    "/h gross",
+    "/hr gross",
+    "/hour gross",
 ];
-pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["lohn", "igz", "bap", "gvp"];
-/// Words that make a rate employment pay unless the sentence names a freelance rate
-/// (whole words).
-pub(crate) const WAGE_HINTS: &[&str] = &["brutto", "gross"];
-/// A freelance rate: overrules `WAGE_HINTS` (substrings).
+pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["igz", "bap", "gvp", "wage", "wages"];
+pub(crate) const WAGE_HEADS: &[&str] = &["lohn"];
+/// Endings of a head of `WAGE_HEADS` or `PAY_SCALE_HEADS` (`Stundenlohns`, `Löhne`; not the
+/// verb `lohnen`).
+pub(crate) const WAGE_HEAD_ENDINGS: &[&str] = &["", "s", "es", "e"];
+/// A pay scale or a gross amount: employment pay unless the sentence names a freelance rate
+/// (`Entgelt: 95 €/h zzgl. MwSt.` is a rate). Whole words with an inflection (`tarifliche`,
+/// `Übertarifliche`, `Tarifs`; not `Tarifsystem`), phrases whose last word takes one
+/// (`nach Tarifvertrages`; a `Tarifvertrag` on its own is a topic), and heads (`Entgelt`,
+/// `Stundenentgelt`; not `Entgeltabrechnung`).
+pub(crate) const PAY_SCALE_WORDS: &[&str] = &[
+    "brutto",
+    "tarif",
+    "tariflich",
+    "ubertariflich",
+    "tarifvertraglich",
+    "tarifgebunden",
+    "tarifgruppe",
+    "entgeltgruppe",
+    "nach tarifvertrag",
+    "gemass tarifvertrag",
+    "laut tarifvertrag",
+];
+pub(crate) const PAY_SCALE_HEADS: &[&str] = &["entgelt"];
+/// Endings of a word of `PAY_SCALE_WORDS`.
+pub(crate) const PAY_SCALE_ENDINGS: &[&str] = &["", "e", "n", "s", "en", "er", "es", "em"];
+/// A freelance rate: overrules `PAY_SCALE_WORDS` (substrings).
 pub(crate) const FREELANCE_RATE_WORDS: &[&str] = &[
     "stundensatz",
     "tagessatz",
