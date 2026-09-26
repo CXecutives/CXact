@@ -456,12 +456,12 @@ jobs:
         if: hashFiles('package.json') != ''
         run: npx playwright install --with-deps chromium webkit
 
-      # One retry on the shared runner: a timing check (long tasks, scrolling into view) can
-      # trip on a busy machine once; a real failure fails twice. Playwright reports a test
-      # that passed only on its retry as flaky.
+      # A flaky test is fixed or removed the same day, never retried to green (CLAUDE.md): the
+      # one retry only tells a flaky test (passes on its retry) from a broken one (fails
+      # twice) in the report, and --fail-on-flaky-tests keeps the run red for both.
       - name: UI harness
         if: hashFiles('package.json') != ''
-        run: npm run harness -- --retries=1
+        run: npm run harness -- --retries=1 --fail-on-flaky-tests
 
       - name: Upload harness screenshots and report
         if: always() && hashFiles('package.json') != ''
