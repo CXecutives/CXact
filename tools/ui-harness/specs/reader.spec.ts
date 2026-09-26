@@ -661,7 +661,10 @@ test.describe('Anforderungen and the ad', () => {
 
   test('the ad and its reasons link both ways: tooltips on passages, hover lights, click scrolls', async ({
     page,
+    browserName,
   }) => {
+    // Every passage is hovered in turn: WebKit takes about 25 s for it.
+    test.slow(browserName === 'webkit');
     await openAt(page, 'freelancermap-2801');
     const text = page.getByTestId('ad-text');
     const mark = text.locator('mark', { hasText: 'Reporting nach IFRS' });
