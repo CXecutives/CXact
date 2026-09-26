@@ -41,10 +41,12 @@ const MAX_YEARS: u32 = 70;
 const MAX_DAY_RATE: u32 = 100_000;
 const MAX_SALARY: u32 = 10_000_000;
 const MAX_PERCENT: u32 = 100;
-/// Days of a working week (the workload in days per week).
-const MAX_WEEK_DAYS: u8 = 5;
+/// Days of a working week (the workload in days per week). The days and the months are
+/// `u32` like every number of the form, so a typed 300 reaches `validate` and is refused at
+/// its field instead of failing to deserialize.
+const MAX_WEEK_DAYS: u32 = 5;
 /// Longest minimum duration of an engagement in months.
-const MAX_MONTHS: u16 = 120;
+const MAX_MONTHS: u32 = 120;
 /// A single value and a list stay within what a profile ever holds.
 const MAX_TEXT: usize = 1_000;
 const MAX_ITEMS: usize = 300;
@@ -277,15 +279,15 @@ pub struct ProfileCriteria {
     /// `auslastung_min_tage`, days per week (1 to 5).
     #[serde(default)]
     #[cfg_attr(test, ts(optional = nullable))]
-    pub workload_min_days: Option<u8>,
+    pub workload_min_days: Option<u32>,
     /// `auslastung_max_tage`, days per week (1 to 5).
     #[serde(default)]
     #[cfg_attr(test, ts(optional = nullable))]
-    pub workload_max_days: Option<u8>,
+    pub workload_max_days: Option<u32>,
     /// `min_laufzeit_monate`, the minimum duration of an engagement in months.
     #[serde(default)]
     #[cfg_attr(test, ts(optional = nullable))]
-    pub min_months: Option<u16>,
+    pub min_months: Option<u32>,
     /// `ausschlusswoerter`, words that exclude an ad.
     #[serde(default)]
     #[cfg_attr(test, ts(as = "Option<Vec<String>>", optional))]
@@ -641,7 +643,7 @@ fn validate_limits(c: &ProfileCriteria) -> Result<(), InvalidInput> {
         (c.workload_max_days, "workloadMaxDays"),
     ] {
         if value.is_some_and(|n| n > MAX_WEEK_DAYS) {
-            return Err(at(field, Some(u32::from(MAX_WEEK_DAYS))));
+            return Err(at(field, Some(MAX_WEEK_DAYS)));
         }
     }
     if let (Some(min), Some(max)) = (c.workload_min_days, c.workload_max_days)
@@ -650,7 +652,7 @@ fn validate_limits(c: &ProfileCriteria) -> Result<(), InvalidInput> {
         return Err(at("workloadMaxDays", None));
     }
     if c.min_months.is_some_and(|n| n > MAX_MONTHS) {
-        return Err(at("minMonths", Some(u32::from(MAX_MONTHS))));
+        return Err(at("minMonths", Some(MAX_MONTHS)));
     }
     let words = &c.exclusion_words;
     if words.len() > MAX_ITEMS || words.iter().any(|t| t.chars().count() > MAX_TEXT) {
@@ -858,9 +860,9 @@ fn read_criteria(doc: &Json) -> ProfileCriteria {
         min_salary: c.min_salary.and_then(|n| u32::try_from(n).ok()),
         permanent_places: c.places.unwrap_or_default(),
         permanent_remote_min: c.remote_min.and_then(|n| u32::try_from(n).ok()),
-        workload_min_days: c.workload_min,
-        workload_max_days: c.workload_max,
-        min_months: c.min_months,
+        workload_min_days: c.workload_min.map(u32::from),
+        workload_max_days: c.workload_max.map(u32::from),
+        min_months: c.min_months.map(u32::from),
         exclusion_words: c.exclusion_words,
     }
 }
@@ -1526,14 +1528,14 @@ fn write_criteria(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCrite
         ),
     ] {
         if new != old {
-            write_criterion(doc, keys, new.map(|n| Json::number(u32::from(n))));
+            write_criterion(doc, keys, new.map(Json::number));
         }
     }
     if after.min_months != before.min_months {
         write_criterion(
             doc,
             lexicon::KEYS_MIN_MONTHS,
-            after.min_months.map(|n| Json::number(u32::from(n))),
+            after.min_months.map(Json::number),
         );
     }
     if after.exclusion_words != before.exclusion_words {
@@ -1838,6 +1840,45 @@ mod tests {
         assert_eq!(max(&form), ("focus".to_owned(), Some(5)));
         form.focus = vec!["x".repeat(2_000)];
         assert_eq!(max(&form), ("focus".to_owned(), None));
+    }
+
+    /// Days and months far out of range still arrive (the field takes nine digits) and are
+    /// refused at their field with the limit; a second day below the first has no limit.
+    #[test]
+    fn engine16_limits_are_refused_at_their_field() {
+        let refused = |criteria: Value| {
+            let mut value = serde_json::to_value(ProfileForm::default()).unwrap();
+            for (key, v) in criteria.as_object().unwrap() {
+                value["criteria"][key] = v.clone();
+            }
+            let form: ProfileForm = serde_json::from_value(value).expect("the save arrives");
+            match validate(&form) {
+                Err(InvalidInput::ProfileValue { field, max, .. }) => (field, max),
+                other => panic!("{other:?}"),
+            }
+        };
+        let at = |field: &str, max: Option<u32>| (field.to_owned(), max);
+        assert_eq!(
+            refused(json!({"workloadMinDays": 300})),
+            at("workloadMinDays", Some(5))
+        );
+        assert_eq!(
+            refused(json!({"workloadMaxDays": 999_999_999})),
+            at("workloadMaxDays", Some(5))
+        );
+        assert_eq!(
+            refused(json!({"minMonths": 70_000})),
+            at("minMonths", Some(120))
+        );
+        assert_eq!(
+            refused(json!({"workloadMinDays": 4, "workloadMaxDays": 3})),
+            at("workloadMaxDays", None)
+        );
+        let mut form = ProfileForm::default();
+        form.criteria.workload_min_days = Some(3);
+        form.criteria.workload_max_days = Some(5);
+        form.criteria.min_months = Some(120);
+        assert!(validate(&form).is_ok());
     }
 
     /// A value out of range names its field, and in a list of rows the row (counted without
