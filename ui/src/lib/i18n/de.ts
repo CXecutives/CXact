@@ -1119,10 +1119,14 @@ export const de = {
     thinProfile: 'Wenig Inhalt im Profil, die Passung bleibt grob.',
     connectMailbox: 'Postfach verbinden',
   },
-  /** The key facts of an ad in short words (list row, criteria chips). */
+  /** The key facts of an ad in short words (the list row, the reader's Konditionen; which
+   *  fact goes where is the table of lib/facts.ts). */
   facts: {
     now: 'ab sofort',
     from: (date: string) => `ab ${date}`,
+    /** A start still to be agreed (the engine's `vague`: "nach Absprache", "flexibel",
+     *  "zeitnah"). */
+    soon: 'nach Absprache',
     months: (value: number) => count(value, 'Monat', 'Monate'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'voll remote';
@@ -1136,11 +1140,17 @@ export const de = {
       const money = formatMoney(amount, currency);
       return hourly ? `${money}/Std.` : unit ? `${money}/Tag` : money;
     },
-    rateOpen: 'Satz nach Absprache',
+    /** The pay in a list row, beside its euro icon: `1.200/Tag`, `95/Std.`, `95.000/Jahr`;
+     *  another currency names its code (`1.000 CHF/Tag`). */
+    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
+      const money =
+        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
+      return `${money}/${{ day: 'Tag', hour: 'Std.', year: 'Jahr' }[per]}`;
+    },
     fullRemote: 'voll remote',
     /** The workload (percent of a five-day week): "Vollzeit", "3 Tage/Woche", "50 %"; the
      *  reader's long form "3 Tage pro Woche". */
-    workload: (from: number | null, to: number, short: boolean) => workloadWords(from, to, short),
+    workload: (from: number | null, to: number, short = true) => workloadWords(from, to, short),
   },
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
@@ -1182,6 +1192,9 @@ export const de = {
       unclear: 'unklar',
     },
     rateOpen: 'nach Absprache',
+    /** The row "Tagessatz" of a permanent job that states its annual salary instead. */
+    salaryName: 'Gehalt',
+    salary: (amount: number) => `${formatMoney(amount, null)}/Jahr`,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`

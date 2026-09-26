@@ -261,18 +261,23 @@ test('a row: the date ends the title line, the tools take its place on hover', a
   const foot = await box('.foot');
   expect(meta.x + meta.width).toBeGreaterThan(date.x + date.width - 1);
   expect(foot.x + foot.width).toBeGreaterThan(date.x + date.width - 1);
-  // On hover the date and its star give way to the tools, which sit over them.
-  const end = job.locator('.end');
+  // On hover the date and its star give way to the tools, which sit over them; the portal's
+  // tile stays, just before them.
+  const end = job.locator('.date');
   const tools = job.locator('.tools');
   await expect(end).toHaveCSS('opacity', '1');
   await job.hover({ position: { x: 120, y: 30 } });
   await expect(end).toHaveCSS('opacity', '0');
+  await expect(job.locator('.mark')).toHaveCSS('opacity', '0');
+  await expect(job.locator('.portal')).toHaveCSS('opacity', '1');
   await expect(tools.locator('.tool').last()).toHaveCSS('opacity', '1');
   const over = (await tools.boundingBox())!;
   expect(Math.abs(over.x + over.width - (date.x + date.width))).toBeLessThan(1);
   expect(Math.abs(over.y + over.height / 2 - (date.y + date.height / 2))).toBeLessThan(2);
   // The title never runs under them: its line keeps their room free.
   expect(title.x + title.width).toBeLessThanOrEqual(over.x);
+  const tile = await box('.portal');
+  expect(tile.x + tile.width).toBeLessThanOrEqual(over.x);
   // The tools are for the pointer: Tab leaves the row (the list is one Tab stop), the date
   // stays.
   await page.mouse.move(0, 0);
@@ -290,13 +295,13 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   const facts = page.getByTestId('job-row-freelancermap-1001').getByTestId('row-facts');
   const fit = (): Promise<{ shown: string[]; hidden: string[]; cut: string[] }> =>
     facts.evaluate((line) => {
-      const edge = line.getBoundingClientRect();
+      const edge = line.parentElement!.getBoundingClientRect();
       const out = { shown: [] as string[], hidden: [] as string[], cut: [] as string[] };
       for (const fact of line.querySelectorAll<HTMLElement>('.fact')) {
         const box = fact.getBoundingClientRect();
-        if (box.top >= edge.bottom - 0.5) out.hidden.push(fact.textContent ?? '');
+        if (fact.hasAttribute('data-out')) out.hidden.push(fact.textContent ?? '');
         else out.shown.push(fact.textContent ?? '');
-        if (box.top < edge.bottom - 0.5 && box.right > edge.right + 0.5) out.cut.push('right');
+        if (!fact.hasAttribute('data-out') && box.right > edge.right + 0.5) out.cut.push('right');
         if (fact.scrollWidth > fact.clientWidth) out.cut.push(fact.textContent ?? '');
       }
       return out;
@@ -304,12 +309,12 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   const wide = await fit();
   expect(wide.shown).toHaveLength(4);
   expect(wide.cut).toEqual([]);
-  // A narrow list: the facts at the end drop out whole, in the order of their weight.
+  // A narrow list: the facts at the end drop out whole, in the order of the facts table.
   await list.evaluate((node) => node.style.setProperty('width', '330px'));
+  await expect.poll(async () => (await fit()).hidden.length).toBeGreaterThan(0);
   const narrow = await fit();
-  expect(narrow.hidden.length).toBeGreaterThan(0);
-  // The rate first: a freelancer weighs it first.
-  expect(narrow.shown[0]).toMatch(/^1\.100\s€\/Tag$/);
+  // The rate first here (the ad names no contract), with the euro icon instead of a sign.
+  expect(narrow.shown[0]).toMatch(/^1\.100\/Tag$/);
   expect(narrow.cut).toEqual([]);
 });
 

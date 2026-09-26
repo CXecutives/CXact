@@ -1034,6 +1034,7 @@ export const en: Catalog = {
   facts: {
     now: 'starts now',
     from: (date: string) => `from ${date}`,
+    soon: 'to be agreed',
     months: (value: number) => count(value, 'month', 'months'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'fully remote';
@@ -1046,9 +1047,14 @@ export const en: Catalog = {
       const money = formatMoney(amount, currency);
       return hourly ? `${money}/hr` : unit ? `${money}/day` : money;
     },
-    rateOpen: 'Rate negotiable',
+    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
+      const money =
+        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
+      return `${money}/${{ day: 'day', hour: 'hr', year: 'year' }[per]}`;
+    },
+
     fullRemote: 'fully remote',
-    workload: (from: number | null, to: number, short: boolean) => workloadWords(from, to, short),
+    workload: (from: number | null, to: number, short = true) => workloadWords(from, to, short),
   },
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
@@ -1080,6 +1086,8 @@ export const en: Catalog = {
       unclear: 'unclear',
     },
     rateOpen: 'negotiable',
+    salaryName: 'Salary',
+    salary: (amount: number) => `${formatMoney(amount, null)}/year`,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} to ${count(max, 'year', 'years')}`

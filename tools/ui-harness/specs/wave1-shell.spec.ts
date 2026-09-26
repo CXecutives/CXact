@@ -610,7 +610,7 @@ test('the demo job says the same in its row, its reader and its prompt', async (
   await open(page, WIN);
   const facts = row(page, 'freelancermap-2801').getByTestId('row-facts');
   await expect(facts).toContainText('ab sofort');
-  await expect(facts).toContainText('1.200 €/Tag');
+  await expect(facts).toContainText('1.200/Tag');
   await row(page, 'freelancermap-2801').click();
   const reader = page.getByTestId('reader');
   await expect(reader).toContainText('Start ab sofort');
