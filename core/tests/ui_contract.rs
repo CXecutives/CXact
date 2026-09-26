@@ -1334,6 +1334,185 @@ fn the_catalog_formats_every_number() {
     fail(&problems, "numbers in the UI catalogs");
 }
 
+/* ------------------------------------------------------ one pattern per role */
+
+fn source<'a>(all: &'a [Source], path: &str) -> &'a Source {
+    all.iter()
+        .find(|s| s.is(path))
+        .unwrap_or_else(|| panic!("{path} missing"))
+}
+
+/// The attributes of every `<Name ...>` tag of a component in a file (up to its `/>`), with
+/// the line it starts on.
+fn component_tags(code: &str, name: &str) -> Vec<(usize, String)> {
+    let open = format!("<{name}");
+    let mut out = Vec::new();
+    let mut rest = code;
+    let mut offset = 0;
+    while let Some(start) = rest.find(&open) {
+        let after = &rest[start + open.len()..];
+        if !after.starts_with(|c: char| c.is_whitespace() || c == '/' || c == '>') {
+            offset += start + 1;
+            rest = &rest[start + 1..];
+            continue;
+        }
+        let end = after.find("/>").map_or(after.len(), |e| e + 2);
+        let line = code[..offset + start].matches('\n').count() + 1;
+        out.push((line, after[..end].to_string()));
+        offset += start + 1;
+        rest = &rest[start + 1..];
+    }
+    out
+}
+
+/// Buttons have two heights, 28 and 32 px (sm, field): no 36 or 40 px button, every glyph
+/// 16 px, one type.
+#[test]
+fn buttons_are_28_or_32_px() {
+    let all = scanned(MIN_FILES);
+    let button = source(&all, "components/Button.svelte");
+    let mut problems = Vec::new();
+    if !button
+        .code
+        .contains("export type ButtonSize = 'sm' | 'field';")
+    {
+        problems.push("Button.svelte: ButtonSize is not exactly 'sm' | 'field'".to_string());
+    }
+    for token in ["--control-md", "--control-lg", "--type-md"] {
+        if button.code.contains(token) {
+            problems.push(format!(
+                "Button.svelte: {token} (buttons are 28 or 32 px, small type)"
+            ));
+        }
+    }
+    for source in all.iter().filter(|s| s.ext == "svelte") {
+        for (line, tag) in component_tags(&source.code, "Button") {
+            for size in ["size=\"md\"", "size=\"lg\"", "size={'md'}", "size={'lg'}"] {
+                if tag.contains(size) {
+                    problems.push(format!("{}:{line}: <Button {size}>", source.path));
+                }
+            }
+        }
+    }
+    fail(&problems, "buttons are 28 px (sm) or 32 px (field)");
+}
+
+/// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only
+/// by components/Toast.svelte from its kinds table; nothing else draws a toast.
+#[test]
+fn toasts_only_through_the_toast_api() {
+    let all = scanned(MIN_FILES);
+    let mut problems = find(&all, &["toasts.items", "TOAST_KINDS", "TOAST_LIFE"], |s| {
+        s.is("lib/state/toasts.svelte.ts") || s.is("components/Toast.svelte")
+    });
+    problems.extend(find(&all, &["data-testid=\"toast\""], |s| {
+        s.is("components/Toast.svelte")
+    }));
+    let state = source(&all, "lib/state/toasts.svelte.ts");
+    for kind in ["success:", "info:", "warning:"] {
+        if !state.code.contains(kind) {
+            problems.push(format!("toasts.svelte.ts: TOAST_KINDS has no {kind}"));
+        }
+    }
+    fail(
+        &problems,
+        "toasts only through lib/state/toasts.svelte.ts and Toast.svelte",
+    );
+}
+
+/// One tooltip: the `tooltip` action feeds the one layer (components/Tooltip.svelte), with
+/// one delay (--delay-tooltip through lib/motion) and one look; no other bubble.
+#[test]
+fn one_tooltip() {
+    let all = scanned(MIN_FILES);
+    let mut problems = find(&all, &["tooltipState"], |s| {
+        s.is("lib/actions/tooltip.ts")
+            || s.is("lib/state/tooltip.svelte.ts")
+            || s.is("components/Tooltip.svelte")
+    });
+    // The attribute (a selector that skips the layer, `[role="tooltip"]`, is no bubble).
+    problems.extend(find(&all, &[" role=\"tooltip\""], |s| {
+        s.is("components/Tooltip.svelte")
+    }));
+    problems.extend(find(&all, &["--delay-tooltip"], |s| {
+        s.is("styles/tokens.css") || s.is("lib/motion/motion.ts")
+    }));
+    fail(&problems, "one tooltip layer, one delay, one look");
+}
+
+/// A success whose result shows nowhere else is a toast, never a lasting note in the view.
+/// The notes below still say one inline; their views move them to a toast.
+#[test]
+fn quiet_successes_are_toasts() {
+    const MOVING: [&str; 3] = [
+        "features/profile/ProfileEditor.svelte",
+        "features/settings/SettingsView.svelte",
+        "features/first-run/FirstRunView.svelte",
+    ];
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    let mut notices = 0;
+    for source in all.iter().filter(|s| {
+        s.ext == "svelte" && !s.under("features/gallery/") && !MOVING.contains(&s.path.as_str())
+    }) {
+        for (line, tag) in component_tags(&source.code, "Notice") {
+            notices += 1;
+            if tag.contains("tone=\"success\"") || tag.contains("'success'") {
+                problems.push(format!("{}:{line}: a success Notice", source.path));
+            }
+        }
+    }
+    assert!(
+        notices >= 10,
+        "only {notices} Notices found - did the rule move?"
+    );
+    fail(
+        &problems,
+        "a quiet success is a toast (toasts.show), not a Notice",
+    );
+}
+
+/// Every control answers by the kind of its surface (tokens.css "one answer per surface
+/// kind"): the components read the kind tokens, not the washes behind them. The files below
+/// belong to views that move to the kind tokens.
+#[test]
+fn one_answer_per_surface_kind() {
+    const MOVING: [&str; 4] = [
+        "components/JobRow.svelte",
+        "components/ReasonItem.svelte",
+        "components/StatTile.svelte",
+        "components/Menu.svelte",
+    ];
+    let all = scanned(MIN_FILES);
+    let tokens = source(&all, "styles/tokens.css");
+    let mut problems = Vec::new();
+    for kind in [
+        "--quiet-hover:",
+        "--quiet-press:",
+        "--control-hover:",
+        "--control-hover-edge:",
+        "--raised-hover-edge:",
+        "--raised-hover-shadow:",
+        "--raised-press:",
+        "--label-hover:",
+        "--label-press:",
+    ] {
+        if !tokens.code.contains(kind) {
+            problems.push(format!("tokens.css: {kind} missing"));
+        }
+    }
+    problems.extend(find(
+        &all,
+        &[
+            "var(--surface-hover)",
+            "var(--surface-press)",
+            "var(--sh-hover)",
+        ],
+        |s| s.is("styles/tokens.css") || MOVING.contains(&s.path.as_str()),
+    ));
+    fail(&problems, "controls read the kind tokens of their surface");
+}
+
 /// The release build must not ship the gallery (it is compiled out via `__GALLERY__`).
 #[test]
 fn the_release_build_has_no_gallery() {
