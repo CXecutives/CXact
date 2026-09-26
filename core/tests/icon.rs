@@ -23,6 +23,8 @@
 use std::io::Read;
 use std::path::Path;
 
+use jobalert_core::export::palette;
+
 /// One stage in the ICO directory.
 struct Entry {
     width: u32,
@@ -160,17 +162,9 @@ fn paeth(left: u8, up: u8, up_left: u8) -> u8 {
     }
 }
 
-/// A colour tuple of the generator, e.g. `CORAL = (0xE6, 0x7A, 0x5C)`.
-fn generator_colour(source: &str, name: &str) -> [u8; 3] {
-    let head = format!("{name} = (");
-    let start = source.find(&head).expect("colour in tools/icon.py") + head.len();
-    let end = start + source[start..].find(')').expect("closing parenthesis");
-    let channels: Vec<u8> = source[start..end]
-        .split(',')
-        .map(|c| u8::from_str_radix(c.trim().trim_start_matches("0x"), 16).expect("hex channel"))
-        .collect();
-    channels.try_into().expect("three channels")
-}
+/// The plate's colour: the app's `--brand` token (tools/icon.py reads it from
+/// tools/palette.json, which says what the generated palette says: core/tests/palette.rs).
+const BRAND: [u8; 3] = palette::BRAND.rgb;
 
 /// A number constant of the generator, e.g. `MASK_ALPHA = 128`.
 fn generator_number(source: &str, name: &str) -> u8 {
@@ -314,7 +308,8 @@ fn ico_has_a_stage_for_every_windows_scale() {
 #[test]
 fn ico_stages_have_no_dark_fringe() {
     let source = std::fs::read_to_string(repo("tools/icon.py")).unwrap();
-    let darkest = generator_colour(&source, "CORAL");
+    let glyph = palette::BRAND_GLYPH.rgb;
+    let darkest = [0, 1, 2].map(|k| BRAND[k].min(glyph[k]));
     let tolerance = generator_number(&source, "FRINGE_TOLERANCE");
     assert!(tolerance <= 4, "the fringe tolerance must stay small");
     let floor = darkest.map(|c| c.saturating_sub(tolerance));
@@ -402,7 +397,7 @@ fn mac_icons_match_generator() {
 }
 
 /// The brand mark in the UI is the generator's vector: same plate crop, the check cut out of
-/// the folder, one flat coral (the app's --p-coral).
+/// the folder, one flat colour each (the app's --brand and --brand-glyph).
 #[test]
 fn ui_brand_mark_is_the_generated_vector() {
     let svg = std::fs::read_to_string(repo("ui/src/assets/app-icon.svg")).unwrap();
@@ -418,10 +413,17 @@ fn ui_brand_mark_is_the_generated_vector() {
         svg.contains(r#"fill-rule="evenodd""#),
         "the check is a cut-out"
     );
-    assert!(svg.contains("#E67A5C"), "the flat coral");
-    for old in ["#EB957D", "#D45D3D"] {
-        assert!(!svg.contains(old), "a gradient colour {old} is back");
-    }
+    let plate = format!(r#"<path fill="{}" d="#, palette::BRAND.hex());
+    let glyph = format!(
+        r#"<path fill="{}" fill-rule="evenodd""#,
+        palette::BRAND_GLYPH.hex()
+    );
+    assert!(svg.contains(&plate), "the plate is --brand: npm run regen");
+    assert!(
+        svg.contains(&glyph),
+        "the glyph is --brand-glyph: npm run regen"
+    );
+    assert!(!svg.contains("Gradient"), "a gradient is back");
     assert_eq!(
         svg.matches("<path").count(),
         2,
@@ -437,25 +439,23 @@ fn svg_paths(svg: &str) -> Vec<&str> {
         .collect()
 }
 
-/// macOS 26 draws the app icon from an Icon Composer package: the coral as the fill, one
+/// macOS 26 draws the app icon from an Icon Composer package: --brand as the fill, one
 /// group with one layer, the white glyph on the full square (the same path as the brand mark,
 /// whose plate fills the square too), nothing baked in the system draws itself. The package
 /// never goes into `bundle.icon`: `tauri build` crashes on it (tauri-apps/tauri#15315), the
 /// macOS CI compiles it with actool instead.
 #[test]
 fn icon_composer_package_is_the_glyph() {
-    let source = std::fs::read_to_string(repo("tools/icon.py")).unwrap();
-    let coral = generator_colour(&source, "CORAL");
     let text = std::fs::read_to_string(repo("src-tauri/icons/CXact.icon/icon.json")).unwrap();
     let spec: serde_json::Value = serde_json::from_str(&text).unwrap();
-    let channels: Vec<String> = coral
+    let channels: Vec<String> = BRAND
         .iter()
         .map(|c| format!("{:.5}", f64::from(*c) / 255.0))
         .collect();
     assert_eq!(
         spec["fill"]["solid"],
         format!("extended-srgb:{},1.00000", channels.join(",")),
-        "the fill is the coral"
+        "the fill is --brand: npm run regen"
     );
     let groups = spec["groups"].as_array().expect("groups");
     assert_eq!(groups.len(), 1, "one group");
@@ -477,7 +477,8 @@ fn icon_composer_package_is_the_glyph() {
         glyph.contains(r#"viewBox="0 0 1024 1024" width="1024" height="1024""#),
         "the glyph is laid out on the full square"
     );
-    for baked in ["<mask", "<filter", "<clipPath", "Gradient", "#E67A5C"] {
+    let plate = palette::BRAND.hex();
+    for baked in ["<mask", "<filter", "<clipPath", "Gradient", plate.as_str()] {
         assert!(!glyph.contains(baked), "{baked} is the system's job");
     }
     let mark = std::fs::read_to_string(repo("ui/src/assets/app-icon.svg")).unwrap();
@@ -743,12 +744,11 @@ fn normal(z: f64) -> f64 {
 }
 
 /// Every macOS entry is the same icon scaled: the plate on Apple's grid (its edges at 100 of
-/// 1024, fractional below 1024) in the flat coral, over Apple's template shadow, which falls
+/// 1024, fractional below 1024) in the flat --brand, over Apple's template shadow, which falls
 /// below the plate and stays inside the canvas.
 #[test]
 fn mac_entries_follow_apples_grid_and_shadow() {
-    let source = std::fs::read_to_string(repo("tools/icon.py")).unwrap();
-    let coral = generator_colour(&source, "CORAL");
+    let plate = BRAND;
     let icns = std::fs::read(repo("src-tauri/icons/icon.icns")).unwrap();
     let mut seen = Vec::new();
     for (ostype, png) in icns_entries(&icns) {
@@ -764,14 +764,14 @@ fn mac_entries_follow_apples_grid_and_shadow() {
         let at = |x: usize, y: usize| pixels[y * size + x];
 
         // Where the plate covers less than a whole pixel, the premultiplied colour is its
-        // coverage times the coral (the shadow is black): the edge sits at 100 of 1024.
+        // coverage times the plate colour (the shadow is black): the edge sits at 100 of 1024.
         for (index, (pixel, share)) in pixels.iter().zip(&exact).enumerate() {
             if *share > 1.0 - 1e-9 {
                 continue;
             }
             for channel in 0..3 {
                 let premultiplied = f64::from(pixel[3]) * f64::from(pixel[channel]) / 255.0;
-                let expected = share * f64::from(coral[channel]);
+                let expected = share * f64::from(plate[channel]);
                 assert!(
                     (premultiplied - expected).abs() <= 1.0,
                     "{ostype} {size}: pixel {},{} channel {channel} is {premultiplied:.2} \
@@ -782,7 +782,7 @@ fn mac_entries_follow_apples_grid_and_shadow() {
             }
         }
 
-        // The plate is the flat coral.
+        // The plate is the flat --brand.
         let mut counts = std::collections::HashMap::new();
         for pixel in pixels.iter().filter(|p| p[3] == 255) {
             *counts.entry([pixel[0], pixel[1], pixel[2]]).or_insert(0) += 1;
@@ -790,8 +790,8 @@ fn mac_entries_follow_apples_grid_and_shadow() {
         let main = counts.iter().max_by_key(|(_, n)| **n).map(|(c, _)| *c);
         assert_eq!(
             main,
-            Some(coral),
-            "{ostype} {size}: the plate is not the coral"
+            Some(plate),
+            "{ostype} {size}: the plate is not --brand"
         );
 
         // Left and right mirror each other.

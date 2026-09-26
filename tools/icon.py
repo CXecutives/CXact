@@ -44,8 +44,12 @@ Geometry on the 1024 grid (Windows layout; macOS scales everything with its smal
 - Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
-- One flat colour: the app's coral hsl(13 73% 63%) (#E67A5C), no gradient. No shadow on
-  Windows; Apple's template shadow under the macOS plate.
+- One flat colour: the app's --brand token (the cxpertise coral), the glyph --brand-glyph
+  (white), no gradient. No shadow on Windows; Apple's template shadow under the macOS plate.
+
+Colours: the tokens of ui/src/styles/tokens.css, read from tools/palette.json, which
+tools/tokens.mjs writes. `npm run regen` runs both: a new palette in tokens.css redraws every
+icon (docs/CHANGING.md).
 
 Small stages are hinted: straight edges on whole pixels (proportional positions, rounded
 symmetrically), check vertices on half pixels, the check bolder up to 40 px.
@@ -68,10 +72,20 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-# One flat colour, the app's coral token --p-coral hsl(13 73% 63%), no gradient (user,
-# 2026-09-25). core/tests/icon.rs reads CORAL as a tuple.
-CORAL = (0xE6, 0x7A, 0x5C)
-WHITE = (255, 255, 255)
+# One flat colour each, no gradient (user, 2026-09-25): the plate is the app's --brand token,
+# the folder with the check cut out of it --brand-glyph (tools/palette.json, generated from
+# ui/src/styles/tokens.css; core/tests/icon.rs checks the outputs against the same tokens).
+_COLOURS = json.loads((Path(__file__).resolve().parent / 'palette.json')
+                      .read_text(encoding='utf-8'))['colours']
+BRAND = tuple(_COLOURS['brand']['rgb'])
+GLYPH = tuple(_COLOURS['brand-glyph']['rgb'])
+# The window's background (--bg): the comparison sheet shows the icon on it too.
+BACKGROUND = tuple(_COLOURS['bg']['rgb'])
+# The diagnostic sheets (--compare, --fringe-sheet) are no part of the app: white paper, black
+# labels, and the icon on the desktops the shell draws it on (dark, mid grey, white).
+PAPER = (255, 255, 255)
+LABEL = (0, 0, 0)
+DESKTOPS = [('dark', (32, 32, 32)), ('grey', (128, 128, 128)), ('white', PAPER)]
 # Corner smoothing of the folder's corners (see `smooth_corner`). The plate has Apple's own
 # continuous corner instead (see `apple_corner`), with a radius of 22.37 % of the plate.
 SMOOTHING = 0.6
@@ -473,12 +487,12 @@ def level(v):
 
 
 def glyph_colour(w):
-    """The coral mixed with white by the glyph's coverage w."""
+    """The plate's colour mixed with the glyph's by the glyph's coverage w."""
     if w <= 0:
-        return CORAL
+        return BRAND
     if w >= 1:
-        return WHITE
-    return tuple(int(c + (h - c) * w + 0.5) for c, h in zip(CORAL, WHITE))
+        return GLYPH
+    return tuple(int(c + (h - c) * w + 0.5) for c, h in zip(BRAND, GLYPH))
 
 
 def shadow(s, g):
@@ -636,10 +650,10 @@ def read_ico(path):
 
 
 def dark_pixels(img, visible_only=False):
-    """Pixels darker than the plate's colour (any channel below CORAL by more than
-    FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - the coral, white and
-    their mixes - lies at or above CORAL in each channel."""
-    floor = [v - FRINGE_TOLERANCE for v in CORAL]
+    """Pixels darker than the icon's darkest colour (any channel below the smaller of BRAND
+    and GLYPH by more than FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon -
+    the plate, the glyph and their mixes - lies at or above that in each channel."""
+    floor = [min(b, g) - FRINGE_TOLERANCE for b, g in zip(BRAND, GLYPH)]
     s = img.width
     return [(i % s, i // s, p) for i, p in enumerate(pixels(img))
             if (p[3] or not visible_only) and any(p[k] < floor[k] for k in range(3))]
@@ -677,7 +691,7 @@ def fringe_sheet(out, ico, before=None):
     shown = [16, 24, 32, 48, 64, 96, 256]
     scaled = [(256, 48), (64, 60)]
     versions = ([('before', before)] if before else []) + [('after', ico)]
-    backgrounds = [('dark', (0x20, 0x20, 0x20)), ('grey', (0x80, 0x80, 0x80)), ('white', WHITE)]
+    backgrounds = DESKTOPS
     gap, label_w, zoom_to = 16, 120, 192
     font = ImageFont.load_default(size=14)
     rows = []
@@ -701,20 +715,20 @@ def fringe_sheet(out, ico, before=None):
     width = label_w + sum(t.width + gap for t in rows[0][1]) + gap
     row_h = 256 + 2 * gap
     head_h = 28
-    sheet = Image.new('RGB', (width, head_h + row_h * len(rows) * len(backgrounds)), WHITE)
+    sheet = Image.new('RGB', (width, head_h + row_h * len(rows) * len(backgrounds)), PAPER)
     draw = ImageDraw.Draw(sheet)
     captions = [f'{s}' for s in shown] + [f'{s} x{zoom_to // s}' for s in shown if s < 256]
     captions += [c for src, size in scaled for c in (f'shell {src}>{size}, 1:1 and x4', '')]
     x = label_w
     for caption, tile in zip(captions, rows[0][1]):
-        draw.text((x, 6), caption, fill=(0, 0, 0), font=font)
+        draw.text((x, 6), caption, fill=LABEL, font=font)
         x += tile.width + gap
     y = head_h
     for bg_name, bg in backgrounds:
         for name, tiles in rows:
             band = Image.new('RGB', (width, row_h), bg)
             ImageDraw.Draw(band).text((gap, gap), f'{name}\n{bg_name}',
-                                      fill=WHITE if bg != WHITE else (0, 0, 0), font=font)
+                                      fill=PAPER if bg != PAPER else LABEL, font=font)
             x = label_w
             for tile in tiles:
                 band.paste(tile, (x, gap + (256 - tile.height) // 2), tile)
@@ -754,8 +768,8 @@ def build_svg(out):
     out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{fmt(x0)} {fmt(y0)} {fmt(x1 - x0)} {fmt(y1 - y0)}" width="{fmt(x1 - x0)}" height="{fmt(y1 - y0)}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
        icon.ico, icon.icns and icon.png; the check is cut out of the folder (even-odd). -->
-  <path fill="{hex_colour(CORAL)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
-  <path fill="{hex_colour(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+  <path fill="{hex_colour(BRAND)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
+  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')
 
@@ -774,12 +788,12 @@ def build_icon_composer(package):
     (package / 'Assets' / 'glyph.svg').write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!-- Generated by tools/icon.py - do not edit. The glyph of the macOS 26 icon: the same path
        as in app-icon.svg, on the full square; the check is cut out of the folder. -->
-  <path fill="{hex_colour(WHITE)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
+  <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')
-    coral = ','.join(f'{c / 255:.5f}' for c in CORAL)
+    fill = ','.join(f'{c / 255:.5f}' for c in BRAND)
     spec = {
-        'fill': {'solid': f'extended-srgb:{coral},1.00000'},
+        'fill': {'solid': f'extended-srgb:{fill},1.00000'},
         'groups': [{
             'layers': [{
                 'blend-mode': 'normal',
@@ -802,12 +816,11 @@ def build_icon_composer(package):
 
 def compare(out, old_generator):
     """Old vs new at 16, 24, 32, 48 (1:1 and x4), 256 and 512 (Windows and macOS layout), on
-    white and on the app's cream background."""
+    white and on the app's background (--bg)."""
     import importlib.util
     spec = importlib.util.spec_from_file_location('icon_old', old_generator)
     old = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(old)
-    cream = (248, 245, 241)  # hsl(32 33% 96%)
     small = [16, 24, 32, 48]
     gap = 24
 
@@ -822,9 +835,9 @@ def compare(out, old_generator):
     rows = [('old', stages(old)), ('new', stages(sys.modules[__name__]))]
     width = gap + sum(i.width + gap for i in rows[0][1])
     row_h = 512 + 2 * gap
-    sheet = Image.new('RGB', (width, 4 * row_h), WHITE)
+    sheet = Image.new('RGB', (width, 4 * row_h), PAPER)
     y = 0
-    for bg in (WHITE, cream):
+    for bg in (PAPER, BACKGROUND):
         for _, imgs in rows:
             band = Image.new('RGB', (width, row_h), bg)
             x = gap
