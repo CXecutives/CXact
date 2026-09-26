@@ -94,6 +94,9 @@ interface Harness {
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
    *  (`close-requested`) while it holds unsaved changes, else the window closes. */
   requestClose: () => void;
+  /** "Verbinden" signs in and counts until this is false again or `cancel_run` stops it; it
+   *  holds the app meanwhile (`Activity::Mailbox`): a run is refused as busy. */
+  holdMailbox: boolean;
 }
 
 declare global {
@@ -2176,6 +2179,7 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
 function startRun(request: RunRequest, sender: Sender | null): void {
   const kind = request.kind;
   if (running) throw fail('busy');
+  if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
   // A mailbox run needs a portal to read (commands/run.rs run_context).
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
@@ -2322,6 +2326,7 @@ const handlers: Handlers = {
     return null;
   },
   cancel_run: () => {
+    mailboxCheck?.stop();
     cancelRun();
     return null;
   },
@@ -2486,18 +2491,24 @@ const handlers: Handlers = {
     harness.closed = true;
     return null;
   },
-  save_mailbox: ({ user, password }) => {
+  save_mailbox: async ({ user, password }) => {
+    // Like mail::check: the shape first, nothing is sent while it cannot be right.
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(user)) {
       throw fail('invalid', { reason: 'mailAddress' });
     }
     if (!/^[a-z]{16}$/i.test(password.replace(/\s/g, ''))) {
       throw fail('invalid', { reason: 'appPassword' });
     }
+    if (running) throw fail('busy');
+    if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
+    if (harness.holdMailbox) await checking();
     if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
     state.mailbox = { user, vault: VAULT, error: null, check: DEMO_CHECK };
     return state.mailbox;
   },
   remove_mailbox: () => {
+    if (running) throw fail('busy');
+    if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
     state.mailbox = { user: null, vault: VAULT, error: null, check: null };
     return true;
   },
@@ -2599,6 +2610,7 @@ const harness: Harness = {
   clipboard: null,
   unsaved: false,
   closed: false,
+  holdMailbox: false,
   requestClose() {
     if (!harness.unsaved) {
       harness.closed = true;
@@ -2618,6 +2630,28 @@ initial();
 
 /** The app password Gmail refuses in the harness. */
 const WRONG_PASSWORD = 'falschfalschfals';
+
+/** A "Verbinden" in progress (`harness.holdMailbox`): `stop` is `cancel_run`. */
+let mailboxCheck: { stop: () => void } | null = null;
+
+/** Signs in and counts until `holdMailbox` is false again; `cancel_run` stops it. */
+function checking(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setInterval(() => {
+      if (harness.holdMailbox) return;
+      clearInterval(timer);
+      mailboxCheck = null;
+      resolve();
+    }, TICK);
+    mailboxCheck = {
+      stop: () => {
+        clearInterval(timer);
+        mailboxCheck = null;
+        reject(fail('mailCancelled'));
+      },
+    };
+  });
+}
 
 /** Commands that refuse in the dry run (`ensure_real` in src-tauri): they write outside it. */
 const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([

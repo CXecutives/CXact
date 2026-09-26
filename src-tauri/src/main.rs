@@ -7,7 +7,7 @@ mod session;
 mod smoke;
 
 use std::path::Path;
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use commands::{Activity, AppState, CloseGuard, GmailUser, Refresh, Scoring};
@@ -276,6 +276,7 @@ fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
         reset_report: Mutex::new(reset_report),
         gmail_user: Mutex::new(GmailUser::Unread),
         mailbox_check: Mutex::new(None),
+        mailbox_epoch: AtomicU64::new(0),
         activity: Mutex::new(Activity::Idle),
         scoring: Scoring::default(),
         refresh: Refresh::default(),
