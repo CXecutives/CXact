@@ -197,7 +197,7 @@ pub struct PageQuery {
 }
 
 /// Column of the first per-portal count in the statement of [`Store::job_page`].
-const PER_PORTAL_AT: usize = 8;
+const PER_PORTAL_AT: usize = 10;
 
 /// Counts that belong to a page of the job list: per place, and within the inbox.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -212,6 +212,10 @@ pub struct PageCounts {
     pub trash: u32,
     /// Excluded, in the inbox.
     pub excluded: u32,
+    /// Excluded, in the archive.
+    pub excluded_archive: u32,
+    /// Excluded, in the trash.
+    pub excluded_trash: u32,
     /// Scored in the high band, in the inbox.
     pub high: u32,
     /// Without a full text, in the inbox.
@@ -389,7 +393,8 @@ impl Store {
         let order = |p: &str| page_order(query, p);
         // The counts of the inbox leave the archive and the trash out. The unread filter lists
         // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. A favourite counts while it is in the inbox.
+        // out. A favourite counts while it is in the inbox. The excluded jobs are counted per
+        // place, so the list's section says its number before every page is there.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
         let place = if query.favourites {
@@ -415,7 +420,11 @@ impl Store {
                         COALESCE(SUM({shown} AND desc_status <> 'ok'), 0) AS n_no_detail,
                         COALESCE(SUM({FAVOURITES}), 0) AS n_favourites,
                         COALESCE(SUM({archive}), 0) AS n_archive,
-                        COALESCE(SUM({trash}), 0) AS n_trash{per_portal}
+                        COALESCE(SUM({trash}), 0) AS n_trash,
+                        COALESCE(SUM({archive} AND match_status IS 'excluded'), 0)
+                            AS n_excluded_archive,
+                        COALESCE(SUM({trash} AND match_status IS 'excluded'), 0)
+                            AS n_excluded_trash{per_portal}
                  FROM base
              ), page AS (
                  SELECT {JOB_COLUMNS} FROM base
@@ -425,7 +434,8 @@ impl Store {
              )
              SELECT counts.n_inbox, counts.n_unread, counts.n_excluded, counts.n_high,
                     counts.n_no_detail, counts.n_favourites, counts.n_archive,
-                    counts.n_trash{per_portal_out}, page.*
+                    counts.n_trash, counts.n_excluded_archive,
+                    counts.n_excluded_trash{per_portal_out}, page.*
              FROM counts LEFT JOIN page
              ORDER BY {}",
             order(""),
@@ -467,6 +477,8 @@ impl Store {
                 favourites: row.get(5)?,
                 archive: row.get(6)?,
                 trash: row.get(7)?,
+                excluded_archive: row.get(8)?,
+                excluded_trash: row.get(9)?,
                 new_by_portal,
             };
             if row.get::<_, Option<String>>(first)?.is_some() {

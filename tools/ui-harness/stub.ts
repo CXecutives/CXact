@@ -1191,7 +1191,8 @@ function initial(): void {
 
 /**
  * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; a favourite counts until it goes to the trash.
+ * excluded, per portal too; a favourite counts until it goes to the trash; the excluded ones
+ * of the archive and the trash each in their place.
  */
 function countsOf(list: JobView[]): JobCounts {
   const c: JobCounts = {
@@ -1201,16 +1202,20 @@ function countsOf(list: JobView[]): JobCounts {
     archive: 0,
     trash: 0,
     excluded: 0,
+    excludedArchive: 0,
+    excludedTrash: 0,
     high: 0,
     noDetail: 0,
     newByPortal: PORTALS.map((portal) => ({ portal, new: 0 })),
   };
   for (const j of list) {
+    const out = j.match?.status === 'excluded';
     if (j.pinned && j.place !== 'trash') c.favourites += 1;
     if (j.place === 'archive') c.archive += 1;
     if (j.place === 'trash') c.trash += 1;
+    if (out && j.place === 'archive') c.excludedArchive += 1;
+    if (out && j.place === 'trash') c.excludedTrash += 1;
     if (j.place !== 'inbox') continue;
-    const out = j.match?.status === 'excluded';
     const isNew = j.unread && !out;
     c.inbox += 1;
     c.unread += isNew ? 1 : 0;

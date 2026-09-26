@@ -67,6 +67,8 @@ const ZERO: JobCounts = {
   archive: 0,
   trash: 0,
   excluded: 0,
+  excludedArchive: 0,
+  excludedTrash: 0,
   high: 0,
   noDetail: 0,
   newByPortal: [],
@@ -127,6 +129,8 @@ function add(counts: JobCounts, job: JobView | null, sign: 1 | -1): JobCounts {
     archive: counts.archive + (job.place === 'archive' ? sign : 0),
     trash: counts.trash + (job.place === 'trash' ? sign : 0),
     excluded: counts.excluded + (out ? shown : 0),
+    excludedArchive: counts.excludedArchive + (out && job.place === 'archive' ? sign : 0),
+    excludedTrash: counts.excludedTrash + (out && job.place === 'trash' ? sign : 0),
     high: counts.high + (high ? shown : 0),
     noDetail: counts.noDetail + (job.detail.kind !== 'ok' ? shown : 0),
     newByPortal: counts.newByPortal.map((line) =>

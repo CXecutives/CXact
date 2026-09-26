@@ -841,6 +841,10 @@ pub struct JobCounts {
     pub trash: u32,
     /// Excluded, in the inbox.
     pub excluded: u32,
+    /// Excluded, in the archive (the section "Ausgeschlossen" of the Archiv tab).
+    pub excluded_archive: u32,
+    /// Excluded, in the trash (the section "Ausgeschlossen" of the Papierkorb tab).
+    pub excluded_trash: u32,
     /// Scored in the high band, in the inbox.
     pub high: u32,
     /// Without a full text, in the inbox.
@@ -889,6 +893,8 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
             archive: counts.archive,
             trash: counts.trash,
             excluded: counts.excluded,
+            excluded_archive: counts.excluded_archive,
+            excluded_trash: counts.excluded_trash,
             high: counts.high,
             no_detail: counts.no_detail,
             new_by_portal: counts
@@ -2324,6 +2330,8 @@ mod tests {
             archive: 0,
             trash: 0,
             excluded: 1,
+            excluded_archive: 0,
+            excluded_trash: 0,
             high: 1,
             no_detail: 3,
             new_by_portal: vec![
@@ -2412,6 +2420,11 @@ mod tests {
             "archive and trash in no inbox count, the archived favourite neither"
         );
         assert_eq!((counts.archive, counts.trash), (1, 1));
+        assert_eq!(
+            (counts.excluded_archive, counts.excluded_trash),
+            (1, 0),
+            "the excluded ones of the archive and the trash, each in its place"
+        );
         let archive = page(Place::Archive);
         assert_eq!(titles(&archive), ["C"]);
         assert_eq!(archive.jobs[0].place, Place::Archive);
@@ -2457,6 +2470,17 @@ mod tests {
         let starred = job_page(&store, &favourites).unwrap();
         assert_eq!(titles(&starred), ["B", "C"], "the excluded one last");
         assert_eq!(starred.counts.favourites, 2);
+        // In the trash, the excluded one counts there.
+        store.move_jobs(&[key(3)], Place::Trash, later).unwrap();
+        let counts = page(Place::Trash).counts;
+        assert_eq!(
+            (
+                counts.excluded,
+                counts.excluded_archive,
+                counts.excluded_trash
+            ),
+            (0, 0, 1)
+        );
     }
 
     /// The new jobs per portal and the pinned ones come with every page, from the same
