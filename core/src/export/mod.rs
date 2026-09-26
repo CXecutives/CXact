@@ -4,8 +4,10 @@
 //! file or a crash never leaves half a file behind.
 
 mod ai_prompt;
+mod colour;
 mod job_txt;
 mod overview_html;
+pub mod palette;
 pub mod personal;
 pub mod scale;
 pub mod texts;
