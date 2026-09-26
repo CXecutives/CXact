@@ -19,6 +19,7 @@ interface Formats {
   dayMonth: Intl.DateTimeFormat;
   weekday: Intl.DateTimeFormat;
   dayMonthYear: Intl.DateTimeFormat;
+  dayMonthShort: Intl.DateTimeFormat;
   clock: Intl.DateTimeFormat;
 }
 
@@ -42,6 +43,7 @@ function formats(): Formats {
         month: '2-digit',
         year: 'numeric',
       }),
+      dayMonthShort: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }),
       clock: new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit' }),
     };
     built.set(current, found);
@@ -109,6 +111,12 @@ export function formatTime(iso: string): string {
 export function formatDate(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? '' : formats().dayMonthYear.format(date);
+}
+
+/** `1. Nov.`, `1 Nov`: a day of the coming months in few letters (a list row's start). */
+export function formatShortDate(iso: string): string {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : formats().dayMonthShort.format(date);
 }
 
 /** The day of a moment in words while it is near: `gestern`, `vorgestern` (`yesterday`,

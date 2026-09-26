@@ -13,6 +13,7 @@
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
+  import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
   import Briefcase from '@lucide/svelte/icons/briefcase';
@@ -36,6 +37,7 @@
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
+  import Euro from '@lucide/svelte/icons/euro';
   import CheckCheck from '@lucide/svelte/icons/check-check';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import Undo2 from '@lucide/svelte/icons/undo-2';
@@ -43,6 +45,10 @@
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import Globe from '@lucide/svelte/icons/globe';
+  import Handshake from '@lucide/svelte/icons/handshake';
+  import History from '@lucide/svelte/icons/history';
+  import Hourglass from '@lucide/svelte/icons/hourglass';
+  import House from '@lucide/svelte/icons/house';
   import Inbox from '@lucide/svelte/icons/inbox';
   import Info from '@lucide/svelte/icons/info';
   import KeyRound from '@lucide/svelte/icons/key-round';
@@ -99,9 +105,21 @@
     'external-link': ExternalLink,
     mail: Mail,
     'file-text': FileText,
-    'map-pin': MapPin,
-    'building-2': Building2,
+    // The facts of a job (lib/facts.ts, one icon per meaning): the contract, the pay in
+    // euros and in another currency, the start, the duration, the workload, the remote share,
+    // on site or hybrid, the place and the experience asked for.
+    handshake: Handshake,
+    euro: Euro,
+    banknote: Banknote,
+    calendar: Calendar,
+    hourglass: Hourglass,
     clock: Clock,
+    house: House,
+    'building-2': Building2,
+    'map-pin': MapPin,
+    award: Award,
+    // The last run (the run status at the foot of the sidebar).
+    history: History,
     check: Check,
     'circle-dashed': CircleDashed,
     'triangle-alert': TriangleAlert,
@@ -162,9 +180,6 @@
     send: Send,
     target: Target,
     'circle-x': CircleX,
-    // The ad's rate and start in the reader's strip, where no criterion covers them.
-    banknote: Banknote,
-    calendar: Calendar,
   } satisfies Record<string, Component<Record<string, unknown>>>;
 
   export type IconName = keyof typeof ICONS;

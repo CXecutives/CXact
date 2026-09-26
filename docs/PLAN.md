@@ -570,9 +570,19 @@ as the parts land on `main`.
   button and have no filter.
 - Keys to screen jobs like a mail app: E archive, Entf (Windows) or Backspace (macOS) trash,
   S favourite, U unread, B applied, O open the ad; shown in tooltips and menus.
-- Rows: the portal's tile ("+1" for other portals), the third line holds the ad's conditions
-  only (rate first), an excluded row names why and keeps its fit as a grey number with a ban
-  mark, "Einbezogen" for a job counted anyway, dots only in the inbox.
+- Rows (approved row, user 2026-09-26): line 1 the title with, together at its end, the star
+  of a favourite, the portal's tile ("+1" for other portals, named in its tooltip; the tile
+  stays beside the hover tools) and the date; line 2 company · place; line 3 the ad's facts
+  from the facts table `ui/src/lib/facts.ts` in its order (contract first, then pay, start,
+  duration, workload, remote share or work mode), each with its icon, only whole facts, the
+  line's tooltip listing all when some do not fit, badges after them. The reader's
+  Konditionen read the same table (one icon per value). An excluded row names why on line 3
+  with the ban icon (its ring is a grey number without a mark); "Einbezogen" for a job counted
+  anyway; dots only in the inbox. Open for the backend: `salary` (annual) in `KeyFacts` under
+  that name (core parses it in `ad_facts.rs`; the row and the reader read it as soon as it is
+  sent, only the stub has it now), a `freelance` contract kind (core sends interim, permanent,
+  anue; the stub shows Freiberuflich), and the contract of an inferred type (core sends none,
+  the stub shows it).
 - Colours: coral means new and the one main action (and stays where it was); navy carries the
   structure (section headings, active labels of the sidebar, tabs and segments, links, "prüfen").
 - Time: days in words up to a week everywhere ("gestern 08:30", "vorgestern", "Mo").

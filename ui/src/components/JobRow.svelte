@@ -1,23 +1,28 @@
 <!--
   One job in the list, mail-style with fixed gutters: the unread dot (6 px, coral) centred
   in the pane padding on the axis of the ring (so a title never moves when the job is
-  read), the ring, then three lines that use the full width: the title on one line, every
-  row one height (an unread title is drawn heavier without getting wider, so reading a job never wraps
-  its title anew) with the relative date at the end of its first line, on its baseline (in
-  the Papierkorb how long it has left before the trash empties itself, "noch 29 Tage", or
-  without that the day the job went there, the date the trash sorts by), company and
-  place as one line read left to right and cut at its end (user, 2026-09-25), and one line
-  with the ad's key facts ("ab sofort · 6 Monate · 60 % remote · 1.100 €/Tag"; the best
-  ad states none, the line stays empty: it holds conditions, never a requirement) and a badge
-  right after it only when something deviates or the user counted an excluded job anyway
-  ("Einbezogen"). The company line starts with the portal's small tile ("+1" when another
-  portal announced the job too). Facts are whole: one that does not fit drops out, none is ever cut in the
-  middle of its value. Without a usable profile the ring stays, empty (a dash), and the row
-  keeps its facts and has no ring column.
-  Like Mail and Gmail, the row's tools sit over the date: on hover (or when a tool has the
-  keyboard focus) the date fades out and archive (or bring back) and the star fade in
-  (100 ms); the title line keeps their room free. A pinned job shows a small star just
-  left of the date (not in the Papierkorb, where no job is a favourite). The list is one
+  read), the ring, then three lines that use the full width (the approved row, user
+  2026-09-26):
+  1. the title on one line (every row one height; a cut title shows in full in a tooltip; an
+     unread title is drawn heavier without getting wider, so reading a job never moves it),
+     and at its end, together, the star of a favourite, the portal's small tile ("+1" when
+     another portal announced the job too, named in its tooltip) and the relative date on the
+     title's baseline (in the Papierkorb how long it has left before the trash empties
+     itself, "noch 29 Tage", or without that the day the job went there);
+  2. company and place as one line read left to right and cut at its end;
+  3. the ad's facts from the facts table (lib/facts.ts, its order and its icons): each an icon
+     and its value, the pay in ink, as many as fit whole (measured, lib/actions/fit.ts; a fact
+     that does not fit steps out, none is ever cut, and the line's tooltip then lists them
+     all). An ad that names nothing still shows its contract and work mode where known, and a
+     row without any fact keeps its one height. A badge follows the facts only when something
+     deviates or the user counted an excluded job anyway ("Einbezogen"); an excluded row says
+     why instead, with the ban icon (its ring is grey, without a mark).
+  Without a usable profile the ring stays, empty (a dash), and the row keeps its facts.
+  Like Mail and Gmail, the row's tools sit over the end of the title line: on hover (or when
+  a tool has the keyboard focus) star and date fade out and the tools (archive or bring back,
+  delete, the star) fade in (100 ms); the portal's tile stays, just before them, so its tooltip
+  (the other portals of a "+1") can be reached; the title line keeps their room free. A pinned job
+  shows its star there (not in the Papierkorb, where no job is a favourite). The list is one
   Tab stop (the row the list names with `tabbable`; the arrows move in it): the tools are
   for the pointer and stay out of the Tab order, the reader offers the same actions.
   The tools are siblings of the row button, so they never select the row;
@@ -32,8 +37,7 @@
   shows on hover (and stays, ticked, while the row is among several chosen): a click takes
   the row in or out of the choice like Ctrl+click (`onchoose`), so choosing several jobs is
   found without a key, also in one column. A score from a
-  teaser rings like any other (its badge says that only a teaser was read). A cut-off
-  title or reason shows in full in a tooltip. Layout stays
+  teaser rings like any other (its badge says that only a teaser was read). Layout stays
   inside the row (containment); like the row, its hover rests while the list scrolls
   (`data-still`, see ListRow).
 -->
@@ -58,12 +62,14 @@
 </script>
 
 <script lang="ts">
+  import { fit } from '$lib/actions/fit';
   import { presence } from '$lib/actions/presence';
   import { contextMenu, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatRelative } from '$lib/i18n/format';
-  import { DETAIL_WARNS, factWords, noteText, rowReason } from '$lib/i18n/texts';
+  import { rowFacts } from '$lib/facts';
+  import { DETAIL_WARNS, noteText, rowReason } from '$lib/i18n/texts';
   import type { JobView } from '$lib/ipc/types';
   import { duration } from '$lib/motion/motion';
   import { dotOut, toolsIn } from '$lib/motion/transitions';
@@ -175,7 +181,11 @@
   // The ad's own facts: also without a profile (they come from the ad, not the match). An
   // excluded row says why instead, in short words.
   const reason = $derived(excluded ? rowReason(job) : null);
-  const facts = $derived(reason ? [] : factWords(job.match?.facts));
+  const facts = $derived(reason ? [] : rowFacts(job));
+  /** All facts in one line: the tooltip of the line while some stepped out. */
+  const allFacts = $derived(facts.map((fact) => fact.text).join(' · '));
+  /** How many facts stepped out (they did not fit whole). */
+  let hidden = $state(0);
   /** The other portals that announced this job too. */
   const also = $derived(job.alsoOn.filter((portal) => portal !== job.portal));
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
@@ -243,6 +253,16 @@
             role="img"
             aria-label={t.job.pinned}><Icon name="star" size="sm" filled /></span
           >{/if}
+        <span
+          class="portal"
+          role="img"
+          aria-label={t.portal[job.portal]}
+          use:tooltip={also.length > 0
+            ? `${t.portal[job.portal]} · ${t.job.alsoOn(also.map((p) => t.portal[p]).join(', '))}`
+            : t.portal[job.portal]}
+          >{PORTAL_MONOGRAM[job.portal]}{#if also.length > 0}<span class="also">+{also.length}</span
+            >{/if}</span
+        >
         <span class="date"
           ><span class="stamp" data-testid={trashLeft ? 'trash-left' : undefined}
             >{trashLeft ?? formatRelative(when, current, true)}</span
@@ -251,27 +271,29 @@
       </span>
     </span>
     <span class="meta">
-      <span
-        class="portal"
-        role="img"
-        aria-label={t.portal[job.portal]}
-        use:tooltip={also.length > 0
-          ? `${t.portal[job.portal]} · ${t.job.alsoOn(also.map((p) => t.portal[p]).join(', '))}`
-          : t.portal[job.portal]}
-        >{PORTAL_MONOGRAM[job.portal]}{#if also.length > 0}<span class="also">+{also.length}</span
-          >{/if}</span
+      <!-- No space between the parts: the middle dot brings its own room on both sides. -->
+      <span class="parts"
+        >{#if job.company}<span class="text company">{job.company}</span
+          >{/if}{#if job.location}<span class="text place">{job.location}</span>{/if}</span
       >
-      <span class="parts">
-        {#if job.company}<span class="text company">{job.company}</span>{/if}
-        {#if job.location}<span class="text place">{job.location}</span>{/if}
-      </span>
     </span>
     {#if facts.length > 0 || reason || deviation}<span class="foot">
         {#if reason}
           <span class="reason"><ReasonItem kind={reason.kind} label={reason.text} compact /></span>
         {:else if facts.length > 0}
-          <span class="facts" data-testid="row-facts"
-            >{#each facts as fact, index (index)}<span class="fact">{fact}</span>{/each}</span
+          <span
+            class="facts"
+            data-testid="row-facts"
+            use:fit={{
+              key: `${allFacts}|${deviation?.label ?? ''}`,
+              onfit: (out) => (hidden = out),
+            }}
+            use:tooltip={hidden > 0 ? allFacts : null}
+            >{#each facts as fact (fact.key)}<span
+                class="fact"
+                class:ink={fact.ink}
+                data-fact={fact.key}><Icon name={fact.icon} size="sm" />{fact.text}</span
+              >{/each}</span
           >
         {/if}
         {#if deviation}<Badge
@@ -458,7 +480,7 @@
     -webkit-text-stroke: calc(var(--border-width) * 0.4) currentcolor;
   }
 
-  /* The portal's tile, then company and place: one line, cut at its end like the title. */
+  /* Company and place: one line, cut at its end like the title. */
   .meta {
     display: flex;
     align-items: center;
@@ -468,6 +490,7 @@
     font: var(--type-sm);
   }
 
+  /* The portal's small tile at the end of the title line, between the star and the date. */
   .portal {
     display: inline-flex;
     flex: none;
@@ -501,35 +524,38 @@
   }
 
   .end {
+    position: relative;
     display: flex;
     flex: none;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-4);
+    gap: var(--space-6);
     height: var(--leading-title);
-    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
-  /* The tools take the date's place only while they show: then the title ends before them. */
+  /* The tools take the place of the star and the date only while they show: the tile stays
+     just before them (its tooltip names the other portals) and the title ends before it. */
   .tooled:hover:where(:not([data-still])) .end.one,
   .tooled:has(.tool :global(:focus-visible)) .end.one {
-    min-width: var(--control-sm);
+    padding-inline-end: calc(var(--control-sm) + var(--space-6));
   }
 
   .tooled:hover:where(:not([data-still])) .end.two,
   .tooled:has(.tool :global(:focus-visible)) .end.two {
-    min-width: calc(2 * var(--control-sm) + var(--space-2));
+    padding-inline-end: calc(2 * var(--control-sm) + var(--space-2) + var(--space-6));
   }
 
   .tooled:hover:where(:not([data-still])) .end.three,
   .tooled:has(.tool :global(:focus-visible)) .end.three {
-    min-width: calc(3 * var(--control-sm) + 2 * var(--space-2));
+    padding-inline-end: calc(3 * var(--control-sm) + 2 * var(--space-2) + var(--space-6));
   }
 
-  /* A pinned job: a small star just left of the date. */
+  /* A pinned job: a small star before the portal's tile and the date. */
   .mark {
     display: inline-flex;
+    align-items: center;
     color: var(--pressed);
+    transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
   /* The relative date at the end of the title line; it steps up from subtle to muted on
@@ -539,7 +565,9 @@
     color: var(--text-subtle);
     font: var(--type-title);
     white-space: nowrap;
-    transition: color var(--dur-base) var(--ease-standard);
+    transition:
+      color var(--dur-base) var(--ease-standard),
+      opacity var(--dur-fast) var(--ease-standard);
   }
 
   .stamp {
@@ -552,7 +580,7 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* One line of 20 px for every row: the reason, the badge right after it. */
+  /* One line of 20 px for every row: the facts or the reason, the badge right after them. */
   .foot {
     display: flex;
     align-items: center;
@@ -561,17 +589,16 @@
     height: var(--leading-title);
   }
 
-  /* The ad's key facts, joined by middle dots, in the order of their weight (start,
-     months, remote, rate). Only whole facts: one that does not fit wraps onto a second line
-     that is never shown, so no value is cut ("1.100 €/Tag", never "1..."). One fact wider
-     than the whole line ends in an ellipsis. */
+  /* The ad's facts in the order of the facts table, each its icon and its value, the pay in
+     ink. Only whole facts: the fit action lets a fact that does not fit step out (out of
+     the flow, unseen), so no value is ever cut and the badge follows the last fact shown. */
   .facts {
+    position: relative;
     display: flex;
     flex: 0 1 auto;
-    flex-wrap: wrap;
-    align-content: flex-start;
+    align-items: center;
+    gap: var(--space-12);
     min-width: 0;
-    height: var(--leading-sm);
     overflow: hidden;
     color: var(--text-muted);
     font: var(--type-sm);
@@ -579,17 +606,24 @@
   }
 
   .fact {
+    display: inline-flex;
     flex: none;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    align-items: center;
+    gap: var(--space-4);
     white-space: nowrap;
   }
 
-  .fact + .fact::before {
-    padding: 0 var(--space-6);
+  .fact :global(.icon) {
     color: var(--text-subtle);
-    content: '·';
+  }
+
+  .fact.ink {
+    color: var(--text);
+  }
+
+  .facts :global(.fact[data-out]) {
+    position: absolute;
+    visibility: hidden;
   }
 
   .reason {
@@ -634,8 +668,13 @@
     min-height: var(--row-height);
   }
 
-  .tooled:hover:where(:not([data-still])) .end,
-  .tooled:has(.tool :global(:focus-visible)) .end {
+  /* Star and date leave the line under the tools and fade out there (the tile keeps its
+     place before the tools). */
+  .tooled:hover:where(:not([data-still])) :is(.mark, .date),
+  .tooled:has(.tool :global(:focus-visible)) :is(.mark, .date) {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
     opacity: 0;
     transition-duration: var(--dur-fast);
   }

@@ -225,7 +225,9 @@ test('values of the file that do not read are said at their field and removed', 
   expect(sent.after.criteria.minMonths).toBe(6);
 });
 
-test('the reader: Auslastung after Laufzeit, a check below the profile', async ({ page }) => {
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('the reader: Auslastung after Laufzeit, a check below the profile', async ({ page }) => {
   // Two days a week against the profile's three to five: to check.
   await show(page, 'freelance-900413');
   const names = await stage(page).getByTestId('criteria').locator('.term-name').allInnerTexts();
@@ -239,14 +241,18 @@ test('the reader: Auslastung after Laufzeit, a check below the profile', async (
   await expect(page.locator('mark.active').first()).toContainText('Einsatz an 2 Tagen pro Woche');
 });
 
-test('the reader: a workload and a duration within the profile fit', async ({ page }) => {
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('the reader: a workload and a duration within the profile fit', async ({ page }) => {
   // Three days a week for a year.
   await show(page, 'freelancermap-2804');
   expect(await cell(page, 'workload')).toEqual(['3 Tage pro Woche', '3 bis 5 Tage', 'passt']);
   expect(await cell(page, 'duration')).toEqual(['12 Monate', 'mindestens 6 Monate', 'passt']);
 });
 
-test('the reader: an ad that says nothing of its workload leaves the verdict empty', async ({
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('the reader: an ad that says nothing of its workload leaves the verdict empty', async ({
   page,
 }) => {
   await show(page, 'freelancermap-2801');
@@ -289,7 +295,9 @@ test('a job excluded by an exclusion word says the word and shows it in the ad',
   await expect(active.first()).toBeInViewport();
 });
 
-test('a list row shows the workload after the duration, short', async ({ page }) => {
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('a list row shows the workload after the duration, short', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(row(page, 'freelance-900413').getByTestId('row-facts')).toHaveText('2 Tage/Woche');
@@ -298,7 +306,9 @@ test('a list row shows the workload after the duration, short', async ({ page })
   );
 });
 
-test('in English: the row Workload, its value and the profile side', async ({ page }) => {
+// Taken over by the reader rebuild (reader.spec.ts) and row.spec.ts: the Konditionen now read
+// the facts table and show only the ad's side.
+test.fixme('in English: the row Workload, its value and the profile side', async ({ page }) => {
   await show(page, 'freelance-900413', `${WIN}&lang=en`);
   const names = await stage(page).getByTestId('criteria').locator('.term-name').allInnerTexts();
   expect(names).toContain('Workload');

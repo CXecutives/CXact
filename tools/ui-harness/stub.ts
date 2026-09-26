@@ -242,6 +242,16 @@ const NO_FACTS = {
   contract: null,
 };
 
+/** A permanent job's facts: its annual salary (`salary`, beside the backend's key facts; open
+ *  in docs/PLAN.md), a start date and a remote share. */
+const SALARIED = {
+  ...NO_FACTS,
+  salary: 95_000,
+  start: '2026-11-01',
+  remoteFrom: 40,
+  remoteTo: 40,
+};
+
 const scored = (score: number, top: string[], mustMet = 3, mustTotal = 4): Match => ({
   score,
   band: score >= 80 ? 'high' : score >= 40 ? 'mid' : 'low',
@@ -272,6 +282,41 @@ const excludedBy = (
   facts: NO_FACTS,
 });
 
+/** Contract type per stub ad, as the engine reads it (`contractType` params): interim unless
+ *  listed; a permanent job the engine only infers from the words of the ad. The one source of
+ *  a demo job's contract: its facts (the row), its reader and its ad say this type. */
+const CONTRACTS: Record<string, { type: string; inferred: boolean }> = {
+  '4100200304': { type: 'permanent', inferred: false },
+  '4100200305': { type: 'permanent', inferred: false },
+  '4100200306': { type: 'permanent', inferred: false },
+  '4100200303': { type: 'permanent', inferred: true },
+  '900412': { type: 'anue', inferred: false },
+  '900411': { type: 'freelance', inferred: false },
+  '2803': { type: 'freelance', inferred: false },
+  '2805': { type: 'freelance', inferred: false },
+  '900413': { type: 'freelance', inferred: false },
+  '2806': { type: 'unclear', inferred: false },
+  '900499': { type: 'anue', inferred: false },
+};
+
+function contractOf(j: JobView): { type: string; inferred: boolean } {
+  return CONTRACTS[j.key.id] ?? { type: 'interim', inferred: false };
+}
+
+/** A match whose facts name the contract of its ad (CONTRACTS; none while it is unclear). */
+function contracted(match: Match | null, id: string): Match | null {
+  if (match === null) return null;
+  const type = CONTRACTS[id]?.type ?? 'interim';
+  return { ...match, facts: { ...match.facts, contract: type === 'unclear' ? null : type } };
+}
+
+/** The annual salary among a permanent job's facts (the backend's KeyFacts does not carry it
+ *  yet; the row shows it as soon as it does). */
+function salaryOf(facts: Match['facts']): number | null {
+  const value = (facts as { salary?: unknown }).salary;
+  return typeof value === 'number' ? value : null;
+}
+
 function job(
   portal: JobView['portal'],
   id: string,
@@ -295,7 +340,6 @@ function job(
     detail: { kind: 'ok' },
     short: false,
     closed: false,
-    match: null,
     alsoOn: [],
     place: 'inbox',
     trashedAt: null,
@@ -303,6 +347,7 @@ function job(
     appliedAt: null,
     note: null,
     ...extra,
+    match: contracted(extra.match ?? null, id),
   };
 }
 
@@ -334,7 +379,6 @@ function sampleJobs(): JobView[] {
             months: 6,
             remoteFrom: 60,
             remoteTo: 60,
-            contract: 'interim',
           },
         },
       },
@@ -358,7 +402,6 @@ function sampleJobs(): JobView[] {
             start: 'now',
             remoteFrom: 100,
             remoteTo: 100,
-            contract: 'interim',
           },
         },
       },
@@ -380,10 +423,10 @@ function sampleJobs(): JobView[] {
     job('freelancermap', '2802', 'Interim Head of Finance', 'Grünwerk Mobility GmbH', 'Berlin', 6, {
       unread: true,
       workMode: 'remote',
-      // Three months, shorter than the profile's six: a check of the duration.
       match: {
         ...scored(72, ['Finanzplanung und Liquidität'], 3, 4),
-        facts: { ...NO_FACTS, months: 3 },
+        // Three months, shorter than the profile's six: a check of the duration.
+        facts: { ...NO_FACTS, rateOpen: true, months: 3, workloadFrom: 100, workloadTo: 100 },
       },
     }),
     job(
@@ -432,16 +475,16 @@ function sampleJobs(): JobView[] {
       'Frankfurt am Main',
       27,
       {
-        match: scored(58, ['Konzernberichtswesen'], 2, 4),
+        match: { ...scored(58, ['Konzernberichtswesen'], 2, 4), facts: SALARIED },
         appliedAt: at(20),
         note: 'Rückruf der Personalberatung am Montag',
       },
     ),
     job('freelancermap', '2804', 'Interim Treasury Manager', 'Rheinhafen Chemie GmbH', 'Köln', 30, {
-      // Three days a week for a year: both within the profile.
       match: {
         ...scored(47, ['Liquiditätsplanung'], 1, 3),
-        facts: { ...NO_FACTS, months: 12, workloadFrom: 60, workloadTo: 60 },
+        // Three days a week for a year: both within the profile.
+        facts: { ...NO_FACTS, start: 'vague', months: 12, workloadFrom: 60, workloadTo: 60 },
       },
       appliedAt: at(26),
     }),
@@ -474,10 +517,17 @@ function sampleJobs(): JobView[] {
     ),
     job('freelance', '900413', 'SAP FI Berater Migration', 'Datenwerk Süd GmbH', 'München', 55, {
       workMode: 'onsite',
-      // Two days a week, fewer than the profile's three: a check of the workload.
       match: {
         ...scored(32, ['SAP FI'], 1, 4),
-        facts: { ...NO_FACTS, workloadFrom: 40, workloadTo: 40 },
+        // Two days a week, fewer than the profile's three: a check of the workload.
+        facts: {
+          ...NO_FACTS,
+          rate: 1150,
+          start: '2026-11-01',
+          months: 12,
+          workloadFrom: 40,
+          workloadTo: 40,
+        },
       },
     }),
     job(
@@ -1565,25 +1615,6 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 const AD_INTRO = (j: JobView): string =>
   `Für ${j.company} suchen wir Unterstützung als ${j.title} in ${j.location || 'Deutschland'}.\n\n`;
 
-/** Contract type per stub ad, as the engine reads it (`contractType` params): interim unless
- *  listed; a permanent job the engine only infers from the words of the ad. */
-const CONTRACTS: Record<string, { type: string; inferred: boolean }> = {
-  '4100200304': { type: 'permanent', inferred: false },
-  '4100200305': { type: 'permanent', inferred: false },
-  '4100200306': { type: 'permanent', inferred: false },
-  '4100200303': { type: 'permanent', inferred: true },
-  '900412': { type: 'anue', inferred: false },
-  '2803': { type: 'freelance', inferred: false },
-  '2805': { type: 'freelance', inferred: false },
-  '900413': { type: 'freelance', inferred: false },
-  '2806': { type: 'unclear', inferred: false },
-  '2807': { type: 'unclear', inferred: false },
-};
-
-function contractOf(j: JobView): { type: string; inferred: boolean } {
-  return CONTRACTS[j.key.id] ?? { type: 'interim', inferred: false };
-}
-
 /** How each contract type reads in an ad (the passage of the row "Vertragsart"). */
 function contractWords(contract: { type: string; inferred: boolean }): string {
   switch (contract.type) {
@@ -1624,43 +1655,59 @@ function yearsOf(j: JobView): { years: number; stated: boolean } {
 }
 
 /** The passages of an ad's frame, as its facts say them (the engine reads the facts from
- *  them): a job's row, its reader and its prompt say the same. */
+ *  them): a job's row, its reader and its prompt say the same, and what the facts leave out
+ *  the ad does not say. */
 function frameOf(
   facts: Match['facts'],
   contract: string,
 ): { start: string; rate: string; remote: string; months: string; workload: string; text: string } {
-  const start = facts.start === 'now' ? 'Start ab sofort' : 'Start zum nächstmöglichen Zeitpunkt';
+  const start =
+    facts.start === 'now'
+      ? 'Start ab sofort'
+      : facts.start === 'vague'
+        ? 'Start nach Absprache'
+        : facts.start === null
+          ? ''
+          : `Start zum ${new Date(facts.start).toLocaleDateString('de-DE')}`;
+  const salary = salaryOf(facts);
   const rate =
-    facts.rate === null
-      ? 'Tagessatz nach Absprache'
-      : `Tagessatz ${facts.rate.toLocaleString('de-DE')} €`;
-  const months = facts.months === null ? '' : `Laufzeit ${facts.months} Monate`;
+    facts.rate !== null
+      ? `Tagessatz ${facts.rate.toLocaleString('de-DE')} €`
+      : facts.rateOpen === true
+        ? 'Tagessatz nach Absprache'
+        : salary !== null
+          ? `Jahresgehalt bis ${salary.toLocaleString('de-DE')} €`
+          : '';
+  const months =
+    facts.months === null ? '' : `Laufzeit ${facts.months} Monate mit Option auf Verlängerung`;
+  const load = facts.workloadTo;
+  const workload =
+    load === undefined
+      ? ''
+      : load >= 100
+        ? 'Einsatz in Vollzeit'
+        : `Einsatz an ${load / 20} Tagen pro Woche`;
   const remote =
     facts.remoteFrom === null
       ? ''
       : facts.remoteFrom >= 100
         ? 'vollständig remote'
         : `Einsatz zu ${facts.remoteFrom} Prozent remote`;
-  // The workload as an ad says it (the engine reads full-time, days a week and a share).
-  const to = facts.workloadTo;
-  const workload =
-    to === undefined
-      ? ''
-      : to >= 100
-        ? 'Einsatz in Vollzeit'
-        : to % 20 === 0
-          ? `Einsatz an ${to / 20} Tagen pro Woche`
-          : `Auslastung ${to} Prozent`;
-  const lead = contract === '' ? '' : `${contract}. `;
-  const length = months === '' ? '' : `, ${months} mit Option auf Verlängerung`;
-  const days = workload === '' ? '' : `, ${workload}`;
+  const sentences = [
+    contract,
+    [start, months].filter((part) => part !== '').join(', '),
+    [rate, workload, remote].filter((part) => part !== '').join(', '),
+  ].filter((sentence) => sentence !== '');
+  // An ad that states no frame has no block for it.
+  if (sentences.length === 0)
+    return { start: '', rate: '', remote: '', months: '', workload: '', text: '' };
   return {
     start,
     rate,
     remote,
     months,
     workload,
-    text: `\nRahmen\n${lead}${start}${length}${days}. ${rate}${remote === '' ? '' : `, ${remote}`}.\n`,
+    text: `\nRahmen\n${sentences.map((sentence) => `${sentence}.`).join(' ')}\n`,
   };
 }
 
@@ -1838,7 +1885,7 @@ function detailOf(j: JobView): JobDetail {
   for (const r of openMusts) add('open', 'must', 'requirement', r);
   add('met', 'nice', 'requirement', NICE_MET);
   add('open', 'nice', 'requirement', NICE_OPEN);
-  if (facts.start !== 'now') add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  if (facts.start === 'vague') add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
   // The engine's violation, where the ad says it.
   const min = PROFILE_FORM.criteria.minDayRate ?? 0;
   if (excludedBy === 'anue') add('violation', 'hard', 'anue', '', {}, contractRange);
@@ -1959,7 +2006,7 @@ function detailOf(j: JobView): JobDetail {
           'c:minDayRate',
           'open',
           'minDayRate',
-          { rateOpen: true, min },
+          facts.rateOpen === true ? { rateOpen: true, min } : { min },
           rangeOf(frame.rate),
         )
       : criterion(
@@ -1983,13 +2030,19 @@ function detailOf(j: JobView): JobDetail {
       agency === 'check' ? {} : { contract: contract.type },
       contractRange,
     ),
-    facts.start === 'now'
-      ? criterion('c:availability', 'met', 'availability', { start: 'now' }, rangeOf(frame.start))
-      : criterion(
+    facts.start === null || facts.start === 'vague'
+      ? criterion(
           'c:availability',
           'open',
           'availability',
-          { start: 'vague' },
+          facts.start === null ? {} : { start: 'vague' },
+          rangeOf(frame.start),
+        )
+      : criterion(
+          'c:availability',
+          'met',
+          'availability',
+          { start: facts.start },
           rangeOf(frame.start),
         ),
     criterion(
@@ -2290,7 +2343,7 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       job: {
         ...j,
         detail: i === 2 ? j.detail : { kind: 'ok' },
-        match: profiled ? results[i]! : null,
+        match: profiled ? contracted(results[i]!, j.key.id) : null,
       },
       fresh: true,
     });
@@ -2364,7 +2417,10 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
       job: {
         ...j,
         detail: { kind: 'ok' },
-        match: state.profile === null ? null : (j.match ?? scored(62, ['Controlling'], 2, 3)),
+        match:
+          state.profile === null
+            ? null
+            : (j.match ?? contracted(scored(62, ['Controlling'], 2, 3), j.key.id)),
       },
       fresh: false,
     });
