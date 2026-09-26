@@ -343,21 +343,32 @@ test('the closing note names what the window waits for', async ({ page }) => {
   );
 });
 
-test('Tab passes disabled buttons and switches, like native ones', async ({ page }) => {
+test('Tab passes disabled switches; a disabled button that says why stays a Tab stop', async ({
+  page,
+}) => {
   await settings(page, `${WIN}&scenario=dry-run`);
   await page.getByTestId('nav-settings').focus();
-  const landed: string[] = [];
+  const landed: { id: string; role: string | null; tag: string }[] = [];
   for (let stop = 0; stop < 40; stop += 1) {
     await page.keyboard.press('Tab');
-    const disabled = await page.evaluate(() =>
-      document.activeElement?.getAttribute('aria-disabled') === 'true'
-        ? (document.activeElement.getAttribute('data-testid') ?? document.activeElement.tagName)
-        : null,
-    );
+    const disabled = await page.evaluate(() => {
+      const node = document.activeElement;
+      return node?.getAttribute('aria-disabled') === 'true'
+        ? {
+            id: node.getAttribute('data-testid') ?? node.tagName,
+            role: node.getAttribute('role'),
+            tag: node.tagName,
+          }
+        : null;
+    });
     if (disabled !== null) landed.push(disabled);
   }
-  expect(landed).toEqual([]);
-  // Still hoverable: the reason shows.
+  // Only buttons with a reason (the dry run says why), never a switch.
+  expect(landed.map((item) => item.id)).toContain('reset');
+  expect(landed.filter((item) => item.role === 'switch' || item.tag !== 'BUTTON')).toEqual([]);
+  // The reason shows on keyboard focus, and still on hover.
+  await page.getByTestId('reset').focus();
+  await expect(page.getByRole('tooltip')).toBeVisible();
   await page.getByTestId('reset').hover();
   await expect(page.getByRole('tooltip')).toBeVisible();
 });
@@ -408,9 +419,10 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
   await page.getByTestId('settings-fetch').locator('h2').click();
   await page.keyboard.press('End');
+  // Once the glide has ended (a key during it would add to where it is going).
   await expect
     .poll(() => view.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
-    .toBeLessThanOrEqual(1);
+    .toBeLessThanOrEqual(0);
   const bottom = await top();
   await page.keyboard.press('ArrowUp');
   await expect.poll(top).toBe(bottom - 40);

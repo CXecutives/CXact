@@ -1,7 +1,7 @@
 <!--
   A quiet, clickable status line (the run status at the foot of the sidebar): an icon or a
-  navy spinner, one short line of text (a long one wraps to a second line rather than being
-  cut off) and, while something runs, a slim navy meter below. It is as high as a nav entry
+  navy spinner, one line of text (a long one ends in an ellipsis, the whole sentence in its
+  tooltip) and, while something runs, a slim navy meter below. It is as high as a nav entry
   and its glyph stands on the nav icons' axis (centred in their 20 px). Hover washes it and
   turns the icon navy; a new text cross-fades in (100 ms). Collapsed (icon rail) only the
   icon stays, in a square as large as the rail's; the text moves into the tooltip, right of
@@ -49,7 +49,9 @@
   class:collapsed
   aria-label={collapsed ? `${label} ${text}` : label}
   data-testid={testid ?? undefined}
-  use:tooltip={collapsed ? { text, placement: 'right' } : { text, truncated: true }}
+  use:tooltip={collapsed
+    ? { text, placement: 'right' }
+    : { text, truncated: true, measure: '.text' }}
   onclick={() => onclick()}
 >
   <span class="line">

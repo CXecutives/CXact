@@ -5,7 +5,9 @@
   the window, whole-pixel positions. The deep navy bubble pops toward its anchor (100 ms)
   and leaves with a 60 ms fade; moving on to the next anchor while it shows just moves it
   (no second entrance). An anchor may add a second, smaller line in a quieter white (a key
-  or a hint: "Strg+F", "Doppelklick setzt zurück"), like the tooltips of native apps.
+  or a hint: "Strg+F", "Doppelklick setzt zurück"), like the tooltips of native apps. It
+  goes when the window is resized or goes to the back (its anchor may have moved or be
+  covered then).
 -->
 <script lang="ts">
   import { px, setVars } from '$lib/actions/cssVars';
@@ -60,6 +62,8 @@
     return anchor.dataset[TOOLTIP_HINT] ?? null;
   }
 </script>
+
+<svelte:window onresize={() => tooltipState.hide()} onblur={() => tooltipState.hide()} />
 
 {#if tooltipState.anchor}
   {@const hint = hintOf(tooltipState.anchor, tooltipState.text)}
