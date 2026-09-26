@@ -560,7 +560,7 @@ test('rows and reader say the same in short words; dead ends lead on', async ({ 
   // A teaser names its portal and leads to the sign-in in Einstellungen.
   await row(page, 'freelance-900411').click();
   await expect(page.getByTestId('detail-note')).toContainText(
-    'Ohne Anmeldung zeigt freelance.de nur einen Anriss.',
+    'Ohne Anmeldung zeigt freelance.de nur eine Vorschau.',
   );
   await page.getByTestId('set-up-sign-in').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
@@ -600,7 +600,7 @@ test('details and pins: teaser note, fetch details, pin star', async ({ page }) 
   await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   // A teaser needs the sign-in: without it no "Details holen" that could not work.
   await row(page, 'freelance-900411').click();
-  await expect(page.getByTestId('detail-note')).toContainText('Anriss');
+  await expect(page.getByTestId('detail-note')).toContainText('Vorschau');
   await expect(page.getByTestId('fetch-details')).toHaveCount(0);
   // A job whose details are still missing fetches them, from the note on the missing text.
   await row(page, 'linkedin-4100200302').click();

@@ -144,7 +144,7 @@ test('rings in the list and the reader: solid when selected, inactive or waiting
   const teaser = list.locator('.job', { has: page.getByTestId('job-row-freelance-900411') });
   const scored = list.locator('.job', { has: page.getByTestId('job-row-freelancermap-2802') });
   await expect(teaser.locator('.ring')).toHaveClass(/provisional/);
-  await expect(teaser).toContainText('Nur Anriss');
+  await expect(teaser).toContainText('Nur Vorschau');
   const lookOf = (row: typeof teaser) =>
     row.locator('.ring').evaluate((ring) => {
       const track = getComputedStyle(ring.querySelector('.track')!);

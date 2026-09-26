@@ -304,7 +304,7 @@ test('each switch says what it does, no risk grades; freelance.de sign in and ou
     'Holt die ganze Anzeige, in ruhigem Takt und mit Tageslimit.',
   );
   await expect(page.getByTestId('login-freelance')).toContainText(
-    'Zeigt ganze Anzeigen statt eines Anrisses.',
+    'Zeigt ganze Anzeigen statt einer Vorschau.',
   );
   // No risk words and no shield badges on the switch rows.
   for (const word of ['Graubereich', 'Kontorisiko', 'Geringes Risiko']) {

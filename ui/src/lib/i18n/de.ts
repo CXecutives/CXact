@@ -209,7 +209,7 @@ const pause: Record<PauseReason, string> = {
 const OPEN_MAIL = 'Alert-Mail öffnen';
 
 /** What a detail state means, the same in a row's badge tooltip and in the reader (the
- *  teaser's says what the glossary word "Anriss" is). */
+ *  teaser's says what the glossary word "Vorschau" is). */
 const detailSays = {
   teaser: 'Ohne Anmeldung zeigt das Portal nur den Anfang der Anzeige.',
   unfetchable: 'Die Anzeige ließ sich mehrmals nicht holen.',
@@ -749,7 +749,7 @@ export const de = {
     /** Badge per DetailState kind (`ok` shows none). */
     detail: {
       pending: 'Details folgen',
-      teaser: 'Nur Anriss',
+      teaser: 'Nur Vorschau',
       failed: 'Details fehlen',
       unfetchable: 'Nicht erreichbar',
       gone: 'Nicht mehr online',
@@ -1001,11 +1001,11 @@ export const de = {
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     /** Under the band of a score that comes from a teaser only. */
-    preliminary: 'Vorläufig, aus einem Anriss bewertet',
+    preliminary: 'Vorläufig, nur Vorschau',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
     /** The teaser note names the portal; the sign-in is set up in Einstellungen. */
-    teaserOf: (portal: string) => `Ohne Anmeldung zeigt ${portal} nur einen Anriss.`,
+    teaserOf: (portal: string) => `Ohne Anmeldung zeigt ${portal} nur eine Vorschau.`,
     setUpSignIn: 'Anmeldung einrichten',
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
@@ -1422,7 +1422,7 @@ export const de = {
     details: 'Details holen',
     needsDetails: 'Schalte erst „Details holen“ ein.',
     login: 'Mit Anmeldung',
-    loginHint: 'Zeigt ganze Anzeigen statt eines Anrisses.',
+    loginHint: 'Zeigt ganze Anzeigen statt einer Vorschau.',
     /** Details holen is on: what it does. */
     detailsOn: 'Holt die ganze Anzeige, in ruhigem Takt und mit Tageslimit.',
     /** "Details holen" is off: what that changes. */
