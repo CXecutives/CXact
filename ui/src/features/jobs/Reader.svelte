@@ -1,31 +1,32 @@
 <!--
-  The reader, unboxed on the sheet (max 720 px), in this order:
-  - Head: the title (without gender tags) and a quiet close back to the day overview (below
+  The reader, unboxed on the sheet (max 720 px). Its sections and their order are data
+  (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
+  - head: the title (without gender tags) and a quiet close back to the day overview (below
     900 px the view's back button does); company · place (copyable); a small grey line with
-    the portal, the time (the exact moment in its tooltip) and "auch auf …" as a link that
-    opens the ad; where the job lies (archive, trash with the days left) and an ad that is
-    offline.
-  - Match: the ring (56; opening a job fills its arc once, the number stands at once) beside
-    the band line with "4 von 4 Pflicht erfüllt", aligned to the top; under it one quiet line
-    (why it cannot be scored, or a score from a preview with the way to the sign-in). An
-    excluded job gets a calm box: the reason, "In der Anzeige zeigen" and "Trotzdem
-    einbeziehen"; included by hand it says so with "Rückgängig". The focus moves to the
+    the portal, the time (the exact moment in its tooltip) and the other portals that announced
+    the job; where the job lies (archive, trash with the days left) and an ad that closed or
+    went offline (when the app last looked, in its tooltip).
+  - match: the ring (56; opening a job fills its arc once, the number stands at once) beside
+    the band and the must count, the one place it stands; under it one quiet line: why it
+    cannot be scored, a score from a preview, or a full text with few clear requirements. An ad
+    still to come (or to fetch again) is scored once it is there.
+  - actions: "Anzeige öffnen" (the strongest; "Abrufen" is the view's primary), Favorit and the
+    moves of the place (icons where the row gets narrow: it never wraps; the tooltips name the
+    keys), and "…" with the app's menu (the table MORE). Moving the job away from one of its
+    buttons hands the focus to the same button of the next job; after Archivieren the next job
+    of the list opens, and the toast can take it back.
+  - exclusion: a calm box with every reason that excludes the job, each with "In der Anzeige
+    zeigen" where the ad says it, then "Trotzdem einbeziehen"; included by hand, the reasons
+    stay and a quiet "Manuell einbezogen" with "Rückgängig" follows. The focus moves to the
     replacing button after each.
-  - Actions: "Anzeige öffnen" (the strongest; "Abrufen" is the view's primary), "Favorit"
-    and the move of the place as labelled buttons (icons where the row gets narrow: it never
-    wraps), and "…" with the app's menu (Alert-Mail öffnen, KI-Prompt kopieren, Als
-    ungelesen markieren, In den Papierkorb). Moving the job away from one of its buttons
-    hands the focus to the same button of the next job; after Archivieren the next job of the
-    list opens, and the toast can take it back.
-  - Anforderungen: the must line and how many optional ones are missing; each missing must
-    with "Zum Profil hinzufügen" (addToProfile.ts).
-  - Konditionen: fixed rows in a fixed order (terms.ts) with the ad's value, the profile's
-    side under it and the verdict as a word (no verdict column without a profile). A value
-    with a passage has a dotted underline, lights the passage on hover and jumps to it.
-  - Anforderungen im Detail: met, met in part, not in the profile (a missing must stands
-    out, only "Optional" is tagged), to check, excluding; neutral counts. Hovering a reason
-    lights its passage, a click scrolls to it and the passage flashes once it has arrived.
-  - Anzeige: the notes on a missing text (with "Jetzt holen" or "Details holen"), and the
+  - terms: "Konditionen", only for an ad the app has read: the rows of terms.ts in the order and
+    with the icons of the facts table (lib/facts.ts), the ad's value and the verdict as a word
+    whose tooltip is the reason that decided it. A value with a passage has a dotted underline,
+    lights the passage on hover and jumps to it.
+  - requirements: "Anforderungen" in the groups of reader-sections.ts; a missing must carries
+    "Zum Profil hinzufügen" (addToProfile.ts). Hovering a reason lights its passage, a click
+    scrolls to it and the passage flashes once it has arrived.
+  - ad: the note on a missing text (with "Anmeldung einrichten" and "Details holen"), and the
     ad text. Each passage names its state under the pointer, lights its reason and a click
     scrolls to the reason (the link goes both ways).
   Once the action row has scrolled away, a compact bar sticks to the top (ring, title, open,
@@ -41,6 +42,8 @@
   const HANDOFF_MS = 3000;
   /** The user's own mark on a job included by hand: no words of its own in the lists. */
   const OVERRIDE = 'userOverride';
+  /** What the text is like, said once in the head's quiet line, never in the lists. */
+  const TEXT_QUALITY: readonly string[] = ['lowEvidence', 'shortText'];
   /** A row of the terms as a thing to light and jump to (reasons go by their id). */
   const TERM = 'term:';
 </script>
@@ -49,9 +52,8 @@
   import { tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import Chip from '$components/Chip.svelte';
-  import Count from '$components/Count.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import Icon from '$components/Icon.svelte';
+  import Icon, { type IconName } from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
@@ -80,7 +82,7 @@
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import AdText from './AdText.svelte';
-  import { addToProfile, isAdded } from './addToProfile';
+  import { addTerm, isAdded } from './addToProfile';
   import { copyText } from './prompt';
   import {
     actionsOf,
@@ -92,6 +94,7 @@
     toggleStar,
     type ActionId,
   } from './actions';
+  import { READER_SECTIONS, REQUIREMENT_GROUPS } from './reader-sections';
   import { rowOf, termRows, type TermRow } from './terms';
 
   interface Props {
@@ -106,6 +109,11 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   const match = $derived(detail.match);
   const withRing = $derived(app.hasProfile);
+  /** A match to judge the terms by (without one they show the ad's side only). */
+  const judged = $derived(withRing && match !== null);
+  const ring = $derived(
+    ringState(job.match, job.match === null && Boolean(app.state?.matchPending), job.detail.kind),
+  );
   // What is lit and where a jump went: a reason by its id, a row of the terms as `term:key`.
   // The passage under the pointer wins; a clicked one stays lit after the scroll moved the
   // list away from under the pointer.
@@ -137,19 +145,10 @@
 
   const all = $derived(match?.reasons ?? []);
   const criteria = $derived(match?.criteria ?? []);
-  const profileForm = $derived(app.state?.profile?.form ?? null);
+  const textLength = $derived(detail.text?.length ?? 0);
 
   /** The terms of the ad, row by row (terms.ts). */
-  const rows = $derived(
-    termRows({
-      job,
-      reasons: all,
-      criteria,
-      profile: profileForm,
-      withVerdict: withRing,
-      textLength: detail.text?.length ?? 0,
-    }),
-  );
+  const rows = $derived(termRows({ job, reasons: all, criteria, withVerdict: judged, textLength }));
   const rowItem = (row: TermRow): string => `${TERM}${row.key}`;
 
   /** The item a passage's reason belongs to: the row of the terms that stands for it, else
@@ -168,30 +167,58 @@
   const activeIds = $derived(new Set(idsOf(activeItem)));
   const flashIds = $derived(new Set(idsOf(flash)));
 
-  // The lists show the requirements and points of the ad; what a row of the terms stands for
-  // is said there, and the user's own mark has no words.
+  /** The marked passages: the reasons' highlights and the criteria's own ranges. */
+  const passages = $derived([
+    ...(match?.highlights ?? []),
+    ...criteria.flatMap((reason) =>
+      reason.ranges.map((range, index): Highlight => ({
+        id: `${reason.id}:${index}`,
+        start: range.start,
+        end: range.end,
+        kind: reason.kind,
+        reason: reason.id,
+      })),
+    ),
+  ]);
+
+  /** Whether an item has a passage in the text shown (a jump would find it). */
+  function hasPassage(item: string): boolean {
+    const ids = idsOf(item);
+    return passages.some((passage) => ids.includes(passage.reason) && passage.end <= textLength);
+  }
+
+  // The lists show the requirements and points of the ad: what a row of the terms stands for
+  // is said there, a violation in the exclusion box, the text's quality in the head, and the
+  // user's own mark has no words.
   const listed = $derived(
-    all.filter((r) => r.code !== OVERRIDE && rowOf(r) === null && reasonText(r) !== ''),
+    all.filter(
+      (r) =>
+        r.kind !== 'violation' &&
+        r.code !== OVERRIDE &&
+        !TEXT_QUALITY.includes(r.code) &&
+        rowOf(r) === null &&
+        reasonText(r) !== '',
+    ),
   );
-  const met = $derived(listed.filter((r) => r.kind === 'met').sort(byWeight));
-  // Met only in part is not met: its own group, never under "Erfüllt".
-  const partial = $derived(listed.filter((r) => r.kind === 'partial').sort(byWeight));
-  const open = $derived(listed.filter((r) => r.kind === 'open').sort(byWeight));
-  const checks = $derived(listed.filter((r) => r.kind === 'check'));
+  const groups = $derived(
+    REQUIREMENT_GROUPS.map((group) => ({
+      ...group,
+      items: listed.filter((r) => r.kind === group.kind).sort(byWeight),
+    })).filter((group) => group.items.length > 0),
+  );
   const partialMust = $derived(
     all.filter((r) => r.kind === 'partial' && r.weight === 'must').length,
   );
-  /** Must requirements the profile lacks (each can go into the profile). */
-  const missingMusts = $derived(listed.filter((r) => r.kind === 'open' && r.weight === 'must'));
-  const missingNice = $derived(
-    listed.filter((r) => r.kind === 'open' && r.weight === 'nice').length,
-  );
 
   const detailKind = $derived(job.detail.kind);
+  /** The ad is still to come, or to fetch again: nothing to judge until it is there. */
+  const waiting = $derived(
+    detail.text === null &&
+      (detailKind === 'pending' || detailKind === 'failed' || detailKind === 'onRequest'),
+  );
   const headline = $derived.by((): { word: string; tone: string } | null => {
     if (!withRing) return null;
-    // Its ad is still to come: it is scored once it is there.
-    if (detailKind === 'pending' && (match === null || match.status === 'unscorable')) {
+    if (waiting && (match === null || match.status === 'unscorable')) {
       return { word: t.reader.scoredLater, tone: 'none' };
     }
     if (match === null) {
@@ -206,29 +233,45 @@
       ? t.reader.mustMet(job.match.mustMet, job.match.mustTotal, partialMust)
       : t.reader.noMust,
   );
-  const firstViolation = $derived(all.find((r) => r.kind === 'violation') ?? null);
-  const exclusion = $derived(
-    match?.status === 'excluded'
-      ? (noteText(job.match?.note ?? match.summary) ??
-          (firstViolation ? reasonText(firstViolation) : t.reader.note.hardCriterion))
-      : null,
-  );
-  /** The passage that excludes the job (a violation of the engine that has one). */
-  const excludedBy = $derived.by((): string | null => {
-    const hit = [...all, ...criteria].find((r) => r.kind === 'violation' && r.ranges.length > 0);
-    return hit ? itemOf(hit.id) : null;
+  /** The quiet line under the band, what the text is like said once: why a read ad cannot be
+   *  scored (an ad the app never read has no second line), a score from a preview, or a full
+   *  text with few clear requirements. */
+  const because = $derived.by((): { text: string; testid: string } | null => {
+    if (headline === null || match === null) return null;
+    if (match.status === 'unscorable') {
+      if (detail.text === null) return null;
+      const text = noteText(job.match?.note ?? match.summary) ?? t.reader.noReasons;
+      return { text, testid: 'unscorable' };
+    }
+    if (match.status !== 'scored') return null;
+    if (detailKind === 'teaser') return { text: t.reader.preliminary, testid: 'preliminary' };
+    return all.some((r) => r.code === 'lowEvidence')
+      ? { text: t.reader.lowEvidence, testid: 'low-evidence' }
+      : null;
   });
-  // Why a job cannot be scored (too little text, an engine failure); without a note the ad
-  // simply names no clear requirements.
-  const unscorable = $derived(
-    match?.status === 'unscorable' && detailKind !== 'pending'
-      ? (noteText(job.match?.note ?? match.summary) ?? t.reader.noReasons)
-      : null,
-  );
-  // A violation the box above says in the same words is not repeated.
-  const violations = $derived(
-    listed.filter((r) => r.kind === 'violation' && reasonText(r) !== exclusion),
-  );
+
+  const excluded = $derived(match?.status === 'excluded');
+  /** Why the engine excludes the job: every violation once, in its words, with the item whose
+   *  passage says it (none without one in the text shown). Included by hand, they stay. */
+  const violations = $derived.by((): { key: string; text: string; item: string | null }[] => {
+    const out: { key: string; text: string; item: string | null }[] = [];
+    for (const reason of all) {
+      const text = reason.kind === 'violation' ? reasonText(reason) : '';
+      if (text === '' || out.some((each) => each.text === text)) continue;
+      const item = itemOf(reason.id);
+      out.push({ key: reason.id, text, item: hasPassage(item) ? item : null });
+    }
+    if (out.length === 0 && excluded) {
+      // No reason says it (a newer engine's code): the note does, the criterion shows where.
+      const hit = criteria.find((r) => r.kind === 'violation' && hasPassage(itemOf(r.id)));
+      out.push({
+        key: 'note',
+        text: noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion,
+        item: hit ? itemOf(hit.id) : null,
+      });
+    }
+    return out;
+  });
 
   const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
   /** The note on a missing text warns like the row's badge (texts.ts DETAIL_WARNS). */
@@ -242,14 +285,21 @@
       portalState.fetchDetails &&
       (detailKind !== 'teaser' || portalState.loginEnabled),
   );
-  /** A score from a preview only is a first guess. */
-  const preliminary = $derived(match?.status === 'scored' && detailKind === 'teaser');
   /** The portal shows only a preview without a sign-in that is not set up. */
   const signInMissing = $derived(
     detailKind === 'teaser' && portalState !== null && !portalState.loginEnabled,
   );
-  /** The way to the sign-in stands in the line under the band (else with the ad's note). */
-  const signInInHead = $derived(signInMissing && preliminary && headline !== null);
+  const detailNote = $derived(
+    portalState &&
+      (!portalState.enabled || !portalState.fetchDetails) &&
+      (detailKind === 'pending' || detailKind === 'onRequest')
+      ? t.reader.detailsOff
+      : detailKind === 'teaser'
+        ? t.reader.teaserOf(t.portal[job.portal])
+        : detailKind === 'ok'
+          ? ''
+          : t.reader.detail[detailKind],
+  );
 
   /** Company and place, copyable. */
   const facts = $derived([job.company, job.location].filter((fact) => fact !== ''));
@@ -261,12 +311,13 @@
   let actions = $state<HTMLElement | null>(null);
   let iconsOnly = $state(false);
 
+  /** The last button starts above the bottom of the first (they differ in height). */
   function oneLine(row: HTMLElement): boolean {
     const first = row.firstElementChild;
     const last = row.lastElementChild;
     return !(first instanceof HTMLElement && last instanceof HTMLElement)
       ? true
-      : first.offsetTop === last.offsetTop;
+      : last.offsetTop < first.offsetTop + first.offsetHeight;
   }
 
   /** The longest form of the actions that keeps the row on one line (the newest try wins
@@ -304,6 +355,19 @@
       cancelAnimationFrame(frame);
     };
   });
+
+  /** The keys the list takes for the open job (input.ts), named in the tooltips. */
+  const KEYS: Partial<Record<ActionId | 'open' | 'star' | 'close', string>> = {
+    open: 'o',
+    star: 's',
+    archive: 'e',
+    trash: 'del',
+    close: 'esc',
+  };
+  const keyOfAction = (id: keyof typeof KEYS): string | null => {
+    const key = KEYS[id];
+    return key === undefined ? null : keyLabel(key);
+  };
 
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
   const promptOff = $derived(
@@ -391,59 +455,73 @@
     if (!guarded()) toggleStar([job]);
   }
 
-  function markUnread(): void {
+  /** A missing must into the profile; a failure says itself on the reader's error line. */
+  async function add(term: string): Promise<void> {
     actionError = null;
-    void jobs.markUnread([job.key]).then((error) => (actionError = error));
+    actionError = await addTerm(term);
+  }
+
+  /** The "…" menu: one entry each, in its order. */
+  interface MoreItem {
+    id: string;
+    icon: IconName;
+    label: () => string;
+    /** The key that does it for the open job (input.ts). */
+    key?: string;
+    /** Why it cannot be chosen now, else null. */
+    off?: () => string | null;
+    /** Whether it is offered for this job (always without). */
+    when?: () => boolean;
+    /** It removes the job: a separator sets it apart. */
+    apart?: boolean;
+    run: () => void;
+  }
+  const MORE: readonly MoreItem[] = [
+    {
+      id: 'mail',
+      icon: 'mail',
+      label: () => t.reader.mail,
+      off: () => (detail.mail.gmailUrl ? null : t.reader.noMail),
+      run: () => openTarget({ kind: 'gmail', key: job.key }),
+    },
+    {
+      id: 'prompt',
+      icon: 'copy',
+      label: () => t.reader.prompt,
+      off: () => promptOff,
+      run: () => void copyPrompt(),
+    },
+    {
+      id: 'trash',
+      icon: 'trash-2',
+      label: () => t.actions.trash,
+      key: 'del',
+      apart: true,
+      when: () => tools.some((tool) => tool.id === 'trash'),
+      run: () => act('trash'),
+    },
+  ];
+
+  function moreEntries(): MenuEntry[] {
+    return MORE.filter((item) => item.when?.() ?? true).flatMap((item): MenuEntry[] => {
+      const off = item.off?.() ?? null;
+      const entry: MenuEntry = {
+        id: item.id,
+        label: item.label(),
+        icon: item.icon,
+        keys: item.key === undefined ? null : keyLabel(item.key),
+        disabled: off !== null,
+        reason: off,
+        run: item.run,
+      };
+      return item.apart ? [{ kind: 'separator' }, entry] : [entry];
+    });
   }
 
   /** The "…" button and its menu, right below it (a second click closes it: the press
    *  outside does). */
   let moreAnchor = $state<HTMLElement | null>(null);
   let moreOpen = $state(false);
-
-  function moreEntries(): MenuEntry[] {
-    const entries: MenuEntry[] = [
-      {
-        id: 'mail',
-        label: t.reader.mail,
-        icon: 'mail-open',
-        disabled: !detail.mail.gmailUrl,
-        reason: t.reader.noMail,
-        run: () => openTarget({ kind: 'gmail', key: job.key }),
-      },
-      {
-        id: 'prompt',
-        label: t.reader.prompt,
-        icon: 'copy',
-        disabled: promptOff !== null,
-        reason: promptOff,
-        run: () => void copyPrompt(),
-      },
-    ];
-    if (job.place === 'inbox') {
-      entries.push({
-        id: 'unread',
-        label: t.reader.markUnread,
-        icon: 'mail',
-        keys: keyLabel('u'),
-        disabled: job.unread,
-        run: markUnread,
-      });
-    }
-    if (tools.some((tool) => tool.id === 'trash')) {
-      entries.push(
-        { kind: 'separator' },
-        {
-          id: 'trash',
-          label: t.actions.trash,
-          icon: 'trash-2',
-          keys: keyLabel('del'),
-          run: () => act('trash'),
-        },
-      );
-    }
-    return entries;
-  }
 
   function openMore(event: MouseEvent): void {
     if (moreAnchor === null || menuState.open !== null) return;
@@ -474,12 +552,14 @@
     const left = days - since;
     return left > 0 ? t.place.inTrashLeft(left) : t.place.inTrashSoon;
   });
-  /** A closed or vanished ad: since when the app saw it so (its last fetch), if it knows. */
+  /** A closed or vanished ad, in the words of the row's badge; when the app last looked is its
+   *  tooltip (the day it closed is not known). */
   const offline = $derived(
-    job.closed || detailKind === 'gone'
-      ? detail.fetchedAt
-        ? t.reader.offlineSince(formatDate(detail.fetchedAt))
-        : t.reader.offline
+    job.closed ? t.job.closed : detailKind === 'gone' ? t.job.detail.gone : null,
+  );
+  const checked = $derived(
+    offline !== null && detail.fetchedAt
+      ? t.reader.checkedAt(formatRelative(detail.fetchedAt, clock.now))
       : null,
   );
 
@@ -500,6 +580,8 @@
     actionError = null;
     invoke('open_target', { target }).catch((error: unknown) => (actionError = errorText(error)));
   }
+
+  const openAd = (): void => openTarget({ kind: 'jobUrl', key: job.key });
 
   /** "Anmeldung einrichten": Einstellungen at the card of this portal. */
   function setUpSignIn(): void {
@@ -574,8 +656,9 @@
     } else if (hovered === item) hovered = null;
   }
 
-  /** What a passage is, under the pointer: a requirement's state and weight ("Erfüllt ·
-   *  Pflicht"), a row of the terms with its verdict, else the state of the reason. */
+  /** What a passage is, under the pointer: a row of the terms with its verdict ("Tagessatz ·
+   *  passt teilweise"), a requirement's state and weight ("Erfüllt · Pflicht"), else the
+   *  state of the reason. */
   function markHint(reason: Reason): string {
     const row = rows.find((each) => each.ids.includes(reason.id));
     if (row) {
@@ -591,20 +674,6 @@
   const hints: ReadonlyMap<string, string> = $derived(
     new Map([...all, ...criteria].map((reason) => [reason.id, markHint(reason)])),
   );
-
-  /** The marked passages: the reasons' highlights and the criteria's own ranges. */
-  const passages = $derived([
-    ...(match?.highlights ?? []),
-    ...criteria.flatMap((reason) =>
-      reason.ranges.map((range, index): Highlight => ({
-        id: `${reason.id}:${index}`,
-        start: range.start,
-        end: range.end,
-        kind: reason.kind,
-        reason: reason.id,
-      })),
-    ),
-  ]);
 
   /** The compact bar is for the pointer, like a row's tools: its buttons stay out of the Tab
    *  order (the head's twins are the keyboard's), also the ones another place brings. */
@@ -629,32 +698,48 @@
     >{/each}
 {/snippet}
 
-{#snippet sub(label: string, count: number)}
-  <h3 class="sub">{label}<Count value={count} tone="plain" /></h3>
-{/snippet}
-
 {#snippet reasonList(items: Reason[], testid: string)}
   <ul class="reasons" data-testid={testid}>
     {#each items as reason (reason.id)}
       {@const evidence = reasonEvidence(reason)}
-      <li data-weight={reason.weight} data-item={reason.id}>
-        <ReasonItem
-          kind={reason.kind}
-          weight={reason.weight === 'nice' ? 'nice' : null}
-          emphasis={reason.kind !== 'open'
-            ? null
-            : reason.weight === 'must'
-              ? 'strong'
-              : reason.weight === 'nice'
-                ? 'quiet'
-                : null}
-          label={reasonText(reason)}
-          hint={evidence ? null : reasonHint(reason)}
-          detail={evidence}
-          active={activeItem === reason.id}
-          onhover={(on) => hoverItem(reason.id, on)}
-          onselect={reason.ranges.length > 0 ? () => jumpTo(reason.id) : null}
-        />
+      {@const words = reasonText(reason)}
+      <li class="reason-line" data-weight={reason.weight} data-item={reason.id}>
+        <span class="reason-cell">
+          <ReasonItem
+            kind={reason.kind}
+            weight={reason.weight === 'nice' ? 'nice' : null}
+            emphasis={reason.kind !== 'open'
+              ? null
+              : reason.weight === 'must'
+                ? 'strong'
+                : reason.weight === 'nice'
+                  ? 'quiet'
+                  : null}
+            label={words}
+            hint={evidence ? null : reasonHint(reason)}
+            detail={evidence}
+            active={activeItem === reason.id}
+            onhover={(on) => hoverItem(reason.id, on)}
+            onselect={reason.ranges.length > 0 ? () => jumpTo(reason.id) : null}
+          />
+        </span>
+        <!-- A missing must: its way into the profile, then that it is there. -->
+        {#if reason.kind === 'open' && reason.weight === 'must'}
+          <span class="reason-action">
+            {#if isAdded(words)}
+              <span class="added" data-testid="added">{t.reader.added}</span>
+            {:else}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="plus"
+                label={t.reader.addToProfile}
+                testid="add-to-profile"
+                onclick={() => void add(words)}
+              />
+            {/if}
+          </span>
+        {/if}
       </li>
     {/each}
   </ul>
@@ -670,6 +755,7 @@
       iconOnly
       icon={tool.icon}
       label={tool.label}
+      hint={keyOfAction(tool.id)}
       disabled={tool.id === 'purge' && run.active}
       disabledReason={run.busyText}
       testid="{prefix}{tool.id}"
@@ -683,6 +769,7 @@
       iconOnly
       icon="star"
       label={job.pinned ? t.reader.unpin : t.reader.pin}
+      hint={keyOfAction('star')}
       pressed={job.pinned}
       testid="{prefix}pin"
       onclick={star}
@@ -700,11 +787,296 @@
         iconOnly
         icon="x"
         label={t.reader.close}
+        hint={keyOfAction('close')}
         testid="{prefix}close"
         onclick={onclose}
       />
     </span>
   {/if}
+{/snippet}
+
+{#snippet head()}
+  <header class="head">
+    <div class="title-line">
+      <h1 class="title" data-testid="reader-title" data-copy>
+        {heading}
+      </h1>
+      <span class="title-tools">
+        {@render closeButton('reader-')}
+      </span>
+    </div>
+    {#if facts.length > 0}
+      <p class="facts" data-copy data-testid="reader-facts">
+        <span class="facts-line">{@render dotted(facts)}</span>
+      </p>
+    {/if}
+    <!-- The portal, the time (the exact moment in its tooltip) and the other portals that
+         announced the job, as plain words ("Anzeige öffnen" opens this portal's ad). -->
+    <p class="source" data-testid="reader-source">
+      <span class="facts-line"
+        ><span class="fact"><span class="sep" aria-hidden="true"></span>{t.portal[job.portal]}</span
+        ><wbr /><span class="fact"
+          ><span class="sep" aria-hidden="true">{SEPARATOR}</span><span
+            data-testid="reader-when"
+            use:tooltip={t.reader.mailAt(formatDate(when), formatTime(when))}
+            >{formatRelative(when, clock.now)}</span
+          ></span
+        >{#each job.alsoOn as portal (portal)}<wbr /><span class="fact"
+            ><span class="sep" aria-hidden="true">{SEPARATOR}</span><span
+              data-testid="also-{portal}">{t.job.alsoOn(t.portal[portal])}</span
+            ></span
+          >{/each}</span
+      >
+    </p>
+    {#if placeLine}<p class="place-line" data-testid="place-line">{placeLine}</p>{/if}
+    {#if offline}
+      <p class="place-line" data-testid="offline-line">
+        <span use:tooltip={checked}>{offline}</span>
+      </p>
+    {/if}
+  </header>
+{/snippet}
+
+{#snippet score()}
+  {#if headline}
+    <div class="match">
+      <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
+      <div class="lines">
+        <p class="line">
+          <span class="line-inner">
+            <span class="band {headline.tone}" data-testid="band">{headline.word}</span>
+            {#if match && match.status === 'scored'}
+              <span class="must" data-testid="must">{mustLine}</span>
+            {/if}
+          </span>
+        </p>
+        {#if because}
+          <p class="because" data-testid={because.testid}>{because.text}</p>
+        {/if}
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet actionRow()}
+  <div class="actions" bind:this={actions} data-testid="reader-actions">
+    <Button
+      variant="secondary"
+      size="field"
+      icon="external-link"
+      label={t.reader.open}
+      hint={keyOfAction('open')}
+      testid="open-ad"
+      onclick={openAd}
+    />
+    {#if hasStar(job.place)}
+      <Button
+        variant="ghost"
+        size="sm"
+        icon="star"
+        iconOnly={iconsOnly}
+        label={iconsOnly ? (job.pinned ? t.reader.unpin : t.reader.pin) : t.reader.favourite}
+        hint={keyOfAction('star')}
+        pressed={job.pinned}
+        testid="reader-pin"
+        onclick={star}
+      />
+    {/if}
+    <!-- Deleting for good waits for a run, like on the row (the backend refuses meanwhile). -->
+    {#each moves as tool (tool.id)}
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={tool.icon}
+        iconOnly={iconsOnly}
+        label={tool.label}
+        hint={keyOfAction(tool.id)}
+        warns={tool.id === 'purge'}
+        disabled={tool.id === 'purge' && run.active}
+        disabledReason={run.busyText}
+        testid="reader-{tool.id}"
+        onclick={() => act(tool.id)}
+      />
+    {/each}
+    <span class="more" bind:this={moreAnchor}>
+      <Button
+        variant="ghost"
+        size="sm"
+        icon="ellipsis"
+        iconOnly
+        label={t.reader.more}
+        menu
+        expanded={moreOpen}
+        testid="reader-more"
+        onclick={openMore}
+      />
+    </span>
+  </div>
+  <span class="past-actions" use:inView={(place) => (compact = place === 'above')}></span>
+  {#if actionError}
+    <Notice tone="danger" variant="inline" text={actionError} testid="reader-error" />
+  {/if}
+{/snippet}
+
+{#snippet exclusionBox()}
+  {#if excluded || job.overridden}
+    <!-- Calm, not an alarm: why the engine excludes the job, where the ad says so, and the
+         user's word against it (and back). -->
+    <div class="exclusion" data-testid="exclusion-box">
+      {#if violations.length > 0}
+        <ul class="exclusion-reasons">
+          {#each violations as violation (violation.key)}
+            <li class="exclusion-reason">
+              <span class="exclusion-text" data-testid="exclusion">{violation.text}</span>
+              {#if violation.item !== null}
+                {@const target = violation.item}
+                <span class="inline-action">
+                  <Button
+                    variant="link"
+                    size="sm"
+                    label={t.reader.showInAd}
+                    testid="show-in-ad"
+                    onclick={() => jumpTo(target)}
+                  />
+                </span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="exclusion-actions">
+        {#if job.overridden}
+          <span class="overridden" data-testid="overridden">{t.reader.overridden}</span>
+          <Button
+            variant="secondary"
+            size="sm"
+            label={t.reader.overrideUndo}
+            testid="override-undo"
+            onclick={() => void override()}
+          />
+        {:else}
+          <Button
+            variant="secondary"
+            size="sm"
+            label={t.reader.override}
+            testid="override"
+            onclick={() => void override()}
+          />
+        {/if}
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet terms()}
+  <!-- Only for an ad the app has read: what an unread ad says is not known. -->
+  {#if detail.text !== null}
+    <section class="block" data-testid="terms">
+      <h2 class="section">{t.reader.frame}</h2>
+      <!-- The ad's terms as a table: what, the ad's value and whether it fits in a word (the
+           reason in its tooltip). A value with a passage lights it on hover and jumps to it
+           on a click. -->
+      <ul class="terms" class:judged aria-label={t.reader.frame} data-testid="criteria">
+        {#each rows as row (row.key)}
+          {@const item = rowItem(row)}
+          <li class="term" data-row={row.key} data-testid="term-{row.key}">
+            <span class="term-name" data-item={item}
+              ><Icon name={row.icon} size="sm" />{row.name}</span
+            >
+            <span class="term-line" data-copy>
+              {#if row.passage}
+                <Chip
+                  label={row.value}
+                  text
+                  active={activeItem === item}
+                  onhover={(on) => hoverItem(item, on)}
+                  onselect={() => jumpTo(item)}
+                />
+              {:else}
+                <span class="plain" class:open={row.open}>{row.value}</span>
+              {/if}
+              {#if row.note}<span class="term-note">{row.note}</span>{/if}
+            </span>
+            {#if judged}
+              <span class="verdict {row.verdict ?? ''}" data-testid="verdict" use:tooltip={row.why}
+                >{row.verdict === null ? '' : t.reader.verdict[row.verdict]}</span
+              >
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+{/snippet}
+
+{#snippet requirements()}
+  {#if match && match.status !== 'unscorable' && withRing}
+    <section class="block why" data-testid="why">
+      <h2 class="section">{t.reader.why}</h2>
+      {#if groups.length === 0}
+        <p class="quiet">{t.reader.noReasons}</p>
+      {:else}
+        {#each groups as group (group.kind)}
+          <div class="group">
+            <h3 class="sub">{group.label()}</h3>
+            {@render reasonList(group.items, `reasons-${group.kind}`)}
+          </div>
+        {/each}
+      {/if}
+    </section>
+  {/if}
+{/snippet}
+
+{#snippet ad()}
+  <section class="block ad">
+    <h2 class="section">{t.reader.ad}</h2>
+    {#if detailKind !== 'ok' && detailKind !== 'gone'}
+      <div class="missing">
+        <Notice
+          tone={detailWarns ? 'warning' : 'info'}
+          variant="inline"
+          text={detailNote}
+          testid="detail-note"
+        />
+        {#if signInMissing}
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="log-in"
+            label={t.reader.setUpSignIn}
+            testid="set-up-sign-in"
+            onclick={setUpSignIn}
+          />
+        {/if}
+        {#if canFetch}
+          <Button
+            variant="secondary"
+            size="sm"
+            icon="download"
+            label={t.reader.fetchDetails}
+            disabled={run.active}
+            disabledReason={run.busyText}
+            testid="fetch-details"
+            onclick={() => void run.start({ kind: 'details', keys: [job.key] })}
+          />
+        {/if}
+      </div>
+    {:else if job.short && match?.status !== 'unscorable'}
+      <Notice tone="info" variant="inline" text={t.reader.short} />
+    {/if}
+    {#if detail.text}
+      <AdText
+        text={detail.text}
+        highlights={passages}
+        active={activeIds}
+        flash={flashIds}
+        {hints}
+        onhover={(reason, on) => hoverItem(itemOf(reason), on)}
+        onpick={pickPassage}
+        bind:element={textElement}
+      />
+    {/if}
+  </section>
 {/snippet}
 
 <article
@@ -726,14 +1098,7 @@
       data-testid="reader-compact"
     >
       {#if withRing}
-        <ScoreRing
-          ring={ringState(
-            job.match,
-            job.match === null && Boolean(app.state?.matchPending),
-            job.detail.kind,
-          )}
-          size="sm"
-        />
+        <ScoreRing {ring} size="sm" />
       {/if}
       <span class="compact-title" use:tooltip={{ text: heading, truncated: true }}>{heading}</span>
       <span class="compact-tools" use:pointerOnly>
@@ -743,363 +1108,32 @@
           iconOnly
           icon="external-link"
           label={t.reader.open}
+          hint={keyOfAction('open')}
           testid="compact-open"
-          onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
+          onclick={openAd}
         />
         {@render placeTools('compact-')}
       </span>
     </div>
   </div>
 
-  <header class="head">
-    <div class="title-line">
-      <h1 class="title" data-testid="reader-title" data-copy>
-        {heading}
-      </h1>
-      <span class="title-tools">
-        {@render closeButton('reader-')}
-      </span>
-    </div>
-    {#if facts.length > 0}
-      <p class="facts" data-copy data-testid="reader-facts">
-        <span class="facts-line">{@render dotted(facts)}</span>
-      </p>
+  {#each READER_SECTIONS as section (section)}
+    {#if section === 'head'}
+      {@render head()}
+    {:else if section === 'match'}
+      {@render score()}
+    {:else if section === 'actions'}
+      {@render actionRow()}
+    {:else if section === 'exclusion'}
+      {@render exclusionBox()}
+    {:else if section === 'terms'}
+      {@render terms()}
+    {:else if section === 'requirements'}
+      {@render requirements()}
+    {:else}
+      {@render ad()}
     {/if}
-    <!-- The portal, the time (the exact moment in its tooltip) and the other portals that
-         announced the job: a link opens the ad (that portal's own once the backend knows
-         its link; until then the job's ad). -->
-    <p class="source" data-testid="reader-source">
-      <span class="facts-line"
-        ><span class="fact"><span class="sep" aria-hidden="true"></span>{t.portal[job.portal]}</span
-        ><wbr /><span class="fact"
-          ><span class="sep" aria-hidden="true">{SEPARATOR}</span><span
-            data-testid="reader-when"
-            use:tooltip={t.reader.mailAt(formatDate(when), formatTime(when))}
-            >{formatRelative(when, clock.now)}</span
-          ></span
-        >{#each job.alsoOn as portal (portal)}<wbr /><span class="fact"
-            ><span class="sep" aria-hidden="true">{SEPARATOR}</span><span class="inline-action"
-              ><Button
-                variant="link"
-                size="sm"
-                label={t.job.alsoOn(t.portal[portal])}
-                testid="also-{portal}"
-                onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
-              /></span
-            ></span
-          >{/each}</span
-      >
-    </p>
-    {#if placeLine}<p class="place-line" data-testid="place-line">{placeLine}</p>{/if}
-    {#if offline}<p class="place-line" data-testid="offline-line">{offline}</p>{/if}
-  </header>
-
-  {#if headline}
-    <div class="match">
-      <ScoreRing
-        ring={ringState(
-          job.match,
-          job.match === null && Boolean(app.state?.matchPending),
-          job.detail.kind,
-        )}
-        size="md"
-        animate={keyOf(job.key)}
-        testid="reader-ring"
-      />
-      <div class="lines">
-        <p class="line">
-          <span class="line-inner">
-            <span class="band {headline.tone}" data-testid="band">{headline.word}</span>
-            {#if match && match.status === 'scored'}
-              <span class="must" data-testid="must">{mustLine}</span>
-            {/if}
-          </span>
-        </p>
-        {#if unscorable}
-          <p class="because" data-testid="unscorable">{unscorable}</p>
-        {:else if preliminary}
-          <p class="because" data-testid="preliminary">
-            {t.reader.preliminary}{#if signInInHead}<span class="sep-inline" aria-hidden="true"
-                >{SEPARATOR}</span
-              ><span class="inline-action"
-                ><Button
-                  variant="link"
-                  size="sm"
-                  label={t.reader.setUpSignIn}
-                  testid="set-up-sign-in"
-                  onclick={setUpSignIn}
-                /></span
-              >{/if}
-          </p>
-        {/if}
-      </div>
-    </div>
-  {/if}
-
-  {#if exclusion !== null || job.overridden}
-    <!-- Calm, not an alarm: why the engine excludes the job, where the ad says so, and the
-         user's word against it (and back). -->
-    <div class="exclusion" data-testid="exclusion-box">
-      {#if exclusion !== null}
-        <p class="exclusion-text" data-testid="exclusion">{exclusion}</p>
-        <div class="exclusion-actions">
-          {#if excludedBy !== null}
-            {@const target = excludedBy}
-            <Button
-              variant="link"
-              size="sm"
-              label={t.reader.showInAd}
-              testid="show-in-ad"
-              onclick={() => jumpTo(target)}
-            />
-          {/if}
-          <Button
-            variant="secondary"
-            size="sm"
-            label={t.reader.override}
-            testid="override"
-            onclick={() => void override()}
-          />
-        </div>
-      {:else}
-        <p class="exclusion-text" data-testid="overridden">{t.reader.overridden}</p>
-        <div class="exclusion-actions">
-          <Button
-            variant="secondary"
-            size="sm"
-            label={t.reader.overrideUndo}
-            testid="override-undo"
-            onclick={() => void override()}
-          />
-        </div>
-      {/if}
-    </div>
-  {/if}
-
-  <div class="actions" bind:this={actions} data-testid="reader-actions">
-    <Button
-      variant="secondary"
-      icon="external-link"
-      label={t.reader.open}
-      testid="open-ad"
-      onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
-    />
-    {#if hasStar(job.place)}
-      <Button
-        variant="ghost"
-        icon="star"
-        iconOnly={iconsOnly}
-        label={t.reader.favourite}
-        pressed={job.pinned}
-        testid="reader-pin"
-        onclick={star}
-      />
-    {/if}
-    <!-- Deleting for good waits for a run, like on the row (the backend refuses meanwhile). -->
-    {#each moves as tool (tool.id)}
-      <Button
-        variant="ghost"
-        icon={tool.icon}
-        iconOnly={iconsOnly}
-        label={tool.label}
-        warns={tool.id === 'purge'}
-        disabled={tool.id === 'purge' && run.active}
-        disabledReason={run.busyText}
-        testid="reader-{tool.id}"
-        onclick={() => act(tool.id)}
-      />
-    {/each}
-    <!-- The place of "Beworben" (a labelled button like Favorit), added with its data. -->
-    <span class="more" bind:this={moreAnchor}>
-      <Button
-        variant="ghost"
-        icon="ellipsis"
-        iconOnly
-        label={t.reader.more}
-        menu
-        expanded={moreOpen}
-        testid="reader-more"
-        onclick={openMore}
-      />
-    </span>
-  </div>
-  <span class="past-actions" use:inView={(place) => (compact = place === 'above')}></span>
-  {#if actionError}
-    <Notice tone="danger" variant="inline" text={actionError} />
-  {/if}
-
-  {#if match && match.status !== 'unscorable' && withRing}
-    <section class="block" data-testid="requirements">
-      <h2 class="section">{t.reader.requirements}</h2>
-      <p class="summary" data-testid="requirements-line">
-        {t.reader.requirementsLine(mustLine, missingNice)}
-      </p>
-      {#if missingMusts.length > 0}
-        <ul class="missing-musts" data-testid="missing-musts">
-          {#each missingMusts as reason (reason.id)}
-            {@const term = reasonText(reason)}
-            <li class="missing-must">
-              <span class="missing-term" data-copy>{term}</span>
-              {#if isAdded(term)}
-                <span class="added" data-testid="added">{t.reader.added}</span>
-              {:else}
-                <span class="inline-action">
-                  <Button
-                    variant="link"
-                    size="sm"
-                    label={t.reader.addToProfile}
-                    testid="add-to-profile"
-                    onclick={() => addToProfile(term)}
-                  />
-                </span>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-  {/if}
-
-  <section class="block" data-testid="terms">
-    <h2 class="section">{t.reader.frame}</h2>
-    <!-- The ad's terms as a table: what, the ad's value (the profile's side under it) and
-         whether it fits in a word. A value with a passage lights it on hover and jumps to it
-         on a click. -->
-    <ul class="terms" class:judged={withRing} aria-label={t.reader.frame} data-testid="criteria">
-      {#each rows as row (row.key)}
-        {@const item = rowItem(row)}
-        <li class="term" data-row={row.key} data-testid="term-{row.key}">
-          <span class="term-name" data-item={item}
-            ><Icon name={row.icon} size="sm" />{row.name}</span
-          >
-          <span class="term-value" data-copy>
-            <span class="term-line">
-              {#if row.passage}
-                <Chip
-                  label={row.value}
-                  text
-                  active={activeItem === item}
-                  onhover={(on) => hoverItem(item, on)}
-                  onselect={() => jumpTo(item)}
-                />
-              {:else}
-                <span class="plain" class:open={row.open}>{row.value}</span>
-              {/if}
-              {#if row.note}<span class="term-note">{row.note}</span>{/if}
-            </span>
-            {#if row.profile}<span class="term-profile">{row.profile}</span>{/if}
-          </span>
-          {#if withRing}
-            <span class="verdict {row.verdict ?? ''}" data-testid="verdict"
-              >{row.verdict === null ? '' : t.reader.verdict[row.verdict]}</span
-            >
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  </section>
-
-  {#if match && match.status !== 'unscorable' && withRing}
-    <section class="block why" data-testid="why">
-      <h2 class="section">{t.reader.why}</h2>
-      {#if met.length + partial.length + open.length === 0}
-        <p class="quiet">{t.reader.noReasons}</p>
-      {:else}
-        <div class="columns">
-          {#if met.length + partial.length > 0}
-            <div class="stack">
-              {#if met.length > 0}
-                <div class="group">
-                  {@render sub(t.reader.met, met.length)}
-                  {@render reasonList(met, 'reasons-met')}
-                </div>
-              {/if}
-              {#if partial.length > 0}
-                <div class="group">
-                  {@render sub(t.reader.partial, partial.length)}
-                  {@render reasonList(partial, 'reasons-partial')}
-                </div>
-              {/if}
-            </div>
-          {/if}
-          {#if open.length > 0}
-            <div class="group">
-              {@render sub(t.reader.missing, open.length)}
-              {@render reasonList(open, 'reasons-open')}
-            </div>
-          {/if}
-        </div>
-      {/if}
-      {#if checks.length > 0}
-        <div class="group">
-          {@render sub(t.reader.check, checks.length)}
-          {@render reasonList(checks, 'reasons-check')}
-        </div>
-      {/if}
-      {#if violations.length > 0}
-        <div class="group">
-          {@render sub(t.reader.violations, violations.length)}
-          {@render reasonList(violations, 'reasons-violation')}
-        </div>
-      {/if}
-    </section>
-  {/if}
-
-  <section class="block ad">
-    <h2 class="section">{t.reader.ad}</h2>
-    {#if detailKind !== 'ok' && detailKind !== 'gone'}
-      <div class="missing">
-        <Notice
-          tone={detailWarns ? 'warning' : 'info'}
-          variant="inline"
-          text={portalState &&
-          (!portalState.enabled || !portalState.fetchDetails) &&
-          (detailKind === 'pending' || detailKind === 'onRequest')
-            ? t.reader.detailsOff
-            : detailKind === 'teaser'
-              ? t.reader.teaserOf(t.portal[job.portal])
-              : t.reader.detail[detailKind]}
-          testid="detail-note"
-        />
-        {#if signInMissing && !signInInHead}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="log-in"
-            label={t.reader.setUpSignIn}
-            testid="set-up-sign-in"
-            onclick={setUpSignIn}
-          />
-        {/if}
-        {#if canFetch}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="download"
-            label={detailKind === 'pending' ? t.reader.fetchNow : t.reader.fetchDetails}
-            disabled={run.active}
-            disabledReason={run.busyText}
-            testid="fetch-details"
-            onclick={() => void run.start({ kind: 'details', keys: [job.key] })}
-          />
-        {/if}
-      </div>
-    {:else if job.short && unscorable === null}
-      <Notice tone="info" variant="inline" text={t.reader.short} />
-    {/if}
-    {#if detail.text}
-      <AdText
-        text={detail.text}
-        highlights={passages}
-        active={activeIds}
-        flash={flashIds}
-        {hints}
-        onhover={(reason, on) => hoverItem(itemOf(reason), on)}
-        onpick={pickPassage}
-        bind:element={textElement}
-      />
-    {/if}
-  </section>
+  {/each}
 </article>
 
 <Dialog
@@ -1259,8 +1293,7 @@
     white-space: nowrap;
   }
 
-  .sep,
-  .sep-inline {
+  .sep {
     display: inline-block;
     width: var(--space-20);
     color: var(--text-subtle);
@@ -1349,7 +1382,7 @@
     color: var(--danger-strong);
   }
 
-  /* The exclusion: a calm box, the reason and the ways on under it. */
+  /* The exclusion: a calm box, the reasons and the ways on under them. */
   .exclusion {
     display: flex;
     flex-direction: column;
@@ -1357,6 +1390,19 @@
     padding: var(--space-12) var(--space-16);
     border-radius: var(--radius-md);
     background-color: var(--surface-muted);
+  }
+
+  .exclusion-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .exclusion-reason {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2) var(--space-12);
   }
 
   .exclusion-text {
@@ -1368,7 +1414,13 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-8) var(--space-16);
+    gap: var(--space-8) var(--space-12);
+  }
+
+  /* Included by hand: said quietly beside the way back. */
+  .overridden {
+    color: var(--text-muted);
+    font: var(--type-sm);
   }
 
   .actions {
@@ -1396,7 +1448,7 @@
     font: var(--type-sm);
   }
 
-  /* The note on the missing text, and the way to fetch it. */
+  /* The note on the missing text, and the ways to it. */
   .missing {
     display: flex;
     flex-wrap: wrap;
@@ -1404,6 +1456,7 @@
     gap: var(--space-8) var(--space-16);
   }
 
+  /* A heading 12 px above its content. */
   .block {
     display: flex;
     flex-direction: column;
@@ -1412,48 +1465,13 @@
     border-top: var(--border-width) solid var(--border);
   }
 
-  .why,
-  .ad {
-    gap: var(--space-16);
-  }
-
   .section {
     color: var(--text-heading);
     font: var(--type-lg);
   }
 
-  .summary {
-    color: var(--text);
-    font: var(--type-md);
-  }
-
-  /* The must requirements the profile lacks, each with its way into the profile. */
-  .missing-musts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .missing-must {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--space-4) var(--space-12);
-    font: var(--type-md);
-  }
-
-  .missing-term {
-    color: var(--text-heading);
-    font-weight: var(--weight-medium);
-  }
-
-  .added {
-    color: var(--text-subtle);
-    font: var(--type-sm);
-  }
-
   /* The ad's terms: name, value and verdict in three columns that line up row by row (two
-     without a profile: nothing to judge); the verdicts stand right after the widest value,
+     without a match: nothing to judge); the verdicts stand right after the widest value,
      not at the far edge. */
   .terms {
     display: grid;
@@ -1487,18 +1505,12 @@
     vertical-align: middle;
   }
 
-  .term-value {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-
   .term-line {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--space-6);
+    min-width: 0;
   }
 
   .plain {
@@ -1506,8 +1518,7 @@
   }
 
   .plain.open,
-  .term-note,
-  .term-profile {
+  .term-note {
     color: var(--text-subtle);
   }
 
@@ -1517,6 +1528,11 @@
 
   .verdict.met {
     color: var(--success-strong);
+  }
+
+  /* Fits in part: the amber of a mid match, like its half circle. */
+  .verdict.partial {
+    color: var(--score-mid-text);
   }
 
   .verdict.violated {
@@ -1532,21 +1548,19 @@
     color: var(--text-subtle);
   }
 
-  /* The groups of the requirements: navy sub-labels with a plain count (like the list's
-     divider). */
+  /* The groups of the requirements under navy sub-labels. */
+  .why {
+    gap: var(--space-16);
+  }
+
+  .why .section {
+    margin-bottom: calc(var(--space-12) - var(--space-16));
+  }
+
   .sub {
-    display: flex;
-    align-items: center;
-    gap: var(--space-6);
     color: var(--text-label);
     font: var(--type-sm);
     font-weight: var(--weight-medium);
-  }
-
-  .columns {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--space-16);
   }
 
   .group {
@@ -1556,19 +1570,36 @@
     min-width: 0;
   }
 
-  .stack {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
-    min-width: 0;
-  }
-
   /* The hover wash of a reason hangs out on both sides alike. */
   .reasons {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
     margin-inline: calc(-1 * var(--space-8));
+  }
+
+  /* A reason and, for a missing must, its way into the profile at the end of its line. */
+  .reason-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+
+  .reason-cell {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* On the edge of the column (the list hangs out by the wash of its reasons). */
+  .reason-action {
+    display: inline-flex;
+    flex: none;
+    margin-inline-end: var(--space-8);
+  }
+
+  .added {
+    color: var(--text-subtle);
+    font: var(--type-sm);
   }
 
   .quiet {

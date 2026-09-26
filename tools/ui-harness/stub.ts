@@ -1764,6 +1764,9 @@ const PARTIAL_MUST = 'Aufbau und Weiterentwicklung des Reportings';
 const NICE_MET = 'Konzernabschluss nach HGB';
 const NICE_OPEN = 'Französisch in Wort und Schrift';
 
+/** Full texts that name few clear requirements (the engine's lowEvidence). */
+const LOW_EVIDENCE: ReadonlySet<string> = new Set(['2804']);
+
 /** The profile's words behind a met requirement (the reason's evidence), by the ad's words. */
 const EVIDENCE: Record<string, string> = {
   'Interim-Management im Mittelstand': 'Interim Management',
@@ -1885,7 +1888,10 @@ function detailOf(j: JobView): JobDetail {
   for (const r of openMusts) add('open', 'must', 'requirement', r);
   add('met', 'nice', 'requirement', NICE_MET);
   add('open', 'nice', 'requirement', NICE_OPEN);
-  if (facts.start === 'vague') add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  const vagueReason = facts.start === 'vague' ? String(reasons.length) : null;
+  if (vagueReason !== null) add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  // A full text that names few clear requirements (the reader's head says it once).
+  if (ok && LOW_EVIDENCE.has(j.key.id)) add('check', 'info', 'lowEvidence', '', {}, []);
   // The engine's violation, where the ad says it.
   const min = PROFILE_FORM.criteria.minDayRate ?? 0;
   if (excludedBy === 'anue') add('violation', 'hard', 'anue', '', {}, contractRange);
@@ -2033,9 +2039,10 @@ function detailOf(j: JobView): JobDetail {
     facts.start === null || facts.start === 'vague'
       ? criterion(
           'c:availability',
-          'open',
+          // A start to be agreed is a check the engine links to its reason.
+          facts.start === null ? 'open' : 'check',
           'availability',
-          facts.start === null ? {} : { start: 'vague' },
+          facts.start === null ? {} : { start: 'vague', reason: vagueReason ?? '' },
           rangeOf(frame.start),
         )
       : criterion(
@@ -2055,8 +2062,12 @@ function detailOf(j: JobView): JobDetail {
   ].filter(
     // Like the engine, a criterion the profile does not set is left out (the sample profile's
     // start counts as set, except in no-minimum).
+    // Employment pay (a permanent job, temporary agency work) has no day rate to judge.
     (c) =>
-      (c.code !== 'minDayRate' || state.profile?.form?.criteria.minDayRate !== null) &&
+      (c.code !== 'minDayRate' ||
+        (state.profile?.form?.criteria.minDayRate !== null &&
+          contract.type !== 'permanent' &&
+          contract.type !== 'anue')) &&
       (c.code !== 'availability' || scenario !== 'no-minimum'),
   );
   // Engine 16: the profile's values, the ad's and the reason that decided it (core

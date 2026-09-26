@@ -364,8 +364,11 @@ for (const { width, height } of [
     await open(page, WIN);
     await facet(page, 'Alle').click();
     await rows(page).first().click();
-    const top = async (id: string): Promise<number> =>
-      (await page.getByTestId(id).boundingBox())?.y ?? -1;
+    // One line is one axis (the buttons differ in height).
+    const top = async (id: string): Promise<number> => {
+      const box = await page.getByTestId(id).boundingBox();
+      return box === null ? -1 : Math.round(box.y + box.height / 2);
+    };
     await expect
       .poll(async () => {
         const ad = await top('open-ad');
@@ -389,14 +392,14 @@ test('the terms table: name, value and verdict in one type size, a word for each
   const table = page.getByTestId('stage').getByTestId('criteria');
   await expect(table).toBeVisible();
   const name = await size(table.locator('.term-name').first());
-  expect(await size(table.locator('.term-value .chip').first())).toBe(name);
+  expect(await size(table.locator('.term-line .chip').first())).toBe(name);
   expect(await size(table.locator('.verdict').first())).toBe(name);
   // A verdict is a word, never a mark to decode.
   const verdicts = await table
     .locator('.verdict')
     .evaluateAll((nodes) => nodes.map((node) => node.textContent?.trim() ?? ''));
   for (const verdict of verdicts) {
-    expect(['', 'passt', 'passt nicht', 'prüfen', 'offen']).toContain(verdict);
+    expect(['', 'passt', 'passt teilweise', 'passt nicht', 'prüfen', 'offen']).toContain(verdict);
   }
 });
 

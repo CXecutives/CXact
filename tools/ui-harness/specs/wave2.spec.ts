@@ -13,7 +13,7 @@ const stage = (page: Page) => page.getByTestId('stage');
 test('the reader shows the ad rate and start without a profile minimum', async ({ page }) => {
   for (const [lang, rate, start] of [
     ['', '1.200 €/Tag', 'ab sofort'],
-    ['&lang=en', '€1,200/day', 'starts now'],
+    ['&lang=en', '€1,200/day', 'immediately'],
   ] as const) {
     await open(page, `${WIN}&scenario=no-minimum${lang}`);
     await row(page, 'freelancermap-2801').click();

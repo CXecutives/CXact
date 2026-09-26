@@ -616,10 +616,9 @@ test('the demo job says the same in its row, its reader and its prompt', async (
   await expect(reader).toContainText('Start ab sofort');
   await expect(reader).toContainText('Tagessatz 1.200 €');
   await expect(reader).not.toContainText('nach Absprache');
-  // The wish stands in the row of the rate.
-  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText(
-    'Wunsch 1.200 €',
-  );
+  // The row says the ad's rate; the wish is the reason of its verdict, no profile line.
+  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText('1.200 €/Tag');
+  await expect(page.getByTestId('criteria').getByTestId('term-rate')).not.toContainText('Wunsch');
   // Every criterion of the profile is stated and met: the table says so row by row.
   await expect(page.getByTestId('criteria')).toBeVisible();
   await expect(page.getByTestId('criteria')).not.toContainText('passt nicht');

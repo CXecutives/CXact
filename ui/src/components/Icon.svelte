@@ -38,6 +38,7 @@
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
   import Euro from '@lucide/svelte/icons/euro';
+  import Factory from '@lucide/svelte/icons/factory';
   import CheckCheck from '@lucide/svelte/icons/check-check';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import Undo2 from '@lucide/svelte/icons/undo-2';
@@ -107,7 +108,7 @@
     'file-text': FileText,
     // The facts of a job (lib/facts.ts, one icon per meaning): the contract, the pay in
     // euros and in another currency, the start, the duration, the workload, the remote share,
-    // on site or hybrid, the place and the experience asked for.
+    // on site or hybrid, the place, the industry and the experience asked for.
     handshake: Handshake,
     euro: Euro,
     banknote: Banknote,
@@ -117,6 +118,7 @@
     house: House,
     'building-2': Building2,
     'map-pin': MapPin,
+    factory: Factory,
     award: Award,
     // The last run (the run status at the foot of the sidebar).
     history: History,

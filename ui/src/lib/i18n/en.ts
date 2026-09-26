@@ -38,7 +38,7 @@ import type {
   VaultKind,
   WorkMode,
 } from '../ipc/types';
-import { textOf, type Catalog, type ContractKind, type CriterionState } from './de';
+import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
 import {
   NBSP,
   formatCountdown,
@@ -278,7 +278,7 @@ const emptyMails = (mails: number): string =>
 const PROFILE_UNREADABLE = 'Profile cannot be read';
 
 const ANUE = 'The ad mentions temporary agency work.';
-const LOW_TEXT = 'The ad has little text.';
+const LOW_TEXT = 'The ad names few clear requirements.';
 const SHORT_TEXT = 'The ad is very short.';
 const WORKLOAD = 'The workload does not fit the profile.';
 const DURATION = 'The duration is below the minimum in the profile.';
@@ -1059,10 +1059,7 @@ export const en: Catalog = {
   reader: {
     mustMet: (met: number, total: number, partial = 0) =>
       `${n(met)} of ${n(total)} must-haves met` + (partial > 0 ? `, ${n(partial)} partly` : ''),
-    noMust: 'No must-have requirements found',
-    requirements: 'Requirements',
-    requirementsLine: (must: string, niceMissing: number) =>
-      niceMissing > 0 ? `${must} · ${n(niceMissing)} optional missing` : must,
+    noMust: 'No must-haves found',
     addToProfile: 'Add to profile',
     added: 'Added',
     addedToProfile: (term: string) => `“${term}” added to the profile.`,
@@ -1075,6 +1072,7 @@ export const en: Catalog = {
       workload: 'Workload',
       remote: 'Remote',
       place: 'Location',
+      industry: 'Industry',
       experience: 'Experience',
     },
     termOpen: 'open',
@@ -1086,38 +1084,29 @@ export const en: Catalog = {
       unclear: 'unclear',
     },
     rateOpen: 'negotiable',
+    startNow: 'immediately',
     salaryName: 'Salary',
-    salary: (amount: number) => `${formatMoney(amount, null)}/year`,
+    salary: (amount: number, lowerBound: boolean) =>
+      lowerBound ? `from ${formatEuro(amount)}/year` : `${formatEuro(amount)}/year`,
+    unlimited: 'open-ended',
+    workMode: {
+      remote: 'fully remote',
+      hybrid: 'partly remote',
+      onsite: 'on site',
+    } satisfies Record<WorkMode, string>,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} to ${count(max, 'year', 'years')}`
         : count(min, 'year', 'years'),
     estimated: 'estimated',
     assumed: 'assumed',
-    profileSide: {
-      rate: (min: number | null, wish: number | null) => {
-        const preferred = wish === null ? '' : formatEuro(wish);
-        if (min === null) return preferred === '' ? '' : `Preferred ${preferred}`;
-        const minimum = `Minimum ${formatEuro(min)}`;
-        return preferred === '' ? minimum : `${minimum}, preferred ${preferred}`;
-      },
-      start: (date: string | null) => (date === null ? 'Available now' : `Available from ${date}`),
-      workload: (min: number | null, max: number | null) => profileDays(min, max, false),
-      duration: (min: number) => `at least ${count(min, 'month', 'months')}`,
-      remote: (level: RemoteWish) => `Preferred ${REMOTE_LEVEL[level] ?? level}`,
-      place: (countries: string, regions: readonly string[]) => {
-        const where = countries === '' ? '' : countryNames(countries);
-        const preferred = joined([...regions]);
-        if (preferred === '') return where;
-        return where === '' ? `Preferred ${preferred}` : `${where}, preferred ${preferred}`;
-      },
-    },
     verdict: {
       met: 'fits',
+      partial: 'partly fits',
       violated: 'does not fit',
       unknown: 'check',
       unset: 'open',
-    } satisfies Record<CriterionState, string>,
+    } satisfies Record<TermVerdict, string>,
     markHint: (what: string, state: string) => `${what} · ${state}`,
     criterion: criteria,
     note,
@@ -1129,7 +1118,6 @@ export const en: Catalog = {
     archive: 'Archive',
     restore: 'Restore',
     more: 'More actions',
-    markUnread: 'Mark as unread',
     showInAd: 'Show in the ad',
     override: 'Include anyway',
     overrideUndo: 'Undo',
@@ -1137,6 +1125,7 @@ export const en: Catalog = {
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
     preliminary: 'Provisional, preview only',
+    lowEvidence: 'The ad names few clear requirements, so the match stays rough.',
     scoredLater: 'Scored once the ad is in',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
@@ -1146,13 +1135,11 @@ export const en: Catalog = {
     promptNoText: 'The text of the ad is still missing.',
     mailAt: (date: string, time: string) => `Alert email from ${date} at ${time}`,
     fetchDetails: 'Fetch details',
-    fetchNow: 'Fetch now',
-    why: 'Requirements in detail',
+    why: 'Requirements',
     met: 'Met',
     partial: 'Partly met',
     missing: 'Not in the profile',
     check: 'To check',
-    violations: 'Excluded',
     noReasons: 'The ad names no clear requirements.',
     ad: 'Ad',
     detail: {
@@ -1163,8 +1150,7 @@ export const en: Catalog = {
       gone: detailSays.gone,
       onRequest: detailSays.onRequest,
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    offline: 'Ad offline',
-    offlineSince: (date: string) => `Ad offline since ${date}`,
+    checkedAt: (when: string) => `Last checked ${when}`,
     detailsOff: '“Fetch details” is off for this portal.',
     short: SHORT_TEXT,
     loadFailed: 'The job could not be loaded.',
