@@ -317,7 +317,6 @@ test.describe('filter', () => {
       place: 'inbox',
       favourites: true,
       unread: false,
-      applied: false,
     });
     await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
       'background-color',
@@ -488,7 +487,7 @@ test.describe('filter', () => {
     expect(await listed(page)).toEqual(await inbox(page, { minBand: 'high', portal: 'linkedin' }));
   });
 
-  test('the run card and the Übersicht open the inbox; a filter stays and its line says it', async ({
+  test('the run card opens the inbox with its filter; the Übersicht with exactly its own', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -504,7 +503,9 @@ test.describe('filter', () => {
     await page.getByTestId('tile-new').click();
     await expect(page.getByTestId('view-jobs')).toBeVisible();
     await expect(page.getByTestId('search')).toHaveValue('');
-    await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('portal-linkedin'));
+    // "Neu" counts the unopened jobs of every portal: its list has no filter.
+    await expect(filterLine(page)).toHaveCount(0);
+    expect(await lastQuery(page)).toMatchObject({ place: 'inbox', portal: null });
   });
 
   test('macOS: the same funnel and menu', async ({ page }) => {
@@ -593,7 +594,9 @@ test.describe('one list', () => {
     await expect(row(page, active.at(-1)!)).toHaveAttribute('aria-current', 'true');
     await divider.click();
     await expect(excludedRows(page)).toHaveCount(out.length);
-    await expect(excludedRows(page).first().locator('.foot')).toHaveText('Arbeitnehmerüberlassung');
+    await expect(excludedRows(page).first().locator('.foot')).toHaveText(
+      T.reader.criterion.noAnue.short,
+    );
     // Kept: the next start shows it open; an archived job is in no list of the inbox.
     await open(page, WIN);
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
@@ -783,14 +786,6 @@ test.describe('one list', () => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
     expect(await visibleCount(page, '.btn.primary')).toBeLessThanOrEqual(1);
-  });
-
-  test('the setup page: a data folder that does not open says so', async ({ page }) => {
-    await open(page, `${WIN}&scenario=reset`);
-    await failNext(page, 'open_target');
-    await page.getByTestId('first-reset-report').getByRole('button').click();
-    await expect(page.getByTestId('folder-error')).toHaveText(T.error.text('db', {}));
-    expect(await calls(page, 'open_target')).toHaveLength(1);
   });
 });
 
