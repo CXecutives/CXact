@@ -117,7 +117,7 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands: `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore | fullMailbox})` · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
 (list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only) ·
 `job_detail(key)` · `mark_read(key) -> bool` · `mark_all_read(place, search?) -> JobKey[]` · `mark_unread(keys) -> number` ·
 `set_pinned(key, on)` · `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
@@ -142,7 +142,7 @@ Types: `JobView{key, portal, title, company, location, workMode, mailDate, first
 `Highlight{id, start, end (UTF-16), kind, reason}` · `ProfileInfo{fileName, bytes, savedAt, quality: good|thin|empty, understood{competenceCount, competences[], sources[], criteria[], warnings[], packs[], years, degrees[], focus[], roles[], wishes}, scoredAt, pending, form}` ·
 `ProfileForm` (the editor's fields, `core/src/profile/form.rs`) · `ProfileDraft{form, source, quality, understood}` ·
 `PortalHealth = ok | paused{until, reason} | quotaReached{until} | layoutSuspect{emptyMails, pages} | loginRequired` ·
-`AppState{platform, dryRun, firstRun, running, settings, mailbox, profile, portals[{portal, enabled, fetchDetails, login, loginEnabled, signedIn, health, quota?}] (Portal::ALL order), autoFetchOnStart, lastRun (the last fetch: fetch or fullMailbox, never a rescore or details run), counts, matchPending, dataDir, logDir, resetReport?}` ·
+`AppState{platform, version, dryRun, demo, firstRun, running, settings, mailbox, profile, portals[{portal, enabled, fetchDetails, login, loginEnabled, signedIn, health, quota?}] (Portal::ALL order), autoFetchOnStart, lastRun (the last fetch: fetch or fullMailbox, never a rescore or details run), counts, matchPending, dataDir, logDir, resetReport?}` ·
 `CommandError{kind, params}`. Traits: `pipeline::score::Matcher{rev, assess}` · `portal::PortalAdapter` · `matching::prescore`.
 
 ### Matching engine (`core/src/matching`, pure, synchronous, integer only)
@@ -569,3 +569,9 @@ as the parts land on `main`.
   minimum duration as checks (engine 16); an hourly wage for employees or agency work is
   employment pay. Declined: agency mails by label, pasting ads, several profiles, signing and
   updates, an application-letter prompt, snooze, radius, direct client vs agency.
+- Backend rest (2026-09-26): `--demo` starts on a data folder of its own (`<data>/demo`, made
+  anew from the bundled held-out ads of sets 8 and 9, no profile, window "CXact Demo", no
+  fetch, mailbox, sign-in, other work folder or reset: `ErrorKind::Demo`; `tools/demo.cmd`);
+  Wartung shows the version; by match the jobs without a score come first; the excluded
+  jobs of Archiv and Papierkorb are counted in their place; "Anmeldung einrichten" opens
+  Einstellungen at that portal's sign-in with "Zurück zum Job".
