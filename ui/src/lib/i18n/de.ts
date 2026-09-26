@@ -1613,6 +1613,8 @@ export const de = {
     connect: 'Verbinden',
     /** A changed mailbox is saved (said under its row). */
     mailboxSaved: 'Postfach verbunden.',
+    /** Saved after the sign-in, but the alert mails were not counted in time. */
+    mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
     autoArchive: 'Jobs nach 30 Tagen archivieren',

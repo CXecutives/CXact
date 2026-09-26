@@ -204,6 +204,8 @@ const TICK = Number(params.get('tick') ?? 40);
 const DELAY = scenario === 'slow' ? 900 : 0;
 const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
+/** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
+const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The order of the backend (`Portal::ALL`), on every screen. */
@@ -2503,7 +2505,8 @@ const handlers: Handlers = {
     if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
     if (harness.holdMailbox) await checking();
     if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
-    state.mailbox = { user, vault: VAULT, error: null, check: DEMO_CHECK };
+    // A count that does not finish never throws the sign-in away: `check` is then null.
+    state.mailbox = { user, vault: VAULT, error: null, check: MAIL_UNCOUNTED ? null : DEMO_CHECK };
     return state.mailbox;
   },
   remove_mailbox: () => {

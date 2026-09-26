@@ -1,5 +1,5 @@
-// "Verbinden" in Einstellungen while it signs in and counts: it holds the app and it can be
-// stopped.
+// "Verbinden" in Einstellungen while it signs in and counts: it holds the app, it can be
+// stopped, and a sign-in whose count did not finish is still a connected mailbox.
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test } from './fixtures';
@@ -61,4 +61,20 @@ test('CRED-1: a fetch waits while the mailbox is checked, and says why', async (
   await expect.poll(async () => (await calls(page, 'app_state')).length).toBeGreaterThan(loads);
   await page.getByTestId('fetch').click();
   await expect(page.getByTestId('run-running')).toBeVisible();
+});
+
+test('CRED-3: signed in but not counted is connected, and says the fetch counts', async ({
+  page,
+}) => {
+  await changeMailbox(page, `${WIN}&mail=uncounted`);
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-note')).toHaveText(
+    'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
+  );
+  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(page.getByTestId('settings-mailbox')).toContainText('Verbunden');
+  // With the count there, the note stays short.
+  await changeMailbox(page);
+  await page.getByTestId('mailbox-save').click();
+  await expect(page.getByTestId('mailbox-note')).toHaveText('Postfach verbunden.');
 });

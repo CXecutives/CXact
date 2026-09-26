@@ -1424,6 +1424,7 @@ export const en: Catalog = {
     twoStepAction: 'Turn on 2-Step Verification',
     connect: 'Connect',
     mailboxSaved: 'Mailbox connected.',
+    mailboxNotCounted: 'Mailbox connected, the next fetch counts the alert emails.',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
     autoArchive: 'Archive jobs after 30 days',
