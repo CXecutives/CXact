@@ -72,7 +72,7 @@ export const SHORTCUTS: readonly Shortcut[] = [
     action: 'menu',
     scope: 'everywhere',
     label: () => t.keysHelp.menu,
-    keys: (os) => (os.contextMenuKey ? ['shift+f10', 'contextmenu'] : []),
+    keys: (os) => (os.contextMenuKey ? ['shift+f10', 'menukey'] : []),
     shows: 'first',
   },
   {
@@ -188,7 +188,8 @@ const NAMED: Readonly<Record<string, readonly string[]>> = {
   enter: ['Enter'],
   f5: ['F5'],
   f10: ['F10'],
-  contextmenu: ['ContextMenu'],
+  /** The Menu key of a Windows keyboard. */
+  menukey: ['ContextMenu'],
 };
 
 /** A printed symbol: the layout may need Shift (and on macOS Option) to type it ("/" is

@@ -72,7 +72,7 @@ class Bulk {
     const out = [...this.actions];
     if (chosen.some((job) => job.unread)) {
       out.push({
-        icon: 'markUnread',
+        icon: 'read',
         label: t.selection.read,
         testid: 'selection-read',
         onclick: () => {

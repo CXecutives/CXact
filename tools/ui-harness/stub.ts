@@ -14,6 +14,7 @@
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
+//   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
@@ -92,6 +93,8 @@ interface Harness {
   holdAfter: number | null;
   /** A copy of a job as the stub holds it (null if unknown). */
   job: (key: JobKey) => JobView | null;
+  /** A copy of the stored profile's form (null without a profile). */
+  form: () => ProfileForm | null;
   /** The text `clipboard_text` returns (null: the browser's clipboard, if it allows it). */
   clipboard: string | null;
   /** The page holds unsaved changes (its last `set_unsaved`). */
@@ -104,6 +107,9 @@ interface Harness {
   /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
    *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
   text: (path: string, ...args: unknown[]) => Promise<string>;
+  /** "Verbinden" signs in and counts until this is false again or `cancel_run` stops it; it
+   *  holds the app meanwhile (`Activity::Mailbox`): a run is refused as busy. */
+  holdMailbox: boolean;
 }
 
 declare global {
@@ -211,6 +217,8 @@ const TICK = Number(params.get('tick') ?? 40);
 const DELAY = scenario === 'slow' ? 900 : 0;
 const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
+/** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
+const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The order of the backend (`Portal::ALL`), on every screen. */
@@ -1027,6 +1035,33 @@ function packsOf(form: ProfileForm): string[] {
 }
 
 /** A saved form: trimmed, empty rows gone, origins as the backend reads them back. */
+/**
+ * The keywords a save makes of `before` (the copy the view showed) as `after`, applied to the
+ * stored list `now`, like core's `profile::form::rebase`: the terms of `after` in its order
+ * and spelling, without a term the store dropped meanwhile (an untouched term keeps the
+ * stored spelling); a term the store gained meanwhile stays after the term it follows there.
+ */
+function mergeKeywords(now: string[], before: string[], after: string[]): string[] {
+  const find = (list: string[], text: string): number => {
+    const key = text.toLowerCase();
+    return list.findIndex((item) => item.toLowerCase() === key);
+  };
+  const out: string[] = [];
+  for (const text of after) {
+    const old = find(before, text);
+    const current = find(now, text);
+    if (old >= 0 && current < 0) continue;
+    out.push(old >= 0 && before[old] === text ? now[current]! : text);
+  }
+  let at = 0;
+  for (const text of now) {
+    const found = find(out, text);
+    if (found >= 0) at = found + 1;
+    else if (find(before, text) < 0) out.splice(at++, 0, text);
+  }
+  return out;
+}
+
 function savedForm(form: ProfileForm): ProfileForm {
   const clean = (items: string[]): string[] => items.map((t) => t.trim()).filter((t) => t !== '');
   return {
@@ -1418,7 +1453,8 @@ function refresh(): void {
 const DAY_MS = 24 * HOUR;
 
 /** The Übersicht's numbers (view::overview_stats): open musts of 30 days in the inbox, the
- *  market of 7 days, the enabled portals with their last alert mail. */
+ *  market of 30 days, the enabled portals with their last alert mail, what the inbox leaves
+ *  open (ads "Details holen" can still fetch, excluded jobs not opened yet). */
 function overviewStats(): OverviewStats {
   const month = NOW - 30 * DAY_MS;
   const week = NOW - 7 * DAY_MS;
@@ -1458,9 +1494,19 @@ function overviewStats(): OverviewStats {
   const newByPortal = PORTALS.map((portal) => ({
     portal,
     count: jobs.filter(
-      (j) => j.key.portal === portal && Date.parse(j.firstSeenAt) >= week && j.place !== 'trash',
+      (j) => j.key.portal === portal && Date.parse(j.mailDate ?? j.firstSeenAt) >= month,
     ).length,
   }));
+  // store::inbox_open with the portal's switches (the UI's detailsWanted).
+  const inbox = jobs.filter((j) => j.place === 'inbox');
+  const detailsWanted = inbox.filter((j) => {
+    const switches = state.portals.find((p) => p.portal === j.key.portal);
+    if (switches === undefined || !switches.enabled || !switches.fetchDetails) return false;
+    const kind = j.detail.kind;
+    if (kind === 'teaser') return switches.loginEnabled;
+    return kind === 'pending' || kind === 'onRequest' || kind === 'failed';
+  }).length;
+  const excludedNew = inbox.filter((j) => j.unread && j.match?.status === 'excluded').length;
   const quietPortals = state.portals
     .filter((p) => p.enabled)
     .map((p) => {
@@ -1484,6 +1530,8 @@ function overviewStats(): OverviewStats {
       remoteKnown: remote.length,
     },
     quietPortals,
+    detailsWanted,
+    excludedNew,
   };
 }
 
@@ -1767,6 +1815,9 @@ const PARTIAL_MUST = 'Aufbau und Weiterentwicklung des Reportings';
 const NICE_MET = 'Konzernabschluss nach HGB';
 const NICE_OPEN = 'Französisch in Wort und Schrift';
 
+/** Full texts that name few clear requirements (the engine's lowEvidence). */
+const LOW_EVIDENCE: ReadonlySet<string> = new Set(['2804']);
+
 /** The profile's words behind a met requirement (the reason's evidence), by the ad's words. */
 const EVIDENCE: Record<string, string> = {
   'Interim-Management im Mittelstand': 'Interim Management',
@@ -1888,7 +1939,10 @@ function detailOf(j: JobView): JobDetail {
   for (const r of openMusts) add('open', 'must', 'requirement', r);
   add('met', 'nice', 'requirement', NICE_MET);
   add('open', 'nice', 'requirement', NICE_OPEN);
-  if (facts.start === 'vague') add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  const vagueReason = facts.start === 'vague' ? String(reasons.length) : null;
+  if (vagueReason !== null) add('check', 'info', 'startVague', '', {}, rangeOf(frame.start));
+  // A full text that names few clear requirements (the reader's head says it once).
+  if (ok && LOW_EVIDENCE.has(j.key.id)) add('check', 'info', 'lowEvidence', '', {}, []);
   // The engine's violation, where the ad says it.
   const min = PROFILE_FORM.criteria.minDayRate ?? 0;
   if (excludedBy === 'anue') add('violation', 'hard', 'anue', '', {}, contractRange);
@@ -2036,9 +2090,10 @@ function detailOf(j: JobView): JobDetail {
     facts.start === null || facts.start === 'vague'
       ? criterion(
           'c:availability',
-          'open',
+          // A start to be agreed is a check the engine links to its reason.
+          facts.start === null ? 'open' : 'check',
           'availability',
-          facts.start === null ? {} : { start: 'vague' },
+          facts.start === null ? {} : { start: 'vague', reason: vagueReason ?? '' },
           rangeOf(frame.start),
         )
       : criterion(
@@ -2058,8 +2113,12 @@ function detailOf(j: JobView): JobDetail {
   ].filter(
     // Like the engine, a criterion the profile does not set is left out (the sample profile's
     // start counts as set, except in no-minimum).
+    // Employment pay (a permanent job, temporary agency work) has no day rate to judge.
     (c) =>
-      (c.code !== 'minDayRate' || state.profile?.form?.criteria.minDayRate !== null) &&
+      (c.code !== 'minDayRate' ||
+        (state.profile?.form?.criteria.minDayRate !== null &&
+          contract.type !== 'permanent' &&
+          contract.type !== 'anue')) &&
       (c.code !== 'availability' || scenario !== 'no-minimum'),
   );
   // Engine 16: the profile's values, the ad's and the reason that decided it (core
@@ -2466,6 +2525,7 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
 function startRun(request: RunRequest, sender: Sender | null): void {
   const kind = request.kind;
   if (running) throw fail('busy');
+  if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
   // A mailbox run needs a portal to read (commands/run.rs run_context).
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
@@ -2612,6 +2672,7 @@ const handlers: Handlers = {
     return null;
   },
   cancel_run: () => {
+    mailboxCheck?.stop();
     cancelRun();
     return null;
   },
@@ -2745,6 +2806,17 @@ const handlers: Handlers = {
     const words = c.exclusionWords ?? [];
     if (words.length > 300 || words.some((w) => w.length > 1000)) refuse('exclusionWords', null);
     const form = savedForm(after);
+    // The keywords like core's merge: an unchanged list keeps the stored one, a changed one
+    // is applied to it (a term added from the reader and its undo, each on its own copy).
+    const stored = save.source === null ? (state.profile?.form ?? null) : null;
+    if (stored !== null) {
+      const { keywords } = save.before;
+      form.keywords =
+        keywords.length === after.keywords.length &&
+        keywords.every((term, index) => term === after.keywords[index])
+          ? [...stored.keywords]
+          : mergeKeywords(stored.keywords, keywords, form.keywords);
+    }
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
     state.profile = {
@@ -2795,18 +2867,26 @@ const handlers: Handlers = {
     harness.closed = true;
     return null;
   },
-  save_mailbox: ({ user, password }) => {
+  save_mailbox: async ({ user, password }) => {
+    // Like the command: the shape first (before the busy check), nothing is sent while it
+    // cannot be right.
     if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(user)) {
       throw fail('invalid', { reason: 'mailAddress' });
     }
     if (!/^[a-z]{16}$/i.test(password.replace(/\s/g, ''))) {
       throw fail('invalid', { reason: 'appPassword' });
     }
+    if (running) throw fail('busy');
+    if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
+    if (harness.holdMailbox) await checking();
     if (password.replace(/\s/g, '').toLowerCase() === WRONG_PASSWORD) throw fail('mailAuth');
-    state.mailbox = { user, vault: VAULT, error: null, check: DEMO_CHECK };
+    // A count that does not finish never throws the sign-in away: `check` is then null.
+    state.mailbox = { user, vault: VAULT, error: null, check: MAIL_UNCOUNTED ? null : DEMO_CHECK };
     return state.mailbox;
   },
   remove_mailbox: () => {
+    if (running) throw fail('busy');
+    if (mailboxCheck !== null) throw fail('busy', { activity: 'mailbox' });
     state.mailbox = { user: null, vault: VAULT, error: null, check: null };
     return true;
   },
@@ -2908,6 +2988,7 @@ const harness: Harness = {
   clipboard: null,
   unsaved: false,
   closed: false,
+  holdMailbox: false,
   requestClose() {
     if (!harness.unsaved) {
       harness.closed = true;
@@ -2927,6 +3008,9 @@ const harness: Harness = {
       typeof value === 'function' ? (value as (...a: unknown[]) => unknown)(...args) : value,
     );
   },
+  form() {
+    return state.profile?.form ? structuredClone(state.profile.form) : null;
+  },
 };
 window.__harness = harness;
 initial();
@@ -2935,6 +3019,28 @@ initial();
 
 /** The app password Gmail refuses in the harness. */
 const WRONG_PASSWORD = 'falschfalschfals';
+
+/** A "Verbinden" in progress (`harness.holdMailbox`): `stop` is `cancel_run`. */
+let mailboxCheck: { stop: () => void } | null = null;
+
+/** Signs in and counts until `holdMailbox` is false again; `cancel_run` stops it. */
+function checking(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setInterval(() => {
+      if (harness.holdMailbox) return;
+      clearInterval(timer);
+      mailboxCheck = null;
+      resolve();
+    }, TICK);
+    mailboxCheck = {
+      stop: () => {
+        clearInterval(timer);
+        mailboxCheck = null;
+        reject(fail('mailCancelled'));
+      },
+    };
+  });
+}
 
 /** Commands that refuse in the dry run (`ensure_real` in src-tauri): they write outside it. */
 const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([

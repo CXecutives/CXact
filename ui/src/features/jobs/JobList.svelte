@@ -560,7 +560,7 @@
         {
           id: 'open',
           label: t.menu.open,
-          icon: 'markUnread',
+          icon: 'read',
           keys: keyLabel('enter'),
           run: () => select(job, { toggle: false, range: false }),
         },

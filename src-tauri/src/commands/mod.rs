@@ -222,8 +222,13 @@ pub struct AppState {
     pub scoring: Scoring,
     /// The small files that follow the user's marks without a run.
     pub refresh: Refresh,
-    /// What the last "Verbinden" found in the mailbox (this session only; never the password).
+    /// What the last "Verbinden" found in the mailbox (this session only; never the password):
+    /// `None` also when it signed in but did not count.
     pub mailbox_check: Mutex<Option<jobalert_core::view::MailboxCheck>>,
+    /// Counts every end of saving or removing the mailbox ([`MailboxGuard`]). A run reads the
+    /// vault outside the activity lock (a keychain prompt can wait); when the count changed
+    /// meanwhile, what it read may be the old account and it reads again (`run::launch`).
+    pub mailbox_epoch: AtomicU64,
     /// Unsaved changes of the page keep the window from closing until the page has asked.
     pub close_guard: CloseGuard,
 }
@@ -274,6 +279,10 @@ pub enum Activity {
     /// files would lose their temporary files to "Textdateien löschen", two exports would
     /// fight over the Excel file.
     Files,
+    /// The mailbox is being checked and stored, or removed (cancellable): no run reads the
+    /// vault meanwhile, so none starts with the account that is just being replaced and
+    /// writes its scan state after the switch cleared it.
+    Mailbox(CancellationToken),
 }
 
 /// What holds the app, by the name the page knows (a run by its kind); `None` while idle.
@@ -283,6 +292,7 @@ fn activity_name(activity: &Activity) -> Option<serde_json::Value> {
         Activity::Run(handle) => serde_json::to_value(handle.snapshot().kind).ok(),
         Activity::Session(_) => Some("session".into()),
         Activity::Files => Some("files".into()),
+        Activity::Mailbox(_) => Some("mailbox".into()),
     }
 }
 
@@ -311,6 +321,30 @@ impl Drop for FilesGuard<'_> {
             }
         }
         // A profile change during the command found the slot busy: its rescore starts now.
+        scoring::after_run(&self.app);
+    }
+}
+
+/// The app held for the mailbox ([`AppState::claim_mailbox`]). Dropped: the mailbox counts
+/// as changed (`mailbox_epoch`, under the activity lock, so a run that claims the slot after
+/// this sees it), the slot is free again and a profile change it held up is scored.
+pub struct MailboxGuard<'a> {
+    state: &'a AppState,
+    app: tauri::AppHandle,
+    /// Cancels the sign-in and the count (`cancel_run`: "Abbrechen", closing the window).
+    pub cancel: CancellationToken,
+}
+
+impl Drop for MailboxGuard<'_> {
+    fn drop(&mut self) {
+        {
+            let mut activity = lock(&self.state.activity);
+            self.state.mailbox_epoch.fetch_add(1, Ordering::SeqCst);
+            if matches!(*activity, Activity::Mailbox(_)) {
+                *activity = Activity::Idle;
+            }
+        }
+        // A profile change during the check found the slot busy: its rescore starts now.
         scoring::after_run(&self.app);
     }
 }
@@ -357,7 +391,8 @@ impl AppState {
     }
 
     /// What holds the app, as the page names it (`fetch`, `fullMailbox`, `details`,
-    /// `rescore`, `session`, `files`): the closing note and the busy error say which.
+    /// `rescore`, `session`, `files`, `mailbox`): the closing note and the busy error say
+    /// which.
     pub fn activity_name(&self) -> Option<serde_json::Value> {
         activity_name(&lock(&self.activity))
     }
@@ -389,6 +424,28 @@ impl AppState {
         })
     }
 
+    /// Holds the app while the mailbox is checked and stored, or removed - checked and
+    /// claimed under one lock, like a run: busy while a run, a sign-in or a file command holds
+    /// it, and no run starts until the guard is dropped.
+    fn claim_mailbox(&self, app: &tauri::AppHandle) -> CmdResult<MailboxGuard<'_>> {
+        let cancel = CancellationToken::new();
+        let mut activity = lock(&self.activity);
+        if !matches!(*activity, Activity::Idle) {
+            return Err(busy_error(&activity));
+        }
+        *activity = Activity::Mailbox(cancel.clone());
+        Ok(MailboxGuard {
+            state: self,
+            app: app.clone(),
+            cancel,
+        })
+    }
+
+    /// How often the mailbox was saved or removed so far ([`MailboxGuard`]).
+    fn mailbox_epoch(&self) -> u64 {
+        self.mailbox_epoch.load(Ordering::SeqCst)
+    }
+
     /// The dry run changes nothing outside its in-memory database.
     fn ensure_real(&self) -> CmdResult<()> {
         if self.dry_run {
@@ -406,12 +463,12 @@ impl AppState {
         Ok(())
     }
 
-    /// Cancels a run or a sign-in/out in progress (idempotent). A file command ends by
-    /// itself in a moment.
+    /// Cancels a run, a sign-in/out at a portal or the mailbox check in progress
+    /// (idempotent). A file command ends by itself in a moment.
     pub fn cancel_run(&self) {
         match &*lock(&self.activity) {
             Activity::Run(run) => run.cancel(),
-            Activity::Session(cancel) => cancel.cancel(),
+            Activity::Session(cancel) | Activity::Mailbox(cancel) => cancel.cancel(),
             Activity::Files | Activity::Idle => {}
         }
     }
@@ -448,6 +505,8 @@ mod tests {
         assert_eq!(files.params.get("activity"), Some(&"files".into()));
         let session = busy_error(&Activity::Session(CancellationToken::new()));
         assert_eq!(session.params.get("activity"), Some(&"session".into()));
+        let mailbox = busy_error(&Activity::Mailbox(CancellationToken::new()));
+        assert_eq!(mailbox.params.get("activity"), Some(&"mailbox".into()));
         assert!(busy_error(&Activity::Idle).params.is_empty());
     }
 }

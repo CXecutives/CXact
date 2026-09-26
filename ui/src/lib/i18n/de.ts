@@ -80,13 +80,11 @@ const portalOf = (value: unknown): string =>
 const INTERNAL = 'Ein interner Fehler, mehr steht im Protokoll.';
 
 /** What holds the app (the backend's `activity`: a run by its kind, a sign-in, a file
- *  command), for the busy error and the closing note. Reading the whole mailbox is a fetch,
- *  and so is what the backend does not name. */
-type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files';
-const busyOf = (value: unknown): Busy =>
-  value === 'details' || value === 'rescore' || value === 'session' || value === 'files'
-    ? value
-    : 'fetch';
+ *  command, the mailbox check of Verbinden), for the busy error and the closing note.
+ *  Reading the whole mailbox is a fetch, and so is what the backend does not name. */
+type Busy = 'fetch' | 'details' | 'rescore' | 'session' | 'files' | 'mailbox';
+const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbox'];
+const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
   fetch: 'Gerade läuft schon ein Abruf.',
@@ -94,6 +92,7 @@ const busy: Record<Busy, string> = {
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
   files: 'Die App schreibt gerade ihre Dateien.',
+  mailbox: 'Gerade wird das Postfach geprüft.',
 };
 
 const closing: Record<Busy, string> = {
@@ -102,6 +101,7 @@ const closing: Record<Busy, string> = {
   rescore: 'Das Bewerten wird beendet, dann schließt die App.',
   session: 'Die Anmeldung wird beendet, dann schließt die App.',
   files: 'Die App schreibt ihre Dateien fertig, dann schließt sie.',
+  mailbox: 'Die Prüfung des Postfachs wird beendet, dann schließt die App.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -242,8 +242,8 @@ const PROFILE_UNREADABLE = 'Profil nicht lesbar';
  *  and the settings. */
 const FULL_MAILBOX = 'Alle Alert-Mails abrufen';
 
-const ANUE = 'Die Anzeige nennt Arbeitnehmerüberlassung.';
-const LOW_TEXT = 'Die Anzeige hat wenig Text.';
+const ANUE = 'Die Anzeige nennt Zeitarbeit.';
+const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
 const SHORT_TEXT = 'Die Anzeige ist sehr kurz.';
 const WORKLOAD = 'Die Auslastung passt nicht zum Profil.';
 const DURATION = 'Die Laufzeit liegt unter dem Minimum im Profil.';
@@ -302,7 +302,7 @@ function workloadCheck(p: Params): string {
 const contract = {
   interim: 'Interim',
   permanent: 'Festanstellung',
-  anue: 'Arbeitnehmerüberlassung',
+  anue: 'Zeitarbeit',
   unclear: 'Vertragsart unklar',
 } as const;
 export type ContractKind = keyof typeof contract;
@@ -389,15 +389,15 @@ const reasonCode = {
   requirement: '',
   term: '',
   anue: ANUE,
-  anueRisk: 'Ein Personaldienstleister ohne Angaben zum Vertrag, Überlassung ist möglich.',
+  anueRisk: 'Ein Personaldienstleister ohne Angaben zum Vertrag, Zeitarbeit ist möglich.',
   dayRate: (p) => `Der Tagessatz von ${formatEuro(p.rate)} liegt unter ${formatEuro(p.min)}.`,
   availability: 'Die Verfügbarkeit passt nicht.',
   country: (p): string =>
     p.allowed
       ? `Der Einsatzort liegt außerhalb von ${countryNames(p.allowed)}.`
       : 'Der Einsatzort passt nicht.',
-  anueOptional: 'Arbeitnehmerüberlassung ist möglich, aber nicht Pflicht.',
-  anueHidden: 'Die Anzeige deutet auf Arbeitnehmerüberlassung hin.',
+  anueOptional: 'Zeitarbeit ist möglich, aber nicht Pflicht.',
+  anueHidden: 'Die Anzeige deutet auf Zeitarbeit hin.',
   countryUnclear: 'Der Einsatzort ist unklar.',
   dayRateCurrency: (p) => `Der Satz ist in ${str(p.currency)} angegeben.`,
   availabilityGap: (p) =>
@@ -498,8 +498,8 @@ const criteria = {
     exclusion: 'Der Einsatzort liegt außerhalb der Länder im Profil.',
   },
   noAnue: {
-    label: 'Arbeitnehmerüberlassung',
-    short: 'Arbeitnehmerüberlassung',
+    label: 'Zeitarbeit',
+    short: 'Zeitarbeit',
     exclusion: ANUE,
   },
   noPermanent: {
@@ -546,7 +546,10 @@ const criteria = {
 } satisfies Record<string, CriterionText>;
 export type CriterionKey = keyof typeof criteria;
 
-export type CriterionState = 'met' | 'violated' | 'unknown' | 'unset';
+/** How a row of the reader's Konditionen fits the profile (features/jobs/terms.ts): fits, fits
+ *  in part (a wish or a limit missed, never an exclusion), does not fit, unclear in the ad
+ *  (check), not stated. */
+export type TermVerdict = 'met' | 'partial' | 'violated' | 'unknown' | 'unset';
 
 /** `JobMatch.note` / `MatchDetail.summary` codes. */
 const note = {
@@ -1153,23 +1156,19 @@ export const de = {
     workload: (from: number | null, to: number, short = true) => workloadWords(from, to, short),
   },
   reader: {
+    /** The must count beside the band, said once in the reader ("4 von 5 Pflichtpunkten
+     *  erfüllt, 1 teilweise"). */
     mustMet: (met: number, total: number, partial = 0) =>
-      `${n(met)} von ${n(total)} Pflicht erfüllt` +
+      `${n(met)} von ${n(total)} ${total === 1 ? 'Pflichtpunkt' : 'Pflichtpunkten'} erfüllt` +
       (partial > 0 ? `, ${n(partial)} teilweise` : ''),
-    noMust: 'Keine Pflichtanforderungen erkannt',
-    /** The block "Anforderungen": the must line, then how many optional ones are missing. */
-    requirements: 'Anforderungen',
-    requirementsLine: (must: string, niceMissing: number) =>
-      niceMissing > 0
-        ? `${must} · ${n(niceMissing)} optional ${niceMissing === 1 ? 'fehlt' : 'fehlen'}`
-        : must,
+    noMust: 'Keine Pflichtpunkte erkannt',
     /** A must requirement the profile lacks: the term goes into the profile's keywords. */
     addToProfile: 'Zum Profil hinzufügen',
     added: 'Hinzugefügt',
     addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
     /** The label of the table of the ad's terms. */
     frame: 'Konditionen',
-    /** The rows of the terms table, in their order (features/jobs/terms.ts). */
+    /** The rows of the terms table (their order is the facts table, lib/facts.ts). */
     term: {
       contract: 'Vertragsart',
       rate: 'Tagessatz',
@@ -1178,6 +1177,7 @@ export const de = {
       workload: 'Auslastung',
       remote: 'Remote',
       place: 'Ort',
+      industry: 'Branche',
       experience: 'Erfahrung',
     },
     /** The value of a term the ad does not state. */
@@ -1191,10 +1191,22 @@ export const de = {
       anue: 'Zeitarbeit',
       unclear: 'unklar',
     },
+    /** A rate the ad leaves to be agreed (a start to be agreed says `facts.soon`). */
     rateOpen: 'nach Absprache',
-    /** The row "Tagessatz" of a permanent job that states its annual salary instead. */
+    startNow: 'ab sofort',
+    /** The pay row of a permanent job or temporary agency work (an annual salary, no day
+     *  rate); `lowerBound`: the ad names only its lower end. */
     salaryName: 'Gehalt',
-    salary: (amount: number) => `${formatMoney(amount, null)}/Jahr`,
+    salary: (amount: number, lowerBound: boolean) =>
+      lowerBound ? `ab ${formatEuro(amount)}/Jahr` : `${formatEuro(amount)}/Jahr`,
+    /** The duration of a permanent job. */
+    unlimited: 'unbefristet',
+    /** The work mode of an ad that states no remote share. */
+    workMode: {
+      remote: 'voll remote',
+      hybrid: 'teilweise remote',
+      onsite: 'vor Ort',
+    } satisfies Record<WorkMode, string>,
     years: (min: number, max: number | null) =>
       max !== null && max > min
         ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
@@ -1203,36 +1215,15 @@ export const de = {
      *  infers. */
     estimated: 'geschätzt',
     assumed: 'vermutet',
-    /** The profile's side of a row, quiet under the ad's value (its wishes merged in). */
-    profileSide: {
-      rate: (min: number | null, wish: number | null) =>
-        [
-          min === null ? '' : `Minimum ${formatEuro(min)}`,
-          wish === null ? '' : `Wunsch ${formatEuro(wish)}`,
-        ]
-          .filter((part) => part !== '')
-          .join(', '),
-      start: (date: string | null) =>
-        date === null ? 'Verfügbar ab sofort' : `Verfügbar ab ${date}`,
-      /** The days per week of the profile: "3 bis 5 Tage". */
-      workload: (min: number | null, max: number | null) => profileDays(min, max, false),
-      duration: (min: number) => `mindestens ${count(min, 'Monat', 'Monate')}`,
-      remote: (level: RemoteWish) => `Wunsch ${REMOTE_LEVEL[level] ?? level}`,
-      place: (countries: string, regions: readonly string[]) =>
-        [
-          countries === '' ? '' : countryNames(countries),
-          regions.length === 0 ? '' : `Wunsch ${joined([...regions])}`,
-        ]
-          .filter((part) => part !== '')
-          .join(', '),
-    },
-    /** Whether a term of the ad fits the profile, in a word (the table's third column). */
+    /** Whether a term of the ad fits the profile, in a word (the table's third column); its
+     *  tooltip is the sentence of the reason that decided it. */
     verdict: {
       met: 'passt',
+      partial: 'passt teilweise',
       violated: 'passt nicht',
       unknown: 'prüfen',
       unset: 'offen',
-    } satisfies Record<CriterionState, string>,
+    } satisfies Record<TermVerdict, string>,
     /** A marked passage of the ad under the pointer: its state and weight ("Erfüllt ·
      *  Pflicht"), or the row of the terms and its verdict. */
     markHint: (what: string, state: string) => `${what} · ${state}`,
@@ -1248,8 +1239,7 @@ export const de = {
     restore: 'Wiederherstellen',
     /** The "…" button and its menu. */
     more: 'Weitere Aktionen',
-    markUnread: 'Als ungelesen markieren',
-    /** An excluded job: its passage, counting it anyway, and back. */
+    /** An excluded job: its passages, counting it anyway, and back. */
     showInAd: 'In der Anzeige zeigen',
     override: 'Trotzdem einbeziehen',
     overrideUndo: 'Rückgängig',
@@ -1259,6 +1249,8 @@ export const de = {
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     /** Under the band of a score that comes from a preview only. */
     preliminary: 'Vorläufig, nur Vorschau',
+    /** Under the band of a score from a full text that names few requirements. */
+    lowEvidence: 'Die Anzeige nennt wenige klare Anforderungen, die Passung bleibt grob.',
     /** The band of a job whose ad is still to come. */
     scoredLater: 'Wird bewertet, sobald die Anzeige da ist',
     mail: OPEN_MAIL,
@@ -1271,14 +1263,11 @@ export const de = {
     /** The exact moment of the mail, in the tooltip of its date. */
     mailAt: (date: string, time: string) => `Alert-Mail vom ${date} um ${time}`,
     fetchDetails: 'Details holen',
-    /** The ad of a job whose details are still to come. */
-    fetchNow: 'Jetzt holen',
-    why: 'Anforderungen im Detail',
+    why: 'Anforderungen',
     met: 'Erfüllt',
     partial: 'Teilweise erfüllt',
     missing: 'Nicht im Profil',
     check: 'Zu prüfen',
-    violations: 'Ausgeschlossen',
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
     detail: {
@@ -1289,9 +1278,9 @@ export const de = {
       gone: detailSays.gone,
       onRequest: detailSays.onRequest,
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** A closed or vanished ad, since the app saw it so (when it knows). */
-    offline: 'Anzeige offline',
-    offlineSince: (date: string) => `Anzeige offline seit ${date}`,
+    /** A closed or vanished ad: when the app last looked at it (the tooltip of its line; the
+     *  day it closed is not known). */
+    checkedAt: (when: string) => `Zuletzt geprüft ${when}`,
     detailsOff: '„Details holen“ ist für dieses Portal aus.',
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',
@@ -1300,35 +1289,32 @@ export const de = {
     noProfileText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
     profileUnreadable: PROFILE_UNREADABLE,
     label: 'Übersicht',
-    /** The first block: what is new since the last fetch, as counts that lead into the list. */
-    since: 'Seit dem letzten Abruf',
+    /** The first block: the inbox as counts that lead into the list (its name in Jobs). */
+    since: 'Eingang',
     tileNew: 'Neu',
     tileHigh: 'Hohe Passung',
-    tileExcluded: 'Ausgeschlossen',
-    fetchedAt: (when: string) => `Abgerufen ${when}`,
     today: 'Heute ansehen',
-    allNew: (value: number) => `Alle ${n(value)} neuen`,
     favourites: 'Favoriten',
-    decide: 'Braucht eine Entscheidung',
+    /** More favourites than the block shows: all of them in Jobs. */
+    allFavourites: (value: number) => `Alle ${n(value)} Favoriten`,
     noDetail: (value: number) =>
       value === 1 ? '1 Job ohne ganze Anzeige' : `${n(value)} Jobs ohne ganze Anzeige`,
     fetchDetails: 'Details holen',
-    excludedCheck: (value: number) =>
-      value === 1 ? '1 Job ausgeschlossen' : `${n(value)} Jobs ausgeschlossen`,
+    /** Excluded jobs not opened yet, an open point until she has looked at them. */
+    excludedNew: (value: number) =>
+      value === 1 ? '1 neuer Job ausgeschlossen' : `${n(value)} neue Jobs ausgeschlossen`,
     look: 'Ansehen',
-    /** Shown in the empty reader when the overview has nothing else to say (like Mail's "no message selected"). */
-    pick: 'Wähle links einen Job aus.',
+    /** The open points, the most important first. */
     issues: 'Offene Punkte',
-    best: 'Neu und passend',
     excel: 'Excel-Datei öffnen',
     /** The best matches as one prompt for any AI chat. */
-    promptTop: 'Prompt für KI-Vergleich kopieren',
+    promptTop: 'KI-Prompt kopieren',
     /** Its tooltip: what goes into it (favourites first, read or not). */
     promptTopHint: 'Kopiert deine Favoriten und die besten Jobs mit dem Profil als einen Prompt.',
     /** No scored job and no favourite to compare yet. */
     promptTopNone: 'Noch ist kein Job bewertet.',
-    /** When the list beside shows the best new jobs on top already. */
-    bestInList: 'Die besten neuen Jobs stehen oben in der Liste.',
+    /** A portal that never sent an alert mail: its site, where the alert is made. */
+    createAlert: 'Alert anlegen',
     files: 'Dateien',
     /** Under the portal's name, so the sentence does not name it again; next to the button
      *  that opens the mail. */
@@ -1347,12 +1333,12 @@ export const de = {
     openMusts: 'Oft verlangt, nicht im Profil',
     inJobs: (value: number) => `in ${n(value)} Jobs`,
     addToProfile: 'Zum Profil hinzufügen',
-    /** The market of the last seven days. */
-    market: 'Markt',
-    marketNew: 'Neu in 7 Tagen',
+    /** The market of the last 30 days, every row over the same days. */
+    market: 'Markt der letzten 30 Tage',
+    marketNew: 'Jobs je Portal',
     marketRate: 'Tagessatz passender Jobs',
     marketRateValue: (median: string, jobs: number) =>
-      `${median} im Mittel aus ${count(jobs, 'Job', 'Jobs')}`,
+      `${median} im Median aus ${count(jobs, 'Job', 'Jobs')}`,
     marketMin: (value: string) => `dein Minimum ${value}`,
     marketRemote: 'Überwiegend remote',
     marketRemoteValue: (share: number, known: number) =>
@@ -1777,6 +1763,8 @@ export const de = {
     connect: 'Verbinden',
     /** A changed mailbox is saved (said under its row). */
     mailboxSaved: 'Postfach verbunden.',
+    /** Saved after the sign-in, but the alert mails were not counted in time. */
+    mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
     autoArchive: 'Jobs nach 30 Tagen archivieren',

@@ -233,7 +233,9 @@ pub fn form_of(text: &str) -> Option<ProfileForm> {
 /// Saves the editor's form. `before` is the form as the editor received it: only fields
 /// that differ from it are written. They go into `source` (the JSON of a chosen file or a
 /// pasted answer, `{}` for a new profile) or, without one, into the stored profile. The
-/// previous file becomes the one backup next to it; the file is replaced atomically.
+/// previous file becomes the one backup next to it; the file is replaced atomically. One save
+/// at a time: two saves close together (two terms added from the reader) each read the file
+/// the other one wrote, so neither drops what the other changed.
 pub fn save_form(
     workspace: &Path,
     source: Option<&str>,
@@ -241,6 +243,10 @@ pub fn save_form(
     after: &ProfileForm,
     clear: &[UnreadableField],
 ) -> Result<ProfileInfo> {
+    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _one_at_a_time = SAVING
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let after = form::validate(after)?;
     let path = profile_path(workspace);
     let previous = match std::fs::read(&path) {
@@ -1012,5 +1018,131 @@ mod tests {
         assert_eq!(load(dir.path()).unwrap().unwrap()["keywords"][0], "SAP");
         store(dir.path(), "{kaputt");
         assert!(info(dir.path()).unwrap().unwrap().parse_error.is_some());
+    }
+
+    /// The form with `terms` as its keywords.
+    fn with_keywords(form: &ProfileForm, terms: &[&str]) -> ProfileForm {
+        ProfileForm {
+            keywords: terms.iter().map(|t| (*t).to_owned()).collect(),
+            ..form.clone()
+        }
+    }
+
+    fn keywords(dir: &Path) -> Vec<String> {
+        stored_form(dir).unwrap().keywords
+    }
+
+    /// DS-3: adding a missing term to the profile, and its undo, save the form as it was
+    /// shown, which can be older than the file: a term added on an older copy keeps what came
+    /// in between, and an undo takes out its own term only, never another one, and never
+    /// brings one back.
+    #[test]
+    fn ds_3_terms_added_and_undone_on_older_copies_keep_each_other() {
+        let dir = workspace();
+        store(
+            dir.path(),
+            r#"{"name": "Erika", "keywords": ["SAP", {"frei": "Objekt"}]}"#,
+        );
+        let p0 = stored_form(dir.path()).unwrap();
+        let p0_x = with_keywords(&p0, &["SAP", "IFRS"]);
+        let p0_y = with_keywords(&p0, &["SAP", "Konsolidierung"]);
+        let p0_x_y = with_keywords(&p0, &["SAP", "IFRS", "Konsolidierung"]);
+
+        // One after the other: add X, add Y, undo X, undo Y.
+        save_form(dir.path(), None, &p0, &p0_x, &[]).unwrap();
+        save_form(dir.path(), None, &p0_x, &p0_x_y, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP", "IFRS", "Konsolidierung"]);
+        save_form(dir.path(), None, &p0_x, &p0, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP", "Konsolidierung"], "Y stays");
+        save_form(dir.path(), None, &p0_x_y, &p0_x, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP"], "X does not come back");
+
+        // The second click before the first reload: Y is added to the copy without X.
+        save_form(dir.path(), None, &p0, &p0_x, &[]).unwrap();
+        save_form(dir.path(), None, &p0, &p0_y, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP", "IFRS", "Konsolidierung"]);
+        save_form(dir.path(), None, &p0_x, &p0, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP", "Konsolidierung"]);
+        save_form(dir.path(), None, &p0_y, &p0, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["SAP"]);
+        // What the form cannot show stays all along.
+        let value: Value = serde_json::from_str(&stored(dir.path())).unwrap();
+        assert_eq!(
+            value["keywords"],
+            serde_json::json!(["SAP", {"frei": "Objekt"}])
+        );
+
+        // The form saved on the file as it is writes its list as it is, order and all.
+        let now = with_keywords(&p0, &["SAP", "IFRS"]);
+        save_form(dir.path(), None, &p0, &now, &[]).unwrap();
+        let turned = with_keywords(&p0, &["IFRS", "SAP"]);
+        save_form(dir.path(), None, &now, &turned, &[]).unwrap();
+        assert_eq!(keywords(dir.path()), ["IFRS", "SAP"]);
+    }
+
+    /// DS-3: a Profil save on an older copy keeps what the user did to the list, not only
+    /// what it added and removed: a term typed again in capitals (a double click on its chip
+    /// moves it to the end) and a new order stay, and the term that came in between stays
+    /// after the term it follows in the file. A term the save did not touch keeps the
+    /// spelling the file has now.
+    #[test]
+    fn ds_3_a_new_order_or_spelling_on_an_older_copy_is_kept() {
+        let dir = workspace();
+        store(
+            dir.path(),
+            r#"{"name": "Erika", "keywords": ["sap", "IFRS", "Controlling"]}"#,
+        );
+        let p0 = stored_form(dir.path()).unwrap();
+        // Meanwhile a term comes in from the reader.
+        let p1 = with_keywords(&p0, &["sap", "IFRS", "Controlling", "Konsolidierung"]);
+        save_form(dir.path(), None, &p0, &p1, &[]).unwrap();
+        // The editor still holds p0: "Controlling" moves first, "sap" becomes "SAP".
+        let edited = with_keywords(&p0, &["Controlling", "IFRS", "SAP"]);
+        save_form(dir.path(), None, &p0, &edited, &[]).unwrap();
+        assert_eq!(
+            keywords(dir.path()),
+            ["Controlling", "Konsolidierung", "IFRS", "SAP"]
+        );
+
+        // Meanwhile "IFRS" is spelled "Ifrs"; a save on the older copy that only adds a
+        // term leaves that spelling as it is.
+        let p2 = stored_form(dir.path()).unwrap();
+        let respelled = with_keywords(&p2, &["Controlling", "Konsolidierung", "Ifrs", "SAP"]);
+        save_form(dir.path(), None, &p2, &respelled, &[]).unwrap();
+        let added = with_keywords(
+            &p2,
+            &["Controlling", "Konsolidierung", "IFRS", "SAP", "Treasury"],
+        );
+        save_form(dir.path(), None, &p2, &added, &[]).unwrap();
+        assert_eq!(
+            keywords(dir.path()),
+            ["Controlling", "Konsolidierung", "Ifrs", "SAP", "Treasury"]
+        );
+    }
+
+    /// DS-3: saves close together each read what the other wrote: eight terms added at once,
+    /// each on the same older copy, are all in the file.
+    #[test]
+    fn ds_3_saves_close_together_keep_every_term() {
+        let dir = workspace();
+        store(dir.path(), r#"{"name": "Erika", "keywords": ["SAP"]}"#);
+        let p0 = stored_form(dir.path()).unwrap();
+        let terms: Vec<String> = (1..=8).map(|n| format!("Begriff {n}")).collect();
+        let start = std::sync::Barrier::new(terms.len());
+        std::thread::scope(|scope| {
+            for term in &terms {
+                let (dir, p0, start) = (dir.path(), &p0, &start);
+                scope.spawn(move || {
+                    let after = with_keywords(p0, &["SAP", term]);
+                    start.wait();
+                    save_form(dir, None, p0, &after, &[]).unwrap();
+                });
+            }
+        });
+        let stored = keywords(dir.path());
+        for term in &terms {
+            assert!(stored.contains(term), "{term} lost: {stored:?}");
+        }
+        assert_eq!(stored.len(), 9, "{stored:?}");
     }
 }

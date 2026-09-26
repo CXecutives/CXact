@@ -40,6 +40,7 @@
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
+  import Factory from '@lucide/svelte/icons/factory';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import FileText from '@lucide/svelte/icons/file-text';
@@ -109,6 +110,7 @@
     'external-link': ExternalLink,
     eye: Eye,
     'eye-off': EyeOff,
+    factory: Factory,
     'file-pen-line': FilePenLine,
     'file-spreadsheet': FileSpreadsheet,
     'file-text': FileText,

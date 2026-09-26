@@ -76,7 +76,7 @@ test('an excluded row names a missing degree or licence in short words, never a 
   );
   const key = { portal: 'freelance', id: '900412' } as const;
   const row = excluded.getByTestId('job-row-freelance-900412');
-  await expect(row.locator('.foot')).toHaveText('Arbeitnehmerüberlassung');
+  await expect(row.locator('.foot')).toHaveText('Zeitarbeit');
   const job = await page.evaluate((k) => window.__harness.job(k), key);
   // The engine excludes on a degree or licence the ad makes mandatory (`formalOpen`).
   const exclude = (code: string, params: Record<string, string | boolean>) =>
@@ -262,11 +262,10 @@ test('English names agency work and the preferred rate one way everywhere', asyn
     page.getByTestId('excluded-rows').getByTestId('job-row-freelance-900412').locator('.foot'),
   ).toHaveText('Temporary agency work');
   // The field is "Preferred day rate"; "target" is the word of the target roles. The
-  // preference stands in the row of the rate, beside the minimum.
+  // preference is the reason of the rate's verdict, in its tooltip.
   await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();
-  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText(
-    'Minimum €1,100, preferred €1,200',
-  );
+  await page.getByTestId('criteria').getByTestId('term-rate').locator('.verdict').hover();
+  await expect(page.getByRole('tooltip')).toContainText('preferred rate of €1,200');
 });
 
 test('a sentence speaks to the user and quotes the control it names', async ({ page }) => {

@@ -240,13 +240,21 @@ pub(super) fn launch(
     }
     // Settings and Gmail access outside the lock: reading the keychain can wait for a prompt
     // (macOS), and the reader, the close button and every busy check wait for this lock.
-    let (ctx, credentials) = run_context(state, &request)?;
     // Check and claim under one lock (no `await` in between); a run or sign-in that began
-    // meanwhile keeps the slot, and the credentials read for nothing are dropped.
-    let mut activity = lock(&state.activity);
-    if !matches!(*activity, Activity::Idle) {
-        return Err(super::busy_error(&activity));
-    }
+    // meanwhile keeps the slot, and the credentials read for nothing are dropped. A mailbox
+    // saved or removed while the vault was read (the epoch moved) may have left the old
+    // account in `credentials`: the vault is read again.
+    let (ctx, credentials, mut activity) = loop {
+        let epoch = state.mailbox_epoch();
+        let (ctx, credentials) = run_context(state, &request)?;
+        let activity = lock(&state.activity);
+        if !matches!(*activity, Activity::Idle) {
+            return Err(super::busy_error(&activity));
+        }
+        if state.mailbox_epoch() == epoch {
+            break (ctx, credentials, activity);
+        }
+    };
     let kind = request.kind.name();
     let handle = RunHandle {
         cancel: CancellationToken::new(),

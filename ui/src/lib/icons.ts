@@ -32,7 +32,8 @@ export const ICONS = {
   /** Fetch the whole ad (Details holen). */
   details: 'download',
   markRead: 'check-check',
-  markUnread: 'mail-open',
+  /** Open a job, mark jobs read (an opened letter). */
+  read: 'mail-open',
   applied: 'send',
   /** A reason that leads to its passage in the ad. */
   jump: 'arrow-down',
@@ -89,7 +90,7 @@ export const ICONS = {
   // States and verdicts.
   /** Done, chosen, fulfilled (a tick). */
   check: 'check',
-  /** A result that went well (a toast, a run, a note). */
+  /** Went well: a result (a toast, a run, a note), a requirement met. */
   success: 'circle-check',
   info: 'info',
   /** Something needs a look or failed. */
@@ -117,6 +118,7 @@ export const ICONS = {
   remote: 'house',
   onsite: 'building-2',
   place: 'map-pin',
+  industry: 'factory',
   experience: 'award',
 } as const;
 

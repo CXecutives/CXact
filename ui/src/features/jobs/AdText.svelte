@@ -2,33 +2,57 @@
   The ad text with the passages of the match marked; the passages of a hovered reason are
   tinted (80 ms in, 150 ms out), the ones just jumped to flash navy once. Built from text
   nodes and <mark> elements only (no HTML from the page ever reaches the DOM). Offsets are
-  UTF-16, as the browser counts; overlapping passages keep the first one. The text selects
-  and copies like a document (`data-copy`).
+  UTF-16, as the browser counts. Where passages overlap, every character takes the most
+  severe one (an exclusion over a check over a part fit over a gap over a fit; of two alike
+  the earlier, then the longer), so the passage that excludes a job is never green. The text
+  selects and copies like a document (`data-copy`).
   The link goes both ways: every passage names its state under the pointer (`hints`: "Erfüllt
   · Pflicht"), hovering it lights its reason (`onhover`) and a click scrolls to the reason
   (`onpick`); a click that ends a selection only selects.
 -->
 <script lang="ts" module>
-  import type { Highlight } from '$lib/ipc/types';
+  import type { Highlight, ReasonKind } from '$lib/ipc/types';
 
   export interface Segment {
     text: string;
     mark: Highlight | null;
   }
 
+  /** How much a passage weighs where passages overlap. */
+  const SEVERITY: Record<ReasonKind, number> = {
+    violation: 4,
+    check: 3,
+    partial: 2,
+    open: 1,
+    met: 0,
+  };
+
+  /** Whether `a` wins over `b` on the characters both cover. */
+  const beats = (a: Highlight, b: Highlight): boolean =>
+    (SEVERITY[a.kind] - SEVERITY[b.kind] ||
+      b.start - a.start ||
+      a.end - a.start - (b.end - b.start)) > 0;
+
+  /** The text cut at every passage's ends; each piece takes the passage that wins it. */
   export function segments(text: string, highlights: readonly Highlight[]): Segment[] {
-    const sorted = [...highlights]
-      .filter((h) => h.start < h.end && h.start >= 0 && h.end <= text.length)
-      .sort((a, b) => a.start - b.start || b.end - a.end);
+    const marks = highlights.filter((h) => h.start < h.end && h.start >= 0 && h.end <= text.length);
+    const cuts = [...new Set([0, text.length, ...marks.flatMap((h) => [h.start, h.end])])].sort(
+      (a, b) => a - b,
+    );
     const out: Segment[] = [];
-    let at = 0;
-    for (const mark of sorted) {
-      if (mark.start < at) continue;
-      if (mark.start > at) out.push({ text: text.slice(at, mark.start), mark: null });
-      out.push({ text: text.slice(mark.start, mark.end), mark });
-      at = mark.end;
+    for (let index = 0; index + 1 < cuts.length; index += 1) {
+      const from = cuts[index] ?? 0;
+      const to = cuts[index + 1] ?? from;
+      let mark: Highlight | null = null;
+      for (const each of marks) {
+        if (each.start <= from && each.end >= to && (mark === null || beats(each, mark))) {
+          mark = each;
+        }
+      }
+      const last = out.at(-1);
+      if (last !== undefined && last.mark === mark) last.text += text.slice(from, to);
+      else out.push({ text: text.slice(from, to), mark });
     }
-    if (at < text.length) out.push({ text: text.slice(at), mark: null });
     return out;
   }
 

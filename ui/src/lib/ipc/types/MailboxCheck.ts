@@ -4,7 +4,7 @@ import type { PortalCount } from "./PortalCount";
 /**
  * "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals
  * lie in the mailbox from the last `days` days (`mail::check::check_mailbox`; its errors
- * are the mail error codes).
+ * are `invalid` for the shape of the input and the mail error codes of the sign-in).
  */
 export type MailboxCheck = { days: number, total: number, 
 /**

@@ -71,21 +71,16 @@ impl Vault {
         }
     }
 
-    /// Validates and stores. An app password is 16 letters (Google shows them in groups
-    /// of four) - so an account password entered by mistake is caught right away.
+    /// Validates and stores. The shape is checked again here ([`Credentials::validate`], the
+    /// same rule "Verbinden" applies before any sign-in): only an address and a 16-letter app
+    /// password ever reach the vault.
     pub fn save_gmail(&self, credentials: &Credentials) -> Result<(), SecretError> {
-        let user = &credentials.user;
-        let valid_user = user
-            .split_once('@')
-            .is_some_and(|(name, domain)| !name.is_empty() && domain.contains('.'));
-        if !valid_user {
-            return Err(SecretError::Invalid(InvalidInput::MailAddress));
-        }
-        let password = credentials.password();
-        if password.chars().count() != 16 || !password.chars().all(|c| c.is_ascii_alphabetic()) {
-            return Err(SecretError::Invalid(InvalidInput::AppPassword));
-        }
-        let secret = serde_json::json!({ "user": user, "password": password }).to_string();
+        credentials.validate().map_err(SecretError::Invalid)?;
+        let secret = serde_json::json!({
+            "user": credentials.user,
+            "password": credentials.password(),
+        })
+        .to_string();
         self.entry()?
             .set_password(&secret)
             .map_err(|e| SecretError::Store(e.to_string()))
