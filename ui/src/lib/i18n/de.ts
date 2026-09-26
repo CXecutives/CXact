@@ -40,6 +40,7 @@ import type {
   VaultKind,
   WorkMode,
 } from '../ipc/types';
+import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
   formatCountdown,
@@ -69,12 +70,9 @@ const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : 
 /** Shift in the same writing as the command key it stands beside. */
 const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
 
-/** The portals by their web address, everywhere (a sentence never starts with one). */
-const portalName: Record<Portal, string> = {
-  linkedin: 'linkedin.com',
-  freelance: 'freelance.de',
-  freelancermap: 'freelancermap.de',
-};
+/** The portals by their web address, everywhere (a sentence never starts with one); the
+ *  names come from the portal registry, no catalog translates them. */
+const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
   typeof value === 'string' && value in portalName ? portalName[value as Portal] : str(value);
 
@@ -786,16 +784,11 @@ export const de = {
       value === 1
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
-    markAllRead: 'Alle als gelesen markieren',
-    /** The text button of the list header (during a search: its hits). */
-    allRead: 'Alle gelesen',
-    hitsRead: 'Ergebnisse gelesen',
   },
   /** The app's own menus (their accessible names and the entries of the job's menu). */
   menu: {
     job: 'Job',
     open: 'Öffnen',
-    unread: 'Als ungelesen markieren',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -838,7 +831,6 @@ export const de = {
     archive: 'Archivieren',
     trash: 'In den Papierkorb',
     star: 'Favorit',
-    unread: 'Als ungelesen markieren',
     openAd: 'Anzeige öffnen',
     closeJob: 'Job schließen',
   },
@@ -951,11 +943,10 @@ export const de = {
     filter: 'Filter',
     /** The second line of its tooltip while a filter is on: what the list shows (the portal
      *  by name). */
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null, applied: boolean): string => {
+    filterOn: (portal: string | null, band: 'mid' | 'high' | null): string => {
       const parts = [
         portal === null ? '' : `nur ${portal}`,
         band === 'mid' ? 'ab mittlerer Passung' : band === 'high' ? 'nur hohe Passung' : '',
-        applied ? 'nur beworbene Jobs' : '',
       ].filter((part) => part !== '');
       const text = parts.join(', ');
       return text.charAt(0).toUpperCase() + text.slice(1);
@@ -969,7 +960,6 @@ export const de = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     /** Without a usable profile there is no fit to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Passung.',
-    appliedOnly: 'Nur beworbene Jobs',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
@@ -1321,15 +1311,6 @@ export const de = {
      *  that opens the mail. */
     emptyAlerts: emptyMails,
     lastRun: 'Letzter Abruf',
-    /** The jobs marked "Beworben", with when and the note. */
-    applied: 'Beworben',
-    appliedWhen: (days: number) =>
-      days === 0
-        ? 'Beworben heute'
-        : days === 1
-          ? 'Beworben gestern'
-          : `Beworben vor ${n(days)} Tagen`,
-    adClosed: 'Anzeige geschlossen',
     /** The musts the profile lacks most often (30 days). */
     openMusts: 'Oft verlangt, nicht im Profil',
     inJobs: (value: number) => `in ${n(value)} Jobs`,
@@ -1766,9 +1747,9 @@ export const de = {
     mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoArchive: 'Jobs nach 30 Tagen archivieren',
+    autoArchive: (days: number) => `Jobs nach ${n(days)} Tagen archivieren`,
     autoArchiveHint: 'Favoriten werden nie archiviert.',
-    autoEmptyTrash: 'Papierkorb nach 30 Tagen leeren',
+    autoEmptyTrash: (days: number) => `Papierkorb nach ${n(days)} Tagen leeren`,
     autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
     active: 'Aktiv',
     details: 'Details holen',
@@ -1909,7 +1890,6 @@ export const de = {
     inboxOne: (name: string) => `„${name}“ zurückgeholt.`,
     inboxMany: (value: number) => `${n(value)} Jobs zurückgeholt.`,
     restoredMany: (value: number) => `${n(value)} Jobs wiederhergestellt.`,
-    allRead: 'Alle als gelesen markiert.',
     archivedMany: (value: number) => `${n(value)} Jobs archiviert.`,
     restored: (name: string) => `„${name}“ wiederhergestellt.`,
     /** Only a deletion for good says "endgültig". */

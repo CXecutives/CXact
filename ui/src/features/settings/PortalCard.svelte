@@ -21,7 +21,8 @@
   import Badge from '$components/Badge.svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
-  import IconTile, { PORTAL_MONOGRAM } from '$components/IconTile.svelte';
+  import IconTile from '$components/IconTile.svelte';
+  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import Meter from '$components/Meter.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';

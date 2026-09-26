@@ -2,11 +2,10 @@
 
 use jiff::Timestamp;
 use jobalert_core::export;
-use jobalert_core::model::{Band, Place};
+use jobalert_core::model::Place;
 use jobalert_core::pipeline::{self, Matcher, demo};
-use jobalert_core::portal::{JobKey, Portal};
+use jobalert_core::portal::JobKey;
 use jobalert_core::profile;
-use jobalert_core::store::ListFilter;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
 use tauri::{AppHandle, State};
 
@@ -225,79 +224,6 @@ pub async fn ai_prompt_top(state: State<'_, AppState>, limit: u32) -> CmdResult<
         .collect::<jobalert_core::Result<Vec<_>>>()?;
     let items: Vec<export::PromptJob<'_>> = sources.iter().map(export::PromptSource::job).collect();
     Ok(export::ai_prompt_top(&profile, &items, state.language()?))
-}
-
-/// "All read": every unread job of a place as the list shows it - with a search only its
-/// hits, with the filter (a portal, a lowest band, the jobs marked applied) only its jobs;
-/// the keys come back for the undo.
-#[tauri::command]
-pub async fn mark_all_read(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    place: Place,
-    search: Option<String>,
-    portal: Option<Portal>,
-    min_band: Option<Band>,
-    applied: bool,
-) -> CmdResult<Vec<JobKey>> {
-    let filter = ListFilter {
-        portal,
-        min_band,
-        applied,
-    };
-    let marked =
-        state
-            .store
-            .mark_all_read_filtered(place, search.as_deref(), filter, Timestamp::now())?;
-    if !marked.is_empty() {
-        files::marked(&app);
-    }
-    Ok(marked)
-}
-
-/// The undo of "all read": these jobs are unread again; returns how many.
-#[tauri::command]
-pub async fn mark_unread(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    keys: Vec<JobKey>,
-) -> CmdResult<u32> {
-    let changed = state.store.mark_unread(&keys)?;
-    if changed > 0 {
-        files::marked(&app);
-    }
-    Ok(u32::try_from(changed).unwrap_or(u32::MAX))
-}
-
-/// "Beworben": marks jobs as applied (with the time) or takes the mark back; returns the keys
-/// that changed. An applied job never archives itself.
-#[tauri::command]
-pub async fn set_applied(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    keys: Vec<JobKey>,
-    on: bool,
-) -> CmdResult<Vec<JobKey>> {
-    let changed = state.store.set_applied(&keys, on, Timestamp::now())?;
-    if !changed.is_empty() {
-        files::marked(&app);
-    }
-    Ok(changed)
-}
-
-/// The user's note of a job (trimmed; null or empty removes it). Whether it changed.
-#[tauri::command]
-pub async fn set_note(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    key: JobKey,
-    note: Option<String>,
-) -> CmdResult<bool> {
-    let changed = state.store.set_note(&key, note.as_deref())?;
-    if changed {
-        files::marked(&app);
-    }
-    Ok(changed)
 }
 
 /// The numbers of the Übersicht: the requirements the profile lacks most often, the market of

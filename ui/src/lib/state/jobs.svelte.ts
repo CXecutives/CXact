@@ -47,6 +47,7 @@ import type {
   RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
+import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
 import { run } from './run.svelte';
 
@@ -57,7 +58,6 @@ export const WINDOW = 60;
 /** Rows mounted per frame while a window fills (small: every frame stays well below 50 ms
  *  on a slow machine, the window still fills within a few frames). */
 const CHUNK = 6;
-const HIGH = 80;
 /** At most one counts query per this many ms while a run updates jobs. */
 const COUNTS_EVERY = 400;
 
@@ -103,15 +103,12 @@ export interface ListFilter {
   portal: Portal | null;
   /** Only jobs scored in this band or better; null = every job (unscored, excluded too). */
   minBand: FilterBand | null;
-  /** Only the jobs marked "Beworben". */
-  applied: boolean;
 }
 
-export const NO_FILTER: ListFilter = { portal: null, minBand: null, applied: false };
+export const NO_FILTER: ListFilter = { portal: null, minBand: null };
 
 /** Does a job pass the filter (the backend's rule, store::filter_condition)? */
 export function inListFilter(job: JobView, filter: ListFilter): boolean {
-  if (filter.applied && job.appliedAt === null) return false;
   if (filter.portal !== null && job.key.portal !== filter.portal) return false;
   if (filter.minBand === null) return true;
   const match = job.match;
@@ -121,7 +118,7 @@ export function inListFilter(job: JobView, filter: ListFilter): boolean {
 
 /** Some filter is on. */
 export function isFiltered(filter: ListFilter): boolean {
-  return filter.portal !== null || filter.minBand !== null || filter.applied;
+  return filter.portal !== null || filter.minBand !== null;
 }
 
 /**
@@ -162,7 +159,7 @@ function add(
   const shown = job.place === 'inbox' ? sign : 0;
   const out = isExcluded(job);
   const isNew = job.unread && !out ? shown : 0;
-  const high = job.match?.status === 'scored' && job.match.score >= HIGH;
+  const high = job.match?.status === 'scored' && job.match.score >= HIGH_FROM;
   return {
     inbox: counts.inbox + shown,
     unread: counts.unread + isNew,
@@ -264,11 +261,10 @@ function keptFilter(): ListFilter {
   try {
     const kept = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as unknown;
     if (typeof kept !== 'object' || kept === null) return NO_FILTER;
-    const { portal, minBand, applied } = kept as Record<string, unknown>;
+    const { portal, minBand } = kept as Record<string, unknown>;
     return {
       portal: typeof portal === 'string' ? (portal as Portal) : null,
       minBand: minBand === 'mid' || minBand === 'high' ? minBand : null,
-      applied: applied === true,
     };
   } catch {
     return NO_FILTER;
@@ -320,7 +316,7 @@ class JobsStore {
   pageError = $state<string | null>(null);
   /**
    * A job action of the list that failed (a move of a row or of the chosen jobs, its undo,
-   * the star, "all read" and its undo): one sentence in the list header until the next
+   * the star): one sentence in the list header until the next
    * action succeeds or another list comes (place, tab, search, order).
    */
   actionError = $state<string | null>(null);
@@ -372,7 +368,7 @@ class JobsStore {
   /**
    * The filter actually used: only in the inbox (the archive and the trash ignore it),
    * without a profile no band (there is no match to filter by), and only a portal the app
-   * knows. Sent with every query of the list and with "all read".
+   * knows. Sent with every query of the list.
    */
   get filter(): ListFilter {
     if (placeOf(this.facet) !== 'inbox') return NO_FILTER;
@@ -384,7 +380,6 @@ class JobsStore {
           ? chosen.portal
           : null,
       minBand: app.hasProfile ? chosen.minBand : null,
-      applied: chosen.applied,
     };
   }
 
@@ -406,13 +401,7 @@ class JobsStore {
   setFilter(change: Partial<ListFilter>): void {
     const next = { ...this.filterChoice, ...change };
     const now = this.filterChoice;
-    if (
-      next.portal === now.portal &&
-      next.minBand === now.minBand &&
-      next.applied === now.applied
-    ) {
-      return;
-    }
+    if (next.portal === now.portal && next.minBand === now.minBand) return;
     this.filterChoice = next;
     keepFilter(next);
     this.quiet();
@@ -789,7 +778,6 @@ class JobsStore {
           search: null,
           portal: null,
           minBand: null,
-          applied: false,
           limit: 0,
           offset: 0,
         },
@@ -906,39 +894,6 @@ class JobsStore {
     const row = this.rows.find((job) => sameKey(job.key, key));
     if (row) return row;
     return this.detail && sameKey(this.detail.job.key, key) ? this.detail.job : null;
-  }
-
-  /**
-   * "All read": every unread job of the current place; with a search only its hits, with a
-   * filter only its jobs (what the list shows). Resolves with the keys for the undo
-   * (`markUnread`), or the error text.
-   */
-  async markAllRead(): Promise<{ keys: JobKey[] } | { error: string }> {
-    const search = this.search.trim() === '' ? null : this.search.trim();
-    try {
-      const keys = await invoke('mark_all_read', {
-        place: placeOf(this.facet),
-        search,
-        ...this.filter,
-      });
-      this.patchAll(keys, { unread: false });
-      void this.refreshCounts();
-      return { keys };
-    } catch (error) {
-      return { error: errorText(error) };
-    }
-  }
-
-  /** The undo of "all read". Resolves with the error text, or null. */
-  async markUnread(keys: JobKey[]): Promise<string | null> {
-    try {
-      await invoke('mark_unread', { keys });
-      this.patchAll(keys, { unread: true });
-      void this.refreshCounts();
-      return null;
-    } catch (error) {
-      return errorText(error);
-    }
   }
 
   /**
@@ -1143,37 +1098,6 @@ class JobsStore {
     }
     if (shown !== null && this.detail) {
       this.detail = { ...this.detail, job: { ...this.detail.job, ...change } };
-    }
-  }
-
-  /**
-   * `patch` for many jobs at once ("all read" and its undo): one pass over the rows and one
-   * copy of them, the list's counts moved per listed row. The caller asks the backend for the
-   * counts afterwards (it knows the jobs the page does not hold).
-   */
-  private patchAll(keys: readonly JobKey[], change: Partial<JobView>): void {
-    const wanted = new Set(keys.map(keyOf));
-    let counts = this.counts;
-    let overall = this.overviewCounts;
-    let changed = false;
-    const filter = this.filter;
-    const rows = this.rows.map((row) => {
-      if (!wanted.has(keyOf(row.key))) return row;
-      const after = { ...row, ...change };
-      counts = moved(counts, row, after, filter);
-      if (overall !== null) overall = moved(overall, row, after);
-      this.recount(row, after);
-      changed = true;
-      return after;
-    });
-    if (changed) {
-      this.rows = rows;
-      this.counts = counts;
-      this.overviewCounts = overall;
-    }
-    const shown = this.detail;
-    if (shown !== null && wanted.has(keyOf(shown.job.key))) {
-      this.detail = { ...shown, job: { ...shown.job, ...change } };
     }
   }
 

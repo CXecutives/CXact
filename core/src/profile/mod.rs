@@ -21,6 +21,8 @@ use crate::export::write_atomic;
 use crate::matching::{self, ProfileQuality, ProfileSummary};
 use crate::settings::Language;
 
+#[cfg(test)]
+pub(crate) use form::typescript as form_typescript;
 pub use form::{
     LanguageLevel, MAX_FOCUS, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,

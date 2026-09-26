@@ -3,6 +3,7 @@
 // several jobs, the run card, the states of the list and the trash's days.
 
 import type { Page } from '@playwright/test';
+import type { Portal } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, NOW, open, settle, test } from './fixtures';
 
 const WIN = '?platform=windows';
@@ -13,6 +14,22 @@ const excludedRows = (page: Page) =>
 const row = (page: Page, key: string) => list(page).getByTestId(`job-row-${key}`);
 const facet = (page: Page, name: string) =>
   page.getByTestId('facet').getByRole('radio', { name: new RegExp(name) });
+
+/** Every listed job read, as the job updates of a run say it. */
+async function readListed(page: Page): Promise<void> {
+  const keys = await rows(page).evaluateAll((items) =>
+    items.map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
+  );
+  await page.evaluate((keys) => {
+    for (const key of keys) {
+      const [portal, id] = key.split('-') as [Portal, string];
+      const job = window.__harness.job({ portal, id });
+      if (job) {
+        window.__harness.emit({ type: 'jobUpdated', job: { ...job, unread: false }, fresh: false });
+      }
+    }
+  }, keys);
+}
 
 /** The width of the list column as the handle says it (the column ends at the handle). */
 async function listWidth(page: Page): Promise<number> {
@@ -61,7 +78,7 @@ test('Neu, Alle and Favoriten keep their widths when a count goes', async ({ pag
   await open(page, WIN);
   const neu = page.getByTestId('facet').getByRole('radio', { name: /Neu/ });
   const before = (await neu.boundingBox())!.width;
-  await page.getByTestId('mark-all-read').click();
+  await readListed(page);
   await expect(neu.locator('.spare')).toHaveCount(1);
   expect((await neu.boundingBox())!.width).toBe(before);
 });
@@ -120,9 +137,9 @@ test.describe('sections', () => {
     await expect(page.getByTestId('fresh-divider')).toHaveCount(0);
   });
 
-  test('after Alle gelesen Neu says there is nothing new and leads to Alle', async ({ page }) => {
+  test('with every job read Neu says there is nothing new and leads to Alle', async ({ page }) => {
     await open(page, WIN);
-    await page.getByTestId('mark-all-read').click();
+    await readListed(page);
     const line = page.getByTestId('caught-up');
     await expect(line).toContainText('Keine neuen Jobs.');
     await line.getByRole('button', { name: 'Alle zeigen' }).click();
@@ -334,7 +351,6 @@ test.describe('states', () => {
     await expect(error.getByRole('button', { name: 'Erneut versuchen' })).toBeVisible();
     await expect(page.getByTestId('facet')).toHaveCount(0);
     await expect(page.getByTestId('filter')).toHaveCount(0);
-    await expect(page.getByTestId('mark-all-read')).toHaveCount(0);
   });
 
   test('a thin profile says once that the fit stays rough, and leads to it', async ({ page }) => {

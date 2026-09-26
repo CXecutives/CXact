@@ -111,8 +111,6 @@ fn view() -> JobView {
         place: Place::Inbox,
         trashed_at: None,
         overridden: false,
-        applied_at: None,
-        note: None,
     }
 }
 

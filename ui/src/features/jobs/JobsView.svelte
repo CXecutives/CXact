@@ -122,20 +122,12 @@
       case 'star':
         if (place !== 'trash') toggleStar(list);
         return;
-      case 'unread':
-        // Unread again: the job leaves the reader, so the dwell does not read it once more.
-        if (!bulk.active) close();
-        void jobs.markUnread(list.map((job) => job.key)).then(report);
-        return;
       case 'openAd':
         if (list.length === 1) {
           invoke('open_target', { target: { kind: 'jobUrl', key: first.key } }).catch(
             (error: unknown) => report(errorText(error)),
           );
         }
-        return;
-      case 'applied':
-        // Beworben arrives with the backend's applied mark (docs/PLAN.md, A8).
         return;
     }
   }

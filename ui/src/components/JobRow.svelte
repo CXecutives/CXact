@@ -73,13 +73,13 @@
   import type { JobView } from '$lib/ipc/types';
   import { duration } from '$lib/motion/motion';
   import { dotOut, toolsIn } from '$lib/motion/transitions';
+  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { keyConventions } from '$lib/platform';
   import { clock } from '$lib/state/clock.svelte';
   import Badge, { type BadgeTone } from './Badge.svelte';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
-  import { PORTAL_MONOGRAM } from './IconTile.svelte';
   import ReasonItem from './ReasonItem.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
 

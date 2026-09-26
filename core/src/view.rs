@@ -210,28 +210,6 @@ pub struct JobView {
     /// The user marked the job as fitting although the engine excludes it ("Trotzdem
     /// passend"): it counts as scored with its fit score, its note is `userOverride`.
     pub overridden: bool,
-    /// When the user marked that she applied ("Beworben"); a flag of its own beside the
-    /// favourite.
-    pub applied_at: Option<Timestamp>,
-    /// The user's note (at most 2,000 characters; a run's `jobUpdated` event carries only
-    /// its first [`MAX_EVENT_NOTE_CHARS`], `job_detail` and `list_jobs` all of it).
-    pub note: Option<String>,
-}
-
-/// Most characters of the user's note a `jobUpdated` event carries (events stay below 8 KB).
-pub const MAX_EVENT_NOTE_CHARS: usize = 280;
-
-impl JobView {
-    /// The row as a run event carries it: the note cut to [`MAX_EVENT_NOTE_CHARS`].
-    #[must_use]
-    pub fn for_event(mut self) -> JobView {
-        if let Some(note) = self.note.as_mut()
-            && note.chars().count() > MAX_EVENT_NOTE_CHARS
-        {
-            *note = note.chars().take(MAX_EVENT_NOTE_CHARS).collect();
-        }
-        self
-    }
 }
 
 impl From<&JobRow> for JobView {
@@ -266,8 +244,6 @@ impl From<&JobRow> for JobView {
             place: job.place(),
             trashed_at: job.trashed_at,
             overridden: job.override_include,
-            applied_at: job.applied_at,
-            note: job.note.clone(),
         }
     }
 }
@@ -804,21 +780,17 @@ pub struct JobQuery {
     /// high only); unscored and excluded jobs pass only with `null`.
     #[serde(default)]
     pub min_band: Option<Band>,
-    /// The filter: only the jobs marked "Beworben".
-    #[serde(default)]
-    pub applied: bool,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The portal and band filter of the query (for [`Store::mark_all_read_filtered`] too).
+    /// The portal and band filter of the query.
     pub fn filter(&self) -> ListFilter {
         ListFilter {
             portal: self.portal,
             min_band: self.min_band,
-            applied: self.applied,
         }
     }
 }
@@ -1835,48 +1807,6 @@ mod tests {
         );
     }
 
-    /// The row carries "Beworben" and the note; a run's event carries only the start of a
-    /// long note (events stay below 8 KB), the row itself all of it.
-    #[test]
-    fn a_row_carries_applied_and_the_note() {
-        let (store, key) = store_with(
-            "https://www.linkedin.com/jobs/view/4123456789/",
-            "Controller",
-            "Muster GmbH",
-            "Köln",
-        );
-        let json = serde_json::to_value(JobView::from(&store.job(&key).unwrap().unwrap())).unwrap();
-        assert_eq!(
-            (&json["appliedAt"], &json["note"]),
-            (&serde_json::Value::Null, &serde_json::Value::Null)
-        );
-        let now = Timestamp::now();
-        store
-            .set_applied(std::slice::from_ref(&key), true, now)
-            .unwrap();
-        let note = "Ü".repeat(crate::store::marks::MAX_NOTE_CHARS);
-        store.set_note(&key, Some(&note)).unwrap();
-        let view = JobView::from(&store.job(&key).unwrap().unwrap());
-        assert_eq!(
-            view.applied_at.map(Timestamp::as_second),
-            Some(now.as_second())
-        );
-        assert_eq!(view.note.as_deref(), Some(note.as_str()));
-        let event = crate::pipeline::RunEvent::JobUpdated {
-            job: Box::new(view.for_event()),
-            fresh: false,
-        };
-        let size = serde_json::to_vec(&event).unwrap().len();
-        assert!(size < 4 * 1024, "{size} bytes");
-        let crate::pipeline::RunEvent::JobUpdated { job, .. } = event else {
-            unreachable!()
-        };
-        assert_eq!(
-            job.note.map(|n| n.chars().count()),
-            Some(MAX_EVENT_NOTE_CHARS)
-        );
-    }
-
     /// A closed ad reaches the list (a quiet badge, below the open ones) and never becomes a
     /// text file for the matching skill.
     #[test]
@@ -2076,42 +2006,14 @@ mod tests {
             search: None,
             portal: None,
             min_band: None,
-            applied: false,
             limit,
             offset,
         }
     }
 
-    /// "Beworben" as a filter: only the jobs marked applied, in their place; a mark taken
-    /// back leaves the filter again.
-    #[test]
-    fn the_applied_filter_lists_the_applied_jobs() {
-        let store = four_jobs();
-        let all = job_page(&store, &query(Place::Inbox, false, JobSort::Newest, 50, 0)).unwrap();
-        let b = all
-            .jobs
-            .iter()
-            .find(|j| j.title == "B")
-            .unwrap()
-            .key
-            .clone();
-        store
-            .set_applied(std::slice::from_ref(&b), true, Timestamp::now())
-            .unwrap();
-        let applied = JobQuery {
-            applied: true,
-            ..query(Place::Inbox, false, JobSort::Newest, 50, 0)
-        };
-        let page = job_page(&store, &applied).unwrap();
-        assert_eq!(titles(&page), ["B"]);
-        assert!(page.jobs[0].applied_at.is_some());
-        store.set_applied(&[b], false, Timestamp::now()).unwrap();
-        assert!(job_page(&store, &applied).unwrap().jobs.is_empty());
-    }
-
     /// The filter narrows the list and every count like the search: one portal's jobs, or
-    /// only jobs scored in a band or better (unscored and excluded ones only without it);
-    /// "all read" marks only what the filter shows. A query without the fields reads as none.
+    /// only jobs scored in a band or better (unscored and excluded ones only without it). A
+    /// query without the fields reads as none.
     #[test]
     fn the_filter_narrows_list_and_counts() {
         let store = four_jobs();
@@ -2129,7 +2031,7 @@ mod tests {
             .unwrap();
         store
             .save_matches(
-                &[(other.clone(), record(MatchStatus::Scored, 45))],
+                &[(other, record(MatchStatus::Scored, 45))],
                 "r",
                 Timestamp::now(),
             )
@@ -2163,12 +2065,6 @@ mod tests {
             titles(&page(Some(Portal::LinkedIn), Some(Band::Mid))),
             ["B", "A"]
         );
-        // "All read" follows the filter: only the freelancermap job.
-        let marked = store
-            .mark_all_read_filtered(Place::Inbox, None, map_filter(), Timestamp::now())
-            .unwrap();
-        assert_eq!(marked, [other]);
-        assert_eq!(page(None, None).counts.unread, 2, "B and D stay unread");
         // The fields may be missing (an older page): no filter.
         let json = r#"{"place":"inbox","unread":false,"favourites":false,"sort":"match",
                        "search":null,"limit":10,"offset":0}"#;
@@ -2469,14 +2365,6 @@ mod tests {
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
 
-    fn map_filter() -> ListFilter {
-        ListFilter {
-            portal: Some(Portal::Freelancermap),
-            min_band: None,
-            applied: false,
-        }
-    }
-
     #[test]
     fn a_page_and_its_counts_come_together() {
         let store = four_jobs();
@@ -2694,7 +2582,6 @@ mod tests {
                     search: search.map(str::to_owned),
                     portal: None,
                     min_band: None,
-                    applied: false,
                     limit: 0,
                     offset: 0,
                 },
