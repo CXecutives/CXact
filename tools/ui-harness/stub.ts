@@ -1194,8 +1194,9 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 
 let jobs: JobView[] = [];
 let state: AppState;
-/** The profile a `remove_profile` took (core keeps it as the backup until restored). */
-let removedProfile: ProfileInfo | null = null;
+/** Core's one backup of the profile: the previous one of every save, the one a
+ *  `remove_profile` took; `restore_profile` swaps it with the profile. */
+let backupProfile: ProfileInfo | null = null;
 
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
@@ -2793,6 +2794,7 @@ const handlers: Handlers = {
     }
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
+    if (state.profile !== null) backupProfile = state.profile;
     state.profile = {
       ...PROFILE,
       fileName: 'beraterprofil.json',
@@ -2822,14 +2824,15 @@ const handlers: Handlers = {
   },
   remove_profile: () => {
     // Like core: the profile becomes the backup, which `restore_profile` brings back.
-    removedProfile = state.profile;
+    if (state.profile === null) return false;
+    backupProfile = state.profile;
     state.profile = null;
-    return removedProfile !== null;
+    return true;
   },
   restore_profile: () => {
-    if (state.profile !== null || removedProfile === null) return false;
-    state.profile = removedProfile;
-    removedProfile = null;
+    // Like core: the backup becomes the profile, a profile that is there the backup.
+    if (backupProfile === null) return false;
+    [state.profile, backupProfile] = [backupProfile, state.profile];
     return true;
   },
   set_unsaved: ({ on }) => {
