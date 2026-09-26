@@ -51,6 +51,7 @@
   import Chip from '$components/Chip.svelte';
   import Count from '$components/Count.svelte';
   import Dialog from '$components/Dialog.svelte';
+  import Icon from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
@@ -968,7 +969,9 @@
       {#each rows as row (row.key)}
         {@const item = rowItem(row)}
         <li class="term" data-row={row.key} data-testid="term-{row.key}">
-          <span class="term-name" data-item={item}>{row.name}</span>
+          <span class="term-name" data-item={item}
+            ><Icon name={row.icon} size="sm" />{row.name}</span
+          >
           <span class="term-value" data-copy>
             <span class="term-line">
               {#if row.passage}
@@ -1473,6 +1476,15 @@
 
   .term-name {
     color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* The icon of the row's fact (the same as in the list row), centred on the name's
+     lowercase letters. */
+  .term-name :global(.icon) {
+    margin-inline-end: var(--space-6);
+    color: var(--text-subtle);
+    vertical-align: middle;
   }
 
   .term-value {

@@ -1,32 +1,23 @@
-// The reader's "Konditionen": fixed rows in a fixed order (TERM_ROWS), each with the ad's
+// The reader's "Konditionen": fixed rows in a fixed order (TERM_ROWS, the entries of the facts
+// table lib/facts.ts that name a reader row), each with the icon of its fact, the ad's
 // value, a quiet word after it ("geschätzt"), the profile's side under it (its minimum and
 // its wishes, merged into the row instead of a block of their own), the verdict as a word and
 // the passage that states the value. A value the ad does not state says "offen"; a verdict
 // that would only repeat it stays empty. Only the reader uses this module.
 //
-// A new row (Auslastung, Mindestlaufzeit) is one key in TERM_ROWS, its name in the catalog
-// (`reader.term`) and one case in `build`; the reason codes it stands for go into
+// A new row (Auslastung, Mindestlaufzeit) is one `term` in the facts table, its name in the
+// catalog (`reader.term`) and one case in `build`; the reason codes it stands for go into
 // ROW_OF_CODE, its criterion into ROW_OF_CRITERION.
 
+import type { IconName } from '$components/Icon.svelte';
+import { TERM_ROWS, termIcon, type TermKey } from '$lib/facts';
 import { formatDate } from '$lib/i18n/format';
 import type { CriterionKey } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
 import { criterionKey } from '$lib/i18n/texts';
 import type { JobView, KeyFacts, ProfileForm, Reason } from '$lib/ipc/types';
 
-export type TermKey =
-  'contract' | 'rate' | 'start' | 'duration' | 'remote' | 'place' | 'experience';
-
-/** The rows of the table, in their order. */
-export const TERM_ROWS: readonly TermKey[] = [
-  'contract',
-  'rate',
-  'start',
-  'duration',
-  'remote',
-  'place',
-  'experience',
-];
+export type { TermKey };
 
 /** How a row fits the profile: fits, does not fit, check, open. */
 export type Verdict = 'met' | 'violated' | 'unknown' | 'unset';
@@ -34,6 +25,8 @@ export type Verdict = 'met' | 'violated' | 'unknown' | 'unset';
 export interface TermRow {
   key: TermKey;
   name: string;
+  /** The icon of its fact (the same icon as in the list row). */
+  icon: IconName;
   /** The ad's value in words ("1.200 €/Tag"), or "offen". */
   value: string;
   /** The ad does not state it. */
@@ -191,6 +184,7 @@ function build(key: TermKey, input: TermInput): TermRow {
     return {
       key,
       name: t.reader.term[key],
+      icon: termIcon(key),
       value: value ?? t.reader.termOpen,
       open,
       note: open ? null : (extra.note ?? null),

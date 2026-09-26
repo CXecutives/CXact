@@ -290,13 +290,13 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   const facts = page.getByTestId('job-row-freelancermap-1001').getByTestId('row-facts');
   const fit = (): Promise<{ shown: string[]; hidden: string[]; cut: string[] }> =>
     facts.evaluate((line) => {
-      const edge = line.getBoundingClientRect();
+      const edge = line.parentElement!.getBoundingClientRect();
       const out = { shown: [] as string[], hidden: [] as string[], cut: [] as string[] };
       for (const fact of line.querySelectorAll<HTMLElement>('.fact')) {
         const box = fact.getBoundingClientRect();
-        if (box.top >= edge.bottom - 0.5) out.hidden.push(fact.textContent ?? '');
+        if (fact.hasAttribute('data-out')) out.hidden.push(fact.textContent ?? '');
         else out.shown.push(fact.textContent ?? '');
-        if (box.top < edge.bottom - 0.5 && box.right > edge.right + 0.5) out.cut.push('right');
+        if (!fact.hasAttribute('data-out') && box.right > edge.right + 0.5) out.cut.push('right');
         if (fact.scrollWidth > fact.clientWidth) out.cut.push(fact.textContent ?? '');
       }
       return out;
@@ -304,12 +304,12 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   const wide = await fit();
   expect(wide.shown).toHaveLength(4);
   expect(wide.cut).toEqual([]);
-  // A narrow list: the facts at the end drop out whole, in the order of their weight.
+  // A narrow list: the facts at the end drop out whole, in the order of the facts table.
   await list.evaluate((node) => node.style.setProperty('width', '330px'));
+  await expect.poll(async () => (await fit()).hidden.length).toBeGreaterThan(0);
   const narrow = await fit();
-  expect(narrow.hidden.length).toBeGreaterThan(0);
-  // The rate first: a freelancer weighs it first.
-  expect(narrow.shown[0]).toMatch(/^1\.100\s€\/Tag$/);
+  // The rate first here (the ad names no contract), with the euro icon instead of a sign.
+  expect(narrow.shown[0]).toMatch(/^1\.100\/Tag$/);
   expect(narrow.cut).toEqual([]);
 });
 

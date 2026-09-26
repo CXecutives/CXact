@@ -951,6 +951,7 @@ export const en: Catalog = {
   facts: {
     now: 'starts now',
     from: (date: string) => `from ${date}`,
+    soon: 'as soon as possible',
     months: (value: number) => count(value, 'month', 'months'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'fully remote';
@@ -963,7 +964,20 @@ export const en: Catalog = {
       const money = formatMoney(amount, currency);
       return hourly ? `${money}/hr` : unit ? `${money}/day` : money;
     },
-    rateOpen: 'Rate negotiable',
+    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
+      const money =
+        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
+      return `${money}/${{ day: 'day', hour: 'hr', year: 'year' }[per]}`;
+    },
+    workload: (from: number | null, to: number) => {
+      if (from === null) return 'Part time';
+      if (from >= 100) return 'Full time';
+      const days = from % 20 === 0 && to % 20 === 0;
+      if (from === to) return days ? `${count(to / 20, 'day', 'days')}/week` : formatPercent(to);
+      return days
+        ? `${n(from / 20)} to ${n(to / 20)} days/week`
+        : `${n(from)} to ${formatPercent(to)}`;
+    },
     fullRemote: 'fully remote',
   },
   reader: {

@@ -1028,10 +1028,13 @@ export const de = {
     thinProfile: 'Wenig Inhalt im Profil, die Passung bleibt grob.',
     connectMailbox: 'Postfach verbinden',
   },
-  /** The key facts of an ad in short words (list row, criteria chips). */
+  /** The key facts of an ad in short words (the list row, the reader's Konditionen; which
+   *  fact goes where is the table of lib/facts.ts). */
   facts: {
     now: 'ab sofort',
     from: (date: string) => `ab ${date}`,
+    /** A start the ad leaves to the earliest date ("zum nächstmöglichen Zeitpunkt"). */
+    soon: 'nächstmöglich',
     months: (value: number) => count(value, 'Monat', 'Monate'),
     remote: (from: number, to: number) => {
       if (from >= 100) return 'voll remote';
@@ -1045,7 +1048,24 @@ export const de = {
       const money = formatMoney(amount, currency);
       return hourly ? `${money}/Std.` : unit ? `${money}/Tag` : money;
     },
-    rateOpen: 'Satz nach Absprache',
+    /** The pay in a list row, beside its euro icon: `1.200/Tag`, `95/Std.`, `95.000/Jahr`;
+     *  another currency names its code (`1.000 CHF/Tag`). */
+    pay: (amount: number, per: 'day' | 'hour' | 'year', currency: string | null) => {
+      const money =
+        currency === null || currency === 'EUR' ? n(amount) : formatMoney(amount, currency);
+      return `${money}/${{ day: 'Tag', hour: 'Std.', year: 'Jahr' }[per]}`;
+    },
+    /** The workload in percent of a five-day week: `Vollzeit`, `3 Tage/Woche`, `50 %`, a
+     *  range `3 bis 4 Tage/Woche`; part-time without a number (`from` null) `Teilzeit`. */
+    workload: (from: number | null, to: number) => {
+      if (from === null) return 'Teilzeit';
+      if (from >= 100) return 'Vollzeit';
+      const days = from % 20 === 0 && to % 20 === 0;
+      if (from === to) return days ? `${count(to / 20, 'Tag', 'Tage')}/Woche` : formatPercent(to);
+      return days
+        ? `${n(from / 20)} bis ${n(to / 20)} Tage/Woche`
+        : `${n(from)} bis ${formatPercent(to)}`;
+    },
     fullRemote: 'voll remote',
   },
   reader: {
