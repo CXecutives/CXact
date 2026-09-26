@@ -427,9 +427,14 @@ jobs:
   # once the UI track has landed a package.json; a job-level `if` cannot see the checkout,
   # so every step checks for it.
   ui:
-    name: ui (harness)
+    name: ui (${{ matrix.browser }})
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
+    # One job per engine, side by side: together they took longer than one job may run.
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
     steps:
       - uses: actions/checkout@v5
 
@@ -454,20 +459,26 @@ jobs:
 
       - name: Install Playwright browsers
         if: hashFiles('package.json') != ''
-        run: npx playwright install --with-deps chromium webkit
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
       # A flaky test is fixed or removed the same day, never retried to green (CLAUDE.md): the
       # one retry only tells a flaky test (passes on its retry) from a broken one (fails
       # twice) in the report, and --fail-on-flaky-tests keeps the run red for both.
       - name: UI harness
         if: hashFiles('package.json') != ''
-        run: npm run harness -- --retries=1 --fail-on-flaky-tests
+        # Screenshot baselines run on request only (CLAUDE.md), not in CI. The timing checks run
+        # in Chromium's job.
+        env:
+          HARNESS_ENGINES: ${{ matrix.browser }}
+        run: >-
+          npm run harness -- --retries=1 --fail-on-flaky-tests --grep-invert "baseline:"
+          --project=${{ matrix.browser }} ${{ matrix.browser == 'chromium' && '--project=timing' || '' }}
 
       - name: Upload harness screenshots and report
         if: always() && hashFiles('package.json') != ''
         uses: actions/upload-artifact@v5
         with:
-          name: ui-harness
+          name: ui-harness-${{ matrix.browser }}
           path: |
             test-results
             playwright-report

@@ -53,12 +53,13 @@ export default defineConfig({
     },
     // Timing checks (long tasks, timing.spec.ts) run in Chromium once everything else is
     // done and alone: a browser beside them on the same CPU would lengthen their tasks.
-    // WebKit runs them in its project for what they check besides the timing.
+    // WebKit runs them in its project for what they check besides the timing. CI runs one
+    // engine per job (HARNESS_ENGINES names it), so the timing waits for that one only.
     {
       name: 'timing',
       use: { ...devices['Desktop Chrome'], viewport, deviceScaleFactor: 1 },
       testMatch: /timing\.spec\.ts/,
-      dependencies: ['chromium', 'webkit'],
+      dependencies: process.env.HARNESS_ENGINES?.split(',') ?? ['chromium', 'webkit'],
     },
   ],
   webServer: {
