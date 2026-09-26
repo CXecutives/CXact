@@ -34,7 +34,7 @@
   import { t } from '$lib/i18n/t';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { listKeys, type ListAction } from '$lib/input/input';
+  import { listKeys, onBack, type ListAction } from '$lib/input/input';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobView } from '$lib/ipc/types';
@@ -180,6 +180,16 @@
       jobs.reveal = { key: keyOf(open), focus: true };
     }
   }
+
+  // The mouse's back button and Alt+Left (Cmd+[ on macOS) go back to the list where the
+  // reader stands alone in one column; elsewhere they do nothing (lib/input/input.ts).
+  $effect(() =>
+    onBack(() => {
+      if (!shell.listHidden) return false;
+      close();
+      return true;
+    }),
+  );
 
   let header = $state<ListHeader | null>(null);
   let list = $state<JobList | null>(null);

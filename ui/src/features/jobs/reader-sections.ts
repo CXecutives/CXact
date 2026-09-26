@@ -24,7 +24,6 @@ export const READER_SECTIONS = [
   'requirements',
   'ad',
 ] as const;
-export type ReaderSection = (typeof READER_SECTIONS)[number];
 
 export interface RequirementGroup {
   kind: Extract<ReasonKind, 'met' | 'partial' | 'open' | 'check'>;

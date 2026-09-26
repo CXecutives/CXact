@@ -925,11 +925,7 @@ test('the back button and the back key do nothing where no view has a way back',
   await expect(page.getByTestId('reader')).toBeVisible();
 });
 
-// JobsView registers its Zurück of one column with `onBack` (lib/input/input.ts); until it
-// does, the back button has nothing to go back to.
-test.fixme('the back button goes back where the reader in one column has Zurück', async ({
-  page,
-}) => {
+test('the back button goes back where the reader in one column has Zurück', async ({ page }) => {
   await page.setViewportSize({ width: 780, height: 560 });
   await open(page, WIN);
   await rows(page).first().click();

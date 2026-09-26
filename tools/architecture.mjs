@@ -71,13 +71,7 @@ const FEATURE_PUBLIC = {
  * Findings accepted for a while, each with the TODO that removes it. The check fails when an
  * entry no longer matches anything, so a fixed finding also drops its entry.
  */
-const TEMPORARY = {
-  // TODO(dead code): JobsView registers its one-column Zurück with onBack
-  // (tools/ui-harness/specs/input.spec.ts, the fixme test); then the entry goes.
-  'ui/src/lib/input/input.ts: onBack': 'the back key, not wired yet',
-  // TODO(dead code): unused type in a file of the jobs track; delete it there.
-  'ui/src/features/jobs/reader-sections.ts: ReaderSection': 'unused type',
-};
+const TEMPORARY = {};
 const temporaryUsed = new Set();
 /** Whether `key` is accepted for now (and remember that its entry is still needed). */
 const temporary = (key) => {
