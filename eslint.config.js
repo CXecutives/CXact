@@ -3,7 +3,8 @@
 // The UI rules make the design system's promises impossible to break by accident:
 // no inline styles, raw controls only inside components/, each outside dependency behind
 // exactly one door (Icon.svelte, api.ts, lib/motion/), no literal colours, pixels or
-// durations, input listeners only in input.ts, no `title` attribute, no empty catch.
+// durations, input listeners only in input.ts, no `title` attribute, no empty catch, no
+// `.message` of an error on screen. Layering, file size and dead code: tools/architecture.mjs.
 
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
@@ -131,6 +132,17 @@ const SYNTAX = {
       message: 'No empty catch - handle the error or report it (reportUiError).',
     },
   ],
+  // The user reads an error only through the catalog: errorText(error) (lib/i18n/texts.ts)
+  // turns the backend's {code, params} into words; the text of a caught exception is for
+  // the log (reportUiError in api.ts), never for the screen.
+  errorMessage: [
+    {
+      selector:
+        "MemberExpression[property.name='message'], MemberExpression[property.value='message']",
+      message:
+        'No `.message` of an error in the UI - show errorText(error) (lib/i18n/texts.ts); log details with reportUiError.',
+    },
+  ],
 };
 
 const restrictedSyntax = (...open) => [
@@ -217,7 +229,11 @@ export default ts.config(
   },
   {
     files: ['ui/src/lib/ipc/api.ts'],
-    rules: { 'no-restricted-imports': restrictedImports('tauri') },
+    rules: {
+      'no-restricted-imports': restrictedImports('tauri'),
+      // reportUiError logs the message of an uncaught error; it never reaches the screen.
+      'no-restricted-syntax': restrictedSyntax('errorMessage'),
+    },
   },
   {
     files: ['ui/src/lib/motion/**/*.ts'],

@@ -67,15 +67,18 @@
 
   .interactive {
     position: relative;
-    transition: border-color var(--dur-base) var(--ease-standard);
+    transition:
+      border-color var(--dur-base) var(--ease-standard),
+      background-color var(--dur-base) var(--ease-standard);
   }
 
-  /* The hover shadow, painted once and shown by opacity (no lift, no animated shadow). */
+  /* The raised kind (tokens.css), like a stat tile. The hover shadow, painted once and
+     shown by opacity (no lift, no animated shadow). */
   .interactive::after {
     position: absolute;
     inset: calc(-1 * var(--border-width));
     border-radius: inherit;
-    box-shadow: var(--sh-hover);
+    box-shadow: var(--raised-hover-shadow);
     content: '';
     opacity: 0;
     pointer-events: none;
@@ -83,7 +86,7 @@
   }
 
   .interactive:hover {
-    border-color: var(--border-navy);
+    border-color: var(--raised-hover-edge);
     transition-duration: var(--dur-hover);
   }
 
@@ -93,7 +96,7 @@
   }
 
   :global(:where(:root:not([data-aux-press]))) .interactive:active:hover {
-    border-color: var(--active-edge);
+    background-color: var(--raised-press);
     transition-duration: var(--dur-instant);
   }
 

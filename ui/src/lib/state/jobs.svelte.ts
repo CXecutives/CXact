@@ -236,6 +236,9 @@ function keepFilter(filter: ListFilter): void {
 class JobsStore {
   /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
+  /** The Übersicht asked to show the excluded jobs: the list opens their section and brings
+   *  it into view once (JobList resets it). */
+  revealExcluded = $state(false);
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter of the inbox as chosen (kept); `filter` is what applies. */

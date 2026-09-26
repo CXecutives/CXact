@@ -179,14 +179,13 @@ test('job rows select on click and reorder without losing a row', async ({ page 
   await expect(rows.last()).toHaveAttribute('data-testid', first!);
 });
 
-test('a quiet button that resets warns on hover, like the trash ghost', async ({ page }) => {
+test('a quiet button that loses something for good is red at rest and on hover', async ({
+  page,
+}) => {
   await open(page, '?gallery');
   const reset = page.getByTestId('button-warns');
   await reset.scrollIntoViewIfNeeded();
   const colour = (): Promise<string> => reset.evaluate((node) => getComputedStyle(node).color);
-  const rest = await colour();
-  await reset.hover();
-  await expect.poll(colour).not.toBe(rest);
   const danger = await page.evaluate(() => {
     const probe = document.createElement('span');
     probe.style.color = 'var(--danger-strong)';
@@ -195,6 +194,8 @@ test('a quiet button that resets warns on hover, like the trash ghost', async ({
     probe.remove();
     return value;
   });
+  await expect.poll(colour).toBe(danger);
+  await reset.hover();
   await expect.poll(colour).toBe(danger);
 });
 

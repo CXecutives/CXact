@@ -30,8 +30,3 @@ export function tokenNumber(name: `--${string}`): number {
   const value = Number(token(name));
   return Number.isFinite(value) ? value : 0;
 }
-
-/** Forget cached values (only needed by the gallery after it changed :root attributes). */
-export function clearTokenCache(): void {
-  cache.clear();
-}

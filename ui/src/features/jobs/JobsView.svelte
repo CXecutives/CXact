@@ -34,7 +34,7 @@
   import { t } from '$lib/i18n/t';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { listKeys, type ListAction } from '$lib/input/input';
+  import { listKeys, onBack, type ListAction } from '$lib/input/input';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobView } from '$lib/ipc/types';
@@ -181,6 +181,16 @@
     }
   }
 
+  // The mouse's back button and Alt+Left (Cmd+[ on macOS) go back to the list where the
+  // reader stands alone in one column; elsewhere they do nothing (lib/input/input.ts).
+  $effect(() =>
+    onBack(() => {
+      if (!shell.listHidden) return false;
+      close();
+      return true;
+    }),
+  );
+
   let header = $state<ListHeader | null>(null);
   let list = $state<JobList | null>(null);
 
@@ -308,7 +318,7 @@
                   <p class="place-note" data-testid="place-reader">{text}</p>
                 {:else}
                   <EmptyState
-                    icon={place === 'trash' ? 'trash-2' : place === 'archive' ? 'archive' : 'inbox'}
+                    icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
                     tone="neutral"
                     {text}
                     testid="place-reader"
@@ -320,7 +330,7 @@
                 <Button
                   variant="ghost"
                   size="sm"
-                  icon="chevron-left"
+                  icon="back"
                   label={t.common.back}
                   testid="back"
                   onclick={close}
@@ -328,12 +338,12 @@
               </div>
               {#if stage.what === ERROR}
                 <EmptyState
-                  icon="triangle-alert"
+                  icon="warning"
                   tone="danger"
                   text={jobs.detailError ?? t.reader.loadFailed}
                   secondary={{
                     label: t.common.retry,
-                    icon: 'refresh-cw',
+                    icon: 'retry',
                     onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
                   }}
                   testid="reader-error"

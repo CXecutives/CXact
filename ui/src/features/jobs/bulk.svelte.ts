@@ -71,7 +71,7 @@ class Bulk {
     const out = [...this.actions];
     if (chosen.length > 0 && chosen.every(detailsWanted)) {
       out.push({
-        icon: 'download',
+        icon: 'details',
         label: t.reader.fetchDetails,
         testid: 'selection-details',
         disabled: run.detailsBlocked !== null,

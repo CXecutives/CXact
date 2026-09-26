@@ -1,18 +1,49 @@
-// Short confirmations whose result is not visible otherwise (saved, copied, files written,
-// run finished). At most three at once. A plain one leaves after --dur-toast (4 s); one
-// with an undo stays --dur-toast-action (10 s), long enough to read and reach it. A toast
-// waits while the pointer is on it, and every toast waits while the window is in the back
-// or a modal dialog is open (`hold`): its time only runs while the user can act on it.
-// Anything that needs an action stays inline where it belongs; the exceptions are an undo
-// of what the user just did (a job moved), which the toast may carry, and the way to a
-// result that came while another view was shown ("Zeigen" on a finished fetch); results of the
-// same kind in quick succession merge into one toast with one undo (`undoable`). Ctrl/Cmd+Z
-// takes back the newest result, also when it merged into a toast that came up earlier. An
-// undo names the jobs it concerns: when they are deleted for good, it goes (`forget`).
+// The one way the app tells a quiet result: a toast. Every success whose result shows
+// nowhere else (saved, copied, files written, run finished) is a toast, never a lasting
+// note in the view; anything that needs an action stays inline where it belongs. The
+// exceptions are an undo of what the user just did (a job moved), which the toast may carry,
+// and the way to a result that came while another view was shown ("Zeigen" on a finished
+// fetch). What each kind looks like and how long a toast stays is decided in the two tables
+// below (TOAST_KINDS, TOAST_LIFE); components/Toast.svelte draws them and is the only
+// reader of `items` (core/tests/ui_contract.rs).
+// At most three at once; a fourth stands only while the other three carry an action (a
+// plain one never pushes an undo out, and a new one never pushes itself out). A toast waits
+// while the pointer is on it, and every toast waits while the window is in the back or a
+// modal dialog is open (`hold`): its time only runs while the user can act on it. Results of
+// the same kind in quick succession merge into one toast with one undo (`undoable`).
+// Ctrl/Cmd+Z takes back the newest result, also when it merged into a toast that came up
+// earlier. An undo names the jobs it concerns: when they are deleted for good, it goes
+// (`forget`). An undo that fails keeps its toast: it turns into a warning with the reason
+// and offers to try again.
 
+import { t } from '../i18n/t';
+import { errorText } from '../i18n/texts';
 import { tokenMs } from '../tokens';
+import type { IconMeaning } from '../icons';
 
-export type ToastTone = 'success' | 'info';
+/** What a toast says: a success of the user's own action, a note, or a warning (an undo
+ *  that failed). */
+export type ToastKind = 'success' | 'info' | 'warning';
+
+/** How each kind looks: its glyph (the success's check draws itself once as it appears);
+ *  the colour is the kind's status colour (Toast.svelte, by class). */
+export const TOAST_KINDS: Readonly<Record<ToastKind, { icon: IconMeaning; draws: boolean }>> = {
+  success: { icon: 'success', draws: true },
+  info: { icon: 'info', draws: false },
+  warning: { icon: 'warning', draws: false },
+};
+
+/** What the toast's button does: nothing (no button), an undo (Rückgängig, Ctrl/Cmd+Z), or
+ *  the way to what it tells of (Zeigen). */
+export type ToastActionKind = 'none' | 'undo' | 'show';
+
+/** How long a toast stays by its button: a plain one --dur-toast (4 s), one with a button
+ *  --dur-toast-action (10 s), long enough to read it and reach the button. */
+export const TOAST_LIFE: Readonly<Record<ToastActionKind, `--${string}`>> = {
+  none: '--dur-toast',
+  undo: '--dur-toast-action',
+  show: '--dur-toast-action',
+};
 
 /** An undo of what the user just did, or (`undo: false`) the way to what the toast tells of
  *  ("Zeigen" on a fetch that finished in another view); clicking it also closes the toast. */
@@ -27,10 +58,14 @@ export interface ToastAction {
 export const isUndo = (action: ToastAction | null): action is ToastAction =>
   action !== null && action.undo !== false;
 
+/** The kind of a toast's button. */
+export const actionKind = (action: ToastAction | null): ToastActionKind =>
+  action === null ? 'none' : isUndo(action) ? 'undo' : 'show';
+
 export interface ToastItem {
   id: number;
   text: string;
-  tone: ToastTone;
+  kind: ToastKind;
   action: ToastAction | null;
   /** Counts up when a merged result starts the toast's time again (its line restarts). */
   round: number;
@@ -41,8 +76,9 @@ const MAX = 3;
  *  archiviert."), whose one undo takes back all of them. */
 const MERGE_MS = 2000;
 
-/** An undo; it may take a while (the next one of a merged toast waits for it). */
-export type Undo = () => void | Promise<void>;
+/** An undo; it may take a while (the next one of a merged toast waits for it). A sentence it
+ *  returns (or throws) says why it failed: its toast stays and offers to try again. */
+export type Undo = () => void | string | null | Promise<void | string | null>;
 
 /** What a mergeable toast adds up: how many, their undos, when the last one came. */
 interface Merged {
@@ -59,9 +95,19 @@ interface Timer {
   since: number;
 }
 
-/** How long a toast stays: longer when it carries an undo. */
+/** How long a toast stays (TOAST_LIFE). */
 function lifetime(action: ToastAction | null): number {
-  return tokenMs(action === null ? '--dur-toast' : '--dur-toast-action');
+  return tokenMs(TOAST_LIFE[actionKind(action)]);
+}
+
+/** Why an undo failed: the sentence it returned or threw, or null when it went well. */
+async function failure(undo: Undo): Promise<string | null> {
+  try {
+    const result = await undo();
+    return typeof result === 'string' ? result : null;
+  } catch (error) {
+    return errorText(error);
+  }
 }
 
 class Toasts {
@@ -81,18 +127,21 @@ class Toasts {
   /** Why the toasts wait; each hold is released on its own. */
   #holds = new Set<symbol>();
 
-  /** A toast; `keys` are the jobs (keyOf) its undo concerns. */
+  /** A toast of `kind` (TOAST_KINDS); `keys` are the jobs (keyOf) its undo concerns. */
   show(
     text: string,
-    tone: ToastTone = 'success',
+    kind: ToastKind = 'success',
     action: ToastAction | null = null,
     keys: readonly string[] = [],
   ): number {
     const id = this.#next++;
-    this.items = [...this.items, { id, text, tone, action, round: 0 }];
-    // Too many: the oldest without an action goes first, so a tip never takes an undo away.
+    this.items = [...this.items, { id, text, kind, action, round: 0 }];
+    // Too many: the oldest without an action goes, never the new one, so a tip never takes
+    // an undo away; while the others all carry an action a fourth stands (one more is the
+    // most).
     while (this.items.length > MAX) {
       const plain = this.items.find((item) => item.action === null && item.id !== id);
+      if (plain === undefined && this.items.length <= MAX + 1) break;
       this.dismiss((plain ?? this.items[0]!).id);
     }
     this.#timers.set(id, { timer: null, left: lifetime(action), since: 0 });
@@ -100,6 +149,39 @@ class Toasts {
     if (keys.length > 0) this.#keys.set(id, new Set(keys));
     this.#start(id);
     return id;
+  }
+
+  /**
+   * The button of toast `id` (its own button or Ctrl/Cmd+Z): its action runs and the toast
+   * goes. An undo of results (`undoable`) takes them back, the last first; one that fails
+   * brings the toast back as a warning with the reason and "Erneut versuchen", which tries
+   * the rest again.
+   */
+  act(id: number): void {
+    const action = this.items.find((item) => item.id === id)?.action ?? null;
+    if (action === null) return;
+    const merged = this.#merged.get(id);
+    const keys = [...(this.#keys.get(id) ?? [])];
+    this.dismiss(id);
+    if (merged === undefined) action.onclick();
+    else void this.#takeBack([...merged.undos], keys);
+  }
+
+  /** Run `undos`, the last first; on a failure the rest waits behind a warning toast. */
+  async #takeBack(undos: Undo[], keys: readonly string[]): Promise<void> {
+    while (undos.length > 0) {
+      const reason = await failure(undos.at(-1)!);
+      if (reason !== null) {
+        this.show(
+          reason,
+          'warning',
+          { label: t.common.retry, onclick: () => void this.#takeBack(undos, keys) },
+          keys,
+        );
+        return;
+      }
+      undos.pop();
+    }
   }
 
   /**
@@ -126,18 +208,12 @@ class Toasts {
     );
     if (open === undefined) {
       const merged: Merged = { kind, count, undos: [undo], at: now };
+      // Its button goes through act(): the last result first, like an undo stack (each undo
+      // finds the list as it was).
       const id = this.show(
         text(count),
         'success',
-        {
-          label: undoLabel,
-          // The last result first, like an undo stack (each undo finds the list as it was).
-          onclick: () => {
-            void (async () => {
-              for (const each of [...merged.undos].reverse()) await each();
-            })();
-          },
-        },
+        { label: undoLabel, onclick: () => void this.#takeBack([...merged.undos], keys) },
         keys,
       );
       this.#merged.set(id, merged);
@@ -174,8 +250,7 @@ class Toasts {
         null,
       );
     if (!newest?.action) return false;
-    newest.action.onclick();
-    this.dismiss(newest.id);
+    this.act(newest.id);
     return true;
   }
 
@@ -197,6 +272,12 @@ class Toasts {
         this.dismiss(item.id);
       }
     }
+  }
+
+  /** The database changed under every toast (a backup restored): their undos would act on
+   *  jobs that may be gone, so every toast goes. */
+  clear(): void {
+    for (const item of [...this.items]) this.dismiss(item.id);
   }
 
   /** Hovered: the toast stays. */

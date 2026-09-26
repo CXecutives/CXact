@@ -1,9 +1,10 @@
 <!--
   No profile yet (or one that no longer reads): one sentence what the profile is for and
-  the three ways in, side by side as siblings (32 px like every main action): "Profil
-  anlegen" (the primary), "Aus Lebenslauf anlegen" (with a prompt for an AI) and
-  "Profildatei wählen" (an existing JSON file). A file that no longer reads also offers its folder, to fix it by hand. Sits at about
-  38 % of the height.
+  the three ways in, side by side as siblings (32 px like every main action): "Aus Lebenslauf
+  anlegen" (the primary, the recommended way: a prompt for an AI fills the whole form),
+  "Profil anlegen" (an empty form) and "Profildatei wählen" (an existing JSON file). A file
+  that no longer reads also offers its folder, to fix it by hand. Sits at about 38 % of the
+  height.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -38,20 +39,12 @@
 </script>
 
 <div class="start" data-testid="profile-empty">
-  <EmptyState icon="file-text" {heading} {text} />
+  <EmptyState icon="document" {heading} {text} />
   <div class="ways">
     <Button
       variant="primary"
       size="field"
-      icon="plus"
-      label={t.profile.create}
-      testid="profile-create"
-      onclick={oncreate}
-    />
-    <Button
-      variant="secondary"
-      size="field"
-      icon="clipboard-paste"
+      icon="paste"
       label={t.profile.fromCv}
       testid="profile-from-cv"
       onclick={onfromcv}
@@ -59,7 +52,15 @@
     <Button
       variant="secondary"
       size="field"
-      icon="file-up"
+      icon="add"
+      label={t.profile.create}
+      testid="profile-create"
+      onclick={oncreate}
+    />
+    <Button
+      variant="secondary"
+      size="field"
+      icon="pickFile"
       label={t.profile.pick}
       loading={picking}
       testid="profile-pick"
@@ -69,7 +70,7 @@
   {#if unreadable && onopenfolder}
     <Button
       variant="link"
-      icon="folder-open"
+      icon="folder"
       label={t.common.openFolder}
       testid="profile-folder"
       onclick={onopenfolder}

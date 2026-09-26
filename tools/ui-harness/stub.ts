@@ -122,6 +122,9 @@ interface Harness {
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
    *  (`close-requested`) while it holds unsaved changes, else the window closes. */
   requestClose: () => void;
+  /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
+   *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
+  text: (path: string, ...args: unknown[]) => Promise<string>;
   /** "Verbinden" signs in and counts until this is false again or `cancel_run` stops it; it
    *  holds the app meanwhile (`Activity::Mailbox`): a run is refused as busy. */
   holdMailbox: boolean;
@@ -1195,8 +1198,9 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 
 let jobs: JobView[] = [];
 let state: AppState;
-/** The profile a `remove_profile` took (core keeps it as the backup until restored). */
-let removedProfile: ProfileInfo | null = null;
+/** Core's one backup of the profile: the previous one of every save, the one a
+ *  `remove_profile` took; `restore_profile` swaps it with the profile. */
+let backupProfile: ProfileInfo | null = null;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
 let backups: Backup[] = [];
 
@@ -2815,6 +2819,7 @@ const handlers: Handlers = {
     }
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
+    if (state.profile !== null) backupProfile = state.profile;
     state.profile = {
       ...PROFILE,
       fileName: 'beraterprofil.json',
@@ -2844,14 +2849,15 @@ const handlers: Handlers = {
   },
   remove_profile: () => {
     // Like core: the profile becomes the backup, which `restore_profile` brings back.
-    removedProfile = state.profile;
+    if (state.profile === null) return false;
+    backupProfile = state.profile;
     state.profile = null;
-    return removedProfile !== null;
+    return true;
   },
   restore_profile: () => {
-    if (state.profile !== null || removedProfile === null) return false;
-    state.profile = removedProfile;
-    removedProfile = null;
+    // Like core: the backup becomes the profile, a profile that is there the backup.
+    if (backupProfile === null) return false;
+    [state.profile, backupProfile] = [backupProfile, state.profile];
     return true;
   },
   set_unsaved: ({ on }) => {
@@ -3035,6 +3041,14 @@ const harness: Harness = {
   job(key) {
     const found = find(key);
     return found === undefined ? null : structuredClone(found);
+  },
+  async text(path, ...args) {
+    const { t } = await import('../../ui/src/lib/i18n/t');
+    let value: unknown = t;
+    for (const part of path.split('.')) value = (value as Record<string, unknown>)[part];
+    return String(
+      typeof value === 'function' ? (value as (...a: unknown[]) => unknown)(...args) : value,
+    );
   },
   form() {
     return state.profile?.form ? structuredClone(state.profile.form) : null;

@@ -13,7 +13,7 @@
 //   followed. A rescore opens no run card and brings no fetch news; only when it failed or
 //   could not write the files the card says so.
 
-import type { IconName } from '$components/Icon.svelte';
+import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
 import { errorText } from '../i18n/texts';
 import { invoke, IpcError, onRun } from '../ipc/api';
@@ -434,7 +434,7 @@ export function needsAction(health: PortalHealth): boolean {
 export interface FailureAction {
   label: string;
   /** The glyph the action has everywhere (a retry loads again, like Abrufen). */
-  icon?: IconName;
+  icon?: IconMeaning;
   onclick: () => void;
 }
 
@@ -457,11 +457,11 @@ export function failureAction(
     case 'secretStore':
       return { label: t.run.checkMailbox, onclick: () => navigation.go('settings') };
     case 'internal':
-      return { label: t.common.openLog, icon: 'folder-open', onclick: openLog };
+      return { label: t.common.openLog, icon: 'folder', onclick: openLog };
     default:
       if (run.active) return null;
       if (summary !== null && isFetch(summary.kind) && app.hasMailbox) return null;
-      return { label: t.common.retry, icon: 'refresh-cw', onclick: () => run.retry(summary) };
+      return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
 }
 

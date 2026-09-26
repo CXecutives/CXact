@@ -1,29 +1,17 @@
 // The Übersicht's ways into the Jobs view, in one place: each opens the Eingang (the one
 // work list) with exactly the filter its count names, no search, the kept order untouched,
-// and the list's kept fold of the excluded jobs. When the list's API changes, only this file
-// follows.
+// and, for the excluded jobs, their section opened and brought into view. When the list's API
+// changes, only this file follows.
 
 import type { JobView } from '$lib/ipc/types';
 import { NO_FILTER, inListFilter, type ListFilter } from '$lib/state/filter';
 import { jobs } from '$lib/state/jobs.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 
-/** Where the list keeps whether its excluded section is open (JobList reads it on mount). */
-const EXCLUDED_OPEN_KEY = 'jobs-excluded-open';
-
-function keepExcludedOpen(): void {
-  try {
-    localStorage.setItem(EXCLUDED_OPEN_KEY, '1');
-  } catch {
-    // Without a store the section opens with the job she opens there.
-    return;
-  }
-}
-
 /** Jobs with the Eingang and only this filter (the view first: an unsaved Profil may ask). */
-function show(filter: ListFilter, excludedOpen = false): void {
+function show(filter: ListFilter, revealExcluded = false): void {
   navigation.go('jobs', false, () => {
-    if (excludedOpen) keepExcludedOpen();
+    if (revealExcluded) jobs.revealExcluded = true;
     if (jobs.place !== 'inbox' || jobs.search !== '') jobs.setPlace('inbox', true);
     jobs.setFilter(filter);
   });
@@ -39,7 +27,7 @@ export function toHigh(): void {
   show({ ...NO_FILTER, minBand: 'high' });
 }
 
-/** The excluded jobs not opened yet: the Eingang with its excluded section open. */
+/** The excluded jobs not opened yet: the Eingang with its excluded section open and in view. */
 export function toExcluded(): void {
   show(NO_FILTER, true);
 }

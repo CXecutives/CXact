@@ -1,6 +1,7 @@
 # Changing CXact
 
-How to make the usual changes fast and without leaving a copy behind.
+How to make the usual changes fast and without leaving a copy behind. The layers, the source
+of each decision and the checks that hold them: `docs/ARCHITECTURE.md`.
 
 ## Change the look
 
@@ -129,8 +130,33 @@ ask which palette is on.
   needs its field in `Settings` (`core/src/settings.rs`) and `SettingsPatch` (`view.rs`).
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
-- A key of the app is one entry in `ui/src/lib/input/keys.ts`; the card of the keys and
-  Einstellungen both show it. Its handling lives in `ui/src/lib/input/input.ts`.
+- A key of the app is one row of `ui/src/lib/input/keys.ts` (what it does, where it works,
+  its name, its keys per OS): `ui/src/lib/input/input.ts` dispatches from it, the card of the
+  keys and Einstellungen show it, and a button that does the same names it (`keys` on
+  `Button`). What differs between Windows and macOS is `keyConventions()` in
+  `ui/src/lib/platform.ts`; the views' keys are `ui/src/lib/views.ts`.
+
+## Change a role of the controls
+
+Each role of the UI has one pattern, decided in one place; the components only read it, and
+`core/tests/ui_contract.rs` fails when a copy appears elsewhere.
+
+- **An icon**: `ui/src/lib/icons.ts` maps each meaning (`trash`, `purge`, `external`,
+  `prompt`, `fetch`, `retry`, ...) to one Lucide glyph; components and views pass the
+  meaning. Another glyph for a meaning is one edit there (a new glyph also gets its import in
+  `ui/src/components/Icon.svelte`, a type error says so). One glyph means one thing: a new
+  meaning needs a glyph no other meaning has.
+- **A view in the sidebar** (name, icon, key): `ui/src/lib/views.ts`.
+- **A toast**: `TOAST_KINDS` (glyph, colour) and `TOAST_LIFE` (how long, by its button) in
+  `ui/src/lib/state/toasts.svelte.ts`; a quiet success is always a toast (`toasts.show`),
+  never a note that stays in the view.
+- **Hover, press and focus**: one answer per surface kind (quiet, control, raised, label) in
+  `ui/src/styles/tokens.css` ("one answer per surface kind").
+- **Buttons**: two heights, `sm` (28 px, in rows and tools) and `field` (32 px, the default);
+  a button that loses something for good is `warns` (red at rest).
+- **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
+  `tools/ui-harness/specs/shell.spec.ts`, `input.spec.ts` and `gallery.spec.ts` in Chromium.
+
 ## What the backend generates for the UI
 
 `cargo test -p jobalert-core ipc_types` writes `ui/src/lib/ipc/types/` from core and fails
@@ -175,13 +201,24 @@ A number or a list of words under `harte_kriterien`:
    "Wert entfernen" follow the row; a test fails while `ALL` or the table misses a field.
 3. `cargo test -p jobalert-core ipc_types` rewrites `ProfileCriteria.ts`,
    `UnreadableField.ts` and `profile.ts`.
-4. The UI: its place in `ui/src/features/profile/ProfileEditor.svelte` (the unit through
-   `unitOf`) and its label in both catalogs (`profile.field`).
-   `ui/src/lib/state/profile.svelte.ts` and the stub's validation need nothing.
+4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
+   (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
+   come from core) and its label (and hint, placeholder) in both catalogs (`profile.field`).
+   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` (the CV update fills it
+   too) and the stub's validation need nothing.
 
 A criterion of another kind (a switch, a choice) is a new `Kind` variant: the compiler
 names every `match row.kind` that has to handle it; in the UI `normalizedCriteria` and
-`fieldValue` of `profile.svelte.ts` take it by hand.
+`fieldValue` of `profile.svelte.ts` take it by hand, a switch is one `kind: 'switch'` entry of
+the section's switches, anything else a control kind of `sections.ts` with its component.
+
+## Change the Profil form
+
+Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the sections in
+their order and each one's lines of fields. Moving, adding or removing a field or a section is
+one entry there (a new section also needs its heading and sentence in `profile.section` and
+`profile.sectionHint`); a quiet hint where values contradict each other is the field's
+`advice`, a field that waits for another its `off`.
 
 ## Add an Excel column
 
@@ -217,3 +254,76 @@ checks the headers like every export text.
   Einstellungen > Wartung lists and restores them (`list_backups`, `restore_backup`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
+
+## Add words to the engine
+
+The engine's words live in `core/src/matching/lexicon/` (German and English wording of ads
+and profiles: an external contract, never translated):
+
+- `engine.rs`: the core's lists for every profile: fillers, generic words, `CORE_CONCEPTS`
+  (phrase to concept: the synonyms), soft skills, language names and levels. Sorted tables
+  stay sorted (`binary_search`).
+- `domains/<field>.rs`: a domain pack. `triggers` switch it on from the profile's
+  competences, `concepts` map a phrase to a concept, `generic` holds words too broad to meet
+  a requirement alone. The head of `domains/mod.rs` says how a key is written (folded words,
+  single spaces).
+- `wishes.rs`: the wishes and industries. `tables.rs` is generated from the old engine
+  (`core/tests/fixtures/matching/legacy_lexicon.json`): never edit it.
+
+1. **A term or synonym**: one `(phrase, concept)` pair in the pack of its field, or in
+   `CORE_CONCEPTS` when every field uses it. A false friend gets a concept of its own. The
+   pack's unit tests get a paraphrase that meets it and a false friend that does not.
+2. **A pack**: a file in `domains/` and one line in `DOMAINS`.
+3. Run `cargo test -p jobalert-core` (the pack tests and the gates of the corpus and the
+   held-out sets, whose floors stand in `core/tests/matching_heldout.rs`; a floor is never
+   lowered to let a change pass), then both reports:
+   `cargo test -p jobalert-core --test matching_corpus -- --ignored report --nocapture` and
+   `cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report --nocapture`.
+4. A change that moves a score raises `ENGINE_VERSION` (`core/src/matching/mod.rs`; the app
+   scores the stored jobs again) and gets its section in `docs/MATCHING.md` with the numbers
+   before and after.
+
+## Release a version
+
+1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer and Einstellungen >
+   Wartung read it) and in `package.json`; the lock files follow (`cargo check`,
+   `npm install --package-lock-only`). The harness stub keeps its own demo version.
+2. **Data of the old version**: a new field of `Settings` came with its file of the new
+   version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
+   of the schema chain (`core/src/store/schema.rs`, with its `schema_vN.sql` fixture). The
+   store copies the database to `backups/` before it migrates.
+3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
+   and the full harness in both engines once.
+4. **Build**: `npx tauri build` writes
+   `target/release/bundle/nsis/CXact_<version>_x64-setup.exe`; the macOS dmg comes from the
+   `macos-latest` CI job (workflow artifacts; nothing is published).
+5. **Install over the old version**: the user starts the setup from the Explorer (an agent's
+   sandbox redirects AppData, so its install is not the real one). The setup replaces the
+   program only: the data folder (`%LOCALAPPDATA%\de.cxecutives.job-alert-monitor\`, on macOS
+   `~/Library/Application Support/de.cxecutives.job-alert-monitor/`: the database with the
+   settings, `backups/`, the log), the work folder and the keychain entry stay. It removes an
+   install of the old name Job-Alert-Monitor silently (`src-tauri/windows/hooks.nsh`,
+   `core/tests/installer_hooks.rs`). The identifier `de.cxecutives.job-alert-monitor` never
+   changes: it names the data folder and the keychain entry.
+6. **Check**: the new version under Wartung, the jobs, marks and profile still there, a
+   fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+
+## Where a new rule goes
+
+A rule is a check that fails a gate, never a sentence alone. Its message names the rule and
+the fix; its exceptions stand in it with a reason. Then one row in the guardrail table of
+`docs/ARCHITECTURE.md`.
+
+- **One file, one construct** (an import, a syntax, a value in TypeScript or Svelte):
+  `eslint.config.js`, as an import door or a `SYNTAX` entry opened for the one file that may.
+  CSS values: `stylelint.config.js`.
+- **The import graph, file size, dead code**: `tools/architecture.mjs` (`LIB_UI_HELPERS`,
+  `FEATURE_PUBLIC`, `LARGE`, `ENTRIES`). A finding accepted for a while goes to `TEMPORARY`
+  with a TODO; the check fails once the finding is gone, so the entry goes too.
+- **Across files, or a promise no linter sees** (the gallery shows every component, texts
+  only from the catalog, per-OS markup): `core/tests/ui_contract.rs`, which runs without Node.
+- **The backend and its data**: a Rust test in `core/tests/` (`contract.rs` for commands,
+  `settings_compat.rs` and `existing_data.rs` for stored data, `architecture.rs` for the
+  shell).
+- **Behaviour in a browser**: a harness spec in `tools/ui-harness/specs/`, reading its texts
+  from the catalog through the shared helpers.

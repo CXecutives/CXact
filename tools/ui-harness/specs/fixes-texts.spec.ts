@@ -112,21 +112,6 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
   await runFinished(page);
 });
 
-// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
-test.fixme('a result file nothing wrote yet cannot be opened and says why', async ({ page }) => {
-  // A workspace without files yet (a new work folder): the Excel file waits for the first
-  // fetch, as in Einstellungen; the HTML overview is written when it opens.
-  await open(page, `${WIN}&scenario=no-files`);
-  const overview = page.getByTestId('day-overview');
-  const excel = overview.getByTestId('overview-excel');
-  await expect(excel).toHaveAttribute('aria-disabled', 'true');
-  await excel.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Die Excel-Datei entsteht beim ersten Abruf.');
-  await overview.getByTestId('overview-open').click();
-  await expect(overview).not.toContainText('nicht mehr');
-  await expect(overview).not.toContainText('nicht vorhanden');
-});
-
 test('one word per thing: the Excel file', async ({ page }) => {
   await open(page, WIN);
   // The glossary's Excel-Datei, as in Einstellungen ("Excel öffnen" read as "start Excel").

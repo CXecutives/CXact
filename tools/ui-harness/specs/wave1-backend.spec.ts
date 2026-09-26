@@ -11,17 +11,6 @@ async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
 
-// Teil E: the Übersicht is a view of its own now; overview.spec.ts takes this over.
-test.fixme('"Ordner öffnen" of the day overview shows the Excel file in its folder', async ({
-  page,
-}) => {
-  await open(page, WIN);
-  const folder = page.getByTestId('day-overview').getByTestId('overview-folder');
-  await expect(folder).toHaveText('Ordner öffnen');
-  await folder.click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'excelInFolder' } });
-});
-
 /** A fetch that finished as the backend reports it, with what its export says. */
 function finished(files: Partial<ExportSummary>): RunEvent {
   return {

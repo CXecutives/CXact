@@ -2,9 +2,9 @@
   The core competences: one row each with the target (Schwerpunkt), the competence, its
   years and its synonyms (`auch`, one line with "+n" for those that do not fit), then
   "Kompetenz hinzufügen". The target says what a click does (mark, or remove the
-  Schwerpunkt); the count stands over the targets ("2/5", its tooltip says what they do). At
-  most five: a sixth target is disabled and its tooltip says why, as does the target of a
-  row without a competence. Renaming or removing a marked competence takes its Schwerpunkt
+  Schwerpunkt); the count stands over the targets ("2/5") and a line under the rows says what
+  they do. At most five: a sixth target is disabled and its tooltip says why, as does the
+  target of a row without a competence. Renaming or removing a marked competence takes its Schwerpunkt
   along. A file with more Schwerpunkte says under the rows that the first five were taken;
   one that does not count (no competence of that name) or a value that does not read is said
   there with "Wert entfernen". A value the backend refused marks its row. Enter goes to the
@@ -119,7 +119,7 @@
 <div class="list" bind:this={list} data-testid="competences" data-field="competences">
   {#if rows.length > 0}
     <div class="head" aria-hidden="true">
-      <span class="count" data-testid="focus-count" use:tooltip={words.focusHint}>
+      <span class="count" data-testid="focus-count">
         {words.focusCount(focus.length, MAX_FOCUS)}
       </span>
       <span>{words.competence}</span>
@@ -142,7 +142,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="target"
+          icon="focus"
           label={starred(row.name) ? words.unstar : words.star}
           pressed={starred(row.name)}
           disabled={row.name.trim() === '' || (!starred(row.name) && focus.length >= MAX_FOCUS)}
@@ -185,7 +185,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="x"
+          icon="close"
           label={words.removeCompetence(row.name.trim())}
           testid="competence-remove"
           onclick={(event) => removeByButton(row, event)}
@@ -200,12 +200,15 @@
     <Button
       variant="secondary"
       size="sm"
-      icon="plus"
+      icon="add"
       label={words.addCompetence}
       testid="competence-add"
       onclick={() => void add()}
     />
   </span>
+  {#if rows.length > 0}
+    <p class="focus-hint under" data-testid="focus-hint">{words.focusHint}</p>
+  {/if}
   <!-- What the file said about the Schwerpunkte that the targets cannot show. -->
   {#if problems.length > 0 || trimmed !== null}
     <div class="focus" data-testid="focus" data-field="focus">
@@ -269,6 +272,7 @@
   /* Under the rows the button lines up with the competence column; alone it starts at the
      card's edge. */
   .add.indent,
+  .under,
   .error {
     margin-left: calc(var(--control-sm) + var(--space-8));
   }

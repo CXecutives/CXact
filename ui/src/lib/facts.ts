@@ -10,7 +10,7 @@
 // (the pay in euros or in another currency, the remote share or the work mode): the row then
 // takes the icon of the entry whose value it shows, so a value has one icon everywhere.
 
-import type { IconName } from '$components/Icon.svelte';
+import type { IconMeaning } from '$lib/icons';
 import { formatShortDate } from '$lib/i18n/format';
 import { t } from '$lib/i18n/t';
 import type { JobView, KeyFacts } from '$lib/ipc/types';
@@ -25,7 +25,7 @@ type Facts = KeyFacts & { salary?: number | null };
 
 export interface Fact {
   key: string;
-  icon: IconName;
+  icon: IconMeaning;
   /** The fact in the words of a list row ("1.200/Tag"); null when the ad does not say it
    *  (and for a row of the reader the list row leaves out). */
   format: (job: JobView) => string | null;
@@ -106,31 +106,31 @@ const readerOnly = (): null => null;
 
 /** THE table: the facts of a job in their order. */
 export const FACTS = [
-  { key: 'contract', icon: 'handshake', format: contract, term: 'contract' },
-  { key: 'money', icon: 'euro', format: (job) => pay(job, 'euro'), term: 'rate', ink: true },
+  { key: 'contract', icon: 'contract', format: contract, term: 'contract' },
+  { key: 'money', icon: 'money', format: (job) => pay(job, 'euro'), term: 'rate', ink: true },
   {
     key: 'foreignMoney',
-    icon: 'banknote',
+    icon: 'otherMoney',
     format: (job) => pay(job, 'other'),
     term: 'rate',
     ink: true,
   },
-  { key: 'start', icon: 'calendar', format: start, term: 'start' },
+  { key: 'start', icon: 'start', format: start, term: 'start' },
   {
     key: 'duration',
-    icon: 'hourglass',
+    icon: 'duration',
     format: (job) => {
       const months = factsOf(job)?.months ?? null;
       return months ? t.facts.months(months) : null;
     },
     term: 'duration',
   },
-  { key: 'workload', icon: 'clock', format: workload, term: 'workload' },
-  { key: 'remote', icon: 'house', format: remote, term: 'remote' },
-  { key: 'mode', icon: 'building-2', format: mode, term: 'remote' },
-  { key: 'place', icon: 'map-pin', format: readerOnly, term: 'place' },
-  { key: 'industry', icon: 'factory', format: readerOnly, term: 'industry' },
-  { key: 'experience', icon: 'award', format: readerOnly, term: 'experience' },
+  { key: 'workload', icon: 'workload', format: workload, term: 'workload' },
+  { key: 'remote', icon: 'remote', format: remote, term: 'remote' },
+  { key: 'mode', icon: 'onsite', format: mode, term: 'remote' },
+  { key: 'place', icon: 'place', format: readerOnly, term: 'place' },
+  { key: 'industry', icon: 'industry', format: readerOnly, term: 'industry' },
+  { key: 'experience', icon: 'experience', format: readerOnly, term: 'experience' },
 ] as const satisfies readonly Fact[];
 
 export type FactKey = (typeof FACTS)[number]['key'];
@@ -138,7 +138,7 @@ export type FactKey = (typeof FACTS)[number]['key'];
 /** One fact as a row shows it. */
 export interface RowFact {
   key: FactKey;
-  icon: IconName;
+  icon: IconMeaning;
   text: string;
   ink: boolean;
 }
@@ -163,7 +163,7 @@ export const TERM_ROWS: readonly TermKey[] = [
 
 /** The icon of a reader row for a job: the icon of the entry whose value the job has (a CHF
  *  rate its banknote, a hybrid job its building), else of the row's first entry. */
-export function termIcon(term: TermKey, job: JobView | null = null): IconName {
+export function termIcon(term: TermKey, job: JobView | null = null): IconMeaning {
   const entries = (FACTS as readonly Fact[]).filter((fact) => fact.term === term);
   const shown = job === null ? undefined : entries.find((fact) => fact.format(job) !== null);
   return (shown ?? entries[0])?.icon ?? 'info';

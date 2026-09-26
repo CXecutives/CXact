@@ -3,9 +3,8 @@
   wiederherstellen"): its label, a quiet note after it and a detail at its end (a size), the
   numbers tabular. Like native radio buttons the list is one Tab stop, the arrows, Home and
   End choose (lib/input/input.ts) and a click chooses; Enter goes on to the dialog around it.
-  The chosen row carries a check and the light warm wash of a selection (one step deeper
-  under the pointer and while pressed), the others wash on hover and darken while pressed;
-  nothing moves or scales.
+  The chosen row carries a check (coral stays with its roles); every row washes quietly on
+  hover and darkens while pressed, like a menu's; nothing moves or scales.
 -->
 <script lang="ts" module>
   export interface RadioListOption<Id extends string = string> {
@@ -85,25 +84,13 @@
   }
 
   .row:hover {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
 
-  .row[aria-checked='true'] {
-    background-color: var(--surface-selected);
-  }
-
-  .row[aria-checked='true']:hover {
-    background-color: var(--surface-selected-hover);
-  }
-
   :global(:where(:root:not([data-aux-press]))) .row:active:hover {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
-  }
-
-  :global(:where(:root:not([data-aux-press]))) .row[aria-checked='true']:active:hover {
-    background-color: var(--surface-selected-press);
   }
 
   .row:focus-visible {

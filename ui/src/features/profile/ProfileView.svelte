@@ -1,15 +1,18 @@
 <!--
   Profil (centred 720): the profile itself as a form. Without a profile an empty state with
-  the three ways in (a new form, from a CV with an AI, an existing file); a file that no
-  longer reads says so in the same place, with its folder at hand. With a profile its head
+  the three ways in (from a CV with an AI, the recommended one; a new form; an existing
+  file); a file that no longer reads says so in the same place, with its folder at hand.
+  With a profile its head
   (the person, an honest quality, what the app reads, the file actions) and the form with
   the save bar. A chosen file and an AI's answer fill the form for review (an answer for the
   stored profile updates it); nothing is stored before "Speichern". Leaving the view or
   closing the window with unsaved changes asks once ("Änderungen speichern?", the heading
   alone). Removing the profile needs no question: it goes at once and a toast offers
-  "Rückgängig" for a moment. During setup the first save offers "Weiter zum ersten Abruf",
-  which starts the fetch; the setup page asks for the steps with an AI (`cvWanted`), which
-  open when the view appears.
+  "Rückgängig" for a moment; so does saving another file over the profile (the backup comes
+  back, core's swap), and an undo that fails says so. During setup the first save offers
+  "Weiter zum ersten Abruf", which starts the fetch, or without a mailbox "Weiter zum
+  Postfach", which goes back to the setup page; the setup page asks for the steps with an AI
+  (`cvWanted`), which open when the view appears.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -74,16 +77,21 @@
         ? t.profile.rescored
         : t.profile.saved,
   );
-  /** During setup, a saved profile leads on to the first fetch (once, in the save bar). */
+  /** During setup, a saved profile leads on (once, in the save bar): to the first fetch
+   *  with a mailbox, else back to the setup page, whose next step is the mailbox. */
   const next = $derived(
-    saved && app.state?.firstRun && app.hasProfile ? () => void onward() : null,
+    saved && app.state?.firstRun && app.hasProfile
+      ? app.hasMailbox
+        ? { label: t.profile.next, icon: 'next' as const, onclick: () => void onward() }
+        : { label: t.profile.nextMailbox, icon: 'next' as const, onclick: onward }
+      : null,
   );
 
-  /** The first fetch starts at once; the Jobs view shows it (a start that fails is said in
-   *  the last step of the setup page). */
+  /** The setup page, or the Jobs view that shows the first fetch, which starts at once when
+   *  nothing holds it (a start that fails is said in the last step of the setup page). */
   async function onward(): Promise<void> {
     navigation.go('jobs');
-    await run.start({ kind: 'fetch' });
+    if (app.hasMailbox && run.fetchBlocked === null) await run.start({ kind: 'fetch' });
   }
   /** Where the user wanted to go with unsaved changes (a view, or closing the window). */
   let leaving = $state<ViewId | 'close' | null>(null);
@@ -257,11 +265,13 @@
       : null;
   }
 
-  /** `true` when the profile is saved. */
+  /** `true` when the profile is saved. Another file saved over the profile replaces it: a
+   *  toast offers the old one back. */
   async function save(): Promise<boolean> {
     busy = 'save';
     saveNote = null;
     fieldError = null;
+    const replaced = replacing;
     try {
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
@@ -271,6 +281,12 @@
       if (form) editor.edit(form);
       else editor.close();
       saved = true;
+      if (replaced) {
+        toasts.show(t.profile.replaced, 'success', {
+          label: t.common.undo,
+          onclick: () => void restore(),
+        });
+      }
       return true;
     } catch (error) {
       const at = refused(error);
@@ -327,15 +343,18 @@
     }
   }
 
-  /** "Rückgängig" of a removal: the backup becomes the profile again. */
+  /** "Rückgängig" of a removal or of a file that replaced the profile: the backup becomes
+   *  the profile again (the form shows it, unless it holds changes). */
   async function restore(): Promise<void> {
     note = null;
+    let back: boolean;
     try {
-      await invoke('restore_profile');
-      await reload();
-    } catch (error) {
-      note = () => errorText(error);
+      back = await invoke('restore_profile');
+    } catch {
+      back = false;
     }
+    if (back) await reload();
+    else toasts.show(t.profile.restoreFailed, 'info');
   }
 
   /** Leaving without saving. */
@@ -405,40 +424,28 @@
         ? understood.competenceCount
         : local.terms,
   );
-  /** What "n Werte prüfen" counts, in the order of the form's fields: each value that does
-   *  not read, a region rule that stays off; each with the field it is said at. */
+  /** What "n Werte prüfen" counts: each value of the file that does not read, by the field
+   *  it is said at. */
   const checkList = $derived(
-    [
-      ...problems.map((problem) => ({
-        field: problem.field as string,
-        text: problem.entry
-          ? problem.field === 'focus'
-            ? t.profile.field.unreadableFocus(problem.value)
-            : t.profile.field.unreadableRole(problem.value)
-          : (warningText(problem.notice) ?? ''),
-      })),
-      ...(warnings.some((w) => w.code === 'regionWithoutPlaces') &&
-      editor.after.criteria.permanentPlaces.length === 0 &&
-      editor.after.criteria.permanentRemoteMin !== null
-        ? [{ field: 'permanentRemoteMin', text: t.profile.warning.regionWithoutPlaces }]
-        : []),
-    ].filter((check) => check.text !== ''),
+    problems.flatMap((problem) =>
+      problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
+    ),
   );
-  const checks = $derived(checkList.map((check) => check.text));
 
   /** "n Werte prüfen": the caret to the first of them, in the order of the form. */
   function checkFirst(): void {
-    const fields = new Set(checkList.map((check) => check.field));
+    const fields = new Set(checkList);
     const first = [...document.querySelectorAll<HTMLElement>('[data-field]')].find((node) =>
       fields.has(node.dataset.field ?? ''),
     );
-    const field = first?.dataset.field ?? checkList[0]?.field;
+    const field = first?.dataset.field ?? checkList[0];
     if (field !== undefined) void panel?.focusField(field);
   }
   /** Said in the head: what the form cannot change (keys of the file the app does not read). */
   const HEAD = new Set(['ignoredKeys']);
-  /** Said elsewhere: the quality at the competences, empty criteria at their section, a
-   *  value at its field, the Schwerpunkte taken over at the Schwerpunkte. */
+  /** Said elsewhere: the quality in the badge, empty criteria at their section, a value at
+   *  its field, a region rule at the remote share, the Schwerpunkte taken over at the
+   *  Schwerpunkte. */
   const ELSEWHERE = new Set([
     'fewCompetences',
     'noCompetences',
@@ -449,6 +456,8 @@
     'focusTrimmed',
   ]);
   const headWarnings = $derived(warnings.filter((w) => HEAD.has(w.code) || !ELSEWHERE.has(w.code)));
+  /** Another file over the stored profile: saving replaces it. */
+  const replacing = $derived(editor.origin === 'file' && profile !== null);
 </script>
 
 <div class="page" class:editing={editor.origin !== null && !editor.pasting} data-testid="profile">
@@ -489,11 +498,11 @@
       {quality}
       competences={hasCompetences}
       {terms}
-      focus={editor.after.focus.length}
-      {checks}
+      checks={checkList.length}
       warnings={headWarnings}
       {rescoring}
       dirty={editor.dirty}
+      {replacing}
       picking={busy === 'pick'}
       note={note?.() ?? null}
       onpick={() => void pick()}
@@ -512,7 +521,7 @@
       busy={busy === 'save'}
       note={saveNote?.() ?? null}
       {result}
-      onnext={next}
+      {next}
       onsave={() => void save()}
       ondiscard={discard}
     />
