@@ -43,6 +43,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
   logger levels stay capped.
 
 ## Architecture
+- `docs/ARCHITECTURE.md`: layers, one source per decision, data flow, errors, state, generated files and the guardrails.
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
   `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` profile form, JSON merge
   with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan → fetch → score →
@@ -57,7 +58,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
 
 ## Commands
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
-- `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier) · `npm run harness` · `npm run build`
+- `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
 - Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the report, Excel,
   title bar, window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
@@ -72,6 +73,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; old engine at git r
   disjoint files; shared files (`Cargo.toml`, `package.json`, `core/src/lib.rs`, `core/src/view.rs`,
   `src-tauri/src/commands/**`, `src-tauri/commands.txt`, `build.rs`, `capabilities/main.json`, `tauri*.conf.json`) belong to the integrator.
 - Remove worktrees right after merging and run `cargo clean` there (disk).
+- A flaky test is fixed or removed the same day, never retried (CI fails a test that passes only on its retry).
 - macOS is verified through the `macos-latest` CI runner (real app screenshots, dmg install probe) and WebKit locally.
 
 ## Speed and tokens (project rules, user 2026-09-26)
