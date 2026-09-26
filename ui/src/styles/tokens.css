@@ -2,9 +2,14 @@
  * Design tokens - the only place in the UI where literal values live, and the one source of
  * every colour of the app (docs/CHANGING.md, "Change the look").
  *
- * Light mode only (no theme infrastructure). Two layers:
+ * Two layers:
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
  *   2. Semantic tokens   everything components use (colours are complete `hsl()` values).
+ *
+ * Three palettes (user, 2026-09-26), chosen in Einstellungen (Darstellung): Coast, the
+ * `:root` block below and the default; Light and Dark, one block each further down
+ * (`:root[data-palette='light']`, `'dark'`). Components never branch on the palette; the page
+ * sets `data-palette` (lib/palette.ts) and the roles follow.
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
@@ -42,7 +47,7 @@
   --p-success: 150 27% 60%;
   --p-warning: 45 76% 75%;
   --p-danger: 4 51% 56%;
-  --p-coral-800: 13 62% 45%;
+  --p-coral-800: 13 62% 42%;
   /* Very light warm steps for selection (user: "schön leicht und angenehm"): the selected
      row, its hover, the soft count pill and its hover, the ring track on the wash. */
   --p-coral-25: 22 72% 96.5%;
@@ -663,6 +668,157 @@
   /* A muted (excluded) row under the pointer, and a link while it is pressed. */
   --opacity-muted-hover: 0.8;
   --opacity-press: 0.7;
+}
+
+/* ---------------------------------------------------------------- palettes
+   Light and Dark are GitHub's Primer colours (the functional colours of its light and dark
+   theme, the base scale where a step is needed; each value names its Primer colour), clean,
+   without gradients. A palette sets the palette entries under Coast's names, so every role
+   follows, and then the few roles whose part differs from Coast. Primer has one accent:
+   coral (act, new, where you are) and navy (focus, links, progress, filters) both hold its
+   blue here. What is not the page stays on Coast (the report, the Excel file, the app icon:
+   tools/tokens.mjs reads the :root block for them), except the window and the Windows title
+   bar, which wear --bg, --text and --text-subtle of the chosen palette (tools/tokens.mjs
+   writes them per palette into core/src/export/palette.rs). `node tools/tokens.mjs --check`
+   measures every text on its backgrounds in all three palettes (WCAG AA). */
+
+:root[data-palette='light'] {
+  --p-white: 0 0% 100%; /* bgColor-default */
+  --p-cream: 210 28.6% 97.3%; /* bgColor-muted: the window, the sidebar */
+  --p-ink: 213 13% 14%; /* fgColor-default */
+  --p-coral: 212.4 92.1% 44.5%; /* bgColor-accent-emphasis */
+  --p-coral-variant: 212.4 92.1% 40%; /* one step deeper */
+  --p-coral-press: 213.4 94.4% 35.1%; /* blue-6 */
+  --p-muted: 210 28.6% 97.3%; /* bgColor-muted */
+  --p-muted-fg: 211 11% 39%; /* fgColor-muted */
+  --p-line: 208 19% 85%; /* borderColor-default */
+  --p-accent-soft: 199.4 100% 93.3%; /* bgColor-accent-muted */
+  --p-success: 137.1 62.9% 32.7%; /* bgColor-success-emphasis */
+  --p-warning: 43.9 66.1% 50.2%; /* yellow-3 */
+  --p-danger: 355.8 71.8% 47.3%; /* bgColor-danger-emphasis */
+  --p-coral-800: 213.4 94.4% 35.1%; /* blue-6: text on the blue washes */
+  --p-coral-25: 199.4 100% 93.3%; /* bgColor-accent-muted: the selected row */
+  --p-coral-40: 199.4 100% 93.3%;
+  --p-coral-50: 201 100% 89.5%; /* between blue-0 and blue-1 */
+  --p-coral-70: 203 100% 85.7%; /* blue-1 */
+  --p-coral-150: 203 100% 85.7%;
+  --p-navy: 212.4 92.1% 44.5%; /* fgColor-accent */
+  --p-navy-deep: 213.4 94.4% 35.1%; /* blue-6 */
+  --p-navy-50: 199.4 100% 93.3%; /* bgColor-accent-muted */
+  --p-navy-100: 199.4 100% 93.3%;
+  --p-navy-150: 203 100% 85.7%; /* blue-1 */
+  --p-navy-200: 204 100% 75%; /* blue-2 */
+  --p-fg-subtle: 212 8% 43%; /* fg.muted of Primer 7 */
+  --p-border-strong: 210 20% 82%; /* neutral-7 */
+  --p-border-input: 214 10% 55%; /* borderColor-emphasis */
+  --p-border-press: 211 11% 39%; /* neutral-9 */
+  --p-success-strong: 137 66% 30%; /* fgColor-success */
+  --p-success-soft: 133 80% 92%; /* bgColor-success-muted */
+  --p-warning-strong: 40.1 100% 30.2%; /* fgColor-attention */
+  --p-warning-soft: 52.8 100% 88.6%; /* bgColor-attention-muted */
+  --p-danger-strong: 356.2 70.6% 48%; /* fgColor-danger */
+  --p-danger-soft: 5.5 100% 95.7%; /* bgColor-danger-muted */
+  --p-danger-700: 350.4 84.3% 34.9%; /* red-6 */
+  --p-danger-750: 348.8 89.8% 26.9%; /* red-7 */
+  --p-on-accent: 0 0% 100%; /* fgColor-onEmphasis */
+  --p-score-high-text: 137 66% 30%; /* fgColor-success */
+  --p-score-high-soft: 133 80% 92%; /* bgColor-success-muted */
+  --p-score-low-text: 212 8% 43%;
+  --p-scrim: 213.3 10.8% 16.3%; /* bgColor-emphasis */
+  --p-shade-xs: 213 13% 14%;
+  --p-shade-pop: 213 13% 14%;
+  --p-shade-navy: 213 13% 14%;
+  --p-emphasis: 213.3 10.8% 16.3%; /* bgColor-emphasis: the tooltip, the current step */
+
+  /* Headings, labels and the active nav entry in the text colour; the tooltip grey. */
+  --surface-inverse: hsl(var(--p-emphasis));
+  --text-heading: hsl(var(--p-ink));
+  --text-label: hsl(var(--p-ink));
+  --nav-active-fg: hsl(var(--p-ink));
+}
+
+:root[data-palette='dark'] {
+  color-scheme: dark;
+
+  --p-white: 216 28% 7%; /* bgColor-default: the sheet, the cards */
+  --p-cream: 218 80% 2%; /* bgColor-inset: the window, the sidebar */
+  --p-ink: 210 66.7% 96.5%; /* fgColor-default */
+  /* Fills in fgColor-accent with dark text on them (white text on a blue that also reads as
+     text on the dark would miss AA one way or the other); lighter steps on hover and press. */
+  --p-coral: 213.7 92.8% 62%; /* fgColor-accent */
+  --p-coral-variant: 212 100% 67.3%; /* blue-3 */
+  --p-coral-press: 208.2 100% 73.7%; /* blue-2 */
+  --p-muted: 214 25% 11%; /* bgColor-muted */
+  --p-muted-fg: 214 8% 60%; /* fgColor-muted */
+  --p-line: 214 12% 27%; /* borderColor-default */
+  --p-accent-soft: 215 51% 15%; /* bgColor-accent-muted on the canvas */
+  --p-success: 132 59% 33%; /* bgColor-success-emphasis */
+  --p-warning: 40.6 72.1% 47.8%; /* fgColor-attention */
+  --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
+  --p-coral-800: 213.7 92.8% 62%; /* fgColor-accent */
+  /* bgColor-accent-muted on the canvas (10, 15, 20 and 30 %): the selected row and its steps. */
+  --p-coral-25: 215.2 46% 12.4%;
+  --p-coral-40: 215.2 46% 12.4%;
+  --p-coral-50: 215 51% 15%;
+  --p-coral-70: 215.7 51.6% 17.8%;
+  --p-coral-150: 214.5 55.9% 23.1%;
+  --p-navy: 213.7 92.8% 62%; /* fgColor-accent */
+  --p-navy-deep: 208.2 100% 73.7%; /* blue-2: stronger on the dark */
+  --p-navy-50: 215.2 46% 12.4%;
+  --p-navy-100: 215.7 51.6% 17.8%;
+  --p-navy-150: 214.5 55.9% 23.1%;
+  --p-navy-200: 216.6 84.3% 42.4%; /* blue-6 */
+  --p-fg-subtle: 214 8% 55%; /* between fg.muted of Primer 7 and 8 */
+  --p-border-strong: 215 8% 43%; /* borderColor-emphasis */
+  --p-border-input: 214.7 7.9% 52.7%;
+  --p-border-press: 214 8% 60%; /* neutral-9 */
+  --p-success-strong: 128.4 49.2% 48.6%; /* fgColor-success */
+  --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
+  --p-warning-strong: 40.6 72.1% 47.8%; /* fgColor-attention */
+  --p-warning-soft: 43.3 30% 11.8%; /* bgColor-attention-muted on the canvas */
+  --p-danger-strong: 2.7 92.6% 62.9%; /* fgColor-danger, also the filled danger button */
+  --p-danger-soft: 338.6 23.3% 11.8%; /* bgColor-danger-muted on the canvas */
+  --p-danger-700: 3.8 100% 72.4%; /* red-3 */
+  --p-danger-750: 5.2 100% 79.8%; /* red-2 */
+  --p-on-accent: 216 28% 7%; /* the canvas: text on the light fills */
+  --p-score-high-text: 128.4 49.2% 48.6%; /* fgColor-success */
+  --p-score-high-soft: 156 36% 11%;
+  --p-score-low-text: 214 8% 60%;
+  --p-scrim: 218 80% 2%;
+  --p-shade-xs: 218 80% 2%;
+  --p-shade-pop: 218 80% 2%;
+  --p-shade-navy: 218 80% 2%;
+  --p-emphasis: 214 12% 27%; /* bgColor-emphasis: the tooltip, the current step */
+
+  /* Washes of the light text instead of the dark ink, a deeper scrim, the tooltip grey with
+     the light text, and shadows that still show on the dark: stronger, and floating layers
+     outlined by the border (as Primer draws them). */
+  --surface-hover: hsl(var(--p-ink) / 0.06);
+  --surface-press: hsl(var(--p-ink) / 0.1);
+  --surface-selected-inactive: hsl(var(--p-ink) / 0.08);
+  --surface-track: hsl(var(--p-ink) / 0.08);
+  --scrim: hsl(var(--p-scrim) / 0.6);
+  --surface-inverse: hsl(var(--p-emphasis));
+  --text-heading: hsl(var(--p-ink));
+  --text-label: hsl(var(--p-ink));
+  --text-inverse: hsl(var(--p-ink));
+  --text-inverse-muted: hsl(var(--p-ink) / 0.72);
+  --nav-active-fg: hsl(var(--p-ink));
+  --ring-track-inactive: hsl(var(--p-ink) / 0.14);
+  --selection: hsl(var(--p-navy) / 0.35);
+  --scrollbar: hsl(var(--p-ink) / 0.24);
+  --scrollbar-hover: hsl(var(--p-ink) / 0.4);
+  --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-ink) / 0.06), transparent);
+  --sh-xs: 0 1px 2px hsl(var(--p-shade-xs) / 0.4);
+  --sh-thumb: 0 1px 2px hsl(var(--p-shade-xs) / 0.5);
+  --sh-pop: 0 0 0 1px hsl(var(--p-line)), 0 8px 24px -6px hsl(var(--p-shade-pop) / 0.6);
+  --sh-tooltip: 0 4px 12px -4px hsl(var(--p-shade-pop) / 0.6);
+  --sh-hover:
+    0 4px 12px -4px hsl(var(--p-shade-navy) / 0.5), 0 1px 2px hsl(var(--p-shade-navy) / 0.3);
+  --sh-menu:
+    0 0 0 1px hsl(var(--p-line)), 0 4px 12px hsl(var(--p-shade-pop) / 0.4),
+    0 16px 40px hsl(var(--p-shade-pop) / 0.5);
+  --sh-primary: 0 1px 2px hsl(var(--p-shade-xs) / 0.4);
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

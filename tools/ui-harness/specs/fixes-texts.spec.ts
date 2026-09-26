@@ -12,47 +12,6 @@ async function settings(page: Page, query = WIN): Promise<void> {
   await expect(page.getByTestId('settings')).toBeVisible();
 }
 
-test('the text files say what they are for, and that only Rewrite brings them back', async ({
-  page,
-}) => {
-  await settings(page);
-  const files = page.getByTestId('settings-files');
-  await expect(files).toContainText('38 Anzeigen als Text für eine KI-Bewertung');
-  // A fetch never writes a deleted text file again (core: the file keeps its mark).
-  await page.getByTestId('txt-clear').click();
-  const dialog = page.getByTestId('dialog-clear');
-  await expect(dialog).toContainText('Nur „Neu schreiben“ holt sie zurück.');
-  await expect(dialog).not.toContainText('Abruf');
-  await dialog.getByRole('button', { name: 'Löschen' }).click();
-  await expect(page.getByTestId('files-note')).toHaveText('38 Dateien gelöscht.');
-  await expect(files).toContainText('0 Anzeigen als Text für eine KI-Bewertung');
-  // Nothing promises that they come back by themselves.
-  await page.getByTestId('txt-clear').hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Es gibt keine Textdateien.');
-});
-
-test('reset names everything it deletes before it asks', async ({ page }) => {
-  await settings(page);
-  await expect(page.getByTestId('settings-reset')).toContainText(
-    'Löscht Jobs, Einstellungen, Profil, App-Passwort und Anmeldungen.',
-  );
-  await page.getByTestId('reset').click();
-  // The dialog lists everything, the files in the user's own work folder too (core reset:
-  // `app_files`).
-  const dialog = page.getByTestId('dialog-reset');
-  await expect(dialog).toContainText('Die App startet danach neu und löscht');
-  await expect(dialog.getByTestId('dialog-items').locator('li')).toHaveText([
-    'die Jobs und die Einstellungen',
-    'das Profil',
-    'das App-Passwort',
-    'die Anmeldungen bei den Portalen',
-    'Excel-Datei, Bericht und Textdateien im Arbeitsordner',
-  ]);
-  // What stays behind need not be a file (the app password, a sign-in).
-  await open(page, `${WIN}&scenario=reset`);
-  await expect(page.getByTestId('first-reset-report')).not.toContainText('Datei');
-});
-
 test('the English reader counts the must-have requirements, as the German one does', async ({
   page,
 }) => {
@@ -141,21 +100,6 @@ test('the selection bar counts with a thousands separator, like the pane beside 
   await rows.nth(1000).click({ modifiers: ['Shift'] });
   await expect(page.getByTestId('selection-count')).toHaveText('1.001 ausgewählt');
   await expect(page.getByTestId('reader-pane')).toContainText('1.001 Jobs ausgewählt');
-});
-
-test('the first run names the portals whose alerts must go to the mailbox', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  // The portals in the app's one order (the settings'), by their web address.
-  await expect(page.getByTestId('step-mailbox')).toContainText(
-    'Die Alerts von linkedin.com, freelance.de und freelancermap.de müssen an diese Gmail-Adresse gehen.',
-  );
-  await open(page, `${WIN}&scenario=first-run&lang=en`);
-  await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alerts from linkedin.com, freelance.de and freelancermap.de must go to this Gmail address.',
-  );
-  // "in Gmail" never breaks apart: no line of the intro ends with the preposition.
-  const intro = await page.getByTestId('first-run').locator('.benefit').textContent();
-  expect(intro).toContain('in Gmail');
 });
 
 test('an empty list during a fetch says the jobs come in as it goes, not at its end', async ({

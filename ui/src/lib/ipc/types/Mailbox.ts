@@ -18,4 +18,9 @@ error: ErrorInfo | null,
  * failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
  * and the next fetch reads the alert mails anyway.
  */
-check: MailboxCheck | null, };
+check: MailboxCheck | null, 
+/**
+ * When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
+ * fetch that finished before it is past.
+ */
+checkedAt: string | null, };

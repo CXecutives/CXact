@@ -19,7 +19,7 @@ use crate::pipeline::{
     RunSnapshot, RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
 use crate::portal::{JobKey, Portal};
-use crate::settings::Language;
+use crate::settings::{Language, Palette};
 use crate::view::{
     AppState, ClearedTxt, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
@@ -28,7 +28,7 @@ use crate::view::{
     ProfileCompetence, ProfileCriteria, ProfileDraft, ProfileForm, ProfileInfo, ProfileLanguage,
     ProfileQuality, ProfileSave, ProfileSource, ProfileUnderstanding, ProfileWishes, QuietPortal,
     Quota, Reason, ReasonKind, ReasonWeight, RemoteWish, ResetSummary, SettingsPatch, SettingsView,
-    TextRange, UnreadableField, VaultKind, WorkMode,
+    TextRange, UnreadableField, VaultKind, WorkMode, WorkspacePick, WorkspaceProfile,
 };
 
 /// A portal key.
@@ -162,6 +162,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<EmptyAlert>();
     f.add::<Platform>();
     f.add::<Language>();
+    f.add::<Palette>();
     f.add::<VaultKind>();
     f.add::<Mailbox>();
     f.add::<PortalCount>();
@@ -172,6 +173,8 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<OverviewStats>();
     f.add::<SettingsView>();
     f.add::<SettingsPatch>();
+    f.add::<WorkspacePick>();
+    f.add::<WorkspaceProfile>();
     f.add::<PortalPatch>();
     f.add::<PortalLogin>();
     f.add::<Quota>();

@@ -1225,25 +1225,48 @@ pub(crate) const RATE_WORDS: &[&str] = &[
     "hourly pay",
 ];
 /// Employment pay (an hourly wage of an employee or of temporary agency work), never a
-/// freelance rate: substrings, then whole words.
-pub(crate) const WAGE_WORDS: &[&str] = &[
-    "stundenlohn",
-    "tariflohn",
-    "mindestlohn",
-    "tarif",
-    "entgelt",
+/// freelance rate. Phrases, whole words (never inside another word: `Volkswagen`), and the
+/// head of a word with an inflection (`Lohn`, `Stundenlohn`, `Bruttostundenlohn`,
+/// `Mindestlöhne`; not `Lohnbuchhaltung`). `groß` folds to `gross`, so English `gross` is
+/// employment pay only in a phrase.
+pub(crate) const WAGE_PHRASES: &[&str] = &[
     "equal pay",
-    "wage",
     "gross per hour",
     "per hour gross",
     "gross hourly",
     "hourly gross",
+    "an hour gross",
+    "/h gross",
+    "/hr gross",
+    "/hour gross",
 ];
-pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["lohn", "igz", "bap", "gvp"];
-/// Words that make a rate employment pay unless the sentence names a freelance rate
-/// (whole words).
-pub(crate) const WAGE_HINTS: &[&str] = &["brutto", "gross"];
-/// A freelance rate: overrules `WAGE_HINTS` (substrings).
+pub(crate) const WAGE_WORDS_WHOLE: &[&str] = &["igz", "bap", "gvp", "wage", "wages"];
+pub(crate) const WAGE_HEADS: &[&str] = &["lohn"];
+/// Endings of a head of `WAGE_HEADS` or `PAY_SCALE_HEADS` (`Stundenlohns`, `Löhne`; not the
+/// verb `lohnen`).
+pub(crate) const WAGE_HEAD_ENDINGS: &[&str] = &["", "s", "es", "e"];
+/// A pay scale or a gross amount: employment pay unless the sentence names a freelance rate
+/// (`Entgelt: 95 €/h zzgl. MwSt.` is a rate). Whole words with an inflection (`tarifliche`,
+/// `Übertarifliche`, `Tarifs`; not `Tarifsystem`), phrases whose last word takes one
+/// (`nach Tarifvertrages`; a `Tarifvertrag` on its own is a topic), and heads (`Entgelt`,
+/// `Stundenentgelt`; not `Entgeltabrechnung`).
+pub(crate) const PAY_SCALE_WORDS: &[&str] = &[
+    "brutto",
+    "tarif",
+    "tariflich",
+    "ubertariflich",
+    "tarifvertraglich",
+    "tarifgebunden",
+    "tarifgruppe",
+    "entgeltgruppe",
+    "nach tarifvertrag",
+    "gemass tarifvertrag",
+    "laut tarifvertrag",
+];
+pub(crate) const PAY_SCALE_HEADS: &[&str] = &["entgelt"];
+/// Endings of a word of `PAY_SCALE_WORDS`.
+pub(crate) const PAY_SCALE_ENDINGS: &[&str] = &["", "e", "n", "s", "en", "er", "es", "em"];
+/// A freelance rate: overrules `PAY_SCALE_WORDS` (substrings).
 pub(crate) const FREELANCE_RATE_WORDS: &[&str] = &[
     "stundensatz",
     "tagessatz",
@@ -1339,16 +1362,175 @@ pub(crate) const RATE_OPEN: &[&str] = &[
     "to be agreed",
     "tbd",
 ];
-/// Sentences that state a duration, and the units of one.
-pub(crate) const DURATION_WORDS: &[&str] = &[
+/// Words of a sentence that states a duration: whole words (with a plural ending), no other
+/// compounds (`Einarbeitungsdauer`, `Anfahrtsdauer` and `dauerhaft` state none).
+pub(crate) const DURATION_TERMS: &[&str] = &[
     "laufzeit",
+    "projektlaufzeit",
+    "vertragslaufzeit",
+    "mindestlaufzeit",
+    "gesamtlaufzeit",
+    "einsatzlaufzeit",
     "dauer",
-    "duration",
+    "projektdauer",
+    "einsatzdauer",
+    "vertragsdauer",
+    "auftragsdauer",
+    "mandatsdauer",
+    "gesamtdauer",
     "zeitraum",
     "einsatzzeitraum",
+    "projektzeitraum",
+    "befristet",
+    "befristung",
+    "duration",
     "length",
 ];
 pub(crate) const MONTH_UNITS: &[&str] = &["monat", "month"];
+/// Separators of the clauses of a duration sentence (`Start October 2026, 12 months`).
+pub(crate) const DURATION_CLAUSE_BREAKS: &[char] = &[',', ';', '|', '·', '(', ')'];
+/// Words of a clause that is only a duration (`6 Monate mit Option auf Verlängerung`).
+pub(crate) const DURATION_FILLERS: &[&str] = &[
+    "ca",
+    "circa",
+    "rund",
+    "etwa",
+    "zunachst",
+    "vorerst",
+    "voraussichtlich",
+    "mindestens",
+    "min",
+    "max",
+    "approx",
+    "initially",
+    "initial",
+    "mit",
+    "with",
+    "option",
+    "optional",
+    "auf",
+    "plus",
+    "verlangerung",
+    "verlangerungsoption",
+    "verlangerbar",
+    "extension",
+    "extendable",
+    "possible",
+    "moglich",
+    "und",
+    "and",
+    "oder",
+    "or",
+    "bis",
+    "to",
+    "zu",
+    "geplant",
+    "planned",
+    "weitere",
+    "further",
+];
+/// Words between a duration phrase's head and its amount (`für ca. 3-6 Monate`).
+pub(crate) const DURATION_QUALIFIERS: &[&str] = &[
+    "ca",
+    "circa",
+    "rund",
+    "etwa",
+    "zunachst",
+    "vorerst",
+    "voraussichtlich",
+    "insgesamt",
+    "mindestens",
+    "min",
+    "max",
+    "maximal",
+    "approx",
+    "approximately",
+    "initially",
+    "about",
+    "around",
+    "at",
+    "least",
+    "bis",
+    "zu",
+    "to",
+    "oder",
+    "or",
+    "und",
+    "and",
+];
+/// Words before an amount that make it a lead time (`Start in 2 Wochen`, `nach 4 Wochen`,
+/// `within 4 weeks`), never a duration.
+pub(crate) const DURATION_LEAD_WORDS: &[&str] = &[
+    "in",
+    "innerhalb",
+    "binnen",
+    "nach",
+    "within",
+    "after",
+    "vor",
+    "seit",
+    "since",
+    "ago",
+    "alle",
+    "every",
+    "each",
+    "jede",
+    "jeden",
+    "jedes",
+    "spatestens",
+    "fruhestens",
+];
+/// Parts of the word before an amount or of the two after its unit that make it a notice
+/// period, a lead time or another span (`Kündigungsfrist 2 Wochen`, `4 Wochen Vorlauf`,
+/// `Probezeit 6 Monate`, `2 Wochen Einarbeitung`), never the duration.
+pub(crate) const DURATION_LEAD_PARTS: &[&str] = &[
+    "frist",
+    "notice",
+    "vorlauf",
+    "kundigung",
+    "probezeit",
+    "urlaub",
+    "vacation",
+    "einarbeitung",
+    "onboarding",
+];
+/// Parts of the two words after a unit that make the amount years of experience.
+pub(crate) const DURATION_EXPERIENCE: &[&str] = &["erfahrung", "experience", "praxis"];
+/// Words right before an amount (past its qualifiers) that make a duration phrase
+/// (`für 6 Monate`, `for 9 months`, `über 12 Monate`, `auf 6 Monate angelegt`).
+pub(crate) const DURATION_FOR: &[&str] = &["fur", "for", "uber", "over", "auf"];
+/// A duration as an adjective (`ein 6-monatiges Projekt`); years as an adjective are mostly
+/// experience or a degree, so they are none.
+pub(crate) const DURATION_ADJECTIVES: &[&str] = &["monatig", "wochig"];
+/// Where an end date is an application deadline, not the end of the engagement.
+pub(crate) const DEADLINE_WORDS: &[&str] = &[
+    "bewerb",
+    "apply",
+    "application",
+    "deadline",
+    "einsendeschluss",
+];
+/// End markers in a sentence with a duration word (`Laufzeit bis 31.03.2027`), padded with
+/// spaces, longest first.
+pub(crate) const DURATION_END_MARKERS: &[&str] = &[
+    " bis zum ende ",
+    " bis ende ",
+    " bis zum ",
+    " bis ",
+    " until the end of ",
+    " until end of ",
+    " until ",
+    " end of ",
+    " ende ",
+];
+/// End markers in any sentence (`Einsatz bis Ende März 2027`), padded with spaces.
+pub(crate) const DURATION_END_PHRASES: &[&str] = &[
+    " bis zum ende ",
+    " bis ende ",
+    " until the end of ",
+    " until end of ",
+    " till the end of ",
+];
 /// Workload (share of a five-day week). Words that make a percentage a workload
 /// (`Auslastung 80 %`), substrings.
 pub(crate) const WORKLOAD_CUES: &[&str] = &[
@@ -1409,6 +1591,12 @@ pub(crate) const WORKLOAD_PART_OPTION: &[&str] = &[
 /// workload (`3 Tage/Woche vor Ort`, `remote 2 Tage`, `80 % remote`): whole words or phrases.
 pub(crate) const WORKLOAD_PLACE_WORDS: &[&str] = &[
     "vor ort",
+    "vor-ort",
+    "standort",
+    "zu hause",
+    "zuhause",
+    "from home",
+    "reisebereitschaft",
     "onsite",
     "on-site",
     "on site",
@@ -1442,6 +1630,29 @@ pub(crate) const WORKLOAD_PER: &[&str] = &[
     "/", "pro", "per", "je", "in", "der", "die", "a", "each", "im", "the",
 ];
 pub(crate) const WORKLOAD_WEEK: &[&str] = &["woche", "week", "wk"];
+/// Periods after hours that make them no weekly hours (`4 Stunden pro Tag`, `8 h täglich`,
+/// `40 Stunden im Monat`).
+pub(crate) const WORKLOAD_OTHER_PERIODS: &[&str] = &[
+    "tag",
+    "tage",
+    "tages",
+    "taglich",
+    "day",
+    "days",
+    "daily",
+    "monat",
+    "monats",
+    "monatlich",
+    "month",
+    "monthly",
+    "jahr",
+    "jahrlich",
+    "year",
+    "yearly",
+    "annually",
+];
+/// A clock time next to hours (`9-17 Uhr`).
+pub(crate) const WORKLOAD_CLOCK: &[&str] = &["uhr"];
 /// Hours per week in one word (`20 Wochenstunden`).
 pub(crate) const WORKLOAD_WEEKLY_HOURS: &[&str] = &["wochenstunden", "weekly hours"];
 /// Small numbers written as words (days per week).
@@ -1824,9 +2035,11 @@ pub(crate) const ANUE_NEGATION_PARTS: &[&str] = &[
     "excluded",
     "ruled out",
 ];
-/// ANÜ as a topic of the requirements, not the contract form (experience with it, knowledge
-/// of the law, managing temporary staff): substrings in the clause that names it or at the
-/// start of the sentence.
+/// ANÜ as a topic of the requirements, not the contract form: a cue that governs it
+/// (experience with it, knowledge of the law, managing temporary staff). Cues before the
+/// mention: the start of a word (`Erfahrung`, `Kenntnisse`; not `SAP-Kenntnisse`, whose
+/// object is SAP) with only `ANUE_TOPIC_LINKS` between it and the mention, or a part of the
+/// mention's own word (`ANÜ-Erfahrung`).
 pub(crate) const ANUE_TOPIC: &[&str] = &[
     "erfahrung",
     "kenntnis",
@@ -1836,18 +2049,72 @@ pub(crate) const ANUE_TOPIC: &[&str] = &[
     "versiert",
     "expertise",
     "fachwissen",
-    "von vorteil",
-    "wunschenswert",
     "idealerweise",
     "steuerung",
     "experience",
     "knowledge",
     "familiar",
+    "managing",
+    "management",
+];
+/// Words between a cue of `ANUE_TOPIC` and the ANÜ it governs (`Erfahrung im Einsatz von`,
+/// `Kenntnisse des`, `Steuerung der`, `experience with`, `knowledge of`).
+pub(crate) const ANUE_TOPIC_LINKS: &[&str] = &[
+    "mit",
+    "im",
+    "in",
+    "der",
+    "des",
+    "dem",
+    "den",
+    "die",
+    "das",
+    "von",
+    "vom",
+    "zur",
+    "zum",
+    "bei",
+    "rund",
+    "um",
+    "fur",
+    "zu",
+    "und",
+    "sowie",
+    "oder",
+    "bzw",
+    "einsatz",
+    "umgang",
+    "rahmen",
+    "bereich",
+    "thema",
+    "themen",
+    "fragen",
+    "regelungen",
+    "abwicklung",
+    "gestaltung",
+    "with",
+    "of",
+    "the",
+    "a",
+    "an",
+    "about",
+    "around",
+    "regarding",
+    "and",
+    "or",
+    "handling",
+    "use",
+];
+/// A requirement after the ANÜ it names (`Arbeitnehmerüberlassung von Vorteil`, `... is a
+/// plus`): substrings of the next four words.
+pub(crate) const ANUE_TOPIC_AFTER: &[&str] = &[
+    "von vorteil",
+    "wunschenswert",
+    "erwunscht",
+    "vorteilhaft",
     "nice to have",
     "a plus",
     "an advantage",
-    "managing",
-    "management of",
 ];
 /// ANÜ only one option: whole words, then substrings.
 pub(crate) const ANUE_OPTION: &[&str] = &[
@@ -1875,6 +2142,17 @@ pub(crate) const ANUE_BUSINESS: &[&str] = &[
     "specialis",
     "specializ",
     "provider of",
+];
+/// Roles of the staffing business: a title that names one with ANÜ names ANÜ as the field of
+/// the role, not its contract form (`Disponent (m/w/d) Arbeitnehmerüberlassung`), substrings.
+pub(crate) const ANUE_FIELD_ROLES: &[&str] = &[
+    "disponent",
+    "recruit",
+    "personalberater",
+    "personalvermittl",
+    "niederlassungsleit",
+    "branch manager",
+    "personaldienstleist",
 ];
 /// A sentence that places the job itself in ANÜ (whole words or phrases).
 pub(crate) const ANUE_CONTRACT: &[&str] = &[
@@ -2356,4 +2634,235 @@ pub(crate) const CLOSING_WORDS: &[&str] = &[
 /// engine only; the old one is frozen).
 pub(crate) const EXTRA_BULLETS: &[char] = &[
     '▪', '■', '●', '◦', '✅', '✔', '✓', '➡', '→', '👉', '➤', '\u{fe0f}',
+];
+/// Exclusion words of one family: a profile word in it matches the others too (`Praktikum`,
+/// `Praktikant`, `Praktikantin`, `Praktikanten` name the same kind of position).
+pub(crate) const EXCLUSION_WORD_FAMILIES: &[&[&str]] = &[&["praktikum", "praktikant"]];
+/// Exclusion words that name a kind of position (prefixes of the folded word): in the ad's
+/// text they exclude only where it states the offered role, never in a passing mention. A
+/// word that ends like a person noun (`-ent`, `-ant`, `-and`, `-ist`) is one as well.
+pub(crate) const EXCLUSION_ROLE_WORDS: &[&str] = &[
+    "werkstud",
+    "working student",
+    "praktik",
+    "pflichtpraktik",
+    "internship",
+    "intern",
+    "trainee",
+    "azubi",
+    "auszubild",
+    "ausbildung",
+    "lehrstelle",
+    "lehrling",
+    "junior",
+    "einsteiger",
+    "berufseinsteiger",
+    "quereinsteiger",
+    "berufsanfanger",
+    "absolvent",
+    "graduate",
+    "volontar",
+    "aushilf",
+    "hilfskraft",
+    "minijob",
+    "nebenjob",
+    "abschlussarbeit",
+    "bachelorarbeit",
+    "masterarbeit",
+    "thesis",
+    "student",
+    "sachbearbeit",
+    "assistenz",
+    "sekretar",
+];
+pub(crate) const EXCLUSION_ROLE_ENDINGS: &[&str] = &["ent", "ant", "and", "ist"];
+/// Heads of a compound that name the position itself (`Werkstudentenstelle`,
+/// `Praktikumsplatz`), not something about it (`Praktikumsbetreuung`).
+pub(crate) const EXCLUSION_ROLE_HEADS: &[&str] = &[
+    "stelle",
+    "platz",
+    "job",
+    "tatigkeit",
+    "position",
+    "programm",
+    "vertrag",
+    "level",
+];
+/// Words within three words before a position word that make it a passing mention, not
+/// the offered role: the team, the people one supervises, trains or mentors, a denial, a
+/// requirement, an offer of the company (prefixes of a word, same clause).
+pub(crate) const EXCLUSION_MENTION_BEFORE: &[&str] = &[
+    "von",
+    "mit",
+    "inkl",
+    "inklusive",
+    "einschliesslich",
+    "samt",
+    "unser",
+    "kein",
+    "nicht",
+    "ohne",
+    "betreu",
+    "anleit",
+    "fuhrung",
+    "fuhren",
+    "fuhrst",
+    "fuhrt",
+    "leitung",
+    "leiten",
+    "leitest",
+    "coach",
+    "mentor",
+    "schulung",
+    "schulen",
+    "ausbild",
+    "einarbeit",
+    "team",
+    "mitarbeiter",
+    "mitarbeitend",
+    "kolleg",
+    "erfahrung",
+    "kenntnis",
+    "erwart",
+    "voraussetzung",
+    "abgeschlossen",
+    "absolviert",
+    "erfolgreich",
+    "qualifi",
+    "bieten",
+    "bietet",
+    "including",
+    "with",
+    "our",
+    "supervis",
+    "experience",
+    "knowledge",
+    "degree",
+    "completed",
+    "offer",
+];
+/// English words of the same kind, as whole words (`manage` is no prefix of `Management
+/// Trainee`).
+pub(crate) const EXCLUSION_MENTION_BEFORE_WHOLE: &[&str] = &[
+    "of", "no", "not", "without", "manage", "manages", "managing", "lead", "leads", "leading",
+    "train", "trains", "training",
+];
+/// Words within two words after a position word that make it the people one supervises
+/// (`Werkstudenten betreuen`), prefixes.
+pub(crate) const EXCLUSION_MENTION_AFTER: &[&str] = &[
+    "betreu",
+    "anleit",
+    "ausbild",
+    "einarbeit",
+    "coach",
+    "mentor",
+    "schulen",
+    "schult",
+    "fuhren",
+    "fuhrst",
+    "fuhrt",
+    "supervis",
+    "managen",
+];
+/// Words that seek the role after them (`Wir suchen eine/n Werkstudent/in`).
+pub(crate) const EXCLUSION_HIRING_BEFORE: &[&str] = &[
+    "suchen", "sucht", "suchst", "besetzen", "hiring", "seek", "seeks", "seeking",
+];
+/// Words that seek the role before them (`Werkstudent Controlling gesucht`).
+pub(crate) const EXCLUSION_HIRING_AFTER: &[&str] = &["gesucht", "wanted"];
+/// Nouns before `als` that name the role after it (`Stelle als Werkstudent`).
+pub(crate) const EXCLUSION_ROLE_AS: &[&str] = &[
+    "stelle",
+    "position",
+    "tatigkeit",
+    "einstieg",
+    "job",
+    "anstellung",
+    "beschaftigung",
+    "einsatz",
+    "mitarbeit",
+    "karrierestart",
+    "role",
+];
+/// Field labels whose value names the role (`Position: Praktikum`).
+pub(crate) const EXCLUSION_ROLE_FIELDS: &[&str] = &[
+    "position",
+    "stelle",
+    "rolle",
+    "role",
+    "jobtitel",
+    "job title",
+    "stellenbezeichnung",
+    "stellentitel",
+    "anstellungsart",
+    "beschaftigungsart",
+    "vertragsart",
+    "art der anstellung",
+    "art der stelle",
+    "employment type",
+    "job type",
+    "jobart",
+    "stellenart",
+    "karrierestufe",
+    "seniority level",
+    "erfahrungsstufe",
+    "level",
+];
+/// Words before an indefinite article that offer the role after it
+/// (`für eine Werkstudententätigkeit`, `im Rahmen eines Praktikums`).
+pub(crate) const EXCLUSION_ROLE_FOR: &[&str] = &["fur", "for", "rahmen", "form"];
+pub(crate) const INDEFINITE_ARTICLES: &[&str] = &[
+    "ein", "eine", "einen", "einer", "eines", "a", "an", "ihres", "deines", "seines",
+];
+/// A short line that starts with a position word names the role unless it goes on to others
+/// (`Ausbildung der Auszubildenden`, `Ausbildung und Personalentwicklung`).
+pub(crate) const EXCLUSION_LINE_BREAKERS: &[&str] = &[
+    "und", "sowie", "oder", "bzw", "and", "or", "der", "des", "den", "dem", "von", "fur", "mit",
+    "of", "for", "with", "unserer", "unseres",
+];
+/// Words before a condition word (`Schichtdienst`, `Außendienst`, `Provisionsbasis`) that make
+/// it a passing mention: a denial (two words before), the team or the company, supervising or
+/// training others, a requirement of experience (four words before, same clause).
+pub(crate) const EXCLUSION_DENIALS: &[&str] = &[
+    "kein", "keine", "keinen", "keiner", "keinem", "ohne", "nicht", "nie", "no", "not", "without",
+    "never",
+];
+pub(crate) const EXCLUSION_OTHERS: &[&str] = &[
+    "mitarbeiter",
+    "mitarbeitend",
+    "kolleg",
+    "belegschaft",
+    "beschaftigte",
+    "employee",
+    "colleague",
+    "staff",
+];
+/// Parts of a word before a condition word that make it about others or a requirement
+/// (`Präsenztrainings für den Außendienst`, `Personaleinsatzplanung für den Schichtdienst`).
+pub(crate) const EXCLUSION_OTHERS_PARTS: &[&str] = &[
+    "betreuung",
+    "schulung",
+    "training",
+    "coaching",
+    "mentoring",
+    "anleitung",
+    "einarbeitung",
+    "fuhrung",
+    "leitung",
+    "steuerung",
+    "planung",
+    "begleitung",
+    "erfahrung",
+    "kenntnis",
+];
+pub(crate) const EXCLUSION_REQUIREMENT_WORDS: &[&str] = &[
+    "experience",
+    "knowledge",
+    "background",
+    "vertraut",
+    "familiar",
+    "umfeld",
+    "environment",
+    "idealerweise",
+    "ideally",
 ];

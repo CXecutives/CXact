@@ -11,6 +11,9 @@ use tauri::{AppHandle, State};
 use super::app::mailbox;
 use super::{AppState, CmdResult, GmailUser, lock};
 
+/// Key of the time Gmail last accepted the mailbox (`Mailbox.checked_at`; empty: none).
+pub(super) const CHECKED_AT: &str = "mailbox_checked_at";
+
 /// Saves the Gmail access after a real sign-in (`mail::check`): an address or password
 /// Gmail can never accept is refused first, before the app is held or anything is sent
 /// (the stub answers the same way); a wrong app password, a mailbox that is no Gmail or no
@@ -54,6 +57,9 @@ pub async fn save_mailbox(
     })?;
     *lock(&state.gmail_user) = GmailUser::Known(Some(credentials.user.clone()));
     *lock(&state.mailbox_check) = check;
+    state
+        .store
+        .kv_set(CHECKED_AT, &Timestamp::now().to_string())?;
     drop(guard);
     log::info!("mailbox saved");
     Ok(mailbox(&state))
@@ -68,6 +74,7 @@ pub async fn remove_mailbox(app: AppHandle, state: State<'_, AppState>) -> CmdRe
     let removed = Vault::app().delete_gmail()?;
     *lock(&state.gmail_user) = GmailUser::Known(None);
     *lock(&state.mailbox_check) = None;
+    state.store.kv_set(CHECKED_AT, "")?;
     state.store.clear_scan_state()?;
     drop(guard);
     log::info!("mailbox removed");

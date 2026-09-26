@@ -65,8 +65,13 @@
   // The run card says the same while it is on screen.
   // The status that arrives with the first data is simply there (no fade at start).
   const motion = settled();
+  // The setup page (first run, in the place of Jobs and the Übersicht) says it all itself.
+  const onSetup = $derived(
+    shell.firstRun && (navigation.current === 'jobs' || navigation.current === 'overview'),
+  );
   const statusShown = $derived(
     (run.active || last !== null) &&
+      !onSetup &&
       !(navigation.current === 'jobs' && !shell.firstRun && shell.runCard && !shell.listHidden),
   );
 

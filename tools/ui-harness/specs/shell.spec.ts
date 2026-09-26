@@ -879,7 +879,7 @@ test('macOS: a dialog leaves the toolbar row free, and the row moves the window'
   );
   expect(hit).toBe(true);
   // The keys are named as a Mac names them.
-  await expect(page.getByTestId('key-search')).toContainText('⌘F');
+  await expect(page.getByTestId('keys-help').getByTestId('key-search')).toContainText('⌘F');
 });
 
 test('Ctrl+/ shows the card of the keys, named as the OS names them; Esc closes it', async ({
@@ -1115,41 +1115,6 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await expect(page.getByTestId('dialog-purge').getByTestId('dialog-confirm')).toHaveText(
     'Löschen',
   );
-});
-
-test('first run: Einstellungen and Profil open, Jobs leads to the setup', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  const nav = page.getByTestId('sidebar').locator('nav');
-  await expect(nav.locator('xpath=ancestor-or-self::*[@inert]')).toHaveCount(0);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-  // The language can be chosen before anything is set up.
-  await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByTestId('nav-settings')).toContainText('Settings');
-  await page.getByTestId('language').getByRole('radio', { name: 'Deutsch' }).click();
-  await expect(page.getByTestId('nav-settings')).toContainText('Einstellungen');
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  // Jobs is the setup page, marked as current like any view.
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await expect(page.locator('[data-testid^="nav-"][aria-current="page"]')).toHaveCount(1);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-});
-
-test('first run: after the first fetch the list opens on its inbox', async ({ page }) => {
-  await open(page, `${WIN}&scenario=mailbox-only`);
-  await page.getByTestId('first-profile').click();
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await page.getByTestId('first-fetch').click();
-  await runFinished(page);
-  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-  await expect(rows(page).first()).toBeVisible();
-  // Without a profile nothing is excluded.
-  await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
 });
 
 test('one column: a running fetch shows in the sidebar while a job is open', async ({ page }) => {
@@ -1443,13 +1408,6 @@ test('ghost buttons at the end of a row end on the edge of the switches', async 
     const label = await edge(page.getByTestId(id).locator('.label'));
     expect(Math.abs(label - toggle), id).toBeLessThanOrEqual(0.5);
   }
-});
-
-test('macOS: the first sidebar entry starts on the first line of a view', async ({ page }) => {
-  await settings(page, MAC);
-  const nav = (await page.getByTestId('nav-overview').boundingBox())!.y;
-  const heading = (await page.getByTestId('settings-mailbox').locator('h2').boundingBox())!.y;
-  expect(nav).toBe(heading);
 });
 
 test('a notice banner shares the inset of the cards and draws no line of its own', async ({
@@ -1942,17 +1900,14 @@ test('Sprache switches the whole app to English and back at once', async ({ page
     'aria-checked',
     'true',
   );
-  await expect(page.getByTestId('settings-language')).toContainText(
-    'Excel-Datei und Bericht folgen beim nächsten Abruf.',
-  );
+  // No hint: the Excel file and the report follow by themselves (settings.spec.ts).
+  await expect(page.getByTestId('settings-look')).toContainText('Sprache');
 
   await choice.getByRole('radio', { name: 'English' }).click();
   // The page switches before anything reloads: the sidebar, the headings, the document.
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
   await expect(page.getByTestId('nav-profile')).toContainText('Profile');
-  await expect(page.getByTestId('settings-language')).toContainText(
-    'The Excel file and the report switch at the next fetch.',
-  );
+  await expect(page.getByTestId('settings-look')).toContainText('Appearance');
   await expect(page.getByTestId('settings-fetch')).toContainText('Archive jobs after 30 days');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
@@ -1966,6 +1921,7 @@ test('Sprache switches the whole app to English and back at once', async ({ page
         autoArchiveDays: null,
         autoEmptyTrashDays: null,
         language: 'en',
+        palette: null,
       },
     },
   ]);

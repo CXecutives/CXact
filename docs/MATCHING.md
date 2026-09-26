@@ -626,18 +626,37 @@ scores every stored job again after the update.
 One bump for all of it; the app scores every stored job again (revision `e16.5:{fingerprint}`,
 `INPUTS` 5: the stored key facts carry the workload).
 
-**ANÜ as a topic.** ANÜ named with an experience, knowledge or management cue in its clause
-(`Erfahrung mit Arbeitnehmerüberlassung von Vorteil`, `Kenntnisse des AÜG`, `Steuerung der
-Arbeitnehmerüberlassung`), or with such a cue at the start of the sentence, is a requirement,
-not the contract form (`lexicon::ANUE_TOPIC`). So is ANÜ as the business of the hiring company
+**ANÜ as a topic.** ANÜ is a requirement, not the contract form, only where an experience,
+knowledge or management cue governs it (E16-4): a word that starts with the cue before the
+mention with only linking words between (`Erfahrung mit Arbeitnehmerüberlassung`, `Kenntnisse
+des AÜG`, `Steuerung der Arbeitnehmerüberlassung`, `Erfahrung im Einsatz von ANÜ`; not
+`SAP-Kenntnisse`, whose object is SAP), the mention's own word (`ANÜ-Erfahrung`), a
+requirement right after it (`Arbeitnehmerüberlassung von Vorteil`), or a cue at the start of a
+sentence that lists it (`Kenntnisse im AÜG, in der Arbeitnehmerüberlassung und ...`) while no
+clause that names ANÜ places the job in it (`lexicon::ANUE_TOPIC`, `ANUE_TOPIC_LINKS`,
+`ANUE_TOPIC_AFTER`). A sentence that offers the contract through ANÜ stays the contract even
+with other words in its clause (`Wir suchen im Rahmen der Arbeitnehmerüberlassung einen
+Controller mit Berufserfahrung`, `Erfahrung im Controlling erforderlich, die Anstellung erfolgt
+über Arbeitnehmerüberlassung`, `Ihre Expertise ist gefragt: Einsatz im Rahmen der ANÜ`). ANÜ
+as the business of the hiring company is no contract form either
 (`Unser Kerngeschäft ist die Arbeitnehmerüberlassung`, `ANUE_BUSINESS`) unless the sentence also
 places the job in it (`im Rahmen`, `Einsatz`, `suchen wir`, `ANUE_CONTRACT`). `möglich` offers
-ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not).
+ANÜ as an option only as a word of its own (`zum nächstmöglichen Zeitpunkt` does not). The
+title counts like a contract sentence (E16-7): `SAP FI/CO Berater (m/w/d) in
+Arbeitnehmerüberlassung` or `... - ANÜ` excludes with an ANÜ-free body, on a freelance portal
+too, `freiberuflich oder ANÜ` is the option, `keine ANÜ` nothing, and a role of the staffing
+business (`Disponent (m/w/d) Arbeitnehmerüberlassung`, `lexicon::ANUE_FIELD_ROLES`) names ANÜ
+as its field, not its contract form.
 
 **Employment pay (the user's decision on the open wage question of sets 5 to 8).** An hourly
-wage (`Stundenlohn`, `Bruttostundenlohn`, `18,50 € brutto pro Stunde`, a pay scale, `iGZ`,
-`gross per hour`, `hourly wage`; `brutto` and `gross` only without a freelance rate word) is
-employment pay (`Rate::wage`): it states an employment (contract type permanent, stated), it is
+wage (`Stundenlohn`, `Bruttostundenlohn`, `iGZ`, `equal pay`, `gross per hour`, `€18/h gross`,
+`hourly wage`; a pay scale, `Entgelt` and `brutto` only without a freelance rate word:
+`18,50 € brutto pro Stunde`, `Übertarifliche Bezahlung`, `Vergütung nach Tarifvertrag`) is
+employment pay (`Rate::wage`). These are words and phrases, never parts of other words
+(E16-3): `Volkswagen`, `Dienstwagen`, `Entgeltabrechnung`, `Lohnbuchhaltung`,
+`Tarifsystem`, a `Tarifvertrag` as a topic and `groß` (folded to `gross`) name no wage, and
+`Entgelt: 95 €/h zzgl. MwSt.` is a rate. Employment pay states an employment (contract type
+permanent, stated), it is
 no interim cue, never a day rate, and the salary rule reads it per year (x 2,080 hours). The pay
 of temporary agency work is employment pay too: no day rate, and the salary rule applies where
 the profile allows ANÜ. A freelance hourly rate (`95 €/h`, `Stundensatz`, `zzgl. MwSt.`) stays x 8.
@@ -661,28 +680,88 @@ TypeScript (`?:`), so a UI that does not send them changes nothing.
 
 **Workload** (`limits.rs`), a share of a five-day week in `KeyFacts.workloadFrom`/`workloadTo`
 (left out when unknown): full-time 100, days x 20 (`3 Tage/Woche`, `drei Tagen pro Woche`),
-hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80), a percentage in a clause with a workload word
+hours / 40 (`20 h/Woche` 50, `32 Std./Woche` 80; without the week in a sentence with a workload
+word from 12 hours on, E16-8: `Teilzeit (20 h)`, `Teilzeit mit 20 Stunden`, `Arbeitszeit: 20
+Stunden` 50, never the hours of a day or a month or a clock time: `4 Stunden pro Tag`, `8 Stunden
+täglich`, `40 Stunden im Monat`, `8-17 h`, `12-18 Uhr`), a percentage in a clause with a workload word
 (`Auslastung 80 %`, `80-100 %`), part-time without a number up to 80 with no lower bound,
 part-time as an option (`Vollzeit, Teilzeit möglich`) up to 100. A number of days or a share next
-to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work. The first sentence
-with a number wins, then the page's employment type (LinkedIn `Vollzeit`), then the words. Outside
+to a place word (`3 Tage/Woche vor Ort`, `80 % remote`) is the place of work; after the week the
+place may stand anywhere up to the next number (E16-5: `2 Tage pro Woche sind im Home Office
+möglich`, `2 Tage die Woche von zu Hause`, `2 Tage pro Woche am Standort Frankfurt`,
+`Reisebereitschaft 1-2 Tage pro Woche`, `2 days per week on-site`, `3 Tage/Woche vor-Ort`;
+`4 Tage pro Woche mit 1 Tag remote` stays 80). An explicit statement wins over any other number
+(E16-5): the first sentence with a workload word and a number (`Auslastung: 100 %`), then the
+first sentence that says full-time or part-time, then any other number of days or hours per
+week, and last the page's employment type (LinkedIn's `Vollzeit` is its default, so `Einsatz an
+drei Tagen pro Woche` stays 60). Outside
 the profile's days (the ad asks for more than the maximum or offers less than the minimum) it is
 the check `workload {from?, to, minDays?, maxDays?}` (percent, days), never an exclusion; the
 strip key `c:workload` is met with the ad's share inside the days.
 
 **Duration**: an engagement whose months are known and shorter than `min_laufzeit_monate` is the
 check `duration {months, min}`; the strip key `c:duration` is met at or above the minimum and not
-set for a permanent role.
+set for a permanent role. Only a real duration statement sets the months (E16-6; key fact
+`months`): the page's duration field, then the first sentence with a duration word
+(`lexicon::DURATION_TERMS`: `Laufzeit`, `Projektdauer`, `Einsatzdauer`, `Zeitraum`,
+`befristet`, `Duration`; not `Einarbeitungsdauer`), then the first duration phrase of any
+sentence (`für 6 Monate`, `for 9 months`, `befristet auf 12 Monate`, `6+ Monate`, `ein
+6-monatiges Projekt`, `12 months` as a clause of its own: `Start October 2026, 12 months`). A
+lead time, a notice period, a trial period or years of experience are never a duration (`Start:
+in 2 Wochen`, `nach 4 Wochen Vorlauf`, `Kündigungsfrist 2 Wochen`, `within 4 weeks`, `5 Jahre
+Erfahrung in einem Start-up`). An end date (`bis Ende März 2027`, `Dauer: bis 31.03.2027`, `bis
+Ende Q2 2027`) counts from the stated start date, else from the posting date, a started month
+counted whole; an application deadline (`Bewerbungen bis ...`) is none.
 
-**Exclusion words** (`exclusion.rs`): a word in the title or the ad's own text excludes,
-`exclusionWord {word}` (as the profile writes it) with the sentences that name it; strip key
-`c:exclusionWords`, shown only when violated. Case-insensitive whole words with their German
+**Exclusion words** (`exclusion.rs`): a word excludes where it names the job itself,
+`exclusionWord {word}` (as the profile writes it) with the deciding sentences highlighted; strip
+key `c:exclusionWords`, shown only when violated (E16-1).
+
+- The title and the page's career level or employment type (LinkedIn `Praktikum`) always
+  decide.
+- A word that names a kind of position (`lexicon::EXCLUSION_ROLE_WORDS`: `Werkstudent`,
+  `Praktikum`, `Junior`, `Trainee`, `Ausbildung`, `Sachbearbeitung`, and person nouns ending in
+  `-ent`, `-ant`, `-and`, `-ist`) decides in the ad's own text only where the ad states the
+  offered role: a gender marker on it (`Werkstudent (m/w/d)`, `Werkstudent/in`), a hiring word
+  (`Wir suchen einen Praktikanten`, `Praktikant gesucht`, `hiring a Junior ...`), a role label
+  (`Stelle als Werkstudent`, `Position: Praktikum`), an offer with an indefinite article (`für
+  eine Werkstudententätigkeit`, `im Rahmen eines Pflichtpraktikums`), or a short line that
+  starts with one such role (`Praktikum im Finanzbereich`, `Junior-Level`). Never in a passing
+  mention: the team (`Team inkl. zwei Werkstudenten`), people one supervises, trains or mentors
+  (`Betreuung von Praktikanten`, `Ausbildung von Werkstudierenden`, `Coach two junior
+  engineers`), a denial (`keine Junior-Position`), a requirement (`abgeschlossene Ausbildung`,
+  any requirement line), an offer of the company (`Wir bieten jedes Jahr Praktika an`), a
+  compound about something else (`Praktikumsbetreuung`, `Ausbildungsbetrieb`), a list
+  (`Ausbildung und Personalentwicklung`).
+- Any other word (a condition: `Provisionsbasis`, `Rufbereitschaft`, `Callcenter`) decides in
+  any sentence of the ad's own text unless it is denied (`kein Schichtdienst`), about the team
+  or the company (`1.600 Mitarbeitende im Innen- und Außendienst`), about supervising, training
+  or planning others (`Präsenztrainings für den Außendienst`, `Personaleinsatzplanung für den
+  Schichtdienst`) or a requirement of experience (`Erfahrung im Außendienst`, `in einem Umfeld
+  mit Schichtdienst`).
+- When unsure a word does not exclude: a false exclusion hides a good job, a missed one only
+  costs a look.
+
+With the words `Werkstudent`, `Praktikum`, `Junior` and `Ausbildung` in every profile of the
+held-out sets, the passing mentions of six relevant pairs no longer exclude them (heldout7 P1
+L01, heldout8 P1 Q01, heldout4 P2 W04, heldout4 `sample_profile` and `sample_profile_senior`
+W09, heldout9 P1 S017); every body sentence that still decides states the role (`Werkstudent
+(m/w/d) Controlling & Data Analytics`, `we are hiring a Junior SAP FI/CO Consultant`, `suchen
+wir ... einen Junior Projektingenieur (m/w/d)`). The profiles' own words in set 9 keep every
+exclusion (`Honorar: auf Provisionsbasis` still decides).
+
+Case-insensitive whole words with their German
 forms: inflections and the compounds a word starts (`Werkstudent`: `Werkstudentin`,
 `Werkstudenten-Job`, `Werkstudentenstelle`), from eight letters also the compounds it ends
-(`Pflichtpraktikum`), the participle of an `-ent` noun from seven letters (`Werkstudierende`, not
-`agierend` for `Agent`), `-mann` as `-frau`/`-leute`, `-um` as `-a`; a female form in the
-profile matches the male one; a phrase matches word by word or as one word (`Call Center`,
-`Callcenter`). Words under four letters match only whole (`IT`).
+(`Pflichtpraktikum`, `Pflichtpraktikums`); a female form in the profile matches the male one; a
+phrase matches word by word or as one word (`Call Center`, `Callcenter`). Words under four
+letters match only whole (`IT`). Generated forms match only as whole words with their
+inflections, never as the start of another word (E16-2): the participle of an `-ent` noun from
+seven letters (`Werkstudierende`, not `agierend` for `Agent`), `-mann` as `-frau`/`-leute`
+(`Kauffrauen`), `-um` as `-a` (`Praktika`, but not `praktikable` or `Praktikabilität`, and
+`Zentrum` never `zentral`). `Praktikum` and `Praktikant` are one family
+(`lexicon::EXCLUSION_WORD_FAMILIES`): either word matches `Praktikum`, `Praktika`,
+`Praktikant`, `Praktikantin` and `Praktikanten`.
 
 **Rules from set 9** (one correction round, general rules only, each with a unit test):
 the job's own place on site makes other countries of the same sentence second sites (a check:
@@ -740,6 +819,20 @@ changed only by its version line; `V3_ROWS_DIGEST` unchanged). All sets at versi
 | heldout7 | 0.915 | 0.852 | 0.656 | 0.824 | 0.588 | 2 | 0.988 / 0.863 |
 | heldout8 | 0.938 | 0.943 | 0.776 | 0.829 | 0.767 | 1 | 0.980 / 0.850 |
 | heldout9 | 0.876 | 0.867 | 0.636 | 0.717 | 0.680 | 0 | 0.989 / 0.962 |
+
+**Review fixes before the release (E16-1 to E16-8, still engine 16).** An adversarial review of
+engine 16 found eight defects; each rule above carries its fix and a regression test named
+after the finding (`e16_1_...` to `e16_8_...` in `exclusion.rs`, `facts.rs`, `limits.rs`,
+`ad_facts.rs` and `core/tests/matching_criteria.rs`). None of them moves a number: both reports
+are byte-identical before and after (every table above, every floor), the golden digest and
+`V3_ROWS_DIGEST` are unchanged, and set 9 keeps every exclusion by its profiles' words. The
+held-out ads hold no sentence the fixes read differently: the wage and ANÜ fixes need a
+wage-like word or a topic cue in the one sentence that states the rate or ANÜ, the workload and
+duration fixes change only checks and key facts of profiles with the new keys, and the
+exclusion words of set 9 are condition words in condition sentences or position words in
+titles. With `Werkstudent`, `Praktikum`, `Junior` and `Ausbildung` in every profile of every
+set, no exclusion word hits a relevant pair (grade 2 or 3, kept by the labels) any more; before
+the fix six such pairs were excluded.
 
 Test profiles for the user: `tools/test-profiles/` (five invented profiles with the new keys;
 `the_test_profiles_load_and_score` loads each the way the file picker does).

@@ -1,7 +1,7 @@
 // Final UI round, track F (forms): the Profil blocks in their order, one size per role
 // (fields, chip fields and choices 32 px, control labels 13/500), the head's menu, "Offen"
-// of a single choice, the remote switch that excludes, Einstellungen without the fetch at
-// start and with the keys, and the setup page that opens the CV steps.
+// of a single choice, the remote switch that excludes (Einstellungen and the setup page:
+// settings.spec.ts).
 
 import type { Locator, Page } from '@playwright/test';
 import { calls, expect, open, test } from './fixtures';
@@ -12,12 +12,6 @@ async function profile(page: Page, scenario = 'default'): Promise<void> {
   await open(page, `${WIN}&scenario=${scenario}`);
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('profile-form')).toBeVisible();
-}
-
-async function settings(page: Page, query = WIN): Promise<void> {
-  await open(page, query);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('settings')).toBeVisible();
 }
 
 /** Height and font of every element a selector finds inside `scope`. */
@@ -190,58 +184,6 @@ test('forms-final: the remote switch excludes when it is on', async ({ page }) =
   const [, args] = (await calls(page, 'save_profile')).at(-1)!;
   const after = (args as { save: { after: { criteria: { remoteOutside: boolean } } } }).save.after;
   expect(after.criteria.remoteOutside).toBe(false);
-});
-
-test('forms-final: Einstellungen fetch nothing at start and list the keys', async ({ page }) => {
-  await settings(page);
-  await expect(page.getByTestId('toggle-auto-fetch')).toHaveCount(0);
-  await expect(page.getByTestId('settings')).not.toContainText('Beim Start abrufen');
-  await expect(page.getByTestId('settings-fetch').getByRole('switch')).toHaveCount(2);
-  // "Alle Alert-Mails abrufen" is part of the Postfach.
-  await expect(page.getByTestId('settings-mailbox').getByTestId('full-mailbox')).toBeVisible();
-  const keys = page.getByTestId('settings-keys');
-  await expect(keys.getByRole('heading', { level: 2 })).toHaveText('Tastenkürzel');
-  await expect(keys.locator('dd')).toHaveCount(13);
-  await expect(keys.locator('dd').first()).toHaveText('Strg+1');
-  await expect(keys.locator('dd').last()).toHaveText('F5');
-  // The row buttons are 28 px, none of the page is 36.
-  const heights = await page
-    .getByTestId('settings')
-    .locator('button:not([role="switch"]):not([role="radio"])')
-    .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
-  expect(heights.filter((height) => height > 32)).toEqual([]);
-});
-
-test('forms-final: macOS writes the keys with its symbols', async ({ page }) => {
-  await settings(page, '?platform=macos');
-  await expect(page.getByTestId('settings-keys').locator('dd').first()).toHaveText('⌘1');
-});
-
-test('forms-final: step 2 of the setup opens the CV steps, "Selbst ausfüllen" the form', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=mailbox-only`);
-  const step = page.getByTestId('step-profile');
-  await expect(step.getByTestId('first-profile')).toHaveText('Aus Lebenslauf anlegen');
-  await step.getByTestId('first-profile').click();
-  const paste = page.getByTestId('profile-paste');
-  await expect(paste).toBeVisible();
-  await expect(paste.getByRole('heading', { level: 2 })).toHaveText('Aus Lebenslauf anlegen');
-  await expect(page.getByTestId('paste-cancel')).toHaveText('Schließen');
-  await page.getByTestId('paste-cancel').click();
-  await page.getByTestId('nav-jobs').click();
-  await page.getByTestId('first-profile-form').click();
-  await expect(page.getByTestId('profile-form')).toBeVisible();
-});
-
-test('forms-final: a failed first fetch keeps the setup page and says why', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-fetch-failed`);
-  const step = page.getByTestId('step-fetch');
-  await expect(step).toContainText('30 Tage');
-  await expect(step.getByTestId('first-fetch-failed')).toBeVisible();
-  // Abrufen again completes and ends the setup.
-  await step.getByTestId('first-fetch').click();
-  await expect(page.getByTestId('first-run')).toHaveCount(0, { timeout: 15_000 });
 });
 
 test('forms-final: the synonyms keep one line, "+n" names the rest', async ({ page }) => {

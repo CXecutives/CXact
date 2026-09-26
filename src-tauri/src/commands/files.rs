@@ -217,6 +217,19 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
                 "file",
             )?
         }
+        OpenTarget::OverviewInFolder => {
+            let workspace = state.workspace()?;
+            let report = export::overview_html_path(&workspace.join(RESULT_DIR));
+            if report.is_file() {
+                return show_in_folder(&report);
+            }
+            // No report yet (before the first fetch): the work folder it will be in.
+            existing(workspace, "folder")?
+        }
+        OpenTarget::TxtDir => existing(
+            state.workspace()?.join(RESULT_DIR).join(export::TXT_DIR),
+            "folder",
+        )?,
         OpenTarget::LogDir => existing(state.data_dir.join(jobalert_core::LOG_DIR), "folder")?,
         OpenTarget::DataDir => existing(state.data_dir.clone(), "folder")?,
     };

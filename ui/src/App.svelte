@@ -8,7 +8,8 @@
   (a fetch, a rescore, a sign-in, the files). Profil and Einstellungen keep where they were
   scrolled to while the app runs (a return finds the same place); on macOS their name
   stands small in the toolbar row. A start whose data cannot load says so and offers to try
-  again, the log and the data folder. Ctrl+/ (Cmd+/) shows the card of the keys.
+  again, the log and the data folder. Ctrl+/ (Cmd+/) shows the card of the keys; F5 (Cmd+R)
+  fetches in every view.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -20,6 +21,7 @@
   import Tooltip from '$components/Tooltip.svelte';
   import { keepScroll } from '$lib/actions/keepScroll';
   import { t } from '$lib/i18n/t';
+  import { onFetchKey } from '$lib/input/input';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
   import { fade } from '$lib/motion/transitions';
@@ -49,6 +51,13 @@
   });
   /** macOS: the views keep the toolbar row free (the Jobs view uses it for its list row). */
   const band = dragBands();
+  // F5, Ctrl/Cmd+R: Abrufen in every view, like the button (while it is allowed); the keys
+  // list it under "Überall" (lib/input/keys.ts).
+  $effect(() =>
+    onFetchKey(() => {
+      if (run.fetchBlocked === null && !run.active) void run.start({ kind: 'fetch' });
+    }),
+  );
   /** Closing while the app is busy: what the window waits for (null: not closing). */
   let closing = $state<{ activity: string | null } | null>(null);
   $effect(() => onClosing((activity) => (closing = { activity })));
@@ -83,6 +92,7 @@
               <Button
                 variant="link"
                 size="sm"
+                icon="folder"
                 label={t.common.openLog}
                 testid="open-log"
                 onclick={() => openFolder({ kind: 'logDir' })}

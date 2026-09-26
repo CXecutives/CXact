@@ -23,6 +23,7 @@ import type {
   InvalidInput,
   JobSort,
   Language,
+  Palette,
   PauseReason,
   Place,
   Portal,
@@ -1761,9 +1762,7 @@ export const de = {
     /** Google's own words for its 2-step verification. */
     twoStepAction: 'Bestätigung in zwei Schritten einschalten',
     connect: 'Verbinden',
-    /** A changed mailbox is saved (said under its row). */
-    mailboxSaved: 'Postfach verbunden.',
-    /** Saved after the sign-in, but the alert mails were not counted in time. */
+    /** Saved after the sign-in, but the alert mails were not counted in time (a toast). */
     mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
@@ -1795,21 +1794,25 @@ export const de = {
     excelMissing: 'Die Excel-Datei entsteht beim ersten Abruf.',
     /** The HTML file of the favourites and new matches. */
     overview: 'Bericht',
+    overviewLater: 'Der Bericht entsteht beim ersten Abruf.',
     txt: 'Textdateien',
     /** What the text files are (one per ad) and what they are for, with their number. */
     txtCount: (value: number) =>
       `${count(value, 'Anzeige', 'Anzeigen')} als Text für eine KI-Bewertung`,
-    /** After a change of the work folder: only new text files are written there by themselves. */
-    txtLeftBehind: 'Die Textdateien liegen noch im alten Ordner, „Neu schreiben“ legt sie hier an.',
+    txtLater: 'Die Textdateien entstehen beim ersten Abruf.',
     txtNone: 'Es gibt keine Textdateien.',
     txtRewrite: 'Neu schreiben',
     txtClear: 'Löschen',
-    txtWritten: (value: number) => `${count(value, 'Datei', 'Dateien')} geschrieben.`,
+    /** The toasts of "Neu schreiben" and "Löschen" (a deletion can be undone: it writes them again). */
+    txtRewritten: 'Textdateien neu geschrieben.',
+    txtNothing: 'Es gibt noch keine Anzeige mit ganzem Text.',
+    txtCleared: 'Textdateien gelöscht.',
     txtFailed: (value: number) => `${count(value, 'Datei ist', 'Dateien sind')} gerade geöffnet.`,
-    txtCleared: (value: number) => `${count(value, 'Datei', 'Dateien')} gelöscht.`,
-    txtClearHeading: 'Textdateien löschen?',
-    /** A deleted text file is never written again by a fetch (core `mark_txt_written`). */
-    txtClearText: 'Nur „Neu schreiben“ holt sie zurück.',
+    /** Another work folder: the profile came along (or the folder has its own), the files are
+     *  written there at once. */
+    workspaceMoved: 'Profil und Dateien liegen jetzt im neuen Ordner.',
+    workspaceFiles: 'Die Dateien liegen jetzt im neuen Ordner.',
+    workspaceOwnProfile: 'Die App nutzt jetzt das Profil aus diesem Ordner.',
     fullMailbox: FULL_MAILBOX,
     fullMailboxHint: 'Liest alle Alert-Mails, nicht nur die neuen.',
     fullMailboxAction: 'Abrufen',
@@ -1823,7 +1826,8 @@ export const de = {
     reset: 'Alles zurücksetzen',
     /** Everything core's reset deletes: the database, the profile, the keychain entry, the
      *  portal sign-ins; the dialog adds the app's files in the work folder. */
-    resetHint: 'Löscht Jobs, Einstellungen, Profil, App-Passwort und Anmeldungen.',
+    resetHint:
+      'Löscht Jobs, Einstellungen, Profil, App-Passwort, Anmeldungen und die Dateien der App im Arbeitsordner.',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText: 'Die App startet danach neu und löscht',
@@ -1843,47 +1847,46 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
+    /** The card of how the app looks and speaks: its colours and its language. */
+    look: 'Darstellung',
+    palette: 'Farben',
+    /** The palettes (tokens.css): Coast by its name, GitHub's light and dark as the OS says. */
+    paletteName: {
+      coast: 'Coast',
+      light: 'Light',
+      dark: 'Dark',
+    } satisfies Record<Palette, string>,
     language: 'Sprache',
-    /** Excel file and report are written at the next fetch (the text files stay German). */
-    languageHint: 'Excel-Datei und Bericht folgen beim nächsten Abruf.',
     /** Each language in its own words, the same in both catalogs. */
     languageName: {
       de: 'Deutsch',
       en: 'English',
     } satisfies Record<Language, string>,
-    /** The card of the app's keys (their names follow the OS, platform.ts keyLabel). */
-    keys: {
-      heading: 'Tastenkürzel',
-      overview: 'Übersicht',
-      jobs: 'Jobs',
-      profile: 'Profil',
-      settings: 'Einstellungen',
-      search: 'Suchen',
-      undo: 'Rückgängig',
-      archive: 'Archivieren',
-      trash: 'In den Papierkorb',
-      favourite: 'Favorit',
-      unread: 'Gelesen oder ungelesen',
-      applied: 'Beworben',
-      openAd: 'Anzeige öffnen',
-      fetch: 'Abrufen',
-    },
+    /** The card of the app's keys (lib/input/keys.ts; the rows are those of keysHelp). */
+    keys: 'Tastenkürzel',
   },
   firstRun: {
     benefit: 'Die App liest die Alert-Mails aus Gmail und zeigt, welche Jobs zum Profil passen.',
     privacy: 'Alles bleibt auf diesem Rechner.',
     steps: 'Erste Schritte',
     mailbox: 'Postfach',
-    /** Where the jobs come from: the portals by name, in the app's order (`Portal::ALL`). */
-    mailboxText: `Die Alerts von ${joined(Object.values(portalName))} müssen an diese Gmail-Adresse${NBSP}gehen.`,
-    /** Per portal after connecting: its page to set up an alert. */
+    /** Where the jobs come from: the portals switched on by name, in the app's order. */
+    mailboxText: (portals: readonly Portal[]) =>
+      `Die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} müssen an diese Gmail-Adresse${NBSP}gehen.`,
+    /** Every portal is off: the fetch would read nothing. */
+    noPortal: 'Schalte erst ein Portal ein.',
+    openSettings: 'Einstellungen öffnen',
+    /** Per portal after connecting: the alert mails "Verbinden" found, else its page to set
+     *  up an alert. */
+    alertMails: (value: number) => count(value, 'Alert-Mail', 'Alert-Mails'),
     createAlert: 'Alert anlegen',
+    /** "Verbinden" found no alert mail of any portal: a fetch would find nothing. */
+    noAlerts: 'In den letzten 30 Tagen kam keine Alert-Mail an, leg erst einen Alert an.',
     profile: 'Profil',
     profileText: 'Das Profil entsteht in der App, auf Wunsch aus dem Lebenslauf.',
-    /** The empty form instead of the steps with an AI. */
-    selfFill: 'Selbst ausfüllen',
     fetch: 'Erster Abruf',
-    fetchHint: 'Der erste Abruf liest die Alerts der letzten 30 Tage und dauert ein paar Minuten.',
+    fetchHint:
+      'Der erste Abruf liest die Alert-Mails der letzten 30 Tage und dauert ein paar Minuten.',
   },
   shell: {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',

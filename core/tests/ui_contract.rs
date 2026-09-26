@@ -371,7 +371,8 @@ fn forbidden_css_features() {
     problems.extend(find(&all, &["color-mix("], |s| s.is("styles/tokens.css")));
     fail(
         &problems,
-        "light mode only, Safari 17 baseline (no View Transitions, @starting-style, \
+        "the palette is the one chosen in Einstellungen, never the OS's (no \
+         prefers-color-scheme), Safari 17 baseline (no View Transitions, @starting-style, \
          scrollbar-gutter, content-visibility), colour maths only in tokens.css",
     );
 }
@@ -835,25 +836,25 @@ fn the_macos_toolbar_row_matches_the_traffic_lights() {
     }
 }
 
-/// The native Windows title bar wears the app's colours (platform.rs, DWM): its caption is
-/// the cream of the sidebar below it (`--bg`, which is also the window's `backgroundColor`, so
-/// nothing flashes before the first paint), its title the ink of the text, dimmed to the
-/// subtle text. platform.rs names the tokens and writes no colour of its own; the generated
-/// palette follows tokens.css (core/tests/palette.rs).
+/// The native Windows title bar wears the colours of the chosen palette (platform.rs, DWM):
+/// its caption is the colour of the sidebar below it (`--bg`, which is also the window's
+/// background, so nothing flashes before the first paint), its title the text colour, dimmed
+/// to the subtle text. platform.rs names the tokens of every palette and writes no colour of
+/// its own; the generated palette follows tokens.css (core/tests/palette.rs). Coast's `--bg`
+/// is the window's `backgroundColor` in the configuration (the start before the choice is read).
 #[test]
 fn the_title_bar_colours_are_the_tokens() {
     let platform = std::fs::read_to_string(repo("src-tauri/src/platform.rs")).expect("platform.rs");
-    for (constant, token) in [
-        ("TITLE_BAR_BACKGROUND", "BG"),
-        ("TITLE_BAR_TEXT", "TEXT"),
-        ("TITLE_BAR_TEXT_INACTIVE", "TEXT_SUBTLE"),
-    ] {
+    for (palette, prefix) in [("Coast", ""), ("Light", "LIGHT_"), ("Dark", "DARK_")] {
+        let arm = format!(
+            "Palette::{palette} => WindowColours {{\n            \
+             background: palette::{prefix}BG.rgb,\n            \
+             title: palette::{prefix}TEXT.rgb,\n            \
+             title_inactive: palette::{prefix}TEXT_SUBTLE.rgb,\n        }}"
+        );
         assert!(
-            platform.contains(&format!(
-                "pub const {constant}: Rgb = palette::{token}.rgb;"
-            )),
-            "{constant} is palette::{token} (--{})",
-            token.to_ascii_lowercase().replace('_', "-")
+            platform.contains(&arm),
+            "window_colours({palette}) is --bg, --text and --text-subtle of the palette"
         );
     }
     let shared = config("tauri.conf.json");

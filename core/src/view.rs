@@ -27,7 +27,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{Language, PortalSwitches, Settings};
+use crate::settings::{Language, Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -1209,6 +1209,9 @@ pub struct Mailbox {
     /// failed on a mail): the answer to `save_mailbox` is then signed in and not counted,
     /// and the next fetch reads the alert mails anyway.
     pub check: Option<MailboxCheck>,
+    /// When Gmail last accepted this mailbox ("Verbinden", "Speichern"): a mail error of a
+    /// fetch that finished before it is past.
+    pub checked_at: Option<Timestamp>,
 }
 
 /// "Postfach prüfen": the sign-in worked, and this many alert mails of the enabled portals
@@ -1247,6 +1250,28 @@ pub struct SettingsView {
     pub excel_exists: bool,
 }
 
+/// Another work folder (`pick_workspace`): the folder, and what became of the profile there.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct WorkspacePick {
+    pub folder: PathBuf,
+    pub profile: WorkspaceProfile,
+}
+
+/// The profile after a change of the work folder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum WorkspaceProfile {
+    /// The new folder had none: the old folder's `profil/` came along.
+    Copied,
+    /// The new folder brings its own profile, which the app uses from now on.
+    Own,
+    /// Neither folder has a profile.
+    None,
+}
+
 /// Changes of the settings. `null` = unchanged; the workspace only changes through the
 /// folder dialog (`pick_workspace`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1260,6 +1285,8 @@ pub struct SettingsPatch {
     pub auto_empty_trash_days: Option<u32>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
+    /// The palette the user chose (Einstellungen, Darstellung).
+    pub palette: Option<Palette>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1294,6 +1321,9 @@ impl SettingsPatch {
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
+        }
+        if let Some(palette) = self.palette {
+            settings.palette = palette;
         }
     }
 }
@@ -1654,6 +1684,8 @@ pub struct AppState {
     pub auto_empty_trash_days: u32,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
+    /// The colours of the page and the window (the report, Excel and the icon keep Coast).
+    pub palette: Palette,
     /// The last fetch (fetch or whole mailbox) - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
     pub counts: JobCounts,
@@ -1708,6 +1740,10 @@ pub enum OpenTarget {
         name: String,
     },
     Overview,
+    /// The report shown selected in its folder; the workspace while there is none yet.
+    OverviewInFolder,
+    /// The folder of the text files (`auswertung/beschreibungen_txt`).
+    TxtDir,
     LogDir,
 }
 

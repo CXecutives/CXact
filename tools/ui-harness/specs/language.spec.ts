@@ -1,4 +1,4 @@
-// English beside German: the reader's words for an exclusion in both languages, and the two
+﻿// English beside German: the reader's words for an exclusion in both languages, and the two
 // English baselines (the reader and the settings). The switch itself and the start in the
 // language the backend says are shell.spec.ts.
 
@@ -45,6 +45,6 @@ test('baseline: jobs with the reader in English', async ({ page }) => {
 
 test('baseline: settings in English', async ({ page }) => {
   await settings(page, EN);
-  await page.getByTestId('settings-language').scrollIntoViewIfNeeded();
+  await page.getByTestId('settings-look').scrollIntoViewIfNeeded();
   await expectShot(page, 'settings-en');
 });
