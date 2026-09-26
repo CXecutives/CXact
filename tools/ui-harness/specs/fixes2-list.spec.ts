@@ -84,7 +84,7 @@ test.describe('rows keep their shape', () => {
     await page.setViewportSize({ width: 1100, height: 800 });
     await open(page, WIN);
     await facet(page, 'Alle').click();
-    const meta = row(page, 'linkedin-4100200303').locator('.meta');
+    const meta = row(page, 'linkedin-4100200303').locator('.meta .parts');
     await expect(meta).toBeVisible();
     // One box that ends in an ellipsis; the company is never cut while the place shows.
     expect(

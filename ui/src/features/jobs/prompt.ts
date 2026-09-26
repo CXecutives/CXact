@@ -5,6 +5,7 @@
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
 import { IpcError } from '$lib/ipc/api';
+import type { JobKey } from '$lib/ipc/types';
 import { jobs } from '$lib/state/jobs.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 
@@ -22,6 +23,19 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /** Copy the prompt; resolves with the error text, or null. */
+/** The prompt of one job for any AI chat, on the clipboard (the job's menu, the reader). */
+export async function copyJobPrompt(key: JobKey): Promise<string | null> {
+  let prompt: string;
+  try {
+    prompt = await jobs.aiPrompt(key);
+  } catch (error) {
+    return errorText(error);
+  }
+  if (!(await copyText(prompt))) return t.reader.promptNotCopied;
+  toasts.show(t.toast.prompt);
+  return null;
+}
+
 export async function copyTopPrompt(): Promise<string | null> {
   let prompt: string;
   try {

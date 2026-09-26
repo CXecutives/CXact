@@ -7,10 +7,12 @@
   the Papierkorb the day the job went there, the date the trash sorts by), company and
   place as one line read left to right and cut at its end (user, 2026-09-25), and one line
   with the ad's key facts ("ab sofort · 6 Monate · 60 % remote · 1.100 €/Tag"; the best
-  met requirement when the ad states none) and a badge right after it only when something
-  deviates. Facts are whole: one that does not fit drops out, none is ever cut in the
+  ad states none, the line stays empty: it holds conditions, never a requirement) and a badge
+  right after it only when something deviates or the user counted an excluded job anyway
+  ("Einbezogen"). The company line starts with the portal's small tile ("+1" when another
+  portal announced the job too). Facts are whole: one that does not fit drops out, none is ever cut in the
   middle of its value. Without a usable profile the ring stays, empty (a dash), and the row
-  has no third line unless a badge needs one: it is only as high as the ring then.
+  keeps its facts and has no ring column.
   Like Mail and Gmail, the row's tools sit over the date: on hover (or when a tool has the
   keyboard focus) the date fades out and archive (or bring back) and the star fade in
   (100 ms); the title line keeps their room free. A pinned job shows a small star just
@@ -21,10 +23,11 @@
   the row keeps its hover while the pointer is on them. They exist only while the pointer
   is on the row or the focus is in it (and for their fade-out after that): three buttons on
   every row of a long list were half of its elements, most of the work of a new row and of
-  every hit test. An excluded row is muted as a whole, its dot and tools too. When a job is
-  read while its row is on screen the dot shrinks away; an excluded row has no dot (no
-  count includes it). A date older than ten days sits on a quiet tint; relative dates follow
-  the page's clock (they move on while the app stays open). A score from a
+  every hit test. The tools take no room while hidden: on hover the title line ends before
+  them. An excluded row is muted as a whole, its dot and tools too. When a job is read
+  while its row is on screen the dot shrinks away; only the inbox has dots, an excluded row
+  none. Relative dates follow the page's clock (they move on while the app stays open). A
+  right click opens the job's menu (`menu`, the app's own). A score from a
   teaser rings like any other (its badge says that only a teaser was read). A cut-off
   title or reason shows in full in a tooltip. Layout stays
   inside the row (containment); like the row, its hover rests while the list scrolls
@@ -52,6 +55,7 @@
 
 <script lang="ts">
   import { presence } from '$lib/actions/presence';
+  import { contextMenu, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatRelative } from '$lib/i18n/format';
@@ -65,6 +69,7 @@
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
+  import { PORTAL_MONOGRAM } from './IconTile.svelte';
   import ReasonItem from './ReasonItem.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
 
@@ -89,8 +94,8 @@
     /** The job's actions where it is, in their one order, before the star (in place of
      *  `onarchive`). */
     tools?: readonly RowTool[];
-    /** The date is older than ten days (null: decide from the date and `now`). */
-    aged?: boolean | null;
+    /** The job's menu on a right click (null: none). */
+    menu?: (() => ContextMenu | null) | null;
     /** The row's test id (another list of the same jobs needs its own). */
     testid?: string | null;
     /** The list's one Tab stop is this row (the others are reached with the arrows). */
@@ -108,14 +113,10 @@
     onpin = null,
     onarchive = null,
     tools = [],
-    aged = null,
+    menu = null,
     testid = null,
     tabbable = true,
   }: Props = $props();
-
-  /** A date this old is marked (days). */
-  const AGED_DAYS = 10;
-  const DAY_MS = 86_400_000;
 
   /** How a click selects, by the modifiers of the OS (like a mail app). */
   function how(event: MouseEvent): SelectHow {
@@ -127,7 +128,6 @@
   const trashed = $derived(job.place === 'trash' ? job.trashedAt : null);
   const when = $derived(trashed ?? job.mailDate ?? job.firstSeenAt);
   const current = $derived(now ?? clock.now);
-  const old = $derived(aged ?? current.getTime() - new Date(when).getTime() > AGED_DAYS * DAY_MS);
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   /** How many tools the row has on hover (their room stays free on the title line). */
   const toolCount = $derived(tools.length + (onpin ? 1 : 0) + (onarchive ? 1 : 0));
@@ -149,8 +149,12 @@
     for (const button of node.querySelectorAll('button')) button.tabIndex = -1;
   }
 
-  const reason = $derived(ring ? rowReason(job) : null);
-  const facts = $derived(ring ? factWords(job.match?.facts) : []);
+  // The ad's own facts: also without a profile (they come from the ad, not the match). An
+  // excluded row says why instead, in short words.
+  const reason = $derived(excluded ? rowReason(job) : null);
+  const facts = $derived(reason ? [] : factWords(job.match?.facts));
+  /** The other portals that announced this job too. */
+  const also = $derived(job.alsoOn.filter((portal) => portal !== job.portal));
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
 
   /** At most one badge, and only when something is not as usual. */
@@ -158,6 +162,7 @@
     (): { label: string; tone: BadgeTone; hint: string | null } | null => {
       // Excluded rows speak through the ring, the grey and the divider.
       if (excluded) return null;
+      if (job.overridden) return { label: t.job.included, tone: 'neutral', hint: null };
       const detail = job.detail.kind;
       // While a run brings the details, "Details folgen" is no deviation.
       if (detail === 'pending' && pending) return null;
@@ -186,12 +191,13 @@
   class="job"
   class:tooled={tooled && toolCount > 0}
   class:muted={excluded}
-  class:bare={!(ring || facts.length > 0 || reason || deviation)}
+  class:bare={!(facts.length > 0 || reason || deviation)}
   data-rests=""
   use:presence={hold}
+  use:contextMenu={menu}
 >
   <ListRow
-    leading={ringCell}
+    leading={ring ? ringCell : null}
     {selected}
     {bar}
     muted={excluded}
@@ -214,22 +220,32 @@
             role="img"
             aria-label={t.job.pinned}><Icon name="star" size="sm" filled /></span
           >{/if}
-        <span class="date" class:old
-          ><span class="stamp">{formatRelative(when, current, true)}</span></span
-        >
+        <span class="date"><span class="stamp">{formatRelative(when, current, true)}</span></span>
       </span>
     </span>
     <span class="meta">
-      {#if job.company}<span class="text company">{job.company}</span>{/if}
-      {#if job.location}<span class="text place">{job.location}</span>{/if}
+      <span
+        class="portal"
+        role="img"
+        aria-label={t.portal[job.portal]}
+        use:tooltip={also.length > 0
+          ? `${t.portal[job.portal]} · ${t.job.alsoOn(also.map((p) => t.portal[p]).join(', '))}`
+          : t.portal[job.portal]}
+        >{PORTAL_MONOGRAM[job.portal]}{#if also.length > 0}<span class="also">+{also.length}</span
+          >{/if}</span
+      >
+      <span class="parts">
+        {#if job.company}<span class="text company">{job.company}</span>{/if}
+        {#if job.location}<span class="text place">{job.location}</span>{/if}
+      </span>
     </span>
-    {#if ring || facts.length > 0 || reason || deviation}<span class="foot">
-        {#if facts.length > 0}
+    {#if facts.length > 0 || reason || deviation}<span class="foot">
+        {#if reason}
+          <span class="reason"><ReasonItem kind={reason.kind} label={reason.text} compact /></span>
+        {:else if facts.length > 0}
           <span class="facts" data-testid="row-facts"
             >{#each facts as fact, index (index)}<span class="fact">{fact}</span>{/each}</span
           >
-        {:else if reason}
-          <span class="reason"><ReasonItem kind={reason.kind} label={reason.text} compact /></span>
         {/if}
         {#if deviation}<Badge
             label={deviation.label}
@@ -238,7 +254,11 @@
           />{/if}
       </span>{/if}
   </ListRow>
-  {#if job.unread && !excluded}<span class="dot" role="img" aria-label={t.job.unread} out:dotOut
+  {#if job.unread && !excluded && job.place === 'inbox'}<span
+      class="dot"
+      role="img"
+      aria-label={t.job.unread}
+      out:dotOut
     ></span>{/if}
   {#if tooled && toolCount > 0}
     <span class="tools" in:toolsIn>
@@ -344,18 +364,43 @@
     -webkit-text-stroke: calc(var(--border-width) * 0.4) currentcolor;
   }
 
-  /* Company and place: one line, read left to right and cut at its end like the title. */
+  /* The portal's tile, then company and place: one line, cut at its end like the title. */
   .meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
     min-width: 0;
-    overflow: hidden;
     color: var(--text-muted);
     font: var(--type-sm);
+  }
+
+  .portal {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--portal-tile);
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-xs);
+    background-color: var(--surface-track);
+    color: var(--text-muted);
+    font: var(--type-2xs);
+    font-weight: var(--weight-semibold);
+  }
+
+  .also {
+    color: var(--text-subtle);
+  }
+
+  .parts {
+    min-width: 0;
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   /* Parts joined by a middle dot. */
-  .meta > * + *::before {
+  .parts > * + *::before {
     padding: 0 var(--space-6);
     color: var(--text-subtle);
     content: '·';
@@ -371,15 +416,19 @@
     transition: opacity var(--dur-fast) var(--ease-standard);
   }
 
-  .end.one {
+  /* The tools take the date's place only while they show: then the title ends before them. */
+  .tooled:hover:where(:not([data-still])) .end.one,
+  .tooled:has(.tool :global(:focus-visible)) .end.one {
     min-width: var(--control-sm);
   }
 
-  .end.two {
+  .tooled:hover:where(:not([data-still])) .end.two,
+  .tooled:has(.tool :global(:focus-visible)) .end.two {
     min-width: calc(2 * var(--control-sm) + var(--space-2));
   }
 
-  .end.three {
+  .tooled:hover:where(:not([data-still])) .end.three,
+  .tooled:has(.tool :global(:focus-visible)) .end.three {
     min-width: calc(3 * var(--control-sm) + 2 * var(--space-2));
   }
 
@@ -453,14 +502,6 @@
     display: flex;
     flex: 0 1 auto;
     min-width: 0;
-  }
-
-  /* An old date sits on a quiet tint (older than ten days). */
-  .date.old {
-    padding: 0 var(--space-6);
-    border-radius: var(--radius-full);
-    background-color: var(--surface-muted);
-    color: var(--text-muted);
   }
 
   /* The tools over the date, centred on the title line: they fade in on hover (100 ms)

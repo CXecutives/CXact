@@ -201,8 +201,11 @@ test('an archived job is brought back with a verb, not a way back to Jobs', asyn
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';
   await page.getByTestId('job-list').getByTestId(`job-row-${key}`).hover();
-  // "Zurück zu Jobs" read as navigation; the toast says "zurückgeholt".
-  await expect(page.getByTestId(`toInbox-${key}`)).toHaveAttribute('aria-label', 'Zurückholen');
+  // The place it goes to, like the other moves ("In den Papierkorb").
+  await expect(page.getByTestId(`toInbox-${key}`)).toHaveAttribute(
+    'aria-label',
+    'Zurück in den Eingang',
+  );
 });
 
 test('an ad that could not be fetched says so with the one verb for details', async ({ page }) => {

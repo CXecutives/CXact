@@ -122,7 +122,8 @@
      chips, 13 before the values of the clean line) and links. A label of a field or of a
      column of fields is ink (--text, 13/500, as in Field): navy text alone over a form reads
      as a link. */
-  --text-heading: hsl(var(--p-ink));
+  /* Section headings in the brand's navy (the page's structure reads at a glance). */
+  --text-heading: hsl(var(--p-navy));
   --text-label: hsl(var(--p-navy));
   --text-on-accent: hsl(var(--p-on-accent));
   --text-inverse: hsl(var(--p-white));
@@ -164,10 +165,11 @@
      translucent ink, as clear on the grey wash as the plain track is on white. */
   --ring-track-inactive: hsl(var(--p-ink) / 0.1);
   /* The sliding white pill of the active sidebar entry (the sibling of the segmented
-     thumb); its label ink, its icon coral. A nav icon turns coral on hover. */
+     thumb and the tabs' line); its label navy, its icon coral. A nav icon turns coral on
+     hover. The chosen segment and tab share the navy label. */
   --nav-active-bg: hsl(var(--p-white));
   --nav-active-border: hsl(var(--p-line));
-  --nav-active-fg: hsl(var(--p-ink));
+  --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
   /* The soft count pill (the chosen segment, dividers, sub-labels, countdown, "n neu"). */
   --count-soft-bg: hsl(var(--p-coral-40));
@@ -244,9 +246,9 @@
   --score-low-text: hsl(var(--p-score-low-text));
   --score-low-surface: hsl(var(--p-muted));
   --score-track: hsl(var(--p-line));
-  --score-excluded: hsl(var(--p-danger-strong));
+  --score-excluded: var(--text-subtle);
   /* The solid track of an excluded ring (one silhouette for every state). */
-  --score-excluded-track: hsl(var(--p-danger) / 0.25);
+  --score-excluded-track: var(--score-track);
 
   /* --------------------------------------------------------------- gradients */
   /* One, and only for the light of a loading placeholder. No decorative gradients. */
@@ -339,6 +341,8 @@
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs, a thin line. */
   --tabs-height: var(--list-toolbar);
   --tabs-line: 2px;
+  /* The portal's small tile at the start of a row's company line. */
+  --portal-tile: 16px;
   /* The white sheet meets the title bar with a hairline and a rounded corner on Windows; on
      macOS it runs up to the window edge. */
   --sheet-top-edge: var(--border-width);

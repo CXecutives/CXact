@@ -11,7 +11,8 @@
   the band. Every ring has the same solid track; the centre and the arc say the state:
   provisional (a score from a teaser only) looks exactly like a scored ring, the row's
   badge and the reader say that it is not final (its name says it too). none: not scored
-  yet: the track with an empty centre. excluded: a pale red track and a ban icon.
+  yet: the track with an empty centre. excluded: the ring and its number in grey (the fit is
+  kept, so a wrong exclusion shows at once) with a small ban mark at its lower right.
   unscorable, and off (no usable profile, so no match at all): the track and a dash.
   pending: in the reader a quarter arc turns on the track; in the list (sm, where many
   turning arcs would cost frames and a still arc looks like a frozen spinner) the track
@@ -24,7 +25,7 @@
   export type RingState =
     | { status: 'scored'; score: number; band: Band }
     | { status: 'provisional'; score: number; band: Band }
-    | { status: 'excluded' }
+    | { status: 'excluded'; score: number }
     | { status: 'unscorable' }
     | { status: 'pending' }
     | { status: 'none' }
@@ -41,7 +42,7 @@
     detail: DetailState['kind'] | null = null,
   ): RingState {
     if (match === null) return pending ? { status: 'pending' } : { status: 'none' };
-    if (match.status === 'excluded') return { status: 'excluded' };
+    if (match.status === 'excluded') return { status: 'excluded', score: match.score };
     if (match.status === 'unscorable') {
       return detail === 'pending' ? { status: 'none' } : { status: 'unscorable' };
     }
@@ -77,7 +78,9 @@
   let { ring, size = 'sm', animate = null, testid = null }: Props = $props();
 
   /** A number on the ring (final or provisional). */
-  const valued = $derived(ring.status === 'scored' || ring.status === 'provisional');
+  const valued = $derived(
+    ring.status === 'scored' || ring.status === 'provisional' || ring.status === 'excluded',
+  );
   const score = $derived(valued && 'score' in ring ? Math.max(0, Math.min(100, ring.score)) : 0);
 
   const number = countUp(untrack(() => score));
@@ -88,7 +91,9 @@
   let arc = $state<SVGCircleElement | null>(null);
   const band = $derived(valued && 'band' in ring ? ring.band : null);
   /** The colour step: the decile of the score, 100 in the last one. */
-  const step = $derived(valued ? `d${Math.min(9, Math.floor(score / 10))}` : '');
+  const step = $derived(
+    valued && ring.status !== 'excluded' ? `d${Math.min(9, Math.floor(score / 10))}` : '',
+  );
 
   const label = $derived.by(() => {
     switch (ring.status) {
@@ -97,7 +102,7 @@
       case 'provisional':
         return `${t.score.value(formatPercent(ring.score))} · ${t.score.band[ring.band]} · ${t.score.provisional}`;
       case 'excluded':
-        return t.score.excluded;
+        return `${t.score.value(formatPercent(ring.score))} · ${t.score.excluded}`;
       case 'unscorable':
         return t.score.unscorable;
       case 'pending':
@@ -189,12 +194,13 @@
   <span class="center">
     {#if valued}
       {Math.round(number.current)}
-    {:else if ring.status === 'excluded'}
-      <Icon name="ban" size={size === 'sm' ? 'sm' : size === 'md' ? 'md' : 'lg'} />
     {:else if ring.status === 'unscorable' || ring.status === 'off'}
       –
     {/if}
   </span>
+  {#if ring.status === 'excluded'}<span class="ban" aria-hidden="true"
+      ><Icon name="ban" size="xs" /></span
+    >{/if}
 </span>
 
 <style>
@@ -232,6 +238,21 @@
 
   .excluded .track {
     stroke: var(--score-excluded-track);
+  }
+
+  .excluded .value {
+    stroke: var(--score-excluded);
+  }
+
+  /* The small ban mark of an excluded ring, on its lower right edge. */
+  .ban {
+    position: absolute;
+    right: calc(-1 * var(--space-2));
+    bottom: calc(-1 * var(--space-2));
+    display: inline-flex;
+    border-radius: var(--radius-full);
+    background-color: var(--surface);
+    color: var(--danger-strong);
   }
 
   /* Pending: a quarter arc over the track (25 of the 100 units), from 12 o'clock. */

@@ -317,7 +317,7 @@ test.describe('the list header', () => {
       expect(await labelsCut(), `${width} px`).toBe(false);
     }
     // A wide column holds the segments and the tools on one line.
-    await page.addInitScript(() => localStorage.setItem('jobs-list-width', '560'));
+    await page.addInitScript(() => localStorage.setItem('jobs-list-width', '680'));
     await open(page, `${WIN}&scenario=many`);
     const second = page.getByTestId('facet').locator('xpath=..');
     expect((await second.boundingBox())?.height).toBe(28);

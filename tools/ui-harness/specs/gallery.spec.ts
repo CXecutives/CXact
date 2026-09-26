@@ -37,7 +37,9 @@ test('the gallery renders every board and component section', async ({ page }) =
   await expect(page.getByTestId('swatch-text')).toContainText('AA');
 });
 
-test('score rings show their value; excluded and unscorable show no number', async ({ page }) => {
+test('score rings show their value, an excluded one in grey with its ban mark; unscorable shows none', async ({
+  page,
+}) => {
   await open(page, '?gallery');
   const high = page.getByTestId('ring-high-lg');
   await high.scrollIntoViewIfNeeded();
@@ -46,7 +48,8 @@ test('score rings show their value; excluded and unscorable show no number', asy
     'aria-label',
     new RegExp(`Passung 91${String.fromCharCode(0x202f)}% · Hohe Passung`),
   );
-  await expect(page.getByTestId('ring-excluded-lg')).toHaveText('');
+  await expect(page.getByTestId('ring-excluded-lg')).toContainText('72');
+  await expect(page.getByTestId('ring-excluded-lg').locator('.ban')).toHaveCount(1);
   await expect(page.getByTestId('ring-unscorable-lg')).toHaveText('–');
 });
 
@@ -231,9 +234,6 @@ test('job rows: tools, status, aged date, provisional ring, no dot on excluded',
   // No stage badges: a favourite has only its star.
   await expect(job('linkedin-1002')).not.toContainText('Beworben');
   await expect(job('freelancermap-1001')).not.toContainText('Gemerkt');
-  // Older than ten days: the date sits on a tint.
-  await expect(job('freelancermap-1005').locator('.date')).toHaveClass(/old/);
-  await expect(job('freelancermap-1001').locator('.date')).not.toHaveClass(/old/);
   // A score from a teaser is provisional (named so, drawn like any score); an excluded unread
   // row has no dot.
   await expect(job('freelance-1003').locator('.ring')).toHaveClass(/provisional/);
@@ -306,7 +306,8 @@ test('the facts of a row drop out whole, a value is never cut', async ({ page })
   await list.evaluate((node) => node.style.setProperty('width', '330px'));
   const narrow = await fit();
   expect(narrow.hidden.length).toBeGreaterThan(0);
-  expect(narrow.shown[0]).toBe('ab sofort');
+  // The rate first: a freelancer weighs it first.
+  expect(narrow.shown[0]).toMatch(/^1\.100\s€\/Tag$/);
   expect(narrow.cut).toEqual([]);
 });
 

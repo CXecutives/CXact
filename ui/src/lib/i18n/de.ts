@@ -657,7 +657,7 @@ export const de = {
   actions: {
     archive: 'Archivieren',
     /** Back into the inbox (the toast says "zurückgeholt"): a verb, not a way back. */
-    toInbox: 'Zurückholen',
+    toInbox: 'Zurück in den Eingang',
     trash: 'In den Papierkorb',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
@@ -665,6 +665,8 @@ export const de = {
     purgeConfirm: 'Löschen',
     purgeHeading: (value: number) =>
       value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
+    /** One job, named. */
+    purgeOne: (title: string) => `„${title}“ endgültig löschen?`,
     purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
     emptyTrashConfirm: 'Leeren',
@@ -674,6 +676,15 @@ export const de = {
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
     markAllRead: 'Alle als gelesen markieren',
+    /** The text button of the list header (during a search: its hits). */
+    allRead: 'Alle gelesen',
+    hitsRead: 'Treffer gelesen',
+  },
+  /** The app's own menus (their accessible names and the entries of the job's menu). */
+  menu: {
+    job: 'Job',
+    open: 'Öffnen',
+    unread: 'Als ungelesen markieren',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -741,6 +752,8 @@ export const de = {
     code: reasonCode,
   },
   job: {
+    /** An excluded job the user counts anyway (its row's quiet badge). */
+    included: 'Einbezogen',
     workMode: {
       remote: 'Remote',
       hybrid: 'Hybrid',

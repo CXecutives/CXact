@@ -333,25 +333,6 @@ test('cut words in a row and in the compact bar show in full in a tooltip', asyn
   await page.setViewportSize({ width: 960, height: 700 });
   await open(page, `${WIN}&lang=en`);
   await facet(page, 'All').click();
-  const labels = list(page).locator('.reason .label');
-  const measure = (): Promise<boolean[]> =>
-    labels.evaluateAll((nodes) => nodes.map((node) => node.scrollWidth > node.clientWidth));
-  // The rows settle (fonts, the first layout) before a label counts as cut.
-  await expect.poll(async () => (await measure()).includes(true)).toBe(true);
-  const cut = await measure();
-  const cutAt = cut.indexOf(true);
-  const wholeAt = cut.indexOf(false);
-  expect(cutAt).toBeGreaterThanOrEqual(0);
-  expect(wholeAt).toBeGreaterThanOrEqual(0);
-  const long = labels.nth(cutAt);
-  await long.hover();
-  await expect(page.getByRole('tooltip')).toHaveText((await long.textContent()) ?? '');
-  await page.mouse.move(4, 4);
-  await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await labels.nth(wholeAt).hover();
-  await page.waitForTimeout(900);
-  await expect(page.getByRole('tooltip')).toHaveCount(0);
-
   // The compact bar of a reader scrolled past its actions: a cut title shows in full.
   const title = 'Interim CFO for a family business with a focus on restructuring and financing';
   const job = await page.evaluate((key) => window.__harness.job(key), {

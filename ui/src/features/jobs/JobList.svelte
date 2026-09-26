@@ -38,6 +38,7 @@
   import { t } from '$lib/i18n/t';
   import { invoke } from '$lib/ipc/api';
   import { errorText } from '$lib/i18n/texts';
+  import { displayTitle } from '$lib/i18n/format';
   import type { JobView, Place, Portal } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
@@ -47,7 +48,12 @@
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
+  import type { ContextMenu } from '$lib/input/input';
+  import type { MenuEntry } from '$lib/state/menu.svelte';
+  import { keyLabel } from '$lib/platform';
   import { actionsOf, disarm, guarded, hasStar, move, moving, purge, toggleStar } from './actions';
+  import { bulk } from './bulk.svelte';
+  import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
   import { selection } from './selection.svelte';
 
@@ -409,6 +415,97 @@
     }));
   }
 
+  /** A key that the menu shows for an action (the list's single keys, input.ts). */
+  const KEYS: Partial<Record<string, string>> = { archive: 'e', trash: 'del' };
+
+  /**
+   * The job's menu on a right click: open it, its ad, the star, unread, its moves and the
+   * prompt. On a chosen row with others chosen too, the moves and the star take them all.
+   */
+  function menuOf(job: JobView): ContextMenu {
+    const many = bulk.active && bulk.chosen.some((chosen) => sameKey(chosen.key, job.key));
+    const list = many ? bulk.chosen : [job];
+    const report = (error: string | null): void => {
+      if (error !== null) jobs.actionError = error;
+    };
+    const entries: MenuEntry[] = [];
+    if (!many) {
+      entries.push(
+        {
+          id: 'open',
+          label: t.menu.open,
+          icon: 'mail-open',
+          keys: keyLabel('enter'),
+          run: () => select(job, { toggle: false, range: false }),
+        },
+        {
+          id: 'open-ad',
+          label: t.reader.open,
+          icon: 'external-link',
+          keys: keyLabel('o'),
+          run: () => {
+            invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
+              (error: unknown) => report(errorText(error)),
+            );
+          },
+        },
+        { kind: 'separator' },
+      );
+    }
+    if (hasStar(job.place)) {
+      const on = list.some((chosen) => !chosen.pinned);
+      entries.push({
+        id: 'star',
+        label: on ? t.reader.pin : t.reader.unpin,
+        icon: 'star',
+        keys: keyLabel('s'),
+        run: () => toggleStar(list),
+      });
+    }
+    if (job.place === 'inbox') {
+      entries.push({
+        id: 'unread',
+        label: t.menu.unread,
+        icon: 'mail',
+        keys: keyLabel('u'),
+        run: () => void jobs.markUnread(list.map((chosen) => chosen.key)).then(report),
+      });
+    }
+    entries.push({ kind: 'separator' });
+    for (const action of actionsOf(job.place)) {
+      const keys = KEYS[action.id];
+      entries.push({
+        id: action.id,
+        label: action.label,
+        icon: action.icon,
+        keys: keys === undefined ? null : keyLabel(keys),
+        danger: action.id === 'purge',
+        disabled: action.id === 'purge' && run.active,
+        reason: action.id === 'purge' ? run.busyText : null,
+        run: () => {
+          if (action.id === 'purge') {
+            purgeError = null;
+            purging = job;
+          } else {
+            void move(list, action.id).then(report);
+          }
+        },
+      });
+    }
+    if (!many && job.match !== null) {
+      entries.push(
+        { kind: 'separator' },
+        {
+          id: 'prompt',
+          label: t.reader.prompt,
+          icon: 'copy',
+          run: () => void copyJobPrompt(job.key).then(report),
+        },
+      );
+    }
+    return { label: t.menu.job, entries };
+  }
+
   async function purgeRow(): Promise<void> {
     if (purging === null) return;
     purgeBusy = true;
@@ -606,6 +703,7 @@
         onselect={select}
         onpin={hasStar(job.place) ? pin : null}
         tools={toolsOf(job)}
+        menu={() => menuOf(job)}
       />
     {/snippet}
     {#snippet group(items: JobView[])}
@@ -689,7 +787,7 @@
 <Dialog
   open={purging !== null}
   variant="danger"
-  heading={t.actions.purgeHeading(1)}
+  heading={purging ? t.actions.purgeOne(displayTitle(purging.title)) : t.actions.purgeHeading(1)}
   text={t.actions.purgeText}
   confirmLabel={t.actions.purgeConfirm}
   busy={purgeBusy}

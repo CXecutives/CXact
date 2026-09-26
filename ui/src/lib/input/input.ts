@@ -316,6 +316,45 @@ export interface ListKeyHandlers {
    *  through it, like in a mail app (pressing the row again would change nothing), and after
    *  a click into it the arrows, Home and End scroll it. */
   reader?: () => HTMLElement | null;
+  /** Single keys for the open item (or the chosen ones), like a mail app: E archive,
+   *  Entf (Windows) or Backspace/Delete (macOS) trash, S favourite, U unread, B applied,
+   *  O open the ad. Never in a field. */
+  act?: (action: ListAction) => void;
+}
+
+export type ListAction = 'archive' | 'trash' | 'star' | 'unread' | 'applied' | 'openAd';
+
+/** The single keys of a list (lower case, no modifier). */
+const LIST_ACTION_KEYS: Readonly<Record<string, ListAction>> = {
+  e: 'archive',
+  s: 'star',
+  u: 'unread',
+  b: 'applied',
+  o: 'openAd',
+};
+
+/** Entf on Windows, Backspace or Delete on macOS (the Mac's delete key is Backspace). */
+function isTrashKey(event: KeyboardEvent): boolean {
+  if (keyConventions().command === 'metaKey')
+    return event.key === 'Backspace' || event.key === 'Delete';
+  return event.key === 'Delete';
+}
+
+/** F5, Ctrl+R (Windows) or Cmd+R (macOS): fetch, like a mail app's "get mail". */
+function isFetchKey(event: KeyboardEvent): boolean {
+  if (event.key === 'F5' && !hasModifier(event) && !event.shiftKey) return true;
+  const os = keyConventions();
+  return event[os.command] && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'r';
+}
+
+let fetchHandler: (() => void) | null = null;
+
+/** The fetch of the app (F5, Ctrl/Cmd+R); returns the function that removes it. */
+export function onFetchKey(handler: () => void): () => void {
+  fetchHandler = handler;
+  return () => {
+    if (fetchHandler === handler) fetchHandler = null;
+  };
 }
 
 const lists = new Map<HTMLElement, ListKeyHandlers>();
@@ -384,6 +423,13 @@ function dispatchListKey(event: KeyboardEvent): boolean {
   }
   const list = listFor(event.target);
   if (list === null) return false;
+  if (!event.shiftKey && list.act !== undefined) {
+    const action = isTrashKey(event) ? 'trash' : LIST_ACTION_KEYS[event.key.toLowerCase()];
+    if (action !== undefined && event.key.length <= 9) {
+      list.act(action);
+      return true;
+    }
+  }
   if (event.shiftKey) return extendList(list, event.key);
   if (readsReader(event, list)) return true;
   switch (event.key) {
@@ -704,6 +750,12 @@ function onKeyDown(event: KeyboardEvent): void {
   if (isContextMenuKey(event)) {
     event.preventDefault();
     openMenuByKey(event.target);
+    return;
+  }
+  if (isFetchKey(event)) {
+    // Never the WebView's reload: the app fetches instead (outside dialogs).
+    event.preventDefault();
+    if (modal === null) fetchHandler?.();
     return;
   }
   const view = viewShortcut(event);

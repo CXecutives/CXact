@@ -388,10 +388,10 @@ test('without a profile: empty rings, newest first, one line in the list leads t
   await expect(page.getByTestId('sort')).toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('sort').click({ force: true });
   await expect(page.getByTestId('menu')).toHaveCount(0);
-  // Every row keeps its ring, empty: the titles stand where they always do.
+  // No ring column without a profile: the ad's facts stay.
   await expect(
     rows(page).first().getByRole('img', { name: 'Ohne Profil keine Passung' }),
-  ).toHaveCount(1);
+  ).toHaveCount(0);
   await expect(rows(page).first().locator('.reason')).toHaveCount(0);
   const query = (await calls(page, 'list_jobs'))[0]?.[1] as { query: { sort: string } };
   expect(query.query.sort).toBe('newest');
@@ -1407,7 +1407,7 @@ test('criteria show the ad value and jump to it; wishes have their block; rows s
   await open(page, WIN);
   // The row's key facts from the ad.
   await expect(row(page, 'freelancermap-2801').getByTestId('row-facts')).toHaveText(
-    /ab sofort.*6 Monate.*60\s%\sremote.*1\.200/,
+    /1\.200.*60\s%\sremote.*6 Monate.*ab sofort/,
   );
   await row(page, 'freelancermap-2801').click();
   // Wishes in their own block of "Warum", next to what the ad states.

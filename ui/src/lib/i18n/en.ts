@@ -642,13 +642,14 @@ export const en: Catalog = {
   },
   actions: {
     archive: 'Archive',
-    toInbox: 'Move back to Jobs',
+    toInbox: 'Back to the inbox',
     trash: 'Move to trash',
     restore: 'Restore',
     purge: 'Delete forever',
     purgeConfirm: 'Delete',
     purgeHeading: (value: number) =>
       value === 1 ? 'Delete the job forever?' : `Delete ${n(value)} jobs forever?`,
+    purgeOne: (title: string) => `Delete “${title}” forever?`,
     purgeText: 'Jobs deleted forever never come back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
     emptyTrashConfirm: 'Empty',
@@ -658,6 +659,13 @@ export const en: Catalog = {
         ? 'The job is deleted forever and never comes back.'
         : `The ${n(value)} jobs are deleted forever and never come back.`,
     markAllRead: 'Mark all as read',
+    allRead: 'All read',
+    hitsRead: 'Hits read',
+  },
+  menu: {
+    job: 'Job',
+    open: 'Open',
+    unread: 'Mark as unread',
   },
   edit: {
     menu: 'Edit',
@@ -717,6 +725,7 @@ export const en: Catalog = {
     code: reasonCode,
   },
   job: {
+    included: 'Included',
     workMode: {
       remote: 'Remote',
       hybrid: 'Hybrid',

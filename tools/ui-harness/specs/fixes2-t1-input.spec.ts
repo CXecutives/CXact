@@ -55,8 +55,9 @@ test('the right and the middle button never press a control', async ({ page }) =
     page.getByTestId('nav-settings'),
     page.getByTestId('facet').getByRole('radio').nth(1),
   ];
-  for (const target of targets) {
-    for (const button of ['right', 'middle'] as const) {
+  for (const [at, target] of targets.entries()) {
+    // A row answers the right button with its menu (checked in menu specs), not a press.
+    for (const button of at === 1 ? (['middle'] as const) : (['right', 'middle'] as const)) {
       const { hover, held, after } = await heldLook(page, target, button);
       expect(held, `${button} held on ${String(target)}`).toBe(hover);
       expect(after).toBe(hover);

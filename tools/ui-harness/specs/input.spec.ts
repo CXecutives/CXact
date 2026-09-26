@@ -293,7 +293,10 @@ test('controls react to the left button only', async ({ page }) => {
   expect(await focused()).toBeNull();
   const row = page.locator('[data-testid^="job-row-"]').first();
   await row.click({ button: 'middle' });
+  // A right click on a row opens its menu (the app's own) and opens nothing else.
   await row.click({ button: 'right' });
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('reader')).toHaveCount(0);
   expect(await focused()).toBeNull();
   await page.getByTestId('nav-settings').click();
@@ -361,8 +364,9 @@ test('keys outside fields: Tab moves, Enter and Space press, everything else is 
   page,
 }) => {
   const outside = await prevented(page, 'view', [
-    ...['Enter', 'Escape', 'F5', 'r', 'ArrowDown', ' '].map(plain),
-    ['Ctrl+R', { key: 'r', ctrlKey: true }],
+    // F5 and Ctrl+R fetch (the app's own), so they stay out of this list of swallowed keys.
+    ...['Enter', 'Escape', 'F3', 'q', 'ArrowDown', ' '].map(plain),
+    ['Ctrl+P', { key: 'p', ctrlKey: true }],
     ['Ctrl+C without selection', { key: 'c', ctrlKey: true }],
     ['Alt+ArrowLeft', { key: 'ArrowLeft', altKey: true }],
     ['Ctrl+Tab', { key: 'Tab', ctrlKey: true }],

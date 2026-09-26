@@ -33,7 +33,12 @@
   import { t } from '$lib/i18n/t';
   import { fade, rise } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { listKeys } from '$lib/input/input';
+  import { listKeys, onFetchKey, type ListAction } from '$lib/input/input';
+  import { errorText } from '$lib/i18n/texts';
+  import { invoke } from '$lib/ipc/api';
+  import type { JobView } from '$lib/ipc/types';
+  import { run } from '$lib/state/run.svelte';
+  import { move, toggleStar } from './actions';
   import { dragBands } from '$lib/platform';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
@@ -91,6 +96,56 @@
     };
   });
   const place = $derived(placeOf(jobs.facet));
+
+  // F5, Ctrl/Cmd+R: Abrufen, like the button (while it is allowed).
+  $effect(() =>
+    onFetchKey(() => {
+      if (run.fetchBlocked === null && !run.active) void run.start({ kind: 'fetch' });
+    }),
+  );
+
+  /** The jobs a single key acts on: the chosen ones, else the open one. */
+  function targets(): JobView[] {
+    if (bulk.active) return bulk.chosen;
+    const open = jobs.rows.find((row) => jobs.selected !== null && sameKey(row.key, jobs.selected));
+    return open === undefined ? [] : [open];
+  }
+
+  /** The single keys of the list (lib/input/input.ts): what the row tools and the reader do. */
+  function act(action: ListAction): void {
+    const list = targets();
+    const first = list[0];
+    if (first === undefined) return;
+    const report = (error: string | null): void => {
+      if (error !== null) jobs.actionError = error;
+    };
+    switch (action) {
+      case 'archive':
+        if (place === 'inbox') void move(list, 'archive').then(report);
+        return;
+      case 'trash':
+        if (place !== 'trash') void move(list, 'trash').then(report);
+        return;
+      case 'star':
+        if (place !== 'trash') toggleStar(list);
+        return;
+      case 'unread':
+        // Unread again: the job leaves the reader, so the dwell does not read it once more.
+        if (!bulk.active) close();
+        void jobs.markUnread(list.map((job) => job.key)).then(report);
+        return;
+      case 'openAd':
+        if (list.length === 1) {
+          invoke('open_target', { target: { kind: 'jobUrl', key: first.key } }).catch(
+            (error: unknown) => report(errorText(error)),
+          );
+        }
+        return;
+      case 'applied':
+        // Beworben arrives with the backend's applied mark (docs/PLAN.md, A8).
+        return;
+    }
+  }
   const trashDays = $derived(app.state?.autoEmptyTrashDays ?? 0);
   /** The place holds nothing (no search): the list says it, the reader adds no second tile. */
   const placeEmpty = $derived(
@@ -209,6 +264,7 @@
     },
     // The stage on screen: the one on its way out has dropped its test ids.
     reader: () => right?.querySelector<HTMLElement>('[data-testid="stage"]') ?? null,
+    act,
   }}
 >
   <div class="body">

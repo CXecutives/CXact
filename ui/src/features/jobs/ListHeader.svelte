@@ -273,9 +273,8 @@
             <Button
               variant="ghost"
               size="sm"
-              iconOnly
               icon="check-check"
-              label={t.actions.markAllRead}
+              label={query === '' ? t.actions.allRead : t.actions.hitsRead}
               testid="mark-all-read"
               onclick={() => void markAllRead()}
             />
@@ -284,7 +283,7 @@
             <Button
               variant="ghost"
               size="sm"
-              icon="trash-2"
+              icon="circle-x"
               label={t.actions.emptyTrash}
               disabled={run.active}
               disabledReason={run.busyText}
@@ -409,10 +408,10 @@
   }
 
   /* A column too narrow for the segments with four-digit counts and the tools on one line
-     (German needs 516 px, English 488): two lines in every state (the segments or the
+     ("Alle gelesen" and the order: German needs about 600 px): two lines in every state (the segments or the
      count, then the tools), so the list below stands at one height whatever the row holds
      and no label shortens when a count grows. */
-  @container (width < 520px) {
+  @container (width < 620px) {
     .second {
       flex-wrap: wrap;
       align-content: flex-start;

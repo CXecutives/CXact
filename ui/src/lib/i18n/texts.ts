@@ -176,14 +176,16 @@ function rateWords(
  */
 export function factWords(facts: KeyFacts | null | undefined): string[] {
   if (!facts) return [];
+  // What a freelancer weighs first comes first: the rate, the remote share, the length, then
+  // the start (a fact that does not fit drops out from the end).
   const out: string[] = [];
   const terms = termWords(facts);
-  if (terms.availability) out.push(terms.availability);
-  if (facts.months) out.push(t.facts.months(facts.months));
+  if (terms.minDayRate) out.push(terms.minDayRate);
   const from = facts.remoteFrom ?? facts.remoteTo;
   const to = facts.remoteTo ?? facts.remoteFrom;
   if (from !== null && to !== null) out.push(t.facts.remote(from, to));
-  if (terms.minDayRate) out.push(terms.minDayRate);
+  if (facts.months) out.push(t.facts.months(facts.months));
+  if (terms.availability) out.push(terms.availability);
   return out;
 }
 

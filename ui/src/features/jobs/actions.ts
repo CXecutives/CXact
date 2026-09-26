@@ -44,12 +44,14 @@ const TARGET: Record<MoveId, Place> = {
   restore: 'inbox',
 };
 
+/** One icon per meaning: the place a job goes to (docs/PLAN.md, icons by meaning); deleting
+ *  for good never looks like the trash. */
 const ICON: Record<ActionId, IconName> = {
   archive: 'archive',
-  toInbox: 'briefcase',
+  toInbox: 'inbox',
   trash: 'trash-2',
   restore: 'undo-2',
-  purge: 'trash-2',
+  purge: 'circle-x',
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {

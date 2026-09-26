@@ -561,7 +561,7 @@ test('one glyph per action: retries load again, the reset keeps its own', async 
   await page.getByTestId('place-archive').click();
   await rows(page).first().hover();
   const back = page.locator('[data-testid^="toInbox-"]').first();
-  await expect(back.locator('[data-icon]')).toHaveAttribute('data-icon', 'briefcase');
+  await expect(back.locator('[data-icon]')).toHaveAttribute('data-icon', 'inbox');
 });
 
 test('deleting for good names the job like a move; several by their number', async ({ page }) => {

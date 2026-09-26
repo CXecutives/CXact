@@ -121,7 +121,7 @@
   }
 
   .tab[aria-selected='true'] {
-    color: var(--text);
+    color: var(--nav-active-fg);
   }
 
   .tab:focus-visible {
@@ -138,7 +138,7 @@
     width: var(--line-width);
     height: var(--tabs-line);
     border-radius: var(--radius-full);
-    background-color: var(--text);
+    background-color: var(--nav-active-fg);
     transform: translateX(var(--line-x));
     transition: transform var(--dur-slow) var(--ease-emphasized);
   }
