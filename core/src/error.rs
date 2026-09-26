@@ -109,6 +109,9 @@ pub enum ErrorKind {
     NotFound,
     /// Not available in the dry run.
     DryRun,
+    /// Not available in the demo (`--demo`): it reads no mailbox, asks no portal and keeps
+    /// to its own data folder.
+    Demo,
     MailMissing,
     MailConnect,
     MailAuth,

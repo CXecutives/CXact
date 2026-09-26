@@ -205,6 +205,9 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub default_workspace: PathBuf,
     pub dry_run: bool,
+    /// The demo (`--demo`): `data_dir` and `default_workspace` are its own folders inside
+    /// the app's data folder; it reads no mailbox, asks no portal and never touches the vault.
+    pub demo: bool,
     pub user_agent: String,
     /// The app's language until the user chooses one (`Language::DEFAULT`, German).
     pub system_language: Language,
@@ -390,6 +393,15 @@ impl AppState {
     fn ensure_real(&self) -> CmdResult<()> {
         if self.dry_run {
             return Err(ErrorInfo::new(ErrorKind::DryRun));
+        }
+        Ok(())
+    }
+
+    /// The demo reads no mailbox, asks no portal, never touches the vault and keeps to its
+    /// own folders: what would do so refuses with `Demo`.
+    fn ensure_not_demo(&self) -> CmdResult<()> {
+        if self.demo {
+            return Err(ErrorInfo::new(ErrorKind::Demo));
         }
         Ok(())
     }

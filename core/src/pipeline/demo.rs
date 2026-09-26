@@ -237,11 +237,64 @@ Rahmenbedingungen:
 
 // ---------------------------------------------------------------------- Demo workspace
 
+/// How the app starts, by its arguments: with its own data, as the dry run (`--dry-run`:
+/// database and safety state in memory, the fakes above instead of mailbox and portals, no
+/// files) or as the demo (`--demo`: a data folder of its own made anew from bundled ads by
+/// [`create_demo_data`], no mailbox, no portal). The dry run wins when both are given: it
+/// touches nothing at all. Only the exact flags count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartMode {
+    Normal,
+    DryRun,
+    Demo,
+}
+
+impl StartMode {
+    /// The start the arguments ask for (without the program's own name).
+    pub fn of<I>(args: I) -> StartMode
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        let (mut dry_run, mut demo) = (false, false);
+        for arg in args {
+            match arg.as_ref() {
+                "--dry-run" => dry_run = true,
+                "--demo" => demo = true,
+                _ => {}
+            }
+        }
+        if dry_run {
+            StartMode::DryRun
+        } else if demo {
+            StartMode::Demo
+        } else {
+            StartMode::Normal
+        }
+    }
+}
+
 /// The folder of the demo data inside the app's data folder (the `--demo` start): its own
 /// database, its own work folder, never the real ones.
 pub const DEMO_DIR: &str = "demo";
 /// The demo's work folder inside [`DEMO_DIR`].
 pub const DEMO_WORKSPACE: &str = "workspace";
+/// The ad folders the app bundles for the demo, inside its resources (`bundle.resources` in
+/// `src-tauri/tauri.conf.json`): the invented ads of the held-out sets 8 and 9 of the
+/// matching fixtures, each with its `jobs.json`.
+pub const DEMO_SOURCES: [&str; 2] = ["demo/heldout8", "demo/heldout9"];
+
+/// The demo's ad folders in the app's resource folder `resources` (joined part by part: a
+/// verbatim Windows path takes no `/`).
+pub fn demo_sources(resources: &Path) -> Vec<PathBuf> {
+    DEMO_SOURCES
+        .iter()
+        .map(|dir| {
+            dir.split('/')
+                .fold(resources.to_path_buf(), |at, part| at.join(part))
+        })
+        .collect()
+}
 
 /// A demo data folder made by [`create_demo_data`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -277,7 +330,8 @@ struct FixtureJob {
 /// its text (full or teaser) and the facts its page stated, the alert mails dated so the
 /// newest came two hours before `now` (the ads keep their spacing), those older than three
 /// days read, and a finished fetch on record (setup done; the last day's jobs are new since
-/// it). Its settings name its own work folder; `profile` (a profile JSON) is copied there.
+/// it). Its settings name its own work folder, emptied first (a profile, the Excel file and
+/// the text files of an earlier demo go); `profile` (a profile JSON) is copied there.
 /// The real database, the real work folder, a mailbox and every portal stay untouched: the
 /// function reads the fixtures and writes below `<data_dir>/demo` only, anew on every call.
 pub fn create_demo_data(
@@ -299,6 +353,13 @@ pub fn create_demo_data(
         }
     }
     let workspace = dir.join(DEMO_WORKSPACE);
+    // A file of it still open elsewhere (the Excel file) stays: the demo starts anyway.
+    match std::fs::remove_dir_all(&workspace) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => {
+            log::warn!("demo: the work folder was not emptied ({e})");
+        }
+        _ => {}
+    }
     std::fs::create_dir_all(&workspace).map_err(|e| crate::Error::io(&workspace, e))?;
     if let Some(profile) = profile {
         let target = workspace
@@ -568,11 +629,93 @@ mod tests {
             "alert mails per portal"
         );
         drop(store);
-        // Anew on every call.
+        // Anew on every call: the profile of the last demo goes too (none by default).
         let again = create_demo_data(data.path(), &[fixtures], None, now).unwrap();
         assert_eq!(again.jobs, 64);
         let store = Store::open(&again.database).unwrap();
         assert_eq!(store.job_count().unwrap(), 64);
+        assert!(!again.workspace.join("profil").exists());
+    }
+
+    /// The demo never is the real data: its folder, database and work folder lie inside
+    /// `<data>/demo`, none of them is the data folder or its database.
+    #[test]
+    fn the_demo_is_never_the_real_data_folder() {
+        let data = tempfile::tempdir().unwrap();
+        let sources: Vec<PathBuf> = ["heldout8", "heldout9"]
+            .iter()
+            .map(|set| {
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/fixtures/matching")
+                    .join(set)
+            })
+            .collect();
+        let now: Timestamp = "2026-10-01T09:00:00Z".parse().unwrap();
+        let demo = create_demo_data(data.path(), &sources, None, now).unwrap();
+        let real = data.path().join(crate::DB_FILE);
+        for path in [&demo.dir, &demo.database, &demo.workspace] {
+            assert_ne!(path.as_path(), data.path());
+            assert_ne!(path, &real);
+            assert!(path.starts_with(data.path().join(DEMO_DIR)), "{path:?}");
+        }
+        assert!(!real.exists(), "no real database made");
+        assert_eq!(demo.jobs, 64 + 96, "both sets the app bundles");
+    }
+
+    /// Only the exact flags choose the start; the dry run wins over the demo.
+    #[test]
+    fn the_arguments_choose_the_start() {
+        let none: [&str; 0] = [];
+        assert_eq!(StartMode::of(none), StartMode::Normal);
+        assert_eq!(StartMode::of(["--demo"]), StartMode::Demo);
+        assert_eq!(StartMode::of(["--devtools", "--demo"]), StartMode::Demo);
+        assert_eq!(StartMode::of(["--dry-run"]), StartMode::DryRun);
+        assert_eq!(StartMode::of(["--demo", "--dry-run"]), StartMode::DryRun);
+        assert_eq!(
+            StartMode::of(["demo", "--demo=1", "--DEMO", "-demo"]),
+            StartMode::Normal
+        );
+    }
+
+    /// The ads the demo reads are the ones the app bundles: every folder of [`DEMO_SOURCES`]
+    /// is a target of `bundle.resources` in tauri.conf.json, its `jobs.json` and its texts
+    /// from the matching fixtures of the same name.
+    #[test]
+    fn the_bundle_carries_the_demo_ads() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let config: Value = serde_json::from_str(
+            &std::fs::read_to_string(root.join("src-tauri/tauri.conf.json")).unwrap(),
+        )
+        .unwrap();
+        let resources = config["bundle"]["resources"].as_object().unwrap();
+        for dir in DEMO_SOURCES {
+            let set = dir.rsplit('/').next().unwrap();
+            let from = format!("../core/tests/fixtures/matching/{set}");
+            assert_eq!(
+                resources.get(&format!("{from}/jobs.json")),
+                Some(&Value::from(format!("{dir}/jobs.json"))),
+                "{dir}"
+            );
+            assert_eq!(
+                resources.get(&format!("{from}/*.txt")),
+                Some(&Value::from(format!("{dir}/"))),
+                "{dir}"
+            );
+            assert!(
+                root.join("src-tauri")
+                    .join(&from)
+                    .join("jobs.json")
+                    .is_file()
+            );
+        }
+        let resources = Path::new("C:/App/resources");
+        assert_eq!(
+            demo_sources(resources),
+            [
+                resources.join("demo").join("heldout8"),
+                resources.join("demo").join("heldout9"),
+            ]
+        );
     }
 
     #[test]

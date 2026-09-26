@@ -1,11 +1,11 @@
 // The remaining backend pieces and their small UI ends: the excluded jobs counted per place
 // (the section says its number in Archiv and Papierkorb before every page is there), the
-// app's version in Wartung and Einstellungen opened at one portal from a job ("Anmeldung
-// einrichten", with the way back).
+// app's version in Wartung, Einstellungen opened at one portal from a job ("Anmeldung
+// einrichten", with the way back) and the demo start, which never fetches.
 
 import type { Page } from '@playwright/test';
 import type { Place, Portal } from '../../../ui/src/lib/ipc/types';
-import { animationsDone, expect, open, test } from './fixtures';
+import { animationsDone, calls, expect, open, test } from './fixtures';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -105,4 +105,31 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('portal-freelance')).toBeVisible();
   await expect(page.getByTestId('back-to-job')).toHaveCount(0);
   await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
+});
+
+test('the demo never fetches and says why; it keeps to its own folders', async ({ page }) => {
+  await open(page, `${WIN}&scenario=demo`);
+  const fetch = page.getByTestId('fetch');
+  await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+  await fetch.hover();
+  await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
+  await page.mouse.move(0, 0);
+  await page.keyboard.press('F5');
+  await page.waitForTimeout(200);
+  expect(await calls(page, 'start_run')).toEqual([]);
+  await page.getByTestId('nav-settings').click();
+  await expect(page.getByTestId('demo-note')).toHaveText(
+    'Demo mit Beispieldaten, ohne Postfach und Portale.',
+  );
+  for (const id of [
+    'full-mailbox',
+    'mailbox-change',
+    'mailbox-remove',
+    'workspace-change',
+    'reset',
+  ]) {
+    await expect(page.getByTestId(id)).toHaveAttribute('aria-disabled', 'true');
+  }
+  // What stays in its own folders still works: the text files, the report.
+  await expect(page.getByTestId('txt-rewrite')).not.toHaveAttribute('aria-disabled', 'true');
 });

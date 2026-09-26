@@ -6,12 +6,13 @@ mod session;
 #[cfg(debug_assertions)]
 mod smoke;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Mutex};
 
 use commands::{Activity, AppState, CloseGuard, GmailUser, Refresh, Scoring};
 use jobalert_core::error::ErrorKind;
+use jobalert_core::pipeline::demo::{self, StartMode};
 use jobalert_core::secrets::Vault;
 use jobalert_core::settings::Language;
 use jobalert_core::store::Store;
@@ -38,6 +39,8 @@ struct Texts {
     use_newer: &'static str,
     database_in_use: &'static str,
     database_damaged: &'static str,
+    /// The main window's title in the demo (`--demo`): nobody takes its jobs for real ones.
+    demo_title: &'static str,
 }
 
 // User-facing text, German by product decision.
@@ -55,6 +58,7 @@ const DE: Texts = Texts {
     database_in_use: "Ist sie in einem anderen Programm geöffnet, schließ es und starte die App neu.",
     database_damaged: "Ist sie beschädigt, benenne die Datei um. Die App legt dann eine neue an, \
         ohne die bisherigen Jobs und Einstellungen.",
+    demo_title: "CXact Demo",
 };
 // end of user-facing text
 
@@ -73,6 +77,7 @@ const EN: Texts = Texts {
     database_in_use: "If it is open in another program, close that and start the app again.",
     database_damaged: "If it is damaged, rename the file. The app then creates a new one, \
         without the jobs and settings so far.",
+    demo_title: "CXact Demo",
 };
 // ------------------------------------------------------------------ end of user-facing text
 
@@ -90,8 +95,9 @@ static EXIT_CODE: AtomicI32 = AtomicI32::new(0);
 
 fn main() {
     // Dry run: database and vault state in memory only, fakes instead of mailbox and
-    // portals, no files.
-    let dry_run = std::env::args().any(|arg| arg == "--dry-run");
+    // portals, no files. Demo: a data folder of its own made anew from bundled ads, no
+    // mailbox, no portal.
+    let mode = StartMode::of(std::env::args().skip(1));
     let builder = tauri::Builder::default()
         // Must be the first plugin: a second start only brings the existing window to the
         // front.
@@ -105,7 +111,7 @@ fn main() {
         // A startup error (database, WebView2 ...) shows up as a dialog with cause and advice;
         // a GUI program without a console would otherwise end without a word.
         .setup(move |app| {
-            if let Err(failure) = setup(app, dry_run) {
+            if let Err(failure) = setup(app, mode) {
                 fail(&failure);
             }
             Ok(())
@@ -213,12 +219,8 @@ fn empty_old_trash(app: &tauri::App, store: &Store, dry_run: bool) {
     }
 }
 
-/// Startup: log -> panic hook -> crypto -> pending reset -> database -> window.
-fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
-    let data_dir = app
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| Failure::other(format!("data folder: {e}")))?;
+/// The log file in the data folder, and the panic hook that writes to it.
+fn install_log(data_dir: &Path) {
     let level = if cfg!(debug_assertions) {
         log::LevelFilter::Debug
     } else {
@@ -243,34 +245,86 @@ fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
             jobalert_core::logging::panic_line(info.location(), message)
         );
     }));
+}
+
+/// The database of a start and the work folder it falls back to: the real database, one in
+/// memory (dry run) or the demo's, made anew in `<data>/demo` from the ads the app bundles,
+/// without a profile (one of tools/test-profiles is chosen in Profil), with its own work
+/// folder there.
+fn open_store(
+    app: &tauri::App,
+    mode: StartMode,
+    app_data: &Path,
+    data_dir: &Path,
+) -> Result<(Store, PathBuf), Failure> {
+    let database = data_dir.join(jobalert_core::DB_FILE);
+    let opened = match mode {
+        StartMode::Normal => Store::open(&database),
+        StartMode::DryRun => Store::in_memory(),
+        StartMode::Demo => {
+            let resources = app
+                .path()
+                .resource_dir()
+                .map_err(|e| Failure::other(format!("resources: {e}")))?;
+            let fresh = demo::create_demo_data(
+                app_data,
+                &demo::demo_sources(&resources),
+                None,
+                jiff::Timestamp::now(),
+            )
+            .map_err(|e| Failure::other(format!("demo: {e}")))?;
+            log::info!("demo: {} jobs", fresh.jobs);
+            let store =
+                Store::open(&fresh.database).map_err(|e| Failure::database(&fresh.database, &e))?;
+            return Ok((store, fresh.workspace));
+        }
+    };
+    let workspace = app
+        .path()
+        .document_dir()
+        .map_err(|e| Failure::other(format!("documents folder: {e}")))?
+        .join("Job-Alert-Monitor");
+    Ok((
+        opened.map_err(|e| Failure::database(&database, &e))?,
+        workspace,
+    ))
+}
+
+/// Startup: log -> panic hook -> crypto -> pending reset -> database -> window.
+fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
+    let dry_run = mode == StartMode::DryRun;
+    let app_data = app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| Failure::other(format!("data folder: {e}")))?;
+    // The demo keeps to a folder of its own inside the app's: its log, database, safety
+    // state and work folder. The real ones stay as they are.
+    let data_dir = if mode == StartMode::Demo {
+        app_data.join(demo::DEMO_DIR)
+    } else {
+        app_data.clone()
+    };
+    install_log(&data_dir);
     jobalert_core::install_crypto();
     // Dates in the files follow the OS's zone, like the page's.
     jobalert_core::time::follow_system_zone();
     // A requested reset runs before anything else - nothing holds a file open yet. The dry
-    // run never deletes anything.
-    let reset_report = (!dry_run)
+    // run and the demo never delete anything.
+    let reset_report = (mode == StartMode::Normal)
         .then(|| jobalert_core::reset::perform_pending(&data_dir, &Vault::app()))
         .flatten();
-    let database = data_dir.join(jobalert_core::DB_FILE);
-    let store = if dry_run {
-        Store::in_memory()
-    } else {
-        Store::open(&database)
-    };
-    let store = Arc::new(store.map_err(|e| Failure::database(&database, &e))?);
+    let (store, default_workspace) = open_store(app, mode, &app_data, &data_dir)?;
+    let store = Arc::new(store);
     // The sessions' storage outside the data folder (macOS data stores) goes too.
     if reset_report.is_some() {
         session::forget_all(app.handle().clone(), data_dir.clone());
     }
     app.manage(AppState {
         store: store.clone(),
-        default_workspace: app
-            .path()
-            .document_dir()
-            .map_err(|e| Failure::other(format!("documents folder: {e}")))?
-            .join("Job-Alert-Monitor"),
+        default_workspace,
         data_dir,
         dry_run,
+        demo: mode == StartMode::Demo,
         user_agent: platform::USER_AGENT.to_owned(),
         system_language: jobalert_core::settings::Language::DEFAULT,
         reset_report: Mutex::new(reset_report),
@@ -288,7 +342,11 @@ fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
     log::info!(
         "start {}{} (web view {})",
         env!("CARGO_PKG_VERSION"),
-        if dry_run { " (dry run)" } else { "" },
+        match mode {
+            StartMode::Normal => "",
+            StartMode::DryRun => " (dry run)",
+            StartMode::Demo => " (demo)",
+        },
         if webview_version.is_empty() {
             "unknown"
         } else {
@@ -306,6 +364,12 @@ fn setup(app: &mut tauri::App, dry_run: bool) -> Result<(), Failure> {
         .ok_or_else(|| Failure::window("no configuration for the main window"))?;
     let builder =
         tauri::WebviewWindowBuilder::from_config(app.handle(), &config).map_err(Failure::window)?;
+    // Nobody takes the demo's jobs for real ones: its window says it is the demo.
+    let builder = if mode == StartMode::Demo {
+        builder.title(texts().demo_title)
+    } else {
+        builder
+    };
     let builder = platform::harden(builder, app.config());
     #[cfg(debug_assertions)]
     let builder = smoke::attach(builder);

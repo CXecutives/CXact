@@ -122,6 +122,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
         ? 'Der Ordner ist nicht vorhanden.'
         : 'Das gibt es nicht mehr.',
   dryRun: 'Im Probelauf geht das nicht.',
+  demo: 'In der Demo geht das nicht.',
   mailMissing: 'Es ist kein Postfach verbunden.',
   mailConnect: 'Gmail ist nicht erreichbar.',
   mailAuth: 'Gmail lehnt Adresse oder App-Passwort ab.',
@@ -1691,6 +1692,8 @@ export const de = {
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
     running: 'Ein Abruf läuft gerade.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
+    /** The demo (`--demo`): its own data from sample ads, no fetch. */
+    demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
     language: 'Sprache',
     /** Excel file and report are written at the next fetch (the text files stay German). */
     languageHint: 'Excel-Datei und Bericht folgen beim nächsten Abruf.',

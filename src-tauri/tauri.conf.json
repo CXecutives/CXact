@@ -48,7 +48,11 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/THIRD-PARTY.txt": "THIRD-PARTY.txt"
+      "resources/THIRD-PARTY.txt": "THIRD-PARTY.txt",
+      "../core/tests/fixtures/matching/heldout8/jobs.json": "demo/heldout8/jobs.json",
+      "../core/tests/fixtures/matching/heldout8/*.txt": "demo/heldout8/",
+      "../core/tests/fixtures/matching/heldout9/jobs.json": "demo/heldout9/jobs.json",
+      "../core/tests/fixtures/matching/heldout9/*.txt": "demo/heldout9/"
     }
   }
 }

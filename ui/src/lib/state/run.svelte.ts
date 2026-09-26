@@ -155,9 +155,10 @@ class RunStore {
   }
 
   /** Why a run that reads the mailbox (Abrufen, the whole mailbox) cannot start now, in the
-   *  order she would fix it: a run holds the app, no mailbox, no portal switched on; null
-   *  when it can. The backend refuses the same. */
+   *  order she would fix it: the demo never fetches, a run holds the app, no mailbox, no
+   *  portal switched on; null when it can. The backend refuses the same. */
   get fetchBlocked(): string | null {
+    if (app.state?.demo) return t.error.text('demo', {});
     if (this.active) return this.busyText;
     if (!app.hasMailbox) return t.toolbar.needsMailbox;
     if (!app.hasPortal) return t.toolbar.needsPortal;

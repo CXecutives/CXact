@@ -1595,11 +1595,18 @@ pub struct ResetSummary {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "flat facts of the app for the page, one JSON field each (IPC contract)"
+)]
 pub struct AppState {
     pub platform: Platform,
     /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
     pub version: String,
     pub dry_run: bool,
+    /// The demo (`--demo`): a data folder of its own made from bundled ads; it never
+    /// fetches (`Demo` refuses the mailbox, the portals and the vault).
+    pub demo: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,
     /// A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the

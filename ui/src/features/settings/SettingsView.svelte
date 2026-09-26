@@ -19,7 +19,8 @@
   an AI); after a change of the folder a note says that they are still in the old one until
   "Neu schreiben". Tastenkürzel lists the app's keys as the OS writes them; Wartung ends with
   the app's version. Opened from a job for one portal ("Anmeldung einrichten") the page
-  glides to that portal's card, focuses its sign-in and offers "Zurück zum Job".
+  glides to that portal's card, focuses its sign-in and offers "Zurück zum Job". The demo
+  keeps to its own folders: mailbox, work folder and reset are locked with its reason.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -93,6 +94,11 @@
   const dryRunReason = $derived(t.error.text('dryRun', {}));
   /** Why a locked action waits: the dry run, or the run in progress (a fetch or a rescore). */
   const lockedReason = $derived(dryRun ? dryRunReason : run.busyText);
+  /** The demo keeps to its own folders: no mailbox, no other work folder, no reset (the
+   *  backend refuses them with `demo`). */
+  const demo = $derived(cfg?.demo ?? false);
+  const ownOnly = $derived(dryRun || demo);
+  const ownOnlyReason = $derived(demo ? t.error.text('demo', {}) : lockedReason);
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -352,6 +358,8 @@
   {:else}
     {#if cfg.dryRun}
       <Notice tone="info" text={t.settings.dryRun} />
+    {:else if cfg.demo}
+      <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
     <section class="section" data-testid="settings-mailbox">
@@ -378,8 +386,8 @@
                 size="sm"
                 icon="pencil"
                 label={t.common.change}
-                disabled={run.active || dryRun}
-                disabledReason={lockedReason}
+                disabled={run.active || ownOnly}
+                disabledReason={ownOnlyReason}
                 testid="mailbox-change"
                 onclick={() => {
                   mailboxNote = null;
@@ -391,8 +399,8 @@
                 size="sm"
                 icon="trash-2"
                 label={t.common.remove}
-                disabled={run.active || dryRun}
-                disabledReason={lockedReason}
+                disabled={run.active || ownOnly}
+                disabledReason={ownOnlyReason}
                 warns
                 testid="mailbox-remove"
                 onclick={() => (confirmRemove = true)}
@@ -516,8 +524,8 @@
               icon="pencil"
               label={t.common.change}
               loading={busy === 'workspace'}
-              disabled={run.active || dryRun}
-              disabledReason={lockedReason}
+              disabled={run.active || ownOnly}
+              disabledReason={ownOnlyReason}
               testid="workspace-change"
               onclick={pickWorkspace}
             />
@@ -688,8 +696,8 @@
           icon="rotate-ccw"
           label={t.settings.resetAction}
           warns
-          disabled={run.active || dryRun}
-          disabledReason={lockedReason}
+          disabled={run.active || ownOnly}
+          disabledReason={ownOnlyReason}
           testid="reset"
           onclick={() => (confirmReset = true)}
         />

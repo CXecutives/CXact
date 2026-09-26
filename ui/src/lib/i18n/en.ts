@@ -158,6 +158,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
         ? 'The folder does not exist.'
         : 'This no longer exists.',
   dryRun: 'This does not work in the dry run.',
+  demo: 'This does not work in the demo.',
   mailMissing: 'No mailbox is connected.',
   mailConnect: 'Gmail cannot be reached.',
   mailAuth: 'Gmail rejected the address or the app password.',
@@ -1489,6 +1490,7 @@ export const en: Catalog = {
       `The app is reset, but ${count(value, 'item', 'items')} could not be deleted.`,
     running: 'A fetch is running right now.',
     dryRun: 'Dry run, so no data is changed.',
+    demo: 'Demo with sample data, without the mailbox or the portals.',
     language: 'Language',
     languageHint: 'The Excel file and the report switch at the next fetch.',
     languageName: {
