@@ -58,6 +58,8 @@ export const ICONS = {
   rewrite: 'file-pen-line',
   /** Reset the app. */
   reset: 'rotate-ccw',
+  /** Restore a copy of the database (Sicherung wiederherstellen). */
+  backup: 'database-backup',
 
   // Editing and moving around.
   add: 'plus',

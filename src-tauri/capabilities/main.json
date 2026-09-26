@@ -39,6 +39,8 @@
     "allow-open-target",
     "allow-save-settings",
     "allow-reset-all",
+    "allow-list-backups",
+    "allow-restore-backup",
     "allow-report-ui-error",
     "allow-clipboard-text",
     "allow-overview-stats",

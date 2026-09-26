@@ -28,7 +28,7 @@ mod overview;
 mod pages;
 mod schema;
 
-pub use backup::{BACKUP_DIR, backup_dir};
+pub use backup::{BACKUP_DIR, Backup, BackupKind, backup_dir};
 pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
 pub use matches::{Judgement, NewFitting, OverviewJobs};
 pub use overview::{BandCounts, InboxOpen};
@@ -93,6 +93,25 @@ impl Store {
             Some(path) => backup::daily(path, today),
             None => Ok(None),
         }
+    }
+
+    /// The copies in `backups/` the database can go back to, newest first (none in memory).
+    pub fn backups(&self) -> Result<Vec<Backup>> {
+        match &self.path {
+            Some(path) => backup::list(path),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Replaces the database's content with its copy `id` from `backups/` and returns the copy
+    /// of the state it replaced, written first (restoring that one undoes this). All or
+    /// nothing, on the app's own connection, which is held throughout: no write comes between
+    /// the copy and the restore. The settings stay as they are ([`backup`]).
+    pub fn restore_backup(&self, id: &str, now: Timestamp) -> Result<Backup> {
+        let Some(path) = &self.path else {
+            return Err(Error::BackupMissing(id.to_owned()));
+        };
+        backup::restore(&mut self.conn(), path, id, now)
     }
 
     fn conn(&self) -> MutexGuard<'_, Connection> {

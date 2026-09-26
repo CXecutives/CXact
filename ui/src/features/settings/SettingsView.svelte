@@ -8,9 +8,9 @@
   answer; Darstellung switches the colours and the language of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
   toast (files written or deleted, another work folder); errors and warnings stay a note at
-  the end of their card. Only "Alles zurücksetzen" and "Postfach entfernen" ask first; a
-  dialog whose action fails stays open and says why inside. The dry run changes nothing, and
-  a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder and
+  the end of their card. Only "Alles zurücksetzen", "Postfach entfernen" and a restore of a
+  backup (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
+  inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder and
   the files, so what they cannot do is locked with the reason of that run instead of
   failing. The demo keeps to its own folders: mailbox, work folder and reset are locked with
   its reason. Opened from a job for one portal ("Anmeldung einrichten") the page glides to
@@ -38,6 +38,7 @@
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
   import KeyList from '../shared/KeyList.svelte';
+  import BackupDialog from './BackupDialog.svelte';
   import {
     ACTIONS,
     CARDS,
@@ -77,6 +78,7 @@
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
+  let backupDialog = $state<BackupDialog | null>(null);
   /** Only the answer to the latest save may replace the state (quick double flips). */
   let saves = 0;
 
@@ -206,6 +208,11 @@
       workspaceChange: () => void pickWorkspace(card),
       txtRewrite: () => void rewrite(card),
       txtClear: () => void clear(card),
+      backupRestore: () =>
+        void backupDialog?.show(
+          (work) => command(card, 'backupRestore', work),
+          () => note(card, { tone: 'info', text: () => t.settings.backupNone }),
+        ),
       reset: () => {
         resetError = null;
         confirmReset = true;
@@ -400,6 +407,8 @@
   testid="dialog-reset"
   onconfirm={() => void reset()}
 />
+
+<BackupDialog bind:this={backupDialog} />
 
 <style>
   .page {

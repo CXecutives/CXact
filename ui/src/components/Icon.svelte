@@ -32,6 +32,7 @@
   import Clock from '@lucide/svelte/icons/clock';
   import Contrast from '@lucide/svelte/icons/contrast';
   import Copy from '@lucide/svelte/icons/copy';
+  import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
@@ -100,6 +101,7 @@
     clock: Clock,
     contrast: Contrast,
     copy: Copy,
+    'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
     ellipsis: Ellipsis,

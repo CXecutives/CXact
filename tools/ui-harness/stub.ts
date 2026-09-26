@@ -55,6 +55,7 @@
 
 import type {
   AppState,
+  Backup,
   Commands,
   Deleted,
   ErrorInfo,
@@ -775,9 +776,30 @@ let state: AppState;
 /** Core's one backup of the profile: the previous one of every save, the one a
  *  `remove_profile` took; `restore_profile` swaps it with the profile. */
 let backupProfile: ProfileInfo | null = null;
+/** The copies of the database in the data folder, newest first (`list_backups`). */
+let backups: Backup[] = [];
+
+/** The demo's copies (store/backup.rs): three days and one from before an update. */
+const DEMO_BACKUPS: readonly Backup[] = [
+  { id: 'jobs-2026-09-24.db', kind: 'daily', at: '2026-09-24T06:05:00Z', bytes: 13_002_342 },
+  { id: 'jobs-2026-09-23.db', kind: 'daily', at: '2026-09-23T06:41:00Z', bytes: 12_845_056 },
+  { id: 'jobs-2026-09-22.db', kind: 'daily', at: '2026-09-22T07:12:00Z', bytes: 12_320_768 },
+  { id: 'jobs.pre-v5.db', kind: 'update', at: '2026-09-18T08:20:00Z', bytes: 11_796_480 },
+];
+/** Copies from before a restore kept, like core. */
+const RESTORE_KEPT = 3;
+
+/** The name core gives the copy before a restore at `ms` (UTC, to the millisecond). */
+function restoreName(ms: number): string {
+  // 2026-09-24T07:30:00.000Z: 20260924, 073000, 000
+  const digits = new Date(ms).toISOString().replace(/\D/g, '');
+  return `jobs.before-restore-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
+}
 
 function initial(): void {
   jobs = scenario === 'many' ? manyJobs(2000) : sampleJobs();
+  backups =
+    scenario === 'first-run' || scenario === 'reset' ? [] : structuredClone([...DEMO_BACKUPS]);
   // The last fetch brought a job whose page is still to come: the stub holds it before the
   // catch-up scores it (the list's jobs without a score stand first).
   for (const j of jobs) if (j.detail.kind === 'pending') j.match = null;
@@ -1926,6 +1948,31 @@ const handlers: Handlers = {
     return structuredClone(state);
   },
   reset_all: () => null,
+  list_backups: () => structuredClone(backups),
+  // Like core: the state it replaces is copied first (the undo), the newest three such copies
+  // kept; a name that is no copy is not found. The demo data stays as it is.
+  restore_backup: ({ id }) => {
+    if (running || mailboxCheck !== null) throw fail('busy');
+    if (!backups.some((backup) => backup.id === id)) {
+      throw fail('notFound', { what: 'backup', name: id });
+    }
+    let ms = Date.now();
+    while (backups.some((backup) => backup.id === restoreName(ms))) ms += 1;
+    const before: Backup = {
+      id: restoreName(ms),
+      kind: 'restore',
+      at: new Date(ms).toISOString(),
+      bytes: backups[0]?.bytes ?? 0,
+    };
+    const kept = [before, ...backups.filter((backup) => backup.kind === 'restore')].slice(
+      0,
+      RESTORE_KEPT,
+    );
+    backups = [...kept, ...backups.filter((backup) => backup.kind !== 'restore')].sort(
+      (a, b) => Date.parse(b.at) - Date.parse(a.at),
+    );
+    return structuredClone(before);
+  },
   report_ui_error: () => null,
   clipboard_text: async () =>
     harness.clipboard ?? (await navigator.clipboard.readText().catch(() => null)),
@@ -2047,10 +2094,12 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'rewrite_txt',
   'clear_txt',
   'reset_all',
+  'restore_backup',
 ]);
 
 /** Commands that refuse in the demo (`ensure_not_demo` in src-tauri): the mailbox, the
- *  portals, the vault, another work folder, the reset; `start_run` takes only a rescore. */
+ *  portals, the vault, another work folder, the reset, a restore; `start_run` takes only a
+ *  rescore. */
 const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'save_mailbox',
   'remove_mailbox',
@@ -2058,6 +2107,7 @@ const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'portal_logout',
   'pick_workspace',
   'reset_all',
+  'restore_backup',
 ]);
 
 function demoRefuses(command: string, args: Record<string, unknown>): boolean {

@@ -9,7 +9,8 @@ use crate::error::Result;
 use crate::portal::{FetchPath, Portal};
 use crate::store::Store;
 
-const KEY: &str = "settings";
+/// Key of the settings in the database (a restore of a backup keeps them, `store/backup.rs`).
+pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,

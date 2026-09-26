@@ -485,7 +485,7 @@ pub const LAST_RUN: &str = "last_run_summary";
 /// Number of the last run with a mailbox scan.
 const LAST_SCAN_RUN: &str = "last_scan_run";
 /// State of the overview per path (key = prefix + path).
-const EXPORT_STAMP: &str = "export:";
+pub(crate) const EXPORT_STAMP: &str = "export:";
 /// The numbers of the last successful mailbox scan for the sheet "Info" ([`ScanFacts`]).
 const LAST_SCAN_FACTS: &str = "last_scan_facts";
 /// Info sheet rows (German words) of the last successful mailbox scan, as earlier versions

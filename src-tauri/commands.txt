@@ -38,6 +38,8 @@ clear_txt         {}                                                            
 open_target       { target: OpenTarget }                                             -> null
 save_settings     { patch: SettingsPatch }                                           -> AppState
 reset_all         {}                                                                 -> null
+list_backups      {}                                                                 -> Backup[]
+restore_backup    { id: string }                                                     -> Backup
 report_ui_error   { message: string; source: string | null; line: number | null }    -> null
 clipboard_text    {}                                                                 -> string | null
 overview_stats    {}                                                                 -> OverviewStats

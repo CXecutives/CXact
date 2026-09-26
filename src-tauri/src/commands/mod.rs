@@ -69,6 +69,8 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         files::open_target,
         app::save_settings,
         app::reset_all,
+        app::list_backups,
+        app::restore_backup,
         app::report_ui_error,
         app::clipboard_text,
         jobs::overview_stats,

@@ -446,6 +446,15 @@ class JobsStore {
     await Promise.all([this.load(), this.loadOverview()]);
   }
 
+  /** The database changed under the page (a backup restored): the open job closes, the list
+   *  and the counts load again; a list never loaded yet waits for its view. */
+  async reload(): Promise<void> {
+    this.clearSelection();
+    this.quiet();
+    if (this.status === 'idle') return;
+    await Promise.all([this.load(), this.loadOverview()]);
+  }
+
   /** Another place. `dropSearch`: a place chosen in the tabs opens without the search, like
    *  a folder of a mail app (the "Im Archiv (n)" links keep it). */
   setPlace(place: Place, dropSearch = false): void {

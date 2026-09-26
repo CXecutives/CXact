@@ -145,7 +145,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   fileLocked: 'A file is open in another program right now.',
   io: 'A file could not be read or written.',
   xlsx: 'The Excel file could not be written.',
-  corrupt: 'The app’s data is damaged.',
+  corrupt: (p) => (p.what === 'backup' ? 'The backup is damaged.' : 'The app’s data is damaged.'),
   newerSchema: 'The data comes from a newer version of the app.',
   invalid: 'The input is not valid.',
   busy: (p) => busy[busyOf(p.activity)],
@@ -154,7 +154,9 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
       ? 'The file does not exist.'
       : p.what === 'folder'
         ? 'The folder does not exist.'
-        : 'This no longer exists.',
+        : p.what === 'backup'
+          ? 'The backup no longer exists.'
+          : 'This no longer exists.',
   dryRun: 'This does not work in the dry run.',
   demo: 'This does not work in the demo.',
   mailMissing: 'No mailbox is connected.',
@@ -1543,6 +1545,19 @@ export const en: Catalog = {
     logs: 'Log',
     data: 'App data',
     version: 'Version',
+    backup: 'Restore a backup',
+    backupHint: 'The app backs up the jobs once a day.',
+    backupAction: 'Restore',
+    backupNone: 'There is no backup yet.',
+    backupKind: {
+      daily: null,
+      update: 'before an update',
+      restore: 'before a restore',
+    },
+    backupConfirm: (date: string, time: string) => `Restore the backup of ${date} at ${time}?`,
+    backupConfirmText: 'The current state is backed up first.',
+    backupRestored: 'Backup restored.',
+    backupUndone: 'The previous state is back.',
     reset: 'Reset everything',
     resetHint:
       'Deletes jobs, settings, profile, app password, sign-ins and the app’s files in the work folder.',

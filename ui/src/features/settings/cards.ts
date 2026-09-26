@@ -132,6 +132,13 @@ export const ACTIONS = {
     variant: 'ghost',
     open: { kind: 'dataDir' },
   },
+  // Opens the list of the copies; the restore asks first and can be undone.
+  backupRestore: {
+    label: (t) => t.settings.backupAction,
+    icon: 'backup',
+    variant: 'ghost',
+    locked: ownOnly,
+  },
   reset: {
     label: (t) => t.settings.resetAction,
     icon: 'reset',
@@ -143,7 +150,7 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'workspaceChange' | 'txtRewrite' | 'txtClear' | 'reset';
+export type CommandId = 'workspaceChange' | 'txtRewrite' | 'txtClear' | 'backupRestore' | 'reset';
 
 /** A switch: on or off at once (the state is patched before the save). */
 export interface SwitchRow {
@@ -320,6 +327,13 @@ export const CARDS: readonly CardSpec[] = [
         hint: (_t, state) => state.dataDir,
         copy: true,
         actions: ['dataOpen'],
+      },
+      {
+        kind: 'actions',
+        id: 'backup',
+        label: (t) => t.settings.backup,
+        hint: (t) => t.settings.backupHint,
+        actions: ['backupRestore'],
       },
       {
         kind: 'value',

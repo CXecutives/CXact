@@ -274,6 +274,12 @@ class Toasts {
     }
   }
 
+  /** The database changed under every toast (a backup restored): their undos would act on
+   *  jobs that may be gone, so every toast goes. */
+  clear(): void {
+    for (const item of [...this.items]) this.dismiss(item.id);
+  }
+
   /** Hovered: the toast stays. */
   pause(id: number): void {
     this.#hovered.add(id);
