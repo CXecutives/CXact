@@ -11,7 +11,7 @@
 // agency work.
 
 import type { Locator, Page } from '@playwright/test';
-import { demoMustLine, demoReasons, demoScore, withSalary } from './demo';
+import { demoMustLine, demoReasons, demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseFilter,
@@ -487,15 +487,14 @@ test.describe('Konditionen', () => {
     }
   });
 
-  test('a permanent job: its salary, no end, a type the engine only infers', async ({ page }) => {
+  test('a permanent job: its salary, no end, the type its salary states', async ({ page }) => {
     await open(page, WIN);
-    await withSalary(page);
     await openJob(page, 'linkedin-4100200303');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names[1]).toBe('Gehalt');
     expect((await cell(page, 'rate'))[0]).toMatch(/^95\.000 €\/Jahr$/);
     expect(await cell(page, 'duration')).toEqual(['unbefristet', '']);
-    expect(await cell(page, 'contract')).toEqual(['Festanstellung vermutet', 'prüfen']);
+    expect(await cell(page, 'contract')).toEqual(['Festanstellung', 'prüfen']);
     // The ad asks for no years: open, and no verdict repeats it.
     expect(await cell(page, 'experience')).toEqual(['offen', '']);
   });

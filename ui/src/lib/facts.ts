@@ -18,11 +18,6 @@ import type { JobView, KeyFacts } from '$lib/ipc/types';
 /** A row of the reader's Konditionen (its label is `t.reader.term[key]`). */
 export type TermKey = keyof typeof t.reader.term;
 
-/** The facts as the row reads them. `salary` (the annual pay of a permanent job) is not yet a
- *  field of the backend's KeyFacts (open in docs/PLAN.md): the row and the reader show it as
- *  soon as the facts carry it under this name. */
-type Facts = KeyFacts & { salary?: number | null };
-
 export interface Fact {
   key: string;
   icon: IconMeaning;
@@ -36,13 +31,13 @@ export interface Fact {
   ink?: boolean;
 }
 
-const factsOf = (job: JobView): Facts | null => job.match?.facts ?? null;
+const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;
 
 /** The annual salary a permanent job states, or null. */
 export const salaryOf = (job: JobView): number | null => factsOf(job)?.salary ?? null;
 
 /** The remote share, from and to (one of the two stands for both), or null. */
-function share(facts: Facts | null): [number, number] | null {
+function share(facts: KeyFacts | null): [number, number] | null {
   const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;
   const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
   return from === null || to === null ? null : [from, to];

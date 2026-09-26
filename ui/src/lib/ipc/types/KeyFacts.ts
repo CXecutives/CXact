@@ -38,4 +38,13 @@ contract: string | null,
  * 60, `20 h/Woche` 50; part-time without a number has no `from` and `to` 80); left out
  * when the ad says nothing.
  */
-workloadFrom?: number, workloadTo?: number, };
+workloadFrom?: number, workloadTo?: number, 
+/**
+ * Annual salary in euros an employment states (a monthly one times twelve); left out when
+ * the ad names none or names it in another currency.
+ */
+salary?: number, 
+/**
+ * The salary is a lower bound only (`ab 100.000 €`); left out without a salary.
+ */
+salaryLowerBound?: boolean, };

@@ -280,6 +280,15 @@ pub struct KeyFacts {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(test, ts(optional))]
     pub workload_to: Option<u8>,
+    /// Annual salary in euros an employment states (a monthly one times twelve); left out when
+    /// the ad names none or names it in another currency.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub salary: Option<u32>,
+    /// The salary is a lower bound only (`ab 100.000 €`); left out without a salary.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub salary_lower_bound: Option<bool>,
 }
 
 impl KeyFacts {

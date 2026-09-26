@@ -44,13 +44,8 @@ export interface TermRow {
   ids: string[];
 }
 
-/** The ad's facts as the rows read them. The annual salary of a permanent job arrives with the
- *  backend's facts (`salary`, `salaryLowerBound`); until then the row reads it from the
- *  profile's minimum-salary criterion. */
-type Facts = KeyFacts & { salary?: number | null; salaryLowerBound?: boolean | null };
-
 /** Where the ad's facts live (the one line that changes when they move to the job itself). */
-const factsOf = (job: JobView): Facts | null => job.match?.facts ?? null;
+const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;
 
 const num = (value: unknown): number | null => (typeof value === 'number' ? value : null);
 const text = (value: unknown): string | null =>
@@ -67,7 +62,7 @@ interface Contract {
 /** What a row reads from, for one job. */
 interface Context {
   job: JobView;
-  facts: Facts | null;
+  facts: KeyFacts | null;
   contract: Contract;
   /** The row's criterion by its key, the row's reason by its code. */
   criterion: (key: CriterionKey) => Reason | undefined;
@@ -292,7 +287,11 @@ function worst(all: readonly Judgement[]): Judgement | null {
 const sentence = (reason: Reason | undefined): string | null =>
   reason === undefined ? null : reasonText(reason) || null;
 
-function contractOf(facts: Facts | null, reasons: readonly Reason[], criteria: readonly Reason[]) {
+function contractOf(
+  facts: KeyFacts | null,
+  reasons: readonly Reason[],
+  criteria: readonly Reason[],
+) {
   const stated = reasons.find((reason) => reason.code === 'contractType');
   const type =
     text(stated?.params.type) ??
@@ -331,7 +330,7 @@ export function termRows(input: TermInput): TermRow[] {
 function build(
   key: TermKey,
   input: TermInput,
-  facts: Facts | null,
+  facts: KeyFacts | null,
   contract: Contract,
 ): TermRow | null {
   const term = TERMS[key];

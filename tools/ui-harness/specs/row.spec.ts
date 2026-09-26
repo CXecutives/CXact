@@ -9,7 +9,6 @@ import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
 import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
-import { withSalary } from './demo';
 import { animationsDone, expect, open, test } from './fixtures';
 
 /** The facts table (ui/src/lib/facts.ts) as its source states it: each entry's key, icon and
@@ -88,7 +87,6 @@ test('a row shows its facts in the order of the Konditionen, each value with the
   expect(new Set(TABLE.map((fact) => fact.icon)).size).toBe(TABLE.length);
   await open(page, WIN);
   await everyJob(page);
-  await withSalary(page);
   // A rate, a salary, a remote share, a hybrid and an on-site job without a share.
   for (const key of [
     'linkedin-4100200301',
@@ -143,7 +141,6 @@ test('a start to be agreed and a salary read alike in the row and in the reader'
   // The ad says the same words (the engine reads "nach Absprache" as a start to be agreed).
   await expect(page.getByTestId('reader')).toContainText(`Start ${words}`);
   // A permanent job's salary: the reader's pay row names it, like the list row.
-  await withSalary(page);
   const pay = await facts(page, 'linkedin-4100200303').locator('[data-fact="money"]').textContent();
   expect(pay).toMatch(/^95\.000\/Jahr$/);
   await openJob(page, 'linkedin-4100200303');
@@ -177,7 +174,6 @@ test('the pay stands in ink, the other facts are muted; a permanent job its sala
   // The icon says euro: the amount has no sign of its own.
   await expect(line.locator('[data-fact="money"]')).toHaveText(/^1\.200\/Tag$/);
   // A permanent job: the salary a year where a freelance job has its day rate.
-  await withSalary(page);
   const permanent = await shown(facts(page, 'linkedin-4100200303'));
   inTableOrder(
     permanent.map((fact) => fact.key),

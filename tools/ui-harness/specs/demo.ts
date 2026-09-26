@@ -4,10 +4,8 @@
 
 import { readFileSync } from 'node:fs';
 
-import type { Page } from '@playwright/test';
 import type { JobDetail, JobView, Reason } from '../../../ui/src/lib/ipc/types';
 import type { Snapshot } from '../snapshot';
-import { expect } from './fixtures';
 
 export const DEMO = JSON.parse(
   readFileSync(new URL('../demo/snapshot.json', import.meta.url), 'utf8'),
@@ -49,30 +47,4 @@ export function demoMustLine(key: string): string {
   const [met, total, partial] = [params.mustMet, params.mustTotal, params.mustPartial].map(Number);
   const points = total === 1 ? 'Pflichtpunkt' : 'Pflichtpunkten';
   return `${met} von ${total} ${points} erfüllt${partial! > 0 ? `, ${partial} teilweise` : ''}`;
-}
-
-/** The permanent demo job 4100200303 with the salary its ad states. The backend's key facts
- *  do not carry a salary yet (docs/PLAN.md), so the job gets it here the way a run would
- *  bring it; the page must show the list. */
-export async function withSalary(page: Page): Promise<void> {
-  const key = { portal: 'linkedin', id: '4100200303' } as const;
-  const job = (await page.evaluate((k) => window.__harness.job(k), key)) as JobView;
-  const stated = { ...job.match!.facts, contract: 'permanent', salary: 95_000 } as NonNullable<
-    JobView['match']
-  >['facts'];
-  await page.evaluate(
-    ([base, stated]) =>
-      window.__harness.emit({
-        type: 'jobUpdated',
-        job: { ...base, match: { ...base.match!, facts: stated } },
-        fresh: false,
-      }),
-    [job, stated] as const,
-  );
-  await expect(
-    page
-      .getByTestId('job-list')
-      .getByTestId('job-row-linkedin-4100200303')
-      .locator('[data-fact="money"]'),
-  ).toBeVisible();
 }

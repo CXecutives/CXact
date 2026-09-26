@@ -590,9 +590,8 @@ as the parts land on `main`.
   line's tooltip listing all when some do not fit, badges after them. The reader's
   Konditionen read the same table (one icon per value). An excluded row names why on line 3
   with the ban icon (its ring is a grey number without a mark); "Einbezogen" for a job counted
-  anyway; dots only in the inbox. Open for the backend: `salary` (annual) in `KeyFacts` under
-  that name (core parses it in `ad_facts.rs`; the row and the reader read it as soon as it is
-  sent, only the stub has it now), a `freelance` contract kind (core sends interim, permanent,
+  anyway; dots only in the inbox. `KeyFacts` carries the stated annual salary in euros
+  (`salary`, `salaryLowerBound`) since 2026-09-26. Open for the backend: a `freelance` contract kind (core sends interim, permanent,
   anue; the stub shows Freiberuflich), and the contract of an inferred type (core sends none,
   the stub shows it).
   S favourite, O open the ad; shown in tooltips and menus.

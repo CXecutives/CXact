@@ -42,6 +42,19 @@ pub(crate) struct Salary {
     pub currency: Option<&'static str>,
 }
 
+impl Salary {
+    /// The amount shown, per year (the highest, else the lower bound; a monthly one times
+    /// twelve).
+    pub(crate) fn per_year(&self) -> u64 {
+        let shown = self.upper.unwrap_or(self.lower);
+        if self.monthly {
+            shown.saturating_mul(12)
+        } else {
+            shown
+        }
+    }
+}
+
 /// Amounts in a folded sentence: thousands separators, `k`/`TEUR` suffixes, no percentages.
 fn amounts(folded: &str) -> Vec<(usize, u64)> {
     let bytes = folded.as_bytes();

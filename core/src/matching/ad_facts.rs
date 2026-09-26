@@ -52,6 +52,10 @@ pub(crate) struct AdFacts {
     pub contract_span: Option<Range<usize>>,
     /// Stated annual salary (a monthly one times twelve).
     pub salary: Option<Stated<u64>>,
+    /// The salary is a lower bound only (`ab 100.000 €`).
+    pub salary_lower_bound: bool,
+    /// The salary is in a currency other than the euro (`CHF`).
+    pub salary_foreign: bool,
     /// The most years of experience a requirement line asks for.
     pub years: Option<Stated<u32>>,
     /// The workload in percent of a five-day week.
@@ -67,6 +71,9 @@ pub(crate) fn read(
     doc: &JobDoc,
 ) -> AdFacts {
     let rate = stated_rate(job, segments).map(|(rate, span)| stated(rate, span));
+    let salary = segments
+        .iter()
+        .find_map(|(range, f)| parse_salary(f).map(|s| (s, range)));
     let rate_open = if rate.is_none() {
         segments
             .iter()
@@ -101,16 +108,11 @@ pub(crate) fn read(
         contract: contract.kind,
         contract_stated: !contract.inferred && (contract_fact || contract_span.is_some()),
         contract_span,
-        salary: segments.iter().find_map(|(range, f)| {
-            let salary = parse_salary(f)?;
-            let shown = salary.upper.unwrap_or(salary.lower);
-            let per_year = if salary.monthly {
-                shown.saturating_mul(12)
-            } else {
-                shown
-            };
-            Some(stated(per_year, Some(range.clone())))
-        }),
+        salary: salary
+            .as_ref()
+            .map(|(s, range)| stated(s.per_year(), Some((*range).clone()))),
+        salary_lower_bound: salary.as_ref().is_some_and(|(s, _)| s.upper.is_none()),
+        salary_foreign: salary.as_ref().is_some_and(|(s, _)| s.currency.is_some()),
         years: years(job.text, doc),
         workload: limits::read(job, segments),
     }
@@ -362,6 +364,13 @@ impl AdFacts {
             },
             workload_from: self.workload.as_ref().and_then(|w| w.value.from),
             workload_to: self.workload.as_ref().map(|w| w.value.to),
+            salary: self
+                .salary
+                .as_ref()
+                .filter(|_| !self.salary_foreign)
+                .map(|s| u32::try_from(s.value).unwrap_or(u32::MAX)),
+            salary_lower_bound: (self.salary.is_some() && !self.salary_foreign)
+                .then_some(self.salary_lower_bound),
         }
     }
 }
