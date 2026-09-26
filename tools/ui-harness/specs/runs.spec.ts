@@ -5,18 +5,11 @@
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
+import { inboxCount, listed } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
-
-async function segmentCount(page: Page, label: string): Promise<number> {
-  const text = await page
-    .getByTestId('facet')
-    .getByRole('radio', { name: new RegExp(label) })
-    .innerText();
-  return Number(text.replace(/\D/g, ''));
-}
 
 /** Send run events the way the backend does (the page's channel when no run holds one). */
 async function emit(page: Page, ...events: unknown[]): Promise<void> {
@@ -201,12 +194,9 @@ test('the reader stays with the selected job while a run updates the one before'
 
 test('a run update of a job beyond the loaded page is no new row', async ({ page }) => {
   await open(page, `${WIN}&scenario=many`);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('facet').getByRole('radio', { name: /Alle/ })).toContainText(
-    '2.000',
-  );
+  await expect(rows(page).first()).toBeVisible();
   const first = await rows(page).first().getAttribute('data-testid');
-  const newBefore = await segmentCount(page, 'Neu');
+  const newBefore = await inboxCount(page);
   // Job 100000 scores 0 and sorts far beyond the first page of 500.
   const far = await jobOf(page, 'linkedin', '100000');
   await emit(page, {
@@ -218,8 +208,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await settle(page);
   await expect(rows(page).first()).toHaveAttribute('data-testid', first!);
   await expect(page.getByTestId('job-row-linkedin-100000')).toHaveCount(0);
-  expect(await segmentCount(page, 'Alle')).toBe(2000);
-  expect(await segmentCount(page, 'Neu')).toBe(newBefore);
+  expect(await inboxCount(page)).toBe(newBefore);
 
   // A job new in the run comes in at the top, and the counts follow the backend.
   await emit(page, {
@@ -228,15 +217,11 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
     fresh: true,
   });
   await expect(rows(page).first()).toHaveAttribute('data-testid', 'job-row-linkedin-999999');
-  await expect.poll(() => segmentCount(page, 'Alle')).toBe(2001);
+  await expect.poll(() => inboxCount(page)).toBe(newBefore + 1);
 });
 
 test('a page that fails while scrolling says so and loads on retry', async ({ page }) => {
   await open(page, `${WIN}&scenario=many`);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  await expect(page.getByTestId('facet').getByRole('radio', { name: /Alle/ })).toContainText(
-    '2.000',
-  );
   await expect(rows(page).first()).toBeVisible();
   await page.evaluate(() => (window.__harness.failPages = 1));
   // Scroll window by window to the end of the first page of 500; the next page fails.
@@ -257,21 +242,13 @@ test('a page that fails while scrolling says so and loads on retry', async ({ pa
     .toBeGreaterThan(mounted);
 });
 
-test('the excluded section names its count: under Neu once the list is whole, under Alle every one', async ({
-  page,
-}) => {
+test('the excluded section names its count, every excluded row of the list', async ({ page }) => {
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
-  await expect(page.getByTestId('facet').getByRole('radio', { name: /Neu/ })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await expect(page.getByTestId('excluded-divider')).toHaveText('Ausgeschlossen (1)');
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
   await expect(page.getByTestId('excluded-divider')).toHaveText(/Ausgeschlossen \(\d+\)/);
-  // The list of Alle arrives from the backend and builds a few rows per frame: then the
-  // divider names every excluded row of it.
+  // The list arrives from the backend and builds a few rows per frame: then the divider
+  // names every excluded row of it.
   const divider = page.getByTestId('excluded-divider');
   const excluded = page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]');
   const named = async (): Promise<boolean> => {
@@ -308,12 +285,11 @@ async function jobOf(page: Page, portal: JobView['portal'], id: string): Promise
 
 test('an archived job leaves the list and every count but the archive', async ({ page }) => {
   await open(page, WIN);
-  await page.getByTestId('facet').getByRole('radio', { name: /Alle/ }).click();
-  const all = await segmentCount(page, 'Alle');
+  const all = (await listed(page)).length;
   await row(page, 'linkedin-4100200301').click();
   await page.getByTestId('reader-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
-  await expect.poll(() => segmentCount(page, 'Alle')).toBe(all - 1);
+  await expect.poll(async () => (await listed(page)).length).toBe(all - 1);
   expect((await calls(page, 'move_jobs')).map(([, args]) => args)).toEqual([
     { keys: [{ portal: 'linkedin', id: '4100200301' }], to: 'archive' },
   ]);

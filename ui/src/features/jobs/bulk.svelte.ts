@@ -1,8 +1,7 @@
 // What can be done with all chosen jobs at once: the list header's selection bar offers the
 // actions that fit every chosen job, then the star, as icons; the pane beside the list (two
-// columns) names the chosen jobs and offers the same with their words, and "Als gelesen"
-// while one of them is unread, and "Details holen" when every one still lacks its full ad.
-// Deleting for good asks the one question first.
+// columns) names the chosen jobs and offers the same with their words, and "Details holen"
+// when every one still lacks its full ad. Deleting for good asks the one question first.
 
 import type { SelectionAction } from '$components/SelectionBar.svelte';
 import { t } from '$lib/i18n/t';
@@ -66,20 +65,10 @@ class Bulk {
     return out;
   });
 
-  /** The pane's buttons: the bar's actions, then reading and the full ads where they fit. */
+  /** The pane's buttons: the bar's actions, then the full ads where they fit. */
   readonly paneActions = $derived.by((): SelectionAction[] => {
     const chosen = this.chosen;
     const out = [...this.actions];
-    if (chosen.some((job) => job.unread)) {
-      out.push({
-        icon: 'mail-open',
-        label: t.selection.read,
-        testid: 'selection-read',
-        onclick: () => {
-          for (const job of this.chosen) jobs.markSeen(job.key);
-        },
-      });
-    }
     if (chosen.length > 0 && chosen.every(detailsWanted)) {
       out.push({
         icon: 'download',

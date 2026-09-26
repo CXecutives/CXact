@@ -686,7 +686,6 @@ export const en: Catalog = {
     tip: (key: string) => `Choose several jobs at once with ${clickWith(key)}.`,
     more: (value: number) => `+${n(value)}`,
     pin: 'Favourite',
-    read: 'Mark read',
   },
   place: {
     tabs: 'Locations',
@@ -874,10 +873,6 @@ export const en: Catalog = {
     fetch: 'Fetch',
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
-    facet: 'View',
-    facetNew: 'New',
-    facetAll: 'All',
-    facetSaved: 'Favourites',
     sortMenu: 'Sort',
     sortLabel: {
       match: 'By match',
@@ -885,14 +880,9 @@ export const en: Catalog = {
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Filter',
-    filterOn: (portal: string | null, band: 'mid' | 'high' | null): string => {
-      const parts = [
-        portal === null ? '' : `only ${portal}`,
-        band === 'mid' ? 'medium or high match' : band === 'high' ? 'only high match' : '',
-      ].filter((part) => part !== '');
-      const text = parts.join(', ');
-      return text.charAt(0).toUpperCase() + text.slice(1);
-    },
+    favouritesOnly: 'Favourites only',
+    portalHeading: 'Portal',
+    bandHeading: 'Match',
     allPortals: 'All portals',
     band: {
       any: 'Any match',
@@ -901,6 +891,8 @@ export const en: Catalog = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
     filterReset: 'Reset filter',
+    filterLine: (parts: readonly string[]) => parts.join(' · '),
+    filterLineReset: 'Reset',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
   },
@@ -988,9 +980,6 @@ export const en: Catalog = {
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
-    pendingSection: 'No match yet',
-    freshSection: 'Since the last fetch',
-    olderSection: 'Earlier',
     formalMissing: {
       degree: 'Degree missing',
       licence: 'Licence missing',
@@ -998,18 +987,10 @@ export const en: Catalog = {
     emptyWhileRun: 'The jobs show up here as the fetch goes on.',
     createAlert: (portal: string) => `Create an alert on ${portal}`,
     readOlder: FULL_MAILBOX,
-    emptyNew: 'No new jobs.',
-    emptyFavourites: 'No favourites yet.',
     emptyAll: 'After the first fetch, the jobs show up here.',
     emptyAfterRun: 'The alert emails have had no jobs so far.',
     noHit: (query: string) => `No jobs for “${query}”.`,
-    noHitIn: {
-      new: (query: string) => `No new jobs for “${query}”.`,
-      favourites: (query: string) => `No favourites for “${query}”.`,
-    },
-    searchAll: 'Search all',
     noFilterHit: 'No job fits the filter.',
-    showAll: 'Show all',
     loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',
     createProfile: 'Create profile',
