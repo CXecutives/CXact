@@ -25,16 +25,19 @@ black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
 - Plate 0..1024 (full bleed: the desktop and the taskbar show it exactly as large as the
-  other apps, measured against Claude and Roblox at 48 px), corner radius 22.37 % of the plate
-  with 60 % corner smoothing (Apple's continuous corner, as iOS and Figma): the curve leaves
-  the straight edge at 1.6 r with zero curvature, the circular middle keeps radius r.
+  other apps, measured against Claude and Roblox at 48 px) with Apple's continuous corner,
+  the curve UIKit draws for app icons (APPLE_CORNER): it leaves the straight edge 1.53 r
+  before the corner and bends with continuous curvature. r is 22.37 % of the plate, Mike
+  Swanson's fit to Apple's own AppIconMask (34 of 152); Apple publishes no number.
 - The glyph is drawn on the grid of a 16..1008 plate (GRID) and scales with the plate, so it
   keeps its share of the plate and its optical centre.
 - Folder 181..843 wide; tab 226..300 (45 degree slope 425 -> 499), body 300..778. One radius
-  (69) everywhere: the body and tab corners with the same smoothing, the slope with two
-  circular fillets. Its bounding box sits 10 of 1024 above the middle (the classical optical
-  centre); the centroid of the white area (folder minus check) lies about 8 below it. 10 lower
-  than before (user, 2026-09-26: the folder looked slightly too high).
+  (69) everywhere: the body and tab corners with 60 % corner smoothing (SMOOTHING, as Figma:
+  the curve leaves the straight edge at 1.6 r with zero curvature, the circular middle keeps
+  radius r), the slope with two circular fillets. Its bounding box sits 10 of 1024 above the
+  middle (the classical optical centre); the centroid of the white area (folder minus check)
+  lies about 8 below it. 10 lower than before (user, 2026-09-26: the folder looked slightly
+  too high).
 - Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
@@ -65,10 +68,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 # 2026-09-25). core/tests/icon.rs reads CORAL as a tuple.
 CORAL = (0xE6, 0x7A, 0x5C)
 WHITE = (255, 255, 255)
+# Corner smoothing of the folder's corners (see `smooth_corner`). The plate has Apple's own
+# continuous corner instead (see `apple_corner`), with a radius of 22.37 % of the plate.
 SMOOTHING = 0.6
-# The plate has the macOS app-icon shape: straight sides and Apple's continuous corners
-# (see `apple_corner`) with a radius of 22.37 % of the plate.
-PLATE_SMOOTHING = 0.6  # used by the folder corners only
 
 # 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID;
 # the Windows plate itself runs from PLATE (0: full bleed) to 1024 - PLATE.
@@ -625,7 +627,7 @@ def read_ico(path):
 
 def dark_pixels(img, visible_only=False):
     """Pixels darker than the plate's colour (any channel below CORAL by more than
-    FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - gradient, white and
+    FRINGE_TOLERANCE): (x, y, rgba). Every colour of the Windows icon - the coral, white and
     their mixes - lies at or above CORAL in each channel."""
     floor = [v - FRINGE_TOLERANCE for v in CORAL]
     s = img.width

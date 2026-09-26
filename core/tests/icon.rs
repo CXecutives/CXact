@@ -160,7 +160,7 @@ fn paeth(left: u8, up: u8, up_left: u8) -> u8 {
     }
 }
 
-/// A colour tuple of the generator, e.g. `VARIANT = (0xD4, 0x5D, 0x3D)`.
+/// A colour tuple of the generator, e.g. `CORAL = (0xE6, 0x7A, 0x5C)`.
 fn generator_colour(source: &str, name: &str) -> [u8; 3] {
     let head = format!("{name} = (");
     let start = source.find(&head).expect("colour in tools/icon.py") + head.len();
