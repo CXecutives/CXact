@@ -27,3 +27,4 @@ desktop.ini
 
 # Python caches of the helper scripts
 __pycache__/
+/.harness/
