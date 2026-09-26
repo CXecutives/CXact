@@ -16,6 +16,7 @@
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
 // grey out against it as in Mail and Explorer.
 
+import { t } from './i18n/t';
 import { onWindowFocus } from './ipc/api';
 
 export type Platform = 'windows' | 'macos';
@@ -108,19 +109,10 @@ export interface KeyConventions {
   contextMenuKey: boolean;
 }
 
-/**
- * Whether a right click opens the OS's own edit menu. Off on both OS: the native popup can
- * hang the window (Windows reported the app as not responding after it), and the app's own
- * menu takes its place. The keys (Ctrl/Cmd+X, C, V, A, Z) keep working in every field.
- */
 /** A middle click over a scroll area starts the OS autoscroll, which runs until the next
  *  press: Windows (WebView2) has it, macOS has none. */
 export function hasAutoscroll(): boolean {
   return platform() === 'windows';
-}
-
-export function nativeEditMenu(): boolean {
-  return false;
 }
 
 export function keyConventions(): KeyConventions {
@@ -133,4 +125,43 @@ export function keyConventions(): KeyConventions {
     systemMenuKey: !mac,
     contextMenuKey: !mac,
   };
+}
+
+/**
+ * A shortcut as the OS writes it, for menus and tooltips: `mod` is the command key (Ctrl on
+ * Windows, Cmd on macOS), `del` the key that deletes (Entf on Windows, ⌫ on macOS).
+ * Windows: "Strg+Umschalt+Z", "Entf", "F5"; macOS: symbols in Apple's order, "⇧⌘Z", "⌫".
+ */
+export function keyLabel(combo: string): string {
+  const mac = platform() === 'macos';
+  const parts = combo.toLowerCase().split('+');
+  const key = parts.pop() ?? '';
+  const mods = new Set(parts);
+  const name =
+    key === 'del'
+      ? mac
+        ? '⌫'
+        : t.keys.del
+      : key === 'enter'
+        ? mac
+          ? '↩'
+          : t.keys.enter
+        : key === 'esc'
+          ? 'Esc'
+          : key.toUpperCase();
+  if (mac) {
+    const symbols = [
+      mods.has('ctrl') ? '⌃' : '',
+      mods.has('alt') ? '⌥' : '',
+      mods.has('shift') ? '⇧' : '',
+      mods.has('mod') ? '⌘' : '',
+    ];
+    return symbols.join('') + name;
+  }
+  const words = [
+    ...(mods.has('mod') || mods.has('ctrl') ? [t.keys.ctrl] : []),
+    ...(mods.has('alt') ? ['Alt'] : []),
+    ...(mods.has('shift') ? [t.keys.shift] : []),
+  ];
+  return [...words, name].join('+');
 }

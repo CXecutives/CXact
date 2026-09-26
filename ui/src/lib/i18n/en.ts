@@ -661,12 +661,19 @@ export const en: Catalog = {
     markAllRead: 'Mark all as read',
   },
   edit: {
+    menu: 'Edit',
     undo: 'Undo',
     cut: 'Cut',
     copy: 'Copy',
     paste: 'Paste',
     delete: 'Delete',
     selectAll: 'Select all',
+  },
+  keys: {
+    ctrl: 'Ctrl',
+    shift: 'Shift',
+    del: 'Del',
+    enter: 'Enter',
   },
   field: {
     reveal: 'Show password',
@@ -747,6 +754,7 @@ export const en: Catalog = {
     facetNew: 'New',
     facetAll: 'All',
     facetSaved: 'Favourites',
+    sortMenu: 'Sort',
     sortLabel: {
       match: 'By match',
       newest: 'By date',

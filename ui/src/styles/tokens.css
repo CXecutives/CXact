@@ -264,6 +264,10 @@
     0 4px 12px -4px hsl(var(--p-shade-pop) / 0.22), 0 1px 2px hsl(var(--p-shade-pop) / 0.1);
   --sh-hover:
     0 4px 12px -4px hsl(var(--p-shade-navy) / 0.14), 0 1px 2px hsl(var(--p-shade-navy) / 0.06);
+  /* A menu floats close above the page: a hairline, a near and a far soft shadow. */
+  --sh-menu:
+    0 0 0 0.5px hsl(var(--p-shade-pop) / 0.12), 0 4px 12px hsl(var(--p-shade-pop) / 0.08),
+    0 16px 40px hsl(var(--p-shade-pop) / 0.12);
   --sh-primary: inset 0 1px 0 hsl(var(--p-white) / 0.16), 0 1px 2px hsl(var(--p-shade-xs) / 0.12);
   /* Keyboard focus (only :focus-visible, never after a click): one thin navy ring around
      the control, or inside it where the control fills its row. A text field in focus shows
@@ -348,8 +352,18 @@
   --splitter-hit: 8px;
   /* How far ArrowUp/ArrowDown scroll a pane (a line of text and its gap, like the OS). */
   --scroll-line: 40px;
-  /* A native menu opens this far below its button. */
+  /* The app's own menus (components/Menu.svelte): a row as easy to hit as a field row, the
+     text of a field, a fixed icon column, keys right and quiet. It opens this far below
+     its button and keeps --viewport-gap from every edge of the window. */
   --menu-gap: 4px;
+  --menu-row: 30px;
+  --menu-pad: var(--space-4);
+  --menu-inset: var(--space-8);
+  --menu-icon: 20px;
+  --menu-min: 200px;
+  --menu-max: 320px;
+  --menu-radius: var(--radius-md);
+  --menu-row-radius: var(--radius-xs);
   --grip-width: 4px;
   --grip-height: 44px;
   /* The list handle's grip: grey at rest, a shade darker while dragged (no navy line). */
@@ -576,6 +590,7 @@
   --z-toast: 90;
   --z-overlay: 100;
   --z-dialog: 110;
+  --z-menu: 115;
   --z-tooltip: 120;
   --opacity-disabled: 0.5;
   --opacity-muted: 0.6;

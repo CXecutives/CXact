@@ -676,12 +676,21 @@ export const de = {
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
+    /** The accessible name of a field's menu. */
+    menu: 'Bearbeiten',
     undo: 'Rückgängig',
     cut: 'Ausschneiden',
     copy: 'Kopieren',
     paste: 'Einfügen',
     delete: 'Löschen',
     selectAll: 'Alles auswählen',
+  },
+  /** Key names of Windows in shortcuts (macOS writes symbols, platform.ts). */
+  keys: {
+    ctrl: 'Strg',
+    shift: 'Umschalt',
+    del: 'Entf',
+    enter: 'Eingabe',
   },
   field: {
     reveal: 'Passwort zeigen',
@@ -771,6 +780,8 @@ export const de = {
     facetNew: 'Neu',
     facetAll: 'Alle',
     facetSaved: 'Favoriten',
+    /** The menu of the sort button (its accessible name). */
+    sortMenu: 'Sortierung',
     /** The order of the list in words (the sort button). */
     sortLabel: {
       match: 'Nach Passung',

@@ -430,32 +430,34 @@ test('the sidebar in the gallery: its places fold, its edge folds it to the rail
   await expect(page.getByTestId('gnav-rail-folded').getByTestId('gnav-archive')).toBeHidden();
 });
 
-test('a menu button opens the OS menu of choices below it; a choice applies', async ({ page }) => {
+test("a menu button opens the app's menu of choices below it; a choice applies", async ({
+  page,
+}) => {
   await open(page, '?gallery&platform=windows');
   const button = page.getByTestId('menu-order');
   await button.scrollIntoViewIfNeeded();
   await expect(button).toHaveText('Nach Passung');
   await expect(button).toHaveAttribute('aria-haspopup', 'menu');
   await button.click();
-  const shown = await page.evaluate(() => ({
-    menu: window.__harness.menus.at(-1),
-    at: window.__harness.menuAt,
-  }));
-  expect(shown.menu!.map((entry) => [entry.text, entry.checked])).toEqual([
-    ['Nach Passung', true],
-    ['Nach Datum', false],
-  ]);
+  const menu = page.getByTestId('menu');
+  await expect(menu).toBeVisible();
+  await expect(button).toHaveAttribute('aria-expanded', 'true');
+  await expect(menu.getByRole('menuitemradio')).toHaveText(['Nach Passung', 'Nach Datum']);
+  await expect(page.getByTestId('menu-item-match')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('menu-item-date')).toHaveAttribute('aria-checked', 'false');
   // Right below the button, on its left edge.
   const box = (await button.boundingBox())!;
-  expect(Math.round(shown.at!.x)).toBe(Math.round(box.x));
-  expect(shown.at!.y).toBeGreaterThanOrEqual(box.y + box.height);
-  await page.evaluate(() => window.__harness.pick(1));
+  const shown = (await menu.boundingBox())!;
+  expect(Math.abs(shown.x - box.x)).toBeLessThanOrEqual(1);
+  expect(shown.y).toBeGreaterThanOrEqual(box.y + box.height);
+  await page.getByTestId('menu-item-date').click();
+  await expect(menu).toHaveCount(0);
   await expect(button).toHaveText('Nach Datum');
+  await expect(button).toHaveAttribute('aria-expanded', 'false');
   // Disabled: the tooltip says why, no menu opens.
-  const count = await page.evaluate(() => window.__harness.menus.length);
   const off = page.getByTestId('menu-order-off');
   await off.click({ force: true });
-  expect(await page.evaluate(() => window.__harness.menus.length)).toBe(count);
+  await expect(menu).toHaveCount(0);
   await page.mouse.move(0, 0);
   await off.hover();
   await expect(page.getByRole('tooltip')).toHaveText('Ohne Profil nur nach Datum.');

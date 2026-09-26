@@ -72,6 +72,8 @@
     trailing?: IconName | null;
     /** It opens a menu (announced as such). */
     menu?: boolean;
+    /** Its menu is open: announced, and the button keeps its hover look meanwhile. */
+    expanded?: boolean;
     /** The default of a dialog (Enter presses it); Dialog marks it with the focus ring. */
     isDefault?: boolean;
     /** Removes or resets something: red text on hover (secondary and ghost). */
@@ -98,6 +100,7 @@
     inField = false,
     trailing = null,
     menu = false,
+    expanded = false,
     isDefault = false,
     warns = false,
     testid = null,
@@ -146,6 +149,7 @@
   aria-checked={radio ? radio.checked : undefined}
   aria-pressed={pressed === null || radio ? undefined : pressed}
   aria-haspopup={menu ? 'menu' : undefined}
+  aria-expanded={menu ? expanded : undefined}
   tabindex={inField || disabled || (radio && !radio.stop) ? -1 : radio ? 0 : undefined}
   data-keep-focus={inField ? '' : undefined}
   data-testid={testid ?? undefined}
@@ -235,6 +239,13 @@
     background-color: var(--btn-bg-hover);
     color: var(--btn-fg-hover);
     transition-duration: var(--dur-hover), var(--dur-hover), var(--dur-hover), var(--dur-base);
+  }
+
+  /* The button of an open menu keeps its hover look while the menu is open. */
+  .btn[aria-expanded='true'] {
+    border-color: var(--btn-border-hover);
+    background-color: var(--btn-bg-hover);
+    color: var(--btn-fg-hover);
   }
 
   /* Pressed: only while the left button is down (input.ts marks a press of the others). */

@@ -248,8 +248,7 @@ test.describe('dates', () => {
     await expect(row(page, 'linkedin-4100200303').locator('.date')).toHaveText('jetzt');
     // By date: the day the job went there, which its row shows.
     await page.getByTestId('sort').click();
-    const menu = (await page.evaluate(() => window.__harness.menus)).at(-1) ?? [];
-    expect(menu.map((entry) => entry.text)).toContain('Nach Datum');
+    await expect(page.getByTestId('menu-item-newest')).toHaveText('Nach Datum');
     await page.keyboard.press('Escape');
     // A favourite in the trash is none: no star on its row.
     await expect(row(page, 'freelancermap-2801')).toBeVisible();

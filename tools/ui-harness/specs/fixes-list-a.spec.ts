@@ -271,7 +271,7 @@ test.describe('the keys over the whole list', () => {
     await rows(page).nth(39).click();
     const key = (await highlighted(page))[0] ?? '';
     await page.getByTestId('sort').click();
-    await page.evaluate(() => window.__harness.pick(1));
+    await page.getByTestId('menu-item-newest').click();
     await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
     const target = page.getByTestId('job-list').locator(`[data-key="${key}"] .row`);
     await expect(target).toHaveClass(/selected/);

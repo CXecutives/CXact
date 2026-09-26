@@ -47,6 +47,7 @@ fn main() {
             "save_settings",
             "reset_all",
             "report_ui_error",
+            "clipboard_text",
         ]),
     ))
     .expect("tauri-build failed");

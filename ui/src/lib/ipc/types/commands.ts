@@ -58,4 +58,5 @@ export type Commands = {
   save_settings: { args: { patch: SettingsPatch }; result: AppState };
   reset_all: { args: Record<string, never>; result: null };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
+  clipboard_text: { args: Record<string, never>; result: string | null };
 };

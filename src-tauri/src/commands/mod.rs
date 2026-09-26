@@ -37,7 +37,7 @@ pub use scoring::Scoring;
     dead_code,
     reason = "read by core/tests/contract.rs, which generates the TypeScript command map"
 )]
-pub const COMMANDS: [(&str, &str, &str); 36] = [
+pub const COMMANDS: [(&str, &str, &str); 37] = [
     ("app_state", "{ channel: Channel<RunEvent> }", "AppState"),
     (
         "start_run",
@@ -102,6 +102,7 @@ pub const COMMANDS: [(&str, &str, &str); 36] = [
         "{ message: string; source: string | null; line: number | null }",
         "null",
     ),
+    ("clipboard_text", "Record<string, never>", "string | null"),
 ];
 
 /// The command handler for `tauri::Builder::invoke_handler`.
@@ -143,6 +144,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::save_settings,
         app::reset_all,
         app::report_ui_error,
+        app::clipboard_text,
     ]
 }
 

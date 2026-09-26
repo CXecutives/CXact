@@ -218,7 +218,7 @@ test('the middle button stays out of dialogs and fields', async ({ page }) => {
   await expect(field).not.toBeFocused();
 });
 
-test('Windows: Alt+Space and Shift+F10 reach the OS', async ({ page }) => {
+test("Windows: Alt+Space reaches the OS, Shift+F10 opens the app's menu", async ({ page }) => {
   await open(page, WIN);
   const results = await page.evaluate(() => {
     const field = document.querySelector<HTMLInputElement>('[data-testid="search"]')!;
@@ -242,25 +242,23 @@ test('Windows: Alt+Space and Shift+F10 reach the OS', async ({ page }) => {
     altSpaceBody: false,
     altSpaceField: false,
     altSpaceButton: false,
-    shiftF10Field: false,
+    shiftF10Field: true,
     f10Field: true,
   });
+  await expect(page.getByTestId('menu')).toBeVisible();
 });
 
-// The native menu is off (platform.ts nativeEditMenu); the app's own menu replaces it next.
-test.fixme('a field menu greys out Undo while there is nothing to undo', async ({ page }) => {
+test('a field menu greys out Undo while there is nothing to undo', async ({ page }) => {
   await open(page, WIN);
   const search = page.getByTestId('search');
+  const undo = page.getByTestId('menu-item-undo');
   await search.click({ button: 'right' });
-  const undo = async (): Promise<boolean | undefined> =>
-    page.evaluate(
-      () => window.__harness.menus.at(-1)?.find((entry) => entry.text === 'Rückgängig')?.enabled,
-    );
-  expect(await undo()).toBe(false);
+  await expect(undo).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
   await search.click();
   await page.keyboard.type('CFO');
   await search.click({ button: 'right' });
-  expect(await undo()).toBe(true);
+  await expect(undo).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 test('keyboard focus stays clear of the edges of its scroll area', async ({ page }) => {

@@ -31,6 +31,9 @@ sys-locale = "0.3"
 serde_json = "1"
 jiff = "0.2"
 fastrand = "2"
+# The Paste entry of the app's own field menu reads the clipboard here: the page may not
+# read it without a prompt of the engine (commands/app.rs `clipboard_text`).
+arboard = { version = "3", default-features = false }
 # 2.11.1 fixes CVE-2026-42184 (remote pages could call local commands).
 tauri = { version = "2.11.5", features = [] }
 tauri-plugin-single-instance = "2.4"

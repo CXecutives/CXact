@@ -14,6 +14,7 @@
   import StatusLine from '$components/StatusLine.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
+  import Menu from '$components/Menu.svelte';
   import Tooltip from '$components/Tooltip.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tooltip } from '$lib/actions/tooltip';
@@ -229,6 +230,7 @@
   <MatchBoard />
 
   <Toast />
+  <Menu />
   <Tooltip />
 </div>
 

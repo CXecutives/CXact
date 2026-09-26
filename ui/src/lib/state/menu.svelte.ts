@@ -1,0 +1,98 @@
+// The app's own menus: one menu at a time, drawn by components/Menu.svelte in the app layer.
+// A right click (lib/input/input.ts), a menu button (MenuButton) or a "…" button opens it;
+// the OS never draws a menu of ours (a native popup could hang the window, and it looked
+// different on every OS). Keys, the press outside, the window's blur, resizing and scrolling
+// are handled in input.ts, which closes the menu through `closeMenu`.
+
+import type { IconName } from '$components/Icon.svelte';
+
+/** One entry of a menu: an action, or a thin line between groups. */
+export type MenuEntry = MenuItem | { kind: 'separator' };
+
+export interface MenuItem {
+  kind?: 'item';
+  /** Stable id (test ids `menu-item-<id>`, the type-ahead reads the label). */
+  id: string;
+  label: string;
+  icon?: IconName | null;
+  /** The shortcut as the OS writes it ("Strg+C", "⌘C"), right-aligned and quiet. */
+  keys?: string | null;
+  /** A choice of a group (the sort): a check mark before the chosen one. */
+  checked?: boolean | null;
+  disabled?: boolean;
+  /** Why a disabled entry cannot be chosen (its tooltip). */
+  reason?: string | null;
+  /** Something that is lost for good (Endgültig löschen): red while hovered. */
+  danger?: boolean;
+  run: () => void;
+}
+
+/** Where the menu opens: at a point (a right click) or below an element (a menu button). */
+export type MenuAnchor =
+  | { kind: 'point'; x: number; y: number }
+  | { kind: 'below'; rect: DOMRect; align: 'start' | 'end' };
+
+export interface MenuSpec {
+  entries: readonly MenuEntry[];
+  anchor: MenuAnchor;
+  /** The accessible name of the menu ("Sortierung", "Job"). */
+  label: string;
+  /** Opened from the keyboard: the first entry is active at once (like the OS). */
+  fromKeyboard?: boolean;
+  /** Called after the menu closed (the menu button's pressed look ends). */
+  onclose?: () => void;
+}
+
+interface MenuState {
+  open: (MenuSpec & { id: number; returnFocus: HTMLElement | null }) | null;
+  /** The active entry (hovered or chosen by keys); -1: none. */
+  active: number;
+}
+
+export const menuState: MenuState = $state({ open: null, active: -1 });
+
+let nextId = 1;
+
+export const isItem = (entry: MenuEntry): entry is MenuItem => entry.kind !== 'separator';
+
+/** Open a menu (a menu already open closes first, without giving its focus back). */
+export function openMenu(spec: MenuSpec): void {
+  const previous = menuState.open;
+  const focused = document.activeElement;
+  const returnFocus =
+    previous?.returnFocus ??
+    (focused instanceof HTMLElement && focused !== document.body ? focused : null);
+  previous?.onclose?.();
+  const first = spec.fromKeyboard === true ? firstEnabled(spec.entries, 0, 1) : -1;
+  menuState.open = { ...spec, id: nextId++, returnFocus };
+  menuState.active = first;
+}
+
+/** Close the open menu; `restore` gives the focus back to where it was before. */
+export function closeMenu(restore = true): void {
+  const open = menuState.open;
+  if (open === null) return;
+  menuState.open = null;
+  menuState.active = -1;
+  open.onclose?.();
+  if (restore && open.returnFocus?.isConnected) open.returnFocus.focus({ preventScroll: true });
+}
+
+/** Run an entry (enabled only): the menu closes first, the focus goes back, then it runs. */
+export function chooseEntry(index: number): void {
+  const entry = menuState.open?.entries[index];
+  if (entry === undefined || !isItem(entry) || entry.disabled === true) return;
+  closeMenu();
+  entry.run();
+}
+
+/** The next enabled entry from `from` in `step` direction (wrapping), -1 without one. */
+export function firstEnabled(entries: readonly MenuEntry[], from: number, step: 1 | -1): number {
+  const count = entries.length;
+  for (let n = 0; n < count; n += 1) {
+    const index = (((from + n * step) % count) + count) % count;
+    const entry = entries[index];
+    if (entry !== undefined && isItem(entry) && entry.disabled !== true) return index;
+  }
+  return -1;
+}

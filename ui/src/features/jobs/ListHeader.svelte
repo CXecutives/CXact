@@ -279,6 +279,7 @@
               disabled={!app.hasProfile}
               disabledReason={t.toolbar.sortNoProfile}
               testid="sort"
+              menuLabel={t.toolbar.sortMenu}
               onchange={(sort) => jobs.setSort(sort)}
             />
           {/if}

@@ -94,19 +94,32 @@ test('right click, middle click and drag: what the page lets through', async ({ 
   });
 });
 
-// The native menu is off (platform.ts nativeEditMenu); the app's own menu replaces it next.
-test.fixme('the right click: the OS menu in fields and on selected copyable text, nowhere else', async ({
+/** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
+async function menuEntries(page: Page): Promise<string[]> {
+  return page
+    .getByTestId('menu')
+    .getByRole('menuitem')
+    .evaluateAll((nodes) =>
+      nodes.map(
+        (node) =>
+          `${node.querySelector('.label')?.textContent ?? ''}${
+            node.getAttribute('aria-disabled') === 'true' ? ' (aus)' : ''
+          }`,
+      ),
+    );
+}
+
+test("the right click: the app's menu in fields and on selected copyable text, nowhere else", async ({
   page,
 }) => {
-  const menus = (): Promise<{ text: string; enabled: boolean; command: string | null }[][]> =>
-    page.evaluate(() => window.__harness.menus);
+  const menu = page.getByTestId('menu');
   // On a control or empty space: nothing, and the control is not pressed.
   await page.getByTestId('fetch').click({ button: 'right' });
   await page.getByTestId('view-jobs').click({ button: 'right', position: { x: 600, y: 600 } });
-  expect(await menus()).toEqual([]);
+  await expect(menu).toHaveCount(0);
   expect(await calls(page, 'start_run')).toEqual([]);
-  // In a field: the edit commands of Windows in its groups, enabled by the field's state;
-  // it takes the focus.
+  // In a field: the edit commands of Windows in their groups, enabled by the field's state;
+  // the field takes the focus back when the menu closes.
   const search = page.getByTestId('search');
   await search.fill('Controlling');
   await search.evaluate((node: HTMLInputElement) => {
@@ -114,66 +127,145 @@ test.fixme('the right click: the OS menu in fields and on selected copyable text
     node.setSelectionRange(0, 0);
   });
   await search.click({ button: 'right' });
-  await expect(search).toBeFocused();
-  await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 7));
-  await search.click({ button: 'right' });
-  const state = (menu: { text: string; enabled: boolean }[]): string[] =>
-    menu.map((entry) => `${entry.text}${entry.enabled ? '' : ' (aus)'}`);
-  const [plain, selected] = await menus();
-  expect(state(plain!)).toEqual([
+  await expect(menu).toBeVisible();
+  expect(await menuEntries(page)).toEqual([
     'Rückgängig',
-    'Separator',
     'Ausschneiden (aus)',
     'Kopieren (aus)',
     'Einfügen',
     'Löschen (aus)',
-    'Separator',
     'Alles auswählen',
   ]);
-  expect(state(selected!)).toEqual([
+  await expect(menu.getByRole('separator')).toHaveCount(2);
+  // The keys as Windows writes them, right and quiet.
+  await expect(page.getByTestId('menu-item-cut').locator('.keys')).toHaveText('Strg+X');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(search).toBeFocused();
+  await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 7));
+  await search.click({ button: 'right' });
+  expect(await menuEntries(page)).toEqual([
     'Rückgängig',
-    'Separator',
     'Ausschneiden',
     'Kopieren',
     'Einfügen',
     'Löschen',
-    'Separator',
     'Alles auswählen',
   ]);
-  // An enabled entry is the OS's own edit command; Delete (the OS has none) runs in the page.
-  expect(selected!.map((entry) => entry.command)).toEqual([
-    'Undo',
-    'Separator',
-    'Cut',
-    'Copy',
-    'Paste',
-    null,
-    'Separator',
-    'SelectAll',
-  ]);
-  // Selected copyable text: Kopieren; the same text unselected: nothing.
-  await page.locator('[data-testid^="job-row-"]').first().click();
-  const title = page.getByTestId('reader-title');
-  await page.evaluate(() => getSelection()?.removeAllRanges());
-  await title.click({ button: 'right' });
-  expect(await menus()).toHaveLength(2);
-  await title.evaluate((node) => getSelection()?.selectAllChildren(node));
-  await title.click({ button: 'right' });
-  const copy = (await menus())[2]!;
-  expect(state(copy)).toEqual(['Kopieren']);
-  expect(copy[0]!.command).toBe('Copy');
   // Löschen takes the selection out, and Ctrl+Z brings it back (one step of the field).
-  await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 7));
-  await search.click({ button: 'right' });
-  await page.evaluate(() => window.__harness.pick(5));
+  await page.getByTestId('menu-item-delete').click();
+  await expect(menu).toHaveCount(0);
   await expect(search).toHaveValue('ling');
   await expect(search).toBeFocused();
   await page.keyboard.press('Control+z');
   await expect(search).toHaveValue('Controlling');
+  // Einfügen types the clipboard's text where the caret is.
+  await page.evaluate(() => (window.__harness.clipboard = 'Interim '));
+  await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 0));
+  await search.click({ button: 'right' });
+  await page.getByTestId('menu-item-paste').click();
+  await expect(search).toHaveValue('Interim Controlling');
+  // Selected copyable text: Kopieren; the same text unselected: nothing (the list back in full
+  // first: the search above filtered it).
+  await search.fill('');
+  await expect(page.locator('[data-testid^="job-row-"]').first()).toBeVisible();
+  await page.locator('[data-testid^="job-row-"]').first().click();
+  const title = page.getByTestId('reader-title');
+  await page.evaluate(() => getSelection()?.removeAllRanges());
+  await title.click({ button: 'right' });
+  await expect(menu).toHaveCount(0);
+  await title.evaluate((node) => getSelection()?.selectAllChildren(node));
+  await title.click({ button: 'right' });
+  expect(await menuEntries(page)).toEqual(['Kopieren']);
 });
 
-// The native menu is off (platform.ts nativeEditMenu); the app's own menu replaces it next.
-test.fixme("a field's menu on macOS: no undo and no delete, like the OS's own", async ({
+test("the app's menu from the keyboard: Shift+F10, arrows, Enter, Esc, a letter", async ({
+  page,
+}) => {
+  const menu = page.getByTestId('menu');
+  const search = page.getByTestId('search');
+  await search.fill('Controlling');
+  await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 7));
+  await page.keyboard.press('Shift+F10');
+  await expect(menu).toBeVisible();
+  // The first enabled entry is active at once, like the OS; the arrows skip what is off.
+  const active = (): Promise<string | null> =>
+    menu.evaluate((node) => {
+      const id = node.getAttribute('aria-activedescendant');
+      return id === null ? null : (document.getElementById(id)?.dataset.testid ?? null);
+    });
+  expect(await active()).toBe('menu-item-undo');
+  await page.keyboard.press('ArrowDown');
+  expect(await active()).toBe('menu-item-cut');
+  await page.keyboard.press('End');
+  expect(await active()).toBe('menu-item-select-all');
+  await page.keyboard.press('ArrowDown');
+  expect(await active()).toBe('menu-item-undo');
+  // A letter picks the entry that starts with it.
+  await page.keyboard.press('k');
+  expect(await active()).toBe('menu-item-copy');
+  // Esc closes the menu only; the field keeps its text and its focus.
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('Controlling');
+  // Enter runs the active entry.
+  await page.keyboard.press('Shift+F10');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await expect(menu).toHaveCount(0);
+  expect(
+    await search.evaluate((node: HTMLInputElement) => [node.selectionStart, node.selectionEnd]),
+  ).toEqual([0, 11]);
+});
+
+test('a press outside closes the menu and does nothing else; so do a scroll and the window', async ({
+  page,
+}) => {
+  const menu = page.getByTestId('menu');
+  const search = page.getByTestId('search');
+  await search.fill('CFO');
+  await search.click({ button: 'right' });
+  await expect(menu).toBeVisible();
+  // The left press that closes it never reaches Abrufen under it.
+  await page.getByTestId('fetch').click();
+  await expect(menu).toHaveCount(0);
+  expect(await calls(page, 'start_run')).toEqual([]);
+  // A right press elsewhere closes it and opens the menu of what it lands on.
+  await search.click({ button: 'right' });
+  await page.getByTestId('view-jobs').click({ button: 'right', position: { x: 600, y: 600 } });
+  await expect(menu).toHaveCount(0);
+  // Resizing the window closes it.
+  await search.click({ button: 'right' });
+  await expect(menu).toBeVisible();
+  await page.setViewportSize({ width: 1300, height: 800 });
+  await expect(menu).toHaveCount(0);
+});
+
+test('the menu stays inside the window: it flips at the right and the bottom edge', async ({
+  page,
+}) => {
+  const menu = page.getByTestId('menu');
+  const search = page.getByTestId('search');
+  await search.fill('CFO');
+  const size = page.viewportSize()!;
+  // Opened near the bottom right corner (Shift+F10 in a field opens below it; a right click
+  // opens at the pointer): the menu lies left of and above the pointer.
+  await search.evaluate((node) => {
+    const at = { clientX: innerWidth - 20, clientY: innerHeight - 20 };
+    node.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, ...at }),
+    );
+  });
+  await expect(menu).toBeVisible();
+  const box = (await menu.boundingBox())!;
+  expect(box.x + box.width).toBeLessThanOrEqual(size.width - 8);
+  expect(box.y + box.height).toBeLessThanOrEqual(size.height - 8);
+  expect(box.x).toBeGreaterThanOrEqual(8);
+  expect(box.y).toBeGreaterThanOrEqual(8);
+});
+
+test("a field's menu on macOS: no undo and no delete, like the OS's own, keys as symbols", async ({
   page,
 }) => {
   await open(page, '?platform=macos');
@@ -181,14 +273,13 @@ test.fixme("a field's menu on macOS: no undo and no delete, like the OS's own", 
   await search.fill('Controlling');
   await search.evaluate((node: HTMLInputElement) => node.setSelectionRange(0, 7));
   await search.click({ button: 'right' });
-  const menu = await page.evaluate(() => window.__harness.menus.at(-1)!);
-  expect(menu.map((entry) => entry.command)).toEqual([
-    'Cut',
-    'Copy',
-    'Paste',
-    'Separator',
-    'SelectAll',
+  expect(await menuEntries(page)).toEqual([
+    'Ausschneiden',
+    'Kopieren',
+    'Einfügen',
+    'Alles auswählen',
   ]);
+  await expect(page.getByTestId('menu-item-copy').locator('.keys')).toHaveText('⌘C');
 });
 
 test('controls react to the left button only', async ({ page }) => {

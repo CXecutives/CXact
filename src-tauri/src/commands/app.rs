@@ -351,3 +351,11 @@ pub(super) fn existing(path: PathBuf, what: &str) -> CmdResult<std::ffi::OsStrin
             .with("path", path.display().to_string()))
     }
 }
+
+/// The text on the clipboard, for the Paste entry of the app's own field menu (the page may
+/// not read the clipboard without the engine's prompt). None without text; never logged.
+#[tauri::command]
+pub fn clipboard_text() -> Option<String> {
+    let mut clipboard = arboard::Clipboard::new().ok()?;
+    clipboard.get_text().ok()
+}

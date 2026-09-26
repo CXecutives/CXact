@@ -33,6 +33,7 @@
     "allow-set-unsaved",
     "allow-close-window",
     "allow-report-ui-error",
+    "allow-clipboard-text",
     "allow-reset-all",
     "allow-rewrite-txt",
     "allow-save-mailbox",
@@ -44,8 +45,6 @@
     "allow-start-run",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
-    "core:menu:allow-new",
-    "core:menu:allow-popup",
     "core:resources:allow-close"
   ]
 }

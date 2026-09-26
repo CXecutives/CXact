@@ -14,8 +14,6 @@
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { LogicalPosition } from '@tauri-apps/api/dpi';
-import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu';
 import type { Commands, ErrorInfo, ErrorKind, RunEvent } from './types';
 
 export type CommandName = keyof Commands;
@@ -62,6 +60,7 @@ export const COMMAND_NAMES = [
   'save_settings',
   'reset_all',
   'report_ui_error',
+  'clipboard_text',
 ] as const satisfies readonly CommandName[];
 
 /** Commands that receive the run channel as `channel` argument. */
@@ -196,85 +195,17 @@ export function onNavigate(handler: (view: string) => void): () => void {
   return subscribe(() => listen<string>('navigate', (event) => handler(event.payload)));
 }
 
-/** An edit command the OS has a menu item of its own for (it acts on the focused field). */
-export type EditCommand = 'Undo' | 'Cut' | 'Copy' | 'Paste' | 'SelectAll';
-
-/** One entry of an edit menu: an OS command, Delete (the OS has no item of its own for it,
- *  so the page runs it) or a separator between groups. */
-export type EditEntry =
-  | { command: EditCommand; text: string; enabled: boolean }
-  | { command: 'Delete'; text: string; enabled: boolean; run: () => void }
-  | { command: 'Separator' };
-
-/** The menu shown last; its native resources go when the next one opens. */
-let shownMenu: Menu | null = null;
-
-/** Show a native menu (at a point of the window, else at the pointer). */
-async function show(menu: Menu, at: { x: number; y: number } | null = null): Promise<void> {
-  const previous = shownMenu;
-  shownMenu = menu;
-  void previous?.close();
-  await menu.popup(at === null ? undefined : new LogicalPosition(at.x, at.y));
-}
-
-/** One choice of a native menu with check marks (the chosen one is checked). */
-export interface ChoiceEntry {
-  text: string;
-  checked: boolean;
-  enabled?: boolean;
-  onchoose: () => void;
-}
-
 /**
- * A native menu of choices below a menu button (`at`: its bottom left in window px), the
- * OS's own: the current choice checked, a click chooses.
+ * The text on the clipboard (the Paste entry of the app's own field menu), read by the
+ * backend: the page may not read the clipboard without a prompt of the engine (WebView2 asks,
+ * WKWebView shows its own Paste button). Null when there is no text or reading failed.
  */
-export async function popupChoiceMenu(
-  entries: readonly ChoiceEntry[],
-  at: { x: number; y: number } | null = null,
-): Promise<void> {
+export async function clipboardText(): Promise<string | null> {
   try {
-    const items = await Promise.all(
-      entries.map((entry) =>
-        CheckMenuItem.new({
-          text: entry.text,
-          checked: entry.checked,
-          enabled: entry.enabled ?? true,
-          action: () => entry.onchoose(),
-        }),
-      ),
-    );
-    await show(await Menu.new({ items }), at);
+    return await invoke('clipboard_text', {});
   } catch (error) {
-    reportUiError(`choice menu: ${String(error)}`, null, null);
-  }
-}
-
-/**
- * A native context menu at the pointer (or at `at`, in page pixels: the field of a menu
- * opened from the keyboard), the OS's own (Windows and macOS draw it). An enabled entry is
- * the OS's predefined edit command, so the OS performs it on the focused field or selection
- * exactly like its own menus do; a disabled one is only shown.
- */
-export async function popupEditMenu(
-  entries: readonly EditEntry[],
-  at: { x: number; y: number } | null = null,
-): Promise<void> {
-  try {
-    const items = await Promise.all(
-      entries.map((entry) => {
-        if (entry.command === 'Separator') return PredefinedMenuItem.new({ item: 'Separator' });
-        if (entry.command === 'Delete') {
-          return MenuItem.new({ text: entry.text, enabled: entry.enabled, action: entry.run });
-        }
-        return entry.enabled
-          ? PredefinedMenuItem.new({ item: entry.command, text: entry.text })
-          : MenuItem.new({ text: entry.text, enabled: false });
-      }),
-    );
-    await show(await Menu.new({ items }), at);
-  } catch (error) {
-    reportUiError(`context menu: ${String(error)}`, null, null);
+    reportUiError(`clipboard: ${String(error)}`, null, null);
+    return null;
   }
 }
 

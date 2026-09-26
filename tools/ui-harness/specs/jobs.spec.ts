@@ -154,16 +154,17 @@ test('the order menu reorders the list and keeps the selection', async ({ page }
   const before = await rows(page).evaluateAll((els) =>
     els.map((e) => e.getAttribute('data-testid')),
   );
-  // One quiet button names the order; it opens the OS's menu with both, the current ticked.
+  // One quiet button names the order; it opens the app's menu with both, the current ticked.
   const sort = page.getByTestId('sort');
   await expect(sort).toHaveText('Nach Passung');
   await expect(sort).toHaveAttribute('aria-haspopup', 'menu');
   await sort.click();
-  expect((await page.evaluate(() => window.__harness.menus)).at(-1)).toEqual([
-    { text: 'Nach Passung', enabled: true, command: null, checked: true },
-    { text: 'Nach Datum', enabled: true, command: null, checked: false },
+  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+    'Nach Passung',
+    'Nach Datum',
   ]);
-  await page.evaluate(() => window.__harness.pick(1));
+  await expect(page.getByTestId('menu-item-match')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('menu-item-newest').click();
   await expect(sort).toHaveText('Nach Datum');
   // One choice for every list, kept: the archive is in the same order.
   await page.getByTestId('nav-archive').click();
@@ -389,7 +390,7 @@ test('without a profile: empty rings, newest first, one line in the list leads t
   await expect(page.getByTestId('sort')).toHaveText('Nach Datum');
   await expect(page.getByTestId('sort')).toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('sort').click({ force: true });
-  expect(await page.evaluate(() => window.__harness.menus)).toEqual([]);
+  await expect(page.getByTestId('menu')).toHaveCount(0);
   // Every row keeps its ring, empty: the titles stand where they always do.
   await expect(
     rows(page).first().getByRole('img', { name: 'Ohne Profil keine Passung' }),
@@ -774,7 +775,7 @@ test('only a re-sort moves rows: new jobs of a run land in place, the sort switc
   // Another order is a re-sort: the rows on screen glide to their new place.
   await watchGlides(page, 120);
   await page.getByTestId('sort').click();
-  await page.evaluate(() => window.__harness.pick(1));
+  await page.getByTestId('menu-item-newest').click();
   expect(await glides(page)).toBeGreaterThan(0);
 });
 
@@ -894,7 +895,7 @@ test('the run card: steps side by side, a finished step draws its check once', a
 test('the day overview: its best jobs open the reader', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('sort').click();
-  await page.evaluate(() => window.__harness.pick(1));
+  await page.getByTestId('menu-item-newest').click();
   const best = page.getByTestId('best').locator('[data-testid^="best-"]').first();
   const title = await best.locator('.title').innerText();
   await best.click();

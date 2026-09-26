@@ -66,6 +66,17 @@
   import UserRound from '@lucide/svelte/icons/user-round';
   import WifiOff from '@lucide/svelte/icons/wifi-off';
   import X from '@lucide/svelte/icons/x';
+  import CircleX from '@lucide/svelte/icons/circle-x';
+  import Delete from '@lucide/svelte/icons/delete';
+  import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import Funnel from '@lucide/svelte/icons/funnel';
+  import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
+  import MailOpen from '@lucide/svelte/icons/mail-open';
+  import Scissors from '@lucide/svelte/icons/scissors';
+  import Send from '@lucide/svelte/icons/send';
+  import Settings from '@lucide/svelte/icons/settings';
+  import Target from '@lucide/svelte/icons/target';
+  import TextSelect from '@lucide/svelte/icons/text-select';
   import type { Component } from 'svelte';
 
   const ICONS = {
@@ -138,6 +149,19 @@
     'undo-2': Undo2,
     // The way on after a step ("Weiter zum ersten Abruf").
     'arrow-right': ArrowRight,
+    // The app's own menus (edit commands of a field, the job's menu, "…").
+    scissors: Scissors,
+    delete: Delete,
+    'text-select': TextSelect,
+    ellipsis: Ellipsis,
+    // Places and tools of the final round (docs/PLAN.md, icons by meaning).
+    'layout-dashboard': LayoutDashboard,
+    settings: Settings,
+    funnel: Funnel,
+    'mail-open': MailOpen,
+    send: Send,
+    target: Target,
+    'circle-x': CircleX,
     // The ad's rate and start in the reader's strip, where no criterion covers them.
     banknote: Banknote,
     calendar: Calendar,

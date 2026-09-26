@@ -78,12 +78,8 @@ interface Harness {
   holdAfter: number | null;
   /** A copy of a job as the stub holds it (null if unknown). */
   job: (key: JobKey) => JobView | null;
-  /** The native menus shown (entries: text, enabled, OS command or null, check state). */
-  menus: { text: string; enabled: boolean; command: string | null; checked?: boolean }[][];
-  /** Where the last menu was shown (window px; null: at the pointer). */
-  menuAt: { x: number; y: number } | null;
-  /** Click an entry of the last menu shown (like the user in the native menu). */
-  pick: (index: number) => void;
+  /** The text `clipboard_text` returns (null: the browser's clipboard, if it allows it). */
+  clipboard: string | null;
   /** The page holds unsaved changes (its last `set_unsaved`). */
   unsaved: boolean;
   /** The window was closed (`close_window`, or a close request without unsaved changes). */
@@ -2002,7 +1998,9 @@ function cancelRun(): void {
 /* ----------------------------------------------------------------- handlers */
 
 type Args<K extends keyof Commands> = Omit<Commands[K]['args'], 'channel'>;
-type Handlers = { [K in keyof Commands]: (args: Args<K>) => Commands[K]['result'] };
+type Handlers = {
+  [K in keyof Commands]: (args: Args<K>) => Commands[K]['result'] | Promise<Commands[K]['result']>;
+};
 
 const find = (key: { portal: string; id: string }): JobView | undefined =>
   jobs.find((j) => j.key.portal === key.portal && j.key.id === key.id);
@@ -2234,6 +2232,8 @@ const handlers: Handlers = {
   },
   reset_all: () => null,
   report_ui_error: () => null,
+  clipboard_text: async () =>
+    harness.clipboard ?? (await navigator.clipboard.readText().catch(() => null)),
 };
 
 /** Listeners of app events (`listen` of @tauri-apps/api/event). */
@@ -2266,11 +2266,7 @@ const harness: Harness = {
   detailDelay: 0,
   failPages: 0,
   holdAfter: null,
-  menus: [],
-  menuAt: null,
-  pick(index) {
-    lastItems[index]?.choose();
-  },
+  clipboard: null,
   unsaved: false,
   closed: false,
   requestClose() {
@@ -2287,106 +2283,6 @@ const harness: Harness = {
 };
 window.__harness = harness;
 initial();
-
-/* ------------------------------------------------------------------- menus */
-
-// The native menu of @tauri-apps/api/menu as the page sees it: `popup` records the entries.
-
-interface StubItem {
-  text: string;
-  enabled: boolean;
-  command: string | null;
-  checked?: boolean;
-}
-
-/** The window position of @tauri-apps/api/dpi. */
-export class LogicalPosition {
-  constructor(
-    readonly x: number,
-    readonly y: number,
-  ) {}
-}
-
-/** The entries of the last menu shown (`pick` clicks one). */
-let lastItems: { choose: () => void }[] = [];
-
-export class MenuItem {
-  constructor(
-    readonly entry: StubItem,
-    readonly action: () => void,
-  ) {}
-
-  choose(): void {
-    if (this.entry.enabled) this.action();
-  }
-
-  static async new(options: {
-    text: string;
-    enabled?: boolean;
-    action?: () => void;
-  }): Promise<MenuItem> {
-    const entry = { text: options.text, enabled: options.enabled ?? true, command: null };
-    return new MenuItem(entry, options.action ?? (() => undefined));
-  }
-}
-
-export class CheckMenuItem {
-  constructor(
-    readonly entry: StubItem,
-    readonly action: () => void,
-  ) {}
-
-  static async new(options: {
-    text: string;
-    checked?: boolean;
-    enabled?: boolean;
-    action?: () => void;
-  }): Promise<CheckMenuItem> {
-    const entry = {
-      text: options.text,
-      enabled: options.enabled ?? true,
-      command: null,
-      checked: options.checked ?? false,
-    };
-    return new CheckMenuItem(entry, options.action ?? (() => undefined));
-  }
-
-  choose(): void {
-    if (this.entry.enabled) this.action();
-  }
-}
-
-export class PredefinedMenuItem {
-  constructor(readonly entry: StubItem) {}
-
-  choose(): void {}
-
-  static async new(options: { item: string; text?: string }): Promise<PredefinedMenuItem> {
-    return new PredefinedMenuItem({
-      text: options.text ?? options.item,
-      enabled: true,
-      command: options.item,
-    });
-  }
-}
-
-type StubMenuItem = MenuItem | PredefinedMenuItem | CheckMenuItem;
-
-export class Menu {
-  constructor(readonly items: StubMenuItem[]) {}
-
-  static async new(options: { items: StubMenuItem[] }): Promise<Menu> {
-    return new Menu(options.items);
-  }
-
-  async popup(at?: LogicalPosition): Promise<void> {
-    lastItems = this.items;
-    harness.menuAt = at === undefined ? null : { x: at.x, y: at.y };
-    harness.menus.push(this.items.map((item) => item.entry));
-  }
-
-  async close(): Promise<void> {}
-}
 
 /* --------------------------------------------------------------------- core */
 

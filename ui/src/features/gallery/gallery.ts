@@ -110,6 +110,7 @@ export const text = {
     views: ['Neu', 'Alle', 'Gemerkt', 'Bewerbungen'],
     orders: ['Nach Passung', 'Nach Datum'],
     orderOff: 'Ohne Profil nur nach Datum.',
+    orderMenu: 'Sortierung',
     sort: 'Sortierung',
     sorts: ['Beste Passung', 'Neueste', 'Portal'],
     address: 'Postfach',

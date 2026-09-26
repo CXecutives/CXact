@@ -293,6 +293,23 @@ export function toastOut(node: Element): TransitionConfig {
   };
 }
 
+/** A menu drops in from --move-sm toward where it opened (100 ms, ease-out, a fade): down
+ *  below its button or pointer, up when it opened above. */
+export function menuIn(node: Element, { up = false }: { up?: boolean } = {}): TransitionConfig {
+  if (isReducedMotion()) return crossfade(node);
+  const y = move('sm') * (up ? 1 : -1);
+  return {
+    duration: duration('fast'),
+    easing: easing('out'),
+    css: (t) => `opacity: ${t}; transform: translateY(${Math.round((1 - t) * y)}px)`,
+  };
+}
+
+/** A menu leaves with a quick fade (60 ms), nothing moves. */
+export function menuOut(_node: Element): TransitionConfig {
+  return opacity(duration('instant'), easing('in'));
+}
+
 export interface TooltipParams {
   /** Where the bubble sits: it comes --move-sm out of its anchor as it appears. */
   placement: 'top' | 'bottom' | 'right';

@@ -6,10 +6,15 @@
 // - controls react to the left button only: the right button never presses, focuses or
 //   selects anything, and no control looks pressed under it (`data-aux-press`, see
 //   auxPress). A left press beside a focused field ends its focus, also on a drag region
-//   (`leaveField`). There is no browser context menu; the OS's own menu appears where
-//   a native app has one: in a text field (Windows: Undo | Cut, Copy, Paste, Delete |
-//   Select all; macOS: Cut, Copy, Paste | Select all; each enabled by the field's state)
-//   and on selected copyable text (Copy). Everywhere else a right click does nothing.
+//   (`leaveField`). There is no browser context menu and no OS popup: the app's own menu
+//   (components/Menu.svelte) appears where a native app has one: in a text field (Windows:
+//   Undo | Cut, Copy, Paste, Delete | Select all; macOS: Cut, Copy, Paste | Select all;
+//   each enabled by the field's state), on selected copyable text (Copy) and on an element
+//   that offers its own (`contextMenu`: a job row). Everywhere else a right click does
+//   nothing. The Menu key and Shift+F10 (Windows) open it at the field or the open row.
+//   While a menu is open it takes every key (arrows, Home/End, the first letter, Enter and
+//   Space, Esc, Tab closes), and a press outside, the window's blur, resizing or a scroll
+//   outside it closes it; the left press that closes it does nothing else.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick), the back/forward buttons do nothing
@@ -51,14 +56,23 @@
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
-import { popupEditMenu, type EditEntry } from '../ipc/api';
+import { clipboardText, reportUiError } from '../ipc/api';
 import {
   fieldMenuUndoDelete,
   hasAutoscroll,
   keyConventions,
-  nativeEditMenu,
+  keyLabel,
   type KeyConventions,
 } from '../platform';
+import {
+  chooseEntry,
+  closeMenu,
+  firstEnabled,
+  isItem,
+  menuState,
+  openMenu,
+  type MenuEntry,
+} from '../state/menu.svelte';
 import { tokenMs, tokenPx } from '../tokens';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
@@ -186,10 +200,11 @@ function typesWithAltGraph(event: KeyboardEvent, os: KeyConventions): boolean {
   return event.ctrlKey && event.altKey && !event.metaKey && isTypedCharacter(event.key);
 }
 
-/** Shift+F10 alone: the context menu (Windows), which the engine turns into `contextmenu`. */
+/** Shift+F10 alone or the Menu key: the context menu (Windows; a Mac keyboard has neither). */
 function isContextMenuKey(event: KeyboardEvent): boolean {
+  if (!keyConventions().contextMenuKey || hasModifier(event)) return false;
   return (
-    event.key === 'F10' && event.shiftKey && !hasModifier(event) && keyConventions().contextMenuKey
+    (event.key === 'F10' && event.shiftKey) || (event.key === 'ContextMenu' && !event.shiftKey)
   );
 }
 
@@ -649,6 +664,10 @@ function onFocusIn(event: FocusEvent): void {
 
 function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
+  if (menuState.open !== null) {
+    dispatchMenuKey(event);
+    return;
+  }
   if (event.ctrlKey || event.metaKey) guardZoom(true);
   if (isWindowShortcut(event)) return;
   const modal = topModal();
@@ -666,8 +685,13 @@ function onKeyDown(event: KeyboardEvent): void {
     }
   }
   if (isCopy(event)) return;
-  // Shift+F10 on selected text opens its menu (Copy), like the Menu key.
-  if (isContextMenuKey(event) && !inField(event.target) && hasSelection()) return;
+  // Shift+F10 and the Menu key (Windows) open the app's menu at the field, the selected
+  // copyable text or the open item of the list; the page opens it, not the engine.
+  if (isContextMenuKey(event)) {
+    event.preventDefault();
+    openMenuByKey(event.target);
+    return;
+  }
   if (isFindShortcut(event)) {
     // Never the WebView's find bar; a list with a search field takes it.
     event.preventDefault();
@@ -818,45 +842,129 @@ function deleteSelection(field: HTMLInputElement | HTMLTextAreaElement): void {
   field.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
-const SEPARATOR: EditEntry = { command: 'Separator' };
+/** Text typed in as one step of the field's undo (a paste from the menu). */
+function insertText(field: HTMLInputElement | HTMLTextAreaElement, text: string): void {
+  if (document.execCommand('insertText', false, text)) return;
+  field.setRangeText(text, field.selectionStart ?? 0, field.selectionEnd ?? 0, 'end');
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/** Put text on the clipboard (the engine's copy first, the clipboard API when it refuses). */
+function copyOut(text: string): void {
+  if (document.execCommand('copy')) return;
+  navigator.clipboard.writeText(text).catch((error: unknown) => {
+    reportUiError(`menu copy: ${String(error)}`, null, null);
+  });
+}
+
+const SEPARATOR: MenuEntry = { kind: 'separator' };
 
 /**
- * The context menu of a text field, like the OS's own, its entries enabled by the field's
- * state. Windows: Undo | Cut, Copy, Paste, Delete | Select all; macOS without undo and
- * delete (platform.ts).
+ * The menu of a text field, like the OS's own, its entries enabled by the field's state.
+ * Windows: Undo | Cut, Copy, Paste, Delete | Select all; macOS has no undo and no delete
+ * there (platform.ts). The menu takes the focus while it is open; an entry puts it back on
+ * the field with the selection it had, then acts like the key would.
  */
-function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): EditEntry[] {
-  // A right click in a field that is not focused focuses it (the edit commands act on it).
+function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
+  // A right click in a field that is not focused focuses it (the commands act on it).
   if (document.activeElement !== field) field.focus();
+  const start = field.selectionStart ?? 0;
+  const end = field.selectionEnd ?? 0;
+  const back = (): void => {
+    field.focus({ preventScroll: true });
+    field.setSelectionRange(start, end);
+  };
   const editable = !field.readOnly && !field.disabled;
   const hidden = field instanceof HTMLInputElement && field.type === 'password';
-  const selected = (field.selectionStart ?? 0) !== (field.selectionEnd ?? 0);
+  const selected = start !== end;
   const full = fieldMenuUndoDelete();
-  const undo: EditEntry[] = full
+  const undo: MenuEntry[] = full
     ? [
-        // The engine keeps one undo history for the page (the entry sends Ctrl+Z).
-        { command: 'Undo', text: t.edit.undo, enabled: editable && canUndo() },
+        {
+          id: 'undo',
+          label: t.edit.undo,
+          icon: 'undo-2',
+          keys: keyLabel('mod+z'),
+          // The engine keeps one undo history for the page.
+          disabled: !(editable && canUndo()),
+          run: () => {
+            back();
+            document.execCommand('undo');
+          },
+        },
         SEPARATOR,
       ]
     : [];
-  const remove: EditEntry[] = full
+  const remove: MenuEntry[] = full
     ? [
         {
-          command: 'Delete',
-          text: t.edit.delete,
-          enabled: editable && selected,
-          run: () => deleteSelection(field),
+          id: 'delete',
+          label: t.edit.delete,
+          icon: 'delete',
+          keys: keyLabel('del'),
+          disabled: !(editable && selected),
+          run: () => {
+            back();
+            deleteSelection(field);
+          },
         },
       ]
     : [];
+  const text = field.value.slice(start, end);
   return [
     ...undo,
-    { command: 'Cut', text: t.edit.cut, enabled: editable && selected && !hidden },
-    { command: 'Copy', text: t.edit.copy, enabled: selected && !hidden },
-    { command: 'Paste', text: t.edit.paste, enabled: editable },
+    {
+      id: 'cut',
+      label: t.edit.cut,
+      icon: 'scissors',
+      keys: keyLabel('mod+x'),
+      disabled: !(editable && selected && !hidden),
+      run: () => {
+        back();
+        if (document.execCommand('cut')) return;
+        copyOut(text);
+        deleteSelection(field);
+      },
+    },
+    {
+      id: 'copy',
+      label: t.edit.copy,
+      icon: 'copy',
+      keys: keyLabel('mod+c'),
+      disabled: !(selected && !hidden),
+      run: () => {
+        back();
+        copyOut(text);
+      },
+    },
+    {
+      id: 'paste',
+      label: t.edit.paste,
+      icon: 'clipboard-paste',
+      keys: keyLabel('mod+v'),
+      disabled: !editable,
+      run: () => {
+        back();
+        void clipboardText().then((pasted) => {
+          if (pasted === null || pasted === '' || !field.isConnected) return;
+          back();
+          insertText(field, pasted);
+        });
+      },
+    },
     ...remove,
     SEPARATOR,
-    { command: 'SelectAll', text: t.edit.selectAll, enabled: field.value !== '' },
+    {
+      id: 'select-all',
+      label: t.edit.selectAll,
+      icon: 'text-select',
+      keys: keyLabel('mod+a'),
+      disabled: field.value === '',
+      run: () => {
+        field.focus({ preventScroll: true });
+        field.select();
+      },
+    },
   ];
 }
 
@@ -877,19 +985,227 @@ function selectedCopy(target: EventTarget | null): boolean {
   return selection.toString().trim() !== '' && selection.containsNode(copy, true);
 }
 
-/** The right click: the OS's menu in fields and on selected copyable text, else nothing.
- *  From the keyboard (the Menu key, Shift+F10: no button) the menu opens where the engine
- *  puts the event, at the field or the selection, not at the pointer. */
+/** What an element offers on a right click (a job row: open, archive, ...). */
+export interface ContextMenu {
+  label: string;
+  entries: readonly MenuEntry[];
+}
+
+const MENU_HOST = '[data-context-menu]';
+const MENU_LAYER = '[data-menu-layer]';
+const menuHosts = new WeakMap<Element, () => ContextMenu | null>();
+
+/**
+ * `use:contextMenu={() => ({ label, entries })}`: a right click on the element (or the Menu
+ * key while it is the open item of a list) opens the app's menu with these entries; null
+ * offers none. No listener of its own.
+ */
+export const contextMenu: Action<HTMLElement, (() => ContextMenu | null) | null> = (
+  node,
+  offer,
+) => {
+  const set = (next: (() => ContextMenu | null) | null): void => {
+    if (next === null) {
+      menuHosts.delete(node);
+      delete node.dataset.contextMenu;
+    } else {
+      menuHosts.set(node, next);
+      node.dataset.contextMenu = '';
+    }
+  };
+  set(offer);
+  return {
+    update: set,
+    destroy: () => menuHosts.delete(node),
+  };
+};
+
+/** Open the menu of `host` at the pointer, or below the element itself from the keyboard. */
+function openHostMenu(host: Element, at: { x: number; y: number } | null): void {
+  const offer = menuHosts.get(host)?.() ?? null;
+  if (offer === null || offer.entries.length === 0) return;
+  openMenu({
+    entries: offer.entries,
+    label: offer.label,
+    anchor:
+      at === null
+        ? { kind: 'below', rect: host.getBoundingClientRect(), align: 'start' }
+        : { kind: 'point', ...at },
+    fromKeyboard: at === null,
+  });
+}
+
+/** The open item of the shown list (its row carries aria-current), for the Menu key. */
+function openItem(): Element | null {
+  const list = document.querySelector(LIST);
+  return list?.querySelector(`${MENU_HOST}[aria-current="true"]`) ?? null;
+}
+
+/** The right click: the app's menu in fields, on selected copyable text and on elements that
+ *  offer one, else nothing. From the keyboard (the Menu key, Shift+F10: no button) the menu
+ *  opens below the field or the element, not at the pointer. */
 function onContextMenu(event: MouseEvent): void {
   event.preventDefault();
-  if (!nativeEditMenu()) return;
-  const at = event.button === -1 ? { x: event.clientX, y: event.clientY } : null;
+  if (closest(event.target, MENU_LAYER) !== null) return;
+  const modal = topModal();
+  if (modal !== null && !(event.target instanceof Node && modal.contains(event.target))) return;
+  // The engines send the menu key's event without a button (-1).
+  const keyboard = event.button === -1;
+  const at = keyboard ? null : { x: event.clientX, y: event.clientY };
   const field = closest(event.target, 'input, textarea');
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-    void popupEditMenu(fieldMenu(field), at);
-  } else if (selectedCopy(event.target)) {
-    void popupEditMenu([{ command: 'Copy', text: t.edit.copy, enabled: true }], at);
+    openMenu({
+      entries: fieldMenu(field),
+      label: t.edit.menu,
+      anchor:
+        at === null
+          ? { kind: 'below', rect: field.getBoundingClientRect(), align: 'start' }
+          : { kind: 'point', ...at },
+      fromKeyboard: keyboard,
+    });
+    return;
   }
+  const selection = getSelection();
+  if (selectedCopy(event.target) && selection !== null) {
+    const text = selection.toString();
+    const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const box = range?.getBoundingClientRect() ?? null;
+    openMenu({
+      entries: [
+        {
+          id: 'copy',
+          label: t.edit.copy,
+          icon: 'copy',
+          keys: keyLabel('mod+c'),
+          run: () => copyOut(text),
+        },
+      ],
+      label: t.edit.menu,
+      anchor:
+        at !== null
+          ? { kind: 'point', ...at }
+          : box !== null
+            ? { kind: 'below', rect: box, align: 'start' }
+            : { kind: 'point', x: 0, y: 0 },
+      fromKeyboard: keyboard,
+    });
+    return;
+  }
+  const host = closest(event.target, MENU_HOST) ?? (keyboard ? openItem() : null);
+  if (host !== null) openHostMenu(host, at);
+}
+
+/** Shift+F10 or the Menu key: the menu of the focused field, of the selected copyable text
+ *  or of the open item of the list, below it (every engine alike, none opens its own). */
+function openMenuByKey(target: EventTarget | null): void {
+  const field = closest(target, 'input, textarea');
+  if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
+    openMenu({
+      entries: fieldMenu(field),
+      label: t.edit.menu,
+      anchor: { kind: 'below', rect: field.getBoundingClientRect(), align: 'start' },
+      fromKeyboard: true,
+    });
+    return;
+  }
+  const selection = getSelection();
+  const copy = selection?.anchorNode ? closest(selection.anchorNode, COPY) : null;
+  if (selection !== null && copy !== null && selection.toString().trim() !== '') {
+    const text = selection.toString();
+    openMenu({
+      entries: [
+        {
+          id: 'copy',
+          label: t.edit.copy,
+          icon: 'copy',
+          keys: keyLabel('mod+c'),
+          run: () => copyOut(text),
+        },
+      ],
+      label: t.edit.menu,
+      anchor: {
+        kind: 'below',
+        rect: selection.getRangeAt(0).getBoundingClientRect(),
+        align: 'start',
+      },
+      fromKeyboard: true,
+    });
+    return;
+  }
+  const host = closest(target, MENU_HOST) ?? openItem();
+  if (host !== null) openHostMenu(host, null);
+}
+
+/** Letters typed quickly one after the other pick the entry that starts with them. */
+let typed = '';
+let typedAt = 0;
+const TYPE_AHEAD_MS = 700;
+
+/** The keys of an open menu: it takes every key while it is open. */
+function dispatchMenuKey(event: KeyboardEvent): void {
+  const open = menuState.open;
+  if (open === null) return;
+  const entries = open.entries;
+  const move = (from: number, step: 1 | -1): void => {
+    const next = firstEnabled(entries, from, step);
+    if (next !== -1) menuState.active = next;
+  };
+  // Window shortcuts (Alt+F4, the macOS menu keys) still reach the OS.
+  if (isWindowShortcut(event)) {
+    closeMenu(false);
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  switch (event.key) {
+    case 'ArrowDown':
+      move(menuState.active < 0 ? 0 : menuState.active + 1, 1);
+      return;
+    case 'ArrowUp':
+      move(menuState.active < 0 ? entries.length - 1 : menuState.active - 1, -1);
+      return;
+    case 'Home':
+      move(0, 1);
+      return;
+    case 'End':
+      move(entries.length - 1, -1);
+      return;
+    case 'Enter':
+    case ' ':
+      if (menuState.active >= 0) chooseEntry(menuState.active);
+      return;
+    case 'Escape':
+    case 'Tab':
+    case 'ContextMenu':
+    case 'Alt':
+      closeMenu();
+      return;
+    default:
+      break;
+  }
+  if (event.key.length !== 1 || hasModifier(event)) return;
+  const now = event.timeStamp;
+  const letter = event.key.toLowerCase();
+  typed = now - typedAt < TYPE_AHEAD_MS ? typed + letter : letter;
+  typedAt = now;
+  const hit = entries.findIndex(
+    (entry) =>
+      isItem(entry) && entry.disabled !== true && entry.label.toLowerCase().startsWith(typed),
+  );
+  if (hit !== -1) menuState.active = hit;
+}
+
+/** A press outside the open menu closes it; a left one does nothing else (like the OS: the
+ *  click that dismisses a menu never reaches what lies under it), a right one opens the
+ *  menu of what it lands on. */
+function pressOutsideMenu(event: MouseEvent): boolean {
+  if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
+  closeMenu();
+  if (event.button === LEFT) {
+    event.preventDefault();
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -958,7 +1274,9 @@ function scrollOver(): void {
   resting.clear();
 }
 
-function onScroll(): void {
+function onScroll(event: Event): void {
+  // A scroll outside the open menu closes it (the menu's own list scrolls inside it).
+  if (menuState.open !== null && closest(event.target, MENU_LAYER) === null) closeMenu(false);
   scrollIdleMs ??= tokenMs('--scroll-idle');
   if (!scrolling) {
     scrolling = true;
@@ -1058,6 +1376,10 @@ export function installInput(): void {
     'mousedown',
     (event) => {
       keyboardFocus = false;
+      if (pressOutsideMenu(event)) {
+        swallow = true;
+        return;
+      }
       if (autoscroll) {
         autoscroll = false;
         swallow = true;
@@ -1173,7 +1495,9 @@ export function installInput(): void {
   window.addEventListener('blur', () => {
     guardZoom(false);
     auxPress(false);
+    closeMenu(false);
   });
+  window.addEventListener('resize', () => closeMenu(false));
   document.addEventListener('scroll', onScroll, { capture: true, passive: true });
   document.addEventListener('pointerover', onPointerOver, { capture: true, passive: true });
   document.addEventListener('pointerout', onPointerOut, { capture: true, passive: true });

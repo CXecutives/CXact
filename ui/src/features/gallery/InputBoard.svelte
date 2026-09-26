@@ -74,13 +74,14 @@
           testid="segmented-facet"
         />
       </div>
-      <!-- A native menu of choices below a quiet button (the sort of the list), and the same
-           disabled with its reason. -->
+      <!-- The app's own menu of choices below a quiet button (the sort of the list), and the
+           same disabled with its reason. -->
       <div class="row">
         <MenuButton
           options={orders}
           value={order}
           onchange={(id) => (order = id)}
+          menuLabel={t.orderMenu}
           testid="menu-order"
         />
         <MenuButton
@@ -89,6 +90,7 @@
           disabled
           disabledReason={t.orderOff}
           onchange={() => undefined}
+          menuLabel={t.orderMenu}
           testid="menu-order-off"
         />
       </div>

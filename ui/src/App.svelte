@@ -10,6 +10,7 @@
 <script lang="ts">
   import DragBand from '$components/DragBand.svelte';
   import EmptyState from '$components/EmptyState.svelte';
+  import Menu from '$components/Menu.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
   import Tooltip from '$components/Tooltip.svelte';
@@ -93,6 +94,7 @@
     {/if}
   </div>
   <Toast />
+  <Menu />
   <Tooltip />
 </div>
 

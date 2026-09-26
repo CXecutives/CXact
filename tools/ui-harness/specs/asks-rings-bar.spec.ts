@@ -684,7 +684,7 @@ test('a run brings new jobs above and re-sorts, the order changes: the bar stays
   await page.waitForTimeout(300);
   // Another order: the row glides to its new place, the bar with it.
   await page.getByTestId('sort').click();
-  await page.evaluate(() => window.__harness.pick(1));
+  await page.getByTestId('menu-item-newest').click();
   await page.waitForTimeout(400);
   const samples = await stopSampling(page);
   const drawn = samples.filter((sample) => sample.opacity > 0 && sample.row !== null);
