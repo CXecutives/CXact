@@ -656,9 +656,9 @@
     } else if (hovered === item) hovered = null;
   }
 
-  /** What a passage is, under the pointer: a row of the terms with its verdict ("Tagessatz ·
-   *  passt teilweise"), a requirement's state and weight ("Erfüllt · Pflicht"), else the
-   *  state of the reason. */
+  /** What a passage is, under the pointer: a row of the terms with its verdict (day rate and
+   *  partial fit), a requirement's state and weight (met and must), else the state of the
+   *  reason; the words come from the catalog. */
   function markHint(reason: Reason): string {
     const row = rows.find((each) => each.ids.includes(reason.id));
     if (row) {
