@@ -468,7 +468,7 @@
   }
 
   .entry:hover {
-    border-color: var(--border-input);
+    border-color: var(--control-hover-edge);
   }
 
   .entry:focus-within {

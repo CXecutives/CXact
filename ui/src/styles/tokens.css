@@ -292,6 +292,30 @@
   --focus-ring-inset: inset 0 0 0 var(--focus-width) hsl(var(--p-navy));
   --border-focus: hsl(var(--p-navy));
 
+  /* ------------------------------------------- one answer per surface kind */
+  /* Every control answers the pointer by the kind of its surface, the same way everywhere
+     (change a kind here and every control of it follows):
+     - quiet: no fill at rest (ghost button, list row, reason, sidebar entry, run status,
+       segment, text chip, menu entry): a wash under the pointer, a deeper one pressed.
+     - control: a white box with an edge (secondary button, field): a muted fill and a
+       darker edge under the pointer and while pressed (a button also gives a little).
+     - raised: a white tile or card (stat tile, interactive card): a navy edge and a soft
+       shadow under the pointer; pressed it darkens like a control and drops the shadow.
+     - label: text without a box (disclosure, divider, tab): ink under the pointer, its
+       chevron navy, and --pressed while pressed.
+     Keyboard focus is one navy ring: around a control (--focus-ring), inside a row or an
+     entry that fills its line (--focus-ring-inset). */
+  --quiet-hover: var(--surface-hover);
+  --quiet-press: var(--surface-press);
+  --control-hover: var(--surface-muted);
+  --control-hover-edge: var(--border-input);
+  --raised-hover-edge: var(--border-navy);
+  --raised-hover-shadow: var(--sh-hover);
+  --raised-press: var(--surface-muted);
+  --label-hover: var(--text);
+  --label-press: var(--pressed);
+  --label-glyph-hover: var(--icon-accent);
+
   /* ------------------------------------------------------------------- radii */
   --radius-xs: 6px;
   --radius-sm: 8px;

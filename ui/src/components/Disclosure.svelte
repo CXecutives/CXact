@@ -57,7 +57,7 @@
   }
 
   .head:hover {
-    color: var(--text);
+    color: var(--label-hover);
     transition-duration: var(--dur-hover);
   }
 
@@ -76,12 +76,12 @@
   }
 
   .head:hover .chevron {
-    color: var(--icon-accent);
+    color: var(--label-glyph-hover);
   }
 
-  /* Pressed, the chevron darkens one step (the head has no background). */
+  /* The label kind (tokens.css): pressed, the chevron darkens one step (no background). */
   :global(:where(:root:not([data-aux-press]))) .head:active:hover .chevron {
-    color: var(--pressed);
+    color: var(--label-press);
     transition-duration: var(--dur-instant);
   }
 

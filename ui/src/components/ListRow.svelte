@@ -86,12 +86,12 @@
   }
 
   .row:hover:where(:not([data-still])) {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .row:active:hover {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 

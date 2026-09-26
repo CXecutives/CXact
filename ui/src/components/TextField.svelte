@@ -241,7 +241,7 @@
   }
 
   .field:hover {
-    border-color: var(--border-input);
+    border-color: var(--control-hover-edge);
     transition-duration: var(--dur-hover);
   }
 

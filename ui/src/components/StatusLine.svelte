@@ -89,13 +89,13 @@
   }
 
   .status:hover {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
     color: var(--text);
     transition-duration: var(--dur-hover);
   }
 
   :global(:where(:root:not([data-aux-press]))) .status:active:hover {
-    background-color: var(--surface-press);
+    background-color: var(--quiet-press);
     transition-duration: var(--dur-instant);
   }
 

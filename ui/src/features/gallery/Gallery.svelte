@@ -278,7 +278,7 @@
   }
 
   .icon-cell:hover {
-    background-color: var(--surface-hover);
+    background-color: var(--quiet-hover);
   }
 
   .matrix {
