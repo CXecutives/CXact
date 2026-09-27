@@ -38,8 +38,8 @@ pub const SCORE_RING_8: Colour = Colour::new("hsl(96 35% 50%)", [0x77, 0xAC, 0x5
 pub const SCORE_RING_9: Colour = Colour::new("hsl(140 41% 45%)", [0x44, 0xA2, 0x63]);
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
 pub const SCORE_EXCLUDED: Colour = TEXT_SUBTLE;
-/// `--brand` (`--p-coral`).
-pub const BRAND: Colour = Colour::new("hsl(13 78% 57%)", [0xE7, 0x61, 0x3C]);
+/// `--brand` (`--p-brand`).
+pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 /// `--brand-glyph` (`--p-white`).
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 

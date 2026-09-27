@@ -94,7 +94,7 @@
     "score-track":            { "css": "hsl(33 22% 82.5%)", "rgb": [220, 211, 201] },
     "score-excluded":         { "css": "hsl(30 5% 42%)", "rgb": [112, 107, 102] },
     "score-excluded-track":   { "css": "hsl(33 22% 82.5%)", "rgb": [220, 211, 201] },
-    "brand":                  { "css": "hsl(13 78% 57%)", "rgb": [231, 97, 60] },
+    "brand":                  { "css": "hsl(13 73% 63%)", "rgb": [230, 122, 92] },
     "brand-glyph":            { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "border-focus":           { "css": "hsl(212 38% 33%)", "rgb": [52, 82, 116] },
     "control-hover":          { "css": "hsl(33 40% 95.5%)", "rgb": [248, 244, 239] },

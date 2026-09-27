@@ -43,6 +43,8 @@
      unread dot, active icons and switches that are on (3.4:1 on white, 3.0:1 on the cream,
      was 2.9 and 2.6); a deeper step on hover and one more when pressed. */
   --p-coral: 13 78% 57%;
+  /* The app icon's coral (#E67A5C), fixed apart from the design's coral. */
+  --p-brand: 13 73% 63%;
   --p-coral-variant: 13 72% 51%;
   --p-coral-press: 13 68% 46%;
   --p-muted: 33 40% 95.5%;
@@ -287,8 +289,9 @@
   /* ------------------------------------------------------------------- brand */
   /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
      and the folder with the check cut out of it. tools/icon.py draws every icon file in
-     these two (through tools/palette.json). */
-  --brand: hsl(var(--p-coral));
+     these two (through tools/palette.json). Its coral is fixed (#E67A5C, the user's choice for
+     the icon), apart from the design's coral, so the icon never changes with a design. */
+  --brand: hsl(var(--p-brand));
   --brand-glyph: hsl(var(--p-white));
 
   /* --------------------------------------------------------------- gradients */
