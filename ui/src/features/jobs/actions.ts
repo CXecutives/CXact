@@ -93,12 +93,59 @@ export interface JobMenuContext {
   report: (error: string | null) => void;
 }
 
+/** What shows the job: its alert mail, its ad, the prompt of it for an AI chat. */
+export type ShowId = 'mail' | 'open-ad' | 'prompt';
+
+/** One way to show the job as it stands: its words, its glyph, and why it cannot be done now
+ *  (its tooltip; null: it can). */
+export interface ShowAction {
+  id: ShowId;
+  label: string;
+  icon: IconName;
+  reason: string | null;
+}
+
+/** Their one order, in the menu and among the reader's buttons. */
+const SHOWS: readonly ShowId[] = ['mail', 'open-ad', 'prompt'];
+
+/**
+ * What shows the job, decided once for its menu (a right click on its row, the reader's "…"
+ * of an excluded job) and the reader's buttons: Alert-Mail öffnen, off without an alert mail;
+ * Anzeige öffnen, which says Offline-Anzeige öffnen for an ad that is gone or takes no
+ * applications (the portal's page still opens); KI-Prompt kopieren, off without a profile to
+ * judge the job by or without the ad's text (a preview is one).
+ */
+export function showActions(job: JobView): Record<ShowId, ShowAction> {
+  const offline = job.detail.kind === 'gone' || job.closed;
+  const text = job.detail.kind === 'ok' || job.detail.kind === 'teaser';
+  return {
+    mail: {
+      id: 'mail',
+      label: t.actions.mail,
+      icon: 'alertMail',
+      reason: job.hasMail ? null : t.reader.noMail,
+    },
+    'open-ad': {
+      id: 'open-ad',
+      label: offline ? t.reader.openOffline : t.actions.openAd,
+      icon: 'external',
+      reason: null,
+    },
+    prompt: {
+      id: 'prompt',
+      label: t.actions.prompt,
+      icon: 'prompt',
+      reason: !app.hasProfile ? t.actions.promptNoProfile : text ? null : t.reader.promptNoText,
+    },
+  };
+}
+
 /**
  * The job's menu, one table for the row's right click and the reader's "…", in two groups
- * with a line between them: what shows the job (Öffnen, Alert-Mail öffnen, Anzeige öffnen,
- * KI-Prompt kopieren; the reader shows them as its buttons), then what changes it (an
- * excluded job's "Trotzdem bewerten", or "Wieder ausschließen" once it counts, then the
- * moves of its place). No entry names a key. The test id of an entry is `menu-item-<id>`.
+ * with a line between them: what shows the job (Öffnen, then `showActions`: the reader shows
+ * them as its buttons), then what changes it (an excluded job's "Trotzdem bewerten", or
+ * "Wieder ausschließen" once it counts, then the moves of its place). No entry names a key.
+ * The test id of an entry is `menu-item-<id>`.
  */
 export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
@@ -108,29 +155,23 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   if (context.open) {
     show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
   }
-  const noProfile = app.hasProfile ? null : t.actions.promptNoProfile;
-  show.push(
-    {
-      id: 'mail',
-      label: t.actions.mail,
-      icon: 'alertMail',
-      run: () => void openTarget({ kind: 'gmail', key: job.key }).then(report),
-    },
-    {
-      id: 'open-ad',
-      label: t.actions.openAd,
-      icon: 'external',
-      run: () => void openAd(job).then(report),
-    },
-    {
-      id: 'prompt',
-      label: t.actions.prompt,
-      icon: 'prompt',
-      disabled: noProfile !== null,
-      reason: noProfile,
-      run: () => void copyJobPrompt(job.key).then(report),
-    },
-  );
+  const does: Record<ShowId, () => Promise<string | null>> = {
+    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    'open-ad': () => openAd(job),
+    prompt: () => copyJobPrompt(job.key),
+  };
+  const actions = showActions(job);
+  for (const id of SHOWS) {
+    const action = actions[id];
+    show.push({
+      id,
+      label: action.label,
+      icon: action.icon,
+      disabled: action.reason !== null,
+      reason: action.reason,
+      run: () => void does[id]().then(report),
+    });
+  }
   return [...show, { kind: 'separator' }, ...change];
 }
 

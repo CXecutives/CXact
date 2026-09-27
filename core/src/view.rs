@@ -213,6 +213,9 @@ pub struct JobView {
     /// The user marked the job as fitting although the engine excludes it ("Trotzdem
     /// passend"): it counts as scored with its fit score, its note is `userOverride`.
     pub overridden: bool,
+    /// Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
+    /// reader).
+    pub has_mail: bool,
 }
 
 impl From<&JobRow> for JobView {
@@ -246,6 +249,7 @@ impl From<&JobRow> for JobView {
             place: job.place(),
             trashed_at: job.trashed_at,
             overridden: job.override_include,
+            has_mail: job.gmail_id.and_then(gmail_url).is_some(),
         }
     }
 }
@@ -1765,6 +1769,9 @@ mod tests {
             detail.mail.gmail_url.as_deref(),
             Some("https://mail.google.com/mail/u/0/#all/1a2b")
         );
+        // The row knows it too: its menu offers the alert mail like the reader.
+        assert!(view.has_mail && detail.job.has_mail);
+        assert_eq!(json["hasMail"], true);
     }
 
     /// A closed ad reaches the list, marked as closed, until its page says it is open again.
@@ -2108,6 +2115,7 @@ mod tests {
         );
         assert_eq!((all.counts.inbox, all.counts.excluded), (2, 0));
         assert_eq!(all.jobs.len(), count);
+        assert!(!all.jobs[0].has_mail, "no Gmail id, no alert mail to open");
         let best = page(Some(Band::High));
         assert_eq!(titles(&best), ["E"]);
         assert_eq!(best.jobs.len(), high);

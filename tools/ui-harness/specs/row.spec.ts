@@ -15,10 +15,12 @@ import { animationsDone, expect, NOW, open, test } from './fixtures';
 import {
   list,
   listed,
+  openJob,
   openPlace,
   row,
   rowMenu,
   settleMoves,
+  stage,
   stubList,
   T,
   tokenColour,
@@ -313,6 +315,58 @@ test.describe('tools', () => {
     await page.mouse.move(0, 0);
     await expect(job(page, key).getByTestId('row-tools')).toHaveCount(0);
   });
+});
+
+test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  // freelancermap-2805: its ad never came, and here its alert mail cannot be opened;
+  // linkedin-4100200304: its ad takes no applications any more. The list loads them again.
+  await page.evaluate(() => window.__harness.noMail({ portal: 'freelancermap', id: '2805' }));
+  await openPlace(page, 'archive');
+  await openPlace(page, 'inbox');
+  const SHOWN = [
+    ['mail', 'reader-mail'],
+    ['open-ad', 'open-ad'],
+    ['prompt', 'reader-prompt'],
+  ] as const;
+  /** Each entry's words and whether it is off: in the row's menu, then in the reader. */
+  const offered = async (key: string): Promise<{ menu: string[]; reader: string[] }> => {
+    await rowMenu(page, key);
+    const state = async (target: Locator): Promise<string> =>
+      `${await target.locator('.label').innerText()} ${(await target.getAttribute('aria-disabled')) ?? 'on'}`;
+    const menu: string[] = [];
+    for (const [id] of SHOWN) menu.push(await state(page.getByTestId(`menu-item-${id}`)));
+    await page.keyboard.press('Escape');
+    await openJob(page, key);
+    const reader: string[] = [];
+    for (const [, testid] of SHOWN) reader.push(await state(stage(page).getByTestId(testid)));
+    return { menu, reader };
+  };
+  const failed = await offered('freelancermap-2805');
+  expect(failed.menu).toEqual([
+    `${T.actions.mail} true`,
+    `${T.actions.openAd} on`,
+    `${T.actions.prompt} true`,
+  ]);
+  expect(failed.reader).toEqual(failed.menu);
+  // Both say why the prompt waits, in the reader's words.
+  const prompt = stage(page).getByTestId('reader-prompt');
+  await prompt.hover();
+  await expect(page.getByRole('tooltip')).toHaveText(T.reader.promptNoText);
+  await page.mouse.move(0, 0);
+  await rowMenu(page, 'freelancermap-2805');
+  await page.getByTestId('menu-item-prompt').hover();
+  await expect(page.getByRole('tooltip')).toHaveText(T.reader.promptNoText);
+  await page.keyboard.press('Escape');
+  const closed = await offered('linkedin-4100200304');
+  expect(closed.menu).toEqual([
+    `${T.actions.mail} on`,
+    `${T.reader.openOffline} on`,
+    `${T.actions.prompt} on`,
+  ]);
+  expect(closed.reader).toEqual(closed.menu);
 });
 
 test('stamps move on while the app stays open', async ({ page }) => {

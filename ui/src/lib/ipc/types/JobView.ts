@@ -38,4 +38,9 @@ trashedAt: string | null,
  * The user marked the job as fitting although the engine excludes it ("Trotzdem
  * passend"): it counts as scored with its fit score, its note is `userOverride`.
  */
-overridden: boolean, };
+overridden: boolean, 
+/**
+ * Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
+ * reader).
+ */
+hasMail: boolean, };

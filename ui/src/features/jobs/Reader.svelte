@@ -66,7 +66,17 @@
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import { guarded, jobMenu, move, override, purge, seen, type MoveId } from './actions';
+  import {
+    guarded,
+    jobMenu,
+    move,
+    override,
+    purge,
+    seen,
+    showActions,
+    type MoveId,
+    type ShowAction,
+  } from './actions';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
@@ -171,11 +181,6 @@
       ...group,
       items: listed.filter((reason) => reason.kind === group.kind).sort(byWeight),
     })).filter((group) => group.items.length > 0),
-  );
-
-  /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
-  const promptOff = $derived(
-    !app.hasProfile ? t.reader.promptNoProfile : detail.text ? null : t.reader.promptNoText,
   );
 
   /** A failure says so in a toast, like every result. */
@@ -396,37 +401,24 @@
 {/snippet}
 
 {#snippet showButtons()}
-  <Button
-    variant="secondary"
-    size="field"
-    icon="alertMail"
-    label={t.reader.mail}
-    iconOnly={iconsOnly}
-    disabled={detail.mail.gmailUrl === null}
-    disabledReason={t.reader.noMail}
-    testid="reader-mail"
-    onclick={() => openTarget({ kind: 'gmail', key: job.key })}
-  />
-  <Button
-    variant="secondary"
-    size="field"
-    icon="external"
-    label={offline ? t.reader.openOffline : t.reader.open}
-    iconOnly={iconsOnly}
-    testid="open-ad"
-    onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
-  />
-  <Button
-    variant="secondary"
-    size="field"
-    icon="prompt"
-    label={t.reader.prompt}
-    iconOnly={iconsOnly}
-    disabled={promptOff !== null}
-    disabledReason={promptOff}
-    testid="reader-prompt"
-    onclick={() => void copyJobPrompt(job.key).then(fail)}
-  />
+  <!-- Words, glyphs and what is off come from the one table the row's menu reads too. -->
+  {@const shows = showActions(job)}
+  {#snippet show(action: ShowAction, testid: string, onclick: () => void)}
+    <Button
+      variant="secondary"
+      size="field"
+      icon={action.icon}
+      label={action.label}
+      iconOnly={iconsOnly}
+      disabled={action.reason !== null}
+      disabledReason={action.reason}
+      {testid}
+      {onclick}
+    />
+  {/snippet}
+  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }))}
+  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }))}
+  {@render show(shows.prompt, 'reader-prompt', () => void copyJobPrompt(job.key).then(fail))}
 {/snippet}
 
 {#snippet actionRow()}
