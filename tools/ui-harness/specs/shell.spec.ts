@@ -25,9 +25,10 @@ import { T, rowMenu, viaMenu } from './helpers';
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
 
-// Every view switch, the Jobs view included, is the same quick cross-fade: the new view fades
-// in on top while the old one fades out below it, so no frame shows an empty sheet. Recorded
-// from the Web Animations Svelte starts (deterministic, no frame timing involved).
+// Every view switch, the Jobs view included, is the same: the old view fades out, then the new
+// one fades in, so two views are never readable at once. Recorded from the Web Animations
+// Svelte starts (deterministic, no frame timing involved): a delayed entrance starts with a
+// still frame at 0 as long as its delay.
 interface Fade {
   view: string;
   from: string;
@@ -182,7 +183,7 @@ test('the shell renders sidebar and the jobs view', async ({ page }) => {
   await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });
 
-test('every view switch is the same cross-fade, the new view on top', async ({ page }) => {
+test('every view switch fades the old view out, then the new one in', async ({ page }) => {
   await page.addInitScript(() => {
     const fades: Fade[] = [];
     (window as unknown as { __fades: Fade[] }).__fades = fades;
@@ -222,15 +223,14 @@ test('every view switch is the same cross-fade, the new view on top', async ({ p
     await expect(page.locator('main.views > section')).toHaveCount(1);
     await expect(page.getByTestId(`view-${to}`)).toBeVisible();
     const fades = await page.evaluate(() => (window as unknown as { __fades: Fade[] }).__fades);
-    const out = fades.find((fade) => fade.view === `view-${from}`);
-    const into = fades.find((fade) => fade.view === `view-${to}`);
-    expect(out, `${from} -> ${to}`).toMatchObject({ from: '1', to: '0', ms: 100 });
-    expect(into, `${from} -> ${to}`).toMatchObject({
-      from: '0',
-      to: '1',
-      ms: 100,
-      order: [`view-${from}`, `view-${to}`],
-    });
+    const out = fades.filter((fade) => fade.view === `view-${from}`);
+    const into = fades.filter((fade) => fade.view === `view-${to}`);
+    expect(out, `${from} -> ${to}`).toMatchObject([{ from: '1', to: '0', ms: 100 }]);
+    // The new view waits at 0 while the old one fades out, then fades in.
+    expect(into, `${from} -> ${to}`).toMatchObject([
+      { from: '0', to: '0', ms: 100 },
+      { from: '0', to: '1', ms: 100 },
+    ]);
   }
 });
 

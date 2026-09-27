@@ -37,7 +37,7 @@
   import { t } from '$lib/i18n/t';
   import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
-  import { rowCollapse, rowEnter } from '$lib/motion/transitions';
+  import { fade, rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -544,7 +544,7 @@
             />
           </div>
           {#if excludedOpen}
-            <div class="rows" data-testid="excluded-rows">
+            <div class="rows" data-testid="excluded-rows" transition:fade>
               {@render group(excluded)}
             </div>
           {/if}

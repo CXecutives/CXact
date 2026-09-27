@@ -77,8 +77,8 @@ export async function visibleCount(page: Page, selector: string): Promise<number
 }
 
 /**
- * A view switch cross-fades: for 100 ms the old view fades out below the new one. What the
- * screen shows is counted once only the new view is left.
+ * A view switch fades the old view out (100 ms), then the new one in. What the screen shows
+ * is counted once only the new view is left.
  */
 export async function viewsSettled(page: Page): Promise<void> {
   await page.waitForFunction(() => document.querySelectorAll('main.views > section').length <= 1);

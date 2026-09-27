@@ -70,6 +70,22 @@ export function fade(node: Element, params: MotionParams = {}): TransitionConfig
   );
 }
 
+/**
+ * A view switch (App.svelte): the old view fades out (100 ms, ease-in), then the new one
+ * fades in (100 ms, ease-out), so two views are never readable at once. `out:viewOut` and
+ * `in:viewIn` on the view; the first view after loading is simply there. Under reduced
+ * motion both cross-fade.
+ */
+export function viewOut(node: Element): TransitionConfig {
+  if (isReducedMotion()) return crossfade(node);
+  return opacity(duration('fast'), easing('in'));
+}
+
+export function viewIn(node: Element): TransitionConfig {
+  if (isReducedMotion()) return crossfade(node);
+  return opacity(duration('fast'), easing('out'), duration('fast'));
+}
+
 /** Fade in while rising by a token distance (default 4 px). */
 export function rise(node: Element, params: RiseParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);

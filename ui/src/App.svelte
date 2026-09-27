@@ -1,7 +1,7 @@
 <!--
   The shell below the native title bar of the OS: the sidebar and the white sheet with the
-  three views. Every view switch is the same quick cross-fade (100 ms): the new view fades in
-  on top while the old one fades out below it, so no frame shows an empty sheet. On start
+  three views. Every view switch is the same: the old view fades out (100 ms), then the new
+  one fades in (100 ms), so two views are never readable at once (lib/motion). On start
   nothing animates and the app shows useful content at once: the first-run page while
   nothing was ever fetched, otherwise the Jobs view with the last results. Closing while the
   app is busy keeps the window until that has stopped; a calm note says what it waits for
@@ -22,7 +22,7 @@
   import { t } from '$lib/i18n/t';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
-  import { fade } from '$lib/motion/transitions';
+  import { fade, viewIn, viewOut } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -101,22 +101,24 @@
           </div>
         </section>
       {:else}
-        <!-- The views are the branches of one block: a switch between them cross-fades
-             (local transitions), while the first view after loading is simply there. -->
+        <!-- The views are the branches of one block: on a switch the old one fades out, then
+             the new one fades in (local transitions), while the first view after loading is
+             simply there. -->
         {#if navigation.current === 'jobs' && firstRun}
-          <section class="view" data-testid="view-first-run" transition:fade>
+          <section class="view" data-testid="view-first-run" in:viewIn out:viewOut>
             {#if band}<DragBand sheet />{/if}
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
-          <section class="view fixed" data-testid="view-jobs" transition:fade>
+          <section class="view fixed" data-testid="view-jobs" in:viewIn out:viewOut>
             <JobsView />
           </section>
         {:else if navigation.current === 'profile'}
           <section
             class="view"
             data-testid="view-profile"
-            transition:fade
+            in:viewIn
+            out:viewOut
             use:keepScroll={'profile'}
           >
             {#if band}<DragBand sheet name={t.nav.profile} />{/if}
@@ -126,7 +128,8 @@
           <section
             class="view"
             data-testid="view-settings"
-            transition:fade
+            in:viewIn
+            out:viewOut
             use:keepScroll={'settings'}
           >
             {#if band}<DragBand sheet name={t.nav.settings} />{/if}
