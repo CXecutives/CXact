@@ -1210,18 +1210,16 @@ fn open_table_keys(catalog: &Source, name: &str) -> Vec<String> {
 }
 
 /// The tables the type cannot hold to the German keys (typed `Record<string, string>`: the
-/// domain packs and the countries) have the same keys in both catalogs.
+/// countries) have the same keys in both catalogs.
 #[test]
 fn the_open_tables_have_the_same_keys() {
     let all = scanned(MIN_FILES);
     let (de, en) = (catalog(&all, CATALOGS[0]), catalog(&all, CATALOGS[1]));
     // English keeps the country names in a constant of its own (the exclusion reason
     // names the countries in words too).
-    for (table, english) in [("pack", "pack"), ("country", "countryName")] {
-        let german = open_table_keys(de, table);
-        assert!(german.len() >= 3, "{table}: {german:?}");
-        assert_eq!(german, open_table_keys(en, english), "{table}");
-    }
+    let german = open_table_keys(de, "country");
+    assert!(german.len() >= 3, "country: {german:?}");
+    assert_eq!(german, open_table_keys(en, "countryName"), "country");
 }
 
 /// The English catalog is English: no umlaut or sharp s and no German word in anything the

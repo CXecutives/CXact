@@ -341,7 +341,9 @@ test('"n Werte prüfen" goes to the first value that does not read, in the order
 
 // ------------------------------------------------------------------ the form as the table
 
-test('the form in its order; only Bedingungen and Wünsche say what they do', async ({ page }) => {
+test('the form in its order; Bedingungen, Festanstellung and Wünsche say what they do', async ({
+  page,
+}) => {
   await profile(page);
   const order = await page
     .locator('[data-testid="profile-form"] section[data-testid^="section-"]')
@@ -1705,7 +1707,7 @@ test('a file with seven Schwerpunkte: the first five are taken, saving works', a
   await page.getByTestId('profile-pick').click();
   await expect.poll(() => marked(page)).toHaveLength(5);
   await expect(page.getByTestId('focus-trimmed')).toHaveText(
-    'Die Datei nennt 7 Schwerpunkte, übernommen sind die ersten fünf.',
+    'Übernommen sind die ersten fünf Schwerpunkte.',
   );
   await expect(page.getByTestId('focus-count')).toHaveText('5/5');
   await save(page).click();
@@ -2536,6 +2538,10 @@ test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; year
   await page.getByTestId('profile-paste').getByTestId('dialog-confirm').click();
   expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({ text: UPDATE, update: true });
   await expect(bar(page)).toBeVisible();
+  // The button stays where it was and keeps the focus, waiting while the draft is in the form.
+  const update = page.getByTestId('profile-update-cv');
+  await expect(update).toBeFocused();
+  await expect(update).toHaveAttribute('aria-disabled', 'true');
   // What is set stays: the name, the role, the level, the Schwerpunkte, the criteria.
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
   await expect(page.getByTestId('profile-title')).toHaveValue('Interim Managerin Finanzen');

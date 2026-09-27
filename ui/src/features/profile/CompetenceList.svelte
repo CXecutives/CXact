@@ -222,7 +222,7 @@
         />
       {/each}
       {#if trimmed !== null}
-        <p class="focus-hint" data-testid="focus-trimmed">{words.focusTrimmed(trimmed)}</p>
+        <p class="focus-hint" data-testid="focus-trimmed">{words.focusTrimmed}</p>
       {/if}
     </div>
   {/if}

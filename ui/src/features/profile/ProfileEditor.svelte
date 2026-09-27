@@ -1,7 +1,7 @@
 <!--
   The profile as a form: the sections of `sections.ts` in their order, each field as the
-  table describes it. Only Bedingungen and Wünsche say in one sentence what they do (the rest
-  is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
+  table describes it. Only Bedingungen, Festanstellung and Wünsche say in one sentence what
+  they do (the rest is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
   control label 13/500, and every number field has one width with its unit beside it; a
   number is formatted when its field is left. A single choice (Remote-Anteil, Verfügbar ab)
   is cleared by its option "Offen". An empty optional block says "Noch leer" quietly. A value

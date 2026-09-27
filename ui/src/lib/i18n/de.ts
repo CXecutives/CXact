@@ -1154,23 +1154,6 @@ export const de = {
     /** The same place without a mailbox: back to the setup page. */
     nextMailbox: 'Weiter zum Postfach',
     warning,
-    /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
-    pack: {
-      finance: 'Finanzen',
-      sap: 'SAP',
-      itProject: 'IT-Projekte',
-      hr: 'Personal',
-      procurement: 'Einkauf',
-      data: 'Daten',
-      pharma: 'Pharma',
-      operations: 'Produktion',
-      sales: 'Vertrieb',
-      legal: 'Recht',
-      software: 'Software',
-      restructuring: 'Restrukturierung',
-      consulting: 'Unternehmensberatung',
-      energy: 'Energiewirtschaft',
-    } as Record<string, string>,
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
@@ -1203,9 +1186,10 @@ export const de = {
       wishes: 'Wünsche',
       permanent: 'Festanstellung',
     },
-    /** The two blocks whose effect is easy to get wrong say it in one sentence. */
+    /** The blocks whose effect is easy to get wrong say it in one sentence. */
     sectionHint: {
       criteria: 'Was hier nicht passt, schließt einen Job aus.',
+      permanent: 'Was hier nicht passt, schließt eine Festanstellung aus.',
       wishes: 'Wünsche schließen nichts aus.',
     } as Partial<Record<string, string>>,
     field: {
@@ -1230,8 +1214,7 @@ export const de = {
       focusHint: 'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
       focusFull: 'Höchstens fünf Schwerpunkte.',
       /** More Schwerpunkte in a file or an answer than count. */
-      focusTrimmed: (count: number) =>
-        `Die Datei nennt ${n(count)} Schwerpunkte, übernommen sind die ersten fünf.`,
+      focusTrimmed: 'Übernommen sind die ersten fünf Schwerpunkte.',
       strengths: 'Besondere Stärken',
       strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
       keywords: 'Stichworte',
