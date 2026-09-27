@@ -1,6 +1,8 @@
-// The job row (user decision 2026-09-27): line 1 the title, right after it the portal's tile,
-// the date at the end; line 2 a building and the company, a map pin and the place (without
-// the work mode a portal appends). No facts, no badges, no middle dot. Under the pointer the
+// The job row (user decision 2026-09-27): line 1 the title and at its end the stamp of a mail
+// list (the time today, "Gestern", "Vorgestern", then the weekday with the date; "Beendet"
+// for an ad that takes no applications); line 2 a building and the company, a map pin and
+// the place (without the work mode a portal appends), and the pay the ad states with the
+// euro. No portal, no facts, no badges, no middle dot. Under the pointer the
 // moves of the row's place fade in as its tools over the date (the same table as its menu),
 // in a slot that never moves the title. The ring stays hollow on the open row; an excluded
 // job shows the ban in the ring's place. The icons are the ones of lib/icons.ts, read from
@@ -33,30 +35,55 @@ const glyphs = (scope: Locator): Promise<string[][]> =>
 const job = (page: Page, key: string): Locator =>
   list(page).locator('.job', { has: page.getByTestId(`job-row-${key}`) });
 
-test('line 1: the title, the portal tile right after it, the date at the end', async ({ page }) => {
+test('line 1: the title and the stamp at its end, no portal', async ({ page }) => {
   await open(page, WIN);
   const target = row(page, 'freelancermap-2801');
   const box = async (selector: string) => (await target.locator(selector).boundingBox())!;
   const title = await box('.title');
-  const tile = await box('.portal');
   const date = await box('.date');
   const content = await box('.content');
-  // The tile follows the title directly; the date ends the line.
-  expect(tile.x - (title.x + title.width)).toBeGreaterThan(0);
-  expect(tile.x - (title.x + title.width)).toBeLessThanOrEqual(8);
+  // The stamp ends the line, on the title's middle.
   expect(Math.abs(date.x + date.width - (content.x + content.width))).toBeLessThan(1);
-  for (const part of [tile, date]) {
-    expect(Math.abs(part.y + part.height / 2 - (title.y + title.height / 2))).toBeLessThan(2);
+  expect(Math.abs(date.y + date.height / 2 - (title.y + title.height / 2))).toBeLessThan(2);
+  // No portal anywhere in the rows (the reader names it).
+  await expect(list(page).locator('.portal')).toHaveCount(0);
+  for (const text of await list(page).locator('.row').allTextContents()) {
+    for (const portal of Object.values(T.portal)) expect(text).not.toContain(portal);
   }
-  // Also on another portal: "+1", and the tooltip names the portals, joined by a comma.
-  await expect(target.locator('.portal')).toHaveText('fm+1');
-  await target.locator('.portal').hover();
-  await expect(page.getByRole('tooltip')).toHaveText(
-    `${T.portal.freelancermap}, ${T.portal.linkedin}`,
-  );
-  await page.mouse.move(0, 0);
-  // A job of one portal: its letters only.
-  await expect(row(page, 'linkedin-4100200301').locator('.portal')).toHaveText('in');
+});
+
+test('the stamp of a mail list: the time today, Gestern, Vorgestern, then weekday and date', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const stamp = (key: string): Locator => row(page, key).getByTestId('row-date');
+  // Today (the fixed clock stands at 24.09., 09:30 in Berlin): the time of the alert mail.
+  await expect(stamp('freelancermap-2801')).toHaveText('07:30');
+  await expect(stamp('freelancermap-2803')).toHaveText('00:30');
+  // The two days before in words, capitalised like the start of a line.
+  await expect(stamp('linkedin-4100200302')).toHaveText('Gestern');
+  await expect(stamp('freelance-900413')).toHaveText('Vorgestern');
+  // Earlier days: the weekday with the date.
+  await expect(stamp('freelancermap-2805')).toHaveText('Mo 21.09.');
+});
+
+test('an ad that takes no applications says Beendet at the end of its title line', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const { jobs } = await stubList(page);
+  const closed = jobs.filter((each) => each.closed);
+  expect(closed.length).toBeGreaterThan(0);
+  const muted = await tokenColour(page, '--text-muted');
+  for (const each of closed) {
+    const target = row(page, `${each.key.portal}-${each.key.id}`);
+    await expect(target.getByTestId('row-date')).toHaveText(T.job.closed);
+    await expect(target.locator('.title')).toHaveCSS('color', muted);
+  }
+  // An open ad keeps its stamp and its ink.
+  const open_ = row(page, 'freelancermap-2801');
+  await expect(open_.getByTestId('row-date')).not.toHaveText(T.job.closed);
+  await expect(open_.locator('.title')).not.toHaveCSS('color', muted);
 });
 
 test('line 2: the company and the place, each with its icon, no middle dot', async ({ page }) => {
@@ -71,7 +98,6 @@ test('line 2: the company and the place, each with its icon, no middle dot', asy
   await expect(target.getByTestId('row-place')).toHaveText(placeOf(moded!.location));
   expect(placeOf(moded!.location)).not.toContain('(');
   const meta = await glyphs(target.locator('.meta'));
-  expect(meta).toHaveLength(2);
   expect(meta[0]).toContain(`lucide-${ICONS.company}`);
   expect(meta[1]).toContain(`lucide-${ICONS.place}`);
   // No dot anywhere in the list's rows, no facts, no badges.
@@ -81,6 +107,29 @@ test('line 2: the company and the place, each with its icon, no middle dot', asy
   await expect(list(page).locator('.facts, .foot, .badge, [data-testid="row-facts"]')).toHaveCount(
     0,
   );
+});
+
+test('line 2 ends with the pay the ad states: the day rate or the salary, with the euro', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const { jobs } = await stubList(page);
+  const facts = (key: string) =>
+    jobs.find((each) => `${each.key.portal}-${each.key.id}` === key)!.match!.facts;
+  // A day rate (interim, freelance).
+  const rated = facts('freelancermap-2801');
+  const day = row(page, 'freelancermap-2801').getByTestId('row-pay');
+  await expect(day).toHaveText(T.facts.pay(rated.rate!, 'day', null));
+  expect((await glyphs(day))[0]).toContain(`lucide-${ICONS.money}`);
+  // A salary (a permanent job).
+  const salaried = facts('linkedin-4100200303');
+  await expect(row(page, 'linkedin-4100200303').getByTestId('row-pay')).toHaveText(
+    T.facts.pay(salaried.salary!, 'year', null),
+  );
+  // An ad without a pay: company and place only.
+  expect(facts('freelance-900411').rate).toBeNull();
+  await expect(row(page, 'freelance-900411').getByTestId('row-pay')).toHaveCount(0);
+  expect(await glyphs(row(page, 'freelance-900411').locator('.meta'))).toHaveLength(2);
 });
 
 /** The tools a row shows now (their ids, in their order). */
@@ -113,7 +162,7 @@ const MOVE_ICONS: Record<string, IconMeaning> = {
   unarchive: 'unarchive',
   trash: 'trash',
   restore: 'undo',
-  purge: 'purge',
+  purge: 'trash',
 };
 
 test.describe('tools', () => {
@@ -154,7 +203,7 @@ test.describe('tools', () => {
     }
   });
 
-  test('the tools fade in over the date: the title, the tile and the date keep their boxes', async ({
+  test('the tools fade in over the date: the title, the date and line 2 keep their boxes', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -164,7 +213,7 @@ test.describe('tools', () => {
     const boxes = async (): Promise<string> =>
       JSON.stringify(
         await Promise.all(
-          ['.title', '.portal', '.date', '.meta'].map((part) => target.locator(part).boundingBox()),
+          ['.title', '.date', '.meta'].map((part) => target.locator(part).boundingBox()),
         ),
       );
     const rest = await boxes();
@@ -186,31 +235,32 @@ test.describe('tools', () => {
     expect(await boxes()).toBe(rest);
   });
 
-  test('a tool that deletes turns red under the pointer, the others stay quiet', async ({
+  test('a tool that deletes is red, on a red wash under the pointer; the others stay quiet', async ({
     page,
   }) => {
     await open(page, WIN);
     const danger = await tokenColour(page, '--danger-strong');
+    const wash = await tokenColour(page, '--danger-soft');
     const key = 'linkedin-4100200301';
     await pointAt(page, key);
     const trash = job(page, key).getByTestId('tool-trash');
     const archive = job(page, key).getByTestId('tool-archive');
-    await expect(trash).not.toHaveCSS('color', danger);
+    await expect(trash).toHaveCSS('color', danger);
     await trash.hover();
     await expect(trash).toHaveCSS('color', danger);
-    await expect(trash).toHaveCSS('background-color', await tokenColour(page, '--danger-soft'));
+    await expect(trash).toHaveCSS('background-color', wash);
     await archive.hover();
     await expect(archive).not.toHaveCSS('color', danger);
-    await expect(trash).not.toHaveCSS('color', danger);
-    // In the Papierkorb Endgültig löschen turns red the same way.
+    await expect(trash).not.toHaveCSS('background-color', wash);
+    // In the Papierkorb Endgültig löschen looks the same.
     await viaMenu(page, 'trash', key);
     await settleMoves(page);
     await openPlace(page, 'trash');
     await pointAt(page, key);
     const purge = job(page, key).getByTestId('tool-purge');
-    await expect(purge).not.toHaveCSS('color', danger);
-    await purge.hover();
     await expect(purge).toHaveCSS('color', danger);
+    await purge.hover();
+    await expect(purge).toHaveCSS('background-color', wash);
     const restore = job(page, key).getByTestId('tool-restore');
     await restore.hover();
     await expect(restore).not.toHaveCSS('color', danger);
@@ -225,6 +275,10 @@ test.describe('tools', () => {
     await job(page, first!).getByTestId('tool-archive').click();
     await expect(row(page, first!)).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.archived);
+    // A one-word toast is as wide as its words (at least 280 px), not as wide as a title's.
+    const toast = (await page.getByTestId('toast').last().boundingBox())!;
+    expect(toast.width).toBeGreaterThanOrEqual(280);
+    expect(toast.width).toBeLessThan(400);
     // The next row stands under the pointer now, its tools' slot under the tool: none until
     // the pointer moves.
     await animationsDone(page);
@@ -251,11 +305,12 @@ test.describe('tools', () => {
   });
 });
 
-test('dates move on while the app stays open', async ({ page }) => {
+test('stamps move on while the app stays open', async ({ page }) => {
   await open(page, WIN);
   const date = row(page, 'linkedin-4100200301').locator('.date');
   const before = await date.textContent();
-  await page.clock.setFixedTime(new Date(NOW.getTime() + 5 * 3_600_000));
+  // The next day: the time of today becomes "Gestern".
+  await page.clock.setFixedTime(new Date(NOW.getTime() + 24 * 3_600_000));
   await page.evaluate(() => dispatchEvent(new Event('focus')));
   await expect(date).not.toHaveText(before ?? '');
 });

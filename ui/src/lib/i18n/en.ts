@@ -21,6 +21,7 @@
 import type {
   Band,
   ErrorKind,
+  FetchRange,
   InvalidInput,
   JobSort,
   Language,
@@ -623,15 +624,15 @@ export const en: Catalog = {
     trash: 'Trash',
     pickJob: 'Choose a job from the list.',
     search: {
-      inbox: 'Search jobs',
+      inbox: 'Search the inbox',
       archive: 'Search the archive',
       trash: 'Search the trash',
     } satisfies Record<Place, string>,
     hitsIn: {
-      inbox: (value: number) => `In the inbox (${n(value)})`,
-      archive: (value: number) => `In the archive (${n(value)})`,
-      trash: (value: number) => `In the trash (${n(value)})`,
-    } satisfies Record<Place, (value: number) => string>,
+      inbox: 'In the inbox',
+      archive: 'In the archive',
+      trash: 'In the trash',
+    } satisfies Record<Place, string>,
     empty: {
       inbox: 'No jobs.',
       archive: 'The archive is empty.',
@@ -654,13 +655,13 @@ export const en: Catalog = {
     purgeConfirm: 'Delete forever',
     purgeHeading: (value: number) =>
       value === 1 ? 'Delete the job forever?' : `Delete ${n(value)} jobs forever?`,
-    purgeText: 'Jobs deleted forever never come back, not even from old alert emails.',
+    purgeText: 'The job never comes back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
     emptyTrashHeading: 'Empty the trash?',
     emptyTrashText: (value: number) =>
       value === 1
-        ? 'The job is deleted forever and never comes back.'
-        : `The ${n(value)} jobs are deleted forever and never come back.`,
+        ? 'The job never comes back, not even from old alert emails.'
+        : `The ${n(value)} jobs never come back, not even from old alert emails.`,
   },
   menu: {
     job: 'Job',
@@ -708,9 +709,17 @@ export const en: Catalog = {
     unread: 'New',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
+    closed: 'Closed',
   },
   toolbar: {
     fetch: 'Check mailbox',
+    range: 'Period',
+    rangeName: {
+      sinceLast: 'Since the last fetch',
+      days7: 'Last 7 days',
+      days30: 'Last 30 days',
+      all: 'All alert emails',
+    } satisfies Record<FetchRange, string>,
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
     sortHeading: 'Sort',
@@ -719,20 +728,23 @@ export const en: Catalog = {
       newest: 'By date',
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
-    filter: 'Filter',
+    filter: 'Sort and filter',
+    chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Match',
     allPortals: 'All portals',
     band: {
-      any: 'Any match',
+      any: 'Any',
+      mid: 'Medium or high',
+      high: 'High only',
+    } satisfies Record<'any' | 'mid' | 'high', string>,
+    bandChip: {
       mid: 'Medium or high match',
       high: 'High match only',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
     contractHeading: 'Contract',
     anyContract: 'Any contract',
-    workHeading: 'Work place',
-    anyWork: 'Any work place',
     remoteOnly: 'Remote only',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
@@ -1212,8 +1224,8 @@ export const en: Catalog = {
     closing: (activity: string | null) => closing[busyOf(activity)],
   },
   toast: {
-    rescored: 'Jobs scored again.',
-    prompt: 'Prompt copied.',
+    rescored: 'Jobs scored again',
+    prompt: 'Prompt copied',
     archived: 'Archived',
     unarchived: 'Unarchived',
     trashed: 'Deleted',
@@ -1221,7 +1233,7 @@ export const en: Catalog = {
     deleted: 'Deleted forever',
     included: 'Scored',
     excluded: 'Excluded',
-    trashEmptied: 'Trash emptied.',
+    trashEmptied: 'Trash emptied',
     runDone: (value: number) => (value === 0 ? 'No new jobs' : count(value, 'new job', 'new jobs')),
     show: 'Show',
   },

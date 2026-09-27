@@ -8,8 +8,9 @@
   and every toast waits while the window is in the back or a modal dialog is open; under
   reduced motion there is no line. The stack lies below a dialog's scrim: dimmed, and its
   undo cannot act behind the dialog.
-  The sentence has room for a job's title (520 px) and wraps to at most two lines: the
-  title in the catalog's quotes („…“ or “…”) keeps to one line and ends in an ellipsis
+  A toast is as wide as its sentence (at least 280 px): a short confirmation stays compact.
+  One that quotes a name (a job's title, a term) has room for it (520 px) and wraps to at
+  most two lines: the title in the catalog's quotes („…“ or “…”) keeps to one line and ends in an ellipsis
   that the closing quote follows directly (the full title in a tooltip; cut by measuring
   the text, since CSS would leave the rest of the box blank before the quote), the rest
   of the sentence follows it.
@@ -236,6 +237,7 @@
     {@const look = TOAST_KINDS[toast.kind]}
     <div
       class="toast {toast.kind}"
+      class:named={quoted(toast.text) !== null}
       class:paused={hovered === toast.id}
       class:draws={look.draws}
       role="group"
@@ -302,8 +304,9 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    width: var(--toast-width);
-    max-width: calc(100vw - 2 * var(--space-24));
+    width: fit-content;
+    min-width: var(--toast-min);
+    max-width: min(var(--toast-width), calc(100vw - 2 * var(--space-24)));
     overflow: hidden;
     padding: var(--space-6) var(--space-6) var(--space-6) var(--space-16);
     border: var(--border-width) solid var(--border);
@@ -313,6 +316,11 @@
     color: var(--text);
     font: var(--type-md);
     pointer-events: auto;
+  }
+
+  /* A quoted name gets the whole width at once (its fitting measures the line). */
+  .named {
+    width: var(--toast-width);
   }
 
   .icon,

@@ -639,16 +639,17 @@ export const de = {
     pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
-      inbox: 'Jobs durchsuchen',
+      inbox: 'Eingang durchsuchen',
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** Search hits in another place: a button under the results that goes there. */
+    /** Search hits in another place: a button under the results that goes there (its count
+     *  after it, quiet like the tabs'). */
     hitsIn: {
-      inbox: (value: number) => `Im Eingang (${n(value)})`,
-      archive: (value: number) => `Im Archiv (${n(value)})`,
-      trash: (value: number) => `Im Papierkorb (${n(value)})`,
-    } satisfies Record<Place, (value: number) => string>,
+      inbox: 'Im Eingang',
+      archive: 'Im Archiv',
+      trash: 'Im Papierkorb',
+    } satisfies Record<Place, string>,
     empty: {
       inbox: 'Keine Jobs.',
       archive: 'Das Archiv ist leer.',
@@ -679,13 +680,14 @@ export const de = {
     purgeConfirm: 'Endgültig löschen',
     purgeHeading: (value: number) =>
       value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
-    purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
+    /** Deleting for good, one job or the whole Papierkorb: one sentence shape. */
+    purgeText: 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
     emptyTrashHeading: 'Papierkorb leeren?',
     emptyTrashText: (value: number) =>
       value === 1
-        ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
-        : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
+        ? 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.'
+        : `Die ${n(value)} Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.`,
   },
   /** The app's own menus (their accessible names). */
   menu: {
@@ -743,9 +745,20 @@ export const de = {
     unread: 'Neu',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
+    /** An ad that takes no applications any more (the end of its row's first line). */
+    closed: 'Beendet',
   },
   toolbar: {
     fetch: 'Postfach abrufen',
+    /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of its chevron
+     *  (its name, its heading and its tooltip). */
+    range: 'Zeitraum',
+    rangeName: {
+      sinceLast: 'Seit dem letzten Abruf',
+      days7: 'Letzte 7 Tage',
+      days30: 'Letzte 30 Tage',
+      all: 'Alle Alert-Mails',
+    } satisfies Record<FetchRange, string>,
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
     /** The first group of the funnel's menu: the order of the list. */
@@ -758,24 +771,29 @@ export const de = {
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
     /** The funnel (its tooltip and the name of its menu): the order and the filter of the
-     *  list (lib/state/filter.ts), its groups under small headings; the chosen parts of the
-     *  filter stand as chips under the toolbar in the same words. */
-    filter: 'Filter',
+     *  list (lib/state/filter.ts), its groups under small headings. */
+    filter: 'Sortieren und filtern',
+    /** The chosen parts of the filter as chips under the toolbar (their group's name). */
+    chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
     allPortals: 'Alle Portale',
-    /** The lowest band of the filter (`any`: every job, also one without a score). */
+    /** The lowest band of the filter under its heading (`any`: every job, also one without a
+     *  score), and as a chip, where the heading is not beside it. */
     band: {
-      any: 'Jede Übereinstimmung',
+      any: 'Jede',
+      mid: 'Ab mittel',
+      high: 'Nur hoch',
+    } satisfies Record<'any' | 'mid' | 'high', string>,
+    bandChip: {
       mid: 'Ab mittlerer Übereinstimmung',
       high: 'Nur hohe Übereinstimmung',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     contractHeading: 'Vertragsart',
     anyContract: 'Jede Vertragsart',
-    workHeading: 'Arbeitsort',
-    anyWork: 'Jeder Arbeitsort',
+    /** A switch of its own behind a line (remote or not is no place). */
     remoteOnly: 'Nur remote',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
@@ -812,7 +830,7 @@ export const de = {
   },
   list: {
     label: 'Jobs',
-    /** The folding section at the end of every place (its count in brackets where known). */
+    /** The folding section at the end of every place (its count after it where known). */
     excluded: 'Ausgeschlossen',
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
@@ -1398,10 +1416,12 @@ export const de = {
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
   },
+  /** Short confirmations without a period (a participle like "Archiviert"); only a full
+   *  sentence ends with one. */
   toast: {
-    rescored: 'Jobs neu bewertet.',
+    rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
-    prompt: 'Prompt kopiert.',
+    prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Dearchiviert',
@@ -1411,7 +1431,7 @@ export const de = {
     deleted: 'Endgültig gelöscht',
     included: 'Bewertet',
     excluded: 'Ausgeschlossen',
-    trashEmptied: 'Papierkorb geleert.',
+    trashEmptied: 'Papierkorb geleert',
     /** At the end of a fetch: what it brought (new, not excluded). */
     runDone: (value: number) =>
       value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),

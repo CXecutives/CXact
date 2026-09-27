@@ -28,7 +28,7 @@ export interface MenuItem {
   disabled?: boolean;
   /** Why a disabled entry cannot be chosen (its tooltip). */
   reason?: string | null;
-  /** Something that is lost for good (Endgültig löschen): red while hovered. */
+  /** It deletes (Löschen, Endgültig löschen): red, on a red wash while active. */
   danger?: boolean;
   /** A choice that keeps the menu open (the funnel's groups: several are set in one go, the
    *  check marks move with each choice). */

@@ -44,15 +44,15 @@ const TARGET: Record<MoveId, Place> = {
 };
 
 /** One icon per meaning: archiving looks like the archive, Dearchivieren like taking out of
- *  it, deleting like the trash, Wiederherstellen from the Papierkorb like taking back;
- *  deleting for good never looks like the trash. `deletes`: the row's tool turns red under
- *  the pointer (Löschen, Endgültig löschen). */
+ *  it, Wiederherstellen from the Papierkorb like taking back. Deleting is one look
+ *  everywhere: Löschen and Endgültig löschen take the trash, in red (`deletes`: the row's
+ *  tool, the entry of the menu and of the reader's "…"). */
 const ACTIONS: Record<ActionId, { icon: IconName; deletes: boolean }> = {
   archive: { icon: 'archive', deletes: false },
   unarchive: { icon: 'unarchive', deletes: false },
   trash: { icon: 'trash', deletes: true },
   restore: { icon: 'undo', deletes: false },
-  purge: { icon: 'purge', deletes: true },
+  purge: { icon: 'trash', deletes: true },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -159,7 +159,7 @@ function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
       id,
       label: t.actions[id],
       icon: ACTIONS[id].icon,
-      danger: purging,
+      danger: ACTIONS[id].deletes,
       // Deleting for good waits for a run (the backend refuses meanwhile).
       disabled: purging && run.active,
       reason: purging ? run.busyText : null,
@@ -176,7 +176,7 @@ function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
 
 /**
  * The row's tools under the pointer: the moves of its place, the same entries in the same
- * order as its menu (an icon each, its label the tooltip; the ones that delete turn red).
+ * order as its menu (an icon each, its label the tooltip; the ones that delete are red).
  */
 export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
   return placeMoves(job, context).map((entry) => {

@@ -154,7 +154,7 @@ test('a start that fails keeps the last result and says why', async ({ page }) =
     window.__harness.appRun('rescore');
   });
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-problem-text')).toHaveText('Gerade läuft schon ein Abruf.');
+  await expect(page.getByTestId('run-problem')).toHaveText('Gerade läuft schon ein Abruf.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });
@@ -236,15 +236,15 @@ test('the excluded section names its count, every excluded row of the list', asy
   // The excluded section open, as a user who opened it once finds it.
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
-  await expect(page.getByTestId('excluded-divider')).toHaveText(/Ausgeschlossen \(\d+\)/);
+  await expect(page.getByTestId('excluded-divider')).toHaveText(/^Ausgeschlossen\s*\d+\s*$/);
   // The list arrives from the backend and builds a few rows per frame: then the divider
   // names every excluded row of it.
   const divider = page.getByTestId('excluded-divider');
   const excluded = page.getByTestId('excluded-rows').locator('[data-testid^="job-row-"]');
   const named = async (): Promise<boolean> => {
     const count = await excluded.count();
-    const text = (await divider.innerText()).replace(/\s+/g, ' ').trim();
-    return count > 0 && text === `Ausgeschlossen (${count})`;
+    const text = (await divider.locator('.count').innerText()).trim();
+    return count > 0 && text === String(count);
   };
   await expect.poll(named).toBe(true);
 });

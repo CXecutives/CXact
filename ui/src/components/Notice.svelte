@@ -2,7 +2,8 @@
   Feedback where the action happened: info | success | warning | danger, inline (icon and
   sentence in the tone), banner (tinted box) or row (a calm line inside a card: the icon in
   the tone, the text in ink), with at most one action, a small secondary button with the
-  glyph the same action has everywhere else. Info is navy. A notice that appears in
+  glyph the same action has everywhere else, and an optional × at the end that hides the
+  note (a problem that waits for the next run). Info is navy. A notice that appears in
   a view already on screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that
   comes with its view is simply there.
 -->
@@ -21,7 +22,14 @@
     variant?: 'inline' | 'banner' | 'row';
     heading?: string | null;
     text: string;
-    action?: { label: string; icon?: IconName | null; onclick: () => void } | null;
+    action?: {
+      label: string;
+      icon?: IconName | null;
+      testid?: string | null;
+      onclick: () => void;
+    } | null;
+    /** The × at the end that hides the note (its label is its accessible name). */
+    dismiss?: { label: string; testid?: string | null; onclick: () => void } | null;
     testid?: string | null;
   }
 
@@ -31,6 +39,7 @@
     heading = null,
     text,
     action = null,
+    dismiss = null,
     testid = null,
   }: Props = $props();
 
@@ -54,15 +63,29 @@
     {#if heading}<p class="heading">{heading}</p>{/if}
     <p class="text">{text}</p>
   </div>
-  {#if action}
+  {#if action || dismiss}
     <span class="action">
-      <Button
-        variant="secondary"
-        size="sm"
-        label={action.label}
-        icon={action.icon ?? null}
-        onclick={action.onclick}
-      />
+      {#if action}
+        <Button
+          variant="secondary"
+          size="sm"
+          label={action.label}
+          icon={action.icon ?? null}
+          testid={action.testid ?? null}
+          onclick={action.onclick}
+        />
+      {/if}
+      {#if dismiss}
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon="close"
+          label={dismiss.label}
+          testid={dismiss.testid ?? null}
+          onclick={dismiss.onclick}
+        />
+      {/if}
     </span>
   {/if}
 </div>
@@ -121,7 +144,10 @@
   }
 
   .action {
+    display: flex;
     flex: none;
+    align-items: center;
+    gap: var(--space-4);
   }
 
   .info {

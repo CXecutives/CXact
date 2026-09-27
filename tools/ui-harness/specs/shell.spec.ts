@@ -550,7 +550,7 @@ test('an unsaved profile keeps the view until the question is answered', async (
   await dialog.getByRole('button', { name: 'Verwerfen' }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Jobs durchsuchen');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Eingang durchsuchen');
 });
 
 test('a click on the tab that is open reloads nothing, like Jobs', async ({ page }) => {
@@ -568,7 +568,7 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
   await settle(page);
   expect(await loads('archive')).toBe(archive);
   await page.getByTestId('place-inbox').click();
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Jobs durchsuchen');
+  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Eingang durchsuchen');
   await settle(page);
   const all = await loads();
   await page.getByTestId('nav-jobs').click();
@@ -914,12 +914,13 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
   }
 });
 
-test('only what loses something for good warns: the trash does not, delete for good does', async ({
+test('deleting is one look: Löschen and Endgültig löschen are red, the other moves are not', async ({
   page,
 }) => {
   await open(page, WIN);
   await rowMenu(page, 'freelancermap-2802');
-  await expect(page.getByTestId('menu-item-trash')).not.toHaveClass(/danger/);
+  await expect(page.getByTestId('menu-item-trash')).toHaveClass(/danger/);
+  await expect(page.getByTestId('menu-item-archive')).not.toHaveClass(/danger/);
   await page.getByTestId('menu-item-trash').click();
   await page.getByTestId('place-trash').click();
   await rowMenu(page, 'freelancermap-2802');

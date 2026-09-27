@@ -440,7 +440,7 @@ test.describe('the actions', () => {
     }
     await openAt(page, 'freelancermap-2801');
     await stage(page).getByTestId('reader-prompt').click();
-    await expect(page.getByTestId('toast').last()).toContainText('Prompt kopiert.');
+    await expect(page.getByTestId('toast').last()).toContainText('Prompt kopiert');
     expect((await calls(page, 'ai_prompt')).at(-1)?.[1]).toEqual({
       key: { portal: 'freelancermap', id: '2801' },
     });

@@ -17,9 +17,9 @@ export const ICONS = {
   archive: 'archive',
   /** Dearchivieren: out of the archive, back into the inbox. */
   unarchive: 'archive-restore',
+  /** Delete (Löschen), delete for good, empty the trash, remove the mailbox: one glyph, in
+   *  red wherever it deletes. */
   trash: 'trash-2',
-  /** Delete for good (and empty the trash): never looks like the trash. */
-  purge: 'octagon-x',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',
   star: 'star',

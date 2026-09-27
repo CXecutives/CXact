@@ -80,7 +80,7 @@ for (const [place, tab] of [
     await open(page, `${WIN}&scenario=many`);
     await page.getByTestId(tab).click();
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider).toHaveText('Ausgeschlossen (500)');
+    await expect(divider.locator('.count')).toHaveText('500');
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
   });
 }

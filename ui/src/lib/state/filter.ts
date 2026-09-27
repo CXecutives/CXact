@@ -5,7 +5,8 @@
 // the JobQuery), another word one in the catalog. The filter is the same in every
 // place (Eingang, Archiv, Papierkorb) and kept per user like the order. The order of the list
 // (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
-// sets no dot and no chip, and "Filter zurücksetzen" leaves it.
+// sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group with one choice (Nur
+// remote) is a switch of its own behind a line, without a heading.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
@@ -50,15 +51,20 @@ export interface FilterEntry<K extends keyof ListFilter = keyof ListFilter> {
   /** Stable id: the test id of the menu entry (`menu-item-<id>`). */
   id: string;
   value: ListFilter[K];
+  /** Its words in the menu, under the group's heading. */
   label: (words: Catalog) => string;
+  /** Its words as a chip, where the menu's short words need their heading ("Ab mittel"
+   *  under "Übereinstimmung" is the chip "Ab mittlerer Übereinstimmung"); else the label. */
+  chip?: (words: Catalog) => string;
 }
 
 export interface FilterGroup<K extends keyof ListFilter = keyof ListFilter> {
   key: K;
-  /** The small heading above the group in the menu. */
-  heading: (words: Catalog) => string;
-  /** The choices in the menu's order, none first; the portal group lists the portals it is
-   *  given (the UI's order, lib/portals.ts). */
+  /** The small heading above the group in the menu; null for a switch of its own (one
+   *  choice, checked while it is on, off again with a second choice). */
+  heading: ((words: Catalog) => string) | null;
+  /** The choices in the menu's order, none first (a switch lists only its one choice); the
+   *  portal group lists the portals it is given (the UI's order, lib/portals.ts). */
   entries(portals: readonly Portal[]): FilterEntry<K>[];
   /** Without a usable profile there is no match: the group is off and says why. */
   needsProfile: ((words: Catalog) => string) | null;
@@ -95,11 +101,16 @@ const BAND: FilterGroup<'minBand'> = {
   key: 'minBand',
   heading: (w) => w.toolbar.bandHeading,
   entries: () =>
-    ([null, 'mid', 'high'] as const).map((band) => ({
-      id: `band-${band ?? 'any'}`,
-      value: band,
-      label: (w) => w.toolbar.band[band ?? 'any'],
-    })),
+    ([null, 'mid', 'high'] as const).map((band): FilterEntry<'minBand'> =>
+      band === null
+        ? { id: 'band-any', value: band, label: (w) => w.toolbar.band.any }
+        : {
+            id: `band-${band}`,
+            value: band,
+            label: (w) => w.toolbar.band[band],
+            chip: (w) => w.toolbar.bandChip[band],
+          },
+    ),
   needsProfile: (w) => w.toolbar.bandNoProfile,
   valid: (value) => value === 'mid' || value === 'high',
   passes: (job, band) =>
@@ -126,13 +137,8 @@ const NOT_REMOTE_PLACE = /\b(hybrid|vor ort|on-?site)\b/i;
 
 const REMOTE: FilterGroup<'remote'> = {
   key: 'remote',
-  heading: (w) => w.toolbar.workHeading,
-  entries: () =>
-    ([null, true] as const).map((remote) => ({
-      id: `remote-${remote === null ? 'any' : 'only'}`,
-      value: remote,
-      label: (w) => (remote === null ? w.toolbar.anyWork : w.toolbar.remoteOnly),
-    })),
+  heading: null,
+  entries: () => [{ id: 'remote-only', value: true, label: (w) => w.toolbar.remoteOnly }],
   needsProfile: null,
   valid: (value) => value === true,
   // As the backend: the share the ad states first, the place only without one.
@@ -158,8 +164,8 @@ export interface ActiveFilter {
   label: string;
 }
 
-/** The chosen parts of the filter in the menu's words, group by group ("linkedin.com",
- *  "Ab mittlerer Übereinstimmung"). */
+/** The chosen parts of the filter in the chips' words, group by group ("linkedin.com",
+ *  "Ab mittlerer Übereinstimmung", "Nur remote"). */
 export function activeFilters(
   filter: ListFilter,
   portals: readonly Portal[],
@@ -169,7 +175,9 @@ export function activeFilters(
     const value = filter[group.key];
     if (value === null) return [];
     const entry = group.entries(portals).find((candidate) => candidate.value === value);
-    return entry === undefined ? [] : [{ key: group.key, label: entry.label(words) }];
+    return entry === undefined
+      ? []
+      : [{ key: group.key, label: (entry.chip ?? entry.label)(words) }];
   });
 }
 

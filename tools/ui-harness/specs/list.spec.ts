@@ -8,7 +8,8 @@
 // (stubList), not typed again.
 
 import type { Page } from '@playwright/test';
-import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
+import { ICONS } from '../../../ui/src/lib/icons';
+import type { FetchRange, JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
 import {
   animationsDone,
   calls,
@@ -102,9 +103,9 @@ test.describe('header', () => {
       'color',
       await tokenColour(page, '--text-subtle'),
     );
-    // 40 px high, 14 px labels.
-    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(40);
-    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '14px');
+    // 44 px high, 15 px labels (one step above the sidebar's entries).
+    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
+    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
     // A search or a filter does not change them.
     await page.getByTestId('search').fill('Interim');
     await expect(rows(page)).toHaveCount(3);
@@ -136,6 +137,10 @@ test.describe('header', () => {
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
+    expect(T.toolbar.filter).toBe('Sortieren und filtern');
+    // Each place's search names its place.
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+    expect(T.place.search.inbox).toBe('Eingang durchsuchen');
     const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
@@ -143,7 +148,8 @@ test.describe('header', () => {
     await expect(funnel(page)).toBeVisible();
     await expect(page.getByTestId('place-action')).toHaveCount(0);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
-    // Papierkorb: "Papierkorb leeren", red, in the action's place.
+    // Papierkorb: "Papierkorb leeren", an outlined button with the trash in red, in the
+    // action's place.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
@@ -152,11 +158,87 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
+    await expect(empty).toHaveClass(/secondary/);
     await expect(empty).toHaveClass(/warns/);
+    await expect(empty).toHaveCSS('color', await tokenColour(page, '--danger-strong'));
+    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
     expect(await rightOf(page, 'empty-trash')).toBe(await rightOf(page, 'filter'));
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // No second row, no count line.
     await expect(page.getByTestId('place-count')).toHaveCount(0);
+  });
+
+  test('Postfach abrufen is one split control: its chevron chooses the Zeitraum', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const fetch = page.getByTestId('fetch');
+    const chevron = page.getByTestId('fetch-range');
+    // One control: the same row and height, the chevron's part right against the action,
+    // both the view's primary.
+    const main = (await fetch.boundingBox())!;
+    const part = (await chevron.boundingBox())!;
+    expect(part.y).toBe(main.y);
+    expect(part.height).toBe(main.height);
+    expect(Math.abs(part.x - (main.x + main.width))).toBeLessThanOrEqual(1);
+    await expect(fetch).toHaveClass(/primary/);
+    await expect(chevron).toHaveClass(/primary/);
+    await expect(chevron).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(chevron).toHaveAttribute('aria-haspopup', 'menu');
+    // Its menu: "Zeitraum" and the four ranges, the current one checked.
+    const ranges: FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
+    await chevron.click();
+    const menu = page.getByTestId('menu');
+    await expect(menu).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    await expect(menu.getByTestId('menu-heading')).toHaveText([T.toolbar.range]);
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText(
+      ranges.map((range) => T.toolbar.rangeName[range]),
+    );
+    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'true');
+    // Right edge on the control's.
+    const box = (await menu.boundingBox())!;
+    expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
+    // A choice is saved at once through the settings patch, and the menu closes.
+    await menuItem(page, 'range-days30').click();
+    await expect(menu).toHaveCount(0);
+    await expect
+      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
+      .toMatchObject({ patch: { fetchRange: 'days30', portals: [], exportExcel: null } });
+    await chevron.click();
+    await expect(menuItem(page, 'range-days30')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'false');
+    await page.keyboard.press('Escape');
+    // The fetch itself still starts from the main part.
+    await fetch.click();
+    await expect(page.getByTestId('cancel-run')).toBeVisible();
+    await expect(chevron).toHaveCount(0);
+    await page.getByTestId('cancel-run').click();
+    await runFinished(page);
+  });
+
+  test('the tabs row keeps one line: a narrow column drops the numbers of the tabs first', async ({
+    page,
+  }) => {
+    const places = page.getByTestId('places');
+    const oneLine = async (): Promise<void> => {
+      const row = (await page.getByTestId('list-header').locator('.places').boundingBox())!;
+      expect(Math.round(row.height)).toBe(Math.round((await places.boundingBox())!.height));
+    };
+    // A wide window: the numbers stand beside the labels.
+    await open(page, WIN);
+    await expect(page.getByTestId('place-inbox-count')).toBeVisible();
+    await oneLine();
+    // 1024 px (the list at its first width): the numbers go, the row stays one line, in the
+    // Eingang and in the Papierkorb alike.
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(page.getByTestId('place-inbox-count')).toBeHidden();
+    await oneLine();
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await openPlace(page, 'trash');
+    await expect(page.getByTestId('empty-trash')).toBeVisible();
+    await oneLine();
   });
 
   test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
@@ -232,6 +314,8 @@ test.describe('header', () => {
     await open(page, `${WIN}&scenario=list-error`);
     const error = page.getByTestId('list-error');
     await expect(error).toContainText(T.list.loadFailed);
+    // Nothing to choose beside it: the reader says nothing.
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
     await expect(error.getByRole('button', { name: T.common.retry })).toBeVisible();
     await expect(funnel(page)).toHaveCount(0);
   });
@@ -240,7 +324,7 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Arbeitsort, none chosen', async ({
+  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Nur remote, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -253,13 +337,22 @@ test.describe('filter', () => {
       T.toolbar.portalHeading,
       T.toolbar.bandHeading,
       T.toolbar.contractHeading,
-      T.toolbar.workHeading,
     ]);
-    await expect(menu.getByTestId('menu-heading')).toHaveText(table.map((group) => group.heading));
-    await expect(menu.locator('[role^="menuitem"]')).toHaveText(
-      table.flatMap((group) => group.entries),
+    await expect(menu.getByTestId('menu-heading')).toHaveText(
+      table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
     );
-    await expect(menu.getByRole('separator')).toHaveCount(table.length - 1);
+    // Every entry of the table, then the way back (off while no filter is on).
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
+      ...table.flatMap((group) => group.entries),
+      T.toolbar.filterReset,
+    ]);
+    await expect(menu.getByRole('separator')).toHaveCount(table.length);
+    // The band's words stand under their heading without repeating it.
+    await expect(menuItem(page, 'band-mid')).toHaveText(T.toolbar.band.mid);
+    expect(T.toolbar.band.mid).not.toContain(T.toolbar.bandHeading);
+    // Remote or not is one switch of its own, behind a line, without a heading.
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('role', 'menuitemcheckbox');
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
     // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
@@ -271,12 +364,12 @@ test.describe('filter', () => {
       'menu-item-portal-freelancermap',
     ]);
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
-    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any', 'remote-any']) {
+    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
     }
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
-    await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
+    await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');
@@ -300,9 +393,10 @@ test.describe('filter', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { sort: 'newest', portal: 'linkedin' }));
-    // The way back appears at the end once a filter is on.
+    // The way back at the end turns on once a filter is on; the menu keeps its height.
     const items = menu.locator('[role^="menuitem"]');
     await expect(items.last()).toHaveText(T.toolbar.filterReset);
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'band-mid').click();
     await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'true');
     await expect(chips(page).getByRole('button')).toHaveText(
@@ -338,10 +432,10 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
     await openFilter(page);
-    await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
+    await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'contract-interim').click();
     await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
-    await expect(menuItem(page, 'filter-reset')).toBeVisible();
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'filter-reset').click();
     await expect(page.getByTestId('menu')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
@@ -370,7 +464,7 @@ test.describe('filter', () => {
       });
       const menu = await openFilter(page);
       await expect(menu.getByTestId('menu-heading')).toHaveText(
-        filterMenu().map((group) => group.heading),
+        filterMenu().flatMap((group) => (group.heading === null ? [] : [group.heading])),
       );
       await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
       await expect(menuItem(page, 'portal-freelancermap')).toHaveAttribute('aria-checked', 'true');
@@ -389,10 +483,43 @@ test.describe('filter', () => {
     await page.keyboard.press('Escape');
     await expect(chips(page).getByRole('button')).toHaveText([
       T.portal.freelance,
-      filterLabel('band-mid'),
+      T.toolbar.bandChip.mid,
       filterLabel('contract-freelance'),
-      filterLabel('remote-only'),
+      T.toolbar.remoteOnly,
     ]);
+    expect(
+      chipWordsOf('remote-only', 'contract-freelance', 'band-mid', 'portal-freelance'),
+    ).toEqual([
+      T.portal.freelance,
+      T.toolbar.bandChip.mid,
+      filterLabel('contract-freelance'),
+      T.toolbar.remoteOnly,
+    ]);
+    // Nur remote is a switch: a second choice takes it off again, the menu stays.
+    await openFilter(page);
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'remote-only').click();
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByTestId('menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(chip(page, 'remote')).toHaveCount(0);
+  });
+
+  test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await open(page, WIN);
+    const menu = await openFilter(page);
+    const before = (await menu.boundingBox())!;
+    await menuItem(page, 'portal-linkedin').click();
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
+    const after = (await menu.boundingBox())!;
+    expect(after).toEqual(before);
+    // Its last entry stands inside the window, within reach.
+    const reset = (await menuItem(page, 'filter-reset').boundingBox())!;
+    expect(reset.y + reset.height).toBeLessThanOrEqual(768);
+    await page.keyboard.press('Escape');
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
@@ -682,7 +809,11 @@ test.describe('one list', () => {
     const { active, excluded: out } = await stubList(page);
     expect(out.length).toBeGreaterThan(1);
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider).toHaveText(`${T.list.excluded} (${out.length})`);
+    const count = divider.locator('.count');
+    // Its count after the label, quiet like the tabs' (no brackets).
+    await expect(divider).toHaveText(`${T.list.excluded}${out.length}`);
+    await expect(count).toHaveText(String(out.length));
+    await expect(count).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     const last = (await rows(page).last().boundingBox())!;
@@ -699,9 +830,9 @@ test.describe('one list', () => {
     expect(await listed(page)).toEqual(active);
     // Each place counts its own excluded jobs.
     await viaMenu(page, 'archive', out[0]!);
-    await expect(divider).toHaveText(`${T.list.excluded} (${out.length - 1})`);
+    await expect(count).toHaveText(String(out.length - 1));
     await openPlace(page, 'archive');
-    await expect(divider).toHaveText(`${T.list.excluded} (1)`);
+    await expect(count).toHaveText('1');
   });
 
   test('the order is kept for every list and keeps the open job', async ({ page }) => {
@@ -811,6 +942,8 @@ test.describe('one list', () => {
     const empty = page.getByTestId('empty-all');
     await expect(empty).toBeVisible();
     await expect(empty.locator('svg')).toHaveCount(1);
+    // The place's own icon, like the empty Archiv and Papierkorb.
+    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.inbox}`));
     await expect(empty.getByRole('button')).toHaveCount(0);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
@@ -872,13 +1005,15 @@ test.describe('one list', () => {
   });
 
   test('one primary button in every state of the list, and with a job open', async ({ page }) => {
+    // A split control is one button: its chevron's part wears the colour of its action.
+    const primary = '.btn.primary:not(.joined-end)';
     for (const scenario of ['default', 'empty', 'no-profile', 'offline']) {
       await open(page, `${WIN}&scenario=${scenario}`);
-      expect(await visibleCount(page, '.btn.primary'), scenario).toBeLessThanOrEqual(1);
+      expect(await visibleCount(page, primary), scenario).toBeLessThanOrEqual(1);
     }
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
-    expect(await visibleCount(page, '.btn.primary')).toBeLessThanOrEqual(1);
+    expect(await visibleCount(page, primary)).toBeLessThanOrEqual(1);
   });
 });
 
@@ -954,14 +1089,21 @@ test.describe('rows', () => {
       T.actions.trash,
     ]);
     await expectMenuIcons(page, [...showIcons, 'archive', 'trash']);
+    // Deleting is one look everywhere: the trash, in red.
+    await expect(menuItem(page, 'trash')).toHaveClass(/danger/);
+    await expect(menuItem(page, 'archive')).not.toHaveClass(/danger/);
     await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
-    // "Öffnen" opens the job.
+    // "Öffnen" opens the job; the open job's own menu has none.
     await menuItem(page, 'open').click();
     await expect(page.getByTestId('reader-title')).toHaveText(
       await row(page, 'freelancermap-2802').locator('.title').innerText(),
     );
+    await rowMenu(page, 'freelancermap-2802');
+    await expect(menuItem(page, 'open')).toHaveCount(0);
+    await expect(menuItem(page, 'mail')).toBeVisible();
+    await page.keyboard.press('Escape');
     // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await settleMoves(page);
@@ -983,8 +1125,9 @@ test.describe('rows', () => {
       T.actions.restore,
       T.actions.purge,
     ]);
-    await expectMenuIcons(page, [...showIcons, 'undo', 'purge']);
+    await expectMenuIcons(page, [...showIcons, 'undo', 'trash']);
     await expect(menuItem(page, 'purge')).toHaveClass(/danger/);
+    await expect(menuItem(page, 'restore')).not.toHaveClass(/danger/);
   });
 
   test('an excluded job counts anyway from its menu, with an undo, and can be excluded again', async ({
@@ -1078,10 +1221,18 @@ test.describe('search', () => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kreditoren');
     const button = page.getByTestId('also-archive');
-    await expect(button).toHaveText(T.place.hitsIn.archive(1));
+    await expect(button.locator('.label')).toHaveText(T.place.hitsIn.archive);
+    await expect(button.locator('.count')).toHaveText('1');
     const a = (await page.getByTestId('empty-search').boundingBox())!;
     const b = (await button.boundingBox())!;
     expect(Math.abs(a.x + a.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
+    // The one way on under an empty state: a field button, as far below the sentence as the
+    // empty state's own (16 px).
+    expect(Math.round(b.height)).toBe(32);
+    const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
+    expect(Math.round(b.y - (sentence.y + sentence.height))).toBe(16);
+    // The reader beside a search without hits has nothing to choose from: it says nothing.
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
     await button.click();
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
     await expect(rows(page)).toHaveCount(1);
@@ -1097,7 +1248,7 @@ test.describe('search', () => {
     await expect(page.getByTestId('empty-search')).toBeVisible();
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
     await chooseFilter(page, 'portal-linkedin');
-    await expect(page.getByTestId('also-archive')).toHaveText(T.place.hitsIn.archive(1));
+    await expect(page.getByTestId('also-archive').locator('.count')).toHaveText('1');
     await page.getByTestId('also-archive').click();
     await expect(row(page, 'linkedin-4100200306')).toBeVisible();
   });
@@ -1335,6 +1486,15 @@ test.describe('run line', () => {
         { intervals: [20], timeout: 10_000 },
       )
       .toBe(true);
+    // The count moves on in place: the same words, only the number changes (no blink).
+    const text = page.getByTestId('run-text');
+    const count = /^Anzeigen \d+ von \d+$/;
+    const now = async (): Promise<string> => (await text.textContent()) ?? '';
+    await expect.poll(now, { intervals: [10], timeout: 10_000 }).toMatch(count);
+    await text.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
+    const counted = await now();
+    await expect.poll(now, { intervals: [10], timeout: 10_000 }).not.toBe(counted);
+    if (count.test(await now())) await expect(text).toHaveAttribute('data-kept', 'yes');
     const words = new Set<string>([
       T.run.line.mailbox,
       T.run.line.adsStart,
@@ -1389,6 +1549,14 @@ test.describe('run line', () => {
     const problem = page.getByTestId('run-problem');
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
     await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+    // Drawn like every note of the column: the sentence in 14 px ink, the way on a small
+    // outlined button with its glyph, the × at the column's edge.
+    await expect(problem.locator('.text')).toHaveCSS('font-size', '14px');
+    await expect(problem.getByTestId('run-retry')).toHaveClass(/secondary/);
+    await expect(problem.getByTestId('run-retry').locator('svg')).toHaveClass(
+      new RegExp(`lucide-${ICONS.retry}`),
+    );
+    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'filter'));
     await problem.getByTestId('run-retry').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);
