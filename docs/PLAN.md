@@ -854,3 +854,19 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
   review as before; nothing copies by itself any more.
 - [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
+
+## The Jobs list audit (2026-09-27)
+- "Neu" is one thing: not opened and not excluded (`store::NEW`, `filter.ts` `isNew`): "Nur neue", the row's dot
+  and its heavier title, in every place, like a mail app's unread mark.
+- The "Zeigen" of a fetch's toast lists exactly the jobs the toast counts: `JobQuery.run` (the new jobs of that run,
+  none excluded) with the high band where the toast names it, the chip "Aus dem letzten Abruf"; nothing of it is kept,
+  "Filter zurücksetzen", a reload and the next fetch take the run off.
+- The row's menu and the reader's buttons read one table (`features/jobs/shows.ts`; `JobView.hasMail`).
+- [x] New is unread and not excluded; the counts nobody read are gone (`unread`, `high`, `noDetail`, `newByPortal`)
+- [x] Zeigen lists the jobs of its toast
+- [x] Row menu and reader alike: no mail, no ad text, Offline-Anzeige öffnen
+- [x] A failed fetch offers its own fix only; English "Mailbox settings"
+- [x] The trash dialog keeps its count, the focus stays in the list after deleting for good
+- [x] Abbrechen in every place, in the same slot
+- [x] Leftovers (the Übersicht's reveal, split buttons, stale comments and specs); a double click on a row's tool is
+  the tool's
