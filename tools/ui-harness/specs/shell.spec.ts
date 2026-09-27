@@ -1114,6 +1114,8 @@ async function heldFetch(page: Page): Promise<void> {
   await page.evaluate(() => (window.__harness.holdAfter = 2));
   await page.getByTestId('fetch').click();
   await expect(page.getByTestId('run-line')).toBeVisible();
+  // The backend has the run (the page shows its line a task before `start_run` answers).
+  await expect.poll(() => page.evaluate(() => window.__harness.runs())).toBe(true);
 }
 
 test('closing during a fetch asks first: Abbrechen keeps both, Schließen stops it and closes', async ({

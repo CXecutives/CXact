@@ -158,6 +158,9 @@ interface Harness {
    *  fetch runs, else the window closes; a second close while it asks about the fetch
    *  closes anyway. Closing while a run goes cancels it first (`closing`). */
   requestClose: () => void;
+  /** A run goes as the backend sees it (from `start_run`'s answer on; the page shows the run
+   *  line a task earlier). */
+  runs: () => boolean;
   /** The window is maximized (`window_button` maximize toggles it and sends
    *  `window-state`, like platform.rs). */
   maximized: boolean;
@@ -2305,6 +2308,7 @@ const harness: Harness = {
   maximized: false,
   minimized: false,
   holdMailbox: false,
+  runs: () => running,
   requestClose() {
     if (harness.unsaved) {
       for (const handler of listeners.get('close-requested') ?? []) handler({ payload: null });
