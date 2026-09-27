@@ -672,7 +672,7 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   The context menu of a row is the same table as the reader's "…".
 - Ausgeschlossen stays at the end of the list, folded, with a ban mark instead of the ring; "Trotzdem bewerten" in
   the "…" and the context menu, then "Wieder ausschließen" (the backend's `set_override` stays).
-- Fetch: the button "Postfach abrufen"; its range in Einstellungen > Postfach (`fetchRange`: since the last check,
+- Fetch: the button "Postfach abrufen"; its range in Einstellungen > Postfach (`fetchRange`: since the last fetch,
   the last 7 or 30 days, all alert mails; `RunKind::FullMailbox` is gone).
 - Export: the Excel file and a CSV file, each with its switch (`exportExcel` on, `exportCsv` off by default), in the
   result folder; the text files for the job-matching skill stay byte-identical. The CSV file has the Excel file's
@@ -693,5 +693,17 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   whole-mailbox run out; `fetchRange`, `exportExcel`, `exportCsv`; the CSV file; the glossary in the exports and
   prompts; 100 requests a day from midnight; `contracts` and `remoteOnly`; `company_count` out; palette.rs holds only
   what the Excel file, the window and the icon wear
-- [ ] Job list and reader (track J), settings, profile and shell (track S), glossary in the catalogs, guiding rules
-  as tests, CI harness per browser
+- [x] Job list and reader (track J): one header in every place (search, sort button, filter, the place's action),
+  two-line rows with a hollow ring (the ban for an excluded job), one menu table for the row's right click and the
+  reader's "…" (`jobMenu` in `ui/src/features/jobs/actions.ts`), the run line under the header instead of the run
+  card, the reader's Jobdetails with verdict symbols and "/"; keys, multi-select and favourites out
+- [x] Settings, profile, shell and first run (track S): five cards (Postfach with the range, Portale in the UI's
+  order with the day's calls, Export with the Excel and CSV switches, Darstellung, App), a quiet profile head, one
+  choice component, a save bar only while something changed; no Übersicht, no status line
+- [x] Integration: the harness green in both engines without the screenshot baselines (`BASELINES=1` runs them);
+  tests of removed behaviour rewritten; real defects fixed (the reader's "…" from the one menu table, a marked value
+  keeps its waiting profile section open, the first row of the sidebar, tabs and headings on one middle, no green
+  toast when files could not be written, a failed last fetch shows in the run line after a restart); the glossary
+  in `de.ts` and `en.ts` with unused texts removed; guiding rules as tests in `ui_contract.rs` (no "·", tooltips
+  only where something is missing, the new glossary words); a view switch fades out, then in; the docs
+- [x] CI harness per browser (`HARNESS_ENGINES`, one job per engine)

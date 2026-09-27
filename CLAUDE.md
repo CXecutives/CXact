@@ -2,7 +2,7 @@
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelancermap,
 freelance.de) from Gmail, fetches the job pages, **scores every job against a consultant profile**, and
-writes Excel, TXT (contract with the external `job-matching` skill) and an HTML overview.
+writes Excel, CSV and TXT (contract with the external `job-matching` skill).
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
 **Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
 
@@ -47,7 +47,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
   `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` profile form, JSON merge
   with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan → fetch → score →
-  export) · `export/` xlsx, txt, overview html, top_matches.json, AI prompts · `text/` HTML to text, file names, company
+  export) · `export/` xlsx, csv, txt, top_matches.json, AI prompts · `text/` HTML to text, file names, company
   and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start, `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
   `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`

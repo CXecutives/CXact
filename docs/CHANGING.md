@@ -103,18 +103,54 @@ ask which palette is on.
    (`npm run harness -- settings.spec.ts`, its palette and contrast tests), and the page in
    each palette (`tools/ui-preview.cmd`, add `&palette=dark` to the address).
 
-## Add or change a setting, a first-run step or a key
+## Add or change a setting or a first-run step
 
-- A setting of Einstellungen is one entry in `ui/src/features/settings/cards.ts`: its card,
-  its kind (switch, choice, a row of buttons, a value), its texts from the catalog and what it
-  saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked target, or names a
-  command of `SettingsView.svelte`), with `locked` for why it waits. A new stored value also
-  needs its field in `Settings` (`core/src/settings.rs`) and `SettingsPatch` (`view.rs`).
+- Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
+  their order (Postfach, Portale, Export, Darstellung, App), each with its rows. A setting is
+  one row there: its kind (switch, choice, a row of buttons, a value), its texts from the
+  catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
+  target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
+  stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
+  `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in
+  `core/tests/settings_compat.rs`.
+- The range of "Postfach abrufen" is the choice `fetchRange` of the Postfach card (since the
+  last fetch, 7 days, 30 days, all alert mails; the words in `settings.rangeName`); core turns
+  it into the first day to read (`scan_since` in `core/src/mail/scan.rs`). Another range is a
+  variant of `FetchRange` (`core/src/settings.rs`), its arm in `scan_since` and its word.
+- The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
+  `exportCsv` off by default); the export writes a file only while its switch is on, and its
+  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The text files for the
+  job-matching skill have no switch.
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
-- The app has no keys of its own, only the OS's editing keys of fields and the context menu
-  key: `ui/src/lib/input/input.ts` applies them; what differs between Windows and macOS is
-  `keyConventions()` in `ui/src/lib/platform.ts`.
+
+## Keys
+
+The app has no shortcuts of its own (`no_app_shortcuts` in `core/tests/ui_contract.rs`): only
+what every program does stays, the OS's editing keys of fields, Tab, Enter and Esc, the arrows
+in menus and the context menu key. `ui/src/lib/input/input.ts` applies them; what differs
+between Windows and macOS is `keyConventions()` in `ui/src/lib/platform.ts`. No tooltip and no
+menu names a key.
+
+## Change the job list: its filter, its order, the job's menu
+
+- **The filter**: `FILTER_GROUPS` in `ui/src/lib/state/filter.ts`, the groups in their order
+  (Portal, Übereinstimmung, Vertragsart, Arbeitsort), each with its choices, its words and what
+  lets a job through. The funnel's menu, the chips under the header, the query and the harness
+  read it; the filter is the same in every place. Another group is one entry there, its field
+  in `ListFilter` (`toQuery` hands it to the `JobQuery`), its words in the catalog, and in the
+  backend its field of `JobQuery` (`view.rs`) and its condition in `filter_condition`
+  (`core/src/store/jobs.rs`), which narrows the list and its counts alike.
+- **The order**: `SORTS` in the same file (the sort button: by match, by date).
+- **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
+  on a row shows both groups (what shows the job: Öffnen, Alert-Mail öffnen, Anzeige öffnen,
+  KI-Prompt kopieren; what changes it: Trotzdem bewerten or Wieder ausschließen, then the moves
+  of its place); the reader's "…" shows the second group (its buttons are the first). The
+  moves per place are `OF_PLACE`, their icons `ACTIONS`, their toast words `SAID`. No entry
+  names a key.
+- **The portals' order in the UI**: `PORTAL_ORDER` in `ui/src/lib/portals.ts` (freelance.de,
+  LinkedIn, freelancermap: Einstellungen, the first-run page, the filter). Core's
+  `Portal::ALL` is the order the backend works in and stays as it is.
 
 ## Change a role of the controls
 
@@ -126,7 +162,7 @@ Each role of the UI has one pattern, decided in one place; the components only r
   meaning. Another glyph for a meaning is one edit there (a new glyph also gets its import in
   `ui/src/components/Icon.svelte`, a type error says so). One glyph means one thing: a new
   meaning needs a glyph no other meaning has.
-- **A view in the sidebar** (name, icon, key): `ui/src/lib/views.ts`.
+- **A view in the sidebar** (name, icon): `ui/src/lib/views.ts`.
 - **A toast**: `TOAST_KINDS` (glyph, colour) and `TOAST_LIFE` (how long, by its button) in
   `ui/src/lib/state/toasts.svelte.ts`; a quiet success is always a toast (`toasts.show`),
   never a note that stays in the view.
@@ -134,6 +170,13 @@ Each role of the UI has one pattern, decided in one place; the components only r
   `ui/src/styles/tokens.css` ("one answer per surface kind").
 - **Buttons**: two heights, `sm` (28 px, in rows and tools) and `field` (32 px, the default);
   a button that loses something for good is `warns` (red at rest).
+- **Tooltips**: only where something is missing: a button that shows only its glyph, text
+  that is cut off, the reason a control waits; never the words that stand there (the sidebar
+  names its entries only as a rail of icons). No "·" as a separator: an icon, a comma or a
+  line of its own. Both are rules of `ui_contract.rs`.
+- **Motion**: only through `ui/src/lib/motion/` (<= 180 ms each): a view switch fades out,
+  then in; a row that leaves folds its height; what comes under the list header unfolds;
+  bars, notices, dialogs, menus and toasts have their entrances there.
 - **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
   `tools/ui-harness/specs/shell.spec.ts`, `input.spec.ts` and `gallery.spec.ts` in Chromium.
 
@@ -219,8 +262,9 @@ text.
    `PORTALS`, with its variant of `Portal` in `Portal::ALL` (`core/src/portal/mod.rs`).
 2. Its alert mails in `core/src/mail/` (sender, layout, fixtures in `core/tests/fixtures/`).
 3. `cargo test -p jobalert-core ipc_types` rewrites `Portal.ts` and `portals.ts`. The UI
-   takes names and monograms from there (the catalogs point at `PORTAL_LABEL`), the order
-   from `PORTALS`; the settings get its switches from `Portal::ALL`.
+   takes names and monograms from there (the catalogs point at `PORTAL_LABEL`); its place in
+   the UI's order is one entry of `PORTAL_ORDER` in `ui/src/lib/portals.ts`; the settings get
+   its switches from `Portal::ALL`.
 4. The stub's demo data may give it jobs; `docs/PLAN.md` says what the portal allows.
 
 ## Change a threshold or a default
@@ -228,7 +272,7 @@ text.
 - The match bands: `HIGH_FROM` and `MID_FROM` in `core/src/model.rs`. The store, the
   prompts and (through `bands.ts`) the UI, the gallery and the stub follow.
 - The defaults of the settings: `Settings::default()` in `core/src/settings.rs` (the range of
-  "Postfach abrufen" `fetchRange` since the last check, the Excel file on, the CSV file off);
+  "Postfach abrufen" `fetchRange` since the last fetch, the Excel file on, the CSV file off);
   the stub's `initial()` mirrors them.
 - A portal's caps: `limits()` of its adapter in `core/src/portal/` (the pause between two
   pages, requests per hour and per day). The hour rolls, the day counts from local midnight
@@ -238,7 +282,7 @@ text.
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
   (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
-  Einstellungen > Wartung lists and restores them (`list_backups`, `restore_backup`).
+  Einstellungen > App lists and restores them (`list_backups`, `restore_backup`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
 
@@ -295,7 +339,7 @@ and profiles: an external contract, never translated):
 ## Release a version
 
 1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer and Einstellungen >
-   Wartung read it) and in `package.json`; the lock files follow (`cargo check`,
+   App read it) and in `package.json`; the lock files follow (`cargo check`,
    `npm install --package-lock-only`). The harness stub keeps its own demo version.
 2. **Data of the old version**: a new field of `Settings` came with its file of the new
    version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
@@ -314,8 +358,8 @@ and profiles: an external contract, never translated):
    install of the old name Job-Alert-Monitor silently (`src-tauri/windows/hooks.nsh`,
    `core/tests/installer_hooks.rs`). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
-6. **Check**: the new version under Wartung, the jobs, marks and profile still there, a
-   fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+6. **Check**: the new version under App, the jobs and the profile still there, a fetch
+   runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
 
 ## Where a new rule goes
 

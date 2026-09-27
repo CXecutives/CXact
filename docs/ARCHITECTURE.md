@@ -39,18 +39,20 @@ A decision is written once; everything else reads it or is generated from it.
 | Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (Excel, title bar, window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts`; in the backend `filter_condition` in `core/src/store/jobs.rs` (portal, band, contract types, remote) | funnel menu, filter chips, reset, harness |
+| The job's menu (what shows it, what changes it, the moves per place) | `jobMenu` in `ui/src/features/jobs/actions.ts` | a row's right click, the reader's "…" (its second group) |
 | Icons (meaning to glyph) | `ui/src/lib/icons.ts` | `Icon.svelte`, every icon position |
 | Views of the sidebar (name, icon) | `ui/src/lib/views.ts` | sidebar |
 | Keys (only the OS's editing keys; the app has none of its own) | `keyConventions()` in `ui/src/lib/platform.ts` | `input.ts` |
 | Toasts (kinds, life) | `TOAST_KINDS`, `TOAST_LIFE` in `ui/src/lib/state/toasts.svelte.ts` | `Toast.svelte` |
 | Hover, press, focus | one answer per surface kind in `tokens.css` | every control |
-| Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts`, `features/first-run/steps.ts`, `features/profile/rows.ts` | their views |
+| Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts` (the five cards), `features/first-run/steps.ts`, `features/profile/sections.ts` | their views |
 | Texts | `ui/src/lib/i18n/de.ts` (`en.ts` mirrors it) | every text the UI shows |
 | Commands | `src-tauri/commands.txt` | `generate_handler!`, capabilities, `commands.ts`, the stub |
 | Profile criteria | `CRITERIA` in `core/src/profile/form.rs` | form, engine, `profile.ts` |
-| Columns of the overview files | `COLUMNS` in `core/src/export/columns.rs` (each column gives a value) | the Excel file (`xlsx.rs` formats), the CSV file (`csv.rs` prints) |
+| Columns of the Excel and the CSV file | `COLUMNS` in `core/src/export/columns.rs` (each column gives a value) | the Excel file (`xlsx.rs` formats), the CSV file (`csv.rs` prints) |
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
+| The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
 | Defaults of the settings (`fetchRange`, `exportExcel`, `exportCsv`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
@@ -127,7 +129,8 @@ the rule and the fix.
 | Settings of every version load without loss | `core/tests/settings_compat.rs` |
 | Database of every version migrates (schema chain, backup first) | `core/src/store/schema.rs` tests, `core/tests/existing_data.rs` |
 | TXT files byte-identical | `header_is_exactly_the_contract`, `txt_is_blind_to_the_match` |
-| Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip; two button heights; one answer per surface kind | `ui_contract.rs` |
+| Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there); no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
+| One word per thing (the glossary of the catalogs) | `ui_contract.rs` (`the_catalog_keeps_the_glossary`) |
 | At most one primary button per view | `ui_contract.rs` |
 | A flaky test fails the run | CI: `--fail-on-flaky-tests` |
 
