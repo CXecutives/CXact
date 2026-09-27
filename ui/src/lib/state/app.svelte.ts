@@ -3,8 +3,8 @@
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
 // app's language and palette, which the whole page follows at once. The range of "Postfach
-// abrufen" (`fetchRange`, the menu of its chevron) is saved from here through the settings
-// patch.
+// abrufen" (`fetchRange`, the menu of the icon button beside it) is saved from here through
+// the settings patch.
 
 import { language } from '../i18n/language.svelte';
 import { errorText } from '../i18n/texts';

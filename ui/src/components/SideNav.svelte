@@ -338,7 +338,7 @@
     --nav-glyph: var(--nav-active-icon);
   }
 
-  /* An entry that waits (the Übersicht before the first fetch): quiet, no wash. */
+  /* An entry that waits: quiet, no wash. */
   .item[aria-disabled='true'] {
     opacity: var(--opacity-disabled);
   }
