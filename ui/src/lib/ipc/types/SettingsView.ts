@@ -12,4 +12,12 @@ excelPath: string,
 /**
  * The Excel file is there to open: written (`exportExcel` on) and on disk.
  */
-excelExists: boolean, };
+excelExists: boolean, 
+/**
+ * The CSV file of the overview, where it is or will be written (next to the Excel file).
+ */
+csvPath: string, 
+/**
+ * The CSV file is there to open: written (`exportCsv` on) and on disk.
+ */
+csvExists: boolean, };

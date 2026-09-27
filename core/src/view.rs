@@ -973,6 +973,10 @@ pub struct SettingsView {
     pub excel_path: PathBuf,
     /// The Excel file is there to open: written (`exportExcel` on) and on disk.
     pub excel_exists: bool,
+    /// The CSV file of the overview, where it is or will be written (next to the Excel file).
+    pub csv_path: PathBuf,
+    /// The CSV file is there to open: written (`exportCsv` on) and on disk.
+    pub csv_exists: bool,
 }
 
 /// Another work folder (`pick_workspace`): the folder, and what became of the profile there.

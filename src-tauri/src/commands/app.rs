@@ -158,6 +158,8 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             workspace_is_default: settings.workspace.is_none(),
             excel_path: export::overview_path(&result_dir),
             excel_exists: settings.export_excel && export::overview_path(&result_dir).is_file(),
+            csv_path: export::csv_path(&result_dir),
+            csv_exists: settings.export_csv && export::csv_path(&result_dir).is_file(),
             workspace: workspace.clone(),
         },
         mailbox: mailbox(state),
@@ -348,7 +350,7 @@ fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
     Ok(WorkspaceProfile::Copied)
 }
 
-/// The Excel file, the skill's list and the text files in the (new) work folder, now; a file
+/// The overviews, the skill's list and the text files in the (new) work folder, now; a file
 /// that cannot be written says so in the log and is written by the next fetch.
 fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::settings::Language) {
     let now = Timestamp::now();
@@ -360,12 +362,12 @@ fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::sett
         matcher.as_deref().map(|m| m as &dyn pipeline::Matcher),
         now,
     );
-    let excel = pipeline::refresh_excel(&state.store, workspace, now, language);
+    let overviews = pipeline::refresh_overviews(&state.store, workspace, now, language);
     log::info!(
-        "files written in the new work folder: {} text files, {} failed, Excel {}",
+        "files written in the new work folder: {} text files, {} failed, overviews {}",
         txt.txt_written,
         txt.txt_failed,
-        if excel.error.is_none() {
+        if overviews.error.is_none() {
             "written"
         } else {
             "not written"

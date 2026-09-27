@@ -72,9 +72,9 @@ As JSON, without name and contact details. The keys belong to my app's profile f
 
 # The ad
 
-## Key facts
+## Job details
 
-The app read the key facts from the portal page and the text. What it did not find may still be in the text; when in doubt, the ad text counts.
+The app read the job details from the portal page and the text. What it did not find may still be in the text; when in doubt, the ad text counts.
 
 - Title: Interim CFO (m/w/d)
 - Company: Hanseatic Holding GmbH

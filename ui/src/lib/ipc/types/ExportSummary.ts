@@ -7,6 +7,11 @@ export type ExportSummary = {
  */
 overviewXlsx: string | null, 
 /**
+ * Written CSV overview (if written in this run; `exportCsv`). Summaries of earlier
+ * versions have none.
+ */
+overviewCsv?: string | null, 
+/**
  * A foreign overview at the same path was backed up here.
  */
 backup: string | null, txtWritten: number, 

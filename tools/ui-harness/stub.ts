@@ -747,6 +747,7 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     score: demoScoring(),
     export: {
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
+      overviewCsv: null,
       backup: null,
       txtWritten: 7,
       txtFailed: 0,
@@ -810,6 +811,9 @@ function initial(): void {
       workspaceIsDefault: true,
       excelPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.xlsx`,
       excelExists: true,
+      csvPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.csv`,
+      // `exportCsv` is off: the app writes none.
+      csvExists: false,
     },
     mailbox: {
       user: 'alerts.demo@gmail.com',
@@ -1833,19 +1837,20 @@ const handlers: Handlers = {
       workspaceIsDefault: false,
       excelPath: `${folder}/auswertung/JobAlerts.xlsx`,
       excelExists: state.exportExcel && state.lastRun !== null,
+      csvPath: `${folder}/auswertung/JobAlerts.csv`,
+      csvExists: state.exportCsv && state.lastRun !== null,
     };
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };
   },
-  // Like `existing` (commands/app.rs): a result file nothing wrote yet is not found, the
-  // Excel file switched off neither, and the CSV file not yet (no export writes one yet).
+  // Like `existing` (commands/files.rs): a result file nothing wrote yet is not found, nor
+  // one switched off (the Excel file, the CSV file alike).
   open_target: ({ target }) => {
     if (target.kind === 'excel' && !state.settings.excelExists) {
       throw fail('notFound', { what: 'file', path: state.settings.excelPath });
     }
-    if (target.kind === 'csv') {
-      const path = state.settings.excelPath.replace(/\.xlsx$/, '.csv');
-      throw fail('notFound', { what: 'file', path });
+    if (target.kind === 'csv' && !state.settings.csvExists) {
+      throw fail('notFound', { what: 'file', path: state.settings.csvPath });
     }
     return null;
   },
@@ -1858,7 +1863,11 @@ const handlers: Handlers = {
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
     if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
-    if (patch.exportCsv !== null) state.exportCsv = patch.exportCsv;
+    if (patch.exportCsv !== null) {
+      // Like the Excel file below.
+      state.exportCsv = patch.exportCsv;
+      state.settings.csvExists = patch.exportCsv && state.lastRun !== null;
+    }
     if (patch.exportExcel !== null) {
       // Switched on, the file follows a moment later (like a mark); off, none is there.
       state.exportExcel = patch.exportExcel;
