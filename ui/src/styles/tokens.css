@@ -140,6 +140,9 @@
   --scrim: hsl(var(--p-scrim) / 0.36);
   /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
   --surface-inverse: hsl(var(--p-navy-deep));
+  /* The tooltip's edge: a faint light hairline around the dark bubble (every design's tooltip
+     is dark). */
+  --tooltip-edge: hsl(var(--p-white) / 0.16);
 
   /* -------------------------------------------------------------------- text */
   --text: hsl(var(--p-ink));
