@@ -815,9 +815,6 @@ export const de = {
     untitled: 'Job ohne Titel',
     /** An ad that takes no applications any more (the end of its row's first line). */
     closed: 'Beendet',
-    /** An application deadline today or within 7 days, in red at the same place ("Frist
-     *  15.10."). */
-    deadline: (day: string) => `Frist ${day}`,
   },
   toolbar: {
     fetch: 'Postfach abrufen',

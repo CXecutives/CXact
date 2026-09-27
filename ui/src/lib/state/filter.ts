@@ -50,26 +50,6 @@ export const NO_FILTER: ListFilter = {
   unread: null,
 };
 
-/** How many days ahead a deadline counts as close by. */
-const DEADLINE_DAYS = 7;
-
-/** The local calendar day of `date`, `days` on, as an ISO date (`2026-09-24`). */
-export function localDay(date: Date, days = 0): string {
-  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
-}
-
-/** The job's application deadline when it is today or within the next DEADLINE_DAYS (an ISO
- *  date), else null: the row names it in red. */
-export function soonDeadline(job: JobView, today: string): string | null {
-  const deadline = job.match?.facts.deadline ?? null;
-  if (deadline === null || today === '') return null;
-  const [year, month, day] = today.split('-').map(Number) as [number, number, number];
-  const last = localDay(new Date(year, month - 1, day), DEADLINE_DAYS);
-  return deadline >= today && deadline <= last ? deadline : null;
-}
-
 /** The work mode of a job as its Jobdetails name it (core's store::filter_condition): the
  *  remote share the ad states first (all of it remote, none of it on site, anything between
  *  hybrid), the location's work mode only without one; null when neither says. */

@@ -86,25 +86,14 @@ test('an ad that takes no applications says Beendet at the end of its title line
   await expect(open_.locator('.title')).not.toHaveCSS('color', muted);
 });
 
-test('a deadline today or within 7 days stands in red where the stamp was', async ({ page }) => {
+test('the stamp says when the job came in, never its deadline', async ({ page }) => {
   await open(page, WIN);
-  // 2802 closes applications on 28.09. (four days after the fixed clock), 2801 on 15.10.
+  // 2802 closes applications on 28.09. (four days after the fixed clock): the row still says
+  // when its alert mail came, in the stamp's colour (the reader's Jobdetails name the day).
   const soon = row(page, 'freelancermap-2802').getByTestId('row-date');
-  await expect(soon).toHaveText(T.job.deadline('28.09.'));
-  const red = await tokenColour(page, '--danger-strong');
-  await expect(soon).toHaveCSS('color', red);
-  // Under the pointer it stays red.
-  await row(page, 'freelancermap-2802').locator('.title').hover();
-  await page.mouse.move(0, 0);
-  await expect(soon).toHaveCSS('color', red);
-  const later = row(page, 'freelancermap-2801').getByTestId('row-date');
-  await expect(later).toHaveText('07:30');
-  await expect(later).not.toHaveCSS('color', red);
-  // After the deadline the stamp is back.
-  await page.clock.setFixedTime(new Date('2026-09-29T09:30:00+02:00'));
-  await page.evaluate(() => dispatchEvent(new Event('focus')));
-  await expect(soon).not.toHaveText(T.job.deadline('28.09.'));
-  await expect(soon).not.toHaveCSS('color', red);
+  await expect(soon).toHaveText('03:30');
+  await expect(soon).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
+  await expect(list(page)).not.toContainText('Frist');
 });
 
 test('line 2: the company and the place, each with its icon, no middle dot', async ({ page }) => {
