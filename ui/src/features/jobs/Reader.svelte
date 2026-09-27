@@ -11,9 +11,11 @@
   - actions: Alert-Mail öffnen, Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
     or closed: the portal's page still opens), KI-Prompt kopieren and "…", all alike. The
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
-    shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
-    ausschließen", then the moves of the place (Eingang Archivieren, Löschen; Archiv
-    In den Eingang, Löschen; Papierkorb Wiederherstellen, Endgültig löschen). A job that just
+    shows it too, its tools the moves): "Wieder ausschließen" for a job scored by hand, then
+    the moves of the place (Eingang Archivieren, Löschen; Archiv In den Eingang, Löschen;
+    Papierkorb Wiederherstellen, Endgültig löschen). An excluded job has one button,
+    "Trotzdem bewerten" (the one thing to do with it), and "…" holds the whole job menu
+    without it (Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren, then the moves). A job that just
     moved away offers none while the next one loads. Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and every
     failure is a toast.
@@ -64,7 +66,7 @@
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import { guarded, jobMenu, move, purge, seen, type MoveId } from './actions';
+  import { guarded, jobMenu, move, override, purge, seen, type MoveId } from './actions';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
@@ -248,10 +250,27 @@
     fail(await addTerm(term));
   }
 
-  /** The "…" menu: what changes the job, from the one table of the job's menu (the row's
-   *  right click shows the same); a move hands the focus on. */
+  /** An excluded job the user has not scored by hand: its one button is "Trotzdem bewerten". */
+  const includable = $derived(excluded && !job.overridden);
+
+  /** "Trotzdem bewerten": the job counts with its real match and gets the usual buttons; one
+   *  pressed from the keyboard hands the focus to the first of them. */
+  async function include(event: MouseEvent): Promise<void> {
+    const fromKeyboard = event.detail === 0;
+    const error = await override(job, true);
+    fail(error);
+    if (error !== null || !fromKeyboard) return;
+    await tick();
+    actions?.querySelector<HTMLElement>('button:not([aria-disabled="true"])')?.focus();
+  }
+
+  /** The "…" menu, from the one table of the job's menu (the row's right click shows the
+   *  same): what changes the job; for an excluded job everything but "Trotzdem bewerten",
+   *  which is its button. A move hands the focus on. */
   function moreEntries(): MenuEntry[] {
-    return jobMenu(job, { changesOnly: true, move: act, purge: askPurge, report: fail });
+    const context = { move: act, purge: askPurge, report: fail };
+    if (!includable) return jobMenu(job, { ...context, changesOnly: true });
+    return jobMenu(job, context).filter((entry) => !('id' in entry) || entry.id !== 'include');
   }
 
   /** The action row stays one line: where the labels do not fit, the three buttons are icons
@@ -376,39 +395,54 @@
   {/if}
 {/snippet}
 
+{#snippet showButtons()}
+  <Button
+    variant="secondary"
+    size="field"
+    icon="alertMail"
+    label={t.reader.mail}
+    iconOnly={iconsOnly}
+    disabled={detail.mail.gmailUrl === null}
+    disabledReason={t.reader.noMail}
+    testid="reader-mail"
+    onclick={() => openTarget({ kind: 'gmail', key: job.key })}
+  />
+  <Button
+    variant="secondary"
+    size="field"
+    icon="external"
+    label={offline ? t.reader.openOffline : t.reader.open}
+    iconOnly={iconsOnly}
+    testid="open-ad"
+    onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
+  />
+  <Button
+    variant="secondary"
+    size="field"
+    icon="prompt"
+    label={t.reader.prompt}
+    iconOnly={iconsOnly}
+    disabled={promptOff !== null}
+    disabledReason={promptOff}
+    testid="reader-prompt"
+    onclick={() => void copyJobPrompt(job.key).then(fail)}
+  />
+{/snippet}
+
 {#snippet actionRow()}
   <div class="actions" bind:this={actions} data-testid="reader-actions">
-    <Button
-      variant="secondary"
-      size="field"
-      icon="alertMail"
-      label={t.reader.mail}
-      iconOnly={iconsOnly}
-      disabled={detail.mail.gmailUrl === null}
-      disabledReason={t.reader.noMail}
-      testid="reader-mail"
-      onclick={() => openTarget({ kind: 'gmail', key: job.key })}
-    />
-    <Button
-      variant="secondary"
-      size="field"
-      icon="external"
-      label={offline ? t.reader.openOffline : t.reader.open}
-      iconOnly={iconsOnly}
-      testid="open-ad"
-      onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}
-    />
-    <Button
-      variant="secondary"
-      size="field"
-      icon="prompt"
-      label={t.reader.prompt}
-      iconOnly={iconsOnly}
-      disabled={promptOff !== null}
-      disabledReason={promptOff}
-      testid="reader-prompt"
-      onclick={() => void copyJobPrompt(job.key).then(fail)}
-    />
+    {#if includable}
+      <Button
+        variant="secondary"
+        size="field"
+        icon="include"
+        label={t.actions.include}
+        testid="reader-include"
+        onclick={(event) => void include(event)}
+      />
+    {:else}
+      {@render showButtons()}
+    {/if}
     <span class="more" bind:this={moreAnchor}>
       <Button
         variant="secondary"

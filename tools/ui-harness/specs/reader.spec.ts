@@ -483,11 +483,11 @@ test.describe('the actions', () => {
       expect(await more(page), place).toEqual([...moves]);
       expect(await toolsOf(page, key), place).toEqual([...moves]);
     }
-    // An excluded job: "Trotzdem bewerten" before the moves of its place.
+    // An excluded job: "Trotzdem bewerten" is its button, "…" holds the rest of the job's menu.
     await openPlace(page, 'inbox');
     const { excluded } = await stubList(page);
     await openJob(page, excluded[0]!);
-    expect(await more(page)).toEqual(['include', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['mail', 'open-ad', 'prompt', 'archive', 'trash']);
   });
 
   test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
@@ -622,10 +622,19 @@ test.describe('an excluded job', () => {
     await expect(why(page)).not.toContainText('Zeitarbeit');
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
     // The same entries in the same order as the row's menu (one table, actions.ts).
+    // Its one button is "Trotzdem bewerten", before "…"; the ways to the mail, the ad and the
+    // prompt are in "…" with the moves.
+    const include = stage(page).getByTestId('reader-include');
+    await expect(include).toHaveText(T.actions.include);
+    for (const gone of ['reader-mail', 'open-ad', 'reader-prompt']) {
+      await expect(stage(page).getByTestId(gone)).toHaveCount(0);
+    }
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['include', 'archive', 'trash']);
-    expect(menu.labels[0]).toBe(T.actions.include);
-    await choose(page, 'include');
+    expect(menu.ids).toEqual(['mail', 'open-ad', 'prompt', 'archive', 'trash']);
+    await page.keyboard.press('Escape');
+    // From the keyboard: the job counts, the focus moves to its first button.
+    await include.focus();
+    await page.keyboard.press('Enter');
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
       key: { portal: 'freelance', id: '900412' },
       include: true,
@@ -635,6 +644,8 @@ test.describe('an excluded job', () => {
     await expect(toast.getByTestId('toast-action')).toHaveText('Rückgängig');
     await expect(stage(page).getByTestId('reader-ring')).toBeVisible();
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-include')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-mail')).toBeFocused();
     menu = await moreMenu(page);
     expect(menu.ids).toEqual(['exclude', 'archive', 'trash']);
     expect(menu.labels[0]).toBe(T.actions.exclude);

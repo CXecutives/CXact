@@ -197,7 +197,7 @@ export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
  * "Trotzdem bewerten" (an excluded job counts with its real match) or "Wieder ausschließen":
  * a short toast with Rückgängig. Resolves with the error text, or null.
  */
-async function override(job: JobView, include: boolean): Promise<string | null> {
+export async function override(job: JobView, include: boolean): Promise<string | null> {
   const error = await jobs.setOverride(job.key, include);
   if (error !== null) return error;
   toasts.show(include ? t.toast.included : t.toast.excluded, 'success', {
