@@ -22,8 +22,10 @@ import {
   rows,
   settleMoves,
   stage,
+  stubList,
   T,
   tokenColour,
+  viaMenu,
   WIN,
 } from './helpers';
 
@@ -105,6 +107,43 @@ async function moreMenu(page: Page): Promise<{ ids: string[]; labels: string[] }
 /** Choose an entry of the open menu. */
 async function choose(page: Page, id: string): Promise<void> {
   await page.getByTestId(`menu-item-${id}`).click();
+}
+
+/** "…" of the open job: its entries (ids), then closed again. */
+async function more(page: Page): Promise<string[]> {
+  const { ids } = await moreMenu(page);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  return ids;
+}
+
+/** The moves the row of `key` shows under the pointer. */
+async function toolsOf(page: Page, key: string): Promise<string[]> {
+  await row(page, key).hover();
+  const tools = page
+    .getByTestId('job-list')
+    .locator('.job', { has: page.getByTestId(`job-row-${key}`) })
+    .locator('[data-testid^="tool-"]');
+  await expect(tools.first()).toBeVisible();
+  const ids = await tools.evaluateAll((all) =>
+    all.map((tool) => (tool.getAttribute('data-testid') ?? '').slice(5)),
+  );
+  await page.mouse.move(0, 0);
+  return ids;
+}
+
+/** The "…" of a job that just left the list opens nothing. */
+async function moreOpensNothing(page: Page): Promise<void> {
+  await stage(page).getByTestId('reader-more').click();
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  for (const id of ['archive', 'unarchive', 'trash', 'restore', 'purge']) {
+    await expect(page.getByTestId(`menu-item-${id}`)).toHaveCount(0);
+  }
+}
+
+/** Every job's details take this long to load (0: at once). */
+async function slowDetails(page: Page, ms: number): Promise<void> {
+  await page.evaluate((delay) => (window.__harness.detailDelay = delay), ms);
 }
 
 test.describe('the head and the match', () => {
@@ -317,6 +356,79 @@ test.describe('the actions', () => {
     expect((await calls(page, 'purge_jobs')).at(-1)?.[1]).toEqual({
       keys: [{ portal: 'linkedin', id: '4100200306' }],
     });
+  });
+
+  test('the "…" names the moves of the place like the row, per place', async ({ page }) => {
+    // Opening a job waits for every animation, the toast's of each move too.
+    test.setTimeout(60_000);
+    await open(page, WIN);
+    // Two jobs in the Papierkorb (one toast: the moves merge).
+    for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
+      await viaMenu(page, 'trash', key);
+      await settleMoves(page);
+    }
+    const places = [
+      { place: 'inbox', key: 'freelancermap-2802', moves: ['archive', 'trash'] },
+      { place: 'archive', key: 'linkedin-4100200306', moves: ['unarchive', 'trash'] },
+      { place: 'trash', key: 'freelancermap-2803', moves: ['restore', 'purge'] },
+    ] as const;
+    for (const { place, key, moves } of places) {
+      await openPlace(page, place);
+      await openJob(page, key);
+      expect(await more(page), place).toEqual([...moves]);
+      expect(await toolsOf(page, key), place).toEqual([...moves]);
+    }
+    // An excluded job: "Trotzdem bewerten" before the moves of its place.
+    await openPlace(page, 'inbox');
+    const { excluded } = await stubList(page);
+    await openJob(page, excluded[0]!);
+    expect(await more(page)).toEqual(['include', 'archive', 'trash']);
+  });
+
+  test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
+    // Opening a job waits for every animation, the toast's of each move too.
+    test.setTimeout(60_000);
+    await open(page, WIN);
+    const best = 'Interim CFO für Familienunternehmen';
+    // Löschen of the open job in the Eingang: while the next one loads the reader shows the
+    // job that went to the Papierkorb, and its "…" never offers the moves of the Papierkorb
+    // here.
+    await openJob(page, 'freelancermap-2801');
+    await settleMoves(page);
+    await slowDetails(page, 1500);
+    await moreMenu(page);
+    await choose(page, 'trash');
+    await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
+    await moreOpensNothing(page);
+    // The next job of the Eingang: the Eingang's moves.
+    await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
+    await slowDetails(page, 0);
+    await settleMoves(page);
+    expect(await more(page)).toEqual(['archive', 'trash']);
+    // Rückgängig brings it back and opens it again: the Eingang's moves again.
+    await page.getByTestId('toast-action').click();
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
+    await settleMoves(page);
+    expect(await more(page)).toEqual(['archive', 'trash']);
+    // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
+    await open(page, WIN);
+    for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
+      await viaMenu(page, 'trash', key);
+      await settleMoves(page);
+    }
+    await openPlace(page, 'trash');
+    await openJob(page, 'freelancermap-2803');
+    const next = await row(page, 'freelancermap-2804').locator('.title').innerText();
+    await slowDetails(page, 1500);
+    await moreMenu(page);
+    await choose(page, 'restore');
+    await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
+    await moreOpensNothing(page);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
+    await slowDetails(page, 0);
+    await settleMoves(page);
+    expect(await more(page)).toEqual(['restore', 'purge']);
   });
 
   test('copying the prompt says so in a toast, a refusing clipboard too', async ({

@@ -720,4 +720,4 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
 - The reader's "…" follows the job's place like the row; the company icon is `building-2`.
 - [x] Row tools, Dearchivieren, the company glyph
 - [x] One filter control
-- [ ] The reader's "…" per place
+- [x] The reader's "…" per place (a job that just moved away offers no moves while the next one loads)

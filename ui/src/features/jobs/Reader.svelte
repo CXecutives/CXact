@@ -9,10 +9,12 @@
     shows the ban instead, "Ausgeschlossen" and one sentence why (its first violation).
   - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…", all alike. The
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
-    shows it too): for an excluded job "Trotzdem bewerten" or "Wieder ausschließen", then the
-    moves of the place. Moving the job away from one of the reader's buttons
-    hands the focus to the same button of the next job. Every result and every failure is a
-    toast.
+    shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
+    ausschließen", then the moves of the place (Eingang Archivieren, Löschen; Archiv
+    Dearchivieren, Löschen; Papierkorb Wiederherstellen, Endgültig löschen). A job that just
+    moved away offers none while the next one loads. Moving the job away from one of the
+    reader's buttons hands the focus to the same button of the next job. Every result and every
+    failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
     table (lib/facts.ts): the ad's value ("/" where it says nothing; for an ad the app never
     read only what it knows) and the verdict as an icon whose tooltip is the reason that
@@ -49,7 +51,7 @@
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { placeOf } from '$lib/place';
   import { app } from '$lib/state/app.svelte';
-  import { keyOf } from '$lib/state/jobs.svelte';
+  import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -302,8 +304,16 @@
   let moreAnchor = $state<HTMLElement | null>(null);
   let moreOpen = $state(false);
 
+  /**
+   * The job still lies in the list's place. One that just moved away (Löschen from "…", a
+   * row's tool or its menu) keeps its reader until the next job has loaded; its place is the
+   * new one then, and the "…" would offer that place's moves (Wiederherstellen, Endgültig
+   * löschen in the Eingang): it opens nothing until the next job is there.
+   */
+  const inPlace = $derived(job.place === jobs.place);
+
   function openMore(event: MouseEvent): void {
-    if (moreAnchor === null || menuState.open !== null) return;
+    if (moreAnchor === null || menuState.open !== null || !inPlace) return;
     moreOpen = true;
     openMenu({
       label: t.reader.more,
