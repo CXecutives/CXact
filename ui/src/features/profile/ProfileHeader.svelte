@@ -3,19 +3,17 @@
   (`data-first-row`): the active profile's name as the page's title (26/600 in the heading
   colour, text a user would copy, an ellipsis when long; "Neues Profil" while the form holds
   a new one), right after it a quiet chevron (a small ghost icon button) whose menu lists
-  every profile (a check at the active one) and what can be done with them (Neues Profil,
-  Profil duplizieren, Umbenennen, Aus Datei laden, Ordner öffnen and "Profil löschen" in red,
-  which asks first naming the profile); then a status only when there is one ("n Werte
-  prüfen" while values of the file do not read, a click goes to the first one; the rescore a
-  save or a switch started; each fades in and out). On the title's line at the right edge of
-  the column one quiet button (ghost, with its glyph): the update from a CV, "Aus Lebenslauf
-  erstellen" while the profile is new or empty. It stays while a draft is in the form, then
-  waiting like everything that would replace or drop the draft ("Erst speichern oder
-  verwerfen."), so the focus stays on it after the steps with an AI closed; another profile
-  asks first (ProfileView). The form below says who the profile is about, so the head does
-  not repeat it. Under the row, only where it prevents a mistake: keys of the file the app
-  does not read (with the folder at hand), that saving a chosen file replaces the profile,
-  and a failure. Narrower than 480 px the status and the button go to a line of their own.
+  every profile (a check at the active one) and what can be done with them: the ways to a new
+  one (Neues Profil, Aus Datei laden, KI-Prompt für Profilanfertigung kopieren, the same as on
+  the empty state), then Profil duplizieren, Umbenennen, Ordner öffnen and "Profil löschen"
+  in red, which asks first naming the profile and waits while the form holds changes
+  ("Erst speichern oder verwerfen."); another profile asks first (ProfileView). Then a status
+  only when there is one ("n Werte prüfen" while values of the file do not read, a click
+  goes to the first one; the rescore a save or a switch started; each fades in and out). The
+  form below says who the profile is about, so the head does not repeat it. Under the row,
+  only where it prevents a mistake: keys of the file the app does not read (with the folder
+  at hand), that saving a chosen file replaces the profile, and a failure. Narrower than
+  480 px the status goes to a line of its own.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -38,14 +36,12 @@
     profiles: readonly ProfileEntry[];
     /** The form holds a new profile that saving adds beside the others. */
     fresh: boolean;
-    /** The stored profile holds something a CV would update (else the button creates). */
-    updatable: boolean;
     /** How many values are still to check. */
     checks: number;
     /** Warnings said here: what the form cannot change (keys the app does not read). */
     warnings: readonly NoticeData[];
     rescoring: boolean;
-    /** Unsaved changes or a draft: an update or a deletion would drop them. */
+    /** Unsaved changes or a draft: a deletion would drop them. */
     dirty: boolean;
     /** Saving the draft replaces the stored profile (another file). */
     replacing: boolean;
@@ -57,8 +53,8 @@
     onduplicate: () => void;
     onrename: () => void;
     onload: () => void;
+    onprompt: () => void;
     onremove: () => void;
-    onfromcv: () => void;
     onopenfolder: () => void;
     /** "n Werte prüfen": the caret goes to the first one. */
     oncheck: () => void;
@@ -69,7 +65,6 @@
     profile,
     profiles,
     fresh,
-    updatable,
     checks,
     warnings,
     rescoring,
@@ -82,8 +77,8 @@
     onduplicate,
     onrename,
     onload,
+    onprompt,
     onremove,
-    onfromcv,
     onopenfolder,
     oncheck,
   }: Props = $props();
@@ -98,9 +93,6 @@
       return text === null ? [] : [{ text, folder: notice.code === 'ignoredKeys' }];
     }),
   );
-  /** The update of the stored profile (and while its draft is in the form). */
-  const updates = $derived(updatable && (origin === 'stored' || origin === 'update'));
-
   // ---------------------------------------------------------------- the title and its menu
   const active = $derived(profiles.find((entry) => entry.active) ?? null);
   /** A fresh draft, and a draft without any profile yet, is a new one. */
@@ -112,13 +104,14 @@
         : profileName(active),
   );
 
-  /** What can be done with the profiles; another profile asks first while the form holds
-   *  changes, the deletion waits for them (it asks itself). */
+  /** What can be done with the profiles, the ways to a new one first; another profile asks
+   *  first while the form holds changes, the deletion waits for them (it asks itself). */
   const actions = $derived.by((): MenuEntry[] => [
     { id: 'new', label: t.profile.newProfile, icon: 'add', run: onnew },
+    { id: 'load', label: t.profile.load, icon: 'pickFile', run: onload },
+    { id: 'prompt', label: t.profile.prompt, icon: 'prompt', run: onprompt },
     { id: 'duplicate', label: t.profile.duplicate, icon: 'copy', run: onduplicate },
     { id: 'rename', label: t.profile.rename, icon: 'edit', run: onrename },
-    { id: 'load', label: t.profile.load, icon: 'pickFile', run: onload },
     { id: 'folder', label: t.common.openFolder, icon: 'folder', run: onopenfolder },
     { kind: 'separator' },
     {
@@ -212,20 +205,6 @@
           {/if}
         </div>
       {/if}
-      {#if origin !== null}
-        <div class="actions">
-          <Button
-            variant="ghost"
-            size="field"
-            icon="paste"
-            label={updates ? t.profile.updateFromCv : t.profile.fromCv}
-            disabled={dirty}
-            disabledReason={t.profile.saveFirst}
-            testid={updates ? 'profile-update-cv' : 'profile-from-cv'}
-            onclick={onfromcv}
-          />
-        </div>
-      {/if}
     </div>
   </div>
 {/if}{#if notes.length > 0 || replacing || replacesBroken || note}
@@ -268,7 +247,7 @@
     gap: var(--space-8) var(--space-16);
   }
 
-  /* The name gives way first (an ellipsis); the status and the button keep their size. */
+  /* The name gives way first (an ellipsis); the status keeps its size. */
   .title {
     display: flex;
     flex: 0 1 auto;
@@ -306,17 +285,7 @@
     font: var(--type-sm);
   }
 
-  /* The quiet button ends on the column's edge with its glyph and words (a ghost button
-     hangs out by its padding and border). */
-  .actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    margin-right: calc(-1 * var(--ghost-inset));
-    margin-left: auto;
-  }
-
-  /* Narrow: the title alone on its line, the status and the button on the next. */
+  /* Narrow: the title alone on its line, the status on the next. */
   @container (width < 480px) {
     .head {
       flex-wrap: wrap;

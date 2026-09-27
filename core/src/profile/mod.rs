@@ -5,9 +5,10 @@
 //! ([`form`]): saving merges the form into the file, so keys the form does not know, their
 //! values and the order of the keys stay; the previous file stays next to it as the one
 //! backup. Deleting a profile makes it that backup, so it can be restored; restoring over a
-//! profile (the undo of another file that replaced it) swaps the two. A file or a
-//! pasted answer of an AI ([`prompt`], read by [`answer`]) fills the form first, the user
-//! reviews it and saves. No network: everything stays on the computer.
+//! profile (the undo of another file that replaced it) swaps the two. A chosen file fills the
+//! form first, the user reviews it and saves; the file an AI wrote from a CV with the app's
+//! [`prompt`] loads the same way, also as the AI's answer saved as it came ([`answer`]). No
+//! network: everything stays on the computer.
 
 mod answer;
 mod form;
@@ -163,69 +164,50 @@ fn draft(doc: &Json, source: &str) -> Draft {
 /// A profile file the user chose, for review in the editor (nothing is stored yet).
 pub fn draft_from_file(path: &Path) -> Result<Draft> {
     let bytes = std::fs::read(path).map_err(|e| Error::io(path, e))?;
-    let text = utf8(&bytes)?;
-    Ok(draft(&parse_doc(text)?, text))
+    Ok(draft_from_text(utf8(&bytes)?)?)
 }
 
-/// The AI's answer to the [`prompt`] for a new profile: the profile JSON in it (bare, inside
-/// a code block or between sentences, repaired and in the skeleton's shape, see [`answer`]),
-/// for review in the editor. What the answer leaves empty is dropped, so no empty value
-/// becomes a criterion the app cannot read.
-pub fn draft_from_answer(answer: &str) -> std::result::Result<Draft, InvalidInput> {
-    let (doc, source) = answer::read(answer)?;
+/// The text of a chosen file for review in the editor ([`read_file`]).
+pub(crate) fn draft_from_text(text: &str) -> std::result::Result<Draft, InvalidInput> {
+    let (doc, source) = read_file(text)?;
     Ok(draft(&doc, &source))
 }
 
-/// The AI's answer to the update prompt: the answer's form (the editor merges it into the
-/// stored one, keeping the user's own settings) and, as the JSON the save goes into, the
-/// stored profile with the answer's career stations in place of its own (the CV is their
-/// source and the form does not show them). Without a readable stored profile it is the
-/// draft of a new one.
-pub fn update_from_answer(workspace: &Path, answer: &str) -> Result<Draft> {
-    let (found, source) = answer::read(answer)?;
-    let stored = std::fs::read(profile_path(workspace))
-        .ok()
-        .and_then(|bytes| {
-            let text = utf8(&bytes).ok()?.to_owned();
-            Some((parse_doc(&text).ok()?, text))
-        });
-    let Some((mut doc, text)) = stored else {
-        return Ok(draft(&found, &source));
-    };
-    let source = match found.get(STATIONS) {
-        Some(stations) => {
-            doc.insert_before(STATIONS, stations.clone(), SETTINGS);
-            doc.to_pretty().trim_end().to_owned()
-        }
-        None => text,
-    };
-    let compiled = matching::compile_profile(&doc.to_value());
-    Ok(Draft {
-        form: form::read(&found),
-        source,
-        quality: compiled.quality(),
-        summary: compiled.summary().clone(),
-    })
+/// The profile in the text of a chosen file, with the JSON text a save goes into. A JSON
+/// object the form reads is taken as it is (its keys the form does not know and their order
+/// stay). Else the text may be an AI's answer to the [`prompt`] saved as it came: the profile
+/// in it as [`answer`] finds it (inside a code block, between sentences, repaired, in the
+/// skeleton's shape). Else a JSON object stays as it is, and a text that is none says why.
+/// Empty values go either way: the keys of the skeleton an AI left empty (`""`, `[]`,
+/// `null`) would otherwise be values the engine cannot read.
+pub(crate) fn read_file(text: &str) -> std::result::Result<(Json, String), InvalidInput> {
+    let strict = parse_doc(text);
+    if let Ok(doc) = &strict
+        && form::read(doc).has_content()
+    {
+        return Ok(without_empty(doc, text));
+    }
+    if let Some(found) = answer::read(text) {
+        return Ok(found);
+    }
+    strict.map(|doc| without_empty(&doc, text))
 }
 
-/// The career stations (the engine reads them, the form does not show them).
-const STATIONS: &str = matching::lexicon::engine::KEY_STATIONS;
-/// The sections of the user's settings, German and English: new keys go before them.
-const SETTINGS: &[&str] = &[
-    matching::lexicon::KEY_PREFERENCES,
-    "preferences",
-    matching::lexicon::KEY_CRITERIA,
-    "hard_criteria",
-];
+/// A document without its empty values, with its text: the file's own when nothing went.
+fn without_empty(doc: &Json, text: &str) -> (Json, String) {
+    let mut doc = doc.clone();
+    if answer::drop_empty(&mut doc) {
+        let source = doc.to_pretty().trim_end().to_owned();
+        (doc, source)
+    } else {
+        (doc, text.to_owned())
+    }
+}
 
-/// The request for an AI in the app's language (see [`prompt`]): for a new profile, or with a
-/// `workspace` whose stored profile holds something of a CV, for an update of it.
-pub fn cv_prompt(workspace: Option<&Path>, language: Language) -> String {
-    let today = crate::time::local_date(Timestamp::now());
-    let stored = workspace
-        .and_then(stored_form)
-        .filter(ProfileForm::has_content);
-    prompt::text(language, today, stored.as_ref())
+/// The prompt that has any AI write a profile from a CV (see [`prompt`]), in the app's
+/// language.
+pub fn cv_prompt(language: Language) -> String {
+    prompt::text(language, crate::time::local_date(Timestamp::now()))
 }
 
 /// The form of the stored profile; `None` without a readable one.
@@ -630,121 +612,92 @@ mod tests {
         assert_eq!(files, [PROFILE_FILE, BACKUP_FILE], "nothing left aside");
     }
 
+    /// A file an AI wrote, or its answer saved as it came, loads: the profile JSON inside a
+    /// code block, between sentences or after a byte order mark.
     #[test]
-    fn answers_are_read_from_code_blocks_and_chatter() {
+    fn a_saved_answer_of_an_ai_loads_as_a_file() {
         let json = "{\"name\": \"Erika\", \"kernkompetenzen\": [{\"kompetenz\": \"Controlling\"}]}";
-        for answer in [
+        for text in [
             json.to_owned(),
             format!("```json\n{json}\n```"),
             format!("Hier ist das Profil.\n\n```\n{json}\n```\n\nViel Erfolg."),
             format!("Gern, hier ist es: {json} Sag Bescheid."),
             format!("```json\n{{kaputt\n```\nOder so\n```json\n{json}\n```"),
         ] {
-            let draft = draft_from_answer(&answer).unwrap_or_else(|e| panic!("{e:?}: {answer}"));
+            let draft = draft_from_text(&text).unwrap_or_else(|e| panic!("{e:?}: {text}"));
             assert_eq!(draft.form.competences[0].name, "Controlling");
             assert_eq!(draft.source, json);
         }
-        for answer in [
-            "",
-            "Das kann ich nicht.",
-            "```json\n{\"foo\": 1}\n```",
-            "[1, 2]",
-        ] {
-            assert_eq!(
-                draft_from_answer(answer),
-                Err(InvalidInput::ProfileAnswer),
-                "{answer}"
+        let dir = workspace();
+        let file = dir.path().join(PROFILE_FILE);
+        std::fs::write(&file, format!("\u{feff}```json\n{json}\n```\n")).unwrap();
+        assert_eq!(draft_from_file(&file).unwrap().source, json);
+
+        // A file that is no profile says why the JSON does not read.
+        for text in ["", "Das kann ich nicht.", &json[..json.len() - 10]] {
+            assert!(
+                matches!(
+                    draft_from_text(text),
+                    Err(InvalidInput::ProfileNotJson { .. })
+                ),
+                "{text}"
             );
         }
+        assert_eq!(
+            draft_from_text("[1, 2]").map(|d| d.source),
+            Err(InvalidInput::ProfileNotObject {
+                found: "array".into()
+            })
+        );
     }
 
-    /// An update from a CV: the form is the answer's (the editor merges it), the JSON to save
-    /// into is the stored profile with the answer's career stations in place of its own; the
-    /// save keeps the user's settings and every other key.
+    /// The keys an AI left empty go, so none is a value the engine cannot read; a profile
+    /// without empty values keeps its text, and every file keeps its own keys and order.
     #[test]
-    fn an_update_takes_the_stations_of_the_answer_into_the_stored_profile() {
-        let dir = workspace();
-        store(dir.path(), HAND_MADE);
-        let answer = "Hier ist das Profil.\n```json\n{\n  \"name\": \"Erika Beispiel\",\n  \
-                      \"kernkompetenzen\": [{\"kompetenz\": \"Treasury\", \"jahre\": 9}],\n  \
-                      \"stationen\": [{\"zeitraum\": \"01/2021 bis heute\", \"rolle\": \"CFO\", \
-                      \"schwerpunkte\": [\"Treasury\"]}]\n}\n```";
-        let stations = serde_json::json!([
-            {"zeitraum": "01/2021 bis heute", "rolle": "CFO", "schwerpunkte": ["Treasury"]}
-        ]);
-        let draft = update_from_answer(dir.path(), answer).unwrap();
-        assert_eq!(draft.form.competences[0].name, "Treasury");
-        assert_eq!(draft.form.competences[0].years, Some(9));
-        assert_eq!(keys(&draft.source), keys(HAND_MADE), "the stored order");
-        let source: Value = serde_json::from_str(&draft.source).unwrap();
-        assert_eq!(source["stationen"], stations);
-        assert_eq!(source["zeta_notiz"], "bleibt");
-
-        // The editor's merge (years of a stored competence) saved into it.
-        let before = stored_form(dir.path()).unwrap();
-        let mut after = before.clone();
-        after.competences[1].years = Some(9);
-        save_form(dir.path(), Some(&draft.source), &before, &after, &[]).unwrap();
-        let saved = load(dir.path()).unwrap().unwrap();
-        let original: Value = serde_json::from_str(HAND_MADE).unwrap();
-        assert_eq!(saved["stationen"], stations);
-        assert_eq!(saved["kernkompetenzen"][1]["jahre"], 9);
-        for key in [
-            "harte_kriterien",
-            "hard_criteria",
-            "einsatzpraeferenzen",
-            "keywords",
-        ] {
-            assert_eq!(saved[key], original[key], "{key}");
-        }
-
-        // Without stations the stored text stays as it is.
-        let text = stored(dir.path());
-        let draft = update_from_answer(dir.path(), "{\"kernkompetenzen\": [\"Recht\"]}").unwrap();
-        assert_eq!(draft.source, text);
-        // A profile without stations gets them before the settings.
-        store(
-            dir.path(),
-            "{\"name\": \"A\", \"einsatzpraeferenzen\": {\"remote\": \"voll\"}}",
-        );
-        let draft = update_from_answer(dir.path(), answer).unwrap();
-        assert_eq!(
-            keys(&draft.source),
-            ["name", "stationen", "einsatzpraeferenzen"]
-        );
-        // Without a stored profile it is the draft of a new one.
-        assert!(delete(dir.path(), 1).unwrap());
-        assert_eq!(
-            update_from_answer(dir.path(), answer).unwrap(),
-            draft_from_answer(answer).unwrap()
-        );
-        // An answer without a profile is refused as before.
-        assert!(matches!(
-            update_from_answer(dir.path(), "Nein."),
-            Err(Error::Invalid(InvalidInput::ProfileAnswer))
-        ));
-    }
-
-    /// The prompt updates only a stored profile that holds something of a CV.
-    #[test]
-    fn the_update_prompt_needs_a_profile_from_a_cv() {
-        let dir = workspace();
-        let new = cv_prompt(None, Language::De);
-        assert!(new.contains("Bitte erstelle"), "{new}");
-        assert_eq!(cv_prompt(Some(dir.path()), Language::De), new, "no profile");
-        store(dir.path(), "{\"harte_kriterien\": {\"laender\": [\"DE\"]}}");
-        assert_eq!(
-            cv_prompt(Some(dir.path()), Language::De),
-            new,
-            "settings only"
-        );
-        store(dir.path(), HAND_MADE);
-        let update = cv_prompt(Some(dir.path()), Language::En);
-        assert!(update.contains("Please update"), "{update}");
+    fn a_file_loses_its_empty_values_only() {
+        let empty = "{\"zeta\": 1, \"name\": \"Erika\", \"titel\": \"\", \"harte_kriterien\": \
+                     {\"laender\": [], \"min_tagessatz\": null, \"festanstellung_orte\": []}}";
+        let draft = draft_from_text(empty).unwrap();
+        assert_eq!(draft.source, "{\n  \"zeta\": 1,\n  \"name\": \"Erika\"\n}");
         assert!(
-            update.contains("{ \"kompetenz\": \"Controlling\", \"jahre\": 18 }"),
-            "{update}"
+            !draft
+                .summary
+                .warnings
+                .iter()
+                .any(|w| w.code == matching::ProfileWarningCode::CriterionNotUnderstood),
+            "{:?}",
+            draft.summary.warnings
         );
+        assert_eq!(draft_from_text(HAND_MADE).unwrap().source, HAND_MADE);
+        // A JSON object without anything of a CV loads as it is.
+        let criteria = "{\"harte_kriterien\": {\"laender\": [\"DE\"]}}";
+        assert_eq!(draft_from_text(criteria).unwrap().source, criteria);
+        assert_eq!(draft_from_text("{}").unwrap().source, "{}");
+    }
+
+    /// A file loaded as a new profile is the profile of a saved answer, its empty values
+    /// dropped; a file without one is refused and nothing is written.
+    #[test]
+    fn a_saved_answer_is_imported_as_its_profile() {
+        let dir = workspace();
+        let file = dir.path().join("antwort.txt");
+        std::fs::write(
+            &file,
+            "Hier ist es.\n```json\n{\"name\": \"Erika\", \"titel\": \"\", \"keywords\": [\"IFRS\"]}\n```",
+        )
+        .unwrap();
+        let id = import(dir.path(), &file).unwrap();
+        let path = dir.path().join(PROFILE_DIR).join(file_name(id));
+        assert_eq!(
+            std::fs::read_to_string(path).unwrap(),
+            "{\n  \"name\": \"Erika\",\n  \"keywords\": [\n    \"IFRS\"\n  ]\n}"
+        );
+        std::fs::write(&file, "Nein.").unwrap();
+        assert!(matches!(
+            import(dir.path(), &file),
+            Err(Error::Invalid(InvalidInput::ProfileNotJson { .. }))
+        ));
+        assert_eq!(list(dir.path()).unwrap().len(), 1);
     }
 
     /// Every field of the form filled.

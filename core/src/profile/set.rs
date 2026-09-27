@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use super::{PROFILE_DIR, PROFILE_FILE, parse_doc, utf8, writing};
+use super::{PROFILE_DIR, PROFILE_FILE, read_file, utf8, writing};
 use crate::error::{Error, Result};
 use crate::export::write_atomic;
 
@@ -315,15 +315,15 @@ pub fn duplicate(workspace: &Path, id: u32, name: Option<&str>) -> Result<Option
     add(workspace, &bytes, name).map(Some)
 }
 
-/// A new profile from a file the user chose, active from now on: its number. Its text is
-/// taken as it is (without a byte order mark) once it is a JSON object; a file that is no
-/// profile is refused with its reason and nothing is written.
+/// A new profile from a file the user chose, active from now on: its number. It holds the
+/// profile of the file as [`super::read_file`] reads it (a JSON object as it is, the profile
+/// of an AI's answer saved as it came, empty values dropped); a file that is no profile is
+/// refused with its reason and nothing is written.
 pub fn import(workspace: &Path, file: &Path) -> Result<u32> {
     let bytes = std::fs::read(file).map_err(|e| Error::io(file, e))?;
-    let text = utf8(&bytes)?;
-    parse_doc(text)?;
+    let (_, source) = read_file(utf8(&bytes)?)?;
     let _one_at_a_time = writing();
-    add(workspace, text.as_bytes(), None)
+    add(workspace, source.as_bytes(), None)
 }
 
 /// Names profile `id` (one line, trimmed, at most [`MAX_NAME`] characters); an empty name

@@ -1,18 +1,18 @@
-//! An AI's answer to the CV prompt ([`super::prompt`]), read as robustly as chat windows and
-//! AIs make it necessary: the profile JSON wherever it stands (a code block, between
-//! sentences, after an echoed skeleton), repaired where it is no valid JSON (typographic
-//! quotes as delimiters, trailing commas, comments, non-breaking spaces, a byte order mark),
-//! then brought into the skeleton's shape: keys under another name (English, with umlauts,
-//! in capitals) become the skeleton's keys, a number written as text becomes a number, one
-//! text where a list belongs becomes a list, a profile wrapped in one more object is
-//! unwrapped, keys outside the skeleton go and empty values are dropped. A chosen file is
-//! never reshaped: only an answer is a new profile in the app's own format.
+//! An AI's answer to the profile prompt ([`super::prompt`]) saved as a file, read as robustly
+//! as chat windows and AIs make it necessary: the profile JSON wherever it stands (a code
+//! block, between sentences, after an echoed skeleton), repaired where it is no valid JSON
+//! (typographic quotes as delimiters, trailing commas, comments, non-breaking spaces, a byte
+//! order mark), then brought into the skeleton's shape: keys under another name (English, with
+//! umlauts, in capitals) become the skeleton's keys, a number written as text becomes a number,
+//! one text where a list belongs becomes a list, a profile wrapped in one more object is
+//! unwrapped, keys outside the skeleton go and empty values are dropped. A file that is a
+//! profile as it is (a JSON object the form reads) is never reshaped ([`super::read_file`]):
+//! only an answer is a new profile in the app's own format.
 //!
 //! external contract - do not translate: the profile JSON keys.
 
 use super::form;
 use super::json::Json;
-use crate::error::InvalidInput;
 use crate::matching::lexicon::{self, engine as lex};
 
 /// How a value of the skeleton is read from an answer.
@@ -295,9 +295,8 @@ const QUOTES: [char; 6] = [
 
 /// The profile of an answer: the first place that parses (as it is, else repaired) and holds
 /// something the form can show, in the skeleton's shape, with its source text (the answer's
-/// own JSON when nothing had to change, else the reshaped one). An answer whose JSON breaks
-/// off says so.
-pub(super) fn read(answer: &str) -> Result<(Json, String), InvalidInput> {
+/// own JSON when nothing had to change, else the reshaped one); `None` without one.
+pub(super) fn read(answer: &str) -> Option<(Json, String)> {
     let text: String = answer.chars().filter(|c| !INVISIBLE.contains(c)).collect();
     for candidate in candidates(&text) {
         let (parsed, repaired) = match serde_json::from_str::<Json>(candidate) {
@@ -319,13 +318,9 @@ pub(super) fn read(answer: &str) -> Result<(Json, String), InvalidInput> {
         } else {
             doc.to_pretty().trim_end().to_owned()
         };
-        return Ok((doc, source));
+        return Some((doc, source));
     }
-    Err(if objects(&text).1 {
-        InvalidInput::ProfileAnswerCut
-    } else {
-        InvalidInput::ProfileAnswer
-    })
+    None
 }
 
 // ------------------------------------------------------------------------------ finding
@@ -348,7 +343,7 @@ fn candidates(text: &str) -> Vec<&str> {
             rest = &body[end + fence.len()..];
         }
     }
-    spans.extend(objects(text).0);
+    spans.extend(objects(text));
     if let (Some(open), Some(close)) = (text.find('{'), text.rfind('}'))
         && open < close
     {
@@ -364,8 +359,8 @@ fn candidates(text: &str) -> Vec<&str> {
 }
 
 /// The objects of a text from each `{` outside an object to its closing `}` (strings are
-/// skipped), and whether one of them never closes (the answer breaks off).
-fn objects(text: &str) -> (Vec<&str>, bool) {
+/// skipped).
+fn objects(text: &str) -> Vec<&str> {
     let mut found = Vec::new();
     let (mut depth, mut start) = (0usize, 0usize);
     let (mut in_string, mut escaped) = (false, false);
@@ -396,7 +391,7 @@ fn objects(text: &str) -> (Vec<&str>, bool) {
             _ => {}
         }
     }
-    (found, depth > 0)
+    found
 }
 
 // ------------------------------------------------------------------------------ repairing
@@ -737,7 +732,7 @@ mod tests {
 
     /// The profile an answer gives, and its source text.
     fn profile(answer: &str) -> (Value, String) {
-        let (doc, source) = read(answer).unwrap_or_else(|e| panic!("{e:?}: {answer}"));
+        let (doc, source) = read(answer).unwrap_or_else(|| panic!("no profile: {answer}"));
         (doc.to_value(), source)
     }
 
@@ -748,7 +743,7 @@ mod tests {
     /// The skeleton's JSON is found wherever an AI puts it; valid JSON keeps its text.
     #[test]
     fn the_profile_is_found_between_prose_and_other_json() {
-        let skeleton = super::super::prompt::skeleton(true);
+        let skeleton = super::super::prompt::skeleton();
         for answer in [
             JSON.to_owned(),
             format!("```json\n{JSON}\n```"),
@@ -917,35 +912,24 @@ mod tests {
         assert_eq!(number(&json_of("true")), None);
     }
 
-    /// An answer without a profile says so; one whose JSON breaks off says that instead.
+    /// An answer without a whole profile gives none: no JSON, JSON the form cannot show, or
+    /// JSON that breaks off.
     #[test]
-    fn an_answer_without_a_whole_profile_says_why() {
-        for answer in [
-            "",
-            "Das kann ich nicht.",
-            "```json\n{\"foo\": 1}\n```",
-            "[1, 2]",
-            "{\"name\": }",
-            "Ersetze {x} und {y}.",
-        ] {
-            assert_eq!(
-                read(answer).err(),
-                Some(InvalidInput::ProfileAnswer),
-                "{answer}"
-            );
-        }
+    fn an_answer_without_a_whole_profile_gives_none() {
         let cut = &JSON[..JSON.len() - 10];
         for answer in [
+            String::new(),
+            "Das kann ich nicht.".to_owned(),
+            "```json\n{\"foo\": 1}\n```".to_owned(),
+            "[1, 2]".to_owned(),
+            "{\"name\": }".to_owned(),
+            "Ersetze {x} und {y}.".to_owned(),
             cut.to_owned(),
             format!("```json\n{cut}"),
             format!("Hier ist es.\n```json\n{cut}\n```"),
-            format!("{}\n{cut}", super::super::prompt::skeleton(false)),
+            format!("{}\n{cut}", super::super::prompt::skeleton()),
         ] {
-            assert_eq!(
-                read(&answer).err(),
-                Some(InvalidInput::ProfileAnswerCut),
-                "{answer}"
-            );
+            assert_eq!(read(&answer), None, "{answer}");
         }
     }
 }

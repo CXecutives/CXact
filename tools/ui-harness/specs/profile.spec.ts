@@ -197,7 +197,7 @@ function glided(tops: number[]): boolean {
 
 // ------------------------------------------------------------------ the head
 
-test('the head: the name as the title with its menu, a status only when needed and one button', async ({
+test('the head: the name as the title with its menu and a status only when needed', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-remote-unread');
@@ -236,20 +236,21 @@ test('the head: the name as the title with its menu, a status only when needed a
     middle(await page.getByTestId('nav-jobs').boundingBox()),
   );
   await expect(page.getByTestId('profile-warning')).toHaveCount(0);
-  // One button on the right; the rest lives in the switcher's menu (no "…" menu any more).
-  await expect(head.locator('.actions').getByRole('button')).toHaveCount(1);
-  await expect(page.getByTestId('profile-update-cv')).toHaveText(T.profile.updateFromCv);
+  // No button beside the title: everything lives in the switcher's menu (no "…" menu).
+  await expect(head.getByRole('button')).toHaveCount(2);
   await expect(page.getByTestId('profile-more')).toHaveCount(0);
   await switcher(page).click();
   const menu = page.getByTestId('menu');
   await expect(menu).toHaveAccessibleName(T.profile.profiles);
   await expect(menu.getByRole('menuitemradio')).toHaveText([role, ...OTHERS]);
   await expect(menu.getByRole('menuitemradio', { checked: true })).toHaveText(role);
+  // The ways to a new profile first, as on the empty state.
   await expect(menu.getByRole('menuitem')).toHaveText([
     T.profile.newProfile,
+    T.profile.load,
+    T.profile.prompt,
     T.profile.duplicate,
     T.profile.rename,
-    T.profile.load,
     T.common.openFolder,
     T.profile.remove,
   ]);
@@ -260,29 +261,26 @@ test('the head: the name as the title with its menu, a status only when needed a
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },
   });
-  // With changes, what would replace or drop them waits and says why.
+  // With changes, the deletion that would drop them waits.
   await page.getByTestId('profile-title').fill('CFO');
-  const update = page.getByTestId('profile-update-cv');
-  await expect(update).toHaveAttribute('aria-disabled', 'true');
-  expect(await tooltipOf(page, update)).toBe(T.profile.saveFirst);
   await switcher(page).click();
   await expect(page.getByTestId('menu-item-remove')).toHaveAttribute('aria-disabled', 'true');
-  // Without a value to check (the demo reads cleanly) the head holds the title, its chevron
-  // and the button only.
+  // Without a value to check (the demo reads cleanly) the head holds the title and its
+  // chevron only.
   await page.keyboard.press('Escape');
   await profile(page);
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(1);
   await profile(page, '&scenario=profile-thin');
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(1);
 });
 
-test('a long name ends in an ellipsis; the button keeps the line of the title', async ({
+test('a long name ends in an ellipsis; the chevron keeps the line of the title', async ({
   page,
 }) => {
   await profile(page);
-  const long = 'Interim Managerin Finanzen und Controlling im Mittelstand';
+  const long = 'Interim Managerin Finanzen, Controlling und Restrukturierung im Mittelstand';
   await switcher(page).click();
   await page.getByTestId('menu-item-rename').click();
   await page.getByTestId('profile-rename').fill(long);
@@ -291,27 +289,17 @@ test('a long name ends in an ellipsis; the button keeps the line of the title', 
   const clipped = await heading(page).evaluate((node) => node.scrollWidth > node.clientWidth);
   expect(clipped).toBe(true);
   await expect(heading(page)).toHaveCSS('text-overflow', 'ellipsis');
-  const update = (await page.getByTestId('profile-update-cv').boundingBox())!;
-  expect(Math.abs(middle(update) - middle(await heading(page).boundingBox()))).toBeLessThanOrEqual(
+  const chevron = (await switcher(page).boundingBox())!;
+  expect(Math.abs(middle(chevron) - middle(await heading(page).boundingBox()))).toBeLessThanOrEqual(
     1,
   );
 });
 
-test('the head is one row as wide as the sections: the title left, the CV button right', async ({
-  page,
-}) => {
+test("the head starts on the edge of the sections; the title is the page's", async ({ page }) => {
   await profile(page);
   const section = (await page.getByTestId('section-person').boundingBox())!;
   const left = (await heading(page).boundingBox())!;
-  const button = page.getByTestId('profile-update-cv');
-  // Quiet (ghost) with its glyph: its words end on the column's edge.
-  await expect(button).toHaveClass(/ghost/);
-  await expect(button.locator('svg')).toHaveCount(1);
-  const words = (await button.locator('.label').boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
-  expect(Math.round(words.x + words.width)).toBe(Math.round(section.x + section.width));
-  // On the title's line.
-  expect(Math.abs(middle(left) - middle(await button.boundingBox()))).toBeLessThanOrEqual(1);
   // The title is the page's: 26 px in the heading colour, like the reader's job title.
   await expect(heading(page)).toHaveCSS('font-size', '26px');
 });
@@ -621,7 +609,7 @@ test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13
     expect(label.weight, label.text).toBe('500');
   }
   // The main actions are 32 px; the chevron of the title is a small icon button.
-  for (const id of ['profile-save', 'profile-discard', 'profile-update-cv']) {
+  for (const id of ['profile-save', 'profile-discard']) {
     await expect(page.getByTestId(id)).toHaveCSS('height', '32px');
   }
   await expect(switcher(page)).toHaveCSS('height', '28px');
@@ -801,9 +789,7 @@ test('the toast of a save says what the rescore changed, only the parts that did
   expect(T.profile.savedEffect(0, 0)).toBe(T.profile.saved);
 });
 
-test('a value that is wrong holds the save and says why; Übernehmen waits for an answer', async ({
-  page,
-}) => {
+test('a value that is wrong holds the save and says why', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-min-months').fill('200');
   // Said at once at its field, marked, and Speichern waits and says why.
@@ -819,14 +805,6 @@ test('a value that is wrong holds the save and says why; Übernehmen waits for a
   await expect(save(page)).not.toHaveAttribute('aria-disabled', 'true');
   await save(page).click();
   await expect.poll(() => saves(page)).toBe(1);
-  // The steps with an AI: Übernehmen without an answer says what it waits for.
-  await page.getByTestId('profile-update-cv').click();
-  const paste = page.getByTestId('profile-paste');
-  const take = paste.getByTestId('dialog-confirm');
-  await expect(take).toHaveText(T.profile.paste.take);
-  await expect(paste.getByTestId('dialog-cancel')).toHaveText(T.common.cancel);
-  await take.click();
-  await expect(paste).toContainText(T.profile.paste.takeEmpty);
 });
 
 test('a focused field is never hidden under the save bar', async ({ page }) => {
@@ -1983,21 +1961,22 @@ test('language names follow the UI language; the profile keeps them in German', 
 
 // ------------------------------------------------------------------ the ways in
 
-test('no profile: one sentence and the three ways in, the CV first', async ({ page }) => {
+test('no profile: one sentence and the three ways in, Neues Profil first', async ({ page }) => {
   await profile(page, '&scenario=no-profile');
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toContainText('Noch kein Profil');
   await expect(empty).toContainText(T.profile.noneText);
   // The same words as the menu of the profiles.
   await expect(empty.getByRole('button')).toHaveText([
-    'Aus Lebenslauf erstellen',
     T.profile.newProfile,
     T.profile.load,
+    'KI-Prompt für Profilanfertigung kopieren',
   ]);
-  await expect(empty.locator('.btn.primary')).toHaveText('Aus Lebenslauf erstellen');
+  await expect(empty.locator('.btn.primary')).toHaveText(T.profile.newProfile);
+  await expect(empty.getByTestId('profile-prompt').locator('svg')).toHaveCount(1);
 });
 
-test('a new form starts with one row each; the other ways stay at hand', async ({ page }) => {
+test('a new form starts with one row each', async ({ page }) => {
   await create(page);
   await expect(page.getByTestId('profile-name-field')).toBeFocused();
   // Nothing typed yet: nothing to save.
@@ -2016,9 +1995,7 @@ test('a new form starts with one row each; the other ways stay at hand', async (
     await page.getByTestId('competences').boundingBox(),
   ];
   expect(Math.abs(add!.x - list!.x)).toBeLessThanOrEqual(1);
-  // The way from a CV stays at hand; without a profile there is no switcher yet, and nothing
-  // is read.
-  await expect(page.getByTestId('profile-from-cv')).toBeVisible();
+  // Without a profile there is no switcher yet, and nothing is read.
   await expect(switcher(page)).toHaveCount(0);
   await expect(page.getByTestId('profile-more')).toHaveCount(0);
   await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
@@ -2338,7 +2315,6 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await expect(heading(page)).toHaveText(T.profile.newProfile);
   await expect(names).toHaveValue('');
   await expect(names).toBeFocused();
-  await expect(page.getByTestId('profile-from-cv')).toHaveText(T.profile.fromCv);
   await names.fill('Erika Neu');
   await discard(page).click();
   await expect(heading(page)).toHaveText('Finanzen Süd');
@@ -2476,58 +2452,9 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await expect(page.getByTestId('profile-create')).toBeFocused();
 });
 
-// ------------------------------------------------------------------ from a CV
+// ------------------------------------------------------------------ the prompt for an AI
 
-const ANSWER = [
-  'Gern, hier ist das Profil.',
-  '',
-  '```json',
-  JSON.stringify(
-    {
-      name: 'Carla Exempel',
-      titel: 'Interim CFO',
-      berufserfahrung_jahre: 30,
-      ausbildung: [{ abschluss: 'Diplom-Kauffrau (Univ.)' }],
-      kernkompetenzen: [
-        { kompetenz: 'Controlling', jahre: 28, auch: ['FP&A'] },
-        { kompetenz: 'Treasury', jahre: 15, auch: [] },
-      ],
-      schwerpunkte: ['Controlling'],
-      methoden_tools: [{ name: 'SAP S/4HANA' }],
-      zertifizierungen: [],
-      branchen: [{ branche: 'Chemie' }],
-      sprachen: [{ sprache: 'Englisch', niveau: 'C1' }],
-      alleinstellungsmerkmale: [],
-      keywords: ['IFRS'],
-      stationen: [{ zeitraum: '01/2020 bis heute', rolle: 'CFO', schwerpunkte: ['Treasury'] }],
-    },
-    null,
-    2,
-  ),
-  '```',
-].join('\n');
-
-test('the steps from a CV are a dialog of three numbered steps over the view', async ({ page }) => {
-  await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  const paste = page.getByTestId('profile-paste');
-  await expect(paste).toHaveAttribute('role', 'alertdialog');
-  await expect(paste.getByRole('heading', { level: 2 })).toHaveText(T.profile.fromCv);
-  await expect(paste).toContainText(T.profile.paste.privacy);
-  await expect(paste.locator('.step .mark')).toHaveText(['1', '2', '3']);
-  await expect(page.getByTestId('paste-copy')).toHaveText(T.profile.paste.copy);
-  await expect(page.getByTestId('paste-step')).toHaveText(T.profile.paste.step);
-  await expect(paste.locator('label')).toHaveText(T.profile.paste.answer);
-  await expect(page.getByTestId('paste-clipboard')).toHaveText(T.profile.paste.fromClipboard);
-  await expect(paste.getByTestId('dialog-confirm')).toHaveText(T.profile.paste.take);
-  // The caret starts on the first step; the view stays where it is behind the dialog.
-  await expect(page.getByTestId('paste-copy')).toBeFocused();
-  await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await paste.getByTestId('dialog-cancel').click();
-  await expect(paste).toHaveCount(0);
-});
-
-test('from a CV: the prompt is copied, the answer read and summed up, then it fills the form', async ({
+test('"KI-Prompt kopieren" puts the prompt on the clipboard and says so, wherever it is offered', async ({
   page,
   browserName,
 }) => {
@@ -2535,196 +2462,41 @@ test('from a CV: the prompt is copied, the answer read and summed up, then it fi
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   }
   await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  const paste = page.getByTestId('profile-paste');
-  // The prompt can be read before it goes out.
-  await expect(page.getByTestId('paste-prompt')).toHaveCount(0);
-  await page
-    .getByTestId('paste-preview')
-    .getByRole('button', { name: T.profile.paste.preview })
-    .click();
-  await expect(page.getByTestId('paste-prompt')).toContainText('Bitte erstelle');
-  // The same words as the rest of the app: KI and Prompt, never Claude or Anfrage.
-  await expect(paste).not.toContainText('Claude');
-  await expect(paste).not.toContainText('Anfrage');
-  // The button copies, says so for a moment, then offers itself again.
-  const copy = page.getByTestId('paste-copy');
+  const copy = page.getByTestId('profile-empty').getByTestId('profile-prompt');
+  await expect(copy).toHaveText(T.profile.prompt);
+  await expect(copy).toHaveClass(/secondary/);
   await copy.click();
+  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  expect(await calls(page, 'profile_prompt')).toHaveLength(1);
   if (browserName === 'chromium') {
-    await expect(copy).toHaveText(T.profile.paste.copied);
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Bitte erstelle');
-    await expect(copy).toHaveText(T.profile.paste.copy);
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
+      'Du kennst meine Job-Alert-App nicht.',
+    );
   }
-  expect((await calls(page, 'profile_prompt')).map((call) => call[1])).toContainEqual({
-    update: false,
-  });
-  // Übernehmen without an answer says what is missing.
-  const take = paste.getByTestId('dialog-confirm');
-  await take.click();
-  await expect(paste).toContainText(T.profile.paste.takeEmpty);
-  // An answer without a profile, or one the AI broke off: one line under the field.
-  const answer = page.getByTestId('paste-answer');
-  await answer.fill('Das kann ich leider nicht.');
-  await expect(paste).toContainText('In der Antwort steht kein Profil.');
-  await answer.fill(ANSWER.slice(0, 200));
-  await expect(paste).toContainText('Die Antwort bricht mitten im Profil ab.');
-  await expect(page.getByTestId('paste-summary')).toHaveCount(0);
-  // An answer that reads: what it brings, before the form changes.
-  await answer.fill(ANSWER);
-  await expect(page.getByTestId('paste-summary')).toHaveText(
-    /^Übernommen werden 2 Kompetenzen, 1 Werkzeug, 1 Sprache, 1 Branche, 1 Abschluss und \d+ weitere Angaben\.$/,
-  );
+  // Nothing else happens: no dialog, the view stays where it was.
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({
-    text: ANSWER,
-    update: false,
-  });
-  await take.click();
-  await expect(paste).toHaveCount(0);
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('Carla Exempel');
-  await expect(page.getByTestId('competence-name')).toHaveCount(2);
-  await expect.poll(() => marked(page)).toEqual(['Controlling']);
-  // Criteria are the user's own: the form asks for them, the answer brings none.
-  await expect(page.getByTestId('profile-min-rate')).toHaveValue('');
-  await save(page).click();
-  expect((await lastSave(page)).after.name).toBe('Carla Exempel');
+  // The same way in the menu of the profiles, with the prompt's glyph.
+  await profile(page);
+  await switcher(page).click();
+  const item = page.getByTestId('menu-item-prompt');
+  await expect(item).toHaveText(T.profile.prompt);
+  await item.click();
+  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  expect(await calls(page, 'profile_prompt')).toHaveLength(1);
+  await expect(bar(page)).toHaveCount(0);
 });
 
-test('"Aus Zwischenablage einfügen" fills the field; with nothing to paste the caret waits there', async ({
-  page,
-}) => {
-  await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  await page.evaluate((text) => (window.__harness.clipboard = text), ANSWER);
-  await page.getByTestId('paste-clipboard').click();
-  const answer = page.getByTestId('paste-answer');
-  await expect(answer).toHaveValue(ANSWER);
-  expect(await calls(page, 'clipboard_text')).toHaveLength(1);
-  await expect(page.getByTestId('paste-summary')).toBeVisible();
-  // The platform gives no text (or refuses): pasting into the field is the way.
-  await answer.fill('');
-  await page.evaluate(() => (window.__harness.clipboard = ''));
-  await page.getByTestId('paste-clipboard').click();
-  await expect(answer).toBeFocused();
-  await expect(answer).toHaveValue('');
-  await expect(page.getByTestId('paste-summary')).toHaveCount(0);
-});
-
-test('from a CV: when the prompt could not be copied, the step says so', async ({ page }) => {
+test('a clipboard that refuses the prompt says so in a toast', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: () => Promise.reject(new Error('denied')) },
     });
   });
   await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  await page.getByTestId('paste-copy').click();
-  await expect(page.getByTestId('paste-copy-failed')).toHaveText(T.profile.paste.copyFailed);
-  await expect(page.getByTestId('paste-copy')).toHaveText(T.profile.paste.copy);
-});
-
-test('a country of an answer the app does not know stays and shows as it is', async ({ page }) => {
-  await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  const answer = JSON.stringify({
-    name: 'Carla Exempel',
-    kernkompetenzen: [{ kompetenz: 'Controlling', jahre: 20 }],
-    harte_kriterien: { laender: ['DE', 'XK'] },
-  });
-  await page.getByTestId('paste-answer').fill(answer);
-  await page.getByTestId('profile-paste').getByTestId('dialog-confirm').click();
-  await expect(chips(countries(page))).toHaveText(['Deutschland', 'XK']);
-  await save(page).click();
-  expect((await lastSave(page)).after.criteria.countries).toEqual(['DE', 'XK']);
-});
-
-/** An answer for the stored profile: a role, more years in total and for Controlling, fewer
- *  for Konsolidierung, a new competence, a higher level for English. */
-const UPDATE = JSON.stringify({
-  name: 'Carla Exempel',
-  titel: 'Interim CFO',
-  berufserfahrung_jahre: 30,
-  kernkompetenzen: [
-    { kompetenz: 'Controlling', jahre: 28, auch: ['FP&A', 'Planung'] },
-    { kompetenz: 'Konsolidierung', jahre: 5, auch: [] },
-    { kompetenz: 'Treasury', jahre: 15, auch: [] },
-  ],
-  sprachen: [
-    { sprache: 'Englisch', niveau: 'C1' },
-    { sprache: 'Französisch', niveau: 'B1' },
-  ],
-  keywords: ['IFRS', 'Cash Management'],
-  stationen: [{ zeitraum: '01/2020 bis heute', rolle: 'CFO', schwerpunkte: ['Treasury'] }],
-});
-
-test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; years take the higher', async ({
-  page,
-}) => {
-  await profile(page);
-  // From the keyboard (WebKit gives a clicked button no focus, like the OS on macOS).
-  await page.getByTestId('profile-update-cv').focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByTestId('profile-paste')).toContainText('Aus Lebenslauf aktualisieren');
-  // The update prompt (it carries the stored profile), loaded with the profile.
-  await page
-    .getByTestId('paste-preview')
-    .getByRole('button', { name: T.profile.paste.preview })
-    .click();
-  await expect(page.getByTestId('paste-prompt')).toContainText('Bitte aktualisiere');
-  expect((await calls(page, 'profile_prompt')).map((call) => call[1])).toContainEqual({
-    update: true,
-  });
-  await page.getByTestId('paste-answer').fill(UPDATE);
-  // What the update adds, before the form changes: a new competence and language, and more.
-  await expect(page.getByTestId('paste-summary')).toHaveText(
-    /^Ergänzt werden 1 Kompetenz, 1 Sprache und \d+ weitere Angaben\.$/,
-  );
-  await page.getByTestId('profile-paste').getByTestId('dialog-confirm').click();
-  expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({ text: UPDATE, update: true });
-  await expect(bar(page)).toBeVisible();
-  // The button stays where it was and gets the focus back, waiting while the draft is in the
-  // form.
-  const update = page.getByTestId('profile-update-cv');
-  await expect(update).toBeFocused();
-  await expect(update).toHaveAttribute('aria-disabled', 'true');
-  // What is set stays: the name, the role, the level, the Schwerpunkte, the criteria.
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
-  await expect(page.getByTestId('profile-title')).toHaveValue('Interim Managerin Finanzen');
-  await expect(page.getByTestId('profile-min-rate')).toHaveValue('1.100');
-  await expect
-    .poll(() => marked(page))
-    .toEqual(['Controlling', 'Konzernrechnungslegung nach IFRS']);
-  // Years take the higher number; what is new is added.
-  await expect(page.getByTestId('profile-years')).toHaveValue('30');
-  const names = page.getByTestId('competence-name');
-  await expect(names).toHaveCount(7);
-  await expect(names.last()).toHaveValue('Treasury');
-  // Nothing is saved by itself.
-  expect(await saves(page)).toBe(0);
-  await save(page).click();
-  const sent = await lastSave(page);
-  const row = (name: string) => sent.after.competences.find((each) => each.name === name)!;
-  expect(row('Controlling')).toMatchObject({
-    years: 28,
-    aliases: ['Financial Controlling', 'FP&A', 'Planung'],
-    origin: 1,
-  });
-  expect(row('Konsolidierung').years).toBe(11);
-  expect(row('Treasury')).toMatchObject({ years: 15, origin: null });
-  expect(sent.after.years).toBe(30);
-  expect(sent.after.title).toBe('Interim Managerin Finanzen');
-  expect(sent.after.languages.map((each) => [each.language, each.level])).toEqual([
-    ['Deutsch', 'native'],
-    ['Englisch', 'b2'],
-    ['Französisch', 'b1'],
-  ]);
-  expect(sent.after.keywords).toEqual(['IFRS', 'HGB', 'Konzernabschluss', 'Cash Management']);
-  // Saving writes into the stored profile, which now has the career stations of the answer.
-  const source = JSON.parse(sent.source!) as Record<string, unknown>;
-  expect(source.harte_kriterien).toEqual({ min_tagessatz: 1100 });
-  expect(source.stationen).toEqual([
-    { zeitraum: '01/2020 bis heute', rolle: 'CFO', schwerpunkte: ['Treasury'] },
-  ]);
+  await page.getByTestId('profile-prompt').click();
+  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptNotCopied);
+  await expect(page.getByTestId('profile-note')).toHaveCount(0);
 });
 
 // ------------------------------------------------------------------ values that do not read
@@ -2860,7 +2632,7 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
 }) => {
   // Without a mailbox: back to the setup page, no fetch that must fail.
   await open(page, `${WIN}&scenario=first-run`);
-  await page.getByTestId('first-profile-form').click();
+  await page.getByTestId('first-profile').click();
   await page.getByTestId('competence-name').fill('Controlling');
   await save(page).click();
   const next = savedToast(page).getByTestId('toast-action');
@@ -2870,7 +2642,7 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
   expect(await calls(page, 'start_run')).toHaveLength(0);
   // With a mailbox: the first fetch starts once.
   await open(page, `${WIN}&scenario=mailbox-only`);
-  await page.getByTestId('first-profile-form').click();
+  await page.getByTestId('first-profile').click();
   await page.getByTestId('competence-name').fill('Controlling');
   await save(page).click();
   await expect(next).toHaveText(T.profile.next);
@@ -3062,15 +2834,4 @@ test('baseline: profile', async ({ page }) => {
 test('baseline: no profile yet', async ({ page }) => {
   await profile(page, '&scenario=no-profile');
   await expectShot(page, 'profile-empty');
-});
-
-test('baseline: from a CV', async ({ page, browserName }) => {
-  if (browserName === 'chromium') {
-    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  }
-  await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-from-cv').click();
-  await expect(page.getByTestId('profile-paste')).toBeVisible();
-  await page.getByTestId('paste-answer').fill(ANSWER.slice(0, 120));
-  await expectShot(page, 'profile-paste');
 });

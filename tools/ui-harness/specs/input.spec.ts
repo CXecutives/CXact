@@ -1543,10 +1543,10 @@ test('the wheel over a date field, the calendar, a level and the filter menu cha
   expect(await popover.textContent()).toBe(month);
   await expect(date).toHaveValue('01.11.2026');
   await page.keyboard.press('Escape');
-  // A language's level (a menu button).
+  // A language's level (a menu button); the languages end the page, so the wheel goes up.
   const level = page.getByTestId('language-level').first();
   const shown = await level.textContent();
-  expect(await wheelOver(page, level, 'view-profile', 120)).not.toBe(0);
+  expect(await wheelOver(page, level, 'view-profile', -120)).not.toBe(0);
   await expect(level).toHaveText(shown ?? '');
   await expect(menuOpen(page)).toHaveCount(0);
   expect(await calls(page, 'save_profile')).toHaveLength(0);

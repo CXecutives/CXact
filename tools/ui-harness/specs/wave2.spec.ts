@@ -129,34 +129,6 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
 });
 
-test('from a CV: the pasted answer outlasts Esc and the view, the clipboard stays', async ({
-  page,
-  browserName,
-}) => {
-  // WebKit has no clipboard permissions to grant: its part is the answer alone.
-  const clipboard = browserName === 'chromium';
-  if (clipboard) await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await open(page, `${WIN}&scenario=no-profile`);
-  await page.getByTestId('nav-profile').click();
-  const fromCv = page.getByTestId('profile-empty').getByRole('button', {
-    name: 'Aus Lebenslauf erstellen',
-  });
-  await fromCv.click();
-  const answer = page.getByTestId('paste-answer');
-  await answer.fill('{"name": "Erika Muster"}');
-  if (clipboard) await page.evaluate(() => navigator.clipboard.writeText('the answer'));
-  await answer.press('Escape');
-  await expect(page.getByTestId('profile-paste')).toHaveCount(0);
-  // Another view and back: the answer is there, the clipboard untouched.
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('nav-profile').click();
-  await fromCv.click();
-  await expect(answer).toHaveValue('{"name": "Erika Muster"}');
-  if (clipboard) {
-    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('the answer');
-  }
-});
-
 test('a failed save from the leave dialog leaves the caret in the refused field', async ({
   page,
 }) => {
@@ -224,13 +196,10 @@ test('one column: closing shows the open row again, with the focus', async ({ pa
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
 });
 
-test('a new form and the steps from a CV put the caret where the work starts', async ({ page }) => {
+test('a new form puts the caret where the work starts', async ({ page }) => {
   await open(page, `${WIN}&scenario=no-profile`);
   await page.getByTestId('nav-profile').click();
   const empty = page.getByTestId('profile-empty');
-  await empty.getByRole('button', { name: 'Aus Lebenslauf erstellen' }).click();
-  await expect(page.getByTestId('paste-copy')).toBeFocused();
-  await page.getByTestId('profile-paste').getByTestId('dialog-cancel').click();
   await empty.getByRole('button', { name: 'Neues Profil' }).click();
   await expect(page.getByTestId('profile-name-field')).toBeFocused();
 });

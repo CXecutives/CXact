@@ -1,11 +1,11 @@
 <!--
   No profile yet (or one that no longer reads): one sentence what the profile is for and
-  the three ways in, side by side as siblings (32 px like every main action): "Aus Lebenslauf
-  erstellen" (the primary, the recommended way: a prompt for an AI fills the whole form),
-  "Neues Profil" (an empty form) and "Aus Datei laden" (an existing JSON file), the same
-  words as in the menu of the profiles. A file
-  that no longer reads also offers its folder, to fix it by hand. Sits at about 38 % of the
-  height.
+  the three ways in, side by side as siblings (32 px like every main action), the same words
+  as in the menu of the profiles: "Neues Profil" (the primary, an empty form), "Aus Datei
+  laden" (an existing JSON file, also the one an AI wrote) and "KI-Prompt für
+  Profilanfertigung kopieren" (the prompt that has any AI write that file from a CV; a toast
+  says it is copied). A file that no longer reads also offers its folder, to fix it by hand.
+  Sits at about 38 % of the height.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -21,8 +21,8 @@
     unreadable?: boolean;
     note: string | null;
     oncreate: () => void;
-    onfromcv: () => void;
     onpick: () => void;
+    onprompt: () => void;
     onopenfolder?: () => void;
   }
 
@@ -33,8 +33,8 @@
     unreadable = false,
     note,
     oncreate,
-    onfromcv,
     onpick,
+    onprompt,
     onopenfolder,
   }: Props = $props();
 </script>
@@ -44,14 +44,6 @@
   <div class="ways">
     <Button
       variant="primary"
-      size="field"
-      icon="paste"
-      label={t.profile.fromCv}
-      testid="profile-from-cv"
-      onclick={onfromcv}
-    />
-    <Button
-      variant="secondary"
       size="field"
       icon="add"
       label={t.profile.newProfile}
@@ -66,6 +58,14 @@
       loading={picking}
       testid="profile-pick"
       onclick={onpick}
+    />
+    <Button
+      variant="secondary"
+      size="field"
+      icon="prompt"
+      label={t.profile.prompt}
+      testid="profile-prompt"
+      onclick={onprompt}
     />
   </div>
   {#if unreadable && onopenfolder}

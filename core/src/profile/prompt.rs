@@ -1,6 +1,7 @@
-//! The prompt a user hands to an AI together with a CV ("Aus Lebenslauf erstellen" and "Aus
-//! Lebenslauf aktualisieren" in the Profil view): the AI answers with a profile in exactly the
-//! JSON the editor reads, and the user pastes the answer back ([`super::answer`] reads it).
+//! The prompt a user hands to an AI together with a CV ("KI-Prompt für Profilanfertigung
+//! kopieren" in the Profil view and on the first-run page): the AI answers with a profile in
+//! exactly the JSON the editor reads, which the user loads with "Aus Datei laden"
+//! ([`super::read_file`], [`super::answer`] reads it also as the answer saved as it came).
 //! Like the app's other prompts it addresses the assistant as "du" without naming a product,
 //! in the app's language; the JSON keys and the fixed values stay German in both (they are the
 //! profile format).
@@ -9,19 +10,13 @@
 //! synonyms in `auch` (an alias counts as the competence), years from the CV's dates (the text
 //! says what day it is), Schwerpunkte that are competences, target roles with a field, and
 //! wishes and exclusion criteria only where the CV or the user states them (a wrong one costs
-//! points or excludes good jobs). An update carries the CV part of the stored profile (no
-//! name, wishes or criteria), so an entry that means the same keeps its spelling and the
-//! editor's merge finds it; its answer brings no wishes and criteria, the app keeps the
-//! user's own.
+//! points or excludes good jobs).
 //!
 //! external contract - do not translate: the German text and the profile JSON keys it names
 //! (the tests check that every key of the skeleton is explained and that the editor reads it).
 
 use jiff::civil::Date;
 
-use super::answer;
-use super::form::ProfileForm;
-use super::json::Json;
 use crate::settings::Language;
 
 /// The keys a CV fills, in the order the app writes them, the career stations (read by the
@@ -56,7 +51,7 @@ const SKELETON_CV: &str = r#"{
     { "zeitraum": "", "rolle": "", "schwerpunkte": [] }
   ]"#;
 
-/// The user's settings after them: only a new profile asks for them.
+/// The user's settings after them.
 const SKELETON_SETTINGS: &str = r#",
   "einsatzpraeferenzen": {
     "tagessatz_wunsch": null,
@@ -75,15 +70,12 @@ const SKELETON_SETTINGS: &str = r#",
     "ausschlusswoerter": []
   }"#;
 
-/// The skeleton the AI fills, with or without the user's settings.
-pub(crate) fn skeleton(settings: bool) -> String {
-    let tail = if settings { SKELETON_SETTINGS } else { "" };
-    format!("{SKELETON_CV}{tail}\n}}")
+/// The skeleton the AI fills.
+pub(crate) fn skeleton() -> String {
+    format!("{SKELETON_CV}{SKELETON_SETTINGS}\n}}")
 }
 
 const INTRO: &str = "Du unterstützt mich als KI-Assistent bei meinem Beraterprofil. Bitte erstelle aus meinem angehängten Lebenslauf das Profil für meine Job-Alert-App. Die App vergleicht jede Stellenanzeige Begriff für Begriff mit diesem Profil; je genauer es den Lebenslauf wiedergibt, desto besser findet sie passende Projekte.";
-
-const INTRO_UPDATE: &str = "Du unterstützt mich als KI-Assistent bei meinem Beraterprofil. Bitte aktualisiere das Profil meiner Job-Alert-App mit meinem angehängten Lebenslauf; mein bisheriges Profil steht unten. Die App vergleicht jede Stellenanzeige Begriff für Begriff mit diesem Profil; je genauer es den Lebenslauf wiedergibt, desto besser findet sie passende Projekte.";
 
 /// `{today}` is replaced with the day the app writes the prompt.
 const PRINCIPLES: &str = "Grundsätze
@@ -92,12 +84,6 @@ const PRINCIPLES: &str = "Grundsätze
 3. Jahre rechnest du aus den Daten des Lebenslaufs in ganzen Jahren, abgerundet; Zeiträume, die sich überschneiden, zählen einmal. Heute ist der {today}.
 4. Schreib Begriffe kurz und so, wie Stellenanzeigen sie schreiben; Sprachen, Branchen und Sätze auf Deutsch.
 5. Keine Kontaktdaten, keine Adresse, kein Geburtsdatum, kein Familienstand und keine Namen von Arbeitgebern oder Kunden.";
-
-const UPDATE: &str = "Die Aktualisierung
-1. Erstelle das Profil vollständig neu aus dem Lebenslauf. Was nur im bisherigen Profil steht, lässt du weg; die App behält es.
-2. Meint ein Eintrag dasselbe wie einer im bisherigen Profil, schreib ihn genau so wie dort, damit die App beide zusammenführt.
-3. Rechne alle Jahre neu aus dem Lebenslauf.
-4. Meine Wünsche und Ausschlusskriterien pflege ich in der App; sie gehören nicht in die Antwort.";
 
 const FIELDS: &str = "Die Felder
 - name ist mein Vor- und Nachname.
@@ -143,12 +129,9 @@ const CHECKS: [&str; 4] = [
 ];
 const CHECK_SETTINGS: &str =
     "Sind Wünsche und Ausschlusskriterien leer, wo sie niemand genannt hat?";
-const CHECK_UPDATE: &str =
-    "Steht jeder Eintrag, der einem im bisherigen Profil entspricht, genau so wie dort?";
 const CHECK_ANSWER: &str =
     "Ist die Antwort ein einziger gültiger JSON-Codeblock mit genau den Schlüsseln des Aufbaus?";
 
-const CURRENT: &str = "Mein bisheriges Profil (JSON, ohne Name, Wünsche und Ausschlusskriterien)";
 const STRUCTURE: &str = "Der Aufbau";
 
 const MONTHS: [&str; 12] = [
@@ -170,20 +153,12 @@ const MONTHS: [&str; 12] = [
 mod en {
     pub(super) const INTRO: &str = "You support me as an AI assistant with my consultant profile. Please create the profile for my job alert app from my attached CV. The app compares every job ad with this profile term by term; the more precisely the profile reflects the CV, the better the app finds matching projects.";
 
-    pub(super) const INTRO_UPDATE: &str = "You support me as an AI assistant with my consultant profile. Please update the profile of my job alert app with my attached CV; my current profile is below. The app compares every job ad with this profile term by term; the more precisely the profile reflects the CV, the better the app finds matching projects.";
-
     pub(super) const PRINCIPLES: &str = "Principles
 1. The CV is the only source. Take only what it says or what follows directly from it; invent, estimate and add nothing.
 2. Whatever the CV does not give stays empty, text as \"\", lists as [] and numbers as null. I fill empty fields in the app myself.
 3. Work out years from the dates in the CV in whole years, rounded down; periods that overlap count once. Today is {today}.
 4. Keep terms short and write them the way job ads do; languages, industries and sentences in English.
 5. No contact details, no address, no date of birth, no marital status and no names of employers or clients.";
-
-    pub(super) const UPDATE: &str = "The update
-1. Build the profile anew from the CV. Leave out what only the current profile holds; the app keeps it.
-2. Where an entry means the same as one in the current profile, write it exactly as there, so the app merges the two.
-3. Work out all years anew from the CV.
-4. I keep my preferences and exclusion criteria in the app; they do not belong in the answer.";
 
     pub(super) const FIELDS: &str = "The fields
 - name is my first and last name.
@@ -229,13 +204,9 @@ Answer only with the JSON in one single code block, without any text before or a
     ];
     pub(super) const CHECK_SETTINGS: &str =
         "Are preferences and exclusion criteria empty where nobody stated them?";
-    pub(super) const CHECK_UPDATE: &str =
-        "Is every entry that matches one in the current profile written exactly as there?";
     pub(super) const CHECK_ANSWER: &str =
         "Is the answer one single valid JSON code block with exactly the keys of the structure?";
 
-    pub(super) const CURRENT: &str =
-        "My current profile (JSON, without name, preferences and exclusion criteria)";
     pub(super) const STRUCTURE: &str = "The structure";
 
     pub(super) const MONTHS: [&str; 12] = [
@@ -257,18 +228,14 @@ Answer only with the JSON in one single code block, without any text before or a
 /// The words of the prompt in one language.
 struct Words {
     intro: &'static str,
-    intro_update: &'static str,
     principles: &'static str,
-    update: &'static str,
     fields: &'static str,
     settings: &'static str,
     answer: &'static str,
     check: &'static str,
     checks: [&'static str; 4],
     check_settings: &'static str,
-    check_update: &'static str,
     check_answer: &'static str,
-    current: &'static str,
     structure: &'static str,
     months: [&'static str; 12],
     /// Day, month name, year: `{d}`, `{m}`, `{y}` replaced.
@@ -277,18 +244,14 @@ struct Words {
 
 const DE: Words = Words {
     intro: INTRO,
-    intro_update: INTRO_UPDATE,
     principles: PRINCIPLES,
-    update: UPDATE,
     fields: FIELDS,
     settings: SETTINGS,
     answer: ANSWER,
     check: CHECK,
     checks: CHECKS,
     check_settings: CHECK_SETTINGS,
-    check_update: CHECK_UPDATE,
     check_answer: CHECK_ANSWER,
-    current: CURRENT,
     structure: STRUCTURE,
     months: MONTHS,
     date: "{d}. {m} {y}",
@@ -296,18 +259,14 @@ const DE: Words = Words {
 
 const EN: Words = Words {
     intro: en::INTRO,
-    intro_update: en::INTRO_UPDATE,
     principles: en::PRINCIPLES,
-    update: en::UPDATE,
     fields: en::FIELDS,
     settings: en::SETTINGS,
     answer: en::ANSWER,
     check: en::CHECK,
     checks: en::CHECKS,
     check_settings: en::CHECK_SETTINGS,
-    check_update: en::CHECK_UPDATE,
     check_answer: en::CHECK_ANSWER,
-    current: en::CURRENT,
     structure: en::STRUCTURE,
     months: en::MONTHS,
     date: "{d} {m} {y}",
@@ -331,156 +290,37 @@ impl Words {
     }
 }
 
-/// The whole prompt in the app's language: the task, the principles (with `today`), for an
-/// update of `stored` how to treat the current profile, the rule of every field, for a new
-/// profile the wishes and exclusion criteria, the answer wanted and the checks before it; then
-/// the current profile (an update only) and the skeleton, each in a JSON code block.
-pub fn text(language: Language, today: Date, stored: Option<&ProfileForm>) -> String {
+/// The whole prompt in the app's language: the task, the principles (with `today`), the rule
+/// of every field, the wishes and exclusion criteria, the answer wanted and the checks before
+/// it; then the skeleton in a JSON code block.
+pub fn text(language: Language, today: Date) -> String {
     let w = Words::of(language);
-    let mut parts = vec![
-        (if stored.is_some() {
-            w.intro_update
-        } else {
-            w.intro
-        })
-        .to_owned(),
-        w.principles.replace("{today}", &w.day(today)),
-    ];
-    if stored.is_some() {
-        parts.push(w.update.to_owned());
-    }
-    parts.push(w.fields.to_owned());
-    if stored.is_none() {
-        parts.push(w.settings.to_owned());
-    }
-    parts.push(w.answer.to_owned());
-    let own = if stored.is_some() {
-        w.check_update
-    } else {
-        w.check_settings
-    };
     let checks: Vec<String> = w
         .checks
         .iter()
-        .chain([&own, &w.check_answer])
+        .chain([&w.check_settings, &w.check_answer])
         .enumerate()
         .map(|(i, check)| format!("{}. {check}", i + 1))
         .collect();
-    parts.push(format!("{}\n{}", w.check, checks.join("\n")));
-    if let Some(form) = stored {
-        parts.push(format!("{}\n```json\n{}\n```", w.current, current(form)));
-    }
-    parts.push(format!(
-        "{}\n```json\n{}\n```",
-        w.structure,
-        skeleton(stored.is_none())
-    ));
+    let parts = [
+        w.intro.to_owned(),
+        w.principles.replace("{today}", &w.day(today)),
+        w.fields.to_owned(),
+        w.settings.to_owned(),
+        w.answer.to_owned(),
+        format!("{}\n{}", w.check, checks.join("\n")),
+        format!("{}\n```json\n{}\n```", w.structure, skeleton()),
+    ];
     let mut text = parts.join("\n\n");
     text.push('\n');
     text
 }
 
-/// The CV part of the stored profile under the skeleton's keys and in its order (no name, no
-/// wishes, no criteria), laid out like the skeleton.
-fn current(form: &ProfileForm) -> String {
-    let objects = |key: &str, texts: &[String]| {
-        Json::Array(
-            texts
-                .iter()
-                .map(|text| {
-                    let mut item = Json::object();
-                    item.set(key, Json::text(text));
-                    item
-                })
-                .collect(),
-        )
-    };
-    let mut doc = Json::object();
-    doc.set("titel", Json::text(&form.title));
-    doc.set("wunschrollen", Json::texts(&form.roles));
-    doc.set(
-        "berufserfahrung_jahre",
-        form.years.map_or(Json::Null, Json::number),
-    );
-    doc.set("ausbildung", objects("abschluss", &form.degrees));
-    let competences = form.competences.iter().map(|row| {
-        let mut item = Json::object();
-        item.set("kompetenz", Json::text(&row.name));
-        item.set("jahre", row.years.map_or(Json::Null, Json::number));
-        item.set("auch", Json::texts(&row.aliases));
-        item
-    });
-    doc.set("kernkompetenzen", Json::Array(competences.collect()));
-    doc.set("schwerpunkte", Json::texts(&form.focus));
-    doc.set("methoden_tools", objects("name", &form.tools));
-    doc.set("zertifizierungen", objects("name", &form.certificates));
-    doc.set("branchen", objects("branche", &form.industries));
-    let languages = form.languages.iter().map(|row| {
-        let mut item = Json::object();
-        item.set("sprache", Json::text(&row.language));
-        let level = row.level.map_or("", |level| level.text());
-        item.set("niveau", Json::text(level));
-        item
-    });
-    doc.set("sprachen", Json::Array(languages.collect()));
-    doc.set("alleinstellungsmerkmale", Json::texts(&form.strengths));
-    doc.set("keywords", Json::texts(&form.keywords));
-    answer::drop_empty(&mut doc);
-    layout(&doc)
-}
-
-/// A JSON object laid out like the skeleton: one key per line, every object of a list on a
-/// line of its own.
-fn layout(doc: &Json) -> String {
-    let Json::Object(entries) = doc else {
-        return inline(doc);
-    };
-    let lines: Vec<String> = entries
-        .iter()
-        .map(|(key, value)| {
-            let key = inline(&Json::text(key));
-            match value {
-                Json::Array(items) if items.iter().any(Json::is_object) => {
-                    let items: Vec<String> = items
-                        .iter()
-                        .map(|item| format!("    {}", inline(item)))
-                        .collect();
-                    format!("  {key}: [\n{}\n  ]", items.join(",\n"))
-                }
-                other => format!("  {key}: {}", inline(other)),
-            }
-        })
-        .collect();
-    format!("{{\n{}\n}}", lines.join(",\n"))
-}
-
-/// A value on one line, spaced like the skeleton (`{ "kompetenz": "Controlling" }`).
-fn inline(value: &Json) -> String {
-    match value {
-        Json::Object(entries) if entries.is_empty() => "{}".to_owned(),
-        Json::Object(entries) => {
-            let fields: Vec<String> = entries
-                .iter()
-                .map(|(key, value)| format!("{}: {}", inline(&Json::text(key)), inline(value)))
-                .collect();
-            format!("{{ {} }}", fields.join(", "))
-        }
-        Json::Array(items) => {
-            let items: Vec<String> = items.iter().map(inline).collect();
-            format!("[{}]", items.join(", "))
-        }
-        other => serde_json::to_string(other).unwrap_or_default(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::super::form::{
-        self, LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria,
-        ProfileLanguage, ProfileWishes,
-    };
+    use super::super::form::{self, ProfileForm};
+    use super::super::json::Json;
     use super::*;
-    use crate::error::InvalidInput;
     use crate::matching::{self, ProfileWarningCode};
 
     /// The skeleton filled the way an AI would answer (same keys, same order).
@@ -533,65 +373,6 @@ mod tests {
 
     fn day() -> Date {
         Date::new(2026, 9, 25).unwrap()
-    }
-
-    /// A stored profile with every field, the settings with values found nowhere else.
-    fn stored() -> ProfileForm {
-        let texts = |items: &[&str]| items.iter().map(|t| (*t).to_owned()).collect::<Vec<_>>();
-        ProfileForm {
-            name: "Erika Beispiel".into(),
-            title: "Interim CFO".into(),
-            competences: vec![
-                ProfileCompetence {
-                    name: "Konzerncontrolling".into(),
-                    years: Some(12),
-                    aliases: texts(&["Group Controlling"]),
-                    origin: Some(0),
-                },
-                ProfileCompetence {
-                    name: "Treasury".into(),
-                    years: None,
-                    aliases: Vec::new(),
-                    origin: Some(1),
-                },
-            ],
-            strengths: texts(&["Baute zwei Finanzbereiche \"aus einem Guss\" auf."]),
-            keywords: texts(&["IFRS 16"]),
-            years: Some(21),
-            degrees: texts(&["Diplom-Kauffrau (Univ.)"]),
-            industries: texts(&["Chemie"]),
-            tools: texts(&["SAP S/4HANA FI"]),
-            certificates: texts(&["PMP"]),
-            languages: vec![
-                ProfileLanguage {
-                    language: "Deutsch".into(),
-                    level: Some(LanguageLevel::Native),
-                    origin: Some(0),
-                },
-                ProfileLanguage {
-                    language: "Französisch".into(),
-                    level: None,
-                    origin: Some(1),
-                },
-            ],
-            focus: texts(&["Konzerncontrolling"]),
-            roles: texts(&["Head of Controlling"]),
-            wishes: ProfileWishes {
-                day_rate: Some(1234),
-                remote: None,
-                regions: texts(&["Kleinhausen"]),
-                industries: texts(&["Raumfahrt"]),
-            },
-            criteria: ProfileCriteria {
-                min_day_rate: Some(987),
-                countries: texts(&["LU"]),
-                no_anue: true,
-                available: ProfileAvailability::From {
-                    date: "2027-03-01".into(),
-                },
-                ..ProfileCriteria::default()
-            },
-        }
     }
 
     /// The keys of a document in order, the items of a list by its first one.
@@ -651,7 +432,7 @@ mod tests {
     /// keys of the skeleton but the stations.
     #[test]
     fn the_skeleton_names_exactly_the_keys_of_the_form() {
-        let skeleton: Json = serde_json::from_str(&skeleton(true)).unwrap();
+        let skeleton: Json = serde_json::from_str(&skeleton()).unwrap();
         let doc: Json = serde_json::from_str(FILLED).unwrap();
         assert_eq!(
             shape(&doc),
@@ -706,30 +487,23 @@ mod tests {
         let mut form = read.clone();
         form.degrees.push("MBA".into());
         let mut written = Json::object();
-        form::merge(&mut written, &form::ProfileForm::default(), &form, &[]);
+        form::merge(&mut written, &ProfileForm::default(), &form, &[]);
         let mut expected = keys(&skeleton);
         expected.retain(|key| key != "stationen");
         assert_eq!(keys(&written), expected);
-
-        // The skeleton of an update is the same without the settings.
-        let update: Json = serde_json::from_str(&super::skeleton(false)).unwrap();
-        expected.retain(|key| key != "einsatzpraeferenzen" && key != "harte_kriterien");
-        expected.push("stationen".into());
-        assert_eq!(keys(&update), expected);
     }
 
-    /// What the AI leaves as in the skeleton is dropped: the unfilled skeleton holds no
-    /// profile, and a partly filled one leaves no empty criterion the app cannot read.
+    /// The file the AI writes loads with "Aus Datei laden": what it leaves as in the skeleton
+    /// is dropped (the unfilled skeleton is an empty profile, a partly filled one leaves no
+    /// empty criterion the app cannot read), and the filled skeleton comes back as it is, also
+    /// inside a code block with a sentence after it.
     #[test]
-    fn an_answer_without_values_leaves_no_empty_keys() {
-        for settings in [true, false] {
-            assert_eq!(
-                super::super::draft_from_answer(&skeleton(settings)).map(|d| d.form),
-                Err(InvalidInput::ProfileAnswer)
-            );
-        }
-        let answer = skeleton(true).replacen("\"name\": \"\"", "\"name\": \"Erika Beispiel\"", 1);
-        let draft = super::super::draft_from_answer(&answer).unwrap();
+    fn the_file_of_the_answer_loads_without_empty_keys() {
+        let draft = super::super::draft_from_text(&skeleton()).unwrap();
+        assert_eq!(draft.form, ProfileForm::default());
+        assert_eq!(draft.source, "{}");
+        let answer = skeleton().replacen("\"name\": \"\"", "\"name\": \"Erika Beispiel\"", 1);
+        let draft = super::super::draft_from_text(&answer).unwrap();
         assert_eq!(draft.source, "{\n  \"name\": \"Erika Beispiel\"\n}");
         assert!(
             !draft
@@ -740,56 +514,43 @@ mod tests {
             "{:?}",
             draft.summary.warnings
         );
-        // The filled skeleton comes back as it is.
-        let draft = super::super::draft_from_answer(&format!("```json\n{FILLED}\n```")).unwrap();
-        assert_eq!(draft.source, FILLED);
+        for text in [
+            FILLED.to_owned(),
+            format!("```json\n{FILLED}\n```\nLade die Datei mit „Aus Datei laden“."),
+        ] {
+            assert_eq!(super::super::draft_from_text(&text).unwrap().source, FILLED);
+        }
     }
 
-    /// Every key of the skeleton has its rule before the code blocks, in both languages; an
-    /// update asks for nothing of the user's settings.
+    /// Every key of the skeleton has its rule before the code blocks, in both languages, and
+    /// so has every fixed value the form reads.
     #[test]
     fn every_key_of_the_skeleton_is_explained() {
         for language in [Language::De, Language::En] {
-            for update in [false, true] {
-                let stored = stored();
-                let text = text(language, day(), update.then_some(&stored));
-                let skeleton: Json = serde_json::from_str(&skeleton(!update)).unwrap();
-                let mut keys = Vec::new();
-                all_keys(&skeleton, &mut keys);
-                for key in &keys {
-                    assert!(names(rules(&text), key), "{language:?} {update}: {key}");
-                }
-                if update {
-                    let full: Json = serde_json::from_str(&super::skeleton(true)).unwrap();
-                    let mut settings = Vec::new();
-                    all_keys(&full, &mut settings);
-                    settings.retain(|key| !keys.contains(key));
-                    assert_eq!(settings.len(), 13, "{settings:?}");
-                    for key in settings {
-                        assert!(!names(&text, &key), "{language:?}: {key}");
-                    }
-                }
-                // The fixed values the form reads.
-                let values: &[&str] = if update {
-                    &["Muttersprache", "C1", "B2", "A2"]
-                } else {
-                    &[
-                        "Muttersprache",
-                        "voll",
-                        "ueberwiegend",
-                        "teilweise",
-                        "vor_ort",
-                        "anue",
-                        "festanstellung",
-                        "sofort",
-                    ]
-                };
-                for value in values {
-                    assert!(
-                        text.contains(&format!("\"{value}\"")),
-                        "{language:?}: {value}"
-                    );
-                }
+            let text = text(language, day());
+            let skeleton: Json = serde_json::from_str(&skeleton()).unwrap();
+            let mut keys = Vec::new();
+            all_keys(&skeleton, &mut keys);
+            for key in &keys {
+                assert!(names(rules(&text), key), "{language:?}: {key}");
+            }
+            for value in [
+                "Muttersprache",
+                "C1",
+                "B2",
+                "A2",
+                "voll",
+                "ueberwiegend",
+                "teilweise",
+                "vor_ort",
+                "anue",
+                "festanstellung",
+                "sofort",
+            ] {
+                assert!(
+                    text.contains(&format!("\"{value}\"")),
+                    "{language:?}: {value}"
+                );
             }
         }
     }
@@ -798,10 +559,9 @@ mod tests {
     /// on the same key, the same numbered steps, the same JSON.
     #[test]
     fn both_languages_have_the_same_structure() {
-        let stored = stored();
-        for update in [None, Some(&stored)] {
-            let german = text(Language::De, day(), update);
-            let english = text(Language::En, day(), update);
+        {
+            let german = text(Language::De, day());
+            let english = text(Language::En, day());
             let (de, en): (Vec<&str>, Vec<&str>) =
                 (german.lines().collect(), english.lines().collect());
             assert_eq!(de.len(), en.len(), "{german}\n{english}");
@@ -831,21 +591,18 @@ mod tests {
     /// one code block back; it reads like the app's other prompts.
     #[test]
     fn the_text_says_today_and_ends_with_the_skeleton() {
-        let german = text(Language::De, day(), None);
+        let german = text(Language::De, day());
         assert!(german.starts_with("Du unterstützt mich als KI-Assistent"));
         assert!(german.contains("Heute ist der 25. September 2026."));
         assert!(german.contains("in einem einzigen Codeblock"));
-        assert!(german.ends_with(&format!("Der Aufbau\n```json\n{}\n```\n", skeleton(true))));
-        let english = text(Language::En, day(), None);
+        assert!(german.ends_with(&format!("Der Aufbau\n```json\n{}\n```\n", skeleton())));
+        let english = text(Language::En, day());
         assert!(english.starts_with("You support me as an AI assistant"));
         assert!(english.contains("Today is 25 September 2026."));
         assert!(english.contains("in one single code block"));
-        assert!(english.ends_with(&format!(
-            "The structure\n```json\n{}\n```\n",
-            skeleton(true)
-        )));
+        assert!(english.ends_with(&format!("The structure\n```json\n{}\n```\n", skeleton())));
         let march = Date::new(2027, 3, 1).unwrap();
-        assert!(text(Language::De, march, None).contains("Heute ist der 1. März 2027."));
+        assert!(text(Language::De, march).contains("Heute ist der 1. März 2027."));
 
         for text in [&german, &english] {
             // No dash as a separator, no product named.
@@ -875,55 +632,6 @@ mod tests {
         }
         for word in ["the", "and", "you", "your", "with"] {
             assert!(!names(rules(&german), word), "{word}");
-        }
-    }
-
-    /// An update shows the CV part of the stored profile (as JSON the editor reads back the
-    /// same) and nothing of the person or the user's settings.
-    #[test]
-    fn the_update_carries_the_cv_part_of_the_stored_profile_only() {
-        let stored = stored();
-        for language in [Language::De, Language::En] {
-            let text = text(language, day(), Some(&stored));
-            let heading = if language == Language::De {
-                "Mein bisheriges Profil"
-            } else {
-                "My current profile"
-            };
-            let block = &text[text.find(heading).unwrap()..];
-            let block = &block[block.find("```json\n").unwrap() + 8..];
-            let block = &block[..block.find("\n```").unwrap()];
-            let doc: Json = serde_json::from_str(block).unwrap_or_else(|e| panic!("{e}: {block}"));
-            let expected = ProfileForm {
-                name: String::new(),
-                wishes: ProfileWishes::default(),
-                criteria: ProfileCriteria::default(),
-                ..stored.clone()
-            };
-            assert_eq!(form::read(&doc), expected);
-            // Laid out like the skeleton: one entry of a list per line.
-            assert!(
-                block.contains(
-                    "    { \"kompetenz\": \"Konzerncontrolling\", \"jahre\": 12, \"auch\": [\"Group Controlling\"] },\n    { \"kompetenz\": \"Treasury\" }\n"
-                ),
-                "{block}"
-            );
-            assert!(
-                block.contains("{ \"sprache\": \"Französisch\" }"),
-                "{block}"
-            );
-            assert!(block.contains("\\\"aus einem Guss\\\""), "{block}");
-            for private in [
-                "Erika",
-                "1234",
-                "987",
-                "Kleinhausen",
-                "Raumfahrt",
-                "LU",
-                "2027",
-            ] {
-                assert!(!names(&text, private), "{language:?}: {private}");
-            }
         }
     }
 }
