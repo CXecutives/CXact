@@ -508,6 +508,18 @@ export type CriterionKey = keyof typeof criteria;
  *  nothing to judge (no icon). */
 export type TermVerdict = 'met' | 'partial' | 'violated' | 'unknown' | 'unset';
 
+/** What an AI's answer brings into the profile form, per kind (the CV dialog's summary). */
+export interface AnswerAdds {
+  competences: number;
+  tools: number;
+  certificates: number;
+  languages: number;
+  industries: number;
+  degrees: number;
+  /** Everything else: keywords, strengths, roles, synonyms, years, wishes, criteria. */
+  other: number;
+}
+
 /** `JobMatch.note` / `MatchDetail.summary` codes. */
 const note = {
   hardCriterion: 'Ein Ausschlusskriterium greift.',
@@ -1303,16 +1315,38 @@ export const de = {
     },
     paste: {
       privacy: 'Der Lebenslauf geht an die KI, die du nutzt.',
-      copied: 'Der Prompt ist kopiert.',
+      /** Step 1 of the dialog: the button copies, then says so for a moment. */
+      copy: 'Prompt kopieren',
+      copied: 'Kopiert',
       copyFailed: 'Der Prompt ließ sich nicht kopieren.',
-      copy: 'KI-Prompt kopieren',
-      copyAgain: 'Erneut kopieren',
-      step: 'Füge ihn in eine KI ein und hänge den Lebenslauf an.',
       preview: 'Prompt ansehen',
-      answer: 'Antwort der KI',
+      /** Step 2: what to do in the AI chat (no button). */
+      step: 'Im KI-Chat einfügen und Lebenslauf anhängen',
+      /** Step 3: the field for the answer, and the button that pastes the clipboard. */
+      answer: 'Antwort der KI einfügen',
+      fromClipboard: 'Aus Zwischenablage einfügen',
       take: 'Übernehmen',
-      /** Why Übernehmen waits. */
+      /** Why Übernehmen does nothing yet. */
       takeEmpty: 'Füge erst die Antwort der KI ein.',
+      /** What the answer brings into the form once it reads (an update only fills gaps and
+       *  adds). */
+      summary: (adds: AnswerAdds, update: boolean): string => {
+        const parts = (
+          [
+            [adds.competences, 'Kompetenz', 'Kompetenzen'],
+            [adds.tools, 'Werkzeug', 'Werkzeuge'],
+            [adds.certificates, 'Zertifikat', 'Zertifikate'],
+            [adds.languages, 'Sprache', 'Sprachen'],
+            [adds.industries, 'Branche', 'Branchen'],
+            [adds.degrees, 'Abschluss', 'Abschlüsse'],
+            [adds.other, 'weitere Angabe', 'weitere Angaben'],
+          ] as const
+        )
+          .filter(([value]) => value > 0)
+          .map(([value, one, many]) => count(value, one, many));
+        if (parts.length === 0) return 'Die Antwort ergänzt nichts.';
+        return `${update ? 'Ergänzt werden' : 'Übernommen werden'} ${joined(parts)}.`;
+      },
     },
   },
   settings: {

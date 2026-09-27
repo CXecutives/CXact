@@ -3,9 +3,10 @@
   the three ways in (from a CV with an AI, the recommended one; a new form; an existing
   file); a file that no longer reads says so in the same place, with its folder at hand.
   With a profile its head
-  (a status when there is one, the file actions) and the form, whose save bar shows while it
-  holds a change. A chosen file and an AI's answer fill the form for review (an answer for
-  the stored profile updates it); nothing is stored before "Speichern". A save is answered by
+  (the switcher, a status when there is one, the update from a CV) and the form, whose save
+  bar shows while it holds a change. A chosen file and an AI's answer (its steps in a dialog,
+  ProfilePaste) fill the form for review (an answer for the stored profile updates it);
+  nothing is stored before "Speichern". A save is answered by
   a toast once the bar has gone ("Profil gespeichert."). Leaving the view or closing the
   window with unsaved changes asks once ("Änderungen speichern?", the heading alone), and
   so does another profile from the switcher of the head (ProfileSet holds the profiles' own
@@ -21,7 +22,7 @@
   import { t } from '$lib/i18n/t';
   import { errorText, warningText } from '$lib/i18n/texts';
   import { IpcError, invoke, onCloseRequested } from '$lib/ipc/api';
-  import type { Notice } from '$lib/ipc/types';
+  import type { Notice, ProfileDraft } from '$lib/ipc/types';
   import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -59,13 +60,11 @@
     create: null,
     update: null,
   });
-  let copied = $state(false);
-  let busy = $state<'pick' | 'save' | 'paste' | null>(null);
+  let busy = $state<'pick' | 'save' | null>(null);
   /** A failure is said when it shows, so it follows a switch of the language. */
   type Words = () => string;
   let note = $state<Words | null>(null);
   let saveNote = $state<Words | null>(null);
-  let pasteError = $state<Words | null>(null);
   /** The steps with an AI update the stored profile (else they make a new one). */
   let updating = $state(false);
   const prompt = $derived(updating ? prompts.update : prompts.create);
@@ -183,7 +182,7 @@
     // The setup page asked for the steps with an AI.
     if (editor.cvWanted) {
       editor.cvWanted = false;
-      void fromCv();
+      fromCv();
     }
     const stopClose = onCloseRequested(() => void closeRequested());
     return () => {
@@ -223,29 +222,10 @@
     );
   }
 
-  async function copyPrompt(): Promise<void> {
-    const kind = updating ? 'update' : 'create';
-    try {
-      const text = prompts[kind] ?? (await invoke('profile_prompt', { update: updating }));
-      prompts[kind] = text;
-      await navigator.clipboard.writeText(text);
-      copied = true;
-    } catch {
-      copied = false;
-    }
-  }
-
-  /** The prompt goes to the clipboard first, so the steps show whether it got there; with an
-   *  answer pasted earlier the clipboard is left alone ("Erneut kopieren" copies). For the
-   *  stored profile it is the update prompt, and the answer updates the profile. */
-  async function fromCv(): Promise<void> {
-    pasteError = null;
+  /** The steps with an AI, in their dialog: for the stored profile they update it. */
+  function fromCv(): void {
     updating = editor.origin === 'stored' && stored !== null;
-    if (editor.answer.trim() === '') await copyPrompt();
-    else copied = true;
     editor.pasting = true;
-    // The prompt is on the clipboard: the next step is pasting the answer.
-    await caretTo('paste-answer');
   }
 
   /** A new form: the caret goes into its first field. */
@@ -260,19 +240,12 @@
     document.querySelector<HTMLElement>(`[data-testid="${testid}"]`)?.focus();
   }
 
-  async function takeAnswer(answer: string): Promise<void> {
-    busy = 'paste';
-    pasteError = null;
-    try {
-      const draft = await invoke('parse_profile', { text: answer, update: updating });
-      if (updating && stored !== null) editor.update(draft, stored);
-      else editor.take(draft, 'answer');
-      editor.answer = '';
-    } catch (error) {
-      pasteError = () => errorText(error);
-    } finally {
-      busy = null;
-    }
+  /** The answer as read fills the form for review (an update fills the stored profile's
+   *  gaps); the steps close. */
+  function takeDraft(draft: ProfileDraft): void {
+    if (updating && stored !== null) editor.update(draft, stored);
+    else editor.take(draft, 'answer');
+    editor.answer = '';
   }
 
   let panel = $state<{
@@ -450,21 +423,9 @@
   const replacing = $derived(editor.origin === 'file' && profile !== null);
 </script>
 
-<div class="page" class:editing={editor.origin !== null && !editor.pasting} data-testid="profile">
+<div class="page" class:editing={editor.origin !== null} data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
-  {:else if editor.pasting}
-    <ProfilePaste
-      heading={updating ? t.profile.updateFromCv : t.profile.fromCv}
-      {prompt}
-      {copied}
-      busy={busy === 'paste'}
-      error={pasteError?.() ?? null}
-      bind:answer={editor.answer}
-      oncopy={() => void copyPrompt()}
-      ontake={(answer) => void takeAnswer(answer)}
-      oncancel={() => (editor.pasting = false)}
-    />
   {:else}
     {#if editor.origin !== null || hasProfile}
       {@render head()}
@@ -480,7 +441,7 @@
           unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
           note={note?.() ?? null}
           oncreate={() => void create()}
-          onfromcv={() => void fromCv()}
+          onfromcv={fromCv}
           onpick={() => void pick()}
           onopenfolder={openFolder}
         />
@@ -520,12 +481,22 @@
     onrename={() => set?.askRename()}
     onload={() => set?.load()}
     onremove={() => set?.askRemove()}
-    onfromcv={() => void fromCv()}
+    onfromcv={fromCv}
     onopenfolder={openFolder}
     oncheck={checkFirst}
   />
 {/snippet}
 
+<ProfilePaste
+  open={editor.pasting}
+  heading={updating ? t.profile.updateFromCv : t.profile.fromCv}
+  update={updating}
+  {stored}
+  {prompt}
+  bind:answer={editor.answer}
+  ontake={takeDraft}
+  oncancel={() => (editor.pasting = false)}
+/>
 <ProfileSet
   bind:this={set}
   onbusy={(on) => (switching = on)}

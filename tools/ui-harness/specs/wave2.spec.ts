@@ -230,8 +230,8 @@ test('a new form and the steps from a CV put the caret where the work starts', a
   await page.getByTestId('nav-profile').click();
   const empty = page.getByTestId('profile-empty');
   await empty.getByRole('button', { name: 'Aus Lebenslauf anlegen' }).click();
-  await expect(page.getByTestId('paste-answer')).toBeFocused();
-  await page.getByTestId('paste-cancel').click();
+  await expect(page.getByTestId('paste-copy')).toBeFocused();
+  await page.getByTestId('profile-paste').getByTestId('dialog-cancel').click();
   await empty.getByRole('button', { name: 'Profil anlegen' }).click();
   await expect(page.getByTestId('profile-name-field')).toBeFocused();
 });

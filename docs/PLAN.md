@@ -762,3 +762,11 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   leaves the ways in. With profiles the head also stands over the ways in of a profile that does not read.
 - [x] Several profiles: storage, migration by reading, commands, the switcher, the stub (the preview's work folder
   holds the demo profile and two test profiles, with the engine's matches of each in the snapshot), specs
+- The CV steps ("Aus Lebenslauf anlegen" / "aktualisieren") are a dialog instead of the card that pushed the
+  profile down (user, 2026-09-27): three numbered steps, 1 "Prompt kopieren" (it says "Kopiert" for a moment, "Prompt
+  ansehen" below it), 2 "Im KI-Chat einfügen und Lebenslauf anhängen", 3 "Antwort der KI einfügen" with "Aus
+  Zwischenablage einfügen" (`clipboard_text`; where the platform refuses, pasting into the field works). As soon as
+  the answer reads the dialog says what it brings ("Ergänzt werden 3 Kompetenzen, 2 Werkzeuge und 1 Sprache.", an
+  update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
+  review as before; nothing copies by itself any more.
+- [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
