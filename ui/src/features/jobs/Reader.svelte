@@ -10,9 +10,8 @@
     profile's side (its first violation; the row it violates says what the ad states).
   - actions: Alert-Mail öffnen, Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
     or closed: the portal's page still opens), KI-Prompt kopieren and "…", all alike. The
-    "…" menu is "Als Text kopieren", then the second group of the job's menu (actions.ts
-    jobMenu, the row's right click shows it too, its tools the moves): for an excluded job
-    "Trotzdem bewerten" or "Wieder
+    "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
+    shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
     ausschließen", then the moves of the place (Eingang Archivieren, Löschen; Archiv
     Dearchivieren, Löschen; Papierkorb Wiederherstellen, Endgültig löschen). A job that just
     moved away offers none while the next one loads. Moving the job away from one of the

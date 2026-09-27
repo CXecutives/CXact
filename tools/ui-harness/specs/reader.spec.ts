@@ -375,8 +375,8 @@ test.describe('the actions', () => {
     expect(looks[0]).toMatch(/^true /);
     // The "…" menu of the inbox, without keys.
     const menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['copy-text', 'archive', 'trash']);
-    expect(menu.labels).toEqual([T.actions.copyText, 'Archivieren', 'Löschen']);
+    expect(menu.ids).toEqual(['archive', 'trash']);
+    expect(menu.labels).toEqual(['Archivieren', 'Löschen']);
     await expect(page.getByTestId('menu').locator('.keys')).toHaveCount(0);
     await page.keyboard.press('Escape');
     // The alert mail and the ad open outside.
@@ -391,7 +391,7 @@ test.describe('the actions', () => {
     // From the keyboard: the first entry is active at once, the focus comes back after it.
     await actions.getByTestId('reader-more').focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('menu-item-copy-text')).toHaveClass(/active/);
+    await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
     await page.keyboard.press('Escape');
     await expect(actions.getByTestId('reader-more')).toBeFocused();
     // Löschen: the job goes to the trash, the next one opens.
@@ -444,15 +444,15 @@ test.describe('the actions', () => {
     await openPlace(page, 'archive');
     await openJob(page, 'linkedin-4100200306');
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['copy-text', 'unarchive', 'trash']);
-    expect(menu.labels).toEqual([T.actions.copyText, 'Dearchivieren', 'Löschen']);
+    expect(menu.ids).toEqual(['unarchive', 'trash']);
+    expect(menu.labels).toEqual(['Dearchivieren', 'Löschen']);
     await choose(page, 'trash');
     await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'linkedin-4100200306');
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['copy-text', 'restore', 'purge']);
-    expect(menu.labels).toEqual([T.actions.copyText, 'Wiederherstellen', 'Endgültig löschen']);
+    expect(menu.ids).toEqual(['restore', 'purge']);
+    expect(menu.labels).toEqual(['Wiederherstellen', 'Endgültig löschen']);
     await choose(page, 'purge');
     const dialog = page.getByTestId('dialog-purge');
     await expect(dialog).toBeVisible();
@@ -480,14 +480,14 @@ test.describe('the actions', () => {
     for (const { place, key, moves } of places) {
       await openPlace(page, place);
       await openJob(page, key);
-      expect(await more(page), place).toEqual(['copy-text', ...moves]);
+      expect(await more(page), place).toEqual([...moves]);
       expect(await toolsOf(page, key), place).toEqual([...moves]);
     }
     // An excluded job: "Trotzdem bewerten" before the moves of its place.
     await openPlace(page, 'inbox');
     const { excluded } = await stubList(page);
     await openJob(page, excluded[0]!);
-    expect(await more(page)).toEqual(['copy-text', 'include', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['include', 'archive', 'trash']);
   });
 
   test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
@@ -510,12 +510,12 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['copy-text', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['archive', 'trash']);
     // Rückgängig brings it back and opens it again: the Eingang's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['copy-text', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['archive', 'trash']);
     // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
     await open(page, WIN);
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
@@ -533,7 +533,7 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['copy-text', 'restore', 'purge']);
+    expect(await more(page)).toEqual(['restore', 'purge']);
   });
 
   test('copying the prompt says so in a toast, a refusing clipboard too', async ({
@@ -562,41 +562,6 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-error')).toHaveCount(0);
   });
 
-  test('"Als Text kopieren": the job in plain lines with its link, from "…" and the row', async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      const copied: string[] = [];
-      (window as unknown as { __copied: string[] }).__copied = copied;
-      Object.defineProperty(navigator, 'clipboard', {
-        value: { writeText: (text: string) => Promise.resolve(void copied.push(text)) },
-      });
-    });
-    const copied = (): Promise<string[]> =>
-      page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
-    await openAt(page, 'freelancermap-2801');
-    await moreMenu(page);
-    await choose(page, 'copy-text');
-    await expect(page.getByTestId('toast').last()).toContainText(T.toast.copied);
-    const url = DEMO.details['freelancermap:2801']!.url;
-    expect((await copied()).at(-1)!.split('\n')).toEqual([
-      'Interim CFO für Familienunternehmen',
-      'Hanseatic Holding GmbH',
-      'Hamburg',
-      T.facts.pay(1200, 'day', null),
-      'ab sofort',
-      '6 Monate',
-      url,
-    ]);
-    // From the row's menu of another job: its own lines, what its ad does not say left out.
-    await viaMenu(page, 'copy-text', 'freelance-900411');
-    await expect.poll(async () => (await copied()).length).toBe(2);
-    const lines = (await copied()).at(-1)!.split('\n');
-    expect(lines[0]).toBe('SAP S/4HANA Finance Projektleitung');
-    expect(lines.at(-1)).toBe(DEMO.details['freelance:900411']!.url);
-    expect(lines).not.toContain('');
-  });
-
   test('closing a job from the reader hands the focus to its row', async ({ page }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2801').click();
@@ -615,7 +580,6 @@ test.describe('the actions', () => {
     await page.waitForTimeout(550);
     await page.getByTestId('reader-more').focus();
     await page.keyboard.press('Enter');
-    await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
@@ -659,8 +623,8 @@ test.describe('an excluded job', () => {
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
     // The same entries in the same order as the row's menu (one table, actions.ts).
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['copy-text', 'include', 'archive', 'trash']);
-    expect(menu.labels[1]).toBe(T.actions.include);
+    expect(menu.ids).toEqual(['include', 'archive', 'trash']);
+    expect(menu.labels[0]).toBe(T.actions.include);
     await choose(page, 'include');
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
       key: { portal: 'freelance', id: '900412' },
@@ -672,8 +636,8 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('reader-ring')).toBeVisible();
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['copy-text', 'exclude', 'archive', 'trash']);
-    expect(menu.labels[1]).toBe(T.actions.exclude);
+    expect(menu.ids).toEqual(['exclude', 'archive', 'trash']);
+    expect(menu.labels[0]).toBe(T.actions.exclude);
     await page.keyboard.press('Escape');
     // The toast takes it back.
     await toast.getByTestId('toast-action').click();
