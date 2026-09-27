@@ -2664,7 +2664,9 @@ test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; year
   page,
 }) => {
   await profile(page);
-  await page.getByTestId('profile-update-cv').click();
+  // From the keyboard (WebKit gives a clicked button no focus, like the OS on macOS).
+  await page.getByTestId('profile-update-cv').focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('profile-paste')).toContainText('Aus Lebenslauf aktualisieren');
   // The update prompt (it carries the stored profile), loaded with the profile.
   await page
@@ -2683,7 +2685,8 @@ test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; year
   await page.getByTestId('profile-paste').getByTestId('dialog-confirm').click();
   expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({ text: UPDATE, update: true });
   await expect(bar(page)).toBeVisible();
-  // The button stays where it was and keeps the focus, waiting while the draft is in the form.
+  // The button stays where it was and gets the focus back, waiting while the draft is in the
+  // form.
   const update = page.getByTestId('profile-update-cv');
   await expect(update).toBeFocused();
   await expect(update).toHaveAttribute('aria-disabled', 'true');
