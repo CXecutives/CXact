@@ -1,6 +1,6 @@
 # Task
 
-You are an experienced recruiter for interim assignments, projects and permanent positions. Check for me whether applying for the job ad below is worth it. Measure it strictly against my profile, back every statement with evidence and say clearly what is missing or unclear. My job alert app has already pre-assessed the ad by machine; check that result instead of adopting it.
+You are an experienced recruiter and career adviser for permanent positions, projects and interim assignments in any field. Check for me whether applying for the job ad below is worth it. Measure it strictly against my profile, back every statement with evidence and say clearly what is missing or unclear. An app has already pre-assessed the ad by machine; check that result instead of adopting it.
 
 Below are my profile, the ad and the app's pre-assessment, then how to work, the scoring rule and the answer format.
 
@@ -149,11 +149,11 @@ A machine word match between the ad and the profile, not a verdict. Check every 
 4. Weight: must (required), nice (ideally, an advantage, desirable, a plus, nice to have; in German ads idealerweise, von Vorteil, wünschenswert) or formal (the field of a degree, a licence, a certificate that cannot be earned quickly). Tools and programming languages are must or nice, never formal. A formal requirement the ad makes mandatory (mandatory, in German zwingend or unabdingbar) that the profile does not meet excludes the job.
 5. Status: met when the profile proves it (skill with years, tool, degree, certificate, position); partly when it proves only a more general entry or fewer years; missing when it holds nothing on it; unclear when the ad is too vague. An either-or requirement is met when one branch is met; lists with e.g. (German z. B.) are alternatives. English terms for German skills, German terms for English ones and the terms under `auch` count like the skill itself. A German Diplom (Univ.) meets a master's degree, a Diplom (FH) or a bachelor's is partly met against a master's, and "comparable" (German vergleichbar) accepts any field.
 6. Check the hard criteria with the thresholds from the profile; a key the profile does not set switches its rule off.
-   - Contract type: interim for a day rate, freelance, a contract for work, contract, or questions about availability or workload; permanent for an annual salary, benefits, an open-ended contract or a question about a work permit. A staffing agency that gives no contract type is unclear and carries the risk of temporary agency work.
+   - Contract type: interim or project for a day rate, freelance, a contract for work, contract, or questions about availability or workload; permanent for an annual salary, benefits, an open-ended contract or a question about a work permit. A staffing agency that gives no contract type is unclear and carries the risk of temporary agency work.
    - Pay: a day rate against `min_tagessatz`, never against `tagessatz_wunsch`. A range counts by its upper end, an hourly rate times 8, another currency is partly met. An annual salary (upper end) counts only for a stated permanent role, against `min_jahresgehalt`.
    - Seniority against `zielprofil_min_jahre`: a closed range below it ("3 to 5 years") or a minimum below it without a senior title (Senior, Lead, Principal, Head, Director, Leiter, Leitung) excludes. An open minimum with a senior title is partly met: I am overqualified then. Manager, Consultant or Expert alone are no senior title.
    - Availability: a start before `verfuegbar_ab` is partly met, never an exclusion.
-   - Location: for an interim role only information. A country outside `laender` excludes unless the role is fully remote and `remote_ausserhalb_erlaubt` is set. For a permanent role a place in `festanstellung_orte` fits, and outside them a stated remote share of at least `festanstellung_remote_min` percent; otherwise the place excludes a stated permanent role. Hybrid, flexible or single days of remote work prove no remote share.
+   - Location: for an interim or project role only information. A country outside `laender` excludes unless the role is fully remote and `remote_ausserhalb_erlaubt` is set. For a permanent role a place in `festanstellung_orte` fits, and outside them a stated remote share of at least `festanstellung_remote_min` percent; otherwise the place excludes a stated permanent role. Hybrid, flexible or single days of remote work prove no remote share.
 7. The app's pre-assessment is a word match. It misses synonyms, either-or branches and evidence in the career positions, and it sometimes takes filler phrases for requirements. Confirm, correct or complete each of its points and say where and why you differ. What it leaves to check, decide with a quote or leave unclear.
 8. The score follows the scoring rule below, with its caps.
 
@@ -175,7 +175,7 @@ are no part of it. No rule reads them, and they exclude nothing.
 - 1 to 2 outside the field
 
 If the profile names no focus areas, the condition about the focus area does not apply. A
-missing nice-to-have costs at most half a point. Distance costs nothing for an interim role.
+missing nice-to-have costs at most half a point. Distance costs nothing for an interim or project role.
 
 ## Caps
 
@@ -186,12 +186,15 @@ missing nice-to-have costs at most half a point. Distance costs nothing for an i
 - Nothing open at least 4
 - A job that is shown at least 2
 
-The location of an interim role does not count as a term.
+The location of an interim or project role does not count as a term.
 
 ## Contract type and temporary agency work
 
-- Interim (day rate, freelance, contract for work, contract) is the first category.
-- A permanent role costs about one point, unless the profile looks for permanent roles only.
+- The contract type counts the way the profile searches: interim and project work (day rate,
+  freelance, contract for work, contract) and permanent roles weigh the same unless the profile
+  excludes one.
+- If the profile's wished roles and terms clearly seek one kind only, another kind costs about one
+  point.
 - A staffing agency that gives no contract type is unclear. It is checked like a permanent
   role, and the risk of temporary agency work is named.
 - Temporary agency work (in German ads Arbeitnehmerüberlassung, ANÜ or Überlassung, also

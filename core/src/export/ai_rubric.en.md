@@ -16,7 +16,7 @@ are no part of it. No rule reads them, and they exclude nothing.
 - 1 to 2 outside the field
 
 If the profile names no focus areas, the condition about the focus area does not apply. A
-missing nice-to-have costs at most half a point. Distance costs nothing for an interim role.
+missing nice-to-have costs at most half a point. Distance costs nothing for an interim or project role.
 
 ## Caps
 
@@ -27,12 +27,15 @@ missing nice-to-have costs at most half a point. Distance costs nothing for an i
 - Nothing open at least 4
 - A job that is shown at least 2
 
-The location of an interim role does not count as a term.
+The location of an interim or project role does not count as a term.
 
 ## Contract type and temporary agency work
 
-- Interim (day rate, freelance, contract for work, contract) is the first category.
-- A permanent role costs about one point, unless the profile looks for permanent roles only.
+- The contract type counts the way the profile searches: interim and project work (day rate,
+  freelance, contract for work, contract) and permanent roles weigh the same unless the profile
+  excludes one.
+- If the profile's wished roles and terms clearly seek one kind only, another kind costs about one
+  point.
 - A staffing agency that gives no contract type is unclear. It is checked like a permanent
   role, and the risk of temporary agency work is named.
 - Temporary agency work (in German ads Arbeitnehmerüberlassung, ANÜ or Überlassung, also

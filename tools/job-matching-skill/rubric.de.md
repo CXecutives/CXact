@@ -16,7 +16,7 @@ Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnlic
 - 1 bis 2 außerhalb des Fachgebiets
 
 Nennt das Profil keine Schwerpunkte, entfällt die Bedingung mit dem Schwerpunkt. Ein fehlender
-Kann-Punkt kostet höchstens einen halben Punkt. Die Entfernung kostet bei Interim nichts.
+Kann-Punkt kostet höchstens einen halben Punkt. Die Entfernung kostet bei Interim und Projekten nichts.
 
 ## Obergrenzen
 
@@ -27,12 +27,13 @@ Kann-Punkt kostet höchstens einen halben Punkt. Die Entfernung kostet bei Inter
 - Nichts offen mindestens 4
 - Ein gezeigter Job mindestens 2
 
-Der Einsatzort einer Interim-Rolle zählt nicht als Rahmenpunkt.
+Der Einsatzort einer Interim- oder Projektrolle zählt nicht als Rahmenpunkt.
 
 ## Vertragsart und ANÜ
 
-- Interim (Tagessatz, freiberuflich, Werkvertrag, Contract) ist die erste Kategorie.
-- Eine Festanstellung kostet etwa einen Punkt, außer das Profil sucht nur Festanstellungen.
+- Die Vertragsart zählt so, wie das Profil sucht: Interim und Projekte (Tagessatz, freiberuflich,
+  Werkvertrag, Contract) und Festanstellungen sind gleichwertig, solange das Profil keine ausschließt.
+- Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa einen Punkt.
 - Eine Personalagentur ohne Angaben zur Vertragsart ist unklar. Sie wird wie eine Festanstellung
   geprüft, und das Risiko der Arbeitnehmerüberlassung wird genannt.
 - Arbeitnehmerüberlassung (auch Überlassung, Payrolling, Equal Pay, iGZ, BAP) schließt aus, wenn
