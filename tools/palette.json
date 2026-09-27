@@ -46,7 +46,6 @@
     "count-soft-bg":          { "css": "hsl(20 78% 94.5%)", "rgb": [252, 237, 230] },
     "count-soft-fg":          { "css": "hsl(13 66% 40%)", "rgb": [169, 64, 35] },
     "count-soft-hover":       { "css": "hsl(21 68% 93%)", "rgb": [249, 234, 225] },
-    "count-quiet-fg":         { "css": "hsl(30 4% 35%)", "rgb": [93, 89, 86] },
     "icon-accent":            { "css": "hsl(212 38% 33%)", "rgb": [52, 82, 116] },
     "active-surface":         { "css": "hsl(212 40% 95.5%)", "rgb": [239, 243, 248] },
     "active-edge":            { "css": "hsl(212 38% 33%)", "rgb": [52, 82, 116] },

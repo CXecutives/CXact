@@ -80,5 +80,7 @@ pub const LIGHT_BG: Colour = Colour::new("hsl(210 28.6% 97.3%)", [0xF6, 0xF8, 0x
 pub const DARK_BG: Colour = Colour::new("hsl(218 80% 2%)", [0x01, 0x04, 0x09]);
 
 /// The constants above by palette and token.
-pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] =
-    [("light", "bg", LIGHT_BG), ("dark", "bg", DARK_BG)];
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] = [
+    ("light", "bg", LIGHT_BG),
+    ("dark", "bg", DARK_BG),
+];
