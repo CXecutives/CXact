@@ -466,12 +466,12 @@ jobs:
       # twice) in the report, and --fail-on-flaky-tests keeps the run red for both.
       - name: UI harness
         if: hashFiles('package.json') != ''
-        # Screenshot baselines run on request only (CLAUDE.md), not in CI. The timing checks run
-        # in Chromium's job.
+        # Screenshot baselines run on request only (CLAUDE.md, the harness config leaves them
+        # out). The timing checks run in Chromium's job.
         env:
           HARNESS_ENGINES: ${{ matrix.browser }}
         run: >-
-          npm run harness -- --retries=1 --fail-on-flaky-tests --grep-invert "baseline:"
+          npm run harness -- --retries=1 --fail-on-flaky-tests
           --project=${{ matrix.browser }} ${{ matrix.browser == 'chromium' && '--project=timing' || '' }}
 
       - name: Upload harness screenshots and report
