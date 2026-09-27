@@ -7,7 +7,7 @@
 // keys; everything else is swallowed.
 
 import type { Locator, Page } from '@playwright/test';
-import { calls, expect, open, settle, test } from './fixtures';
+import { NOW, calls, expect, open, settle, test } from './fixtures';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -94,12 +94,20 @@ const listScroll = (page: Page): Promise<number> =>
       return -1;
     });
 
-/** Wheel over the middle of an element. */
-async function wheelOver(page: Page, testid: string, dy = 240): Promise<void> {
-  const box = (await page.getByTestId(testid).first().boundingBox())!;
+/**
+ * Turns the wheel over the middle of an element, brought into view first (a filled field is
+ * not always scrolled to: WebKit left it below the window, and the wheel went nowhere), and
+ * resolves with how far the view `pane` scrolled, once it did: a busy machine handles the
+ * wheel later than any fixed wait.
+ */
+async function wheelOver(page: Page, target: Locator, pane: string, dy = 240): Promise<number> {
+  await target.scrollIntoViewIfNeeded();
+  const before = await scrollTop(page, pane);
+  const box = (await target.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.wheel(0, dy);
-  await page.waitForTimeout(300);
+  await expect.poll(() => scrollTop(page, pane)).not.toBe(before);
+  return (await scrollTop(page, pane)) - before;
 }
 
 const GALLERY = '?gallery&platform=windows';
@@ -825,9 +833,8 @@ test('the wheel over a switch changes nothing and scrolls the page', async ({ pa
   await open(page, `${WIN}&view=settings`);
   const toggle = page.getByTestId('toggle-enabled-freelance');
   const before = await toggle.getAttribute('aria-checked');
-  await wheelOver(page, 'toggle-enabled-freelance');
+  expect(await wheelOver(page, toggle, 'view-settings')).toBeGreaterThan(0);
   await expect(toggle).toHaveAttribute('aria-checked', before ?? 'false');
-  expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(0);
 });
 
 test('the wheel over a field and a choice changes nothing and scrolls the page', async ({
@@ -840,18 +847,14 @@ test('the wheel over a field and a choice changes nothing and scrolls the page',
     '[data-testid="profile-min-rate"] input, input[data-testid="profile-min-rate"]',
   );
   await rate.fill('950');
-  await wheelOver(page, 'profile-min-rate');
+  expect(
+    await wheelOver(page, page.getByTestId('profile-min-rate').first(), 'view-profile'),
+  ).toBeGreaterThan(0);
   await expect(rate).toHaveValue('950');
-  const view = await scrollTop(page, 'view-profile');
-  expect(view).toBeGreaterThan(0);
   // A choice (a radio group): the chosen option stays chosen.
   const group = page.locator('[data-testid="view-profile"] [role="radiogroup"]').first();
-  await group.scrollIntoViewIfNeeded();
   const chosen = await group.locator('[aria-checked="true"]').allTextContents();
-  const box = (await group.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 120);
-  await page.waitForTimeout(300);
+  expect(await wheelOver(page, group, 'view-profile', 120)).toBeGreaterThan(0);
   expect(await group.locator('[aria-checked="true"]').allTextContents()).toEqual(chosen);
 });
 
@@ -1006,22 +1009,40 @@ test('nothing drags but the handle and the drag regions; a double click selects 
 
 test('the page keys glide in one short tween; under reduced motion they jump', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 560 });
+  // Reduced motion: at once.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=settings`);
   // A click on plain text: the focus is nowhere, the keys scroll the pane clicked last.
   await page.locator('[data-testid="view-settings"] h2').first().click();
   await page.keyboard.press('PageDown');
-  const early = await scrollTop(page, 'view-settings');
-  await page.waitForTimeout(400);
-  const end = await scrollTop(page, 'view-settings');
-  expect(end).toBeGreaterThan(300);
-  expect(early).toBeLessThan(end);
-  // Reduced motion: at once.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await open(page, `${WIN}&view=settings`);
-  await settle(page);
-  await page.locator('[data-testid="view-settings"] h2').first().click();
-  await page.keyboard.press('PageDown');
   expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(300);
+  // Otherwise one tween, seen on the page's own clock: it stands still from the key on and
+  // goes a frame (16 ms) at a time. A busy machine drew no frame within the 180 ms, and a read
+  // after the key came when the glide was over.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await open(page, `${WIN}&view=settings`);
+  await page.locator('[data-testid="view-settings"] h2').first().click();
+  await page.clock.install({ time: NOW });
+  await page.clock.pauseAt(new Date(NOW.getTime() + 1000));
+  const tops = [await scrollTop(page, 'view-settings')];
+  await page.keyboard.press('PageDown');
+  tops.push(await scrollTop(page, 'view-settings'));
+  for (let frame = 1; frame <= 16; frame += 1) {
+    await page.clock.runFor(16);
+    tops.push(await scrollTop(page, 'view-settings'));
+  }
+  const end = tops.at(-1)!;
+  expect(end).toBeGreaterThan(300);
+  // Still until the next frame, then further in every frame of --dur-slow (frames 1 to 8 lie
+  // well within its 180 ms, wherever the first frame falls), and at the end once it is over
+  // (frame 13 on).
+  expect(tops.slice(0, 2), String(tops)).toEqual([0, 0]);
+  const way = tops.slice(2, 10);
+  expect(
+    way.every((top, at) => top > tops[at + 1]! && top < end),
+    String(tops),
+  ).toBe(true);
+  expect(tops.slice(14), String(tops)).toEqual(tops.slice(14).map(() => end));
 });
 
 /* -------------------------------- Presses, radio groups, window menus, the focus in view */
