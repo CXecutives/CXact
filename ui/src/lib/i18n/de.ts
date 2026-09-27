@@ -840,8 +840,6 @@ export const de = {
         'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
       csv: 'Die CSV-Datei ließ sich nicht schreiben und blieb unverändert.',
       csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-      txt: 'Nicht alle Textdateien ließen sich schreiben.',
-      txtFolder: 'Der Ordner der Textdateien ist nicht erreichbar.',
       backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Ergebnisordner ist nicht erreichbar.',
@@ -1350,14 +1348,6 @@ export const de = {
     changeHeading: 'Postfach ändern',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    /** Which alert mails "Postfach abrufen" reads (`fetchRange`). */
-    range: 'Zeitraum',
-    rangeName: {
-      sinceLast: 'Seit dem letzten Abruf',
-      days7: '7 Tage',
-      days30: '30 Tage',
-      all: 'Alle',
-    } satisfies Record<FetchRange, string>,
     /** The calls of a portal today (counted from midnight). */
     quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Aufrufen`,
     signIn: 'Anmelden',
@@ -1469,7 +1459,7 @@ export const de = {
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */
     deleted: 'Endgültig gelöscht',
-    included: 'Bewertet',
+    included: 'Trotzdem bewertet',
     excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert',
     /** At the end of a fetch: what it brought (new, not excluded), and how many of them are

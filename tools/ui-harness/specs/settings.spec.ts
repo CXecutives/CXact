@@ -350,7 +350,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
 test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
   await settings(page);
   await expect(
-    page.getByTestId('settings').getByRole('radio', { name: T.settings.rangeName.all }),
+    page.getByTestId('settings').getByRole('radio', { name: T.toolbar.rangeName.all }),
   ).toHaveCount(0);
   await expect(page.getByTestId('settings-mailbox').locator('[data-setting-row]')).toHaveCount(1);
 });

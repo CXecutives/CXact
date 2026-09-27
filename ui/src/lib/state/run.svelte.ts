@@ -392,24 +392,21 @@ export function exportError(summary: RunSummary): ErrorInfo | null {
   return summary.export?.error ?? null;
 }
 
-/** Why a result file stayed as it was, by what could not be written (`params.target`): one
- *  sentence for the run card and for a delete for good in the list. */
+/** Why a result file stayed as it was, by what could not be written (`params.target`, the
+ *  Excel file where it names none): one sentence for the run line and for a delete for good
+ *  in the list. */
 export function exportText(error: ErrorInfo | null): string | null {
   if (error === null) return null;
   const texts = t.run.exportFailed;
   switch (error.params['target']) {
-    case 'overview':
-      return error.kind === 'fileLocked' ? texts.overviewLocked : texts.overview;
     case 'csv':
       return error.kind === 'fileLocked' ? texts.csvLocked : texts.csv;
-    case 'txtFolder':
-      return texts.txtFolder;
     case 'backup':
       return texts.backup;
     case 'workspace':
       return texts.workspace;
     default:
-      return texts.txt;
+      return error.kind === 'fileLocked' ? texts.overviewLocked : texts.overview;
   }
 }
 
