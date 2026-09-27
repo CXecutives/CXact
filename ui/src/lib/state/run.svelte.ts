@@ -120,7 +120,7 @@ class RunStore {
     return this.kind === 'rescore' ? t.run.rescoring : t.settings.running;
   }
 
-  /** Why a run that reads the mailbox (Abrufen, the whole mailbox) cannot start now, in the
+  /** Why a run that reads the mailbox (Postfach abrufen) cannot start now, in the
    *  order she would fix it: the demo never fetches, a run holds the app, no mailbox, no
    *  portal switched on; null when it can. The backend refuses the same. */
   get fetchBlocked(): string | null {
@@ -131,7 +131,7 @@ class RunStore {
     return null;
   }
 
-  /** Why a run that fetches the full ads of chosen jobs ("Details holen") cannot start now:
+  /** Why a run that fetches the full ads of chosen jobs ("Anzeige laden") cannot start now:
    *  the demo never fetches, a run holds the app; null when it can. The backend refuses the
    *  same. */
   get detailsBlocked(): string | null {
@@ -321,15 +321,15 @@ class RunStore {
 
 export interface FailureAction {
   label: string;
-  /** The glyph the action has everywhere (a retry loads again, like Abrufen). */
+  /** The glyph the action has everywhere (a retry loads again, like Postfach abrufen). */
   icon?: IconMeaning;
   onclick: () => void;
 }
 
 /**
- * The one fitting action for a failed run, wherever it is said (the run card, the day
- * overview): the mailbox settings for a mailbox problem, the log for an internal error, else
- * a retry. A failed fetch gets none while "Abrufen" is there to do the same (with a
+ * The one fitting action for a failed run, wherever it is said (the run line, the first-run
+ * page): the mailbox settings for a mailbox problem, the log for an internal error, else a
+ * retry. A failed fetch gets none while "Postfach abrufen" is there to do the same (with a
  * mailbox), and no retry is offered while another run goes (it could not start).
  */
 export function failureAction(

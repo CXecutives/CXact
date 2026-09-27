@@ -31,13 +31,13 @@ export const ICONS = {
   alertMail: 'mail',
   /** Copy a prompt for an AI chat (the job, the comparison, the CV). */
   prompt: 'message-square-text',
-  /** Fetch the whole ad (Details holen). */
+  /** Load the whole ad (Anzeige laden). */
   details: 'download',
   /** A reason that leads to its passage in the ad. */
   jump: 'arrow-down',
 
   // Runs.
-  /** Get the new alert mails (Abrufen). */
+  /** Get the new alert mails (Postfach abrufen). */
   fetch: 'refresh-cw',
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',

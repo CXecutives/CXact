@@ -123,7 +123,7 @@
   }
 
   /** The first fetch that failed (this session, else the last one the app knows): its words
-   *  and the fitting action (none where "Abrufen" is the way on). */
+   *  and the fitting action (none where "Postfach abrufen" is the way on). */
   const failed = $derived.by(() => {
     if (run.active) return null;
     const last = run.summary ?? app.state?.lastRun ?? null;
