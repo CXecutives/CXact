@@ -1201,7 +1201,7 @@ test('one glyph per action: retries load again, what deletes for good shares its
   for (const id of ['reset', 'mailbox-remove']) {
     await expect(page.getByTestId(id).locator('[data-icon]'), id).toHaveAttribute(
       'data-icon',
-      'purge',
+      'trash',
     );
   }
 });
