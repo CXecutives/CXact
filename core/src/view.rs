@@ -756,15 +756,26 @@ pub enum JobSort {
     Match,
     /// By date: the alert mail's, in the trash the day the job went there.
     Newest,
+    /// By the day rate the ad states, the highest first (in euros, an hourly rate times 8);
+    /// jobs without one last (employment pays a salary, a rate in another currency).
+    Rate,
 }
+
+/// How many days ahead the deadline filter looks (`deadline_soon`): today and the next 7.
+pub const DEADLINE_DAYS: i64 = 7;
 
 /// Which jobs the list shows: the jobs of one place, optionally only the unread ones.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "the switches of the list's filter, each on its own"
+)]
 pub struct JobQuery {
     pub place: Place,
-    /// Only the unread jobs (the excluded ones last, uncounted).
+    /// The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
+    /// narrows the list and all its counts.
     pub unread: bool,
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
@@ -786,19 +797,51 @@ pub struct JobQuery {
     /// states is 100 %, or, where it states none, the location names the work mode remote.
     #[serde(default)]
     pub remote_only: bool,
+    /// The filter: only remote or hybrid jobs - the highest remote share the ad states is
+    /// above 0 %, or, where it states none, the location names the work mode remote or hybrid.
+    #[serde(default)]
+    pub remote_or_hybrid: bool,
+    /// The filter: only jobs whose pay reaches the profile's floor - the day rate in euros
+    /// (an hourly rate times 8) at least `min_day_rate`, for employment (`permanent`,
+    /// `anue`) the annual salary at least `min_salary`. A job without a stated pay, or of a
+    /// kind whose floor is `null`, does not pass; both `null` = no pay filter.
+    #[serde(default)]
+    pub min_day_rate: Option<u32>,
+    #[serde(default)]
+    pub min_salary: Option<u32>,
+    /// The filter: only jobs whose application deadline (`KeyFacts.deadline`) is today or
+    /// within the next [`DEADLINE_DAYS`] days, local time.
+    #[serde(default)]
+    pub deadline_soon: bool,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The filter of the query: portal, band, contract types and remote.
+    /// The filter of the query now.
     pub fn filter(&self) -> ListFilter {
+        self.filter_at(Timestamp::now())
+    }
+
+    /// The filter of the query at `now` (the deadline counts from its local day): portal,
+    /// band, contract types, work mode, pay and deadline.
+    pub fn filter_at(&self, now: Timestamp) -> ListFilter {
+        let today = crate::time::local_date(now);
         ListFilter {
             portal: self.portal,
             min_band: self.min_band,
             contracts: self.contracts.clone(),
             remote_only: self.remote_only,
+            remote_or_hybrid: self.remote_or_hybrid,
+            min_day_rate: self.min_day_rate,
+            min_salary: self.min_salary,
+            deadline: self.deadline_soon.then(|| {
+                (
+                    today,
+                    today.saturating_add(jiff::Span::new().days(DEADLINE_DAYS)),
+                )
+            }),
         }
     }
 }
@@ -849,13 +892,13 @@ pub struct JobPage {
     pub counts: JobCounts,
 }
 
-/// List and counts from one store query. The unread filter lists the excluded jobs last;
-/// its count leaves them out. A job is in exactly one place.
+/// List and counts from one store query. A job is in exactly one place.
 pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
     let (rows, counts) = store.job_page(&PageQuery {
         place: query.place,
         unread: query.unread,
         by_match: query.sort == JobSort::Match,
+        by_rate: query.sort == JobSort::Rate,
         search: query.search.clone(),
         filter: query.filter(),
         limit: query.limit.min(MAX_PAGE),
@@ -1844,6 +1887,10 @@ mod tests {
             min_band: None,
             contracts: Vec::new(),
             remote_only: false,
+            remote_or_hybrid: false,
+            min_day_rate: None,
+            min_salary: None,
+            deadline_soon: false,
             limit,
             offset,
         }
@@ -2008,6 +2055,162 @@ mod tests {
         assert_eq!(page(&["interim"], true), ["A"]);
     }
 
+    /// The work mode, the pay and the deadline narrow the list and every count like the rest
+    /// of the filter, and the list orders by day rate. Remote or hybrid as the job details
+    /// say it (any remote share the ad states, else a remote or hybrid location); the pay
+    /// against the floor of its kind (a day rate in euros, an hourly one times 8, a salary for
+    /// employment; no pay, another currency or no floor never passes); the deadline from
+    /// today to 7 days on. By rate the highest first, equal ones by date, the rest last.
+    #[test]
+    #[expect(
+        clippy::too_many_lines,
+        reason = "every new part of the filter on one set of jobs"
+    )]
+    fn work_mode_pay_and_deadline_narrow_list_and_counts() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let today = crate::time::local_date(Timestamp::now());
+        let day = |days: i64| {
+            Some(
+                today
+                    .saturating_add(jiff::Span::new().days(days))
+                    .to_string(),
+            )
+        };
+        let facts = |contract: &str, rate: Option<u32>, deadline: Option<String>| KeyFacts {
+            contract: Some(contract.to_owned()),
+            rate,
+            deadline,
+            ..KeyFacts::default()
+        };
+        // Title, location and the key facts; `None`: the job is not scored.
+        let jobs: [(&str, &str, Option<KeyFacts>); 8] = [
+            (
+                "A",
+                "Berlin (Remote)",
+                Some(facts("freelance", Some(1200), day(0))),
+            ),
+            (
+                "B",
+                "Köln (Hybrid)",
+                Some(KeyFacts {
+                    hourly: Some(true),
+                    ..facts("interim", Some(150), day(DEADLINE_DAYS))
+                }),
+            ),
+            (
+                "C",
+                "München",
+                Some(KeyFacts {
+                    remote_from: Some(0),
+                    remote_to: Some(40),
+                    ..facts("freelance", Some(1000), day(DEADLINE_DAYS + 1))
+                }),
+            ),
+            (
+                "D",
+                "Vor Ort",
+                Some(KeyFacts {
+                    remote_from: Some(0),
+                    remote_to: Some(0),
+                    currency: Some("CHF".into()),
+                    ..facts("freelance", Some(1300), day(-1))
+                }),
+            ),
+            (
+                "E",
+                "Hamburg",
+                Some(KeyFacts {
+                    salary: Some(95_000),
+                    ..facts("permanent", Some(2000), None)
+                }),
+            ),
+            ("F", "Remote", Some(facts("anue", None, None))),
+            ("G", "", Some(KeyFacts::default())),
+            ("H", "Hybrid", None),
+        ];
+        let mut matches = Vec::new();
+        let mut keys = Vec::new();
+        for (i, (title, location, facts)) in jobs.iter().enumerate() {
+            let link = job_link(&format!(
+                "https://www.freelancermap.de/nproj/{}.html",
+                12_500 + i
+            ))
+            .unwrap();
+            keys.push(link.key.clone());
+            let posting = Posting::new(link.key.clone(), link.url, title, "", location);
+            let mail = MailRef {
+                subject: "x",
+                date: None,
+                gmail_id: None,
+            };
+            let at = Timestamp::now() + jiff::SignedDuration::from_mins(i64::try_from(i).unwrap());
+            store.upsert_posting(run, &posting, mail, at).unwrap();
+            if let Some(facts) = facts {
+                let mut m = record(MatchStatus::Scored, 50);
+                m.facts = facts.clone();
+                matches.push((link.key, m));
+            }
+        }
+        store.save_matches(&matches, "r", Timestamp::now()).unwrap();
+        let page = |change: &dyn Fn(&mut JobQuery)| {
+            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
+            change(&mut q);
+            let page = job_page(&store, &q).unwrap();
+            assert_eq!(
+                page.counts.inbox as usize,
+                page.jobs.len(),
+                "the counts follow"
+            );
+            let mut titles: Vec<String> = page.jobs.iter().map(|j| j.title.clone()).collect();
+            titles.sort();
+            titles
+        };
+        assert_eq!(page(&|_| {}).len(), jobs.len());
+        assert_eq!(
+            page(&|q| q.remote_or_hybrid = true),
+            ["A", "B", "C", "F", "H"]
+        );
+        assert_eq!(page(&|q| q.remote_only = true), ["A", "F"]);
+        assert_eq!(page(&|q| q.min_day_rate = Some(1100)), ["A", "B"]);
+        assert_eq!(
+            page(&|q| {
+                q.min_day_rate = Some(1100);
+                q.min_salary = Some(90_000);
+            }),
+            ["A", "B", "E"]
+        );
+        assert_eq!(page(&|q| q.min_salary = Some(100_000)), [] as [&str; 0]);
+        assert!(page(&|q| q.min_day_rate = Some(1250)).is_empty());
+        assert_eq!(page(&|q| q.deadline_soon = true), ["A", "B"]);
+        // By rate: the equal rates of A and B by date (B is newer), then C, then the rest by
+        // date, the newest first.
+        let mut q = query(Place::Inbox, false, JobSort::Rate, 50, 0);
+        let by_rate = job_page(&store, &q).unwrap();
+        assert_eq!(titles(&by_rate), ["B", "A", "C", "H", "G", "F", "E", "D"]);
+        // The unread filter narrows the list and the counts too.
+        store.mark_read(&keys[0], Timestamp::now()).unwrap();
+        q.unread = true;
+        let unread = job_page(&store, &q).unwrap();
+        assert_eq!(titles(&unread), ["B", "C", "H", "G", "F", "E", "D"]);
+        assert_eq!((unread.counts.inbox, unread.counts.unread), (7, 7));
+        // The fields may be missing (an older page): no filter.
+        let json = r#"{"place":"inbox","unread":false,"sort":"rate","search":null,
+                       "remoteOrHybrid":true,"minDayRate":900,"minSalary":null,
+                       "deadlineSoon":true,"limit":10,"offset":0}"#;
+        let new: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(new.sort, JobSort::Rate);
+        let filter = new.filter_at(Timestamp::now());
+        assert!(filter.remote_or_hybrid && filter.min_salary.is_none());
+        assert_eq!(filter.min_day_rate, Some(900));
+        assert_eq!(
+            filter
+                .deadline
+                .map(|(from, to)| (from.to_string(), to.to_string())),
+            day(0).zip(day(DEADLINE_DAYS))
+        );
+    }
+
     /// A page with every filter on takes moments at 2,000 jobs, not seconds.
     #[test]
     fn a_filtered_page_is_quick_at_2000_jobs() {
@@ -2084,11 +2287,19 @@ mod tests {
         let page = |unread, sort, limit, offset| {
             job_page(&store, &query(Place::Inbox, unread, sort, limit, offset)).unwrap()
         };
-        // Unread lists every unread job: the excluded one behind the others (grey in the
-        // list), the unscored one first. Its count leaves the excluded one out.
+        // Unread ("Nur neue") lists every unread job: the excluded one behind the others
+        // (grey in the list), the unscored one first. Like the filter it narrows the counts:
+        // the read job A is in none; the unread count leaves the excluded one out.
         let new = page(true, JobSort::Match, 50, 0);
         assert_eq!(titles(&new), ["D", "B", "C"]);
-        assert_eq!(&new.counts, &expected);
+        assert_eq!(
+            &new.counts,
+            &JobCounts {
+                inbox: 3,
+                no_detail: 2,
+                ..expected.clone()
+            }
+        );
         assert!(new.jobs[0].unread && new.jobs[0].match_.is_none());
         assert!(new.jobs[1].unread && new.jobs[1].match_.is_some());
         let excluded = new.jobs[2].match_.as_ref().unwrap();
@@ -2239,6 +2450,10 @@ mod tests {
                     min_band: None,
                     contracts: Vec::new(),
                     remote_only: false,
+                    remote_or_hybrid: false,
+                    min_day_rate: None,
+                    min_salary: None,
+                    deadline_soon: false,
                     limit: 0,
                     offset: 0,
                 },

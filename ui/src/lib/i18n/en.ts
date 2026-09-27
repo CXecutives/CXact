@@ -686,6 +686,7 @@ export const en: Catalog = {
     sortLabel: {
       match: 'By match',
       newest: 'By date',
+      rate: 'By day rate',
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Sort and filter',

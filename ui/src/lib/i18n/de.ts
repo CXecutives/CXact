@@ -776,6 +776,7 @@ export const de = {
     sortLabel: {
       match: 'Nach Übereinstimmung',
       newest: 'Nach Datum',
+      rate: 'Nach Tagessatz',
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',

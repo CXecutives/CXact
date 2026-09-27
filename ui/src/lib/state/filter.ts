@@ -37,12 +37,17 @@ export const NO_FILTER: ListFilter = { portal: null, minBand: null, contract: nu
 /** The filter's part of a JobQuery. */
 export function toQuery(
   filter: ListFilter,
-): Pick<JobQuery, 'portal' | 'minBand' | 'contracts' | 'remoteOnly'> {
+): Omit<JobQuery, 'place' | 'sort' | 'search' | 'limit' | 'offset'> {
   return {
+    unread: false,
     portal: filter.portal,
     minBand: filter.minBand,
     contracts: filter.contract === null ? [] : [filter.contract],
     remoteOnly: filter.remote === true,
+    remoteOrHybrid: false,
+    minDayRate: null,
+    minSalary: null,
+    deadlineSoon: false,
   };
 }
 

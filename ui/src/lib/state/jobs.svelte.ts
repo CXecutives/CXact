@@ -551,7 +551,6 @@ class JobsStore {
   private query(offset: number, limit = PAGE, filter = this.filter): JobQuery {
     return {
       place: this.place,
-      unread: false,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
       ...toQuery(filter),
@@ -638,7 +637,6 @@ class JobsStore {
       const page = await invoke('list_jobs', {
         query: {
           place: 'inbox',
-          unread: false,
           sort: 'newest',
           search: null,
           ...toQuery(NO_FILTER),

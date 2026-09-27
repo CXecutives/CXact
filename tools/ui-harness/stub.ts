@@ -1072,18 +1072,38 @@ const tombstones = new Set<string>();
 const overridden = new Map<string, Match>();
 const markKey = (key: JobKey): string => `${key.portal}:${key.id}`;
 
-/** The list of a query (store::job_page): a place, only the unread ones. */
-function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread'>): boolean {
-  return j.place === query.place && (!query.unread || j.unread);
+/** The list of a query (store::job_page): a place. */
+function inQuery(j: JobView, query: Pick<JobQuery, 'place'>): boolean {
+  return j.place === query.place;
 }
 
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
- *  contract types the engine read (none of them passes only without the filter), remote as
- *  the job details say it (the stated share first, else the location's work mode). */
-function inFilter(
-  j: JobView,
-  query: Pick<JobQuery, 'portal' | 'minBand' | 'contracts' | 'remoteOnly'>,
-): boolean {
+/** Employment pays a salary, no day rate (store::EMPLOYMENT). */
+const employed = (j: JobView): boolean =>
+  j.match?.facts.contract === 'permanent' || j.match?.facts.contract === 'anue';
+
+/** The day rate in euros as store::day_rate reads it: an hourly rate times 8; none for
+ *  employment, a rate in another currency and without one. */
+function dayRate(j: JobView): number | null {
+  const facts = j.match?.facts ?? null;
+  if (facts === null || facts.rate === null || employed(j)) return null;
+  if (facts.currency !== null && facts.currency !== 'EUR') return null;
+  return facts.hourly === true ? facts.rate * 8 : facts.rate;
+}
+
+/** Today and `days` on as ISO dates of the local calendar (the page's clock). */
+function localDay(days = 0): string {
+  const date = new Date(Date.now());
+  date.setDate(date.getDate() + days);
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** The funnel's filter (store::ListFilter): unread only, one portal, a lowest band of scored
+ *  jobs, the contract types the engine read (none of them passes only without the filter),
+ *  the work mode as the job details say it (the stated share first, else the location's),
+ *  the pay against the floor of its kind and the deadline from today to 7 days on. */
+function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
+  if (query.unread === true && !j.unread) return false;
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -1093,6 +1113,25 @@ function inFilter(
   if (query.remoteOnly === true) {
     const share = facts?.remoteFrom ?? facts?.remoteTo ?? null;
     if (share === null ? j.workMode !== 'remote' : share < 100) return false;
+  }
+  if (query.remoteOrHybrid === true) {
+    const most = facts?.remoteTo ?? facts?.remoteFrom ?? null;
+    const away = j.workMode === 'remote' || j.workMode === 'hybrid';
+    if (most === null ? !away : most <= 0) return false;
+  }
+  const minRate = query.minDayRate ?? null;
+  const minSalary = query.minSalary ?? null;
+  if (minRate !== null || minSalary !== null) {
+    const salary = facts?.salary ?? null;
+    const rate = dayRate(j);
+    const pays = employed(j)
+      ? salary !== null && minSalary !== null && salary >= minSalary
+      : rate !== null && minRate !== null && rate >= minRate;
+    if (!pays) return false;
+  }
+  if (query.deadlineSoon === true) {
+    const deadline = facts?.deadline ?? null;
+    if (deadline === null || deadline < localDay() || deadline > localDay(7)) return false;
   }
   if (query.minBand === null || query.minBand === undefined) return true;
   return j.match?.status === 'scored' && j.match.score >= BAND_FROM[query.minBand];
@@ -1189,9 +1228,9 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   }
   const words = searchWords(query.search);
   const base = jobs.filter((j) => matchesSearch(j, words) && inFilter(j, query));
-  // The unread filter lists every unread job, excluded ones too (grey behind the divider);
-  // only the count leaves them out (store::job_page). By date: the mail's, in the trash
-  // the day the job went there.
+  // The unread filter lists every unread job, excluded ones too (grey behind the divider),
+  // and narrows the counts like the rest of the filter (store::job_page). By date: the
+  // mail's, in the trash the day the job went there.
   const date = (j: JobView): string =>
     query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
   // store::page_order: the excluded last; by match the jobs without a score first (on top of
@@ -1212,6 +1251,13 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
       if (byMatch) {
         const d = (b.match?.score ?? 0) - (a.match?.score ?? 0);
         if (d !== 0) return d;
+      }
+      // By rate the highest day rate first, the jobs without one last.
+      if (query.sort === 'rate') {
+        const ra = dayRate(a);
+        const rb = dayRate(b);
+        if ((ra === null) !== (rb === null)) return ra === null ? 1 : -1;
+        if (ra !== null && rb !== null && ra !== rb) return rb - ra;
       }
       // ISO dates order as plain strings (localeCompare on 2000 jobs took the page's main
       // thread for milliseconds; the real backend sorts in SQLite, off it).
@@ -2076,6 +2122,10 @@ const harness: Harness = {
         minBand: null,
         contracts: [],
         remoteOnly: false,
+        remoteOrHybrid: false,
+        minDayRate: null,
+        minSalary: null,
+        deadlineSoon: false,
         limit: 500,
         offset: 0,
         ...query,
