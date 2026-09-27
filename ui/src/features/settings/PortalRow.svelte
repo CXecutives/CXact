@@ -6,7 +6,9 @@
   does not switch it). The meter turns ochre near the limit and while the portal rests. A
   problem of the portal is one quiet line under the meter (whether the user has to act, the
   time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
-  jobs); it unfolds and folds away, so the rows below glide.
+  jobs); it unfolds and folds away, so the rows below glide. A portal that is on and sent no
+  alert mail for a week before the last fetch says so in one quiet line ("Seit 9 Tagen keine
+  Alert-Mail"; its alert may have run out) with "Alert prüfen", its page in the browser.
   Signing in lets the fetch use the sign-in, signing out ends that. A stored sign-in that the
   fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
   the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
@@ -39,6 +41,9 @@
 
   /** From this share of the day the meter turns ochre. */
   const QUOTA_WARNS = 0.8;
+  /** A week without an alert mail of a portal that is on: its row says so. */
+  const QUIET_DAYS = 7;
+  const DAY_MS = 24 * 60 * 60 * 1000;
   /** Why the last action failed, said when it shows (so in the language of the moment). */
   let error = $state<(() => string) | null>(null);
   let busy = $state(false);
@@ -63,6 +68,15 @@
         )?.gmailId ?? null)
       : null,
   );
+  /** Days since its last alert mail, while the last fetch found none for a week or longer
+   *  (before a fetch, or without any alert mail yet, the app knows nothing to say). */
+  const quietDays = $derived.by((): number | null => {
+    const last = portal.lastAlert === null ? Number.NaN : Date.parse(portal.lastAlert);
+    const fetch = app.state?.lastRun ?? null;
+    if (!portal.enabled || Number.isNaN(last) || fetch?.outcome.kind !== 'completed') return null;
+    if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
+    return Math.floor((Date.now() - last) / DAY_MS);
+  });
   const resting = $derived(
     portal.health.kind === 'paused' || portal.health.kind === 'quotaReached',
   );
@@ -179,6 +193,23 @@
                 }
               : null}
             testid="health-{portal.portal}"
+          />
+        </div>
+      </div>
+    {/if}
+    {#if quietDays !== null}
+      <div class="fold" transition:unfold>
+        <div class="line">
+          <Notice
+            tone="warning"
+            variant="inline"
+            text={t.settings.alertQuiet(quietDays)}
+            action={{
+              label: t.settings.checkAlert,
+              icon: 'external',
+              onclick: () => open('home'),
+            }}
+            testid="alert-quiet-{portal.portal}"
           />
         </div>
       </div>

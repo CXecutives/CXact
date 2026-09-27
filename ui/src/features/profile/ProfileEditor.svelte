@@ -62,6 +62,7 @@
     type Section,
   } from './sections';
   import ValueNote from './ValueNote.svelte';
+  import { vocabulary } from './vocabulary.svelte';
   import WorkloadField from './WorkloadField.svelte';
 
   interface Props {
@@ -445,6 +446,7 @@
           split={c.lines ? 'lines' : 'list'}
           placeholder={words[c.placeholder]}
           invalid={error !== null}
+          suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
           testid={c.testid}
         />
       </Field>

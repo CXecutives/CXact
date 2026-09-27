@@ -22,9 +22,11 @@
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import CalendarClock from '@lucide/svelte/icons/calendar-clock';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import CircleDashed from '@lucide/svelte/icons/circle-dashed';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
@@ -94,9 +96,11 @@
     'building-2': Building2,
     calendar: Calendar,
     'calendar-clock': CalendarClock,
+    'calendar-days': CalendarDays,
     check: Check,
     'chevron-down': ChevronDown,
     'chevron-left': ChevronLeft,
+    'chevron-right': ChevronRight,
     'circle-check': CircleCheck,
     'circle-dashed': CircleDashed,
     'circle-minus': CircleMinus,

@@ -150,7 +150,7 @@ fn settings_policy_and_database_of_an_earlier_version_keep_working() {
     );
 
     // The portal states come from all three without failing.
-    let states = portal_states(&policy, &settings, &[], now());
+    let states = portal_states(&policy, &settings, &[], &[], now());
     assert_eq!(states.len(), 3);
     let of = |portal| states.iter().find(|s| s.portal == portal).unwrap();
     assert!(of(Portal::LinkedIn).enabled && of(Portal::FreelanceDe).enabled);

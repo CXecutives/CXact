@@ -5,15 +5,17 @@
   with text in it or on saving (`editor.judged`), never while it is typed, and a day that
   does not read is said once, at the field, in the error line of every field (Field), and
   holds the save. A value of the file that does not read is said under it with
-  "Wert entfernen".
+  "Wert entfernen". Beside the day a calendar offers one (Calendar); typing stays the way to
+  write it, and a chosen day is written into the field in its form.
 -->
 <script lang="ts">
+  import Calendar from '$components/Calendar.svelte';
   import Icon from '$components/Icon.svelte';
   import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { fade } from '$lib/motion/transitions';
-  import { dayShaped, editor, isoDate } from '$lib/state/profile.svelte';
+  import { dayShaped, editor, isoDate, shownDate } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import ValueNote from './ValueNote.svelte';
 
@@ -87,14 +89,21 @@
         bind:this={date}
         onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
       >
-        <TextField
-          value={editor.dateText}
-          label={words.date}
-          placeholder={words.datePlaceholder}
-          invalid={said !== null}
-          describedby={said !== null ? `${id}-message` : null}
-          testid="profile-date"
-          oninput={type}
+        <span class="field">
+          <TextField
+            value={editor.dateText}
+            label={words.date}
+            placeholder={words.datePlaceholder}
+            invalid={said !== null}
+            describedby={said !== null ? `${id}-message` : null}
+            testid="profile-date"
+            oninput={type}
+          />
+        </span>
+        <Calendar
+          value={isoDate(editor.dateText)}
+          testid="profile-date-calendar"
+          onpick={(day) => type(shownDate(day))}
         />
       </span>
     {/if}
@@ -139,8 +148,14 @@
     gap: var(--space-12);
   }
 
-  /* The day is as wide as every number field. */
+  /* The day is as wide as every number field, its calendar beside it. */
   .date {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .field {
     width: calc(var(--stat-min) - var(--space-48));
   }
 

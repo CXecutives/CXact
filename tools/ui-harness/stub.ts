@@ -38,13 +38,16 @@
 // any kind, no mailbox, sign-in, other work folder or reset; they refuse with `demo` like
 // `ensure_not_demo`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
-// be read; a retry loads).
+// be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
+// before the last fetch).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
 // a competence with more than 70 years (with its row), more than five days a week, a second
-// day below the first and a minimum duration above 120 months, like core's validation.
+// day below the first and a minimum duration above 120 months, like core's validation; a
+// saved profile starts the rescore like core (with jobs, while no run goes), whose summary
+// says what the save changed in the Eingang (`ScoreDelta`).
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
@@ -82,6 +85,7 @@ import type {
   RunEvent,
   RunRequest,
   RunSummary,
+  ScoreDelta,
 } from '../../ui/src/lib/ipc/types';
 import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
@@ -96,6 +100,8 @@ import {
   type WordCriterion,
 } from '../../ui/src/lib/ipc/types/profile';
 import snapshot from './demo/snapshot.json';
+// The engine's words of the suggestions (written by core's matching::vocabulary test).
+import VOCABULARY from './demo/vocabulary.json';
 import type { Snapshot } from './snapshot';
 
 interface Harness {
@@ -691,8 +697,17 @@ const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): 
   health: { kind: 'ok' },
   actionNeeded: false,
   quota: null,
+  lastAlert: null,
   ...extra,
 });
+
+/** The date of a portal's last alert mail (store::last_alerts): the mail of its newest job. */
+function lastAlertOf(name: PortalState['portal']): string | null {
+  const dates = jobs.flatMap((j) => (j.portal === name && j.mailDate !== null ? [j.mailDate] : []));
+  return dates.length === 0
+    ? null
+    : dates.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b));
+}
 
 /** What the scoring of the last fetch found: the demo's jobs as the engine judged them, the
  *  one whose page is still to come pending. */
@@ -1030,7 +1045,13 @@ function initial(): void {
         ],
       };
       break;
+    case 'quiet-alert':
+      // freelance.de sent its last alert mail nine days before the last fetch: its alert
+      // may have run out.
+      state.portals[1]!.lastAlert = at(9 * 24);
+      break;
   }
+  for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
   refresh();
 }
 
@@ -1718,8 +1739,14 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   setTimeout(step, TICK);
 }
 
-/** The rescore the app starts after a profile change: scoring only, nothing fetched. */
+/** What the rescore after the last profile save changed (null: nothing known). */
+let rescoreDelta: ScoreDelta | null = null;
+
+/** The rescore the app starts after a profile change: scoring only, nothing fetched; its
+ *  summary carries what the save changed. */
 function rescoreScript(): RunEvent[] {
+  const delta = rescoreDelta;
+  rescoreDelta = null;
   return [
     { type: 'started', kind: 'rescore' },
     { type: 'status', code: 'scoring', portal: null, until: null },
@@ -1732,6 +1759,7 @@ function rescoreScript(): RunEvent[] {
         kind: 'rescore',
         startedAt: at(0.01),
         finishedAt: at(0),
+        score: { ...demoScoring()!, delta },
         scan: null,
         newJobs: null,
         perPortal: [],
@@ -1772,7 +1800,15 @@ function apply(event: RunEvent): void {
     // Only a completed fetch ends the setup (a failed first fetch keeps the setup page).
     if (event.summary.outcome.kind === 'completed') state.firstRun = false;
     // "The last fetch": a rescore or a details run never replaces it (pipeline::run).
-    if (isFetch(event.summary.kind)) state.lastRun = event.summary;
+    if (isFetch(event.summary.kind)) {
+      state.lastRun = event.summary;
+      for (const p of state.portals) {
+        const newest = lastAlertOf(p.portal);
+        const newer =
+          newest !== null && (p.lastAlert === null || Date.parse(newest) > Date.parse(p.lastAlert));
+        if (newer) p.lastAlert = newest;
+      }
+    }
     state.running = null;
   }
 }
@@ -1930,10 +1966,23 @@ const handlers: Handlers = {
       form,
     };
     // Scored with the profile: the engine's scores of the demo.
+    const bandsBefore = countsOf(jobs);
     if (jobs.every((j) => j.match === null)) {
       for (const j of jobs) j.match = demoMatch(j);
     }
     refresh();
+    // Like core (scoring::profile_changed): the jobs are scored again, and the rescore says
+    // what changed in the Eingang (`ScoreDelta`); no run without jobs, none while one goes.
+    const bandsAfter = countsOf(jobs);
+    rescoreDelta = {
+      excludedBefore: bandsBefore.excluded,
+      excludedAfter: bandsAfter.excluded,
+      highBefore: bandsBefore.high,
+      highAfter: bandsAfter.high,
+    };
+    if (jobs.length > 0 && !running && mailboxCheck === null) {
+      startRun({ kind: 'rescore' }, null);
+    }
     return structuredClone(state.profile);
   },
   remove_profile: () => {
@@ -1950,6 +1999,7 @@ const handlers: Handlers = {
     return true;
   },
   asked_terms: () => askedTerms(),
+  vocabulary: () => structuredClone(VOCABULARY),
   set_unsaved: ({ on }) => {
     harness.unsaved = on;
     return null;

@@ -1,6 +1,7 @@
-<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, a radio list, disclosure
-     and setting rows. -->
+<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, a calendar, a radio list,
+     disclosure and setting rows. -->
 <script lang="ts">
+  import Calendar from '$components/Calendar.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import Disclosure from '$components/Disclosure.svelte';
   import ListDivider from '$components/ListDivider.svelte';
@@ -9,6 +10,7 @@
   import RadioList from '$components/RadioList.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
+  import { vocabularyOf } from '$components/Suggestions.svelte';
   import Tabs from '$components/Tabs.svelte';
   import TextArea from '$components/TextArea.svelte';
   import TextField from '$components/TextField.svelte';
@@ -52,6 +54,10 @@
   let industries = $state<string[]>([]);
   let focus = $state([...t.chipsShownValues]);
   let answer = $state('');
+  let day = $state<string | null>('2026-11-01');
+  /** A field that suggests the chips' sample words while typing. */
+  const sampleWords = vocabularyOf([...t.chipValues, ...t.chipsShownValues]);
+  let term = $state('');
   /** The copies of "Sicherung wiederherstellen": a day, the day before, one before an update. */
   const copies = $derived(
     (
@@ -189,6 +195,8 @@
       <TextField kind="search" label={t.search} placeholder={t.search} bind:value={search} />
       <TextField kind="search" label={t.search} placeholder={t.search} bind:value={empty} />
       <TextField label={t.address} bind:value={address} disabled />
+      <Calendar value={day} onpick={(picked) => (day = picked)} />
+      <TextField label={t.chips} bind:value={term} suggestions={sampleWords} />
     </div>
     <div class="stack">
       <Field label={t.chips} for="gallery-chips" hint={t.chipsHint}>

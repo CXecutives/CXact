@@ -219,6 +219,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ProfileDraft>();
     f.add::<ProfileSave>();
     f.add::<AskedTerm>();
+    f.add::<crate::matching::Vocabulary>();
     f.add::<ResetSummary>();
     f.add::<BackupKind>();
     f.add::<Backup>();

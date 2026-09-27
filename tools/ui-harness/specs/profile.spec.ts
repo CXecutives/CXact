@@ -54,9 +54,9 @@ const SECTIONS = [
   'section-wishes',
 ];
 
-/** The toast that answers a save. */
+/** The toast that answers a save (with what its rescore changed, when it did). */
 const savedToast = (page: Page): Locator =>
-  page.getByTestId('toast').filter({ hasText: T.profile.saved });
+  page.getByTestId('toast').filter({ hasText: T.profile.saved.replace(/\.$/, '') });
 
 /** The next save_profile is refused like core refuses a value (`profileValue`). */
 async function refuseNext(
@@ -653,6 +653,36 @@ test('the save bar shows only while something changed; a toast answers the save'
   await expect(page.getByTestId('profile-save-status')).toHaveCount(0);
 });
 
+test('the toast of a save says what the rescore changed, only the parts that did', async ({
+  page,
+}) => {
+  // The demo profile saved again moves no job: the toast says only that it is saved.
+  await profile(page);
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await save(page).click();
+  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(T.profile.saved);
+  // A first profile scores the jobs of the Eingang: the ones now high and the excluded ones.
+  await create(page);
+  await page.getByTestId('competence-name').fill('Controlling');
+  await save(page).click();
+  // Once the save reached the stub, the jobs carry their scores.
+  await lastSave(page);
+  const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
+  expect(counts.high).toBeGreaterThan(0);
+  expect(counts.excluded).toBeGreaterThan(0);
+  const said = T.profile.savedEffect(counts.high, counts.excluded);
+  expect(said).toBe(
+    `Profil gespeichert, ${counts.high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen.`,
+  );
+  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(said);
+  // Only what changed, fewer as well as more; alone the excluded ones name the jobs.
+  expect(T.profile.savedEffect(0, 1)).toBe('Profil gespeichert, 1 Job ausgeschlossen.');
+  expect(T.profile.savedEffect(-2, -1)).toBe(
+    'Profil gespeichert, 2 Jobs nicht mehr mit hoher Übereinstimmung, 1 nicht mehr ausgeschlossen.',
+  );
+  expect(T.profile.savedEffect(0, 0)).toBe(T.profile.saved);
+});
+
 test('a value that is wrong holds the save and says why; Übernehmen waits for an answer', async ({
   page,
 }) => {
@@ -982,6 +1012,72 @@ test('money is grouped like everywhere; cents and decimals count whole, and say 
   const sent = await lastSave(page);
   expect(sent.after.criteria.minDayRate).toBe(950);
   expect(sent.after.wishes.dayRate).toBe(1300);
+});
+
+test('a calendar beside the day offers one, by the keys too; typing still works', async ({
+  page,
+}) => {
+  await profile(page);
+  await page
+    .getByTestId('profile-available')
+    .getByRole('radio', { name: T.profile.availability.from, exact: true })
+    .click();
+  const date = page.getByTestId('profile-date');
+  const button = page.getByTestId('profile-date-calendar');
+  const popover = page.getByTestId('profile-date-calendar-popover');
+  const month = page.getByTestId('profile-date-calendar-month');
+  const day = (iso: string): Locator => popover.locator(`[data-day="${iso}"]`);
+  // Without a day it opens on today's month (the clock stands on 24 September 2026), the
+  // week from Monday, the focus on today.
+  await date.fill('');
+  await button.click();
+  await expect(popover).toBeVisible();
+  await expect(month).toHaveText(`${T.calendar.months[8]} 2026`);
+  await expect(popover.getByRole('columnheader')).toHaveText(T.calendar.weekdays);
+  await expect(day('2026-09-24')).toBeFocused();
+  await expect(day('2026-09-24')).toHaveAttribute('aria-current', 'date');
+  // 1 September 2026 is a Tuesday: the second cell of the first week.
+  const first = popover.getByRole('row').nth(1).getByRole('gridcell');
+  await expect(first.nth(0).locator('button')).toHaveCount(0);
+  await expect(first.nth(1)).toHaveText('1');
+  // The arrows a day or a week, End the week's end, PageDown a month on.
+  await page.keyboard.press('ArrowRight');
+  await expect(day('2026-09-25')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(day('2026-10-02')).toBeFocused();
+  await expect(month).toHaveText(`${T.calendar.months[9]} 2026`);
+  await page.keyboard.press('PageUp');
+  await expect(day('2026-09-02')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(day('2026-09-06')).toBeFocused();
+  // Enter takes the day into the field in its form; the focus goes back to the button.
+  await page.keyboard.press('Enter');
+  await expect(popover).toHaveCount(0);
+  await expect(date).toHaveValue('06.09.2026');
+  await expect(button).toBeFocused();
+  // Typing still works, and the calendar opens on the typed day, chosen.
+  await date.fill('1.11.2026');
+  await button.click();
+  await expect(month).toHaveText(`${T.calendar.months[10]} 2026`);
+  await expect(day('2026-11-01')).toBeFocused();
+  await expect(day('2026-11-01')).toHaveClass(/chosen/);
+  // Its buttons turn the month; Esc closes and gives the focus back.
+  await page.getByTestId('profile-date-calendar-next').click();
+  await expect(month).toHaveText(`${T.calendar.months[11]} 2026`);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(button).toBeFocused();
+  await expect(bar(page)).toBeVisible();
+  // A click elsewhere closes it too; a click on a day takes it.
+  await button.click();
+  await page.getByTestId('profile-name-field').click();
+  await expect(popover).toHaveCount(0);
+  await button.click();
+  await day('2026-11-15').click();
+  await expect(date).toHaveValue('15.11.2026');
+  await save(page).click();
+  const sent = await lastSave(page);
+  expect(sent.after.criteria.available).toEqual({ kind: 'from', date: '2026-11-15' });
 });
 
 test('the day exists only for "Ab Datum", gets the caret and is judged when left or saved', async ({
@@ -1655,6 +1751,98 @@ test('a new form starts with one row each; the other ways stay at hand', async (
   await expect(page.getByTestId('menu').getByRole('menuitem')).toHaveText(['Profildatei wählen']);
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
+});
+
+test('a competence suggests the words of the engine; nothing replaces what was typed', async ({
+  page,
+}) => {
+  await create(page);
+  const name = page.getByTestId('competence-name');
+  const list = page.getByTestId('competence-name-suggestions');
+  const items = list.getByRole('option');
+  // From the second character: terms that start with it or have a word that does.
+  await name.fill('C');
+  await expect(items).toHaveCount(0);
+  await name.fill('Contr');
+  await expect(items.first()).toBeVisible();
+  await expect(items).toContainText(['Controlling']);
+  for (const text of await items.allTextContents()) {
+    expect(
+      text
+        .toLowerCase()
+        .split(/[\s\-/]+/)
+        .some((word) => word.startsWith('contr')),
+    ).toBe(true);
+  }
+  await expect(name).toHaveAttribute('role', 'combobox');
+  await expect(name).toHaveAttribute('aria-expanded', 'true');
+  // Nothing is marked: Enter keeps what was typed (and goes on like every Enter of a row).
+  await expect(list.locator('[aria-selected="true"]')).toHaveCount(0);
+  await name.press('Enter');
+  await expect(name.first()).toHaveValue('Contr');
+  await name.first().fill('Contr');
+  // The arrows mark one, Enter takes it; the list is gone until the next character.
+  await name.first().press('ArrowDown');
+  const first = (await items.first().textContent())!.trim();
+  await expect(items.first()).toHaveAttribute('aria-selected', 'true');
+  await expect(name.first()).toHaveAttribute('aria-activedescendant', /hints-0$/);
+  await name.first().press('Enter');
+  await expect(name.first()).toHaveValue(first);
+  await expect(list.first()).toBeHidden();
+  // Esc closes the list and keeps the text; a click takes a term.
+  await name.first().fill('Treas');
+  await expect(items).toContainText(['Treasury']);
+  await name.first().press('Escape');
+  await expect(list.first()).toBeHidden();
+  await expect(name.first()).toHaveValue('Treas');
+  await name.first().press('Backspace');
+  await list.first().getByRole('option', { name: 'Treasury', exact: true }).click();
+  await expect(name.first()).toHaveValue('Treasury');
+  await expect(name.first()).toBeFocused();
+});
+
+test('synonyms, tools and industries suggest their words as chips; typed text stays', async ({
+  page,
+}) => {
+  await create(page);
+  await page.getByTestId('competence-name').fill('Controlling');
+  // A synonym: a click takes the term as a chip.
+  const aliases = page.getByTestId('competence-aliases');
+  const aliasInput = aliases.locator('input');
+  await aliasInput.fill('Power');
+  const aliasList = page.getByTestId('competence-aliases-suggestions');
+  await aliasList.getByRole('option', { name: 'Power BI', exact: true }).click();
+  await expect(chips(aliases)).toHaveText(['Power BI']);
+  await expect(aliasInput).toHaveValue('');
+  // Enter without a mark takes the typed text; with the arrows the marked term.
+  await aliasInput.fill('Reporting Pack');
+  await aliasInput.press('Enter');
+  await expect(chips(aliases)).toHaveText(['Power BI', 'Reporting Pack']);
+  // A term that is a chip already is not suggested again.
+  await aliasInput.fill('Power B');
+  await expect(aliasList.getByRole('option', { name: 'Power BI', exact: true })).toHaveCount(0);
+  await aliasInput.fill('');
+  const tools = page.getByTestId('profile-tools');
+  await tools.locator('input').fill('SAP S/4');
+  await tools.locator('input').press('ArrowDown');
+  await tools.locator('input').press('Enter');
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA']);
+  // The industries suggest industries, not skills.
+  const industries = page.getByTestId('profile-industries');
+  await industries.locator('input').fill('Maschin');
+  const industryList = page.getByTestId('profile-industries-suggestions');
+  await expect(industryList.getByRole('option')).toContainText(['Maschinenbau']);
+  await industries.locator('input').fill('Controll');
+  await expect(industryList.getByRole('option')).toHaveCount(0);
+  // Esc closes the list first, the second Esc drops the text.
+  await industries.locator('input').fill('Maschin');
+  await industries.locator('input').press('Escape');
+  await expect(industryList).toBeHidden();
+  await expect(industries.locator('input')).toHaveValue('Maschin');
+  await industries.locator('input').press('Escape');
+  await expect(industries.locator('input')).toHaveValue('');
+  // The words are asked once.
+  expect(await calls(page, 'vocabulary')).toHaveLength(1);
 });
 
 test('create and save: an empty row is not saved; the level comes from its menu', async ({

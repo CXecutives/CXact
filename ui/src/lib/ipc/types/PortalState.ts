@@ -19,4 +19,9 @@ signedIn: boolean | null, health: PortalHealth,
 /**
  * The user has to act on the health ([`PortalHealth::action_needed`]).
  */
-actionNeeded: boolean, quota: Quota | null, };
+actionNeeded: boolean, quota: Quota | null, 
+/**
+ * The date of its last alert mail the app read (`null`: none yet); the settings warn
+ * when it is long ago.
+ */
+lastAlert: string | null, };

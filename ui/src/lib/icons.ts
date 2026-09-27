@@ -81,7 +81,12 @@ export const ICONS = {
   more: 'ellipsis',
   /** Fold open or shut (a disclosure, a divider, a menu button). */
   expand: 'chevron-down',
+  /** Back (Zurück); in the calendar the month before. */
   back: 'chevron-left',
+  /** In the calendar the month after. */
+  forward: 'chevron-right',
+  /** Opens the calendar beside a day field. */
+  pickDay: 'calendar-days',
   /** The way on after a step (Weiter). */
   next: 'arrow-right',
   search: 'search',

@@ -931,6 +931,17 @@ export const en: Catalog = {
     removeConfirm: 'Delete',
     removed: 'Profile deleted.',
     saved: 'Profile saved.',
+    savedEffect: (high: number, excluded: number) => {
+      const jobs = (value: number): string => count(Math.abs(value), 'job', 'jobs');
+      const out = (value: number): string => (high === 0 ? jobs(value) : n(Math.abs(value)));
+      const parts = [
+        high > 0 ? `${jobs(high)} now with a high match` : null,
+        high < 0 ? `${jobs(high)} no longer with a high match` : null,
+        excluded > 0 ? `${out(excluded)} excluded` : null,
+        excluded < 0 ? `${out(excluded)} no longer excluded` : null,
+      ].filter((part) => part !== null);
+      return parts.length === 0 ? 'Profile saved.' : `Profile saved, ${parts.join(', ')}.`;
+    },
     unnamed: 'Profile without a name',
     rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being scored again.`,
     check: (value: number) => count(value, 'value to check', 'values to check'),
@@ -1163,6 +1174,8 @@ export const en: Catalog = {
     signOut: 'Sign out',
     openPortal: 'Open in browser',
     signInWaiting: 'The sign-in window is open.',
+    alertQuiet: (days: number) => `No alert email for ${n(days)} days`,
+    checkAlert: 'Check alert',
     folder: 'Result folder',
     excel: 'Excel file',
     csv: 'CSV file',
@@ -1235,6 +1248,27 @@ export const en: Catalog = {
     /** Closing the window while a fetch runs asks first; its button closes anyway. */
     closeRunning: 'The fetch is still running. Close anyway?',
     closeAction: 'Close',
+  },
+  calendar: {
+    open: 'Open calendar',
+    previous: 'Previous month',
+    next: 'Next month',
+    months: [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ],
+    weekdays: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'],
+    day: (day: number, month: string, year: number) => `${day} ${month} ${year}`,
   },
   toast: {
     rescored: 'Jobs scored again',

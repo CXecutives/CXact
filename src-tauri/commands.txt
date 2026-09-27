@@ -25,6 +25,7 @@ save_profile      { save: ProfileSave }                                         
 remove_profile    {}                                                                 -> boolean
 restore_profile   {}                                                                 -> boolean
 asked_terms       {}                                                                 -> AskedTerm[]
+vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null
 answer_close      { close: boolean }                                                 -> null
