@@ -1034,8 +1034,8 @@ fn catalog<'a>(all: &'a [Source], path: &str) -> &'a Source {
         .unwrap_or_else(|| panic!("{path} missing"))
 }
 
-/// One word per thing (glossary in docs/PLAN.md and the header of en.ts); short texts, no
-/// walls of text.
+/// One word per thing (the glossary in the headers of de.ts and en.ts, the cleanup of
+/// 2026-09-27); short texts, no walls of text.
 #[test]
 fn the_catalog_keeps_the_glossary() {
     let all = scanned(MIN_FILES);
@@ -1044,10 +1044,16 @@ fn the_catalog_keeps_the_glossary() {
         for (old, new) in [
             ("Quelle", "Portal"),
             ("Eintrag", "Job"),
-            ("Volltext", "Details"),
+            ("Volltext", "Anzeige"),
             ("Kandidat", "Job"),
-            ("Treffer", "Passung"),
+            ("Treffer", "Übereinstimmung"),
+            ("Passung", "Übereinstimmung"),
             ("Mailbox", "Postfach"),
+            ("Details holen", "Anzeige laden"),
+            ("Arbeitsordner", "Ergebnisordner"),
+            ("Wartung", "App"),
+            ("Favorit", "nothing (favourites are gone)"),
+            ("Übersicht", "nothing (the overview is gone)"),
         ] {
             // Only the words the user reads count (keys like `fullMailbox` are code).
             if literals(line).iter().any(|text| words(text).contains(old)) {
@@ -1066,8 +1072,13 @@ fn the_catalog_keeps_the_glossary() {
             ("Hits", "Matches"),
             // "Inbox" is the place of the active jobs (next to Archive and Trash); the Gmail
             // account stays the "Mailbox".
-            ("Pinned", "Favourite"),
-            ("Bookmark", "Favourite"),
+            ("Pinned", "nothing (favourites are gone)"),
+            ("Bookmark", "nothing (favourites are gone)"),
+            ("Favourite", "nothing (favourites are gone)"),
+            ("Overview", "nothing (the overview is gone)"),
+            ("Fetch details", "Load ad"),
+            ("Work folder", "Result folder"),
+            ("Maintenance", "App"),
             // Plain English, not German word for word (usability round 2): one message is
             // an "email", the profile's Wünsche are "preferences", Kompetenzen "skills", Orte
             // "locations", Offene Punkte "Needs attention".
@@ -1693,6 +1704,115 @@ fn no_app_shortcuts() {
         |_| false,
     ));
     fail(&problems, "no shortcuts of the app's own");
+}
+
+/// No "·" as a separator (user decision 2026-09-27): company and place carry their icons,
+/// everything else takes a comma or a line of its own. Nothing the user reads writes the dot:
+/// no markup, no CSS `content`, no catalog text, also not as an escape. Comments may name it;
+/// the gallery (a developer board) is left out.
+#[test]
+fn no_middle_dot() {
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    let mut scanned_files = 0;
+    for source in all.iter().filter(|s| !s.under("features/gallery/")) {
+        scanned_files += 1;
+        for (n, line) in source.lines() {
+            let lower = line.to_lowercase();
+            for dot in [
+                "\u{b7}", "\\u00b7", "\\u{b7}", "\\00b7", "\\0000b7", "&middot;", "&#183;",
+                "&#xb7;",
+            ] {
+                if lower.contains(dot) {
+                    problems.push(format!("{}:{n}: {dot}", source.path));
+                }
+            }
+        }
+    }
+    assert!(scanned_files >= MIN_FILES, "only {scanned_files} files");
+    fail(
+        &problems,
+        "no middle dot as a separator (an icon, a comma or a line of its own)",
+    );
+}
+
+/// Tooltips only where something is missing (user decision 2026-09-27): a button that shows
+/// only its glyph, text that is cut off, the reason a control waits. A tooltip never repeats
+/// the words that stand there: `Button` has no second tooltip line (`hint`) and no key
+/// (`keys`), and it names its label in a tooltip only while it shows no words; the sidebar
+/// names an entry in a tooltip only while it is a rail of icons.
+#[test]
+fn tooltips_only_where_something_is_missing() {
+    let all = scanned(MIN_FILES);
+    let mut problems = Vec::new();
+    let button = source(&all, "components/Button.svelte");
+    for prop in ["hint?:", "keys?:", "hint =", "keys ="] {
+        if button.code.contains(prop) {
+            problems.push(format!(
+                "components/Button.svelte: the prop `{prop}` is gone"
+            ));
+        }
+    }
+    let tip = button
+        .code
+        .split_once("const tip = $derived(")
+        .and_then(|(_, rest)| rest.split_once(");"))
+        .map(|(expression, _)| expression.to_string())
+        .unwrap_or_default();
+    if !tip.contains("disabledReason") || !tip.contains("iconOnly") {
+        problems.push(format!(
+            "components/Button.svelte: its tooltip is the reason it waits or, with only its glyph, its label: {tip:?}"
+        ));
+    }
+    let mut buttons = 0;
+    for source in all.iter().filter(|s| s.ext == "svelte") {
+        for (line, tag) in component_tags(&source.code, "Button") {
+            buttons += 1;
+            for bad in [" hint=", " keys=", "{hint}", "{keys}"] {
+                if tag.contains(bad) {
+                    problems.push(format!("{}:{line}: <Button {}>", source.path, bad.trim()));
+                }
+            }
+        }
+    }
+    assert!(buttons >= 30, "only {buttons} <Button> tags found");
+    let nav = source(&all, "components/SideNav.svelte");
+    let mut labelled = 0;
+    for (at, _) in nav.code.match_indices("use:tooltip={") {
+        let rest = &nav.code[at..];
+        let mut depth = 0usize;
+        let mut end = rest.len();
+        for (i, c) in rest.char_indices() {
+            match c {
+                '{' => depth += 1,
+                '}' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let expression = &rest[..end];
+        if expression.contains("item.label") {
+            labelled += 1;
+            if !expression.contains("collapsed") {
+                problems.push(format!(
+                    "components/SideNav.svelte: an entry's name is its tooltip only in the rail: {expression}"
+                ));
+            }
+        }
+    }
+    assert!(
+        labelled >= 1,
+        "SideNav names no entry in a tooltip - did the rail move?"
+    );
+    fail(
+        &problems,
+        "a tooltip only where something is missing, never the words that stand there",
+    );
 }
 
 /// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the

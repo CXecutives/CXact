@@ -9,20 +9,21 @@
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip. A glyph that says it all
     (the x that removes a row) goes without the tooltip (`plain`); its label stays its name.
+    A button with its words shows no tooltip of them (a tooltip never repeats what stands
+    there, core/tests/ui_contract.rs), only why it waits.
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
     (one that is disabled while focused keeps the focus).
   - Loading keeps the width: the content fades out under the spinner.
-  - A ghost toggle (the pin star) pops once when it is switched on by a click.
+  - A ghost toggle (the star of a Schwerpunkt) pops once when it is switched on by a click.
   - radio: an option of a group with one choice (profile/ChoiceButtons, a radiogroup): it
     looks like a secondary toggle, is chosen while `checked`, and only the group's one Tab
     stop (`stop`) is in the Tab order; the arrows move between the options (input.ts). A
     choice reads like a field: 14 px text.
   - turned: the glyph stands half a turn; it turns in 180 ms.
   - dot: a small coral dot at the glyph's corner says that something of it is on (the
-    funnel of the list while a filter narrows it); `hint` adds a second, smaller line to
-    the tooltip that says what.
+    funnel of the list while a filter narrows it; the chips under the header say what).
   - link: navy text that underlines on hover (a way on, e.g. under a field).
   - inField: a button inside a text field (show password, clear search), like the native
     ones: not in the Tab order, and a click leaves the caret in the field.
@@ -63,7 +64,7 @@
     /** Why the button is disabled - shown in the tooltip. */
     disabledReason?: string | null;
     type?: 'button' | 'submit';
-    /** Toggle buttons (e.g. the pin star). */
+    /** Toggle buttons (the star of a Schwerpunkt). */
     pressed?: boolean | null;
     /** An option of a radiogroup: whether it is chosen and whether it is the group's Tab stop. */
     radio?: { checked: boolean; stop: boolean } | null;
@@ -71,8 +72,6 @@
     turned?: boolean;
     /** A small dot at the glyph's corner: something of it is on (an active filter). */
     dot?: boolean;
-    /** A second, smaller line of the tooltip (what is on). */
-    hint?: string | null;
     /** Opens something outside the app (a link shows the hand then). */
     external?: boolean;
     /** Fill the width of the container. */
@@ -109,7 +108,6 @@
     radio = null,
     turned = false,
     dot = false,
-    hint = null,
     external = false,
     wide = false,
     inField = false,
@@ -125,11 +123,7 @@
 
   const inactive = $derived(disabled || loading);
   const tip = $derived(
-    disabled && disabledReason
-      ? disabledReason
-      : (iconOnly && !plain) || hint !== null
-        ? { text: label, hint }
-        : null,
+    disabled && disabledReason ? disabledReason : iconOnly && !plain ? label : null,
   );
 
   let glyph = $state<HTMLElement | null>(null);

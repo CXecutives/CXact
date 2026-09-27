@@ -137,7 +137,7 @@
       data-testid="competence-row"
       use:formKeys={{ save: () => enter(row) }}
     >
-      <!-- Its words follow its state (the star stays the favourite of a job). -->
+      <!-- Its words follow its state. -->
       <span class="star">
         <Button
           variant="ghost"
