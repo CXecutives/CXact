@@ -10,6 +10,8 @@ import { language } from './language.svelte';
 export const NARROW_NBSP = ' ';
 /** U+00A0, a space no line breaks at. */
 export const NBSP = ' ';
+/** U+2011, a hyphen no line breaks at (a compound that must stay whole on its line). */
+export const NB_HYPHEN = '‑';
 
 interface Formats {
   integer: Intl.NumberFormat;

@@ -565,7 +565,7 @@ export const en: Catalog = {
   window: {
     minimize: 'Minimize',
     maximize: 'Maximize',
-    restore: 'Restore',
+    restore: 'Restore Down',
     close: 'Close',
   },
   common: {
@@ -1276,7 +1276,6 @@ export const en: Catalog = {
     mailboxText: (portals: readonly Portal[]) =>
       `The alert emails from ${joined(portals.map((p) => portalName[p]))} must go to this Gmail${NBSP}address.`,
     mailboxDone: 'The alert emails of the portals must go to this address.',
-    noPortal: 'Turn on a portal first.',
     openSettings: 'Open settings',
     alertMails: (value: number) => count(value, 'alert email', 'alert emails'),
     createAlert: 'Create alert',
@@ -1289,7 +1288,8 @@ export const en: Catalog = {
     loadFailed: 'The app could not load its data.',
     closing: (activity: string | null) => closing[busyOf(activity)],
     /** Closing the window while a fetch runs asks first; its button closes anyway. */
-    closeRunning: 'The fetch is still running. Close anyway?',
+    closeHeading: 'Close anyway?',
+    closeText: 'The fetch is still running.',
     closeAction: 'Close',
   },
   calendar: {

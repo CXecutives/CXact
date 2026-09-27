@@ -1,5 +1,6 @@
 <!--
-  "Wiederherstellen" of the Sicherung (Einstellungen > Daten): the copies of the database,
+  "Wiederherstellen" of the Sicherung (Einstellungen > Daten, and "Sicherung wiederherstellen"
+  of a start whose data could not load, App.svelte): the copies of the database,
   newest first and chosen, each by its moment in the one format of a moment at the start of
   a line (formatDayTime: "Heute 08:05", "Gestern 08:41", "Mo 09:12", then "18.09. 08:41")
   and why a copy from before an update or a restore is there. The one button restores the

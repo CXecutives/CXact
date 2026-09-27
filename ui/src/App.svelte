@@ -8,17 +8,21 @@
   keeps the window until that has stopped; a calm note says what it waits for (a fetch, a
   rescore, a sign-in, the files). Profil and Einstellungen keep where they were scrolled to
   while the app runs (a return finds the same place). A start whose data cannot load says so
-  and offers to try again, the log and the data folder.
+  and offers to try again, to restore a backup (the dialog of Einstellungen, whose restore
+  loads the app again), the log and the data folder; what the restore could not do stays a
+  note under them.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Menu from '$components/Menu.svelte';
+  import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
   import Tooltip from '$components/Tooltip.svelte';
   import { keepScroll } from '$lib/actions/keepScroll';
   import { t } from '$lib/i18n/t';
+  import { errorText } from '$lib/i18n/texts';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
   import { fade, viewIn, viewOut } from '$lib/motion/transitions';
@@ -31,6 +35,7 @@
   import CloseDialog from './features/shell/CloseDialog.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
+  import BackupDialog from './features/settings/BackupDialog.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
   import TitleBar from './features/shell/TitleBar.svelte';
@@ -49,6 +54,28 @@
   function openFolder(target: OpenTarget): void {
     invoke('open_target', { target }).catch((error: unknown) => {
       reportUiError(`open ${target.kind}: ${String(error)}`, null, null);
+    });
+  }
+
+  /** A backup to restore after a failed start: its button turns while the copies are read,
+   *  and what fails (or that there is none) is a note under the ways. */
+  let backupDialog = $state<BackupDialog | null>(null);
+  let restoring = $state(false);
+  let backupNote = $state<{ tone: NoticeTone; text: () => string } | null>(null);
+  async function asBackupStep(work: () => Promise<void>): Promise<void> {
+    restoring = true;
+    backupNote = null;
+    try {
+      await work();
+    } catch (error) {
+      backupNote = { tone: 'danger', text: () => errorText(error) };
+    } finally {
+      restoring = false;
+    }
+  }
+  function restoreBackup(): void {
+    void backupDialog?.show(asBackupStep, () => {
+      backupNote = { tone: 'info', text: () => t.settings.backupNone };
     });
   }
 </script>
@@ -75,6 +102,15 @@
               <Button
                 variant="link"
                 size="sm"
+                icon="backup"
+                label={t.settings.backupHeading}
+                loading={restoring}
+                testid="restore-backup"
+                onclick={restoreBackup}
+              />
+              <Button
+                variant="link"
+                size="sm"
                 icon="folder"
                 label={t.common.openLog}
                 testid="open-log"
@@ -83,11 +119,20 @@
               <Button
                 variant="link"
                 size="sm"
+                icon="folder"
                 label={t.common.openFolder}
                 testid="open-data"
                 onclick={() => openFolder({ kind: 'dataDir' })}
               />
             </div>
+            {#if backupNote}
+              <Notice
+                tone={backupNote.tone}
+                variant="inline"
+                text={backupNote.text()}
+                testid="backup-note"
+              />
+            {/if}
           </div>
         </section>
       {:else if app.state === null}
@@ -140,6 +185,7 @@
       </div>
     {/if}
     <CloseDialog />
+    <BackupDialog bind:this={backupDialog} />
   </div>
   <Toast />
   <Menu />
@@ -232,9 +278,12 @@
     min-height: 0;
   }
 
-  /* The quieter ways on after a failed start: the log and the data folder. */
+  /* The quieter ways on after a failed start: a backup, the log and the data folder (they
+     wrap in a narrow window). */
   .ways {
     display: flex;
-    gap: var(--space-16);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-8) var(--space-16);
   }
 </style>

@@ -7,8 +7,8 @@
      Windows 11 and macOS: only the switch switches (user decision). The label names the
      switch and the hint describes it (`{for}-label`, and `{for}-hint` while there is a hint,
      read by Toggle), but neither is a click target, and the row never reacts to the pointer.
-     In a form (`form`, the switches of the Profil view) the label has the 13/500 of every
-     control label there. A row without a label (the language) leads with its hint. -->
+     With `form` (a row among the fields of a form) the label has the 13/500 of a form's
+     control labels. A row without a label leads with its hint. -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';

@@ -214,8 +214,8 @@
     <MailboxForm autofocus />
   {/if}
   {#if portals.length === 0}
-    <!-- Every portal is off: nothing would be read. -->
-    {@render problem(t.firstRun.noPortal, 'first-no-portal')}
+    <!-- Every portal is off: nothing would be read (the words of the locked fetch). -->
+    {@render problem(t.toolbar.needsPortal, 'first-no-portal')}
     <div class="actions">
       <Button
         variant="secondary"

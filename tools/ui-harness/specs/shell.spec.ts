@@ -20,7 +20,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
-import { T, rowMenu, tokenColour, viaMenu } from './helpers';
+import { T, failNext, rowMenu, tokenColour, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -867,10 +867,16 @@ for (const os of [WIN, MAC]) {
     expect(hit).toBe(true);
   });
 }
-test('a start whose data cannot load: try again, the log, the data folder', async ({ page }) => {
+test('a start whose data cannot load: try again, a backup, the log, the data folder', async ({
+  page,
+}) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
   await expect(failed).toContainText(await text(page, 'shell.loadFailed'));
+  // The log and the folder with the glyph they have everywhere.
+  for (const id of ['open-log', 'open-data']) {
+    await expect(page.getByTestId(id).locator('svg')).toHaveCount(1);
+  }
   await page.getByTestId('open-log').click();
   await page.getByTestId('open-data').click();
   const targets = (await calls(page, 'open_target')).map(
@@ -879,6 +885,27 @@ test('a start whose data cannot load: try again, the log, the data folder', asyn
   expect(targets).toEqual(['logDir', 'dataDir']);
   await failed.getByRole('button', { name: await text(page, 'common.retry') }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
+});
+
+test('a start whose data cannot load offers the backups; a restore loads the app', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=load-failed`);
+  await expect(page.getByTestId('restore-backup')).toHaveText(
+    await text(page, 'settings.backupHeading'),
+  );
+  // A failure to list them stays a note under the ways.
+  await failNext(page, 'list_backups');
+  await page.getByTestId('restore-backup').click();
+  await expect(page.getByTestId('backup-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await page.getByTestId('restore-backup').click();
+  const dialog = page.getByTestId('dialog-backup');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId('backup-note')).toHaveCount(0);
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  expect(await calls(page, 'restore_backup')).toHaveLength(1);
 });
 
 test('the failed start keeps the top bar', async ({ page }) => {
@@ -1107,7 +1134,9 @@ test('closing during a fetch asks first: Abbrechen keeps both, Schließen stops 
   await heldFetch(page);
   await requestClose(page);
   const dialog = page.getByTestId('dialog-close-running');
-  await expect(dialog.getByRole('heading')).toHaveText(T.shell.closeRunning);
+  // Like every other dialog: the question as its heading, the one sentence under it.
+  await expect(dialog.getByRole('heading')).toHaveText(T.shell.closeHeading);
+  await expect(dialog).toContainText(T.shell.closeText);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.shell.closeAction);
   await expect(dialog.getByTestId('dialog-cancel')).toHaveText(T.common.cancel);
   // Abbrechen: the window and the fetch stay.

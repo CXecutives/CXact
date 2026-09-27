@@ -1,6 +1,7 @@
 <!--
   Closing the window while a fetch runs asks first (src-tauri/src/main.rs sends
-  `close-running`): "Der Abruf läuft noch. Trotzdem schließen?" with Schließen and Abbrechen.
+  `close-running`): "Trotzdem schließen?" over "Der Abruf läuft noch." with Schließen and
+  Abbrechen.
   Schließen cancels the fetch and closes once it has stopped (the closing note of App.svelte
   says so meanwhile); Abbrechen keeps the window and the fetch. A fetch that ends while the
   question is open ends the question too: the next close goes through without one.
@@ -28,7 +29,8 @@
 
 <Dialog
   {open}
-  heading={t.shell.closeRunning}
+  heading={t.shell.closeHeading}
+  text={t.shell.closeText}
   confirmLabel={t.shell.closeAction}
   testid="dialog-close-running"
   onconfirm={() => answer(true)}

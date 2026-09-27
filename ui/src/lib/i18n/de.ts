@@ -42,7 +42,15 @@ import type {
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
-import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
+import {
+  NBSP,
+  NB_HYPHEN,
+  formatEuro,
+  formatMoment,
+  formatMoney,
+  formatNumber,
+  formatPercent,
+} from './format';
 
 type Params = Record<string, string | number | boolean | null>;
 type Text = string | ((params: Params) => string);
@@ -1549,11 +1557,9 @@ export const de = {
     mailbox: 'Postfach',
     /** Where the jobs come from: the portals switched on by name, in the app's order. */
     mailboxText: (portals: readonly Portal[]) =>
-      `Die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} müssen an diese Gmail-Adresse${NBSP}gehen.`,
+      `Die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} müssen an diese Gmail${NB_HYPHEN}Adresse${NBSP}gehen.`,
     /** Connected: the portals stand in the list under it, so the sentence does not name them. */
     mailboxDone: 'Die Alert-Mails der Portale müssen an diese Adresse gehen.',
-    /** Every portal is off: the fetch would read nothing. */
-    noPortal: 'Schalte erst ein Portal ein.',
     openSettings: 'Einstellungen öffnen',
     /** Per portal after connecting: the alert mails "Verbinden" found, else its page to set
      *  up an alert. */
@@ -1571,7 +1577,8 @@ export const de = {
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
     /** Closing the window while a fetch runs asks first; its button closes anyway. */
-    closeRunning: 'Der Abruf läuft noch. Trotzdem schließen?',
+    closeHeading: 'Trotzdem schließen?',
+    closeText: 'Der Abruf läuft noch.',
     closeAction: 'Schließen',
   },
   /** The calendar beside a day field (Verfügbar ab): the week starts on Monday. */

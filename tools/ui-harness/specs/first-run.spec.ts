@@ -55,8 +55,8 @@ test('three steps that tick themselves, the fetch locked until a mailbox', async
   await expect(page.getByTestId('mailbox-user')).toBeFocused();
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
   // The portals whose alert mails must come here, in the UI's order.
-  await expect(page.getByTestId('step-mailbox')).toContainText(
-    'Die Alert-Mails von freelance.de, linkedin.com und freelancermap.de müssen an diese Gmail-Adresse gehen.',
+  await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
+    T.firstRun.mailboxText(['freelance', 'linkedin', 'freelancermap']),
   );
   expect(await reason(page, 'first-fetch')).toBe('Verbinde erst ein Postfach.');
 
@@ -119,16 +119,19 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await page.getByTestId('toggle-enabled-linkedin').click();
   await page.getByTestId('nav-jobs').click();
   const step = page.getByTestId('step-mailbox');
-  await expect(step).toContainText(
-    'Die Alert-Mails von freelance.de und freelancermap.de müssen an diese Gmail-Adresse gehen.',
+  await expect(step.getByTestId('first-mailbox-hint')).toHaveText(
+    T.firstRun.mailboxText(['freelance', 'freelancermap']),
   );
+  // The compound never breaks at its hyphen.
+  expect(T.firstRun.mailboxText(['freelance'])).toContain('Gmail‑Adresse');
   await expect(page.getByTestId('first-no-portal')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('toggle-enabled-freelance').click();
   await page.getByTestId('toggle-enabled-freelancermap').click();
   await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('first-no-portal')).toHaveText(T.firstRun.noPortal);
-  await expect(step).not.toContainText('müssen an diese Gmail-Adresse gehen');
+  // The words of the locked fetch, not a sentence of its own.
+  await expect(page.getByTestId('first-no-portal')).toHaveText(T.toolbar.needsPortal);
+  await expect(step.getByTestId('first-mailbox-hint')).toHaveCount(0);
   await page.getByTestId('first-open-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
   // In English the same.
