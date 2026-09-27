@@ -151,10 +151,6 @@ const CRITERIA: &[Field] = &[
         shape: Shape::Any,
     },
     Field {
-        keys: lexicon::KEYS_TARGET_YEARS,
-        shape: Shape::Number,
-    },
-    Field {
         keys: lexicon::KEYS_MIN_SALARY,
         shape: Shape::Number,
     },

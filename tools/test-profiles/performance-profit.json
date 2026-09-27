@@ -82,7 +82,6 @@
     "laender": ["DE", "AT", "CH"],
     "ausgeschlossene_vertragsarten": ["anue"],
     "verfuegbar_ab": "sofort",
-    "zielprofil_min_jahre": 8,
     "auslastung_max_tage": 4,
     "min_laufzeit_monate": 3,
     "ausschlusswoerter": ["Werkstudent", "Praktikum"]

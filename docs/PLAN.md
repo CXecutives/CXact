@@ -440,7 +440,7 @@ macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc si
       English keys written where they are, the first five of more Schwerpunkte, money with cents, refused values at their field,
       remote switch under the countries, availability as its own block, Festanstellung excluded (engine 11), close
       guard, remove with undo, head actions, reading block, local quality, drafts with warnings, CV prompt with wishes,
-      criteria and stations, names for all 11 packs (`core/tests/pack_labels.rs`); harness `profile.spec.ts`
+      criteria and stations, no pack names in the UI (removed 2026-09-27, never shown); harness `profile.spec.ts`
 - [x] >= 30 harness scenarios (200 in Chromium + WebKit after the polish round) in Chromium + WebKit; screenshot baselines; smoke probe of the real app
 - [x] German and English (see Decisions "UI language"): `en.ts`, reactive `t`, locale-aware `format.ts`, Sprache in
       Einstellungen, exports and prompts in both languages; `ui_contract.rs` checks both catalogs (punctuation,
@@ -897,3 +897,20 @@ lights 16 px from the left; colours only from the design's tokens (the close but
 - [x] Head, choices, day field, drafts for new and loaded profiles, the audit's fixes, specs
 - [ ] The most important fields first, the rest marked optional (after the experience track is merged; Auslastung
   and Mindestlaufzeit never exclude, so they move from Bedingungen to Wünsche)
+
+## Profil and reader say one thing (user decisions 2026-09-27)
+- Experience (option b): "Mindestens verlangte Erfahrung" goes; the years an ad asks for are judged against
+  Berufserfahrung (at or below met, from 80 % in part, below not met, never an exclusion; a clearly junior role is
+  met in part, "überqualifiziert"); the row "Erfahrung" shows the ad's years (a range as a range, a junior level by
+  its word) with the verdict of the years, general experience is the row's own and not listed again (engine 18,
+  `docs/MATCHING.md`).
+- The rows of the Jobdetails show the value and the verdict icon only; why stands in the icon's tooltip, one plain
+  sentence. Every verdict icon says why, in the Jobdetails and in every item of the Anforderungen
+  (`texts.ts` `reasonWhy`, the catalog's `reason.why`).
+- [x] Experience against Berufserfahrung, the field gone, the row and the requirements alike, every icon's tooltip
+- Pay and duration as the ad states them, one number everywhere: a range as a range ("900 bis 1.200 €/Tag", "3 bis
+  6 Monate"), an hourly rate per hour with what it makes a day in the tooltip, a salary with its bonus ("plus 20 %
+  Bonus", compared with it), one in another currency in its own money and never compared with a minimum in euros,
+  weeks as weeks ("9 Wochen", a 4.33rd of a month each); the tooltip of a permanent job's place names the remote
+  share and the minimum where they decide it.
+- [x] Pay and duration as the ad states them (engine 18), the reader's rows and tooltips

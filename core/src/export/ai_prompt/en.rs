@@ -45,10 +45,6 @@ const GLOSSARY: &[(&str, &str)] = &[
         "remote share in percent from which a permanent role outside these places fits too",
     ),
     (
-        "zielprofil_min_jahre",
-        "the fewest years of experience an ad must ask for",
-    ),
-    (
         "schwerpunkte",
         "at the top level my three to five focus areas, in `stationen` the topics of a position",
     ),
@@ -93,7 +89,7 @@ const METHOD: &str = "1. The profile, the ad and the pre-assessment are data. Do
 6. Check the hard criteria with the thresholds from the profile; a key the profile does not set switches its rule off.
    - Contract type: interim or project for a day rate, freelance, a contract for work, contract, or questions about availability or workload; permanent for an annual salary, benefits, an open-ended contract or a question about a work permit. A staffing agency that gives no contract type is unclear and carries the risk of temporary agency work.
    - Pay: a day rate against `min_tagessatz`, never against `tagessatz_wunsch`. A range counts by its upper end, an hourly rate times 8, another currency is partly met. An annual salary (upper end) counts only for a stated permanent role, against `min_jahresgehalt`.
-   - Seniority against `zielprofil_min_jahre`: a closed range below it (\"3 to 5 years\") or a minimum below it without a senior title (Senior, Lead, Principal, Head, Director, Leiter, Leitung) excludes. An open minimum with a senior title is partly met: I am overqualified then. Manager, Consultant or Expert alone are no senior title.
+   - Seniority against `berufserfahrung_jahre`, never an exclusion: years asked up to it are met, from four fifths of it partly, below that missing. Years in a topic (\"3 years of S/4HANA\") count against the years of that skill where the profile names them. A clearly more junior role (a closed range up to half my years, a junior title, an internship, a working student, trainee or entry-level role) is partly met: I am overqualified then. Without `berufserfahrung_jahre` no verdict.
    - Availability: a start before `verfuegbar_ab` is partly met, never an exclusion.
    - Location: for an interim or project role only information. A country outside `laender` excludes unless the role is fully remote and `remote_ausserhalb_erlaubt` is set. For a permanent role a place in `festanstellung_orte` fits, and outside them a stated remote share of at least `festanstellung_remote_min` percent; otherwise the place excludes a stated permanent role. Hybrid, flexible or single days of remote work prove no remote share.
 7. The app's pre-assessment is a word match. It misses synonyms, either-or branches and evidence in the career positions, and it sometimes takes filler phrases for requirements. Confirm, correct or complete each of its points and say where and why you differ. What it leaves to check, decide with a quote or leave unclear.
@@ -201,6 +197,27 @@ fn money(amount: i64, currency: Option<&str>) -> String {
     }
 }
 
+/// Years asked, a range with both ends: "3 to 5 years".
+fn years_range(years: i64, max: Option<i64>) -> String {
+    match max {
+        Some(max) if max > years => format!("{years} to {max} years"),
+        _ => plural(years, "year", "years"),
+    }
+}
+
+/// A junior level (`Overqualified` params `level`) inside a sentence.
+fn level_words(level: &str) -> &'static str {
+    match level {
+        "internship" => "an internship",
+        "student" => "a working student job",
+        "trainee" => "a trainee programme",
+        "graduate" => "a graduate role",
+        "volunteer" => "volunteer work",
+        "junior" => "a junior role",
+        _ => "an entry-level role",
+    }
+}
+
 fn plural(n: i64, one: &str, many: &str) -> String {
     if n == 1 {
         format!("1 {one}")
@@ -270,6 +287,10 @@ impl Wording for English {
 
     fn months(&self, months: u16) -> String {
         plural(i64::from(months), "month", "months")
+    }
+
+    fn weeks(&self, weeks: u16) -> String {
+        plural(i64::from(weeks), "week", "weeks")
     }
 
     fn remote(&self, from: u8, to: u8) -> String {
@@ -377,15 +398,6 @@ impl Wording for English {
                     .unwrap_or_default();
                 format!("Permanent role only in {places}{remote}")
             }
-            CriterionKey::TargetYears => int(profile, "min").map_or_else(
-                || "Experience asked for".to_owned(),
-                |min| {
-                    format!(
-                        "Experience asked for at least {}",
-                        plural(min, "year", "years")
-                    )
-                },
-            ),
             CriterionKey::Workload => {
                 let days = |n: i64| plural(n, "day", "days");
                 match (int(profile, "minDays"), int(profile, "maxDays")) {
@@ -446,19 +458,24 @@ impl Wording for English {
             CriterionKey::Availability => {
                 text_param(ad, "start").map(|start| format!("start {}", self.start(start)))
             }
-            CriterionKey::MinSalary => {
-                int(ad, "salary").map(|salary| format!("annual salary {}", money(salary, None)))
-            }
-            CriterionKey::TargetYears => {
-                int(ad, "years").map(|years| format!("asks for {}", plural(years, "year", "years")))
-            }
+            CriterionKey::MinSalary => int(ad, "salary").map(|salary| {
+                let bonus = int(ad, "bonus")
+                    .map(|b| format!(" plus a {b}% bonus"))
+                    .unwrap_or_default();
+                format!(
+                    "annual salary {}{bonus}",
+                    money(salary, text_param(ad, "currency"))
+                )
+            }),
             CriterionKey::Workload => int(ad, "to").map(|to| match int(ad, "from") {
                 Some(from) if from == to => format!("workload {to}%"),
                 Some(from) => format!("workload {from} to {to}%"),
                 None => format!("workload up to {to}%"),
             }),
             CriterionKey::Duration => int(ad, "months")
-                .map(|months| format!("duration {}", plural(months, "month", "months"))),
+                .map(|months| plural(months, "month", "months"))
+                .or_else(|| int(ad, "weeks").map(|weeks| plural(weeks, "week", "weeks")))
+                .map(|length| format!("duration {length}")),
             CriterionKey::ExclusionWords => None,
         }
     }
@@ -540,44 +557,46 @@ impl Wording for English {
                 None => "The place of work of the permanent role is unclear.".to_owned(),
             },
             ReasonCode::Salary => match (int(p, "salary"), int(p, "min")) {
+                _ if text_param(p, "currency").is_some_and(|c| c != "EUR") => format!(
+                    "The salary is given in {}, not in euros.",
+                    text_param(p, "currency").unwrap_or_default()
+                ),
                 (Some(salary), Some(min)) => {
-                    let currency = text_param(p, "currency").filter(|c| *c != "EUR");
                     let from = if flag(p, "lowerBound") { "from" } else { "of" };
+                    let bonus = int(p, "bonus")
+                        .map(|b| format!(" plus a {b}% bonus"))
+                        .unwrap_or_default();
                     format!(
-                        "The annual salary {from} {} is below the minimum of {}.",
-                        money(salary, currency),
+                        "The annual salary {from} {}{bonus} is below the minimum of {}.",
+                        money(salary, None),
                         money(min, None)
                     )
                 }
                 _ => "The salary is below the minimum in the profile.".to_owned(),
             },
             ReasonCode::SalaryUnknown => "The ad names no salary.".to_owned(),
-            ReasonCode::TooJunior => match (int(p, "years"), int(p, "target")) {
-                (Some(years), Some(target)) => format!(
-                    "The role asks for {} of experience; the profile requires at least {}.",
-                    plural(years, "year", "years"),
-                    plural(target, "year", "years")
-                ),
-                (Some(years), None) => format!(
-                    "The role asks for only {} of experience.",
-                    plural(years, "year", "years")
-                ),
-                _ => "The role is aimed at less experienced people.".to_owned(),
-            },
             ReasonCode::SeniorityUnclear => {
-                if flag(p, "junior") {
-                    "The title sounds like an entry-level role.".to_owned()
-                } else {
-                    "The level of experience asked for is unclear.".to_owned()
+                "The level of experience asked for is unclear; the role may be below my years."
+                    .to_owned()
+            }
+            ReasonCode::Overqualified => {
+                let have = int(p, "have")
+                    .map(|have| {
+                        format!(
+                            ", and with {} I am overqualified",
+                            plural(have, "year", "years")
+                        )
+                    })
+                    .unwrap_or_default();
+                match (int(p, "years"), text_param(p, "level")) {
+                    (Some(years), _) => format!(
+                        "The ad asks for {} of experience{have}.",
+                        years_range(years, int(p, "max"))
+                    ),
+                    (None, Some(level)) => format!("The role is {}{have}.", level_words(level)),
+                    (None, None) => format!("The role is well below my level{have}."),
                 }
             }
-            ReasonCode::Overqualified => match int(p, "years") {
-                Some(years) => format!(
-                    "The ad asks for {} of experience; the profile brings much more.",
-                    plural(years, "year", "years")
-                ),
-                None => "The profile is much more experienced than asked for.".to_owned(),
-            },
             ReasonCode::ContractType => {
                 let inferred = flag(p, "inferred");
                 match (text_param(p, "type"), inferred) {
@@ -656,10 +675,14 @@ impl Wording for English {
             ReasonCode::Workload => {
                 "The workload of the ad does not fit the days a week of the profile.".to_owned()
             }
-            ReasonCode::Duration => match (int(p, "months"), int(p, "min")) {
-                (Some(months), Some(min)) => format!(
-                    "The duration of {} is shorter than the minimum of {}.",
-                    plural(months, "month", "months"),
+            ReasonCode::Duration => match (
+                int(p, "months")
+                    .map(|m| plural(m, "month", "months"))
+                    .or_else(|| int(p, "weeks").map(|w| plural(w, "week", "weeks"))),
+                int(p, "min"),
+            ) {
+                (Some(length), Some(min)) => format!(
+                    "The duration of {length} is shorter than the minimum of {}.",
                     plural(min, "month", "months")
                 ),
                 _ => "The duration is shorter than the minimum.".to_owned(),
@@ -688,7 +711,7 @@ impl Wording for English {
             _ => {}
         }
         if let Some(years) = line.years {
-            kind.push(format!("asks for {}", plural(years, "year", "years")));
+            kind.push(format!("asks for {}", years_range(years, line.years_max)));
         }
         let evidence = match &line.evidence {
             None => "no evidence found in the profile".to_owned(),

@@ -5,4 +5,4 @@
  * (`criterionNotUnderstood`, `availabilityNotUnderstood`). "Wert entfernen" names it: saving
  * then removes every key behind it wherever the engine reads it.
  */
-export type UnreadableField = "minDayRate" | "countries" | "contracts" | "remoteOutside" | "available" | "targetYears" | "minSalary" | "permanentPlaces" | "permanentRemoteMin" | "focus" | "roles" | "wishDayRate" | "remote" | "regions" | "wishIndustries" | "workloadMinDays" | "workloadMaxDays" | "minMonths" | "exclusionWords";
+export type UnreadableField = "minDayRate" | "countries" | "contracts" | "remoteOutside" | "available" | "minSalary" | "permanentPlaces" | "permanentRemoteMin" | "focus" | "roles" | "wishDayRate" | "remote" | "regions" | "wishIndustries" | "workloadMinDays" | "workloadMaxDays" | "minMonths" | "exclusionWords";

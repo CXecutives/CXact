@@ -3,8 +3,10 @@
 //! role with clear wording; an inferred permanent role, an unclear contract (an agency
 //! without details) or unclear wording gives a check.
 //!
-//! Salary: EUR per year, the upper bound counts (`110.000 bis 130.000 €` -> 130,000),
-//! `ab 100.000` is only a lower bound, monthly or foreign amounts are checks.
+//! Salary: EUR per year, the upper bound counts (`110.000 bis 130.000 €` -> 130,000) with the
+//! bonus share its sentence names (`plus bis zu 20 % Bonus`), `ab 100.000` is only a lower
+//! bound, a monthly amount is a check, one in another currency is not compared with a minimum
+//! in euros (a check, like a day rate in another currency).
 //! Region: a profile place in the location field or a location line
 //! (`Standort: Frankfurt oder München`) is inside; a stated remote share of at least the
 //! minimum (`80 % remote`,
@@ -15,6 +17,7 @@ use std::ops::Range;
 
 use serde_json::{Value, json};
 
+use super::ad_facts::currency_code;
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact, hourly_pay_in};
@@ -46,13 +49,30 @@ impl Salary {
     /// The amount shown, per year (the highest, else the lower bound; a monthly one times
     /// twelve).
     pub(crate) fn per_year(&self) -> u64 {
-        let shown = self.upper.unwrap_or(self.lower);
+        self.yearly(self.upper.unwrap_or(self.lower))
+    }
+
+    /// The lower end of a range, per year.
+    pub(crate) fn range_from_per_year(&self) -> Option<u64> {
+        self.upper
+            .filter(|upper| self.lower < *upper)
+            .map(|_| self.yearly(self.lower))
+    }
+
+    /// An amount of the statement per year (absurd digit runs saturate).
+    fn yearly(&self, amount: u64) -> u64 {
         if self.monthly {
-            shown.saturating_mul(12)
+            amount.saturating_mul(12)
         } else {
-            shown
+            amount
         }
     }
+}
+
+/// The salary per year with the bonus share its sentence names: what the rule compares with
+/// the minimum.
+pub(crate) fn with_bonus(per_year: u64, bonus: u64) -> u64 {
+    per_year.saturating_mul(100 + bonus) / 100
 }
 
 /// Amounts in a folded sentence: thousands separators, `k`/`TEUR` suffixes, no percentages.
@@ -219,34 +239,42 @@ pub(crate) fn salary(
             Vec::new(),
         )];
     };
-    // Absurd digit runs saturate.
-    let per_year = |v: u64| {
-        if salary.monthly {
-            v.saturating_mul(12)
-        } else {
-            v
-        }
-    };
     let bonus = segments
         .iter()
         .find(|(r, _)| *r == span)
         .map_or(0, |(_, f)| bonus_percent(f));
-    let shown = per_year(salary.upper.unwrap_or(salary.lower)).saturating_mul(100 + bonus) / 100;
-    if shown >= min {
-        return Vec::new();
-    }
-    let decided =
-        may_decide && salary.currency.is_none() && !salary.monthly && salary.upper.is_some();
-    let mut params = json!({ "salary": shown, "min": min });
+    let stated = salary.per_year();
+    let mut params = json!({ "salary": stated });
     if salary.upper.is_none() {
         params["lowerBound"] = json!(true);
     }
     if salary.monthly {
         params["monthly"] = json!(true);
     }
-    if let Some(currency) = salary.currency {
-        params["currency"] = json!(currency.to_uppercase());
+    if let Some(from) = salary.range_from_per_year() {
+        params["from"] = json!(from);
     }
+    // Another currency is never compared with a minimum in euros: unclear.
+    if let Some(currency) = salary.currency {
+        params["currency"] = json!(currency_code(currency));
+        return vec![Finding::new(
+            ReasonCode::Salary,
+            false,
+            key,
+            params,
+            vec![span],
+        )];
+    }
+    let compared = with_bonus(stated, bonus);
+    if compared >= min {
+        return Vec::new();
+    }
+    params["min"] = json!(min);
+    if bonus > 0 {
+        params["bonus"] = json!(bonus);
+        params["withBonus"] = json!(compared);
+    }
+    let decided = may_decide && !salary.monthly && salary.upper.is_some();
     vec![Finding::new(
         ReasonCode::Salary,
         decided,
@@ -259,7 +287,7 @@ pub(crate) fn salary(
 /// Percentages in a folded sentence.
 /// The share of a variable pay the salary sentence names (`plus bis zu 20 % Bonus`), read in
 /// the clause that names the bonus (`100 % remote` elsewhere in the sentence is none).
-fn bonus_percent(folded: &str) -> u64 {
+pub(crate) fn bonus_percent(folded: &str) -> u64 {
     folded
         .split([',', ';', '(', ')'])
         .filter(|clause| lex::BONUS_WORDS.iter().any(|w| clause.contains(w)))
@@ -374,7 +402,7 @@ pub(crate) fn region(
             ReasonCode::PermanentRegion,
             may_decide,
             key,
-            json!({ "location": place, "remoteMin": remote_min, "remote": remote_share }),
+            json!({ "location": place, "remoteMin": criteria.remote_min, "remote": remote_share }),
             spans,
         )],
         Some((place, spans)) => vec![Finding::new(

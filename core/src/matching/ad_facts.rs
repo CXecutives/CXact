@@ -12,16 +12,17 @@ use super::application::{self, Contact};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
-use super::job::{JobDoc, contains_word};
+use super::job::contains_word;
 use super::lexicon::engine as lex;
 use super::limits::{self, Workload};
-use super::permanent::parse_salary;
-use super::seniority::experience_years;
+use super::permanent::{bonus_percent, parse_salary};
 use super::types::KeyFacts;
 use super::wishes::remote_share;
 
 /// Longest duration read (ten years).
 const MAX_MONTHS: u64 = 120;
+/// Weeks of a month, in hundredths (a week is a 4.33rd of a month).
+const WEEKS_PER_MONTH_X100: u64 = 433;
 /// Words after an end marker where the end date stands (`bis Ende März 2027`).
 const END_DATE_WORDS: usize = 4;
 
@@ -36,6 +37,45 @@ fn stated<T>(value: T, span: Option<Range<usize>>) -> Stated<T> {
     Stated { value, span }
 }
 
+/// A duration as the ad states it: months, or weeks (never rounded up to months), a range
+/// with its lower end in the same unit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Duration {
+    pub amount: u16,
+    pub from: Option<u16>,
+    pub weeks: bool,
+}
+
+impl Duration {
+    fn months(amount: u16) -> Self {
+        Self {
+            amount,
+            from: None,
+            weeks: false,
+        }
+    }
+
+    /// Its length in hundredths of a month: of two statements the longer one counts.
+    fn centi_months(self) -> u64 {
+        let amount = u64::from(self.amount);
+        if self.weeks {
+            amount * 10_000 / WEEKS_PER_MONTH_X100
+        } else {
+            amount * 100
+        }
+    }
+
+    /// Is it shorter than `min` months? Weeks count as a 4.33rd of a month each; a range
+    /// counts by its upper end.
+    pub(crate) fn below_months(self, min: u16) -> bool {
+        if self.weeks {
+            u64::from(self.amount) * 100 < u64::from(min) * WEEKS_PER_MONTH_X100
+        } else {
+            self.amount < min
+        }
+    }
+}
+
 /// What the ad states about the hard criteria and the key facts.
 #[derive(Debug, Clone)]
 pub(crate) struct AdFacts {
@@ -43,7 +83,8 @@ pub(crate) struct AdFacts {
     /// A rate to be agreed (`Tagessatz nach Absprache`), without an amount.
     pub rate_open: Option<Stated<()>>,
     pub start: Option<Stated<Start>>,
-    pub months: Option<Stated<u16>>,
+    /// The duration (months or weeks).
+    pub months: Option<Stated<Duration>>,
     /// Remote share in percent (from, to).
     pub remote: Option<(u64, u64)>,
     /// The work location as the page states it (trimmed, may be empty).
@@ -54,14 +95,16 @@ pub(crate) struct AdFacts {
     /// The contract type as the interface names it (`Contract::code`).
     pub contract_code: &'static str,
     pub contract_span: Option<Range<usize>>,
-    /// Stated annual salary (a monthly one times twelve).
+    /// Stated annual salary, its upper end (a monthly one times twelve).
     pub salary: Option<Stated<u64>>,
+    /// The lower end of a range of salaries, per year.
+    pub salary_from: Option<u64>,
+    /// The share of a bonus the salary's sentence names (percent, 0 without).
+    pub salary_bonus: u64,
     /// The salary is a lower bound only (`ab 100.000 €`).
     pub salary_lower_bound: bool,
-    /// The salary is in a currency other than the euro (`CHF`).
-    pub salary_foreign: bool,
-    /// The most years of experience a requirement line asks for.
-    pub years: Option<Stated<u32>>,
+    /// The currency of a salary not in euros (`CHF`).
+    pub salary_currency: Option<String>,
     /// The workload in percent of a five-day week.
     pub workload: Option<Stated<Workload>>,
     /// The application deadline.
@@ -76,12 +119,11 @@ pub(crate) fn read(
     segments: &[Segment],
     folded: &str,
     contract: &Contract,
-    doc: &JobDoc,
 ) -> AdFacts {
     let rate = stated_rate(job, segments).map(|(rate, span)| stated(rate, span));
     let salary = segments
         .iter()
-        .find_map(|(range, f)| parse_salary(f).map(|s| (s, range)));
+        .find_map(|(range, f)| parse_salary(f).map(|s| (s, range, bonus_percent(f))));
     let rate_open = if rate.is_none() {
         segments
             .iter()
@@ -119,10 +161,14 @@ pub(crate) fn read(
         contract_span,
         salary: salary
             .as_ref()
-            .map(|(s, range)| stated(s.per_year(), Some((*range).clone()))),
-        salary_lower_bound: salary.as_ref().is_some_and(|(s, _)| s.upper.is_none()),
-        salary_foreign: salary.as_ref().is_some_and(|(s, _)| s.currency.is_some()),
-        years: years(job.text, doc),
+            .map(|(s, range, _)| stated(s.per_year(), Some((*range).clone()))),
+        salary_from: salary.as_ref().and_then(|(s, ..)| s.range_from_per_year()),
+        salary_bonus: salary.as_ref().map_or(0, |(.., bonus)| *bonus),
+        salary_lower_bound: salary.as_ref().is_some_and(|(s, ..)| s.upper.is_none()),
+        salary_currency: salary
+            .as_ref()
+            .and_then(|(s, ..)| s.currency)
+            .map(currency_code),
         workload: limits::read(job, segments),
         deadline: application::deadline(job.text, job.posted),
         contact: application::contact(job.text),
@@ -155,17 +201,17 @@ fn months(
     job: &JobFacts<'_>,
     segments: &[Segment],
     reference: Option<Date>,
-) -> Option<Stated<u16>> {
+) -> Option<Stated<Duration>> {
     let from_fact = fact(job.facts, super::fact_key::DURATION)
         .and_then(Value::as_str)
-        .and_then(|s| duration_months(&fold(s), true, reference))
+        .and_then(|s| duration_in(&fold(s), true, reference))
         .map(|m| stated(m, None));
     let pass = |term: bool| {
         segments
             .iter()
             .filter(|(_, f)| !term || duration_term(f))
             .find_map(|(range, f)| {
-                duration_months(f, term, reference).map(|m| stated(m, Some(range.clone())))
+                duration_in(f, term, reference).map(|m| stated(m, Some(range.clone())))
             })
     };
     from_fact.or_else(|| pass(true)).or_else(|| pass(false))
@@ -181,21 +227,20 @@ fn duration_term(folded: &str) -> bool {
     })
 }
 
-/// The months a sentence states (`term`: a sentence with a duration word, where every
+/// The duration a sentence states (`term`: a sentence with a duration word, where every
 /// amount of time counts; else only duration phrases), or its end date counted from
-/// `reference`.
-fn duration_months(folded: &str, term: bool, reference: Option<Date>) -> Option<u16> {
-    let amounts = folded
+/// `reference` in months.
+fn duration_in(folded: &str, term: bool, reference: Option<Date>) -> Option<Duration> {
+    folded
         .split(lex::DURATION_CLAUSE_BREAKS)
-        .filter_map(|clause| clause_months(clause, term))
-        .max();
-    amounts
-        .and_then(|m| u16::try_from(m).ok())
-        .or_else(|| end_months(folded, term, reference?))
+        .filter_map(|clause| clause_duration(clause, term))
+        .max_by_key(|d| d.centi_months())
+        .or_else(|| end_months(folded, term, reference?).map(Duration::months))
 }
 
-/// The largest duration amount of a clause.
-fn clause_months(clause: &str, term: bool) -> Option<u64> {
+/// The longest duration of a clause: months (years times twelve) or weeks, with the lower
+/// end of a range (`3-6 Monate`, `für ca. 3 bis 6 Monate`).
+fn clause_duration(clause: &str, term: bool) -> Option<Duration> {
     let words: Vec<&str> = clause
         .split(|c: char| !c.is_ascii_alphanumeric())
         .filter(|w| !w.is_empty())
@@ -211,19 +256,32 @@ fn clause_months(clause: &str, term: bool) -> Option<u64> {
                 .any(|u| w.starts_with(u))
             || lex::DURATION_FILLERS.contains(w)
     });
-    let mut best: Option<u64> = None;
+    let mut best: Option<Duration> = None;
     for (i, pair) in words.windows(2).enumerate() {
         let Ok(amount) = pair[0].parse::<u64>() else {
             continue;
         };
         let unit = pair[1];
         let is = |units: &[&str]| units.iter().any(|u| unit.starts_with(u));
-        let (months, short_unit) = if is(lex::MONTH_UNITS) {
-            (amount, true)
+        // The lower end of a range: a number right before (`3-6`, the dash splits the words)
+        // or one word before (`3 bis 6`).
+        let lower = match i {
+            1.. if is_number(words[i - 1]) => words[i - 1].parse::<u64>().ok(),
+            2.. if ["bis", "to"].contains(&words[i - 1]) => words[i - 2].parse::<u64>().ok(),
+            _ => None,
+        }
+        .filter(|l| *l < amount);
+        let (amount, lower, weeks, short_unit) = if is(lex::MONTH_UNITS) {
+            (amount, lower, false, true)
         } else if is(lex::YEAR_UNITS) {
-            (amount.saturating_mul(12), false)
+            (
+                amount.saturating_mul(12),
+                lower.map(|l| l * 12),
+                false,
+                false,
+            )
         } else if is(lex::WEEK_UNITS) || unit.starts_with("wochig") {
-            (amount.div_ceil(4), true)
+            (amount, lower, true, true)
         } else {
             continue;
         };
@@ -245,8 +303,21 @@ fn clause_months(clause: &str, term: bool) -> Option<u64> {
         let phrase = lex::DURATION_FOR.contains(&head)
             || lex::DURATION_ADJECTIVES.iter().any(|a| unit.starts_with(a))
             || (short_unit && (bare || plus_before(clause, pair[0])));
-        if (term || phrase) && (1..=MAX_MONTHS).contains(&months) {
-            best = best.max(Some(months));
+        let Ok(amount16) = u16::try_from(amount) else {
+            continue;
+        };
+        let duration = Duration {
+            amount: amount16,
+            from: lower.and_then(|l| u16::try_from(l).ok()),
+            weeks,
+        };
+        let length = duration.centi_months();
+        if (term || phrase)
+            && amount >= 1
+            && length <= MAX_MONTHS * 100
+            && best.is_none_or(|b| length > b.centi_months())
+        {
+            best = Some(duration);
         }
     }
     best
@@ -335,18 +406,6 @@ fn end_date(after: &str) -> Option<Date> {
     None
 }
 
-/// The most years a requirement line asks for, with the line.
-fn years(text: &str, doc: &JobDoc) -> Option<Stated<u32>> {
-    doc.requirement_lines
-        .iter()
-        .filter_map(|range| {
-            let line = text.get(range.clone())?;
-            let (min, _) = experience_years(&fold(line))?;
-            Some(stated(min, Some(range.clone())))
-        })
-        .max_by_key(|s| s.value)
-}
-
 impl AdFacts {
     /// The compact facts for the list row and the reader.
     pub(crate) fn key_facts(&self) -> KeyFacts {
@@ -364,7 +423,22 @@ impl AdFacts {
                 .map(currency_code),
             rate_open: self.rate_open.as_ref().map(|_| true),
             start: self.start.as_ref().map(|s| start_code(s.value)),
-            months: self.months.as_ref().map(|m| m.value),
+            months: self
+                .months
+                .as_ref()
+                .filter(|m| !m.value.weeks)
+                .map(|m| m.value.amount),
+            weeks: self
+                .months
+                .as_ref()
+                .filter(|m| m.value.weeks)
+                .map(|m| m.value.amount),
+            duration_from: self.months.as_ref().and_then(|m| m.value.from),
+            rate_from: self
+                .rate
+                .as_ref()
+                .and_then(|r| r.value.range_from())
+                .map(|from| u32::try_from(from).unwrap_or(u32::MAX)),
             remote_from: self.remote.map(|(from, _)| percent(from)),
             remote_to: self.remote.map(|(_, to)| percent(to)),
             contract: match self.contract {
@@ -378,10 +452,18 @@ impl AdFacts {
             salary: self
                 .salary
                 .as_ref()
-                .filter(|_| !self.salary_foreign)
+                .filter(|_| self.salary_currency.is_none())
                 .map(|s| u32::try_from(s.value).unwrap_or(u32::MAX)),
-            salary_lower_bound: (self.salary.is_some() && !self.salary_foreign)
+            salary_lower_bound: (self.salary.is_some() && self.salary_currency.is_none())
                 .then_some(self.salary_lower_bound),
+            salary_from: self
+                .salary_from
+                .filter(|_| self.salary_currency.is_none())
+                .map(|s| u32::try_from(s).unwrap_or(u32::MAX)),
+            salary_bonus: (self.salary.is_some()
+                && self.salary_currency.is_none()
+                && self.salary_bonus > 0)
+                .then(|| u8::try_from(self.salary_bonus.min(100)).unwrap_or(100)),
             deadline: self.deadline.map(|day| day.to_string()),
             contact_name: self.contact.name.clone(),
             contact_email: self.contact.email.clone(),
@@ -431,15 +513,29 @@ mod tests {
     #[test]
     fn durations_in_months() {
         // A duration statement (a page's duration field, a sentence with a duration word).
-        let m = |s: &str| duration_months(&fold(s), true, None);
+        let d = |s: &str| duration_in(&fold(s), true, None);
+        let m = |s: &str| d(s).filter(|d| !d.weeks).map(|d| d.amount);
         assert_eq!(m("Laufzeit: 6 Monate"), Some(6));
         assert_eq!(m("Duration 3-6 months, extension possible"), Some(6));
         assert_eq!(m("12+ Monate"), Some(12));
         assert_eq!(m("Projektdauer 1 Jahr"), Some(12));
-        assert_eq!(m("8 Wochen"), Some(2));
         assert_eq!(m("Start ab sofort"), None);
         assert_eq!(m("Laufzeit bis 31.12.2026"), None);
         assert_eq!(m("Laufzeit 999 Monate"), None);
+        // A range keeps its lower end; weeks stay weeks, compared as a 4.33rd of a month.
+        let range = d("Laufzeit: ca. 3 bis 6 Monate").expect("range");
+        assert_eq!((range.from, range.amount, range.weeks), (Some(3), 6, false));
+        assert_eq!(d("Duration 3-6 months").and_then(|d| d.from), Some(3));
+        let weeks = d("8 Wochen").expect("weeks");
+        assert_eq!((weeks.amount, weeks.weeks), (8, true));
+        assert!(d("Laufzeit 9 Wochen").expect("9").below_months(3));
+        assert!(!d("Laufzeit 13 Wochen").expect("13").below_months(3));
+        assert!(d("Laufzeit 2 Monate").expect("2").below_months(3));
+        // Of two statements the longer one counts: 3 months against 10 weeks.
+        assert_eq!(
+            d("Laufzeit 10 Wochen, Verlängerung auf 3 Monate").map(|d| (d.amount, d.weeks)),
+            Some((3, false))
+        );
     }
 
     fn date(y: i16, m: i8, d: i8) -> Date {
@@ -458,7 +554,7 @@ mod tests {
         };
         months(&job, &facts::segments(text), reference).map(|s| {
             let passage = s.span.map(|r| text[r].to_owned()).unwrap_or_default();
-            (s.value, passage)
+            (s.value.amount, passage)
         })
     }
 

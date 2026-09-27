@@ -168,10 +168,11 @@ pub(super) const COLUMNS: [Column; 23] = [
         de: "Laufzeit",
         en: "Duration",
         width: 12.0,
-        value: |r| {
-            key_facts(r.job)
-                .and_then(|f| f.months)
-                .map_or(Value::Empty, Value::Months)
+        // Months as a number, weeks as the ad states them (never rounded up to months).
+        value: |r| match key_facts(r.job) {
+            Some(f) if f.months.is_some() => f.months.map_or(Value::Empty, Value::Months),
+            Some(f) => Value::text(r.texts.duration(f)),
+            None => Value::Empty,
         },
     },
     Column {

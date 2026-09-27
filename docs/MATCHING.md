@@ -853,6 +853,71 @@ that held the score down (`engine::CapKind`, only when the rounded score lay abo
 five lines (`MAX_FACTORS`; a cap, the permanent factor and the musts stay first), codes and
 params only (`factors.rs`); they are read from the evaluation and never change a score.
 
+### Version 18: experience against the profile's own years
+
+v18 (user decision 2026-09-27, option b): the target years (`zielprofil_min_jahre`, "Mindestens
+verlangte Erfahrung") are gone from the form and read no more; the key stays known, so a file
+that has it loads without a warning and keeps it on save. The years an ad asks for are judged
+against the profile's own years (`berufserfahrung_jahre`, as before falling back to the most
+years of a competence), never as an exclusion:
+
+- General experience (`10 Jahre Berufserfahrung`, `8 years of experience`; `fit::general_experience`,
+  now also the plain word `Erfahrung`/`experience` without a topic): at or below the profile's
+  years met, from four fifths on in part (`fit::years_value`, the rule topic years already had),
+  below that open. Without the profile's years it is not weighed (weight 0) and has no verdict.
+- Years in a topic (`3 Jahre S/4HANA`) keep the fit logic: the competence's own years where the
+  profile names it, else the profile's.
+- A range counts from its lower end (`3-5 Jahre` asks at least 3; `job::years_in` read the upper
+  end before) and keeps its upper end (`max`) for the reader.
+- The level (`seniority.rs`, whatever topic the highest years name): a closed range whose upper
+  end is at most half the profile's years, and from `JUNIOR_ROLE_YEARS` (5) on a junior title, a
+  junior or entry level of the page (an internship, a working student) or a must that asks for
+  first experience, is `overqualified` (met in part, `level` names it); an assistant or
+  associate level without years is `seniorityUnclear`. `tooJunior` and the senior-title rule are
+  gone. `JUNIOR_CAP` stays for profiles of `SENIOR_YEARS`, now also for the page's junior level.
+- The requirement's params carry `max`, `general`, `have` (the years compared with), `yearsFit`
+  (the years alone) and `entryYears`, so the reader's row "Erfahrung" and every requirement's
+  tooltip say one thing.
+
+What moved: the corpus scores stay; K47 and K51 of senior and wish are scored instead of
+excluded (their bands hold), which changes `GOLDEN_DIGEST` and `V3_ROWS_DIGEST`. The held-out
+labels exclude by the retired target years, so recall falls where they did (NDCG@10, Spearman,
+exclusion precision / recall, engine 17 -> 18):
+
+| Set | NDCG@10 | Spearman | Excl. precision | Excl. recall |
+|---|---|---|---|---|
+| 1 | 0.928 -> 0.928 | 0.757 -> 0.753 | 1.000 -> 1.000 | 1.000 -> 0.971 |
+| 2 | 0.856 -> 0.852 | 0.639 -> 0.617 | 1.000 -> 1.000 | 0.983 -> 0.845 |
+| 3 | 0.955 -> 0.869 | 0.491 -> 0.471 | 1.000 -> 1.000 | 1.000 -> 0.900 |
+| 4 | 0.821 -> 0.821 | 0.543 -> 0.541 | 1.000 -> 1.000 | 0.983 -> 0.960 |
+| 5 | 0.819 -> 0.819 | 0.486 -> 0.485 | 0.988 -> 0.987 | 1.000 -> 0.956 |
+| 6 | 0.905 -> 0.902 | 0.503 -> 0.501 | 1.000 -> 1.000 | 0.994 -> 0.983 |
+| 7 | 0.915 -> 0.915 | 0.448 -> 0.457 | 0.988 -> 1.000 | 0.863 -> 0.855 |
+| 8 | 0.938 -> 0.941 | 0.403 -> 0.408 | 0.980 -> 0.987 | 0.850 -> 0.835 |
+| 9 | 0.876 -> 0.860 | 0.442 -> 0.441 | 0.989 -> 1.000 | 0.962 -> 0.863 |
+
+Set 3 moves most: P1's S01 (grade 3 in content, excluded by the labels for `Mindestens 8 Jahre`
+below the target of 10) now leads its list. The floors in `matching_heldout.rs` follow the
+decision.
+
+The same version reads pay and duration as the ad states them, so the reader shows the number
+the rule compares:
+
+- A rate keeps the lower end of a range (`Rate::lower`, `rateFrom` in the key facts, `from` in
+  the params); the rule still compares the upper end, an hourly rate times 8 (`perDay` in the
+  criterion, `amount` the hourly one in `dayRate` and `dayRateWish`).
+- A salary counts with the bonus share its sentence names wherever it is compared: the
+  criterion (`salary_state`: `withBonus`), the finding and the key facts (`salaryBonus`,
+  `salaryFrom`) say one amount. A salary in another currency is never compared with a
+  minimum in euros: `NotMentioned` with its `currency`, and a `salary` check (it was compared
+  with the euro minimum before).
+- A duration in weeks stays in weeks (`weeks` in the key facts; `div_ceil(4)` made 9 weeks 3
+  months) and counts as a 4.33rd of a month against `min_laufzeit_monate`
+  (`Duration::below_months`); a range keeps its lower end (`durationFrom`).
+- `permanentRegion` names the minimum remote share only where the profile sets it.
+
+None of this moved a corpus row or a held-out total.
+
 ### Rubric of the AI prompts
 
 `core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts (until

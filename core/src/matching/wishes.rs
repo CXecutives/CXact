@@ -510,7 +510,8 @@ fn rate(wish: u64, ad: &Ad<'_>) -> WishResult {
     } else {
         State::Missed
     };
-    let params = json!({ "wish": wish, "rate": per_day, "hourly": rate.hourly });
+    let mut params = json!({ "wish": wish, "rate": per_day, "hourly": rate.hourly });
+    facts::rate_amounts(&mut params, &rate);
     result(code, state, WISH_RATE, params, spans)
 }
 

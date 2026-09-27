@@ -3,12 +3,11 @@ import type { ProfileForm } from "./ProfileForm";
 import type { UnreadableField } from "./UnreadableField";
 
 /** The unit a number criterion is shown with (the catalog's `profile.unit`). */
-export type CriterionUnit = "euro" | "experience" | "percent" | "days" | "months";
+export type CriterionUnit = "euro" | "percent" | "days" | "months";
 
 /** The number criteria of the form: the largest value the backend takes, the unit. */
 export const NUMBER_CRITERIA = {
   minDayRate: { max: 100000, unit: "euro" },
-  targetYears: { max: 70, unit: "experience" },
   minSalary: { max: 10000000, unit: "euro" },
   permanentRemoteMin: { max: 100, unit: "percent" },
   workloadMinDays: { max: 5, unit: "days" },
@@ -26,7 +25,7 @@ export const WORD_CRITERIA = {
 export type WordCriterion = keyof typeof WORD_CRITERIA;
 
 /** Every field whose value of the file can be removed on its own. */
-export const UNREADABLE_FIELDS: readonly UnreadableField[] = ["minDayRate", "countries", "contracts", "remoteOutside", "available", "targetYears", "minSalary", "permanentPlaces", "permanentRemoteMin", "focus", "roles", "wishDayRate", "remote", "regions", "wishIndustries", "workloadMinDays", "workloadMaxDays", "minMonths", "exclusionWords"];
+export const UNREADABLE_FIELDS: readonly UnreadableField[] = ["minDayRate", "countries", "contracts", "remoteOutside", "available", "minSalary", "permanentPlaces", "permanentRemoteMin", "focus", "roles", "wishDayRate", "remote", "regions", "wishIndustries", "workloadMinDays", "workloadMaxDays", "minMonths", "exclusionWords"];
 
 /** At most this many competences are Schwerpunkte. */
 export const MAX_FOCUS = 5;
@@ -66,7 +65,6 @@ export const EMPTY_FORM: ProfileForm = {
       "kind": "unset"
     },
     "remoteOutside": true,
-    "targetYears": null,
     "minSalary": null,
     "permanentPlaces": [],
     "permanentRemoteMin": null,

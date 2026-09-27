@@ -903,3 +903,105 @@ fn the_new_criteria_read_english_keys_and_report_odd_values() {
         ]
     );
 }
+
+/// Engine 18: pay and duration as the ad states them. A range of day rates keeps its lower
+/// end (its upper end meets the minimum), an hourly rate names what it makes a day, weeks
+/// stay weeks (a 4.33rd of a month each against the minimum months), a range of months keeps
+/// its lower end.
+#[test]
+fn pay_and_duration_as_the_ad_states_them() {
+    let profile = limited(&json!({ "min_laufzeit_monate": 3 }));
+    let ad = |frame: &str| {
+        format!(
+            "Wir suchen einen Interim Controller (m/w/d) auf freiberuflicher Basis.\n\n\
+             Ihr Profil:\n- Erfahrung im Controlling\n- Budgetierung\n\nRahmendaten:\n{frame}"
+        )
+    };
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &ad("- Tagessatz: 900 - 1.200 € pro Tag\n- Laufzeit: 9 Wochen"),
+    );
+    assert_eq!((a.facts.rate, a.facts.rate_from), (Some(1200), Some(900)));
+    let rate = criterion(&a, CriterionKey::MinDayRate);
+    assert_eq!(rate.status, CriterionStatus::Ok);
+    assert_eq!(
+        (rate.params["rate"].as_u64(), rate.params["from"].as_u64()),
+        (Some(1200), Some(900))
+    );
+    assert_eq!((a.facts.months, a.facts.weeks), (None, Some(9)));
+    let duration = criterion(&a, CriterionKey::Duration);
+    assert_eq!(duration.status, CriterionStatus::Check);
+    let check = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Duration)
+        .expect("nine weeks are below three months");
+    assert_eq!(
+        Value::Object(check.params.clone()),
+        json!({ "weeks": 9, "min": 3 })
+    );
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &ad("- Stundensatz: 120 €/h\n- Laufzeit: 13 Wochen"),
+    );
+    let rate = criterion(&a, CriterionKey::MinDayRate);
+    assert_eq!(rate.status, CriterionStatus::Ok);
+    assert_eq!(
+        (rate.params["rate"].as_u64(), rate.params["perDay"].as_u64()),
+        (Some(120), Some(960))
+    );
+    assert_eq!(
+        criterion(&a, CriterionKey::Duration).status,
+        CriterionStatus::Ok
+    );
+    let a = assess_with(
+        &profile,
+        "Interim Controller (m/w/d)",
+        &ad("- Tagessatz: 950 € pro Tag\n- Laufzeit: 3 bis 6 Monate"),
+    );
+    assert_eq!((a.facts.months, a.facts.duration_from), (Some(6), Some(3)));
+}
+
+/// Engine 18: a salary counts with the bonus its sentence names wherever the rule compares
+/// it (the criterion, the finding and the key facts say the same); one in another currency is
+/// never compared with a minimum in euros.
+#[test]
+fn a_salary_counts_with_its_bonus_and_another_currency_is_unclear() {
+    let profile = compile_profile(&profile());
+    let with = |pay: &str| format!("{PERMANENT}\n{pay}");
+    let a = assess_with(
+        &profile,
+        "Leiter Controlling (m/w/d)",
+        &with("Jahresgehalt 120.000 bis 130.000 € plus bis zu 20 % Bonus."),
+    );
+    let salary = criterion(&a, CriterionKey::MinSalary);
+    assert_eq!(salary.status, CriterionStatus::Ok);
+    assert_eq!(
+        Value::Object(salary.params.clone()),
+        json!({ "salary": 130_000, "from": 120_000, "bonus": 20, "withBonus": 156_000 })
+    );
+    assert_eq!(
+        (a.facts.salary, a.facts.salary_from, a.facts.salary_bonus),
+        (Some(130_000), Some(120_000), Some(20))
+    );
+    assert!(a.reasons.iter().all(|r| r.code != ReasonCode::Salary));
+    let a = assess_with(
+        &profile,
+        "Leiter Controlling (m/w/d)",
+        &with("Jahresgehalt CHF 180.000."),
+    );
+    let salary = criterion(&a, CriterionKey::MinSalary);
+    assert_eq!(salary.status, CriterionStatus::Check);
+    assert_eq!(salary.params["currency"], "CHF");
+    assert_eq!(a.facts.salary, None);
+    let check = a
+        .reasons
+        .iter()
+        .find(|r| r.code == ReasonCode::Salary)
+        .expect("a salary in francs is unclear");
+    assert_eq!(check.kind, ReasonKind::Check);
+    assert_eq!(check.params["currency"], "CHF");
+    assert_ne!(a.verdict, Verdict::Excluded);
+}

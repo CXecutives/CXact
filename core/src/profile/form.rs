@@ -58,8 +58,6 @@ const MAX_ITEMS: usize = 300;
 #[serde(rename_all = "camelCase")]
 enum Unit {
     Euro,
-    /// Years of experience ("ab 15 Jahren Erfahrung").
-    Experience,
     Percent,
     /// Days per week.
     Days,
@@ -107,7 +105,7 @@ struct Criterion {
 /// description (`ui/src/lib/ipc/types/profile.ts`) follow this table: a new number or word
 /// criterion is a field of [`ProfileCriteria`], a variant of [`UnreadableField`] and a row
 /// here (`docs/CHANGING.md`).
-const CRITERIA: [Criterion; 13] = [
+const CRITERIA: [Criterion; 12] = [
     Criterion {
         field: UnreadableField::MinDayRate,
         keys: lexicon::KEYS_MIN_RATE,
@@ -141,16 +139,6 @@ const CRITERIA: [Criterion; 13] = [
         field: UnreadableField::RemoteOutside,
         keys: lexicon::KEYS_REMOTE_OUTSIDE,
         kind: Kind::RemoteOutside,
-    },
-    Criterion {
-        field: UnreadableField::TargetYears,
-        keys: lexicon::KEYS_TARGET_YEARS,
-        kind: Kind::Number {
-            max: MAX_YEARS,
-            unit: Unit::Experience,
-            slot: |c| &mut c.target_years,
-            read: |h| h.target_years,
-        },
     },
     Criterion {
         field: UnreadableField::MinSalary,
@@ -439,8 +427,6 @@ pub struct ProfileCriteria {
     pub available: ProfileAvailability,
     /// `remote_ausserhalb_erlaubt`; missing counts as allowed, as the engine reads it.
     pub remote_outside: bool,
-    /// `zielprofil_min_jahre`.
-    pub target_years: Option<u32>,
     /// `min_jahresgehalt` (permanent roles).
     pub min_salary: Option<u32>,
     /// `festanstellung_orte` (permanent roles).
@@ -470,7 +456,6 @@ impl Default for ProfileCriteria {
             no_permanent: false,
             available: ProfileAvailability::Unset,
             remote_outside: true,
-            target_years: None,
             min_salary: None,
             permanent_places: Vec::new(),
             permanent_remote_min: None,
@@ -513,7 +498,6 @@ pub enum UnreadableField {
     Contracts,
     RemoteOutside,
     Available,
-    TargetYears,
     MinSalary,
     PermanentPlaces,
     PermanentRemoteMin,
@@ -546,13 +530,12 @@ enum Place {
 }
 
 impl UnreadableField {
-    const ALL: [UnreadableField; 19] = [
+    const ALL: [UnreadableField; 18] = [
         UnreadableField::MinDayRate,
         UnreadableField::Countries,
         UnreadableField::Contracts,
         UnreadableField::RemoteOutside,
         UnreadableField::Available,
-        UnreadableField::TargetYears,
         UnreadableField::MinSalary,
         UnreadableField::PermanentPlaces,
         UnreadableField::PermanentRemoteMin,
@@ -1739,16 +1722,10 @@ pub(crate) fn typescript() -> String {
             Kind::Contracts | Kind::Available | Kind::RemoteOutside => {}
         }
     }
-    let units: Vec<String> = [
-        Unit::Euro,
-        Unit::Experience,
-        Unit::Percent,
-        Unit::Days,
-        Unit::Months,
-    ]
-    .iter()
-    .map(json)
-    .collect();
+    let units: Vec<String> = [Unit::Euro, Unit::Percent, Unit::Days, Unit::Months]
+        .iter()
+        .map(json)
+        .collect();
     let fields: Vec<String> = UnreadableField::ALL
         .iter()
         .map(|field| quoted(field.name()))
@@ -2018,7 +1995,8 @@ mod tests {
             json!({
                 "name": "Erika Beispiel",
                 "kernkompetenzen": [{"kompetenz": "Controlling"}],
-                "harte_kriterien": {},
+                // The retired target years are read no more, and kept as they are.
+                "harte_kriterien": {"zielprofil_min_jahre": "senior"},
                 "hard_criteria": {},
                 "einsatzpraeferenzen": {}
             })

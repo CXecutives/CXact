@@ -82,8 +82,12 @@ use params::FOCUS_MAX;
 /// requirements is no contract form, an hourly wage is employment pay (never a day rate), the
 /// workload, the minimum duration and the exclusion words of the profile, rules from the
 /// unseen held-out set 9. 17: the application deadline and the contact of an ad (scores
-/// unchanged; stored jobs read them on their rescore).
-pub const ENGINE_VERSION: u32 = 17;
+/// unchanged; stored jobs read them on their rescore). 18: the years an ad asks for against
+/// the profile's own years (`berufserfahrung_jahre`), never an exclusion, a clearly junior
+/// role over-qualified; the target years (`zielprofil_min_jahre`) read no more; pay and
+/// duration as the ad states them (ranges, hourly amounts, weeks, a bonus, a salary in
+/// another currency unclear).
+pub const ENGINE_VERSION: u32 = 18;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.
@@ -205,11 +209,6 @@ fn criteria_info(c: &HardCriteria) -> Vec<CriterionInfo> {
             CriterionKey::PermanentRegion,
             c.places.is_some(),
             json!({ "places": c.places, "remoteMin": c.remote_min }),
-        ),
-        info(
-            CriterionKey::TargetYears,
-            c.target_years.is_some(),
-            json!({ "min": c.target_years }),
         ),
         info(
             CriterionKey::Workload,
@@ -421,7 +420,7 @@ fn fingerprint(engine: &EngineProfile) -> String {
     let canonical = format!(
         "engine {ENGINE_VERSION}\nentries {}\nlanguages {languages:?}\ndegree {:?} {}\nyears {:?}\n\
          min {:?}\ncountries {countries:?}\nremote {:?}\nanue {}\npermanent {}\navailable {:?}\n\
-         salary {:?}\nplaces {places:?}\nremoteMin {:?}\ntarget {:?}\npacks {:?}\n\
+         salary {:?}\nplaces {places:?}\nremoteMin {:?}\npacks {:?}\n\
          focus {focus:?}\nroles {roles:?}\nwishes {}\nworkload {:?} {:?}\nmonths {:?}\n\
          exclusions {exclusions:?}\n",
         entries.join("|"),
@@ -435,7 +434,6 @@ fn fingerprint(engine: &EngineProfile) -> String {
         c.available,
         c.min_salary,
         c.remote_min,
-        c.target_years,
         engine.skills.vocab.packs(),
         engine.wishes.canonical(),
         c.workload_min,

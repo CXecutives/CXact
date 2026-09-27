@@ -484,7 +484,6 @@ test('one name per field: the labels, the few hints, units and neutral examples'
   for (const text of [
     'Remote-Anteil',
     'Mindesttagessatz',
-    'Mindestens verlangte Erfahrung',
     'Mindestjahresgehalt',
     'Mindest-Remote-Anteil',
     T.profile.sectionHint.criteria!,
@@ -506,6 +505,8 @@ test('one name per field: the labels, the few hints, units and neutral examples'
     'DACH',
     'Konditionen',
     'Verlangte Erfahrung ab',
+    // The years a job asks for are judged against Berufserfahrung: no target of its own.
+    'Mindestens verlangte Erfahrung',
     'Mindest-Tagessatz',
     'Mindest-Jahresgehalt',
     'Ab Datum',
@@ -517,7 +518,6 @@ test('one name per field: the labels, the few hints, units and neutral examples'
     ['profile-years', 'Jahre'],
     ['profile-wish-rate', '€'],
     ['profile-min-rate', '€'],
-    ['profile-target-years', 'Jahre'],
     ['profile-min-salary', '€'],
     ['profile-remote-min', '%'],
     ['profile-min-months', 'Monate'],
@@ -641,7 +641,6 @@ test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13
       'profile-years',
       'profile-wish-rate',
       'profile-min-rate',
-      'profile-target-years',
       'profile-min-salary',
       'profile-remote-min',
       'profile-min-months',
@@ -1475,21 +1474,15 @@ test('a day far beyond the week and a duration too long hold the save until put 
 test('values that contradict each other say so quietly at the field', async ({ page }) => {
   await profile(page);
   const wish = field(page, 'wishDayRate');
-  const target = field(page, 'targetYears');
   await expect(wish).not.toContainText(T.profile.field.belowMinRate);
   await page.getByTestId('profile-wish-rate').fill('1000');
   await expect(wish).toContainText(T.profile.field.belowMinRate);
   await expect(page.getByTestId('profile-wish-rate')).not.toHaveAttribute('aria-invalid', 'true');
   await page.getByTestId('profile-min-rate').fill('900');
   await expect(wish).not.toContainText(T.profile.field.belowMinRate);
-  // Jobs for more years than her experience.
-  await expect(target).not.toContainText(T.profile.field.aboveExperience);
-  await page.getByTestId('profile-target-years').fill('25');
-  await expect(target).toContainText(T.profile.field.aboveExperience);
-  await page.getByTestId('profile-years').fill('30');
-  await expect(target).not.toContainText(T.profile.field.aboveExperience);
   // Quiet hints never hold a save back.
-  await page.getByTestId('profile-target-years').fill('35');
+  await page.getByTestId('profile-wish-rate').fill('800');
+  await expect(wish).toContainText(T.profile.field.belowMinRate);
   await save(page).click();
   await expect(savedToast(page)).toBeVisible();
 });
@@ -2765,7 +2758,6 @@ test('every value that does not read is said at its field and can be removed', a
     'In der Datei stand „Atlantis“, das kann die App nicht lesen.',
     'In der Datei stand „5“, das kann die App nicht lesen.',
     'In der Datei stand „vielleicht“, das kann die App nicht lesen.',
-    'In der Datei stand „senior“, das ist keine Zahl.',
     'In der Datei stand „hoch“, das ist keine Zahl.',
     'In der Datei stand „[]“, das kann die App nicht lesen.',
     'In der Datei stand „bald“, das ist kein Datum.',
@@ -2792,9 +2784,9 @@ test('every value that does not read is said at its field and can be removed', a
     expect(Math.abs(action.x + action.width - (box.x + box.width)), name).toBeLessThan(2);
     expect(action.y, name).toBeLessThan(message.y + message.height / 2);
   }
-  // One per field: eighteen fields, each with "Wert entfernen".
+  // One per field: seventeen fields, each with "Wert entfernen".
   const removes = form.getByTestId('value-remove');
-  await expect(removes).toHaveCount(18);
+  await expect(removes).toHaveCount(17);
   // A Schwerpunkt and a target role that do not count go from their list at once.
   await page.getByTestId('focus-unread').getByTestId('value-remove').click();
   await expect.poll(() => marked(page)).toEqual(['Controlling']);
@@ -2829,7 +2821,6 @@ test('every value that does not read is said at its field and can be removed', a
       'regions',
       'remote',
       'remoteOutside',
-      'targetYears',
       'wishDayRate',
       'wishIndustries',
       'workloadMinDays',

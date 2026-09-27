@@ -118,6 +118,15 @@ pub fn months_words(months: u16) -> String {
     }
 }
 
+/// A duration in weeks, as the ad states it: `1 Woche`, `9 Wochen`.
+pub fn weeks_words(weeks: u16) -> String {
+    if weeks == 1 {
+        "1 Woche".to_owned()
+    } else {
+        format!("{weeks} Wochen")
+    }
+}
+
 /// A start on a day: `ab 01.11.2026`.
 pub fn start_from(day: &str) -> String {
     format!("ab {day}")
@@ -161,7 +170,6 @@ pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'sta
         "availability" => "Der Start passt nicht zur Verfügbarkeit.",
         "salary" => "Das Gehalt liegt unter dem Minimum im Profil.",
         "permanentRegion" => "Der Ort liegt außerhalb der Orte für Festanstellung.",
-        "tooJunior" => "Der Job verlangt deutlich weniger Erfahrung.",
         "exclusionWord" => "Die Anzeige nennt ein Ausschlusswort aus dem Profil.",
         "formalOpen" if licence(params) => {
             "Die Anzeige verlangt eine Zulassung, die das Profil nicht nennt."
@@ -284,6 +292,14 @@ pub mod en {
         }
     }
 
+    pub fn weeks_words(weeks: u16) -> String {
+        if weeks == 1 {
+            "1 week".to_owned()
+        } else {
+            format!("{weeks} weeks")
+        }
+    }
+
     pub fn start_from(day: &str) -> String {
         format!("from {day}")
     }
@@ -319,7 +335,6 @@ pub mod en {
             "availability" => "The start does not fit the availability.",
             "salary" => "The salary is below the minimum in the profile.",
             "permanentRegion" => "The location is outside your locations for permanent jobs.",
-            "tooJunior" => "The job asks for much less experience.",
             "exclusionWord" => "The ad names an exclusion word from the profile.",
             "formalOpen" if licence(params) => {
                 "The ad requires a licence the profile does not name."
@@ -444,6 +459,7 @@ pub struct Texts {
     pub rate_open: &'static str,
     remote_words: fn(u8, u8) -> String,
     months_words: fn(u16) -> String,
+    weeks_words: fn(u16) -> String,
     workload_words: fn(Option<u8>, u8) -> String,
     start_from: fn(&str) -> String,
     /// A moment as text (`strftime`): `19.09.2026 14:05`, `19/09/2026 14:05`.
@@ -505,6 +521,7 @@ pub const DE: Texts = Texts {
     rate_open: RATE_OPEN,
     remote_words,
     months_words,
+    weeks_words,
     workload_words,
     start_from,
     moment: "%d.%m.%Y %H:%M",
@@ -562,6 +579,7 @@ pub const EN: Texts = Texts {
     rate_open: en::RATE_OPEN,
     remote_words: en::remote_words,
     months_words: en::months_words,
+    weeks_words: en::weeks_words,
     workload_words: en::workload_words,
     start_from: en::start_from,
     moment: "%d/%m/%Y %H:%M",
@@ -671,9 +689,12 @@ impl Texts {
         Some((self.remote_words)(from, to))
     }
 
-    /// The duration an ad states (`6 Monate`).
+    /// The duration an ad states (`6 Monate`, `9 Wochen`).
     pub fn duration(&self, facts: &KeyFacts) -> Option<String> {
-        facts.months.map(self.months_words)
+        facts
+            .months
+            .map(self.months_words)
+            .or_else(|| facts.weeks.map(self.weeks_words))
     }
 
     /// The workload an ad states (`Vollzeit`, `3 Tage/Woche`, `50 %`).
@@ -762,7 +783,6 @@ mod tests {
                 ReasonCode::Country,
                 ReasonCode::Salary,
                 ReasonCode::PermanentRegion,
-                ReasonCode::TooJunior,
                 ReasonCode::FormalOpen,
                 ReasonCode::ExclusionWord,
             ] {

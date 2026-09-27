@@ -374,13 +374,6 @@ fn criteria(gap: u16) -> Vec<CriterionState> {
             json!({ "start": "2026-11-01" }),
             Some(span(AD, "ab 01.11.2026")),
         ),
-        state(
-            CriterionKey::TargetYears,
-            CriterionStatus::Inactive,
-            None,
-            json!({}),
-            None,
-        ),
     ]
 }
 
@@ -908,7 +901,6 @@ fn every_code() -> Vec<ReasonCode> {
         C::SalaryUnknown,
         C::PermanentRegion,
         C::PermanentRegionUnclear,
-        C::TooJunior,
         C::SeniorityUnclear,
         C::Overqualified,
         C::ContractType,
@@ -945,7 +937,6 @@ fn every_code() -> Vec<ReasonCode> {
             | C::SalaryUnknown
             | C::PermanentRegion
             | C::PermanentRegionUnclear
-            | C::TooJunior
             | C::SeniorityUnclear
             | C::Overqualified
             | C::ContractType
@@ -1003,7 +994,6 @@ fn every_reason() -> Assessment {
         CriterionKey::Availability,
         CriterionKey::MinSalary,
         CriterionKey::PermanentRegion,
-        CriterionKey::TargetYears,
         CriterionKey::Workload,
         CriterionKey::Duration,
         CriterionKey::ExclusionWords,

@@ -2691,21 +2691,26 @@ pub(crate) const ENTRY_LEVEL_MUSTS: &[&str] = &[
 ];
 /// Words of a variable pay next to a salary (`plus bis zu 20 % Bonus`).
 pub(crate) const BONUS_WORDS: &[&str] = &["bonus", "variab", "tantieme"];
-/// Title words of a senior role (whole words, or word endings for `...leiter`).
-pub(crate) const SENIOR_TITLES: &[&str] = &[
-    "senior",
-    "lead",
-    "principal",
-    "sme",
-    "head",
-    "director",
-    "direktor",
-    "chief",
-    "cfo",
-    "vp",
-    "leitung",
-    "leiter",
-    "leiterin",
+/// The level a junior word names (a title word, a page's career level or employment type,
+/// a must that asks for first experience), as the code the interface names it by.
+pub(crate) const LEVEL_CODES: &[(&str, &str)] = &[
+    ("praktikum", "internship"),
+    ("praktikant", "internship"),
+    ("praktikantin", "internship"),
+    ("internship", "internship"),
+    ("werkstudent", "student"),
+    ("werkstudentin", "student"),
+    ("werkstudententatigkeit", "student"),
+    ("trainee", "trainee"),
+    ("absolvent", "graduate"),
+    ("absolventin", "graduate"),
+    ("graduate", "graduate"),
+    ("ehrenamtlich", "volunteer"),
+    ("volunteer", "volunteer"),
+    ("junior", "junior"),
+    ("assistent", "assistant"),
+    ("assistant", "assistant"),
+    ("associate", "associate"),
 ];
 /// Title words of a junior role.
 pub(crate) const JUNIOR_TITLES: &[&str] = &[

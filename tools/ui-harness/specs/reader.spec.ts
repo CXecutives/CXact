@@ -1,14 +1,15 @@
 // The reader, one structure top to bottom (ui/src/features/jobs/reader-sections.ts): the title,
 // the ring or the ban of an excluded job, the four actions and their "…" menu per place, the
-// Jobdetails (the order and icons of lib/facts.ts, "/" for what the ad does not say, quiet
-// notes, verdicts as icons whose tooltip is the reason), the Anforderungen (only requirements,
-// a quiet count, "+" for a missing term), the ad as plain text with its one note (nothing in it
+// Jobdetails (the order and icons of lib/facts.ts, "/" for what the ad does not say, the value
+// and the verdict only, an icon whose tooltip says why), the Anforderungen (only requirements,
+// a quiet count, "+" for a missing term, each icon saying why), the ad as plain text with its
+// one note (nothing in it
 // marked by the rows above), and the switch between two jobs. At the end what the
 // reader's rounds of fixes carried around it (one column, the run card, the focus).
 //
 // The stub's demo profile: a minimum day rate of 1.100 € and a wish of 1.200 €, mostly remote,
-// three to five days a week for at least six months, jobs that ask 15 years of experience or
-// more, no temporary agency work. The page's clock stands at 24.09.2026 09:30.
+// three to five days a week for at least six months, 20 years of experience (Controlling 18),
+// no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
 import { DEMO, demoScore } from './demo';
@@ -609,15 +610,11 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
     // The rows that exclude it wear the ban, their tooltip says what the ad states.
     expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', 'violated']);
-    expect(await cell(page, 'experience')).toEqual([
-      `3 Jahre ${T.reader.yearsBelow(15)}`,
-      'violated',
-    ]);
-    for (const key of ['contract', 'experience']) {
-      const verdict = term(page, key).getByTestId('verdict').locator('.reason');
-      await expect(verdict).toHaveAttribute('data-kind', 'violation');
-      await expect(verdict).toHaveAttribute('aria-label', T.score.excluded);
-    }
+    const verdict = term(page, 'contract').getByTestId('verdict').locator('.reason');
+    await expect(verdict).toHaveAttribute('data-kind', 'violation');
+    await expect(verdict).toHaveAttribute('aria-label', T.score.excluded);
+    // Years never exclude: three years of a field the profile does not name have no verdict.
+    expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     expect(await verdictTip(page, 'contract')).toBe(T.reason.code.anue);
     await expect(why(page)).not.toContainText('Zeitarbeit');
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
@@ -693,11 +690,8 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     expect(await cell(page, 'mode')).toEqual(['60 % remote', 'met']);
     expect(await cell(page, 'contract')).toEqual(['Interim', 'met']);
-    // The day rate with how it stands to the profile's minimum of 1.100 €.
-    expect(await cell(page, 'rate')).toEqual([
-      words(`1.200 €/Tag ${T.reader.versusMinimum(9)}`),
-      'met',
-    ]);
+    // The value and the verdict only: how it stands to the minimum is the tooltip's.
+    expect(await cell(page, 'rate')).toEqual(['1.200 €/Tag', 'met']);
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     // The ad says nothing of its workload, and nothing judges it.
@@ -705,9 +699,10 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // The day of the alert mail in the list row's words.
     expect(await cell(page, 'received')).toEqual(['07:30', '']);
-    // Verdicts are icons (no words), the reason that decided one in its tooltip; one no
-    // reason decided names itself.
+    // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
+    // wish met), else why its criterion is met.
     await expect(terms(page)).not.toContainText('passt');
+    await expect(terms(page)).not.toContainText('Minimum');
     expect(await verdictTip(page, 'rate')).toBe(
       'Der Tagessatz von 1.200 € erreicht den Wunsch von 1.200 €.',
     );
@@ -715,9 +710,9 @@ test.describe('Jobdetails', () => {
       'aria-label',
       'Erfüllt',
     );
-    for (const key of ['contract', 'start', 'duration']) {
-      expect(await verdictTip(page, key), key).toBe(T.reader.verdict.met);
-    }
+    expect(await verdictTip(page, 'contract')).toBe(T.reader.criterion.noAnue.met);
+    expect(await verdictTip(page, 'start')).toBe(T.reader.criterion.availability.met);
+    expect(await verdictTip(page, 'duration')).toBe(T.reader.criterion.duration.met);
   });
 
   test('the verdicts in the colours of the rings, muted, the ban where a row excludes the job', async ({
@@ -844,18 +839,18 @@ test.describe('Jobdetails', () => {
     expect(await verdictTip(page, 'workload')).toBe(
       'Die Anzeige nennt 2 Tage pro Woche, das Profil sucht mindestens 3 Tage pro Woche.',
     );
-    // Near the wish, 5 % over the minimum.
-    expect(await cell(page, 'rate')).toEqual([
-      words(`1.150 €/Tag ${T.reader.versusMinimum(5)}`),
-      'partial',
-    ]);
+    // Above the minimum, near the wish: met in part, and the tooltip names the wish.
+    expect(await cell(page, 'rate')).toEqual(['1.150 €/Tag', 'partial']);
+    expect(await verdictTip(page, 'rate')).toBe(
+      'Der Tagessatz von 1.150 € liegt knapp unter dem Wunsch von 1.200 €.',
+    );
     expect(await cell(page, 'mode')).toEqual(['Vor Ort', 'partial']);
     expect(await cell(page, 'place')).toEqual(['München', 'partial']);
     // A limit missed is met in part; a rate to be agreed has nothing to judge, nor a note.
     await openJob(page, 'freelancermap-2802');
     expect(await cell(page, 'duration')).toEqual(['3 Monate', 'partial']);
     expect(await verdictTip(page, 'duration')).toBe(
-      'Die Laufzeit von 3 Monaten liegt unter dem Minimum von 6 Monaten.',
+      'Die Laufzeit von 3 Monaten liegt unter deiner Mindestlaufzeit von 6 Monaten.',
     );
     expect(await cell(page, 'rate')).toEqual(['nach Absprache', '']);
     expect(await cell(page, 'workload')).toEqual(['Vollzeit', 'met']);
@@ -870,29 +865,122 @@ test.describe('Jobdetails', () => {
     await expect(why(page)).not.toContainText('liegt unter dem Minimum');
   });
 
-  test('Erfahrung judges the years, the requirement that names them keeps its skill', async ({
+  test('Erfahrung judges the years against the profile, the requirement keeps its skill', async ({
     page,
   }) => {
-    // The years the ad asks are the profile's target: the row is met. The requirement is met
-    // in part (its Controlling only in general): it says so among the Anforderungen.
+    // 15 years of Controlling against the profile's 18: the row is met, its tooltip says so.
+    // The requirement is met in part for its skill: it says so among the Anforderungen.
     await openAt(page, 'freelancermap-2801');
     expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'met']);
-    expect(await verdictTip(page, 'experience')).toBe(T.reader.verdict.met);
+    expect(await verdictTip(page, 'experience')).toBe(
+      T.reason.why.topicYears('15 Jahre', 'Controlling', 18),
+    );
     await expect(why(page).getByTestId('reasons-partial')).toContainText(
       'Mindestens 15 Jahre Berufserfahrung im Controlling',
     );
-    // Ten years for a profile that looks for 15 or more: met in part, the note says which
-    // way; the requirement's own field the profile lacks stands under "Nicht erfüllt".
+    // Ten years of a field the profile does not name: nothing judges the years (no icon),
+    // the requirement stands under "Nicht erfüllt" and says why.
     await openJob(page, 'linkedin-4100200304');
-    expect(await cell(page, 'experience')).toEqual([
-      `10 Jahre ${T.reader.yearsBelow(15)}`,
-      'partial',
-    ]);
+    expect(await cell(page, 'experience')).toEqual(['10 Jahre', '']);
+    const open = why(page).getByTestId('reasons-open');
+    await expect(open).toContainText('Mindestens 10 Jahre Berufserfahrung im Rechnungswesen');
+    expect(
+      await tip(page, open.getByTestId('reason').filter({ hasText: 'Mindestens 10 Jahre' })),
+    ).toBe(T.reason.why.missing);
+    // A working student job for 20 years of experience: its level by its word, met in part.
+    await openJob(page, 'freelancermap-2807');
+    expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, 'partial']);
     expect(await verdictTip(page, 'experience')).toBe(
-      T.reason.code.overqualified({ years: 10, target: 15 }),
+      T.reason.code.overqualified({ level: 'student', have: 20 }),
     );
-    await expect(why(page).getByTestId('reasons-open')).toContainText(
-      'Mindestens 10 Jahre Berufserfahrung im Rechnungswesen',
+  });
+
+  test('every verdict icon says why in its tooltip', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await openAt(page, 'freelancermap-2801');
+    for (const key of ['freelancermap-2801', 'freelance-900413', 'linkedin-4100200304']) {
+      await openJob(page, key);
+      const icons = stage(page).locator(
+        '[data-testid="verdict"] .reason, [data-testid="why"] [data-testid="reason"]',
+      );
+      const count = await icons.count();
+      expect(count, key).toBeGreaterThan(3);
+      // One icon after the other under the pointer: the tooltip stays warm, each shows at once.
+      for (let index = 0; index < count; index += 1) {
+        const icon = icons.nth(index);
+        await icon.scrollIntoViewIfNeeded();
+        await icon.hover();
+        const tooltip = page.getByRole('tooltip');
+        await expect(tooltip, `${key} ${index}`).toBeVisible();
+        const text = words(await tooltip.textContent());
+        expect(text.length, `${key} ${index}`).toBeGreaterThan(5);
+        // One plain sentence, never only the verdict's name.
+        expect(Object.values(T.reader.verdict), `${key} ${index}`).not.toContain(text);
+      }
+      await page.mouse.move(0, 0);
+    }
+  });
+
+  test('pay and duration as the ad states them, the tooltip by the amount the rule compares', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    /** The engine's facts and criterion params of an ad the demo does not have (core
+     *  ad_facts and explain write them so), on the demo job opened next. */
+    const edit = (
+      facts: Record<string, unknown>,
+      criteria: Record<string, Record<string, unknown>>,
+    ): Promise<void> =>
+      page.evaluate(
+        ({ facts, criteria }) => {
+          window.__harness.editDetail = (detail) => {
+            const match = detail.job.match;
+            if (match) match.facts = { ...match.facts, ...facts };
+            for (const criterion of detail.match?.criteria ?? []) {
+              Object.assign(criterion.params, criteria[criterion.code] ?? {});
+            }
+            // Without a wish the minimum says why the pay is met.
+            if (detail.match) {
+              detail.match.reasons = detail.match.reasons.filter(
+                (reason) => reason.code !== 'dayRateWish',
+              );
+            }
+            return detail;
+          };
+        },
+        { facts, criteria },
+      );
+    // A range of day rates: both ends; its upper end meets the minimum of 1.100 €.
+    await edit({ rate: 1200, rateFrom: 900 }, { minDayRate: { rate: 1200, from: 900 } });
+    await openJob(page, 'freelancermap-2801');
+    expect(await cell(page, 'rate')).toEqual([
+      words(T.facts.payRange(900, 1200, 'day', null)),
+      'met',
+    ]);
+    expect(await verdictTip(page, 'rate')).toBe(words(T.reader.payMet.upper(9)));
+    // An hourly rate: per hour in the row, what it makes a day in the tooltip; weeks stay
+    // weeks, and a range of months shows both ends.
+    await edit(
+      { rate: 150, hourly: true, months: null, weeks: 9 },
+      { minDayRate: { rate: 150, hourly: true, perDay: 1200 }, duration: { weeks: 9 } },
+    );
+    await openJob(page, 'linkedin-4100200301');
+    expect(await term(page, 'rate').locator('.term-name').innerText()).toBe(T.reader.hourlyName);
+    expect((await cell(page, 'rate'))[0]).toBe(words(T.facts.pay(150, 'hour', null)));
+    expect((await cell(page, 'duration'))[0]).toBe(T.facts.duration(9, null, 'week'));
+    await edit({ months: 6, durationFrom: 3 }, {});
+    await openJob(page, 'freelancermap-2802');
+    expect((await cell(page, 'duration'))[0]).toBe(T.facts.duration(6, 3, 'month'));
+    // A salary with its bonus, and one in another currency: its own money, never "€".
+    await edit(
+      { salary: 130000, salaryFrom: 120000, salaryBonus: 20 },
+      { minSalary: { salary: 130000, from: 120000, bonus: 20, withBonus: 156000, min: 150000 } },
+    );
+    await openJob(page, 'linkedin-4100200303');
+    const salary = (await cell(page, 'rate'))[0];
+    expect(salary).toBe(words(T.facts.bonus(T.facts.payRange(120000, 130000, 'year', null), 20)));
+    expect(T.reason.code.salary({ salary: 180000, currency: 'CHF', min: 150000 })).toBe(
+      'Das Gehalt ist in CHF angegeben.',
     );
   });
 
@@ -976,10 +1064,13 @@ test.describe('Anforderungen', () => {
         await tokenColour(page, token),
       );
     }
-    const mark = why(page).locator('.reason > .icon').first();
-    await mark.hover();
-    await page.waitForTimeout(800);
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    // Each icon says why in its tooltip, never the group's heading again.
+    const said = await tip(
+      page,
+      why(page).getByTestId('reasons-met').getByTestId('reason').first(),
+    );
+    expect(said).not.toBe(T.reader.verdict.met);
+    expect(said.length).toBeGreaterThan(5);
     // Untagged is Pflicht: the only tag is "Optional".
     expect(new Set(await why(page).locator('.badge').allInnerTexts())).toEqual(
       new Set(['Optional']),

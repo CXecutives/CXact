@@ -22,9 +22,24 @@ rateOpen: boolean | null,
  */
 start: string | null, 
 /**
- * Duration in months.
+ * Duration in months (`weeks` instead when the ad states weeks).
  */
 months: number | null, 
+/**
+ * Duration in weeks, as the ad states it (never rounded up to months); left out when the
+ * ad states months or nothing.
+ */
+weeks?: number, 
+/**
+ * The lower end of a range of durations, in the unit of `months` or `weeks` (`3 bis 6
+ * Monate`); left out without a range.
+ */
+durationFrom?: number, 
+/**
+ * The lower end of a range of rates, per day or per hour as `rate` (`900 bis 1.200
+ * €/Tag`); left out without a range.
+ */
+rateFrom?: number, 
 /**
  * Remote share in percent, from and to (equal when the ad states one share).
  */
@@ -49,6 +64,15 @@ salary?: number,
  * The salary is a lower bound only (`ab 100.000 €`); left out without a salary.
  */
 salaryLowerBound?: boolean, 
+/**
+ * The lower end of a range of salaries in euros per year; left out without a range.
+ */
+salaryFrom?: number, 
+/**
+ * The bonus share (percent) the salary's sentence names (`plus bis zu 20 % Bonus`): the
+ * minimum salary is compared with the salary and its bonus; left out without one.
+ */
+salaryBonus?: number, 
 /**
  * The application deadline the ad names, an ISO date (`2026-10-15`); left out without
  * one.

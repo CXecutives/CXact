@@ -44,8 +44,11 @@ pub(crate) struct Item {
     pub alternatives: Vec<String>,
     pub kind: ReqKind,
     pub class: Class,
-    /// Required years of experience, if stated.
+    /// Required years of experience, if stated: at least this many (the lower end of a
+    /// range).
     pub years: Option<u32>,
+    /// The upper end of a closed range of years (`3-5 Jahre`).
+    pub years_max: Option<u32>,
     pub stage: Stage,
 }
 
@@ -320,6 +323,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                 kind: if nice { ReqKind::Nice } else { kind },
                 class: Class::Soft,
                 years: None,
+                years_max: None,
                 stage,
             });
             continue;
@@ -354,7 +358,8 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                     .collect(),
                 kind,
                 class,
-                years: years_in(whole),
+                years: years_in(whole).map(|(min, _)| min),
+                years_max: years_in(whole).and_then(|(_, max)| max),
                 stage,
             });
         }
@@ -368,6 +373,7 @@ pub(crate) fn read(text: &str, vocab: &Vocab) -> JobDoc {
                 kind: ReqKind::Must,
                 class: Class::Skill,
                 years: None,
+                years_max: None,
                 stage: Stage::Vocabulary,
             });
         }
@@ -1019,31 +1025,46 @@ pub(crate) fn names_degree(tokens: &[&str]) -> bool {
     })
 }
 
-/// Required years: `mindestens 10 Jahre`, `10+ years`, `zehn Jahre`.
-pub(crate) fn years_in(text: &str) -> Option<u32> {
+/// Required years: `mindestens 10 Jahre`, `10+ years`, `zehn Jahre`, and a range with its
+/// lower and upper end (`3-5 Jahre`, `3 bis 5 Jahre`, `between 3 and 5 years`).
+pub(crate) fn years_in(text: &str) -> Option<(u32, Option<u32>)> {
     let folded = fold(text);
     let words: Vec<&str> = folded
         .split(|c: char| !c.is_alphanumeric() && c != '+')
         .filter(|w| !w.is_empty())
         .collect();
-    words.windows(2).find_map(|pair| {
-        let unit = pair[1];
-        if !YEAR_UNITS.iter().any(|u| unit.starts_with(u)) {
-            return None;
-        }
-        let number = pair[0].trim_end_matches('+');
-        number
-            .parse::<u32>()
+    let number = |w: &str| {
+        let w = w.trim_end_matches('+');
+        w.parse::<u32>()
             .ok()
             .or_else(|| {
                 NUMBER_WORDS
                     .iter()
-                    .find(|(w, _)| *w == number)
+                    .find(|(word, _)| *word == w)
                     .map(|&(_, n)| n)
             })
             .filter(|n| (1..=40).contains(n))
+    };
+    (1..words.len()).find_map(|i| {
+        if !YEAR_UNITS.iter().any(|u| words[i].starts_with(u)) {
+            return None;
+        }
+        let n = number(words[i - 1])?;
+        // `3-5 Jahre` (the dash splits the words), `3 bis 5 Jahre`.
+        let other = match i {
+            2.. if number(words[i - 2]).is_some() => number(words[i - 2]),
+            3.. if RANGE_WORDS.contains(&words[i - 2]) => number(words[i - 3]),
+            _ => None,
+        };
+        Some(match other {
+            Some(m) if m != n => (m.min(n), Some(m.max(n))),
+            _ => (n, None),
+        })
     })
 }
+
+/// Words between the two ends of a range of years.
+const RANGE_WORDS: &[&str] = &["bis", "to", "and", "und"];
 
 /// Does the lexicon know this heading text? (for tests and the relevance fields)
 #[cfg(test)]
@@ -1512,10 +1533,25 @@ mod tests {
         );
         assert_eq!(
             years_in("Mindestens 15 Jahre Erfahrung in der Konsolidierung"),
-            Some(15)
+            Some((15, None))
         );
-        assert_eq!(years_in("Mindestens zehn Jahre Berufserfahrung"), Some(10));
-        assert_eq!(years_in("At least 8 years of experience"), Some(8));
+        assert_eq!(
+            years_in("Mindestens zehn Jahre Berufserfahrung"),
+            Some((10, None))
+        );
+        assert_eq!(years_in("At least 8 years of experience"), Some((8, None)));
+        assert_eq!(years_in("10+ years in FP&A"), Some((10, None)));
+        // A range: at least its lower end, up to its upper end.
+        assert_eq!(
+            years_in("3-5 Jahre Berufserfahrung im Controlling"),
+            Some((3, Some(5)))
+        );
+        assert_eq!(years_in("3 bis 5 Jahre Erfahrung"), Some((3, Some(5))));
+        assert_eq!(
+            years_in("between 3 and 5 years of experience"),
+            Some((3, Some(5)))
+        );
+        assert_eq!(years_in("2 Sprachen und 5 Jahre SAP"), Some((5, None)));
         assert_eq!(heading_kind("Ihre Qualifikation"), Some(HeadingKind::Must));
         assert_eq!(
             heading_kind("Rahmenbedingungen"),

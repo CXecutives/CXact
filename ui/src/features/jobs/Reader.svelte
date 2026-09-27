@@ -53,7 +53,7 @@
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
   import { displayTitle } from '$lib/i18n/format';
-  import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
+  import { criterionKey, errorText, noteText, reasonText, reasonWhy } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget, Reason } from '$lib/ipc/types';
   import { fade, flip } from '$lib/motion/transitions';
@@ -537,10 +537,13 @@
                   animate:flip={{ count: group.items.length }}
                   in:fade
                 >
+                  <!-- Its icon says why in its tooltip, like the verdicts of the Jobdetails. -->
                   <ReasonItem
                     kind={reason.kind}
                     optional={reason.weight === 'nice'}
                     label={reasonText(reason)}
+                    hint={reasonWhy(reason)}
+                    testid="reason"
                   />
                   <!-- A missing must that is a term: its way into the profile, then a quiet
                        tick that it is there (the toast says so in words). -->

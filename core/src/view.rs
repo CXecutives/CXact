@@ -2901,7 +2901,6 @@ Rahmenbedingungen:
                 ("availability", true),
                 ("minSalary", false),
                 ("permanentRegion", false),
-                ("targetYears", false),
                 ("workload", false),
                 ("duration", false),
                 ("exclusionWords", false),

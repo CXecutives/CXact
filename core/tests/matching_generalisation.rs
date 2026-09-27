@@ -38,8 +38,8 @@ fn finance() -> Value {
             {"sprache": "Dutch", "niveau": "Native"},
             {"sprache": "English", "niveau": "C2"}
         ],
+        "berufserfahrung_jahre": 15,
         "harte_kriterien": {
-            "zielprofil_min_jahre": 10,
             "min_jahresgehalt": 95000,
             "festanstellung_orte": ["München"]
         }
@@ -87,24 +87,25 @@ fn a_text_without_requirements_is_judged_from_its_title() {
     assert!(hr.score < fin.score, "{} < {}", hr.score, fin.score);
 }
 
-/// The seniority of an ad does not depend on the profile's packs: `Mindestens 5 Jahre` of
-/// a pharma role (`QA` in the title is quality assurance for every profile) is too junior
-/// for a finance profile that asks for 10.
+/// The level of an ad does not depend on the profile's packs: `3-5 Jahre` of a pharma role
+/// (`QA` in the title is quality assurance for every profile) is far below a finance
+/// profile's 15 years: over-qualified, met in part, never an exclusion.
 #[test]
 fn seniority_is_the_same_for_every_profile() {
     let a = run(
         &finance(),
         "QA Manager Sterile (m/w/d)",
-        "Ihr Profil\n- Mindestens 5 Jahre Erfahrung in der Qualitätssicherung\n\
+        "Ihr Profil\n- 3-5 Jahre Erfahrung in der Qualitätssicherung\n\
          - CAPA und Change Control\n- Freiberuflich, Tagessatz 900 €\n",
     );
     assert!(
         a.reasons
             .iter()
-            .any(|r| r.code == ReasonCode::TooJunior && r.kind == ReasonKind::Violation),
+            .any(|r| r.code == ReasonCode::Overqualified && r.kind == ReasonKind::Partial),
         "{:#?}",
         a.reasons
     );
+    assert_ne!(a.verdict, Verdict::Excluded);
 }
 
 /// A student role is employment: its stated hourly wage decides the salary criterion, its
@@ -188,11 +189,7 @@ fn a_single_open_skill_under_a_foreign_title_is_off_the_field() {
 fn a_junior_role_caps_a_senior_profile() {
     let text =
         "Ihr Profil\n- Erfahrung im Controlling\n- Treasury\n- Konzernrechnungslegung nach IFRS\n";
-    let mut profile = finance();
-    profile["harte_kriterien"]
-        .as_object_mut()
-        .expect("criteria")
-        .remove("zielprofil_min_jahre");
+    let profile = finance();
     let junior = run(&profile, "Junior Controller (m/w/d)", text);
     let regular = run(&profile, "Controller (m/w/d)", text);
     assert!(junior.score <= 40, "{}", junior.score);
@@ -256,11 +253,7 @@ fn leadership_alone_names_no_field() {
 /// senior profile like a junior title.
 #[test]
 fn first_professional_experience_caps_a_senior_profile() {
-    let mut profile = finance();
-    profile["harte_kriterien"]
-        .as_object_mut()
-        .expect("criteria")
-        .remove("zielprofil_min_jahre");
+    let profile = finance();
     let entry = run(
         &profile,
         "Referent Controlling (m/w/d)",
@@ -277,21 +270,49 @@ fn first_professional_experience_caps_a_senior_profile() {
     assert!(regular.score > 40, "{}", regular.score);
 }
 
-/// The highest years an ad asks for are its target, whatever topic they name: below the
-/// profile's target years they decide, unless a senior title makes them a floor.
+/// Years below the profile's never exclude: an open minimum is met by more years, and the
+/// highest years an ad asks for, whatever topic they name, make it over-qualified only as a
+/// closed range far below the profile's years.
 #[test]
-fn every_years_minimum_below_the_target_decides() {
-    let text = "Ihr Profil\n- Mindestens 3 Jahre Erfahrung mit Power BI\n- Controlling\n";
-    let regular = run(&finance(), "Controller (m/w/d)", text);
-    assert_eq!(regular.verdict, Verdict::Excluded, "{:#?}", regular.reasons);
-    assert!(
-        regular
-            .reasons
+fn years_below_the_profile_never_exclude() {
+    let over = |a: &Assessment| {
+        a.reasons
             .iter()
-            .any(|r| r.code == ReasonCode::TooJunior)
-    );
-    let senior = run(&finance(), "Head of Controlling (m/w/d)", text);
-    assert_ne!(senior.verdict, Verdict::Excluded, "{:#?}", senior.reasons);
+            .any(|r| r.code == ReasonCode::Overqualified)
+    };
+    let open = "Ihr Profil\n- Mindestens 3 Jahre Erfahrung mit Power BI\n- Controlling\n";
+    let regular = run(&finance(), "Controller (m/w/d)", open);
+    assert_ne!(regular.verdict, Verdict::Excluded, "{:#?}", regular.reasons);
+    assert!(!over(&regular), "{:#?}", regular.reasons);
+    let closed = "Ihr Profil\n- 2-4 Jahre Erfahrung mit Power BI\n- Controlling\n";
+    for title in ["Controller (m/w/d)", "Head of Controlling (m/w/d)"] {
+        let a = run(&finance(), title, closed);
+        assert_ne!(a.verdict, Verdict::Excluded, "{:#?}", a.reasons);
+        assert!(over(&a), "{title}: {:#?}", a.reasons);
+    }
+}
+
+/// General experience is judged by the profile's years: at or above met, from four fifths
+/// on in part, below that open; topic years by the competence's own years.
+#[test]
+fn general_years_against_the_profile_years() {
+    let kind = |years: u32, text: &str| {
+        let mut profile = finance();
+        profile["berufserfahrung_jahre"] = years.into();
+        let a = run(&profile, "Controller (m/w/d)", text);
+        a.reasons
+            .iter()
+            .find(|r| r.code == ReasonCode::Requirement && r.params.contains_key("years"))
+            .map(|r| (r.kind, r.params.contains_key("general")))
+    };
+    let general = "Ihr Profil\n- Mindestens 10 Jahre Berufserfahrung\n- Controlling\n";
+    assert_eq!(kind(15, general), Some((ReasonKind::Met, true)));
+    assert_eq!(kind(10, general), Some((ReasonKind::Met, true)));
+    assert_eq!(kind(8, general), Some((ReasonKind::Partial, true)));
+    assert_eq!(kind(7, general), Some((ReasonKind::Open, true)));
+    // `Controlling` has 15 years of its own, whatever the profile's total.
+    let topic = "Ihr Profil\n- Mindestens 12 Jahre Erfahrung im Controlling\n- Treasury\n";
+    assert_eq!(kind(7, topic), Some((ReasonKind::Met, false)));
 }
 
 /// A teaser is judged like a full ad where its title names the field: an open field word

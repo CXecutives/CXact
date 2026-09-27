@@ -617,6 +617,52 @@ fn other_field(job: &str, profile: &str) -> bool {
     !theirs.is_empty() && theirs.iter().all(|p| !own.contains(p))
 }
 
+/// Is an item general professional experience (`10 Jahre Berufserfahrung`, `8 years of
+/// experience`), not experience in a topic (`3-5 Jahre Berufserfahrung im Controlling`)? Its
+/// years are judged against the profile's own years (`berufserfahrung_jahre`).
+pub(crate) fn general_experience(text: &str, vocab: &Vocab) -> bool {
+    let folded = fold(text);
+    let experience = |a: &str| {
+        lex::GENERAL_EXPERIENCE
+            .iter()
+            .chain(lex::EXPERIENCE_WORDS)
+            .any(|w| a.starts_with(&atoms::stem(w)))
+    };
+    let topic = atoms::atoms(text, vocab)
+        .into_iter()
+        .any(|a| !atoms::is_generic(&a) && !experience(&a));
+    !topic
+        && lex::GENERAL_EXPERIENCE
+            .iter()
+            .chain(lex::EXPERIENCE_WORDS)
+            .any(|w| contains_word(&folded, w))
+}
+
+/// The years a requirement of years is judged against: the matching competence's own years,
+/// else the profile's years of experience (for general experience, or a topic the profile
+/// names without years); none without either.
+pub(crate) fn years_have(skills: &Skills, general: bool, entry: Option<usize>) -> Option<u32> {
+    entry
+        .and_then(|e| skills.entries.get(e))
+        .and_then(|e| e.years)
+        .or(if general || entry.is_some() {
+            skills.total_years
+        } else {
+            None
+        })
+}
+
+/// How far `have` years meet `needed`: in full at or above, in half from four fifths on.
+pub(crate) fn years_value(have: u32, needed: u32) -> u16 {
+    if have >= needed {
+        E_FULL
+    } else if 5 * u64::from(have) >= 4 * u64::from(needed) {
+        E_HALF
+    } else {
+        E_NONE
+    }
+}
+
 /// The ladder for one item (best alternative), then the years requirement.
 pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
     let mut fit = match &item.class {
@@ -650,22 +696,7 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
         }
     }
     if let Some(needed) = item.years {
-        let folded = fold(&item.text);
-        // General experience only without a topic: `10 Jahre Berufserfahrung`, not
-        // `3-5 Jahre Berufserfahrung im Controlling`.
-        let topic = atoms::atoms(&item.text, &skills.vocab)
-            .into_iter()
-            .any(|a| {
-                !atoms::is_generic(&a)
-                    && !lex::GENERAL_EXPERIENCE
-                        .iter()
-                        .chain(lex::EXPERIENCE_WORDS)
-                        .any(|w| a.starts_with(&atoms::stem(w)))
-            });
-        let general = !topic
-            && lex::GENERAL_EXPERIENCE
-                .iter()
-                .any(|w| contains_word(&folded, w));
+        let general = general_experience(&item.text, &skills.vocab);
         let have =
             fit.entry
                 .and_then(|e| skills.entries[e].years)
@@ -674,21 +705,21 @@ pub(crate) fn item_fit(skills: &Skills, item: &Item) -> ItemFit {
                 } else {
                     None
                 });
-        if general && fit.value == E_NONE && have.is_some_and(|h| h >= needed) {
-            fit = ItemFit {
-                value: E_FULL,
-                entry: None,
-                via: Via::Exact,
-            };
+        if general && fit.value == E_NONE {
+            // General experience is judged by the profile's own years alone (none stated: no
+            // verdict, the item stays open and the engine does not weigh it).
+            if let Some(have) = have {
+                fit = ItemFit {
+                    value: years_value(have, needed),
+                    entry: None,
+                    via: Via::Exact,
+                };
+            }
         } else if fit.value > E_NONE
             && let Some(have) = have
             && have < needed
         {
-            fit.value = if 5 * have >= 4 * needed {
-                E_HALF.min(fit.value)
-            } else {
-                E_NONE
-            };
+            fit.value = years_value(have, needed).min(fit.value);
         }
     }
     fit
@@ -771,6 +802,7 @@ mod tests {
                 kind: crate::matching::sections::ReqKind::Must,
                 class: Class::Skill,
                 years: None,
+                years_max: None,
                 stage: Stage::Vocabulary,
             };
             item_fit(&skills, &item).value

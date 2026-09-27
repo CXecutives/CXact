@@ -31,8 +31,10 @@ use sha2::Digest as _;
 /// excluded permanent employment, a key no corpus profile sets) changed only the version
 /// line: with `engine 10` in front the rows still give the version-10 value
 /// `6e4d9945276f410c`. Version 17 (the deadline and the contact, no score moved) changed only
-/// the version line too: with `engine 16` in front the rows give `501e5e88adf66bd7`.
-const GOLDEN_DIGEST: &str = "f3a422ce3fb324c9";
+/// the version line too: with `engine 16` in front the rows give `501e5e88adf66bd7`. Version
+/// 18: K47 and K51 of senior and wish are scored (the years below the profile's never exclude),
+/// no score moved.
+const GOLDEN_DIGEST: &str = "28d901d2ad056e1d";
 
 /// SHA-256 (16 hex) over the results of the four profiles without the version-4 keys
 /// (`schwerpunkte`, `wunschrollen`, the wishes in `einsatzpraeferenzen`; the IT profile's
@@ -41,7 +43,7 @@ const GOLDEN_DIGEST: &str = "f3a422ce3fb324c9";
 /// the line `engine 3` in front these rows gave its golden digest `df1d52ce75759f41`):
 /// without their keys the new inputs change nothing. The held-out fixes of version 4 move
 /// these rows on purpose; each such change updates this value (`docs/MATCHING.md`).
-const V3_ROWS_DIGEST: &str = "e7318b06cb4932ed";
+const V3_ROWS_DIGEST: &str = "2458d856e0a3f24e";
 
 /// The profiles of `V3_ROWS_DIGEST` and the jobs it covers.
 const V3_PROFILES: &[&str] = &["fin", "it", "senior", "sap"];
