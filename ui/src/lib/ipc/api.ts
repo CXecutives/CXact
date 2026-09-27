@@ -120,6 +120,15 @@ export function onCloseRequested(handler: () => void): () => void {
 }
 
 /**
+ * The user closes the window while a fetch runs: the window stays and the page asks whether
+ * to close anyway, then answers with `answer_close` (src-tauri/src/main.rs). A second close
+ * while it asks closes anyway. Returns an unsubscribe function.
+ */
+export function onCloseRunning(handler: () => void): () => void {
+  return subscribe(() => listen('close-running', () => handler()));
+}
+
+/**
  * The window has been asked to close while the app is busy: it stays until what holds it
  * has stopped (at most ten seconds, src-tauri/src/main.rs). The handler gets what that is,
  * as the busy error names it (`activity`: a run's kind, `session`, `files`), or null.

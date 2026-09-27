@@ -125,7 +125,9 @@ interface Harness {
   /** The window was closed (`close_window`, or a close request without unsaved changes). */
   closed: boolean;
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
-   *  (`close-requested`) while it holds unsaved changes, else the window closes. */
+   *  (`close-requested`) while it holds unsaved changes, then (`close-running`) while a
+   *  fetch runs, else the window closes; a second close while it asks about the fetch
+   *  closes anyway. Closing while a run goes cancels it first (`closing`). */
   requestClose: () => void;
   /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
    *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
@@ -1385,6 +1387,23 @@ function promptOf(j: JobView): string {
 let running = false;
 /** The kind of the run in progress (its end names it). */
 let runningKind: RunSummary['kind'] = 'fetch';
+/** The page asks whether to close while a fetch runs, or the user chose to close anyway
+ *  (main.rs `CloseGuard::ask`): the next close request closes. */
+let closeAsked = false;
+
+/** The window closes like main.rs: a run in progress is cancelled first (the page shows its
+ *  note on `closing`), then the window is gone. */
+function closeWindow(): void {
+  if (!running) {
+    harness.closed = true;
+    return;
+  }
+  for (const handler of listeners.get('closing') ?? []) {
+    handler({ payload: { activity: runningKind } });
+  }
+  cancelRun();
+  setTimeout(() => (harness.closed = true), TICK * 2);
+}
 
 function fail(kind: ErrorInfo['kind'], params: ErrorInfo['params'] = {}): ErrorInfo {
   return { kind, params };
@@ -1888,7 +1907,12 @@ const handlers: Handlers = {
   },
   close_window: () => {
     harness.unsaved = false;
-    harness.closed = true;
+    harness.requestClose();
+    return null;
+  },
+  answer_close: ({ close }) => {
+    closeAsked = close;
+    if (close) harness.requestClose();
     return null;
   },
   save_mailbox: async ({ user, password }) => {
@@ -2048,11 +2072,16 @@ const harness: Harness = {
   closed: false,
   holdMailbox: false,
   requestClose() {
-    if (!harness.unsaved) {
-      harness.closed = true;
+    if (harness.unsaved) {
+      for (const handler of listeners.get('close-requested') ?? []) handler({ payload: null });
       return;
     }
-    for (const handler of listeners.get('close-requested') ?? []) handler({ payload: null });
+    if (running && isFetch(runningKind) && !closeAsked) {
+      closeAsked = true;
+      for (const handler of listeners.get('close-running') ?? []) handler({ payload: null });
+      return;
+    }
+    closeWindow();
   },
   job(key) {
     const found = find(key);

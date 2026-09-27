@@ -1192,6 +1192,9 @@ export const en: Catalog = {
   shell: {
     loadFailed: 'The app could not load its data.',
     closing: (activity: string | null) => closing[busyOf(activity)],
+    /** Closing the window while a fetch runs asks first; its button closes anyway. */
+    closeRunning: 'The fetch is still running. Close anyway?',
+    closeAction: 'Close',
   },
   toast: {
     rescored: 'Jobs scored again',

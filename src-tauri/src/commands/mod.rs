@@ -58,6 +58,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         profile::asked_terms,
         profile::set_unsaved,
         profile::close_window,
+        profile::answer_close,
         mailbox::save_mailbox,
         mailbox::remove_mailbox,
         portals::portal_login,
@@ -147,13 +148,32 @@ pub struct AppState {
 /// window itself (`close_window`). Nothing unsaved: the window closes at once. Every word
 /// from the page counts as an answer; a page that says nothing to a request (gone or stuck)
 /// never keeps the window open (main.rs closes it after a moment).
+///
+/// A fetch in progress holds a close request too: the page asks whether to close anyway and
+/// answers with `answer_close`. A second close request while it asks closes anyway, so a
+/// page that cannot answer never keeps the window either.
 #[derive(Default)]
 pub struct CloseGuard {
     unsaved: AtomicBool,
     answers: AtomicU64,
+    /// The page asks about the fetch in progress, or the user chose to close anyway: the
+    /// next close request closes.
+    asking: AtomicBool,
 }
 
 impl CloseGuard {
+    /// A close request while a fetch runs: `true` when the page is to ask now, `false` when
+    /// it asks already or the user chose to close (the window then closes).
+    pub fn ask(&self) -> bool {
+        !self.asking.swap(true, Ordering::SeqCst)
+    }
+
+    /// The page's answer to the question about the fetch: close (the next close request goes
+    /// through) or stay (the next one asks again).
+    pub fn answer(&self, close: bool) {
+        self.asking.store(close, Ordering::SeqCst);
+    }
+
     /// What the page says: it holds unsaved changes or not.
     pub fn set(&self, unsaved: bool) {
         self.unsaved.store(unsaved, Ordering::SeqCst);
@@ -296,6 +316,11 @@ impl AppState {
 
     pub fn busy(&self) -> bool {
         !matches!(*lock(&self.activity), Activity::Idle)
+    }
+
+    /// A fetch ("Postfach abrufen") holds the app: closing the window asks first.
+    pub fn fetching(&self) -> bool {
+        matches!(&*lock(&self.activity), Activity::Run(run) if run.snapshot().kind.reads_mail())
     }
 
     /// What holds the app, as the page names it (`fetch`, `details`,

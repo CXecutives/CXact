@@ -45,6 +45,7 @@ export type Commands = {
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
   set_unsaved: { args: { on: boolean }; result: null };
   close_window: { args: Record<string, never>; result: null };
+  answer_close: { args: { close: boolean }; result: null };
   save_mailbox: { args: { user: string; password: string }; result: Mailbox };
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };

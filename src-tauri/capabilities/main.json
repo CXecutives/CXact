@@ -28,6 +28,7 @@
     "allow-asked-terms",
     "allow-set-unsaved",
     "allow-close-window",
+    "allow-answer-close",
     "allow-save-mailbox",
     "allow-remove-mailbox",
     "allow-portal-login",

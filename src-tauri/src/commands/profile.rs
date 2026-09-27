@@ -1,6 +1,7 @@
 //! The consultant profile: the editor's form is saved by merging it into the profile file;
 //! a chosen file or a pasted answer of an AI fills the form first. Remove it (it becomes the
-//! backup) and restore it. While the form holds unsaved changes, closing the window asks.
+//! backup) and restore it. While the form holds unsaved changes, closing the window asks;
+//! so it does while a fetch runs (`answer_close`).
 
 #![expect(
     clippy::needless_pass_by_value,
@@ -141,10 +142,28 @@ pub fn set_unsaved(state: State<'_, AppState>, on: bool) {
 }
 
 /// Closes the window after the page asked about its unsaved changes (saved or discarded):
-/// the close goes the usual way (placement, a running fetch) without asking again.
+/// the close goes the usual way (placement, the question about a running fetch) without
+/// asking about the changes again.
 #[tauri::command]
 pub fn close_window(window: WebviewWindow, state: State<'_, AppState>) -> CmdResult<()> {
     state.close_guard.set(false);
+    close_now(&window)
+}
+
+/// The answer to "Der Abruf läuft noch. Trotzdem schließen?" (main.rs asks while a fetch
+/// runs): `close` closes the window, which cancels the fetch and waits for it to stop;
+/// otherwise the window stays and the next close asks again.
+#[tauri::command]
+pub fn answer_close(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    close: bool,
+) -> CmdResult<()> {
+    state.close_guard.answer(close);
+    if close { close_now(&window) } else { Ok(()) }
+}
+
+fn close_now(window: &WebviewWindow) -> CmdResult<()> {
     window.close().map_err(|e| {
         log::warn!("window not closed: {e}");
         ErrorInfo::new(ErrorKind::Internal)

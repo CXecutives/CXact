@@ -1439,6 +1439,9 @@ export const de = {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
+    /** Closing the window while a fetch runs asks first; its button closes anyway. */
+    closeRunning: 'Der Abruf läuft noch. Trotzdem schließen?',
+    closeAction: 'Schließen',
   },
   /** Short confirmations without a period (a participle like "Archiviert"); only a full
    *  sentence ends with one. */

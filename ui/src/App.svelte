@@ -3,9 +3,10 @@
   three views. Every view switch is the same: the old view fades out (100 ms), then the new
   one fades in (100 ms), so two views are never readable at once (lib/motion). On start
   nothing animates and the app shows useful content at once: the first-run page while
-  nothing was ever fetched, otherwise the Jobs view with the last results. Closing while the
-  app is busy keeps the window until that has stopped; a calm note says what it waits for
-  (a fetch, a rescore, a sign-in, the files). Profil and Einstellungen keep where they were
+  nothing was ever fetched, otherwise the Jobs view with the last results. Closing while a
+  fetch runs asks first (features/shell/CloseDialog.svelte). Closing while the app is busy
+  keeps the window until that has stopped; a calm note says what it waits for (a fetch, a
+  rescore, a sign-in, the files). Profil and Einstellungen keep where they were
   scrolled to while the app runs (a return finds the same place); on macOS their name
   stands small in the toolbar row. A start whose data cannot load says so and offers to try
   again, the log and the data folder.
@@ -30,6 +31,7 @@
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
+  import CloseDialog from './features/shell/CloseDialog.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
@@ -145,6 +147,7 @@
         </p>
       </div>
     {/if}
+    <CloseDialog />
   </div>
   <Toast />
   <Menu />

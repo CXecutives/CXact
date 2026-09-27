@@ -27,6 +27,7 @@ restore_profile   {}                                                            
 asked_terms       {}                                                                 -> AskedTerm[]
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null
+answer_close      { close: boolean }                                                 -> null
 save_mailbox      { user: string; password: string }                                 -> Mailbox
 remove_mailbox    {}                                                                 -> boolean
 portal_login      { portal: Portal }                                                 -> boolean

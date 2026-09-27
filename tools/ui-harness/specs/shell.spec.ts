@@ -972,6 +972,78 @@ test('the closing note names what the window waits for', async ({ page }) => {
   );
 });
 
+/** The user closes the window (X, Alt+F4, Cmd+Q/W), as main.rs sees it. */
+const requestClose = (page: Page): Promise<void> =>
+  page.evaluate(() => window.__harness.requestClose());
+const windowClosed = (page: Page): Promise<boolean> => page.evaluate(() => window.__harness.closed);
+/** The page's answers to the question about the fetch. */
+async function closeAnswers(page: Page): Promise<unknown[]> {
+  return (await calls(page, 'answer_close')).map(([, args]) => args);
+}
+
+/** A fetch that stays running until the test lets it go (`holdAfter = null`). */
+async function heldFetch(page: Page): Promise<void> {
+  await page.evaluate(() => (window.__harness.holdAfter = 2));
+  await page.getByTestId('fetch').click();
+  await expect(page.getByTestId('run-line')).toBeVisible();
+}
+
+test('closing during a fetch asks first: Abbrechen keeps both, Schließen stops it and closes', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=40`);
+  // Nothing runs: the window closes without a question.
+  await requestClose(page);
+  expect(await windowClosed(page)).toBe(true);
+  await page.evaluate(() => (window.__harness.closed = false));
+
+  await heldFetch(page);
+  await requestClose(page);
+  const dialog = page.getByTestId('dialog-close-running');
+  await expect(dialog.getByRole('heading')).toHaveText(T.shell.closeRunning);
+  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.shell.closeAction);
+  await expect(dialog.getByTestId('dialog-cancel')).toHaveText(T.common.cancel);
+  // Abbrechen: the window and the fetch stay.
+  await dialog.getByTestId('dialog-cancel').click();
+  await expect(dialog).toHaveCount(0);
+  expect(await windowClosed(page)).toBe(false);
+  await expect(page.getByTestId('run-line')).toBeVisible();
+  expect(await closeAnswers(page)).toEqual([{ close: false }]);
+  // The next close asks again; Schließen stops the fetch, says so meanwhile and closes.
+  await requestClose(page);
+  await dialog.getByTestId('dialog-confirm').click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing('fetch'));
+  await expect.poll(() => windowClosed(page)).toBe(true);
+  expect(await closeAnswers(page)).toEqual([{ close: false }, { close: true }]);
+  expect(await calls(page, 'close_window')).toHaveLength(0);
+});
+
+test('the close question never traps the window and goes when the fetch ends', async ({ page }) => {
+  await open(page, `${WIN}&tick=40`);
+  await heldFetch(page);
+  await requestClose(page);
+  const dialog = page.getByTestId('dialog-close-running');
+  await expect(dialog).toBeVisible();
+  // The fetch ends meanwhile: nothing to ask any more, the next close goes through.
+  await page.evaluate(() => (window.__harness.holdAfter = null));
+  await runFinished(page);
+  await expect(dialog).toHaveCount(0);
+  expect(await closeAnswers(page)).toEqual([{ close: false }]);
+  expect(await windowClosed(page)).toBe(false);
+  await requestClose(page);
+  expect(await windowClosed(page)).toBe(true);
+
+  // A second close while it asks (a page that cannot answer): the window closes anyway.
+  await open(page, `${WIN}&tick=40`);
+  await heldFetch(page);
+  await requestClose(page);
+  await expect(dialog).toBeVisible();
+  await requestClose(page);
+  await expect(page.getByTestId('closing')).toHaveText(T.shell.closing('fetch'));
+  await expect.poll(() => windowClosed(page)).toBe(true);
+});
+
 test('Tab passes disabled switches; a disabled button that says why stays a Tab stop', async ({
   page,
 }) => {
