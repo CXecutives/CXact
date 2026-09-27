@@ -14,11 +14,7 @@ overviewCsv?: string | null,
 /**
  * A foreign overview at the same path was backed up here.
  */
-backup: string | null, txtWritten: number, 
-/**
- * Number of text files that could not be written - the number for every display.
- */
-txtFailed: number, 
+backup: string | null, 
 /**
  * The first error (closest to the cause); `params.target` names what failed.
  */

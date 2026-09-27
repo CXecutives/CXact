@@ -9,7 +9,7 @@ import type { ProfileWishes } from "./ProfileWishes";
  */
 export type ProfileForm = { 
 /**
- * `name` (the skill names the consultant with it; the engine never reads it).
+ * `name` (the consultant's name; the engine never reads it, the AI prompts leave it out).
  */
 name: string, 
 /**

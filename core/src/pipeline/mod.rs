@@ -25,9 +25,7 @@ use sha2::Digest as _;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{ErrorInfo, InvalidInput};
-use crate::export::{
-    self, InfoValue, RESULT_DIR, TXT_DIR, Texts, texts, write_job_txt, write_xlsx,
-};
+use crate::export::{self, InfoValue, RESULT_DIR, Texts, texts, write_xlsx};
 use crate::fetch::policy::Policy;
 use crate::fetch::{
     FetchEvent, FetchSummary, PageFetcher, PortalHealth, Prescore, Selection, fetch_all,
@@ -372,12 +370,6 @@ pub struct ExportSummary {
     pub overview_csv: Option<PathBuf>,
     /// A foreign overview at the same path was backed up here.
     pub backup: Option<PathBuf>,
-    pub txt_written: usize,
-    /// Number of text files that could not be written - the number for every display.
-    pub txt_failed: usize,
-    /// Examples for the log (the first at most 20 keys), never for counting.
-    #[serde(skip)]
-    pub txt_failed_keys: Vec<String>,
     /// The first error (closest to the cause); `params.target` names what failed.
     pub error: Option<ErrorInfo>,
 }
@@ -487,8 +479,6 @@ const LAST_SCAN_FACTS: &str = "last_scan_facts";
 /// Info sheet rows (German words) of the last successful mailbox scan, as earlier versions
 /// stored them; read only while no scan stored its facts.
 const LAST_SCAN_INFO: &str = "last_scan_info";
-/// So many keys of unwritten text files the log names.
-const MAX_FAILED_NAMES: usize = 20;
 /// So many empty alert mails a summary carries (the event must stay small).
 pub const MAX_EMPTY_ALERTS: usize = 10;
 /// Largest `Finished` event in bytes of JSON: Tauri channel messages above 8 KB bypass the
@@ -697,12 +687,6 @@ pub async fn run<B: Backends>(
             run,
             summary.finished_at,
             ctx.language,
-        );
-        write_top_matches(
-            store,
-            &ctx.workspace,
-            matcher.as_deref(),
-            summary.finished_at,
         );
         log_export(run, &exported);
         summary.export = Some(exported);
@@ -1043,10 +1027,6 @@ fn per_portal(
 enum Target {
     /// The work folder itself (a network drive or stick that is gone): nothing is written.
     Workspace,
-    /// The folder of the text files.
-    TxtFolder,
-    /// One text file or its mark in the database.
-    Txt,
     /// The Excel overview (writing it or reading its export stamp).
     Overview,
     /// Backing up a foreign Excel overview.
@@ -1059,8 +1039,6 @@ impl Target {
     const fn code(self) -> &'static str {
         match self {
             Target::Workspace => "workspace",
-            Target::TxtFolder => "txtFolder",
-            Target::Txt => "txt",
             Target::Overview => "overview",
             Target::Backup => "backup",
             Target::Csv => "csv",
@@ -1073,17 +1051,16 @@ impl Target {
         match self {
             Target::Overview | Target::Backup => Some(export::XLSX_NAME),
             Target::Csv => Some(export::CSV_NAME),
-            Target::TxtFolder => Some(TXT_DIR),
-            Target::Workspace | Target::Txt => None,
+            Target::Workspace => None,
         }
     }
 }
 
-/// Text files (exactly once per job, always German) and the overviews (in `language`): the
-/// Excel file with `exportExcel` on, the CSV file with `exportCsv` on. An overview is only
-/// regenerated if something changed - data, run (Excel only: its sheet "Info" names it),
-/// folder, language, the Gmail account of the links - or it is missing; a file open
-/// elsewhere is then not disturbed needlessly.
+/// The overviews (in `language`): the Excel file with `exportExcel` on, the CSV file with
+/// `exportCsv` on. An overview is only regenerated if something changed - data, run (Excel
+/// only: its sheet "Info" names it), folder, language, the Gmail account of the links - or it
+/// is missing; a file open elsewhere is then not disturbed needlessly. Old text files of jobs
+/// deleted for good that stayed earlier get another try ([`Store::txt_leftovers`]).
 pub fn export_all(
     store: &Store,
     workspace: &Path,
@@ -1098,10 +1075,6 @@ pub fn export_all(
         return summary;
     }
     retry_txt_leftovers(store, &result_dir);
-    match store.txt_jobs(false) {
-        Ok(jobs) => write_txts(store, &result_dir, jobs, now, &mut summary),
-        Err(e) => note_error(&mut summary, &e, Target::Txt),
-    }
     write_overviews(store, &result_dir, info, (run, language), now, &mut summary);
     summary
 }
@@ -1152,43 +1125,12 @@ pub fn refresh_overviews(
     summary
 }
 
-/// The file a mark changes (a move, "score anyway", read or unread), written anew without a
-/// run: `top_matches.json` - small, so the skill never reads a job the user threw away. The
-/// overviews follow through [`refresh_overviews`]. A failure only goes to the log.
-pub fn refresh_exports(
-    store: &Store,
-    workspace: &Path,
-    matcher: Option<&dyn Matcher>,
-    now: Timestamp,
-) {
-    write_top_matches(store, workspace, matcher, now);
-}
-
-/// `top_matches.json` for the matching skill; a failure only goes to the log (the file is an
-/// extra for the skill, the run's own results are complete without it).
-pub fn write_top_matches(
-    store: &Store,
-    workspace: &Path,
-    matcher: Option<&dyn Matcher>,
-    now: Timestamp,
-) {
-    let path = workspace.join(RESULT_DIR).join(export::TOP_MATCHES_NAME);
-    let written = export::top_matches(store, matcher, now).and_then(|top| {
-        let json = serde_json::to_vec_pretty(&top).unwrap_or_default();
-        export::write_atomic(&path, &json)
-    });
-    if let Err(e) = written {
-        log::warn!("{} not written: {e}", export::TOP_MATCHES_NAME);
-    }
-}
-
-/// Deletes jobs for good (see [`Store::delete_jobs`]): their text files go and the overview
-/// is written again without them (in `language`). Without a workspace (the dry run) nothing
-/// on disk changes.
+/// Deletes jobs for good (see [`Store::delete_jobs`]): the text files earlier versions wrote
+/// for them go and the overview is written again without them (in `language`). Without a
+/// workspace (the dry run) nothing on disk changes.
 pub fn delete_jobs(
     store: &Store,
     workspace: Option<&Path>,
-    matcher: Option<&dyn Matcher>,
     keys: &[JobKey],
     (now, language): (Timestamp, Language),
 ) -> crate::Result<Deleted> {
@@ -1210,14 +1152,13 @@ pub fn delete_jobs(
     let info = info_rows(store, now, Texts::of(language));
     let run = last_scan_run(store).unwrap_or(0);
     let exported = export_all(store, workspace, &info, run, now, language);
-    write_top_matches(store, workspace, matcher, now);
     deleted.export_error = exported.error;
     Ok(deleted)
 }
 
-/// Removes the text files of jobs deleted for good. A file that stays (open in another
-/// program, or the work folder on a drive that is gone) is remembered - its job's row is
-/// gone - so the next export or a reset removes it
+/// Removes the text files earlier versions wrote for jobs now deleted for good. A file that
+/// stays (open in another program, or the work folder on a drive that is gone) is remembered,
+/// since its job's row is gone, so the next export or a reset removes it
 /// ([`Store::txt_leftovers`]); the user needs no word about it.
 fn remove_deleted_txt(store: &Store, workspace: &Path, names: &[String]) {
     let failed = if workspace.is_dir() {
@@ -1261,21 +1202,6 @@ fn retry_txt_leftovers(store: &Store, result_dir: &Path) {
     }
 }
 
-/// "Rewrite text files" (e.g. after a change of folder): all jobs with a full text, the
-/// names stay. What cannot be written keeps its mark - the next run therefore does not
-/// recreate a file deleted on purpose by itself.
-pub fn rewrite_txt(store: &Store, workspace: &Path, now: Timestamp) -> ExportSummary {
-    let mut summary = ExportSummary::default();
-    if !reachable(workspace, &mut summary) {
-        return summary;
-    }
-    match store.txt_jobs(true) {
-        Ok(jobs) => write_txts(store, &workspace.join(RESULT_DIR), jobs, now, &mut summary),
-        Err(e) => note_error(&mut summary, &e, Target::Txt),
-    }
-    summary
-}
-
 /// Is the work folder there? A deleted local folder is simply made again; one on a drive
 /// that is gone (a network share, a stick) is one clear error naming the work folder - not
 /// a text folder and an Excel file that each could not be written - and the
@@ -1308,59 +1234,6 @@ fn export_error(error: &crate::Error, target: Target) -> ErrorInfo {
     match target.file_name() {
         Some(name) => info.with_name_of(Path::new(name)),
         None => info,
-    }
-}
-
-/// Remembers an example of an unwritten text file. Counting only happens in `txt_failed`:
-/// this list is capped and only names the first keys.
-fn note_failed(summary: &mut ExportSummary, key: &JobKey) {
-    if summary.txt_failed_keys.len() < MAX_FAILED_NAMES {
-        summary.txt_failed_keys.push(key.to_string());
-    }
-}
-
-/// Writes text files and marks only what is written. The folder is created once: if it is
-/// unusable (drive disconnected, no permission), there is one clear error instead of a
-/// futile attempt per file.
-fn write_txts(
-    store: &Store,
-    result_dir: &Path,
-    jobs: Vec<(JobRow, String)>,
-    now: Timestamp,
-    summary: &mut ExportSummary,
-) {
-    if jobs.is_empty() {
-        return;
-    }
-    let dir = result_dir.join(TXT_DIR);
-    if let Err(e) = export::ensure_dir(&dir) {
-        summary.txt_failed = jobs.len();
-        for (job, _) in &jobs {
-            note_failed(summary, &job.key);
-        }
-        note_error(summary, &e, Target::TxtFolder);
-        return;
-    }
-    let total = jobs.len();
-    for (done, (job, text)) in jobs.into_iter().enumerate() {
-        match write_job_txt(result_dir, &job, &text) {
-            Ok(name) => match store.mark_txt_written(&job.key, &name, now) {
-                Ok(()) => summary.txt_written += 1,
-                Err(e) => {
-                    // Without the database nothing can be marked any more: this file and
-                    // all remaining ones count as open (the next run catches up).
-                    note_error(summary, &e, Target::Txt);
-                    summary.txt_failed += total - done;
-                    note_failed(summary, &job.key);
-                    return;
-                }
-            },
-            Err(e) => {
-                log::warn!("text file for {} not written: {e}", job.key);
-                summary.txt_failed += 1;
-                note_failed(summary, &job.key);
-            }
-        }
     }
 }
 
@@ -1748,9 +1621,7 @@ fn legacy_info_rows(store: &Store, words: &Texts) -> Vec<(String, String)> {
 
 fn log_export(run: i64, exported: &ExportSummary) {
     log::info!(
-        "run {run}: export: {} text files written, {} failed{}{}{}",
-        exported.txt_written,
-        exported.txt_failed,
+        "run {run}: export{}{}{}",
         if exported.overview_xlsx.is_some() {
             ", overview written"
         } else {
@@ -1767,12 +1638,6 @@ fn log_export(run: i64, exported: &ExportSummary) {
             ""
         }
     );
-    if !exported.txt_failed_keys.is_empty() {
-        log::warn!(
-            "run {run}: text files not written for {}",
-            exported.txt_failed_keys.join(", ")
-        );
-    }
 }
 
 #[cfg(test)]

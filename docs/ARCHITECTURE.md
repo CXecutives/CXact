@@ -11,7 +11,7 @@ Each layer uses only the ones below it.
   prose. `mail/` reads the alert mails, `portal/` knows the portals (one registry), `fetch/`
   fetches pages through the policy, `matching/` is the pure integer engine, `store/` the
   SQLite database (a chain of schema steps), `pipeline/` runs scan, fetch, score and export,
-  `export/` writes Excel, CSV, TXT and the prompts, `view.rs` shapes what the UI sees.
+  `export/` writes Excel, CSV and the prompts, `view.rs` shapes what the UI sees.
 - **`src-tauri/`**: the shell. Thin commands in `src/commands/`, each one line in
   `commands.txt`; they call core and return its view types. Per-OS code only in
   `src/platform.rs` (`smoke.rs` is the debug-only probe).
@@ -68,9 +68,10 @@ mail, store, engine, view, UI:
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the
-   store keeps the assessment. `export/` writes the files at the end of a run (the text files,
-   and the Excel and the CSV file as their switches say; the marks rewrite the latter two a
-   moment later).
+   store keeps the assessment. `export/` writes the files at the end of a run (the Excel and
+   the CSV file as their switches say; the marks rewrite them a moment later). The text files
+   and `top_matches.json` of earlier versions are no longer written; deleting a job for good
+   and "reset everything" still remove the ones the app wrote.
 4. `view.rs` shapes the view types (`AppState`, `JobView`, `JobPage`, ...); commands
    return them, runs report `RunEvent`s over a channel (each under 8 KB).
 5. The UI calls `invoke(name, args)` of `api.ts`, typed by `commands.ts`; a store of
@@ -129,7 +130,7 @@ the rule and the fix.
 | Generated files current | see above |
 | Settings of every version load without loss | `core/tests/settings_compat.rs` |
 | Database of every version migrates (schema chain, backup first) | `core/src/store/schema.rs` tests, `core/tests/existing_data.rs` |
-| TXT files byte-identical | `header_is_exactly_the_contract`, `txt_is_blind_to_the_match` |
+| A run writes no text files and no `top_matches.json`; old ones stay until "reset everything" | `a_run_writes_no_text_files_and_no_top_matches` (`core/src/pipeline/tests.rs`) |
 | Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there); no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
 | One word per thing (the glossary of the catalogs) | `ui_contract.rs` (`the_catalog_keeps_the_glossary`) |
 | At most one primary button per view | `ui_contract.rs` |

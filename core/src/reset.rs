@@ -38,7 +38,8 @@ const PAUSE: Duration = Duration::from_millis(300);
 #[serde(rename_all = "camelCase")]
 pub struct ResetPlan {
     pub workspace: PathBuf,
-    /// Names of the written text files (from the database, before it is gone).
+    /// Names of the text files earlier versions wrote (from the database, before it is
+    /// gone).
     pub txt_names: Vec<String>,
 }
 
@@ -109,7 +110,8 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
     targets.extend(files_in(&profile_dir, |name| {
         name == PROFILE_FILE || name == BACKUP_FILE || is_tmp(name)
     }));
-    // Overviews, text files, temporary files and their leftovers in the result folder.
+    // Overviews, what earlier versions wrote (the report, the best matches, the text
+    // files), temporary files and their leftovers in the result folder.
     targets.extend(app_files(&result_dir, &plan.txt_names));
     for target in targets {
         match remove(&target) {
@@ -282,7 +284,7 @@ mod tests {
             !txt.join(".jam-x1y2z3.tmp").exists(),
             "remains of an interrupted write"
         );
-        // Stays: safety state, foreign files (skill, own profile), manipulated name.
+        // Stays: safety state, foreign files (other tools, own profile), manipulated name.
         assert!(data.join("policy.json").exists());
         assert!(txt.join("fremd.txt").exists());
         assert!(plan.workspace.join("Profil_Erika.json").exists());

@@ -1,8 +1,8 @@
 //! Words and patterns the engine looks for in job ads and profiles.
 //!
 //! external contract - do not translate: everything in this module is German or English
-//! wording of job ads, consultant profiles (German JSON keys shared with the external
-//! `job-matching` skill) and the old engine's output texts. The legacy parts are copied
+//! wording of job ads, consultant profiles (German JSON keys of the profile format) and the
+//! old engine's output texts. The legacy parts are copied
 //! verbatim from `ca9a2cd^:matcher.py`; `tables.rs` is generated from
 //! `core/tests/fixtures/matching/legacy_lexicon.json`.
 

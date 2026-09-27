@@ -1,5 +1,5 @@
 {
-  "about": "The one filter of contact data for everything that sends the profile to an AI: the app's prompts (core/src/export/personal.rs) and the skill's brief (scripts/matching.py) read this file. A key is normalised (lower case, umlauts spelled out, every other character an underscore) and left out with its value when it contains a part of keyParts, has a token of keyTokens, or holds prose; the consultant's name is left out at the top of the profile and anywhere below a personal section. Every text value loses what valuePatterns match. Tested with the same cases on both sides (tests/personal_cases.json).",
+  "about": "The one filter of contact data for everything that sends the profile to an AI: the app's prompts (core/src/export/personal.rs) read this file. A key is normalised (lower case, umlauts spelled out, every other character an underscore) and left out with its value when it contains a part of keyParts, has a token of keyTokens, or holds prose; the consultant's name is left out at the top of the profile and anywhere below a personal section. Every text value loses what valuePatterns match. Tested with core/tests/fixtures/personal_cases.json.",
   "keyParts": [
     "mail",
     "telefon",

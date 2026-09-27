@@ -3,8 +3,8 @@
 //!
 //! Principle: inconspicuous through restraint, not through disguise. **Every** request is
 //! counted (failures and sign-in pages too); clicking again circumvents nothing. The file
-//! lives next to the database and survives "delete text files" and "reset everything" - a
-//! block pause must not be clickable away. It only holds portal names, codes and timestamps.
+//! lives next to the database and survives "reset everything" - a block pause must not be
+//! clickable away. It only holds portal names, codes and timestamps.
 
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;

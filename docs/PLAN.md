@@ -15,7 +15,7 @@ project layout. Windows and macOS as identical as possible. Done = shippable Win
 | macOS minimum | 14.0 (Safari 17 baseline, `data_store_identifier` for sessions) |
 | Evaluation data | no access to Katharina: local real data + real runs through the app, invented and composite profiles (six in the corpus, two of them the senior and SAP profiles with wishes; up to 15 per held-out set), blind labels by two independent agents + tie-breaker. Amended (2026-09-25): the measurement used eight blind held-out sets of invented ads instead of a private gold set of real ads (Phase 5) |
 | Embeddings | dropped (user, 2026-09-24): the rule engine covers the measured failures; the `Embedder` seam stays for later |
-| AI stage | two-stage like professional systems: stage 1 = our engine for every job (incl. the skill rubric); stage 2 = the improved `job-matching` skill, optional, only for the app's top matches, in the user's own Claude (no API key). The app writes a machine-readable top-matches file for it |
+| AI stage | superseded (2026-09-27, Profile round): no skill, no top-matches file, no TXT files; the copied AI prompt is the one way to a deeper check. Before: two-stage like professional systems: stage 1 = our engine for every job (incl. the skill rubric); stage 2 = the improved `job-matching` skill, optional, only for the app's top matches, in the user's own Claude (no API key). The app writes a machine-readable top-matches file for it |
 | AI prompts (user, 2026-09-25) | The copied prompts (reader "Prompt für KI-Bewertung kopieren" = `ai_prompt`, overview "Prompt für KI-Vergleich kopieren" = `ai_prompt_top`) are at least as good as the skill, for any AI chat without files: role and goal; the profile without contact data and a glossary of the keys it holds; the ad with its key facts (contract, pay, start, duration, remote share, the page's own labels; each one the app did not find is said) and its text status (full, teaser, very short, none, closed); the app's pre-assessment, marked as a machine word match to check, not to copy (score and band, or the exclusion with its reason and the ad's words; every hard criterion with the profile's threshold, the ad's value and words; requirements met, partly, open with the profile entry and its years; points to check; Schwerpunkte, target role, wishes; all in words, no engine code); the skill's method (one row per requirement, weights, OR branches, degrees, the five frame rows with the profile's thresholds, no invention); the whole rubric; a fixed answer format (result with a recommendation, reasons, requirements table, hard criteria table, risks, open questions, pay and conditions, application points, a short message). The comparison gives each job the same and asks for a ranking first (score, then interim, then fewer open musts). German and English in full (`export/ai_prompt/de.rs` is the external contract, `en.rs` mirrors it); one golden prompt per language in `core/tests/fixtures/prompts/` |
 | Reuse | the app is generic: everything personal lives in the profile; competences may carry alternative terms (`auch`); lexicon = general core + domain packs that activate automatically from the profile; no pack editor in the UI; new portals via adapters |
 | Extra criteria | superseded: the engine adopts the skill rubric (contract type, permanent-role salary and region, seniority, formal requirements) via optional profile keys - exclusions only on clear wording, otherwise checks |
@@ -732,3 +732,14 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   after every run (`asked_terms`, the terms a stored match keeps in its note, revision
   inputs 6).
 - [x] "Häufig verlangt": store query, command, stub, the block, specs
+- Decision 2026-09-27: no `job-matching` skill, no TXT files, no `top_matches.json` (supersedes
+  "AI stage", the TXT and top-matches lines above and "the text files for the job-matching
+  skill stay byte-identical" of the cleanup round). The copied AI prompt is the one way to a
+  deeper check. `tools/job-matching-skill/` is gone; the contact-data rules of the prompts
+  moved to `core/src/export/personal_data.json` (cases `core/tests/fixtures/personal_cases.json`),
+  the corpus format of the evaluation to `core/examples/common/gold.rs` (`txt_file`). A run
+  writes neither file any more (`ExportSummary` without `txtWritten`/`txtFailed`, no
+  `OpenTarget::TxtDir`, no `best_matches`); the old files stay in the result folder until
+  "Alles zurücksetzen", and deleting a job for good still removes the old text file the app
+  wrote for it. The rubrics no longer name the skill.
+- [x] Skill, TXT export and `top_matches.json` out

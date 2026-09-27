@@ -184,9 +184,8 @@ pub enum Activity {
     /// The session window is in use for signing in or out (cancellable).
     Session(CancellationToken),
     /// A file command writes or deletes the app's files (delete for good, empty the trash,
-    /// rewrite or delete the text files): nothing else writes them meanwhile - a run's text
-    /// files would lose their temporary files to "Textdateien löschen", two exports would
-    /// fight over the Excel file.
+    /// another work folder, restore a backup): nothing else writes them meanwhile - two
+    /// exports would fight over the Excel file.
     Files,
     /// The mailbox is being checked and stored, or removed (cancellable): no run reads the
     /// vault meanwhile, so none starts with the account that is just being replaced and

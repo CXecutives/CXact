@@ -749,8 +749,6 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
       overviewCsv: null,
       backup: null,
-      txtWritten: 7,
-      txtFailed: 0,
       error: null,
     },
     emptyAlerts: [

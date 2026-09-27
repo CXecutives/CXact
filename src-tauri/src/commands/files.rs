@@ -8,7 +8,7 @@ use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
 use jobalert_core::export::{self, RESULT_DIR};
 use jobalert_core::model::gmail_url_for;
-use jobalert_core::pipeline::{self, Matcher};
+use jobalert_core::pipeline;
 use jobalert_core::view::OpenTarget;
 use tauri::{AppHandle, Manager, State};
 
@@ -24,9 +24,8 @@ const SETTLE: Duration = Duration::from_secs(2);
 /// How often a waiting refresh looks whether the app is idle again.
 const IDLE_POLL: Duration = Duration::from_millis(500);
 
-/// The files a mark changes - the skill's `top_matches.json` (`pipeline::refresh_exports`)
-/// and the overviews (the Excel and the CSV file) - follow the user's marks a moment after
-/// the last one:
+/// The files a mark changes - the overviews (the Excel and the CSV file) - follow the user's
+/// marks a moment after the last one:
 /// never while a run, a sign-in or a file command holds the app (a run writes them at its
 /// end, a refresh then follows), never in the dry run. Marks of the last moments before the
 /// app ends are written when it ends ([`flush_marks`]).
@@ -94,16 +93,9 @@ fn refresh(state: &AppState) {
     let Ok(settings) = state.settings() else {
         return;
     };
-    let matcher = state.matcher();
     let workspace = settings.workspace_or(&state.default_workspace);
     let language = settings.language_or(state.system_language);
-    pipeline::refresh_exports(
-        &state.store,
-        &workspace,
-        matcher.as_deref().map(|m| m as &dyn Matcher),
-        Timestamp::now(),
-    );
-    // The overviews follow the marks too (each is rewritten only when something changed).
+    // Each overview is rewritten only when something changed.
     let _ = pipeline::refresh_overviews(&state.store, &workspace, Timestamp::now(), language);
 }
 
@@ -195,10 +187,6 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             existing(path.clone(), "file")?;
             return show_in_folder(&path);
         }
-        OpenTarget::TxtDir => existing(
-            state.workspace()?.join(RESULT_DIR).join(export::TXT_DIR),
-            "folder",
-        )?,
         OpenTarget::LogDir => existing(state.data_dir.join(jobalert_core::LOG_DIR), "folder")?,
         OpenTarget::DataDir => existing(state.data_dir.clone(), "folder")?,
     };

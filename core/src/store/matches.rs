@@ -71,11 +71,6 @@ impl From<MatchRecord> for Judgement {
     }
 }
 
-/// "Beste zum Vergleich": counted as scored, in the inbox, no duplicate, the ad still online
-/// and open, read or not.
-pub(crate) const COMPARABLE: &str = "match_status = 'scored' AND dup_of IS NULL
-    AND archived_at IS NULL AND trashed_at IS NULL AND desc_status <> 'gone' AND desc_closed = 0";
-
 /// The Excel sheet: the inbox and the archive, no duplicate.
 const SHEET: &str = "trashed_at IS NULL AND dup_of IS NULL";
 
@@ -409,19 +404,6 @@ impl Store {
         ))
     }
 
-    /// "Beste zum Vergleich", the one definition of the best current matches: what counts as
-    /// scored ([`COMPARABLE`]: the engine scores it or the user counts it anyway), in the
-    /// inbox, no duplicate, the ad still online and open, read or not; in the list's order by
-    /// match. The skill's `top_matches.json` takes these.
-    pub fn best_matches(&self, limit: u32) -> Result<Vec<JobRow>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job WHERE {COMPARABLE} ORDER BY {BY_MATCH} LIMIT ?1"
-        ))?;
-        let rows = stmt.query_map([limit], job_row)?;
-        rows.map(|r| r?).collect()
-    }
-
     /// The jobs of the Excel sheet: the inbox and the archive (never the trash), no duplicate
     /// (its original's row stands for it), in the list's order by match - excluded ones
     /// after the others, unscored ones after the scored.
@@ -639,43 +621,6 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(store.match_rev(&key).unwrap().as_deref(), Some("r3"));
-    }
-
-    /// The best current matches for the matching skill: counted as scored, best first, read
-    /// or not; never excluded.
-    #[test]
-    fn the_best_matches_are_the_scored_ones_best_first() {
-        let store = Store::in_memory().unwrap();
-        let mut keys = Vec::new();
-        for (id, score) in [(1, 60), (2, 90), (3, 75), (4, 20), (5, 50), (6, 85)] {
-            // Every job from a run of its own.
-            let run = store.begin_run().unwrap();
-            let url = format!("https://www.linkedin.com/jobs/view/400000000{id}/");
-            let p = posting(&url, "A", "", "");
-            store.upsert_posting(run, &p, mail(), now()).unwrap();
-            store
-                .save_matches(
-                    &[(p.key.clone(), record(MatchStatus::Scored, score))],
-                    "r",
-                    now(),
-                )
-                .unwrap();
-            keys.push(p.key);
-        }
-        store.mark_read(&keys[5], now()).unwrap();
-        store
-            .save_matches(
-                &[(keys[4].clone(), record(MatchStatus::Excluded, 95))],
-                "r",
-                now(),
-            )
-            .unwrap();
-        let keys_of =
-            |jobs: &[JobRow]| -> Vec<JobKey> { jobs.iter().map(|j| j.key.clone()).collect() };
-        assert_eq!(
-            keys_of(&store.best_matches(3).unwrap()),
-            [keys[1].clone(), keys[5].clone(), keys[2].clone()]
-        );
     }
 
     #[test]

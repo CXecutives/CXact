@@ -1,19 +1,19 @@
 //! The prompt for any AI chat the user likes: a deep analysis of one job. The app sends
-//! nothing itself and needs no API key; for normal use it replaces the optional job-matching
-//! skill and gives the assistant everything its brief gives and more. It addresses the
-//! assistant as "du" without naming a product and carries, in this order:
+//! nothing itself and needs no API key; it gives the assistant everything a careful check
+//! needs. It addresses the assistant as "du" without naming a product and carries, in this
+//! order:
 //!
 //! 1. the task (role and goal),
-//! 2. the profile without the consultant's name and contact data (the filter shared with the
-//!    skill, [`super::personal`]) and a glossary of the profile keys it holds,
+//! 2. the profile without the consultant's name and contact data (the one filter,
+//!    [`super::personal`]) and a glossary of the profile keys it holds,
 //! 3. the ad: its key facts (each one the app did not find is said to be missing), its text
 //!    status (full, teaser, very short, none) and its text,
 //! 4. the app's own assessment, marked as a machine pre-assessment to check, not to copy:
 //!    score and band or the exclusion, every hard criterion with the profile's threshold and
 //!    the ad's own words, the requirements met, partly met and open with the profile entry
 //!    behind them, the points to check, Schwerpunkte, target role and wishes,
-//! 5. the method (the skill's rules for requirements and the five frame rows),
-//! 6. the one scoring rubric of the app and the skill (`ai_rubric.de.md`),
+//! 5. the method (the rules for requirements and the five frame rows),
+//! 6. the one scoring rubric of the app (`ai_rubric.de.md`),
 //! 7. a fixed answer format for a consultant who decides whether to apply.
 //!
 //! Its text is content for the assistant, not interface prose, in the app's language: the
@@ -48,7 +48,7 @@ use crate::view::{DetailState, JobView, WorkMode};
 
 /// Most characters of the profile in the prompt (a longer one is cut, marked as cut).
 pub const MAX_PROFILE_CHARS: usize = 8_000;
-/// Most characters of the ad text in the prompt (the skill reads as much).
+/// Most characters of the ad text in the prompt.
 pub const MAX_AD_CHARS: usize = 12_000;
 /// Longest passage of the ad the pre-assessment quotes.
 const MAX_PASSAGE_CHARS: usize = 160;

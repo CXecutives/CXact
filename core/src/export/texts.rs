@@ -3,8 +3,7 @@
 //! up in files the user opens. They use the interface's words (glossary in `docs/PLAN.md`)
 //! and its style rules - `core/tests/rust_texts.rs` checks both languages. The German words
 //! stand at the top level, the English ones in [`en`] under the same names; [`Texts::of`]
-//! picks by the app's language. The text files per job are no part of this: they stay
-//! German (`job_txt.rs`, a contract with the matching skill).
+//! picks by the app's language.
 
 use jiff::Timestamp;
 use serde_json::{Map, Value};

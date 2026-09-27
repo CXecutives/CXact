@@ -8,8 +8,8 @@
 //! `query_only` (no migration, no write), takes every job with a description (`ok` or
 //! `teaser`) and writes to `core/tests/fixtures/private/gold/` (ignored by git; the tool
 //! refuses a folder git would track):
-//! - `<portal>_<id>.txt` per job in the TXT contract format (written by the app's own
-//!   `export::write_job_txt`),
+//! - `<portal>_<id>.txt` per job in the corpus format (`gold::txt_file`, the text files
+//!   earlier versions of the app wrote),
 //! - `jobs.json` (key, file, portal, url, title, company, raw location, mail date, first
 //!   sighting, description status, page facts). Jobs of an earlier export that are no longer
 //!   in the database are kept, so a reset app does not shrink the gold set; a cross-portal
@@ -30,19 +30,18 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use common::gold::{self, AdView, GoldJob};
-use jobalert_core::export::{TXT_DIR, write_job_txt};
+use jiff::Timestamp;
 use jobalert_core::model::DescStatus;
 use jobalert_core::portal::{JobKey, Portal};
 use jobalert_core::store::JobRow;
-use jobalert_core::time::from_db;
+use jobalert_core::text::split_company_location;
+use jobalert_core::time::{self, from_db};
 use rusqlite::{Connection, OpenFlags};
 use serde_json::Value;
 use url::Url;
 
 /// The app's identifier, the name of its data folder.
 const APP_ID: &str = "de.cxecutives.job-alert-monitor";
-/// Temporary folder inside the gold folder for `write_job_txt` (it writes into `TXT_DIR`).
-const STAGING: &str = ".staging";
 
 type Res<T> = Result<T, Box<dyn Error>>;
 /// Portal label -> (full texts, teasers).
@@ -248,10 +247,9 @@ fn gold_job(job: &DbJob, file: String) -> GoldJob {
     }
 }
 
-/// Writes the TXT files with the app's writer (via a staging folder, since it writes into
-/// `TXT_DIR`) and returns the gold entries plus per-portal counts (ok, teaser).
+/// Writes the TXT files in the corpus format and returns the gold entries plus per-portal
+/// counts (ok, teaser).
 fn write_txts(out: &Path, jobs: &[DbJob]) -> Res<(Vec<GoldJob>, PortalCounts)> {
-    let staging = out.join(STAGING);
     let mut entries = Vec::new();
     let mut counts = PortalCounts::new();
     let mut stems = HashSet::new();
@@ -260,10 +258,18 @@ fn write_txts(out: &Path, jobs: &[DbJob]) -> Res<(Vec<GoldJob>, PortalCounts)> {
         if !stems.insert(stem.clone()) {
             return Err(format!("two jobs share the file name {stem}").into());
         }
-        let mut row = job.row.clone();
-        row.txt_name = Some(format!("{stem}.txt"));
-        let name = write_job_txt(&staging, &row, &job.text)?;
-        std::fs::rename(staging.join(TXT_DIR).join(&name), out.join(&name))?;
+        let row = &job.row;
+        let (company, location) = split_company_location(&row.company, &row.location);
+        let file = gold::TxtFile {
+            title: row.title.clone(),
+            company,
+            location,
+            source: row.key.portal.file_tag().to_owned(),
+            body: job.text.clone(),
+        };
+        let fetched = row.desc_fetched_at.unwrap_or_else(Timestamp::now);
+        let content = gold::txt_file(&file, row.url.as_str(), &time::display(fetched));
+        std::fs::write(out.join(format!("{stem}.txt")), content)?;
         let entry = counts.entry(job.row.key.portal.label()).or_default();
         if job.row.desc_status == DescStatus::Teaser {
             entry.1 += 1;
@@ -271,9 +277,6 @@ fn write_txts(out: &Path, jobs: &[DbJob]) -> Res<(Vec<GoldJob>, PortalCounts)> {
             entry.0 += 1;
         }
         entries.push(gold_job(job, stem));
-    }
-    if staging.exists() {
-        std::fs::remove_dir_all(&staging)?;
     }
     Ok((entries, counts))
 }

@@ -1,8 +1,6 @@
-//! The one contact-data filter for everything that sends the profile to an AI: the app's
-//! prompts and the job-matching skill's brief read the same rules
-//! (`tools/job-matching-skill/personal_data.json`) and pass the same cases
-//! (`tools/job-matching-skill/tests/personal_cases.json`, checked here and in the skill's
-//! Python test).
+//! The one contact-data filter for everything that sends the profile to an AI (the app's
+//! prompts): its rules are data (`personal_data.json` next to this file) and pass the cases
+//! of `core/tests/fixtures/personal_cases.json`.
 
 use std::sync::LazyLock;
 
@@ -10,8 +8,8 @@ use regex::Regex;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-/// The rules, shared with the skill.
-const RULES_JSON: &str = include_str!("../../../tools/job-matching-skill/personal_data.json");
+/// The rules.
+const RULES_JSON: &str = include_str!("personal_data.json");
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -146,11 +144,11 @@ pub fn scrub_text(text: &str) -> String {
 mod tests {
     use super::*;
 
-    const CASES: &str = include_str!("../../../tools/job-matching-skill/tests/personal_cases.json");
+    const CASES: &str = include_str!("../../tests/fixtures/personal_cases.json");
 
-    /// The shared cases: the skill's Python test checks the same file.
+    /// The cases of every spelling of contact data.
     #[test]
-    fn the_shared_cases_hold() {
+    fn the_cases_hold() {
         let cases: Vec<Value> = serde_json::from_str(CASES).unwrap();
         assert!(cases.len() >= 2);
         for case in cases {

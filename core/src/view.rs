@@ -1560,8 +1560,6 @@ pub enum OpenTarget {
     ExcelBackupInFolder {
         name: String,
     },
-    /// The folder of the text files (`auswertung/beschreibungen_txt`).
-    TxtDir,
     LogDir,
 }
 
@@ -1643,10 +1641,9 @@ mod tests {
         );
     }
 
-    /// A closed ad reaches the list (a quiet badge, below the open ones) and never becomes a
-    /// text file for the matching skill.
+    /// A closed ad reaches the list, marked as closed, until its page says it is open again.
     #[test]
-    fn a_closed_ad_is_marked_and_gets_no_text_file() {
+    fn a_closed_ad_is_marked() {
         let (store, key) = store_with(
             "https://www.linkedin.com/jobs/view/4123456789/",
             "Controller",
@@ -1661,12 +1658,10 @@ mod tests {
         assert!(view.closed);
         assert_eq!(view.detail, DetailState::Ok);
         assert_eq!(serde_json::to_value(&view).unwrap()["closed"], true);
-        assert!(store.txt_jobs(true).unwrap().is_empty(), "no text file");
         store
             .record_text(&key, &text, false, false, Timestamp::now())
             .unwrap();
         assert!(!JobView::from(&store.job(&key).unwrap().unwrap()).closed);
-        assert_eq!(store.txt_jobs(true).unwrap().len(), 1);
     }
 
     /// A job older than the automatic fetch reaches is never promised for "the next fetch":

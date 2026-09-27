@@ -273,9 +273,9 @@ pub async fn save_settings(
 
 /// Folder dialog for the workspace; `None` if cancelled. The work moves along (user decision
 /// 2026-09-26): a folder without a profile gets a copy of the old folder's `profil/`, one
-/// with a profile of its own keeps it and the app uses it from now on; the Excel file and the
-/// text files are written in the new folder at once. The app is held
-/// meanwhile, like a file command.
+/// with a profile of its own keeps it and the app uses it from now on; the Excel and the CSV
+/// file are written in the new folder at once. The app is held meanwhile, like a file
+/// command.
 #[tauri::command]
 pub async fn pick_workspace(
     app: AppHandle,
@@ -352,23 +352,13 @@ fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
     Ok(WorkspaceProfile::Copied)
 }
 
-/// The overviews, the skill's list and the text files in the (new) work folder, now; a file
-/// that cannot be written says so in the log and is written by the next fetch.
+/// The overviews in the (new) work folder, now; a file that cannot be written says so in the
+/// log and is written by the next fetch.
 fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::settings::Language) {
     let now = Timestamp::now();
-    let txt = pipeline::rewrite_txt(&state.store, workspace, now);
-    let matcher = state.matcher();
-    pipeline::refresh_exports(
-        &state.store,
-        workspace,
-        matcher.as_deref().map(|m| m as &dyn pipeline::Matcher),
-        now,
-    );
     let overviews = pipeline::refresh_overviews(&state.store, workspace, now, language);
     log::info!(
-        "files written in the new work folder: {} text files, {} failed, overviews {}",
-        txt.txt_written,
-        txt.txt_failed,
+        "files written in the new work folder: overviews {}",
         if overviews.error.is_none() {
             "written"
         } else {

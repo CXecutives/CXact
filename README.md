@@ -11,10 +11,11 @@ job's full posting page politely: every portal can be switched off individually,
 has its own request limits and pauses. Scores every job locally against a consultant
 profile with an explainable, integer-only rule engine. Nothing is sent to the cloud.
 Writes an Excel workbook (`JobAlerts.xlsx`) and, if you want, a CSV file (`JobAlerts.csv`,
-`;`-separated, UTF-8) with the same columns, plus one TXT file per job for the matching skill,
-into the result folder (Einstellungen, Export: each file has its switch). Jobs live in three
-places like mail (Jobs, Archiv, Papierkorb); nothing moves or empties itself. An optional
-stage-2 Claude skill in `tools/job-matching-skill/` can re-rank the app's top matches.
+`;`-separated, UTF-8) with the same columns into the result folder (Einstellungen, Export:
+each file has its switch). Jobs live in three places like mail (Jobs, Archiv, Papierkorb);
+nothing moves or empties itself. For a deeper look at one job the reader copies a prompt for
+any AI chat, and the Profil names the terms the recent jobs ask for most that the profile
+lacks ("Häufig verlangt").
 
 ## Install
 
@@ -91,8 +92,7 @@ Everything runs locally: jobs, full texts, the database and logs never leave the
 except for the IMAP connection to Gmail and the HTTP requests to the job portals themselves.
 The app sends nothing to an AI: the prompts it copies (one job, a profile from a CV) go only
 where you paste them, and a job prompt carries the profile without name,
-contact data and links. The optional stage-2 skill runs in your own Claude, without an API
-key. The mailbox is opened read-only: mails stay unread, and nothing is changed, deleted
+contact data and links. The mailbox is opened read-only: mails stay unread, and nothing is changed, deleted
 or sent. No passwords are stored by the app except the Gmail app password, which lives in
 the OS keychain (Windows Credential Manager / macOS Keychain).
 
@@ -133,8 +133,7 @@ cargo test -p jobalert-core --test matching_heldout -- --ignored heldout_report 
   form, storage and export; no UI code, no `unsafe`.
 - `src-tauri/` - the thin app layer: Tauri commands, window and platform glue.
 - `ui/` - Svelte 5 + Vite + TypeScript frontend.
-- `tools/` - UI harness, evaluation scripts, icon generation, the optional
-  `job-matching-skill/`.
+- `tools/` - UI harness, evaluation scripts, icon generation.
 - `docs/` - `PLAN.md` (project plan and decisions) and `MATCHING.md` (matching engine
   reference and measurements).
 

@@ -72,7 +72,6 @@ Commit them together with tokens.css.
 - The diagnostic sheets of `tools/icon.py` (`--compare`, `--fringe-sheet`) show the icon on
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
-- The TXT files have no colours.
 
 ## Add or change a palette
 
@@ -119,8 +118,8 @@ ask which palette is on.
   variant of `FetchRange` (`core/src/settings.rs`), its arm in `scan_since` and its word.
 - The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
   `exportCsv` off by default); the export writes a file only while its switch is on, and its
-  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The text files for the
-  job-matching skill have no switch.
+  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The app writes no other
+  files (no text files, no `top_matches.json` since 2026-09-27).
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 

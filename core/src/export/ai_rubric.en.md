@@ -1,8 +1,7 @@
 # Scoring rule
 
-This rule applies to the check in an AI chat from the app and to the job-matching skill, which
-reads the same rule in German. The profile wins: every threshold comes from the profile, and a
-key the profile does not set switches its rule off.
+This rule applies to the check in an AI chat from the app. The profile wins: every threshold
+comes from the profile, and a key the profile does not set switches its rule off.
 
 The other listings a portal shows under an ad (such as “Similar jobs” or „Ähnliche Projekte“)
 are no part of it. No rule reads them, and they exclude nothing.

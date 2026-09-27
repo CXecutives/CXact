@@ -1,5 +1,5 @@
 //! The app's memory: one `SQLite` file, the single source of truth about jobs, mails and job
-//! details. Excel and TXT are generated from it - never the other way round.
+//! details. The Excel and the CSV file are generated from it - never the other way round.
 //!
 //! One connection behind a mutex; every method is short and synchronous (the caller never
 //! holds the lock across an `await`).

@@ -58,6 +58,35 @@ fn txt_header_and_body_are_read() {
     assert_eq!(gold::parse_txt(&content.replace('\n', "\r\n")), txt);
 }
 
+/// The corpus writer and reader agree; a line break in a value never fakes a header line.
+#[test]
+fn the_corpus_format_round_trips() {
+    let file = gold::TxtFile {
+        title: "Interim CFO".to_owned(),
+        company: "Invented AG".to_owned(),
+        location: "Musterstadt".to_owned(),
+        source: "Freelancermap".to_owned(),
+        body: "First line.\n\n\n\nSecond: line.".to_owned(),
+    };
+    let content = gold::txt_file(&file, "https://example.invalid/1", "19.09.2026 09:00");
+    assert!(content.starts_with("Titel: Interim CFO\nUnternehmen: Invented AG\n"));
+    let back = gold::parse_txt(&content);
+    assert_eq!(back.body, "First line.\n\nSecond: line.");
+    assert_eq!(
+        (back.title, back.company, back.location, back.source),
+        (file.title, file.company, file.location, file.source)
+    );
+    let forged = gold::TxtFile {
+        title: "Rolle\nLink: https://evil.example".to_owned(),
+        ..gold::TxtFile::default()
+    };
+    let content = gold::txt_file(&forged, "https://example.invalid/2", "");
+    assert_eq!(
+        content.lines().filter(|l| l.starts_with("Link: ")).count(),
+        1
+    );
+}
+
 #[test]
 fn contact_data_is_stripped_competences_stay() {
     let profile = json!({

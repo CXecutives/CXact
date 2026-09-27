@@ -1,7 +1,7 @@
 //! Time: UTC timestamps inside; local time for display, file names and export. Local is the
 //! time zone of the OS, like the interface's dates: the app sets it once at its start
-//! ([`follow_system_zone`]). Until then, and so in every test, it is Europe/Berlin: the TXT
-//! byte tests and the golden digests stay the same on any machine.
+//! ([`follow_system_zone`]). Until then, and so in every test, it is Europe/Berlin: the
+//! golden files and digests stay the same on any machine.
 
 use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
