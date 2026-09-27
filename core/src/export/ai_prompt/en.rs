@@ -289,6 +289,10 @@ impl Wording for English {
         plural(i64::from(months), "month", "months")
     }
 
+    fn weeks(&self, weeks: u16) -> String {
+        plural(i64::from(weeks), "week", "weeks")
+    }
+
     fn remote(&self, from: u8, to: u8) -> String {
         match (from, to) {
             (0, 0) => "on site, 0%".to_owned(),
@@ -454,16 +458,24 @@ impl Wording for English {
             CriterionKey::Availability => {
                 text_param(ad, "start").map(|start| format!("start {}", self.start(start)))
             }
-            CriterionKey::MinSalary => {
-                int(ad, "salary").map(|salary| format!("annual salary {}", money(salary, None)))
-            }
+            CriterionKey::MinSalary => int(ad, "salary").map(|salary| {
+                let bonus = int(ad, "bonus")
+                    .map(|b| format!(" plus a {b}% bonus"))
+                    .unwrap_or_default();
+                format!(
+                    "annual salary {}{bonus}",
+                    money(salary, text_param(ad, "currency"))
+                )
+            }),
             CriterionKey::Workload => int(ad, "to").map(|to| match int(ad, "from") {
                 Some(from) if from == to => format!("workload {to}%"),
                 Some(from) => format!("workload {from} to {to}%"),
                 None => format!("workload up to {to}%"),
             }),
             CriterionKey::Duration => int(ad, "months")
-                .map(|months| format!("duration {}", plural(months, "month", "months"))),
+                .map(|months| plural(months, "month", "months"))
+                .or_else(|| int(ad, "weeks").map(|weeks| plural(weeks, "week", "weeks")))
+                .map(|length| format!("duration {length}")),
             CriterionKey::ExclusionWords => None,
         }
     }
@@ -545,12 +557,18 @@ impl Wording for English {
                 None => "The place of work of the permanent role is unclear.".to_owned(),
             },
             ReasonCode::Salary => match (int(p, "salary"), int(p, "min")) {
+                _ if text_param(p, "currency").is_some_and(|c| c != "EUR") => format!(
+                    "The salary is given in {}, not in euros.",
+                    text_param(p, "currency").unwrap_or_default()
+                ),
                 (Some(salary), Some(min)) => {
-                    let currency = text_param(p, "currency").filter(|c| *c != "EUR");
                     let from = if flag(p, "lowerBound") { "from" } else { "of" };
+                    let bonus = int(p, "bonus")
+                        .map(|b| format!(" plus a {b}% bonus"))
+                        .unwrap_or_default();
                     format!(
-                        "The annual salary {from} {} is below the minimum of {}.",
-                        money(salary, currency),
+                        "The annual salary {from} {}{bonus} is below the minimum of {}.",
+                        money(salary, None),
                         money(min, None)
                     )
                 }
@@ -657,10 +675,14 @@ impl Wording for English {
             ReasonCode::Workload => {
                 "The workload of the ad does not fit the days a week of the profile.".to_owned()
             }
-            ReasonCode::Duration => match (int(p, "months"), int(p, "min")) {
-                (Some(months), Some(min)) => format!(
-                    "The duration of {} is shorter than the minimum of {}.",
-                    plural(months, "month", "months"),
+            ReasonCode::Duration => match (
+                int(p, "months")
+                    .map(|m| plural(m, "month", "months"))
+                    .or_else(|| int(p, "weeks").map(|w| plural(w, "week", "weeks"))),
+                int(p, "min"),
+            ) {
+                (Some(length), Some(min)) => format!(
+                    "The duration of {length} is shorter than the minimum of {}.",
                     plural(min, "month", "months")
                 ),
                 _ => "The duration is shorter than the minimum.".to_owned(),

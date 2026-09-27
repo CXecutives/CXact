@@ -118,6 +118,15 @@ pub fn months_words(months: u16) -> String {
     }
 }
 
+/// A duration in weeks, as the ad states it: `1 Woche`, `9 Wochen`.
+pub fn weeks_words(weeks: u16) -> String {
+    if weeks == 1 {
+        "1 Woche".to_owned()
+    } else {
+        format!("{weeks} Wochen")
+    }
+}
+
 /// A start on a day: `ab 01.11.2026`.
 pub fn start_from(day: &str) -> String {
     format!("ab {day}")
@@ -283,6 +292,14 @@ pub mod en {
         }
     }
 
+    pub fn weeks_words(weeks: u16) -> String {
+        if weeks == 1 {
+            "1 week".to_owned()
+        } else {
+            format!("{weeks} weeks")
+        }
+    }
+
     pub fn start_from(day: &str) -> String {
         format!("from {day}")
     }
@@ -442,6 +459,7 @@ pub struct Texts {
     pub rate_open: &'static str,
     remote_words: fn(u8, u8) -> String,
     months_words: fn(u16) -> String,
+    weeks_words: fn(u16) -> String,
     workload_words: fn(Option<u8>, u8) -> String,
     start_from: fn(&str) -> String,
     /// A moment as text (`strftime`): `19.09.2026 14:05`, `19/09/2026 14:05`.
@@ -503,6 +521,7 @@ pub const DE: Texts = Texts {
     rate_open: RATE_OPEN,
     remote_words,
     months_words,
+    weeks_words,
     workload_words,
     start_from,
     moment: "%d.%m.%Y %H:%M",
@@ -560,6 +579,7 @@ pub const EN: Texts = Texts {
     rate_open: en::RATE_OPEN,
     remote_words: en::remote_words,
     months_words: en::months_words,
+    weeks_words: en::weeks_words,
     workload_words: en::workload_words,
     start_from: en::start_from,
     moment: "%d/%m/%Y %H:%M",
@@ -669,9 +689,12 @@ impl Texts {
         Some((self.remote_words)(from, to))
     }
 
-    /// The duration an ad states (`6 Monate`).
+    /// The duration an ad states (`6 Monate`, `9 Wochen`).
     pub fn duration(&self, facts: &KeyFacts) -> Option<String> {
-        facts.months.map(self.months_words)
+        facts
+            .months
+            .map(self.months_words)
+            .or_else(|| facts.weeks.map(self.weeks_words))
     }
 
     /// The workload an ad states (`Vollzeit`, `3 Tage/Woche`, `50 %`).

@@ -266,6 +266,7 @@ trait Wording: Sync {
     /// `now`, `vague` or an ISO date.
     fn start(&self, code: &str) -> String;
     fn months(&self, months: u16) -> String;
+    fn weeks(&self, weeks: u16) -> String;
     fn remote(&self, from: u8, to: u8) -> String;
     fn work_mode(&self, mode: WorkMode) -> &'static str;
     fn text_cut(&self, max: usize) -> String;
@@ -547,6 +548,7 @@ fn terms(w: &dyn Wording, item: PromptJob<'_>) -> [Option<String>; 5] {
     let duration = facts
         .and_then(|f| f.months)
         .map(|m| w.months(m))
+        .or_else(|| facts.and_then(|f| f.weeks).map(|n| w.weeks(n)))
         .or_else(|| page_words(w, page.and_then(|p| p.duration.as_ref())));
     let remote = facts
         .and_then(|f| Some(w.remote(f.remote_from?, f.remote_to.or(f.remote_from)?)))

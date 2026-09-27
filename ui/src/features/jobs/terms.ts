@@ -23,8 +23,8 @@ import { textOf } from '$lib/i18n/de';
 import { criterionKey } from '$lib/i18n/texts';
 import type { JobView, KeyFacts, Reason, TextRange } from '$lib/ipc/types';
 import { placeOf } from '$lib/place';
+import { hourlyOf, rateOf, salaryOf } from './pay';
 import {
-  aboveMinimum,
   criterionVerdict,
   isRequirement,
   reasonVerdict,
@@ -67,11 +67,6 @@ export interface TermRow {
 const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;
 
 const num = (value: unknown): number | null => (typeof value === 'number' ? value : null);
-/** A number the engine may send as text (the profile's minimum day rate, `"1100"`). */
-const amount = (value: unknown): number | null => {
-  const parsed = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
-  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
-};
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;
 
@@ -184,49 +179,14 @@ const TERMS: Record<TermKey, Term> = {
     employment: { codes: ['salary', 'salaryUnknown'], criteria: ['minSalary'] },
     name: ({ contract, facts, criterion }) => {
       if (contract.employment) return t.reader.salaryName;
-      const hourly =
-        typeof facts?.rate === 'number'
-          ? facts.hourly === true
-          : criterion('minDayRate')?.params.hourly === true;
-      return hourly ? t.reader.hourlyName : t.reader.term.rate;
+      return hourlyOf(facts, criterion('minDayRate')?.params ?? {})
+        ? t.reader.hourlyName
+        : t.reader.term.rate;
     },
-    read: ({ facts, criterion, code, contract }) => {
-      if (contract.employment) {
-        const p = { ...criterion('minSalary')?.params, ...code('salary')?.params };
-        const stated = num(facts?.salary);
-        const salary = stated ?? num(p.salary);
-        if (salary === null) return { value: null };
-        const lower = stated === null ? p.lowerBound === true : facts?.salaryLowerBound === true;
-        const currency = stated === null ? text(p.currency) : null;
-        const above = currency === null ? aboveMinimum(salary, amount(p.min)) : null;
-        return {
-          value: t.facts.pay(salary, 'year', currency, lower),
-          met: above === null ? null : t.reader.payMet.salary(above),
-        };
-      }
-      const p = criterion('minDayRate')?.params ?? {};
-      const stated = typeof facts?.rate === 'number' ? facts : null;
-      const rate = stated?.rate ?? num(p.rate);
-      if (rate === null) {
-        const agreed = facts?.rateOpen === true || p.rateOpen === true;
-        return { value: agreed ? t.facts.agreed : null };
-      }
-      const hourly = (stated ? stated.hourly : p.hourly) === true;
-      const currency = stated ? stated.currency : text(p.currency);
-      const euros = currency === null || currency === 'EUR';
-      // The rule compares a day rate in euros, an hourly one by what it makes a day.
-      const perDay = hourly ? num(p.perDay) : rate;
-      const above = euros ? aboveMinimum(perDay, amount(p.min)) : null;
-      return {
-        value: t.facts.pay(rate, hourly ? 'hour' : 'day', currency),
-        met:
-          above === null || perDay === null
-            ? null
-            : hourly
-              ? t.reader.payMet.hour(rate, perDay, above)
-              : t.reader.payMet.day(above),
-      };
-    },
+    read: ({ facts, criterion, code, contract }) =>
+      contract.employment
+        ? salaryOf(facts, { ...criterion('minSalary')?.params, ...code('salary')?.params })
+        : rateOf(facts, criterion('minDayRate')?.params ?? {}),
   },
   start: {
     codes: ['availability', 'availabilityGap', 'startVague'],
@@ -240,8 +200,14 @@ const TERMS: Record<TermKey, Term> = {
     codes: ['duration'],
     criteria: ['duration'],
     read: ({ facts, criterion, contract }) => {
-      const months = facts?.months ?? num(criterion('duration')?.params.months);
-      if (months) return { value: t.facts.duration(months, null, 'month') };
+      // Months or weeks as the ad states them, a range with its lower end.
+      const p = criterion('duration')?.params ?? {};
+      const known = facts !== null && (facts.months !== null || facts.weeks !== undefined);
+      const weeks = known ? (facts.weeks ?? null) : num(p.weeks);
+      const months = known ? facts.months : num(p.months);
+      const from = known ? (facts.durationFrom ?? null) : num(p.from);
+      if (weeks) return { value: t.facts.duration(weeks, from, 'week') };
+      if (months) return { value: t.facts.duration(months, from, 'month') };
       // A permanent job has no end: nothing to compare.
       return contract.kind === 'permanent'
         ? { value: t.facts.unlimited, judged: false }
@@ -445,13 +411,17 @@ function build(
     return id === null ? undefined : input.reasons.find((reason) => reason.id === id);
   };
   const linked = new Set(criteria.map((criterion) => linkedOf(criterion)?.id ?? ''));
-  /** Why a met criterion is met: the row's own sentence, else the criterion's. */
+  /** Why a met criterion is met, where no reason says more (a wish met names the wish): the
+   *  row's own sentence, else the criterion's. */
   const metWhy = (criterion: Reason): string | null => {
     const key = criterionKey(criterion.code);
     return (
       read.met ?? (key === null ? null : textOf(t.reader.criterion[key].met, criterion.params))
     );
   };
+  const met = criteria.find(
+    (criterion) => criterionVerdict(criterion, linkedOf(criterion)) === 'met',
+  );
   const judged =
     input.withVerdict && read.judged !== false
       ? worst([
@@ -460,7 +430,7 @@ function build(
             const verdict = criterionVerdict(criterion, decided);
             return {
               verdict,
-              why: sentence(decided) ?? (verdict === 'met' ? metWhy(criterion) : null),
+              why: sentence(decided),
               excludes: criterion.kind === 'violation',
             };
           }),
@@ -476,6 +446,8 @@ function build(
         ])
       : null;
   const verdict = judged === null || judged.verdict === 'unset' ? null : judged;
+  const why =
+    verdict?.why ?? (verdict?.verdict === 'met' && met !== undefined ? metWhy(met) : null);
   return {
     key,
     name: term.name?.(ctx) ?? t.reader.term[key],
@@ -487,7 +459,7 @@ function build(
     note: missing ? null : (read.note ?? null),
     urgent: !missing && read.urgent === true,
     verdict: verdict === null ? null : (verdict.verdict as Exclude<Verdict, 'unset'>),
-    why: verdict?.why ?? null,
+    why,
     excludes: verdict?.excludes === true,
   };
 }

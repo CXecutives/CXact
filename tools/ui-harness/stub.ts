@@ -14,6 +14,8 @@
 //   window.__harness.fire(name, p)  an app event, as Rust's `window.emit` sends it
 //   window.__harness.done           true once a started run has finished
 //   window.__harness.detailDelay    ms `job_detail` takes (default 0)
+//   window.__harness.editDetail     changes every job's reader before it is shown (a fact
+//                                   or a param of the engine the demo ads do not state)
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
@@ -124,6 +126,8 @@ interface Harness {
   done: boolean;
   /** Milliseconds `job_detail` takes. */
   detailDelay: number;
+  /** Changes every job's reader before it is shown (null: as the engine wrote it). */
+  editDetail: ((detail: JobDetail) => JobDetail) | null;
   /** So many next `list_jobs` calls for a later page (offset > 0) fail. */
   failPages: number;
   /** A scripted run pauses after so many of its events until this is null again. */
@@ -2017,7 +2021,8 @@ const handlers: Handlers = {
   job_detail: ({ key }) => {
     const j = find(key);
     if (j === undefined) throw fail('notFound');
-    return structuredClone(detailOf(j));
+    const detail = structuredClone(detailOf(j));
+    return harness.editDetail === null ? detail : harness.editDetail(detail);
   },
   mark_read: ({ key }) => {
     const j = find(key);
@@ -2379,6 +2384,7 @@ const harness: Harness = {
   },
   done: false,
   detailDelay: 0,
+  editDetail: null,
   failPages: 0,
   holdAfter: null,
   clipboard: null,

@@ -688,11 +688,13 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // The day of the alert mail in the list row's words.
     expect(await cell(page, 'received')).toEqual(['07:30', '']);
-    // Verdicts are icons (no words), why in their tooltip: the reason that decided one, else
-    // why its criterion is met (the day rate 9 % above the minimum of 1.100 €).
+    // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
+    // wish met), else why its criterion is met.
     await expect(terms(page)).not.toContainText('passt');
     await expect(terms(page)).not.toContainText('Minimum');
-    expect(await verdictTip(page, 'rate')).toBe(words(T.reader.payMet.day(9)));
+    expect(await verdictTip(page, 'rate')).toBe(
+      'Der Tagessatz von 1.200 € erreicht den Wunsch von 1.200 €.',
+    );
     await expect(term(page, 'rate').getByTestId('verdict').locator('.reason')).toHaveAttribute(
       'aria-label',
       'Erfüllt',
@@ -883,21 +885,92 @@ test.describe('Jobdetails', () => {
   });
 
   test('every verdict icon says why in its tooltip', async ({ page }) => {
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await openAt(page, 'freelancermap-2801');
     for (const key of ['freelancermap-2801', 'freelance-900413', 'linkedin-4100200304']) {
-      await openAt(page, key);
+      await openJob(page, key);
       const icons = stage(page).locator(
         '[data-testid="verdict"] .reason, [data-testid="why"] [data-testid="reason"]',
       );
       const count = await icons.count();
       expect(count, key).toBeGreaterThan(3);
+      // One icon after the other under the pointer: the tooltip stays warm, each shows at once.
       for (let index = 0; index < count; index += 1) {
         const icon = icons.nth(index);
-        const text = await tip(page, icon);
+        await icon.scrollIntoViewIfNeeded();
+        await icon.hover();
+        const tooltip = page.getByRole('tooltip');
+        await expect(tooltip, `${key} ${index}`).toBeVisible();
+        const text = words(await tooltip.textContent());
         expect(text.length, `${key} ${index}`).toBeGreaterThan(5);
         // One plain sentence, never only the verdict's name.
         expect(Object.values(T.reader.verdict), `${key} ${index}`).not.toContain(text);
       }
+      await page.mouse.move(0, 0);
     }
+  });
+
+  test('pay and duration as the ad states them, the tooltip by the amount the rule compares', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    /** The engine's facts and criterion params of an ad the demo does not have (core
+     *  ad_facts and explain write them so), on the demo job opened next. */
+    const edit = (
+      facts: Record<string, unknown>,
+      criteria: Record<string, Record<string, unknown>>,
+    ): Promise<void> =>
+      page.evaluate(
+        ({ facts, criteria }) => {
+          window.__harness.editDetail = (detail) => {
+            const match = detail.job.match;
+            if (match) match.facts = { ...match.facts, ...facts };
+            for (const criterion of detail.match?.criteria ?? []) {
+              Object.assign(criterion.params, criteria[criterion.code] ?? {});
+            }
+            // Without a wish the minimum says why the pay is met.
+            if (detail.match) {
+              detail.match.reasons = detail.match.reasons.filter(
+                (reason) => reason.code !== 'dayRateWish',
+              );
+            }
+            return detail;
+          };
+        },
+        { facts, criteria },
+      );
+    // A range of day rates: both ends; its upper end meets the minimum of 1.100 €.
+    await edit({ rate: 1200, rateFrom: 900 }, { minDayRate: { rate: 1200, from: 900 } });
+    await openJob(page, 'freelancermap-2801');
+    expect(await cell(page, 'rate')).toEqual([
+      words(T.facts.payRange(900, 1200, 'day', null)),
+      'met',
+    ]);
+    expect(await verdictTip(page, 'rate')).toBe(words(T.reader.payMet.upper(9)));
+    // An hourly rate: per hour in the row, what it makes a day in the tooltip; weeks stay
+    // weeks, and a range of months shows both ends.
+    await edit(
+      { rate: 150, hourly: true, months: null, weeks: 9 },
+      { minDayRate: { rate: 150, hourly: true, perDay: 1200 }, duration: { weeks: 9 } },
+    );
+    await openJob(page, 'linkedin-4100200301');
+    expect(await term(page, 'rate').locator('.term-name').innerText()).toBe(T.reader.hourlyName);
+    expect((await cell(page, 'rate'))[0]).toBe(words(T.facts.pay(150, 'hour', null)));
+    expect((await cell(page, 'duration'))[0]).toBe(T.facts.duration(9, null, 'week'));
+    await edit({ months: 6, durationFrom: 3 }, {});
+    await openJob(page, 'freelancermap-2802');
+    expect((await cell(page, 'duration'))[0]).toBe(T.facts.duration(6, 3, 'month'));
+    // A salary with its bonus, and one in another currency: its own money, never "€".
+    await edit(
+      { salary: 130000, salaryFrom: 120000, salaryBonus: 20 },
+      { minSalary: { salary: 130000, from: 120000, bonus: 20, withBonus: 156000, min: 150000 } },
+    );
+    await openJob(page, 'linkedin-4100200303');
+    const salary = (await cell(page, 'rate'))[0];
+    expect(salary).toBe(words(T.facts.bonus(T.facts.payRange(120000, 130000, 'year', null), 20)));
+    expect(T.reason.code.salary({ salary: 180000, currency: 'CHF', min: 150000 })).toBe(
+      'Das Gehalt ist in CHF angegeben.',
+    );
   });
 
   test('a permanent job: its salary, no end, the contract met', async ({ page }) => {

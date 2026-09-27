@@ -900,6 +900,24 @@ Set 3 moves most: P1's S01 (grade 3 in content, excluded by the labels for `Mind
 below the target of 10) now leads its list. The floors in `matching_heldout.rs` follow the
 decision.
 
+The same version reads pay and duration as the ad states them, so the reader shows the number
+the rule compares:
+
+- A rate keeps the lower end of a range (`Rate::lower`, `rateFrom` in the key facts, `from` in
+  the params); the rule still compares the upper end, an hourly rate times 8 (`perDay` in the
+  criterion, `amount` the hourly one in `dayRate` and `dayRateWish`).
+- A salary counts with the bonus share its sentence names wherever it is compared: the
+  criterion (`salary_state`: `withBonus`), the finding and the key facts (`salaryBonus`,
+  `salaryFrom`) say one amount. A salary in another currency is never compared with a
+  minimum in euros: `NotMentioned` with its `currency`, and a `salary` check (it was compared
+  with the euro minimum before).
+- A duration in weeks stays in weeks (`weeks` in the key facts; `div_ceil(4)` made 9 weeks 3
+  months) and counts as a 4.33rd of a month against `min_laufzeit_monate`
+  (`Duration::below_months`); a range keeps its lower end (`durationFrom`).
+- `permanentRegion` names the minimum remote share only where the profile sets it.
+
+None of this moved a corpus row or a held-out total.
+
 ### Rubric of the AI prompts
 
 `core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts (until

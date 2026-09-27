@@ -865,3 +865,9 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   sentence. Every verdict icon says why, in the Jobdetails and in every item of the Anforderungen
   (`texts.ts` `reasonWhy`, the catalog's `reason.why`).
 - [x] Experience against Berufserfahrung, the field gone, the row and the requirements alike, every icon's tooltip
+- Pay and duration as the ad states them, one number everywhere: a range as a range ("900 bis 1.200 €/Tag", "3 bis
+  6 Monate"), an hourly rate per hour with what it makes a day in the tooltip, a salary with its bonus ("plus 20 %
+  Bonus", compared with it), one in another currency in its own money and never compared with a minimum in euros,
+  weeks as weeks ("9 Wochen", a 4.33rd of a month each); the tooltip of a permanent job's place names the remote
+  share and the minimum where they decide it.
+- [x] Pay and duration as the ad states them (engine 18), the reader's rows and tooltips

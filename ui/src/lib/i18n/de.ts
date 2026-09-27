@@ -310,14 +310,15 @@ function contractName(p: Params): string {
  *  ends), or an hourly one with what it makes a day (`rate` per day, `amount` per hour,
  *  `from` the lower end of a range). */
 function rateSubject(p: Params): string {
+  // A range with both ends, in the unit the ad states it (`from`).
+  const range = (to: Params[string] | undefined): string =>
+    typeof p.from === 'number' && p.from < num(to)
+      ? `${n(p.from)} bis ${formatEuro(to)}`
+      : formatEuro(to);
   if (p.hourly === true && typeof p.amount === 'number') {
-    return `Der Stundensatz von ${formatEuro(p.amount)} macht ${formatEuro(p.rate)} am Tag und`;
+    return `Der Stundensatz von ${range(p.amount)} macht ${formatEuro(p.rate)} am Tag und`;
   }
-  const rate =
-    typeof p.from === 'number' && p.from < num(p.rate)
-      ? `${n(p.from)} bis ${formatEuro(p.rate)}`
-      : formatEuro(p.rate);
-  return `Der Tagessatz von ${rate}`;
+  return `Der Tagessatz von ${range(p.rate)}`;
 }
 
 /** Wishes of the profile (`state` met, near, missed or unknown). */

@@ -276,6 +276,10 @@ impl Wording for German {
         plural(i64::from(months), "Monat", "Monate")
     }
 
+    fn weeks(&self, weeks: u16) -> String {
+        plural(i64::from(weeks), "Woche", "Wochen")
+    }
+
     fn remote(&self, from: u8, to: u8) -> String {
         match (from, to) {
             (0, 0) => "vor Ort, 0 %".to_owned(),
@@ -440,16 +444,24 @@ impl Wording for German {
             CriterionKey::Availability => {
                 text_param(ad, "start").map(|start| format!("Start {}", self.start(start)))
             }
-            CriterionKey::MinSalary => {
-                int(ad, "salary").map(|salary| format!("Jahresgehalt {}", money(salary, None)))
-            }
+            CriterionKey::MinSalary => int(ad, "salary").map(|salary| {
+                let bonus = int(ad, "bonus")
+                    .map(|b| format!(" plus {} Bonus", percent(b)))
+                    .unwrap_or_default();
+                format!(
+                    "Jahresgehalt {}{bonus}",
+                    money(salary, text_param(ad, "currency"))
+                )
+            }),
             CriterionKey::Workload => int(ad, "to").map(|to| match int(ad, "from") {
                 Some(from) if from == to => format!("Auslastung {}", percent(to)),
                 Some(from) => format!("Auslastung {} bis {}", percent(from), percent(to)),
                 None => format!("Auslastung bis {}", percent(to)),
             }),
             CriterionKey::Duration => int(ad, "months")
-                .map(|months| format!("Laufzeit {}", plural(months, "Monat", "Monate"))),
+                .map(|months| plural(months, "Monat", "Monate"))
+                .or_else(|| int(ad, "weeks").map(|weeks| plural(weeks, "Woche", "Wochen")))
+                .map(|length| format!("Laufzeit {length}")),
             CriterionKey::ExclusionWords => None,
         }
     }
@@ -532,12 +544,18 @@ impl Wording for German {
                 None => "Der Arbeitsort der Festanstellung ist unklar.".to_owned(),
             },
             ReasonCode::Salary => match (int(p, "salary"), int(p, "min")) {
+                _ if text_param(p, "currency").is_some_and(|c| c != "EUR") => format!(
+                    "Das Gehalt ist in {} angegeben, nicht in Euro.",
+                    text_param(p, "currency").unwrap_or_default()
+                ),
                 (Some(salary), Some(min)) => {
-                    let currency = text_param(p, "currency").filter(|c| *c != "EUR");
                     let from = if flag(p, "lowerBound") { "ab" } else { "von" };
+                    let bonus = int(p, "bonus")
+                        .map(|b| format!(" plus {} Bonus", percent(b)))
+                        .unwrap_or_default();
                     format!(
-                        "Das Jahresgehalt {from} {} liegt unter dem Minimum von {}.",
-                        money(salary, currency),
+                        "Das Jahresgehalt {from} {}{bonus} liegt unter dem Minimum von {}.",
+                        money(salary, None),
                         money(min, None)
                     )
                 }
@@ -638,10 +656,14 @@ impl Wording for German {
                 "Die Auslastung der Anzeige passt nicht zu den Tagen pro Woche im Profil."
                     .to_owned()
             }
-            ReasonCode::Duration => match (int(p, "months"), int(p, "min")) {
-                (Some(months), Some(min)) => format!(
-                    "Die Laufzeit von {} ist kürzer als die Mindestlaufzeit von {}.",
-                    plural(months, "Monat", "Monaten"),
+            ReasonCode::Duration => match (
+                int(p, "months")
+                    .map(|m| plural(m, "Monat", "Monaten"))
+                    .or_else(|| int(p, "weeks").map(|w| plural(w, "Woche", "Wochen"))),
+                int(p, "min"),
+            ) {
+                (Some(length), Some(min)) => format!(
+                    "Die Laufzeit von {length} ist kürzer als die Mindestlaufzeit von {}.",
                     plural(min, "Monat", "Monaten")
                 ),
                 _ => "Die Laufzeit ist kürzer als die Mindestlaufzeit.".to_owned(),

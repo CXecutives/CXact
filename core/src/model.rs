@@ -262,8 +262,23 @@ pub struct KeyFacts {
     pub rate_open: Option<bool>,
     /// Start: `now`, `vague` or an ISO date (`2026-11-01`).
     pub start: Option<String>,
-    /// Duration in months.
+    /// Duration in months (`weeks` instead when the ad states weeks).
     pub months: Option<u16>,
+    /// Duration in weeks, as the ad states it (never rounded up to months); left out when the
+    /// ad states months or nothing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub weeks: Option<u16>,
+    /// The lower end of a range of durations, in the unit of `months` or `weeks` (`3 bis 6
+    /// Monate`); left out without a range.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub duration_from: Option<u16>,
+    /// The lower end of a range of rates, per day or per hour as `rate` (`900 bis 1.200
+    /// €/Tag`); left out without a range.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub rate_from: Option<u32>,
     /// Remote share in percent, from and to (equal when the ad states one share).
     pub remote_from: Option<u8>,
     pub remote_to: Option<u8>,
@@ -288,6 +303,15 @@ pub struct KeyFacts {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(test, ts(optional))]
     pub salary_lower_bound: Option<bool>,
+    /// The lower end of a range of salaries in euros per year; left out without a range.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub salary_from: Option<u32>,
+    /// The bonus share (percent) the salary's sentence names (`plus bis zu 20 % Bonus`): the
+    /// minimum salary is compared with the salary and its bonus; left out without one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub salary_bonus: Option<u8>,
     /// The application deadline the ad names, an ISO date (`2026-10-15`); left out without
     /// one.
     #[serde(skip_serializing_if = "Option::is_none")]

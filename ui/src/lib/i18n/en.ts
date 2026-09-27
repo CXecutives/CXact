@@ -339,14 +339,15 @@ function contractName(p: Params): string {
  *  ends), or an hourly one with what it makes a day (`rate` per day, `amount` per hour,
  *  `from` the lower end of a range). */
 function rateSubject(p: Params): string {
+  // A range with both ends, in the unit the ad states it (`from`).
+  const range = (to: Params[string] | undefined): string =>
+    typeof p.from === 'number' && p.from < num(to)
+      ? `${n(p.from)} to ${formatEuro(to)}`
+      : formatEuro(to);
   if (p.hourly === true && typeof p.amount === 'number') {
-    return `The hourly rate of ${formatEuro(p.amount)} makes ${formatEuro(p.rate)} a day and`;
+    return `The hourly rate of ${range(p.amount)} makes ${formatEuro(p.rate)} a day and`;
   }
-  const rate =
-    typeof p.from === 'number' && p.from < num(p.rate)
-      ? `${n(p.from)} to ${formatEuro(p.rate)}`
-      : formatEuro(p.rate);
-  return `The day rate of ${rate}`;
+  return `The day rate of ${range(p.rate)}`;
 }
 
 /** Preferences of the profile (`state` met, near, missed or unknown). */

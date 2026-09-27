@@ -11,7 +11,7 @@ use std::ops::Range;
 
 use serde_json::{Map, Value, json};
 
-use super::ad_facts::{AdFacts, Stated};
+use super::ad_facts::{AdFacts, Duration, Stated};
 use super::contract::ContractKind;
 use super::facts::{Finding, HardCriteria, JobFacts, Segment, fact};
 use super::job::contains_word;
@@ -364,16 +364,28 @@ pub(crate) fn duration(criteria: &HardCriteria, ad: &AdFacts) -> Vec<Finding> {
     let (Some(min), Some(months)) = (criteria.min_months, ad.months.as_ref()) else {
         return Vec::new();
     };
-    if ad.contract == ContractKind::Permanent || months.value >= min {
+    if ad.contract == ContractKind::Permanent || !months.value.below_months(min) {
         return Vec::new();
     }
+    let mut params = duration_params(months.value);
+    params["min"] = json!(min);
     vec![Finding::new(
         ReasonCode::Duration,
         false,
         Some(CriterionKey::Duration),
-        json!({ "months": months.value, "min": min }),
+        params,
         months.span.clone().into_iter().collect(),
     )]
+}
+
+/// A duration as the ad states it: `months` or `weeks`, and `from` the lower end of a range.
+pub(crate) fn duration_params(duration: Duration) -> Value {
+    let unit = if duration.weeks { "weeks" } else { "months" };
+    let mut params = json!({ unit: duration.amount });
+    if let Some(from) = duration.from {
+        params["from"] = json!(from);
+    }
+    params
 }
 
 #[cfg(test)]

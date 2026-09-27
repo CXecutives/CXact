@@ -1046,6 +1046,9 @@ fn country(
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Rate {
     pub upper: u64,
+    /// The lowest amount of the statement: the lower end of a range (`900 - 1.200 €/Tag`),
+    /// else `upper`.
+    pub lower: u64,
     pub hourly: bool,
     pub currency: Option<&'static str>,
     /// Employment pay (`Stundenlohn`, `brutto pro Stunde`, a pay scale): the job is judged as
@@ -1054,13 +1057,19 @@ pub(crate) struct Rate {
 }
 
 impl Rate {
-    /// The rate per day (an hourly rate times eight); absurd digit runs saturate.
+    /// The rate per day (an hourly rate times eight); absurd digit runs saturate. A range
+    /// counts by its upper end.
     pub(crate) fn per_day(&self) -> u64 {
         if self.hourly {
             self.upper.saturating_mul(HOURS_PER_DAY)
         } else {
             self.upper
         }
+    }
+
+    /// The lower end of a range (per day or per hour, as stated), if the statement names one.
+    pub(crate) fn range_from(&self) -> Option<u64> {
+        (self.lower < self.upper).then_some(self.lower)
     }
 }
 
@@ -1258,7 +1267,8 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
             amounts.push(value);
         }
     }
-    let upper = amounts.into_iter().max()?;
+    let upper = amounts.iter().copied().max()?;
+    let lower = amounts.iter().copied().min().unwrap_or(upper);
     let names = |f: &str, words: &[&str]| words.iter().any(|w| f.contains(w));
     // The value beats its label: `Stundensatz: Tagessatz 1.100 - 1.250 €` is a day rate.
     let value = folded.split_once(':').map_or(folded, |(_, v)| v);
@@ -1270,6 +1280,7 @@ pub(crate) fn parse_rate(folded: &str) -> Option<Rate> {
         .copied();
     Some(Rate {
         upper,
+        lower,
         hourly,
         currency,
         wage: is_wage(folded),
@@ -1367,7 +1378,9 @@ fn day_rate(
     let per_day = rate.per_day();
     match criteria.min_rate {
         Some(min) if i128::from(per_day) < min => {
-            let params = json!({ "rate": per_day, "min": min.to_string(), "hourly": rate.hourly });
+            let mut params =
+                json!({ "rate": per_day, "min": min.to_string(), "hourly": rate.hourly });
+            rate_amounts(&mut params, &rate);
             vec![Finding::new(
                 ReasonCode::DayRate,
                 true,
@@ -1377,6 +1390,17 @@ fn day_rate(
             )]
         }
         _ => Vec::new(),
+    }
+}
+
+/// The amounts of a rate as the ad states them, next to its rate per day (`rate`): the hourly
+/// amount (`amount`), the lower end of a range in the stated unit (`from`).
+pub(crate) fn rate_amounts(params: &mut Value, rate: &Rate) {
+    if rate.hourly {
+        params["amount"] = json!(rate.upper);
+    }
+    if let Some(from) = rate.range_from() {
+        params["from"] = json!(from);
     }
 }
 
