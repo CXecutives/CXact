@@ -109,19 +109,14 @@
   /* A low arc that still stands apart from its track. */
   --p-score-low: 30 5% 56%;
   --p-score-low-text: 30 4% 42%;
-  /* The ring colour in ten steps by decile of the score (0-9 ... 90-100), red through
-     orange and yellow to green, clean and not neon (computed in OKLCH). The Excel file takes
-     the same steps (--score-ring-*, core/src/export/scale.rs). */
-  --p-score-0: 4 62% 58%;
-  --p-score-1: 13 69% 58%;
-  --p-score-2: 19 75% 58%;
-  --p-score-3: 25 79% 58%;
-  --p-score-4: 33 80% 58%;
-  --p-score-5: 40 77% 59%;
-  --p-score-6: 51 58% 54%;
-  --p-score-7: 68 43% 49%;
-  --p-score-8: 96 35% 50%;
-  --p-score-9: 140 41% 45%;
+  /* The ring colour in five steps of 20 points, red, orange, yellow, lime, green (the red
+     is the close button's). The Excel file takes the same steps (--score-ring-*,
+     core/src/export/scale.rs). */
+  --p-score-red: 358 75% 59%;
+  --p-score-orange: 24 87% 56%;
+  --p-score-yellow: 40 88% 59%;
+  --p-score-lime: 83 44% 51%;
+  --p-score-green: 139 44% 44%;
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 20% 30%;
   --p-shade-pop: 30 20% 20%;
@@ -272,19 +267,20 @@
   --mark-search: hsl(var(--p-warning) / 0.45);
 
   /* ------------------------------------------------------------------- score */
-  /* The ring of a scored job: its decile's step; the digits are ink (the ring carries the
-     colour). Excluded and unscored rings are not on the scale. The *-text tokens colour
+  /* The ring of a scored job: five colours from red to green, one per 20 points (user
+     decision 2026-09-27; the ten steps stay so every decile names its colour); the digits
+     are ink (the ring carries the colour). Excluded and unscored rings are not on the scale. The *-text tokens colour
      the band words (Hohe, Mittlere, Geringe Passung). */
-  --score-ring-0: hsl(var(--p-score-0));
-  --score-ring-1: hsl(var(--p-score-1));
-  --score-ring-2: hsl(var(--p-score-2));
-  --score-ring-3: hsl(var(--p-score-3));
-  --score-ring-4: hsl(var(--p-score-4));
-  --score-ring-5: hsl(var(--p-score-5));
-  --score-ring-6: hsl(var(--p-score-6));
-  --score-ring-7: hsl(var(--p-score-7));
-  --score-ring-8: hsl(var(--p-score-8));
-  --score-ring-9: hsl(var(--p-score-9));
+  --score-ring-0: hsl(var(--p-score-red));
+  --score-ring-1: hsl(var(--p-score-red));
+  --score-ring-2: hsl(var(--p-score-orange));
+  --score-ring-3: hsl(var(--p-score-orange));
+  --score-ring-4: hsl(var(--p-score-yellow));
+  --score-ring-5: hsl(var(--p-score-yellow));
+  --score-ring-6: hsl(var(--p-score-lime));
+  --score-ring-7: hsl(var(--p-score-lime));
+  --score-ring-8: hsl(var(--p-score-green));
+  --score-ring-9: hsl(var(--p-score-green));
   --score-digits: hsl(var(--p-ink));
   --score-high-ring: hsl(var(--p-score-high));
   --score-high-text: hsl(var(--p-score-high-text));

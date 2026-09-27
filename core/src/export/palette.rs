@@ -12,26 +12,26 @@ pub use super::colour::Colour;
 pub const BG: Colour = Colour::new("hsl(32 50% 94.5%)", [0xF8, 0xF1, 0xEA]);
 /// `--surface-muted` (`--p-muted`).
 pub const SURFACE_MUTED: Colour = Colour::new("hsl(33 40% 95.5%)", [0xF8, 0xF4, 0xEF]);
-/// `--score-ring-0` (`--p-score-0`).
-pub const SCORE_RING_0: Colour = Colour::new("hsl(4 62% 58%)", [0xD6, 0x5A, 0x51]);
-/// `--score-ring-1` (`--p-score-1`).
-pub const SCORE_RING_1: Colour = Colour::new("hsl(13 69% 58%)", [0xDE, 0x6A, 0x4A]);
-/// `--score-ring-2` (`--p-score-2`).
-pub const SCORE_RING_2: Colour = Colour::new("hsl(19 75% 58%)", [0xE4, 0x76, 0x44]);
-/// `--score-ring-3` (`--p-score-3`).
-pub const SCORE_RING_3: Colour = Colour::new("hsl(25 79% 58%)", [0xE9, 0x86, 0x3F]);
-/// `--score-ring-4` (`--p-score-4`).
-pub const SCORE_RING_4: Colour = Colour::new("hsl(33 80% 58%)", [0xEA, 0x9C, 0x3E]);
-/// `--score-ring-5` (`--p-score-5`).
-pub const SCORE_RING_5: Colour = Colour::new("hsl(40 77% 59%)", [0xE7, 0xB1, 0x46]);
-/// `--score-ring-6` (`--p-score-6`).
-pub const SCORE_RING_6: Colour = Colour::new("hsl(51 58% 54%)", [0xCE, 0xB9, 0x46]);
-/// `--score-ring-7` (`--p-score-7`).
-pub const SCORE_RING_7: Colour = Colour::new("hsl(68 43% 49%)", [0xA4, 0xB3, 0x47]);
-/// `--score-ring-8` (`--p-score-8`).
-pub const SCORE_RING_8: Colour = Colour::new("hsl(96 35% 50%)", [0x77, 0xAC, 0x53]);
-/// `--score-ring-9` (`--p-score-9`).
-pub const SCORE_RING_9: Colour = Colour::new("hsl(140 41% 45%)", [0x44, 0xA2, 0x63]);
+/// `--score-ring-0` (`--p-score-red`).
+pub const SCORE_RING_0: Colour = Colour::new("hsl(358 75% 59%)", [0xE5, 0x48, 0x4D]);
+/// `--score-ring-1` (`--p-score-red`).
+pub const SCORE_RING_1: Colour = Colour::new("hsl(358 75% 59%)", [0xE5, 0x48, 0x4D]);
+/// `--score-ring-2` (`--p-score-orange`).
+pub const SCORE_RING_2: Colour = Colour::new("hsl(24 87% 56%)", [0xF0, 0x7B, 0x2D]);
+/// `--score-ring-3` (`--p-score-orange`).
+pub const SCORE_RING_3: Colour = Colour::new("hsl(24 87% 56%)", [0xF0, 0x7B, 0x2D]);
+/// `--score-ring-4` (`--p-score-yellow`).
+pub const SCORE_RING_4: Colour = Colour::new("hsl(40 88% 59%)", [0xF2, 0xB5, 0x3A]);
+/// `--score-ring-5` (`--p-score-yellow`).
+pub const SCORE_RING_5: Colour = Colour::new("hsl(40 88% 59%)", [0xF2, 0xB5, 0x3A]);
+/// `--score-ring-6` (`--p-score-lime`).
+pub const SCORE_RING_6: Colour = Colour::new("hsl(83 44% 51%)", [0x8F, 0xB9, 0x4B]);
+/// `--score-ring-7` (`--p-score-lime`).
+pub const SCORE_RING_7: Colour = Colour::new("hsl(83 44% 51%)", [0x8F, 0xB9, 0x4B]);
+/// `--score-ring-8` (`--p-score-green`).
+pub const SCORE_RING_8: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x5E]);
+/// `--score-ring-9` (`--p-score-green`).
+pub const SCORE_RING_9: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x5E]);
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
 pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(30 5% 42%)", [0x70, 0x6B, 0x66]);
 /// `--brand` (`--p-brand`).
