@@ -6,8 +6,7 @@
 // A new glyph also gets its import in Icon.svelte (a type error names it).
 
 export const ICONS = {
-  // The four views (lib/views.ts).
-  overview: 'layout-dashboard',
+  // The three views (lib/views.ts).
   jobs: 'briefcase',
   profile: 'user-round',
   settings: 'settings',

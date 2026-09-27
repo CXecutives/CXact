@@ -463,11 +463,6 @@
      sidebar's first entry. */
   --list-header-top: calc(var(--pane-padding) - (var(--tabs-height) - var(--first-row)) / 2);
   --list-toolbar: var(--control-md);
-  /* The portal's small tile at the start of a row's company line. */
-  --portal-tile: 16px;
-  /* The round checkbox that takes a row's ring's place on hover (choosing several jobs). */
-  --row-check: 20px;
-  --row-check-border: 1.5px;
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps

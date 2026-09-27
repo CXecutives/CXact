@@ -60,7 +60,6 @@
   import House from '@lucide/svelte/icons/house';
   import Inbox from '@lucide/svelte/icons/inbox';
   import Info from '@lucide/svelte/icons/info';
-  import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
   import LogIn from '@lucide/svelte/icons/log-in';
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
@@ -135,7 +134,6 @@
     house: House,
     inbox: Inbox,
     info: Info,
-    'layout-dashboard': LayoutDashboard,
     'log-in': LogIn,
     'log-out': LogOut,
     mail: Mail,

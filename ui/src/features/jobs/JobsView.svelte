@@ -40,7 +40,7 @@
   import ReaderSkeleton from './ReaderSkeleton.svelte';
   import ListHeader from './ListHeader.svelte';
 
-  const OVERVIEW = 'overview';
+  const NO_JOB = 'none';
   const ERROR = 'error';
   const WAITING = 'waiting';
 
@@ -55,7 +55,7 @@
    * takes a while, else the place's empty state. While a job loads quickly the pane keeps
    * what it showed last.
    */
-  let shown = OVERVIEW;
+  let shown = NO_JOB;
   /** Counts the changes: a stage that comes back while the old one still fades is new. */
   let turns = 0;
   const stage = $derived.by((): { what: string; turn: number } => {
@@ -64,7 +64,7 @@
     if (selected && jobs.detailStatus === 'error') next = ERROR;
     else if (jobs.detail !== null) next = keyOf(jobs.detail.job.key);
     else if (selected && jobs.detailSlow) next = WAITING;
-    else if (!selected) next = OVERVIEW;
+    else if (!selected) next = NO_JOB;
     if (next !== shown) {
       shown = next;
       turns += 1;
@@ -72,7 +72,7 @@
     return { what: shown, turn: turns };
   });
   // One column shows the list or the reader.
-  const reading = $derived(stage.what !== OVERVIEW);
+  const reading = $derived(stage.what !== NO_JOB);
   // One column: a job in place of the list hides the run card too (the sidebar says the run).
   $effect(() => {
     shell.listHidden = reading && viewport.narrow;
@@ -217,9 +217,9 @@
     >
     <section class="right" data-testid="reader-pane" bind:this={right}>
       {#key stage.turn}
-        <div class="stage" data-testid="stage" in:enter={stage.what !== OVERVIEW} out:leave>
+        <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
           <div class="column">
-            {#if stage.what === OVERVIEW}
+            {#if stage.what === NO_JOB}
               <!-- No job open: the one empty state of every place (its icon, one sentence);
                    beside an empty list, which says it all, nothing. -->
               <div class="place-reader">
