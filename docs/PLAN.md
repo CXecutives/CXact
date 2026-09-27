@@ -832,8 +832,8 @@ lights 16 px from the left; colours only from the design's tokens (the close but
 - Each profile is a file of the old format in `profil/`: `beraterprofil.json` the first (the file of earlier
   versions, so an existing profile simply is the first one: nothing is moved, copied or rewritten), every further
   one `beraterprofil-<n>.json`, each with its one backup `<file>.bak`. `profil/profilliste.json` holds the active
-  one and the names the user gave (English keys, serde defaults; missing or unreadable: the first profile is active
-  and each goes by its role). A new profile takes the number after the highest file of the folder, a deleted
+  one, the one active before it and the names the user gave (English keys, serde defaults; missing or unreadable:
+  the first profile is active and each goes by its role). A new profile takes the number after the highest file of the folder, a deleted
   one's backup included, so its undo never meets another profile (`core/src/profile/set.rs`).
 - A switch (and a new, copied, loaded or deleted active profile) scores every job again (`scoring::profile_changed`).
   Refused in the dry run like every write; the demo keeps its own work folder.
@@ -854,3 +854,23 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
   review as before; nothing copies by itself any more.
 - [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
+
+## Profil design pass (user 2026-09-27: "gutes Design, überall"; supersedes the head above)
+- The head is the page's title: the active profile's name (26/600, heading colour, `data-copy`, an ellipsis when
+  long; "Neues Profil" while the form holds a new one), right after it a small ghost chevron that opens the menu of
+  the profiles under the title. "Aus Lebenslauf aktualisieren" (for a new or empty profile "erstellen") stays on the
+  title's line at the right edge, quiet (ghost with its glyph), and stays while a draft is in the form ("Erst
+  speichern oder verwerfen."), so the focus stays on it after "Übernehmen". A status only when needed.
+- One size for every choice of a few (Segmented): a field's 32 px, in Profil and Einstellungen alike. The day of
+  "Datum" slides in beside the choice, as high and as wide as a number field, its calendar button inside the field
+  at the right end like a native date picker.
+- Neues Profil and Aus Datei laden (menu and empty state, one name each) open a draft; only Speichern adds the
+  profile. A deleted active profile gives the place back to the one active before it; the toasts of a copy, a new
+  profile and a deletion name the profile active now; a switch says "Profil gewechselt, Jobs werden neu bewertet."
+- Languages have no "Offen" level (the engine assumes B2: a row without one shows B2, a new row starts at B2) and
+  column heads; Festanstellung says what it does in one sentence; a typed 0 where at least 1 counts is refused;
+  the workload counts once in "Werte prüfen"; the page keeps --page-end under the last section unless the save bar
+  is there.
+- [x] Head, choices, day field, drafts for new and loaded profiles, the audit's fixes, specs
+- [ ] The most important fields first, the rest marked optional (after the experience track is merged; Auslastung
+  and Mindestlaufzeit never exclude, so they move from Bedingungen to Wünsche)
