@@ -4,11 +4,14 @@
   the ring, then two lines (user decision 2026-09-27: the row says what, where and for how
   much, the reader everything else):
   1. the title on one line (every row one height; a cut title shows in full in a tooltip; an
-     unread title is drawn heavier without getting wider, so reading a job never moves it)
+     unread title is drawn heavier without getting wider, so reading a job never moves it;
+     while a search is on, its words are marked in the title in a soft yellow, in any case
+     and with or without accents, as the search finds them)
      and at the end of the line its stamp like a mail list (the time today, "Gestern",
      "Vorgestern", then "Mi 23.09."; in the Papierkorb the day the job went there). An ad
      that no longer takes applications says "Beendet" there, its title muted (the order by
-     match puts it after the open ones).
+     match puts it after the open ones); one whose application deadline is today or within
+     7 days names it there in red instead of the stamp ("Frist 15.10.").
   2. a building and the company, a map pin and the place (without the work mode a portal
      appends to it, lib/place.ts), and when the ad states it the euro and the day rate or
      the salary in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"); the company and
@@ -56,6 +59,44 @@
   /** The icon of the pay: the euro, pay in another currency its banknote (lib/facts.ts). */
   const payIcon = (job: JobView): IconName => termIcon('rate', job);
 
+  /** A character as the search compares it: lower case, without its accents. */
+  const fold = (char: string): string =>
+    char
+      .toLocaleLowerCase('de')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '');
+
+  /** `text` in parts, those that hold a word of the search marked (every place a word
+   *  stands, compared like the search: in any case, with or without accents). */
+  function markedParts(text: string, words: readonly string[]): { text: string; mark: boolean }[] {
+    const chars = Array.from(text);
+    if (words.length === 0 || chars.length === 0) return [{ text, mark: false }];
+    // The folded text, and for each of its characters the character of `text` it came from.
+    let folded = '';
+    const from: number[] = [];
+    chars.forEach((char, at) => {
+      for (const part of Array.from(fold(char))) {
+        folded += part;
+        from.push(at);
+      }
+    });
+    const marked = new Array<boolean>(chars.length).fill(false);
+    for (const word of words.map((each) => Array.from(each).map(fold).join(''))) {
+      if (word === '') continue;
+      for (let at = folded.indexOf(word); at >= 0; at = folded.indexOf(word, at + 1)) {
+        const end = from[at + word.length - 1] ?? chars.length - 1;
+        for (let index = from[at] ?? 0; index <= end; index += 1) marked[index] = true;
+      }
+    }
+    const parts: { text: string; mark: boolean }[] = [];
+    chars.forEach((char, at) => {
+      const last = parts.at(-1);
+      if (last !== undefined && last.mark === marked[at]) last.text += char;
+      else parts.push({ text: char, mark: marked[at] ?? false });
+    });
+    return parts;
+  }
+
   /** A tool of the row under the pointer: a move of the job's place (actions.ts rowTools). */
   export interface RowTool {
     id: string;
@@ -74,10 +115,11 @@
 <script lang="ts">
   import { contextMenu, doubleClick, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
-  import { displayTitle, formatStamp } from '$lib/i18n/format';
+  import { displayTitle, formatDay, formatStamp } from '$lib/i18n/format';
   import { dotOut, fade } from '$lib/motion/transitions';
   import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
+  import { localDay, soonDeadline } from '$lib/state/filter';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
@@ -94,6 +136,8 @@
     ring?: boolean;
     /** Fixed "now" for the stamp (gallery and tests). */
     now?: Date;
+    /** The words of the search the list shows (marked in the title). */
+    marks?: readonly string[];
     /** A click on the row. */
     onselect?: ((job: JobView) => void) | null;
     /** A double click on the row: the ad opens in the browser. */
@@ -113,6 +157,7 @@
     pending = false,
     ring = true,
     now,
+    marks = [],
     onselect = null,
     onopen = null,
     menu = null,
@@ -128,11 +173,22 @@
   const current = $derived(now ?? clock.now);
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
+  /** The title with the words of the search marked. */
+  const titleParts = $derived(markedParts(heading, marks));
   const place = $derived(placeOf(job.location));
   const pay = $derived(payOf(job));
-  /** The end of the title line: "Beendet" for an ad that takes no applications, else the
-   *  stamp. */
-  const stamp = $derived(job.closed ? t.job.closed : formatStamp(when, current));
+  /** The application deadline when it is today or within 7 days (the end of the title line
+   *  names it). */
+  const deadline = $derived(job.closed ? null : soonDeadline(job, localDay(current)));
+  /** The end of the title line: "Beendet" for an ad that takes no applications, a deadline
+   *  close by, else the stamp. */
+  const stamp = $derived(
+    job.closed
+      ? t.job.closed
+      : deadline !== null
+        ? t.job.deadline(formatDay(deadline, current))
+        : formatStamp(when, current),
+  );
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
@@ -199,9 +255,13 @@
         class="title"
         class:unread={job.unread}
         class:closed={job.closed}
-        use:tooltip={{ text: heading, truncated: true }}>{heading}</span
+        use:tooltip={{ text: heading, truncated: true }}
+        >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
+            >{:else}{part.text}{/if}{/each}</span
       >
-      <span class="date" data-testid="row-date"><span class="stamp">{stamp}</span></span>
+      <span class="date" class:soon={deadline !== null} data-testid="row-date"
+        ><span class="stamp">{stamp}</span></span
+      >
     </span>
     <span class="meta">
       {#if job.company}<span class="part company" data-testid="row-company"
@@ -300,6 +360,13 @@
     -webkit-text-stroke: calc(var(--border-width) * 0.4) currentcolor;
   }
 
+  /* A word of the search: a soft mark under the ink (the title's own colour). */
+  .hit {
+    border-radius: var(--radius-xs);
+    background-color: var(--mark);
+    color: inherit;
+  }
+
   /* An ad that takes no applications any more: its title steps back. */
   .title.closed {
     color: var(--text-muted);
@@ -330,9 +397,14 @@
     font-variant-numeric: var(--numeric);
   }
 
-  .job:hover:where(:not([data-still])) .date {
+  .job:hover:where(:not([data-still])) .date:not(.soon) {
     color: var(--text-muted);
     transition-duration: var(--dur-hover);
+  }
+
+  /* A deadline close by is red, also under the pointer. */
+  .date.soon {
+    color: var(--danger-strong);
   }
 
   /* Company and place: one line, each with its icon, cut at the line's end. */

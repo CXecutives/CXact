@@ -18,11 +18,13 @@
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
   one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). Without a mailbox one slim note at
-  the top says how to connect one; without a usable profile one says that there is no match
-  without it and leads to the Profil view (the rings stay, empty); a thin profile one calm
-  line that the match stays rough. A list that fails to load says only that, with a retry
-  (the header hides its tools).
+  says so and takes itself off ("Filter zurücksetzen"). An empty Eingang offers "Postfach
+  abrufen" (while a fetch can start), without a mailbox "Postfach verbinden" instead, which
+  opens Einstellungen at the mailbox card. Without a mailbox one slim note at the top says
+  how to connect one (unless the empty Eingang says it); without a usable profile one says
+  that there is no match without it and leads to the Profil view (the rings stay, empty); a
+  thin profile one calm line that the match stays rough. A list that fails to load says only
+  that, with a retry (the header hides its tools).
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
@@ -30,6 +32,7 @@
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
+  import type { EmptyAction } from '$components/EmptyState.svelte';
   import JobRow from '$components/JobRow.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
@@ -57,10 +60,18 @@
   }
   let { onresetfilter }: Props = $props();
 
-  const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
+  /** The placeholder rows while the list loads, each title and line a little shorter or
+   *  longer than the one before (percent of its room). */
+  const SKELETON_ROWS = [0, 1, 2, 3, 4, 5].map((index) => ({
+    index,
+    title: 72 - (index % 3) * 14,
+    meta: 48 + (index % 2) * 12,
+  }));
 
   const shown = $derived(jobs.shown);
   const searching = $derived(jobs.search.trim() !== '');
+  /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
+  const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
   /** The rows as far as the window reaches: the active ones, then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job)));
   const excluded = $derived(shown.filter(isExcluded));
@@ -144,6 +155,43 @@
     navigation.go('profile');
   }
   const mailboxMissing = $derived(app.state !== null && !app.hasMailbox);
+
+  /** Einstellungen at the mailbox card, its "Verbinden" focused (the view keeps no other
+   *  scroll place for this way). */
+  function toMailbox(): void {
+    navigation.go('settings', false, () => {
+      void tick().then(() =>
+        requestAnimationFrame(() => {
+          const card = document.querySelector<HTMLElement>('[data-testid="settings-mailbox"]');
+          if (card === null) return;
+          glideIntoView(card, 'nearest');
+          card
+            .querySelector<HTMLElement>('[data-testid="mailbox-connect"]')
+            ?.focus({ preventScroll: true });
+        }),
+      );
+    });
+  }
+
+  /** The way on from an empty Eingang (secondary: the header holds the view's primary):
+   *  without a mailbox to connect one, else to fetch while a fetch can start. */
+  const emptyAction = $derived.by((): EmptyAction | null => {
+    if (mailboxMissing) return { label: t.list.connectMailbox, onclick: toMailbox };
+    if (run.fetchBlocked !== null) return null;
+    return {
+      label: t.toolbar.fetch,
+      icon: 'fetch',
+      onclick: () => void run.start({ kind: 'fetch' }),
+    };
+  });
+  /** The empty Eingang says the list stays empty without a mailbox (not the note too). */
+  const emptyInboxShown = $derived(
+    jobs.place === 'inbox' &&
+      jobs.status === 'ready' &&
+      jobs.visible.length === 0 &&
+      !searching &&
+      !filterEmptied,
+  );
   /** A profile the app understands little of: the fit is rough, said once on top. */
   const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
   // Jobs without a match get one soon while a run goes or a rescore is pending.
@@ -403,13 +451,13 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
-  {#if mailboxMissing}
+  {#if mailboxMissing && !emptyInboxShown}
     <div class="note">
       <Notice
         tone="info"
         variant="row"
         text={t.list.noMailbox}
-        action={{ label: t.list.connectMailbox, onclick: () => navigation.go('settings') }}
+        action={{ label: t.list.connectMailbox, onclick: toMailbox }}
         testid="no-mailbox"
       />
     </div>
@@ -458,20 +506,23 @@
       />
     </div>
   {:else if jobs.rows.length === 0 && jobs.status !== 'ready'}
-    <!-- Only once the list has taken a while (jobs.slow): then at once, never blank rows. -->
-    {#if jobs.slow}
-      <div class="skeletons" data-testid="list-skeleton">
-        {#each SKELETON_ROWS as index (index)}
-          <div class="skeleton-row">
-            <Skeleton shape="circle" size="sm" />
-            <span class="lines">
-              <span class="line title"><Skeleton width={70} /></span>
-              <span class="line"><Skeleton width={45} /></span>
+    <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
+         jump); they fade in once the list has taken --delay-placeholder (at once when it has
+         already, jobs.slow), so a quick list never shows them. -->
+    <div class="skeletons" data-testid="list-skeleton">
+      {#each SKELETON_ROWS as line (line.index)}
+        <div class="skeleton-row">
+          <Skeleton shape="circle" size="sm" late={!jobs.slow} />
+          <span class="lines">
+            <span class="line title">
+              <span class="grow"><Skeleton width={line.title} late={!jobs.slow} /></span>
+              <span class="stamp"><Skeleton late={!jobs.slow} /></span>
             </span>
-          </div>
-        {/each}
-      </div>
-    {/if}
+            <span class="line"><Skeleton width={line.meta} late={!jobs.slow} /></span>
+          </span>
+        </div>
+      {/each}
+    </div>
   {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
     <div class="empty">
       {#if searching}
@@ -504,8 +555,14 @@
           testid="empty-place-{place}"
         />
       {:else}
-        <!-- A fetch that goes, none yet, or one that read no jobs: what comes. -->
-        <EmptyState icon="inbox" tone="neutral" text={emptyInbox} testid="empty-all" />
+        <!-- A fetch that goes, none yet, or one that read no jobs: what comes, and the way on. -->
+        <EmptyState
+          icon="inbox"
+          tone="neutral"
+          text={mailboxMissing ? t.list.noMailbox : emptyInbox}
+          secondary={emptyAction}
+          testid="empty-all"
+        />
       {/if}
     </div>
   {:else}
@@ -514,6 +571,7 @@
       <JobRow
         {job}
         ring={!profileMissing}
+        marks={searchWords}
         pending={pending && job.match === null}
         selected={open}
         bar={false}
@@ -691,7 +749,19 @@
   }
 
   .line.title {
+    gap: var(--space-6);
     height: var(--leading-title);
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* The stamp at the end of the title line (the time of a mail). */
+  .stamp {
+    flex: none;
+    width: calc(var(--control-sm) + var(--space-8));
   }
 
   .sentinel {

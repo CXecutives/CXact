@@ -677,6 +677,7 @@ export const en: Catalog = {
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
     closed: 'Closed',
+    deadline: (day: string) => `Due ${day}`,
   },
   toolbar: {
     fetch: 'Check mailbox',
@@ -693,26 +694,31 @@ export const en: Catalog = {
     sortLabel: {
       match: 'By match',
       newest: 'By date',
+      rate: 'By day rate',
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Sort and filter',
     chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Match',
-    allPortals: 'All portals',
     band: {
-      any: 'Any',
       mid: 'Medium or high',
       high: 'High only',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     bandChip: {
       mid: 'Medium or high match',
       high: 'High match only',
     } satisfies Record<'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
     contractHeading: 'Contract',
-    anyContract: 'Any contract',
     remoteOnly: 'Remote only',
+    remoteOrHybrid: 'Remote or hybrid',
+    pay: {
+      min: 'From my minimum day rate',
+      wish: 'From my preferred day rate',
+    } satisfies Record<'min' | 'wish', string>,
+    unreadOnly: 'New only',
+    deadlineSoon: 'Deadline within 7 days',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
@@ -731,12 +737,14 @@ export const en: Catalog = {
       overviewLocked: 'The Excel file is open in another program and was left unchanged.',
       csv: 'The CSV file could not be written and was left unchanged.',
       csvLocked: 'The CSV file is open in another program and was left unchanged.',
-      txt: 'Not all text files could be written.',
-      txtFolder: 'The folder of the text files cannot be reached.',
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The result folder cannot be reached.',
     },
     checkMailbox: 'Review mailbox',
+    paused: (portal: string, until: string | null) =>
+      until === null
+        ? `${portalOf(portal)} paused`
+        : `${portalOf(portal)} paused until ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -751,7 +759,7 @@ export const en: Catalog = {
     createProfile: 'Create profile',
     openProfile: 'Open profile',
     noMailbox: 'Without a mailbox, no new jobs come in.',
-    noProfile: 'Without a profile, there is no match.',
+    noProfile: 'No match without a profile.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profile without skills',
     profileBrokenText: 'That is why the jobs show no match.',
@@ -1117,13 +1125,6 @@ export const en: Catalog = {
     changeHeading: 'Change mailbox',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
-    range: 'Period',
-    rangeName: {
-      sinceLast: 'Since the last fetch',
-      days7: '7 days',
-      days30: '30 days',
-      all: 'All',
-    },
     quota: (used: number, cap: number) => `Today ${n(used)} of ${n(cap)} calls`,
     signIn: 'Sign in',
     signOut: 'Sign out',
@@ -1220,10 +1221,15 @@ export const en: Catalog = {
     trashed: 'Deleted',
     restored: 'Restored',
     deleted: 'Deleted forever',
-    included: 'Scored',
+    included: 'Scored anyway',
     excluded: 'Excluded',
     trashEmptied: 'Trash emptied',
-    runDone: (value: number) => (value === 0 ? 'No new jobs' : count(value, 'new job', 'new jobs')),
+    runDone: (value: number, high = 0) =>
+      value === 0
+        ? 'No new jobs'
+        : high === 0
+          ? count(value, 'new job', 'new jobs')
+          : `${count(value, 'new job', 'new jobs')}, ${n(high)} with a high match`,
     show: 'Show',
   },
   error: {

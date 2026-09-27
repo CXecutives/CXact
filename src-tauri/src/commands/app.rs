@@ -134,6 +134,10 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             min_band: None,
             contracts: Vec::new(),
             remote_only: false,
+            remote_or_hybrid: false,
+            min_day_rate: None,
+            min_salary: None,
+            deadline_soon: false,
         },
     )?
     .counts;

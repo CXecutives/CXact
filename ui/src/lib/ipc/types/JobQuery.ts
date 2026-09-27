@@ -9,7 +9,8 @@ import type { Portal } from "./Portal";
  */
 export type JobQuery = { place: Place, 
 /**
- * Only the unread jobs (the excluded ones last, uncounted).
+ * The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
+ * narrows the list and all its counts.
  */
 unread: boolean, 
 /**
@@ -37,6 +38,23 @@ contracts: Array<string>,
  * states is 100 %, or, where it states none, the location names the work mode remote.
  */
 remoteOnly: boolean, 
+/**
+ * The filter: only remote or hybrid jobs - the highest remote share the ad states is
+ * above 0 %, or, where it states none, the location names the work mode remote or hybrid.
+ */
+remoteOrHybrid: boolean, 
+/**
+ * The filter: only jobs whose pay reaches the profile's floor - the day rate in euros
+ * (an hourly rate times 8) at least `min_day_rate`, for employment (`permanent`,
+ * `anue`) the annual salary at least `min_salary`. A job without a stated pay, or of a
+ * kind whose floor is `null`, does not pass; both `null` = no pay filter.
+ */
+minDayRate: number | null, minSalary: number | null, 
+/**
+ * The filter: only jobs whose application deadline (`KeyFacts.deadline`) is today or
+ * within the next [`DEADLINE_DAYS`] days, local time.
+ */
+deadlineSoon: boolean, 
 /**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */

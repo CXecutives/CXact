@@ -23,7 +23,7 @@ import { invoke } from '$lib/ipc/api';
 import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
 import { app } from '$lib/state/app.svelte';
-import { inList, isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
+import { isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText, run } from '$lib/state/run.svelte';
@@ -372,7 +372,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   if (list.length === 0 || guarded()) return null;
   // Only rows that leave the list fold away, and only a few: many rows folding at once would
   // hold the page for frames.
-  const leaving = list.filter((job) => !inList({ ...job, place: to }, jobs.place, jobs.filter));
+  const leaving = list.filter((job) => !jobs.lists({ ...job, place: to }));
   const next = leaving.length > 0 ? nextAfter(leaving) : null;
   const focus = inRow();
   const folding = leaving.length <= staggerLimit() ? leaving : [];

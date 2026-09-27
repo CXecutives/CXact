@@ -3,7 +3,9 @@
 
 use std::fmt::Write as _;
 
+use jiff::civil::Date;
 use jiff::{SignedDuration, Timestamp};
+use rusqlite::types::Value;
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 use url::Url;
 
@@ -91,7 +93,8 @@ impl JobRow {
 }
 
 /// The list's filter (the funnel menu) beside the search: one portal, a lowest band, contract
-/// types and remote only. Like the search it narrows the list and all its counts.
+/// types, the work mode, the pay and the deadline. Like the search it narrows the list and
+/// all its counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
     /// Only this portal's jobs (`None` = every portal).
@@ -105,25 +108,70 @@ pub struct ListFilter {
     /// Only remote jobs: the remote share of the key facts is 100 %, or, where they state
     /// none, the location names the work mode remote (`view::work_mode`).
     pub remote_only: bool,
+    /// Only remote or hybrid jobs: the highest remote share of the key facts is above 0 %,
+    /// or, where they state none, the location names the work mode remote or hybrid.
+    pub remote_or_hybrid: bool,
+    /// Only jobs whose pay reaches a floor: the day rate in euros ([`day_rate`]) at least
+    /// `min_day_rate`, for employment the annual salary at least `min_salary`; a job without
+    /// a stated pay, or of a kind whose floor is `None`, does not pass. Both `None` = none.
+    pub min_day_rate: Option<u32>,
+    pub min_salary: Option<u32>,
+    /// Only jobs whose application deadline (`KeyFacts.deadline`) lies between these days,
+    /// both included (`None` = none).
+    pub deadline: Option<(Date, Date)>,
 }
 
 impl ListFilter {
-    /// The lowest score of the band filter (`None` = none).
-    pub(super) fn min_score(&self) -> Option<u8> {
-        self.min_band.map(Band::lowest)
+    /// The values [`filter_condition`] binds, in the order of its placeholders.
+    pub(super) fn values(&self) -> [Value; FILTER_VALUES] {
+        let int = |value: Option<i64>| value.map_or(Value::Null, Value::Integer);
+        let text = |value: Option<String>| value.map_or(Value::Null, Value::Text);
+        [
+            text(self.portal.map(|portal| portal.key().to_owned())),
+            int(self.min_band.map(|band| i64::from(Band::lowest(band)))),
+            // The contract types as a JSON array.
+            text(
+                (!self.contracts.is_empty())
+                    .then(|| serde_json::to_string(&self.contracts).unwrap_or_default()),
+            ),
+            Value::Integer(i64::from(self.remote_only)),
+            Value::Integer(i64::from(self.remote_or_hybrid)),
+            int(self.min_day_rate.map(i64::from)),
+            int(self.min_salary.map(i64::from)),
+            text(self.deadline.map(|(from, _)| from.to_string())),
+            text(self.deadline.map(|(_, to)| to.to_string())),
+        ]
     }
+}
 
-    /// The contract types as a JSON array for the statement (`None` = none).
-    pub(super) fn contracts_json(&self) -> Option<String> {
-        (!self.contracts.is_empty())
-            .then(|| serde_json::to_string(&self.contracts).unwrap_or_default())
-    }
+/// The contract types of employment: they pay a salary, not a day rate (like the list row).
+const EMPLOYMENT: &str = "('permanent', 'anue')";
+
+/// A key fact of the match note (`p`: the prefix of its column).
+fn fact(p: &str, name: &str) -> String {
+    format!("json_extract({p}match_note, '$.facts.{name}')")
+}
+
+/// SQL for the day rate the ad states in euros, as the list row and the Excel file read it:
+/// an hourly rate times 8; `NULL` for employment (it pays a salary), for a rate in another
+/// currency and without one (`p`: the prefix of the columns).
+fn day_rate(p: &str) -> String {
+    format!(
+        "(CASE WHEN COALESCE({contract}, '') IN {EMPLOYMENT}
+                    OR COALESCE({currency}, 'EUR') <> 'EUR' THEN NULL
+               ELSE {rate} * (CASE WHEN {hourly} THEN 8 ELSE 1 END) END)",
+        contract = fact(p, "contract"),
+        currency = fact(p, "currency"),
+        rate = fact(p, "rate"),
+        hourly = fact(p, "hourly"),
+    )
 }
 
 /// The order of a page of the list (`p`: the prefix of its columns). Excluded jobs always
 /// come last; "match" puts the jobs still without a score first (the list's section "Noch
 /// ohne Passung" on top, so every page it loads is complete), then the best score first;
-/// "newest" the latest first sighting. The trash lists the latest trashed first.
+/// "rate" the highest day rate first ([`day_rate`]), the jobs without one last; "newest" the
+/// latest first sighting. The trash lists the latest trashed first.
 fn page_order(query: &PageQuery, p: &str) -> String {
     // "By date": the date of the alert mail; in the trash the day it went there.
     let date = if query.place == Place::Trash {
@@ -137,6 +185,9 @@ fn page_order(query: &PageQuery, p: &str) -> String {
             format!("({p}match_score IS NOT NULL), "),
             format!("{p}match_score DESC, json_extract({p}match_note, '$.rank') DESC, "),
         )
+    } else if query.by_rate {
+        let rate = day_rate(p);
+        (String::new(), format!("({rate} IS NULL), {rate} DESC, "))
     } else {
         (String::new(), String::new())
     };
@@ -165,27 +216,67 @@ fn per_portal_columns(new: &str) -> (String, String) {
     (columns, out)
 }
 
-/// The condition of a [`ListFilter`] on the `job` table: `portal` binds its key, `score` the
-/// lowest score, `contracts` a JSON array of contract types (each `NULL` for no filter),
-/// `remote` whether only remote jobs pass. Contract type and remote share come from the key
-/// facts in the match note, the work mode from the location.
-pub(super) fn filter_condition(portal: &str, score: &str, contracts: &str, remote: &str) -> String {
-    let share = "COALESCE(json_extract(match_note, '$.facts.remoteFrom'),
-                          json_extract(match_note, '$.facts.remoteTo'))";
+/// How many values [`filter_condition`] binds ([`ListFilter::values`]).
+pub(super) const FILTER_VALUES: usize = 9;
+
+/// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
+/// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score, a
+/// JSON array of contract types, remote only, remote or hybrid, the day rate and the salary
+/// floor, the first and the last day of the deadline (each `NULL` for none). Contract type,
+/// remote share, pay and deadline come from the key facts in the match note, the work mode
+/// from the location.
+pub(super) fn filter_condition(first: usize) -> String {
+    let [
+        portal,
+        score,
+        contracts,
+        remote,
+        hybrid,
+        min_rate,
+        min_salary,
+        deadline_from,
+        deadline_to,
+    ] = std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
+    // The share the ad states first (remote only: all of it; hybrid: any of it).
+    let share = format!(
+        "COALESCE({}, {})",
+        fact("", "remoteFrom"),
+        fact("", "remoteTo")
+    );
+    let most = format!(
+        "COALESCE({}, {})",
+        fact("", "remoteTo"),
+        fact("", "remoteFrom")
+    );
     format!(
         "({portal} IS NULL OR portal = {portal})
          AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))
-         AND ({contracts} IS NULL OR json_extract(match_note, '$.facts.contract')
+         AND ({contracts} IS NULL OR {contract}
                                      IN (SELECT value FROM json_each({contracts})))
          AND (NOT {remote} OR CASE WHEN {share} IS NOT NULL THEN {share} >= 100
-                                   ELSE {} END)",
-        location_remote()
+                                   ELSE {location_remote} END)
+         AND (NOT {hybrid} OR CASE WHEN {most} IS NOT NULL THEN {most} > 0
+                                   ELSE {location_away} END)
+         AND (({min_rate} IS NULL AND {min_salary} IS NULL)
+              OR COALESCE(CASE WHEN COALESCE({contract}, '') IN {EMPLOYMENT}
+                               THEN {salary} >= {min_salary}
+                               ELSE {rate} >= {min_rate} END, 0))
+         AND ({deadline_from} IS NULL
+              OR {deadline} BETWEEN {deadline_from} AND {deadline_to})",
+        contract = fact("", "contract"),
+        salary = fact("", "salary"),
+        deadline = fact("", "deadline"),
+        rate = day_rate(""),
+        location_remote = location_mode(false),
+        location_away = location_mode(true),
     )
 }
 
 /// SQL that is true where the location names the work mode remote, like `view::work_mode`:
 /// a remote word and neither a hybrid nor an on-site word, each a whole word in any case.
-fn location_remote() -> String {
+/// `or_hybrid`: remote or hybrid - a remote or a hybrid word (remote and on-site together
+/// are hybrid).
+fn location_mode(or_hybrid: bool) -> String {
     use crate::view::{HYBRID_WORDS, ONSITE_WORDS, REMOTE_WORDS};
     // A word between two characters that are no word characters (the location padded with
     // spaces, so its start and end count too). The words are constants of the code.
@@ -198,6 +289,9 @@ fn location_remote() -> String {
             .collect();
         format!("({})", each.join(" OR "))
     };
+    if or_hybrid {
+        return format!("({} OR {})", any(&REMOTE_WORDS), any(&HYBRID_WORDS));
+    }
     format!(
         "({} AND NOT {} AND NOT {})",
         any(&REMOTE_WORDS),
@@ -207,15 +301,17 @@ fn location_remote() -> String {
 }
 
 /// One page of the job list: the jobs of one place, optionally only the unread ones. The
-/// counts cover the search and the filter, whatever the place and the unread filter.
+/// counts cover the search and the filter (the unread one too), whatever the place.
 #[derive(Debug, Clone, Default)]
 pub struct PageQuery {
     pub place: Place,
-    /// Only unread jobs (the excluded ones last, uncounted).
+    /// Only unread jobs: like the filter it narrows the list and the counts.
     pub unread: bool,
     /// The jobs without a score first, then the best match; otherwise by date: the alert
     /// mail's, in the trash the day it went there; excluded jobs last either way.
     pub by_match: bool,
+    /// The highest day rate first, the jobs without one last (instead of `by_match`).
+    pub by_rate: bool,
     /// Search: every word in the portal's name, title, company, location or full text
     /// (case-insensitive, in any order).
     pub search: Option<String>,
@@ -418,22 +514,18 @@ impl Store {
         let conn = self.conn();
         let words = search_words(query.search.as_deref());
         let order = |p: &str| page_order(query, p);
-        // The counts of the inbox leave the archive and the trash out. The unread filter lists
-        // every unread job, the excluded ones last (grey in the list); its count leaves them
-        // out. The excluded jobs are counted per place, so the list's section says its number
-        // before every page is there.
+        // The counts of the inbox leave the archive and the trash out. The unread filter
+        // narrows them like the rest of the filter; the unread count leaves the excluded
+        // jobs out. The excluded jobs are counted per place, so the list's section says its
+        // number before every page is there.
         let shown = INBOX;
         let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
-        let place = place_condition(query.place);
-        let facet = if query.unread {
-            format!("{place} AND read_at IS NULL")
-        } else {
-            place.to_owned()
-        };
+        let facet = place_condition(query.place);
         let (per_portal, per_portal_out) = per_portal_columns(&new);
         let sql = format!(
             "WITH base AS (
                  SELECT * FROM job WHERE dup_of IS NULL AND {words} AND {filter}
+                                     AND (NOT ?5 OR read_at IS NULL)
              ), counts AS (
                  SELECT COALESCE(SUM({shown}), 0) AS n_inbox,
                         COALESCE(SUM({new}), 0) AS n_unread,
@@ -463,7 +555,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition("?5", "?6", "?7", "?8"),
+            filter = filter_condition(6),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -472,20 +564,16 @@ impl Store {
         let mut stmt = conn.prepare_cached(&sql)?;
         let mut counts = PageCounts::default();
         let mut jobs = Vec::new();
-        let (portal, min) = (
-            query.filter.portal.map(Portal::key),
-            query.filter.min_score(),
-        );
-        let mut rows = stmt.query(params![
-            words,
-            query.limit,
-            query.offset,
-            HIGH_FROM,
-            portal,
-            min,
-            query.filter.contracts_json(),
-            query.filter.remote_only,
-        ])?;
+        let values = [
+            words.map_or(Value::Null, Value::Text),
+            Value::Integer(i64::from(query.limit)),
+            Value::Integer(i64::from(query.offset)),
+            Value::Integer(i64::from(HIGH_FROM)),
+            Value::Integer(i64::from(query.unread)),
+        ]
+        .into_iter()
+        .chain(query.filter.values());
+        let mut rows = stmt.query(rusqlite::params_from_iter(values))?;
         while let Some(row) = rows.next()? {
             let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());
             for (i, portal) in Portal::ALL.into_iter().enumerate() {

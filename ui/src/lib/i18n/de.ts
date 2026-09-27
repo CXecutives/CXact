@@ -762,6 +762,9 @@ export const de = {
     untitled: 'Job ohne Titel',
     /** An ad that takes no applications any more (the end of its row's first line). */
     closed: 'Beendet',
+    /** An application deadline today or within 7 days, in red at the same place ("Frist
+     *  15.10."). */
+    deadline: (day: string) => `Frist ${day}`,
   },
   toolbar: {
     fetch: 'Postfach abrufen',
@@ -782,6 +785,7 @@ export const de = {
     sortLabel: {
       match: 'Nach Übereinstimmung',
       newest: 'Nach Datum',
+      rate: 'Nach Tagessatz',
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
@@ -792,14 +796,12 @@ export const de = {
     chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
-    allPortals: 'Alle Portale',
-    /** The lowest band of the filter under its heading (`any`: every job, also one without a
-     *  score), and as a chip, where the heading is not beside it. */
+    /** The lowest band of the filter under its heading, and as a chip, where the heading is
+     *  not beside it. */
     band: {
-      any: 'Jede',
       mid: 'Ab mittel',
       high: 'Nur hoch',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     bandChip: {
       mid: 'Ab mittlerer Übereinstimmung',
       high: 'Nur hohe Übereinstimmung',
@@ -807,9 +809,18 @@ export const de = {
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     contractHeading: 'Vertragsart',
-    anyContract: 'Jede Vertragsart',
-    /** A switch of its own behind a line (remote or not is no place). */
+    /** The work mode: two choices behind a line, their words speak for themselves. */
     remoteOnly: 'Nur remote',
+    remoteOrHybrid: 'Remote oder hybrid',
+    /** The pay against the profile's floors: each only while the profile names its day rate
+     *  (employment is held against the minimum salary). */
+    pay: {
+      min: 'Ab meinem Mindesttagessatz',
+      wish: 'Ab meinem Wunschtagessatz',
+    } satisfies Record<'min' | 'wish', string>,
+    /** Switches of their own behind a line: the jobs not opened yet, a deadline close by. */
+    unreadOnly: 'Nur neue',
+    deadlineSoon: 'Frist in 7 Tagen',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
@@ -835,13 +846,17 @@ export const de = {
         'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
       csv: 'Die CSV-Datei ließ sich nicht schreiben und blieb unverändert.',
       csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-      txt: 'Nicht alle Textdateien ließen sich schreiben.',
-      txtFolder: 'Der Ordner der Textdateien ist nicht erreichbar.',
       backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Ergebnisordner ist nicht erreichbar.',
     },
     checkMailbox: 'Postfach prüfen',
+    /** A portal the fetch paused or that reached its limit, until when (the portal key and
+     *  an ISO moment): once in the run line after the fetch, several in one line. */
+    paused: (portal: string, until: string | null) =>
+      until === null
+        ? `${portalOf(portal)} pausiert`
+        : `${portalOf(portal)} pausiert bis ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -861,7 +876,7 @@ export const de = {
     openProfile: 'Profil öffnen',
     noMailbox: 'Ohne Postfach kommen keine neuen Jobs dazu.',
     /** No usable profile: said once, at the top of the list. */
-    noProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
+    noProfile: 'Ohne Profil keine Übereinstimmung.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil ohne Kompetenzen',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
@@ -1339,14 +1354,6 @@ export const de = {
     changeHeading: 'Postfach ändern',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    /** Which alert mails "Postfach abrufen" reads (`fetchRange`). */
-    range: 'Zeitraum',
-    rangeName: {
-      sinceLast: 'Seit dem letzten Abruf',
-      days7: '7 Tage',
-      days30: '30 Tage',
-      all: 'Alle',
-    } satisfies Record<FetchRange, string>,
     /** The calls of a portal today (counted from midnight). */
     quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Aufrufen`,
     signIn: 'Anmelden',
@@ -1473,12 +1480,17 @@ export const de = {
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */
     deleted: 'Endgültig gelöscht',
-    included: 'Bewertet',
+    included: 'Trotzdem bewertet',
     excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert',
-    /** At the end of a fetch: what it brought (new, not excluded). */
-    runDone: (value: number) =>
-      value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),
+    /** At the end of a fetch: what it brought (new, not excluded), and how many of them are
+     *  in the high band. */
+    runDone: (value: number, high = 0) =>
+      value === 0
+        ? 'Keine neuen Jobs'
+        : high === 0
+          ? count(value, 'neuer Job', 'neue Jobs')
+          : `${count(value, 'neuer Job', 'neue Jobs')}, ${n(high)} mit hoher Übereinstimmung`,
     /** The way from a toast to what it tells of (the finished fetch in the Jobs view). */
     show: 'Zeigen',
   },

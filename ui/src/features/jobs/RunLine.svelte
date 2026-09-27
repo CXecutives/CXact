@@ -8,8 +8,10 @@
   refused or files that could not be written leave one note instead, drawn like every other
   note of the list column (Notice, a row in the warning tone): what went wrong, the way on
   ("Erneut versuchen" with its glyph, or where the fix is) and a × that hides it until the
-  next run. The line unfolds and folds away (lib/motion unfold), so the list below glides;
-  its rows never flicker.
+  next run. A fetch that went well but paused a portal on its way (or found it at its limit)
+  says so once in the same place, quietly ("freelancermap pausiert bis 14:00", with its ×).
+  The line unfolds and folds away (lib/motion unfold), so the list below glides; its rows
+  never flicker.
 -->
 <script lang="ts">
   import Meter from '$components/Meter.svelte';
@@ -23,6 +25,7 @@
     exportError,
     exportText,
     failureAction,
+    pausedText,
     run,
     type FailureAction,
   } from '$lib/state/run.svelte';
@@ -83,6 +86,9 @@
     }
     return null;
   });
+
+  /** The portals the last fetch of this session paused, when nothing went wrong. */
+  const paused = $derived(run.result === null ? null : pausedText(run.result));
 </script>
 
 {#if run.fetching}
@@ -112,6 +118,18 @@
           : null}
         dismiss={{ label: t.common.hide, testid: 'run-close', onclick: () => run.hide() }}
         testid="run-problem"
+      />
+    </div>
+  </div>
+{:else if paused !== null && run.panel === 'open'}
+  <div class="unfold" transition:unfold>
+    <div class="line">
+      <Notice
+        tone="info"
+        variant="row"
+        text={paused}
+        dismiss={{ label: t.common.hide, testid: 'run-close', onclick: () => run.hide() }}
+        testid="run-paused"
       />
     </div>
   </div>
