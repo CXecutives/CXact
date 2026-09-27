@@ -56,6 +56,7 @@
 
 import type {
   AppState,
+  AskedTerm,
   Backup,
   Commands,
   Deleted,
@@ -80,6 +81,7 @@ import type {
   RunEvent,
   RunRequest,
   RunSummary,
+  TermField,
 } from '../../ui/src/lib/ipc/types';
 import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
@@ -1228,14 +1230,13 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 
 /* ------------------------------------------------------------------- asked */
 
-/** "Häufig verlangt" like core (`view::asked_terms`, `pipeline::local::terms`): the open
- *  must and nice requirements that are skills and terms (at most five words, no end of a
- *  sentence, a requirement no sentence) of the engine's readers of the scored jobs of the
- *  Eingang and the Archiv of the last 30 days, once per job however written, asked by two
- *  jobs at least, the most frequent first (equal counts by their words), at most eight; what
- *  the stored profile names (competences, synonyms, keywords, tools, certificates) is none of
- *  them. */
-function askedTerms(): { term: string; count: number }[] {
+/** "Häufig verlangt" like core (`view::asked_terms`, `pipeline::local::terms`): the terms
+ *  and fields the engine's readers name for the open must and nice requirements that are
+ *  skills (`params.term`, `params.field`, core `pipeline::local::open_term`) of the scored
+ *  jobs of the Eingang and the Archiv of the last 30 days, once per job however written,
+ *  asked by two jobs at least, the most frequent first (equal counts by their words), at most
+ *  eight; what the stored profile names in any field is none of them. */
+function askedTerms(): AskedTerm[] {
   const form = state.profile?.form ?? null;
   if (form === null) return [];
   const key = (term: string): string =>
@@ -1244,18 +1245,20 @@ function askedTerms(): { term: string; count: number }[] {
       .split(/[^\p{L}\p{N}+#]+/u)
       .filter((word) => word !== '')
       .join(' ');
-  const isTerm = (words: string): boolean =>
-    words !== '' && words.split(/\s+/).length <= 5 && words.length <= 80 && !/[.!?:;]$/.test(words);
   const known = new Set(
     [
       ...form.competences.flatMap((c) => [c.name, ...c.aliases]),
       ...form.keywords,
       ...form.tools,
       ...form.certificates,
+      ...form.degrees,
+      ...form.industries,
+      ...form.wishes.industries,
+      ...form.languages.map((l) => l.language),
     ].map(key),
   );
   const since = NOW - 30 * 24 * HOUR;
-  const counted = new Map<string, { term: string; count: number }>();
+  const counted = new Map<string, AskedTerm>();
   const newest = [...jobs].sort((a, b) =>
     (b.mailDate ?? b.firstSeenAt).localeCompare(a.mailDate ?? a.firstSeenAt),
   );
@@ -1274,17 +1277,22 @@ function askedTerms(): { term: string; count: number }[] {
           r.kind === 'open' &&
           r.weight === weight &&
           r.params['class'] === 'skill' &&
-          (r.code === 'term' || (r.code === 'requirement' && r.params['source'] !== 'sentence')),
+          typeof r.params['term'] === 'string',
       );
+    // A stored match keeps at most eight requirements (by their words), one count per term.
+    const kept = new Set<string>();
     const seen = new Set<string>();
     for (const reason of [...open('must'), ...open('nice')]) {
-      const words = reason.label.trim();
-      const k = key(words);
-      if (!isTerm(words) || k === '' || seen.has(k) || seen.size === 8) continue;
+      const words = reason.label.trim().toLowerCase();
+      if (kept.has(words) || kept.size === 8) continue;
+      kept.add(words);
+      const term = String(reason.params['term']);
+      const field = reason.params['field'] as TermField;
+      const k = key(term);
+      if (seen.has(k) || known.has(k)) continue;
       seen.add(k);
-      if (known.has(k)) continue;
       const entry = counted.get(k);
-      if (entry === undefined) counted.set(k, { term: words, count: 1 });
+      if (entry === undefined) counted.set(k, { term, field, count: 1 });
       else entry.count += 1;
     }
   }

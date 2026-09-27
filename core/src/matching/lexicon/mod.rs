@@ -9,6 +9,7 @@
 pub(crate) mod domains;
 pub(crate) mod engine;
 mod tables;
+pub(crate) mod terms;
 pub(crate) mod wishes;
 
 pub(crate) use tables::*;

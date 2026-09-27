@@ -31,6 +31,7 @@ mod score;
 mod sections;
 mod seniority;
 mod signals;
+mod terms;
 mod types;
 mod wishes;
 
@@ -43,6 +44,7 @@ use std::fmt::Write as _;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
 
 use engine::EngineProfile;

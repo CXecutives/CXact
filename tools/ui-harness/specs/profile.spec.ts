@@ -2182,10 +2182,11 @@ const competenceNames = (page: Page): Promise<string[]> =>
     .getByTestId('competence-name')
     .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
 
-/** The demo jobs whose reader names `term` as an open requirement (the engine's words). */
+/** The demo jobs whose reader names `term` as the term of an open requirement (core's
+ *  `params.term`: "Anaplan" of "Kenntnisse in Anaplan"). */
 const askingJobs = (term: string): number =>
   Object.values(DEMO.details).filter((detail) =>
-    detail.match?.reasons.some((reason) => reason.kind === 'open' && reason.label === term),
+    detail.match?.reasons.some((reason) => reason.kind === 'open' && reason.params.term === term),
   ).length;
 
 test('"Häufig verlangt" under the competences: what the jobs ask for most that the profile lacks', async ({

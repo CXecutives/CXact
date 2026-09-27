@@ -33,8 +33,8 @@ use crate::view::{
     PortalPatch, PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria,
     ProfileDraft, ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave,
     ProfileSource, ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight,
-    RemoteWish, ResetSummary, SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind,
-    WorkMode, WorkspacePick, WorkspaceProfile,
+    RemoteWish, ResetSummary, SettingsPatch, SettingsView, TermField, TextRange, UnreadableField,
+    VaultKind, WorkMode, WorkspacePick, WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -217,6 +217,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ProfileForm>();
     f.add::<ProfileDraft>();
     f.add::<ProfileSave>();
+    f.add::<TermField>();
     f.add::<AskedTerm>();
     f.add::<ResetSummary>();
     f.add::<BackupKind>();

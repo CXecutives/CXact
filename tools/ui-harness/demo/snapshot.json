@@ -900,7 +900,7 @@
         "score": 62,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1235,7 +1235,7 @@
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1259,7 +1259,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
+              "field": "competence",
               "source": "section",
+              "term": "Finanzfunktionen",
               "years": 3
             },
             "ranges": [
@@ -1324,7 +1326,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP Analytics Cloud"
             },
             "ranges": [
               {
@@ -1665,7 +1669,7 @@
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1689,7 +1693,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP FI"
             },
             "ranges": [
               {
@@ -1707,7 +1713,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP Analytics Cloud"
             },
             "ranges": [
               {
@@ -1725,7 +1733,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -1743,7 +1753,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "ABAP"
             },
             "ranges": [
               {
@@ -1761,7 +1773,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -2134,7 +2148,7 @@
         "score": 89,
         "status": "scored",
         "band": "high",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2320,7 +2334,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -2744,7 +2760,7 @@
         "score": 58,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2861,7 +2877,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -2879,7 +2897,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP Analytics Cloud"
             },
             "ranges": [
               {
@@ -2897,7 +2917,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "Anaplan"
             },
             "ranges": [
               {
@@ -2938,7 +2960,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -3380,7 +3404,7 @@
         "score": 40,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -3450,7 +3474,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -3468,7 +3494,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP Analytics Cloud"
             },
             "ranges": [
               {
@@ -3509,7 +3537,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -3864,7 +3894,7 @@
         "score": 29,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4212,7 +4242,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4400,7 +4430,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4595,7 +4625,7 @@
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4986,7 +5016,7 @@
         "score": 87,
         "status": "scored",
         "band": "high",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5150,7 +5180,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -5191,7 +5223,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -5624,7 +5658,7 @@
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5820,7 +5854,7 @@
         "score": 40,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5844,7 +5878,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "competence",
+              "source": "section",
+              "term": "Konzernberichtswesen"
             },
             "ranges": [
               {
@@ -5885,7 +5921,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "Anaplan"
             },
             "ranges": [
               {
@@ -5903,7 +5941,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -5944,7 +5984,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -6234,7 +6276,7 @@
         "score": 35,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6258,7 +6300,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
+              "field": "competence",
               "source": "section",
+              "term": "Rechnungswesen",
               "years": 10
             },
             "ranges": [
@@ -6323,7 +6367,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -6341,7 +6387,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -6637,7 +6685,7 @@
         "score": 23,
         "status": "excluded",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6661,7 +6709,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "competence",
+              "source": "section",
+              "term": "Lohnbuchhaltung"
             },
             "ranges": [
               {
@@ -6702,7 +6752,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "competence",
+              "source": "section",
+              "term": "Schweizer Sozialversicherungsrecht"
             },
             "ranges": [
               {
@@ -6720,7 +6772,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -6990,7 +7044,7 @@
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e16.7:837804f6c0c129e1",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -7014,7 +7068,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "degree",
+              "source": "section",
+              "term": "Kaufmännische Ausbildung"
             },
             "ranges": [
               {
@@ -7032,7 +7088,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "industry",
+              "source": "section",
+              "term": "Energie"
             },
             "ranges": [
               {
@@ -7050,7 +7108,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "SAP Analytics Cloud"
             },
             "ranges": [
               {
@@ -7068,7 +7128,9 @@
             "evidence": null,
             "params": {
               "class": "skill",
-              "source": "section"
+              "field": "tool",
+              "source": "section",
+              "term": "Anaplan"
             },
             "ranges": [
               {
@@ -7086,7 +7148,9 @@
             "evidence": null,
             "params": {
               "class": "language",
-              "source": "section"
+              "field": "language",
+              "source": "section",
+              "term": "Französisch"
             },
             "ranges": [
               {
@@ -7482,7 +7546,7 @@
           "score": 39,
           "status": "excluded",
           "band": "low",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e16.7:837804f6c0c129e1",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -7506,7 +7570,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "degree",
+                "source": "section",
+                "term": "Ausbildung zum Steuerfachangestellten"
               },
               "ranges": [
                 {
@@ -7868,7 +7934,7 @@
           "score": 23,
           "status": "excluded",
           "band": "low",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e16.7:837804f6c0c129e1",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -7915,7 +7981,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "competence",
+                "source": "section",
+                "term": "HOAI"
               },
               "ranges": [
                 {
@@ -7933,7 +8001,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "competence",
+                "source": "section",
+                "term": "VOB"
               },
               "ranges": [
                 {
@@ -7951,7 +8021,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "tool",
+                "source": "section",
+                "term": "SAP Analytics Cloud"
               },
               "ranges": [
                 {
@@ -8384,7 +8456,7 @@
           "score": 40,
           "status": "scored",
           "band": "mid",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e16.7:837804f6c0c129e1",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8408,7 +8480,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "competence",
+                "source": "section",
+                "term": "Post-Merger-Integration"
               },
               "ranges": [
                 {
@@ -8495,7 +8569,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "industry",
+                "source": "section",
+                "term": "Medien"
               },
               "ranges": [
                 {
@@ -8513,7 +8589,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "tool",
+                "source": "section",
+                "term": "SAP Analytics Cloud"
               },
               "ranges": [
                 {
@@ -8920,7 +8998,7 @@
           "score": 58,
           "status": "scored",
           "band": "mid",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e16.7:837804f6c0c129e1",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8991,7 +9069,9 @@
               "evidence": null,
               "params": {
                 "class": "skill",
-                "source": "section"
+                "field": "industry",
+                "source": "section",
+                "term": "Logistik"
               },
               "ranges": [
                 {
@@ -9009,7 +9089,9 @@
               "evidence": null,
               "params": {
                 "class": "language",
-                "source": "section"
+                "field": "language",
+                "source": "section",
+                "term": "Französisch"
               },
               "ranges": [
                 {
@@ -9418,7 +9500,7 @@
           "score": 97,
           "status": "scored",
           "band": "high",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e16.7:837804f6c0c129e1",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
