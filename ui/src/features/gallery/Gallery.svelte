@@ -10,7 +10,7 @@
   import Icon, { ICON_NAMES } from '$components/Icon.svelte';
   import IconTile, { TILE_TONES } from '$components/IconTile.svelte';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
-  import SideNav, { type SideNavFold } from '$components/SideNav.svelte';
+  import SideNav from '$components/SideNav.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
   import Menu from '$components/Menu.svelte';
@@ -29,40 +29,20 @@
   import { text } from './gallery';
 
   const NAV_ICONS = ['jobs', 'profile', 'settings'] as const;
-  /** Jobs carries its places (Archiv, Papierkorb) as quieter sub-entries. */
-  const places = [
-    { id: 'archive', label: text.navigation.places[0], icon: 'archive', testid: 'gnav-archive' },
-    { id: 'trash', label: text.navigation.places[1], icon: 'trash', testid: 'gnav-trash' },
-  ] as const;
   const tabs = text.navigation.tabs.map((label, index) => ({
     id: String(index),
     label,
     icon: NAV_ICONS[index] ?? 'jobs',
     testid: `gnav-${index}`,
-    children: index === 0 ? places : [],
   }));
   let activeTab = $state('0');
   const noop = (): void => undefined;
 
-  /** The sidebar in its states: full and as the rail, its places shown and hidden (each
-   *  arrow folds its own); the first one folds to its rail at its edge. */
+  /** The sidebar full and as the rail (below 1100 px). */
   const navDemos = [
-    { key: 'full', rail: false, open: true },
-    { key: 'folded', rail: false, open: false },
-    { key: 'rail', rail: true, open: true },
-    { key: 'rail-folded', rail: true, open: false },
+    { key: 'full', rail: false },
+    { key: 'rail', rail: true },
   ] as const;
-  let placesOpen = $state<Record<string, boolean>>(
-    Object.fromEntries(navDemos.map((demo) => [demo.key, demo.open])),
-  );
-  const foldOf = (key: string): SideNavFold => ({
-    open: placesOpen[key] ?? true,
-    hide: text.navigation.hidePlaces,
-    show: text.navigation.showPlaces,
-    locked: text.navigation.placesStay,
-    testid: `gnav-fold-${key}`,
-    ontoggle: () => (placesOpen[key] = !placesOpen[key]),
-  });
 </script>
 
 <div class="gallery" data-testid="gallery">
@@ -151,7 +131,6 @@
             active={activeTab}
             label={text.sections.navigation}
             collapsed={rail}
-            fold={foldOf(demo.key)}
             onselect={(id) => (activeTab = id)}
           />
         </div>

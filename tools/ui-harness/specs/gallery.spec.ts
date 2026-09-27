@@ -341,19 +341,17 @@ test('the column handle: left drag resizes within its live limits, double click 
   await expect.poll(width).toBe(first);
 });
 
-test('nav sub-entries: quieter, indented, the one pill covers the active one (also in the rail)', async ({
-  page,
-}) => {
+test('the nav: the one pill covers the active entry, also in the rail', async ({ page }) => {
   await open(page, '?gallery&platform=windows');
   const section = page.getByTestId('gallery-navigation');
   await section.scrollIntoViewIfNeeded();
   const full = page.getByTestId('gnav-full').locator('nav');
   const rail = page.getByTestId('gnav-rail').locator('nav');
   for (const nav of [full, rail]) {
-    for (const id of ['gnav-trash', 'gnav-archive', 'gnav-0', 'gnav-2']) {
+    for (const id of ['gnav-2', 'gnav-1', 'gnav-0']) {
       await nav.getByTestId(id).click();
       await expect(nav.getByTestId(id)).toHaveAttribute('aria-current', 'page');
-      // The pill has slid onto the entry (in the rail it shrinks onto a smaller sub-entry).
+      // The pill has slid onto the entry.
       await expect
         .poll(async () => {
           const pill = (await nav.locator('.indicator').boundingBox())!;
@@ -368,28 +366,9 @@ test('nav sub-entries: quieter, indented, the one pill covers the active one (al
         .toEqual([0, 0, 0, 0]);
     }
   }
-  // Collapsed, a sub-entry is a smaller icon with its name as the accessible name (and tooltip).
-  await expect(rail.getByTestId('gnav-trash')).toHaveAttribute('aria-label', 'Papierkorb');
-  expect((await rail.getByTestId('gnav-trash').boundingBox())!.width).toBe(32);
-  // Expanded, it is indented under the parent's label and quieter (13 px).
-  const [parent, sub] = await Promise.all(
-    ['gnav-0', 'gnav-archive'].map((id) => full.getByTestId(id).locator('.glyph').boundingBox()),
-  );
-  expect(sub!.x - parent!.x).toBeGreaterThan(20);
-  await expect(full.getByTestId('gnav-archive')).toHaveCSS('font-size', '13px');
-});
-
-test('the sidebar in the gallery: its places fold, its edge folds it to the rail', async ({
-  page,
-}) => {
-  await open(page, '?gallery&platform=windows');
-  const folded = page.getByTestId('gnav-folded');
-  await folded.scrollIntoViewIfNeeded();
-  // Hidden places: the arrow points right and brings them back.
-  await expect(folded.getByTestId('gnav-archive')).toBeHidden();
-  await folded.getByTestId('gnav-fold-folded').click();
-  await expect(folded.getByTestId('gnav-archive')).toBeVisible();
-  await expect(page.getByTestId('gnav-rail-folded').getByTestId('gnav-archive')).toBeHidden();
+  // Collapsed, an entry is its icon with its name as the accessible name (and tooltip).
+  await expect(rail.getByTestId('gnav-1')).toHaveAttribute('aria-label', 'Profil');
+  await expect(full.getByTestId('gnav-1')).not.toHaveAttribute('aria-label');
 });
 
 test("a menu button opens the app's menu of choices below it; a choice applies", async ({

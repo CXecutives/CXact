@@ -77,10 +77,6 @@ export const text = {
   },
   navigation: {
     tabs: ['Jobs', 'Profil', 'Einstellungen'],
-    places: ['Archiv', 'Papierkorb'],
-    hidePlaces: 'Archiv und Papierkorb ausblenden',
-    showPlaces: 'Archiv und Papierkorb einblenden',
-    placesStay: 'Bleibt offen, solange du dort bist.',
     toast: 'Toast zeigen',
     toastText: 'Gespeichert.',
     status: 'Abgerufen 08:30',

@@ -52,15 +52,13 @@ export const ICONS = {
   lastRun: 'history',
 
   // Files and folders.
-  /** A document the app writes or reads: the profile file, the Bericht, the log. */
+  /** A document the app writes or reads: the profile file, the CSV file. */
   document: 'file-text',
   excel: 'file-spreadsheet',
   /** Show a file or folder in Explorer or Finder. */
   folder: 'folder-open',
   /** Choose a file (the profile). */
   pickFile: 'file-up',
-  /** Write files again (the text files). */
-  rewrite: 'file-pen-line',
   /** Restore a copy of the database (Sicherung wiederherstellen). */
   backup: 'database-backup',
 
