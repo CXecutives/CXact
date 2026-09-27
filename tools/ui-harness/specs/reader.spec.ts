@@ -590,7 +590,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'workload')).toEqual(['/', '']);
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // The day of the alert mail in the list row's words.
-    expect(await cell(page, 'received')).toEqual(['vor 2 Stunden', '']);
+    expect(await cell(page, 'received')).toEqual(['07:30', '']);
     // Verdicts are icons (no words), the reason that decided one in its tooltip; one no
     // reason decided names itself.
     await expect(terms(page)).not.toContainText('passt');
@@ -606,7 +606,7 @@ test.describe('Jobdetails', () => {
     }
   });
 
-  test('the verdicts: green, amber, muted, and the ban where a row excludes the job', async ({
+  test('the verdicts in the colours of the rings, muted, the ban where a row excludes the job', async ({
     page,
   }) => {
     const icon = (page: Page, key: string) =>
@@ -621,16 +621,16 @@ test.describe('Jobdetails', () => {
     const met = await look(page, 'workload');
     const unknown = await look(page, 'start');
     expect(await cell(page, 'start')).toEqual(['nach Absprache', 'unknown']);
-    expect(met[0]).toBe(await tokenColour(page, '--success-strong'));
+    expect(met[0]).toBe(await tokenColour(page, '--verdict-met'));
     expect(unknown[0]).toBe(await tokenColour(page, '--text-muted'));
     await openJob(page, 'freelance-900413');
     const partial = await look(page, 'workload');
-    expect(partial[0]).toBe(await tokenColour(page, '--warning-strong'));
+    expect(partial[0]).toBe(await tokenColour(page, '--verdict-partial'));
     // Met in part: the amber minus in a circle.
     expect(partial[1]).toContain('lucide-circle-minus');
     await openJob(page, 'freelance-900412');
     const excludes = await look(page, 'contract');
-    expect(excludes[0]).toBe(await tokenColour(page, '--danger-strong'));
+    expect(excludes[0]).toBe(await tokenColour(page, '--verdict-unmet'));
     expect(excludes[1]).toContain('lucide-ban');
     // One glyph per verdict.
     expect(new Set([met[1], unknown[1], partial[1], excludes[1]]).size).toBe(4);
@@ -788,7 +788,7 @@ test.describe('Jobdetails', () => {
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual([
       'Unternehmen',
       'Ort',
-      'Arbeitsort',
+      'Arbeitsmodell',
       'Vertragsart',
       'Portal',
       'Eingegangen',
@@ -838,9 +838,9 @@ test.describe('Anforderungen', () => {
     }
     // The icons of the verdicts; a group's heading is not said again under the pointer.
     for (const [kind, token] of [
-      ['met', '--success-strong'],
-      ['partial', '--warning-strong'],
-      ['open', '--danger-strong'],
+      ['met', '--verdict-met'],
+      ['partial', '--verdict-partial'],
+      ['open', '--verdict-unmet'],
     ] as const) {
       const icon = why(page).getByTestId(`reasons-${kind}`).locator('.reason > .icon').first();
       expect(await icon.evaluate((node) => getComputedStyle(node).color)).toBe(

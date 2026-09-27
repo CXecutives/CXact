@@ -1,8 +1,9 @@
 <!--
   One reason of a match: met | partial | open | violation | check. Its state is an icon, the
-  same as the reader's verdicts: met a green check, partial an amber minus in a circle, open
-  (not met) a red cross, check (unclear) a muted question mark; a violation that excludes the
-  job is the ban. Then its words, and the badge "Optional" for an optional one.
+  same as the reader's verdicts, in the colours of the rings (--verdict-*): met a green check,
+  partial an amber minus in a circle, open (not met) a red cross, check (unclear) a muted
+  question mark; a violation that excludes the job is the ban, red like a cross. Then its
+  words, and the badge "Optional" for an optional one.
   iconOnly (a verdict of the reader's Jobdetails): the icon alone, named by `label`, with the
   reason that decided it in its tooltip (`hint`).
 -->
@@ -104,16 +105,16 @@
   }
 
   .met {
-    --reason-color: var(--success-strong);
+    --reason-color: var(--verdict-met);
   }
 
   .partial {
-    --reason-color: var(--warning-strong);
+    --reason-color: var(--verdict-partial);
   }
 
   .open,
   .violation {
-    --reason-color: var(--danger-strong);
+    --reason-color: var(--verdict-unmet);
   }
 
   .check {

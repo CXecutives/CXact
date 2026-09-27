@@ -266,6 +266,11 @@
   --score-excluded: var(--text-subtle);
   /* The solid track of an excluded ring (one silhouette for every state). */
   --score-excluded-track: var(--score-track);
+  /* The verdict icons (Jobdetails, Anforderungen, "Warum diese Zahl?") take the rings'
+     colours: met the top step, met in part the middle one, not met the lowest. */
+  --verdict-met: var(--score-ring-9);
+  --verdict-partial: var(--score-ring-5);
+  --verdict-unmet: var(--score-ring-0);
 
   /* ------------------------------------------------------------------- brand */
   /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
