@@ -814,7 +814,7 @@ test.describe('Jobdetails', () => {
     expect([termFont, termGap]).toEqual([reasonFont, reasonGap]);
   });
 
-  test('Bewerbungsfrist and Kontakt: red within a week, each part of the contact copies', async ({
+  test('Bewerbungsfrist and Kontakt: red within a week, the e-mail writes a mail, the rest copies', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
@@ -826,19 +826,34 @@ test.describe('Jobdetails', () => {
         .evaluate((node) => getComputedStyle(node).color);
     expect(await cell(page, 'deadline')).toEqual(['15.10.', '']);
     expect(await colour('deadline')).not.toBe(danger);
-    const parts = term(page, 'contact').locator('.value');
-    await expect(parts).toHaveText([
+    // Name, e-mail and phone one under the other; the name and the phone copy.
+    await expect(term(page, 'contact').locator('.parts > *')).toHaveText([
       'Julia Brandt',
       'julia.brandt@hanseatic.example',
       '+49 40 5550 1234',
     ]);
+    const parts = term(page, 'contact').locator('.value');
+    await expect(parts).toHaveText(['Julia Brandt', '+49 40 5550 1234']);
     for (const part of await parts.all()) await expect(part).toHaveAttribute('data-copy', '');
     await expect(term(page, 'contact').getByTestId('verdict')).toHaveCount(0);
+    // The e-mail is a link: a new mail to it in the mail program, one line high.
+    const mail = term(page, 'contact').getByTestId('contact-mail');
+    await expect(mail).toHaveClass(/link/);
+    await mail.click();
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
+    });
+    const [name, phone] = await parts.evaluateAll((all) =>
+      all.map((node) => node.getBoundingClientRect()),
+    );
+    expect(Math.abs(phone!.top - name!.top - 2 * name!.height)).toBeLessThanOrEqual(1);
     // Four days ahead: red. An e-mail address alone is the contact.
     await openJob(page, 'freelancermap-2802');
     expect(await cell(page, 'deadline')).toEqual(['28.09.', '']);
     expect(await colour('deadline')).toBe(danger);
-    await expect(term(page, 'contact').locator('.value')).toHaveText(['jobs@gruenwerk.example']);
+    await expect(term(page, 'contact').getByTestId('contact-mail')).toHaveText(
+      'jobs@gruenwerk.example',
+    );
     // An ad that names neither.
     await openJob(page, 'freelancermap-2804');
     expect(await cell(page, 'deadline')).toEqual(['/', '']);

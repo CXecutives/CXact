@@ -1956,6 +1956,10 @@ const handlers: Handlers = {
     if (target.kind === 'csv' && !state.settings.csvExists) {
       throw fail('notFound', { what: 'file', path: state.settings.csvPath });
     }
+    // A new mail only to the contact an ad names (commands/files.rs).
+    if (target.kind === 'contactMail' && !find(target.key)?.match?.facts.contactEmail) {
+      throw fail('notFound', { what: 'mail' });
+    }
     return null;
   },
   save_settings: ({ patch }) => {

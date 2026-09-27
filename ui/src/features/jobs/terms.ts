@@ -36,6 +36,8 @@ export interface TermRow {
   value: string;
   /** A value of several parts, each copied on its own (the contact: name, e-mail, phone). */
   parts: readonly string[] | null;
+  /** The part that is an e-mail address (the contact's): a new mail to it. */
+  mail: string | null;
   /** The ad does not state it. */
   missing: boolean;
   /** A quiet word after the value: estimated, assumed, how it stands to the profile. */
@@ -100,6 +102,7 @@ export interface Offline {
 interface Value {
   value: string | null;
   parts?: readonly string[];
+  mail?: string | null;
   note?: string | null;
   urgent?: boolean;
   /** False: the row takes no verdict (the duration of a permanent job). */
@@ -286,7 +289,9 @@ const TERMS: Record<TermKey, Term> = {
       const parts = [facts?.contactName, facts?.contactEmail, facts?.contactPhone].flatMap(
         (part) => text(part) ?? [],
       );
-      return parts.length === 0 ? { value: null } : { value: parts.join(', '), parts };
+      return parts.length === 0
+        ? { value: null }
+        : { value: parts.join(', '), parts, mail: text(facts?.contactEmail) };
     },
   },
   industry: {
@@ -446,6 +451,7 @@ function build(
     icon: termIcon(key, input.job),
     value: read.value ?? t.reader.missing,
     parts: missing ? null : (read.parts ?? null),
+    mail: missing ? null : (read.mail ?? null),
     missing,
     note: missing ? null : (read.note ?? null),
     urgent: !missing && read.urgent === true,

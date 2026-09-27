@@ -21,14 +21,15 @@
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
     table (lib/facts.ts): the ad's value ("/" where it says nothing; for an ad the app never
     read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
-    is the reason that decided it (the ban where it excludes the job).
+    is the reason that decided it (the ban where it excludes the job). The contact's e-mail
+    is a link: a new mail to it in the default mail program, the job's title its subject.
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
     each title; a missing must that is a term has a small "+" into the profile
     (addToProfile.ts), a tick once it is there.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
     einrichten" where they help, and the ad's text in its structure: its headings, its lists,
-    its paragraphs, the words of the list's search marked (AdText.svelte).
+    its paragraphs, the words of the list's search marked (ReaderAd.svelte, AdText.svelte).
   Hovering a row or a requirement with passages tints them in the ad, a click brings the
   first into view and flashes it (passages.svelte.ts). Rows, requirements and the ad text
   that arrive later (the ad loaded, a new score) fade in; requirements glide in their group.
@@ -47,10 +48,8 @@
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Icon from '$components/Icon.svelte';
-  import Notice from '$components/Notice.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
-  import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
   import { displayTitle } from '$lib/i18n/format';
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
@@ -61,10 +60,9 @@
   import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
-  import { navigation } from '$lib/state/navigation.svelte';
-  import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
-  import AdText, { type Passage } from './AdText.svelte';
+  import type { Passage } from './AdText.svelte';
+  import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import { guarded, jobMenu, move, purge, seen, type MoveId } from './actions';
@@ -192,44 +190,6 @@
   const itemOf = (item: string): string | undefined => (withPassage.has(item) ? item : undefined);
   const hover = new Passages();
 
-  const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
-  /** "Anzeige laden" was pressed in this reader: this job is in the run. */
-  let requested = $state(false);
-  type AdNote = keyof typeof t.reader.adNote;
-  /** Why the ad's text is not all there, if it is not. */
-  const adNote = $derived.by((): AdNote | null => {
-    switch (detailKind) {
-      case 'ok':
-        return job.closed ? 'closed' : null;
-      case 'teaser':
-      case 'gone':
-      case 'unfetchable':
-        return detailKind;
-      default:
-        // The text came before the job's state: it is there.
-        if (detail.text !== null) return job.closed ? 'closed' : null;
-        // Still to come, failed or on request: loaded while this job is in a run of its
-        // portal (the one asked for here, or a fetch that loads what is still to come).
-        return run.fetching &&
-          portalState?.enabled === true &&
-          (requested || detailKind === 'pending')
-          ? 'loading'
-          : 'missing';
-    }
-  });
-  $effect(() => {
-    if (!run.fetching) requested = false;
-  });
-  /** A preview or a missing ad the portal can load now (a preview only with its sign-in). */
-  const canLoad = $derived(
-    portalState?.enabled === true &&
-      (adNote === 'missing' || (adNote === 'teaser' && portalState.loginEnabled)),
-  );
-  /** The portal shows only a preview without a sign-in that is not set up. */
-  const signInMissing = $derived(
-    adNote === 'teaser' && portalState !== null && !portalState.loginEnabled,
-  );
-
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
   const promptOff = $derived(
     !app.hasProfile ? t.reader.promptNoProfile : detail.text ? null : t.reader.promptNoText,
@@ -305,12 +265,6 @@
    *  toast. */
   async function add(term: string): Promise<void> {
     fail(await addTerm(term));
-  }
-
-  /** "Anzeige laden": this job's ad, in a run of its own. */
-  function load(): void {
-    requested = true;
-    void run.start({ kind: 'details', keys: [job.key] });
   }
 
   /** The "…" menu: what changes the job, from the one table of the job's menu (the row's
@@ -392,12 +346,6 @@
       entries: moreEntries(),
       onclose: () => (moreOpen = false),
     });
-  }
-
-  /** "Anmeldung einrichten": Einstellungen at the card of this portal. */
-  function setUpSignIn(): void {
-    navigation.focusPortal = job.portal;
-    navigation.go('settings');
   }
 </script>
 
@@ -515,9 +463,18 @@
                set where the verdicts stand. -->
           <span class="term-line" class:wide={!judged || row.verdict === null}>
             {#if row.parts}
+              <!-- The contact's e-mail writes a new mail to it (the job's title its subject). -->
               <span class="parts">
-                {#each row.parts as part, index (index)}<span class="value" data-copy>{part}</span
-                  >{/each}
+                {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
+                      ><Button
+                        variant="link"
+                        size="sm"
+                        label={part}
+                        external
+                        testid="contact-mail"
+                        onclick={() => openTarget({ kind: 'contactMail', key: job.key })}
+                      /></span
+                    >{:else}<span class="value" data-copy>{part}</span>{/if}{/each}
               </span>
             {:else}
               <span
@@ -611,59 +568,7 @@
 {#snippet ad()}
   <section class="block ad" data-testid="ad">
     <h2 class="section">{t.reader.ad}</h2>
-    {#if adNote !== null}
-      {@const warn = adNote === 'unfetchable' || adNote === 'gone' || adNote === 'closed'}
-      <!-- One line that stays while its words change (being loaded: the spinner in the place
-           of its icon), with the way to the ad where it helps. -->
-      <div class="ad-note">
-        <p
-          class="note"
-          class:warning={warn}
-          role={warn ? 'alert' : 'status'}
-          data-testid="detail-note"
-        >
-          {#if adNote === 'loading'}<Spinner size="sm" label={null} />{:else}<Icon
-              name={warn ? 'warning' : 'info'}
-              size="sm"
-            />{/if}{t.reader.adNote[adNote]}
-        </p>
-        {#if signInMissing}
-          <Button
-            variant="secondary"
-            size="field"
-            icon="signIn"
-            label={t.reader.setUpSignIn}
-            testid="set-up-sign-in"
-            onclick={setUpSignIn}
-          />
-        {:else if canLoad}
-          <Button
-            variant="secondary"
-            size="field"
-            icon="details"
-            label={t.reader.fetchDetails}
-            disabled={run.detailsBlocked !== null}
-            disabledReason={run.detailsBlocked}
-            testid="load-ad"
-            onclick={load}
-          />
-        {/if}
-      </div>
-    {:else if job.short}
-      <Notice tone="info" variant="inline" text={t.reader.short} testid="short-note" />
-    {/if}
-    {#if detail.text}
-      <div in:fade>
-        <AdText
-          text={detail.text}
-          layout={detail.layout}
-          {passages}
-          lit={hover.hovered}
-          flash={hover.flashing}
-          search={jobs.search}
-        />
-      </div>
-    {/if}
+    <ReaderAd {detail} {passages} lit={hover.hovered} flash={hover.flashing} />
   </section>
 {/snippet}
 
@@ -814,29 +719,6 @@
     flex: none;
   }
 
-  /* The note on a text that is not all there, and the way to it: one height with and without
-     its button, so nothing below jumps when the button goes. */
-  .ad-note {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8) var(--space-16);
-    min-height: var(--control-field);
-  }
-
-  /* The note, like an inline notice: its icon (or the spinner) and its words in its tone. */
-  .note {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-8);
-    color: var(--info-strong);
-    font: var(--type-sm);
-  }
-
-  .note.warning {
-    color: var(--warning-strong);
-  }
-
   /* A heading 12 px above its content. */
   .block {
     display: flex;
@@ -923,8 +805,16 @@
   .parts {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     min-width: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* The e-mail as a link keeps its hit area but not its height: the line stays a line of
+     text. */
+  .mail {
+    display: inline-flex;
+    margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
   }
 
   .verdict {
