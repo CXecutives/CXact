@@ -639,16 +639,17 @@ export const de = {
     pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
-      inbox: 'Jobs durchsuchen',
+      inbox: 'Eingang durchsuchen',
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** Search hits in another place: a button under the results that goes there. */
+    /** Search hits in another place: a button under the results that goes there (its count
+     *  after it, quiet like the tabs'). */
     hitsIn: {
-      inbox: (value: number) => `Im Eingang (${n(value)})`,
-      archive: (value: number) => `Im Archiv (${n(value)})`,
-      trash: (value: number) => `Im Papierkorb (${n(value)})`,
-    } satisfies Record<Place, (value: number) => string>,
+      inbox: 'Im Eingang',
+      archive: 'Im Archiv',
+      trash: 'Im Papierkorb',
+    } satisfies Record<Place, string>,
     empty: {
       inbox: 'Keine Jobs.',
       archive: 'Das Archiv ist leer.',
@@ -679,13 +680,14 @@ export const de = {
     purgeConfirm: 'Endgültig löschen',
     purgeHeading: (value: number) =>
       value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
-    purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
+    /** Deleting for good, one job or the whole Papierkorb: one sentence shape. */
+    purgeText: 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
     emptyTrashHeading: 'Papierkorb leeren?',
     emptyTrashText: (value: number) =>
       value === 1
-        ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
-        : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
+        ? 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.'
+        : `Die ${n(value)} Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.`,
   },
   /** The app's own menus (their accessible names). */
   menu: {
@@ -828,7 +830,7 @@ export const de = {
   },
   list: {
     label: 'Jobs',
-    /** The folding section at the end of every place (its count in brackets where known). */
+    /** The folding section at the end of every place (its count after it where known). */
     excluded: 'Ausgeschlossen',
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
@@ -1407,10 +1409,12 @@ export const de = {
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
   },
+  /** Short confirmations without a period (a participle like "Archiviert"); only a full
+   *  sentence ends with one. */
   toast: {
-    rescored: 'Jobs neu bewertet.',
+    rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
-    prompt: 'Prompt kopiert.',
+    prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Dearchiviert',
@@ -1420,7 +1424,7 @@ export const de = {
     deleted: 'Endgültig gelöscht',
     included: 'Bewertet',
     excluded: 'Ausgeschlossen',
-    trashEmptied: 'Papierkorb geleert.',
+    trashEmptied: 'Papierkorb geleert',
     /** At the end of a fetch: what it brought (new, not excluded). */
     runDone: (value: number) =>
       value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),

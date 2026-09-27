@@ -138,6 +138,9 @@ test.describe('header', () => {
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
     expect(T.toolbar.filter).toBe('Sortieren und filtern');
+    // Each place's search names its place.
+    await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
+    expect(T.place.search.inbox).toBe('Eingang durchsuchen');
     const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
@@ -311,6 +314,8 @@ test.describe('header', () => {
     await open(page, `${WIN}&scenario=list-error`);
     const error = page.getByTestId('list-error');
     await expect(error).toContainText(T.list.loadFailed);
+    // Nothing to choose beside it: the reader says nothing.
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
     await expect(error.getByRole('button', { name: T.common.retry })).toBeVisible();
     await expect(funnel(page)).toHaveCount(0);
   });
@@ -804,7 +809,11 @@ test.describe('one list', () => {
     const { active, excluded: out } = await stubList(page);
     expect(out.length).toBeGreaterThan(1);
     const divider = page.getByTestId('excluded-divider');
-    await expect(divider).toHaveText(`${T.list.excluded} (${out.length})`);
+    const count = divider.locator('.count');
+    // Its count after the label, quiet like the tabs' (no brackets).
+    await expect(divider).toHaveText(`${T.list.excluded}${out.length}`);
+    await expect(count).toHaveText(String(out.length));
+    await expect(count).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     await expect(divider).toHaveAttribute('aria-expanded', 'false');
     await expect(page.getByTestId('excluded-rows')).toHaveCount(0);
     const last = (await rows(page).last().boundingBox())!;
@@ -821,9 +830,9 @@ test.describe('one list', () => {
     expect(await listed(page)).toEqual(active);
     // Each place counts its own excluded jobs.
     await viaMenu(page, 'archive', out[0]!);
-    await expect(divider).toHaveText(`${T.list.excluded} (${out.length - 1})`);
+    await expect(count).toHaveText(String(out.length - 1));
     await openPlace(page, 'archive');
-    await expect(divider).toHaveText(`${T.list.excluded} (1)`);
+    await expect(count).toHaveText('1');
   });
 
   test('the order is kept for every list and keeps the open job', async ({ page }) => {
@@ -933,6 +942,8 @@ test.describe('one list', () => {
     const empty = page.getByTestId('empty-all');
     await expect(empty).toBeVisible();
     await expect(empty.locator('svg')).toHaveCount(1);
+    // The place's own icon, like the empty Archiv and Papierkorb.
+    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.inbox}`));
     await expect(empty.getByRole('button')).toHaveCount(0);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
@@ -1084,11 +1095,15 @@ test.describe('rows', () => {
     await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
-    // "Öffnen" opens the job.
+    // "Öffnen" opens the job; the open job's own menu has none.
     await menuItem(page, 'open').click();
     await expect(page.getByTestId('reader-title')).toHaveText(
       await row(page, 'freelancermap-2802').locator('.title').innerText(),
     );
+    await rowMenu(page, 'freelancermap-2802');
+    await expect(menuItem(page, 'open')).toHaveCount(0);
+    await expect(menuItem(page, 'mail')).toBeVisible();
+    await page.keyboard.press('Escape');
     // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await settleMoves(page);
@@ -1206,10 +1221,18 @@ test.describe('search', () => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kreditoren');
     const button = page.getByTestId('also-archive');
-    await expect(button).toHaveText(T.place.hitsIn.archive(1));
+    await expect(button.locator('.label')).toHaveText(T.place.hitsIn.archive);
+    await expect(button.locator('.count')).toHaveText('1');
     const a = (await page.getByTestId('empty-search').boundingBox())!;
     const b = (await button.boundingBox())!;
     expect(Math.abs(a.x + a.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
+    // The one way on under an empty state: a field button, as far below the sentence as the
+    // empty state's own (16 px).
+    expect(Math.round(b.height)).toBe(32);
+    const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
+    expect(Math.round(b.y - (sentence.y + sentence.height))).toBe(16);
+    // The reader beside a search without hits has nothing to choose from: it says nothing.
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
     await button.click();
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
     await expect(rows(page)).toHaveCount(1);
@@ -1225,7 +1248,7 @@ test.describe('search', () => {
     await expect(page.getByTestId('empty-search')).toBeVisible();
     await expect(page.getByTestId('also-archive')).toHaveCount(0);
     await chooseFilter(page, 'portal-linkedin');
-    await expect(page.getByTestId('also-archive')).toHaveText(T.place.hitsIn.archive(1));
+    await expect(page.getByTestId('also-archive').locator('.count')).toHaveText('1');
     await page.getByTestId('also-archive').click();
     await expect(row(page, 'linkedin-4100200306')).toBeVisible();
   });

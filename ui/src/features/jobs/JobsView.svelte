@@ -83,9 +83,10 @@
     };
   });
   const place = $derived(jobs.place);
-  /** The place holds nothing (no search): the list says it, the reader adds no second tile. */
+  /** The list shows nothing to choose (an empty place, a search or a filter without hits, a
+   *  list that did not load): the list says why, the reader adds no second tile. */
   const placeEmpty = $derived(
-    jobs.status === 'ready' && jobs.total === 0 && jobs.search.trim() === '',
+    jobs.status === 'error' || (jobs.status === 'ready' && jobs.visible.length === 0),
   );
   /** The list is scrolled away from its top (the header shows its hairline). */
   let scrolled = $state(false);

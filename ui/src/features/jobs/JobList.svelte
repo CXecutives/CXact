@@ -38,7 +38,7 @@
   import { t } from '$lib/i18n/t';
   import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
-  import { fade, rowCollapse, rowEnter } from '$lib/motion/transitions';
+  import { rowCollapse, rowEnter, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -352,10 +352,10 @@
   }
 
   /** What the row's menu and its tools do: a move goes at once, deleting for good asks
-   *  first, a failure says so in the list header. */
+   *  first, a failure says so in the list header. The open job's menu has no "Öffnen". */
   function contextOf(job: JobView): JobMenuContext {
     return {
-      open: () => select(job),
+      open: sameKey(jobs.selected, job.key) ? null : () => select(job),
       purge: () => {
         purgeError = null;
         purging = job;
@@ -378,14 +378,17 @@
   }
 </script>
 
-{#snippet alsoIn()}
+<!-- Under an empty state the way on is a field button like the empty state's own; under
+     rows with hits a small one. -->
+{#snippet alsoIn(size: 'sm' | 'field')}
   <div class="also" data-testid="also-in">
     {#each elsewhere as hit (hit.place)}
       <Button
         variant="secondary"
-        size="sm"
+        {size}
         icon={PLACE_ICON[hit.place]}
-        label={t.place.hitsIn[hit.place](hit.count)}
+        label={t.place.hitsIn[hit.place]}
+        count={hit.count}
         testid="also-{hit.place}"
         onclick={() => jobs.setPlace(hit.place)}
       />
@@ -480,7 +483,7 @@
             text={t.list.noHit(jobs.search.trim())}
             testid="empty-search"
           />
-          {#if elsewhere.length > 0}{@render alsoIn()}{/if}
+          {#if elsewhere.length > 0}{@render alsoIn('field')}{/if}
         </div>
       {:else if filterEmptied}
         <EmptyState
@@ -502,7 +505,7 @@
         />
       {:else}
         <!-- A fetch that goes, none yet, or one that read no jobs: what comes. -->
-        <EmptyState icon="jobs" tone="neutral" text={emptyInbox} testid="empty-all" />
+        <EmptyState icon="inbox" tone="neutral" text={emptyInbox} testid="empty-all" />
       {/if}
     </div>
   {:else}
@@ -551,14 +554,14 @@
             />
           </div>
           {#if excludedOpen}
-            <div class="rows" data-testid="excluded-rows" transition:fade>
+            <div class="rows" data-testid="excluded-rows" transition:unfold>
               {@render group(excluded)}
             </div>
           {/if}
         {/if}
       {/key}
     </div>
-    {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
+    {#if elsewhere.length > 0 && !more}{@render alsoIn('sm')}{/if}
     {#if jobs.pageError}
       <div class="page-error">
         <Notice
@@ -643,10 +646,11 @@
     width: 100%;
   }
 
-  /* Under a centred empty state the links are centred too (under rows they start left). */
+  /* Under a centred empty state the links are centred too (under rows they start left), as
+     far below its sentence as the empty state's own way on. */
   .stack > .also {
     justify-content: center;
-    padding-inline: 0;
+    padding: var(--space-16) 0 0;
   }
 
   .empty {

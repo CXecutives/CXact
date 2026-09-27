@@ -1,6 +1,6 @@
 <!--
-  The heading of a section of a list: a navy sub-label, its count in brackets where it is
-  known ("Ausgeschlossen (2)"), then a hairline to the end. `thin` is the quiet variant for
+  The heading of a section of a list: a navy sub-label, where it is known its count after it,
+  quiet like the count of a place tab ("Ausgeschlossen 2"), then a hairline to the end. `thin` is the quiet variant for
   sections the list only groups (a small grey label, little room above it, as over the jobs
   of the last fetch). A section that folds (`open` set) is a button: its
   chevron at the end turns half a turn when open (180 ms, emphasized), the label darkens
@@ -23,12 +23,12 @@
   }
 
   let { label, count = null, thin = false, open = null, ontoggle, testid = null }: Props = $props();
-
-  const text = $derived(count === null ? label : `${label} (${formatNumber(count)})`);
 </script>
 
 {#snippet content()}
-  <span class="label">{text}</span>
+  <span class="label"
+    >{label}{#if count !== null}<span class="count">{formatNumber(count)}</span>{/if}</span
+  >
   <span class="rule" aria-hidden="true"></span>
   {#if open !== null}
     <span class="chevron" class:turned={open}><Icon name="expand" size="sm" /></span>
@@ -76,6 +76,13 @@
     flex: none;
     font-variant-numeric: var(--numeric);
     white-space: nowrap;
+  }
+
+  /* Quiet, like the count of a place tab. */
+  .count {
+    margin-inline-start: var(--space-6);
+    color: var(--text-subtle);
+    font-weight: var(--weight-regular);
   }
 
   .rule {
