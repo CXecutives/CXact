@@ -1,12 +1,11 @@
 <!--
   The reader, unboxed on the sheet (max 720 px). Its sections and their order are data
   (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
-  - head: the title (without gender tags) and the close "×" (the same at every width); the
-    company and the place, each after its icon (copyable); the portal's tile with its name and
-    the day of the alert mail, the other portals that announced the job as further tiles.
+  - head: the title (without gender tags) and the close "×" (the same at every width).
   - match: the ring (56, hollow; opening a job fills its arc once, the number stands at once)
     beside its band; every ring without a score says "Noch nicht bewertet". An excluded job
-    shows the ban instead, "Ausgeschlossen" and one sentence why (its first violation).
+    shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
+    profile's side (its first violation; the row it violates says what the ad states).
   - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…", all alike. The
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
     shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
@@ -17,14 +16,17 @@
     failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
     table (lib/facts.ts): the ad's value ("/" where it says nothing; for an ad the app never
-    read only what it knows) and the verdict as an icon whose tooltip is the reason that
-    decided it.
+    read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
+    is the reason that decided it (the ban where it excludes the job).
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
     each title; a missing must that is a term has a small "+" into the profile
-    (addToProfile.ts).
+    (addToProfile.ts), a tick once it is there.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
-    einrichten" where they help, and the ad as plain text.
+    einrichten" where they help, and the ad as plain text (AdText.svelte).
+  Hovering a row or a requirement with passages tints them in the ad, a click brings the
+  first into view and flashes it (passages.svelte.ts). Rows, requirements and the ad text
+  that arrive later (the ad loaded, a new score) fade in; requirements glide in their group.
 -->
 <script lang="ts" module>
   /** A button of the reader had the focus when its job moved away: the same button of the
@@ -43,28 +45,32 @@
   import Notice from '$components/Notice.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
+  import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
-  import { displayTitle, formatDay } from '$lib/i18n/format';
-  import { errorText, noteText, reasonText } from '$lib/i18n/texts';
+  import { displayTitle } from '$lib/i18n/format';
+  import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget, Reason } from '$lib/ipc/types';
-  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
-  import { placeOf } from '$lib/place';
+  import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
+  import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
+  import AdText, { type Passage } from './AdText.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import { guarded, jobMenu, move, purge, seen, type MoveId } from './actions';
+  import { Passages } from './passages.svelte';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
     REQUIREMENT_GROUPS,
     addable,
     kindOf,
+    termOf,
   } from './reader-sections';
   import { rowOf, termRows } from './terms';
 
@@ -80,8 +86,9 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   const match = $derived(detail.match);
   const withRing = $derived(app.hasProfile);
-  /** A match to judge the rows by (without one they show the ad's side only). */
-  const judged = $derived(withRing && match !== null);
+  /** A match to judge the rows by (without one, or one that could not score the ad, they show
+   *  the ad's side only, as the ring says "Noch nicht bewertet"). */
+  const judged = $derived(withRing && match !== null && match.status !== 'unscorable');
   const ring = $derived(
     ringState(job.match, job.match === null && Boolean(app.state?.matchPending), job.detail.kind),
   );
@@ -90,17 +97,15 @@
   const all = $derived(match?.reasons ?? []);
   const criteria = $derived(match?.criteria ?? []);
 
-  /** The head: company and place (without the work mode a portal appends), the portals. */
-  const company = $derived(job.company.trim());
-  const place = $derived(placeOf(job.location));
-  const day = $derived(formatDay(job.mailDate ?? job.firstSeenAt));
-  const portals = $derived([job.portal, ...job.alsoOn.filter((other) => other !== job.portal)]);
-
   const excluded = $derived((match?.status ?? job.match?.status) === 'excluded');
-  /** Why the engine excludes the job, in one sentence: its first violation, else the note. */
+  /** Why the engine excludes the job, in one sentence: its first violation, else the note. A
+   *  violation a row of the Jobdetails judges speaks from the profile's side (its criterion's
+   *  sentence, "Du schließt Zeitarbeit aus."); the row's tooltip says what the ad states. */
   const exclusion = $derived.by((): string => {
     for (const reason of all) {
-      const text = reason.kind === 'violation' ? reasonText(reason) : '';
+      if (reason.kind !== 'violation') continue;
+      const key = rowOf(reason) === null ? null : criterionKey(reason.code);
+      const text = key === null ? reasonText(reason) : t.reader.criterion[key].exclusion;
       if (text !== '') return text;
     }
     return noteText(job.match?.note ?? match?.summary ?? null) ?? t.reader.note.hardCriterion;
@@ -109,8 +114,10 @@
     ring.status === 'scored' || ring.status === 'provisional' ? ring.band : null,
   );
 
-  /** The rows of the Jobdetails (terms.ts); for an ad the app never read only what it knows
-   *  (what the ad says is not known yet, no "/" claims it says nothing). */
+  const detailKind = $derived(job.detail.kind);
+  /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
+   *  preview) only what it knows (what the ad says is not known yet, no "/" claims it says
+   *  nothing). */
   const rows = $derived(
     termRows({
       job,
@@ -118,7 +125,8 @@
       criteria,
       withVerdict: judged,
       textLength: detail.text?.length ?? 0,
-    }).filter((row) => detail.text !== null || !row.missing),
+      now: clock.now,
+    }).filter((row) => (detail.text !== null && detailKind !== 'teaser') || !row.missing),
   );
 
   const byWeight = (a: Reason, b: Reason): number =>
@@ -141,8 +149,26 @@
     })).filter((group) => group.items.length > 0),
   );
 
-  const detailKind = $derived(job.detail.kind);
+  /** The passages of every row and requirement that has some in the text shown. */
+  const passages = $derived.by((): Passage[] => {
+    const length = detail.text?.length ?? 0;
+    const inText = (range: { start: number; end: number }): boolean =>
+      range.start < range.end && range.end <= length;
+    return [
+      ...rows.flatMap((row) => row.ranges.map((range) => ({ item: `row:${row.key}`, ...range }))),
+      ...listed.flatMap((reason) =>
+        reason.ranges.filter(inText).map((range) => ({ item: reason.id, ...range })),
+      ),
+    ];
+  });
+  const withPassage = $derived(new Set(passages.map((passage) => passage.item)));
+  /** The `data-item` of a row with passages: its pointer and its click reach them. */
+  const itemOf = (item: string): string | undefined => (withPassage.has(item) ? item : undefined);
+  const hover = new Passages();
+
   const portalState = $derived(app.state?.portals.find((p) => p.portal === job.portal) ?? null);
+  /** "Anzeige laden" was pressed in this reader: this job is in the run. */
+  let requested = $state(false);
   type AdNote = keyof typeof t.reader.adNote;
   /** Why the ad's text is not all there, if it is not. */
   const adNote = $derived.by((): AdNote | null => {
@@ -154,9 +180,19 @@
       case 'unfetchable':
         return detailKind;
       default:
-        // Still to come, failed or on request: being loaded while a fetch runs.
-        return run.fetching ? 'loading' : 'missing';
+        // The text came before the job's state: it is there.
+        if (detail.text !== null) return job.closed ? 'closed' : null;
+        // Still to come, failed or on request: loaded while this job is in a run of its
+        // portal (the one asked for here, or a fetch that loads what is still to come).
+        return run.fetching &&
+          portalState?.enabled === true &&
+          (requested || detailKind === 'pending')
+          ? 'loading'
+          : 'missing';
     }
+  });
+  $effect(() => {
+    if (!run.fetching) requested = false;
   });
   /** A preview or a missing ad the portal can load now (a preview only with its sign-in). */
   const canLoad = $derived(
@@ -239,9 +275,16 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  /** A missing must into the profile; a failure is a toast. */
+  /** A missing must into the profile (its term, without the ad's lead words); a failure is a
+   *  toast. */
   async function add(term: string): Promise<void> {
     fail(await addTerm(term));
+  }
+
+  /** "Anzeige laden": this job's ad, in a run of its own. */
+  function load(): void {
+    requested = true;
+    void run.start({ kind: 'details', keys: [job.key] });
   }
 
   /** The "…" menu: what changes the job, from the one table of the job's menu (the row's
@@ -334,45 +377,20 @@
 
 {#snippet head()}
   <header class="head">
-    <div class="title-line">
-      <h1 class="title" data-testid="reader-title" data-copy>{heading}</h1>
-      {#if onclose}
-        <span class="close">
-          <Button
-            variant="ghost"
-            size="sm"
-            iconOnly
-            icon="close"
-            label={t.reader.close}
-            testid="reader-close"
-            onclick={onclose}
-          />
-        </span>
-      {/if}
-    </div>
-    {#if company !== '' || place !== ''}
-      <p class="where" data-testid="reader-where">
-        {#if company !== ''}
-          <span class="fact" data-testid="reader-company"
-            ><Icon name="company" size="sm" /><span data-copy>{company}</span></span
-          >
-        {/if}
-        {#if place !== ''}
-          <span class="fact" data-testid="reader-place"
-            ><Icon name="place" size="sm" /><span data-copy>{place}</span></span
-          >
-        {/if}
-      </p>
+    <h1 class="title" data-testid="reader-title" data-copy>{heading}</h1>
+    {#if onclose}
+      <span class="close">
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon="close"
+          label={t.reader.close}
+          testid="reader-close"
+          onclick={onclose}
+        />
+      </span>
     {/if}
-    <p class="source" data-testid="reader-source">
-      {#each portals as portal, index (portal)}
-        <span class="fact" data-testid="reader-portal-{portal}"
-          ><span class="tile" aria-hidden="true">{PORTAL_MONOGRAM[portal]}</span><span
-            >{t.portal[portal]}{#if index === 0 && day !== ''}, {day}{/if}</span
-          ></span
-        >
-      {/each}
-    </p>
   </header>
 {/snippet}
 
@@ -450,24 +468,41 @@
     <!-- Name, the ad's value and whether it fits as an icon (the reason in its tooltip). -->
     <ul class="terms" class:judged aria-label={t.reader.details} data-testid="criteria">
       {#each rows as row (row.key)}
-        <li class="term" data-row={row.key} data-testid="term-{row.key}">
+        <li
+          class="term"
+          class:tall={row.parts !== null}
+          data-row={row.key}
+          data-item={itemOf(`row:${row.key}`)}
+          data-testid="term-{row.key}"
+          in:fade
+        >
           <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
-          <span class="term-line">
-            <span class="value" class:missing={row.missing} data-copy={row.missing ? null : ''}
-              >{row.value}</span
-            >
+          <!-- Without a verdict the value takes the verdict's column too: only judged values
+               set where the verdicts stand. -->
+          <span class="term-line" class:wide={!judged || row.verdict === null}>
+            {#if row.parts}
+              <span class="parts">
+                {#each row.parts as part, index (index)}<span class="value" data-copy>{part}</span
+                  >{/each}
+              </span>
+            {:else}
+              <span
+                class="value"
+                class:missing={row.missing}
+                class:urgent={row.urgent}
+                data-copy={row.missing ? null : ''}>{row.value}</span
+              >
+            {/if}
             {#if row.note}<span class="term-note">{row.note}</span>{/if}
           </span>
-          {#if judged}
-            <span class="verdict" data-testid="verdict" data-verdict={row.verdict ?? ''}>
-              {#if row.verdict}
-                <ReasonItem
-                  iconOnly
-                  kind={kindOf(row.verdict)}
-                  label={t.reader.verdict[row.verdict]}
-                  hint={row.why}
-                />
-              {/if}
+          {#if judged && row.verdict}
+            <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
+              <ReasonItem
+                iconOnly
+                kind={row.excludes ? 'violation' : kindOf(row.verdict)}
+                label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
+                hint={row.why ?? t.reader.verdict[row.verdict]}
+              />
             </span>
           {/if}
         </li>
@@ -478,7 +513,7 @@
 
 {#snippet requirements()}
   {#if match && match.status !== 'unscorable' && withRing}
-    <section class="block why" data-testid="why">
+    <section class="block why" data-testid="why" in:fade>
       <h2 class="section">{t.reader.why}</h2>
       {#if groups.length === 0}
         <p class="quiet">{t.reader.noReasons}</p>
@@ -491,19 +526,31 @@
             </h3>
             <ul class="reasons" data-testid="reasons-{group.kind}">
               {#each group.items as reason (reason.id)}
-                {@const words = reasonText(reason)}
-                <li class="reason-line" data-weight={reason.weight}>
+                <li
+                  class="reason-line"
+                  data-weight={reason.weight}
+                  data-item={itemOf(reason.id)}
+                  animate:flip={{ count: group.items.length }}
+                  in:fade
+                >
                   <ReasonItem
                     kind={reason.kind}
-                    weight={reason.weight === 'nice' ? 'nice' : null}
-                    label={words}
+                    optional={reason.weight === 'nice'}
+                    label={reasonText(reason)}
                   />
-                  <!-- A missing must that is a term: its way into the profile, then that it
-                       is there. -->
+                  <!-- A missing must that is a term: its way into the profile, then a quiet
+                       tick that it is there (the toast says so in words). -->
                   {#if addable(reason)}
+                    {@const term = termOf(reason)}
                     <span class="reason-action">
-                      {#if isAdded(words)}
-                        <span class="added" data-testid="added">{t.reader.added}</span>
+                      {#if isAdded(term)}
+                        <span
+                          class="added"
+                          role="img"
+                          aria-label={t.reader.added}
+                          data-testid="added"
+                          in:fade><Icon name="check" size="sm" /></span
+                        >
                       {:else}
                         <Button
                           variant="ghost"
@@ -512,7 +559,7 @@
                           icon="add"
                           label={t.reader.addToProfile}
                           testid="add-to-profile"
-                          onclick={() => void add(words)}
+                          onclick={() => void add(term)}
                         />
                       {/if}
                     </span>
@@ -531,17 +578,25 @@
   <section class="block ad" data-testid="ad">
     <h2 class="section">{t.reader.ad}</h2>
     {#if adNote !== null}
-      <div class="missing">
-        <Notice
-          tone={adNote === 'unfetchable' || adNote === 'gone' ? 'warning' : 'info'}
-          variant="inline"
-          text={t.reader.adNote[adNote]}
-          testid="detail-note"
-        />
+      {@const warn = adNote === 'unfetchable' || adNote === 'gone' || adNote === 'closed'}
+      <!-- One line that stays while its words change (being loaded: the spinner in the place
+           of its icon), with the way to the ad where it helps. -->
+      <div class="ad-note">
+        <p
+          class="note"
+          class:warning={warn}
+          role={warn ? 'alert' : 'status'}
+          data-testid="detail-note"
+        >
+          {#if adNote === 'loading'}<Spinner size="sm" label={null} />{:else}<Icon
+              name={warn ? 'warning' : 'info'}
+              size="sm"
+            />{/if}{t.reader.adNote[adNote]}
+        </p>
         {#if signInMissing}
           <Button
             variant="secondary"
-            size="sm"
+            size="field"
             icon="signIn"
             label={t.reader.setUpSignIn}
             testid="set-up-sign-in"
@@ -550,13 +605,13 @@
         {:else if canLoad}
           <Button
             variant="secondary"
-            size="sm"
+            size="field"
             icon="details"
             label={t.reader.fetchDetails}
             disabled={run.detailsBlocked !== null}
             disabledReason={run.detailsBlocked}
             testid="load-ad"
-            onclick={() => void run.start({ kind: 'details', keys: [job.key] })}
+            onclick={load}
           />
         {/if}
       </div>
@@ -564,7 +619,9 @@
       <Notice tone="info" variant="inline" text={t.reader.short} testid="short-note" />
     {/if}
     {#if detail.text}
-      <div class="text" data-testid="ad-text" data-copy>{detail.text}</div>
+      <div in:fade>
+        <AdText text={detail.text} {passages} lit={hover.hovered} flash={hover.flashing} />
+      </div>
     {/if}
   </section>
 {/snippet}
@@ -573,6 +630,7 @@
   class="reader"
   data-testid="reader"
   bind:this={article}
+  use:hover.watch
   onpointerdown={(event) => {
     // Only a left press counts as looking at the job (a right or middle press is no reading).
     if (event.button === 0) seen(job.key);
@@ -617,12 +675,6 @@
 
   .head {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-
-  .title-line {
-    display: flex;
     align-items: flex-start;
     gap: var(--space-8);
   }
@@ -642,49 +694,6 @@
     flex: none;
     margin-top: calc((var(--leading-2xl) - var(--control-sm)) / 2);
     margin-right: calc(-1 * var(--space-6));
-  }
-
-  /* Company and place, the portals: each fact after its icon, a line breaks between facts. */
-  .where,
-  .source {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-4) var(--space-16);
-  }
-
-  .where {
-    color: var(--text);
-    font: var(--type-md);
-  }
-
-  .source {
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  .fact {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-6);
-    min-width: 0;
-  }
-
-  .where :global(.icon) {
-    color: var(--text-subtle);
-  }
-
-  /* The portal's small tile, as in the list row. */
-  .tile {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    height: var(--portal-tile);
-    padding: 0 var(--space-4);
-    border-radius: var(--radius-xs);
-    background-color: var(--surface-track);
-    color: var(--text-muted);
-    font: var(--type-2xs);
-    font-weight: var(--weight-semibold);
   }
 
   /* The ring, or the ban, beside its words; the words centre on it. */
@@ -708,6 +717,13 @@
     width: var(--ring-md);
     height: var(--ring-md);
     color: var(--score-excluded);
+  }
+
+  /* The ban at the ring's size: its circle stands where the ring's would, its stroke about
+     as strong. */
+  .match .ban :global(.icon) {
+    width: var(--ring-md);
+    height: var(--ring-md);
   }
 
   .lines {
@@ -757,12 +773,27 @@
     flex: none;
   }
 
-  /* The note on a text that is not all there, and the way to it. */
-  .missing {
+  /* The note on a text that is not all there, and the way to it: one height with and without
+     its button, so nothing below jumps when the button goes. */
+  .ad-note {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8) var(--space-16);
+    min-height: var(--control-field);
+  }
+
+  /* The note, like an inline notice: its icon (or the spinner) and its words in its tone. */
+  .note {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-8);
+    color: var(--info-strong);
+    font: var(--type-sm);
+  }
+
+  .note.warning {
+    color: var(--warning-strong);
   }
 
   /* A heading 12 px above its content. */
@@ -780,30 +811,43 @@
   }
 
   /* The Jobdetails: name, value and verdict in three columns that line up row by row (two
-     without a match: nothing to judge); the verdicts stand right after the widest value. */
+     without a match: nothing to judge); the verdicts stand right after the widest judged
+     value (a value without a verdict takes the verdict's column too). Each row is one box on
+     the columns of the list (its pointer tints its passages). The same metrics as the
+     requirements below: their text, their icon gap. */
   .terms {
     display: grid;
     grid-template-columns: max-content minmax(0, max-content);
     gap: var(--space-8) var(--space-24);
-    align-items: center;
-    justify-content: start;
-    justify-items: start;
-    font: var(--type-sm);
+    font: var(--type-md);
     text-align: start;
   }
 
   .terms.judged {
-    grid-template-columns: max-content minmax(0, max-content) max-content;
+    grid-template-columns: max-content minmax(0, max-content) minmax(var(--icon-sm), 1fr);
   }
 
   .term {
-    display: contents;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: center;
+    justify-items: start;
+  }
+
+  /* A value of several lines (the contact): the name stands at its first line. */
+  .term.tall {
+    align-items: start;
+  }
+
+  .term-line.wide {
+    grid-column: 2 / -1;
   }
 
   .term-name {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-6);
+    gap: var(--space-8);
     color: var(--text-muted);
     white-space: nowrap;
   }
@@ -827,6 +871,19 @@
   .value.missing,
   .term-note {
     color: var(--text-subtle);
+  }
+
+  /* A deadline within a week, or past. */
+  .value.urgent {
+    color: var(--danger-strong);
+  }
+
+  /* The parts of the contact, one under the other, each copied on its own. */
+  .parts {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .verdict {
@@ -883,21 +940,18 @@
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
   }
 
+  /* The quiet tick in the place of the "+", centred where the "+" was. */
   .added {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--control-sm);
+    height: var(--control-sm);
     color: var(--text-subtle);
-    font: var(--type-sm);
   }
 
   .quiet {
     color: var(--text-muted);
     font: var(--type-md);
-  }
-
-  /* The ad as it reads (no HTML from the page ever reaches the DOM). */
-  .text {
-    color: var(--text);
-    font: var(--type-body);
-    white-space: pre-line;
-    overflow-wrap: anywhere;
   }
 </style>

@@ -1,4 +1,5 @@
 import { expect, expectShot, open, settle, test } from './fixtures';
+import { tokenColour } from './helpers';
 
 const SECTIONS = [
   'colours',
@@ -83,18 +84,30 @@ test('a reason is its icon and its words; the icon alone names it, why in its to
   await expect(page.getByRole('tooltip')).toContainText('Konzerncontrolling');
 });
 
-test('to check has one colour: the chip and the reason alike', async ({ page }) => {
+test('the reasons: one glyph and one colour per state, the badge only for an optional one', async ({
+  page,
+}) => {
   await open(page, '?gallery');
   const section = page.getByTestId('gallery-reasons');
   await section.scrollIntoViewIfNeeded();
-  const chip = await section
-    .locator('.chip.unknown .chip-icon')
-    .evaluate((node) => getComputedStyle(node).color);
-  const reason = await section
-    .locator('.reason.check .icon')
-    .first()
-    .evaluate((node) => getComputedStyle(node).color);
-  expect(chip).toBe(reason);
+  const looks = await section
+    .locator('.reason:not(.icon-only)')
+    .evaluateAll((all) =>
+      all.map((reason) => [
+        reason.getAttribute('data-kind'),
+        reason.querySelector('.icon svg')?.getAttribute('class') ?? '',
+        getComputedStyle(reason.querySelector('.icon')!).color,
+      ]),
+    );
+  expect(looks.map(([kind]) => kind)).toEqual(['met', 'partial', 'open', 'violation', 'check']);
+  expect(new Set(looks.map(([, glyph]) => glyph)).size).toBe(5);
+  // Met in part is the amber minus in a circle; to check is muted.
+  expect(looks[1]![1]).toContain('lucide-circle-minus');
+  expect(looks[1]![2]).toBe(await tokenColour(page, '--warning-strong'));
+  expect(looks[4]![2]).toBe(await tokenColour(page, '--text-muted'));
+  // No compact rows, no chips, no badge but "Optional".
+  await expect(section.locator('.compact, .chip')).toHaveCount(0);
+  expect(new Set(await section.locator('.badge').allInnerTexts())).toEqual(new Set(['Optional']));
 });
 
 test('under reduced motion the rings jump to their value', async ({ page }) => {

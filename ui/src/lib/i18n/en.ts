@@ -444,7 +444,7 @@ const reasonCode = {
     typeof p.months === 'number' && typeof p.min === 'number'
       ? `The duration of ${count(p.months, 'month', 'months')} is below the minimum of ${count(p.min, 'month', 'months')}.`
       : DURATION,
-  exclusionWord: (p) => `“${str(p.word)}” is on your list of exclusion words.`,
+  exclusionWord: (p) => `“${str(p.word)}” is one of your exclusion words.`,
 } satisfies Catalog['reason']['code'];
 
 /**
@@ -455,42 +455,42 @@ const criteria = {
   minDayRate: {
     label: 'Day rate',
     short: 'Day rate too low',
-    exclusion: 'The day rate is below the minimum in the profile.',
+    exclusion: 'The day rate is below your minimum.',
   },
   countries: {
     label: 'Countries',
     short: 'Outside your countries',
-    exclusion: 'The location is outside the countries in the profile.',
+    exclusion: 'The place of work is not in your countries.',
   },
   noAnue: {
     label: 'Temporary agency work',
     short: 'Temporary agency work',
-    exclusion: ANUE,
+    exclusion: 'You exclude temporary agency work.',
   },
   noPermanent: {
     label: 'Permanent job',
     short: 'Permanent job',
-    exclusion: 'This is a permanent job, which the profile excludes.',
+    exclusion: 'You exclude permanent jobs.',
   },
   availability: {
     label: 'Availability',
     short: 'Start does not fit',
-    exclusion: 'The start does not fit the availability.',
+    exclusion: 'The start is before you are available.',
   },
   minSalary: {
     label: 'Annual salary',
     short: 'Salary too low',
-    exclusion: 'The salary is below the minimum in the profile.',
+    exclusion: 'The salary is below your minimum.',
   },
   permanentRegion: {
     label: 'Locations',
     short: 'Location does not fit',
-    exclusion: 'The location is outside your locations for permanent jobs.',
+    exclusion: 'The place is not among your locations for permanent jobs.',
   },
   targetYears: {
     label: 'Experience',
     short: 'Experience does not fit',
-    exclusion: 'The job asks for much less experience.',
+    exclusion: 'The job asks for less experience than you look for.',
   },
   workload: {
     label: 'Workload',
@@ -505,7 +505,7 @@ const criteria = {
   exclusionWords: {
     label: 'Exclusion words',
     short: 'Exclusion word',
-    exclusion: 'The ad names an exclusion word from the profile.',
+    exclusion: 'The ad names one of your exclusion words.',
   },
 } satisfies Catalog['reader']['criterion'];
 
@@ -798,14 +798,14 @@ export const en: Catalog = {
     months: (value: number) => count(value, 'month', 'months'),
     unlimited: 'open-ended',
     remote: (from: number, to: number) => {
-      if (from >= 100) return 'fully remote';
+      if (from >= 100) return 'Fully remote';
       if (to <= 0) return 'On site';
       return from === to
         ? `${formatPercent(from)} remote`
         : `${n(from)} to ${formatPercent(to)} remote`;
     },
     mode: {
-      remote: 'fully remote',
+      remote: 'Fully remote',
       hybrid: 'Hybrid',
       onsite: 'On site',
     } satisfies Record<WorkMode, string>,
@@ -832,11 +832,20 @@ export const en: Catalog = {
       duration: 'Duration',
       workload: 'Workload',
       experience: 'Experience',
+      deadline: 'Deadline',
+      contact: 'Contact',
       industry: 'Industry',
       portal: 'Portal',
       received: 'Received',
     },
     salaryName: 'Salary',
+    hourlyName: 'Hourly rate',
+    versusMinimum: (percent: number) => {
+      if (percent === 0) return 'exactly your minimum';
+      const share = formatPercent(Math.abs(percent));
+      return percent > 0 ? `${share} above your minimum` : `${share} below your minimum`;
+    },
+    yearsBelow: (years: number) => `below your minimum of ${count(years, 'year', 'years')}`,
     missing: '/',
     contractKind: {
       interim: 'Interim',
@@ -870,12 +879,12 @@ export const en: Catalog = {
     noReasons: 'The ad names no clear requirements.',
     ad: 'Ad',
     adNote: {
-      teaser: 'Only a preview',
-      missing: 'Ad missing',
-      loading: 'Loading the ad',
-      unfetchable: 'Ad cannot be reached',
-      gone: 'No longer online',
-      closed: 'No longer taking applications',
+      teaser: 'Only a preview.',
+      missing: 'Not loaded yet.',
+      loading: 'Loading.',
+      unfetchable: 'Cannot be reached.',
+      gone: 'No longer online.',
+      closed: 'No longer taking applications.',
     },
     short: SHORT_TEXT,
     loadFailed: 'The job could not be loaded.',

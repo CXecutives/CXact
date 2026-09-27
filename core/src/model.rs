@@ -288,6 +288,22 @@ pub struct KeyFacts {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[cfg_attr(test, ts(optional))]
     pub salary_lower_bound: Option<bool>,
+    /// The application deadline the ad names, an ISO date (`2026-10-15`); left out without
+    /// one.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub deadline: Option<String>,
+    /// The contact the ad names: a person, an e-mail address and a phone number, each as the
+    /// ad writes it; each left out when the ad names none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub contact_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub contact_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(test, ts(optional))]
+    pub contact_phone: Option<String>,
 }
 
 impl KeyFacts {

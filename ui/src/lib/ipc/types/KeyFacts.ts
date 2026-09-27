@@ -48,4 +48,14 @@ salary?: number,
 /**
  * The salary is a lower bound only (`ab 100.000 €`); left out without a salary.
  */
-salaryLowerBound?: boolean, };
+salaryLowerBound?: boolean, 
+/**
+ * The application deadline the ad names, an ISO date (`2026-10-15`); left out without
+ * one.
+ */
+deadline?: string, 
+/**
+ * The contact the ad names: a person, an e-mail address and a phone number, each as the
+ * ad writes it; each left out when the ad names none.
+ */
+contactName?: string, contactEmail?: string, contactPhone?: string, };

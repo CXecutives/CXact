@@ -419,7 +419,7 @@ const reasonCode = {
     typeof p.months === 'number' && typeof p.min === 'number'
       ? `Die Laufzeit von ${count(p.months, 'Monat', 'Monaten')} liegt unter dem Minimum von ${count(p.min, 'Monat', 'Monaten')}.`
       : DURATION,
-  exclusionWord: (p) => `„${str(p.word)}“ steht auf deiner Liste der Ausschlusswörter.`,
+  exclusionWord: (p) => `„${str(p.word)}“ ist eines deiner Ausschlusswörter.`,
 } satisfies Record<string, Text>;
 export type ReasonCode = keyof typeof reasonCode;
 
@@ -428,7 +428,8 @@ interface CriterionText {
   label: string;
   /** Why a job is excluded by it, in the short words of a list row. */
   short: string;
-  /** Why a job is excluded by it. */
+  /** Why a job is excluded by it, from the profile's side (the reader's head; the row the
+   *  criterion judges says what the ad states). */
   exclusion: string;
 }
 
@@ -440,42 +441,42 @@ const criteria = {
   minDayRate: {
     label: 'Tagessatz',
     short: 'Tagessatz zu niedrig',
-    exclusion: 'Der Tagessatz liegt unter dem Minimum im Profil.',
+    exclusion: 'Der Tagessatz liegt unter deinem Minimum.',
   },
   countries: {
     label: 'Einsatzländer',
     short: 'Einsatzland passt nicht',
-    exclusion: 'Der Einsatzort liegt außerhalb der Länder im Profil.',
+    exclusion: 'Der Einsatzort liegt nicht in deinen Ländern.',
   },
   noAnue: {
     label: 'Zeitarbeit',
     short: 'Zeitarbeit',
-    exclusion: ANUE,
+    exclusion: 'Du schließt Zeitarbeit aus.',
   },
   noPermanent: {
     label: 'Festanstellung',
     short: 'Festanstellung',
-    exclusion: 'Der Job ist eine Festanstellung, das Profil schließt sie aus.',
+    exclusion: 'Du schließt Festanstellungen aus.',
   },
   availability: {
     label: 'Verfügbarkeit',
     short: 'Start passt nicht',
-    exclusion: 'Der Start passt nicht zur Verfügbarkeit.',
+    exclusion: 'Der Start liegt vor deiner Verfügbarkeit.',
   },
   minSalary: {
     label: 'Jahresgehalt',
     short: 'Gehalt zu niedrig',
-    exclusion: 'Das Gehalt liegt unter dem Minimum im Profil.',
+    exclusion: 'Das Gehalt liegt unter deinem Minimum.',
   },
   permanentRegion: {
     label: 'Orte',
     short: 'Ort passt nicht',
-    exclusion: 'Der Ort liegt außerhalb der Orte für Festanstellung.',
+    exclusion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
   },
   targetYears: {
     label: 'Erfahrung',
     short: 'Erfahrung passt nicht',
-    exclusion: 'Der Job verlangt deutlich weniger Erfahrung.',
+    exclusion: 'Der Job verlangt weniger Erfahrung, als du suchst.',
   },
   // The workload and the duration are checks, never an exclusion (engine 16).
   workload: {
@@ -491,7 +492,7 @@ const criteria = {
   exclusionWords: {
     label: 'Ausschlusswörter',
     short: 'Ausschlusswort',
-    exclusion: 'Die Anzeige nennt ein Ausschlusswort aus dem Profil.',
+    exclusion: 'Die Anzeige nennt eines deiner Ausschlusswörter.',
   },
 } satisfies Record<string, CriterionText>;
 export type CriterionKey = keyof typeof criteria;
@@ -856,7 +857,7 @@ export const de = {
   },
   /** The facts of a job in their one form each (the reader's Jobdetails, the list row; the
    *  order and the icons are the table of lib/facts.ts): a date "24.09.", a start "ab 01.11.",
-   *  money "1.200 €/Tag" and "95.000 €/Jahr", a workload "3 Tage/Woche", the work mode "voll
+   *  money "1.200 €/Tag" and "95.000 €/Jahr", a workload "3 Tage/Woche", the work mode "Voll
    *  remote", "60 % remote", "Hybrid" or "Vor Ort". */
   facts: {
     now: 'ab sofort',
@@ -869,7 +870,7 @@ export const de = {
     unlimited: 'unbefristet',
     /** The remote share the ad states (from and to, in percent). */
     remote: (from: number, to: number) => {
-      if (from >= 100) return 'voll remote';
+      if (from >= 100) return 'Voll remote';
       if (to <= 0) return 'Vor Ort';
       return from === to
         ? `${formatPercent(from)} remote`
@@ -877,7 +878,7 @@ export const de = {
     },
     /** The work mode of an ad that states no share. */
     mode: {
-      remote: 'voll remote',
+      remote: 'Voll remote',
       hybrid: 'Hybrid',
       onsite: 'Vor Ort',
     } satisfies Record<WorkMode, string>,
@@ -895,6 +896,7 @@ export const de = {
   reader: {
     /** A must requirement the profile lacks: the term goes into the profile's keywords. */
     addToProfile: 'Zum Profil hinzufügen',
+    /** The name of the quiet tick that replaces the "+" once the term is in the profile. */
     added: 'Hinzugefügt',
     addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
     /** The table of the job's facts (features/jobs/terms.ts, in the order of lib/facts.ts). */
@@ -909,12 +911,24 @@ export const de = {
       duration: 'Laufzeit',
       workload: 'Auslastung',
       experience: 'Erfahrung',
+      deadline: 'Bewerbungsfrist',
+      contact: 'Kontakt',
       industry: 'Branche',
       portal: 'Portal',
       received: 'Eingegangen',
     },
     /** The pay row of a permanent job or temporary agency work (an annual salary). */
     salaryName: 'Gehalt',
+    /** The pay row of an hourly rate. */
+    hourlyName: 'Stundensatz',
+    /** Quiet after the pay: how it stands to the profile's minimum (signed percent). */
+    versusMinimum: (percent: number) => {
+      if (percent === 0) return 'genau dein Minimum';
+      const share = formatPercent(Math.abs(percent));
+      return percent > 0 ? `${share} über deinem Minimum` : `${share} unter deinem Minimum`;
+    },
+    /** Quiet after the years a job asks: fewer than the profile's minimum. */
+    yearsBelow: (years: number) => `unter deinem Minimum von ${count(years, 'Jahr', 'Jahren')}`,
     /** A value the ad does not state. */
     missing: '/',
     /** The contract type in the row "Vertragsart". */
@@ -956,15 +970,16 @@ export const de = {
     why: 'Anforderungen',
     noReasons: 'Die Anzeige nennt keine klaren Anforderungen.',
     ad: 'Anzeige',
-    /** The note of the ad section where its text is not all there: a preview, an ad still
-     *  to come or being loaded, one the app cannot reach, gone or closed. */
+    /** The note of the ad section where its text is not all there, one short sentence under
+     *  the heading "Anzeige": a preview, an ad still to come or being loaded, one the app
+     *  cannot reach, gone or closed. */
     adNote: {
-      teaser: 'Nur eine Vorschau',
-      missing: 'Anzeige fehlt',
-      loading: 'Anzeige wird geladen',
-      unfetchable: 'Anzeige nicht erreichbar',
-      gone: 'Nicht mehr online',
-      closed: 'Keine Bewerbung mehr möglich',
+      teaser: 'Nur eine Vorschau.',
+      missing: 'Noch nicht geladen.',
+      loading: 'Wird geladen.',
+      unfetchable: 'Nicht erreichbar.',
+      gone: 'Nicht mehr online.',
+      closed: 'Keine Bewerbung mehr möglich.',
     },
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',

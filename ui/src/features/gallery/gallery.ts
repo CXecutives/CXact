@@ -177,13 +177,6 @@ export const text = {
       check: 'Start in sechs Wochen',
     },
     evidence: '„Controlling im Konzern“ stimmt mit „Konzerncontrolling“ im Profil überein.',
-    chipLabels: {
-      met: '1.100 €/Tag',
-      unknown: 'Vermutlich Interim',
-      violated: 'ANÜ',
-      unset: 'Start nicht genannt',
-      plain: 'Interim',
-    },
   },
 } as const;
 

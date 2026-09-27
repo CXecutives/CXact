@@ -3,23 +3,25 @@
 // stands for, when it shows, and how it reads the ad's value. A row says only what the ad says
 // (its facts, else the value the engine read into a criterion; "/" where it says nothing), and
 // a verdict when there is a match to judge by: the worst of its criteria and reasons, with the
-// sentence of the reason that decided it as the verdict's tooltip.
+// sentence of the reason that decided it as the verdict's tooltip. Its passages are the ranges
+// of those reasons in the ad's text (hovering the row tints them).
 //
-// One check per fact, so a row and a requirement never disagree: a requirement that states a
-// row's value ("Mindestens 15 Jahre Berufserfahrung im Controlling" states the years) belongs
-// to that row (`claims`). The row is judged by it together with its criterion, and the list of
-// "Anforderungen" leaves it out (`rowOf`), like the day rate's findings. The pay row reads the
-// codes and the criterion of the pay that applies only: a salary is never judged by a day rate
-// wish, a day rate never by the minimum salary.
+// One check per fact: a row is judged by its own criteria and codes only. A requirement that
+// states a row's value ("Mindestens 15 Jahre Berufserfahrung im Controlling" states the years)
+// gives the row its value (`claims`), and keeps its own verdict among the "Anforderungen": the
+// row judges the years, the requirement the skill. The pay row reads the codes and the
+// criterion of the pay that applies only: a salary is never judged by a day rate wish, a day
+// rate never by the minimum salary.
 
 import type { IconName } from '$components/Icon.svelte';
 import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/facts';
-import { formatDay } from '$lib/i18n/format';
+import { formatDay, formatStamp } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
-import { criterionKey, reasonHint, reasonText } from '$lib/i18n/texts';
-import type { JobView, KeyFacts, Reason } from '$lib/ipc/types';
+import { criterionKey } from '$lib/i18n/texts';
+import type { JobView, KeyFacts, Reason, TextRange } from '$lib/ipc/types';
 import { placeOf } from '$lib/place';
+import { criterionVerdict, isRequirement, reasonVerdict, sentence, worst } from './verdicts';
 
 export type { TermKey };
 export type Verdict = TermVerdict;
@@ -32,26 +34,39 @@ export interface TermRow {
   icon: IconName;
   /** The ad's value in words ("1.200 €/Tag"), or "/". */
   value: string;
+  /** A value of several parts, each copied on its own (the contact: name, e-mail, phone). */
+  parts: readonly string[] | null;
   /** The ad does not state it. */
   missing: boolean;
-  /** A quiet word after the value: estimated, assumed. */
+  /** A quiet word after the value: estimated, assumed, how it stands to the profile. */
   note: string | null;
+  /** The value is due within a week or past (a deadline): it shows in red. */
+  urgent: boolean;
   /** Null: nothing to judge (no match, or nothing decides the row). */
   verdict: Exclude<Verdict, 'unset'> | null;
   /** The sentence of the reason that decided the verdict (its tooltip), if one did. */
   why: string | null;
+  /** The verdict is a hard criterion the ad violates: it excludes the job. */
+  excludes: boolean;
+  /** Where the ad states the value: the passages of the row's reasons in the text shown. */
+  ranges: readonly TextRange[];
 }
 
 /** Where the ad's facts live (the one line that changes when they move to the job itself). */
 const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;
 
 const num = (value: unknown): number | null => (typeof value === 'number' ? value : null);
+/** A number the engine may send as text (the profile's minimum day rate, `"1100"`). */
+const amount = (value: unknown): number | null => {
+  const parsed = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : null;
+};
 const text = (value: unknown): string | null =>
   typeof value === 'string' && value !== '' ? value : null;
 
-/** The engine's requirements: the ad's own words, judged against the profile's skills. */
-const REQUIREMENTS: readonly string[] = ['requirement', 'term'];
-const isRequirement = (reason: Reason): boolean => REQUIREMENTS.includes(reason.code);
+/** A deadline this many days ahead or fewer (or past) shows in red. */
+const URGENT_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface Contract {
   kind: ContractWord;
@@ -73,11 +88,14 @@ interface Context {
   claimed: readonly Reason[];
   /** A passage of the text shown states the value (else a number is the engine's estimate). */
   stated: boolean;
+  now: Date;
 }
 
 interface Value {
   value: string | null;
+  parts?: readonly string[];
   note?: string | null;
+  urgent?: boolean;
   /** False: the row takes no verdict (the duration of a permanent job). */
   judged?: boolean;
 }
@@ -91,10 +109,10 @@ interface Checks {
 interface Term extends Checks {
   /** Employment pays a salary: then these checks instead. */
   employment?: Checks;
-  /** Requirements that state the row's value (judged in the row, never listed again). */
+  /** Requirements that state the row's value (its value, never its verdict). */
   claims?: (reason: Reason) => boolean;
-  /** Codes that give the value only, never the verdict. */
-  valueOnly?: readonly string[];
+  /** Reasons that tell the value only, never the verdict. */
+  quiet?: (reason: Reason) => boolean;
   /** Whether the row shows for this job (always without). */
   shows?: (ctx: Context) => boolean;
   /** Its name for this job (the catalog's `reader.term` without). */
@@ -103,6 +121,14 @@ interface Term extends Checks {
 }
 
 const NONE: Checks = { codes: [], criteria: [] };
+
+/** How a stated amount stands to the profile's minimum, as a quiet note (both known). */
+function versusMinimum(value: number | null, min: number | null): string | null {
+  if (value === null || min === null || min <= 0) return null;
+  const share = ((value - min) / min) * 100;
+  const percent = value === min ? 0 : Math.sign(share) * Math.max(1, Math.round(Math.abs(share)));
+  return t.reader.versusMinimum(percent);
+}
 
 /** What each row reads; their order is the facts table's. */
 const TERMS: Record<TermKey, Term> = {
@@ -120,7 +146,11 @@ const TERMS: Record<TermKey, Term> = {
   contract: {
     codes: ['contractType', 'anue', 'anueRisk', 'anueOptional', 'anueHidden', 'permanent'],
     criteria: ['noAnue', 'noPermanent'],
-    valueOnly: ['contractType'],
+    // The type itself, and that the job sounds permanent while the profile does not exclude
+    // it, only tell (a guessed type says so in its quiet note).
+    quiet: (reason) =>
+      reason.code === 'contractType' ||
+      (reason.code === 'permanent' && reason.params.excluded !== true),
     read: ({ contract }) =>
       contract.kind === 'unclear'
         ? { value: null }
@@ -129,21 +159,30 @@ const TERMS: Record<TermKey, Term> = {
             note: contract.inferred ? t.reader.assumed : null,
           },
   },
-  // The pay: a day rate, or the annual salary of employment.
+  // The pay: a day rate (or an hourly one), or the annual salary of employment.
   rate: {
     codes: ['dayRate', 'dayRateCurrency', 'dayRateWish'],
     criteria: ['minDayRate'],
     employment: { codes: ['salary', 'salaryUnknown'], criteria: ['minSalary'] },
-    name: ({ contract }) => (contract.employment ? t.reader.salaryName : t.reader.term.rate),
+    name: ({ contract, facts, criterion }) => {
+      if (contract.employment) return t.reader.salaryName;
+      const hourly =
+        typeof facts?.rate === 'number'
+          ? facts.hourly === true
+          : criterion('minDayRate')?.params.hourly === true;
+      return hourly ? t.reader.hourlyName : t.reader.term.rate;
+    },
     read: ({ facts, criterion, code, contract }) => {
       if (contract.employment) {
         const p = { ...criterion('minSalary')?.params, ...code('salary')?.params };
         const stated = num(facts?.salary);
-        const amount = stated ?? num(p.salary);
-        if (amount === null) return { value: null };
+        const salary = stated ?? num(p.salary);
+        if (salary === null) return { value: null };
         const lower = stated === null ? p.lowerBound === true : facts?.salaryLowerBound === true;
+        const currency = stated === null ? text(p.currency) : null;
         return {
-          value: t.facts.pay(amount, 'year', stated === null ? text(p.currency) : null, lower),
+          value: t.facts.pay(salary, 'year', currency, lower),
+          note: currency === null ? versusMinimum(salary, amount(p.min)) : null,
         };
       }
       const p = criterion('minDayRate')?.params ?? {};
@@ -155,7 +194,12 @@ const TERMS: Record<TermKey, Term> = {
       }
       const hourly = (stated ? stated.hourly : p.hourly) === true;
       const currency = stated ? stated.currency : text(p.currency);
-      return { value: t.facts.pay(rate, hourly ? 'hour' : 'day', currency) };
+      const euros = currency === null || currency === 'EUR';
+      return {
+        value: t.facts.pay(rate, hourly ? 'hour' : 'day', currency),
+        // A day rate in euros against the minimum day rate (an hourly one is no day rate).
+        note: euros && !hourly ? versusMinimum(rate, amount(p.min)) : null,
+      };
     },
   },
   start: {
@@ -202,11 +246,41 @@ const TERMS: Record<TermKey, Term> = {
         ...claimed,
       ].find((reason) => num(reason?.params.years) !== null);
       const years = num(said?.params.years);
-      return {
-        value: years === null ? null : t.facts.years(years, num(said?.params.max)),
+      if (years === null) return { value: null };
+      // Fewer years than the profile's minimum (too junior, or a senior profile asked less):
+      // the note says which way the verdict points.
+      const target = num(code('tooJunior')?.params.target ?? code('overqualified')?.params.target);
+      const notes = [
         // Required years no passage backs are the engine's estimate.
-        note: stated ? null : t.reader.estimated,
+        stated ? null : t.reader.estimated,
+        target !== null && years < target ? t.reader.yearsBelow(target) : null,
+      ].filter((note) => note !== null);
+      return {
+        value: t.facts.years(years, num(said?.params.max)),
+        note: notes.length === 0 ? null : notes.join(', '),
       };
+    },
+  },
+  deadline: {
+    ...NONE,
+    read: ({ facts, now }) => {
+      const day = text(facts?.deadline);
+      const shown = day === null ? '' : formatDay(day, now);
+      if (day === null || shown === '') return { value: null };
+      // Whole days from today to the deadline, both at local midnight.
+      const [year = 0, month = 1, date = 1] = day.split('-').map(Number);
+      const due = new Date(year, month - 1, date).getTime();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      return { value: shown, urgent: Math.round((due - today) / DAY_MS) <= URGENT_DAYS };
+    },
+  },
+  contact: {
+    ...NONE,
+    read: ({ facts }) => {
+      const parts = [facts?.contactName, facts?.contactEmail, facts?.contactPhone].flatMap(
+        (part) => text(part) ?? [],
+      );
+      return parts.length === 0 ? { value: null } : { value: parts.join(', '), parts };
     },
   },
   industry: {
@@ -224,9 +298,10 @@ const TERMS: Record<TermKey, Term> = {
         .join(', '),
     }),
   },
+  // The day of the alert mail in the list row's words ("gestern", "Do 24.09.").
   received: {
     ...NONE,
-    read: ({ job }) => ({ value: text(formatDay(job.mailDate ?? job.firstSeenAt)) }),
+    read: ({ job, now }) => ({ value: text(formatStamp(job.mailDate ?? job.firstSeenAt, now)) }),
   },
 };
 
@@ -242,82 +317,10 @@ const ROW_OF_CODE: ReadonlyMap<string, TermKey> = new Map(
   ),
 );
 
-/** The row a reason of the match stands for or that claims it, or null. */
+/** The row a reason of the match stands for, or null (a requirement has none: it keeps its
+ *  place among the Anforderungen even when it states a row's value). */
 export function rowOf(reason: Reason): TermKey | null {
-  return ROW_OF_CODE.get(reason.code) ?? KEYS.find((key) => TERMS[key].claims?.(reason)) ?? null;
-}
-
-/** Wishes of the profile (`params.state` met, near, missed or unknown). */
-const WISHES: readonly string[] = ['dayRateWish', 'remoteWish', 'regionWish', 'industryWish'];
-/** Checks that compare a stated value with a limit of the profile: the value is known and
- *  misses the limit (it is met in part), unlike a check of what the ad leaves unclear. */
-const LIMITS: readonly string[] = ['workload', 'duration', 'availabilityGap'];
-
-/** What a reason says about its row: a missed or near wish and a missed limit are met in
- *  part, a check of an unclear ad is unclear; a requirement says what the Anforderungen say
- *  (one the profile lacks is not met). */
-function reasonVerdict(reason: Reason): Verdict | null {
-  if (WISHES.includes(reason.code)) {
-    const state = reason.params.state;
-    if (state === 'met') return 'met';
-    return state === 'near' || state === 'missed' ? 'partial' : null;
-  }
-  switch (reason.kind) {
-    case 'violation':
-      return 'violated';
-    case 'partial':
-      return 'partial';
-    case 'check':
-      return LIMITS.includes(reason.code) ? 'partial' : 'unknown';
-    case 'met':
-      return 'met';
-    case 'open':
-      return isRequirement(reason) ? 'violated' : null;
-  }
-}
-
-/** A criterion's state; the reason that decided it says how (an over-qualified job meets the
- *  target years in part, a workload outside the profile's days is a limit missed). */
-function criterionVerdict(criterion: Reason, linked: Reason | undefined): Verdict {
-  const own: Verdict =
-    criterion.kind === 'violation'
-      ? 'violated'
-      : criterion.kind === 'check'
-        ? 'unknown'
-        : criterion.kind === 'partial'
-          ? 'partial'
-          : criterion.kind === 'open'
-            ? 'unset'
-            : 'met';
-  // The engine leaves a criterion open when only a finding decides it (a job asking fewer
-  // years than the target, a start to be agreed): that finding says the verdict.
-  if (linked === undefined || own === 'violated') return own;
-  return reasonVerdict(linked) ?? own;
-}
-
-/** The worse verdict first; of two alike, one with a sentence. */
-const WEIGHT: Record<Verdict, number> = { violated: 4, unknown: 3, partial: 2, met: 1, unset: 0 };
-
-interface Judgement {
-  verdict: Verdict;
-  why: string | null;
-}
-
-function worst(all: readonly Judgement[]): Judgement | null {
-  return all.reduce<Judgement | null>((out, next) => {
-    if (out === null || WEIGHT[next.verdict] > WEIGHT[out.verdict]) return next;
-    return WEIGHT[next.verdict] === WEIGHT[out.verdict] && out.why === null && next.why !== null
-      ? next
-      : out;
-  }, null);
-}
-
-/** Why a reason decides a row: a requirement in the ad's words against the profile's, any
- *  other reason in its sentence. */
-function sentence(reason: Reason | undefined): string | null {
-  if (reason === undefined) return null;
-  const hint = isRequirement(reason) ? reasonHint(reason) : null;
-  return hint ?? (reasonText(reason) || null);
+  return ROW_OF_CODE.get(reason.code) ?? null;
 }
 
 function contractOf(
@@ -348,6 +351,8 @@ export interface TermInput {
   withVerdict: boolean;
   /** The length of the ad's text shown: passages lie within it. */
   textLength: number;
+  /** The page's clock (a deadline near, the day of the alert mail in words). */
+  now: Date;
 }
 
 /** The rows of the table for one job, in the facts table's order. */
@@ -373,10 +378,12 @@ function build(
     return key !== null && checks.criteria.includes(key);
   });
   const claimed = input.reasons.filter((reason) => term.claims?.(reason) === true);
-  const reasons = [
-    ...input.reasons.filter((reason) => checks.codes.includes(reason.code)),
-    ...claimed,
-  ];
+  const reasons = input.reasons.filter((reason) => checks.codes.includes(reason.code));
+  const shown = (range: TextRange): boolean =>
+    range.start < range.end && range.end <= input.textLength;
+  const ranges = [...criteria, ...reasons, ...claimed].flatMap((reason) =>
+    reason.ranges.filter(shown),
+  );
   const ctx: Context = {
     job: input.job,
     facts,
@@ -384,9 +391,8 @@ function build(
     criterion: (key) => criteria.find((reason) => criterionKey(reason.code) === key),
     code: (name) => reasons.find((reason) => reason.code === name),
     claimed,
-    stated: [...criteria, ...reasons].some((reason) =>
-      reason.ranges.some((range) => range.end <= input.textLength),
-    ),
+    stated: ranges.length > 0,
+    now: input.now,
   };
   if (term.shows && !term.shows(ctx)) return null;
   const read = term.read(ctx);
@@ -402,13 +408,19 @@ function build(
       ? worst([
           ...criteria.map((criterion) => {
             const decided = linkedOf(criterion);
-            return { verdict: criterionVerdict(criterion, decided), why: sentence(decided) };
+            return {
+              verdict: criterionVerdict(criterion, decided),
+              why: sentence(decided),
+              excludes: criterion.kind === 'violation',
+            };
           }),
           ...reasons
-            .filter((reason) => !linked.has(reason.id) && !term.valueOnly?.includes(reason.code))
+            .filter((reason) => !linked.has(reason.id) && term.quiet?.(reason) !== true)
             .flatMap((reason) => {
               const verdict = reasonVerdict(reason);
-              return verdict === null ? [] : [{ verdict, why: sentence(reason) }];
+              return verdict === null
+                ? []
+                : [{ verdict, why: sentence(reason), excludes: reason.kind === 'violation' }];
             }),
         ])
       : null;
@@ -418,9 +430,13 @@ function build(
     name: term.name?.(ctx) ?? t.reader.term[key],
     icon: termIcon(key, input.job),
     value: read.value ?? t.reader.missing,
+    parts: missing ? null : (read.parts ?? null),
     missing,
     note: missing ? null : (read.note ?? null),
+    urgent: !missing && read.urgent === true,
     verdict: verdict === null ? null : (verdict.verdict as Exclude<Verdict, 'unset'>),
     why: verdict?.why ?? null,
+    excludes: verdict?.excludes === true,
+    ranges,
   };
 }

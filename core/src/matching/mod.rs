@@ -5,6 +5,7 @@
 //! for parity tests. See `docs/MATCHING.md`.
 
 mod ad_facts;
+mod application;
 mod atoms;
 mod contract;
 mod criteria;

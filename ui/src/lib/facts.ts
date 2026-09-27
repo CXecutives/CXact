@@ -27,6 +27,8 @@ export const TERM_ROWS = [
   { key: 'duration', icon: 'duration' },
   { key: 'workload', icon: 'workload' },
   { key: 'experience', icon: 'experience' },
+  { key: 'deadline', icon: 'deadline' },
+  { key: 'contact', icon: 'contact' },
   { key: 'industry', icon: 'industry' },
   { key: 'portal', icon: 'portal' },
   { key: 'received', icon: 'alertMail' },
@@ -54,7 +56,7 @@ export function startWords(start: string): string | null {
   return date === '' ? null : t.facts.from(date);
 }
 
-/** The work mode in words: the remote share the ad states ("60 % remote", "voll remote",
+/** The work mode in words: the remote share the ad states ("60 % remote", "Voll remote",
  *  "Vor Ort"), else the mode its location names ("Hybrid"). */
 export function modeWords(job: JobView): string | null {
   const facts = factsOf(job);

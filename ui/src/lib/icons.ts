@@ -102,7 +102,7 @@ export const ICONS = {
   /** An excluded job counts with its real match anyway ("Trotzdem bewerten"). */
   include: 'scale',
   /** Met in part. */
-  partial: 'contrast',
+  partial: 'circle-minus',
   /** The ad does not say. */
   unstated: 'circle-dashed',
   /** The ad is unclear: to check. */
@@ -125,6 +125,10 @@ export const ICONS = {
   place: 'map-pin',
   industry: 'factory',
   experience: 'award',
+  /** The application deadline an ad names. */
+  deadline: 'calendar-clock',
+  /** The contact an ad names (a person, an e-mail address, a phone number). */
+  contact: 'contact-round',
 
   // The reader (features/jobs/Reader.svelte): its head and its Jobdetails.
   /** The portal that announced a job. */
