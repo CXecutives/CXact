@@ -883,6 +883,17 @@ export const en: Catalog = {
     removeConfirm: 'Delete',
     removed: 'Profile deleted.',
     saved: 'Profile saved.',
+    savedEffect: (high: number, excluded: number) => {
+      const jobs = (value: number): string => count(Math.abs(value), 'job', 'jobs');
+      const out = (value: number): string => (high === 0 ? jobs(value) : n(Math.abs(value)));
+      const parts = [
+        high > 0 ? `${jobs(high)} now with a high match` : null,
+        high < 0 ? `${jobs(high)} no longer with a high match` : null,
+        excluded > 0 ? `${out(excluded)} excluded` : null,
+        excluded < 0 ? `${out(excluded)} no longer excluded` : null,
+      ].filter((part) => part !== null);
+      return parts.length === 0 ? 'Profile saved.' : `Profile saved, ${parts.join(', ')}.`;
+    },
     unnamed: 'Profile without a name',
     rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being scored again.`,
     check: (value: number) => count(value, 'value to check', 'values to check'),

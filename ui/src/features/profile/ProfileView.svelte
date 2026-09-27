@@ -6,8 +6,8 @@
   (a status when there is one, the file actions) and the form, whose save bar shows while it
   holds a change. A chosen file and an AI's answer fill the form for review (an answer for
   the stored profile updates it); nothing is stored before "Speichern". A save is answered by
-  a toast once the bar has gone ("Profil gespeichert."). Leaving the view or closing the
-  window with unsaved changes asks once ("Änderungen speichern?", the heading alone).
+  a toast once the bar has gone, with what its rescore changed (saveEffect.ts). Leaving the
+  view or closing the window with unsaved changes asks once ("Änderungen speichern?").
   "Profil löschen" asks first, then a toast offers "Rückgängig" for a moment; so does saving
   another file over the profile (the backup comes back, core's swap), and an undo that fails
   says so. During setup the toast of the first save offers "Weiter zum ersten Abruf", which
@@ -39,6 +39,7 @@
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfilePaste from './ProfilePaste.svelte';
   import ProfileStart from './ProfileStart.svelte';
+  import { watchSave } from './saveEffect';
   import { valueText } from './sections';
 
   const profile = $derived(app.state?.profile ?? null);
@@ -93,7 +94,7 @@
 
   /** The toast of a save; during setup it leads on: to the first fetch with a mailbox, else
    *  back to the setup page, whose next step is the mailbox. */
-  function savedToast(): void {
+  function savedToast(text: string): void {
     const next =
       app.state?.firstRun && app.hasProfile
         ? {
@@ -101,7 +102,7 @@
             onclick: () => void onward(),
           }
         : null;
-    toasts.show(t.profile.saved, 'success', next);
+    toasts.show(text, 'success', next);
   }
 
   /** The setup page, or the Jobs view that shows the first fetch, which starts at once when
@@ -290,6 +291,7 @@
     fieldError = null;
     refusedValue = null;
     const replaced = replacing;
+    const effect = watchSave();
     try {
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
@@ -298,16 +300,17 @@
       const form = info.form ?? app.state?.profile?.form;
       if (form) editor.edit(form);
       else editor.close();
-      whenBarGone(() =>
-        replaced
-          ? toasts.show(t.profile.replaced, 'success', {
-              label: t.common.undo,
-              onclick: () => void restore(),
-            })
-          : savedToast(),
-      );
+      whenBarGone(() => {
+        if (!replaced) return void effect.said().then(savedToast);
+        effect.stop();
+        toasts.show(t.profile.replaced, 'success', {
+          label: t.common.undo,
+          onclick: () => void restore(),
+        });
+      });
       return true;
     } catch (error) {
+      effect.stop();
       const at = refused(error);
       if (at === null) {
         saveNote = () => errorText(error);

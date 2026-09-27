@@ -44,7 +44,9 @@
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
 // a competence with more than 70 years (with its row), more than five days a week, a second
-// day below the first and a minimum duration above 120 months, like core's validation.
+// day below the first and a minimum duration above 120 months, like core's validation; a
+// saved profile starts the rescore like core (with jobs, while no run goes), whose summary
+// says what the save changed in the Eingang (`ScoreDelta`).
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
@@ -81,6 +83,7 @@ import type {
   RunEvent,
   RunRequest,
   RunSummary,
+  ScoreDelta,
 } from '../../ui/src/lib/ipc/types';
 import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
@@ -1663,8 +1666,14 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   setTimeout(step, TICK);
 }
 
-/** The rescore the app starts after a profile change: scoring only, nothing fetched. */
+/** What the rescore after the last profile save changed (null: nothing known). */
+let rescoreDelta: ScoreDelta | null = null;
+
+/** The rescore the app starts after a profile change: scoring only, nothing fetched; its
+ *  summary carries what the save changed. */
 function rescoreScript(): RunEvent[] {
+  const delta = rescoreDelta;
+  rescoreDelta = null;
   return [
     { type: 'started', kind: 'rescore' },
     { type: 'status', code: 'scoring', portal: null, until: null },
@@ -1677,6 +1686,7 @@ function rescoreScript(): RunEvent[] {
         kind: 'rescore',
         startedAt: at(0.01),
         finishedAt: at(0),
+        score: { ...demoScoring()!, delta },
         scan: null,
         newJobs: null,
         perPortal: [],
@@ -1882,10 +1892,23 @@ const handlers: Handlers = {
       form,
     };
     // Scored with the profile: the engine's scores of the demo.
+    const bandsBefore = countsOf(jobs);
     if (jobs.every((j) => j.match === null)) {
       for (const j of jobs) j.match = demoMatch(j);
     }
     refresh();
+    // Like core (scoring::profile_changed): the jobs are scored again, and the rescore says
+    // what changed in the Eingang (`ScoreDelta`); no run without jobs, none while one goes.
+    const bandsAfter = countsOf(jobs);
+    rescoreDelta = {
+      excludedBefore: bandsBefore.excluded,
+      excludedAfter: bandsAfter.excluded,
+      highBefore: bandsBefore.high,
+      highAfter: bandsAfter.high,
+    };
+    if (jobs.length > 0 && !running && mailboxCheck === null) {
+      startRun({ kind: 'rescore' }, null);
+    }
     return structuredClone(state.profile);
   },
   remove_profile: () => {

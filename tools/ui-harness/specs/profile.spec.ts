@@ -54,9 +54,9 @@ const SECTIONS = [
   'section-wishes',
 ];
 
-/** The toast that answers a save. */
+/** The toast that answers a save (with what its rescore changed, when it did). */
 const savedToast = (page: Page): Locator =>
-  page.getByTestId('toast').filter({ hasText: T.profile.saved });
+  page.getByTestId('toast').filter({ hasText: T.profile.saved.replace(/\.$/, '') });
 
 /** The next save_profile is refused like core refuses a value (`profileValue`). */
 async function refuseNext(
@@ -651,6 +651,34 @@ test('the save bar shows only while something changed; a toast answers the save'
   await expect(bar(page)).toHaveCount(0);
   await expect(savedToast(page)).toHaveCount(1);
   await expect(page.getByTestId('profile-save-status')).toHaveCount(0);
+});
+
+test('the toast of a save says what the rescore changed, only the parts that did', async ({
+  page,
+}) => {
+  // The demo profile saved again moves no job: the toast says only that it is saved.
+  await profile(page);
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await save(page).click();
+  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(T.profile.saved);
+  // A first profile scores the jobs of the Eingang: the ones now high and the excluded ones.
+  await create(page);
+  await page.getByTestId('competence-name').fill('Controlling');
+  await save(page).click();
+  const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
+  expect(counts.high).toBeGreaterThan(0);
+  expect(counts.excluded).toBeGreaterThan(0);
+  const said = T.profile.savedEffect(counts.high, counts.excluded);
+  expect(said).toBe(
+    `Profil gespeichert, ${counts.high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen.`,
+  );
+  await expect(savedToast(page).getByTestId('toast-text')).toHaveText(said);
+  // Only what changed, fewer as well as more; alone the excluded ones name the jobs.
+  expect(T.profile.savedEffect(0, 1)).toBe('Profil gespeichert, 1 Job ausgeschlossen.');
+  expect(T.profile.savedEffect(-2, -1)).toBe(
+    'Profil gespeichert, 2 Jobs nicht mehr mit hoher Übereinstimmung, 1 nicht mehr ausgeschlossen.',
+  );
+  expect(T.profile.savedEffect(0, 0)).toBe(T.profile.saved);
 });
 
 test('a value that is wrong holds the save and says why; Übernehmen waits for an answer', async ({

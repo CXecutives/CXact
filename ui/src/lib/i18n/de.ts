@@ -1037,6 +1037,23 @@ export const de = {
     removed: 'Profil gelöscht.',
     /** The toast of a save (during the setup with the way on). */
     saved: 'Profil gespeichert.',
+    /** The same toast with what the rescore of the save changed in the Eingang: the jobs
+     *  now (or no longer) in the high band and the ones now (or no longer) excluded, only
+     *  what changed. */
+    savedEffect: (high: number, excluded: number) => {
+      const jobs = (value: number): string => count(Math.abs(value), 'Job', 'Jobs');
+      // After the high band a bare number; alone the excluded ones name the jobs.
+      const out = (value: number): string => (high === 0 ? jobs(value) : n(Math.abs(value)));
+      const parts = [
+        high > 0 ? `${jobs(high)} jetzt mit hoher Übereinstimmung` : null,
+        high < 0 ? `${jobs(high)} nicht mehr mit hoher Übereinstimmung` : null,
+        excluded > 0 ? `${out(excluded)} ausgeschlossen` : null,
+        excluded < 0 ? `${out(excluded)} nicht mehr ausgeschlossen` : null,
+      ].filter((part) => part !== null);
+      return parts.length === 0
+        ? 'Profil gespeichert.'
+        : `Profil gespeichert, ${parts.join(', ')}.`;
+    },
     unnamed: 'Profil ohne Namen',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
     /** Values of the file that do not read and a rule that stays off: a click goes to the
