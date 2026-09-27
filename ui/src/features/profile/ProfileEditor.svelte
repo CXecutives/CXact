@@ -236,18 +236,19 @@
     );
   }
 
-  /** A section that waits (`hidden`) and whose values a save refused stays until the form is
-   *  saved or discarded, so it can be put right; one with a value of the file that does not
-   *  read stays too, so the head's "n Werte prüfen" always leads to it. */
+  /** A section that waits (`hidden`) and holds a value that holds the save (a save refused
+   *  it, or the form marks it) stays until the form is saved or discarded, so it can be put
+   *  right; one with a value of the file that does not read stays too, so the head's
+   *  "n Werte prüfen" always leads to it. */
   const fieldsIn = (section: Section): string[] => controlsOf(section.lines).flatMap(fieldsOf);
   const WAITING = SECTIONS.filter((section) => section.hidden !== undefined);
   let kept = $state<string[]>([]);
   $effect(() => {
-    const refused = fieldError?.field ?? '';
+    const marked = new Set([fieldError?.field ?? '', ...invalid.map((each) => each.field)]);
     const dirty = editor.dirty;
     const now = WAITING.map((section) => ({
       id: section.id,
-      refused: fieldsIn(section).includes(refused),
+      refused: fieldsIn(section).some((field) => marked.has(field)),
       hidden: section.hidden?.(form) ?? false,
     }));
     untrack(() => {

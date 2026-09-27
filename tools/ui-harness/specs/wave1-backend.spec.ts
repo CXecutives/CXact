@@ -4,6 +4,7 @@
 import type { Page } from '@playwright/test';
 import type { ExportSummary, RunEvent } from '../../../ui/src/lib/ipc/types';
 import { expect, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -42,13 +43,13 @@ async function finish(page: Page, files: Partial<ExportSummary>): Promise<void> 
   }, finished(files));
 }
 
-test('an unreachable work folder is said as such in the run line, with a retry', async ({
+test('an unreachable result folder is said as such in the run line, with a retry', async ({
   page,
 }) => {
   await open(page, WIN);
   await finish(page, { error: { kind: 'io', params: { target: 'workspace' } } });
   const failed = page.getByTestId('run-problem');
-  await expect(failed).toContainText('Der Arbeitsordner ist nicht erreichbar.');
+  await expect(failed).toContainText(T.run.exportFailed.workspace);
   await expect(failed).not.toContainText('Textdateien');
   await expect(failed.getByTestId('run-retry')).toHaveText('Erneut versuchen');
 });

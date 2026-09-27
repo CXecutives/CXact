@@ -6,13 +6,10 @@ import { expect, open, test } from './fixtures';
 const WIN = '?platform=windows';
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 
-test('the English reader says must-have in the line; only the optional ones carry a tag', async ({
-  page,
-}) => {
+test('the English reader tags only the optional requirements', async ({ page }) => {
   await open(page, `${WIN}&lang=en`);
   await row(page, 'freelancermap-2802').click();
   const stage = page.getByTestId('stage');
-  await expect(stage.getByTestId('must')).toContainText('must-haves met');
   await expect(
     stage.getByTestId('why').getByText('Optional', { exact: true }).first(),
   ).toBeVisible();

@@ -799,7 +799,7 @@ test('the ad text, title and facts select and copy; the rest does not select', a
   };
   await page.getByTestId('stage').evaluate((node) => node.scrollTo({ top: 0 }));
   expect((await drag('reader-title')).length).toBeGreaterThan(5);
-  for (const id of ['band', 'must', 'reasons-met']) {
+  for (const id of ['band', 'reasons-met']) {
     expect(await drag(id), id).toBe('');
   }
 });
@@ -944,25 +944,26 @@ test('the back button and the back key do nothing where no view has a way back',
   await page.keyboard.press('Alt+ArrowRight');
   await page.waitForTimeout(200);
   expect(page.url()).toBe(url);
-  // The wide Jobs view has no Zurück: the open job stays.
+  // The wide Jobs view has no way back: the open job stays.
   await expect(page.getByTestId('reader')).toBeVisible();
 });
 
-test('the back button goes back where the reader in one column has Zurück', async ({ page }) => {
+test('the back button closes the reader where it stands alone in one column', async ({ page }) => {
   await page.setViewportSize({ width: 780, height: 560 });
   await open(page, WIN);
   await rows(page).first().click();
-  await expect(page.getByTestId('back')).toBeVisible();
+  const close = page.getByTestId('reader-close');
+  await expect(close).toBeVisible();
   // Alt+Left is no key of the app: only the mouse's back button goes back.
   await page.keyboard.press('Alt+ArrowLeft');
   await page.waitForTimeout(200);
-  await expect(page.getByTestId('back')).toBeVisible();
+  await expect(close).toBeVisible();
   await page.evaluate(() => {
     const init = { bubbles: true, cancelable: true, button: 3 };
     document.body.dispatchEvent(new MouseEvent('mousedown', init));
     document.body.dispatchEvent(new MouseEvent('mouseup', init));
   });
-  await expect(page.getByTestId('back')).toHaveCount(0);
+  await expect(close).toHaveCount(0);
   await expect(rows(page).first()).toBeVisible();
 });
 

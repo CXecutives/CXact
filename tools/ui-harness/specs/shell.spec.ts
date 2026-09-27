@@ -275,7 +275,7 @@ test('windows: no drag region; the first view is centred on the line of the plac
 }) => {
   await open(page, '?platform=windows');
   await expect(page.locator('[data-tauri-drag-region]')).toHaveCount(0);
-  // The first entry (36 px) and the tabs (36 px) share their middle: the first line.
+  // The first entry (36 px) and the tabs (40 px) share their middle: the first line.
   const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
   const nav = middle(await page.getByTestId('nav-jobs').boundingBox());
   const tabs = middle(await page.getByTestId('places').boundingBox());

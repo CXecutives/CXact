@@ -89,6 +89,11 @@ export function openAd(job: JobView): Promise<string | null> {
 export interface JobMenuContext {
   /** "Öffnen": the job opens (none where it is open already, the reader). */
   open?: (() => void) | null;
+  /** Only what changes the job: the reader has its own buttons for what shows it. */
+  changesOnly?: boolean;
+  /** A move of the place, where the caller hands the focus on (the reader); by default the
+   *  job simply moves. */
+  move?: ((id: MoveId) => void) | null;
   /** "Endgültig löschen" asks first: the caller shows its dialog. */
   purge: () => void;
   /** Says an action that failed where the menu was opened (null: it went well). */
@@ -98,12 +103,14 @@ export interface JobMenuContext {
 /**
  * The job's menu, one table for the row's right click and the reader's "…", in two groups
  * with a line between them: what shows the job (Öffnen, Alert-Mail öffnen, Anzeige öffnen,
- * KI-Prompt kopieren), then what changes it (an excluded job's "Trotzdem bewerten", or
- * "Wieder ausschließen" once it counts, then the moves of its place). No entry names a key.
- * The test id of an entry is `menu-item-<id>`.
+ * KI-Prompt kopieren; the reader shows them as its buttons), then what changes it (an
+ * excluded job's "Trotzdem bewerten", or "Wieder ausschließen" once it counts, then the
+ * moves of its place). No entry names a key. The test id of an entry is `menu-item-<id>`.
  */
 export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
+  const change = changesOf(job, context);
+  if (context.changesOnly === true) return change;
   const show: MenuEntry[] = [];
   if (context.open) {
     show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
@@ -131,6 +138,12 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
       run: () => void copyJobPrompt(job.key).then(report),
     },
   );
+  return [...show, { kind: 'separator' }, ...change];
+}
+
+/** The second group of the job's menu: what changes the job where it is. */
+function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
+  const { report } = context;
   const change: MenuEntry[] = [];
   if (isExcluded(job) || job.overridden) {
     const include = !job.overridden;
@@ -151,10 +164,16 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
       // Deleting for good waits for a run (the backend refuses meanwhile).
       disabled: purging && run.active,
       reason: purging ? run.busyText : null,
-      run: purging ? context.purge : () => void move([job], action.id as MoveId).then(report),
+      run: purging
+        ? context.purge
+        : () => {
+            const id = action.id as MoveId;
+            if (context.move) context.move(id);
+            else void move([job], id).then(report);
+          },
     });
   }
-  return [...show, { kind: 'separator' }, ...change];
+  return change;
 }
 
 /**

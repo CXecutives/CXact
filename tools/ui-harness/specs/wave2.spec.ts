@@ -48,29 +48,30 @@ test('the search matches every word in any field and the portal name', async ({ 
   expect(keys.every((key) => key.startsWith('job-row-linkedin-'))).toBe(true);
 });
 
-test('a refused value of the hidden permanent rules shows them with the limit', async ({
+test('a value over its limit keeps the waiting permanent rules open; Speichern waits', async ({
   page,
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  await page.getByTestId('profile-remote-min').fill('150');
-  await page.getByTestId('profile-no-permanent').click();
-  await expect(page.getByTestId('profile-permanent')).toHaveCount(0);
-  await page.getByTestId('profile-save').click();
-  // The block comes back with the refused field, its limit and the caret.
   const field = page.getByTestId('profile-remote-min');
-  await expect(field).toBeFocused();
+  await field.fill('150');
+  await page.getByTestId('profile-no-permanent').click();
+  // The block stays with the marked field and its limit, so it can be put right.
+  await expect(page.getByTestId('section-permanent')).toBeVisible();
   await expect(field).toHaveAttribute('aria-invalid', 'true');
   await expect(page.locator('[data-field="permanentRemoteMin"]')).toContainText('Höchstens 100.');
-  // Under its own label the refusal does not name the field again.
-  // It stays while the value is put right.
+  const save = page.getByTestId('profile-save');
+  await expect(save).toHaveAttribute('aria-disabled', 'true');
   await field.fill('50');
-  await expect(field).toBeVisible();
+  await expect(save).not.toHaveAttribute('aria-disabled', 'true');
+  // Put right, it stays until the form is saved or discarded (nothing vanishes while typing).
+  await expect(page.getByTestId('section-permanent')).toBeVisible();
   await page.getByTestId('profile-min-rate').fill('200000');
-  await page.getByTestId('profile-save').click();
   const rate = page.locator('[data-field="minDayRate"]');
+  // Under its own label the limit does not name the field again.
   await expect(rate).toContainText('Höchstens 100.000.');
   await expect(rate).not.toContainText('Der Wert bei');
+  await expect(save).toHaveAttribute('aria-disabled', 'true');
 });
 
 test('a decimal number is cut to a whole one, never joined', async ({ page }) => {
@@ -172,7 +173,8 @@ test('a row whose exclusion changes in place stands with the scored rows', async
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await row(page, 'linkedin-4100200305').click();
-  await stage(page).getByTestId('override').click();
+  await stage(page).getByTestId('reader-more').click();
+  await page.getByTestId('menu-item-include').click();
   const drawn = async () =>
     list(page)
       .locator('[data-key]')
@@ -210,12 +212,12 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
 });
 
-test('one column: back shows the open row again, with the focus', async ({ page }) => {
+test('one column: closing shows the open row again, with the focus', async ({ page }) => {
   await page.setViewportSize({ width: 800, height: 600 });
   await open(page, WIN);
   await rows(page).nth(6).click();
   const key = await list(page).locator('[data-open]').getAttribute('data-key');
-  await page.getByTestId('back').click();
+  await page.getByTestId('reader-close').click();
   const item = list(page).locator(`[data-key="${key}"]`);
   await expect(item).toBeInViewport();
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
@@ -245,15 +247,14 @@ test('typing a country that is chosen already says nothing and Enter clears it',
   await expect(page.getByTestId('profile-countries').locator('.chip')).toHaveCount(2);
 });
 
-test('at 480 px the countries field keeps its width, DACH sits under it', async ({ page }) => {
+test('at 480 px the countries field keeps the width of the other fields', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 800 });
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const field = await page.getByTestId('profile-countries').boundingBox();
   const tools = await page.getByTestId('profile-tools').boundingBox();
-  const dach = await page.getByTestId('profile-dach').boundingBox();
   expect(Math.abs(field!.width - tools!.width)).toBeLessThan(2);
-  expect(dach!.y).toBeGreaterThan(field!.y + field!.height - 1);
+  await expect(page.getByTestId('profile-dach')).toHaveCount(0);
 });
 
 test('an unreadable country is said at its field like any other value', async ({ page }) => {

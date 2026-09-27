@@ -82,10 +82,18 @@
     margin: 0 calc(-1 * var(--space-12));
   }
 
-  /* The first entry starts on the first line of every view (below the sheet's top edge,
-     which macOS does not draw). */
+  /* The first entry is centred in the first row of every view (below the sheet's top edge,
+     which macOS does not draw): a 36 px entry, in the rail a 40 px one. */
   .nav {
-    margin-top: calc(var(--pane-padding) + var(--sheet-top-edge));
+    margin-top: calc(
+      var(--pane-padding) + var(--sheet-top-edge) + (var(--first-row) - var(--control-md)) / 2
+    );
+  }
+
+  .rail .nav {
+    margin-top: calc(
+      var(--pane-padding) + var(--sheet-top-edge) + (var(--first-row) - var(--control-lg)) / 2
+    );
   }
 
   /* The demo's quiet line at the foot (the text where the nav's icons start; centred in the

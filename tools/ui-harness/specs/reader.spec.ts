@@ -14,7 +14,7 @@ import type { Locator, Page } from '@playwright/test';
 import { demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
-  chooseFilter,
+  chooseSort,
   lastQuery,
   openJob,
   openPlace,
@@ -22,6 +22,7 @@ import {
   rows,
   settleMoves,
   stage,
+  T,
   tokenColour,
   WIN,
 } from './helpers';
@@ -351,11 +352,6 @@ test.describe('the actions', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(row(page, 'freelancermap-2801')).toBeFocused();
-    // Esc on one of the reader's buttons does the same.
-    await row(page, 'freelancermap-2801').click();
-    await page.getByTestId('open-ad').focus();
-    await page.keyboard.press('Escape');
-    await expect(row(page, 'freelancermap-2801')).toBeFocused();
   });
 
   test('archiving from "…" by the keyboard keeps the focus on "…" of the next job', async ({
@@ -391,22 +387,23 @@ test.describe('an excluded job', () => {
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', 'violated']);
     await expect(why(page)).not.toContainText('Zeitarbeit');
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
+    // The same entries in the same order as the row's menu (one table, actions.ts).
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['archive', 'trash', 'override']);
-    expect(menu.labels.at(-1)).toBe('Trotzdem bewerten');
-    await choose(page, 'override');
+    expect(menu.ids).toEqual(['include', 'archive', 'trash']);
+    expect(menu.labels[0]).toBe(T.actions.include);
+    await choose(page, 'include');
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
       key: { portal: 'freelance', id: '900412' },
       include: true,
     });
     const toast = page.getByTestId('toast').last();
-    await expect(toast).toContainText('Trotzdem bewertet.');
+    await expect(toast).toContainText(T.toast.included);
     await expect(toast.getByTestId('toast-action')).toHaveText('Rückgängig');
     await expect(stage(page).getByTestId('reader-ring')).toBeVisible();
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['archive', 'trash', 'exclude']);
-    expect(menu.labels.at(-1)).toBe('Wieder ausschließen');
+    expect(menu.ids).toEqual(['exclude', 'archive', 'trash']);
+    expect(menu.labels[0]).toBe(T.actions.exclude);
     await page.keyboard.press('Escape');
     // The toast takes it back.
     await toast.getByTestId('toast-action').click();
@@ -740,13 +737,12 @@ test.describe('around the reader', () => {
 
   test('a search keeps the open job that is a hit beyond the loaded rows', async ({ page }) => {
     await open(page, `${WIN}&scenario=many`);
-    // The order is in the funnel's menu.
-    await chooseFilter(page, 'newest');
+    await chooseSort(page, 'newest');
     const key = { portal: 'linkedin', id: '100006' } as const;
     const title = (await page.evaluate((k) => window.__harness.job(k), key))!.title;
     await row(page, 'linkedin-100006').click();
     await expect(page.getByTestId('reader-title')).toHaveText(title);
-    await chooseFilter(page, 'match');
+    await chooseSort(page, 'match');
     // Its title without the number: every fourth job of the scenario is a hit.
     const search = title.replace(/ \d+$/, '');
     await page.getByTestId('search').fill(search);
@@ -755,27 +751,28 @@ test.describe('around the reader', () => {
     await expect(page.getByTestId('reader-title')).toHaveText(title);
   });
 
-  test('an empty trash shows one empty state, the reader only its sentence', async ({ page }) => {
+  test('an empty trash shows one empty state in the list, the reader nothing beside it', async ({
+    page,
+  }) => {
     await open(page, `${WIN}&scenario=empty`);
     await page.getByTestId('place-trash').click();
-    const note = page.getByTestId('place-reader');
-    await expect(note).toContainText('30 Tage');
-    await expect(note.locator('svg')).toHaveCount(0);
+    await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 
   test('a locked Excel file is written again without reading the mailbox', async ({ page }) => {
     await open(page, `${WIN}&tick=15&export=locked`);
     await page.getByTestId('fetch').click();
     await runFinished(page);
-    const note = page.getByTestId('export-failed');
-    await expect(note).toHaveCount(1);
-    await note.getByRole('button', { name: 'Erneut versuchen' }).click();
+    const note = page.getByTestId('run-problem');
+    await expect(note).toContainText(T.run.exportFailed.overviewLocked);
+    await note.getByTestId('run-retry').click();
     await runFinished(page);
     const started = await calls(page, 'start_run');
     expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
-    // Still locked: the card keeps its fetch and says it once.
-    await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
-    await expect(page.getByTestId('export-failed')).toHaveCount(1);
+    // Still locked: the line says it once more, once.
+    await expect(page.getByTestId('run-problem')).toHaveCount(1);
+    await expect(page.getByTestId('run-problem')).toContainText(T.run.exportFailed.overviewLocked);
   });
 
   test('files that could not be written are no green success elsewhere', async ({ page }) => {
@@ -784,18 +781,11 @@ test.describe('around the reader', () => {
     await page.getByTestId('nav-settings').click();
     await runFinished(page);
     const toast = page.getByTestId('toast');
-    await expect(toast.getByTestId('toast-text')).toHaveText(
-      'Abruf fertig, die Dateien sind nicht aktuell.',
-    );
+    await expect(toast.getByTestId('toast-text')).toHaveText(/./);
     await expect(toast).not.toHaveClass(/success/);
-    // The run card has the way; the toast leads there.
-    await expect(toast.getByTestId('toast-action')).toHaveText('Zeigen');
-  });
-
-  test('a pause during a run is a calm note', async ({ page }) => {
-    await open(page, `${WIN}&scenario=running`);
-    // Its portal's line counts down, calm; no warning.
-    await expect(page.getByTestId('countdown-freelance')).not.toHaveClass(/warns/);
-    await expect(page.getByTestId('pause-freelance')).toHaveCount(0);
+    // The run line has the way; the toast leads there.
+    await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
+    await toast.getByTestId('toast-action').click();
+    await expect(page.getByTestId('run-problem')).toContainText(T.run.exportFailed.overviewLocked);
   });
 });

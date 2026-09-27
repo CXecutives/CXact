@@ -8,8 +8,9 @@
     beside its band; every ring without a score says "Noch nicht bewertet". An excluded job
     shows the ban instead, "Ausgeschlossen" and one sentence why (its first violation).
   - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…", all alike. The
-    "…" menu holds the moves of the place (MORE) and, for an excluded job, "Trotzdem
-    bewerten" or "Wieder ausschließen". Moving the job away from one of the reader's buttons
+    "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
+    shows it too): for an excluded job "Trotzdem bewerten" or "Wieder ausschließen", then the
+    moves of the place. Moving the job away from one of the reader's buttons
     hands the focus to the same button of the next job. Every result and every failure is a
     toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
@@ -36,7 +37,7 @@
   import { tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import Icon, { type IconName } from '$components/Icon.svelte';
+  import Icon from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
   import ReasonItem from '$components/ReasonItem.svelte';
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
@@ -48,14 +49,14 @@
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { placeOf } from '$lib/place';
   import { app } from '$lib/state/app.svelte';
-  import { jobs, keyOf } from '$lib/state/jobs.svelte';
+  import { keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import { guarded, move, purge, seen, type MoveId } from './actions';
+  import { guarded, jobMenu, move, purge, seen, type MoveId } from './actions';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
@@ -236,106 +237,15 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  /** "Trotzdem bewerten": an excluded job counts with its real match, or it is excluded
-   *  again; the toast takes it back. */
-  async function override(include: boolean): Promise<void> {
-    const key = job.key;
-    const error = await jobs.setOverride(key, include);
-    if (error !== null) {
-      fail(error);
-      return;
-    }
-    toasts.show(include ? t.reader.overridden : t.reader.excludedAgain, 'success', {
-      label: t.common.undo,
-      onclick: () => void jobs.setOverride(key, !include).then(fail),
-    });
-  }
-
   /** A missing must into the profile; a failure is a toast. */
   async function add(term: string): Promise<void> {
     fail(await addTerm(term));
   }
 
-  /** The "…" menu: the moves of the place, then the exclusion, each where it applies. */
-  interface MoreItem {
-    id: string;
-    icon: IconName;
-    label: () => string;
-    when: () => boolean;
-    /** Why it cannot be chosen now, else null. */
-    off?: () => string | null;
-    /** Lost for good. */
-    danger?: boolean;
-    run: () => void;
-  }
-  const MORE: readonly MoreItem[] = [
-    {
-      id: 'archive',
-      icon: 'archive',
-      label: () => t.actions.archive,
-      when: () => job.place === 'inbox',
-      run: () => act('archive'),
-    },
-    {
-      id: 'toInbox',
-      icon: 'inbox',
-      label: () => t.actions.restore,
-      when: () => job.place === 'archive',
-      run: () => act('toInbox'),
-    },
-    {
-      id: 'restore',
-      icon: 'undo',
-      label: () => t.actions.restore,
-      when: () => job.place === 'trash',
-      run: () => act('restore'),
-    },
-    {
-      id: 'trash',
-      icon: 'trash',
-      label: () => t.reader.delete,
-      when: () => job.place !== 'trash',
-      run: () => act('trash'),
-    },
-    {
-      id: 'purge',
-      icon: 'purge',
-      label: () => t.actions.purge,
-      when: () => job.place === 'trash',
-      // Deleting for good waits for a run (the backend refuses meanwhile).
-      off: () => (run.active ? run.busyText : null),
-      danger: true,
-      run: askPurge,
-    },
-    {
-      id: 'override',
-      icon: 'check',
-      label: () => t.reader.override,
-      when: () => excluded && !job.overridden,
-      run: () => void override(true),
-    },
-    {
-      id: 'exclude',
-      icon: 'excluded',
-      label: () => t.reader.exclude,
-      when: () => job.overridden,
-      run: () => void override(false),
-    },
-  ];
-
+  /** The "…" menu: what changes the job, from the one table of the job's menu (the row's
+   *  right click shows the same); a move hands the focus on. */
   function moreEntries(): MenuEntry[] {
-    return MORE.filter((item) => item.when()).map((item): MenuEntry => {
-      const off = item.off?.() ?? null;
-      return {
-        id: item.id,
-        label: item.label(),
-        icon: item.icon,
-        disabled: off !== null,
-        reason: off,
-        danger: item.danger === true,
-        run: item.run,
-      };
-    });
+    return jobMenu(job, { changesOnly: true, move: act, purge: askPurge, report: fail });
   }
 
   /** The action row stays one line: where the labels do not fit, the three buttons are icons

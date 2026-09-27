@@ -848,7 +848,7 @@ export const en: Catalog = {
     connectMailbox: 'Connect mailbox',
   },
   facts: {
-    now: 'starts now',
+    now: 'immediately',
     from: (date: string) => `from ${date}`,
     agreed: 'to be agreed',
     months: (value: number) => count(value, 'month', 'months'),

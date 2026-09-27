@@ -30,6 +30,7 @@ import {
   excludedRows,
   failNext,
   filterLabel,
+  FILTER_GROUPS,
   filterMenu,
   funnel,
   lastQuery,
@@ -42,6 +43,7 @@ import {
   openFilter,
   openJob,
   openPlace,
+  PORTALS,
   row,
   rowMenu,
   rows,
@@ -288,13 +290,15 @@ test.describe('filter', () => {
         const id = menu?.getAttribute('aria-activedescendant');
         return id ? (document.getElementById(id)?.dataset['testid'] ?? null) : null;
       });
+    // The last entry of the last group (lib/state/filter.ts).
+    const last = `menu-item-${FILTER_GROUPS.at(-1)!.entries(PORTALS).at(-1)!.id}`;
     await expect.poll(active).toBe('menu-item-portal-all');
     await page.keyboard.press('ArrowUp');
-    await expect.poll(active).toBe('menu-item-band-high');
+    await expect.poll(active).toBe(last);
     await page.keyboard.press('Home');
     await expect.poll(active).toBe('menu-item-portal-all');
     await page.keyboard.press('End');
-    await expect.poll(active).toBe('menu-item-band-high');
+    await expect.poll(active).toBe(last);
     // A heading's word is no entry: typing it finds the entry that starts with it instead.
     await page.keyboard.type(filterLabel('portal-linkedin').slice(0, 4).toLowerCase());
     await expect.poll(active).toBe('menu-item-portal-linkedin');
@@ -433,7 +437,12 @@ test.describe('filter', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
-    expect(await kept()).toEqual({ portal: 'freelance', minBand: 'high' });
+    expect(await kept()).toEqual({
+      portal: 'freelance',
+      minBand: 'high',
+      contract: null,
+      remote: null,
+    });
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
   });
 
@@ -516,7 +525,7 @@ test.describe('one list', () => {
         .sort(),
     );
     // The query of the inbox never asks for the unread ones only.
-    expect(await lastQuery(page)).toMatchObject({ unread: false, favourites: false });
+    expect(await lastQuery(page)).toMatchObject({ unread: false });
   });
 
   test('opening a job reads it once, on a real click; the row stays, its dot goes', async ({
@@ -907,22 +916,21 @@ test.describe('rows', () => {
     );
   });
 
-  test('a list ring that waits breathes on its solid track', async ({ page }) => {
+  test('a list ring that waits is the one empty ring with its dash, nothing moves', async ({
+    page,
+  }) => {
     await open(page, `${WIN}&scenario=running`);
     await settle(page);
     const ring = list(page)
       .locator('.job', { has: page.getByTestId('job-row-linkedin-4100200302') })
       .locator('.ring');
     await expect(ring).toHaveClass(/pending/);
-    const wait = await ring.evaluate((node) => {
-      const layer = node.querySelector('.wait')!;
-      return {
-        name: getComputedStyle(layer).animationName,
-        dashes: getComputedStyle(layer.querySelector('.arc')!).strokeDasharray,
-        track: getComputedStyle(node.querySelector('.track')!).stroke,
-      };
-    });
-    expect(wait).toEqual({ name: 'breathe', dashes: 'none', track: 'none' });
+    await expect(ring.locator('.center')).toHaveText('–');
+    const look = await ring.evaluate((node) => ({
+      arcs: node.querySelectorAll('circle').length,
+      moving: node.getAnimations({ subtree: true }).length,
+    }));
+    expect(look).toEqual({ arcs: 1, moving: 0 });
   });
 });
 
@@ -1556,8 +1564,9 @@ test.describe("the open row's bar", () => {
     await row(page, 'freelancermap-2802').click();
     const slot = await resting(page);
     await animationsDone(page);
+    await page.getByTestId('reader-more').click();
     await startSampling(page);
-    await page.getByTestId('reader-archive').click();
+    await menuItem(page, 'archive').click();
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await page.waitForTimeout(400);
     const samples = await stopSampling(page);
@@ -1693,7 +1702,7 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   await rows(page).first().click();
   await expect(page.getByTestId('reader')).toBeVisible();
   await expect(page.getByTestId('list-scroll')).toBeHidden();
-  await page.getByTestId('back').click();
+  await page.getByTestId('reader-close').click();
   await expect(page.getByTestId('list-scroll')).toBeVisible();
 });
 

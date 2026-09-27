@@ -302,7 +302,9 @@ class RunStore {
       if (isFetch(kind)) {
         const inList = navigation.current === 'jobs' && !shell.listHidden;
         const show = { label: t.toast.show, onclick: () => this.show(), undo: false };
-        toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), 'success', inList ? null : show);
+        // Files that could not be written make it no success: the run line says why.
+        const kind = exportError(summary) === null ? 'success' : 'info';
+        toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), kind, inList ? null : show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }

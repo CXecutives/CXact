@@ -2,18 +2,9 @@
 // for one thing, numbers formatted like every other count, rows in short words.
 
 import { expect, open, runFinished, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
-
-test('the English reader counts the must-have requirements, as the German one does', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&lang=en`);
-  // The best scored job (by match the first row is one still without a score).
-  await page.getByTestId('job-row-freelancermap-2801').click();
-  // German counts Pflichtanforderungen; the English AI prompt says "must-have requirements".
-  await expect(page.getByTestId('must')).toHaveText(/^\d+ of \d+ must-haves met/);
-});
 
 test('an empty list during a fetch says the jobs come in as it goes, not at its end', async ({
   page,
@@ -47,7 +38,9 @@ test('an archived job is brought back with the verb of the Papierkorb: Wiederher
   await expect(page.getByTestId('menu-item-toInbox')).toHaveText('Wiederherstellen');
 });
 
-test('an ad that could not be fetched says so with the one verb for details', async ({ page }) => {
+test('an ad the app cannot reach says so in the reader, its row carries no badge', async ({
+  page,
+}) => {
   await open(page, WIN);
   const key = { portal: 'freelancermap', id: '2805' } as const;
   const job = await page.evaluate((k) => window.__harness.job(k), key);
@@ -62,9 +55,7 @@ test('an ad that could not be fetched says so with the one verb for details', as
   // The row carries no badge; the reader says it.
   await expect(row.locator('.badge')).toHaveCount(0);
   await row.click();
-  await expect(page.getByTestId('detail-note')).toHaveText(
-    'Die Anzeige ließ sich mehrmals nicht holen.',
-  );
+  await expect(page.getByTestId('detail-note')).toHaveText(T.reader.adNote.unfetchable);
 });
 
 test('English names the preferred rate one way everywhere', async ({ page }) => {
