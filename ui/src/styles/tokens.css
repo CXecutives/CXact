@@ -413,10 +413,6 @@
      in tauri.macos.conf.json) and 80 px wide in total. */
   --mac-toolbar: 52px;
   --traffic-lights-width: 80px;
-  /* The view's name in that row (Profil, Einstellungen): bold and a step above the text of
-     the app, like the window title of a Mac app's unified toolbar. */
-  --font-mac-title: 15px;
-  --weight-mac-title: 700;
   /* A day of the calendar beside a day field: as high as a small button, seven a week. */
   --calendar-cell: var(--control-sm);
   /* The top band the page keeps free for the title bar: 0 on Windows, the toolbar row on
@@ -649,8 +645,6 @@
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
   --type-xl: var(--weight-semibold) var(--font-xl) / var(--leading-xl) var(--font-sans);
   --type-2xl: var(--weight-semibold) var(--font-2xl) / var(--leading-2xl) var(--font-sans);
-  --type-mac-title: var(--weight-mac-title) var(--font-mac-title) / var(--leading-title)
-    var(--font-sans);
   --type-display: var(--weight-semibold) var(--font-display) / var(--leading-display)
     var(--font-sans);
 

@@ -747,50 +747,6 @@ test('macOS: Profil and Einstellungen name the view in the toolbar row', async (
   await expect(page.getByTestId('toolbar-name')).toHaveCount(0);
 });
 
-test('macOS: the name is a bold window title, a hairline under the row once scrolled', async ({
-  page,
-}) => {
-  for (const view of ['profile', 'settings'] as const) {
-    await open(page, `${MAC}&view=${view}`);
-    const sheet = page.getByTestId(`view-${view}`);
-    const band = sheet.getByTestId('drag-band');
-    // Bold and a step above the text of the app, like the title of a Mac window.
-    const title = await sheet.getByTestId('toolbar-name').evaluate((node) => {
-      const style = getComputedStyle(node);
-      const body = getComputedStyle(document.documentElement).getPropertyValue('--font-md');
-      return {
-        weight: Number(style.fontWeight),
-        size: Number.parseFloat(style.fontSize),
-        body: Number.parseFloat(body),
-      };
-    });
-    expect(title.weight).toBeGreaterThanOrEqual(700);
-    expect(title.size).toBeGreaterThan(title.body);
-    // No line at the top; one fades in (at most 150 ms) as soon as the view scrolls.
-    const line = (): Promise<{ opacity: string; ms: number }> =>
-      band.evaluate((node) => {
-        const after = getComputedStyle(node, '::after');
-        return {
-          opacity: after.opacity,
-          ms: Number.parseFloat(after.transitionDuration) * 1000,
-        };
-      });
-    await expect(band).toHaveAttribute('data-scrolled', 'false');
-    expect((await line()).opacity).toBe('0');
-    expect((await line()).ms).toBeLessThanOrEqual(150);
-    await sheet.evaluate((node) => (node.scrollTop = 120));
-    await expect(band).toHaveAttribute('data-scrolled', 'true');
-    await expect.poll(async () => (await line()).opacity).toBe('1');
-    expect((await band.boundingBox())!.y).toBe(0);
-    await sheet.evaluate((node) => (node.scrollTop = 0));
-    await expect(band).toHaveAttribute('data-scrolled', 'false');
-    await expect.poll(async () => (await line()).opacity).toBe('0');
-  }
-  // The Jobs view keeps its tabs in the row, without a name and without the line.
-  await open(page, MAC);
-  await expect(page.getByTestId('view-jobs').locator('[data-scrolled]')).toHaveCount(0);
-});
-
 test('macOS: a dialog leaves the toolbar row free, and the row moves the window', async ({
   page,
 }) => {
