@@ -8,7 +8,8 @@
     (scoreWhy.ts, in the menu layer: Esc, Tab and a press outside close it). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
-  - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…", all alike. The
+  - actions: Alert-Mail öffnen, Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
+    or closed: the portal's page still opens), KI-Prompt kopieren and "…", all alike. The
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
     shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
     ausschließen", then the moves of the place (Eingang Archivieren, Löschen; Archiv
@@ -135,6 +136,9 @@
   }
 
   const detailKind = $derived(job.detail.kind);
+  /** The ad is gone or takes no applications: "Anzeige öffnen" says so (the portal's page
+   *  still opens), and the Jobdetails once, since the day the app read the closed page. */
+  const offline = $derived(detailKind === 'gone' || job.closed);
   /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
    *  preview) only what it knows (what the ad says is not known yet, no "/" claims it says
    *  nothing). */
@@ -146,6 +150,7 @@
       withVerdict: judged,
       textLength: detail.text?.length ?? 0,
       now: clock.now,
+      offline: offline ? { since: job.closed ? detail.fetchedAt : null } : null,
     }).filter((row) => (detail.text !== null && detailKind !== 'teaser') || !row.missing),
   );
 
@@ -458,7 +463,7 @@
       variant="secondary"
       size="field"
       icon="external"
-      label={t.reader.open}
+      label={offline ? t.reader.openOffline : t.reader.open}
       iconOnly={iconsOnly}
       testid="open-ad"
       onclick={() => openTarget({ kind: 'jobUrl', key: job.key })}

@@ -17,6 +17,7 @@
 //   window.__harness.failPages      so many next `list_jobs` calls for a later page fail
 //   window.__harness.holdAfter      a scripted run pauses after so many events (null = on)
 //   window.__harness.job(key)       a copy of a job as the stub holds it
+//   window.__harness.gone(key)      the portal no longer has the job's ad (details gone)
 //   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
 //
@@ -112,6 +113,8 @@ interface Harness {
   holdAfter: number | null;
   /** A copy of a job as the stub holds it (null if unknown). */
   job: (key: JobKey) => JobView | null;
+  /** The portal no longer has the job's ad (details `gone`), as a fetch would find it. */
+  gone: (key: JobKey) => void;
   /** A copy of the stored profile's form (null without a profile). */
   form: () => ProfileForm | null;
   /** What `list_jobs` returns for a query (the inbox by match unless it says otherwise),
@@ -2053,6 +2056,10 @@ const harness: Harness = {
   job(key) {
     const found = find(key);
     return found === undefined ? null : structuredClone(found);
+  },
+  gone(key) {
+    const found = find(key);
+    if (found !== undefined) found.detail = { kind: 'gone' };
   },
   async text(path, ...args) {
     const { t } = await import('../../ui/src/lib/i18n/t');

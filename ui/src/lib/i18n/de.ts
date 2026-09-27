@@ -1000,6 +1000,13 @@ export const de = {
     criterion: criteria,
     note,
     open: 'Anzeige öffnen',
+    /** "Anzeige öffnen" of an ad that is gone or takes no applications (the portal's page
+     *  still opens). */
+    openOffline: 'Offline-Anzeige öffnen',
+    /** Quiet after the portal in the Jobdetails: the ad is gone or closed, since when if the
+     *  app knows. */
+    offline: 'nicht mehr online',
+    offlineSince: (day: string) => `nicht mehr online seit ${day}`,
     close: 'Schließen',
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',

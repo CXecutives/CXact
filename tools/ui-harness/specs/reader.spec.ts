@@ -1253,6 +1253,32 @@ test.describe('the ad', () => {
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
 
+  test('an ad no longer online: its button says so and still opens it, the Jobdetails once', async ({
+    page,
+  }) => {
+    // Closed: since the day the app read the closed page.
+    await openAt(page, 'linkedin-4100200304');
+    const openAd = stage(page).getByTestId('open-ad');
+    await expect(openAd).toHaveText(T.reader.openOffline);
+    await openAd.click();
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'jobUrl', key: { portal: 'linkedin', id: '4100200304' } },
+    });
+    const note = term(page, 'portal').locator('.term-note');
+    await expect(note).toHaveText(new RegExp(`^${T.reader.offlineSince('\\d\\d\\.\\d\\d\\.')}$`));
+    await expect(terms(page).getByText(T.reader.offline, { exact: false })).toHaveCount(1);
+    // Gone, the day unknown.
+    await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
+    await openJob(page, 'linkedin-4100200302');
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.openOffline);
+    await expect(term(page, 'portal').locator('.term-note')).toHaveText(T.reader.offline);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
+    // An ad that is online says nothing of it.
+    await openJob(page, 'freelancermap-2801');
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.open);
+    await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
+  });
+
   test('every note of the ad is one short sentence', async () => {
     for (const note of Object.values(T.reader.adNote)) expect(note).toMatch(/^[^.]+\.$/);
     expect(T.reader.adNote.missing).not.toContain('Anzeige');
