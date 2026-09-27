@@ -28,6 +28,8 @@
 //   same filter beside the search (the funnel, lib/state/filter.ts: one portal, a lowest
 //   band; kept like the order). It narrows the list and its counts like the search. The
 //   overview's counts never follow it.
+// - The open job is kept per work folder: the next start opens it again (its place with it),
+//   only while it still lies where it lay and the list stands beside it.
 
 import { SvelteSet } from 'svelte/reactivity';
 import { errorText } from '../i18n/texts';
@@ -58,7 +60,9 @@ import {
   type FilterContext,
   type ListFilter,
 } from './filter';
+import { keepOpen, keptOpen, type KeptOpen } from './openJob';
 import { run } from './run.svelte';
+import { viewport } from './viewport.svelte';
 
 export const PAGE = 120;
 /** The most rows one `list_jobs` call returns (core::view::MAX_PAGE). */
@@ -446,7 +450,36 @@ class JobsStore {
       this.counts = counts;
       this.overviewCounts = counts;
     }
-    await Promise.all([this.load(), this.loadOverview()]);
+    const kept = keptOpen();
+    const [detail] = await Promise.all([
+      kept === null ? null : invoke('job_detail', { key: kept.key }).catch(() => null),
+      this.load(),
+      this.loadOverview(),
+    ]);
+    if (kept !== null) await this.reopen(kept, detail);
+  }
+
+  /**
+   * The job that was open when the app closed opens again (its place with it), unless the
+   * user opened another meanwhile; a job that is gone, or no longer lies where it lay, is
+   * forgotten. In one column the app starts with the list (a job would stand in its place).
+   */
+  private async reopen(kept: KeptOpen, detail: JobDetail | null): Promise<void> {
+    if (this.selected !== null || viewport.narrow) return;
+    if (detail === null || detail.job.place !== kept.place) {
+      keepOpen(null);
+      return;
+    }
+    if (this.place !== kept.place) {
+      this.place = kept.place;
+      await this.load();
+      if (this.selected !== null || this.place !== kept.place) return;
+    }
+    this.selected = detail.job.key;
+    this.#detailRequest++;
+    this.detail = detail;
+    this.detailStatus = 'ready';
+    if (this.status === 'ready') void this.reach(detail.job.key, false);
   }
 
   /** The database changed under the page (a backup restored): the open job closes, the list
@@ -708,11 +741,13 @@ class JobsStore {
   /** Select a job. `click` = the user clicked it: only then it counts as read. */
   async select(job: JobView, click: boolean): Promise<void> {
     this.selected = job.key;
+    keepOpen(job);
     if (click && job.unread) void this.markRead(job.key);
     await this.loadDetail(job.key);
   }
 
   clearSelection(): void {
+    if (this.selected !== null) keepOpen(null);
     this.selected = null;
     this.detail = null;
     this.detailStatus = 'idle';

@@ -53,6 +53,7 @@ import {
   settleMoves,
   SORTS,
   sortEntryId,
+  stage,
   stubList,
   T,
   tabCount,
@@ -944,6 +945,54 @@ test.describe('one list', () => {
     await expect(count).toHaveText(String(out.length - 1));
     await openPlace(page, 'archive');
     await expect(count).toHaveText('1');
+  });
+
+  test('the job open when the app closed opens again, its place with it, while it lies there', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await openJob(page, 'freelancermap-2802');
+    const title = await row(page, 'freelancermap-2802').locator('.title').innerText();
+    // The next start: the job is open again, its row marked and in view.
+    await open(page, WIN);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
+    await expect(row(page, 'freelancermap-2802')).toHaveAttribute('aria-current', 'true');
+    await expect(row(page, 'freelancermap-2802')).toBeInViewport();
+    // Kept per work folder.
+    const kept = await page.evaluate(() =>
+      Object.keys(localStorage).filter((name) => name.startsWith('jobs-open:')),
+    );
+    expect(kept).toHaveLength(1);
+    // In one column the app starts with the list; the job stays kept for a wider window.
+    await page.setViewportSize({ width: 683, height: 700 });
+    await open(page, WIN);
+    await expect(row(page, 'freelancermap-2802')).toBeVisible();
+    await expect(page.getByTestId('reader-title')).toHaveCount(0);
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await open(page, WIN);
+    await expect(stage(page).getByTestId('reader-title')).toHaveText(title);
+    // A job of the Archiv opens with its tab.
+    await openPlace(page, 'archive');
+    await openJob(page, 'linkedin-4100200306');
+    await open(page, WIN);
+    await expect(page.getByTestId('place-archive')).toHaveAttribute('aria-selected', 'true');
+    await expect(row(page, 'linkedin-4100200306')).toHaveAttribute('aria-current', 'true');
+    // A job no longer where it lay opens nothing, and is forgotten.
+    await page.evaluate((name) => {
+      localStorage.setItem(
+        name,
+        JSON.stringify({ key: { portal: 'freelancermap', id: '2801' }, place: 'trash' }),
+      );
+    }, kept[0]!);
+    await open(page, WIN);
+    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByTestId('place-reader')).toBeVisible();
+    expect(await page.evaluate((name) => localStorage.getItem(name), kept[0]!)).toBeNull();
+    // Closed, it stays closed.
+    await openJob(page, 'freelancermap-2801');
+    await stage(page).getByTestId('reader-close').click();
+    await open(page, WIN);
+    await expect(page.getByTestId('place-reader')).toBeVisible();
   });
 
   test('the order is kept for every list and keeps the open job', async ({ page }) => {
