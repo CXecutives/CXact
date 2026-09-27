@@ -8,6 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { NOW, calls, expect, open, settle, test } from './fixtures';
+import { tokenColour } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -1343,4 +1344,221 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
   await page.mouse.up({ button: 'middle' });
   await inbox.click();
   await expect(inbox).toHaveAttribute('aria-selected', 'true');
+});
+
+/* ------------------------------------------- Mouse buttons and the wheel, every kind of control */
+
+// The rule of every control (user decision 2026-09-27): it acts on the left button only. A
+// right click opens the app's menu where there is one (a job row, a field, copyable text) and
+// does nothing else; a middle click activates nothing; the wheel only scrolls and never
+// changes a value.
+
+/** The background of an element now. */
+const background = (target: Locator): Promise<string> =>
+  target.evaluate((node) => getComputedStyle(node).backgroundColor);
+
+/** A menu of the app is open (a job's, a field's, the filter's, a menu button's, the ring's
+ *  "Warum diese Zahl?"). */
+const menuOpen = (page: Page): Locator => page.locator('[data-menu-layer]');
+
+/** Ends a middle press's autoscroll (Windows, over a scroll area): the next press only ends
+ *  it. A press on the list header's empty band does nothing else. */
+async function endAutoscroll(page: Page): Promise<void> {
+  const header = (await page.getByTestId('list-header').boundingBox())!;
+  await page.mouse.click(header.x + header.width - 6, header.y + header.height - 4);
+  await page.mouse.move(4, 4);
+}
+
+test('a right click on a job row opens its menu: the row is not opened, chosen, focused or pressed', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const row = rows(page).nth(1);
+  const pressed = await tokenColour(page, '--quiet-press');
+  const box = (await row.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down({ button: 'right' });
+  await page.waitForTimeout(150);
+  expect(await background(row)).not.toBe(pressed);
+  await page.mouse.up({ button: 'right' });
+  await expect(page.getByTestId('menu')).toBeVisible();
+  expect(await background(row)).not.toBe(pressed);
+  await expect(row).not.toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(menuOpen(page)).toHaveCount(0);
+  await expect(row).not.toBeFocused();
+  await expect(row).not.toHaveAttribute('aria-current', 'true');
+  await expect(page.getByTestId('reader')).toHaveCount(0);
+  expect(await calls(page, 'job_detail')).toHaveLength(0);
+  // A right click on its tools: the job's menu too, no move.
+  await row.hover();
+  await page.getByTestId('tool-archive').click({ button: 'right' });
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(await calls(page, 'move_jobs')).toHaveLength(0);
+});
+
+test('a right click on any other control does nothing: no menu, no press, no focus', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  const targets = [
+    page.getByTestId('place-archive'),
+    page.getByTestId('fetch-range'),
+    page.getByTestId('filter'),
+    page.getByTestId('nav-settings'),
+  ];
+  for (const target of targets) {
+    await target.click({ button: 'right' });
+    await page.waitForTimeout(100);
+    await expect(menuOpen(page), String(target)).toHaveCount(0);
+    await expect(target).not.toBeFocused();
+  }
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  // The reader's ring ("Warum diese Zahl?") and its "…".
+  await rows(page).first().click();
+  for (const id of ['reader-ring', 'reader-more']) {
+    await page.getByTestId(id).click({ button: 'right' });
+    await page.waitForTimeout(100);
+    await expect(menuOpen(page), id).toHaveCount(0);
+    await expect(page.getByTestId(id)).not.toBeFocused();
+  }
+});
+
+test('a middle click activates nothing: tabs, a menu button, the funnel, a row tool, the ring', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  // In the header (no scroll area there: no autoscroll either).
+  for (const id of ['place-archive', 'fetch-range', 'filter']) {
+    await page.getByTestId(id).click({ button: 'middle' });
+    await page.waitForTimeout(100);
+    await expect(menuOpen(page), id).toHaveCount(0);
+  }
+  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
+  // A row's tool: the job stays where it is.
+  const row = rows(page).nth(1);
+  await row.hover();
+  await page.getByTestId('tool-archive').click({ button: 'middle' });
+  await endAutoscroll(page);
+  expect(await calls(page, 'move_jobs')).toHaveLength(0);
+  await expect(page.getByTestId('reader')).toHaveCount(0);
+  // The reader's ring and its "…".
+  await rows(page).first().click();
+  for (const id of ['reader-ring', 'reader-more']) {
+    await page.getByTestId(id).click({ button: 'middle' });
+    await endAutoscroll(page);
+    await expect(menuOpen(page), id).toHaveCount(0);
+  }
+});
+
+test('a middle click activates nothing in the Profil: a choice, a chip x, the calendar, a level', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  const view = page.getByTestId('view-profile');
+  /** Ends the autoscroll with a press on the Profil's plain heading. */
+  const end = async (): Promise<void> => {
+    await view.locator('h2').first().click();
+  };
+  // A choice (a radio group): the chosen option stays chosen.
+  const group = page.getByTestId('profile-remote');
+  const chosen = await group.locator('[aria-checked="true"]').allTextContents();
+  await group.getByRole('radio').last().click({ button: 'middle' });
+  await end();
+  expect(await group.locator('[aria-checked="true"]').allTextContents()).toEqual(chosen);
+  // A chip's x while text is typed in its field: the chip stays, the typed text stays typed
+  // and keeps the caret (the focus the press moved comes back unseen).
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  const before = await tools.locator('.chip .text').allTextContents();
+  await input.fill('Visio');
+  await tools.locator('.remove').first().click({ button: 'middle' });
+  await page.waitForTimeout(100);
+  await expect(input).toBeFocused();
+  await expect(input).toHaveValue('Visio');
+  expect(await tools.locator('.chip .text').allTextContents()).toEqual(before);
+  await input.fill('');
+  await end();
+  // A suggestion of the engine's words takes nothing.
+  const name = page.getByTestId('competence-name').first();
+  await name.fill('Contr');
+  const hints = page.getByTestId('competence-name-suggestions').first();
+  await expect(hints.getByRole('option').first()).toBeVisible();
+  await hints.getByRole('option').first().click({ button: 'middle' });
+  await hints.getByRole('option').first().click({ button: 'right' });
+  await page.waitForTimeout(100);
+  await expect(name).toHaveValue('Contr');
+  await expect(name).toBeFocused();
+  await expect(menuOpen(page)).toHaveCount(0);
+  await end();
+  // A language's level (a menu button) opens no menu.
+  await page.getByTestId('language-level').first().click({ button: 'middle' });
+  await end();
+  await expect(menuOpen(page)).toHaveCount(0);
+  // Verfügbar ab: the calendar's button opens nothing, its days take nothing.
+  const available = page.getByTestId('profile-available');
+  await available.getByRole('radio').last().click();
+  const calendar = page.getByTestId('profile-date-calendar');
+  await calendar.click({ button: 'middle' });
+  await end();
+  await expect(page.getByTestId('profile-date-calendar-popover')).toHaveCount(0);
+  await calendar.click();
+  const popover = page.getByTestId('profile-date-calendar-popover');
+  await expect(popover).toBeVisible();
+  const date = page.getByTestId('profile-date');
+  const typed = await date.inputValue();
+  await popover.locator('[data-day]').nth(10).click({ button: 'middle' });
+  await popover.locator('[data-day]').nth(11).click({ button: 'right' });
+  await page.waitForTimeout(150);
+  await expect(date).toHaveValue(typed);
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+});
+
+test('the wheel over a date field, the calendar, a level and the filter menu changes nothing', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  const available = page.getByTestId('profile-available');
+  await available.getByRole('radio').last().click();
+  const date = page.getByTestId('profile-date');
+  await date.fill('01.11.2026');
+  await page.getByTestId('view-profile').locator('h2').first().click();
+  expect(await wheelOver(page, date, 'view-profile')).not.toBe(0);
+  await expect(date).toHaveValue('01.11.2026');
+  // Over the calendar the page scrolls; its month stays.
+  await page.getByTestId('profile-date-calendar').click();
+  const popover = page.getByTestId('profile-date-calendar-popover');
+  await expect(popover).toBeVisible();
+  const month = await popover.textContent();
+  expect(await wheelOver(page, popover, 'view-profile', 120)).not.toBe(0);
+  await expect(popover).toBeVisible();
+  expect(await popover.textContent()).toBe(month);
+  await expect(date).toHaveValue('01.11.2026');
+  await page.keyboard.press('Escape');
+  // A language's level (a menu button).
+  const level = page.getByTestId('language-level').first();
+  const shown = await level.textContent();
+  expect(await wheelOver(page, level, 'view-profile', 120)).not.toBe(0);
+  await expect(level).toHaveText(shown ?? '');
+  await expect(menuOpen(page)).toHaveCount(0);
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+  // The filter menu: nothing gets checked, the list stays as it was.
+  await open(page, WIN);
+  await page.getByTestId('filter').click();
+  const menu = page.getByTestId('menu');
+  await expect(menu).toBeVisible();
+  const checked = await menu.locator('[aria-checked="true"]').allTextContents();
+  const queries = (await calls(page, 'list_jobs')).length;
+  const area = (await menu.boundingBox())!;
+  await page.mouse.move(area.x + area.width / 2, area.y + area.height / 2);
+  await page.mouse.wheel(0, 300);
+  await page.waitForTimeout(300);
+  await expect(menu).toBeVisible();
+  expect(await menu.locator('[aria-checked="true"]').allTextContents()).toEqual(checked);
+  expect(await calls(page, 'list_jobs')).toHaveLength(queries);
 });

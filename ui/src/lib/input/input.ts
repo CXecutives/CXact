@@ -18,7 +18,8 @@
 //   nothing else. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
-//   click never activates anything (no auxclick, no press, no new window). The back
+//   click never activates anything (no auxclick, no press, no new window, no focus: the
+//   focus its default moves comes back unseen, `keepFocus`). The back
 //   button of the mouse goes back only where a view offers a way back (`onBack`: the
 //   reader in one column); forward does nothing, and neither ever navigates the web view.
 // - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
@@ -1341,19 +1342,38 @@ function onPointerOut(event: PointerEvent): void {
   if (event.relatedTarget === null) underPointer = null;
 }
 
+/** A middle press over a scroll area moved the focus and it is on its way back: no focus
+ *  event reaches the page meanwhile (`keepFocus`). */
+let holdingFocus = false;
+
 /**
  * The middle button keeps its default over a scroll area (the autoscroll needs it), but a
  * press must not focus the control or the field under the pointer: after the default action
- * the focus goes back to where it was.
+ * the focus goes back to where it was. Both engines move the focus on that default (onto a
+ * chip's x, a day of the calendar, or off a field), so until it is back no focus event
+ * reaches the page (`holdFocusEvents`): a chip field does not take its typed text as a chip,
+ * the calendar does not close, a field does not judge its value.
  */
 function keepFocus(): void {
   const before = document.activeElement;
+  holdingFocus = true;
   setTimeout(() => {
     const now = document.activeElement;
-    if (now === before || !(now instanceof HTMLElement)) return;
-    now.blur();
-    if (before instanceof HTMLElement && before !== document.body) before.focus();
+    if (now !== before && now instanceof HTMLElement) {
+      if (before instanceof HTMLElement && before !== document.body && before.isConnected) {
+        before.focus({ preventScroll: true });
+      } else {
+        now.blur();
+      }
+    }
+    holdingFocus = false;
   }, 0);
+}
+
+/** The focus events of an element while a middle press's focus is on its way back (the
+ *  window's own blur still counts). */
+function holdFocusEvents(event: FocusEvent): void {
+  if (holdingFocus && event.target !== window) event.stopImmediatePropagation();
 }
 
 /**
@@ -1539,6 +1559,9 @@ export function installInput(): void {
   );
   document.addEventListener('keydown', onKeyDown, capture);
   document.addEventListener('focusin', onFocusIn, { capture: true, passive: true });
+  for (const type of ['focus', 'blur', 'focusin', 'focusout'] as const) {
+    window.addEventListener(type, holdFocusEvents, capture);
+  }
   document.addEventListener(
     'keyup',
     (event) => {

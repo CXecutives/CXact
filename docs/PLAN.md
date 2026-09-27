@@ -799,4 +799,4 @@ The user clicked through the reworked preview; one more round in four tracks.
 - [x] No hover marking in the reader
 - [x] Language names in the UI language
 - [x] The focus after removing
-- [ ] Mouse buttons and the wheel, audited
+- [x] Mouse buttons and the wheel, audited (the one gap: a middle press over a scroll area moved the focus for a moment, so a chip field took its typed text as a chip and the calendar closed; `keepFocus` now holds the focus events until it is back)
