@@ -969,3 +969,9 @@ handle sits between list and reader".
   bar's icons and the caption glyphs one quiet colour, the text colour under the pointer; the fade only under the
   top bar (the list header keeps its hairline).
 - [x] 90/10 palettes, lighter weights, size C, plain switches, one bar colour, fade under the bar only
+- Third pass (user, 2026-09-28): type t2, Inter a half step smaller and lighter (text 13, place 13.5, headings
+  15 / 17 / 20, medium 420, semibold 480, rows 60); every line icon one stroke in screen pixels (1.35); a switch's
+  knob white in both designs; the quota meters one blue; the Jobdetails keep their topic icons and put the
+  verdict in one fixed column between the name and the value (it never moves), no tooltips on verdicts anywhere,
+  the sentences that only they showed are gone (criterion `met`, `reason.why`, `reader.payMet`).
+- [x] Type t2, one icon stroke, white knob, one-blue meters, the verdict column, no verdict tooltips

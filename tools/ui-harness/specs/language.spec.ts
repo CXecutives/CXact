@@ -18,32 +18,6 @@ async function settings(page: Page, query = WIN): Promise<void> {
   await expect(page.getByTestId('settings')).toBeVisible();
 }
 
-test('an exclusion by country names the countries in words, in both languages', async ({
-  page,
-}) => {
-  for (const [query, sentence] of [
-    [WIN, 'Der Einsatzort liegt außerhalb von Deutschland und Österreich.'],
-    [EN, 'The location is outside Germany and Austria.'],
-  ] as const) {
-    // The excluded section open, as a user who opened it once finds it.
-    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
-    await open(page, query);
-    await page
-      .getByTestId('excluded-rows')
-      .locator('[data-testid^="job-row-"]')
-      .filter({ hasText: 'Payroll Specialist' })
-      .click();
-    // The head says it from the profile's side; the row of the place names the countries.
-    await expect(page.getByTestId('exclusion')).not.toBeEmpty();
-    const verdict = page.getByTestId('term-place').locator('.reason');
-    await verdict.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(250);
-    await verdict.hover();
-    await expect(page.getByRole('tooltip')).toContainText(sentence);
-    await page.mouse.move(0, 0);
-  }
-});
-
 test('baseline: jobs with the reader in English', async ({ page }) => {
   await open(page, EN);
   // The best scored job.

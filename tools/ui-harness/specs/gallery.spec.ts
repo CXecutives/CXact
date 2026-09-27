@@ -283,8 +283,8 @@ test('a long row title stays one line, every row one height, the rest is a toolt
     (node) => node.clientHeight / parseFloat(getComputedStyle(node).lineHeight),
   );
   expect(Math.round(lines)).toBe(1);
-  expect((await short.boundingBox())!.height).toBe(62);
-  expect((await long.boundingBox())!.height).toBe(62);
+  expect((await short.boundingBox())!.height).toBe(60);
+  expect((await long.boundingBox())!.height).toBe(60);
   // Cut off on its one line: the full title shows in a tooltip.
   await title.hover();
   await expect(page.getByRole('tooltip')).toContainText('vierzehn Ländern');

@@ -1,9 +1,7 @@
 // How a row of the reader's Jobdetails is judged (terms.ts): what a reason or a criterion of
-// the match says about the row, the worst of them, and the sentence of the one that decided
-// it (the verdict's tooltip).
+// the match says about the row, and the worst of them.
 
 import type { TermVerdict as Verdict } from '$lib/i18n/de';
-import { reasonText, reasonWhy } from '$lib/i18n/texts';
 import type { Reason } from '$lib/ipc/types';
 
 /** The engine's requirements: the ad's own words, judged against the profile's skills. */
@@ -57,34 +55,17 @@ export function criterionVerdict(criterion: Reason, linked: Reason | undefined):
   return reasonVerdict(linked) ?? own;
 }
 
-/** The worse verdict first; of two alike, one with a sentence. */
+/** The worse verdict first. */
 const WEIGHT: Record<Verdict, number> = { violated: 4, unknown: 3, partial: 2, met: 1, unset: 0 };
 
 export interface Judgement {
   verdict: Verdict;
-  why: string | null;
   excludes: boolean;
 }
 
 export function worst(all: readonly Judgement[]): Judgement | null {
-  return all.reduce<Judgement | null>((out, next) => {
-    if (out === null || WEIGHT[next.verdict] > WEIGHT[out.verdict]) return next;
-    return WEIGHT[next.verdict] === WEIGHT[out.verdict] && out.why === null && next.why !== null
-      ? next
-      : out;
-  }, null);
-}
-
-/** Why a reason decides a row: a requirement by what the profile says to it, any other
- *  reason in its sentence. */
-export function sentence(reason: Reason | undefined): string | null {
-  if (reason === undefined) return null;
-  return isRequirement(reason) ? reasonWhy(reason) : reasonText(reason) || null;
-}
-
-/** How far an amount the rule compares lies above the profile's minimum, in whole percent (at
- *  least 1 above it); null below it or without both. */
-export function aboveMinimum(value: number | null, min: number | null): number | null {
-  if (value === null || min === null || min <= 0 || value < min) return null;
-  return value === min ? 0 : Math.max(1, Math.round(((value - min) / min) * 100));
+  return all.reduce<Judgement | null>(
+    (out, next) => (out === null || WEIGHT[next.verdict] > WEIGHT[out.verdict] ? next : out),
+    null,
+  );
 }

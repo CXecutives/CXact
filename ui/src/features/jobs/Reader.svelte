@@ -458,9 +458,18 @@
           in:fade
         >
           <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
-          <!-- Without a verdict the value takes the verdict's column too: only judged values
-               set where the verdicts stand. -->
-          <span class="term-line" class:wide={!judged || row.verdict === null}>
+          <!-- The verdict in its own column between the name and the value (the names are the
+               same for every job, so it never moves); a row without one leaves it empty. -->
+          {#if judged && row.verdict}
+            <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
+              <ReasonItem
+                iconOnly
+                kind={row.excludes ? 'violation' : kindOf(row.verdict)}
+                label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
+              />
+            </span>
+          {/if}
+          <span class="term-line">
             {#if row.parts}
               <!-- The contact's e-mail writes a new mail to it (the job's title its subject). -->
               <span class="parts">
@@ -485,16 +494,6 @@
             {/if}
             {#if row.note}<span class="term-note">{row.note}</span>{/if}
           </span>
-          {#if judged && row.verdict}
-            <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
-              <ReasonItem
-                iconOnly
-                kind={row.excludes ? 'violation' : kindOf(row.verdict)}
-                label={row.excludes ? t.score.excluded : t.reader.verdict[row.verdict]}
-                hint={row.why ?? t.reader.verdict[row.verdict]}
-              />
-            </span>
-          {/if}
         </li>
       {/each}
     </ul>
@@ -733,11 +732,10 @@
     font: var(--type-lg);
   }
 
-  /* The Jobdetails: name, value and verdict in three columns that line up row by row (two
-     without a match: nothing to judge); the verdicts stand right after the widest judged
-     value (a value without a verdict takes the verdict's column too). Each row is one box on
-     the columns of the list. The same metrics as the
-     requirements below: their text, their icon gap. */
+  /* The Jobdetails: name, verdict and value in three columns that line up row by row (two
+     without a match: nothing to judge); the verdicts stand in one column after the names,
+     which every job shares, so they never move. Each row is one box on the columns of the
+     list. The same metrics as the requirements below: their text, their icon gap. */
   .terms {
     display: grid;
     grid-template-columns: max-content minmax(0, max-content);
@@ -747,7 +745,20 @@
   }
 
   .terms.judged {
-    grid-template-columns: max-content minmax(0, max-content) minmax(var(--icon-sm), 1fr);
+    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
+    column-gap: var(--space-16);
+  }
+
+  .terms.judged .term-name {
+    grid-column: 1;
+  }
+
+  .terms.judged .verdict {
+    grid-column: 2;
+  }
+
+  .terms.judged .term-line {
+    grid-column: 3;
   }
 
   .term {
@@ -761,10 +772,6 @@
   /* A value of several lines (the contact): the name stands at its first line. */
   .term.tall {
     align-items: start;
-  }
-
-  .term-line.wide {
-    grid-column: 2 / -1;
   }
 
   .term-name {

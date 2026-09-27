@@ -231,27 +231,28 @@
     stroke-width: var(--icon-stroke);
   }
 
+  /* The line keeps its width in screen pixels at every icon size. */
+  .icon :global(svg *) {
+    vector-effect: non-scaling-stroke;
+  }
+
   .filled :global(svg) {
     fill: currentcolor;
   }
 
   .xs {
     --icon-size: var(--icon-xs);
-    --icon-stroke: var(--icon-stroke-xs);
   }
 
   .sm {
     --icon-size: var(--icon-sm);
-    --icon-stroke: var(--icon-stroke-sm);
   }
 
   .md {
     --icon-size: var(--icon-md);
-    --icon-stroke: var(--icon-stroke-md);
   }
 
   .lg {
     --icon-size: var(--icon-lg);
-    --icon-stroke: var(--icon-stroke-lg);
   }
 </style>

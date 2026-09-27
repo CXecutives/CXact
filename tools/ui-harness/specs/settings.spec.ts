@@ -458,7 +458,7 @@ test('portals: a stored sign-in the fetch does not use looks like none until it 
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
 
-test('portals: a pause or an empty alert mail is one quiet line; the meter warns near the limit', async ({
+test('portals: a pause or an empty alert mail is one quiet line; the meter stays one blue', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=paused`);
@@ -474,16 +474,16 @@ test('portals: a pause or an empty alert mail is one quiet line; the meter warns
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
   });
-  // Near the day's limit, and while a portal rests, the meter is ochre.
-  const warning = await colour(page, '--meter-warning');
+  // Near the day's limit and while a portal rests the meter keeps its one blue.
+  const blue = await colour(page, '--meter-fill');
   const fill = (portal: string): Promise<string> =>
     page
       .getByTestId(`quota-${portal}`)
       .locator('.fill')
       .evaluate((node) => getComputedStyle(node).backgroundColor);
-  expect(await fill('freelancermap')).toBe(warning);
-  expect(await fill('linkedin')).toBe(warning);
-  expect(await fill('freelance')).not.toBe(warning);
+  for (const portal of ['freelancermap', 'linkedin', 'freelance']) {
+    expect(await fill(portal), portal).toBe(blue);
+  }
   // A portal that is off says no problem of its own.
   await page.getByTestId('toggle-enabled-linkedin').click();
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);

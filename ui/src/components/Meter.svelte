@@ -1,11 +1,11 @@
 <!--
   Progress bar. Determinate (value 0..1) fills by scaleX (180 ms, ease-out). Indeterminate
   (value null) sweeps a short bar (linear, so it never seems to stall); under reduced motion
-  it rests as a calm full track instead of a paused bar outside the track. Progress is navy
-  on a navy wash (brand); a quota near its limit is ochre (warning).
+  it rests as a calm full track instead of a paused bar outside the track. Progress is one
+  blue on its wash (brand), a quota near its limit too (user, 2026-09-28).
 -->
 <script lang="ts" module>
-  export type MeterTone = 'brand' | 'neutral' | 'warning';
+  export type MeterTone = 'brand' | 'neutral';
   export type MeterSize = 'sm' | 'md' | 'lg';
 </script>
 
@@ -90,11 +90,6 @@
 
   .neutral {
     --meter-color: var(--text-subtle);
-    --meter-track-colour: var(--surface-muted);
-  }
-
-  .warning {
-    --meter-color: var(--meter-warning);
     --meter-track-colour: var(--surface-muted);
   }
 

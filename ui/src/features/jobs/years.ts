@@ -4,7 +4,6 @@
 // them with (`have`, `yearsFit`: the profile's own years, or the competence's).
 
 import type { TermVerdict as Verdict } from '$lib/i18n/de';
-import { t } from '$lib/i18n/t';
 import type { Reason } from '$lib/ipc/types';
 import { isRequirement, type Judgement } from './verdicts';
 
@@ -35,10 +34,5 @@ export function yearsJudgement(reason: Reason | undefined): Judgement[] {
   const verdict = typeof fit === 'string' ? YEARS_VERDICT[fit] : undefined;
   const have = num(reason?.params.have);
   if (reason === undefined || verdict === undefined || have === null) return [];
-  const asked = t.facts.years(yearsOf(reason), num(reason.params.max));
-  const why =
-    reason.params.general === true || !reason.evidence
-      ? t.reason.why.years(asked, have)
-      : t.reason.why.topicYears(asked, reason.evidence.profile, have);
-  return [{ verdict, why, excludes: false }];
+  return [{ verdict, excludes: false }];
 }

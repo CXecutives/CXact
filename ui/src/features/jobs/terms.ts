@@ -2,9 +2,8 @@
 // (lib/facts.ts, its order and icons): the engine's reason codes and the profile's criteria it
 // stands for, when it shows, and how it reads the ad's value. A row says only what the ad says
 // (its facts, else the value the engine read into a criterion; "/" where it says nothing), and
-// a verdict when there is a match to judge by: the worst of its criteria and reasons, with the
-// sentence of the reason that decided it as the verdict's tooltip (a met criterion says why it
-// is met). The row shows the value and the verdict only; why stands in the tooltip.
+// a verdict when there is a match to judge by: the worst of its criteria and reasons. The row
+// shows the value and the verdict only (user, 2026-09-28: no tooltip on it).
 //
 // One check per fact: a row is judged by its own criteria and codes only. A requirement that
 // states a row's value ("Mindestens 15 Jahre Berufserfahrung im Controlling" states the years)
@@ -19,19 +18,11 @@ import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/f
 import { formatDay, formatStamp } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
-import { textOf } from '$lib/i18n/de';
 import { criterionKey } from '$lib/i18n/texts';
 import type { JobView, KeyFacts, Reason, TextRange } from '$lib/ipc/types';
 import { placeOf } from '$lib/place';
 import { hourlyOf, rateOf, salaryOf } from './pay';
-import {
-  criterionVerdict,
-  isRequirement,
-  reasonVerdict,
-  sentence,
-  worst,
-  type Judgement,
-} from './verdicts';
+import { criterionVerdict, isRequirement, reasonVerdict, worst, type Judgement } from './verdicts';
 import { byYears, generalYears, yearsJudgement, yearsOf } from './years';
 
 export type { TermKey };
@@ -57,8 +48,6 @@ export interface TermRow {
   urgent: boolean;
   /** Null: nothing to judge (no match, or nothing decides the row). */
   verdict: Exclude<Verdict, 'unset'> | null;
-  /** The sentence of the reason that decided the verdict (its tooltip), if one did. */
-  why: string | null;
   /** The verdict is a hard criterion the ad violates: it excludes the job. */
   excludes: boolean;
 }
@@ -113,9 +102,6 @@ interface Value {
   judged?: boolean;
   /** What judges the row besides its criteria and codes (a requirement of years). */
   judges?: readonly Judgement[];
-  /** Why the row is met, where its criterion's own sentence says less (the pay above the
-   *  minimum). */
-  met?: string | null;
 }
 
 /** The engine's codes and the profile's criteria a row stands for. */
@@ -411,17 +397,6 @@ function build(
     return id === null ? undefined : input.reasons.find((reason) => reason.id === id);
   };
   const linked = new Set(criteria.map((criterion) => linkedOf(criterion)?.id ?? ''));
-  /** Why a met criterion is met, where no reason says more (a wish met names the wish): the
-   *  row's own sentence, else the criterion's. */
-  const metWhy = (criterion: Reason): string | null => {
-    const key = criterionKey(criterion.code);
-    return (
-      read.met ?? (key === null ? null : textOf(t.reader.criterion[key].met, criterion.params))
-    );
-  };
-  const met = criteria.find(
-    (criterion) => criterionVerdict(criterion, linkedOf(criterion)) === 'met',
-  );
   const judged =
     input.withVerdict && read.judged !== false
       ? worst([
@@ -430,7 +405,6 @@ function build(
             const verdict = criterionVerdict(criterion, decided);
             return {
               verdict,
-              why: sentence(decided),
               excludes: criterion.kind === 'violation',
             };
           }),
@@ -439,15 +413,11 @@ function build(
             .filter((reason) => !linked.has(reason.id) && term.quiet?.(reason) !== true)
             .flatMap((reason) => {
               const verdict = reasonVerdict(reason);
-              return verdict === null
-                ? []
-                : [{ verdict, why: sentence(reason), excludes: reason.kind === 'violation' }];
+              return verdict === null ? [] : [{ verdict, excludes: reason.kind === 'violation' }];
             }),
         ])
       : null;
   const verdict = judged === null || judged.verdict === 'unset' ? null : judged;
-  const why =
-    verdict?.why ?? (verdict?.verdict === 'met' && met !== undefined ? metWhy(met) : null);
   return {
     key,
     name: term.name?.(ctx) ?? t.reader.term[key],
@@ -459,7 +429,6 @@ function build(
     note: missing ? null : (read.note ?? null),
     urgent: !missing && read.urgent === true,
     verdict: verdict === null ? null : (verdict.verdict as Exclude<Verdict, 'unset'>),
-    why,
     excludes: verdict?.excludes === true,
   };
 }

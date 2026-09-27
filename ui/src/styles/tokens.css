@@ -42,6 +42,7 @@
   --p-coral: 215.9 68.5% 49.8%;
   --p-brand: 240 15.8% 7.5%; /* the icon's plate, #101016 (user, 2026-09-27) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
+  --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
   --p-coral-variant: 216.2 68.3% 43.3%;
   --p-coral-press: 216 69.2% 38.2%;
   --p-muted: 60 4.3% 95.5%;
@@ -161,7 +162,7 @@
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
   --primary-active: hsl(var(--p-coral-press));
-  /* Switches are coral when on (user decision), a warm grey when off; each state darkens a
+  /* Switches are the accent when on, grey when off, the knob white; each state darkens a
      step under the pointer and one more while the left button is down. */
   --toggle-off: hsl(var(--p-border-strong));
   --toggle-off-hover: hsl(var(--p-border-input));
@@ -169,6 +170,7 @@
   --toggle-on: hsl(var(--p-coral));
   --toggle-on-hover: hsl(var(--p-coral-variant));
   --toggle-on-press: hsl(var(--p-coral-press));
+  --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row and of the nav rail. */
   --unread: hsl(var(--p-coral));
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's wash)
@@ -212,8 +214,6 @@
   /* Progress: the fill and track of brand meters and the colour of their spinners. */
   --meter-fill: hsl(var(--p-navy));
   --meter-track: hsl(var(--p-navy-100));
-  /* A bar that nears a limit takes the calm ochre, not the dark warning text colour. */
-  --meter-warning: hsl(var(--p-score-mid));
   /* The pinned star and pressed ghost toggles. */
   --pressed: hsl(var(--p-navy-deep));
   /* Focus (keyboard only), caret and text selection: navy, like the native blue of both
@@ -403,12 +403,11 @@
   --icon-sm: 16px;
   --icon-md: 20px;
   --icon-lg: 24px;
-  --icon-stroke-xs: 2;
-  --icon-stroke-sm: 1.75;
-  --icon-stroke-md: 2;
-  --icon-stroke-lg: 2;
+  /* One line width for every line icon, whatever its size (user, 2026-09-27): screen pixels
+     (the strokes do not scale with the icon). */
+  --icon-stroke: 1.35;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
-  --row-height: 62px;
+  --row-height: 60px;
   /* The gutter of the unread dot, left of the ring. */
   --dot-gutter: 12px;
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
@@ -590,40 +589,40 @@
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --weight-regular: 400;
-  --weight-medium: 460;
-  --weight-semibold: 530;
+  --weight-medium: 420;
+  --weight-semibold: 480;
   --numeric: tabular-nums;
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 11px;
   --leading-2xs: 14px;
-  --font-xs: 11.5px;
-  --leading-xs: 16px;
-  --font-sm: 12px;
-  --leading-sm: 17px;
+  --font-xs: 11px;
+  --leading-xs: 15px;
+  --font-sm: 11.5px;
+  --leading-sm: 16px;
   /* The text in fields. */
-  --font-field: 13.5px;
-  --leading-field: 19px;
+  --font-field: 13px;
+  --leading-field: 18px;
   /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
-  --font-md: 13.5px;
-  --leading-md: 19px;
+  --font-md: 13px;
+  --leading-md: 18px;
   /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
-  --font-title: 14.5px;
-  --leading-title: 19px;
+  --font-title: 14px;
+  --leading-title: 18px;
   /* The sidebar entries (14/20, weight 500). */
-  --font-tab: 13.5px;
-  --leading-tab: 19px;
+  --font-tab: 13px;
+  --leading-tab: 18px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 14px;
-  --leading-place: 19px;
+  --font-place: 13.5px;
+  --leading-place: 18px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
-  --font-body: 13.5px;
-  --leading-body: 21px;
-  --font-lg: 15.5px;
-  --leading-lg: 21px;
-  --font-xl: 18px;
-  --leading-xl: 25px;
-  --font-2xl: 22px;
-  --leading-2xl: 27px;
+  --font-body: 13px;
+  --leading-body: 20px;
+  --font-lg: 15px;
+  --leading-lg: 20px;
+  --font-xl: 17px;
+  --leading-xl: 24px;
+  --font-2xl: 20px;
+  --leading-2xl: 26px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);

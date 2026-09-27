@@ -57,12 +57,3 @@ test('an ad the app cannot reach says so in the reader, its row carries no badge
   await row.click();
   await expect(page.getByTestId('detail-note')).toHaveText(T.reader.adNote.unfetchable);
 });
-
-test('English names the preferred rate one way everywhere', async ({ page }) => {
-  await open(page, `${WIN}&lang=en`);
-  // The field is "Preferred day rate"; "target" is the word of the target roles. The
-  // preference is the reason of the rate's verdict, in its tooltip.
-  await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();
-  await page.getByTestId('criteria').getByTestId('term-rate').locator('.verdict').hover();
-  await expect(page.getByRole('tooltip')).toContainText('preferred rate of €1,200');
-});

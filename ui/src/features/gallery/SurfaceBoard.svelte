@@ -77,7 +77,6 @@
     {#each ['sm', 'md', 'lg'] as const as size (size)}
       <Meter value={0.62} {size} label={t.meter} />
       <Meter value={0.35} {size} tone="neutral" label={t.meter} />
-      <Meter value={0.8} {size} tone="warning" label={t.meter} />
       <Meter value={null} {size} label={t.meter} />
     {/each}
   </div>

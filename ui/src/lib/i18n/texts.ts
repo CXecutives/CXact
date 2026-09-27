@@ -51,52 +51,6 @@ export function reasonText(reason: Reason): string {
   return textOf(t.reason.code[code as ReasonCode], reason.params) || reason.label;
 }
 
-const numberOf = (value: unknown): number | null => (typeof value === 'number' ? value : null);
-
-/** Why a requirement of the ad (a skill, a term, a formal degree or licence) has its verdict,
- *  in one plain sentence from its code and params: the tooltip of its icon among the
- *  Anforderungen and of the Jobdetails row it decides. Never empty. */
-export function reasonWhy(reason: Reason): string {
-  const why = t.reason.why;
-  const p = reason.params;
-  const kind = reason.kind;
-  if (reason.code === 'formalOpen') {
-    if (p.class === 'licence') return why.licence.open;
-    return p.class === 'degree' ? why.degree.open : why.noDegree;
-  }
-  const years = numberOf(p.years);
-  const have = numberOf(p.have);
-  // General experience: the years asked against the profile's own.
-  if (p.general === true && years !== null) {
-    return have === null ? why.noYears : why.years(t.facts.years(years, numberOf(p.max)), have);
-  }
-  switch (p.class) {
-    case 'frame':
-      return why.frame;
-    case 'language':
-      if (kind === 'met' || kind === 'partial') return why.language[kind];
-      return p.held === true ? why.language.low : why.language.open;
-    case 'degree':
-      return why.degree[kind === 'met' || kind === 'partial' ? kind : 'open'];
-    case 'licence':
-      return kind === 'met' ? why.licence.met : why.licence.open;
-  }
-  const evidence = reason.evidence;
-  if (evidence) {
-    if (years !== null && have !== null && have < years) {
-      return why.fewerYears(evidence.profile, have, years);
-    }
-    if (kind === 'met') return why.met(evidence.profile, numberOf(p.entryYears));
-    if (kind === 'partial') {
-      return evidence.via === 'general'
-        ? why.general(evidence.profile)
-        : why.partlyBy(evidence.profile);
-    }
-  }
-  if (p.class === 'soft' && kind === 'partial') return why.soft;
-  return kind === 'met' ? why.fits : kind === 'partial' ? why.partly : why.missing;
-}
-
 /**
  * Why a job is excluded or not scored (the note of its match), if there is one. The engine
  * names the first violation by its reason code (`dayRate`, `country`, `anue` ...) with that

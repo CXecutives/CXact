@@ -40,8 +40,6 @@
 
   type Switches = Partial<Pick<PortalState, 'enabled' | 'loginEnabled'>>;
 
-  /** From this share of the day the meter turns ochre. */
-  const QUOTA_WARNS = 0.8;
   /** A week without an alert mail of a portal that is on: its row says so. */
   const QUIET_DAYS = 7;
   const DAY_MS = 24 * 60 * 60 * 1000;
@@ -80,16 +78,13 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  const resting = $derived(
-    portal.health.kind === 'paused' || portal.health.kind === 'quotaReached',
-  );
   /** The calls of today and their share of the day's limit; none in the demo, which asks no
    *  portal (its note says so). */
   const quota = $derived.by(() => {
     const q = portal.quota;
     if (q === null || app.state?.demo) return null;
     const share = q.usedDay / Math.max(q.capDay, 1);
-    return { share, text: t.settings.quota(q.usedDay, q.capDay), warns: share >= QUOTA_WARNS };
+    return { share, text: t.settings.quota(q.usedDay, q.capDay) };
   });
   /** A sign-in is stored (in the session window's profile). */
   const stored = $derived(portal.signedIn === true);
@@ -174,12 +169,7 @@
     {#if quota}
       <div class="quota" data-testid="quota-{portal.portal}">
         <span>{quota.text}</span>
-        <Meter
-          value={quota.share}
-          tone={quota.warns || resting ? 'warning' : 'brand'}
-          size="sm"
-          label={quota.text}
-        />
+        <Meter value={quota.share} size="sm" label={quota.text} />
       </div>
     {/if}
     {#if health && portal.enabled}

@@ -267,10 +267,6 @@ const LEVEL: Record<string, string> = {
   associate: 'Associate',
 };
 
-/** How far an amount lies above the profile's minimum (percent), inside a sentence. */
-const aboveMinimum = (percent: number): string =>
-  percent === 0 ? 'exactly at your minimum' : `${formatPercent(percent)} above your minimum`;
-
 /** What an amount of pay is per (`facts.pay`). */
 type Per = 'day' | 'hour' | 'year';
 const PER: Record<Per, string> = { day: 'day', hour: 'hr', year: 'year' };
@@ -522,65 +518,51 @@ const reasonCode = {
 const criteria = {
   minDayRate: {
     label: 'Day rate',
-    met: 'The day rate reaches your minimum.',
     short: 'Day rate too low',
     exclusion: 'The day rate is below your minimum.',
   },
   countries: {
     label: 'Countries',
-    met: (p) =>
-      p.remote === true ? 'The job is fully remote.' : 'The place of work is in your countries.',
     short: 'Outside your countries',
     exclusion: 'The place of work is not in your countries.',
   },
   noAnue: {
     label: 'Temporary agency work',
-    met: 'The ad names its contract type, no temporary agency work.',
     short: 'Temporary agency work',
     exclusion: 'You exclude temporary agency work.',
   },
   noPermanent: {
     label: 'Permanent job',
-    met: 'The ad names its contract type, no permanent job.',
     short: 'Permanent job',
     exclusion: 'You exclude permanent jobs.',
   },
   availability: {
     label: 'Availability',
-    met: 'The start fits your availability.',
     short: 'Start does not fit',
     exclusion: 'The start is before you are available.',
   },
   minSalary: {
     label: 'Annual salary',
-    met: 'The salary reaches your minimum.',
     short: 'Salary too low',
     exclusion: 'The salary is below your minimum.',
   },
   permanentRegion: {
     label: 'Locations',
-    met: (p) =>
-      p.remote === true
-        ? 'The job is fully remote.'
-        : 'The place is one of your locations for permanent jobs.',
     short: 'Location does not fit',
     exclusion: 'The place is not among your locations for permanent jobs.',
   },
   workload: {
     label: 'Workload',
-    met: 'The workload fits your days.',
     short: 'Workload does not fit',
     exclusion: WORKLOAD,
   },
   duration: {
     label: 'Duration',
-    met: 'The duration reaches your minimum duration.',
     short: 'Duration too short',
     exclusion: DURATION,
   },
   exclusionWords: {
     label: 'Exclusion words',
-    met: 'The ad names none of your exclusion words.',
     short: 'Exclusion word',
     exclusion: 'The ad names one of your exclusion words.',
   },
@@ -777,42 +759,6 @@ export const en: Catalog = {
       hard: 'Exclusion',
       info: 'Note',
     } satisfies Record<ReasonWeight, string>,
-    why: {
-      met: (profile: string, years: number | null) =>
-        years === null
-          ? `You bring ${profile}.`
-          : `You bring ${profile}, ${count(years, 'year', 'years')}.`,
-      fewerYears: (profile: string, have: number, asked: number) =>
-        `You bring ${profile}, but ${n(have)} instead of ${count(asked, 'year', 'years')}.`,
-      general: (profile: string) => `Your profile names only the broader ${profile}.`,
-      years: (asked: string, have: number) =>
-        `The job asks for ${asked} of experience, you bring ${count(have, 'year', 'years')}.`,
-      topicYears: (asked: string, profile: string, have: number) =>
-        `The job asks for ${asked} of ${profile}, you bring ${count(have, 'year', 'years')}.`,
-      noYears: 'Your years of experience are not in the profile.',
-      soft: 'Personal strengths count half without proof in the profile.',
-      frame: 'A condition of the job, it does not count.',
-      language: {
-        met: 'Your language skills are enough.',
-        partial: 'Your language level is one step below.',
-        low: 'Your language level is well below.',
-        open: 'The language is not in your profile.',
-      },
-      degree: {
-        met: 'Your degree fits.',
-        partial: 'Your degree fits only in part.',
-        open: 'Your profile names no fitting degree.',
-      },
-      licence: {
-        met: 'The licence is in your profile.',
-        open: 'The licence is not in your profile.',
-      },
-      noDegree: 'Your profile names no degree.',
-      fits: 'Fits your profile.',
-      partly: 'Fits your profile only in part.',
-      partlyBy: (profile: string) => `Only partly covered by ${profile}.`,
-      missing: 'Not in your profile.',
-    },
     code: reasonCode,
   },
   job: {
@@ -962,14 +908,6 @@ export const en: Catalog = {
     },
     salaryName: 'Salary',
     hourlyName: 'Hourly rate',
-    payMet: {
-      day: (percent: number) => `The day rate is ${aboveMinimum(percent)}.`,
-      upper: (percent: number) => `The upper end is ${aboveMinimum(percent)}.`,
-      hour: (amount: number, perDay: number, percent: number) =>
-        `The hourly rate of ${formatEuro(amount)} makes ${formatEuro(perDay)} a day and is ${aboveMinimum(percent)}.`,
-      salary: (percent: number) => `The salary is ${aboveMinimum(percent)}.`,
-      bonus: (percent: number) => `With the bonus the salary is ${aboveMinimum(percent)}.`,
-    },
     missing: '/',
     contractKind: {
       interim: 'Interim',

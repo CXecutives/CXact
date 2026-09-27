@@ -301,7 +301,7 @@ test("the head starts on the edge of the sections; the title is the page's", asy
   const left = (await heading(page).boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
   // The title is the page's: 26 px in the heading colour, like the reader's job title.
-  await expect(heading(page)).toHaveCSS('font-size', '22px');
+  await expect(heading(page)).toHaveCSS('font-size', '20px');
 });
 
 test('the page ends with room under the last section; the save bar never covers it', async ({
@@ -576,7 +576,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   );
 });
 
-test('fields, chip fields and choices are 29 px (as in Einstellungen), labels 12/460', async ({
+test('fields, chip fields and choices are 29 px (as in Einstellungen), labels 11.5/420', async ({
   page,
 }) => {
   await profile(page);
@@ -594,19 +594,19 @@ test('fields, chip fields and choices are 29 px (as in Einstellungen), labels 12
   expect(entries.length).toBeGreaterThan(8);
   for (const entry of entries) expect(entry.height, entry.text).toBe(29);
   // One choice component for every choice: the segments, as high as a field like every
-  // choice of the app (Einstellungen too), with the 12 px text of a small button.
+  // choice of the app (Einstellungen too), with the 11.5 px text of a small button.
   const groups = await boxes(form, '[role="radiogroup"]');
   expect(groups.length).toBe(2);
   for (const group of groups) expect(group.height, group.text).toBe(29);
   const choices = await boxes(form, '[role="radiogroup"] [role="radio"]');
-  for (const choice of choices) expect(choice.size, choice.text).toBe('12px');
+  for (const choice of choices) expect(choice.size, choice.text).toBe('11.5px');
   await expect(form.locator('.segmented')).toHaveCount(2);
   // Every control label of a field and a choice (the switches are rows like in Einstellungen).
   const labels = [...(await boxes(form, 'label')), ...(await boxes(form, '.block > .label'))];
   expect(labels.length).toBeGreaterThan(15);
   for (const label of labels) {
-    expect(label.size, label.text).toBe('12px');
-    expect(label.weight, label.text).toBe('460');
+    expect(label.size, label.text).toBe('11.5px');
+    expect(label.weight, label.text).toBe('420');
   }
   // The main actions are 29 px; the chevron of the title is a small icon button.
   for (const id of ['profile-save', 'profile-discard']) {

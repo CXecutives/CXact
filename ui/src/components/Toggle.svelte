@@ -1,5 +1,5 @@
 <!--
-  On/off switch, coral when on (user decision). The thumb travels in 180 ms (emphasized, no
+  On/off switch, the accent when on with a white knob (user decision). The thumb travels in 180 ms (emphasized, no
   bounce) and the track changes colour in 100 ms; it darkens a step under the pointer and one
   more while the left button is down, off and on alike (the thumb never changes shape).
   Disabled switches stay hoverable so the tooltip can say why (disabledReason), and Tab
@@ -134,7 +134,7 @@
     width: var(--toggle-thumb);
     height: var(--toggle-thumb);
     border-radius: var(--radius-full);
-    background-color: var(--surface);
+    background-color: var(--toggle-knob);
     box-shadow: var(--sh-thumb);
     transition: transform var(--dur-slow) var(--ease-emphasized);
   }
