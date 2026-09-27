@@ -55,5 +55,4 @@ export type Commands = {
   restore_backup: { args: { id: string }; result: Backup };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
   clipboard_text: { args: Record<string, never>; result: string | null };
-  company_count: { args: { company: string; days: number }; result: number };
 };

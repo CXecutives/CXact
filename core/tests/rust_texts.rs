@@ -16,7 +16,7 @@ use std::path::Path;
 /// The files with German text blocks, and how many strings each has at least.
 const FILES: [(&str, usize); 6] = [
     ("core/src/export/texts.rs", 25),
-    ("core/src/export/xlsx.rs", 20),
+    ("core/src/export/columns.rs", 20),
     ("src-tauri/src/main.rs", 12),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/platform.rs", 15),
@@ -27,7 +27,7 @@ const FILES: [(&str, usize); 6] = [
 /// English app), and how many strings each has at least.
 const FILES_EN: [(&str, usize); 5] = [
     ("core/src/export/texts.rs", 25),
-    ("core/src/export/xlsx.rs", 20),
+    ("core/src/export/columns.rs", 20),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/commands/mod.rs", 3),
     ("src-tauri/src/platform.rs", 15),
@@ -61,13 +61,14 @@ const GERMAN_WORDS: [&str; 14] = [
 ];
 
 /// Old words and the glossary word the texts use instead.
-const GLOSSARY: [(&str, &str); 10] = [
+const GLOSSARY: [(&str, &str); 11] = [
     ("Quelle", "Portal"),
     ("Eintrag", "Job"),
-    ("Volltext", "Details"),
-    ("Jobdetails", "Details"),
+    ("Volltext", "Anzeigentext"),
+    ("Konditionen", "Jobdetails"),
     ("Kandidat", "Job"),
-    ("Treffer", "Passung"),
+    ("Treffer", "Übereinstimmung"),
+    ("Passung", "Übereinstimmung"),
     ("Mailbox", "Postfach"),
     ("Lauf", "Abruf"),
     ("Kurzfassung", "Anriss"),

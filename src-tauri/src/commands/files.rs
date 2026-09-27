@@ -25,7 +25,8 @@ const SETTLE: Duration = Duration::from_secs(2);
 const IDLE_POLL: Duration = Duration::from_millis(500);
 
 /// The files a mark changes - the skill's `top_matches.json` (`pipeline::refresh_exports`)
-/// and the Excel file - follow the user's marks a moment after the last one:
+/// and the overviews (the Excel and the CSV file) - follow the user's marks a moment after
+/// the last one:
 /// never while a run, a sign-in or a file command holds the app (a run writes them at its
 /// end, a refresh then follows), never in the dry run. Marks of the last moments before the
 /// app ends are written when it ends ([`flush_marks`]).
@@ -102,8 +103,34 @@ fn refresh(state: &AppState) {
         matcher.as_deref().map(|m| m as &dyn Matcher),
         Timestamp::now(),
     );
-    // The Excel file follows the marks too (it is rewritten only when something changed).
-    let _ = pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
+    // The overviews follow the marks too (each is rewritten only when something changed).
+    let _ = pipeline::refresh_overviews(&state.store, &workspace, Timestamp::now(), language);
+}
+
+/// An overview to open (`excel` or `csv`): not found while it is switched off - the app
+/// writes none, an old file is no file of the app's now - and written fresh before it opens,
+/// so the marks since the last write are in it.
+fn overview(
+    state: &AppState,
+    path: std::path::PathBuf,
+    switched_on: bool,
+) -> CmdResult<std::ffi::OsString> {
+    if !switched_on {
+        return Err(ErrorInfo::new(ErrorKind::NotFound)
+            .with("what", "file")
+            .with("path", path.display().to_string()));
+    }
+    if !state.dry_run && !state.busy() {
+        let settings = state.settings()?;
+        let language = settings.language_or(state.system_language);
+        let _ = pipeline::refresh_overviews(
+            &state.store,
+            &state.workspace()?,
+            Timestamp::now(),
+            language,
+        );
+    }
+    existing(path, "file")
 }
 
 /// Opens a checked target in the browser, the mail client or the file manager.
@@ -141,27 +168,15 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
             state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),
             "folder",
         )?,
-        OpenTarget::Excel => {
-            let settings = state.settings()?;
-            let workspace = state.workspace()?;
-            let excel = export::overview_path(&workspace.join(RESULT_DIR));
-            // Switched off, the app writes none: an old file is no file of the app's now.
-            if !settings.export_excel {
-                return Err(ErrorInfo::new(ErrorKind::NotFound)
-                    .with("what", "file")
-                    .with("path", excel.display().to_string()));
-            }
-            // Fresh before it opens: the marks since the last write are in it.
-            if !state.dry_run && !state.busy() {
-                let language = settings.language_or(state.system_language);
-                let _ =
-                    pipeline::refresh_excel(&state.store, &workspace, Timestamp::now(), language);
-            }
-            existing(excel, "file")?
-        }
-        OpenTarget::Csv => existing(
+        OpenTarget::Excel => overview(
+            &state,
+            export::overview_path(&state.workspace()?.join(RESULT_DIR)),
+            state.settings()?.export_excel,
+        )?,
+        OpenTarget::Csv => overview(
+            &state,
             export::csv_path(&state.workspace()?.join(RESULT_DIR)),
-            "file",
+            state.settings()?.export_csv,
         )?,
         OpenTarget::ExcelInFolder => {
             let workspace = state.workspace()?;

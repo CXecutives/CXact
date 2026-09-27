@@ -825,6 +825,11 @@ export const de = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
+    contractHeading: 'Vertragsart',
+    anyContract: 'Jede Vertragsart',
+    workHeading: 'Arbeitsort',
+    anyWork: 'Jeder Arbeitsort',
+    remoteOnly: 'Nur remote',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
@@ -866,12 +871,13 @@ export const de = {
       overview: 'Die Excel-Datei ließ sich nicht schreiben und blieb unverändert.',
       overviewLocked:
         'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-      overviewHtml: 'Die Übersicht ließ sich nicht schreiben.',
+      csv: 'Die CSV-Datei ließ sich nicht schreiben und blieb unverändert.',
+      csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
       txt: 'Nicht alle Textdateien ließen sich schreiben.',
       txtFolder: 'Der Ordner der Textdateien ist nicht erreichbar.',
       backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
       /** The work folder itself (a drive that is gone): nothing was written. */
-      workspace: 'Der Arbeitsordner ist nicht erreichbar.',
+      workspace: 'Der Ergebnisordner ist nicht erreichbar.',
     },
     openOverview: 'Bericht öffnen',
     checkMailbox: 'Postfach prüfen',

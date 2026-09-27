@@ -1266,6 +1266,7 @@ fn the_finished_event_always_fits_the_channel() {
         .insert("target".into(), long.display().to_string().into());
     summary.export = Some(ExportSummary {
         overview_xlsx: Some(long.join("a.xlsx")),
+        overview_csv: Some(long.join("a.csv")),
         backup: Some(long.join("b.xlsx")),
         txt_written: 3,
         txt_failed: 0,
@@ -1290,6 +1291,7 @@ fn the_finished_event_always_fits_the_channel() {
     let huge = PathBuf::from("C:/".to_owned() + &"verzeichnis/".repeat(400));
     let export = summary.export.as_mut().unwrap();
     export.backup = Some(huge.clone());
+    export.overview_csv = Some(huge.clone());
     export.overview_xlsx = Some(huge);
     assert_small(&[summary.finished_event()]);
     let small = RunSummary::new(RunKindName::Fetch, false, Timestamp::now());
@@ -1992,12 +1994,114 @@ fn an_excel_file_switched_off_is_not_written() {
     assert_eq!(s.error, None);
     assert_eq!(s.txt_written, 2);
     assert!(!xlsx.exists());
-    let asked = refresh_excel(&store, dir.path(), Timestamp::now(), Language::De);
+    let asked = refresh_overviews(&store, dir.path(), Timestamp::now(), Language::De);
     assert_eq!((asked.overview_xlsx, asked.error), (None, None));
     assert!(!xlsx.exists());
     crate::settings::Settings::default().save(&store).unwrap();
-    let on = refresh_excel(&store, dir.path(), Timestamp::now(), Language::De);
+    let on = refresh_overviews(&store, dir.path(), Timestamp::now(), Language::De);
     assert_eq!(on.overview_xlsx.as_deref(), Some(xlsx.as_path()));
+}
+
+/// The CSV file: none while `exportCsv` is off (the default); on, it is written next to
+/// the Excel file whenever that would be, even with Excel off, in the file's own format; a run
+/// alone does not write it again, a change of the data does; a foreign file of the same name
+/// is backed up first, quietly (the page only names a backed-up Excel file).
+#[test]
+fn the_csv_file_follows_its_switch() {
+    let dir = tempfile::tempdir().unwrap();
+    let (store, keys) = store_with_texts();
+    let result_dir = dir.path().join(RESULT_DIR);
+    let csv = export::csv_path(&result_dir);
+    let off = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
+    assert_eq!((off.overview_csv, off.error), (None, None));
+    assert!(!csv.exists(), "off by default: no file");
+
+    std::fs::write(&csv, "fremd").unwrap();
+    let settings = crate::settings::Settings {
+        export_excel: false,
+        export_csv: true,
+        ..crate::settings::Settings::default()
+    };
+    settings.save(&store).unwrap();
+    let on = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
+    assert_eq!(on.error, None);
+    assert_eq!(on.overview_csv.as_deref(), Some(csv.as_path()));
+    assert_eq!(on.backup, None, "the page names no CSV backup");
+    let text = std::fs::read_to_string(&csv).unwrap();
+    assert!(text.starts_with("\u{feff}Titel;Übereinstimmung;"), "{text}");
+    assert_eq!(text.matches("\r\n").count(), 3, "the header and two jobs");
+    let backups: Vec<String> = std::fs::read_dir(&result_dir)
+        .unwrap()
+        .filter_map(|e| e.ok()?.file_name().into_string().ok())
+        .filter(|name| name.starts_with(export::XLSX_BACKUP_PREFIX))
+        .collect();
+    assert_eq!(backups.len(), 1, "{backups:?}");
+    assert!(
+        Path::new(&backups[0])
+            .extension()
+            .is_some_and(|e| e == "csv")
+    );
+    assert_eq!(on.overview_xlsx, None, "Excel is off");
+
+    let again = export_all(&store, dir.path(), &[], 2, Timestamp::now(), Language::De);
+    assert_eq!(
+        again.overview_csv, None,
+        "a run alone changes nothing in it"
+    );
+    let one = std::slice::from_ref(&keys[0]);
+    store
+        .move_jobs(one, Place::Archive, Timestamp::now())
+        .unwrap();
+    let moved = refresh_overviews(&store, dir.path(), Timestamp::now(), Language::De);
+    assert_eq!(moved.overview_csv.as_deref(), Some(csv.as_path()));
+    assert!(std::fs::read_to_string(&csv).unwrap().contains(";Archiv;"));
+}
+
+/// The CSV file open in Excel (Windows: no sharing) stays as it was; the summary says
+/// `fileLocked` for the CSV file, like for the Excel file.
+#[cfg(windows)]
+#[test]
+fn an_open_csv_file_is_reported_as_locked() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let (store, keys) = store_with_texts();
+    let settings = crate::settings::Settings {
+        export_csv: true,
+        ..crate::settings::Settings::default()
+    };
+    settings.save(&store).unwrap();
+    let first = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
+    let csv = first.overview_csv.unwrap();
+    let before = std::fs::read(&csv).unwrap();
+    store
+        .move_jobs(
+            std::slice::from_ref(&keys[0]),
+            Place::Archive,
+            Timestamp::now(),
+        )
+        .unwrap();
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&csv)
+        .unwrap();
+    let locked = refresh_overviews(&store, dir.path(), Timestamp::now(), Language::De);
+    drop(lock);
+    let error = locked.error.unwrap();
+    assert_eq!(error.kind, ErrorKind::FileLocked);
+    assert_eq!(
+        (&error.params["target"], &error.params["name"]),
+        (
+            &serde_json::json!("csv"),
+            &serde_json::json!(export::CSV_NAME)
+        )
+    );
+    assert_eq!(locked.overview_csv, None);
+    assert!(
+        locked.overview_xlsx.is_some(),
+        "the Excel file is written all the same"
+    );
+    assert_eq!(std::fs::read(&csv).unwrap(), before, "the open file stays");
 }
 
 /// A failed export does not fail the run, but the summary names it as a code with its
@@ -2118,14 +2222,14 @@ async fn the_excel_file_follows_the_marks_when_asked() {
     .await;
     let xlsx = export::overview_path(&dir.path().join(RESULT_DIR));
     let before = std::fs::read(&xlsx).unwrap();
-    let unchanged = refresh_excel(&store, dir.path(), c(), Language::De);
+    let unchanged = refresh_overviews(&store, dir.path(), c(), Language::De);
     assert_eq!(unchanged.overview_xlsx, None, "nothing changed");
     assert_eq!(unchanged.error, None);
     assert_eq!(std::fs::read(&xlsx).unwrap(), before);
     let key = store.jobs(&JobFilter::default()).unwrap()[0].key.clone();
     let one = std::slice::from_ref(&key);
     assert_eq!(store.move_jobs(one, Place::Archive, c()).unwrap(), one);
-    let written = refresh_excel(&store, dir.path(), c(), Language::De);
+    let written = refresh_overviews(&store, dir.path(), c(), Language::De);
     assert_eq!(written.overview_xlsx.as_deref(), Some(xlsx.as_path()));
     {
         use calamine::{Reader, Xlsx, open_workbook};
@@ -2142,7 +2246,7 @@ async fn the_excel_file_follows_the_marks_when_asked() {
         "the links name the account the scan read"
     );
     assert_eq!(
-        refresh_excel(&store, dir.path(), c(), Language::De).overview_xlsx,
+        refresh_overviews(&store, dir.path(), c(), Language::De).overview_xlsx,
         None,
         "written once"
     );
@@ -2157,7 +2261,7 @@ async fn the_excel_file_follows_the_marks_when_asked() {
             .share_mode(0)
             .open(&xlsx)
             .unwrap();
-        let locked = refresh_excel(&store, dir.path(), c(), Language::De);
+        let locked = refresh_overviews(&store, dir.path(), c(), Language::De);
         drop(lock);
         let error = locked.error.unwrap();
         assert_eq!(error.kind, ErrorKind::FileLocked);

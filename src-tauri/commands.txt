@@ -38,4 +38,3 @@ list_backups      {}                                                            
 restore_backup    { id: string }                                                     -> Backup
 report_ui_error   { message: string; source: string | null; line: number | null }    -> null
 clipboard_text    {}                                                                 -> string | null
-company_count     { company: string; days: number }                                  -> number

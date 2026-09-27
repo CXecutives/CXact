@@ -185,18 +185,3 @@ pub async fn ai_prompt(state: State<'_, AppState>, key: JobKey) -> CmdResult<Str
     let source = export::PromptSource::load(&state.store, matcher.as_deref(), &row)?;
     Ok(export::ai_prompt(&profile, source.job(), state.language()?))
 }
-
-/// How many jobs of this company came in the last `days` days (the reader's line).
-#[tauri::command]
-pub async fn company_count(
-    state: State<'_, AppState>,
-    company: String,
-    days: u32,
-) -> CmdResult<u32> {
-    Ok(view::company_count(
-        &state.store,
-        &company,
-        days,
-        Timestamp::now(),
-    )?)
-}

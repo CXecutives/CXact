@@ -1,9 +1,10 @@
 //! `ui/src/styles/tokens.css` is the one place a colour of the app is written. What is not the
 //! page reads it through files `tools/tokens.mjs` generates: `core/src/export/palette.rs` (the
-//! report, the Excel file, the Windows title bar), `tools/palette.json` (the app icon) and the
-//! window's `backgroundColor` in `src-tauri/tauri*.conf.json`. These tests read tokens.css on
-//! their own (their own parser, their own conversion to RGB) and fail while a generated file
-//! is stale (`npm run regen` writes them anew) or a colour is written anywhere else.
+//! Excel file, the window and its title bar, the icon's tests), `tools/palette.json` (the app
+//! icon) and the window's `backgroundColor` in `src-tauri/tauri*.conf.json`. These tests read
+//! tokens.css on their own (their own parser, their own conversion to RGB) and fail while a
+//! generated file is stale (`npm run regen` writes them anew) or a colour is written anywhere
+//! else.
 
 use std::path::{Path, PathBuf};
 
@@ -161,15 +162,32 @@ fn as_token(name: &str, colour: Colour) -> Token {
     }
 }
 
-/// palette.rs holds every colour token, in order, as tokens.css says it; the score ring as
-/// one table and the font stack too.
+/// The colour tokens something besides the page wears (`OUTSIDE` in tools/tokens.mjs): the
+/// window and the Windows title bar, the Excel file (the score ring as a family), the icon.
+const OUTSIDE: [&str; 7] = [
+    "bg",
+    "text",
+    "text-subtle",
+    "surface-muted",
+    "score-excluded",
+    "brand",
+    "brand-glyph",
+];
+
+/// palette.rs holds the colour tokens something besides the page wears, in the order of
+/// tokens.css, as tokens.css says them - no colour only the page (or the report of earlier
+/// versions) wore; the score ring as one table too.
 #[test]
 fn the_rust_palette_is_the_tokens() {
     let generated: Vec<Token> = palette::TOKENS
         .iter()
         .map(|(name, colour)| as_token(name, *colour))
         .collect();
-    assert_eq!(generated, colour_tokens(), "palette.rs {REGEN}");
+    let outside: Vec<Token> = colour_tokens()
+        .into_iter()
+        .filter(|t| OUTSIDE.contains(&t.name.as_str()) || t.name.starts_with("score-ring-"))
+        .collect();
+    assert_eq!(generated, outside, "palette.rs {REGEN}");
     let steps: Vec<Token> = (0..10).map(|n| token(&format!("score-ring-{n}"))).collect();
     let ring: Vec<Token> = palette::SCORE_RING
         .iter()
@@ -177,12 +195,6 @@ fn the_rust_palette_is_the_tokens() {
         .map(|(n, colour)| as_token(&format!("score-ring-{n}"), *colour))
         .collect();
     assert_eq!(ring, steps, "palette.rs {REGEN}");
-    let font = declarations()
-        .into_iter()
-        .find(|(name, _)| name == "font-sans")
-        .expect("--font-sans")
-        .1;
-    assert_eq!(palette::FONT_SANS, font, "palette.rs {REGEN}");
 }
 
 /// The window's colours of every other palette (Light, Dark): `--bg`, `--text` and
@@ -222,7 +234,7 @@ fn the_window_colours_of_each_palette_are_the_tokens() {
     assert_eq!(generated, expected, "palette.rs {REGEN}");
 }
 
-/// palette.json (what tools/icon.py reads) holds the same colour tokens and font.
+/// palette.json (what tools/icon.py reads) holds every colour token of tokens.css.
 #[test]
 fn the_icon_palette_is_the_tokens() {
     let json: serde_json::Value = serde_json::from_str(&read("tools/palette.json")).unwrap();
@@ -238,11 +250,6 @@ fn the_icon_palette_is_the_tokens() {
     let mut expected = colour_tokens();
     expected.sort_by(|a, b| a.name.cmp(&b.name));
     assert_eq!(generated, expected, "tools/palette.json {REGEN}");
-    assert_eq!(
-        json["fontSans"],
-        palette::FONT_SANS,
-        "tools/palette.json {REGEN}"
-    );
 }
 
 /// Before the page paints, the window shows its `backgroundColor`: the page's `--bg`, on both

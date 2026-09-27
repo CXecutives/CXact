@@ -16,13 +16,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::export::write_atomic;
 use crate::portal::Portal;
+use crate::time;
 
 /// Pace and caps of a portal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Limits {
     /// Gap between two requests in milliseconds (random within the range).
     pub pace_ms: RangeInclusive<u64>,
+    /// Requests within any hour (a rolling window).
     pub per_hour: usize,
+    /// Requests within a local day, from midnight (what the interface calls "today").
     pub per_day: usize,
 }
 
@@ -115,7 +118,8 @@ pub struct PortalState {
     /// Pages without a description in a row - across runs (clicking again does not reset
     /// the breaker).
     pub suspicious_streak: u32,
-    /// Requests of the last 24 hours.
+    /// Requests of the local day and the last hour (files of earlier versions: of the last
+    /// 24 hours).
     pub accesses: Vec<Timestamp>,
     /// End of the last request - the gap counts from the answer, also across runs.
     pub last_done_at: Option<Timestamp>,
@@ -257,7 +261,9 @@ impl Policy {
         self.portals.get(&portal).cloned().unwrap_or_default()
     }
 
-    /// Pause, hourly cap, daily cap - in this order.
+    /// Pause, hourly cap, daily cap - in this order. The hourly cap frees a request as soon
+    /// as the oldest of its window is an hour old; the daily cap counts from local midnight
+    /// and frees at the next one.
     pub fn allowance(&self, portal: Portal, now: Timestamp) -> Allowance {
         let state = self.portals.get(&portal);
         if let Some(state) = state
@@ -271,21 +277,20 @@ impl Policy {
         }
         let accesses = state.map_or(&[][..], |s| &s.accesses[..]);
         let limits = limits(portal);
-        let next = [(HOUR, limits.per_hour), (DAY, limits.per_day)]
-            .into_iter()
-            .filter_map(|(window, cap)| quota_free_at(accesses, now, window, cap))
-            .max();
-        match next {
+        let hourly = quota_free_at(accesses, now, HOUR, limits.per_hour);
+        let daily = (today(accesses, now) >= limits.per_day).then(|| time::next_day_start(now));
+        match hourly.into_iter().chain(daily).max() {
             Some(next_at) => Allowance::Quota { next_at },
             None => Allowance::Go,
         }
     }
 
-    /// Counts a request and forgets requests older than 24 hours.
+    /// Counts a request and forgets the ones neither cap counts any more: before the local
+    /// day and older than an hour.
     pub fn record_access(&mut self, portal: Portal, now: Timestamp) {
         let state = self.portals.entry(portal).or_default();
-        let horizon = now.saturating_sub(DAY).unwrap_or(Timestamp::MIN);
-        state.accesses.retain(|&at| at > horizon);
+        let horizon = time::day_start(now).min(now.saturating_sub(HOUR).unwrap_or(Timestamp::MIN));
+        state.accesses.retain(|&at| at >= horizon);
         state.accesses.push(now);
     }
 
@@ -389,17 +394,15 @@ impl Policy {
         state.session_confirmed_at = None;
     }
 
-    /// Requests in the last hour and in the last 24 hours.
+    /// Requests in the last hour and today (since local midnight): what the caps count.
     pub fn usage(&self, portal: Portal, now: Timestamp) -> (usize, usize) {
         let accesses = self
             .portals
             .get(&portal)
             .map_or(&[][..], |s| &s.accesses[..]);
-        let since = |window: SignedDuration| {
-            let start = now.saturating_sub(window).unwrap_or(Timestamp::MIN);
-            accesses.iter().filter(|&&at| at > start).count()
-        };
-        (since(HOUR), since(DAY))
+        let start = now.saturating_sub(HOUR).unwrap_or(Timestamp::MIN);
+        let hour = accesses.iter().filter(|&&at| at > start).count();
+        (hour, today(accesses, now))
     }
 
     /// Last request or last answer of a portal - the gap counts from the later one (also
@@ -438,6 +441,12 @@ impl Policy {
             state.session_confirmed_at = Some(now);
         }
     }
+}
+
+/// The requests of the local day of `now` (since its midnight).
+fn today(accesses: &[Timestamp], now: Timestamp) -> usize {
+    let start = time::day_start(now);
+    accesses.iter().filter(|&&at| at >= start).count()
 }
 
 /// If the cap `cap` is reached within the window, the time from which a request is free
@@ -512,8 +521,28 @@ mod tests {
         assert!(aside, "the broken file is kept for inspection");
     }
 
+    /// A moment in local time (Europe/Berlin in every test).
+    fn local(text: &str) -> Timestamp {
+        text.parse::<jiff::civil::DateTime>()
+            .unwrap()
+            .to_zoned(time::zone().clone())
+            .unwrap()
+            .timestamp()
+    }
+
+    /// Every portal: 100 requests a day; the hourly caps and paces stay each portal's own.
     #[test]
-    fn hourly_and_daily_caps() {
+    fn a_hundred_requests_a_day_each() {
+        for portal in [Portal::LinkedIn, Portal::FreelanceDe, Portal::Freelancermap] {
+            assert_eq!(limits(portal).per_day, 100, "{portal:?}");
+        }
+        assert_eq!(limits(Portal::LinkedIn).per_hour, 30);
+        assert_eq!(limits(Portal::FreelanceDe).per_hour, 20);
+        assert_eq!(limits(Portal::Freelancermap).per_hour, 40);
+    }
+
+    #[test]
+    fn the_hourly_cap_rolls() {
         let mut p = Policy::in_memory();
         for i in 0..30 {
             assert_eq!(p.allowance(Portal::LinkedIn, at(i)), Allowance::Go);
@@ -527,16 +556,57 @@ mod tests {
         assert_eq!(p.allowance(Portal::LinkedIn, at(61)), Allowance::Go);
         // Other portals are independent.
         assert_eq!(p.allowance(Portal::Freelancermap, at(30)), Allowance::Go);
-        // Daily cap 80: after 80 requests over several hours only 24 h later.
-        for i in 0..50 {
-            p.record_access(Portal::LinkedIn, at(120 + i));
+    }
+
+    /// The daily cap counts from local midnight: the requests of the morning hold it until
+    /// the day ends, not 24 hours on, and "today" starts empty at midnight.
+    #[test]
+    fn the_daily_cap_counts_from_local_midnight() {
+        let mut p = Policy::in_memory();
+        let morning = local("2026-09-21T06:00");
+        // 100 requests, 20 an hour (below the hourly cap): 06:00 to 10:57.
+        for i in 0..100 {
+            p.record_access(
+                Portal::LinkedIn,
+                morning
+                    .saturating_add(SignedDuration::from_mins(i * 3))
+                    .unwrap(),
+            );
         }
+        let evening = local("2026-09-21T22:00");
+        assert_eq!(p.usage(Portal::LinkedIn, evening), (0, 100));
+        let midnight = local("2026-09-22T00:00");
         assert_eq!(
-            p.allowance(Portal::LinkedIn, at(300)),
-            Allowance::Quota {
-                next_at: at(24 * 60)
-            }
+            p.allowance(Portal::LinkedIn, evening),
+            Allowance::Quota { next_at: midnight }
         );
+        assert_eq!(
+            p.allowance(Portal::LinkedIn, local("2026-09-21T23:59")),
+            Allowance::Quota { next_at: midnight }
+        );
+        assert_eq!(p.allowance(Portal::LinkedIn, midnight), Allowance::Go);
+        assert_eq!(
+            p.usage(Portal::LinkedIn, midnight),
+            (0, 0),
+            "today starts at 0"
+        );
+        // A request just before midnight counts in the hour after it, not for the new day.
+        p.record_access(Portal::LinkedIn, local("2026-09-21T23:50"));
+        assert_eq!(p.usage(Portal::LinkedIn, local("2026-09-22T00:10")), (1, 0));
+        // The first request of the new day forgets the old day's.
+        p.record_access(Portal::LinkedIn, local("2026-09-22T00:20"));
+        assert_eq!(p.state(Portal::LinkedIn).accesses.len(), 2);
+    }
+
+    /// The long day of the change to winter time (25 hours) counts whole: a request just after
+    /// midnight still counts late in the evening, more than 24 hours on.
+    #[test]
+    fn the_long_day_counts_whole() {
+        let mut p = Policy::in_memory();
+        p.record_access(Portal::Freelancermap, local("2026-10-25T00:10"));
+        let late = local("2026-10-25T23:50");
+        p.record_access(Portal::Freelancermap, late);
+        assert_eq!(p.usage(Portal::Freelancermap, late), (1, 2));
     }
 
     #[test]

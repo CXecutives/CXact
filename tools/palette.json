@@ -102,6 +102,5 @@
     "label-glyph-hover":      { "css": "hsl(212 34% 37%)", "rgb": [62, 92, 126] },
     "grip-rest":              { "css": "hsl(40 12% 78%)", "rgb": [206, 201, 192] },
     "grip-drag":              { "css": "hsl(30 4% 43%)", "rgb": [114, 110, 105] }
-  },
-  "fontSans": "'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif"
+  }
 }

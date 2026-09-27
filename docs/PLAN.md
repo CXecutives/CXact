@@ -120,33 +120,33 @@ a job title gives way), and the first scan after an update reads back once to th
 IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
-Commands: `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore | fullMailbox})` · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, favourites, sort: match|newest, search?, portal?, minBand?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, favourites, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
-(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only) ·
+Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore})` (a fetch reads the range of the setting `fetchRange`) · `cancel_run` ·
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest, search?, portal?, minBand?, contracts[], remoteOnly, limit, offset}) -> JobPage{jobs, counts{inbox, unread, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
+(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `contracts` are `KeyFacts.contract` codes, empty = all; `remoteOnly` = the stated remote share is 100 %, else the location's work mode is remote) ·
 `job_detail(key)` · `mark_read(key) -> bool` ·
-`set_pinned(key, on)` · `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
+`move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·
 `purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
-`ai_prompt(key) -> string` · `ai_prompt_top(limit) -> string` · `pick_profile -> ProfileDraft?` ·
+`ai_prompt(key) -> string` · `pick_profile -> ProfileDraft?` ·
 `parse_profile(text, update) -> ProfileDraft` · `profile_prompt(update)` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
 `remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
-`pick_workspace` · `rewrite_txt` · `clear_txt` · `open_target({jobUrl|gmail|workspace|profileDir|excel|excelInFolder|excelBackupInFolder{name}|overview|logDir})` (a Gmail link names the mailbox's account; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu) · `overview_stats` · `company_count(company, days)`.
+`pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
+`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
 Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
-without a usable matcher) and the auto fetch (setting on, mailbox connected, last fetch > 6 h).
+without a usable matcher); nothing else runs on its own.
 Events on channel `run` (struct variants, each < 8 KB): `Started{kind}` (first event of every run, also of the runs Rust
 starts itself) · `Progress{step: scan|fetch|score|export, portal?, done, total}` ·
 `Status{code, portal?, until?}` · `Alert{portal, subject, date, postings, gmailId}` · `JobUpdated{job, fresh}` (fresh = first seen in this run) ·
 `PortalHealth{portal, health, actionNeeded}` · `LoginNeeded{portal, waiting}` ·
-`Finished{summary{kind, perPortal[{portal,new,known,dup,fetched,failed}], newJobs{count, high}?, score{scored,excluded,unscorable,pending,best}, export{..., error{kind, params.target}?}, stops[], emptyAlerts[]}}`
+`Finished{summary{kind, perPortal[{portal,new,known,dup,fetched,failed}], newJobs{count, high}?, score{scored,excluded,unscorable,pending,best}, export{overviewXlsx?, overviewCsv?, backup?, txtWritten, txtFailed, error{kind, params.target: workspace|txtFolder|txt|overview|backup|csv}?}, stops[], emptyAlerts[]}}`
 (`newJobs` of a mailbox run: first seen, not a duplicate, not excluded; `high` of those; the export never fails a run but names what it could not write).
-Types: `JobView{key, portal, title, company, location, workMode, mailDate, firstSeenAt, unread, pinned, detail, match{score, band, status, note, mustMet, mustTotal, top[]}|null, alsoOn[], place: inbox|archive|trash, overridden}` ·
+Types: `JobView{key, portal, title, company, location, workMode, mailDate, firstSeenAt, unread, detail, short, closed, match{score, band, status, note, mustMet, mustTotal, top[], facts}|null, alsoOn[], place: inbox|archive|trash, trashedAt, overridden}` ·
 `JobDetail{job, text, url, fetchedAt, mail{subject, gmailUrl}, match{score, status, band, rev, at, summary, reasons[<=40], highlights[<=200], criteria[]}|null}` ·
 `Reason{id, kind: met|partial|open|violation|check, weight: must|nice|hard|info, code, label, evidence{profile, path, via, quote}|null, params, ranges[]}` ·
 `Highlight{id, start, end (UTF-16), kind, reason}` · `ProfileInfo{fileName, bytes, savedAt, quality: good|thin|empty, understood{competenceCount, competences[], sources[], criteria[], warnings[], packs[], years, degrees[], focus[], roles[], wishes}, scoredAt, pending, form}` ·
 `ProfileForm` (the editor's fields, `core/src/profile/form.rs`) · `ProfileDraft{form, source, quality, understood}` ·
 `PortalHealth = ok | paused{until, reason} | quotaReached{until} | layoutSuspect{emptyMails, pages} | loginRequired` ·
-`AppState{platform, version, dryRun, demo, firstRun, running, settings, mailbox, profile, portals[{portal, enabled, fetchDetails, login, loginEnabled, signedIn, health, quota?}] (Portal::ALL order), autoFetchOnStart, lastRun (the last fetch: fetch or fullMailbox, never a rescore or details run), counts, matchPending, dataDir, logDir, resetReport?}` ·
+`AppState{platform, version, dryRun, demo, firstRun, setupDone, running, settings{workspace, workspaceIsDefault, excelPath, excelExists, csvPath, csvExists}, mailbox, profile, portals[{portal, enabled, login, loginEnabled, signedIn, health, actionNeeded, quota{usedHour, capHour, usedDay (since local midnight), capDay}?}] (Portal::ALL order), fetchRange: sinceLast|days7|days30|all, exportExcel, exportCsv, language, palette, lastRun (the last fetch, never a rescore or details run), counts, matchPending, dataDir, logDir, resetReport?}` ·
 `CommandError{kind, params}`. Traits: `pipeline::score::Matcher{rev, assess}` · `portal::PortalAdapter` · `matching::prescore`.
 
 ### Matching engine (`core/src/matching`, pure, synchronous, integer only)
@@ -519,12 +519,18 @@ For each of Jobs, Reader, Day overview, Profil, Einstellungen, First run, dialog
 - [x] Windows and macOS screenshots side by side: only the documented differences
 
 ## Glossary (UI)
-Job · Portal · Passung · Details · Abrufen · Profil · Postfach · Alert-Mail · Übersicht · Ausgeschlossen · Neu (= unread) ·
-Zu prüfen · Favorit · Archiv · Papierkorb · Excel-Datei · Jobs (the place of the active jobs; `inbox` in code). Checked for the UI catalog (`ui_contract.rs`) and the Rust texts: exports, startup dialog, window titles, file dialogs, macOS menu (`rust_texts.rs`).
-English (`en.ts`, the English exports and prompts): Job · Portal · Match · Details · Fetch · Profile · Mailbox · Alert email ·
-Overview · Excel file · Excluded · New · To check · Favourites · Jobs (the place; `inbox` in code) · Archive · Trash · Skill (Kompetenz) · Preference
-(Wunsch) · Location (Ort); plain British English, not German word for word (usability round 2: "email", never "mail"; no
-comma splices; "Needs attention", "Include anyway", "Minimum day rate (€)"; countries in words); product and portal names stay.
+Since 2026-09-27 (the table of the cleanup round below wins over older words): Job · Portal · Übereinstimmung (Hohe,
+Mittlere, Geringe Übereinstimmung) · Jobdetails (the reader's table) · Anzeige (laden, wird geladen, fehlt; Nur eine
+Vorschau) · Postfach abrufen, Abruf, Zeitraum · Profil · Postfach · Alert-Mail · Ausgeschlossen (Trotzdem bewerten, Wieder
+ausschließen) · Neu (= unread) · Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar · Pflichtanforderungen · Archiv ·
+Papierkorb (Löschen, Endgültig löschen, Wiederherstellen) · Excel-Datei · CSV-Datei · Ergebnisordner · Aufrufe · App ·
+Jobs (the place of the active jobs; `inbox` in code). Checked for the UI catalog (`ui_contract.rs`) and the Rust texts:
+exports, startup dialog, window titles, file dialogs, macOS menu (`rust_texts.rs`).
+English (`en.ts`, the English exports and prompts): Job · Portal · Match · Job details · Load ad · Check mailbox · Profile ·
+Mailbox · Alert email · Excel file · Excluded · Score anyway · New · Jobs (the place; `inbox` in code) · Archive · Trash ·
+Delete · Restore · Result folder · Skill (Kompetenz) · Preference (Wunsch) · Location (Ort); plain British English, not
+German word for word (usability round 2: "email", never "mail"; no comma splices; "Minimum day rate (€)"; countries in
+words); product and portal names stay.
 
 
 ## Budget and models
@@ -652,3 +658,40 @@ as the parts land on `main`.
   alert first), offer "Profil anlegen" beside the CV way, and after a reset warn with the log
   only when something stayed (a clean reset is one toast); the sidebar's run status waits
   until the setup is done. The page starts German before the app state arrives.
+
+## Cleanup round 2026-09-27 (decisions of the user, binding)
+The user clicked through the preview: too much in it, words and looks uneven. One plan (kept by the integrator,
+three tracks: backend, job list and reader, the rest of the UI) makes the app minimal, logical and uniform.
+- Out: the app's own keyboard shortcuts (only the OS's stay), multi-select, favourites, the Übersicht, "Automatisch"
+  (archive and empty the trash after 30 days), the switch "Details holen" (a portal that is on always loads the ads
+  of its alert mails; no mails-only mode), the status line of the sidebar, "So liest die App dein Profil", marks and
+  jumps in the reader, the HTML report.
+- Job row: title, company, location, portal, date; everything exact in the reader. Reader: "Konditionen" is
+  "Jobdetails" in a fixed order, a missing value "/", verdicts as symbols (green met, yellow partly, red not met,
+  grey unclear); buttons Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…" with Archivieren, Löschen.
+  The context menu of a row is the same table as the reader's "…".
+- Ausgeschlossen stays at the end of the list, folded, with a ban mark instead of the ring; "Trotzdem bewerten" in
+  the "…" and the context menu, then "Wieder ausschließen" (the backend's `set_override` stays).
+- Fetch: the button "Postfach abrufen"; its range in Einstellungen > Postfach (`fetchRange`: since the last check,
+  the last 7 or 30 days, all alert mails; `RunKind::FullMailbox` is gone).
+- Export: the Excel file and a CSV file, each with its switch (`exportExcel` on, `exportCsv` off by default), in the
+  result folder; the text files for the job-matching skill stay byte-identical. The CSV file has the Excel file's
+  columns (one table, `core/src/export/columns.rs`) in the old program's format: `;`, UTF-8 with BOM, CRLF,
+  headers in the app's language, dates `DD.MM.YYYY HH:MM` as text, links as addresses. Columns: "Übereinstimmung"
+  instead of "Passung", the alert mail's subject ("Mail-Betreff") after the portal, no favourite.
+- Portals in the order freelance.de, LinkedIn, freelancermap (the UI's table, not `Portal::ALL`); each 100 requests a
+  day ("Aufrufe", with a bar), the day counted from local midnight so "Heute" is true; the hourly caps and pauses stay.
+- List filter in every place: portal, match (from mid, only high), contract type (Interim, Freiberuflich,
+  Festanstellung, Zeitarbeit: `JobQuery.contracts`), work place (remote only: `JobQuery.remoteOnly`); active filters
+  as chips.
+- Commands without a caller go (`set_pinned`, `overview_stats`, `ai_prompt_top`, `rewrite_txt`, `clear_txt`,
+  `company_count`); `commands.txt` stays the one list.
+- One word per thing in the UI, Excel, CSV and the AI prompt (glossary above; the TXT files stay as they are). Guiding
+  rules: no "·" anywhere, tooltips only where something is missing, little text, the same thing looks the same,
+  quiet motion everywhere (<= 180 ms).
+- [x] Backend (track B): favourites, Übersicht, automatic actions, the details switch, the HTML report and the
+  whole-mailbox run out; `fetchRange`, `exportExcel`, `exportCsv`; the CSV file; the glossary in the exports and
+  prompts; 100 requests a day from midnight; `contracts` and `remoteOnly`; `company_count` out; palette.rs holds only
+  what the Excel file, the window and the icon wear
+- [ ] Job list and reader (track J), settings, profile and shell (track S), glossary in the catalogs, guiding rules
+  as tests, CI harness per browser

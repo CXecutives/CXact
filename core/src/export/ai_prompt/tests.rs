@@ -449,7 +449,7 @@ fn every_section_of_one_job_in_order() {
             "# Mein Profil\n",
             "```json\n",
             "# Die Anzeige\n",
-            "## Eckdaten\n",
+            "## Jobdetails\n",
             "## Anzeigentext\n",
             "```text\n",
             "# Vorbewertung der App\n",
@@ -481,7 +481,7 @@ fn every_section_of_one_job_in_order() {
             "# My profile\n",
             "```json\n",
             "# The ad\n",
-            "## Key facts\n",
+            "## Job details\n",
             "## Ad text\n",
             "```text\n",
             "# The app's pre-assessment\n",
@@ -513,7 +513,7 @@ fn the_pre_assessment_says_what_the_app_found() {
     let a = assessment();
     let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
     for part in [
-        "- Ergebnis: 68 von 100 Punkten der App, mittlere Passung (ab 80 hoch, ab 40 mittel)",
+        "- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
         "- Kann-Anforderungen: 0 von 1 erfüllt",
         // Every criterion the profile sets, with its threshold and the ad's words.
@@ -1144,7 +1144,7 @@ fn the_real_engine_behind_a_stored_job() {
     let prompt = ai_prompt(&profile, fits.job(), Language::De);
     for part in [
         "- Ergebnis: ",
-        " von 100 Punkten der App, hohe Passung",
+        " von 100 Punkten der App, hohe Übereinstimmung",
         "- Tagessatz mindestens 1.000 €: erfüllt, 1.200 € pro Tag („Tagessatz 1.200 €“)",
         "- Vergütung: 1.200 € pro Tag",
         "- Start: ab sofort",

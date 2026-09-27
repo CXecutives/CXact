@@ -10,11 +10,11 @@ Reads job alert mails from LinkedIn, freelancermap and freelance.de out of a Gma
 job's full posting page politely: every portal can be switched off individually, and each
 has its own request limits and pauses. Scores every job locally against a consultant
 profile with an explainable, integer-only rule engine. Nothing is sent to the cloud.
-Writes an Excel workbook (`JobAlerts.xlsx`), one TXT file per job and an HTML overview into
-a work folder. Jobs live in three places like mail (Jobs, Archiv, Papierkorb); after 30 days
-jobs that are no favourite move to the archive and the trash empties itself (both switchable
-in Einstellungen). An optional stage-2 Claude skill in `tools/job-matching-skill/` can
-re-rank the app's top matches.
+Writes an Excel workbook (`JobAlerts.xlsx`) and, if you want, a CSV file (`JobAlerts.csv`,
+`;`-separated, UTF-8) with the same columns, plus one TXT file per job for the matching skill,
+into the result folder (Einstellungen, Export: each file has its switch). Jobs live in three
+places like mail (Jobs, Archiv, Papierkorb); nothing moves or empties itself. An optional
+stage-2 Claude skill in `tools/job-matching-skill/` can re-rank the app's top matches.
 
 ## Install
 
@@ -33,8 +33,10 @@ workflow's artifacts.
 
 Connect the Gmail mailbox with an app password, then create the profile in the **Profil**
 view (as a form, from a CV with the help of an AI, or from an existing file), then press
-**Abrufen** (fetch). The app starts in German; Einstellungen > Sprache switches it to English
-at once (the button is then Fetch).
+**Postfach abrufen**. Which alert mails it reads is the range in Einstellungen, Postfach:
+since the last check (the default), the last 7 or 30 days, or all alert mails. The app
+starts in German; Einstellungen > Sprache switches it to English at once (the button is then
+Check mailbox).
 
 ## The profile
 
@@ -87,8 +89,8 @@ not an unseen measurement.
 
 Everything runs locally: jobs, full texts, the database and logs never leave the machine
 except for the IMAP connection to Gmail and the HTTP requests to the job portals themselves.
-The app sends nothing to an AI: the prompts it copies (one job, the best matches, a profile
-from a CV) go only where you paste them, and a job prompt carries the profile without name,
+The app sends nothing to an AI: the prompts it copies (one job, a profile from a CV) go only
+where you paste them, and a job prompt carries the profile without name,
 contact data and links. The optional stage-2 skill runs in your own Claude, without an API
 key. The mailbox is opened read-only: mails stay unread, and nothing is changed, deleted
 or sent. No passwords are stored by the app except the Gmail app password, which lives in
@@ -99,10 +101,11 @@ LinkedIn account, which sits in a grey zone under LinkedIn's terms of use. freel
 postings are fetched through its public project pages. freelance.de shows guests only a
 teaser; signing in (Einstellungen, Portale, Mit Anmeldung) is off by default, because
 freelance.de's crawling policy does not clearly permit signed-in scraping. Every portal can be
-switched off, or kept for its alert mails without fetching pages. All portals are fetched
-conservatively: at most 30 pages per hour and 80 per day from LinkedIn, 40 and 120 from
-freelancermap, 20 and 60 from freelance.de, randomized pauses between pages, and an automatic
-stop on rate limits, blocks, captchas or sign-in walls, never bypassed.
+switched off; a portal that is on always loads the ads of its alert mails (there is no mode
+that keeps only the mails). All portals are fetched conservatively: at most 100 pages a day
+from each (counted from local midnight, as Einstellungen shows it) and 30 an hour from
+LinkedIn, 40 from freelancermap, 20 from freelance.de, randomized pauses between pages, and an
+automatic stop on rate limits, blocks, captchas or sign-in walls, never bypassed.
 
 ## Development
 

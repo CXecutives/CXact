@@ -80,7 +80,7 @@ export const ACTIONS = {
     icon: 'document',
     variant: 'ghost',
     open: { kind: 'csv' },
-    locked: ({ state, t }) => (state.exportCsv ? null : t.settings.csvMissing),
+    locked: ({ state, t }) => (state.settings.csvExists ? null : t.settings.csvMissing),
   },
   // Opens the list of the copies; the restore can be undone.
   backupRestore: {
