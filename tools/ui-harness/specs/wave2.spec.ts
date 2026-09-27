@@ -175,8 +175,7 @@ test('a row whose exclusion changes in place stands with the scored rows', async
   await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
   await open(page, WIN);
   await row(page, 'linkedin-4100200305').click();
-  await stage(page).getByTestId('reader-more').click();
-  await page.getByTestId('menu-item-include').click();
+  await stage(page).getByTestId('reader-include').click();
   const drawn = async () =>
     list(page)
       .locator('[data-key]')

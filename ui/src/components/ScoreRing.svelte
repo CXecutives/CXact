@@ -63,6 +63,7 @@
 
 <script lang="ts">
   import { tick, untrack } from 'svelte';
+  import Icon from './Icon.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
@@ -81,6 +82,9 @@
     why?: string | null;
     /** Its popover is open. */
     expanded?: boolean;
+    /** An excluded job in the list: the empty track with the ban in the middle, no number
+     *  (user decision 2026-09-27: as large as every other row's ring). */
+    ban?: boolean;
     testid?: string | null;
   }
 
@@ -91,6 +95,7 @@
     onclick = null,
     why = null,
     expanded = false,
+    ban = false,
     testid = null,
   }: Props = $props();
 
@@ -112,6 +117,7 @@
   );
 
   const label = $derived.by(() => {
+    if (ban) return t.score.excluded;
     switch (ring.status) {
       case 'scored':
       case 'provisional':
@@ -210,7 +216,7 @@
 {#snippet face()}
   <svg class="svg" viewBox="0 0 36 36" aria-hidden="true">
     <circle class="track" cx="18" cy="18" r="15.9155" />
-    {#if valued}
+    {#if valued && !ban}
       <circle
         bind:this={arc}
         class="value"
@@ -222,7 +228,9 @@
     {/if}
   </svg>
   <span class="center">
-    {#if valued}
+    {#if ban}
+      <span class="ban"><Icon name="excluded" size="sm" /></span>
+    {:else if valued}
       {Math.round(number.current)}
     {:else}
       –
@@ -284,6 +292,12 @@
     stroke-linecap: round;
     transform: rotate(-90deg);
     transform-origin: center;
+  }
+
+  /* The ban of an excluded row: quiet, in the track's middle. */
+  .ban {
+    display: inline-flex;
+    color: var(--text-subtle);
   }
 
   .center {

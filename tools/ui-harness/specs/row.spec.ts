@@ -325,7 +325,9 @@ test('stamps move on while the app stays open', async ({ page }) => {
   await expect(date).not.toHaveText(before ?? '');
 });
 
-test('an excluded row shows the ban in the ring place, muted, without a dot', async ({ page }) => {
+test('an excluded row shows the empty ring with the ban in it, muted, without a dot', async ({
+  page,
+}) => {
   await open(page, WIN);
   const { excluded } = await stubList(page);
   expect(excluded.length).toBeGreaterThan(0);
@@ -334,10 +336,13 @@ test('an excluded row shows the ban in the ring place, muted, without a dot', as
     const target = row(page, key);
     const ban = target.getByTestId('row-excluded');
     await expect(ban).toBeVisible();
-    const [glyph] = await glyphs(ban);
-    expect(glyph).toContain(`lucide-${ICONS.excluded}`);
+    // As large as every other row's ring: its empty track, the ban in the middle, no number.
+    await expect(ban.locator(`svg.lucide-${ICONS.excluded}`)).toHaveCount(1);
     await expect(ban).toHaveAttribute('aria-label', T.score.excluded);
-    await expect(target.locator('.ring')).toHaveCount(0);
+    await expect(ban.locator('.value')).toHaveCount(0);
+    const size = (await ban.boundingBox())!.width;
+    const other = (await list(page).locator('.ring').first().boundingBox())!.width;
+    expect(Math.round(size)).toBe(Math.round(other));
     await expect(target).toHaveClass(/muted/);
     await expect(job(page, key).locator('.dot')).toHaveCount(0);
   }

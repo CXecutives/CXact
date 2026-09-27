@@ -212,9 +212,7 @@
 
 {#snippet leading()}
   {#if excluded}
-    <span class="ban" role="img" aria-label={t.score.excluded} data-testid="row-excluded"
-      ><Icon name="excluded" size="md" /></span
-    >
+    <ScoreRing ring={{ status: 'off' }} size="sm" ban testid="row-excluded" />
   {:else}
     <ScoreRing
       ring={ring ? ringState(job.match, pending, job.detail.kind) : { status: 'off' }}
@@ -309,16 +307,6 @@
     border-radius: var(--radius-full);
     background-color: var(--unread);
     pointer-events: none;
-  }
-
-  /* The ban of an excluded job takes the ring's place, as large and as quiet as its track. */
-  .ban {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--ring-sm);
-    height: var(--ring-sm);
-    color: var(--text-subtle);
   }
 
   /* The title line: the title, the stamp at the end. */
