@@ -1074,8 +1074,10 @@ pub enum PortalLogin {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct Quota {
+    /// Requests in the last hour and the hourly cap.
     pub used_hour: usize,
     pub cap_hour: usize,
+    /// Requests today (since local midnight) and the daily cap.
     pub used_day: usize,
     pub cap_day: usize,
 }
