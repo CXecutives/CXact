@@ -8,9 +8,6 @@
     empty states, a button in a row of fields. Both use the small type; every glyph is 16 px.
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip.
-  - keys: the shortcut that does the same (an action of lib/input/keys.ts: 'search',
-    'archive'); the tooltip names its key under the label, for labelled and icon-only buttons
-    alike, as the OS names it (Strg+F, ⌘F).
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
@@ -51,8 +48,6 @@
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
   import { fade, pulseOnce } from '$lib/motion/transitions';
-  import { keysOf, type ShortcutAction } from '$lib/input/keys';
-  import { keyConventions, keyLabel } from '$lib/platform';
   import Icon, { type IconName } from './Icon.svelte';
   import Spinner from './Spinner.svelte';
 
@@ -77,8 +72,6 @@
     dot?: boolean;
     /** A second, smaller line of the tooltip (what is on). */
     hint?: string | null;
-    /** The shortcut that does the same (lib/input/keys.ts): its key is named in the tooltip. */
-    keys?: ShortcutAction | null;
     /** Opens something outside the app (a link shows the hand then). */
     external?: boolean;
     /** Fill the width of the container. */
@@ -114,7 +107,6 @@
     turned = false,
     dot = false,
     hint = null,
-    keys = null,
     external = false,
     wide = false,
     inField = false,
@@ -128,14 +120,11 @@
   }: Props = $props();
 
   const inactive = $derived(disabled || loading);
-  /** The second line of the tooltip: what is on, else the shortcut. */
-  const combo = $derived(keys ? keysOf(keys, keyConventions()) : null);
-  const second = $derived(hint ?? (combo ? keyLabel(combo) : null));
   const tip = $derived(
     disabled && disabledReason
       ? disabledReason
-      : iconOnly || second !== null
-        ? { text: label, hint: second }
+      : iconOnly || hint !== null
+        ? { text: label, hint }
         : null,
   );
 

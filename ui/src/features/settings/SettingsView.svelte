@@ -37,7 +37,6 @@
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
-  import KeyList from '../shared/KeyList.svelte';
   import BackupDialog from './BackupDialog.svelte';
   import {
     ACTIONS,
@@ -332,8 +331,6 @@
           {#each cfg.portals as portal (portal.portal)}
             <PortalCard {portal} />
           {/each}
-        {:else if card.body === 'keys'}
-          <Card padding="md"><KeyList /></Card>
         {:else}
           <Card padding="rows">
             {#each card.body as item (item.id)}

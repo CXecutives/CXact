@@ -3,9 +3,9 @@
   time, drawn by the app on both OS instead of the OS's own popup (a native popup could hang
   the window). It opens at the pointer (a right click) or below its button, flips at the
   window's edges and never leaves the window: a menu taller than the window scrolls inside
-  itself (the wheel over it scrolls only the menu). Rows are 30 px with the text of a field,
-  a fixed icon column (the check of a choice or a switch sits there too) and the keys right
-  and quiet; a group may carry a small muted heading, which the keys pass over.
+  itself (the wheel over it scrolls only the menu). Rows are 30 px with the text of a field
+  and a fixed icon column (the check of a choice or a switch sits there too); no entry names
+  a key. A group may carry a small muted heading, which the keys pass over.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row, a left click chooses it.
 -->
@@ -100,7 +100,6 @@
                 {/if}
               </span>
               <span class="label">{entry.label}</span>
-              {#if entry.keys}<span class="keys">{entry.keys}</span>{/if}
             </button>
           {:else if entry.kind === 'heading'}
             <div class="heading" role="presentation" data-testid="menu-heading">
@@ -200,13 +199,6 @@
     min-width: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .keys {
-    flex: none;
-    padding-inline-start: var(--space-16);
-    color: var(--text-subtle);
-    font: var(--type-sm);
   }
 
   /* A group's name: small and muted, above its entries. */

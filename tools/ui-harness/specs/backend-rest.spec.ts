@@ -172,20 +172,8 @@ test('the demo never fetches and says why; it keeps to its own folders', async (
   await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
 });
 
-test('the demo fetches no full ads: Details holen is off with its reason, the Übersicht asks nothing', async ({
-  page,
-}) => {
+test('the demo fetches no full ads: the Übersicht asks nothing', async ({ page }) => {
   await open(page, `${WIN}&scenario=demo`);
-  const list = page.getByTestId('job-list');
-  // Two jobs that both lack their full ad.
-  await list.getByTestId('job-row-freelancermap-2805').click();
-  await list.getByTestId('job-row-linkedin-4100200302').click({ modifiers: ['Control'] });
-  const details = page.getByTestId('selection-pane').getByTestId('pane-details');
-  await expect(details).toHaveAttribute('aria-disabled', 'true');
-  await details.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-  await details.click({ force: true });
-  expect(await calls(page, 'start_run')).toEqual([]);
   await page.getByTestId('nav-overview').click();
   await expect(page.getByTestId('tile-new')).toBeVisible();
   await expect(page.getByTestId('issue-details')).toHaveCount(0);

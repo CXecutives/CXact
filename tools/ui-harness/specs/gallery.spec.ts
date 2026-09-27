@@ -210,23 +210,16 @@ test('the hairline under a row spans it, or insets where the list reaches past i
   expect(await rule()).toEqual({ left: '16px', right: '16px', height: '1px' });
 });
 
-test('job rows: tools, status, aged date, provisional ring, no dot on excluded', async ({
-  page,
-}) => {
+test('job rows: no tools, provisional ring, no dot on excluded', async ({ page }) => {
   await open(page, '?gallery&platform=windows');
   const list = page.getByTestId('job-list');
   await list.scrollIntoViewIfNeeded();
   const job = (id: string) =>
     list.locator('.job', { has: page.locator(`[data-testid="job-row-${id}"]`) });
-  // A row at rest has no tools; under the pointer the archive tool names its action (a
-  // click moves the job out, see the collapse test).
-  await expect(job('freelancermap-1001').locator('.tools')).toHaveCount(0);
+  // A row has no tools, also under the pointer (its menu is a right click).
   await page.getByTestId('job-row-freelancermap-1001').hover();
-  await expect(page.getByTestId('archive-freelancermap-1001')).toHaveAttribute(
-    'aria-label',
-    'Archivieren',
-  );
-  // No stage badges: a favourite has only its star.
+  await expect(job('freelancermap-1001').locator('.tools')).toHaveCount(0);
+  // No stage badges.
   await expect(job('linkedin-1002')).not.toContainText('Beworben');
   await expect(job('freelancermap-1001')).not.toContainText('Gemerkt');
   // A score from a teaser is provisional (named so, drawn like any score); an excluded unread
@@ -236,7 +229,7 @@ test('job rows: tools, status, aged date, provisional ring, no dot on excluded',
   await expect(job('freelancermap-1006').locator('.dot')).toHaveCount(0);
 });
 
-test('a row: the date ends the title line, the tools take its place on hover', async ({ page }) => {
+test('a row: the date ends the title line and stays under the pointer', async ({ page }) => {
   await open(page, '?gallery&platform=windows');
   const list = page.getByTestId('job-list');
   await list.scrollIntoViewIfNeeded();
@@ -244,71 +237,13 @@ test('a row: the date ends the title line, the tools take its place on hover', a
   const box = async (selector: string) => (await job.locator(selector).first().boundingBox())!;
   const title = await box('.title');
   const date = await box('.date');
-  const mark = await box('.mark');
-  // The date on the first title line, the small pinned star just left of it.
-  expect(Math.abs(date.y + date.height / 2 - (title.y + 10))).toBeLessThan(2);
-  expect(mark.x + mark.width).toBeLessThanOrEqual(date.x);
-  expect(mark.width).toBe(16);
-  // Company, place and facts use the full width, up to the date's right edge.
+  expect(Math.abs(date.y + date.height / 2 - (title.y + title.height / 2))).toBeLessThan(2);
+  // Company and place use the full width, up to the date's right edge.
   const meta = await box('.meta');
-  const foot = await box('.foot');
   expect(meta.x + meta.width).toBeGreaterThan(date.x + date.width - 1);
-  expect(foot.x + foot.width).toBeGreaterThan(date.x + date.width - 1);
-  // On hover the date and its star give way to the tools, which sit over them; the portal's
-  // tile stays, just before them.
-  const end = job.locator('.date');
-  const tools = job.locator('.tools');
-  await expect(end).toHaveCSS('opacity', '1');
   await job.hover({ position: { x: 120, y: 30 } });
-  await expect(end).toHaveCSS('opacity', '0');
-  await expect(job.locator('.mark')).toHaveCSS('opacity', '0');
-  await expect(job.locator('.portal')).toHaveCSS('opacity', '1');
-  await expect(tools.locator('.tool').last()).toHaveCSS('opacity', '1');
-  const over = (await tools.boundingBox())!;
-  expect(Math.abs(over.x + over.width - (date.x + date.width))).toBeLessThan(1);
-  expect(Math.abs(over.y + over.height / 2 - (date.y + date.height / 2))).toBeLessThan(2);
-  // The title never runs under them: its line keeps their room free.
-  expect(title.x + title.width).toBeLessThanOrEqual(over.x);
-  const tile = await box('.portal');
-  expect(tile.x + tile.width).toBeLessThanOrEqual(over.x);
-  // The tools are for the pointer: Tab leaves the row (the list is one Tab stop), the date
-  // stays.
-  await page.mouse.move(0, 0);
-  await expect(end).toHaveCSS('opacity', '1');
-  await page.getByTestId('job-row-freelancermap-1001').focus();
-  await page.keyboard.press('Tab');
-  await expect(page.getByTestId('archive-freelancermap-1001')).not.toBeFocused();
-  await expect(end).toHaveCSS('opacity', '1');
-});
-
-test('the facts of a row drop out whole, a value is never cut', async ({ page }) => {
-  await open(page, '?gallery&platform=windows');
-  const list = page.getByTestId('job-list');
-  await list.scrollIntoViewIfNeeded();
-  const facts = page.getByTestId('job-row-freelancermap-1001').getByTestId('row-facts');
-  const fit = (): Promise<{ shown: string[]; hidden: string[]; cut: string[] }> =>
-    facts.evaluate((line) => {
-      const edge = line.parentElement!.getBoundingClientRect();
-      const out = { shown: [] as string[], hidden: [] as string[], cut: [] as string[] };
-      for (const fact of line.querySelectorAll<HTMLElement>('.fact')) {
-        const box = fact.getBoundingClientRect();
-        if (fact.hasAttribute('data-out')) out.hidden.push(fact.textContent ?? '');
-        else out.shown.push(fact.textContent ?? '');
-        if (!fact.hasAttribute('data-out') && box.right > edge.right + 0.5) out.cut.push('right');
-        if (fact.scrollWidth > fact.clientWidth) out.cut.push(fact.textContent ?? '');
-      }
-      return out;
-    });
-  const wide = await fit();
-  expect(wide.shown).toHaveLength(4);
-  expect(wide.cut).toEqual([]);
-  // A narrow list: the facts at the end drop out whole, in the order of the facts table.
-  await list.evaluate((node) => node.style.setProperty('width', '330px'));
-  await expect.poll(async () => (await fit()).hidden.length).toBeGreaterThan(0);
-  const narrow = await fit();
-  // The rate first here (the ad names no contract), with the euro icon instead of a sign.
-  expect(narrow.shown[0]).toMatch(/^1\.100\s€\/Tag$/);
-  expect(narrow.cut).toEqual([]);
+  await expect(job.locator('.date')).toHaveCSS('opacity', '1');
+  await expect(job.locator('.tools')).toHaveCount(0);
 });
 
 test('a long row title stays one line, every row one height, the rest is a tooltip', async ({
@@ -323,8 +258,8 @@ test('a long row title stays one line, every row one height, the rest is a toolt
     (node) => node.clientHeight / parseFloat(getComputedStyle(node).lineHeight),
   );
   expect(Math.round(lines)).toBe(1);
-  expect((await short.boundingBox())!.height).toBe(86);
-  expect((await long.boundingBox())!.height).toBe(86);
+  expect((await short.boundingBox())!.height).toBe(64);
+  expect((await long.boundingBox())!.height).toBe(64);
   // Cut off on its one line: the full title shows in a tooltip.
   await title.hover();
   await expect(page.getByRole('tooltip')).toContainText('vierzehn Ländern');
@@ -465,33 +400,16 @@ test("a menu button opens the app's menu of choices below it; a choice applies",
   await expect(page.getByRole('tooltip')).toHaveText('Ohne Profil nur nach Datum.');
 });
 
-for (const [os, toggle] of [
-  ['windows', 'Control'],
-  ['macos', 'Meta'],
-] as const) {
-  test(`a mail app's selection on ${os}: toggle, range, the bar, Esc clears`, async ({ page }) => {
-    await open(page, `?gallery&platform=${os}`);
-    const list = page.getByTestId('job-list');
-    await list.scrollIntoViewIfNeeded();
-    const row = (id: string) => page.getByTestId(`job-row-freelancermap-${id}`);
-    const bar = page.getByTestId('selection-bar');
-    await expect(bar).toHaveCount(0);
-    await page.getByTestId('job-row-linkedin-1002').click({ modifiers: [toggle] });
-    await expect(page.getByTestId('selection-count')).toHaveText('2 ausgewählt');
-    await expect(row('1001')).toHaveAttribute('aria-current', 'true');
-    // Shift+click: the range from the last toggled row (1002) to 1005.
-    await row('1005').click({ modifiers: ['Shift'] });
-    await expect(page.getByTestId('selection-count')).toHaveText('4 ausgewählt');
-    await expect(row('1001')).not.toHaveAttribute('aria-current', 'true');
-    await expect(bar.getByTestId('bulk-archive')).toHaveAttribute('aria-label', 'Archivieren');
-    // Esc (outside fields) clears the selection; the bar goes.
-    await page.keyboard.press('Escape');
-    await expect(bar).toHaveCount(0);
-    // A plain click selects one job again.
-    await row('1004').click();
-    await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
-  });
-}
+test('a click selects one job of the list; Ctrl+click chooses no more', async ({ page }) => {
+  await open(page, '?gallery&platform=windows');
+  const list = page.getByTestId('job-list');
+  await list.scrollIntoViewIfNeeded();
+  await page.getByTestId('job-row-linkedin-1002').click({ modifiers: ['Control'] });
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
+  await expect(page.getByTestId('job-row-linkedin-1002')).toHaveAttribute('aria-current', 'true');
+  await page.getByTestId('job-row-freelancermap-1004').click({ modifiers: ['Shift'] });
+  await expect(list.locator('[aria-current="true"]')).toHaveCount(1);
+});
 
 test('moving jobs out: the row folds away, one toast merges them, one undo brings all back', async ({
   page,
@@ -502,13 +420,12 @@ test('moving jobs out: the row folds away, one toast merges them, one undo bring
   const rows = list.locator('[data-testid^="job-row-"]');
   await expect(rows).toHaveCount(6);
   // The row folds away: its wrapper animates its height while the rows below follow.
-  await page.getByTestId('job-row-freelancermap-1004').hover();
+  await page.getByTestId('job-row-freelancermap-1004').click({ button: 'right' });
   const folding = await page.evaluate(async () => {
-    const button = document.querySelector<HTMLElement>(
-      '[data-testid="archive-freelancermap-1004"]',
-    )!;
-    const wrapper = button.closest('.job')!.parentElement!;
-    button.click();
+    const wrapper = document
+      .querySelector('[data-testid="job-row-freelancermap-1004"]')!
+      .closest('.job')!.parentElement!;
+    document.querySelector<HTMLElement>('[data-testid="menu-item-archive"]')!.click();
     await new Promise((resolve) => requestAnimationFrame(resolve));
     return wrapper.getAnimations().length;
   });
@@ -517,8 +434,8 @@ test('moving jobs out: the row folds away, one toast merges them, one undo bring
   const toast = page.getByTestId('toast');
   await expect(toast).toContainText('„SAP FI Berater');
   // A second one within two seconds joins the same toast.
-  await page.getByTestId('job-row-freelancermap-1005').hover();
-  await page.getByTestId('archive-freelancermap-1005').click({ force: true });
+  await page.getByTestId('job-row-freelancermap-1005').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(toast).toHaveCount(1);
   await expect(toast).toContainText('2 Jobs archiviert.');
   await expect(rows).toHaveCount(4);
@@ -551,8 +468,8 @@ test('a toast that names a job: the title keeps to one line in its quotes, two l
       };
     });
   // A title of usual length stands whole.
-  await page.getByTestId('job-row-freelance-1003').hover();
-  await page.getByTestId('archive-freelance-1003').click();
+  await page.getByTestId('job-row-freelance-1003').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(toast).toContainText('„Kaufmännische Leitung Projektgeschäft“ archiviert.');
   const usual = await shape();
   expect(usual.width).toBe(520);
@@ -561,8 +478,8 @@ test('a toast that names a job: the title keeps to one line in its quotes, two l
   await toast.getByRole('button', { name: 'Ausblenden' }).click();
   await expect(toast).toHaveCount(0);
   // A very long one ends in an ellipsis inside its quotes; the verb follows on line two.
-  await page.getByTestId('job-row-freelancermap-1004').hover();
-  await page.getByTestId('archive-freelancermap-1004').click({ force: true });
+  await page.getByTestId('job-row-freelancermap-1004').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(toast).toContainText('archiviert.');
   const long = await shape();
   expect(long.cut).toBe(true);
@@ -574,24 +491,13 @@ test('a toast that names a job: the title keeps to one line in its quotes, two l
   await expect(page.getByRole('tooltip')).toContainText('in vierzehn Ländern');
 });
 
-test('an English toast keeps the title in its own quotes too', async ({ page }) => {
-  await open(page, '?platform=windows&lang=en');
-  const row = page.getByTestId('job-list').locator('.job').first();
-  await row.hover();
-  await row.locator('[data-testid^="archive-"]').click();
-  const quoted = page.getByTestId('toast').locator('.quoted');
-  await expect(quoted).toHaveCount(1);
-  await expect(quoted).toHaveText(/^“.+”$/);
-  await expect(page.getByTestId('toast')).toContainText('archived.');
-});
-
 test('an undo toast stays 10 s; toasts wait while the window is in the back', async ({ page }) => {
   await open(page, '?gallery&platform=windows');
   const list = page.getByTestId('job-list');
   await list.scrollIntoViewIfNeeded();
   const toast = page.getByTestId('toast');
-  await page.getByTestId('job-row-freelance-1003').hover();
-  await page.getByTestId('archive-freelance-1003').click();
+  await page.getByTestId('job-row-freelance-1003').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(toast.locator('.life')).toHaveCSS('animation-duration', '10s');
   await page.mouse.move(5, 5);
   await page.waitForTimeout(5000);

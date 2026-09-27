@@ -21,8 +21,6 @@ export interface MenuItem {
   id: string;
   label: string;
   icon?: IconMeaning | null;
-  /** The shortcut as the OS writes it ("Strg+C", "⌘C"), right-aligned and quiet. */
-  keys?: string | null;
   /** A choice of a group (the sort): a check mark before the chosen one (a radio item). */
   checked?: boolean | null;
   /** A switch of its own (Nur Favoriten): a checkbox item, the check mark while `checked`. */

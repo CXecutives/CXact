@@ -6,8 +6,7 @@
   stays with its row whatever moves the rows: at once when rows arrive or fold away above it
   or its row grows, gliding along when the list re-sorts. It is simply there the first time:
   when the list is built or comes back, and after a reload, another filter or a search.
-  While several rows are chosen each marks itself (the open one keeps this bar) and nothing
-  slides; when the choice ends the bar is simply there. Opening a job while none is open
+  Opening a job while none is open
   fades it in (150 ms), closing fades it out (100 ms). A job that leaves the list (archive,
   trash) keeps it where its row was until the next job opens there. Inside the keyboard
   focus ring of its row it steps in, and it greys while the window is inactive, like a
@@ -30,13 +29,11 @@
     listed: ReadonlySet<string>;
     /** Rows that fold away: their height leaves the list while they do. */
     folding: ReadonlySet<string>;
-    /** Several rows are chosen (each marks itself). */
-    several: boolean;
     /** Counts the lists: another list places the bar without motion. */
     generation: number;
   }
 
-  let { rows, open, muted = false, listed, folding, several, generation }: Props = $props();
+  let { rows, open, muted = false, listed, folding, generation }: Props = $props();
 
   let bar = $state<HTMLElement | null>(null);
   let shown = $state(false);
@@ -54,9 +51,8 @@
   /** The next placement jumps there: no slide, no fade. */
   let jump = true;
   /** The props as the last update saw them. */
-  let seen: { open: string | null; several: boolean; generation: number } = {
+  let seen: { open: string | null; generation: number } = {
     open: null,
-    several: false,
     generation: Number.NaN,
   };
   /** The row found last (a lookup among thousands of rows only when it changed). */
@@ -157,8 +153,8 @@
   function update(): void {
     if (bar === null) return;
     const before = seen;
-    seen = { open, several, generation };
-    if (generation !== before.generation || (before.several && !several)) jump = true;
+    seen = { open, generation };
+    if (generation !== before.generation) jump = true;
     // The user opened another job, or closed it.
     const changed = open !== before.open;
     if (open === null) {
@@ -256,7 +252,6 @@
   // Any other change of the list once its rows are laid out.
   $effect(() => {
     void open;
-    void several;
     void generation;
     void listed;
     if (untrack(() => open !== seen.open && generation === seen.generation)) {

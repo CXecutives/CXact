@@ -7,9 +7,6 @@
 // A change is one entry here: a new row is a new entry (its name in the catalog's
 // `reader.term`, its reading in terms.ts), a row moves by moving its entry, another icon is
 // another meaning here (lib/icons.ts holds the glyphs).
-//
-// ROW_FACTS below are the facts the list row still shows until it drops them (it reads
-// `rowFacts`); they use the same words.
 
 import type { IconMeaning } from '$lib/icons';
 import { formatDay } from '$lib/i18n/format';
@@ -65,83 +62,4 @@ export function modeWords(job: JobView): string | null {
   const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
   if (from !== null && to !== null) return t.facts.remote(from, to);
   return job.workMode === null ? null : t.facts.mode[job.workMode];
-}
-
-/** The facts the list row shows (until it drops them), each with its icon. */
-const ROW_FACTS = [
-  {
-    key: 'money',
-    icon: 'money',
-    ink: true,
-    format: (job: JobView) => {
-      const facts = factsOf(job);
-      if (facts?.rate === null || facts?.rate === undefined || foreign(job)) {
-        const salary = facts?.salary ?? null;
-        return salary === null || foreign(job) ? null : t.facts.pay(salary, 'year', null);
-      }
-      return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', null);
-    },
-  },
-  {
-    key: 'foreignMoney',
-    icon: 'otherMoney',
-    ink: true,
-    format: (job: JobView) => {
-      const facts = factsOf(job);
-      if (!foreign(job) || facts === null || facts.rate === null) return null;
-      return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', facts.currency);
-    },
-  },
-  {
-    key: 'start',
-    icon: 'start',
-    ink: false,
-    format: (job: JobView) => {
-      const start = factsOf(job)?.start ?? null;
-      return start === null ? null : startWords(start);
-    },
-  },
-  {
-    key: 'duration',
-    icon: 'duration',
-    ink: false,
-    format: (job: JobView) => {
-      const months = factsOf(job)?.months ?? null;
-      return months ? t.facts.months(months) : null;
-    },
-  },
-  {
-    key: 'workload',
-    icon: 'workload',
-    ink: false,
-    format: (job: JobView) => {
-      const facts = factsOf(job);
-      const to = facts?.workloadTo;
-      return to === undefined ? null : t.facts.workload(facts?.workloadFrom ?? null, to);
-    },
-  },
-  { key: 'remote', icon: 'remote', ink: false, format: modeWords },
-] as const satisfies readonly {
-  key: string;
-  icon: IconMeaning;
-  ink: boolean;
-  format: (job: JobView) => string | null;
-}[];
-
-export type FactKey = (typeof ROW_FACTS)[number]['key'];
-
-/** One fact as a list row shows it. */
-export interface RowFact {
-  key: FactKey;
-  icon: IconMeaning;
-  text: string;
-  ink: boolean;
-}
-
-/** The facts a list row shows for a job, in their order: every fact the ad names. */
-export function rowFacts(job: JobView): RowFact[] {
-  return ROW_FACTS.flatMap((fact) => {
-    const text = fact.format(job);
-    return text === null ? [] : [{ key: fact.key, icon: fact.icon, text, ink: fact.ink }];
-  });
 }

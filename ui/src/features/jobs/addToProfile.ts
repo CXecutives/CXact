@@ -1,7 +1,7 @@
 // "Zum Profil hinzufügen": a must requirement the profile lacks goes into the profile's
 // keywords (`keywords[]`), saved at once like a save of the form (the previous file is the
-// backup, every job is scored again), with a toast that takes it back (Ctrl/Cmd+Z too,
-// while it is up). The one place the reader and the Übersicht call; a term added here shows
+// backup, every job is scored again), with a toast that takes it back while it is up. The
+// one place the reader and the Übersicht call; a term added here shows
 // as added. (The profile form cannot hold unsaved changes meanwhile: leaving it asks first.)
 
 import { SvelteSet } from 'svelte/reactivity';
