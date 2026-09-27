@@ -98,7 +98,7 @@
     box-shadow: var(--sh-tooltip);
     color: var(--text-inverse);
     font: var(--type-xs);
-    font-weight: var(--weight-medium);
+    font-weight: var(--weight-regular);
     letter-spacing: var(--tracking-tooltip);
     overflow-wrap: anywhere;
   }
