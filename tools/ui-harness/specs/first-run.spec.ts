@@ -159,7 +159,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
   }
   await open(page, `${WIN}&scenario=mailbox-only`);
   const step = page.getByTestId('step-profile');
-  // The same buttons as on the Profil view's empty state: 30 px, each with its glyph, the
+  // The same buttons as on the Profil view's empty state: 29 px, each with its glyph, the
   // empty form the primary one.
   await expect(step.getByRole('button')).toHaveText([
     T.profile.newProfile,
@@ -173,7 +173,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
     ['first-profile-file', 'pickFile'],
     ['first-profile-prompt', 'prompt'],
   ] as const) {
-    await expect(step.getByTestId(id)).toHaveCSS('height', '30px');
+    await expect(step.getByTestId(id)).toHaveCSS('height', '29px');
     await expect(step.getByTestId(id).locator('[data-icon]')).toHaveAttribute('data-icon', icon);
   }
   // The prompt goes to the clipboard and a toast says so; the page stays.

@@ -34,40 +34,40 @@
      one calm blue accent, no orange. The entries keep their role names: coral is the accent
      (the primary, the tab line, the dot, where you are), navy the links, focus and the quiet
      blue structure. The window and the sidebar are one step below the content. */
-  --p-white: 60 20% 99%;
+  --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  --p-nav-active: 60 3.4% 88.6%; /* the active sidebar entry, #E4E4E2 */
-  --p-cream: 60 5.9% 96.7%;
-  --p-ink: 210 6.2% 6.3%;
-  --p-coral: 214.2 64.8% 47.8%;
+  --p-nav-active: 60 4.3% 91%; /* the active sidebar entry, #E4E4E2 */
+  --p-cream: 60 6.7% 97.1%;
+  --p-ink: 120 2.3% 8.4%;
+  --p-coral: 215.9 68.5% 49.8%;
   --p-brand: 240 15.8% 7.5%; /* the icon's plate, #101016 (user, 2026-09-27) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
-  --p-coral-variant: 214.2 66.1% 42.7%;
-  --p-coral-press: 214.1 68% 38%;
-  --p-muted: 60 3.7% 94.7%;
-  --p-muted-fg: 150 1.2% 32.9%;
-  --p-line: 180 3.3% 88.2%;
-  --p-accent-soft: 214.3 60% 93.1%;
+  --p-coral-variant: 216.2 68.3% 43.3%;
+  --p-coral-press: 216 69.2% 38.2%;
+  --p-muted: 60 4.3% 95.5%;
+  --p-muted-fg: 90 1.6% 25.1%;
+  --p-line: 60 3.8% 89.8%;
+  --p-accent-soft: 180 7.7% 92.4%;
   --p-success: 137.1 62.9% 32.7%;
   --p-warning: 43.9 66.1% 50.2%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-800: 214.1 68% 38%;
-  --p-coral-25: 217.5 36.4% 95.7%;
-  --p-coral-40: 217.5 36.4% 95.7%;
-  --p-coral-50: 216 48.4% 93.9%;
-  --p-coral-70: 214.3 48.8% 91.6%;
-  --p-coral-150: 214.3 42.4% 87.1%;
-  --p-navy: 214.2 66.1% 42.7%;
-  --p-navy-deep: 214.1 68% 38%;
-  --p-navy-50: 215 54.5% 95.7%;
-  --p-navy-100: 214.3 60% 93.1%;
-  --p-navy-150: 213.5 60.7% 89%;
-  --p-navy-200: 214 63.8% 79.4%;
-  --p-fg-subtle: 90 0.9% 43.1%;
-  --p-border-strong: 180 2.2% 82%;
-  --p-border-input: 150 0.9% 56.5%;
-  --p-border-press: 150 1% 38.8%;
-  --p-wash: 210 6.2% 6.3%;
+  --p-coral-800: 214 70.8% 37.6%;
+  --p-coral-25: 180 9.7% 93.9%;
+  --p-coral-40: 180 9.7% 93.9%;
+  --p-coral-50: 190 14.3% 91.8%;
+  --p-coral-70: 187.5 14.3% 89%;
+  --p-coral-150: 195 13.6% 82.7%;
+  --p-navy: 215.2 69.2% 44.5%;
+  --p-navy-deep: 214 70.8% 37.6%;
+  --p-navy-50: 180 9.7% 93.9%;
+  --p-navy-100: 190 13% 91%;
+  --p-navy-150: 180 10.1% 86.5%;
+  --p-navy-200: 196 13% 77.5%;
+  --p-fg-subtle: 60 1.4% 40.6%;
+  --p-border-strong: 45 4.7% 83.1%;
+  --p-border-input: 60 1.7% 54.9%;
+  --p-border-press: 60 1% 37.6%;
+  --p-wash: 120 2.3% 8.4%;
   --p-success-strong: 137 66% 30%;
   --p-success-soft: 133 80% 92%;
   --p-warning-strong: 40.1 100% 30.2%;
@@ -85,19 +85,19 @@
   --p-score-high-soft: 133 80% 92%;
   --p-score-mid: 38 55% 55%;
   --p-score-low: 30 5% 56%;
-  --p-score-low-text: 90 0.9% 43.1%;
+  --p-score-low-text: 60 1.4% 40.6%;
   --p-score-red: 358 75% 59%;
   --p-score-orange: 24 87% 56%;
   --p-score-yellow: 40 88% 59%;
   --p-score-lime: 83 44% 51%;
   --p-score-green: 139 44% 44%;
-  --p-scrim: 210 6.2% 6.3%;
-  --p-shade-xs: 210 6.2% 6.3%;
-  --p-shade-pop: 210 6.2% 6.3%;
-  --p-shade-navy: 210 6.2% 6.3%;
+  --p-scrim: 120 2.3% 8.4%;
+  --p-shade-xs: 120 2.3% 8.4%;
+  --p-shade-pop: 120 2.3% 8.4%;
+  --p-shade-navy: 120 2.3% 8.4%;
   /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 210 3% 12.9%;
-  --p-tooltip-edge: 210 1.8% 22.4%;
+  --p-emphasis: 60 1.6% 12.4%;
+  --p-tooltip-edge: 60 0.9% 21.4%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
@@ -357,7 +357,8 @@
      so a design change carries over. */
   --titlebar-bg: var(--bg);
   --titlebar-border: var(--border);
-  --titlebar-fg: var(--text);
+  --titlebar-fg: var(--text-muted);
+  --titlebar-fg-hover: var(--text);
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
   --titlebar-button-press: var(--surface-press);
@@ -391,13 +392,13 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  --control-sm: 27px;
+  --control-sm: 26px;
   /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
      Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
      calm, like the OS's own settings (user, 2026-09-25). */
-  --control-field: 30px;
-  --control-md: 33px;
-  --control-lg: 37px;
+  --control-field: 29px;
+  --control-md: 31px;
+  --control-lg: 35px;
   --icon-xs: 12px;
   --icon-sm: 16px;
   --icon-md: 20px;
@@ -407,7 +408,7 @@
   --icon-stroke-md: 2;
   --icon-stroke-lg: 2;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
-  --row-height: 64px;
+  --row-height: 62px;
   /* The gutter of the unread dot, left of the ring. */
   --dot-gutter: 12px;
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
@@ -437,7 +438,7 @@
   --titlebar-tools-inset: 6px;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
-  --tabs-min: 41px;
+  --tabs-min: 39px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -501,9 +502,9 @@
   --first-row: var(--control-lg);
   /* The sides of the reader column (a document, a little more air than the list). */
   --reader-padding: var(--space-24);
-  --ring-sm: 36px;
+  --ring-sm: 34px;
   --ring-sm-stroke: 4px;
-  --ring-md: 51px;
+  --ring-md: 48px;
   --ring-md-stroke: 5px;
   --ring-lg: 96px;
   --ring-lg-stroke: 8px;
@@ -580,49 +581,49 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/36, 36/51 and 36/96. */
-  --ring-sm-scale: 1;
-  --ring-md-scale: 0.706;
+     scaled into viewBox units: 36/34, 36/48 and 36/96. */
+  --ring-sm-scale: 1.059;
+  --ring-md-scale: 0.75;
   --ring-lg-scale: 0.375;
 
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --weight-regular: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
+  --weight-medium: 460;
+  --weight-semibold: 530;
   --numeric: tabular-nums;
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 11px;
   --leading-2xs: 14px;
-  --font-xs: 12px;
+  --font-xs: 11.5px;
   --leading-xs: 16px;
-  --font-sm: 12.5px;
-  --leading-sm: 18px;
+  --font-sm: 12px;
+  --leading-sm: 17px;
   /* The text in fields. */
-  --font-field: 14px;
-  --leading-field: 20px;
+  --font-field: 13.5px;
+  --leading-field: 19px;
   /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
-  --font-md: 14px;
-  --leading-md: 20px;
+  --font-md: 13.5px;
+  --leading-md: 19px;
   /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
-  --font-title: 15px;
-  --leading-title: 20px;
+  --font-title: 14.5px;
+  --leading-title: 19px;
   /* The sidebar entries (14/20, weight 500). */
-  --font-tab: 14px;
-  --leading-tab: 20px;
+  --font-tab: 13.5px;
+  --leading-tab: 19px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 14.5px;
-  --leading-place: 20px;
+  --font-place: 14px;
+  --leading-place: 19px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
-  --font-body: 14px;
-  --leading-body: 22px;
-  --font-lg: 16px;
-  --leading-lg: 22px;
-  --font-xl: 19px;
-  --leading-xl: 26px;
-  --font-2xl: 23.5px;
-  --leading-2xl: 29px;
+  --font-body: 13.5px;
+  --leading-body: 21px;
+  --font-lg: 15.5px;
+  --leading-lg: 21px;
+  --font-xl: 18px;
+  --leading-xl: 25px;
+  --font-2xl: 22px;
+  --leading-2xl: 27px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
@@ -729,40 +730,40 @@
 :root[data-palette='dark'] {
   color-scheme: dark;
 
-  --p-white: 240 2.4% 8%;
-  --p-raised: 210 3.2% 12.2%;
-  --p-nav-active: 240 1.2% 16.5%; /* white 12 % on the sidebar */
-  --p-cream: 240 3.4% 5.7%;
-  --p-ink: 60 3.2% 93.9%;
+  --p-white: 180 2.4% 8%;
+  --p-raised: 120 1.6% 12.4%;
+  --p-nav-active: 180 1.2% 16.7%; /* white 12 % on the sidebar */
+  --p-cream: 180 3.2% 6.1%;
+  --p-ink: 60 6.2% 93.7%;
   /* Fills in fgColor-accent with dark text on them (white text on a blue that also reads as
      text on the dark would miss AA one way or the other); lighter steps on hover and press. */
-  --p-coral: 214.5 66.3% 48.8%;
-  --p-coral-variant: 215 66.5% 44.5%;
-  --p-coral-press: 215.1 67.2% 39.4%;
+  --p-coral: 216.4 68.9% 50.8%;
+  --p-coral-variant: 216.8 67.5% 45.9%;
+  --p-coral-press: 216.9 68.4% 41%;
   --p-muted: 240 1.9% 10.4%;
-  --p-muted-fg: 68.6 4.8% 71.6%;
-  --p-line: 210 4.1% 19.2%;
-  --p-accent-soft: 214.8 39.2% 15.5%;
+  --p-muted-fg: 50 4.4% 73.3%;
+  --p-line: 210 2.3% 17.3%;
+  --p-accent-soft: 220 12% 14.7%;
   --p-success: 132 59% 33%; /* bgColor-success-emphasis */
   --p-warning: 40.6 72.1% 47.8%; /* fgColor-attention */
   --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
-  --p-coral-800: 212.9 71.3% 65.9%;
+  --p-coral-800: 213.5 72.9% 69.6%;
   /* bgColor-accent-muted on the canvas (10, 15, 20 and 30 %): the selected row and its steps. */
-  --p-coral-25: 216 30.3% 12.9%;
-  --p-coral-40: 216 30.3% 12.9%;
-  --p-coral-50: 216 32.5% 15.1%;
-  --p-coral-70: 216 34.1% 17.3%;
-  --p-coral-150: 215.5 37.9% 22.7%;
-  --p-navy: 212.9 71.3% 65.9%;
-  --p-navy-deep: 212.8 71.4% 73.9%;
-  --p-navy-50: 216 30.3% 12.9%;
-  --p-navy-100: 216 36.6% 16.1%;
-  --p-navy-150: 216 39.2% 20%;
-  --p-navy-200: 216.2 55.8% 37.3%;
-  --p-fg-subtle: 60 1.1% 55.5%;
-  --p-border-strong: 210 2.6% 29.8%;
-  --p-border-input: 216 2.4% 41%;
-  --p-border-press: 216 2.2% 55.1%;
+  --p-coral-25: 214.3 11.1% 12.4%;
+  --p-coral-40: 214.3 11.1% 12.4%;
+  --p-coral-50: 220 12% 14.7%;
+  --p-coral-70: 220 10.6% 16.7%;
+  --p-coral-150: 216 12.8% 22.9%;
+  --p-navy: 213.1 75.1% 66.9%;
+  --p-navy-deep: 212.6 75.8% 75.7%;
+  --p-navy-50: 214.3 11.1% 12.4%;
+  --p-navy-100: 220 12% 14.7%;
+  --p-navy-150: 216.9 14% 18.2%;
+  --p-navy-200: 218.2 22.8% 28.4%;
+  --p-fg-subtle: 48 2.2% 55.1%;
+  --p-border-strong: 180 0.8% 23.3%;
+  --p-border-input: 120 0.5% 35.9%;
+  --p-border-press: 48 2.1% 53.5%;
   --p-success-strong: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
   --p-warning-strong: 40.6 72.1% 47.8%; /* fgColor-attention */
@@ -774,12 +775,12 @@
   --p-on-accent: 0 0% 100%;
   --p-score-high-text: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-score-high-soft: 156 36% 11%;
-  --p-score-low-text: 75 2% 60%;
-  --p-scrim: 240 9.1% 2.2%;
-  --p-shade-xs: 240 9.1% 2.2%;
-  --p-shade-pop: 240 9.1% 2.2%;
-  --p-shade-navy: 240 9.1% 2.2%;
-  --p-wash: 60 3.2% 93.9%;
+  --p-score-low-text: 50 2.9% 59.6%;
+  --p-scrim: 0 0% 2%;
+  --p-shade-xs: 0 0% 2%;
+  --p-shade-pop: 0 0% 2%;
+  --p-shade-navy: 0 0% 2%;
+  --p-wash: 60 6.2% 93.7%;
 
   /* Washes of the light text instead of the dark ink, a deeper scrim, the tooltip grey with
      the light text, and shadows that still show on the dark: stronger, and floating layers
@@ -820,7 +821,8 @@
      on the dark window (Primer's red steps grow lighter here). */
   --titlebar-bg: var(--bg);
   --titlebar-border: var(--border);
-  --titlebar-fg: var(--text);
+  --titlebar-fg: var(--text-muted);
+  --titlebar-fg-hover: var(--text);
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
   --titlebar-button-press: var(--surface-press);

@@ -962,3 +962,10 @@ handle sits between list and reader".
 - [x] Palettes, tooltip, icon
 - [x] Size B
 - [x] Top bar, sidebar fold, second handle, job view button, Zurück and Vor, fades
+- Second pass (user, same day): the palettes at 90 % Claude, 10 % Primer, tuned (the tooltip measured from Claude:
+  #20201F, edge #373736); lighter weights (medium 460, semibold 530, Inter is variable); size C a notch smaller
+  (controls 26 / 29 / 31 / 35, text 12 / 13.5, headings 15.5 / 18 / 22, rows 62, rings 34 and 48, tabs row 39); the
+  sidebar's button a plain switch like the job view's (only the window's left edge floats a folded sidebar out); the
+  bar's icons and the caption glyphs one quiet colour, the text colour under the pointer; the fade only under the
+  top bar (the list header keeps its hairline).
+- [x] 90/10 palettes, lighter weights, size C, plain switches, one bar colour, fade under the bar only

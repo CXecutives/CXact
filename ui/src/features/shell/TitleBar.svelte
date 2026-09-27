@@ -10,8 +10,8 @@
   (Windows: the window of the OS over the bar answers like a native caption and leaves the
   buttons' zones, --titlebar-tools-start and --titlebar-tools-end, to the page;
   src-tauri/src/platform.rs. macOS and the gaps between the buttons: Tauri's drag script). A
-  press on a button here never takes the focus, like on a native title bar. On a folded
-  sidebar the pointer on its button floats it out (App).
+  press on a button here never takes the focus, like on a native title bar. Both side buttons
+  are plain switches.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -25,13 +25,6 @@
   import { shell } from '$lib/state/shell.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
   import { tokenPx } from '$lib/tokens';
-
-  interface Props {
-    /** The pointer came onto (true) or left (false) the button of a folded sidebar. */
-    onpeek?: (here: boolean) => void;
-  }
-
-  let { onpeek }: Props = $props();
 
   const drawn = drawsWindowButtons();
   /** The job view's button: beside the job list only. */
@@ -75,22 +68,15 @@
     <span class="lights" data-testid="traffic-lights" data-tauri-drag-region></span>
   {/if}
   <span class="tools start" data-tauri-drag-region>
-    <span
-      class="hover"
-      role="presentation"
-      onpointerenter={() => !shell.docked && onpeek?.(true)}
-      onpointerleave={() => !shell.docked && onpeek?.(false)}
-    >
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        icon="sidebar"
-        label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
-        testid="toggle-sidebar"
-        onclick={() => shell.toggleSidebar()}
-      />
-    </span>
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      icon="sidebar"
+      label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
+      testid="toggle-sidebar"
+      onclick={() => shell.toggleSidebar()}
+    />
     <Button
       variant="ghost"
       size="sm"
@@ -184,10 +170,6 @@
 
   .end {
     padding-inline-end: var(--titlebar-tools-inset);
-  }
-
-  .hover {
-    display: flex;
   }
 
   .fill {

@@ -336,7 +336,7 @@
     flex: none;
   }
 
-  /* Watched: once it has scrolled away (the list header's state). */
+  /* Watched: once it has scrolled away, the list header draws its bottom line. */
   .top {
     flex: none;
     height: 0;
@@ -355,9 +355,8 @@
     overflow-y: scroll;
   }
 
-  /* The fade where the rows scroll away under the header, and where a job scrolls away under
-     the top bar: the sheet's colour into nothing, invisible over the empty top at rest. */
-  .scroll::before,
+  /* The fade where a job scrolls away under the top bar: the sheet's colour into nothing,
+     invisible over the empty top at rest. */
   .stage::before {
     content: '';
     position: sticky;

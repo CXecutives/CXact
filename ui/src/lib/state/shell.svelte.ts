@@ -40,6 +40,8 @@ class Shell {
   #sidebar = $state(kept(SIDEBAR));
   /** The folded sidebar floats over the view. */
   peek = $state(false);
+  /** Its button floated it out: it stays until the button or a choice folds it. */
+  pinned = $state(false);
   /** The sidebar's width in px (its handle keeps the user's). */
   sidebarWidth = $state<number | undefined>(undefined);
   /** The user wants the job view beside the list (one column shows a job in its place). */
@@ -53,16 +55,23 @@ class Shell {
     return this.#sidebar && !viewport.fold;
   }
 
-  /** Its button: docks or folds it; in a narrow window it floats it out (the pointer that
-   *  leaves it folds it again). */
+  /** Its button, a plain switch: docks or folds it; in a narrow window it floats it out and
+   *  folds it again. */
   toggleSidebar(): void {
     if (viewport.fold) {
-      this.peek = true;
+      if (this.peek) this.fold();
+      else this.peek = this.pinned = true;
       return;
     }
     this.#sidebar = !this.#sidebar;
-    this.peek = false;
+    this.fold();
     keep(SIDEBAR, this.#sidebar);
+  }
+
+  /** The floating sidebar folds away. */
+  fold(): void {
+    this.peek = false;
+    this.pinned = false;
   }
 
   get readerOpen(): boolean {

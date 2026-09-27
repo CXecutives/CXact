@@ -21,8 +21,8 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
   Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
   the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
   traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
-  click maximizes). The sidebar docks or folds away like Claude's (floats out from its button or the left edge,
-  folds by itself below 1100 px, kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
+  click maximizes). The sidebar docks or folds away like Claude's (its button a plain switch, the window's left
+  edge floats it out, folds by itself below 1100 px, kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
   and jobs shown (`lib/state/history.svelte.ts`); hiding the job view closes its job. Windows: no native title bar (`decorations: false`, the
   shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
   (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in the app's danger red) and `caption` in

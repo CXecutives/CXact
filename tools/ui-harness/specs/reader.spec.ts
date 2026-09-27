@@ -1205,7 +1205,7 @@ test.describe('the ad', () => {
     const [weight, size] = await headings
       .first()
       .evaluate((node) => [getComputedStyle(node).fontWeight, getComputedStyle(node).fontSize]);
-    expect(Number(weight)).toBeGreaterThanOrEqual(600);
+    expect(Number(weight)).toBeGreaterThanOrEqual(530);
     expect(size).toBe(await text.evaluate((node) => getComputedStyle(node).fontSize));
     // The bullets are an indented list; the ad's glyphs are gone.
     const items = text.getByTestId('ad-item');

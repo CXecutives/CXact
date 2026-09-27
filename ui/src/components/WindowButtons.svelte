@@ -148,7 +148,7 @@
   .caption:hover,
   .caption.hover {
     background-color: var(--titlebar-button-hover);
-    color: var(--titlebar-fg);
+    color: var(--titlebar-fg-hover);
     transition-duration: var(--dur-hover);
   }
 

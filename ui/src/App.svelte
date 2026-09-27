@@ -59,14 +59,15 @@
 
   /** How long the floating sidebar waits for the pointer to come back, in ms. */
   const PEEK_LEAVE = 300;
-  /** The folded sidebar floats out while the pointer is on its button, on the window's left
-   *  edge or on it, and folds again a moment after the pointer left them. */
+  /** The folded sidebar floats out while the pointer is on the window's left edge or on it,
+   *  and folds again a moment after the pointer left them (unless its button floated it out:
+   *  then its button, or a choice in it, folds it). */
   let unpeek: ReturnType<typeof setTimeout> | null = null;
   function peek(here: boolean): void {
     if (unpeek !== null) clearTimeout(unpeek);
     unpeek = null;
     if (here) shell.peek = true;
-    else unpeek = setTimeout(() => (shell.peek = false), PEEK_LEAVE);
+    else if (!shell.pinned) unpeek = setTimeout(() => (shell.peek = false), PEEK_LEAVE);
   }
   $effect(() => {
     if (shell.docked) shell.peek = false;
@@ -103,7 +104,7 @@
 </script>
 
 <div class="shell" data-testid="shell">
-  <TitleBar onpeek={peek} />
+  <TitleBar />
   <div class="body">
     {#if shell.docked}
       <Sidebar />
@@ -134,7 +135,7 @@
           onpointerleave={() => peek(false)}
           transition:fade
         >
-          <Sidebar floating onchoose={() => (shell.peek = false)} />
+          <Sidebar floating onchoose={() => shell.fold()} />
         </div>
       {/if}
     {/if}

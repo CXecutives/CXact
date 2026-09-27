@@ -501,7 +501,7 @@
 </div>
 
 <style>
-  /* One line of chips inside the 32 px of a field: 32 - 2 x 4 padding - 2 x 1 edge. */
+  /* One line of chips in a field: its height minus 2 x 4 padding and 2 x 1 edge. */
   .chip-input {
     --chip-line: calc(var(--control-field) - 2 * var(--space-4) - 2 * var(--border-width));
 
@@ -571,8 +571,8 @@
     flex: none;
     align-items: center;
     justify-content: center;
-    width: var(--icon-md);
-    height: var(--icon-md);
+    width: min(var(--icon-md), var(--chip-line));
+    height: min(var(--icon-md), var(--chip-line));
     border-radius: var(--radius-full);
     color: var(--active-text);
     transition:
