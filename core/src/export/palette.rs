@@ -9,13 +9,13 @@
 pub use super::colour::Colour;
 
 /// `--bg` (`--p-cream`).
-pub const BG: Colour = Colour::new("hsl(32 33% 96%)", [0xF8, 0xF5, 0xF1]);
+pub const BG: Colour = Colour::new("hsl(32 50% 94.5%)", [0xF8, 0xF1, 0xEA]);
 /// `--surface-muted` (`--p-muted`).
-pub const SURFACE_MUTED: Colour = Colour::new("hsl(45 23% 95%)", [0xF5, 0xF4, 0xEF]);
+pub const SURFACE_MUTED: Colour = Colour::new("hsl(33 40% 95.5%)", [0xF8, 0xF4, 0xEF]);
 /// `--text` (`--p-ink`).
 pub const TEXT: Colour = Colour::new("hsl(45 7% 17%)", [0x2E, 0x2D, 0x28]);
 /// `--text-subtle` (`--p-fg-subtle`).
-pub const TEXT_SUBTLE: Colour = Colour::new("hsl(30 4% 43%)", [0x72, 0x6E, 0x69]);
+pub const TEXT_SUBTLE: Colour = Colour::new("hsl(30 5% 42%)", [0x70, 0x6B, 0x66]);
 /// `--score-ring-0` (`--p-score-0`).
 pub const SCORE_RING_0: Colour = Colour::new("hsl(4 62% 58%)", [0xD6, 0x5A, 0x51]);
 /// `--score-ring-1` (`--p-score-1`).
@@ -39,7 +39,7 @@ pub const SCORE_RING_9: Colour = Colour::new("hsl(140 41% 45%)", [0x44, 0xA2, 0x
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
 pub const SCORE_EXCLUDED: Colour = TEXT_SUBTLE;
 /// `--brand` (`--p-coral`).
-pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
+pub const BRAND: Colour = Colour::new("hsl(13 78% 57%)", [0xE7, 0x61, 0x3C]);
 /// `--brand-glyph` (`--p-white`).
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 
