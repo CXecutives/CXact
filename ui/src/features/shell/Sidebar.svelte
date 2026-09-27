@@ -6,7 +6,8 @@
   count, the first on the first line of every view. The places of the jobs (Eingang, Archiv,
   Papierkorb) are tabs above the list. Before the first fetch the setup page stands for Jobs;
   every entry can be chosen, as always. In the demo a quiet line "Demo" stands at the foot
-  (the title bar says so on Windows only; macOS hides it). A press here never takes the
+  where the OS hides the window's title (macOS); on Windows the title bar says "CXact Demo"
+  already (`titleShown`, lib/platform.ts). A press here never takes the
   focus (the list keeps its keys). Below 1100 px it folds to its icons by the window width
   alone; only then do the names show as tooltips.
 -->
@@ -14,7 +15,7 @@
   import DragBand from '$components/DragBand.svelte';
   import SideNav, { type SideNavItem } from '$components/SideNav.svelte';
   import { t } from '$lib/i18n/t';
-  import { dragBands } from '$lib/platform';
+  import { dragBands, titleShown } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
@@ -52,8 +53,9 @@
     </div>
   {/if}
 
-  {#if app.state?.demo}
-    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real. -->
+  {#if app.state?.demo && !titleShown()}
+    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real (on
+         Windows its title bar does). -->
     <p class="demo" data-testid="demo-mark">{t.nav.demo}</p>
   {/if}
 </aside>

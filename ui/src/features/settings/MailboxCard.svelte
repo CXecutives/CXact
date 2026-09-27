@@ -2,12 +2,14 @@
   The Postfach card of Einstellungen: the connected address with its badge, "Ändern" and
   "Entfernen" (the same kind of button; Entfernen is red at rest and asks first), without a
   mailbox the row "Kein Postfach" with "Verbinden". Ändern and Verbinden open the form in a
-  dialog whose button is "Verbinden". The rows of the card follow (Zeitraum, `children`).
-  The badge is the answer to a saved mailbox ("Verbunden", no note). It says "Nicht
+  dialog named after the button ("Postfach ändern", "Postfach verbinden") whose button is
+  "Verbinden". The card's note follows (`children`).
+  The badge is the answer to a saved mailbox ("Verbunden", no note, no toast). It says "Nicht
   erreichbar" or "Abgelehnt" only for a mail error of a fetch that finished after Gmail last
   accepted the mailbox (`mailbox.checkedAt`), with a sentence at the end of the card where it
-  adds the next step. A run, the dry run and the demo lock the mailbox with their reason. A
-  dialog whose action fails stays open and says why inside; its button tries again.
+  adds the next step; a sentence unfolds, so the cards below glide. A run, the dry run and
+  the demo lock the mailbox with their reason. A dialog whose action fails stays open and
+  says why inside; its button tries again.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -20,8 +22,8 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
+  import { unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
-  import { toasts } from '$lib/state/toasts.svelte';
   import type { Snippet } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
@@ -29,7 +31,7 @@
     cfg: AppState;
     /** Why the mailbox cannot change now (the demo, the dry run, a run), or null. */
     locked: string | null;
-    /** The card's other rows (Zeitraum). */
+    /** The card's note (a failure of a command of the card). */
     children: Snippet;
   }
   let { cfg, locked, children }: Props = $props();
@@ -157,20 +159,32 @@
   {/if}
   {@render children()}
   {#if mailFailureText}
-    <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
+    <div class="slot">
+      <div class="fold" transition:unfold>
+        <div class="note">
+          <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
+        </div>
+      </div>
+    </div>
   {/if}
   {#if cfg.mailbox.error}
-    <Notice
-      tone="danger"
-      variant="inline"
-      text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
-    />
+    <div class="slot">
+      <div class="fold" transition:unfold>
+        <div class="note">
+          <Notice
+            tone="danger"
+            variant="inline"
+            text={t.error.text(cfg.mailbox.error.kind, cfg.mailbox.error.params)}
+          />
+        </div>
+      </div>
+    </div>
   {/if}
 </Card>
 
 <Dialog
   bind:open={connecting}
-  heading={t.settings.connectHeading}
+  heading={cfg.mailbox.user ? t.settings.changeHeading : t.settings.connectHeading}
   confirmLabel={t.settings.connect}
   busy={checking}
   stoppable
@@ -178,16 +192,7 @@
   onconfirm={() => void connect()}
   oncancel={() => form?.cancel()}
 >
-  <MailboxForm
-    bind:this={form}
-    bind:busy={checking}
-    dialog
-    autofocus
-    onsaved={(saved) => {
-      // Signed in, but the alert mails were not counted in time: the next fetch reads them.
-      if (saved.check === null) toasts.show(t.settings.mailboxNotCounted, 'info');
-    }}
-  />
+  <MailboxForm bind:this={form} bind:busy={checking} dialog autofocus />
 </Dialog>
 <Dialog
   bind:open={confirmRemove}
@@ -208,5 +213,21 @@
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-12);
+  }
+
+  /* A sentence of the card unfolds with the card's inset of what is not a row as its own
+     padding (a margin would jump at once; `.slot` has no box, so Card's margin passes it). */
+  .slot {
+    display: contents;
+  }
+
+  .fold {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .note {
+    display: flex;
+    padding-block: var(--space-12);
   }
 </style>

@@ -47,16 +47,17 @@ test('CRED-1: cancel and Esc stop a check in progress, quietly', async ({ page }
   await page.evaluate(() => (window.__harness.holdMailbox = false));
 });
 
-test('CRED-3: signed in but not counted is connected, and a toast says so', async ({ page }) => {
+test('CRED-3: signed in but not counted is connected, and its badge is the answer', async ({
+  page,
+}) => {
   await changeMailbox(page, `${WIN}&mail=uncounted`);
   await dialog(page).getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('toast-text')).toHaveText(
-    await text(page, 'settings.mailboxNotCounted'),
-  );
   await expect(dialog(page)).toBeHidden();
   const connected = await text(page, 'settings.connected');
   await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
-  // With the count there, the badge is the answer: no toast.
+  // Einstellungen shows no count: the badge says it all, no toast repeats it.
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  // With the count there, the same.
   await changeMailbox(page);
   await dialog(page).getByTestId('dialog-confirm').click();
   await expect(dialog(page)).toBeHidden();

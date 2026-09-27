@@ -142,8 +142,9 @@
     margin-right: calc(-1 * var(--ghost-inset));
   }
 
-  /* In a narrow container (the settings page at the minimum window) buttons go under the
-     text, so a path or a hint keeps the whole width; a switch stays at the right. */
+  /* In a narrow container (the settings page at the minimum window) the control goes under
+     the text only where the two do not fit side by side (the text keeps at least a column's
+     width, so a path keeps room to read); a switch stays at the right. */
   @container (width < 520px) {
     .row:not([data-toggle-row]) {
       flex-wrap: wrap;
@@ -151,7 +152,7 @@
     }
 
     .row:not([data-toggle-row]) .text {
-      flex-basis: 100%;
+      flex: 1 1 var(--stat-min);
     }
 
     /* The buttons wrap within the row's width rather than run past its edge. */

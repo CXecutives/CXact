@@ -42,8 +42,13 @@ test('three steps that tick themselves, the fetch locked until a mailbox', async
   await expect(form).not.toContainText('16 Buchstaben');
   await page.getByTestId('two-step').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'twoStepPage' } });
-  // "Verbinden", as in Einstellungen. Empty fields are said at once, both, without Gmail.
+  // "Verbinden", as in Einstellungen, with its glyph like every action of the steps. Empty
+  // fields are said at once, both, without Gmail.
   await expect(page.getByTestId('mailbox-save')).toHaveText(T.settings.connect);
+  await expect(page.getByTestId('mailbox-save').locator('[data-icon]')).toHaveAttribute(
+    'data-icon',
+    'signIn',
+  );
   await page.getByTestId('mailbox-save').click();
   await expect(form).toContainText(T.settings.addressMissing);
   await expect(form).toContainText(T.settings.passwordMissing);
@@ -75,6 +80,9 @@ test('three steps that tick themselves, the fetch locked until a mailbox', async
     'data-copy',
     '',
   );
+  // The list names the portals, so the sentence above it no longer does.
+  await expect(page.getByTestId('first-mailbox-hint')).toHaveText(T.firstRun.mailboxDone);
+  await expect(page.getByTestId('first-mailbox-hint')).not.toContainText('freelance.de');
   const portals = await page
     .getByTestId('first-alerts')
     .locator('li')
@@ -150,8 +158,12 @@ test('step 2 opens the CV steps, "Profil anlegen" the empty form', async ({ page
   await page.getByTestId('paste-cancel').click();
   await page.getByTestId('nav-jobs').click();
   // The empty form is the second way, named as the Profil view names it.
+  // The same button as on the Profil view's empty state: outlined, 32 px, with its glyph.
   const create = page.getByTestId('first-profile-form');
   await expect(create).toHaveText(T.profile.create);
+  await expect(create).toHaveClass(/secondary/);
+  await expect(create).toHaveCSS('height', '32px');
+  await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
   await create.click();
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('profile-save').click();

@@ -1,5 +1,5 @@
 <!--
-  The core competences: one row each with the marker of a Schwerpunkt (one glyph, outlined,
+  The core competences: one row each with the marker of a Schwerpunkt (the star, outlined,
   filled while marked), the competence, its years and its synonyms (one line with "+n" for
   those that do not fit), then "Kompetenz hinzufügen". The marker says what a click does
   (mark, or remove the Schwerpunkt); the count stands over the markers ("2/5") and a line
@@ -143,7 +143,7 @@
           variant="ghost"
           size="sm"
           iconOnly
-          icon="focus"
+          icon="star"
           label={starred(row.name) ? words.unstar : words.star}
           pressed={starred(row.name)}
           disabled={row.name.trim() === '' || (!starred(row.name) && focus.length >= MAX_FOCUS)}

@@ -21,13 +21,10 @@
   import { errorText } from '$lib/i18n/texts';
   import { formKeys } from '$lib/input/input';
   import { invoke, IpcError } from '$lib/ipc/api';
-  import type { Mailbox } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { onMount } from 'svelte';
 
   interface Props {
-    /** The mailbox as saved (`check` null: signed in, the alert mails not counted). */
-    onsaved?: ((saved: Mailbox) => void) | null;
     /**
      * The caret starts in the first empty field once the form appears: the address, or the
      * app password next to an address that is there. On the first run only while the focus
@@ -39,12 +36,7 @@
     /** A check is on its way (the dialog's button turns meanwhile). */
     busy?: boolean;
   }
-  let {
-    onsaved = null,
-    autofocus = false,
-    dialog = false,
-    busy = $bindable(false),
-  }: Props = $props();
+  let { autofocus = false, dialog = false, busy = $bindable(false) }: Props = $props();
 
   const id = $props.id();
   let user = $state(app.state?.mailbox.user ?? '');
@@ -88,10 +80,9 @@
     }
     busy = true;
     try {
-      const saved = await invoke('save_mailbox', { user: user.trim(), password });
+      await invoke('save_mailbox', { user: user.trim(), password });
       password = '';
       await app.load();
-      onsaved?.(saved);
       return true;
     } catch (error) {
       const kind = error instanceof IpcError ? error.kind : null;
@@ -191,6 +182,7 @@
       <Button
         variant="primary"
         size="field"
+        icon="signIn"
         label={t.settings.connect}
         loading={busy}
         testid="mailbox-save"

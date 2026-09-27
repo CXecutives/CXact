@@ -23,7 +23,8 @@
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
 // profile-thin · profile-unreadable (a value of every criterion and wish does not read, a key
-// is not read at all) · reset (the state after
+// is not read at all) · profile-remote-unread (the demo profile with one value that does not
+// read: the minimum remote share of permanent roles) · reset (the state after
 // "reset everything": first run, no mailbox, no profile, the report) · first-run-empty-profile
 // · session-left (freelance.de still signed in while the fetch does not use the sign-in)
 // · first-fetch-failed (the setup page after a first fetch that could not reach Gmail: step 3
@@ -482,6 +483,20 @@ const UNREADABLE_PROFILE: ProfileInfo = {
       minMonths: null,
       exclusionWords: [],
     },
+  },
+};
+
+/** The demo profile with one value of the file that does not read: its minimum remote share
+ *  of permanent roles says "viel" (the field stays empty, core names the key and the field). */
+const REMOTE_UNREAD_PROFILE: ProfileInfo = {
+  ...PROFILE,
+  understood: {
+    ...PROFILE.understood!,
+    warnings: [unread('festanstellung_remote_min', '"viel"', 'permanentRemoteMin')],
+  },
+  form: {
+    ...structuredClone(PROFILE_FORM),
+    criteria: { ...structuredClone(PROFILE_FORM.criteria), permanentRemoteMin: null },
   },
 };
 
@@ -988,6 +1003,9 @@ function initial(): void {
       break;
     case 'profile-unreadable':
       state.profile = UNREADABLE_PROFILE;
+      break;
+    case 'profile-remote-unread':
+      state.profile = REMOTE_UNREAD_PROFILE;
       break;
     case 'running':
       state.running = {

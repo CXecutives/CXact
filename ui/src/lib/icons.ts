@@ -18,10 +18,13 @@ export const ICONS = {
   /** Dearchivieren: out of the archive, back into the inbox. */
   unarchive: 'archive-restore',
   trash: 'trash-2',
-  /** Delete for good (and empty the trash): never looks like the trash. */
+  /** Delete for good (empty the trash, remove the mailbox, reset the app): never looks like
+   *  the trash. */
   purge: 'octagon-x',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',
+  /** A Schwerpunkt of the profile: outlined, filled while marked (a glyph made to be
+   *  filled). */
   star: 'star',
 
   // A job and its ad.
@@ -58,8 +61,6 @@ export const ICONS = {
   pickFile: 'file-up',
   /** Write files again (the text files). */
   rewrite: 'file-pen-line',
-  /** Reset the app. */
-  reset: 'rotate-ccw',
   /** Restore a copy of the database (Sicherung wiederherstellen). */
   backup: 'database-backup',
 
@@ -108,8 +109,6 @@ export const ICONS = {
   /** The ad is unclear: to check. */
   unclear: 'circle-question-mark',
   privacy: 'shield',
-  /** A focus (Schwerpunkt) of the profile. */
-  focus: 'target',
 
   // The facts of a job (lib/facts.ts).
   contract: 'handshake',

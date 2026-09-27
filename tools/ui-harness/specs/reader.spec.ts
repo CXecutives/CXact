@@ -40,7 +40,7 @@ const why = (page: Page) => stage(page).getByTestId('why');
 const ROWS = [
   'Unternehmen',
   'Ort',
-  'Arbeitsort',
+  'Arbeitsmodell',
   'Vertragsart',
   'Tagessatz',
   'Start',
@@ -655,7 +655,7 @@ test.describe('Jobdetails', () => {
   test('an ad the app never read shows only what it knows', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
-    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsort', 'Portal', 'Eingegangen']);
+    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Portal', 'Eingegangen']);
     await expect(terms(page)).not.toContainText('/');
   });
 

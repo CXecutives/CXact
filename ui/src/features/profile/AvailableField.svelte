@@ -1,13 +1,14 @@
 <!--
-  Verfügbar ab: one choice of the segments ("Offen", "Sofort", "Ab Datum"). The day of "Ab
-  Datum" exists only while it is chosen and gets the caret when it is (it fades in beside the
-  choice); it is judged when its field is left with text in it or on saving
-  (`editor.judged`), never while it is typed, and a day that does not read is said once, at
-  the field, and holds the save. A value of the file that does not read is said under it
-  with "Wert entfernen".
+  Verfügbar ab: one choice of the segments ("Offen", "Sofort", "Datum"; after the label they
+  read "ab sofort", "ab Datum"). The day of "Datum" exists only while it is chosen and gets
+  the caret when it is (it fades in beside the choice); it is judged when its field is left
+  with text in it or on saving (`editor.judged`), never while it is typed, and a day that
+  does not read is said once, at the field, in the error line of every field (Field), and
+  holds the save. A value of the file that does not read is said under it with
+  "Wert entfernen".
 -->
 <script lang="ts">
-  import Notice from '$components/Notice.svelte';
+  import Icon from '$components/Icon.svelte';
   import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
@@ -37,7 +38,7 @@
     { id: 'from', label: t.profile.availability.from },
   ]);
 
-  /** "Offen" is no availability. "Ab Datum" puts the caret into its day, which is judged
+  /** "Offen" is no availability. "Datum" puts the caret into its day, which is judged
    *  anew when it is left. */
   async function choose(kind: Choice): Promise<void> {
     c.available =
@@ -99,13 +100,16 @@
     {/if}
   </div>
   {#if said !== null}
-    <div id="{id}-message">
-      <Notice
-        tone="danger"
-        variant="inline"
-        text={said}
-        testid={wrong !== null ? 'profile-date-error' : null}
-      />
+    <div class="help">
+      <p
+        class="error"
+        id="{id}-message"
+        role="alert"
+        data-testid={wrong !== null ? 'profile-date-error' : undefined}
+      >
+        <Icon name="warning" size="sm" />
+        <span>{said}</span>
+      </p>
     </div>
   {/if}
   {#each notes as note (note.text)}
@@ -138,5 +142,26 @@
   /* The day is as wide as every number field. */
   .date {
     width: calc(var(--stat-min) - var(--space-48));
+  }
+
+  /* The error line of every field (Field): as high as a link, the glyph on its first line, 6
+     from the words. */
+  .help {
+    display: flex;
+    align-items: center;
+    min-height: var(--control-sm);
+  }
+
+  .error {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-6);
+    color: var(--danger-strong);
+    font: var(--type-sm);
+  }
+
+  .error > :global(:first-child) {
+    flex: none;
+    margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
   }
 </style>

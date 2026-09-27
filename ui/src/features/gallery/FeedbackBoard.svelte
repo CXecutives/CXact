@@ -94,7 +94,7 @@
     <Button label={t.confirmOpen} onclick={() => (confirmOpen = true)} testid="open-confirm" />
     <Button
       label={t.dangerOpen}
-      icon="reset"
+      icon="purge"
       onclick={() => (dangerOpen = true)}
       testid="open-danger"
     />

@@ -16,11 +16,12 @@
   the next marker turns dark and the done text rises in. Nothing plays when the page appears.
 
   Step 1 names the portals that are on, in the UI's order, since their alert mails must go
-  to this address (none on: a warning with "Einstellungen öffnen"); connected, each of them
-  shows the alert mails "Verbinden" found in the last 30 days, or "Alert anlegen" (the
-  portal's page) where it found none. Step 2 happens in the Profil view: "Aus Lebenslauf
-  anlegen" opens its steps with an AI at once, "Profil anlegen" the empty form; after the
-  first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
+  to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
+  no longer names them, since the list under it does: each of them with the alert mails
+  "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
+  found none. Step 2 happens in the Profil view: "Aus Lebenslauf anlegen" opens its steps
+  with an AI at once, "Profil anlegen" the empty form (the same button as on the Profil
+  view's empty state); after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
   alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
   Every main action is 32 px.
@@ -176,7 +177,7 @@
       <p class="done-text" data-copy in:rise>{app.state?.mailbox.user}</p>
     </div>
     {#if portals.length > 0}
-      <p class="hint">{t.firstRun.mailboxText(portals.map((p) => p.portal))}</p>
+      <p class="hint" data-testid="first-mailbox-hint">{t.firstRun.mailboxDone}</p>
       <ul class="alerts" data-testid="first-alerts">
         {#each portals as portal (portal.portal)}
           {@const mails = mailsOf(portal.portal)}
@@ -205,7 +206,9 @@
     <div class="head">
       <h2 class="name">{t.firstRun.mailbox}</h2>
       {#if portals.length > 0}
-        <p class="hint">{t.firstRun.mailboxText(portals.map((p) => p.portal))}</p>
+        <p class="hint" data-testid="first-mailbox-hint">
+          {t.firstRun.mailboxText(portals.map((p) => p.portal))}
+        </p>
       {/if}
     </div>
     <MailboxForm autofocus />
@@ -258,8 +261,9 @@
           onclick={fromCv}
         />
         <Button
-          variant="link"
-          size="sm"
+          variant="secondary"
+          size="field"
+          icon="add"
           label={t.profile.create}
           testid="first-profile-form"
           onclick={openProfile}

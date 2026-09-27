@@ -8,7 +8,7 @@
 // choice, the switches) are components the table names by their kind.
 //
 // Every section has its heading under its id in the catalog (`t.profile.section`) and the
-// testid `section-{id}`; the two whose effect is easy to get wrong (Konditionen, Wünsche) say
+// testid `section-{id}`; the two whose effect is easy to get wrong (Bedingungen, Wünsche) say
 // it in one sentence (`t.profile.sectionHint`). Order (user decision 2026-09-26): the one
 // block the profile needs first, the conditions and the rules of permanent roles next to the
 // wishes.

@@ -1,6 +1,7 @@
 <!--
-  "Wiederherstellen" of the Sicherung (Einstellungen > App): the copies of the database,
-  newest first and chosen, each by its moment in one format ("Heute 08:05", "24.09. 08:41")
+  "Wiederherstellen" of the Sicherung (Einstellungen > Daten): the copies of the database,
+  newest first and chosen, each by its moment in the one format of a moment at the start of
+  a line (formatDayTime: "Heute 08:05", "Gestern 08:41", "Mo 09:12", then "18.09. 08:41")
   and why a copy from before an update or a restore is there. The one button restores the
   chosen copy (the current state is saved first, the dialog says so); a failure stays in the
   dialog. After the restore the undos of before go (their jobs may be gone), the app state,
@@ -16,7 +17,7 @@
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
   import RadioList from '$components/RadioList.svelte';
-  import { formatDay, formatTime } from '$lib/i18n/format';
+  import { formatDayTime } from '$lib/i18n/format';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
@@ -34,15 +35,6 @@
   const chosen = $derived(backups.find((backup) => backup.id === chosenId) ?? null);
   /** The card's runner of the last `show` (the toast's undo runs through it too). */
   let run: Runner = (work) => work();
-
-  /** A copy's moment: its time today, else its day and time. */
-  function moment(iso: string, now: Date): string {
-    const at = new Date(iso);
-    const today = at.toDateString() === now.toDateString();
-    return today
-      ? t.settings.backupToday(formatTime(iso))
-      : `${formatDay(iso, now)} ${formatTime(iso)}`;
-  }
 
   /** Lists the copies and opens on the newest; `onempty` says in the card there is none. */
   export function show(runner: Runner, onempty: () => void): Promise<void> {
@@ -106,7 +98,7 @@
   <RadioList
     options={backups.map((backup) => ({
       id: backup.id,
-      label: moment(backup.at, clock.now),
+      label: formatDayTime(backup.at, clock.now),
       note: t.settings.backupKind[backup.kind],
     }))}
     value={chosenId}

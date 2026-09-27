@@ -6,7 +6,7 @@
   does not switch it). The meter turns ochre near the limit and while the portal rests. A
   problem of the portal is one quiet line under the meter (whether the user has to act, the
   time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
-  jobs); it fades in and out.
+  jobs); it unfolds and folds away, so the rows below glide.
   Signing in lets the fetch use the sign-in, signing out ends that. A stored sign-in that the
   fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
   the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
@@ -25,7 +25,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
-  import { fade, rise } from '$lib/motion/transitions';
+  import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
   import { settingsPatch } from './cards';
@@ -147,7 +147,9 @@
   }
 </script>
 
-<div class="row" data-testid="portal-{portal.portal}">
+<!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
+     keeps the card's inset for other content off it). -->
+<div class="row" data-setting-row data-testid="portal-{portal.portal}">
   <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="md" />
   <div class="text">
     <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
@@ -163,31 +165,35 @@
       </div>
     {/if}
     {#if health && portal.enabled}
-      <div class="line" in:rise={{ distance: 'sm' }} out:fade>
-        <Notice
-          tone={portal.actionNeeded ? 'warning' : 'info'}
-          variant="inline"
-          text={health}
-          action={alertMail
-            ? {
-                label: t.reader.mail,
-                icon: 'alertMail',
-                onclick: () => open({ gmailId: alertMail }),
-              }
-            : null}
-          testid="health-{portal.portal}"
-        />
+      <div class="fold" transition:unfold>
+        <div class="line">
+          <Notice
+            tone={portal.actionNeeded ? 'warning' : 'info'}
+            variant="inline"
+            text={health}
+            action={alertMail
+              ? {
+                  label: t.reader.mail,
+                  icon: 'alertMail',
+                  onclick: () => open({ gmailId: alertMail }),
+                }
+              : null}
+            testid="health-{portal.portal}"
+          />
+        </div>
       </div>
     {/if}
     {#if error}
-      <div class="line" in:rise={{ distance: 'sm' }} out:fade>
-        <Notice tone="danger" variant="inline" text={error()} testid="portal-error" />
+      <div class="fold" transition:unfold>
+        <div class="line">
+          <Notice tone="danger" variant="inline" text={error()} testid="portal-error" />
+        </div>
       </div>
     {/if}
   </div>
   <div class="tools">
     {#if loginShown}
-      <span class="login" in:fade>
+      <span class="login" transition:fade>
         {#if signedIn}
           <Button
             variant="secondary"
@@ -249,11 +255,11 @@
     border-bottom: 0;
   }
 
+  /* Name, calls and lines 6 apart; a line brings its 6 along, so it folds in one piece. */
   .text {
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: var(--space-6);
     min-width: 0;
   }
 
@@ -269,20 +275,28 @@
     flex-direction: column;
     gap: var(--space-6);
     max-width: var(--stat-min);
+    margin-top: var(--space-6);
     color: var(--text-muted);
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);
   }
 
-  .line {
+  .fold {
     display: flex;
+    flex-direction: column;
   }
 
+  .line {
+    display: flex;
+    padding-top: var(--space-6);
+  }
+
+  /* 12 apart, like the buttons and the switch of every other row of the page. */
   .tools {
     display: flex;
     flex: none;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-12);
     min-height: var(--tile-md);
   }
 

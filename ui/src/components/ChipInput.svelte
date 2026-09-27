@@ -2,8 +2,9 @@
   A list of short values as chips in a field: type and press Enter (or leave the field) to
   add, x removes, Backspace in the empty field removes the last one, Esc drops what was
   typed, a double click on a chip takes it back into the text to edit it. A chip's value is
-  copyable text (a drag selects it, Ctrl/Cmd+C copies); its x names what it removes in a
-  tooltip, like every icon-only button. A list of terms
+  copyable text (a drag selects it, Ctrl/Cmd+C copies); its x names what it removes for a
+  screen reader only (the chip beside it says what it is, so no tooltip repeats it, like the
+  plain x of a row). A list of terms
   (`split` list) also splits at commas and semicolons, typed or pasted; a list of sentences
   or names that hold commas (`split` lines) only at line breaks. A value that is already
   there (in any case) is not added twice. Without `entry` the field only shows and removes
@@ -352,7 +353,6 @@
           tabindex="-1"
           data-keep-focus
           aria-label={t.chips.remove(labelOf(value))}
-          use:tooltip={t.chips.remove(labelOf(value))}
           onclick={() => remove(index)}
         >
           <Icon name="close" size="xs" />

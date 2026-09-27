@@ -133,7 +133,7 @@
       <Button
         size="sm"
         label={text.buttons.reset}
-        icon="reset"
+        icon="purge"
         warns
         testid="button-warns"
         onclick={noop}

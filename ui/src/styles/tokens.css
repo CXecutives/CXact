@@ -6,10 +6,11 @@
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
  *   2. Semantic tokens   everything components use (colours are complete `hsl()` values).
  *
- * Three palettes (user, 2026-09-26), chosen in Einstellungen (Darstellung): Coast, the
- * `:root` block below and the default; Light and Dark, one block each further down
- * (`:root[data-palette='light']`, `'dark'`). Components never branch on the palette; the page
- * sets `data-palette` (lib/palette.ts) and the roles follow.
+ * Three palettes (user, 2026-09-26), chosen in Einstellungen (Darstellung): Coast (named
+ * "CXact" there), the `:root` block below and the default; Light and Dark ("Hell",
+ * "Dunkel"), one block each further down (`:root[data-palette='light']`, `'dark'`).
+ * Components never branch on the palette; the page sets `data-palette` (lib/palette.ts) and
+ * the roles follow.
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
@@ -42,7 +43,9 @@
   --p-coral-press: 13 58% 50%;
   --p-muted: 45 23% 95%;
   --p-muted-fg: 30 4% 35%;
-  --p-line: 45 22% 90%;
+  /* Hairlines of cards, dividers and the sidebar's pill: as clear on white as Light's
+     (1.42:1), in the warm hue. */
+  --p-line: 40 14% 84%;
   --p-accent-soft: 20 62% 91%;
   --p-success: 150 27% 60%;
   --p-warning: 45 76% 75%;
@@ -65,10 +68,12 @@
   --p-navy-150: 212 30% 90%;
   --p-navy-200: 212 26% 84%;
   --p-fg-subtle: 30 4% 43%;
-  --p-border-strong: 40 12% 78%;
-  --p-border-input: 40 10% 66%;
-  /* A switch that is off, pressed: one step darker than its hover (--p-border-input). */
-  --p-border-press: 40 10% 58%;
+  /* The edge of fields, chip fields and outlined buttons (1.84:1 on white), the edge under
+     the pointer (2.75:1) and a switch that is off, pressed, one step darker again (3.55:1):
+     crisp on the white card like Light's, still warm. */
+  --p-border-strong: 38 10% 74%;
+  --p-border-input: 38 8% 60%;
+  --p-border-press: 38 8% 52%;
   --p-success-strong: 150 35% 33%;
   --p-success-soft: 150 27% 94%;
   --p-warning-strong: 38 70% 34%;
@@ -352,6 +357,9 @@
      (the list's Abrufen beside the search): calm, like the OS's own settings (user,
      2026-09-25). */
   --control-field: 32px;
+  /* Every choice of a few (Segmented), in Einstellungen and in the Profil form alike: as high
+     as a small button. */
+  --control-choice: var(--control-sm);
   --control-md: 36px;
   --control-lg: 40px;
   --icon-xs: 12px;
@@ -501,6 +509,8 @@
   --row-bar-inset: var(--space-12);
   --dialog-width: 440px;
   --stat-min: 180px;
+  /* The level of a language in the Profil form: its longest word (Muttersprache) fits. */
+  --level-width: 140px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
   --sidebar-width: 196px;
   --rail-width: 64px;

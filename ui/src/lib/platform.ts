@@ -11,7 +11,8 @@
 //   - the editing keys of text fields and the context menu key (`keyConventions()`,
 //     applied by lib/input/input.ts: Ctrl on Windows, Cmd on macOS); the app has no
 //     shortcuts of its own.
-// Components ask here (`dragBands()`, `primaryFirst()`, `keyConventions()`, `platform()`),
+// Components ask here (`dragBands()`, `titleShown()`, `primaryFirst()`, `keyConventions()`,
+// `platform()`),
 // never compare OS names themselves. The window's focus state is the same on both:
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
 // grey out against it as in Mail and Explorer.
@@ -63,6 +64,14 @@ export function platform(): Platform {
  */
 export function dragBands(): boolean {
   return platform() === 'macos';
+}
+
+/**
+ * The window's title shows in its title bar (Windows: "CXact", in the demo "CXact Demo").
+ * macOS hides it in the unified toolbar row, so what it says (the demo) stands in the page.
+ */
+export function titleShown(): boolean {
+  return platform() === 'windows';
 }
 
 /** Dialog buttons: the primary action comes first on Windows, last (right) on macOS. */
