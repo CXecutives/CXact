@@ -8,9 +8,10 @@ use serde_json::{Map, Value, json};
 
 use super::ad_facts::{self, AdFacts, Stated, currency_code, start_code};
 use super::contract::ContractKind;
-use super::engine::{EngineProfile, Evaluation};
+use super::engine::{EngineProfile, Evaluation, Scored};
 use super::factors;
 use super::facts::{Availability, HardCriteria, Start};
+use super::fit;
 use super::job::{Class, Stage};
 use super::limits;
 use super::normalize::{char_len, strip};
@@ -150,19 +151,7 @@ pub(crate) fn assessment(
         } else {
             ReasonCode::Requirement
         };
-        let source = match item.stage {
-            Stage::Section => "section",
-            Stage::Sentence => "sentence",
-            Stage::Vocabulary => "vocabulary",
-        };
-        let mut params = json!({ "source": source, "class": class_name(&item.class) });
-        if let Some(years) = item.years {
-            params["years"] = json!(years);
-        }
-        if let Some((index, true)) = scored.focus {
-            // Met in full through a Schwerpunkt: it counts double.
-            params["focus"] = json!(profile.focus[index].text);
-        }
+        let params = requirement_params(profile, scored);
         let reason = b.reason(kind, weight, code);
         reason.label = Some(quote(&item.text));
         reason.params = object(&params);
@@ -200,6 +189,57 @@ pub(crate) fn assessment(
         rank: evaluation.rank,
         factors,
     }
+}
+
+/// The params of a requirement: where it stands and its class; the years it asks (a range
+/// with its upper end), whether they are general experience, the years they were judged
+/// against (`have`, none: no verdict) and how the years alone fit (`yearsFit`, the Jobdetails
+/// row "Erfahrung"); the entry's own years, whether the profile holds a language at all (an
+/// open one is then a level too low), and the Schwerpunkt that meets it in full.
+fn requirement_params(profile: &EngineProfile, scored: &Scored) -> Value {
+    let item = &scored.item;
+    let source = match item.stage {
+        Stage::Section => "section",
+        Stage::Sentence => "sentence",
+        Stage::Vocabulary => "vocabulary",
+    };
+    let mut params = json!({ "source": source, "class": class_name(&item.class) });
+    if let Some(years) = item.years {
+        params["years"] = json!(years);
+        if let Some(max) = item.years_max {
+            params["max"] = json!(max);
+        }
+        let general = fit::general_experience(&item.text, &profile.skills.vocab);
+        if general {
+            params["general"] = json!(true);
+        }
+        if let Some(have) = fit::years_have(&profile.skills, general, scored.fit.entry) {
+            params["have"] = json!(have);
+            params["yearsFit"] = json!(match fit::years_value(have, years) {
+                E_FULL => "met",
+                E_NONE => "open",
+                _ => "partial",
+            });
+        }
+    }
+    if let Some(years) = scored
+        .fit
+        .entry
+        .and_then(|e| profile.skills.entries.get(e))
+        .and_then(|e| e.years)
+    {
+        params["entryYears"] = json!(years);
+    }
+    if let Class::Language(language, _) = &item.class
+        && profile.skills.languages.iter().any(|(l, _)| l == language)
+    {
+        params["held"] = json!(true);
+    }
+    if let Some((index, true)) = scored.focus {
+        // Met in full through a Schwerpunkt: it counts double.
+        params["focus"] = json!(profile.focus[index].text);
+    }
+    params
 }
 
 /// Reasons of the version-4 inputs: every demanded Schwerpunkt (with the passages it
@@ -363,6 +403,10 @@ fn rate_state(min: i128, ad: &AdFacts, text: &str) -> CriterionState {
     if let Some(rate) = ad.rate.as_ref().filter(|r| !r.value.wage) {
         let r = rate.value;
         let mut params = json!({ "rate": r.upper, "hourly": r.hourly });
+        if r.hourly {
+            // What the rule compares: the hourly rate per day.
+            params["perDay"] = json!(r.per_day());
+        }
         if let Some(currency) = r.currency {
             params["currency"] = json!(currency_code(currency));
         }
@@ -468,16 +512,6 @@ fn evidence_states(profile: &EngineProfile, ad: &AdFacts, text: &str) -> Vec<Cri
             criterion(CriterionKey::PermanentRegion, told(ok), &place, None, text)
         } else {
             unset(CriterionKey::PermanentRegion)
-        },
-        match c.target_years {
-            Some(target) => at_least(
-                CriterionKey::TargetYears,
-                ad.years.as_ref(),
-                target,
-                "years",
-                text,
-            ),
-            None => unset(CriterionKey::TargetYears),
         },
         workload_state(c, ad, text),
         match c.min_months {

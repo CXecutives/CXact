@@ -9,9 +9,9 @@ form and save. The app scores every stored job against it again.
 
 | File | Who | Hard criteria worth trying |
 |---|---|---|
-| `interim-cfo.json` | Interim CFO, about 30 years, Diplom-Kauffrau | day rate from 1,000 EUR; permanent roles from 150,000 EUR a year and only in the Munich region (about 100 km) or with at least 60 % remote; target profile at least 10 years; DACH; no temporary agency work |
+| `interim-cfo.json` | Interim CFO, about 30 years, Diplom-Kauffrau | day rate from 1,000 EUR; permanent roles from 150,000 EUR a year and only in the Munich region (about 100 km) or with at least 60 % remote; DACH; no temporary agency work |
 | `ki-automatisierung.json` | AI and automation consultant for mid-sized companies | day rate from 900 EUR; no agency work, no permanent role; 2 to 4 days a week; at least 2 months |
-| `performance-profit.json` | Management consultant for performance, profit and pricing | day rate from 1,100 EUR; at most 4 days a week; target profile at least 8 years |
+| `performance-profit.json` | Management consultant for performance, profit and pricing | day rate from 1,100 EUR; at most 4 days a week |
 | `sap-fico.json` | SAP FI/CO consultant | day rate from 850 EUR; at least 3 days a week; at least 3 months |
 | `it-cloud-freelancer.json` | Cloud architect and DevOps engineer | day rate from 800 EUR; fully remote from abroad allowed; no permanent role; 3 to 5 days a week |
 

@@ -161,7 +161,6 @@ pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'sta
         "availability" => "Der Start passt nicht zur Verfügbarkeit.",
         "salary" => "Das Gehalt liegt unter dem Minimum im Profil.",
         "permanentRegion" => "Der Ort liegt außerhalb der Orte für Festanstellung.",
-        "tooJunior" => "Der Job verlangt deutlich weniger Erfahrung.",
         "exclusionWord" => "Die Anzeige nennt ein Ausschlusswort aus dem Profil.",
         "formalOpen" if licence(params) => {
             "Die Anzeige verlangt eine Zulassung, die das Profil nicht nennt."
@@ -319,7 +318,6 @@ pub mod en {
             "availability" => "The start does not fit the availability.",
             "salary" => "The salary is below the minimum in the profile.",
             "permanentRegion" => "The location is outside your locations for permanent jobs.",
-            "tooJunior" => "The job asks for much less experience.",
             "exclusionWord" => "The ad names an exclusion word from the profile.",
             "formalOpen" if licence(params) => {
                 "The ad requires a licence the profile does not name."
@@ -762,7 +760,6 @@ mod tests {
                 ReasonCode::Country,
                 ReasonCode::Salary,
                 ReasonCode::PermanentRegion,
-                ReasonCode::TooJunior,
                 ReasonCode::FormalOpen,
                 ReasonCode::ExclusionWord,
             ] {

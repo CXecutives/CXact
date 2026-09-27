@@ -49,8 +49,6 @@ pub(crate) struct HardCriteria {
     pub places: Option<Vec<String>>,
     /// Remote share (percent) that makes a permanent role outside the region acceptable.
     pub remote_min: Option<u64>,
-    /// Minimum years the target profile of an ad must ask for.
-    pub target_years: Option<u32>,
     /// Days per week (1 to 5) the consultant works at least and at most.
     pub workload_min: Option<u8>,
     pub workload_max: Option<u8>,
@@ -296,7 +294,6 @@ impl HardCriteria {
         };
         let min_salary = read(lexicon::KEYS_MIN_SALARY);
         let remote_min = read(lexicon::KEYS_PERMANENT_REMOTE).map(|p| p.min(100));
-        let target_years = read(lexicon::KEYS_TARGET_YEARS).and_then(|y| u32::try_from(y).ok());
         let places = places_of(data, &mut not_understood);
         let (workload_min, workload_max, min_months, exclusion_words) =
             engagement_limits(data, &mut not_understood);
@@ -310,7 +307,6 @@ impl HardCriteria {
             min_salary,
             places,
             remote_min,
-            target_years,
             workload_min,
             workload_max,
             min_months,

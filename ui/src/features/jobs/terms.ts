@@ -3,24 +3,36 @@
 // stands for, when it shows, and how it reads the ad's value. A row says only what the ad says
 // (its facts, else the value the engine read into a criterion; "/" where it says nothing), and
 // a verdict when there is a match to judge by: the worst of its criteria and reasons, with the
-// sentence of the reason that decided it as the verdict's tooltip.
+// sentence of the reason that decided it as the verdict's tooltip (a met criterion says why it
+// is met). The row shows the value and the verdict only; why stands in the tooltip.
 //
 // One check per fact: a row is judged by its own criteria and codes only. A requirement that
 // states a row's value ("Mindestens 15 Jahre Berufserfahrung im Controlling" states the years)
-// gives the row its value (`claims`), and keeps its own verdict among the "Anforderungen": the
-// row judges the years, the requirement the skill. The pay row reads the codes and the
-// criterion of the pay that applies only: a salary is never judged by a day rate wish, a day
-// rate never by the minimum salary.
+// gives the row its value (`claims`), and keeps its own verdict among the "Anforderungen". A
+// requirement that is nothing but the row's fact (general experience, "10 Jahre
+// Berufserfahrung") is the row's own (`owns`): it judges the row and is not listed again. The
+// pay row reads the codes and the criterion of the pay that applies only: a salary is never
+// judged by a day rate wish, a day rate never by the minimum salary.
 
 import type { IconName } from '$components/Icon.svelte';
 import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/facts';
 import { formatDay, formatStamp } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
+import { textOf } from '$lib/i18n/de';
 import { criterionKey } from '$lib/i18n/texts';
 import type { JobView, KeyFacts, Reason, TextRange } from '$lib/ipc/types';
 import { placeOf } from '$lib/place';
-import { criterionVerdict, isRequirement, reasonVerdict, sentence, worst } from './verdicts';
+import {
+  aboveMinimum,
+  criterionVerdict,
+  isRequirement,
+  reasonVerdict,
+  sentence,
+  worst,
+  type Judgement,
+} from './verdicts';
+import { byYears, generalYears, yearsJudgement, yearsOf } from './years';
 
 export type { TermKey };
 export type Verdict = TermVerdict;
@@ -39,7 +51,7 @@ export interface TermRow {
   mail: string | null;
   /** The ad does not state it. */
   missing: boolean;
-  /** A quiet word after the value: estimated, assumed, how it stands to the profile. */
+  /** A quiet word after the value: estimated, assumed, no longer online. */
   note: string | null;
   /** The value is due within a week or past (a deadline): it shows in red. */
   urgent: boolean;
@@ -104,6 +116,11 @@ interface Value {
   urgent?: boolean;
   /** False: the row takes no verdict (the duration of a permanent job). */
   judged?: boolean;
+  /** What judges the row besides its criteria and codes (a requirement of years). */
+  judges?: readonly Judgement[];
+  /** Why the row is met, where its criterion's own sentence says less (the pay above the
+   *  minimum). */
+  met?: string | null;
 }
 
 /** The engine's codes and the profile's criteria a row stands for. */
@@ -117,6 +134,9 @@ interface Term extends Checks {
   employment?: Checks;
   /** Requirements that state the row's value (its value, never its verdict). */
   claims?: (reason: Reason) => boolean;
+  /** Requirements that are the row's fact and nothing else: judged in the row, never listed
+   *  again among the Anforderungen. */
+  owns?: (reason: Reason) => boolean;
   /** Reasons that tell the value only, never the verdict. */
   quiet?: (reason: Reason) => boolean;
   /** Whether the row shows for this job (always without). */
@@ -127,14 +147,6 @@ interface Term extends Checks {
 }
 
 const NONE: Checks = { codes: [], criteria: [] };
-
-/** How a stated amount stands to the profile's minimum, as a quiet note (both known). */
-function versusMinimum(value: number | null, min: number | null): string | null {
-  if (value === null || min === null || min <= 0) return null;
-  const share = ((value - min) / min) * 100;
-  const percent = value === min ? 0 : Math.sign(share) * Math.max(1, Math.round(Math.abs(share)));
-  return t.reader.versusMinimum(percent);
-}
 
 /** What each row reads; their order is the facts table's. */
 const TERMS: Record<TermKey, Term> = {
@@ -186,9 +198,10 @@ const TERMS: Record<TermKey, Term> = {
         if (salary === null) return { value: null };
         const lower = stated === null ? p.lowerBound === true : facts?.salaryLowerBound === true;
         const currency = stated === null ? text(p.currency) : null;
+        const above = currency === null ? aboveMinimum(salary, amount(p.min)) : null;
         return {
           value: t.facts.pay(salary, 'year', currency, lower),
-          note: currency === null ? versusMinimum(salary, amount(p.min)) : null,
+          met: above === null ? null : t.reader.payMet.salary(above),
         };
       }
       const p = criterion('minDayRate')?.params ?? {};
@@ -201,10 +214,17 @@ const TERMS: Record<TermKey, Term> = {
       const hourly = (stated ? stated.hourly : p.hourly) === true;
       const currency = stated ? stated.currency : text(p.currency);
       const euros = currency === null || currency === 'EUR';
+      // The rule compares a day rate in euros, an hourly one by what it makes a day.
+      const perDay = hourly ? num(p.perDay) : rate;
+      const above = euros ? aboveMinimum(perDay, amount(p.min)) : null;
       return {
         value: t.facts.pay(rate, hourly ? 'hour' : 'day', currency),
-        // A day rate in euros against the minimum day rate (an hourly one is no day rate).
-        note: euros && !hourly ? versusMinimum(rate, amount(p.min)) : null,
+        met:
+          above === null || perDay === null
+            ? null
+            : hourly
+              ? t.reader.payMet.hour(rate, perDay, above)
+              : t.reader.payMet.day(above),
       };
     },
   },
@@ -221,7 +241,7 @@ const TERMS: Record<TermKey, Term> = {
     criteria: ['duration'],
     read: ({ facts, criterion, contract }) => {
       const months = facts?.months ?? num(criterion('duration')?.params.months);
-      if (months) return { value: t.facts.months(months) };
+      if (months) return { value: t.facts.duration(months, null, 'month') };
       // A permanent job has no end: nothing to compare.
       return contract.kind === 'permanent'
         ? { value: t.facts.unlimited, judged: false }
@@ -239,32 +259,38 @@ const TERMS: Record<TermKey, Term> = {
       return { value: to === null ? null : t.facts.workload(from, to) };
     },
   },
+  // The years of experience the ad asks for (a range as a range), or the junior level it names:
+  // judged against the profile's own years.
   experience: {
-    codes: ['tooJunior', 'seniorityUnclear', 'overqualified'],
-    criteria: ['targetYears'],
-    // A requirement that names years of experience.
+    codes: ['overqualified', 'seniorityUnclear'],
+    criteria: [],
+    owns: generalYears,
+    // Years in a topic ("3 Jahre S/4HANA") give the row its value only where the ad asks no
+    // general experience; they keep their verdict among the Anforderungen.
     claims: (reason) => isRequirement(reason) && num(reason.params.years) !== null,
-    read: ({ criterion, code, claimed, stated }) => {
-      const said = [
-        criterion('targetYears'),
-        code('tooJunior'),
-        code('overqualified'),
-        ...claimed,
-      ].find((reason) => num(reason?.params.years) !== null);
-      const years = num(said?.params.years);
-      if (years === null) return { value: null };
-      // Fewer years than the profile's minimum (too junior, or a senior profile asked less):
-      // the note says which way the verdict points.
-      const target = num(code('tooJunior')?.params.target ?? code('overqualified')?.params.target);
-      const notes = [
-        // Required years no passage backs are the engine's estimate.
-        stated ? null : t.reader.estimated,
-        target !== null && years < target ? t.reader.yearsBelow(target) : null,
-      ].filter((note) => note !== null);
-      return {
-        value: t.facts.years(years, num(said?.params.max)),
-        note: notes.length === 0 ? null : notes.join(', '),
-      };
+    read: ({ code, claimed, stated }) => {
+      const own = claimed.filter(generalYears).sort(byYears)[0];
+      const topic = claimed.filter((reason) => !generalYears(reason)).sort(byYears)[0];
+      const level = code('overqualified') ?? code('seniorityUnclear');
+      // The years the row shows: the general experience, else the years that make the job a
+      // junior one, else the most a topic asks for; the requirement that states them judges
+      // the row where the profile has years to judge them by.
+      const years = [own, num(level?.params.years) !== null ? level : undefined, topic].find(
+        (reason) => reason !== undefined,
+      );
+      if (years !== undefined) {
+        const min = yearsOf(years);
+        const max = num(years.params.max);
+        const source = years === level ? claimed.find((r) => yearsOf(r) === min) : years;
+        return {
+          value: t.facts.years(min, max),
+          // Required years no passage backs are the engine's estimate.
+          note: stated ? null : t.reader.estimated,
+          judges: yearsJudgement(source),
+        };
+      }
+      const word = text(level?.params.level);
+      return { value: word === null ? null : t.facts.level(word) };
     },
   },
   deadline: {
@@ -331,10 +357,10 @@ const ROW_OF_CODE: ReadonlyMap<string, TermKey> = new Map(
   ),
 );
 
-/** The row a reason of the match stands for, or null (a requirement has none: it keeps its
- *  place among the Anforderungen even when it states a row's value). */
+/** The row a reason of the match stands for, or null (a requirement keeps its place among the
+ *  Anforderungen even when it states a row's value, unless it is the row's fact alone). */
 export function rowOf(reason: Reason): TermKey | null {
-  return ROW_OF_CODE.get(reason.code) ?? null;
+  return ROW_OF_CODE.get(reason.code) ?? KEYS.find((key) => TERMS[key].owns?.(reason)) ?? null;
 }
 
 function contractOf(
@@ -419,17 +445,26 @@ function build(
     return id === null ? undefined : input.reasons.find((reason) => reason.id === id);
   };
   const linked = new Set(criteria.map((criterion) => linkedOf(criterion)?.id ?? ''));
+  /** Why a met criterion is met: the row's own sentence, else the criterion's. */
+  const metWhy = (criterion: Reason): string | null => {
+    const key = criterionKey(criterion.code);
+    return (
+      read.met ?? (key === null ? null : textOf(t.reader.criterion[key].met, criterion.params))
+    );
+  };
   const judged =
     input.withVerdict && read.judged !== false
       ? worst([
           ...criteria.map((criterion) => {
             const decided = linkedOf(criterion);
+            const verdict = criterionVerdict(criterion, decided);
             return {
-              verdict: criterionVerdict(criterion, decided),
-              why: sentence(decided),
+              verdict,
+              why: sentence(decided) ?? (verdict === 'met' ? metWhy(criterion) : null),
               excludes: criterion.kind === 'violation',
             };
           }),
+          ...(read.judges ?? []),
           ...reasons
             .filter((reason) => !linked.has(reason.id) && term.quiet?.(reason) !== true)
             .flatMap((reason) => {

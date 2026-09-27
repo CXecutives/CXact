@@ -1,7 +1,8 @@
 //! A page's structured criteria (LinkedIn's criteria list: career level, employment type,
-//! industries) reach the engine: an internship or entry-level role is too junior for a
-//! senior target, an associate level is a check, a limited employment type makes the ad an
-//! interim one, and the stated industries answer the industry wish first.
+//! industries) reach the engine: an internship or entry-level role is over-qualified for a
+//! profile with years of experience (met in part, never an exclusion), an associate level is
+//! a check, a limited employment type makes the ad an interim one, and the stated industries
+//! answer the industry wish first.
 
 use jobalert_core::matching::{
     Assessment, JobInput, ReasonCode, ReasonKind, TextKind, Verdict, assess, compile_profile,
@@ -9,7 +10,7 @@ use jobalert_core::matching::{
 use jobalert_core::portal::Portal;
 use serde_json::{Value, json};
 
-/// An invented interim finance consultant with a senior target and an industry wish.
+/// An invented interim finance consultant with 20 years of experience and an industry wish.
 fn profile() -> Value {
     json!({
         "kernkompetenzen": [
@@ -19,9 +20,7 @@ fn profile() -> Value {
             {"kompetenz": "Forecast", "jahre": 12},
             {"kompetenz": "Reporting", "jahre": 12}
         ],
-        "harte_kriterien": {
-            "zielprofil_min_jahre": 10
-        },
+        "berufserfahrung_jahre": 20,
         "einsatzpraeferenzen": {
             "branchen": ["Maschinenbau"]
         }
@@ -56,7 +55,7 @@ fn has(a: &Assessment, code: ReasonCode, kind: ReasonKind) -> bool {
 }
 
 #[test]
-fn an_internship_or_entry_level_is_too_junior() {
+fn an_internship_or_entry_level_is_overqualified_never_excluded() {
     for facts in [
         json!({ "level": "Praktikum" }),
         json!({ "level": "Berufseinstieg" }),
@@ -66,11 +65,13 @@ fn an_internship_or_entry_level_is_too_junior() {
         json!({ "contract": "Ehrenamtlich" }),
     ] {
         let a = run(&facts);
-        assert_eq!(a.verdict, Verdict::Excluded, "{facts}");
+        assert_ne!(a.verdict, Verdict::Excluded, "{facts}");
         assert!(
-            has(&a, ReasonCode::TooJunior, ReasonKind::Violation),
+            has(&a, ReasonCode::Overqualified, ReasonKind::Partial),
             "{facts}"
         );
+        // An entry-level role caps a senior profile.
+        assert!(a.score <= 40, "{facts}: {}", a.score);
     }
 }
 
@@ -84,7 +85,8 @@ fn an_associate_level_is_a_check_and_a_senior_one_nothing() {
         assert!(
             a.reasons
                 .iter()
-                .all(|r| r.code != ReasonCode::TooJunior && r.code != ReasonCode::SeniorityUnclear),
+                .all(|r| r.code != ReasonCode::Overqualified
+                    && r.code != ReasonCode::SeniorityUnclear),
             "{level}"
         );
     }

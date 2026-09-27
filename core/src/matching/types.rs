@@ -188,12 +188,12 @@ pub enum ReasonCode {
     /// The work location of a permanent role is unclear (country only, none given, or an
     /// unclear contract type).
     PermanentRegionUnclear,
-    /// The target profile asks for fewer years than the profile's minimum (`years`, `max`,
-    /// `target`).
-    TooJunior,
-    /// Years or level of the target profile are unclear (topic-specific years, junior title).
+    /// An assistant or associate level without years may be below the profile's years of
+    /// experience (`level`, `have`); a check.
     SeniorityUnclear,
-    /// The profile is clearly more senior than the target profile (`years`, `target`).
+    /// A clearly junior role for the profile's years of experience (`have`): a closed range
+    /// far below them (`years`, `max`) or a junior level (`level`: `internship`, `student`,
+    /// `trainee`, `entry`, `graduate`, `volunteer`, `junior`); met in part, never an exclusion.
     Overqualified,
     /// Contract type inferred from the ad (`type`: interim, permanent, anue, unclear;
     /// `inferred` when only indirect cues were found).
@@ -292,8 +292,6 @@ pub enum CriterionKey {
     MinSalary,
     /// Places (and minimum remote share) for permanent roles.
     PermanentRegion,
-    /// Minimum years the target profile of an ad must ask for.
-    TargetYears,
     /// Permanent employment excluded (`ausgeschlossene_vertragsarten` names `festanstellung`).
     NoPermanent,
     /// Days per week the consultant works (`auslastung_min_tage`, `auslastung_max_tage`).
@@ -327,7 +325,7 @@ pub struct CriterionState {
     pub reason: Option<u16>,
     /// The ad's value: `rate`, `hourly`, `currency`, `rateOpen` (day rate); `start` (`now`,
     /// `vague` or an ISO date); `location` or `remote` (countries, region); `contract`
-    /// (ANUE); `salary`; `years` (target years); `from`, `to` (workload in percent);
+    /// (ANUE); `salary`; `from`, `to` (workload in percent);
     /// `months` (duration).
     pub params: Map<String, Value>,
     /// Where the ad states it, in UTF-16 offsets (start, end).

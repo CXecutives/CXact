@@ -12,11 +12,10 @@ use super::application::{self, Contact};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
-use super::job::{JobDoc, contains_word};
+use super::job::contains_word;
 use super::lexicon::engine as lex;
 use super::limits::{self, Workload};
 use super::permanent::parse_salary;
-use super::seniority::experience_years;
 use super::types::KeyFacts;
 use super::wishes::remote_share;
 
@@ -60,8 +59,6 @@ pub(crate) struct AdFacts {
     pub salary_lower_bound: bool,
     /// The salary is in a currency other than the euro (`CHF`).
     pub salary_foreign: bool,
-    /// The most years of experience a requirement line asks for.
-    pub years: Option<Stated<u32>>,
     /// The workload in percent of a five-day week.
     pub workload: Option<Stated<Workload>>,
     /// The application deadline.
@@ -76,7 +73,6 @@ pub(crate) fn read(
     segments: &[Segment],
     folded: &str,
     contract: &Contract,
-    doc: &JobDoc,
 ) -> AdFacts {
     let rate = stated_rate(job, segments).map(|(rate, span)| stated(rate, span));
     let salary = segments
@@ -122,7 +118,6 @@ pub(crate) fn read(
             .map(|(s, range)| stated(s.per_year(), Some((*range).clone()))),
         salary_lower_bound: salary.as_ref().is_some_and(|(s, _)| s.upper.is_none()),
         salary_foreign: salary.as_ref().is_some_and(|(s, _)| s.currency.is_some()),
-        years: years(job.text, doc),
         workload: limits::read(job, segments),
         deadline: application::deadline(job.text, job.posted),
         contact: application::contact(job.text),
@@ -333,18 +328,6 @@ fn end_date(after: &str) -> Option<Date> {
         }
     }
     None
-}
-
-/// The most years a requirement line asks for, with the line.
-fn years(text: &str, doc: &JobDoc) -> Option<Stated<u32>> {
-    doc.requirement_lines
-        .iter()
-        .filter_map(|range| {
-            let line = text.get(range.clone())?;
-            let (min, _) = experience_years(&fold(line))?;
-            Some(stated(min, Some(range.clone())))
-        })
-        .max_by_key(|s| s.value)
 }
 
 impl AdFacts {

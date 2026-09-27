@@ -3,7 +3,7 @@
 // it (the verdict's tooltip).
 
 import type { TermVerdict as Verdict } from '$lib/i18n/de';
-import { reasonHint, reasonText } from '$lib/i18n/texts';
+import { reasonText, reasonWhy } from '$lib/i18n/texts';
 import type { Reason } from '$lib/ipc/types';
 
 /** The engine's requirements: the ad's own words, judged against the profile's skills. */
@@ -38,8 +38,8 @@ export function reasonVerdict(reason: Reason): Verdict | null {
   }
 }
 
-/** A criterion's state; the reason that decided it says how (an over-qualified job meets the
- *  target years in part, a workload outside the profile's days is a limit missed). */
+/** A criterion's state; the reason that decided it says how (a workload outside the
+ *  profile's days is a limit missed, a start to be agreed is unclear). */
 export function criterionVerdict(criterion: Reason, linked: Reason | undefined): Verdict {
   const own: Verdict =
     criterion.kind === 'violation'
@@ -51,8 +51,8 @@ export function criterionVerdict(criterion: Reason, linked: Reason | undefined):
           : criterion.kind === 'open'
             ? 'unset'
             : 'met';
-  // The engine leaves a criterion open when only a finding decides it (a job asking fewer
-  // years than the target, a start to be agreed): that finding says the verdict.
+  // The engine leaves a criterion open when only a finding decides it (a start to be
+  // agreed): that finding says the verdict.
   if (linked === undefined || own === 'violated') return own;
   return reasonVerdict(linked) ?? own;
 }
@@ -75,10 +75,16 @@ export function worst(all: readonly Judgement[]): Judgement | null {
   }, null);
 }
 
-/** Why a reason decides a row: a requirement in the ad's words against the profile's, any
- *  other reason in its sentence. */
+/** Why a reason decides a row: a requirement by what the profile says to it, any other
+ *  reason in its sentence. */
 export function sentence(reason: Reason | undefined): string | null {
   if (reason === undefined) return null;
-  const hint = isRequirement(reason) ? reasonHint(reason) : null;
-  return hint ?? (reasonText(reason) || null);
+  return isRequirement(reason) ? reasonWhy(reason) : reasonText(reason) || null;
+}
+
+/** How far an amount the rule compares lies above the profile's minimum, in whole percent (at
+ *  least 1 above it); null below it or without both. */
+export function aboveMinimum(value: number | null, min: number | null): number | null {
+  if (value === null || min === null || min <= 0 || value < min) return null;
+  return value === min ? 0 : Math.max(1, Math.round(((value - min) / min) * 100));
 }

@@ -21,7 +21,7 @@ use super::exclusion;
 use super::facts::{self, Finding, HardCriteria, JobFacts, Segment};
 use super::fit::{self, ItemFit, Skills};
 use super::focus::{self, Focus};
-use super::job::{self, Class, Item, Stage, contains_word};
+use super::job::{self, Class, Item, Stage};
 use super::legacy::LegacyProfile;
 use super::lexicon::engine as lex;
 use super::limits;
@@ -491,8 +491,12 @@ fn scored(profile: &EngineProfile, items: Vec<Item>) -> Vec<Scored> {
                 fit.value = fit.value.max(E_HALF);
             }
             let focus = focus::of_item(&profile.skills, &profile.focus, &item, fit.value);
+            // General experience without the profile's years: nothing to judge it by.
+            let unjudged = item.years.is_some()
+                && profile.skills.total_years.is_none()
+                && fit::general_experience(&item.text, &profile.skills.vocab);
             Scored {
-                weight: weight(&item),
+                weight: if unjudged { 0 } else { weight(&item) },
                 fit,
                 item,
                 focus,
@@ -519,7 +523,7 @@ fn all_caps(
     profile: &EngineProfile,
     items: &[Scored],
     title: &str,
-    raw_title: &str,
+    job: &JobInput<'_>,
     formal_cap: bool,
     no_items: bool,
 ) -> Option<Cap> {
@@ -529,39 +533,29 @@ fn all_caps(
         .into_iter()
         .chain(no_items.then_some((NO_ITEMS_CAP, CapKind::NoItems)))
         .chain(
-            (junior_for_senior(profile, raw_title) || entry_level_for_senior(profile, items))
+            junior_for_senior(profile, job.title, &page_levels(job), items)
                 .then_some((JUNIOR_CAP, CapKind::Junior)),
         )
         .reduce(lower)
 }
 
-/// A junior role (`Junior`, `Werkstudent`, `Trainee`, `Berufseinstieg` in the title) for a
-/// profile with `SENIOR_YEARS` or more: a level mismatch whatever the skills, even without
-/// the profile's target years.
-fn junior_for_senior(profile: &EngineProfile, title: &str) -> bool {
-    seniority::junior_title(title)
-        && profile
-            .skills
-            .total_years
-            .is_some_and(|years| years >= SENIOR_YEARS)
-}
-
-/// A must that asks for first professional experience (`Erste Berufserfahrung`,
-/// `Berufseinsteiger`, `Absolvent`) makes an entry-level role, like a junior title, for a
-/// profile with ten years or more.
-fn entry_level_for_senior(profile: &EngineProfile, items: &[Scored]) -> bool {
+/// A junior role for a profile with `SENIOR_YEARS` or more: a junior title (`Junior`,
+/// `Werkstudent`, `Trainee`, `Berufseinstieg`), a junior or entry level the page states (an
+/// internship), or a must that asks for first professional experience (`Erste
+/// Berufserfahrung`, `Berufseinsteiger`, `Absolvent`). A level mismatch whatever the skills.
+fn junior_for_senior(
+    profile: &EngineProfile,
+    title: &str,
+    levels: &[String],
+    items: &[Scored],
+) -> bool {
     profile
         .skills
         .total_years
         .is_some_and(|years| years >= SENIOR_YEARS)
-        && items.iter().any(|s| {
-            s.item.kind == ReqKind::Must && {
-                let folded = fold(&s.item.text);
-                lex::ENTRY_LEVEL_MUSTS
-                    .iter()
-                    .any(|w| contains_word(&folded, w))
-            }
-        })
+        && (seniority::junior_title(title)
+            || seniority::page_junior_level(levels).is_some()
+            || seniority::entry_level_must(items.iter().map(|s| &s.item)))
 }
 
 /// The page's own career level and employment type (LinkedIn's criteria), folded.
@@ -618,21 +612,28 @@ fn final_score(
     (score, u16::try_from(adjusted).unwrap_or(1000), capped)
 }
 
-/// The limits of an engagement (checks) and the exclusion words (they exclude where they
-/// name the job itself: the title, the page's level, a sentence that states the role).
+/// The level of the ad against the profile's years (the same for every profile: all packs,
+/// not the profile's; `own`: the ad without the other listings under it), the limits of an
+/// engagement (checks) and the exclusion words (they exclude where they name the job itself:
+/// the title, the page's level, a sentence that states the role).
 fn limit_findings(
-    criteria: &HardCriteria,
+    profile: &EngineProfile,
     job: &JobInput<'_>,
+    own: &str,
     segments: &[Segment],
     ad: &AdFacts,
     doc: &job::JobDoc,
 ) -> Vec<Finding> {
-    let mut findings = limits::workload(criteria, ad);
+    let criteria = &profile.criteria;
+    let levels = page_levels(job);
+    let total = profile.skills.total_years;
+    let mut findings = seniority::check(total, job.title, own, doc, &levels);
+    findings.extend(limits::workload(criteria, ad));
     findings.extend(limits::duration(criteria, ad));
     findings.extend(exclusion::check(
         criteria,
         job.title,
-        &page_levels(job),
+        &levels,
         segments,
         &doc.requirement_lines,
     ));
@@ -643,7 +644,6 @@ fn limit_findings(
 pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluation {
     let text = job.text;
     let vocab = &profile.skills.vocab;
-    let criteria = &profile.criteria;
     let facts = job_facts(job);
     // The hard criteria and the seniority read the ad only, not the other listings under it.
     let own = facts::own_text(job.text);
@@ -661,16 +661,10 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     } else {
         job::read(text, vocab)
     };
-    // The seniority of an ad is the same for every profile (all packs, not the profile's).
-    findings.extend(seniority::check(
-        criteria.target_years,
-        job.title,
-        own,
-        &doc,
-        &page_levels(job),
+    let ad_facts = ad_facts::read(&facts, &segments, &folded, &stated_contract);
+    findings.extend(limit_findings(
+        profile, job, own, &segments, &ad_facts, &doc,
     ));
-    let ad_facts = ad_facts::read(&facts, &segments, &folded, &stated_contract, &doc);
-    findings.extend(limit_findings(criteria, job, &segments, &ad_facts, &doc));
     let requirement_lines = doc.requirement_lines;
     let items = scored(profile, doc.items);
     let (fit_score, must_weight, nice_count) = fit_score(&items);
@@ -680,7 +674,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
     // A text without any requirement (long enough to read, or a short teaser) is judged
     // from its title: low evidence, at most `NO_ITEMS_CAP`.
     let no_items = (!short || title_only) && items.is_empty();
-    let cap = all_caps(profile, &items, &title, job.title, formal_cap, no_items);
+    let cap = all_caps(profile, &items, &title, job, formal_cap, no_items);
     let decided = findings.iter().any(|f| f.decided);
 
     let weight_of_evidence = must_weight + N_NICE * nice_count;
@@ -766,6 +760,7 @@ mod tests {
                 kind: ReqKind::Must,
                 class: Class::Skill,
                 years: None,
+                years_max: None,
                 stage: Stage::Section,
             },
             fit: ItemFit {

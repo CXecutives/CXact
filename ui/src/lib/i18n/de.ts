@@ -156,7 +156,6 @@ const profileField = (): Record<string, string> => {
     workloadMaxDays: field.workload,
     minMonths: field.minMonths,
     exclusionWords: field.exclusionWords,
-    targetYears: field.targetYears,
     minSalary: field.minSalary,
     permanentPlaces: field.places,
     permanentRemoteMin: field.remoteMin,
@@ -209,6 +208,44 @@ const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
 const SHORT_TEXT = 'Die Anzeige ist sehr kurz.';
 const WORKLOAD = 'Die Auslastung passt nicht zum Profil.';
 const DURATION = 'Die Laufzeit liegt unter dem Minimum im Profil.';
+
+/** Years of experience, a range with both ends: "3 bis 5 Jahre", "10 Jahre". */
+const yearsWords = (min: number, max: number | null): string =>
+  max !== null && max > min
+    ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
+    : count(min, 'Jahr', 'Jahre');
+
+/** A duration in months or weeks, a range with both ends; `dative` inside a sentence ("von 9
+ *  Wochen", "von 3 bis 6 Monaten"). */
+function durationWords(
+  value: number,
+  from: number | null,
+  unit: 'month' | 'week',
+  dative: boolean,
+): string {
+  const [one, many] =
+    unit === 'week' ? ['Woche', 'Wochen'] : ['Monat', dative ? 'Monaten' : 'Monate'];
+  return from !== null && from < value
+    ? `${n(from)} bis ${count(value, one, many)}`
+    : count(value, one, many);
+}
+
+/** A junior level by the word the Jobdetails show for it (`facts.level`). */
+const LEVEL: Record<string, string> = {
+  internship: 'Praktikum',
+  student: 'Werkstudent',
+  trainee: 'Trainee',
+  entry: 'Berufseinstieg',
+  graduate: 'Absolventen',
+  volunteer: 'Ehrenamt',
+  junior: 'Junior',
+  assistant: 'Assistenz',
+  associate: 'Associate',
+};
+
+/** How far an amount lies above the profile's minimum (percent), inside a sentence. */
+const aboveMinimum = (percent: number): string =>
+  percent === 0 ? 'genau auf deinem Minimum' : `${formatPercent(percent)} über deinem Minimum`;
 
 /** What an amount of pay is per (`facts.pay`). */
 type Per = 'day' | 'hour' | 'year';
@@ -269,17 +306,30 @@ function contractName(p: Params): string {
   return p.inferred && type !== 'unclear' ? `Vermutlich ${contract[type]}` : contract[type];
 }
 
+/** The pay a rate reason names, as the subject of its sentence: a day rate (a range with both
+ *  ends), or an hourly one with what it makes a day (`rate` per day, `amount` per hour,
+ *  `from` the lower end of a range). */
+function rateSubject(p: Params): string {
+  if (p.hourly === true && typeof p.amount === 'number') {
+    return `Der Stundensatz von ${formatEuro(p.amount)} macht ${formatEuro(p.rate)} am Tag und`;
+  }
+  const rate =
+    typeof p.from === 'number' && p.from < num(p.rate)
+      ? `${n(p.from)} bis ${formatEuro(p.rate)}`
+      : formatEuro(p.rate);
+  return `Der Tagessatz von ${rate}`;
+}
+
 /** Wishes of the profile (`state` met, near, missed or unknown). */
 function dayRateWish(p: Params): string {
-  const rate = formatEuro(p.rate);
   const wish = formatEuro(p.wish);
   switch (p.state) {
     case 'met':
-      return `Der Tagessatz von ${rate} erreicht den Wunsch von ${wish}.`;
+      return `${rateSubject(p)} erreicht den Wunsch von ${wish}.`;
     case 'near':
-      return `Der Tagessatz von ${rate} liegt knapp unter dem Wunsch von ${wish}.`;
+      return `${rateSubject(p)} liegt knapp unter dem Wunsch von ${wish}.`;
     case 'missed':
-      return `Der Tagessatz von ${rate} liegt unter dem Wunsch von ${wish}.`;
+      return `${rateSubject(p)} liegt unter dem Wunsch von ${wish}.`;
     default:
       return p.currency
         ? `Der Tagessatz ist in ${str(p.currency)} angegeben.`
@@ -348,7 +398,7 @@ const reasonCode = {
   term: '',
   anue: ANUE,
   anueRisk: 'Ein Personaldienstleister ohne Angaben zum Vertrag, Zeitarbeit ist möglich.',
-  dayRate: (p) => `Der Tagessatz von ${formatEuro(p.rate)} liegt unter ${formatEuro(p.min)}.`,
+  dayRate: (p) => `${rateSubject(p)} liegt unter ${formatEuro(p.min)}.`,
   availability: 'Die Verfügbarkeit passt nicht.',
   country: (p): string =>
     p.allowed
@@ -367,38 +417,51 @@ const reasonCode = {
       ? 'Der Job ist eine Festanstellung, das Profil schließt sie aus.'
       : 'Das klingt nach einer Festanstellung, das Profil schließt sie aus.';
   },
-  permanentRegion: (p) =>
-    p.location
-      ? `${str(p.location)} liegt außerhalb der Orte für Festanstellung.`
-      : 'Der Ort liegt außerhalb der Orte für Festanstellung.',
+  permanentRegion: (p) => {
+    const place = p.location
+      ? `${str(p.location)} liegt außerhalb deiner Orte für Festanstellung`
+      : 'Der Ort liegt außerhalb deiner Orte für Festanstellung';
+    // The remote share decides too where the profile sets a minimum for it.
+    if (typeof p.remoteMin !== 'number') return `${place}.`;
+    return typeof p.remote === 'number'
+      ? `${place}, und ${formatPercent(p.remote)} remote liegt unter deinem Minimum von ${formatPercent(p.remoteMin)}.`
+      : `${place}, und die Anzeige nennt keine ${formatPercent(p.remoteMin)} remote.`;
+  },
   permanentRegionUnclear: (p) =>
     p.location
       ? `Ob ${str(p.location)} zu den Orten für Festanstellung gehört, ist unklar.`
       : 'Der Arbeitsort der Festanstellung ist unklar.',
   salary: (p) => {
-    if (p.salary === undefined || p.salary === null || p.min === undefined) {
-      return 'Das Gehalt liegt unter dem Minimum im Profil.';
+    // A salary in another currency is not compared with a minimum in euros.
+    if (typeof p.currency === 'string' && p.currency !== 'EUR') {
+      return `Das Gehalt ist in ${str(p.currency)} angegeben.`;
+    }
+    if (typeof p.salary !== 'number' || p.min === undefined) {
+      return 'Das Gehalt liegt unter deinem Minimum.';
     }
     const amount =
-      typeof p.currency === 'string' && p.currency !== 'EUR'
-        ? formatMoney(num(p.salary), p.currency)
-        : formatEuro(p.salary);
-    const from = p.lowerBound ? `ab ${amount}` : `von ${amount}`;
-    return `Das Jahresgehalt ${from} liegt unter ${formatEuro(p.min)}.`;
+      typeof p.from === 'number' && p.from < p.salary
+        ? `von ${n(p.from)} bis ${formatEuro(p.salary)}`
+        : p.lowerBound
+          ? `ab ${formatEuro(p.salary)}`
+          : `von ${formatEuro(p.salary)}`;
+    const bonus = typeof p.bonus === 'number' ? ` plus ${formatPercent(p.bonus)} Bonus` : '';
+    return `Das Jahresgehalt ${amount}${bonus} liegt unter ${formatEuro(p.min)}.`;
   },
   salaryUnknown: 'Die Anzeige nennt kein Gehalt.',
-  tooJunior: (p) =>
-    p.years !== undefined && p.years !== null
-      ? `Der Job verlangt ${count(num(p.years), 'Jahr', 'Jahre')} Erfahrung, das Profil zielt auf ${count(num(p.target), 'Jahr', 'Jahre')}.`
-      : 'Der Job richtet sich an weniger Erfahrene.',
-  seniorityUnclear: (p) =>
-    p.junior
-      ? 'Der Titel klingt nach einem Job für Einsteiger.'
-      : 'Das gesuchte Erfahrungslevel ist unklar.',
-  overqualified: (p) =>
-    p.years !== undefined && p.years !== null
-      ? `Gesucht ${num(p.years) === 1 ? 'ist' : 'sind'} ${count(num(p.years), 'Jahr', 'Jahre')} Erfahrung, das Profil bringt deutlich mehr mit.`
-      : 'Das Profil ist deutlich erfahrener als gesucht.',
+  seniorityUnclear: 'Ob der Job zu deinen Jahren Erfahrung passt, ist unklar.',
+  overqualified: (p) => {
+    const have = typeof p.have === 'number' ? count(p.have, 'Jahr', 'Jahren') : null;
+    if (typeof p.years === 'number') {
+      const asked = yearsWords(p.years, typeof p.max === 'number' ? p.max : null);
+      return have === null
+        ? `Der Job verlangt ${asked} Erfahrung, du bist überqualifiziert.`
+        : `Der Job verlangt ${asked} Erfahrung, mit ${have} bist du überqualifiziert.`;
+    }
+    return have === null
+      ? 'Der Job ist eine Einstiegsrolle, du bist überqualifiziert.'
+      : `Der Job ist eine Einstiegsrolle, mit ${have} Erfahrung bist du überqualifiziert.`;
+  },
   contractType: (p) => contractName(p),
   formalOpen: (p) => {
     if (p.class === undefined || p.class === null) return 'Das Profil nennt keinen Abschluss.';
@@ -423,10 +486,17 @@ const reasonCode = {
   regionWish,
   industryWish,
   workload: workloadCheck,
-  duration: (p) =>
-    typeof p.months === 'number' && typeof p.min === 'number'
-      ? `Die Laufzeit von ${count(p.months, 'Monat', 'Monaten')} liegt unter dem Minimum von ${count(p.min, 'Monat', 'Monaten')}.`
-      : DURATION,
+  duration: (p) => {
+    const length =
+      typeof p.weeks === 'number'
+        ? durationWords(p.weeks, typeof p.from === 'number' ? p.from : null, 'week', true)
+        : typeof p.months === 'number'
+          ? durationWords(p.months, typeof p.from === 'number' ? p.from : null, 'month', true)
+          : null;
+    return length !== null && typeof p.min === 'number'
+      ? `Die Laufzeit von ${length} liegt unter deiner Mindestlaufzeit von ${count(p.min, 'Monat', 'Monaten')}.`
+      : DURATION;
+  },
   exclusionWord: (p) => `„${str(p.word)}“ ist eines deiner Ausschlusswörter.`,
 } satisfies Record<string, Text>;
 export type ReasonCode = keyof typeof reasonCode;
@@ -434,6 +504,8 @@ export type ReasonCode = keyof typeof reasonCode;
 interface CriterionText {
   /** Short name in the criteria strip of the reader. */
   label: string;
+  /** Why a row of the Jobdetails meets it (its tooltip), with the ad's value in `params`. */
+  met: Text;
   /** Why a job is excluded by it, in the short words of a list row. */
   short: string;
   /** Why a job is excluded by it, from the profile's side (the reader's head; the row the
@@ -448,57 +520,66 @@ interface CriterionText {
 const criteria = {
   minDayRate: {
     label: 'Tagessatz',
+    met: 'Der Tagessatz erreicht dein Minimum.',
     short: 'Tagessatz zu niedrig',
     exclusion: 'Der Tagessatz liegt unter deinem Minimum.',
   },
   countries: {
     label: 'Einsatzländer',
+    met: (p) =>
+      p.remote === true ? 'Der Job ist voll remote.' : 'Der Einsatzort liegt in deinen Ländern.',
     short: 'Einsatzland passt nicht',
     exclusion: 'Der Einsatzort liegt nicht in deinen Ländern.',
   },
   noAnue: {
     label: 'Zeitarbeit',
+    met: 'Die Anzeige nennt ihre Vertragsart, keine Zeitarbeit.',
     short: 'Zeitarbeit',
     exclusion: 'Du schließt Zeitarbeit aus.',
   },
   noPermanent: {
     label: 'Festanstellung',
+    met: 'Die Anzeige nennt ihre Vertragsart, keine Festanstellung.',
     short: 'Festanstellung',
     exclusion: 'Du schließt Festanstellungen aus.',
   },
   availability: {
     label: 'Verfügbarkeit',
+    met: 'Der Start passt zu deiner Verfügbarkeit.',
     short: 'Start passt nicht',
     exclusion: 'Der Start liegt vor deiner Verfügbarkeit.',
   },
   minSalary: {
     label: 'Jahresgehalt',
+    met: 'Das Gehalt erreicht dein Minimum.',
     short: 'Gehalt zu niedrig',
     exclusion: 'Das Gehalt liegt unter deinem Minimum.',
   },
   permanentRegion: {
     label: 'Orte',
+    met: (p) =>
+      p.remote === true
+        ? 'Der Job ist voll remote.'
+        : 'Der Ort gehört zu deinen Orten für Festanstellung.',
     short: 'Ort passt nicht',
     exclusion: 'Der Ort liegt nicht in deinen Orten für Festanstellung.',
-  },
-  targetYears: {
-    label: 'Erfahrung',
-    short: 'Erfahrung passt nicht',
-    exclusion: 'Der Job verlangt weniger Erfahrung, als du suchst.',
   },
   // The workload and the duration are checks, never an exclusion (engine 16).
   workload: {
     label: 'Auslastung',
+    met: 'Die Auslastung passt zu deinen Tagen.',
     short: 'Auslastung passt nicht',
     exclusion: WORKLOAD,
   },
   duration: {
     label: 'Laufzeit',
+    met: 'Die Laufzeit erreicht deine Mindestlaufzeit.',
     short: 'Laufzeit zu kurz',
     exclusion: DURATION,
   },
   exclusionWords: {
     label: 'Ausschlusswörter',
+    met: 'Die Anzeige nennt keines deiner Ausschlusswörter.',
     short: 'Ausschlusswort',
     exclusion: 'Die Anzeige nennt eines deiner Ausschlusswörter.',
   },
@@ -555,8 +636,6 @@ export const PROFILE_KEY_FIELD: Readonly<Record<string, string>> = {
   permanent_places: 'permanentPlaces',
   festanstellung_remote_min: 'permanentRemoteMin',
   permanent_remote_min: 'permanentRemoteMin',
-  zielprofil_min_jahre: 'targetYears',
-  target_min_years: 'targetYears',
   auslastung_min_tage: 'workloadMinDays',
   workload_min_days: 'workloadMinDays',
   auslastung_max_tage: 'workloadMaxDays',
@@ -800,13 +879,51 @@ export const de = {
       hard: 'Ausschluss',
       info: 'Hinweis',
     } satisfies Record<ReasonWeight, string>,
-    /** Why a requirement decides a row of the Jobdetails (its verdict's tooltip): the ad's
-     *  words and what the profile says. */
-    evidence: (quote: string, profile: string, partial: boolean) =>
-      partial
-        ? `„${quote}“ stimmt teilweise mit „${profile}“ im Profil überein.`
-        : `„${quote}“ stimmt mit „${profile}“ im Profil überein.`,
-    missing: (quote: string) => `„${quote}“ steht nicht im Profil.`,
+    /** Why a requirement of the ad has its verdict, in one plain sentence: the tooltip of its
+     *  icon among the Anforderungen, and of the Jobdetails row it decides. */
+    why: {
+      /** The profile's entry meets it, with the entry's own years where the profile names
+       *  them. */
+      met: (profile: string, years: number | null) =>
+        years === null
+          ? `Du bringst ${profile} mit.`
+          : `Du bringst ${profile} mit, ${count(years, 'Jahr', 'Jahre')}.`,
+      /** The entry, with fewer years than the ad asks. */
+      fewerYears: (profile: string, have: number, asked: number) =>
+        `Du bringst ${profile} mit, aber ${n(have)} statt ${count(asked, 'Jahr', 'Jahre')}.`,
+      /** Only a more general entry of the profile. */
+      general: (profile: string) => `Dein Profil nennt nur allgemeiner ${profile}.`,
+      /** General experience against the profile's years. */
+      years: (asked: string, have: number) =>
+        `Der Job verlangt ${asked} Erfahrung, du bringst ${count(have, 'Jahr', 'Jahre')} mit.`,
+      /** Years in a topic against the entry's own years. */
+      topicYears: (asked: string, profile: string, have: number) =>
+        `Der Job verlangt ${asked} ${profile}, du bringst ${count(have, 'Jahr', 'Jahre')} mit.`,
+      noYears: 'Deine Berufserfahrung steht nicht im Profil.',
+      soft: 'Persönliche Stärken zählen ohne Beleg im Profil halb.',
+      frame: 'Eine Rahmenbedingung, sie zählt nicht mit.',
+      language: {
+        met: 'Deine Sprachkenntnisse reichen.',
+        partial: 'Dein Sprachniveau liegt eine Stufe darunter.',
+        low: 'Dein Sprachniveau liegt deutlich darunter.',
+        open: 'Die Sprache steht nicht in deinem Profil.',
+      },
+      degree: {
+        met: 'Dein Abschluss passt.',
+        partial: 'Dein Abschluss passt nur teilweise.',
+        open: 'Dein Profil nennt keinen passenden Abschluss.',
+      },
+      licence: {
+        met: 'Die Zulassung steht in deinem Profil.',
+        open: 'Die Zulassung steht nicht in deinem Profil.',
+      },
+      noDegree: 'Dein Profil nennt keinen Abschluss.',
+      fits: 'Passt zu deinem Profil.',
+      partly: 'Passt nur teilweise zu deinem Profil.',
+      /** An entry of the profile meets it in part. */
+      partlyBy: (profile: string) => `Nur teilweise gedeckt durch ${profile}.`,
+      missing: 'Nicht in deinem Profil.',
+    },
     code: reasonCode,
   },
   job: {
@@ -946,7 +1063,9 @@ export const de = {
     /** A start or a rate to be agreed (the engine's `vague`: "nach Absprache", "flexibel",
      *  "zeitnah"). */
     agreed: 'nach Absprache',
-    months: (value: number) => count(value, 'Monat', 'Monate'),
+    /** A duration: months or weeks, a range with both ends ("3 bis 6 Monate", "9 Wochen"). */
+    duration: (value: number, from: number | null, unit: 'month' | 'week') =>
+      durationWords(value, from, unit, false),
     /** The duration of a permanent job. */
     unlimited: 'unbefristet',
     /** The remote share the ad states (from and to, in percent). */
@@ -967,12 +1086,16 @@ export const de = {
      *  `1.000 CHF/Tag`; `lowerBound`: the ad names only its lower end ("ab 95.000 €/Jahr"). */
     pay: (amount: number, per: Per, currency: string | null, lowerBound = false) =>
       `${lowerBound ? 'ab ' : ''}${formatMoney(amount, currency)}/${PER[per]}`,
+    /** A range of pay with both ends: "900 bis 1.200 €/Tag". */
+    payRange: (from: number, to: number, per: Per, currency: string | null) =>
+      `${n(from)} bis ${formatMoney(to, currency)}/${PER[per]}`,
+    /** A salary with its bonus: "130.000 €/Jahr plus 20 % Bonus". */
+    bonus: (pay: string, percent: number) => `${pay} plus ${formatPercent(percent)} Bonus`,
     /** The workload (percent of a five-day week): "Vollzeit", "3 Tage/Woche", "50 %". */
     workload: (from: number | null, to: number) => workloadWords(from, to, true),
-    years: (min: number, max: number | null) =>
-      max !== null && max > min
-        ? `${n(min)} bis ${count(max, 'Jahr', 'Jahre')}`
-        : count(min, 'Jahr', 'Jahre'),
+    years: (min: number, max: number | null) => yearsWords(min, max),
+    /** A junior level the ad names (`overqualified`, `seniorityUnclear` params `level`). */
+    level: (code: string): string | null => LEVEL[code] ?? null,
   },
   reader: {
     /** A must requirement the profile lacks: its term goes into the field it belongs to. */
@@ -1009,14 +1132,17 @@ export const de = {
     salaryName: 'Gehalt',
     /** The pay row of an hourly rate. */
     hourlyName: 'Stundensatz',
-    /** Quiet after the pay: how it stands to the profile's minimum (signed percent). */
-    versusMinimum: (percent: number) => {
-      if (percent === 0) return 'genau dein Minimum';
-      const share = formatPercent(Math.abs(percent));
-      return percent > 0 ? `${share} über deinem Minimum` : `${share} unter deinem Minimum`;
+    /** Why a pay row meets the profile's minimum (its tooltip): how far above it the amount
+     *  lies that the rule compares (percent), the upper end of a range whose lower end lies
+     *  below it, an hourly rate by what it makes a day, a salary with its bonus. */
+    payMet: {
+      day: (percent: number) => `Der Tagessatz liegt ${aboveMinimum(percent)}.`,
+      upper: (percent: number) => `Das obere Ende liegt ${aboveMinimum(percent)}.`,
+      hour: (amount: number, perDay: number, percent: number) =>
+        `Der Stundensatz von ${formatEuro(amount)} macht ${formatEuro(perDay)} am Tag und liegt ${aboveMinimum(percent)}.`,
+      salary: (percent: number) => `Das Gehalt liegt ${aboveMinimum(percent)}.`,
+      bonus: (percent: number) => `Mit Bonus liegt das Gehalt ${aboveMinimum(percent)}.`,
     },
-    /** Quiet after the years a job asks: fewer than the profile's minimum. */
-    yearsBelow: (years: number) => `unter deinem Minimum von ${count(years, 'Jahr', 'Jahren')}`,
     /** A value the ad does not state. */
     missing: '/',
     /** The contract type in the row "Vertragsart". */
@@ -1261,7 +1387,6 @@ export const de = {
       wishRate: 'Wunschtagessatz',
       /** Quiet hints where two values contradict each other. */
       belowMinRate: 'Liegt unter dem Mindesttagessatz.',
-      aboveExperience: 'Liegt über deiner Berufserfahrung.',
       remote: 'Remote-Anteil',
       regions: 'Wunschregionen',
       regionsPlaceholder: 'z. B. München',
@@ -1296,8 +1421,6 @@ export const de = {
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
-      /** "Mindestens verlangte Erfahrung 15 Jahre": a job that asks for far less is excluded. */
-      targetYears: 'Mindestens verlangte Erfahrung',
       minSalary: 'Mindestjahresgehalt',
       places: 'Orte für Festanstellung',
       placesPlaceholder: 'z. B. München',
@@ -1325,8 +1448,6 @@ export const de = {
     unit: {
       euro: '€',
       years: 'Jahre',
-      /** "Mindestens verlangte Erfahrung 15 Jahre". */
-      experience: 'Jahre',
       percent: '%',
       days: 'Tage pro Woche',
       months: 'Monate',

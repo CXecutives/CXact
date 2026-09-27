@@ -802,7 +802,6 @@ mod tests {
                     date: "2026-11-01".into(),
                 },
                 remote_outside: true,
-                target_years: Some(8),
                 min_salary: Some(120_000),
                 permanent_places: texts(&["Hamburg", "Berlin"]),
                 permanent_remote_min: Some(50),
@@ -882,7 +881,6 @@ mod tests {
                 CriterionKey::Availability,
                 CriterionKey::MinSalary,
                 CriterionKey::PermanentRegion,
-                CriterionKey::TargetYears,
                 CriterionKey::Workload,
                 CriterionKey::Duration,
                 CriterionKey::ExclusionWords

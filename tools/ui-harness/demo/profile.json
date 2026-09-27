@@ -65,7 +65,6 @@
     "ausgeschlossene_vertragsarten": ["anue"],
     "remote_ausserhalb_erlaubt": true,
     "verfuegbar_ab": "01.09.2026",
-    "zielprofil_min_jahre": 15,
     "auslastung_min_tage": 3,
     "auslastung_max_tage": 5,
     "min_laufzeit_monate": 6,

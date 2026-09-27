@@ -132,7 +132,10 @@ pub(crate) const KEYS_PERMANENT_PLACES: &[&str] = &[
 ];
 pub(crate) const KEYS_PERMANENT_REMOTE: &[&str] =
     &["festanstellung_remote_min", "permanent_remote_min"];
-pub(crate) const KEYS_TARGET_YEARS: &[&str] = &["zielprofil_min_jahre", "target_min_years"];
+/// The minimum years an ad had to ask for (engine 17 and before). Read no more: the years
+/// an ad asks for are judged against `berufserfahrung_jahre` (engine 18). Still a known key,
+/// so a file that has it loads without a warning, and saving keeps it where it is.
+pub(crate) const KEYS_RETIRED_TARGET_YEARS: &[&str] = &["zielprofil_min_jahre", "target_min_years"];
 /// Days per week (1 to 5) the consultant works at least and at most.
 pub(crate) const KEYS_WORKLOAD_MIN: &[&str] = &["auslastung_min_tage", "workload_min_days"];
 pub(crate) const KEYS_WORKLOAD_MAX: &[&str] = &["auslastung_max_tage", "workload_max_days"];
@@ -159,7 +162,7 @@ pub(crate) const KEYS_ALL_CRITERIA: &[&[&str]] = &[
     KEYS_MIN_SALARY,
     KEYS_PERMANENT_PLACES,
     KEYS_PERMANENT_REMOTE,
-    KEYS_TARGET_YEARS,
+    KEYS_RETIRED_TARGET_YEARS,
     KEYS_WORKLOAD_MIN,
     KEYS_WORKLOAD_MAX,
     KEYS_MIN_MONTHS,

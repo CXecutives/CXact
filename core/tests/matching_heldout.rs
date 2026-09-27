@@ -183,25 +183,32 @@ struct Floor {
     grade3_buried: usize,
 }
 
+/// Engine 18 (a product decision, 2026-09-27): the years an ad asks for are judged against the
+/// profile's own years and never exclude, so the pairs the labels exclude only for the retired
+/// target years (`zielprofil_min_jahre`) are scored now. The recall floors (and NDCG@10 and
+/// Spearman where those pairs reach the top) follow; `docs/MATCHING.md`, "Version 18".
 const HELDOUT1: Floor = Floor {
     ndcg10: 0.92,
     spearman: 0.75,
     exclusion_precision: 1.0,
-    exclusion_recall: 1.0,
+    exclusion_recall: 0.97,
     grade3_buried: 0,
 };
 const HELDOUT4: Floor = Floor {
     ndcg10: 0.82,
     spearman: 0.54,
     exclusion_precision: 1.0,
-    exclusion_recall: 0.98,
+    exclusion_recall: 0.95,
     grade3_buried: 0,
 };
+/// Engine 18 moved set 3 most (0.955 to 0.869): P1's S01 (grade 3, the labels exclude it for
+/// `Mindestens 8 Jahre` below the target of 10) now leads its list, and the target-year
+/// exclusions of P1, P4, sap and senior (S01, S05, S06, R02) are scored.
 const HELDOUT3: Floor = Floor {
-    ndcg10: 0.95,
-    spearman: 0.49,
+    ndcg10: 0.86,
+    spearman: 0.47,
     exclusion_precision: 1.0,
-    exclusion_recall: 1.0,
+    exclusion_recall: 0.90,
     grade3_buried: 0,
 };
 /// The ANÜ wage policy, decided in version 16: the hourly pay of temporary agency work
@@ -212,7 +219,7 @@ const HELDOUT6: Floor = Floor {
     ndcg10: 0.90,
     spearman: 0.50,
     exclusion_precision: 1.0,
-    exclusion_recall: 0.99,
+    exclusion_recall: 0.98,
     grade3_buried: 0,
 };
 /// Set 5 excludes C10 (a student job) for two profiles by its hourly wage per year, the
@@ -222,7 +229,7 @@ const HELDOUT5: Floor = Floor {
     ndcg10: 0.81,
     spearman: 0.48,
     exclusion_precision: 0.98,
-    exclusion_recall: 1.0,
+    exclusion_recall: 0.95,
     grade3_buried: 0,
 };
 /// Set 7 at the level of engine 12 (the hard criteria read only the ad, not the other
@@ -236,7 +243,7 @@ const HELDOUT7: Floor = Floor {
     ndcg10: 0.91,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.86,
+    exclusion_recall: 0.85,
     grade3_buried: 2,
 };
 /// The agency wage of version 16 costs the recall of set 7's reason (N03, N16, Q15, S05,
@@ -245,7 +252,7 @@ const HELDOUT8: Floor = Floor {
     ndcg10: 0.93,
     spearman: 0.39,
     exclusion_precision: 0.97,
-    exclusion_recall: 0.85,
+    exclusion_recall: 0.83,
     grade3_buried: 1,
 };
 /// Set 9 after the one correction round of engine 16 (first contact 0.828, 0.407, 0.908,
@@ -253,10 +260,10 @@ const HELDOUT8: Floor = Floor {
 /// differently between profiles (tooJunior for P7 and P8 against the labels, a senior title
 /// with fewer years than P9 and P12 ask for left in) stay as they are.
 const HELDOUT9: Floor = Floor {
-    ndcg10: 0.87,
+    ndcg10: 0.86,
     spearman: 0.44,
     exclusion_precision: 0.98,
-    exclusion_recall: 0.96,
+    exclusion_recall: 0.86,
     grade3_buried: 0,
 };
 /// Engine 9 moved set 2 from 0.864 to 0.856: a language met is a light fit now, so off-field
@@ -266,9 +273,9 @@ const HELDOUT9: Floor = Floor {
 /// scored, 0.640 -> 0.639).
 const HELDOUT2: Floor = Floor {
     ndcg10: 0.85,
-    spearman: 0.63,
+    spearman: 0.61,
     exclusion_precision: 1.0,
-    exclusion_recall: 0.98,
+    exclusion_recall: 0.84,
     grade3_buried: 1,
 };
 

@@ -94,6 +94,10 @@ pub(crate) const OFF_FIELD_SINGLE_CAP: u8 = 30;
 /// at `JUNIOR_CAP`.
 pub(crate) const SENIOR_YEARS: u32 = 10;
 pub(crate) const JUNIOR_CAP: u8 = 40;
+/// A junior or entry-level role (a junior title, an internship, first professional
+/// experience) is below a profile with this many years of experience or more: it is
+/// over-qualified there (engine 18).
+pub(crate) const JUNIOR_ROLE_YEARS: u32 = 5;
 /// Highest score of a text without any requirement (judged from title and words alone).
 pub(crate) const NO_ITEMS_CAP: u8 = 60;
 /// While fewer than half of the musts are met, the target role and the wishes lift a score

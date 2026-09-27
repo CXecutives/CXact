@@ -30,10 +30,6 @@ available: ProfileAvailability,
  */
 remoteOutside: boolean, 
 /**
- * `zielprofil_min_jahre`.
- */
-targetYears: number | null, 
-/**
  * `min_jahresgehalt` (permanent roles).
  */
 minSalary: number | null, 

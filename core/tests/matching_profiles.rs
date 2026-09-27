@@ -129,10 +129,10 @@ fn the_summary_shows_the_new_keys() {
     let region = criterion(CriterionKey::PermanentRegion);
     assert!(region.set);
     assert_eq!(region.params["remoteMin"], 60);
-    assert_eq!(criterion(CriterionKey::TargetYears).params["min"], 10);
     assert!(summary.aliases.iter().any(|a| a.competence == "Controlling"
         && a.alias == "FP&A"
         && a.path == "kernkompetenzen[2].auch[1]"));
+    // The retired target years (`zielprofil_min_jahre`) the file still has warn of nothing.
     assert!(summary.warnings.is_empty(), "{:?}", summary.warnings);
     // Aliases are no extra competences.
     assert_eq!(
@@ -142,7 +142,7 @@ fn the_summary_shows_the_new_keys() {
 
     let sap = compile_profile(&fixture("sample_profile_sap.json"));
     let set = |key| sap.summary().criteria.iter().any(|c| c.key == key && c.set);
-    assert!(set(CriterionKey::MinSalary) && set(CriterionKey::TargetYears));
+    assert!(set(CriterionKey::MinSalary));
     assert!(!set(CriterionKey::PermanentRegion), "no places: rule off");
 }
 
@@ -156,7 +156,8 @@ fn english_keys_and_unreadable_values() {
         "hard_criteria": {
             "min_annual_salary": "120k",
             "permanent_remote_min": 60,
-            "target_min_years": "viele"
+            "target_min_years": "viele",
+            "workload_min_days": "viele"
         }
     });
     let compiled = compile_profile(&profile);
@@ -174,7 +175,8 @@ fn english_keys_and_unreadable_values() {
         .iter()
         .find(|w| w.code == ProfileWarningCode::CriterionNotUnderstood)
         .expect("unreadable value");
-    assert_eq!(unreadable.params["key"], "target_min_years");
+    // The retired target years are not read, so not reported either.
+    assert_eq!(unreadable.params["key"], "workload_min_days");
 }
 
 #[test]
@@ -340,7 +342,6 @@ fn the_test_profiles_load_and_score() {
             CriterionKey::Availability,
             CriterionKey::MinSalary,
             CriterionKey::PermanentRegion,
-            CriterionKey::TargetYears,
             CriterionKey::Duration,
             CriterionKey::ExclusionWords
         ]

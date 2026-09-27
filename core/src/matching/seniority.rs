@@ -1,22 +1,26 @@
-//! Target profile of an ad against the profile's minimum years (`zielprofil_min_jahre`),
-//! for interim and permanent roles alike. Only the requirement lines count.
+//! The level of an ad against the profile's own years of experience
+//! (`berufserfahrung_jahre`), for interim and permanent roles alike (engine 18). Never an
+//! exclusion, and without the profile's years no verdict at all. Whether the years an ad asks
+//! for are met is the verdict of its requirement (`fit.rs`: at or below the profile's years
+//! met, from four fifths on in part, below that open); here only the level of the role.
 //!
-//! Too junior (decided): a closed range whose upper bound is below the minimum
-//! (`3-5 Jahre`), or a minimum below it (`mindestens 5 Jahre`, `3 Jahre Power BI`) without
-//! a senior title: the ad's highest years are its target, whatever topic they name. An
-//! open minimum with a senior title (`7+ years`, Senior/Lead/Head) never excludes; it is
-//! only over-qualification (partial). A junior title without numbers is a check. Any
-//! statement at or above the minimum makes the target senior enough.
+//! Over-qualified (partial): a closed range whose upper end is at most half the profile's
+//! years (`3-5 Jahre` for 15), and from `JUNIOR_ROLE_YEARS` on a junior role: a junior title,
+//! a junior or entry level the page states (an internship, a working student) or a must that
+//! asks for first professional experience. An assistant or associate level without years is
+//! a check. Nothing when the ad asks for the profile's years somewhere.
 
 use std::ops::Range;
 
 use serde_json::json;
 
-use super::atoms::{self, fold};
+use super::atoms::fold;
 use super::facts::Finding;
-use super::job::{JobDoc, contains_word};
+use super::job::{Item, JobDoc, contains_word};
 use super::lexicon::engine as lex;
-use super::types::{CriterionKey, ReasonCode, ReasonKind};
+use super::params::JUNIOR_ROLE_YEARS;
+use super::sections::ReqKind;
+use super::types::{ReasonCode, ReasonKind};
 
 /// Years of experience in one requirement: lower bound and, for a closed range, the
 /// upper bound.
@@ -80,42 +84,63 @@ pub(crate) fn experience_years(folded: &str) -> Option<(u32, Option<u32>)> {
     None
 }
 
-/// Senior wording in the title (whole words, or `...leiter`, `...leitung`).
-pub(crate) fn senior_title(title: &str) -> bool {
-    let folded = fold(title);
-    atoms::raw_tokens(&folded).any(|t| {
-        lex::SENIOR_TITLES.contains(&t)
-            || ["leiter", "leiterin", "leitung"]
-                .iter()
-                .any(|end| t.ends_with(end))
-    })
-}
-
+/// Junior wording in the title (`Junior`, `Werkstudent`, `Trainee`, `Berufseinstieg`).
 pub(crate) fn junior_title(title: &str) -> bool {
     let folded = fold(title);
     lex::JUNIOR_TITLES.iter().any(|w| contains_word(&folded, w))
 }
 
-/// The seniority rule; empty when the profile sets no minimum. `page_levels`: the career
-/// level and employment type the page states in its own fields (folded) - an internship or
-/// an entry-level role is too junior, an assistant or associate level a check, unless the
-/// ad asks for the target's years somewhere.
+/// The code of the level a junior word names (`internship`, `student`, `junior`, ...); an
+/// entry level without its own code is `entry`.
+fn level_code(word: &str) -> &'static str {
+    lex::LEVEL_CODES
+        .iter()
+        .find(|(w, _)| *w == word)
+        .map_or("entry", |&(_, code)| code)
+}
+
+/// The junior level the title names, if any.
+fn junior_level(title: &str) -> Option<&'static str> {
+    let folded = fold(title);
+    lex::JUNIOR_TITLES
+        .iter()
+        .find(|w| contains_word(&folded, w))
+        .map(|w| level_code(w))
+}
+
+/// Does a must ask for first professional experience (`Erste Berufserfahrung`,
+/// `Berufseinsteiger`, `Absolvent`)? Then the role is an entry-level one.
+pub(crate) fn entry_level_must<'a>(items: impl IntoIterator<Item = &'a Item>) -> bool {
+    items.into_iter().any(|item| {
+        item.kind == ReqKind::Must && {
+            let folded = fold(&item.text);
+            lex::ENTRY_LEVEL_MUSTS
+                .iter()
+                .any(|w| contains_word(&folded, w))
+        }
+    })
+}
+
+/// The junior or entry level the page states in its own fields (folded), if any.
+pub(crate) fn page_junior_level(page_levels: &[String]) -> Option<&'static str> {
+    page_levels
+        .iter()
+        .map(|l| l.trim())
+        .find(|l| lex::ENTRY_LEVEL_VALUES.contains(l) || *l == "junior")
+        .map(level_code)
+}
+
+/// The level rule; empty without the profile's years (`total`). `page_levels`: the career
+/// level and employment type the page states in its own fields (folded).
 pub(crate) fn check(
-    target: Option<u32>,
+    total: Option<u32>,
     title: &str,
     text: &str,
     doc: &JobDoc,
     page_levels: &[String],
 ) -> Vec<Finding> {
-    let Some(target) = target else {
+    let Some(have) = total else {
         return Vec::new();
-    };
-    let key = Some(CriterionKey::TargetYears);
-    let level_is = |values: &[&str]| {
-        page_levels
-            .iter()
-            .find(|l| values.contains(&l.trim()))
-            .cloned()
     };
     let statements: Vec<(u32, Option<u32>, Range<usize>)> = doc
         .requirement_lines
@@ -125,58 +150,53 @@ pub(crate) fn check(
             Some((min, max, range.clone()))
         })
         .collect();
-    if statements.iter().any(|(min, ..)| *min >= target) {
+    // The ad asks for the profile's years somewhere: the role is not below it.
+    if statements.iter().any(|(min, ..)| *min >= have) {
         return Vec::new();
     }
-    // The page's own career level: an internship or an entry-level role is decided.
-    if let Some(level) = level_is(lex::ENTRY_LEVEL_VALUES) {
-        return vec![Finding::new(
-            ReasonCode::TooJunior,
-            true,
-            key,
-            json!({ "target": target, "level": level }),
-            Vec::new(),
-        )];
-    }
-    let Some((min, max, range)) = statements.into_iter().max_by_key(|(min, ..)| *min) else {
-        if let Some(level) = level_is(lex::LOW_LEVEL_VALUES) {
-            return vec![Finding::new(
-                ReasonCode::SeniorityUnclear,
-                false,
-                key,
-                json!({ "target": target, "level": level }),
-                Vec::new(),
-            )];
-        }
-        return if junior_title(title) {
-            vec![Finding::new(
-                ReasonCode::SeniorityUnclear,
-                false,
-                key,
-                json!({ "target": target, "junior": true }),
-                Vec::new(),
-            )]
-        } else {
-            Vec::new()
-        };
-    };
-    let params = json!({ "years": min, "max": max, "target": target });
-    match max {
-        Some(max) if max >= target => Vec::new(),
-        None if senior_title(title) => vec![Finding::row(
+    let over = |params: serde_json::Value, spans: Vec<Range<usize>>| {
+        vec![Finding::row(
             ReasonCode::Overqualified,
             ReasonKind::Partial,
-            key,
+            None,
             params,
-            vec![range],
+            spans,
+        )]
+    };
+    let top = statements.into_iter().max_by_key(|(min, ..)| *min);
+    // The ad's highest years, whatever topic they name, are its level: a closed range far
+    // below the profile's years.
+    if let Some((min, Some(max), range)) = &top
+        && 2 * max <= have
+    {
+        return over(
+            json!({ "years": min, "max": max, "have": have }),
+            vec![range.clone()],
+        );
+    }
+    if have < JUNIOR_ROLE_YEARS {
+        return Vec::new();
+    }
+    let junior = page_junior_level(page_levels)
+        .or_else(|| junior_level(title))
+        .or_else(|| entry_level_must(&doc.items).then_some("entry"));
+    if let Some(level) = junior {
+        return over(json!({ "level": level, "have": have }), Vec::new());
+    }
+    // Without years, an assistant or associate level may be below the profile.
+    match page_levels
+        .iter()
+        .map(|l| l.trim())
+        .find(|l| lex::LOW_LEVEL_VALUES.contains(l))
+    {
+        Some(level) if top.is_none() => vec![Finding::new(
+            ReasonCode::SeniorityUnclear,
+            false,
+            None,
+            json!({ "level": level_code(level), "have": have }),
+            Vec::new(),
         )],
-        _ => vec![Finding::new(
-            ReasonCode::TooJunior,
-            true,
-            key,
-            params,
-            vec![range],
-        )],
+        _ => Vec::new(),
     }
 }
 
@@ -203,7 +223,6 @@ mod tests {
         assert_eq!(y("Min. 5 years in Regulatory Affairs CMC"), Some((5, None)));
         assert_eq!(y("5+ years in internal audit"), Some((5, None)));
         assert_eq!(y("8+ Jahre im Controlling"), Some((8, None)));
-        assert!(senior_title("Interim Senior Finance Manager FP&A (m/w/d)"));
         // A part of the total (`davon`) is no minimum of its own.
         assert_eq!(
             y("Langjährige Praxis im Einkauf, davon mindestens zwei Jahre in leitender Rolle"),
@@ -221,12 +240,6 @@ mod tests {
             y("Solid experience in audit, including at least 2 years at a Big Four firm"),
             None
         );
-        assert!(senior_title("Leiter Konzerncontrolling (Interim)"));
-        assert!(senior_title(
-            "Interim Leitung Projektcontrolling Anlagenbau"
-        ));
-        assert!(!senior_title("Finance Manager (m/f/d)"));
-        assert!(!senior_title("Controller (m/w/d)"));
         assert!(junior_title("Junior Controller (m/w/d)"));
     }
 }

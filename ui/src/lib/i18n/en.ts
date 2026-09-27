@@ -189,7 +189,6 @@ const profileField = (): Record<string, string> => {
     workloadMaxDays: field.workload,
     minMonths: field.minMonths,
     exclusionWords: field.exclusionWords,
-    targetYears: field.targetYears,
     minSalary: field.minSalary,
     permanentPlaces: field.places,
     permanentRemoteMin: field.remoteMin,
@@ -244,6 +243,42 @@ const LOW_TEXT = 'The ad names few clear requirements.';
 const SHORT_TEXT = 'The ad is very short.';
 const WORKLOAD = 'The workload does not fit the profile.';
 const DURATION = 'The duration is below the minimum in the profile.';
+
+/** Years of experience, a range with both ends: "3 to 5 years", "10 years". */
+const yearsWords = (min: number, max: number | null): string =>
+  max !== null && max > min
+    ? `${n(min)} to ${count(max, 'year', 'years')}`
+    : count(min, 'year', 'years');
+
+/** A duration in months or weeks, a range with both ends ("9 weeks", "3 to 6 months"). */
+function durationWords(
+  value: number,
+  from: number | null,
+  unit: 'month' | 'week',
+  _inside: boolean,
+): string {
+  const [one, many] = unit === 'week' ? ['week', 'weeks'] : ['month', 'months'];
+  return from !== null && from < value
+    ? `${n(from)} to ${count(value, one, many)}`
+    : count(value, one, many);
+}
+
+/** A junior level by the word the job details show for it (`facts.level`). */
+const LEVEL: Record<string, string> = {
+  internship: 'Internship',
+  student: 'Working student',
+  trainee: 'Trainee',
+  entry: 'Career start',
+  graduate: 'Graduate',
+  volunteer: 'Volunteer',
+  junior: 'Junior',
+  assistant: 'Assistant',
+  associate: 'Associate',
+};
+
+/** How far an amount lies above the profile's minimum (percent), inside a sentence. */
+const aboveMinimum = (percent: number): string =>
+  percent === 0 ? 'exactly at your minimum' : `${formatPercent(percent)} above your minimum`;
 
 /** What an amount of pay is per (`facts.pay`). */
 type Per = 'day' | 'hour' | 'year';
@@ -300,17 +335,30 @@ function contractName(p: Params): string {
     : contract[type];
 }
 
+/** The pay a rate reason names, as the subject of its sentence: a day rate (a range with both
+ *  ends), or an hourly one with what it makes a day (`rate` per day, `amount` per hour,
+ *  `from` the lower end of a range). */
+function rateSubject(p: Params): string {
+  if (p.hourly === true && typeof p.amount === 'number') {
+    return `The hourly rate of ${formatEuro(p.amount)} makes ${formatEuro(p.rate)} a day and`;
+  }
+  const rate =
+    typeof p.from === 'number' && p.from < num(p.rate)
+      ? `${n(p.from)} to ${formatEuro(p.rate)}`
+      : formatEuro(p.rate);
+  return `The day rate of ${rate}`;
+}
+
 /** Preferences of the profile (`state` met, near, missed or unknown). */
 function dayRateWish(p: Params): string {
-  const rate = formatEuro(p.rate);
   const wish = formatEuro(p.wish);
   switch (p.state) {
     case 'met':
-      return `The day rate of ${rate} meets your preferred rate of ${wish}.`;
+      return `${rateSubject(p)} meets your preferred rate of ${wish}.`;
     case 'near':
-      return `The day rate of ${rate} is just below your preferred rate of ${wish}.`;
+      return `${rateSubject(p)} is just below your preferred rate of ${wish}.`;
     case 'missed':
-      return `The day rate of ${rate} is below your preferred rate of ${wish}.`;
+      return `${rateSubject(p)} is below your preferred rate of ${wish}.`;
     default:
       return p.currency
         ? `The day rate is given in ${str(p.currency)}.`
@@ -378,7 +426,7 @@ const reasonCode = {
   term: '',
   anue: ANUE,
   anueRisk: 'A staffing agency gives no contract details, so temporary agency work is possible.',
-  dayRate: (p) => `The day rate of ${formatEuro(p.rate)} is below ${formatEuro(p.min)}.`,
+  dayRate: (p) => `${rateSubject(p)} is below ${formatEuro(p.min)}.`,
   availability: 'The availability does not fit.',
   country: (p) =>
     p.allowed
@@ -397,36 +445,46 @@ const reasonCode = {
       ? 'This is a permanent job, which the profile excludes.'
       : 'This sounds like a permanent job, which the profile excludes.';
   },
-  permanentRegion: (p) =>
-    p.location
-      ? `${str(p.location)} is outside your locations for permanent jobs.`
-      : 'The location is outside your locations for permanent jobs.',
+  permanentRegion: (p) => {
+    const place = p.location
+      ? `${str(p.location)} is outside your locations for permanent jobs`
+      : 'The location is outside your locations for permanent jobs';
+    // The remote share decides too where the profile sets a minimum for it.
+    if (typeof p.remoteMin !== 'number') return `${place}.`;
+    return typeof p.remote === 'number'
+      ? `${place}, and ${formatPercent(p.remote)} remote is below your minimum of ${formatPercent(p.remoteMin)}.`
+      : `${place}, and the ad does not name ${formatPercent(p.remoteMin)} remote.`;
+  },
   permanentRegionUnclear: (p) =>
     p.location
       ? `It is unclear whether ${str(p.location)} is one of your locations for permanent jobs.`
       : 'The location of the permanent job is unclear.',
   salary: (p) => {
-    if (p.salary === undefined || p.salary === null || p.min === undefined) {
-      return 'The salary is below the minimum in the profile.';
+    // A salary in another currency is not compared with a minimum in euros.
+    if (typeof p.currency === 'string' && p.currency !== 'EUR') {
+      return `The salary is given in ${str(p.currency)}.`;
+    }
+    if (typeof p.salary !== 'number' || p.min === undefined) {
+      return 'The salary is below your minimum.';
     }
     const amount =
-      typeof p.currency === 'string' && p.currency !== 'EUR'
-        ? formatMoney(num(p.salary), p.currency)
-        : formatEuro(p.salary);
-    const from = p.lowerBound ? `from ${amount}` : `of ${amount}`;
-    return `The annual salary ${from} is below ${formatEuro(p.min)}.`;
+      typeof p.from === 'number' && p.from < p.salary
+        ? `of ${n(p.from)} to ${formatEuro(p.salary)}`
+        : p.lowerBound
+          ? `from ${formatEuro(p.salary)}`
+          : `of ${formatEuro(p.salary)}`;
+    const bonus = typeof p.bonus === 'number' ? ` plus a ${formatPercent(p.bonus)} bonus` : '';
+    return `The annual salary ${amount}${bonus} is below ${formatEuro(p.min)}.`;
   },
   salaryUnknown: 'The ad names no salary.',
-  tooJunior: (p) =>
-    p.years !== undefined && p.years !== null
-      ? `The job asks for ${count(num(p.years), 'year', 'years')} of experience, while the profile targets ${count(num(p.target), 'year', 'years')}.`
-      : 'The job is meant for people with less experience.',
-  seniorityUnclear: (p) =>
-    p.junior ? 'The title sounds like a junior job.' : 'The level of experience sought is unclear.',
-  overqualified: (p) =>
-    p.years !== undefined && p.years !== null
-      ? `The job asks for ${count(num(p.years), 'year', 'years')} of experience, and the profile has much more.`
-      : 'The profile has much more experience than sought.',
+  seniorityUnclear: 'Whether the job fits your years of experience is unclear.',
+  overqualified: (p) => {
+    const have = typeof p.have === 'number' ? count(p.have, 'year', 'years') : null;
+    const tail = have === null ? 'you are overqualified' : `with ${have} you are overqualified`;
+    return typeof p.years === 'number'
+      ? `The job asks for ${yearsWords(p.years, typeof p.max === 'number' ? p.max : null)} of experience, ${tail}.`
+      : `The job is a junior role, ${tail}.`;
+  },
   contractType: (p) => contractName(p),
   formalOpen: (p) => {
     if (p.class === undefined || p.class === null) return 'The profile names no degree.';
@@ -451,10 +509,17 @@ const reasonCode = {
   regionWish,
   industryWish,
   workload: workloadCheck,
-  duration: (p) =>
-    typeof p.months === 'number' && typeof p.min === 'number'
-      ? `The duration of ${count(p.months, 'month', 'months')} is below the minimum of ${count(p.min, 'month', 'months')}.`
-      : DURATION,
+  duration: (p) => {
+    const length =
+      typeof p.weeks === 'number'
+        ? durationWords(p.weeks, typeof p.from === 'number' ? p.from : null, 'week', true)
+        : typeof p.months === 'number'
+          ? durationWords(p.months, typeof p.from === 'number' ? p.from : null, 'month', true)
+          : null;
+    return length !== null && typeof p.min === 'number'
+      ? `The duration of ${length} is below your minimum duration of ${count(p.min, 'month', 'months')}.`
+      : DURATION;
+  },
   exclusionWord: (p) => `“${str(p.word)}” is one of your exclusion words.`,
 } satisfies Catalog['reason']['code'];
 
@@ -465,56 +530,65 @@ const reasonCode = {
 const criteria = {
   minDayRate: {
     label: 'Day rate',
+    met: 'The day rate reaches your minimum.',
     short: 'Day rate too low',
     exclusion: 'The day rate is below your minimum.',
   },
   countries: {
     label: 'Countries',
+    met: (p) =>
+      p.remote === true ? 'The job is fully remote.' : 'The place of work is in your countries.',
     short: 'Outside your countries',
     exclusion: 'The place of work is not in your countries.',
   },
   noAnue: {
     label: 'Temporary agency work',
+    met: 'The ad names its contract type, no temporary agency work.',
     short: 'Temporary agency work',
     exclusion: 'You exclude temporary agency work.',
   },
   noPermanent: {
     label: 'Permanent job',
+    met: 'The ad names its contract type, no permanent job.',
     short: 'Permanent job',
     exclusion: 'You exclude permanent jobs.',
   },
   availability: {
     label: 'Availability',
+    met: 'The start fits your availability.',
     short: 'Start does not fit',
     exclusion: 'The start is before you are available.',
   },
   minSalary: {
     label: 'Annual salary',
+    met: 'The salary reaches your minimum.',
     short: 'Salary too low',
     exclusion: 'The salary is below your minimum.',
   },
   permanentRegion: {
     label: 'Locations',
+    met: (p) =>
+      p.remote === true
+        ? 'The job is fully remote.'
+        : 'The place is one of your locations for permanent jobs.',
     short: 'Location does not fit',
     exclusion: 'The place is not among your locations for permanent jobs.',
   },
-  targetYears: {
-    label: 'Experience',
-    short: 'Experience does not fit',
-    exclusion: 'The job asks for less experience than you look for.',
-  },
   workload: {
     label: 'Workload',
+    met: 'The workload fits your days.',
     short: 'Workload does not fit',
     exclusion: WORKLOAD,
   },
   duration: {
     label: 'Duration',
+    met: 'The duration reaches your minimum duration.',
     short: 'Duration too short',
     exclusion: DURATION,
   },
   exclusionWords: {
     label: 'Exclusion words',
+    met: 'The ad names none of your exclusion words.',
     short: 'Exclusion word',
     exclusion: 'The ad names one of your exclusion words.',
   },
@@ -706,11 +780,42 @@ export const en: Catalog = {
       hard: 'Exclusion',
       info: 'Note',
     } satisfies Record<ReasonWeight, string>,
-    evidence: (quote: string, profile: string, partial: boolean) =>
-      partial
-        ? `“${quote}” partly matches “${profile}” in the profile.`
-        : `“${quote}” matches “${profile}” in the profile.`,
-    missing: (quote: string) => `“${quote}” is not in the profile.`,
+    why: {
+      met: (profile: string, years: number | null) =>
+        years === null
+          ? `You bring ${profile}.`
+          : `You bring ${profile}, ${count(years, 'year', 'years')}.`,
+      fewerYears: (profile: string, have: number, asked: number) =>
+        `You bring ${profile}, but ${n(have)} instead of ${count(asked, 'year', 'years')}.`,
+      general: (profile: string) => `Your profile names only the broader ${profile}.`,
+      years: (asked: string, have: number) =>
+        `The job asks for ${asked} of experience, you bring ${count(have, 'year', 'years')}.`,
+      topicYears: (asked: string, profile: string, have: number) =>
+        `The job asks for ${asked} of ${profile}, you bring ${count(have, 'year', 'years')}.`,
+      noYears: 'Your years of experience are not in the profile.',
+      soft: 'Personal strengths count half without proof in the profile.',
+      frame: 'A condition of the job, it does not count.',
+      language: {
+        met: 'Your language skills are enough.',
+        partial: 'Your language level is one step below.',
+        low: 'Your language level is well below.',
+        open: 'The language is not in your profile.',
+      },
+      degree: {
+        met: 'Your degree fits.',
+        partial: 'Your degree fits only in part.',
+        open: 'Your profile names no fitting degree.',
+      },
+      licence: {
+        met: 'The licence is in your profile.',
+        open: 'The licence is not in your profile.',
+      },
+      noDegree: 'Your profile names no degree.',
+      fits: 'Fits your profile.',
+      partly: 'Fits your profile only in part.',
+      partlyBy: (profile: string) => `Only partly covered by ${profile}.`,
+      missing: 'Not in your profile.',
+    },
     code: reasonCode,
   },
   job: {
@@ -810,7 +915,8 @@ export const en: Catalog = {
     now: 'immediately',
     from: (date: string) => `from ${date}`,
     agreed: 'to be agreed',
-    months: (value: number) => count(value, 'month', 'months'),
+    duration: (value: number, from: number | null, unit: 'month' | 'week') =>
+      durationWords(value, from, unit, false),
     unlimited: 'open-ended',
     remote: (from: number, to: number) => {
       if (from >= 100) return 'Fully remote';
@@ -826,11 +932,12 @@ export const en: Catalog = {
     } satisfies Record<WorkMode, string>,
     pay: (amount: number, per: Per, currency: string | null, lowerBound = false) =>
       `${lowerBound ? 'from ' : ''}${formatMoney(amount, currency)}/${PER[per]}`,
+    payRange: (from: number, to: number, per: Per, currency: string | null) =>
+      `${n(from)} to ${formatMoney(to, currency)}/${PER[per]}`,
+    bonus: (pay: string, percent: number) => `${pay} plus a ${formatPercent(percent)} bonus`,
     workload: (from: number | null, to: number) => workloadWords(from, to, true),
-    years: (min: number, max: number | null) =>
-      max !== null && max > min
-        ? `${n(min)} to ${count(max, 'year', 'years')}`
-        : count(min, 'year', 'years'),
+    years: (min: number, max: number | null) => yearsWords(min, max),
+    level: (code: string): string | null => LEVEL[code] ?? null,
   },
   reader: {
     addTo: {
@@ -862,12 +969,14 @@ export const en: Catalog = {
     },
     salaryName: 'Salary',
     hourlyName: 'Hourly rate',
-    versusMinimum: (percent: number) => {
-      if (percent === 0) return 'exactly your minimum';
-      const share = formatPercent(Math.abs(percent));
-      return percent > 0 ? `${share} above your minimum` : `${share} below your minimum`;
+    payMet: {
+      day: (percent: number) => `The day rate is ${aboveMinimum(percent)}.`,
+      upper: (percent: number) => `The upper end is ${aboveMinimum(percent)}.`,
+      hour: (amount: number, perDay: number, percent: number) =>
+        `The hourly rate of ${formatEuro(amount)} makes ${formatEuro(perDay)} a day and is ${aboveMinimum(percent)}.`,
+      salary: (percent: number) => `The salary is ${aboveMinimum(percent)}.`,
+      bonus: (percent: number) => `With the bonus the salary is ${aboveMinimum(percent)}.`,
     },
-    yearsBelow: (years: number) => `below your minimum of ${count(years, 'year', 'years')}`,
     missing: '/',
     contractKind: {
       interim: 'Interim',
@@ -1059,7 +1168,6 @@ export const en: Catalog = {
       removeLanguage: (name: string) => `Remove ${name || 'language'}`,
       wishRate: 'Preferred day rate',
       belowMinRate: 'Below the minimum day rate.',
-      aboveExperience: 'Above your professional experience.',
       remote: 'Remote share',
       regions: 'Preferred regions',
       regionsPlaceholder: 'e.g. Munich',
@@ -1088,7 +1196,6 @@ export const en: Catalog = {
       datePlaceholder: '1 Nov 2026',
       dateInvalid: 'Enter the date as 1 Nov 2026.',
       dateImpossible: 'This day does not exist.',
-      targetYears: 'Minimum experience asked',
       minSalary: 'Minimum annual salary',
       places: 'Locations for permanent jobs',
       placesPlaceholder: 'e.g. Munich',
@@ -1109,7 +1216,6 @@ export const en: Catalog = {
     unit: {
       euro: '€',
       years: 'years',
-      experience: 'years',
       percent: '%',
       days: 'days a week',
       months: 'months',

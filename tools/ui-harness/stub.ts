@@ -369,7 +369,6 @@ function criteriaOf(c: ProfileForm['criteria']): Notice[] {
     },
     { code: 'minSalary', params: { set: c.minSalary !== null, min: c.minSalary } },
     { code: 'permanentRegion', params: { set: c.permanentPlaces.length > 0, places: null } },
-    { code: 'targetYears', params: { set: c.targetYears !== null, min: c.targetYears } },
     { code: 'workload', params: { set: minDays !== null || maxDays !== null, minDays, maxDays } },
     { code: 'duration', params: { set: (c.minMonths ?? null) !== null, min: c.minMonths ?? null } },
     { code: 'exclusionWords', params: { set: words.length > 0, words: words.join(', ') } },
@@ -472,7 +471,6 @@ const UNREADABLE_PROFILE: ProfileInfo = {
       unread('laender', '"Atlantis"', 'countries'),
       unread('ausgeschlossene_vertragsarten', '5', 'contracts'),
       unread('remote_ausserhalb_erlaubt', '"vielleicht"', 'remoteOutside'),
-      unread('zielprofil_min_jahre', '"senior"', 'targetYears'),
       unread('min_jahresgehalt', '"hoch"', 'minSalary'),
       unread('festanstellung_orte', '[]', 'permanentPlaces'),
       unread('festanstellung_remote_min', '"viel"', 'permanentRemoteMin'),
@@ -503,7 +501,6 @@ const UNREADABLE_PROFILE: ProfileInfo = {
       noPermanent: false,
       available: { kind: 'unset' },
       remoteOutside: true,
-      targetYears: null,
       minSalary: null,
       permanentPlaces: [],
       permanentRemoteMin: null,
@@ -619,7 +616,6 @@ function answerDraft(answer: string, update = false): ProfileDraft {
       // Countries an answer names (one the app does not know stays as it is).
       countries: texts(criteria.laender),
       noAnue: false,
-      targetYears: null,
       // The rules of engine 16 the answer sets (a day of the week from 1 to 5).
       workloadMinDays: days(criteria.auslastung_min_tage),
       workloadMaxDays: days(criteria.auslastung_max_tage),

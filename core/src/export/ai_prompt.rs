@@ -238,8 +238,9 @@ struct Requirement<'a> {
     nice: bool,
     /// `skill`, `language`, `degree`, `licence`, `soft` or `frame`.
     class: &'a str,
-    /// Years the requirement asks for.
+    /// Years the requirement asks for, and the upper end of a range.
     years: Option<i64>,
+    years_max: Option<i64>,
     evidence: Option<Entry>,
     /// The Schwerpunkt it meets in full (it counts double).
     focus: Option<&'a str>,
@@ -816,6 +817,7 @@ fn requirement<'a>(reason: &'a Reason, profile: &Value) -> Requirement<'a> {
         nice: reason.weight == Weight::Nice,
         class: text_param(&reason.params, "class").unwrap_or("skill"),
         years: int(&reason.params, "years"),
+        years_max: int(&reason.params, "max"),
         evidence,
         focus: text_param(&reason.params, "focus"),
     }

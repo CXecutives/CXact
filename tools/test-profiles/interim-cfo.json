@@ -108,7 +108,6 @@
       "Moosburg"
     ],
     "festanstellung_remote_min": 60,
-    "zielprofil_min_jahre": 10,
     "min_laufzeit_monate": 3,
     "ausschlusswoerter": ["Werkstudent", "Praktikum"]
   }

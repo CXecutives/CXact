@@ -854,3 +854,14 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
   review as before; nothing copies by itself any more.
 - [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
+
+## Profil and reader say one thing (user decisions 2026-09-27)
+- Experience (option b): "Mindestens verlangte Erfahrung" goes; the years an ad asks for are judged against
+  Berufserfahrung (at or below met, from 80 % in part, below not met, never an exclusion; a clearly junior role is
+  met in part, "überqualifiziert"); the row "Erfahrung" shows the ad's years (a range as a range, a junior level by
+  its word) with the verdict of the years, general experience is the row's own and not listed again (engine 18,
+  `docs/MATCHING.md`).
+- The rows of the Jobdetails show the value and the verdict icon only; why stands in the icon's tooltip, one plain
+  sentence. Every verdict icon says why, in the Jobdetails and in every item of the Anforderungen
+  (`texts.ts` `reasonWhy`, the catalog's `reason.why`).
+- [x] Experience against Berufserfahrung, the field gone, the row and the requirements alike, every icon's tooltip

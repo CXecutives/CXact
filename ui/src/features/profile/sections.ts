@@ -205,21 +205,7 @@ export const SECTIONS: readonly Section[] = [
     // words that exclude, the countries and the switches.
     id: 'criteria',
     lines: [
-      pair(
-        { kind: 'number', key: 'minDayRate', label: 'minDayRate', testid: 'profile-min-rate' },
-        {
-          kind: 'number',
-          key: 'targetYears',
-          label: 'targetYears',
-          advice: (form) =>
-            form.criteria.targetYears !== null &&
-            form.years !== null &&
-            form.criteria.targetYears > form.years
-              ? 'aboveExperience'
-              : null,
-          testid: 'profile-target-years',
-        },
-      ),
+      { kind: 'number', key: 'minDayRate', label: 'minDayRate', testid: 'profile-min-rate' },
       { kind: 'available' },
       pair(
         { kind: 'workload' },
