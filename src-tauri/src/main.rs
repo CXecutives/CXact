@@ -261,11 +261,12 @@ fn open_store(
             return Ok((store, fresh.workspace));
         }
     };
-    let workspace = app
-        .path()
-        .document_dir()
-        .map_err(|e| Failure::other(format!("documents folder: {e}")))?
-        .join("Job-Alert-Monitor");
+    // `Documents\CXact`, or the folder of an earlier version that holds the app's files.
+    let workspace = jobalert_core::settings::default_workspace(
+        &app.path()
+            .document_dir()
+            .map_err(|e| Failure::other(format!("documents folder: {e}")))?,
+    );
     Ok((
         opened.map_err(|e| Failure::database(&database, &e))?,
         workspace,

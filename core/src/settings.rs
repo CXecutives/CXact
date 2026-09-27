@@ -1,7 +1,7 @@
 //! Settings of the app - stored as JSON in the key/value table of the database.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -19,30 +19,30 @@ pub(crate) const KEY: &str = "settings";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
-    /// Workspace; `None` = default (`Documents\Job-Alert-Monitor`). Only changeable through
-    /// the folder dialog - never a path sent by the frontend.
+    /// Workspace (the Exportordner); `None` = default ([`default_workspace`]:
+    /// `Documents\CXact`, or the `Documents\Job-Alert-Monitor` of an earlier version). Only
+    /// changeable through the folder dialog - never a path sent by the frontend.
     pub workspace: Option<PathBuf>,
     /// Switches per portal. Earlier versions stored the list of enabled portals here; that
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// Which alert mails "Postfach abrufen" reads (Einstellungen, Postfach). A range of a newer
-    /// version reads as the default.
+    /// Which alert mails "Postfach abrufen" reads (the "Zeitraum" menu beside that button). A
+    /// range of a newer version reads as the default.
     #[serde(deserialize_with = "known_range")]
     pub fetch_range: FetchRange,
     /// The Excel file (`JobAlerts.xlsx`) is written with every export.
     pub export_excel: bool,
     /// The CSV file is written with every export.
     pub export_csv: bool,
-    /// Language of the interface and of the exported Excel file and prompts;
-    /// `None` = the language of the OS ([`Settings::language_or`]). The text files per job
-    /// stay German (a contract with the matching skill). A code of a newer version reads as
-    /// `None`.
+    /// Language of the interface and of the exported Excel file and prompts (Einstellungen,
+    /// Darstellung); `None` = German, until the user chooses English ([`Language::DEFAULT`],
+    /// [`Settings::language_or`]). A code of a newer version reads as `None`.
     #[serde(deserialize_with = "known_language")]
     pub language: Option<Language>,
-    /// The colours of the page, the window and the Windows title bar (Einstellungen,
-    /// Darstellung). The Excel file and the icon keep Coast. A name of a newer
-    /// version reads as Coast.
+    /// The colours of the page and the window (Einstellungen, Darstellung); the page draws
+    /// the top bar itself. The Excel file and the icon keep Coast. A name of a newer version
+    /// reads as Coast.
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
 }
@@ -71,7 +71,8 @@ impl Palette {
     }
 }
 
-/// The app's language. German on a German system, English on any other.
+/// The app's language: German unless the user chose English in Einstellungen
+/// ([`Language::DEFAULT`]); only the macOS menu follows the OS ([`Language::from_locale`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -277,9 +278,9 @@ impl Settings {
         portal.access().path(switches.login_enabled)
     }
 
-    /// The chosen language, else the one of the OS.
-    pub fn language_or(&self, system: Language) -> Language {
-        self.language.unwrap_or(system)
+    /// The chosen language, else `fallback` (the app passes [`Language::DEFAULT`]).
+    pub fn language_or(&self, fallback: Language) -> Language {
+        self.language.unwrap_or(fallback)
     }
 
     /// Workspace (chosen or default).
@@ -288,6 +289,32 @@ impl Settings {
             .clone()
             .unwrap_or_else(|| default.to_path_buf())
     }
+}
+
+/// The default workspace's folder in the documents folder.
+const WORKSPACE_NAME: &str = "CXact";
+/// The default workspace of the versions named Job-Alert-Monitor.
+const OLD_WORKSPACE_NAME: &str = "Job-Alert-Monitor";
+
+/// The default workspace in `documents`: `CXact`, unless the `Job-Alert-Monitor` folder of an
+/// earlier version holds the app's files (its profiles or its result folder) and `CXact` does
+/// not; then that one stays in use, so nothing moves and nothing is left behind. A workspace
+/// chosen in the settings wins over both ([`Settings::workspace_or`]).
+pub fn default_workspace(documents: &Path) -> PathBuf {
+    let current = documents.join(WORKSPACE_NAME);
+    let old = documents.join(OLD_WORKSPACE_NAME);
+    if !holds_app_files(&current) && holds_app_files(&old) {
+        old
+    } else {
+        current
+    }
+}
+
+/// The folder holds the app's own folders: the profiles (`profil/`) or the result files
+/// (`auswertung/`).
+fn holds_app_files(folder: &Path) -> bool {
+    folder.join(crate::profile::PROFILE_DIR).is_dir()
+        || folder.join(crate::export::RESULT_DIR).is_dir()
 }
 
 /// A stored language; one this version does not know (a newer version wrote it) is none.
@@ -353,6 +380,40 @@ fn portals_any_form<'de, D: Deserializer<'de>>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A new install exports into `Documents\CXact`; the `Job-Alert-Monitor` folder of an
+    /// earlier version stays in use while it holds the app's files and `CXact` does not.
+    #[test]
+    fn the_default_workspace_keeps_an_old_folder_with_the_apps_files() {
+        let documents = tempfile::tempdir().unwrap();
+        let (current, old) = (
+            documents.path().join("CXact"),
+            documents.path().join("Job-Alert-Monitor"),
+        );
+        assert_eq!(
+            default_workspace(documents.path()),
+            current,
+            "a fresh install"
+        );
+        std::fs::create_dir(&old).unwrap();
+        assert_eq!(
+            default_workspace(documents.path()),
+            current,
+            "an empty old folder is none of the app's"
+        );
+        for own in [crate::profile::PROFILE_DIR, crate::export::RESULT_DIR] {
+            std::fs::create_dir(old.join(own)).unwrap();
+            assert_eq!(default_workspace(documents.path()), old, "{own}");
+            std::fs::remove_dir(old.join(own)).unwrap();
+        }
+        std::fs::create_dir_all(old.join(crate::profile::PROFILE_DIR)).unwrap();
+        std::fs::create_dir_all(current.join(crate::export::RESULT_DIR)).unwrap();
+        assert_eq!(
+            default_workspace(documents.path()),
+            current,
+            "the new folder is in use already"
+        );
+    }
 
     #[test]
     fn defaults_round_trip_and_repair() {

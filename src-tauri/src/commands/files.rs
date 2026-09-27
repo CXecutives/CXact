@@ -126,6 +126,19 @@ fn overview(
     existing(path, "file")
 }
 
+/// The work folder to open: a fresh install has none until the first export writes it, so it
+/// is made now (like the export would) and then opened. The dry run writes nothing outside its
+/// database: there a missing folder stays not found.
+fn workspace_folder(state: &AppState) -> CmdResult<std::ffi::OsString> {
+    let workspace = state.workspace()?;
+    if !state.dry_run && !workspace.is_dir() {
+        std::fs::create_dir_all(&workspace)
+            .map_err(|e| ErrorInfo::from(jobalert_core::Error::io(&workspace, e)))?;
+        log::info!("work folder made to open it");
+    }
+    existing(workspace, "folder")
+}
+
 /// Opens a checked target in the browser, the mail client or the file manager.
 #[tauri::command]
 pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdResult<()> {
@@ -164,7 +177,7 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
         OpenTarget::PortalHome { portal } => portal.home_url().into(),
         OpenTarget::AppPasswordPage => APP_PASSWORD_URL.into(),
         OpenTarget::TwoStepPage => TWO_STEP_URL.into(),
-        OpenTarget::Workspace => existing(state.workspace()?, "folder")?,
+        OpenTarget::Workspace => workspace_folder(&state)?,
         OpenTarget::ProfileDir => existing(
             state.workspace()?.join(jobalert_core::profile::PROFILE_DIR),
             "folder",
@@ -186,7 +199,7 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
                 return show_in_folder(&excel);
             }
             // No file yet (before the first fetch): the work folder it will be in.
-            existing(workspace, "folder")?
+            workspace_folder(&state)?
         }
         OpenTarget::ExcelBackupInFolder { name } => {
             if !export::is_xlsx_backup(&name) {
