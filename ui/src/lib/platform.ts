@@ -3,7 +3,9 @@
 // convention of the OS (docs/PLAN.md, "Platforms"):
 //   - the window frame is the native one of the OS (nothing of it is drawn here); on macOS
 //     its title bar is transparent over the page (unified toolbar row, base.css) and the
-//     page marks the empty parts of that row as drag regions (`dragBands()`),
+//     page marks the empty parts of that row as drag regions (`dragBands()`); Profil and
+//     Einstellungen name themselves there bold like a Mac window title, with a hairline
+//     under the row once the view is scrolled (components/DragBand.svelte),
 //   - dialog buttons: Windows puts the primary first, macOS last (right),
 //   - scrollbars: slim styled ones on Windows, the native overlay scrollbars on macOS
 //     (base.css keys them off `:root[data-platform]`, like the font smoothing),
