@@ -191,7 +191,11 @@ mod tests {
         assert!(lines[0].starts_with("Title;Match;"), "{}", lines[0]);
         assert!(lines[0].contains(";Alert email subject;"), "{}", lines[0]);
         assert!(lines[1].contains(";01/11/2026;"), "{}", lines[1]);
-        assert!(lines[1].contains(";Interim;linkedin.com;"), "{}", lines[1]);
+        assert!(
+            lines[1].contains(";Interim;;;linkedin.com;"),
+            "{}",
+            lines[1]
+        );
         let fields: Vec<&str> = lines[2].split(';').collect();
         assert_eq!(fields.len(), COLUMNS.len());
         for key in [

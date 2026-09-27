@@ -1,12 +1,14 @@
 //! The key facts of an ad (rate, start, duration, remote share, place, contract type,
 //! salary, years), each with the passage that states it: the evidence of the hard-criteria
-//! strip and the facts of the list row. The page facts come first, then the text.
+//! strip and the facts of the list row. The page facts come first, then the text. The
+//! application deadline and the contact come from the text (`application.rs`).
 
 use std::ops::Range;
 
 use jiff::civil::Date;
 use serde_json::Value;
 
+use super::application::{self, Contact};
 use super::atoms::fold;
 use super::contract::{Contract, ContractKind};
 use super::facts::{self, JobFacts, Rate, Segment, Start, fact, parse_start, stated_rate};
@@ -62,6 +64,10 @@ pub(crate) struct AdFacts {
     pub years: Option<Stated<u32>>,
     /// The workload in percent of a five-day week.
     pub workload: Option<Stated<Workload>>,
+    /// The application deadline.
+    pub deadline: Option<Date>,
+    /// The contact the ad names.
+    pub contact: Contact,
 }
 
 /// Reads the key facts of an ad.
@@ -118,6 +124,8 @@ pub(crate) fn read(
         salary_foreign: salary.as_ref().is_some_and(|(s, _)| s.currency.is_some()),
         years: years(job.text, doc),
         workload: limits::read(job, segments),
+        deadline: application::deadline(job.text, job.posted),
+        contact: application::contact(job.text),
     }
 }
 
@@ -374,6 +382,10 @@ impl AdFacts {
                 .map(|s| u32::try_from(s.value).unwrap_or(u32::MAX)),
             salary_lower_bound: (self.salary.is_some() && !self.salary_foreign)
                 .then_some(self.salary_lower_bound),
+            deadline: self.deadline.map(|day| day.to_string()),
+            contact_name: self.contact.name.clone(),
+            contact_email: self.contact.email.clone(),
+            contact_phone: self.contact.phone.clone(),
         }
     }
 }

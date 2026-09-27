@@ -90,7 +90,7 @@ impl Column {
 /// the skill contract; "Ablage" is the place (Jobs or Archiv). The widths fit the longest
 /// values: the exclusion holds a sentence, the ad's text its longest state, which is
 /// "Keine Bewerbung mehr möglich" in German.
-pub(super) const COLUMNS: [Column; 21] = [
+pub(super) const COLUMNS: [Column; 23] = [
     Column {
         key: "title",
         de: "Titel",
@@ -200,6 +200,25 @@ pub(super) const COLUMNS: [Column; 21] = [
                     .and_then(|kind| r.texts.contract(kind)),
             )
         },
+    },
+    Column {
+        key: "deadline",
+        de: "Bewerbungsfrist",
+        en: "Application deadline",
+        width: 23.0,
+        value: |r| {
+            key_facts(r.job)
+                .and_then(|f| f.deadline.as_deref())
+                .and_then(|day| day.parse::<Date>().ok())
+                .map_or(Value::Empty, Value::Day)
+        },
+    },
+    Column {
+        key: "contact",
+        de: "Kontakt",
+        en: "Contact",
+        width: 40.0,
+        value: contact,
     },
     Column {
         key: "portal",
@@ -325,6 +344,27 @@ fn day_rate(r: &Row<'_>) -> Value {
     })
 }
 
+/// The contact the ad names: the person, the e-mail address and the phone number it names,
+/// in this order.
+fn contact(r: &Row<'_>) -> Value {
+    let Some(facts) = key_facts(r.job) else {
+        return Value::Empty;
+    };
+    let parts: Vec<&str> = [
+        &facts.contact_name,
+        &facts.contact_email,
+        &facts.contact_phone,
+    ]
+    .into_iter()
+    .filter_map(|part| part.as_deref())
+    .collect();
+    if parts.is_empty() {
+        Value::Empty
+    } else {
+        Value::Text(parts.join(", "))
+    }
+}
+
 /// The start: a day, or "ab sofort" / "offen".
 fn start(r: &Row<'_>) -> Value {
     match key_facts(r.job).and_then(|f| f.start.as_deref()) {
@@ -433,6 +473,9 @@ pub(super) mod tests {
             months: Some(6),
             workload_from: Some(60),
             workload_to: Some(60),
+            deadline: Some("2026-10-15".into()),
+            contact_name: Some("Julia Brandt".into()),
+            contact_phone: Some("+49 40 5550 1234".into()),
             ..KeyFacts::default()
         };
         job.match_ = Some(scored);
@@ -459,6 +502,16 @@ pub(super) mod tests {
             value(&job, "start"),
             Value::Day(Date::new(2026, 11, 1).unwrap())
         );
+        assert_eq!(
+            value(&job, "deadline"),
+            Value::Day(Date::new(2026, 10, 15).unwrap())
+        );
+        assert_eq!(
+            value(&job, "contact"),
+            Value::Text("Julia Brandt, +49 40 5550 1234".into())
+        );
+        assert_eq!(at("deadline"), at("contract") + 1);
+        assert_eq!(at("contact"), at("deadline") + 1);
         assert!(matches!(value(&job, "date"), Value::Moment(_)));
         assert_eq!(
             value(&job, "subject"),
@@ -471,7 +524,15 @@ pub(super) mod tests {
         job.gmail_id = None;
         assert_eq!(value(&job, "mail"), Value::Empty);
         job.match_ = None;
-        for key in ["score", "musts", "exclusion", "day_rate", "workload"] {
+        for key in [
+            "score",
+            "musts",
+            "exclusion",
+            "day_rate",
+            "workload",
+            "deadline",
+            "contact",
+        ] {
             assert_eq!(value(&job, key), Value::Empty, "{key}");
         }
     }

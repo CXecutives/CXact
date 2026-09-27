@@ -1510,6 +1510,151 @@ pub(crate) const DEADLINE_WORDS: &[&str] = &[
     "deadline",
     "einsendeschluss",
 ];
+/// Words that name an application deadline; the date follows them, past
+/// `DEADLINE_FILLERS` only (`Bewerbungsfrist: 15.10.2026`, `apply by 31 October`). Several
+/// words are one entry, split by single spaces.
+pub(crate) const DEADLINE_MARKERS: &[&str] = &[
+    "bewerbungsfrist",
+    "bewerbungsschluss",
+    "bewerbungsende",
+    "einsendeschluss",
+    "einsendefrist",
+    "deadline",
+    "application deadline",
+    "applications close",
+    "applications closing",
+    "closing date",
+];
+/// Words that name applying: a deadline only with an `UNTIL_WORDS` after them, past
+/// `APPLY_FILLERS` (`Bewerbungen bis 15.10.`, `bewerben Sie sich bis spätestens 15.10.2026`,
+/// `please apply by 31 October`).
+pub(crate) const APPLY_WORDS: &[&str] = &[
+    "bewerbung",
+    "bewerbungen",
+    "bewerben",
+    "bewirb",
+    "apply",
+    "application",
+    "applications",
+];
+/// Words between an `APPLY_WORDS` and its `UNTIL_WORDS`.
+pub(crate) const APPLY_FILLERS: &[&str] = &[
+    "sie", "sich", "dich", "uns", "gerne", "gern", "bitte", "jetzt", "online", "ihre", "deine",
+    "please", "now", "your", "for", "this", "role", "position", "are", "is", "welcome", "open",
+    "accepted",
+];
+/// The word that ends a deadline (`bis`, `by`).
+pub(crate) const UNTIL_WORDS: &[&str] = &["bis", "by", "until", "before"];
+/// Words between a deadline word and its date (`Bewerbungsfrist ist der 30. Oktober`).
+pub(crate) const DEADLINE_FILLERS: &[&str] = &[
+    "ist",
+    "der",
+    "den",
+    "am",
+    "zum",
+    "bis",
+    "spatestens",
+    "is",
+    "the",
+    "on",
+    "by",
+    "of",
+    "until",
+    "before",
+    "latest",
+    "at",
+    "no",
+    "later",
+    "than",
+];
+/// A deadline at the end of a month (`Bewerbungen bis Ende Oktober`).
+pub(crate) const MONTH_END_WORDS: &[&str] = &["ende", "end"];
+/// Endings of a day number (`31st October`).
+pub(crate) const DAY_SUFFIXES: &[&str] = &["st", "nd", "rd", "th"];
+/// Words that name the contact person of an ad anywhere in a line
+/// (`Ihre Ansprechpartnerin ist Julia Brandt`). Several words are one entry.
+pub(crate) const CONTACT_PERSON_WORDS: &[&str] = &[
+    "ansprechpartner",
+    "ansprechpartnerin",
+    "ansprechperson",
+    "kontaktperson",
+    "contact person",
+    "your contact",
+    "recruiter",
+    "recruiterin",
+];
+/// Words that name a contact only as the first word of a line, a label (`Kontakt: Julia
+/// Brandt`).
+pub(crate) const CONTACT_LABELS: &[&str] = &["kontakt", "contact"];
+/// Words between a contact word and the name (`Ihr Ansprechpartner ist Herr Max Weber`).
+pub(crate) const CONTACT_FILLERS: &[&str] = &["ist", "is", "wird", "will", "be"];
+/// Forms of address before a name; one with a single name after it stays (`Frau Brandt`).
+pub(crate) const HONORIFICS: &[&str] = &["frau", "herr", "mr", "mrs", "ms"];
+/// Titles before a name that stay with it (`Dr. Julia Brandt`).
+pub(crate) const NAME_TITLES: &[&str] = &["dr", "prof"];
+/// Capitalised words that are never part of a person's name.
+pub(crate) const NOT_A_NAME: &[&str] = &[
+    "abteilung",
+    "ag",
+    "and",
+    "bewerbung",
+    "bewerbungen",
+    "bitte",
+    "details",
+    "e-mail",
+    "email",
+    "fragen",
+    "gmbh",
+    "hr",
+    "human",
+    "ihr",
+    "ihre",
+    "info",
+    "kg",
+    "mail",
+    "mbh",
+    "personal",
+    "personalabteilung",
+    "please",
+    "questions",
+    "resources",
+    "se",
+    "sie",
+    "tel",
+    "telefon",
+    "phone",
+    "und",
+    "unter",
+    "via",
+    "wir",
+];
+/// Endings of nouns that are never a name (`Controlling Teams`, `Geschäftsführung`).
+pub(crate) const NOT_A_NAME_ENDINGS: &[&str] = &[
+    "ung",
+    "ing",
+    "ment",
+    "heit",
+    "keit",
+    "schaft",
+    "team",
+    "teams",
+    "abteilung",
+];
+/// Words that name a phone number in a line (`Tel. 040 5550 1234`).
+pub(crate) const PHONE_WORDS: &[&str] = &[
+    "tel",
+    "telefon",
+    "telefonnummer",
+    "rufnummer",
+    "fon",
+    "mobil",
+    "mobile",
+    "handy",
+    "phone",
+    "call",
+];
+/// Local parts of an e-mail address nobody answers.
+pub(crate) const NO_REPLY: &[&str] = &["noreply", "no-reply", "donotreply", "do-not-reply"];
 /// End markers in a sentence with a duration word (`Laufzeit bis 31.03.2027`), padded with
 /// spaces, longest first.
 pub(crate) const DURATION_END_MARKERS: &[&str] = &[
