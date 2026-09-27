@@ -6,18 +6,18 @@
   (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps
   440 px; the limits follow the window and the sidebar, and never shrink while the window
   grows (also across the rail's breakpoint). Below 900 px one column: the list
-  under its pinned header, or the reader with a back button (the mouse's back button too).
+  under its pinned header, or the reader with its "×" (the mouse's back button too).
   The run's line is part of the header (RunLine). Closing a job from inside the reader hands
   the focus to its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
-  there: until then the pane keeps what it shows (the overview or the previous job), so it
+  there: until then the pane keeps what it shows (the empty state or the previous job), so it
   never goes blank. The old stage fades out first (100 ms, at its own scroll position: the old
   text never jumps), then the new one rises in (150 ms), so two texts are never readable at
   once; the new job starts at the top. The old stage is the real one on its way out (nothing is
   copied or laid out again); it answers no pointer and drops its test ids. The close "×" in the
-  reader head (at every width), Esc and a search that no longer finds the job go back to the
-  day overview.
+  reader head (at every width) and a search that no longer finds the job close it (the
+  place's empty state). Esc closes only menus and dialogs: the app has no keys of its own.
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
@@ -29,7 +29,7 @@
   import Skeleton from '$components/Skeleton.svelte';
   import { t } from '$lib/i18n/t';
   import { duration } from '$lib/motion/motion';
-  import { fade, rise } from '$lib/motion/transitions';
+  import { fade, rise, viewOut } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
   import { onBack } from '$lib/input/input';
   import { dragBands } from '$lib/platform';
@@ -54,8 +54,8 @@
   /**
    * What the right pane shows, as the key of its stage: a failed load of the selected job,
    * the loaded job (a job key never equals one of the words), a placeholder once loading
-   * takes a while, else the day overview. While a job loads quickly the pane keeps what it
-   * showed last.
+   * takes a while, else the place's empty state. While a job loads quickly the pane keeps
+   * what it showed last.
    */
   let shown = OVERVIEW;
   /** Counts the changes: a stage that comes back while the old one still fades is new. */
@@ -114,9 +114,8 @@
   let right = $state<HTMLElement | null>(null);
 
   /**
-   * Back to the day overview. A focus inside the reader (its close button, Esc on one of its
-   * buttons) goes to the row of the job that was open, like Mail: the list keeps its place
-   * and Tab goes on from there.
+   * Close the job. A focus inside the reader (its close button) goes to the row of the job
+   * that was open, like Mail: the list keeps its place and Tab goes on from there.
    */
   function close(): void {
     const open = jobs.selected;
@@ -145,7 +144,7 @@
   let header = $state<ListHeader | null>(null);
 
   // A search that no longer finds the open job closes it (the list shows what it found);
-  // only a change of the search does, never a job opened from elsewhere (the overview).
+  // only a change of the search does, never a job opened from elsewhere (an undo).
   // Only a list that holds every hit can tell: a hit beyond the loaded rows stays open.
   let searched = untrack(() => jobs.search.trim());
   let searchChanged = false;
@@ -169,7 +168,7 @@
     });
   });
 
-  /** A job rises in (2 px, 150 ms), the overview and the placeholders only fade (100 ms),
+  /** A job rises in (2 px, 150 ms), the empty state and the placeholders only fade (100 ms),
    *  each once the old stage has faded out (the one-column layout has none to wait for). */
   function enter(node: Element, job: boolean): ReturnType<typeof fade> {
     const delay = viewport.narrow ? 0 : duration('fast');
@@ -190,7 +189,7 @@
       element.removeAttribute('data-testid');
     }
     node.setAttribute('aria-hidden', 'true');
-    return fade(node, { duration: 'fast', easing: 'in' });
+    return viewOut(node);
   }
 </script>
 

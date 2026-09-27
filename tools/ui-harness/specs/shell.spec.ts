@@ -191,7 +191,7 @@ test('every view switch fades the old view out, then the new one in', async ({ p
     Element.prototype.animate = function (this: Element, keyframes, options) {
       const view = this instanceof HTMLElement ? (this.dataset.testid ?? '') : '';
       const ms = typeof options === 'number' ? options : Number(options?.duration ?? 0);
-      if (view.startsWith('view-') && Array.isArray(keyframes) && ms > 0) {
+      if (view.startsWith('view-') && Array.isArray(keyframes) && keyframes.length > 0 && ms > 0) {
         fades.push({
           view,
           from: String(keyframes[0]?.opacity),

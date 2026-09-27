@@ -71,14 +71,18 @@ export function fade(node: Element, params: MotionParams = {}): TransitionConfig
 }
 
 /**
- * A view switch (App.svelte): the old view fades out (100 ms, ease-in), then the new one
- * fades in (100 ms, ease-out), so two views are never readable at once. `out:viewOut` and
- * `in:viewIn` on the view; the first view after loading is simply there. Under reduced
- * motion both cross-fade.
+ * Out, then in (a view switch in App.svelte, the reader's next job): the old one fades out
+ * (100 ms, ease-in), then the new one fades in (100 ms, ease-out, `viewIn`; the reader's job
+ * rises with the same delay), so two are never readable at once. The fade out starts at once
+ * through the Web Animations API, and the transition only keeps the node until it is gone: a
+ * transition's own start can lag a frame or two behind the delayed entrance (WebKit), which
+ * showed both at once. `out:viewOut` and `in:viewIn`; the first view after loading is simply
+ * there. Under reduced motion both cross-fade.
  */
 export function viewOut(node: Element): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);
-  return opacity(duration('fast'), easing('in'));
+  play(node, [{ opacity: 1 }, { opacity: 0 }], { duration: 'fast', easing: 'in' });
+  return { duration: duration('fast') };
 }
 
 export function viewIn(node: Element): TransitionConfig {
