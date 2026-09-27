@@ -3,8 +3,9 @@
   week from Monday, the month's name from the catalog. The chosen day is filled, today has a
   ring. The keys move like a native date picker (input.ts gridKeys): the arrows a day or a
   week, Home and End the week's ends, PageUp and PageDown a month; Enter or Space and a click
-  take the day, Esc closes and gives the focus back to the button, as does leaving the
-  month. It only offers a day: the field beside it keeps what is typed.
+  take the day, Esc closes and gives the focus back to the button; leaving it closes it. The
+  month's buttons move the focus to the same day in the other month. It only offers a day:
+  the field beside it keeps what is typed.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -122,20 +123,33 @@
     void show(next);
   }
 
-  /** The month before or after, from its buttons: the focus stays on the button. */
+  /** The month before or after, from its buttons: the same day there takes the focus
+   *  (WebKit gives a clicked button none). */
   function turn(by: -1 | 1): void {
-    focus = monthAway(focus, by);
-    first = `${focus.slice(0, 8)}01`;
+    void show(monthAway(focus, by));
+  }
+
+  /** A press inside the calendar: the focus it takes away (WebKit) is no leaving. */
+  let pressed = false;
+  function press(): void {
+    pressed = true;
+    setTimeout(() => (pressed = false));
   }
 
   /** The focus left the calendar (a click elsewhere, Tab out): it closes. */
   function leave(event: FocusEvent): void {
     const next = event.relatedTarget;
-    if (open && !(next instanceof Node && root?.contains(next))) open = false;
+    if (open && !pressed && !(next instanceof Node && root?.contains(next))) open = false;
   }
 </script>
 
-<span class="calendar" bind:this={root} onfocusout={leave}>
+<span
+  class="calendar"
+  role="presentation"
+  bind:this={root}
+  onfocusout={leave}
+  onpointerdown={press}
+>
   <span class="toggle" data-calendar-button>
     <Button
       variant="ghost"
