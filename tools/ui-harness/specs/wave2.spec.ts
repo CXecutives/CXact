@@ -120,8 +120,10 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
 
   // Closing the window with typed text asks first.
   await page.getByTestId('profile-regions').locator('input').fill('Berlin');
-  // The form has taken the typed text as a change (as the user sees it) before the window closes.
+  // The form has taken the typed text as a change (as the user sees it), and the backend
+  // knows it (the page's `set_unsaved`), before the window closes.
   await expect(save).toBeEnabled();
+  await expect.poll(() => page.evaluate(() => window.__harness.unsaved)).toBe(true);
   await page.evaluate(() => window.__harness.requestClose());
   await expect(page.getByTestId('dialog-leave-profile')).toBeVisible();
   expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
