@@ -1,6 +1,6 @@
 <!--
   The profile as a form: the sections of `sections.ts` in their order, each field as the
-  table describes it. Only Konditionen and Wünsche say in one sentence what they do (the rest
+  table describes it. Only Bedingungen and Wünsche say in one sentence what they do (the rest
   is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
   control label 13/500, and every number field has one width with its unit beside it; a
   number is formatted when its field is left. A single choice (Remote-Anteil, Verfügbar ab)
@@ -12,7 +12,8 @@
   so quietly in the hint's place (a wished rate under the minimum, jobs for more years than
   her experience), and the remote share of permanent roles waits for their places. The
   rules for permanent roles hide while those are excluded, unless one of their values does
-  not read or a save refused one (then they stay until the form is saved or discarded).
+  not read or a save refused one (then they stay until the form is saved or discarded); the
+  section folds away and unfolds again with its 32 px above it, so the sections below glide.
   The save bar rises in at the bottom of the view only while the form holds a change:
   "Speichern" (the one primary) and "Verwerfen"; it leaves once saved (the view says so in a
   toast) or discarded. While it shows, the toasts rise above it (the toast stack measures
@@ -33,7 +34,7 @@
   import { formKeys } from '$lib/input/input';
   import type { Notice as NoticeData, ProfileQuality, RemoteWish } from '$lib/ipc/types';
   import { MAX_YEARS, NUMBER_CRITERIA } from '$lib/ipc/types/profile';
-  import { fade, rise } from '$lib/motion/transitions';
+  import { fade, rise, unfold } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
   import { editor, type FieldError, type FieldProblem } from '$lib/state/profile.svelte';
   import { tick, untrack } from 'svelte';
@@ -324,18 +325,20 @@
 >
   {#each SECTIONS as section (section.id)}
     {#if shown(section)}
-      <div class="section" transition:fade>
-        <ProfileSection
-          heading={t.profile.section[section.id]}
-          hint={t.profile.sectionHint[section.id] ?? null}
-          empty={emptySection(section)}
-          required={section.required ?? false}
-          testid="section-{section.id}"
-        >
-          {#each section.lines as line, index (index)}
-            {@render lineOf(line)}
-          {/each}
-        </ProfileSection>
+      <div class="section" transition:unfold>
+        <div class="space">
+          <ProfileSection
+            heading={t.profile.section[section.id]}
+            hint={t.profile.sectionHint[section.id] ?? null}
+            empty={emptySection(section)}
+            required={section.required ?? false}
+            testid="section-{section.id}"
+          >
+            {#each section.lines as line, index (index)}
+              {@render lineOf(line)}
+            {/each}
+          </ProfileSection>
+        </div>
       </div>
     {/if}
   {/each}
@@ -542,15 +545,21 @@
 {/if}
 
 <style>
+  /* The sections 32 apart: each brings the space above it along inside the box that folds
+     (a gap or a padding of that box would jump when a section folds away). */
   .editor {
     display: flex;
     flex-direction: column;
-    gap: var(--space-32);
   }
 
-  .section {
+  .section,
+  .space {
     display: flex;
     flex-direction: column;
+  }
+
+  .section + .section > .space {
+    padding-top: var(--space-32);
   }
 
   .pair {

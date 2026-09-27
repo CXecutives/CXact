@@ -12,6 +12,8 @@
   options keep their widths and nothing jumps. An unchosen option washes on hover and darkens
   while pressed. Counts roll when they change.
   Like native radio buttons the group is one Tab stop and the arrows, Home and End choose.
+  One size everywhere (Einstellungen and Profil alike): as high as a small button
+  (--control-choice, 28 px) with its 13 px text.
 -->
 <script lang="ts" module>
   export interface SegmentedOption<Id extends string = string> {
@@ -35,12 +37,11 @@
     options: readonly SegmentedOption<Id>[];
     value: Id;
     label: string;
-    size?: 'sm' | 'field';
     testid?: string | null;
     onchange: (id: Id) => void;
   }
 
-  let { options, value, label, size = 'field', testid = null, onchange }: Props = $props();
+  let { options, value, label, testid = null, onchange }: Props = $props();
 
   /** The count each option showed last: a count that goes keeps its room with it. */
   const kept = $state<Record<string, number>>({});
@@ -89,7 +90,7 @@
 </script>
 
 <div
-  class="segmented {size}"
+  class="segmented"
   role="radiogroup"
   aria-label={label}
   data-testid={testid ?? undefined}
@@ -131,7 +132,7 @@
     display: inline-flex;
     min-width: 0;
     max-width: 100%;
-    height: var(--seg-height);
+    height: var(--control-choice);
     padding: var(--space-2);
     border-radius: var(--radius-control);
     position: relative;
@@ -171,7 +172,7 @@
     padding: 0 var(--space-12);
     border-radius: var(--radius-sm);
     color: var(--text-muted);
-    font: var(--seg-type);
+    font: var(--type-sm);
     font-weight: var(--weight-medium);
     white-space: nowrap;
     transition: color var(--dur-base) var(--ease-standard);
@@ -227,17 +228,5 @@
 
   .option:focus-visible {
     box-shadow: var(--focus-ring-inset);
-  }
-
-  /* 28 or 32 px, like the buttons; the small one keeps the small type (it sits in the
-     list's header), the other reads like a field. */
-  .sm {
-    --seg-height: var(--control-sm);
-    --seg-type: var(--type-sm);
-  }
-
-  .field {
-    --seg-height: var(--control-field);
-    --seg-type: var(--type-field);
   }
 </style>

@@ -1,7 +1,8 @@
 <!--
   The head of the Profil view, on the first row of the window (`data-first-row`): on the left
   a status only when there is one ("n Werte prüfen" while values of the file do not read, a
-  click goes to the first one; the rescore a save started), on the right the actions: one
+  click goes to the first one; the rescore a save started; each fades in and out, and the
+  button is 32 px like the others of the row), on the right the actions: one
   button (an update from a CV, for a new form one from a CV) and the "…" menu with the rest
   (another file, the profile folder, "Profil löschen" in red, which asks first). The form
   below says who the profile is about, so the head does not repeat it. While the form holds
@@ -126,10 +127,10 @@
   <div class="head" data-first-row data-testid="profile-head">
     <div class="status">
       {#if checks > 0}
-        <span class="check" in:fade>
+        <span class="check" transition:fade>
           <Button
             variant="ghost"
-            size="sm"
+            size="field"
             icon="warning"
             label={t.profile.check(checks)}
             testid="profile-check"
@@ -138,7 +139,7 @@
         </span>
       {/if}
       {#if rescoring}
-        <p class="quiet" data-testid="profile-rescoring" in:fade>
+        <p class="quiet" data-testid="profile-rescoring" transition:fade>
           <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
         </p>
       {/if}

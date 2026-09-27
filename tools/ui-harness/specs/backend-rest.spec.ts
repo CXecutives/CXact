@@ -161,12 +161,15 @@ test('the demo starts without a profile: nothing scored, the list by date, Profi
   await expect(page.getByTestId('profile-pick')).toBeVisible();
 });
 
-for (const platform of ['windows', 'macos'] as const) {
-  test(`the sidebar says it is the demo on ${platform}`, async ({ page }) => {
-    await open(page, `?platform=${platform}&scenario=demo`);
-    await expect(page.getByTestId('sidebar').getByTestId('demo-mark')).toHaveText('Demo');
-    await open(page, `?platform=${platform}`);
-    await expect(page.getByTestId('sidebar').getByTestId('nav-jobs')).toBeVisible();
-    await expect(page.getByTestId('demo-mark')).toHaveCount(0);
-  });
-}
+test('the sidebar says it is the demo where the OS hides the window title', async ({ page }) => {
+  // macOS hides the title: the sidebar's foot says it.
+  await open(page, '?platform=macos&scenario=demo');
+  await expect(page.getByTestId('sidebar').getByTestId('demo-mark')).toHaveText('Demo');
+  await open(page, '?platform=macos');
+  await expect(page.getByTestId('sidebar').getByTestId('nav-jobs')).toBeVisible();
+  await expect(page.getByTestId('demo-mark')).toHaveCount(0);
+  // Windows says it in its title bar ("CXact Demo"): the sidebar does not repeat it.
+  await open(page, '?platform=windows&scenario=demo');
+  await expect(page.getByTestId('sidebar').getByTestId('nav-jobs')).toBeVisible();
+  await expect(page.getByTestId('demo-mark')).toHaveCount(0);
+});

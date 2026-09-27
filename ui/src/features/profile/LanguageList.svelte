@@ -1,7 +1,9 @@
 <!--
   The languages: one row each with the language and its level (a menu of A1 to C2 and
-  Muttersprache, "Offen" while none is chosen; the app then assumes B2), then "Sprache
-  hinzufügen". The x of a row needs no tooltip. The language
+  Muttersprache, "Offen" while none is chosen; the app then assumes B2: a button in a row of
+  fields, so as high as the field and like a select, in a column as wide as its longest
+  level, so every row lines up), then "Sprache hinzufügen". The x of a row needs no tooltip.
+  The language
   field suggests common languages like the countries field (found by their German and
   English names, taken in the app's language); any other language can be typed. Enter moves
   through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
@@ -101,13 +103,16 @@
           testid="language-name"
         />
       </span>
-      <MenuButton
-        options={LEVELS}
-        value={row.level ?? NONE}
-        menuLabel={words.level}
-        testid="language-level"
-        onchange={(next) => (row.level = next === NONE ? null : (next as LanguageLevel))}
-      />
+      <span class="level">
+        <MenuButton
+          options={LEVELS}
+          value={row.level ?? NONE}
+          menuLabel={words.level}
+          field
+          testid="language-level"
+          onchange={(next) => (row.level = next === NONE ? null : (next as LanguageLevel))}
+        />
+      </span>
       <span class="remove">
         <Button
           variant="ghost"
@@ -144,12 +149,20 @@
     container-type: inline-size;
   }
 
-  /* The level takes the room it needs; the language takes the rest. */
+  /* language | level | remove: the level in one width in every row (its longest word fits),
+     the button filling it; the language takes the rest. */
   .row {
     display: grid;
-    grid-template-columns: minmax(var(--space-64), 1fr) auto var(--control-sm);
+    grid-template-columns: minmax(var(--space-64), 1fr) var(--level-width) var(--control-sm);
     align-items: center;
     gap: var(--space-6) var(--space-12);
+    width: 100%;
+  }
+
+  .level,
+  .level > :global(.menu-button),
+  .level :global(.btn) {
+    display: flex;
     width: 100%;
   }
 

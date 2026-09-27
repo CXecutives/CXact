@@ -1,14 +1,17 @@
 <!--
   Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Portale,
-  Export, Darstellung, App), each a heading and a card of setting rows (Postfach and Portale
-  begin with a block of their own), and the app's version as a quiet line under the last
-  card. This file only renders the list and runs its commands; what a row is, says and does
+  Export, Darstellung, Daten), each a heading 12 px above a card of setting rows (Postfach
+  and Portale are a block of their own), and the app's version as a quiet line under the
+  last card. Every text button of a row is the same outlined button, and every row ends on
+  the card's inner edge (its buttons, switch or choice flush with the rows above and
+  below). This file only renders the list and runs its commands; what a row is, says and does
   is one entry in cards.ts.
 
   A switch or a choice moves at once (the state is patched before the save) and is its own
   answer; Darstellung switches the colours and the language of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
-  toast (another result folder); errors and warnings stay a note at the end of their card.
+  toast (another result folder); errors and warnings stay a note at the end of their card,
+  which unfolds (the cards below glide down instead of jumping).
   Only "Zurücksetzen", "Entfernen" of the mailbox and the restore of a backup
   (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
   inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
@@ -32,7 +35,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
-  import { rise } from '$lib/motion/transitions';
+  import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -223,7 +226,6 @@
       {@const choice = item as ChoiceRow}
       <SettingRow label={choice.label(t, cfg)} testid="row-{choice.id}">
         <Segmented
-          size="sm"
           options={choice.options.map((id) => ({ id, label: choice.name(t, id) }))}
           value={choice.value(cfg)}
           label={choice.label(t, cfg)}
@@ -245,7 +247,7 @@
             {@const action: Action = ACTIONS[id]}
             {@const locked = action.locked?.(lock) ?? null}
             <Button
-              variant={action.variant}
+              variant="secondary"
               size="sm"
               icon={action.icon}
               label={action.label(t, cfg)}
@@ -270,6 +272,19 @@
       </SettingRow>
     {/if}
   {/if}
+{/snippet}
+
+<!-- The note at the end of a card unfolds, so the cards below glide down. The card's inset
+     for what is not a row (Card) would jump at once: the note takes its own (a wrapper
+     without a box of its own, `.slot`, keeps the card's margin off the folding box). -->
+{#snippet noteOf(card: string, feedback: Feedback)}
+  <div class="slot">
+    <div class="fold" transition:unfold>
+      <div class="note">
+        <Notice tone={feedback.tone} variant="inline" text={feedback.text()} testid="{card}-note" />
+      </div>
+    </div>
+  </div>
 {/snippet}
 
 <div class="page" data-testid="settings" bind:this={root}>
@@ -306,14 +321,7 @@
         {#if card.block === 'mailbox'}
           <MailboxCard {cfg} locked={mailboxLocked}>
             {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-            {#if feedback}
-              <Notice
-                tone={feedback.tone}
-                variant="inline"
-                text={feedback.text()}
-                testid="{card.id}-note"
-              />
-            {/if}
+            {#if feedback}{@render noteOf(card.id, feedback)}{/if}
           </MailboxCard>
         {:else}
           <Card padding="rows" testid={card.block === 'portals' ? 'portals' : null}>
@@ -321,16 +329,7 @@
               {#each portals as portal (portal.portal)}<PortalRow {portal} />{/each}
             {/if}
             {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-            {#if feedback}
-              <div class="note" in:rise={{ distance: 'sm' }}>
-                <Notice
-                  tone={feedback.tone}
-                  variant="inline"
-                  text={feedback.text()}
-                  testid="{card.id}-note"
-                />
-              </div>
-            {/if}
+            {#if feedback}{@render noteOf(card.id, feedback)}{/if}
           </Card>
         {/if}
       </section>
@@ -379,13 +378,19 @@
     gap: var(--space-12);
   }
 
+  /* The first heading is centred on the first row of the window (base.css); it takes back
+     what that row adds below its line, so every heading stands 12 px above its card. */
+  .title[data-first-row] {
+    margin-bottom: calc((var(--leading-lg) - var(--first-row)) / 2);
+  }
+
   .heading {
     color: var(--text-heading);
     font: var(--type-lg);
   }
 
-  /* The buttons of a row end on its trailing edge, 12 apart, one size (28); a switch after
-     them. */
+  /* The buttons of a row end on its trailing edge, 12 apart, one size (28, outlined); a
+     switch after them. */
   .buttons {
     display: flex;
     flex-wrap: wrap;
@@ -394,8 +399,18 @@
     gap: var(--space-12);
   }
 
+  .slot {
+    display: contents;
+  }
+
+  .fold {
+    display: flex;
+    flex-direction: column;
+  }
+
   .note {
     display: flex;
+    padding-block: var(--space-12);
   }
 
   /* The app's version: a quiet line to copy, under the last card. */

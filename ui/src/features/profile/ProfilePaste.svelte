@@ -1,6 +1,8 @@
 <!--
-  A profile from a CV with an AI (a new one, or an update of the stored one): one sentence on
-  where the CV goes, the prompt is on the clipboard (or can be copied again; when copying
+  A profile from a CV with an AI (a new one, or an update of the stored one), laid out like a
+  section of the form: the heading on the first row of the window (`data-first-row`), 4 px
+  under it one sentence on where the CV goes, the card 12 px below. In the card: the prompt
+  is on the clipboard (or can be copied again; when copying
   failed the step says so in the danger tone and the button copies) and can be read before it
   is sent, one line on what to do in the AI, then the field for its answer. "Übernehmen"
   (waiting, and saying so, until there is an answer) reads the answer (also inside a code
@@ -54,83 +56,86 @@
   }
 </script>
 
-<Card padding="md" testid="profile-paste">
-  <div class="paste" use:formKeys={{ cancel: oncancel }}>
-    <div class="top">
-      <h2 class="heading">{heading}</h2>
-      <p class="privacy" data-testid="paste-privacy">{words.privacy}</p>
-    </div>
-    <ol class="steps">
-      <li class="step" data-testid="paste-copied">
-        <span class="mark" class:done={copied} class:failed={!copied}>
-          {#if copied}<Icon name="check" size="sm" />{:else}1{/if}
-        </span>
-        <span class="text">{copied ? words.copied : words.copyFailed}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="prompt"
-          label={copied ? words.copyAgain : words.copy}
-          testid="paste-copy"
-          onclick={oncopy}
-        />
-      </li>
-      <li class="step">
-        <span class="mark">2</span>
-        <span class="text">{words.step}</span>
-      </li>
-    </ol>
-    {#if prompt}
-      <Disclosure label={words.preview} testid="paste-preview">
-        <pre class="prompt" data-copy data-testid="paste-prompt">{prompt}</pre>
-      </Disclosure>
-    {/if}
-    <Field label={words.answer} for="{id}-answer" {error}>
-      <TextArea
-        id="{id}-answer"
-        bind:value={answer}
-        rows={10}
-        invalid={error !== null}
-        testid="paste-answer"
-      />
-    </Field>
-    <div class="actions">
-      {#snippet cancel()}
-        <Button
-          variant="secondary"
-          size="field"
-          label={t.common.cancel}
-          testid="paste-cancel"
-          onclick={oncancel}
-        />
-      {/snippet}
-      {#if !actionFirst}{@render cancel()}{/if}
-      <Button
-        variant="primary"
-        size="field"
-        label={words.take}
-        loading={busy}
-        disabled={answer.trim() === ''}
-        disabledReason={words.takeEmpty}
-        testid="paste-take"
-        onclick={take}
-      />
-      {#if actionFirst}{@render cancel()}{/if}
-    </div>
+<section class="section" aria-labelledby="{id}-heading" data-testid="profile-paste">
+  <div class="head" data-first-row>
+    <h2 class="heading" id="{id}-heading">{heading}</h2>
   </div>
-</Card>
+  <p class="privacy" data-testid="paste-privacy">{words.privacy}</p>
+  <Card padding="md">
+    <div class="paste" use:formKeys={{ cancel: oncancel }}>
+      <ol class="steps">
+        <li class="step" data-testid="paste-copied">
+          <span class="mark" class:done={copied} class:failed={!copied}>
+            {#if copied}<Icon name="check" size="sm" />{:else}1{/if}
+          </span>
+          <span class="text">{copied ? words.copied : words.copyFailed}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="prompt"
+            label={copied ? words.copyAgain : words.copy}
+            testid="paste-copy"
+            onclick={oncopy}
+          />
+        </li>
+        <li class="step">
+          <span class="mark">2</span>
+          <span class="text">{words.step}</span>
+        </li>
+      </ol>
+      {#if prompt}
+        <Disclosure label={words.preview} testid="paste-preview">
+          <pre class="prompt" data-copy data-testid="paste-prompt">{prompt}</pre>
+        </Disclosure>
+      {/if}
+      <Field label={words.answer} for="{id}-answer" {error}>
+        <TextArea
+          id="{id}-answer"
+          bind:value={answer}
+          rows={10}
+          invalid={error !== null}
+          testid="paste-answer"
+        />
+      </Field>
+      <div class="actions">
+        {#snippet cancel()}
+          <Button
+            variant="secondary"
+            size="field"
+            label={t.common.cancel}
+            testid="paste-cancel"
+            onclick={oncancel}
+          />
+        {/snippet}
+        {#if !actionFirst}{@render cancel()}{/if}
+        <Button
+          variant="primary"
+          size="field"
+          label={words.take}
+          loading={busy}
+          disabled={answer.trim() === ''}
+          disabledReason={words.takeEmpty}
+          testid="paste-take"
+          onclick={take}
+        />
+        {#if actionFirst}{@render cancel()}{/if}
+      </div>
+    </div>
+  </Card>
+</section>
 
 <style>
-  .paste {
+  /* Like a section of the form (ProfileSection): heading, its sentence, the card 12 below. */
+  .section {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--space-12);
   }
 
-  .top {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
+  /* Centred on the first row of the window; what that row adds under the heading's line is
+     taken back, so the sentence stands 4 px under it as under every heading of the form. */
+  .head[data-first-row] {
+    margin-bottom: calc((var(--leading-lg) - var(--first-row)) / 2);
   }
 
   .heading {
@@ -139,8 +144,15 @@
   }
 
   .privacy {
+    margin-top: calc(-1 * var(--space-8));
     color: var(--text-muted);
     font: var(--type-sm);
+  }
+
+  .paste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-16);
   }
 
   .steps {

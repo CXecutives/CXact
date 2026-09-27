@@ -70,6 +70,6 @@
     "auslastung_max_tage": 5,
     "min_laufzeit_monate": 6,
     "ausschlusswoerter": ["Werkstudent", "Praktikum"],
-    "festanstellung_remote_min": "viel"
+    "festanstellung_remote_min": 60
   }
 }

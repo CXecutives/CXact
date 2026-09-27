@@ -1,7 +1,7 @@
 // Einstellungen against the stub: the cards in their order (Postfach, Portale, Export,
-// Darstellung, App), the mailbox and its dialog, the period of a fetch, the portals with their
-// calls, the export switches, the palettes and the language, the backups, the reset and the
-// version.
+// Darstellung, Daten), their rows flush on one edge, the mailbox and its dialog, the portals
+// with their calls, the export switches, the palettes and the language, the backups, the
+// reset and the version.
 
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
@@ -70,6 +70,37 @@ function ids(page: Page, testid: string, selector: string): Promise<(string | nu
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
 }
 
+/** The top of `watched` in every frame for `ms` after a click on `clicked` (both test ids),
+ *  both in the page, so no frame is missed. */
+function topsAfterClick(page: Page, clicked: string, watched: string, ms = 320): Promise<number[]> {
+  return page.evaluate(
+    ([clicked, watched, ms]) =>
+      new Promise<number[]>((resolve) => {
+        const target = document.querySelector(`[data-testid="${watched}"]`)!;
+        const tops = [Math.round(target.getBoundingClientRect().top)];
+        document.querySelector<HTMLElement>(`[data-testid="${clicked}"]`)!.click();
+        const start = performance.now();
+        const frame = (): void => {
+          tops.push(Math.round(target.getBoundingClientRect().top));
+          if (performance.now() - start < ms) requestAnimationFrame(frame);
+          else resolve(tops);
+        };
+        requestAnimationFrame(frame);
+      }),
+    [clicked, watched, ms] as const,
+  );
+}
+
+/** It moved by more than a little, and not in one frame: a step stood between. */
+function glided(tops: number[]): boolean {
+  const first = tops[0]!;
+  const last = tops.at(-1)!;
+  return (
+    Math.abs(last - first) > 20 &&
+    tops.some((top) => Math.abs(top - first) > 2 && Math.abs(top - last) > 2)
+  );
+}
+
 /* ---------------------------------------------------------------- the page */
 
 test('the cards in their order, the first heading on the first row, the version below', async ({
@@ -81,15 +112,27 @@ test('the cards in their order, the first heading on the first row, the version 
     'settings-portals',
     'settings-export',
     'settings-look',
-    'settings-app',
+    'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
     T.settings.mailbox,
     T.settings.portals,
     T.settings.export,
     T.settings.look,
-    T.settings.app,
+    T.settings.data,
   ]);
+  // Every heading stands 12 px above its card, the first one too.
+  const gaps = await page
+    .getByTestId('settings')
+    .locator(':scope > section')
+    .evaluateAll((sections) =>
+      sections.map((section) => {
+        const heading = section.querySelector('h2')!.getBoundingClientRect();
+        const card = section.querySelector('.card')!.getBoundingClientRect();
+        return Math.round(card.top - heading.bottom);
+      }),
+    );
+  expect(gaps).toEqual([12, 12, 12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
@@ -99,11 +142,11 @@ test('the cards in their order, the first heading on the first row, the version 
   const version = page.getByTestId('version');
   await expect(version).toHaveText(T.settings.version('3.0.0'));
   await expect(version).toHaveAttribute('data-copy', '');
-  const [app, line] = await Promise.all([
-    page.getByTestId('settings-app').boundingBox(),
+  const [data, line] = await Promise.all([
+    page.getByTestId('settings-data').boundingBox(),
     version.boundingBox(),
   ]);
-  expect(line!.y).toBeGreaterThan(app!.y + app!.height);
+  expect(line!.y).toBeGreaterThan(data!.y + data!.height);
   // "Postfach" stands on the first row, as the sidebar's first entry (macOS too).
   for (const query of [WIN, MAC]) {
     await settings(page, query);
@@ -117,40 +160,98 @@ test('the cards in their order, the first heading on the first row, the version 
   }
 });
 
-test('button styles: the row changes its own value in secondary, the rest is quiet', async ({
+test('button styles: every text button of a row is outlined, what deletes for good is red', async ({
   page,
 }) => {
   await settings(page);
-  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'sign-in-freelance']) {
-    await expect(page.getByTestId(id), id).toHaveClass(/secondary/);
-  }
-  for (const id of [
+  // Every button with words in a row of a card: the one outlined kind, 28 px.
+  const kinds = await page
+    .getByTestId('settings')
+    .locator('.card button.btn:not(.icon-only)')
+    .evaluateAll((nodes) =>
+      nodes.map((node) => ({
+        id: node.getAttribute('data-testid'),
+        secondary: node.classList.contains('secondary'),
+        height: Math.round(node.getBoundingClientRect().height),
+      })),
+    );
+  expect(kinds.map((kind) => kind.id)).toEqual([
+    'mailbox-change',
+    'mailbox-remove',
+    'sign-in-freelance',
+    'folder-change',
     'folder-open',
     'excel-open',
     'csv-open',
     'backup-restore',
     'logs-open',
     'reset',
-  ]) {
-    await expect(page.getByTestId(id), id).toHaveClass(/ghost/);
-  }
-  // Only what loses something for good is red: Entfernen and Zurücksetzen.
+  ]);
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 28)).toEqual([]);
+  // Only what loses something for good is red, with the glyph of a deletion for good:
+  // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
   for (const [id, warns] of [
     ['mailbox-remove', true],
     ['reset', true],
     ['mailbox-change', false],
+    ['logs-open', false],
   ] as const) {
     const button = page.getByTestId(id);
-    if (warns) await expect(button, id).toHaveCSS('color', danger);
-    else await expect(button, id).not.toHaveCSS('color', danger);
+    if (warns) {
+      await expect(button, id).toHaveCSS('color', danger);
+      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'purge');
+    } else await expect(button, id).not.toHaveCSS('color', danger);
   }
+  // Every row ends on the same edge: its last button, switch or choice.
+  const ends = await page
+    .getByTestId('settings')
+    .locator('[data-setting-row]')
+    .evaluateAll((rows) =>
+      rows.map((row) =>
+        Math.round(
+          Math.max(
+            ...[...row.querySelectorAll('button, [role="radiogroup"]')].map(
+              (node) => node.getBoundingClientRect().right,
+            ),
+          ),
+        ),
+      ),
+    );
+  expect(ends.length).toBeGreaterThan(10);
+  expect(new Set(ends).size).toBe(1);
+  // The portals' rows sit edge to edge like every other row: no inset above the first.
+  const [card, first] = await Promise.all([
+    page.getByTestId('portals').boundingBox(),
+    page.getByTestId('portal-freelance').boundingBox(),
+  ]);
+  expect(Math.round(first!.y - card!.y)).toBe(1);
   // Every button of the page is at most 32 px high.
   const heights = await page
     .getByTestId('settings')
     .locator('button:not([role="switch"]):not([role="radio"])')
     .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
   expect(heights.filter((height) => height > 32)).toEqual([]);
+});
+
+test('narrow, a row puts its control under the label only where the two do not fit', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 560, height: 800 });
+  await settings(page);
+  // Label and control side by side, one line, like the wider rows.
+  for (const id of ['excel', 'row-palette', 'row-language', 'backup', 'logs', 'reset-all']) {
+    const box = (await page.getByTestId(id).boundingBox())!;
+    expect(Math.round(box.height), id).toBe(60);
+  }
+  // At the smallest window the path of the result folder keeps its room: the buttons go under it.
+  await page.setViewportSize({ width: 480, height: 800 });
+  const folder = page.getByTestId('folder');
+  const [text, control] = await Promise.all([
+    folder.locator('.text').boundingBox(),
+    folder.locator('.control').boundingBox(),
+  ]);
+  expect(control!.y).toBeGreaterThanOrEqual(text!.y + text!.height);
 });
 
 /* ---------------------------------------------------------------- Postfach */
@@ -174,8 +275,9 @@ test('mailbox: Ändern opens the form in a dialog; Verbinden saves, Esc gives th
   const change = page.getByTestId('mailbox-change');
   await change.focus();
   await page.keyboard.press('Enter');
+  // The dialog follows the verb of its button.
   const dialog = page.getByTestId('dialog-mailbox');
-  await expect(dialog.getByRole('heading')).toHaveText(T.settings.connectHeading);
+  await expect(dialog.getByRole('heading')).toHaveText(T.settings.changeHeading);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.connect);
   // The address stays, so the caret waits in the app password; the two Google pages below.
   await expect(page.getByTestId('mailbox-password')).toBeFocused();
@@ -233,6 +335,9 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   // Without a mailbox its row says so and connects in the same dialog.
   await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
   await page.getByTestId('mailbox-connect').click();
+  await expect(page.getByTestId('dialog-mailbox').getByRole('heading')).toHaveText(
+    T.settings.connectHeading,
+  );
   await expect(page.getByTestId('mailbox-user')).toBeFocused();
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
@@ -242,30 +347,12 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   );
 });
 
-test('Zeitraum: four periods, the choice is saved at once', async ({ page }) => {
+test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
   await settings(page);
-  const range = page.getByTestId('range');
-  await expect(range.getByRole('radio')).toHaveText([
-    T.settings.rangeName.sinceLast,
-    T.settings.rangeName.days7,
-    T.settings.rangeName.days30,
-    T.settings.rangeName.all,
-  ]);
-  await expect(range.getByRole('radio', { name: T.settings.rangeName.sinceLast })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await range.getByRole('radio', { name: T.settings.rangeName.days30 }).click();
-  await expect(range.getByRole('radio', { name: T.settings.rangeName.days30 })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await range.getByRole('radio', { name: T.settings.rangeName.all }).click();
-  expect(await saved(page)).toEqual([
-    patch({ fetchRange: 'days30' }),
-    patch({ fetchRange: 'all' }),
-  ]);
-  await expect(page.getByTestId('toast')).toHaveCount(0);
+  await expect(
+    page.getByTestId('settings').getByRole('radio', { name: T.settings.rangeName.all }),
+  ).toHaveCount(0);
+  await expect(page.getByTestId('settings-mailbox').locator('[data-setting-row]')).toHaveCount(1);
 });
 
 /* ----------------------------------------------------------------- Portale */
@@ -298,6 +385,12 @@ test('portals: one card, freelance.de, LinkedIn, freelancermap, each with its ca
   ).toHaveCount(1);
   await expect(page.getByTestId('settings-portals')).not.toContainText('Details');
   await expect(page.getByTestId('settings-portals')).not.toContainText('Seiten');
+  // Its tools 12 apart, like the buttons and the switch of every other row.
+  const gap = await page
+    .getByTestId('portal-freelance')
+    .locator('.tools')
+    .evaluate((node) => getComputedStyle(node).columnGap);
+  expect(gap).toBe('12px');
   await page.getByTestId('open-portal-linkedin').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
 });
@@ -436,10 +529,12 @@ test('export: the result folder with its path, Excel and CSV with their switches
   await expect(excel).toHaveAttribute('aria-checked', 'false');
   expect(await reason(page, 'excel-open')).toBe(T.settings.excelMissing);
   expect(await saved(page)).toEqual([patch({ exportCsv: true }), patch({ exportExcel: false })]);
-  // A file that does not open says so in its card.
+  // A file that does not open says so in its card; the note unfolds, so the cards below
+  // glide down instead of jumping.
   await failNext(page, 'open_target');
-  await page.getByTestId('folder-open').click();
+  const tops = await topsAfterClick(page, 'folder-open', 'settings-look');
   await expect(page.getByTestId('export-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  expect(glided(tops), tops.join(' ')).toBe(true);
 });
 
 test('export: another result folder takes the profile along; its own profile is said', async ({
@@ -463,12 +558,16 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   const root = page.locator('html');
   await expect(root).toHaveAttribute('data-palette', 'coast');
   const cream = await colour(page, '--bg');
+  // The app's own palette first, by the app's name; then light and dark in words.
   const palette = page.getByTestId('palette');
-  await expect(palette.getByRole('radio')).toHaveText(['Coast', 'Light', 'Dark']);
-  await palette.getByRole('radio', { name: 'Dark' }).click();
+  const name = T.settings.paletteName;
+  await expect(palette.getByRole('radio')).toHaveText(['CXact', 'Hell', 'Dunkel']);
+  // The one height of every choice of the app, as in the Profil form.
+  await expect(palette).toHaveCSS('height', '28px');
+  await palette.getByRole('radio', { name: name.dark }).click();
   await expect(root).toHaveAttribute('data-palette', 'dark');
   await expect(page.locator('body')).not.toHaveCSS('background-color', cream);
-  await palette.getByRole('radio', { name: 'Light' }).click();
+  await palette.getByRole('radio', { name: name.light }).click();
   await expect(root).toHaveAttribute('data-palette', 'light');
   expect(await saved(page)).toEqual([patch({ palette: 'dark' }), patch({ palette: 'light' })]);
   await expect(page.getByTestId('toast')).toHaveCount(0);
@@ -477,7 +576,7 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   await expect(root).toHaveAttribute('data-palette', 'dark');
   // A save that fails puts the palette back and says why in the card.
   await failNext(page, 'save_settings');
-  await palette.getByRole('radio', { name: 'Coast' }).click();
+  await palette.getByRole('radio', { name: name.coast }).click();
   await expect(page.getByTestId('look-note')).toHaveText('Die Datenbank meldet einen Fehler.');
   await expect(root).toHaveAttribute('data-palette', 'dark');
 });
@@ -543,14 +642,14 @@ test('Darstellung: the language switches everything at once; notes follow it', a
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
 });
 
-/* --------------------------------------------------------------------- App */
+/* ------------------------------------------------------------------- Daten */
 
-test('App: Sicherung, Protokoll, Alle Daten; no data path, no list of what a reset deletes', async ({
+test('Daten: Sicherung, Protokoll, Alle Daten; no data path, no list of what a reset deletes', async ({
   page,
 }) => {
   await settings(page);
-  const app = page.getByTestId('settings-app');
-  expect(await ids(page, 'settings-app', '[data-setting-row]')).toEqual([
+  const data = page.getByTestId('settings-data');
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual([
     'backup',
     'logs',
     'reset-all',
@@ -558,8 +657,8 @@ test('App: Sicherung, Protokoll, Alle Daten; no data path, no list of what a res
   await expect(page.getByTestId('backup-restore')).toHaveText(T.settings.backupAction);
   await expect(page.getByTestId('logs-open')).toHaveText(T.common.open);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
-  await expect(app.locator('[data-copy]')).toHaveCount(0);
-  await expect(app).not.toContainText('Excel');
+  await expect(data.locator('[data-copy]')).toHaveCount(0);
+  await expect(data).not.toContainText('Excel');
   await page.getByTestId('logs-open').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'logDir' } });
 });
@@ -574,19 +673,21 @@ test('backups: one date format, no sizes; restored with the same verb, then undo
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.backupAction);
   await expect(dialog).toContainText(T.settings.backupText);
   const rows = dialog.getByTestId('backup-list').getByRole('radio');
-  // Newest first and chosen; today by its time, other days by their date; no size.
+  // Newest first and chosen; each by the one moment of a line in a list of days (the day in
+  // words while it is near, the weekday within a week), day and time never apart; no size.
   await expect(rows).toHaveCount(4);
   await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'true');
   for (const [index, text] of [
-    [0, 'Heute 08:05'],
-    [1, '23.09. 08:41'],
-    [2, '22.09. 09:12'],
-    [3, 'vor einem Update'],
+    [0, 'Heute\u00a008:05'],
+    [1, 'Gestern\u00a008:41'],
+    [2, 'Vorgestern\u00a009:12'],
+    [3, 'Fr\u00a010:20'],
   ] as const) {
-    await expect(rows.nth(index)).toContainText(text);
+    const label = await rows.nth(index).evaluate((node) => node.textContent ?? '');
+    expect(label).toContain(text);
   }
+  await expect(rows.nth(3)).toContainText('vor einem Update');
   await expect(dialog).not.toContainText('MB');
-  await expect(dialog).not.toContainText('Gestern');
   // The arrows choose like native radio buttons; a failure stays in the dialog.
   await rows.nth(0).focus();
   await page.keyboard.press('ArrowDown');
@@ -621,6 +722,8 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
   const dialog = page.getByTestId('dialog-reset');
   await expect(dialog.getByRole('button', { name: T.common.cancel })).toBeFocused();
   await expect(dialog.getByRole('heading')).toHaveText(T.settings.resetHeading);
+  // What it does in its order: it deletes, then it starts anew.
+  await expect(dialog).toContainText(T.settings.resetText);
   await expect(dialog.getByTestId('dialog-items').locator('li')).toHaveText(T.settings.resetItems);
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.resetAction);
   await failNext(page, 'reset_all');

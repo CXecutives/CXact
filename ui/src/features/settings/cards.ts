@@ -1,24 +1,18 @@
 // Einstellungen as data: the cards in their order (Postfach, Portale, Export, Darstellung,
-// App), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// Daten), each with its heading and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`), so they follow the language.
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch or a choice moves at once and
-// is its own answer; the button that changes the row's own value is secondary (Ändern), the
-// ones that open are ghost; a locked button says why (`locked`); only "Zurücksetzen" warns,
-// alone on the last row.
+// is its own answer; every text button of a row is the same outlined button (secondary, 28
+// px), whether it changes the row's value or opens something, and the ones that lose
+// something for good are red (`warns`: Zurücksetzen, like Entfernen of the mailbox); a
+// locked button says why (`locked`); the reset stands alone on the last row.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type {
-  AppState,
-  FetchRange,
-  Language,
-  OpenTarget,
-  Palette,
-  SettingsPatch,
-} from '$lib/ipc/types';
+import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -33,12 +27,11 @@ export interface Lock {
   busyText: string;
 }
 
-/** A button of a row. It opens a checked target (`open`), or runs the view's command of
- *  its id. */
+/** A button of a row (outlined, like every text button of the page). It opens a checked
+ *  target (`open`), or runs the view's command of its id. */
 export interface Action {
   label: Text;
   icon: IconName;
-  variant: 'secondary' | 'ghost';
   /** Why it waits now, or null. */
   locked?: (lock: Lock) => string | null;
   open?: OpenTarget;
@@ -59,26 +52,22 @@ export const ACTIONS = {
   folderChange: {
     label: (t) => t.common.change,
     icon: 'edit',
-    variant: 'secondary',
     locked: ownOnly,
   },
   folderOpen: {
     label: (t) => t.common.open,
     icon: 'folder',
-    variant: 'ghost',
     open: { kind: 'workspace' },
   },
   excelOpen: {
     label: (t) => t.common.open,
     icon: 'excel',
-    variant: 'ghost',
     open: { kind: 'excel' },
     locked: ({ state, t }) => (state.settings.excelExists ? null : t.settings.excelMissing),
   },
   csvOpen: {
     label: (t) => t.common.open,
     icon: 'document',
-    variant: 'ghost',
     open: { kind: 'csv' },
     locked: ({ state, t }) => (state.settings.csvExists ? null : t.settings.csvMissing),
   },
@@ -86,19 +75,18 @@ export const ACTIONS = {
   backupRestore: {
     label: (t) => t.settings.backupAction,
     icon: 'backup',
-    variant: 'ghost',
     locked: ownOnly,
   },
   logsOpen: {
     label: (t) => t.common.open,
     icon: 'folder',
-    variant: 'ghost',
     open: { kind: 'logDir' },
   },
+  // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
+  // deleting a job for good).
   reset: {
     label: (t) => t.settings.resetAction,
-    icon: 'reset',
-    variant: 'ghost',
+    icon: 'trash',
     warns: true,
     locked: ownOnly,
   },
@@ -141,9 +129,10 @@ export interface ActionsRow {
   toggle?: Switch;
 }
 
-export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ChoiceRow<FetchRange> | ActionsRow;
+export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
 
-/** A card: its rows, and for the mailbox and the portals a block of their own above them. */
+/** A card: its rows, and for the mailbox and the portals a block of their own (the mailbox
+ *  has no rows of its own). */
 export interface CardSpec {
   id: string;
   heading: Text;
@@ -161,17 +150,6 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   palette: null,
   ...change,
 });
-
-const range: ChoiceRow<FetchRange> = {
-  kind: 'choice',
-  id: 'range',
-  label: (t) => t.settings.range,
-  options: ['sinceLast', 'days7', 'days30', 'all'],
-  name: (t, id) => t.settings.rangeName[id],
-  value: (state) => state.fetchRange,
-  patch: (id) => ({ fetchRange: id }),
-  set: (state, id) => void (state.fetchRange = id),
-};
 
 const palette: ChoiceRow<Palette> = {
   kind: 'choice',
@@ -196,7 +174,7 @@ const language: ChoiceRow<Language> = {
 };
 
 export const CARDS: readonly CardSpec[] = [
-  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [range] },
+  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
   { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
   {
     id: 'export',
@@ -237,8 +215,8 @@ export const CARDS: readonly CardSpec[] = [
   },
   { id: 'look', heading: (t) => t.settings.look, rows: [palette, language] },
   {
-    id: 'app',
-    heading: (t) => t.settings.app,
+    id: 'data',
+    heading: (t) => t.settings.data,
     rows: [
       {
         kind: 'actions',

@@ -67,7 +67,6 @@
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import Scale from '@lucide/svelte/icons/scale';
   import Scissors from '@lucide/svelte/icons/scissors';
@@ -75,7 +74,6 @@
   import Settings from '@lucide/svelte/icons/settings';
   import Shield from '@lucide/svelte/icons/shield';
   import Star from '@lucide/svelte/icons/star';
-  import Target from '@lucide/svelte/icons/target';
   import TextSelect from '@lucide/svelte/icons/text-select';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
@@ -141,7 +139,6 @@
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,
-    'rotate-ccw': RotateCcw,
     'rotate-cw': RotateCw,
     scale: Scale,
     scissors: Scissors,
@@ -149,7 +146,6 @@
     settings: Settings,
     shield: Shield,
     star: Star,
-    target: Target,
     'text-select': TextSelect,
     'trash-2': Trash2,
     'triangle-alert': TriangleAlert,

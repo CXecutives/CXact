@@ -1055,7 +1055,7 @@ test('after a click into the reader the arrows scroll it', async ({ page }) => {
   await expect(title).toHaveText(opened);
 });
 
-test('a chip value copies; a double click still edits it; its x has a tooltip', async ({
+test('a chip value copies; a double click still edits it; its x has no tooltip', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -1074,23 +1074,26 @@ test('a chip value copies; a double click still edits it; its x has a tooltip', 
   const selected = await page.evaluate(() => getSelection()?.toString() ?? '');
   expect(value.startsWith(selected.trim())).toBe(true);
   expect(selected.trim().length).toBeGreaterThan(1);
-  // The x names what it removes.
-  await chip.locator('.remove').hover();
-  await expect(page.getByRole('tooltip')).toHaveText(`${value} entfernen`);
+  // The x names what it removes for a screen reader; no tooltip repeats the chip's word.
+  const remove = chip.locator('.remove');
+  await expect(remove).toHaveAccessibleName(`${value} entfernen`);
+  await remove.hover();
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
   // A double click takes the value back into the field, with no word selected.
   await text.dblclick();
   await expect(keywords.locator('input')).toHaveValue(value);
   expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
 });
 
-test('ghost buttons at the end of a row end on the edge of the switches', async ({ page }) => {
+test('the buttons at the end of a row end on the edge of the switches', async ({ page }) => {
   await settings(page);
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
   const toggle = await edge(page.getByTestId('toggle-exportExcel'));
   for (const id of ['folder-open', 'backup-restore', 'logs-open', 'reset']) {
-    const label = await edge(page.getByTestId(id).locator('.label'));
-    expect(Math.abs(label - toggle), id).toBeLessThanOrEqual(0.5);
+    const button = await edge(page.getByTestId(id));
+    expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }
 });
 
@@ -1114,15 +1117,21 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   expect(await same(page.getByTestId('first-reset-report'))).toBe(true);
 });
 
-test('one glyph per action: retries load again, the reset keeps its own', async ({ page }) => {
+test('one glyph per action: retries load again, what deletes for good shares its glyph', async ({
+  page,
+}) => {
   await open(page, `${WIN}&scenario=list-error`);
   const retry = page.getByTestId('list-error').getByRole('button');
   await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'retry');
+  // The reset deletes everything for good: the glyph of Entfernen of the mailbox, never one
+  // of an undo or a retry.
   await settings(page);
-  await expect(page.getByTestId('reset').locator('[data-icon]')).toHaveAttribute(
-    'data-icon',
-    'reset',
-  );
+  for (const id of ['reset', 'mailbox-remove']) {
+    await expect(page.getByTestId(id).locator('[data-icon]'), id).toHaveAttribute(
+      'data-icon',
+      'purge',
+    );
+  }
 });
 
 /* -------------------------------------------------------------------------------- Motion */

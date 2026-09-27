@@ -91,12 +91,6 @@ function capitalised(text: string): string {
   return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
 }
 
-/** `14:05` */
-export function formatTime(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : formats().clock.format(date);
-}
-
 /** `24.09.`, `24/09`, with the year when it is not this one (`24.09.2025`): the one date of a
  *  job's facts (the day of its alert mail, a start "ab 01.11."). */
 export function formatDay(iso: string, now: Date = new Date()): string {

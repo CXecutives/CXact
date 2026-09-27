@@ -11,7 +11,7 @@
 // Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
 // file, CSV file, Result folder, Excluded, Score anyway, New, Inbox (the place of the active
 // jobs), Archive (Unarchive: back into the Inbox), Trash, Delete (into the Trash; there Delete
-// forever and Restore), App (the card of the app itself), Calls (what a portal allows a day),
+// forever and Restore), Data (the card of the app's data), Calls (what a portal allows a day),
 // Skill, Preference. "Conditions" only names the profile's section. Plain British English:
 // "email", never "mail" for one message; "preferences", never "wishes"; "forever" for
 // endgültig, never "for good"; two main clauses are joined by a conjunction, never by a
@@ -35,7 +35,7 @@ import type {
   RemoteWish,
   WorkMode,
 } from '../ipc/types';
-import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
+import { PROFILE_KEY_FIELD, textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -156,41 +156,44 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   unknown: INTERNAL,
 };
 
-/** Fields of the profile form, named in an error about their value (the label of the field
- *  without its unit, as everywhere: warnings, key names, the profile). */
-const profileField: Record<string, string> = {
-  name: 'Name',
-  title: 'Role',
-  competences: 'Skills',
-  strengths: 'Key strengths',
-  keywords: 'Keywords',
-  years: 'Professional experience',
-  degrees: 'Degrees',
-  industries: 'Industries',
-  tools: 'Tools and methods',
-  certificates: 'Certificates',
-  languages: 'Languages',
-  minDayRate: 'Minimum day rate',
-  countries: 'Work countries',
-  contracts: 'Temporary agency work and permanent jobs',
-  remoteOutside: 'Exclude remote jobs abroad',
-  available: 'Available from',
-  workloadMinDays: 'Workload',
-  workloadMaxDays: 'Workload',
-  minMonths: 'Minimum duration',
-  exclusionWords: 'Exclusion words',
-  targetYears: 'Experience asked from',
-  minSalary: 'Minimum annual salary',
-  permanentPlaces: 'Locations for permanent jobs',
-  permanentRemoteMin: 'Minimum remote share',
-  focus: 'Focus areas',
-  roles: 'Target roles',
-  wishDayRate: 'Preferred day rate',
-  remote: 'Remote share',
-  regions: 'Preferred regions',
-  wishIndustries: 'Preferred industries',
+/** Fields of the profile form, named in an error or a warning about their value: the label
+ *  of the field without its unit, read from the form's own words (de.ts). */
+const profileField = (): Record<string, string> => {
+  const { field, section } = en.profile;
+  return {
+    name: field.name,
+    title: field.title,
+    competences: section.competences,
+    strengths: field.strengths,
+    keywords: field.keywords,
+    years: field.totalYears,
+    degrees: field.degrees,
+    industries: field.industries,
+    tools: field.tools,
+    certificates: field.certificates,
+    languages: section.languages,
+    minDayRate: field.minDayRate,
+    countries: field.countries,
+    contracts: 'Temporary agency work and permanent jobs',
+    remoteOutside: field.remoteOutside,
+    available: field.available,
+    workloadMinDays: field.workload,
+    workloadMaxDays: field.workload,
+    minMonths: field.minMonths,
+    exclusionWords: field.exclusionWords,
+    targetYears: field.targetYears,
+    minSalary: field.minSalary,
+    permanentPlaces: field.places,
+    permanentRemoteMin: field.remoteMin,
+    focus: 'Focus areas',
+    roles: field.roles,
+    wishDayRate: field.wishRate,
+    remote: field.remote,
+    regions: field.regions,
+    wishIndustries: field.wishIndustries,
+  };
 };
-const fieldName = (value: unknown): string => profileField[str(value)] ?? str(value);
+const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(value);
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'At least one portal must be active.',
@@ -517,52 +520,9 @@ const note = {
   engineFailed: 'This ad could not be scored.',
 } satisfies Catalog['reader']['note'];
 
-/** Names of profile keys the app speaks about (the keys themselves are an external contract),
- *  named like their field in the Profile form. */
-const profileKey: Record<string, string> = {
-  min_tagessatz: profileField.minDayRate!,
-  min_day_rate: profileField.minDayRate!,
-  tagessatz_ab: profileField.minDayRate!,
-  laender: profileField.countries!,
-  countries: profileField.countries!,
-  ausgeschlossene_vertragsarten: profileField.contracts!,
-  excluded_contract_types: profileField.contracts!,
-  remote_ausserhalb_erlaubt: profileField.remoteOutside!,
-  remote_outside_allowed: profileField.remoteOutside!,
-  verfuegbar_ab: profileField.available!,
-  available_from: profileField.available!,
-  min_jahresgehalt: profileField.minSalary!,
-  min_annual_salary: profileField.minSalary!,
-  min_salary: profileField.minSalary!,
-  festanstellung_orte: profileField.permanentPlaces!,
-  permanent_locations: profileField.permanentPlaces!,
-  permanent_places: profileField.permanentPlaces!,
-  festanstellung_remote_min: profileField.permanentRemoteMin!,
-  permanent_remote_min: profileField.permanentRemoteMin!,
-  zielprofil_min_jahre: profileField.targetYears!,
-  target_min_years: profileField.targetYears!,
-  auslastung_min_tage: profileField.workloadMinDays!,
-  workload_min_days: profileField.workloadMinDays!,
-  auslastung_max_tage: profileField.workloadMaxDays!,
-  workload_max_days: profileField.workloadMaxDays!,
-  min_laufzeit_monate: profileField.minMonths!,
-  min_duration_months: profileField.minMonths!,
-  ausschlusswoerter: profileField.exclusionWords!,
-  ausschlusswörter: profileField.exclusionWords!,
-  exclusion_words: profileField.exclusionWords!,
-  schwerpunkte: profileField.focus!,
-  focus_areas: profileField.focus!,
-  wunschrollen: profileField.roles!,
-  target_roles: profileField.roles!,
-  tagessatz_wunsch: profileField.wishDayRate!,
-  desired_day_rate: profileField.wishDayRate!,
-  remote: profileField.remote!,
-  regionen: profileField.regions!,
-  regions: profileField.regions!,
-  branchen: profileField.wishIndustries!,
-  industries: profileField.wishIndustries!,
-};
-const keyLabel = (key: string): string => profileKey[key] ?? key;
+/** A key of the profile file by the name of its field (de.ts, `PROFILE_KEY_FIELD`). */
+const keyLabel = (key: string): string =>
+  key in PROFILE_KEY_FIELD ? fieldName(PROFILE_KEY_FIELD[key]) : key;
 /** Keys the engine does not read, as written in the file (so they can be found there). */
 const rawKeys = (value: unknown): string[] =>
   str(value)
@@ -825,7 +785,7 @@ export const en: Catalog = {
     term: {
       company: 'Company',
       place: 'Location',
-      mode: 'Work mode',
+      mode: 'Work model',
       contract: 'Contract type',
       rate: 'Day rate',
       start: 'Start',
@@ -1037,7 +997,7 @@ export const en: Catalog = {
       datePlaceholder: '1 Nov 2026',
       dateInvalid: 'Enter the date as 1 Nov 2026.',
       dateImpossible: 'This day does not exist.',
-      targetYears: 'Experience asked from',
+      targetYears: 'Minimum experience asked',
       minSalary: 'Minimum annual salary',
       places: 'Locations for permanent jobs',
       placesPlaceholder: 'e.g. Munich',
@@ -1080,7 +1040,7 @@ export const en: Catalog = {
     } satisfies Record<RemoteWish, string>,
     availability: {
       now: 'Immediately',
-      from: 'From a date',
+      from: 'Date',
     } satisfies Record<Exclude<ProfileAvailability['kind'], 'unset'>, string>,
     country: countryName,
     languageName: {
@@ -1131,7 +1091,7 @@ export const en: Catalog = {
     portals: 'Portals',
     export: 'Export',
     look: 'Appearance',
-    app: 'App',
+    data: 'Data',
     backToJob: 'Back to the job',
     connected: 'Connected',
     notConnected: 'No mailbox',
@@ -1147,7 +1107,7 @@ export const en: Catalog = {
     twoStepAction: 'Turn on 2-Step Verification',
     connect: 'Connect',
     connectHeading: 'Connect mailbox',
-    mailboxNotCounted: 'Mailbox connected.',
+    changeHeading: 'Change mailbox',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
     range: 'Period',
@@ -1176,7 +1136,6 @@ export const en: Catalog = {
     backupHeading: 'Restore a backup',
     backupAction: 'Restore',
     backupNone: 'There is no backup yet.',
-    backupToday: (time: string) => `Today ${time}`,
     backupKind: {
       daily: null,
       update: 'before an update',
@@ -1188,7 +1147,7 @@ export const en: Catalog = {
     reset: 'All data',
     resetAction: 'Reset',
     resetHeading: 'Reset everything?',
-    resetText: 'The app then restarts and deletes',
+    resetText: 'The app deletes the following and then restarts.',
     resetItems: [
       'the jobs and the settings',
       'the profile',
@@ -1204,7 +1163,7 @@ export const en: Catalog = {
     demo: 'Demo with sample data, without the mailbox or the portals.',
     palette: 'Colours',
     paletteName: {
-      coast: 'Coast',
+      coast: 'CXact',
       light: 'Light',
       dark: 'Dark',
     } satisfies Record<Palette, string>,
@@ -1219,6 +1178,7 @@ export const en: Catalog = {
     mailbox: 'Mailbox',
     mailboxText: (portals: readonly Portal[]) =>
       `The alert emails from ${joined(portals.map((p) => portalName[p]))} must go to this Gmail${NBSP}address.`,
+    mailboxDone: 'The alert emails of the portals must go to this address.',
     noPortal: 'Turn on a portal first.',
     openSettings: 'Open settings',
     alertMails: (value: number) => count(value, 'alert email', 'alert emails'),

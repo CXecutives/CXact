@@ -22,6 +22,8 @@ export const ICONS = {
   trash: 'trash-2',
   /** Take back: Wiederherstellen from the trash, Rückgängig in a field. */
   undo: 'undo-2',
+  /** A Schwerpunkt of the profile: outlined, filled while marked (a glyph made to be
+   *  filled). */
   star: 'star',
 
   // A job and its ad.
@@ -58,8 +60,6 @@ export const ICONS = {
   pickFile: 'file-up',
   /** Write files again (the text files). */
   rewrite: 'file-pen-line',
-  /** Reset the app. */
-  reset: 'rotate-ccw',
   /** Restore a copy of the database (Sicherung wiederherstellen). */
   backup: 'database-backup',
 
@@ -108,8 +108,6 @@ export const ICONS = {
   /** The ad is unclear: to check. */
   unclear: 'circle-question-mark',
   privacy: 'shield',
-  /** A focus (Schwerpunkt) of the profile. */
-  focus: 'target',
 
   // The facts of a job (lib/facts.ts).
   contract: 'handshake',

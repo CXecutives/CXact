@@ -128,7 +128,6 @@
       <div class="row">
         <Segmented
           label={t.facet}
-          size="sm"
           options={views}
           value={view}
           onchange={(id) => (view = id)}
@@ -148,7 +147,6 @@
       <div class="row narrow">
         <Segmented
           label={t.facet}
-          size="sm"
           options={views}
           value={view}
           onchange={(id) => (view = id)}
@@ -156,7 +154,6 @@
         />
         <Segmented
           label={t.sort}
-          size="sm"
           options={[
             { id: 'match', label: t.sorts[0] },
             { id: 'newest', label: t.sorts[1] },
