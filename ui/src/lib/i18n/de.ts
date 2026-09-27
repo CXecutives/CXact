@@ -781,7 +781,7 @@ export const de = {
     open: 'Öffnen',
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
-    prompt: 'KI-Prompt kopieren',
+    prompt: 'KI-Prompt für Bewertung kopieren',
     /** Without a usable profile there is nothing to judge the job by. */
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */

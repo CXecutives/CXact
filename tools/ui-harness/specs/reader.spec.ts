@@ -358,6 +358,8 @@ test.describe('the head and the match', () => {
 
 test.describe('the actions', () => {
   test('four buttons alike in one order, the moves of the place in "…"', async ({ page }) => {
+    // A wide window: every button with its words.
+    await page.setViewportSize({ width: 1800, height: 900 });
     await openAt(page, 'freelancermap-2801');
     const actions = stage(page).getByTestId('reader-actions');
     const buttons = actions.locator('.btn');
@@ -366,7 +368,7 @@ test.describe('the actions', () => {
     ).toEqual(['reader-mail', 'open-ad', 'reader-prompt', 'reader-more']);
     await expect(actions.getByTestId('reader-mail')).toHaveText('Alert-Mail öffnen');
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
-    await expect(actions.getByTestId('reader-prompt')).toHaveText('KI-Prompt kopieren');
+    await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
     await expect(actions.getByTestId('reader-more')).toHaveAccessibleName('Weitere Aktionen');
     // One variant and one height for all four.
     const looks = await buttons.evaluateAll((all) =>
@@ -884,9 +886,6 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'experience')).toEqual(['10 Jahre', '']);
     const open = why(page).getByTestId('reasons-open');
     await expect(open).toContainText('Mindestens 10 Jahre Berufserfahrung im Rechnungswesen');
-    expect(
-      await tip(page, open.getByTestId('reason').filter({ hasText: 'Mindestens 10 Jahre' })),
-    ).toBe(T.reason.why.missing);
     // A working student job for 20 years of experience: its level by its word, met in part.
     await openJob(page, 'freelancermap-2807');
     expect(await cell(page, 'experience')).toEqual([T.facts.level('student')!, 'partial']);
@@ -895,16 +894,24 @@ test.describe('Jobdetails', () => {
     );
   });
 
-  test('every verdict icon says why in its tooltip', async ({ page }) => {
+  test('every verdict icon of the Jobdetails says why in its tooltip; the Anforderungen none', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 1360, height: 900 });
     await openAt(page, 'freelancermap-2801');
     for (const key of ['freelancermap-2801', 'freelance-900413', 'linkedin-4100200304']) {
       await openJob(page, key);
-      const icons = stage(page).locator(
-        '[data-testid="verdict"] .reason, [data-testid="why"] [data-testid="reason"]',
-      );
+      const icons = stage(page).locator('[data-testid="verdict"] .reason');
       const count = await icons.count();
-      expect(count, key).toBeGreaterThan(3);
+      expect(count, key).toBeGreaterThan(1);
+      // The Anforderungen: the group's heading says the verdict, no tooltip on the icon.
+      const requirement = stage(page).locator('[data-testid="why"] [data-testid="reason"]').first();
+      if ((await requirement.count()) > 0) {
+        await requirement.scrollIntoViewIfNeeded();
+        await requirement.hover();
+        await page.waitForTimeout(700);
+        await expect(page.getByRole('tooltip')).toHaveCount(0);
+      }
       // One icon after the other under the pointer: the tooltip stays warm, each shows at once.
       for (let index = 0; index < count; index += 1) {
         const icon = icons.nth(index);
@@ -1064,13 +1071,6 @@ test.describe('Anforderungen', () => {
         await tokenColour(page, token),
       );
     }
-    // Each icon says why in its tooltip, never the group's heading again.
-    const said = await tip(
-      page,
-      why(page).getByTestId('reasons-met').getByTestId('reason').first(),
-    );
-    expect(said).not.toBe(T.reader.verdict.met);
-    expect(said.length).toBeGreaterThan(5);
     // Untagged is Pflicht: the only tag is "Optional".
     expect(new Set(await why(page).locator('.badge').allInnerTexts())).toEqual(
       new Set(['Optional']),

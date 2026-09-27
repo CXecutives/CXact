@@ -691,7 +691,7 @@ export const en: Catalog = {
     open: 'Open',
     mail: OPEN_MAIL,
     openAd: 'Open ad',
-    prompt: 'Copy AI prompt',
+    prompt: 'Copy AI prompt for rating',
     promptNoProfile: 'Without a profile, there is nothing to assess.',
     include: 'Score anyway',
     exclude: 'Exclude again',

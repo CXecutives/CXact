@@ -53,7 +53,7 @@
   import ScoreRing, { ringState } from '$components/ScoreRing.svelte';
   import { t } from '$lib/i18n/t';
   import { displayTitle } from '$lib/i18n/format';
-  import { criterionKey, errorText, noteText, reasonText, reasonWhy } from '$lib/i18n/texts';
+  import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget, Reason } from '$lib/ipc/types';
   import { fade, flip } from '$lib/motion/transitions';
@@ -269,11 +269,13 @@
     return jobMenu(job, context).filter((entry) => !('id' in entry) || entry.id !== 'include');
   }
 
-  /** The action row stays one line: where the labels do not fit, the three buttons are icons
-   *  (their tooltips name them). Tried again whenever the row's width changes (before the
-   *  frame is painted). */
+  /** The action row stays one line: where the labels do not fit, the buttons turn into icons
+   *  one after the other, the least used first (Alert-Mail öffnen, then Anzeige öffnen, then
+   *  the prompt; their tooltips name them). Tried again whenever the row's width changes
+   *  (before the frame is painted). */
   let actions = $state<HTMLElement | null>(null);
-  let iconsOnly = $state(false);
+  /** How many of the three buttons show only their icon, from the first. */
+  let iconsOnly = $state(0);
 
   /** The last button starts above the bottom of the first. */
   function oneLine(row: HTMLElement): boolean {
@@ -289,7 +291,7 @@
   let fitting = 0;
   async function fit(row: HTMLElement): Promise<void> {
     const attempt = ++fitting;
-    for (const icons of [false, true]) {
+    for (const icons of [0, 1, 2, 3]) {
       if (attempt !== fitting) return;
       iconsOnly = icons;
       await tick();
@@ -394,22 +396,22 @@
 {#snippet showButtons()}
   <!-- Words, glyphs and what is off come from the one table the row's menu reads too. -->
   {@const shows = showActions(job)}
-  {#snippet show(action: ShowAction, testid: string, onclick: () => void)}
+  {#snippet show(action: ShowAction, testid: string, onclick: () => void, index: number)}
     <Button
       variant="secondary"
       size="field"
       icon={action.icon}
       label={action.label}
-      iconOnly={iconsOnly}
+      iconOnly={index < iconsOnly}
       disabled={action.reason !== null}
       disabledReason={action.reason}
       {testid}
       {onclick}
     />
   {/snippet}
-  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }))}
-  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }))}
-  {@render show(shows.prompt, 'reader-prompt', () => void copyJobPrompt(job.key).then(fail))}
+  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }), 0)}
+  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }), 1)}
+  {@render show(shows.prompt, 'reader-prompt', () => void copyJobPrompt(job.key).then(fail), 2)}
 {/snippet}
 
 {#snippet actionRow()}
@@ -520,12 +522,12 @@
                   animate:flip={{ count: group.items.length }}
                   in:fade
                 >
-                  <!-- Its icon says why in its tooltip, like the verdicts of the Jobdetails. -->
+                  <!-- The group's heading says the verdict; no tooltip on its icon (user decision
+                       2026-09-27, the Jobdetails keep theirs). -->
                   <ReasonItem
                     kind={reason.kind}
                     optional={reason.weight === 'nice'}
                     label={reasonText(reason)}
-                    hint={reasonWhy(reason)}
                     testid="reason"
                   />
                   <!-- A missing must that is a term: its way into the profile, then a quiet

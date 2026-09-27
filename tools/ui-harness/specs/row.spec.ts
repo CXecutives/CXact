@@ -287,10 +287,9 @@ test.describe('tools', () => {
     await job(page, first!).getByTestId('tool-archive').click();
     await expect(row(page, first!)).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.archived);
-    // A one-word toast is as wide as its words (at least 280 px), not as wide as a title's.
+    // Every toast is as wide as the others (--toast-width), a one-word one too.
     const toast = (await page.getByTestId('toast').last().boundingBox())!;
-    expect(toast.width).toBeGreaterThanOrEqual(280);
-    expect(toast.width).toBeLessThan(400);
+    expect(Math.round(toast.width)).toBe(440);
     // The next row stands under the pointer now, its tools' slot under the tool: none until
     // the pointer moves.
     await animationsDone(page);
