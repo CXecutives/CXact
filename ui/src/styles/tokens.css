@@ -313,10 +313,9 @@
     0 4px 12px -4px hsl(var(--p-shade-pop) / 0.22), 0 1px 2px hsl(var(--p-shade-pop) / 0.1);
   --sh-hover:
     0 4px 12px -4px hsl(var(--p-shade-navy) / 0.14), 0 1px 2px hsl(var(--p-shade-navy) / 0.06);
-  /* A menu floats close above the page: a hairline, a near and a far soft shadow. */
-  --sh-menu:
-    0 0 0 0.5px hsl(var(--p-shade-pop) / 0.12), 0 4px 12px hsl(var(--p-shade-pop) / 0.08),
-    0 16px 40px hsl(var(--p-shade-pop) / 0.12);
+  /* A menu floats close above the page: a near and a far soft shadow (its edge is the same
+     hairline border every floating surface has: menus, toasts, dialogs, popovers). */
+  --sh-menu: 0 4px 12px hsl(var(--p-shade-pop) / 0.08), 0 16px 40px hsl(var(--p-shade-pop) / 0.12);
   --sh-primary: inset 0 1px 0 hsl(var(--p-white) / 0.16), 0 1px 2px hsl(var(--p-shade-xs) / 0.12);
   /* Keyboard focus (only :focus-visible, never after a click): one thin navy ring around
      the control, or inside it where the control fills its row. A text field in focus shows

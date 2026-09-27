@@ -244,6 +244,7 @@
     max-height: 100%;
     overflow-y: auto;
     padding: var(--space-24);
+    border: var(--border-width) solid var(--border);
     border-radius: var(--radius-dialog);
     background-color: var(--surface);
     box-shadow: var(--sh-pop);

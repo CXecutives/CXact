@@ -200,7 +200,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     const button = page.getByTestId(id);
     if (warns) {
       await expect(button, id).toHaveCSS('color', danger);
-      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'purge');
+      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
     } else await expect(button, id).not.toHaveCSS('color', danger);
   }
   // Every row ends on the same edge: its last button, switch or choice.

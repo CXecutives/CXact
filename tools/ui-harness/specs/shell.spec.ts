@@ -590,8 +590,8 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
   const words = await text(page, 'settings.openPortal');
   const first = page.getByTestId('open-portal-freelance');
   await first.focus();
-  // Not at once: after the same delay as hovering.
-  await page.waitForTimeout(150);
+  // Not at once: after the same delay as hovering (checked right away, not after a fixed
+  // wait, which a busy machine can stretch past the delay).
   await expect(tooltip(page)).toHaveCount(0);
   await expect(tooltip(page)).toHaveText(words);
   // Blur: the focus moves back to a button that names itself (Anmelden stands before it),
@@ -1123,13 +1123,13 @@ test('one glyph per action: retries load again, what deletes for good shares its
   await open(page, `${WIN}&scenario=list-error`);
   const retry = page.getByTestId('list-error').getByRole('button');
   await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'retry');
-  // The reset deletes everything for good: the glyph of Entfernen of the mailbox, never one
-  // of an undo or a retry.
+  // The reset deletes everything for good: the trash, like Entfernen of the mailbox and every
+  // delete, never the glyph of an undo or a retry.
   await settings(page);
   for (const id of ['reset', 'mailbox-remove']) {
     await expect(page.getByTestId(id).locator('[data-icon]'), id).toHaveAttribute(
       'data-icon',
-      'purge',
+      'trash',
     );
   }
 });

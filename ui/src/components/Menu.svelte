@@ -132,6 +132,7 @@
     padding: var(--menu-pad);
     overflow-y: auto;
     overscroll-behavior: contain;
+    border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
     background-color: var(--surface);
     box-shadow: var(--sh-menu);
