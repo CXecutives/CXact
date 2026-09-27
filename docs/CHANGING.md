@@ -239,8 +239,12 @@ A number or a list of words under `harte_kriterien`:
 4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
    (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
    come from core) and its label (and hint, placeholder) in both catalogs (`profile.field`).
-   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` (the CV update fills it
-   too) and the stub's validation need nothing.
+   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` and the stub's validation
+   need nothing.
+5. The AI prompt for a new profile (`core/src/profile/prompt.rs`): its key in the skeleton's
+   `harte_kriterien`, in the order of `CRITERIA`, and one rule line in German and English
+   (and, if the CV cannot say it, one question of "Der Ablauf"); a test fails while the
+   skeleton misses a field of the form or a key has no rule.
 
 A criterion of another kind (a switch, a choice) is a new `Kind` variant: the compiler
 names every `match row.kind` that has to handle it; in the UI `normalizedCriteria` and

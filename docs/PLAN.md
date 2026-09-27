@@ -940,4 +940,4 @@ lights 16 px from the left; colours only from the design's tokens (the close but
 - The prompt stands on its own for any AI: every key the editor reads, the questions the CV cannot answer (asked
   first, in one short message, each may be skipped), the file `beraterprofil.json` as the answer.
 - [x] The CV flow gone, the three ways everywhere, files read like answers
-- [ ] The prompt on its own: every key, the questions first, the file as the answer
+- [x] The prompt on its own: every key, the questions first, the file as the answer
