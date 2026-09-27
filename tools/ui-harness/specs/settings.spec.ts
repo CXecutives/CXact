@@ -188,7 +188,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'reset',
   ]);
   expect(kinds.filter((kind) => !kind.secondary || kind.height !== 28)).toEqual([]);
-  // Only what loses something for good is red, with the glyph of a deletion for good:
+  // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
   for (const [id, warns] of [
@@ -200,7 +200,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     const button = page.getByTestId(id);
     if (warns) {
       await expect(button, id).toHaveCSS('color', danger);
-      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'purge');
+      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
     } else await expect(button, id).not.toHaveCSS('color', danger);
   }
   // Every row ends on the same edge: its last button, switch or choice.
@@ -493,6 +493,28 @@ test('portals: a pause or an empty alert mail is one quiet line; the meter warns
   // A portal that is off says no problem of its own.
   await page.getByTestId('toggle-enabled-linkedin').click();
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
+});
+
+test('portals: a week without an alert mail is one quiet line with Alert prüfen', async ({
+  page,
+}) => {
+  // The demo's portals all sent alert mails lately: no line.
+  await settings(page);
+  await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(0);
+  // freelance.de sent its last one nine days before the last fetch.
+  await settings(page, `${WIN}&scenario=quiet-alert`);
+  const quiet = page.getByTestId('alert-quiet-freelance');
+  await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
+  await expect(quiet).toHaveClass(/warning/);
+  await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
+  await quiet.getByRole('button', { name: T.settings.checkAlert }).click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
+  // A portal that is off says nothing about its alert mails.
+  await page.getByTestId('toggle-enabled-freelance').click();
+  await expect(quiet).toHaveCount(0);
+  // The Jobs view shows nothing of it.
+  await page.getByTestId('nav-jobs').click();
+  await expect(page.getByText(T.settings.alertQuiet(9))).toHaveCount(0);
 });
 
 /* ------------------------------------------------------------------ Export */

@@ -1347,6 +1347,10 @@ export const de = {
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
     signInWaiting: 'Das Anmeldefenster ist offen.',
+    /** A portal that is on sent no alert mail for a week or longer (its alert may have run
+     *  out), and the way to its page. */
+    alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
+    checkAlert: 'Alert prüfen',
     folder: 'Ergebnisordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',

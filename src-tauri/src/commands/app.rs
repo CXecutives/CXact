@@ -121,6 +121,10 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     };
     let last_scan_run = pipeline::last_scan_run(&state.store)?;
     let empty_mails = state.store.zero_posting_mails(last_scan_run)?;
+    let last_alerts = state.store.last_alerts().unwrap_or_else(|e| {
+        log::warn!("last alert mails not read: {e}");
+        Vec::new()
+    });
     let counts = view::job_page(
         &state.store,
         &JobQuery {
@@ -166,7 +170,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         },
         mailbox: mailbox(state),
         profile: profile_info(state, &workspace),
-        portals: view::portal_states(&policy, &settings, &empty_mails, now),
+        portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
         fetch_range: settings.fetch_range,
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,

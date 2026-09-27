@@ -1104,14 +1104,19 @@ pub struct PortalState {
     /// The user has to act on the health ([`PortalHealth::action_needed`]).
     pub action_needed: bool,
     pub quota: Option<Quota>,
+    /// The date of its last alert mail the app read (`null`: none yet); the settings warn
+    /// when it is long ago.
+    pub last_alert: Option<Timestamp>,
 }
 
 /// The state of every portal. `empty_mails`: alert mails without recognised jobs of the
-/// last mailbox run.
+/// last mailbox run; `last_alerts`: the date of each portal's last alert mail
+/// (`Store::last_alerts`).
 pub fn portal_states(
     policy: &Policy,
     settings: &Settings,
     empty_mails: &[AlertMailRow],
+    last_alerts: &[(Portal, Option<Timestamp>)],
     now: Timestamp,
 ) -> Vec<PortalState> {
     Portal::ALL
@@ -1149,6 +1154,10 @@ pub fn portal_states(
                     used_day,
                     cap_day: limits.per_day,
                 }),
+                last_alert: last_alerts
+                    .iter()
+                    .find(|(p, _)| *p == portal)
+                    .and_then(|(_, at)| *at),
             }
         })
         .collect()
@@ -2297,7 +2306,7 @@ mod tests {
             mail_date: None,
             gmail_id: None,
         }];
-        let states = portal_states(&policy, &settings, &empty, now);
+        let states = portal_states(&policy, &settings, &empty, &[], now);
         let of = |portal| states.iter().find(|s| s.portal == portal).unwrap();
         let li = of(Portal::LinkedIn);
         assert!(matches!(
@@ -2336,6 +2345,25 @@ mod tests {
         );
     }
 
+    /// Each portal carries the date of its last alert mail; one that never sent one has none.
+    #[test]
+    fn each_portal_carries_its_last_alert() {
+        let now = Timestamp::now();
+        let day = now - jiff::SignedDuration::from_hours(24 * 9);
+        let last = [(Portal::LinkedIn, Some(day)), (Portal::FreelanceDe, None)];
+        let states = portal_states(&Policy::in_memory(), &Settings::default(), &[], &last, now);
+        let of = |portal| {
+            states
+                .iter()
+                .find(|s| s.portal == portal)
+                .unwrap()
+                .last_alert
+        };
+        assert_eq!(of(Portal::LinkedIn), Some(day));
+        assert_eq!(of(Portal::FreelanceDe), None);
+        assert_eq!(of(Portal::Freelancermap), None);
+    }
+
     /// The sign-in state has three values: nothing remembered = unknown.
     #[test]
     fn the_sign_in_state_is_unknown_until_something_happened() {
@@ -2343,7 +2371,7 @@ mod tests {
         let settings = Settings::default();
         let mut policy = Policy::in_memory();
         let state = |policy: &Policy| {
-            portal_states(policy, &settings, &[], now)
+            portal_states(policy, &settings, &[], &[], now)
                 .into_iter()
                 .find(|s| s.portal == Portal::FreelanceDe)
                 .unwrap()
@@ -2361,7 +2389,7 @@ mod tests {
             .get_mut(&Portal::FreelanceDe)
             .unwrap()
             .login_enabled = true;
-        let health = portal_states(&policy, &settings, &[], now)
+        let health = portal_states(&policy, &settings, &[], &[], now)
             .into_iter()
             .find(|s| s.portal == Portal::FreelanceDe)
             .unwrap()

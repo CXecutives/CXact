@@ -37,7 +37,8 @@
 // any kind, no mailbox, sign-in, other work folder or reset; they refuse with `demo` like
 // `ensure_not_demo`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
-// be read; a retry loads).
+// be read; a retry loads) · quiet-alert (freelance.de sent no alert mail for nine days
+// before the last fetch).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
@@ -683,8 +684,17 @@ const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): 
   health: { kind: 'ok' },
   actionNeeded: false,
   quota: null,
+  lastAlert: null,
   ...extra,
 });
+
+/** The date of a portal's last alert mail (store::last_alerts): the mail of its newest job. */
+function lastAlertOf(name: PortalState['portal']): string | null {
+  const dates = jobs.flatMap((j) => (j.portal === name && j.mailDate !== null ? [j.mailDate] : []));
+  return dates.length === 0
+    ? null
+    : dates.reduce((a, b) => (Date.parse(a) > Date.parse(b) ? a : b));
+}
 
 /** What the scoring of the last fetch found: the demo's jobs as the engine judged them, the
  *  one whose page is still to come pending. */
@@ -1022,7 +1032,13 @@ function initial(): void {
         ],
       };
       break;
+    case 'quiet-alert':
+      // freelance.de sent its last alert mail nine days before the last fetch: its alert
+      // may have run out.
+      state.portals[1]!.lastAlert = at(9 * 24);
+      break;
   }
+  for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
   refresh();
 }
 
@@ -1700,7 +1716,15 @@ function apply(event: RunEvent): void {
     // Only a completed fetch ends the setup (a failed first fetch keeps the setup page).
     if (event.summary.outcome.kind === 'completed') state.firstRun = false;
     // "The last fetch": a rescore or a details run never replaces it (pipeline::run).
-    if (isFetch(event.summary.kind)) state.lastRun = event.summary;
+    if (isFetch(event.summary.kind)) {
+      state.lastRun = event.summary;
+      for (const p of state.portals) {
+        const newest = lastAlertOf(p.portal);
+        const newer =
+          newest !== null && (p.lastAlert === null || Date.parse(newest) > Date.parse(p.lastAlert));
+        if (newer) p.lastAlert = newest;
+      }
+    }
     state.running = null;
   }
 }

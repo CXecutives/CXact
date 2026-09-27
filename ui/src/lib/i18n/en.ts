@@ -1122,6 +1122,8 @@ export const en: Catalog = {
     signOut: 'Sign out',
     openPortal: 'Open in browser',
     signInWaiting: 'The sign-in window is open.',
+    alertQuiet: (days: number) => `No alert email for ${n(days)} days`,
+    checkAlert: 'Check alert',
     folder: 'Result folder',
     excel: 'Excel file',
     csv: 'CSV file',
