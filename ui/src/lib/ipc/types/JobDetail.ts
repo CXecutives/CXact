@@ -2,6 +2,7 @@
 import type { JobMail } from "./JobMail";
 import type { JobView } from "./JobView";
 import type { MatchDetail } from "./MatchDetail";
+import type { TextLayout } from "./TextLayout";
 
 /**
  * One job in the reader.
@@ -10,4 +11,8 @@ export type JobDetail = { job: JobView,
 /**
  * The full text (only with details `ok`).
  */
-text: string | null, url: string, fetchedAt: string | null, mail: JobMail, match: MatchDetail | null, };
+text: string | null, url: string, fetchedAt: string | null, mail: JobMail, 
+/**
+ * Headings and list lines of the text (empty without one).
+ */
+layout: TextLayout, match: MatchDetail | null, };

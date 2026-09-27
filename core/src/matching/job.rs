@@ -110,6 +110,13 @@ fn heading_of(stripped: &str, bullet: bool) -> Option<HeadingKind> {
     if bullet { None } else { heading(stripped) }
 }
 
+/// Whether a line opens a section of the ad the way the engine reads it (a heading, never a
+/// glyph bullet); the reader sets such a line as a heading (`layout.rs`).
+pub(crate) fn is_heading_line(line: &str) -> bool {
+    let (stripped, bullet) = line_of(line);
+    heading_of(stripped, bullet).is_some()
+}
+
 fn offset(text: &str, part: &str) -> usize {
     (part.as_ptr() as usize).saturating_sub(text.as_ptr() as usize)
 }

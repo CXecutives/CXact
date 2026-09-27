@@ -91,6 +91,44 @@ pub struct Assessment {
     pub facts: KeyFacts,
     /// Per-mille score before caps and rounding: the tie-breaker of equal scores.
     pub rank: u16,
+    /// What moved the score, at most [`MAX_FACTORS`] lines in reading order (empty for an
+    /// unscorable job): the reader's "why this number".
+    pub factors: Vec<Factor>,
+}
+
+/// Most lines of [`Assessment::factors`].
+pub const MAX_FACTORS: usize = 5;
+
+/// One thing that moved a score, as a code with its params (the UI catalog words it). The
+/// engine's own arithmetic says it; it never changes the score.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Factor {
+    pub code: FactorCode,
+    pub params: Map<String, Value>,
+}
+
+/// What a [`Factor`] is about.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FactorCode {
+    /// The musts met in full (`met`), in part (`partial`) and all of them (`total`).
+    Musts,
+    /// The optional requirements met at least in part (`met`) of all of them (`total`).
+    Nice,
+    /// The Schwerpunkte of the profile the ad demands (`hit`) of all of them (`total`).
+    Focus,
+    /// The title meets a target role (`role`, `fit` full or half), or none (`fit` none).
+    TargetRole,
+    /// The wishes together lift (`points` above 0) or lower (below 0) the score, in points.
+    Wishes,
+    /// Little text to judge by (`evidence` low or teaser): the score leans to the middle.
+    Evidence,
+    /// A permanent role weighs less (`percent` of its fit, 90).
+    Permanent,
+    /// A cap held the score down (`cap` formal, severalOpen, offField, titleOpen, noItems or
+    /// junior; `max` the highest score it allows).
+    Cap,
 }
 
 /// Kind of a reason.

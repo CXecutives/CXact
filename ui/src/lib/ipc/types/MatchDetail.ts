@@ -24,4 +24,10 @@ highlights: Array<Highlight>,
 /**
  * The hard criteria strip.
  */
-criteria: Array<Reason>, };
+criteria: Array<Reason>, 
+/**
+ * What moved the score, at most five lines in reading order ("Warum diese Zahl?"):
+ * codes `musts`, `nice`, `focus`, `targetRole`, `wishes`, `evidence`, `permanent`,
+ * `cap` with their params (`matching::FactorCode`).
+ */
+factors: Array<Notice>, };

@@ -436,6 +436,39 @@ pub struct MatchDetail {
     pub highlights: Vec<Highlight>,
     /// The hard criteria strip.
     pub criteria: Vec<Reason>,
+    /// What moved the score, at most five lines in reading order ("Warum diese Zahl?"):
+    /// codes `musts`, `nice`, `focus`, `targetRole`, `wishes`, `evidence`, `permanent`,
+    /// `cap` with their params (`matching::FactorCode`).
+    pub factors: Vec<Notice>,
+}
+
+/// How the reader lays out the ad's text (UTF-16 ranges of `JobDetail::text`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct TextLayout {
+    /// The words of a line that heads a section of the ad.
+    pub headings: Vec<TextRange>,
+    /// The bullet glyph of a list line and the space after it (the item follows).
+    pub bullets: Vec<TextRange>,
+}
+
+impl TextLayout {
+    fn of(text: Option<&str>) -> Self {
+        let Some(text) = text else {
+            return Self::default();
+        };
+        let ranges = |all: Vec<(u32, u32)>| -> Vec<TextRange> {
+            all.into_iter()
+                .map(|(start, end)| TextRange { start, end })
+                .collect()
+        };
+        let layout = matching::text_layout(text);
+        Self {
+            headings: ranges(layout.headings),
+            bullets: ranges(layout.bullets),
+        }
+    }
 }
 
 /// The alert mail a job came from.
@@ -458,6 +491,8 @@ pub struct JobDetail {
     pub url: String,
     pub fetched_at: Option<Timestamp>,
     pub mail: JobMail,
+    /// Headings and list lines of the text (empty without one).
+    pub layout: TextLayout,
     #[serde(rename = "match")]
     #[cfg_attr(test, ts(rename = "match"))]
     pub match_: Option<MatchDetail>,
@@ -527,6 +562,7 @@ pub fn job_detail(
         }
     };
     Ok(Some(JobDetail {
+        layout: TextLayout::of(text.as_deref()),
         text,
         url: job.url.to_string(),
         fetched_at: job.desc_fetched_at,
@@ -638,6 +674,14 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             })
             .collect(),
         criteria,
+        factors: assessment
+            .factors
+            .iter()
+            .map(|f| Notice {
+                code: local::code_name(&f.code),
+                params: local::flat_params(&f.params),
+            })
+            .collect(),
     }
 }
 
@@ -1530,6 +1574,11 @@ pub enum OpenTarget {
     },
     /// The alert mail a job came from.
     Gmail {
+        key: JobKey,
+    },
+    /// A new mail to the contact the ad names, the job's title as its subject (the default
+    /// mail program).
+    ContactMail {
         key: JobKey,
     },
     /// An alert mail by its Gmail id (e.g. one without recognised jobs).

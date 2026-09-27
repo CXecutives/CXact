@@ -12,11 +12,13 @@ mod criteria;
 mod engine;
 mod exclusion;
 mod explain;
+mod factors;
 pub(crate) mod facts;
 mod fit;
 mod focus;
 mod job;
 mod ladder;
+mod layout;
 pub(crate) mod lexicon;
 mod limits;
 mod normalize;
@@ -43,6 +45,7 @@ use std::fmt::Write as _;
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
+pub use layout::{TextLayout, text_layout};
 pub use types::*;
 
 use engine::EngineProfile;
