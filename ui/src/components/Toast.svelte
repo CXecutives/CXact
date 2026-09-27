@@ -95,17 +95,27 @@
     const place = (room: number): void => {
       // A pixel of room is kept: the canvas and the layout may round apart.
       const shown = fitted(split, room - 1, (text) => textWidth(node, text));
-      node.textContent = shown;
+      if (node.textContent !== shown) node.textContent = shown;
       tip?.update?.(shown === split.name ? null : split.name);
     };
     node.textContent = split.name;
     if (line === null) return { destroy: () => tip?.destroy?.() };
+    // Placed in the next frame and only for a new width: the text it sets never answers the
+    // observer within the same frame (WebKit reports that as a loop).
+    let room = -1;
+    let frame = 0;
     const watch = new ResizeObserver(([entry]) => {
-      if (entry !== undefined) place(entry.contentRect.width);
+      if (entry === undefined) return;
+      const width = Math.round(entry.contentRect.width);
+      if (width === room) return;
+      room = width;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => place(entry.contentRect.width));
     });
     watch.observe(line);
     return {
       destroy() {
+        cancelAnimationFrame(frame);
         watch.disconnect();
         tip?.destroy?.();
       },

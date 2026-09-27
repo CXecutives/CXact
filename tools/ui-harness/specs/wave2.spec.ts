@@ -2,7 +2,7 @@
 // (see docs/PLAN.md).
 
 import type { Page } from '@playwright/test';
-import { expect, NOW, open, runFinished, test } from './fixtures';
+import { expect, nav, NOW, open, runFinished, test } from './fixtures';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -190,7 +190,7 @@ test('one column: closing shows the open row again, with the focus', async ({ pa
   await open(page, WIN);
   await rows(page).nth(6).click();
   const key = await list(page).locator('[data-open]').getAttribute('data-key');
-  await page.getByTestId('reader-close').click();
+  await page.getByTestId('history-back').click();
   const item = list(page).locator(`[data-key="${key}"]`);
   await expect(item).toBeInViewport();
   await expect(item.locator('[data-testid^="job-row-"]')).toBeFocused();
@@ -220,7 +220,7 @@ test('typing a country that is chosen already says nothing and Enter clears it',
 test('at 480 px the countries field keeps the width of the other fields', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 800 });
   await open(page, WIN);
-  await page.getByTestId('nav-profile').click();
+  await nav(page, 'nav-profile');
   const field = await page.getByTestId('profile-countries').boundingBox();
   const tools = await page.getByTestId('profile-tools').boundingBox();
   expect(Math.abs(field!.width - tools!.width)).toBeLessThan(2);

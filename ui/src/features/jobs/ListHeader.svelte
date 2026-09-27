@@ -28,7 +28,7 @@
   on, its parts
   stand as small chips under the row, each with its × (the row unfolds and folds away, the
   list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
-  what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
+  what went wrong. Rows that scroll away fade under it (JobsView). Under the
   rows one sentence says when a job action of the list failed (a move, its undo, the choice
   of the Zeitraum) or when jobs deleted for good could not leave the Excel file; it goes
   with the next list or the next action that works.
@@ -374,10 +374,6 @@
     padding: var(--list-header-top) var(--pane-padding) var(--pane-padding);
     border-bottom: var(--border-width) solid transparent;
     transition: border-color var(--dur-fast) var(--ease-standard);
-  }
-
-  .scrolled {
-    border-bottom-color: var(--border);
   }
 
   /* The rows span the header's side padding too. A narrow column puts the action under the

@@ -627,6 +627,13 @@ export const en: Catalog = {
     profile: 'Profile',
     settings: 'Settings',
     demo: 'Demo',
+    back: 'Back',
+    forward: 'Forward',
+    sidebarHide: 'Hide sidebar',
+    sidebarShow: 'Show sidebar',
+    readerHide: 'Hide job view',
+    readerShow: 'Show job view',
+    sidebarWidth: 'Sidebar width',
   },
   window: {
     minimize: 'Minimize',

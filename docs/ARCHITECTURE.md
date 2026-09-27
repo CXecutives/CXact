@@ -17,7 +17,7 @@ Each layer uses only the ones below it.
   `src/platform.rs` (`smoke.rs` is the debug-only probe).
 - **`ui/src/`** (Svelte 5), from the bottom:
   - `styles/tokens.css`: every value (colour, length, time, radius, shadow, layer) and the
-    three palettes. Nothing else writes a value.
+    two palettes. Nothing else writes a value.
   - `components/`: the design system. The only raw controls, the only Lucide import
     (`Icon.svelte`); it knows no feature and gets its data as props.
   - `features/<name>/`: one screen each (`jobs`, `profile`, `settings`,

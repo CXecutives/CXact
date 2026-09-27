@@ -14,6 +14,7 @@
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
@@ -64,6 +65,8 @@
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
+  import PanelLeft from '@lucide/svelte/icons/panel-left';
+  import PanelRight from '@lucide/svelte/icons/panel-right';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -87,6 +90,7 @@
     archive: Archive,
     'archive-restore': ArchiveRestore,
     'arrow-down': ArrowDown,
+    'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
@@ -137,6 +141,8 @@
     mail: Mail,
     'map-pin': MapPin,
     'message-square-text': MessageSquareText,
+    'panel-left': PanelLeft,
+    'panel-right': PanelRight,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,

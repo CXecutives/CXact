@@ -14,14 +14,20 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
   modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
   patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
-- UI: three palettes (Coast, the default, Light and Dark: GitHub's Primer colours), defined only in
+- UI: two palettes (Light, the default, and Dark: neutral like the Claude app, one blue accent, no orange; the
+  retired CXact palette is kept in `docs/palettes/cxact.css`), defined only in
   `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
   like the Claude app's (user 2026-09-27): the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
-  Windows, 44 px on macOS, the design's `--titlebar-*` tokens, a hairline under it; Windows shows the app's icon and name at the left, macOS only the traffic lights;
-  its empty parts move the window, a double click maximizes). Windows: no native title bar (`decorations: false`, the
+  Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
+  the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the
+  traffic lights), at the right the job view's button; no app shortcuts; its empty parts move the window, a double
+  click maximizes). The sidebar docks or folds away like Claude's (floats out from its button or the left edge,
+  folds by itself below 1100 px, kept per user; `lib/state/shell.svelte.ts`); Zurück and Vor walk the views, places
+  and jobs shown (`lib/state/history.svelte.ts`); hiding the job view closes its job. Windows: no native title bar (`decorations: false`, the
   shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
   (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in the app's danger red) and `caption` in
-  `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption (`HTMAXBUTTON` opens the snap layouts; right
+  `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption and leaves the buttons' zones to the page
+  (`TOOLS_START`, `TOOLS_END` in `core/src/window.rs` = `--titlebar-tools-*`) (`HTMAXBUTTON` opens the snap layouts; right
   click and Alt+Space the system menu). macOS: the native traffic lights 16 px in and centred in the bar (Overlay,
   hidden title), no buttons drawn. Minimum window 480 x 360 for the snap layouts. Below the bar the
   content inside the window is identical, and it differs between Windows and macOS only where the OS convention does

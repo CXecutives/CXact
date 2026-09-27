@@ -329,7 +329,7 @@ test.describe('the head and the match', () => {
     expect(f.cap(f.capWhy.formal, 40)).toBe('Formale Pflicht offen, deshalb höchstens 40');
   });
 
-  test('the close "×" stands at the same place at every width, no way back besides', async ({
+  test('no "×" in the job view: the top bar hides it, in one column Zurück leads back', async ({
     page,
   }) => {
     for (const size of [
@@ -338,20 +338,13 @@ test.describe('the head and the match', () => {
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
-      const close = stage(page).getByTestId('reader-close');
-      await expect(close).toBeVisible();
-      await expect(close).toHaveAccessibleName('Schließen');
+      await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+      await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
       await expect(page.getByTestId('back')).toHaveCount(0);
-      // At the end of the title's first line.
-      const box = (await close.boundingBox())!;
-      const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
-      expect(box.x).toBeGreaterThanOrEqual(title.x + title.width - 1);
-      expect(box.y).toBeGreaterThanOrEqual(title.y - 1);
-      expect(box.y).toBeLessThan(title.y + box.height);
-      expect(await tooltipOf(page, close)).toEqual(['Schließen', '']);
     }
-    // In one column it leads back to the list.
-    await stage(page).getByTestId('reader-close').click();
+    // One column: no button for the job view, Zurück leads back to the list.
+    await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
+    await page.getByTestId('history-back').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
   });
 });
@@ -565,13 +558,20 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-error')).toHaveCount(0);
   });
 
-  test('closing a job from the reader hands the focus to its row', async ({ page }) => {
+  test('hiding the job view closes its job; a job chosen shows it again', async ({ page }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2801').click();
-    await page.getByTestId('reader-close').focus();
-    await page.keyboard.press('Enter');
+    const toggle = page.getByTestId('toggle-reader');
+    await toggle.click();
+    await expect(page.getByTestId('reader-pane')).toHaveCount(0);
+    await expect(page.locator('[data-open]')).toHaveCount(0);
+    // The list takes the whole width, the top bar's line goes with the job view.
+    await expect(page.getByTestId('title-bar-seam')).toHaveCount(0);
+    await toggle.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
-    await expect(row(page, 'freelancermap-2801')).toBeFocused();
+    await toggle.click();
+    await row(page, 'freelancermap-2801').click();
+    await expect(stage(page).getByTestId('reader-title')).toBeVisible();
   });
 
   test('archiving from "…" by the keyboard keeps the focus on "…" of the next job', async ({

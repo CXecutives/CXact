@@ -214,7 +214,7 @@
   .layer {
     position: fixed;
     z-index: var(--z-overlay);
-    inset: calc(var(--titlebar-height) + var(--border-width)) 0 0;
+    inset: var(--titlebar-height) 0 0;
     display: flex;
     flex-direction: column;
   }

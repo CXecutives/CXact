@@ -5,7 +5,7 @@
 
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
-import { calls, expect, expectShot, open, settle, test, visibleCount } from './fixtures';
+import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
 import { T, failNext } from './helpers';
 
 const WIN = '?platform=windows';
@@ -15,7 +15,7 @@ const MAC = '?platform=macos';
 
 async function settings(page: Page, query = WIN): Promise<void> {
   await open(page, query);
-  await page.getByTestId('nav-settings').click();
+  await nav(page, 'nav-settings');
   await expect(page.getByTestId('settings')).toBeVisible();
   await settle(page);
 }
@@ -235,14 +235,17 @@ test('narrow, a row puts its control under the label only where the two do not f
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(Math.round(box.height), id).toBe(57);
   }
-  // At the smallest window the path of the export folder keeps its room: the buttons go under it.
+  // At the smallest window the path of the export folder keeps its room: the buttons stand
+  // beside it or go under it, never over it.
   await page.setViewportSize({ width: 480, height: 800 });
   const folder = page.getByTestId('folder');
   const [text, control] = await Promise.all([
     folder.locator('.text').boundingBox(),
     folder.locator('.control').boundingBox(),
   ]);
-  expect(control!.y).toBeGreaterThanOrEqual(text!.y + text!.height);
+  const under = control!.y >= text!.y + text!.height;
+  const beside = control!.x >= text!.x + text!.width;
+  expect(under || beside).toBe(true);
 });
 
 /* ---------------------------------------------------------------- Postfach */

@@ -306,10 +306,10 @@ test.describe('header', () => {
     await expect
       .poll(() => scroller.evaluate((node) => node.scrollHeight - node.clientHeight))
       .toBeGreaterThan(100);
+    // Scrolled, no line either: the rows fade under the header.
     await scroller.evaluate((node) => node.scrollTo({ top: 100 }));
-    await expect(header).not.toHaveCSS('border-bottom-color', clear);
-    await scroller.evaluate((node) => node.scrollTo({ top: 0 }));
     await expect(header).toHaveCSS('border-bottom-color', clear);
+    await scroller.evaluate((node) => node.scrollTo({ top: 0 }));
     const width = (await page.getByTestId('search').boundingBox())!.width;
     await page.getByTestId('fetch').click();
     await expect(page.getByTestId('cancel-run')).toBeVisible();
@@ -1127,7 +1127,9 @@ test.describe('one list', () => {
     expect(await page.evaluate((name) => localStorage.getItem(name), kept[0]!)).toBeNull();
     // Closed, it stays closed.
     await openJob(page, 'freelancermap-2801');
-    await stage(page).getByTestId('reader-close').click();
+    // Hiding the job view closes the job; shown again it asks for one.
+    await page.getByTestId('toggle-reader').click();
+    await page.getByTestId('toggle-reader').click();
     await open(page, WIN);
     await expect(page.getByTestId('place-reader')).toBeVisible();
   });
@@ -1821,7 +1823,8 @@ test.describe('moves and undo', () => {
     );
     const back = (await calls(page, 'move_back')).at(-1)?.[1] as { jobs: { to: string }[] };
     expect(back.jobs.map(({ to }) => to)).toEqual(['inbox']);
-    await page.getByTestId('reader-close').click();
+    await page.getByTestId('toggle-reader').click();
+    await page.getByTestId('toggle-reader').click();
     await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2803');
     await page.getByTestId('toast-action').click();
@@ -2327,7 +2330,7 @@ test.describe('sidebar', () => {
     await page.getByTestId('nav-jobs').hover();
     await page.waitForTimeout(700);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
-    // It folds only by the window width: no edge to drag, Ctrl+B and Cmd+B change nothing.
+    // Ctrl+B and Cmd+B change nothing (no keys of the app); a narrow window folds it away.
     const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
     await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
     const full = await width();
@@ -2335,27 +2338,21 @@ test.describe('sidebar', () => {
     await page.keyboard.press('Meta+b');
     expect(await width()).toBe(full);
     await page.setViewportSize({ width: 1000, height: 700 });
-    await expect.poll(width).toBeLessThan(full);
-    // Folded to its icons, the names are the tooltips.
-    await page.getByTestId('nav-profile').hover();
-    await expect(page.getByRole('tooltip')).toHaveText(T.nav.profile);
+    await expect(sidebar).toHaveCount(0);
     await page.setViewportSize({ width: 1360, height: 900 });
     await expect.poll(width).toBe(full);
   });
 
   for (const os of [WIN, MAC]) {
-    test(`the rail keeps every entry in the window down to 480 x 360 ${os}`, async ({ page }) => {
-      await page.setViewportSize({ width: 1000, height: 700 });
-      await open(page, os);
-      for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
-        const box = (await page.getByTestId(id).boundingBox())!;
-        expect([box.width, box.height], id).toEqual([37, 37]);
-      }
+    test(`the floating sidebar keeps every entry in the window at 480 x 360 ${os}`, async ({
+      page,
+    }) => {
       await page.setViewportSize({ width: 480, height: 360 });
+      await open(page, os);
+      await page.getByTestId('toggle-sidebar').click();
       for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 1 });
       }
-      await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
     });
   }
 
@@ -2416,7 +2413,7 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   await rows(page).first().click();
   await expect(page.getByTestId('reader')).toBeVisible();
   await expect(page.getByTestId('list-scroll')).toBeHidden();
-  await page.getByTestId('reader-close').click();
+  await page.getByTestId('history-back').click();
   await expect(page.getByTestId('list-scroll')).toBeVisible();
 });
 

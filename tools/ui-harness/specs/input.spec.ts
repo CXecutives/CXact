@@ -931,34 +931,37 @@ test('a middle click on a button, a link-like button or a row does nothing', asy
   expect(context.pages()).toHaveLength(pages);
 });
 
-test('the back button and the back key do nothing where no view has a way back', async ({
+test('the back button goes back like Zurück; forward and Alt+Left/Right do nothing', async ({
   page,
 }) => {
   await open(page, WIN);
   const url = page.url();
   await rows(page).first().click();
   await expect(page.getByTestId('reader')).toBeVisible();
-  // The mouse's back and forward buttons (3 and 4) and Alt+Left/Right.
-  await page.evaluate(() => {
-    for (const button of [3, 4]) {
+  const press = (button: number): Promise<void> =>
+    page.evaluate((button) => {
       const init = { bubbles: true, cancelable: true, button };
       document.body.dispatchEvent(new MouseEvent('mousedown', init));
       document.body.dispatchEvent(new MouseEvent('mouseup', init));
-    }
-  });
+    }, button);
+  // The mouse's forward button (4) and Alt+Left/Right are no keys of the app.
+  await press(4);
   await page.keyboard.press('Alt+ArrowLeft');
   await page.keyboard.press('Alt+ArrowRight');
   await page.waitForTimeout(200);
   expect(page.url()).toBe(url);
-  // The wide Jobs view has no way back: the open job stays.
   await expect(page.getByTestId('reader')).toBeVisible();
+  // Its back button (3) goes back a step: before the job none was open. The web view stays.
+  await press(3);
+  await expect(page.getByTestId('reader')).toHaveCount(0);
+  expect(page.url()).toBe(url);
 });
 
 test('the back button closes the reader where it stands alone in one column', async ({ page }) => {
   await page.setViewportSize({ width: 780, height: 560 });
   await open(page, WIN);
   await rows(page).first().click();
-  const close = page.getByTestId('reader-close');
+  const close = page.getByTestId('reader');
   await expect(close).toBeVisible();
   // Alt+Left is no key of the app: only the mouse's back button goes back.
   await page.keyboard.press('Alt+ArrowLeft');

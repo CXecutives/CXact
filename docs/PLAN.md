@@ -941,3 +941,24 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   first, in one short message, each may be skipped), the file `beraterprofil.json` as the answer.
 - [x] The CV flow gone, the three ways everywhere, files read like answers
 - [x] The prompt on its own: every key, the questions first, the file as the answer
+
+## The Claude style (user decisions 2026-09-27)
+This replaces the 2026-09-25 decisions "no manual sidebar fold (the icon rail below 1100 px)" and "the only resize
+handle sits between list and reader".
+- Two palettes, Light (the default) and Dark: neutral like the Claude app with a fifth of Primer, one calm blue
+  accent, no orange; the five ring colours stay; the CXact palette is kept in `docs/palettes/cxact.css`, a stored
+  "coast" loads as Light. The tooltip is the same dark bubble with a light edge in both; menus, dialogs and toasts
+  stand on a raised surface. The app icon: plate #101016, a white folder 62 % of the plate, the check 67 units.
+- Size B: controls 27 / 30 / 33 / 37 px, text 12 / 12.5 / 14, the place 14.5, headings 16 / 19 / 23.5, tabs row
+  41, rings 36 and 51, pane padding 14, sidebar 206.
+- The top bar: no line, no icon, no name; the sidebar's colour as far as the sidebar reaches, a seam at its edge and
+  one at the list's; the sidebar's button, Zurück and Vor at the left, the job view's button at the right; no app
+  shortcuts. Windows leaves the buttons' zones to the page (`TOOLS_START`, `TOOLS_END`, smoke probe `tools`).
+- The sidebar docks or folds away like Claude's: floats out from its button or the window's left edge, folds by
+  itself below 1100 px, its state and its width (a second handle) kept per user. Hovered and chosen entries look
+  clearly apart. Hiding the job view closes its job; a job chosen shows it again. Zurück and Vor walk the views,
+  places and jobs shown (the mouse's back button too). Where content scrolls away it fades (the views, the list
+  under its header, the job view).
+- [x] Palettes, tooltip, icon
+- [x] Size B
+- [x] Top bar, sidebar fold, second handle, job view button, Zurück and Vor, fades

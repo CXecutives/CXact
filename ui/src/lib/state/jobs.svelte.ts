@@ -713,6 +713,18 @@ class JobsStore {
     await this.loadDetail(job.key);
   }
 
+  /** Open the job of `key` again (Zurück and Vor): like a click, but it stays as read as it
+   *  was. A job the list does not hold (yet) opens by its key. */
+  openKey(key: JobKey): void {
+    const job = this.held(key);
+    if (job !== null) {
+      void this.select(job, false);
+      return;
+    }
+    this.selected = key;
+    void this.loadDetail(key);
+  }
+
   clearSelection(): void {
     if (this.selected !== null) keepOpen(null);
     this.selected = null;

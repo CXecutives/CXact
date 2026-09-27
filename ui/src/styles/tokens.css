@@ -36,7 +36,7 @@
      blue structure. The window and the sidebar are one step below the content. */
   --p-white: 60 20% 99%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  --p-nav-active: 60 4.3% 91.4%; /* the active sidebar entry */
+  --p-nav-active: 60 3.4% 88.6%; /* the active sidebar entry, #E4E4E2 */
   --p-cream: 60 5.9% 96.7%;
   --p-ink: 210 6.2% 6.3%;
   --p-coral: 214.2 64.8% 47.8%;
@@ -182,6 +182,9 @@
      thumb and the tabs' line); its label navy, its icon coral. A nav icon turns coral on
      hover. The chosen segment and tab share the navy label. */
   --nav-active-bg: hsl(var(--p-nav-active));
+  /* An idle entry under the pointer: far fainter than the active one, pressed a step more. */
+  --nav-hover: hsl(var(--p-wash) / 0.03);
+  --nav-press: hsl(var(--p-wash) / 0.06);
   --nav-active-border: hsl(var(--p-nav-active));
   --nav-active-fg: hsl(var(--p-ink));
   --nav-active-icon: hsl(var(--p-coral));
@@ -292,8 +295,11 @@
   --brand-radius: 22.37%;
 
   /* --------------------------------------------------------------- gradients */
-  /* One, and only for the light of a loading placeholder. No decorative gradients. */
+  /* Two, for the light of a loading placeholder and the fade under the top bar. No
+     decorative gradients. */
   --grad-shimmer: linear-gradient(90deg, transparent, hsl(var(--p-white) / 0.6), transparent);
+  /* And the fade under the top bar (user, 2026-09-27): the view's colour into nothing. */
+  --grad-fade: linear-gradient(hsl(var(--p-white)), hsl(var(--p-white) / 0));
 
   /* ----------------------------------------------------------------- shadows */
   /* Small and few: large blurred shadows are expensive to paint in the web view. Only what
@@ -427,6 +433,8 @@
   --titlebar-tools-start: 94px;
   /* The page's own button left of the caption buttons: 28 px and 6 px before them. */
   --titlebar-tools-end: 34px;
+  /* The room before the first and after the last button of the bar. */
+  --titlebar-tools-inset: 6px;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 41px;
@@ -547,6 +555,15 @@
   --level-width: 140px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
   --sidebar-width: 206px;
+  /* The sidebar's handle keeps it between these. */
+  --sidebar-min: 180px;
+  --sidebar-max: 320px;
+  /* The folded sidebar floats this far in from the window's edges; the strip at the left
+     edge that floats it out. */
+  --peek-inset: 6px;
+  --peek-edge: 6px;
+  /* The fade under the top bar where a view scrolls beneath it. */
+  --fade-height: 20px;
   --rail-width: 64px;
   /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
      Übereinstimmung") with its action and ×. */
@@ -714,7 +731,7 @@
 
   --p-white: 240 2.4% 8%;
   --p-raised: 210 3.2% 12.2%;
-  --p-nav-active: 240 1.5% 13.5%;
+  --p-nav-active: 240 1.2% 16.5%; /* white 12 % on the sidebar */
   --p-cream: 240 3.4% 5.7%;
   --p-ink: 60 3.2% 93.9%;
   /* Fills in fgColor-accent with dark text on them (white text on a blue that also reads as
@@ -780,6 +797,8 @@
   --text-inverse-muted: hsl(var(--p-ink) / 0.72);
   --nav-active-fg: hsl(var(--p-ink));
   --brand-edge: hsl(var(--p-ink) / 0.16);
+  --nav-hover: hsl(var(--p-wash) / 0.045);
+  --nav-press: hsl(var(--p-wash) / 0.08);
   --text-on-danger: hsl(var(--p-white));
   --ring-track-inactive: hsl(var(--p-ink) / 0.14);
   --selection: hsl(var(--p-navy) / 0.35);

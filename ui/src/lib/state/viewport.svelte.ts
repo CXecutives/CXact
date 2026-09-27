@@ -1,9 +1,10 @@
 // Window width classes the layout reacts to in script (CSS uses the same breakpoints):
-// below 1100 px the sidebar becomes the icon rail, below 900 px the Jobs view is one column.
-// The width itself is followed too (the list column's limits depend on it).
+// below 1100 px the sidebar folds away (it floats over the view on demand), below 900 px the
+// Jobs view is one column. The width itself is followed too (the list column's limits depend
+// on it).
 
-/** Below this width the sidebar is the icon rail (the list's limits look across it). */
-export const RAIL_BELOW = 1100;
+/** Below this width there is no room for the sidebar beside the view: it folds away. */
+export const FOLD_BELOW = 1100;
 const NARROW_BELOW = 900;
 
 function query(width: number): MediaQueryList {
@@ -11,18 +12,18 @@ function query(width: number): MediaQueryList {
 }
 
 class Viewport {
-  /** Below 1100 px there is no room for the full sidebar: it shows its icons only. */
-  rail = $state(false);
+  /** Below 1100 px the sidebar folds away, whatever the user chose (like Claude's). */
+  fold = $state(false);
   narrow = $state(false);
   /** The inner width of the window in px. */
   width = $state(innerWidth);
 
   constructor() {
-    const rail = query(RAIL_BELOW);
+    const fold = query(FOLD_BELOW);
     const narrow = query(NARROW_BELOW);
-    this.rail = rail.matches;
+    this.fold = fold.matches;
     this.narrow = narrow.matches;
-    rail.addEventListener('change', (event) => (this.rail = event.matches));
+    fold.addEventListener('change', (event) => (this.fold = event.matches));
     narrow.addEventListener('change', (event) => (this.narrow = event.matches));
     addEventListener('resize', () => (this.width = innerWidth));
   }

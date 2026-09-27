@@ -18,19 +18,23 @@
   import Menu from '$components/Menu.svelte';
   import Notice, { type NoticeTone } from '$components/Notice.svelte';
   import Spinner from '$components/Spinner.svelte';
+  import Splitter from '$components/Splitter.svelte';
   import Toast from '$components/Toast.svelte';
   import Tooltip from '$components/Tooltip.svelte';
   import { keepScroll } from '$lib/actions/keepScroll';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
+  import { onBack } from '$lib/input/input';
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
   import { fade, viewIn, viewOut } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
+  import { history } from '$lib/state/history.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { shell } from '$lib/state/shell.svelte';
+  import { tokenPx } from '$lib/tokens';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
   import CloseDialog from './features/shell/CloseDialog.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
@@ -43,12 +47,30 @@
   run.install();
   jobs.install();
   navigation.install();
+  history.install();
   void app.load().then((state) => run.attach(state?.running ?? null, state?.lastRun ?? null));
 
   const firstRun = $derived(shell.firstRun);
   /** Closing while the app is busy: what the window waits for (null: not closing). */
   let closing = $state<{ activity: string | null } | null>(null);
   $effect(() => onClosing((activity) => (closing = { activity })));
+  // The mouse's back button goes back like Zurück in the top bar.
+  $effect(() => onBack(() => history.back()));
+
+  /** How long the floating sidebar waits for the pointer to come back, in ms. */
+  const PEEK_LEAVE = 300;
+  /** The folded sidebar floats out while the pointer is on its button, on the window's left
+   *  edge or on it, and folds again a moment after the pointer left them. */
+  let unpeek: ReturnType<typeof setTimeout> | null = null;
+  function peek(here: boolean): void {
+    if (unpeek !== null) clearTimeout(unpeek);
+    unpeek = null;
+    if (here) shell.peek = true;
+    else unpeek = setTimeout(() => (shell.peek = false), PEEK_LEAVE);
+  }
+  $effect(() => {
+    if (shell.docked) shell.peek = false;
+  });
 
   /** The log or the data folder, after a start that could not load its data. */
   function openFolder(target: OpenTarget): void {
@@ -81,10 +103,42 @@
 </script>
 
 <div class="shell" data-testid="shell">
-  <TitleBar />
+  <TitleBar onpeek={peek} />
   <div class="body">
-    <Sidebar />
-    <main class="views">
+    {#if shell.docked}
+      <Sidebar />
+      <span class="split"
+        ><Splitter
+          bind:size={shell.sidebarWidth}
+          initial={tokenPx('--sidebar-width')}
+          min={tokenPx('--sidebar-min')}
+          max={tokenPx('--sidebar-max')}
+          storageKey="sidebar-width"
+          label={t.nav.sidebarWidth}
+          testid="sidebar-splitter"
+        /></span
+      >
+    {:else}
+      <span
+        class="edge"
+        role="presentation"
+        data-testid="sidebar-edge"
+        onpointerenter={() => peek(true)}
+        onpointerleave={() => peek(false)}
+      ></span>
+      {#if shell.peek}
+        <div
+          class="peek"
+          role="presentation"
+          onpointerenter={() => peek(true)}
+          onpointerleave={() => peek(false)}
+          transition:fade
+        >
+          <Sidebar floating onchoose={() => (shell.peek = false)} />
+        </div>
+      {/if}
+    {/if}
+    <main class="views" class:docked={shell.docked}>
       {#if app.error !== null && app.state === null}
         <section class="view fixed stage" data-testid="view-error">
           <div class="center">
@@ -238,8 +292,41 @@
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    border-left: var(--border-width) solid var(--border);
     background-color: var(--surface);
+  }
+
+  .views.docked {
+    border-left: var(--border-width) solid var(--border);
+  }
+
+  /* The handle between the sidebar and the view: no room of its own. */
+  .split {
+    display: flex;
+    flex: none;
+  }
+
+  /* The folded sidebar: a strip at the window's left edge floats it out, and it floats over
+     the view, a little in from the edges, like the Claude app's. */
+  .edge {
+    position: absolute;
+    z-index: var(--z-sticky);
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--peek-edge);
+  }
+
+  .peek {
+    position: absolute;
+    z-index: var(--z-overlay);
+    top: var(--peek-inset);
+    bottom: var(--peek-inset);
+    left: var(--peek-inset);
+    overflow: hidden;
+    border: var(--border-width) solid var(--border);
+    border-radius: var(--radius-lg);
+    background-color: var(--bg);
+    box-shadow: var(--sh-menu);
   }
 
   /* All views share one cell; during a switch the new one lies on top and covers the old. */
@@ -256,6 +343,20 @@
      column never jumps sideways between a short and a long view. */
   .view:not(.fixed) {
     overflow-y: scroll;
+  }
+
+  /* The fade under the top bar: the view's colour into nothing at the top of a view that
+     scrolls, over the empty padding at rest and over the content once it scrolled under it. */
+  .view:not(.fixed)::before {
+    content: '';
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: block;
+    height: var(--fade-height);
+    margin-bottom: calc(-1 * var(--fade-height));
+    background: var(--grad-fade);
+    pointer-events: none;
   }
 
   .fixed {

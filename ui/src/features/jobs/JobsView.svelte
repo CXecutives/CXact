@@ -29,12 +29,11 @@
   import { duration } from '$lib/motion/motion';
   import { fade, rise, viewOut } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
-  import { onBack } from '$lib/input/input';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { shell } from '$lib/state/shell.svelte';
-  import { RAIL_BELOW, viewport } from '$lib/state/viewport.svelte';
+  import { FOLD_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ReaderSkeleton from './ReaderSkeleton.svelte';
@@ -92,23 +91,48 @@
   let columnScrolled = $state(false);
   /** The width of the list column (the splitter keeps it per user). */
   let listWidth = $state<number | undefined>(undefined);
+  /** The docked sidebar's width (the user's, or the first one). */
+  const sidebar = $derived(shell.sidebarWidth ?? tokenPx('--sidebar-width'));
   /** The content beside the sidebar (and the sheet's hairline): the list's limits and its
-   *  first width follow it when the window resizes (the sidebar turns to its rail too). */
+   *  first width follow it when the window resizes or the sidebar folds or changes width. */
   const content = $derived(
-    viewport.width -
-      tokenPx(viewport.rail ? '--rail-width' : '--sidebar-width') -
-      tokenPx('--border-width'),
+    viewport.width - (shell.docked ? sidebar + tokenPx('--border-width') : 0),
   );
-  /** The list never gets narrower while the window grows: beside the rail it takes at most
-   *  what it has beside the full sidebar at the rail's breakpoint. */
+  /** The list never gets narrower while the window grows: where the sidebar folded by itself
+   *  it takes at most what it has beside the sidebar at the fold's breakpoint. */
   const limits = $derived(
-    viewport.rail
+    viewport.fold
       ? cappedLimits(
           splitLimits(content),
-          splitLimits(RAIL_BELOW - tokenPx('--sidebar-width') - tokenPx('--border-width')),
+          splitLimits(FOLD_BELOW - sidebar - tokenPx('--border-width')),
         )
       : splitLimits(content),
   );
+  /** The job view stands beside the list unless the user hid it (one column shows a job in
+   *  place of the list). A job chosen in the list shows it again. */
+  const readerShown = $derived(shell.readerOpen || viewport.narrow);
+  // The top bar continues the border between the list and the job view.
+  $effect(() => {
+    shell.listSeam = readerShown && !viewport.narrow && listWidth !== undefined ? listWidth : null;
+    return () => {
+      shell.listSeam = null;
+    };
+  });
+  let chosen = untrack(() => jobs.selected);
+  $effect(() => {
+    const selected = jobs.selected;
+    untrack(() => {
+      if (selected !== null && !sameKey(selected, chosen)) shell.setReader(true);
+      // One column: back to the list (Zurück), at the row of the job that was open.
+      const left = chosen;
+      if (selected === null && left !== null && viewport.narrow) {
+        if (jobs.shown.some((job) => sameKey(job.key, left))) {
+          jobs.reveal = { key: keyOf(left), focus: true };
+        }
+      }
+      chosen = selected;
+    });
+  });
 
   let right = $state<HTMLElement | null>(null);
 
@@ -129,16 +153,6 @@
       jobs.reveal = { key: keyOf(open), focus: true };
     }
   }
-
-  // The mouse's back button goes back to the list where the reader stands alone in one
-  // column; elsewhere it does nothing (lib/input/input.ts).
-  $effect(() =>
-    onBack(() => {
-      if (!shell.listHidden) return false;
-      close();
-      return true;
-    }),
-  );
 
   let header = $state<ListHeader | null>(null);
 
@@ -192,7 +206,7 @@
   }
 </script>
 
-<div class="jobs" class:reading data-testid="jobs">
+<div class="jobs" class:reading class:alone={!readerShown} data-testid="jobs">
   <div class="body">
     <aside class="left" use:cssVars={listWidth ? { 'list-width': `${listWidth}px` } : {}}>
       <!-- One column scrolls the whole column under its pinned header: watched from its top. -->
@@ -205,69 +219,71 @@
         <JobList onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
-    <span class="split"
-      ><Splitter
-        bind:size={listWidth}
-        initial={limits.initial}
-        min={limits.min}
-        max={limits.max}
-        storageKey="jobs-list-width"
-        testid="list-splitter"
-      /></span
-    >
-    <section class="right" data-testid="reader-pane" bind:this={right}>
-      {#key stage.turn}
-        <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
-          <div class="column">
-            {#if stage.what === NO_JOB}
-              <!-- No job open: the one empty state of every place (its icon, one sentence);
+    {#if readerShown}
+      <span class="split"
+        ><Splitter
+          bind:size={listWidth}
+          initial={limits.initial}
+          min={limits.min}
+          max={limits.max}
+          storageKey="jobs-list-width"
+          testid="list-splitter"
+        /></span
+      >
+      <section class="right" data-testid="reader-pane" bind:this={right}>
+        {#key stage.turn}
+          <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
+            <div class="column">
+              {#if stage.what === NO_JOB}
+                <!-- No job open: the one empty state of every place (its icon, one sentence);
                    beside an empty list, which says it all, nothing. -->
-              <div class="place-reader">
-                {#if !placeEmpty}
-                  <EmptyState
-                    icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
-                    tone="neutral"
-                    text={t.place.pickJob}
-                    testid="place-reader"
-                  />
-                {/if}
-              </div>
-            {:else}
-              <!-- One column: the way back while no job stands (the reader has its "×"). -->
-              {#if stage.what === ERROR || stage.what === WAITING}
-                <div class="back">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon="back"
-                    label={t.common.back}
-                    testid="back"
-                    onclick={close}
-                  />
+                <div class="place-reader">
+                  {#if !placeEmpty}
+                    <EmptyState
+                      icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
+                      tone="neutral"
+                      text={t.place.pickJob}
+                      testid="place-reader"
+                    />
+                  {/if}
                 </div>
+              {:else}
+                <!-- One column: the way back while no job stands (the reader has its "×"). -->
+                {#if stage.what === ERROR || stage.what === WAITING}
+                  <div class="back">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon="back"
+                      label={t.common.back}
+                      testid="back"
+                      onclick={close}
+                    />
+                  </div>
+                {/if}
+                {#if stage.what === ERROR}
+                  <EmptyState
+                    icon="warning"
+                    tone="danger"
+                    text={jobs.detailError ?? t.reader.loadFailed}
+                    secondary={{
+                      label: t.common.retry,
+                      icon: 'retry',
+                      onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
+                    }}
+                    testid="reader-error"
+                  />
+                {:else if stage.what === WAITING}
+                  <ReaderSkeleton />
+                {:else if jobs.detail}
+                  <Reader detail={jobs.detail} />
+                {/if}
               {/if}
-              {#if stage.what === ERROR}
-                <EmptyState
-                  icon="warning"
-                  tone="danger"
-                  text={jobs.detailError ?? t.reader.loadFailed}
-                  secondary={{
-                    label: t.common.retry,
-                    icon: 'retry',
-                    onclick: () => jobs.selected && void jobs.loadDetail(jobs.selected),
-                  }}
-                  testid="reader-error"
-                />
-              {:else if stage.what === WAITING}
-                <ReaderSkeleton />
-              {:else if jobs.detail}
-                <Reader detail={jobs.detail} onclose={close} />
-              {/if}
-            {/if}
+            </div>
           </div>
-        </div>
-      {/key}
-    </section>
+        {/key}
+      </section>
+    {/if}
   </div>
 </div>
 
@@ -293,6 +309,13 @@
     border-right: var(--border-width) solid var(--border);
   }
 
+  /* The job view hidden: the list takes the whole width. */
+  .alone .left {
+    flex: 1;
+    width: auto;
+    border-right: none;
+  }
+
   /* The header asks the column's width (its second row wraps in a narrow column): the query
      container is the header's box, as wide as the column, and not the column itself. Around
      the list a query container made every layout of the view half as long again (the
@@ -313,7 +336,7 @@
     flex: none;
   }
 
-  /* Watched: once it has scrolled away, the list header draws its bottom line. */
+  /* Watched: once it has scrolled away (the list header's state). */
   .top {
     flex: none;
     height: 0;
@@ -330,6 +353,22 @@
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
+  }
+
+  /* The fade where the rows scroll away under the header, and where a job scrolls away under
+     the top bar: the sheet's colour into nothing, invisible over the empty top at rest. */
+  .scroll::before,
+  .stage::before {
+    content: '';
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: block;
+    flex: none;
+    height: var(--fade-height);
+    margin-bottom: calc(-1 * var(--fade-height));
+    background: var(--grad-fade);
+    pointer-events: none;
   }
 
   /* One cell: a leaving stage and the next one lie on top of each other. */

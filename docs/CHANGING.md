@@ -30,7 +30,7 @@ Components use roles only; so do the consumers outside the page:
 |---|---|---|
 | Excel file (`JobAlerts.xlsx`; the CSV file has no colours) | `surface-muted` (header row), `score-excluded` (excluded rows), `score-ring-0` ... `score-ring-9` (score cells) | `palette.rs` (`xlsx.rs`, `scale.rs`) |
 | Window colour of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`; the top bar is the page's, `--titlebar-*`) | `palette.rs` |
-| Window background, both OS | `bg`: Coast's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
+| Window background, both OS | `bg`: Light's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 
 Only opaque colour roles leave the page: a role with an alpha (`--selection`), gradients and
@@ -64,7 +64,7 @@ Commit them together with tokens.css.
 
 ### What does not follow the palette
 
-- The Excel file and the app icon keep Coast whatever palette is chosen in Einstellungen
+- The Excel file and the app icon keep Light whatever palette is chosen in Einstellungen
   (Light and Dark reach only the page and the window).
 - The macOS traffic lights and the window's frame (shadow, edge): the system's. The top bar and
   the Windows caption buttons are the page's and follow the palette (`--titlebar-*`).
@@ -76,18 +76,18 @@ Commit them together with tokens.css.
 
 ## Add or change a palette
 
-The app has three palettes (Einstellungen > Darstellung > Design): Coast is the `:root` block
-of `ui/src/styles/tokens.css` and the default; Light and Dark are one block each,
-`:root[data-palette='light']` and `:root[data-palette='dark']`, laid over it. Components never
-ask which palette is on.
+The app has two palettes (Einstellungen > Darstellung > Design): Light is the `:root` block of
+`ui/src/styles/tokens.css` and the default; Dark is one block, `:root[data-palette='dark']`,
+laid over it. Components never ask which palette is on. The retired CXact palette is kept in
+`docs/palettes/cxact.css` (nothing reads it).
 
-1. **Change one**: edit its block. It sets the palette entries under Coast's names (`--p-cream`
+1. **Change one**: edit its block. It sets the palette entries under Light's names (`--p-cream`
    is the window and the sidebar, `--p-white` the sheet and the cards, `--p-ink` the text,
    `--p-coral` the fills and what is new, `--p-navy` focus, links and progress, ...), so every
-   role follows, and then only the roles whose part differs from Coast (in Dark the washes of
+   role follows, and then only the roles whose part differs from Light (in Dark the washes of
    the light text, the scrim, the shadows, the text on the tooltip and on the fills). A value
-   of Coast is a change of `:root` and reaches the Excel file and the icon too;
-   Light and Dark reach only the page and the window.
+   of Light is a change of `:root` and reaches the Excel file and the icon too;
+   Dark reaches only the page and the window.
 2. **Add one** (say `sepia`): a block `:root[data-palette='sepia'] { ... }`, then the name in
    `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
    (`src-tauri/src/platform.rs`), in `PALETTES` (`ui/src/lib/palette.ts`), in the options of
@@ -97,8 +97,7 @@ ask which palette is on.
 3. Run `npm run regen`: `tools/tokens.mjs` writes the window's colours of every palette
    (`LIGHT_BG`, `DARK_TEXT`, ... and `WINDOW_PALETTES` in `palette.rs`) and measures every text
    role on its backgrounds in every palette (`CONTRAST`, WCAG AA 4.5:1). It fails on a pair
-   below; the only exception is Coast's light coral primary, a documented decision
-   (`EXCEPTIONS`). `npm run check` runs the same measurement.
+   below; a documented exception would stand in `EXCEPTIONS` (none today). `npm run check` runs the same measurement.
 4. Check: `cargo test -p jobalert-core --test palette --test ui_contract`, the settings spec
    (`npm run harness -- settings.spec.ts`, its palette and contrast tests), and the page in
    each palette (`tools/ui-preview.cmd`, add `&palette=dark` to the address).

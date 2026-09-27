@@ -773,7 +773,7 @@ fn the_window_has_the_apps_own_top_bar() {
         "the top bar draws the caption buttons where platform.ts says so (Windows)"
     );
     assert!(
-        source("App.svelte").code.contains("<TitleBar />"),
+        source("App.svelte").code.contains("<TitleBar "),
         "the shell starts with the top bar"
     );
 

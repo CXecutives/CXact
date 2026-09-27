@@ -15,6 +15,7 @@ import {
   open,
   runFinished,
   settle,
+  nav,
   test,
   text,
   viewsSettled,
@@ -84,25 +85,6 @@ const MAC = '?platform=macos';
 
 const sidebarWidth = async (page: Page): Promise<number> =>
   Math.round((await page.getByTestId('sidebar').boundingBox())!.width);
-
-/** The one pill lies exactly on the entry (full or rail, a main entry or a smaller sub). */
-async function pillOn(page: Page, id: string): Promise<void> {
-  const nav = page.getByTestId('sidebar').locator('nav');
-  await expect
-    .poll(async () => {
-      const pill = await nav.locator('.indicator').boundingBox();
-      const entry = await page.getByTestId(id).boundingBox();
-      // The pill is drawn anew when the entries below the places move: no box for a moment.
-      if (pill === null || entry === null) return null;
-      return [
-        pill.x - entry.x,
-        pill.y - entry.y,
-        pill.width - entry.width,
-        pill.height - entry.height,
-      ].map((value) => Math.round(value));
-    }, id)
-    .toEqual([0, 0, 0, 0]);
-}
 
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
@@ -273,15 +255,16 @@ test('the navigation switches the view', async ({ page }) => {
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
-// The window's top bar is the same on both OS, like the Claude app's: across the whole window
-// in the design's window colour with a hairline under it, empty but for the window buttons
-// (Windows: 36 px, the app's caption buttons at the right; macOS: 44 px, the room of the native
-// traffic lights at the left). Below it the app is the same.
+// The window's top bar is the same on both OS, like the Claude app's: across the whole window,
+// no line under it, the view's colour with the sidebar's as far as the sidebar reaches, the
+// sidebar's button, Zurück and Vor at the left and the job view's button at the right
+// (Windows: 36 px, the app's caption buttons at the right end; macOS: 44 px, the room of the
+// native traffic lights at the left). Below it the app is the same.
 const BAR = { windows: 36, macos: 44 } as const;
 type Os = keyof typeof BAR;
 const osOf = (query: string): Os => (query.includes('macos') ? 'macos' : 'windows');
-/** The bar and its hairline: where the content starts. */
-const contentTop = (os: Os): number => BAR[os] + 1;
+/** Where the content starts: right below the bar (no line under it). */
+const contentTop = (os: Os): number => BAR[os];
 
 for (const os of ['windows', 'macos'] as const) {
   test(`${os}: the top bar spans the window, the content starts below it`, async ({ page }) => {
@@ -292,13 +275,20 @@ for (const os of ['windows', 'macos'] as const) {
     expect(await bar.boundingBox()).toEqual({ x: 0, y: 0, width, height: contentTop(os) });
     const look = await bar.evaluate((node) => {
       const style = getComputedStyle(node);
-      return [style.backgroundColor, style.borderBottomWidth, style.borderBottomColor];
+      return [style.backgroundColor, style.borderBottomWidth];
     });
-    expect(look).toEqual([
-      await tokenColour(page, '--titlebar-bg'),
-      '1px',
-      await tokenColour(page, '--titlebar-border'),
-    ]);
+    expect(look).toEqual([await tokenColour(page, '--surface'), '0px']);
+    // Its left part in the sidebar's colour, the seam right where the view's border is below.
+    const side = await bar
+      .locator('.side')
+      .evaluate((node) => [
+        getComputedStyle(node).backgroundColor,
+        node.getBoundingClientRect().right,
+      ]);
+    const sheetLeft = await page
+      .locator('main.views')
+      .evaluate((node) => node.getBoundingClientRect().left);
+    expect(side).toEqual([await tokenColour(page, '--bg'), sheetLeft + 1]);
     expect((await page.getByTestId('sidebar').boundingBox())!.y).toBe(contentTop(os));
     const sheet = await page
       .locator('main.views')
@@ -307,21 +297,12 @@ for (const os of ['windows', 'macos'] as const) {
         getComputedStyle(node).borderTopWidth,
       ]);
     expect(sheet).toEqual([contentTop(os), '0px']);
-    // Windows names the app at the left (icon and name), macOS shows only the lights.
-    const app = page.getByTestId('title-bar-app');
-    if (os === 'windows') {
-      await expect(app).toHaveText(T.app.name);
-      expect(await app.locator('img').boundingBox()).toMatchObject({
-        x: 16,
-        width: 16,
-        height: 16,
-      });
-    } else {
-      await expect(app).toHaveCount(0);
-    }
-    // Nothing but the bar moves the window (on macOS the room of the lights is part of it).
+    // No icon and no name; the buttons start after the lights on macOS.
+    await expect(page.getByTestId('title-bar-app')).toHaveCount(0);
+    const first = (await page.getByTestId('toggle-sidebar').boundingBox())!;
+    expect(first.x).toBeGreaterThanOrEqual(os === 'macos' ? 80 : 6);
+    // Nothing but the bar moves the window.
     const drags = page.locator('[data-tauri-drag-region]');
-    await expect(drags).toHaveCount(os === 'macos' ? 2 : 1);
     for (const node of await drags.all()) {
       expect(await node.evaluate((el) => el.closest('[data-testid="title-bar"]') !== null)).toBe(
         true,
@@ -352,7 +333,7 @@ test('below the bar the content is laid out the same on both OS, the first line 
 // itself Verkleinern.
 test('windows: the caption buttons of the top bar', async ({ page }) => {
   await open(page, WIN);
-  const buttons = page.getByTestId('title-bar').getByRole('button');
+  const buttons = page.getByTestId('window-buttons').getByRole('button');
   await expect(buttons).toHaveCount(3);
   const width = await page.evaluate(() => document.documentElement.clientWidth);
   const boxes = await Promise.all(
@@ -445,7 +426,7 @@ test('macos: no window buttons in the page, the room of the traffic lights', asy
 }) => {
   await open(page, MAC);
   await expect(page.getByTestId('window-buttons')).toHaveCount(0);
-  await expect(page.getByTestId('title-bar').getByRole('button')).toHaveCount(0);
+  await expect(page.getByTestId('title-bar').locator('[data-testid^="window-"]')).toHaveCount(0);
   const lights = page.getByTestId('traffic-lights');
   expect(await lights.boundingBox()).toEqual({ x: 0, y: 0, width: 80, height: BAR.macos });
   await expect(lights).toHaveAttribute('data-tauri-drag-region', '');
@@ -525,13 +506,12 @@ test('per-OS convention: the order of dialog buttons', async ({ page }) => {
 
 test('icon-only buttons show a styled tooltip after the delay', async ({ page }) => {
   await open(page, '?platform=windows');
-  await page.locator('[data-testid^="job-row-"]').first().click();
-  const close = page.getByTestId('reader-close');
-  await close.hover();
+  const toggle = page.getByTestId('toggle-sidebar');
+  await toggle.hover();
   // The name of the button, drawn by the app (no native title).
   const tip = page.getByRole('tooltip');
-  await expect(tip).toContainText(await text(page, 'reader.close'));
-  await expect(close).not.toHaveAttribute('title');
+  await expect(tip).toContainText(await text(page, 'nav.sidebarHide'));
+  await expect(toggle).not.toHaveAttribute('title');
 });
 
 test('baseline: shell on Windows', async ({ page }) => {
@@ -554,7 +534,7 @@ test('baseline: shell on macOS', async ({ page }) => {
 test('the sidebar shows no counts and no dots: the list says how many jobs are new', async ({
   page,
 }) => {
-  for (const width of [1360, 900]) {
+  for (const width of [1360, 1100]) {
     await page.setViewportSize({ width, height: 900 });
     await open(page, WIN);
     const sidebar = page.getByTestId('sidebar');
@@ -602,32 +582,33 @@ test('before the first fetch Jobs is the setup page; every entry works as always
 });
 
 for (const os of [WIN, MAC]) {
-  test(`the rail: three squares in a column, the names in tooltips on the right ${os}`, async ({
+  test(`below 1100 px the sidebar folds away and floats out from the left edge or its button ${os}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1000, height: 700 });
     await open(page, os);
-    const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
-    const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
-    const boxes = await Promise.all(ids.map(box));
-    for (const b of boxes) expect([b.width, b.height]).toEqual([37, 37]);
-    const centre = (b: { x: number; width: number }): number => b.x + b.width / 2;
-    for (const b of boxes) expect(centre(b)).toBe(centre(boxes[0]!));
-    await page.getByTestId('nav-profile').hover();
-    const tip = page.getByRole('tooltip');
-    await expect(tip).toContainText(await text(page, 'nav.profile'));
-    await expect(tip.locator('div')).toHaveCSS('opacity', '1');
-    const anchor = await box('nav-profile');
-    expect((await tip.locator('div').boundingBox())!.x).toBeGreaterThan(anchor.x + anchor.width);
-    for (const id of ['nav-settings', 'nav-profile', 'nav-jobs']) {
-      await page.getByTestId(id).click();
-      await pillOn(page, id);
-    }
+    await expect(page.getByTestId('sidebar')).toHaveCount(0);
+    const floating = page.getByTestId('sidebar-floating');
+    // The pointer on the window's left edge floats it out; away from it, it folds again.
+    const edge = (await page.getByTestId('sidebar-edge').boundingBox())!;
+    await page.mouse.move(edge.x + 1, edge.y + edge.height / 2);
+    await expect(floating).toBeVisible();
+    await page.mouse.move(700, 400);
+    await expect(floating).toHaveCount(0);
+    // Its button floats it out too; a choice there folds it again.
+    await page.getByTestId('toggle-sidebar').click();
+    await expect(floating).toBeVisible();
+    await floating.getByTestId('nav-profile').click();
+    await expect(page.getByTestId('view-profile')).toBeVisible();
+    await expect(floating).toHaveCount(0);
   });
 
-  test(`at 480 x 360 the rail keeps every entry in the window ${os}`, async ({ page }) => {
+  test(`at 480 x 360 the floating sidebar keeps every entry in the window ${os}`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 480, height: 360 });
     await open(page, os);
+    await page.getByTestId('toggle-sidebar').click();
     const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
     const boxes = await Promise.all(
       ids.map(async (id) => (await page.getByTestId(id).boundingBox())!),
@@ -639,11 +620,10 @@ for (const os of [WIN, MAC]) {
       if (next)
         expect(next.y, `${ids[at + 1]} below ${ids[at]}`).toBeGreaterThanOrEqual(b.y + b.height);
     }
-    await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
   });
 }
 
-test('the sidebar folds only by the window width: no edge, Ctrl+B and Cmd+B change nothing', async ({
+test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B change nothing', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -652,8 +632,22 @@ test('the sidebar folds only by the window width: no edge, Ctrl+B and Cmd+B chan
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
   expect(await sidebarWidth(page)).toBe(206);
+  const toggle = page.getByTestId('toggle-sidebar');
+  await toggle.click();
+  await page.mouse.move(700, 400);
+  await expect(page.getByTestId('sidebar')).toHaveCount(0);
+  // Folded, the bar is one colour: its left part is gone.
+  expect(
+    await page
+      .getByTestId('title-bar')
+      .locator('.side')
+      .evaluate((node) => node.clientWidth),
+  ).toBe(0);
+  await toggle.click();
+  await expect.poll(() => sidebarWidth(page)).toBe(206);
+  // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
-  await expect.poll(() => sidebarWidth(page)).toBe(64);
+  await expect(page.getByTestId('sidebar')).toHaveCount(0);
   await page.setViewportSize({ width: 1360, height: 900 });
   await expect.poll(() => sidebarWidth(page)).toBe(206);
 });
@@ -960,12 +954,12 @@ test('with scrollbars shown the list and the reader keep their room: edges line 
       };
     });
     expect(Math.abs(edges.header - edges.row)).toBeLessThanOrEqual(0.5);
-    // A long and a short job: the reader's close button stands at one place.
+    // A long and a short job: the reader's title starts at one place.
     const closeAt = async (key: string): Promise<number> => {
       await row(page, key).click();
-      await expect(page.getByTestId('reader-close')).toBeVisible();
+      await expect(page.getByTestId('reader-title')).toBeVisible();
       await settle(page);
-      return (await page.getByTestId('reader-close').boundingBox())!.x;
+      return (await page.getByTestId('reader-title').boundingBox())!.x;
     };
     const long = await closeAt('freelancermap-2801');
     const short = await closeAt('freelance-900411');
@@ -1000,9 +994,9 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
   // The reader: from its end upward, below the compact bar.
   await page.getByTestId('nav-jobs').click();
   await row(page, 'freelancermap-2801').click();
-  await expect(page.getByTestId('reader-close')).toBeVisible();
+  await expect(page.getByTestId('reader-more')).toBeVisible();
   await page.getByTestId('stage').evaluate((node) => (node.scrollTop = node.scrollHeight));
-  await page.getByTestId('reader-close').focus();
+  await page.getByTestId('reader-more').focus();
   await page.getByTestId('stage').evaluate((node) => (node.scrollTop = node.scrollHeight));
   for (let stop = 0; stop < 12; stop += 1) {
     await page.keyboard.press('Shift+Tab');
@@ -1601,19 +1595,26 @@ for (const size of SIZES) {
   }
 }
 
-for (const [width, rail] of [
+for (const [width, fold] of [
   [1280, false],
   [1100, false],
   [1099, true],
   [780, true],
 ] as const) {
-  test(`the sidebar ${rail ? 'is the icon rail' : 'is full'} at ${width} px`, async ({ page }) => {
+  test(`the sidebar ${fold ? 'folds away' : 'stands beside the view'} at ${width} px`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height: 700 });
     await open(page, '?platform=windows');
+    if (fold) {
+      await expect(page.getByTestId('sidebar')).toHaveCount(0);
+      await expect(page.getByTestId('sidebar-edge')).toHaveCount(1);
+      return;
+    }
     const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(rail ? 64 : 206);
+    expect(sidebar?.width).toBe(206);
     const label = page.getByTestId('nav-profile');
-    if (rail) {
+    if (fold) {
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));
       await label.hover();
       const tip = page.getByRole('tooltip');
@@ -1690,13 +1691,13 @@ for (const [width, height] of [
   [780, 560],
 ] as const) {
   for (const scenario of ['default', 'first-run', 'running', 'no-profile']) {
-    for (const tab of ['nav-jobs', 'nav-profile', 'nav-settings']) {
+    for (const tab of ['nav-jobs', 'nav-profile', 'nav-settings'] as const) {
       test(`nothing clipped or scrolling sideways at ${width}x${height}: ${scenario} ${tab}`, async ({
         page,
       }) => {
         await page.setViewportSize({ width, height });
         await open(page, `?platform=windows&scenario=${scenario}`);
-        await page.getByTestId(tab).click();
+        await nav(page, tab);
         await page.waitForTimeout(300);
         const wide = await page.evaluate(() =>
           [...document.querySelectorAll('.view, .view *')]

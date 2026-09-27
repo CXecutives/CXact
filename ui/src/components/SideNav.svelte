@@ -2,8 +2,8 @@
   The navigation of the sidebar: icon and label per view, no counts (the list says how many
   are new).
   The active entry sits on one white pill that slides to it (180 ms, emphasized; the
-  sibling of the segmented thumb), its label ink and its icon coral. An idle entry washes
-  on hover and its icon turns coral. Collapsed (icon rail) the labels move into tooltips
+  sibling of the segmented thumb), its label ink and its icon in the accent. An idle entry
+  takes a much fainter wash on hover and keeps its icon, so the two never look alike. Collapsed (icon rail) the labels move into tooltips
   right of the icons (never over the next entry); with its label in view an entry has no
   tooltip. While the window is inactive the active label turns ink.
 -->
@@ -123,14 +123,13 @@
   }
 
   .item:not([aria-current='page']):hover {
-    background-color: var(--quiet-hover);
+    background-color: var(--nav-hover);
     color: var(--text);
     transition-duration: var(--dur-hover);
-    --nav-glyph: var(--nav-active-icon);
   }
 
   :global(:where(:root:not([data-aux-press]))) .item:not([aria-current='page']):active:hover {
-    background-color: var(--quiet-press);
+    background-color: var(--nav-press);
     transition-duration: var(--dur-instant);
   }
 

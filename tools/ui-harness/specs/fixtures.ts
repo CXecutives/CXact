@@ -61,6 +61,18 @@ export async function open(page: Page, query = ''): Promise<void> {
   await settle(page);
 }
 
+/** Chooses a view in the sidebar; a folded sidebar (below 1100 px, or folded by its button)
+ *  floats out from its button first. */
+export async function nav(
+  page: Page,
+  id: 'nav-jobs' | 'nav-profile' | 'nav-settings',
+): Promise<void> {
+  if ((await page.getByTestId('sidebar').count()) === 0) {
+    await page.getByTestId('toggle-sidebar').click();
+  }
+  await page.getByTestId(id).click();
+}
+
 /** A text of the UI's catalog in the page's language: `text(page, 'keysHelp.fetch')`, a
  *  function entry with its arguments (`text(page, 'toast.runDone', 3)`). */
 export function text(page: Page, path: string, ...args: unknown[]): Promise<string> {

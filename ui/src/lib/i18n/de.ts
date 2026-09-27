@@ -699,6 +699,16 @@ export const de = {
     settings: 'Einstellungen',
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
     demo: 'Demo',
+    /** The buttons of the top bar: back and forward through what was shown, the sidebar and
+     *  the job view on and off (their tooltips). */
+    back: 'Zurück',
+    forward: 'Vor',
+    sidebarHide: 'Seitenleiste ausblenden',
+    sidebarShow: 'Seitenleiste einblenden',
+    readerHide: 'Jobansicht ausblenden',
+    readerShow: 'Jobansicht einblenden',
+    /** The handle between the sidebar and the view (accessible name). */
+    sidebarWidth: 'Breite der Seitenleiste',
   },
   /** The caption buttons of the Windows top bar, in the words of Windows. */
   window: {
