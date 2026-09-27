@@ -69,9 +69,9 @@ Als JSON, ohne Name und Kontaktdaten. Die Schlüssel gehören zum Profilformat m
 
 # Die Anzeige
 
-## Eckdaten
+## Jobdetails
 
-Die Eckdaten hat die App aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.
+Die Jobdetails hat die App aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.
 
 - Titel: Interim CFO (m/w/d)
 - Unternehmen: Hanseatic Holding GmbH
@@ -113,7 +113,7 @@ Rahmen
 
 Ein maschineller Wortabgleich zwischen Anzeige und Profil, kein Urteil. Prüfe jeden Punkt, statt ihn zu übernehmen.
 
-- Ergebnis: 68 von 100 Punkten der App, mittlere Passung (ab 80 hoch, ab 40 mittel)
+- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)
 - Muss-Anforderungen: 3 von 4 erfüllt, 1 offen
 - Kann-Anforderungen: 0 von 1 erfüllt
 

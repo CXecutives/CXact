@@ -365,6 +365,11 @@ pub struct NewJobs {
 pub struct ExportSummary {
     /// Written Excel overview (if written in this run).
     pub overview_xlsx: Option<PathBuf>,
+    /// Written CSV overview (if written in this run; `exportCsv`). Summaries of earlier
+    /// versions have none.
+    #[serde(default)]
+    #[cfg_attr(test, ts(optional = nullable))]
+    pub overview_csv: Option<PathBuf>,
     /// A foreign overview at the same path was backed up here.
     pub backup: Option<PathBuf>,
     pub txt_written: usize,
@@ -447,7 +452,10 @@ impl RunSummary {
                 && !error.params.is_empty()
             {
                 error.params.clear();
-            } else if export.backup.take().is_none() && export.overview_xlsx.take().is_none() {
+            } else if export.backup.take().is_none()
+                && export.overview_csv.take().is_none()
+                && export.overview_xlsx.take().is_none()
+            {
                 break;
             }
         }
@@ -1041,8 +1049,10 @@ enum Target {
     Txt,
     /// The Excel overview (writing it or reading its export stamp).
     Overview,
-    /// Backing up a foreign overview.
+    /// Backing up a foreign Excel overview.
     Backup,
+    /// The CSV overview (writing it, backing up a foreign one or reading its export stamp).
+    Csv,
 }
 
 impl Target {
@@ -1053,6 +1063,7 @@ impl Target {
             Target::Txt => "txt",
             Target::Overview => "overview",
             Target::Backup => "backup",
+            Target::Csv => "csv",
         }
     }
 
@@ -1061,16 +1072,18 @@ impl Target {
     const fn file_name(self) -> Option<&'static str> {
         match self {
             Target::Overview | Target::Backup => Some(export::XLSX_NAME),
+            Target::Csv => Some(export::CSV_NAME),
             Target::TxtFolder => Some(TXT_DIR),
             Target::Workspace | Target::Txt => None,
         }
     }
 }
 
-/// Text files (exactly once per job, always German) and the Excel overview (in `language`,
-/// only with `exportExcel` on). The overview is only regenerated if something changed -
-/// data, run, folder, language, the Gmail account of the links - or it is missing; an Excel
-/// file open elsewhere is then not disturbed needlessly.
+/// Text files (exactly once per job, always German) and the overviews (in `language`): the
+/// Excel file with `exportExcel` on, the CSV file with `exportCsv` on. An overview is only
+/// regenerated if something changed - data, run (Excel only: its sheet "Info" names it),
+/// folder, language, the Gmail account of the links - or it is missing; a file open
+/// elsewhere is then not disturbed needlessly.
 pub fn export_all(
     store: &Store,
     workspace: &Path,
@@ -1089,31 +1102,26 @@ pub fn export_all(
         Ok(jobs) => write_txts(store, &result_dir, jobs, now, &mut summary),
         Err(e) => note_error(&mut summary, &e, Target::Txt),
     }
-    if exports_excel(store) {
-        write_overview(
-            store,
-            &export::overview_path(&result_dir),
-            info,
-            (run, language),
-            now,
-            &mut summary,
-        );
-    }
+    write_overviews(store, &result_dir, info, (run, language), now, &mut summary);
     summary
 }
 
-/// The Excel file is written (setting `exportExcel`; unreadable settings: the default, on).
-fn exports_excel(store: &Store) -> bool {
-    crate::settings::Settings::load(store).map_or(true, |settings| settings.export_excel)
+/// Which overviews are written: the Excel file (`exportExcel`) and the CSV file
+/// (`exportCsv`); unreadable settings keep the defaults, Excel on and CSV off.
+fn overview_switches(store: &Store) -> (bool, bool) {
+    crate::settings::Settings::load(store).map_or((true, false), |settings| {
+        (settings.export_excel, settings.export_csv)
+    })
 }
 
-/// The Excel file written anew when the user's marks (a move, "fits anyway", a delete)
-/// changed it since it was last written - the stamp of the last write says so - and when the file is missing: call it
-/// after marks and right before "open Excel". A run writes both by itself. An Excel file
-/// open in Excel stays as it is: the summary's error is `fileLocked` with `target`
-/// `overview`, `path` and `name` (`JobAlerts.xlsx`); `overviewXlsx` names the file when it
-/// was written. With `exportExcel` off nothing is written.
-pub fn refresh_excel(
+/// The overviews written anew when the user's marks (a move, "score anyway", a delete)
+/// changed them since they were last written - the stamp of the last write says so - and
+/// when a file is missing: call it after marks and right before "open Excel" or "open CSV".
+/// A run writes them by itself. A file open in Excel stays as it is: the summary's error is
+/// `fileLocked` with `target` (`overview` for the Excel file, `csv` for the CSV file), `path`
+/// and `name` (`JobAlerts.xlsx`, `JobAlerts.csv`); `overviewXlsx` and `overviewCsv` name the
+/// files written. A file switched off is not written.
+pub fn refresh_overviews(
     store: &Store,
     workspace: &Path,
     now: Timestamp,
@@ -1121,26 +1129,32 @@ pub fn refresh_excel(
 ) -> ExportSummary {
     let result_dir = workspace.join(RESULT_DIR);
     let mut summary = ExportSummary::default();
-    if !exports_excel(store) || !reachable(workspace, &mut summary) {
+    if overview_switches(store) == (false, false) || !reachable(workspace, &mut summary) {
         return summary;
     }
-    let path = export::overview_path(&result_dir);
     // The run of the last write stays: marks alone change no run number.
     let run = store
-        .kv_get(&stamp_key(&path))
+        .kv_get(&stamp_key(&export::overview_path(&result_dir)))
         .ok()
         .flatten()
         .and_then(|stamp| serde_json::from_str::<serde_json::Value>(&stamp).ok())
         .and_then(|stamp| stamp["run"].as_i64())
         .unwrap_or_else(|| last_scan_run(store).unwrap_or(0));
     let info = info_rows(store, now, Texts::of(language));
-    write_overview(store, &path, &info, (run, language), now, &mut summary);
+    write_overviews(
+        store,
+        &result_dir,
+        &info,
+        (run, language),
+        now,
+        &mut summary,
+    );
     summary
 }
 
-/// The file a mark changes (a move, "fits anyway", read or unread), written anew without a
+/// The file a mark changes (a move, "score anyway", read or unread), written anew without a
 /// run: `top_matches.json` - small, so the skill never reads a job the user threw away. The
-/// Excel file follows through [`refresh_excel`]. A failure only goes to the log.
+/// overviews follow through [`refresh_overviews`]. A failure only goes to the log.
 pub fn refresh_exports(
     store: &Store,
     workspace: &Path,
@@ -1350,46 +1364,103 @@ fn write_txts(
     }
 }
 
-/// Writes the overview if it is missing or something changed since the last time at this
-/// path. The state is remembered per path: what the app wrote there stays its own - also
-/// after switching the folder and back.
-fn write_overview(
+/// Writes the overviews that are switched on (the Excel file, the CSV file), each one only
+/// if it is missing or something changed since the last time at its path. Both list the
+/// inbox and the archive, best match first, no duplicate row (the original's row stands for
+/// it) and nothing of the trash; the jobs are read once for both.
+fn write_overviews(
     store: &Store,
-    path: &Path,
+    result_dir: &Path,
     info: &[(String, InfoValue)],
     (run, language): (i64, Language),
     now: Timestamp,
     summary: &mut ExportSummary,
 ) {
+    let (excel, csv) = overview_switches(store);
     let account = gmail_account(store);
-    // The run number belongs to the sheet "Info" and changes the file on every run; the
-    // account of the Gmail links (only a digest of it) changes their target.
-    let stamp = serde_json::json!({
-        "rev": store.data_rev().unwrap_or(-1),
-        "run": run,
-        "language": language,
-        "account": account
-            .as_deref()
-            .map(|a| crate::portal::hex12(&sha2::Sha256::digest(a))),
-    })
-    .to_string();
+    let rev = store.data_rev().unwrap_or(-1);
+    // The account of the Gmail links (only a digest of it) changes their target.
+    let digest = account
+        .as_deref()
+        .map(|a| crate::portal::hex12(&sha2::Sha256::digest(a)));
+    let mut jobs: Option<Vec<JobRow>> = None;
+    if excel {
+        // The run number belongs to the sheet "Info" and changes the file on every run.
+        let stamp = serde_json::json!({
+            "rev": rev, "run": run, "language": language, "account": digest,
+        });
+        let path = export::overview_path(result_dir);
+        if write_overview(
+            store,
+            &path,
+            &stamp,
+            Target::Overview,
+            now,
+            summary,
+            &mut jobs,
+            |jobs| write_xlsx(&path, jobs, info, language, account.as_deref()),
+        ) {
+            summary.overview_xlsx = Some(path);
+        }
+    }
+    if csv {
+        // The CSV file has no sheet "Info": a run alone does not change it (an open file is
+        // not disturbed on every run).
+        let stamp = serde_json::json!({
+            "rev": rev, "language": language, "account": digest,
+        });
+        let path = export::csv_path(result_dir);
+        if write_overview(
+            store,
+            &path,
+            &stamp,
+            Target::Csv,
+            now,
+            summary,
+            &mut jobs,
+            |jobs| export::write_csv(&path, jobs, language, account.as_deref()),
+        ) {
+            summary.overview_csv = Some(path);
+        }
+    }
+}
+
+/// Writes one overview with `write` if it is missing or its `stamp` changed since the last
+/// time at this path; `true` when it was written. The state is remembered per path: what the
+/// app wrote there stays its own - also after switching the folder and back. `jobs` are the
+/// rows of the overviews, read at the first write.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "one step of the export with its summary, its jobs and its writer"
+)]
+fn write_overview(
+    store: &Store,
+    path: &Path,
+    stamp: &serde_json::Value,
+    target: Target,
+    now: Timestamp,
+    summary: &mut ExportSummary,
+    jobs: &mut Option<Vec<JobRow>>,
+    write: impl FnOnce(&[JobRow]) -> crate::Result<()>,
+) -> bool {
+    let stamp = stamp.to_string();
     let key = stamp_key(path);
     // Without a readable state the ownership of the file is unknown - then it is neither
     // backed up nor replaced. A database error must not back up the app's own overview.
     let last = match store.kv_get(&key) {
         Ok(last) => last,
         Err(e) => {
-            note_error(summary, &e, Target::Overview);
-            return;
+            note_error(summary, &e, target);
+            return false;
         }
     };
     if path.exists() && last.as_deref() == Some(stamp.as_str()) {
-        return;
+        return false;
     }
     // An overview that does not come from this app (e.g. from the old program in the same
     // folder) is backed up before the first write - never replaced silently. The name is
     // part of the user's workspace - do not translate - and says the local time, like the
-    // text files' names.
+    // text files' names. The page names a backed-up Excel file; a CSV file only the log.
     if path.exists() && last.is_none() {
         let backup = path.with_file_name(format!(
             "{}{}.{}",
@@ -1398,24 +1469,38 @@ fn write_overview(
             path.extension().and_then(|e| e.to_str()).unwrap_or("xlsx")
         ));
         if let Err(e) = std::fs::rename(path, &backup) {
-            note_error(summary, &crate::Error::io(path, e), Target::Backup);
-            return;
+            let failed = match target {
+                Target::Overview => Target::Backup,
+                other => other,
+            };
+            note_error(summary, &crate::Error::io(path, e), failed);
+            return false;
         }
-        summary.backup = Some(backup);
+        log::info!("a foreign overview was backed up before the first write");
+        if matches!(target, Target::Overview) {
+            summary.backup = Some(backup);
+        }
     }
-    // The job sheet lists the inbox and the archive, best match first, no duplicate row (the
-    // original's row stands for it) and nothing of the trash.
-    let written = store
-        .sheet_jobs()
-        .and_then(|jobs| write_xlsx(path, &jobs, info, language, account.as_deref()));
-    match written {
+    if jobs.is_none() {
+        match store.sheet_jobs() {
+            Ok(rows) => *jobs = Some(rows),
+            Err(e) => {
+                note_error(summary, &e, target);
+                return false;
+            }
+        }
+    }
+    match write(jobs.as_deref().unwrap_or_default()) {
         Ok(()) => {
             if let Err(e) = store.kv_set(&key, &stamp) {
                 log::warn!("export stamp not stored: {e}");
             }
-            summary.overview_xlsx = Some(path.to_path_buf());
+            true
         }
-        Err(e) => note_error(summary, &e, Target::Overview),
+        Err(e) => {
+            note_error(summary, &e, target);
+            false
+        }
     }
 }
 
@@ -1663,11 +1748,16 @@ fn legacy_info_rows(store: &Store, words: &Texts) -> Vec<(String, String)> {
 
 fn log_export(run: i64, exported: &ExportSummary) {
     log::info!(
-        "run {run}: export: {} text files written, {} failed{}{}",
+        "run {run}: export: {} text files written, {} failed{}{}{}",
         exported.txt_written,
         exported.txt_failed,
         if exported.overview_xlsx.is_some() {
             ", overview written"
+        } else {
+            ""
+        },
+        if exported.overview_csv.is_some() {
+            ", CSV written"
         } else {
             ""
         },

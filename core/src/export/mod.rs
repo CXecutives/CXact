@@ -1,9 +1,12 @@
-//! Generated files in the workspace: `JobAlerts.xlsx` (the jobs of the inbox and the archive),
-//! `top_matches.json` and one text file per job for the matching. Everything is generated from the database and written atomically - an open Excel
-//! file or a crash never leaves half a file behind.
+//! Generated files in the workspace: `JobAlerts.xlsx` and `JobAlerts.csv` (the jobs of the
+//! inbox and the archive, each with its own switch), `top_matches.json` and one text file per
+//! job for the matching. Everything is generated from the database and written atomically - an
+//! open Excel file or a crash never leaves half a file behind.
 
 mod ai_prompt;
 mod colour;
+mod columns;
+mod csv;
 mod job_txt;
 pub mod palette;
 pub mod personal;
@@ -19,6 +22,7 @@ use std::path::{Path, PathBuf};
 use crate::error::{Error, Result};
 
 pub use ai_prompt::{MAX_AD_CHARS, MAX_PROFILE_CHARS, PromptJob, PromptSource, ai_prompt};
+pub use csv::write_csv;
 pub use job_txt::{TXT_DIR, write_job_txt};
 pub use texts::{Texts, details_label};
 pub use top_matches::{

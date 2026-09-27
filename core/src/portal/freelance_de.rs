@@ -66,7 +66,7 @@ impl PortalAdapter for FreelanceDe {
         Limits {
             pace_ms: 10_000..=20_000,
             per_hour: 20,
-            per_day: 60,
+            per_day: 100,
         }
     }
     /// Without a sign-in a guest still gets the teaser.

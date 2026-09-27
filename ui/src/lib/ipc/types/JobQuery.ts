@@ -27,6 +27,17 @@ portal: Portal | null,
  */
 minBand: Band | null, 
 /**
+ * The filter: only jobs of these contract types, as the engine read them
+ * (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
+ * those without a contract type too.
+ */
+contracts: Array<string>, 
+/**
+ * The filter: only remote jobs, as the job details say it - the remote share the ad
+ * states is 100 %, or, where it states none, the location names the work mode remote.
+ */
+remoteOnly: boolean, 
+/**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */
 limit: number, offset: number, };

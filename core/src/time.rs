@@ -51,6 +51,30 @@ pub fn local_date(ts: Timestamp) -> Date {
     local(ts).date()
 }
 
+/// Start of the local day of a timestamp: its midnight (or the first moment of the day where
+/// a change of time skips midnight). What a day counts, such as a portal's daily cap,
+/// counts from here - "today" in the interface.
+pub fn day_start(ts: Timestamp) -> Timestamp {
+    ts.to_zoned(zone().clone()).start_of_day().map_or_else(
+        |_| ts.saturating_sub(DAY).unwrap_or(ts),
+        |day| day.timestamp(),
+    )
+}
+
+/// Start of the next local day after a timestamp.
+pub fn next_day_start(ts: Timestamp) -> Timestamp {
+    ts.to_zoned(zone().clone())
+        .tomorrow()
+        .and_then(|tomorrow| tomorrow.start_of_day())
+        .map_or_else(
+            |_| ts.saturating_add(DAY).unwrap_or(ts),
+            |day| day.timestamp(),
+        )
+}
+
+/// A day of 24 hours, where a local day cannot be computed (the ends of time).
+const DAY: jiff::SignedDuration = jiff::SignedDuration::from_hours(24);
+
 /// "19.09.2026 14:05".
 pub fn display(ts: Timestamp) -> String {
     local(ts).strftime("%d.%m.%Y %H:%M").to_string()
@@ -86,5 +110,20 @@ mod tests {
         assert_eq!(display(winter), "11.01.2026 00:30");
         assert_eq!(local_date(winter), Date::new(2026, 1, 11).unwrap());
         assert_eq!(from_db(to_db(summer)), Some(summer));
+    }
+
+    /// A local day runs from midnight to midnight, the long day of the change to winter time
+    /// too (25 hours).
+    #[test]
+    fn local_days_start_at_midnight() {
+        let at = |text: &str| text.parse::<Timestamp>().unwrap();
+        let evening = at("2026-09-19T21:30:00Z");
+        assert_eq!(day_start(evening), at("2026-09-18T22:00:00Z"));
+        assert_eq!(next_day_start(evening), at("2026-09-19T22:00:00Z"));
+        let late = at("2026-09-19T22:30:00Z");
+        assert_eq!(day_start(late), at("2026-09-19T22:00:00Z"));
+        let long_day = at("2026-10-25T12:00:00Z");
+        assert_eq!(day_start(long_day), at("2026-10-24T22:00:00Z"));
+        assert_eq!(next_day_start(long_day), at("2026-10-25T23:00:00Z"));
     }
 }

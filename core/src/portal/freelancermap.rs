@@ -52,7 +52,7 @@ impl PortalAdapter for Freelancermap {
         Limits {
             pace_ms: 3_000..=5_000,
             per_hour: 40,
-            per_day: 120,
+            per_day: 100,
         }
     }
     /// Signed in, freelancermap shows the same text as to a guest (measured).

@@ -540,6 +540,9 @@ class JobsStore {
       unread: false,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
+      // The contract and remote filter of the backend, until ListFilter carries them.
+      contracts: [],
+      remoteOnly: false,
       ...filter,
       limit,
       offset,
@@ -625,6 +628,8 @@ class JobsStore {
           unread: false,
           sort: 'newest',
           search: null,
+          contracts: [],
+          remoteOnly: false,
           ...NO_FILTER,
           limit: 0,
           offset: 0,

@@ -126,8 +126,8 @@ static WORDS: Words = Words {
     glossary_intro: "Die Schlüssel gehören zum Profilformat meiner App:",
     glossary: GLOSSARY,
     ad_heading: "Die Anzeige",
-    facts_heading: "Eckdaten",
-    facts_note: "Die Eckdaten hat die App aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.",
+    facts_heading: "Jobdetails",
+    facts_note: "Die Jobdetails hat die App aus Portalseite und Text gelesen. Was sie nicht erkannt hat, kann trotzdem im Text stehen; im Zweifel gilt der Anzeigentext.",
     text_heading: "Anzeigentext",
     text_full: "Der vollständige Text der Portalseite.",
     text_teaser: "Nur der Anriss, den das Portal ohne Anmeldung zeigt. Die volle Anzeige kann mehr verlangen: bewerte, was dasteht, und markiere den Rest als unklar.",
@@ -283,9 +283,9 @@ impl Wording for German {
 
     fn scored(&self, score: u8, band: Band) -> String {
         let band = match band {
-            Band::High => "hohe Passung",
-            Band::Mid => "mittlere Passung",
-            Band::Low => "geringe Passung",
+            Band::High => "hohe Übereinstimmung",
+            Band::Mid => "mittlere Übereinstimmung",
+            Band::Low => "geringe Übereinstimmung",
         };
         format!(
             "Ergebnis: {score} von 100 Punkten der App, {band} (ab {HIGH_FROM} hoch, ab {MID_FROM} mittel)"

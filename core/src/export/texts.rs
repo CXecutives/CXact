@@ -30,8 +30,8 @@ pub const CONTRACT_INTERIM: &str = "Interim";
 pub const CONTRACT_PERMANENT: &str = "Festanstellung";
 pub const CONTRACT_ANUE: &str = "Arbeitnehmerüberlassung";
 pub const CONTRACT_FREELANCE: &str = "Freiberuflich";
-/// Why an excluded job the user counts anyway is in the list.
-pub const OVERRIDDEN: &str = "Manuell einbezogen";
+/// Why an excluded job the user scores anyway is in the list.
+pub const OVERRIDDEN: &str = "Trotzdem bewertet";
 
 /// The health of a portal at the last fetch, a row of the info sheet each.
 pub fn info_portal(label: &str) -> String {
@@ -49,7 +49,7 @@ pub fn health_quota(until: &str) -> String {
     format!("Limit erreicht, ab {until} wieder möglich")
 }
 pub const HEALTH_EMPTY_MAILS: &str = "Alert-Mails ohne Jobs";
-pub const HEALTH_EMPTY_PAGES: &str = "Seiten ohne Beschreibung";
+pub const HEALTH_EMPTY_PAGES: &str = "Anzeigen ohne Text";
 pub const HEALTH_LOGIN: &str = "Anmeldung nötig";
 
 /// Label and warning of the last row of the info sheet. Not only a fetch writes the file: a
@@ -59,20 +59,20 @@ pub const INFO_NOTE: &str =
     "Die App schreibt diese Datei immer wieder neu, eigene Notizen gehen dabei verloren.";
 
 /// Labels of the info sheet (the mail address is deliberately not among them). The mailbox
-/// is "gelesen" like "Ganzes Postfach lesen" in the interface; "Abruf" is the whole run.
-pub const INFO_LAST_SCAN: &str = "Postfach zuletzt gelesen";
-pub const INFO_SCOPE: &str = "Umfang beim letzten Lesen des Postfachs";
-pub const INFO_NEW: &str = "Neu beim letzten Lesen des Postfachs";
-pub const INFO_KNOWN: &str = "Schon bekannt beim letzten Lesen des Postfachs";
-pub const INFO_DUP: &str = "In mehreren Alert-Mails beim letzten Lesen des Postfachs";
+/// is "abgerufen" like "Postfach abrufen" in the interface; the range is its "Zeitraum".
+pub const INFO_LAST_SCAN: &str = "Postfach zuletzt abgerufen";
+pub const INFO_SCOPE: &str = "Zeitraum beim letzten Abruf";
+pub const INFO_NEW: &str = "Neu beim letzten Abruf";
+pub const INFO_KNOWN: &str = "Schon bekannt beim letzten Abruf";
+pub const INFO_DUP: &str = "In mehreren Alert-Mails beim letzten Abruf";
 pub const INFO_JOBS_TOTAL: &str = "Jobs gesamt";
 pub const INFO_PROGRAM: &str = "Programm";
 /// The app's visible name (the files, the keychain entry and the identifiers keep theirs).
 pub const PROGRAM_NAME: &str = "CXact";
 
-/// Scope of a mailbox scan in words.
-pub const SCOPE_NEW: &str = "Neu seit dem letzten Abruf";
-pub const SCOPE_ALL: &str = "Ganzes Postfach";
+/// Scope of a mailbox scan in words (the interface's range of "Postfach abrufen").
+pub const SCOPE_NEW: &str = "Seit dem letzten Abruf";
+pub const SCOPE_ALL: &str = "Alle Alert-Mails";
 /// The last so many days of the mailbox.
 pub fn scope_days(days: u16) -> String {
     format!("Letzte {days} Tage")
@@ -173,19 +173,20 @@ pub fn exclusion_reason(code: &str, params: &Map<String, Value>) -> Option<&'sta
     })
 }
 
-/// State of the job details (see [`DetailState`]) in the words of the interface's badges
-/// (`job.detail`, `job.closed`); a full text has no badge there and is "Vorhanden" here.
+/// State of the ad's text (see [`DetailState`]) in the words of the reader's note on the ad
+/// (`reader.adNote`): an ad not loaded yet is missing, whoever loads it; a full text has no
+/// note there and is "Vorhanden" here.
 pub fn details_label(detail: DetailState, closed: bool, short: bool) -> &'static str {
     match detail {
         DetailState::Ok if closed => "Keine Bewerbung mehr möglich",
         DetailState::Ok if short => "Vorhanden (kurz)",
         DetailState::Ok => "Vorhanden",
-        DetailState::Pending { .. } => "Details folgen",
-        DetailState::OnRequest => "Details auf Anfrage",
-        DetailState::Teaser => "Vorschau",
-        DetailState::Failed { .. } => "Details fehlen",
+        DetailState::Pending { .. } | DetailState::OnRequest | DetailState::Failed { .. } => {
+            "Anzeige fehlt"
+        }
+        DetailState::Teaser => "Nur eine Vorschau",
         DetailState::Gone => "Nicht mehr online",
-        DetailState::Unfetchable => "Nicht erreichbar",
+        DetailState::Unfetchable => "Anzeige nicht erreichbar",
     }
 }
 // end of user-facing text
@@ -210,40 +211,40 @@ pub mod en {
     pub const CONTRACT_PERMANENT: &str = "Permanent";
     pub const CONTRACT_ANUE: &str = "Temporary agency work";
     pub const CONTRACT_FREELANCE: &str = "Freelance";
-    pub const OVERRIDDEN: &str = "Included by you";
+    pub const OVERRIDDEN: &str = "Scored anyway";
 
     pub fn info_portal(label: &str) -> String {
-        format!("{label} at the last fetch")
+        format!("{label} at the last check")
     }
     pub const HEALTH_OFF: &str = "Switched off";
     pub const HEALTH_OK: &str = "Ready";
     pub fn health_paused(until: Option<&str>) -> String {
         match until {
             Some(at) => format!("Paused, possible again from {at}"),
-            None => "Paused until the next fetch".to_owned(),
+            None => "Paused until the next check".to_owned(),
         }
     }
     pub fn health_quota(until: &str) -> String {
         format!("Limit reached, possible again from {until}")
     }
     pub const HEALTH_EMPTY_MAILS: &str = "Alert emails without jobs";
-    pub const HEALTH_EMPTY_PAGES: &str = "Pages without a description";
+    pub const HEALTH_EMPTY_PAGES: &str = "Ads without text";
     pub const HEALTH_LOGIN: &str = "Sign-in needed";
 
     pub const INFO_NOTE_LABEL: &str = "Note";
     pub const INFO_NOTE: &str =
         "The app rewrites this file from time to time, so notes added here are lost.";
 
-    pub const INFO_LAST_SCAN: &str = "Mailbox last read";
-    pub const INFO_SCOPE: &str = "Scope of the last mailbox read";
-    pub const INFO_NEW: &str = "New at the last mailbox read";
-    pub const INFO_KNOWN: &str = "Already known at the last mailbox read";
-    pub const INFO_DUP: &str = "In several alert emails at the last mailbox read";
+    pub const INFO_LAST_SCAN: &str = "Mailbox last checked";
+    pub const INFO_SCOPE: &str = "Range of the last check";
+    pub const INFO_NEW: &str = "New at the last check";
+    pub const INFO_KNOWN: &str = "Already known at the last check";
+    pub const INFO_DUP: &str = "In several alert emails at the last check";
     pub const INFO_JOBS_TOTAL: &str = "Jobs in total";
     pub const INFO_PROGRAM: &str = "Program";
 
-    pub const SCOPE_NEW: &str = "New since the last fetch";
-    pub const SCOPE_ALL: &str = "Whole mailbox";
+    pub const SCOPE_NEW: &str = "Since the last check";
+    pub const SCOPE_ALL: &str = "All alert emails";
     pub fn scope_days(days: u16) -> String {
         format!("Last {days} days")
     }
@@ -335,12 +336,12 @@ pub mod en {
             DetailState::Ok if closed => "No longer taking applications",
             DetailState::Ok if short => "Available (short)",
             DetailState::Ok => "Available",
-            DetailState::Pending { .. } => "Details to come",
-            DetailState::OnRequest => "Details on request",
-            DetailState::Teaser => "Preview",
-            DetailState::Failed { .. } => "Details missing",
+            DetailState::Pending { .. } | DetailState::OnRequest | DetailState::Failed { .. } => {
+                "Ad missing"
+            }
+            DetailState::Teaser => "Only a preview",
             DetailState::Gone => "No longer online",
-            DetailState::Unfetchable => "Not fetchable",
+            DetailState::Unfetchable => "Ad cannot be reached",
         }
     }
     // end of user-facing text
@@ -374,7 +375,7 @@ fn licence(params: &Map<String, Value>) -> bool {
 /// Words of the info sheet an earlier version stored with the last mailbox scan in a wording
 /// of this file that changed since, and the German word of that row today - do not
 /// translate.
-const FORMER_WORDS: [(&str, &str); 7] = [
+const FORMER_WORDS: [(&str, &str); 14] = [
     (
         "Doppelt in mehreren Alert-Mails beim letzten Postfach-Abruf",
         INFO_DUP,
@@ -388,6 +389,16 @@ const FORMER_WORDS: [(&str, &str); 7] = [
         INFO_DUP,
     ),
     ("Alle", SCOPE_ALL),
+    ("Postfach zuletzt gelesen", INFO_LAST_SCAN),
+    ("Umfang beim letzten Lesen des Postfachs", INFO_SCOPE),
+    ("Neu beim letzten Lesen des Postfachs", INFO_NEW),
+    ("Schon bekannt beim letzten Lesen des Postfachs", INFO_KNOWN),
+    (
+        "In mehreren Alert-Mails beim letzten Lesen des Postfachs",
+        INFO_DUP,
+    ),
+    ("Neu seit dem letzten Abruf", SCOPE_NEW),
+    ("Ganzes Postfach", SCOPE_ALL),
 ];
 
 /// The words of the files in one language.
