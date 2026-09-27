@@ -9,12 +9,26 @@ import { test as base, expect, type Page } from '@playwright/test';
  */
 const capturing = new WeakSet<Page>();
 
+/**
+ * Windows under load now and then refuses a new socket (WSAENOBUFS), and Chromium reports the
+ * file it could not fetch with this message. It is the OS's, not the page's: a test loads
+ * seven files over five connections (a fresh context each, kept alive, no file twice), a
+ * whole run leaves about 2000 closed ones waiting of the 16384 ports, and ports that really
+ * ran out read ERR_ADDRESS_IN_USE instead. A test that needs the missing file still fails on
+ * its own checks.
+ */
+const OS_REFUSED_SOCKET = 'Failed to load resource: net::ERR_NO_BUFFER_SPACE';
+
 export const test = base.extend<{ problems: string[] }>({
   problems: [
     async ({ page }, use) => {
       const problems: string[] = [];
       page.on('console', (message) => {
-        if (message.type() === 'error' && !capturing.has(page)) {
+        if (
+          message.type() === 'error' &&
+          !capturing.has(page) &&
+          message.text() !== OS_REFUSED_SOCKET
+        ) {
           problems.push(`console: ${message.text()}`);
         }
       });
