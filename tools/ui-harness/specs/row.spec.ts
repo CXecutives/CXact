@@ -11,7 +11,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import { placeOf } from '../../../ui/src/lib/place';
-import { animationsDone, expect, NOW, open, test } from './fixtures';
+import { animationsDone, calls, expect, NOW, open, test } from './fixtures';
 import {
   list,
   listed,
@@ -302,6 +302,37 @@ test.describe('tools', () => {
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     await expect(job(page, second!).getByTestId('row-tools')).toBeVisible();
     expect(await toolIds(page, second!)).toEqual(['archive', 'trash']);
+  });
+
+  test("a double click on a tool is the tool's: it opens no ad", async ({ page }) => {
+    await open(page, WIN);
+    const key = 'linkedin-4100200301';
+    await pointAt(page, key);
+    await job(page, key).getByTestId('tool-archive').dblclick();
+    await expect(row(page, key)).toHaveCount(0);
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.archived);
+    // The second click is no second move either (the list ignores it for a moment).
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+    // A tool whose row stays (Endgültig löschen waits for a run) takes the double click too.
+    await settleMoves(page);
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await page.evaluate(() => (window.__harness.holdAfter = 1));
+    await page.getByTestId('fetch').click();
+    await openPlace(page, 'trash');
+    // (The run's line moves on: no waiting for every animation to end.)
+    await row(page, 'freelancermap-2802').hover();
+    const purge = job(page, 'freelancermap-2802').getByTestId('tool-purge');
+    await expect(purge).toHaveAttribute('aria-disabled', 'true');
+    // (It says why it waits: Playwright takes it for a disabled control.)
+    await purge.dblclick({ force: true });
+    await expect(row(page, 'freelancermap-2802')).toBeVisible();
+    expect(await calls(page, 'open_target')).toHaveLength(0);
+    // A double click on the row itself still opens its ad.
+    await row(page, 'freelancermap-2802').dblclick();
+    await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(1);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
   });
 
   test("the tools stay while the row's menu is open", async ({ page }) => {

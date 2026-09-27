@@ -22,7 +22,8 @@
   löschen), fade in as icons over the date, which fades out: they stand in a fixed slot at
   the end of the title line that is always as wide as they are, so nothing moves and the
   title keeps its room. Each names itself in its tooltip; the ones that delete are red.
-  They are siblings of the row's button (a click on one never opens the job), out of the Tab
+  They are siblings of the row's button (a click on one never opens the job, a double click
+  never its ad: that is the row button's own), out of the Tab
   order (the row's menu is there for the keyboard), and exist only while they show. After a
   tool took its row away, the row that slides under the pointer shows its tools only once
   the pointer moves (input.ts `hover`). The row's menu (a right click, the app's own) and a
@@ -114,7 +115,7 @@
 </script>
 
 <script lang="ts">
-  import { contextMenu, doubleClick, holdHover, hover, type ContextMenu } from '$lib/input/input';
+  import { contextMenu, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { displayTitle, formatStamp } from '$lib/i18n/format';
   import { dotOut, fade } from '$lib/motion/transitions';
@@ -234,7 +235,6 @@
   data-rests=""
   use:hover={(on) => (here = on)}
   use:contextMenu={offer}
-  use:doubleClick={onopen ? () => onopen?.(job) : null}
 >
   <ListRow
     {leading}
@@ -242,6 +242,7 @@
     {bar}
     muted={excluded}
     onclick={onselect ? () => onselect?.(job) : null}
+    ondouble={onopen ? () => onopen?.(job) : null}
     testid={rowId}
   >
     <span class="head">
