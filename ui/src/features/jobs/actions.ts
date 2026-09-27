@@ -1,6 +1,6 @@
 // What a job can do where it is, with one name, icon and order in its menu (a right click on
 // its row, later the reader's "…"), from the tables below (ACTIONS, OF_PLACE, jobMenu):
-//   inbox: archive, delete; archive: restore, delete; trash: restore, delete for good (asks
+//   inbox: archive, delete; archive: unarchive, delete; trash: restore, delete for good (asks
 //   first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
 // next job when the open one left (its row in view, with the focus when the focus was on the
@@ -28,7 +28,7 @@ import { exportText, run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 import { copyJobPrompt } from './prompt';
 
-export type MoveId = 'archive' | 'toInbox' | 'trash' | 'restore';
+export type MoveId = 'archive' | 'unarchive' | 'trash' | 'restore';
 export type ActionId = MoveId | 'purge';
 
 export interface JobAction {
@@ -39,20 +39,20 @@ export interface JobAction {
 
 /** Where a move goes. Wiederherstellen from the Papierkorb puts a job back where it lay (the
  *  backend knows: the archive for one thrown away from there); the page takes the inbox until
- *  it hears back. From the Archiv it goes to the inbox. */
+ *  it hears back. Dearchivieren puts a job of the Archiv back into the inbox. */
 const TARGET: Record<MoveId, Place> = {
   archive: 'archive',
-  toInbox: 'inbox',
+  unarchive: 'inbox',
   trash: 'trash',
   restore: 'inbox',
 };
 
-/** One icon per meaning: archiving looks like the archive, deleting like the trash,
- *  Wiederherstellen (from the Archiv and from the Papierkorb alike) like taking back;
+/** One icon per meaning: archiving looks like the archive, Dearchivieren like taking out of
+ *  it, deleting like the trash, Wiederherstellen from the Papierkorb like taking back;
  *  deleting for good never looks like the trash. */
 const ACTIONS: Record<ActionId, { icon: IconName }> = {
   archive: { icon: 'archive' },
-  toInbox: { icon: 'undo' },
+  unarchive: { icon: 'unarchive' },
   trash: { icon: 'trash' },
   restore: { icon: 'undo' },
   purge: { icon: 'purge' },
@@ -60,7 +60,7 @@ const ACTIONS: Record<ActionId, { icon: IconName }> = {
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
   inbox: ['archive', 'trash'],
-  archive: ['toInbox', 'trash'],
+  archive: ['unarchive', 'trash'],
   trash: ['restore', 'purge'],
 };
 
@@ -233,7 +233,7 @@ export function guarded(): boolean {
 const SAID: Record<MoveId, () => string> = {
   archive: () => t.toast.archived,
   trash: () => t.toast.trashed,
-  toInbox: () => t.toast.restored,
+  unarchive: () => t.toast.unarchived,
   restore: () => t.toast.restored,
 };
 

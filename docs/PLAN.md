@@ -522,13 +522,13 @@ For each of Jobs, Reader, Day overview, Profil, Einstellungen, First run, dialog
 Since 2026-09-27 (the table of the cleanup round below wins over older words): Job · Portal · Übereinstimmung (Hohe,
 Mittlere, Geringe Übereinstimmung) · Jobdetails (the reader's table) · Anzeige (laden, wird geladen, fehlt; Nur eine
 Vorschau) · Postfach abrufen, Abruf, Zeitraum · Profil · Postfach · Alert-Mail · Ausgeschlossen (Trotzdem bewerten, Wieder
-ausschließen) · Neu (= unread) · Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar · Pflichtanforderungen · Archiv ·
-Papierkorb (Löschen, Endgültig löschen, Wiederherstellen) · Excel-Datei · CSV-Datei · Ergebnisordner · Aufrufe · App ·
+ausschließen) · Neu (= unread) · Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar · Pflichtanforderungen · Archiv
+(Dearchivieren) · Papierkorb (Löschen, Endgültig löschen, Wiederherstellen) · Excel-Datei · CSV-Datei · Ergebnisordner · Aufrufe · App ·
 Jobs (the place of the active jobs; `inbox` in code). Checked for the UI catalog (`ui_contract.rs`) and the Rust texts:
 exports, startup dialog, window titles, file dialogs, macOS menu (`rust_texts.rs`).
 English (`en.ts`, the English exports and prompts): Job · Portal · Match · Job details · Load ad · Check mailbox · Profile ·
-Mailbox · Alert email · Excel file · Excluded · Score anyway · New · Jobs (the place; `inbox` in code) · Archive · Trash ·
-Delete · Restore · Result folder · Skill (Kompetenz) · Preference (Wunsch) · Location (Ort); plain British English, not
+Mailbox · Alert email · Excel file · Excluded · Score anyway · New · Jobs (the place; `inbox` in code) · Archive (Unarchive) ·
+Trash · Delete · Restore · Result folder · Skill (Kompetenz) · Preference (Wunsch) · Location (Ort); plain British English, not
 German word for word (usability round 2: "email", never "mail"; no comma splices; "Minimum day rate (€)"; countries in
 words); product and portal names stay.
 

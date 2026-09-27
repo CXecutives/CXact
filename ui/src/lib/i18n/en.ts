@@ -10,7 +10,8 @@
 // (High, Medium, Low), Job details, Requirements (Met, Partly met, Not met, Unclear), Profile,
 // Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
 // file, CSV file, Result folder, Excluded, Score anyway, New, Inbox (the place of the active
-// jobs), Archive, Trash, Delete (into the Trash; there Delete forever), Restore, App (the card
+// jobs), Archive (Unarchive: back into the Inbox), Trash, Delete (into the Trash; there Delete
+// forever and Restore), App (the card
 // of the app itself), Calls (what a portal allows a day), Skill, Preference. "Conditions"
 // only names the profile's section. Plain British English: "email", never "mail" for one
 // message; "preferences", never "wishes"; "forever" for endgültig, never "for good"; two main
@@ -647,7 +648,7 @@ export const en: Catalog = {
     include: 'Score anyway',
     exclude: 'Exclude again',
     archive: 'Archive',
-    toInbox: 'Restore',
+    unarchive: 'Unarchive',
     trash: 'Delete',
     restore: 'Restore',
     purge: 'Delete forever',
@@ -1212,6 +1213,7 @@ export const en: Catalog = {
     rescored: 'Jobs scored again.',
     prompt: 'Prompt copied.',
     archived: 'Archived',
+    unarchived: 'Unarchived',
     trashed: 'Deleted',
     restored: 'Restored',
     deleted: 'Deleted forever',

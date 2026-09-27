@@ -12,8 +12,8 @@
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
 // the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Ergebnisordner, Ausgeschlossen, Trotzdem
-// bewerten, Neu, Archiv, Papierkorb, Löschen (into the Papierkorb; there Endgültig löschen),
-// Wiederherstellen, App (the card of the app itself), Aufrufe (what a portal allows a day).
+// bewerten, Neu, Archiv (Dearchivieren: back into the Eingang), Papierkorb, Löschen (into the
+// Papierkorb; there Endgültig löschen and Wiederherstellen), App (the card of the app itself), Aufrufe (what a portal allows a day).
 // "Konditionen" only names the profile's section. A profile field has one name: the label of
 // its form field (without the unit) in errors, warnings and the profile.
 //
@@ -668,8 +668,9 @@ export const de = {
     include: 'Trotzdem bewerten',
     exclude: 'Wieder ausschließen',
     archive: 'Archivieren',
-    /** Back into the Eingang from the Archiv: the same word as from the Papierkorb. */
-    toInbox: 'Wiederherstellen',
+    /** Back into the Eingang from the Archiv (the user's word; Wiederherstellen is the
+     *  Papierkorb's). */
+    unarchive: 'Dearchivieren',
     trash: 'Löschen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
@@ -1395,6 +1396,7 @@ export const de = {
     prompt: 'Prompt kopiert.',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
+    unarchived: 'Dearchiviert',
     trashed: 'Gelöscht',
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */

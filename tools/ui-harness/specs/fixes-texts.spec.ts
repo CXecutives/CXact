@@ -28,14 +28,13 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
   await expect(date('freelancermap-2806')).toHaveText('So 20.09.');
 });
 
-test('an archived job is brought back with the verb of the Papierkorb: Wiederherstellen', async ({
-  page,
-}) => {
+test('an archived job goes back to the Eingang with Dearchivieren', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';
   await page.getByTestId('job-list').getByTestId(`job-row-${key}`).click({ button: 'right' });
-  await expect(page.getByTestId('menu-item-toInbox')).toHaveText('Wiederherstellen');
+  await expect(page.getByTestId('menu-item-unarchive')).toHaveText('Dearchivieren');
+  await expect(page.getByTestId('menu-item-restore')).toHaveCount(0);
 });
 
 test('an ad the app cannot reach says so in the reader, its row carries no badge', async ({

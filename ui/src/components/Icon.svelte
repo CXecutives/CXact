@@ -12,6 +12,7 @@
   import type { Action } from 'svelte/action';
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
+  import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
@@ -84,6 +85,7 @@
   /** The Lucide component of each glyph of lib/icons.ts (exactly those). */
   const GLYPHS = {
     archive: Archive,
+    'archive-restore': ArchiveRestore,
     'arrow-down': ArrowDown,
     'arrow-right': ArrowRight,
     award: Award,

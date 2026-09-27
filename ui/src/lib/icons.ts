@@ -15,6 +15,8 @@ export const ICONS = {
   // The places of a job and the moves between them: the place's icon is also the move there.
   inbox: 'inbox',
   archive: 'archive',
+  /** Dearchivieren: out of the archive, back into the inbox. */
+  unarchive: 'archive-restore',
   trash: 'trash-2',
   /** Delete for good (and empty the trash): never looks like the trash. */
   purge: 'octagon-x',

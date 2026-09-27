@@ -838,17 +838,17 @@ test.describe('rows', () => {
     await expect(page.getByTestId('reader-title')).toHaveText(
       await row(page, 'freelancermap-2802').locator('.title').innerText(),
     );
-    // The archive: restore, delete.
+    // The archive: unarchive, delete.
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await settleMoves(page);
     await openPlace(page, 'archive');
     menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
       ...shows,
-      T.actions.toInbox,
+      T.actions.unarchive,
       T.actions.trash,
     ]);
-    expect(T.actions.toInbox).toBe(T.actions.restore);
+    await expectMenuIcons(page, [...showIcons, 'unarchive', 'trash']);
     await menuItem(page, 'trash').click();
     await settleMoves(page);
     // The trash: restore, delete for good (red).
@@ -992,7 +992,7 @@ test.describe('search', () => {
 /* ======================================================================== moves */
 
 test.describe('moves and undo', () => {
-  test('archive from the row: short toasts that merge, one undo, the Archiv restores', async ({
+  test('archive from the row: short toasts that merge, one undo, Dearchivieren', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1014,9 +1014,9 @@ test.describe('moves and undo', () => {
     await settleMoves(page);
     await viaMenu(page, 'archive', 'freelancermap-2802');
     await openPlace(page, 'archive');
-    await viaMenu(page, 'toInbox', 'freelancermap-2802');
+    await viaMenu(page, 'unarchive', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
-    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.unarchived);
     await openPlace(page, 'inbox');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
   });
