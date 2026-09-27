@@ -1,4 +1,4 @@
-//! App state, settings, workspace, reset and UI error reports.
+//! App state, settings, workspace, reset, backups, the data file and UI error reports.
 
 // Tauri passes command arguments (`State` too) by value. Commands with file, vault or
 // database work are `async`: synchronous commands would run on the window thread and make
@@ -22,7 +22,7 @@ use jobalert_core::model::Place;
 use jobalert_core::pipeline::{self, Matcher as _, RunEvent, demo};
 use jobalert_core::profile;
 use jobalert_core::reset::{self, ResetPlan};
-use jobalert_core::store::Backup;
+use jobalert_core::store::{Backup, DATA_EXTENSION};
 use jobalert_core::view::{
     self, JobQuery, JobSort, Mailbox, ProfileInfo, ResetSummary, SettingsPatch, SettingsView,
     WorkspacePick, WorkspaceProfile,
@@ -415,6 +415,105 @@ pub async fn restore_backup(
     scoring::rescore_if_pending(&app, &state);
     super::files::marked(&app);
     Ok(before)
+}
+
+/// "Alle Daten exportieren": the save dialog of the OS, then the database, the profile and
+/// the settings in one file (`Store::export_data`; never the app password, the sign-ins at
+/// the portals or the log). It only reads, so a run may go on meanwhile. Neither the dry run
+/// nor the demo exports: their data is nobody's. `false` when the dialog was cancelled.
+#[tauri::command]
+pub async fn export_data(window: WebviewWindow, state: State<'_, AppState>) -> CmdResult<bool> {
+    state.ensure_real()?;
+    state.ensure_not_demo()?;
+    let words = texts::of(state.language()?);
+    let workspace = state.workspace()?;
+    let today = jobalert_core::time::local_date(Timestamp::now());
+    let mut dialog = rfd::AsyncFileDialog::new()
+        .set_title(words.export_data)
+        .add_filter(words.data_filter, &[DATA_EXTENSION])
+        .set_file_name(format!("{}-{today}.{DATA_EXTENSION}", words.data_file))
+        .set_parent(&window);
+    if workspace.is_dir() {
+        dialog = dialog.set_directory(&workspace);
+    }
+    let Some(file) = dialog.save_file().await else {
+        return Ok(false);
+    };
+    let (store, target) = (state.store.clone(), file.path().to_path_buf());
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        store.export_data(&workspace, &target, Timestamp::now())
+    })
+    .await
+    .map_err(|e| {
+        log::warn!("data export stopped: {e}");
+        ErrorInfo::new(ErrorKind::Internal)
+    })??;
+    log::info!("data exported ({bytes} bytes)");
+    Ok(true)
+}
+
+/// "Daten importieren", after the page asked: the open dialog of the OS, then the file's
+/// database, profile and settings replace the current ones (`Store::import_data`: the file
+/// is checked first, the database copied to the backups before; this computer's work folder,
+/// window place and file stamps stay). The app is held meanwhile like a restore, and neither
+/// the dry run nor the demo imports. Afterwards the scores follow the profile, the files the
+/// jobs and the window the palette; the page loads everything again. `false` when the dialog
+/// was cancelled.
+#[tauri::command]
+pub async fn import_data(
+    app: AppHandle,
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+) -> CmdResult<bool> {
+    state.ensure_real()?;
+    state.ensure_not_demo()?;
+    // Busy before the dialog, not after the choice.
+    state.ensure_idle()?;
+    let words = texts::of(state.language()?);
+    let workspace = state.workspace()?;
+    let Some(file) = rfd::AsyncFileDialog::new()
+        .set_title(words.import_data)
+        .add_filter(words.data_filter, &[DATA_EXTENSION])
+        .set_parent(&window)
+        .pick_file()
+        .await
+    else {
+        return Ok(false);
+    };
+    let files = state.claim_files(&app)?;
+    let (mailbox, _) = state.gmail_user();
+    let source = state.store.kv_get(PROFILE_SOURCE).ok().flatten();
+    let imported = state.store.import_data(
+        &workspace,
+        file.path(),
+        mailbox.as_deref(),
+        Timestamp::now(),
+    )?;
+    log::info!(
+        "data imported, the database before is {}",
+        imported.before.id
+    );
+    // The name of the profile's file goes with the profile: the imported one is the app's own
+    // file now, else the one here stays with its name.
+    let name = if imported.profile {
+        Some(profile::PROFILE_FILE.to_owned())
+    } else {
+        source
+    };
+    if let Some(name) = name
+        && let Err(e) = state.store.kv_set(PROFILE_SOURCE, &name)
+    {
+        log::warn!("profile file name not stored: {e}");
+    }
+    drop(files);
+    if imported.profile {
+        scoring::profile_changed(&app, &state);
+    } else {
+        scoring::rescore_if_pending(&app, &state);
+    }
+    super::files::marked(&app);
+    crate::platform::dress(&window, state.settings()?.palette);
+    Ok(true)
 }
 
 /// Errors of the page into the log (cut, single line, at most ten per minute).

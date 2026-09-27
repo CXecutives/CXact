@@ -48,9 +48,12 @@
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
 // `?tick=ms` sets the pace of a scripted run (default 40); `?export=locked` lets the export
-// of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail;
+// of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail,
+// `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
 // comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette.
+// `?data=cancel` closes the file dialogs of the data export and import without a choice,
+// `?data=foreign|damaged|newer` lets the import find such a file (refused like core does).
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
 // come in the order of the backend (`Portal::ALL`).
 
@@ -124,7 +127,9 @@ interface Harness {
   /** The window was closed (`close_window`, or a close request without unsaved changes). */
   closed: boolean;
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
-   *  (`close-requested`) while it holds unsaved changes, else the window closes. */
+   *  (`close-requested`) while it holds unsaved changes, then (`close-running`) while a
+   *  fetch runs, else the window closes; a second close while it asks about the fetch
+   *  closes anyway. Closing while a run goes cancels it first (`closing`). */
   requestClose: () => void;
   /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
    *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
@@ -245,8 +250,12 @@ const TICK = Number(params.get('tick') ?? 40);
 const DELAY = scenario === 'slow' ? 900 : 0;
 const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
+/** `mail=no-internet`: every fetch finds no network at all (`offline`, not `mailConnect`). */
+const NO_INTERNET = params.get('mail') === 'no-internet';
 /** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
+/** `data=`: what the file dialogs of the data export and import choose (see the header). */
+const DATA_FILE = params.get('data');
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The palette as the backend says it (`palette=light|dark`; Coast by default). */
@@ -797,11 +806,12 @@ const DEMO_BACKUPS: readonly Backup[] = [
 /** Copies from before a restore kept, like core. */
 const RESTORE_KEPT = 3;
 
-/** The name core gives the copy before a restore at `ms` (UTC, to the millisecond). */
-function restoreName(ms: number): string {
+/** The name core gives the copy before a restore (or an import, `kind`) at `ms` (UTC, to
+ *  the millisecond). */
+function restoreName(ms: number, kind: 'restore' | 'import' = 'restore'): string {
   // 2026-09-24T07:30:00.000Z: 20260924, 073000, 000
   const digits = new Date(ms).toISOString().replace(/\D/g, '');
-  return `jobs.before-restore-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
+  return `jobs.before-${kind}-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
 }
 
 function initial(): void {
@@ -1382,6 +1392,23 @@ function promptOf(j: JobView): string {
 let running = false;
 /** The kind of the run in progress (its end names it). */
 let runningKind: RunSummary['kind'] = 'fetch';
+/** The page asks whether to close while a fetch runs, or the user chose to close anyway
+ *  (main.rs `CloseGuard::ask`): the next close request closes. */
+let closeAsked = false;
+
+/** The window closes like main.rs: a run in progress is cancelled first (the page shows its
+ *  note on `closing`), then the window is gone. */
+function closeWindow(): void {
+  if (!running) {
+    harness.closed = true;
+    return;
+  }
+  for (const handler of listeners.get('closing') ?? []) {
+    handler({ payload: { activity: runningKind } });
+  }
+  cancelRun();
+  setTimeout(() => (harness.closed = true), TICK * 2);
+}
 
 function fail(kind: ErrorInfo['kind'], params: ErrorInfo['params'] = {}): ErrorInfo {
   return { kind, params };
@@ -1619,8 +1646,8 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   runSender = sender?.hold() ?? null;
   harness.done = false;
   const events =
-    MAIL_OFFLINE && isFetch(kind)
-      ? offlineScript()
+    (MAIL_OFFLINE || NO_INTERNET) && isFetch(kind)
+      ? offlineScript(NO_INTERNET ? 'offline' : 'mailConnect')
       : request.kind === 'rescore'
         ? rescoreScript()
         : request.kind === 'details'
@@ -1671,14 +1698,15 @@ function rescoreScript(): RunEvent[] {
   ];
 }
 
-function offlineScript(): RunEvent[] {
+/** A fetch that cannot reach Gmail (`mailConnect`) or finds no network at all (`offline`). */
+function offlineScript(kind: 'mailConnect' | 'offline'): RunEvent[] {
   return [
     { type: 'started', kind: 'fetch' },
     { type: 'status', code: 'connectingMail', portal: null, until: null },
     {
       type: 'finished',
       summary: {
-        ...lastRun({ kind: 'failed', error: fail('mailConnect') }),
+        ...lastRun({ kind: 'failed', error: fail(kind) }),
         perPortal: [],
         newJobs: { count: 0, high: 0 },
         emptyAlerts: [],
@@ -1884,7 +1912,12 @@ const handlers: Handlers = {
   },
   close_window: () => {
     harness.unsaved = false;
-    harness.closed = true;
+    harness.requestClose();
+    return null;
+  },
+  answer_close: ({ close }) => {
+    closeAsked = close;
+    if (close) harness.requestClose();
     return null;
   },
   save_mailbox: async ({ user, password }) => {
@@ -2004,6 +2037,26 @@ const handlers: Handlers = {
     );
     return structuredClone(before);
   },
+  // Like the commands: the OS's dialog (`?data=cancel`: closed without a choice), then the
+  // file. The import refuses a foreign, damaged or newer file like core, else the state
+  // before is a copy of its own (listed by the Sicherung); the demo data stays as it is.
+  export_data: () => DATA_FILE !== 'cancel',
+  import_data: () => {
+    if (running || mailboxCheck !== null) throw fail('busy');
+    if (DATA_FILE === 'cancel') return false;
+    if (DATA_FILE === 'foreign') throw fail('invalid', { reason: 'dataFileForeign' });
+    if (DATA_FILE === 'damaged') throw fail('corrupt', { what: 'dataFile' });
+    if (DATA_FILE === 'newer') throw fail('newerSchema', { what: 'dataFile', format: 2 });
+    const ms = Date.now();
+    const before: Backup = {
+      id: restoreName(ms, 'import'),
+      kind: 'import',
+      at: new Date(ms).toISOString(),
+      bytes: backups[0]?.bytes ?? 0,
+    };
+    backups = [before, ...backups];
+    return true;
+  },
   report_ui_error: () => null,
   clipboard_text: async () =>
     harness.clipboard ?? (await navigator.clipboard.readText().catch(() => null)),
@@ -2044,11 +2097,16 @@ const harness: Harness = {
   closed: false,
   holdMailbox: false,
   requestClose() {
-    if (!harness.unsaved) {
-      harness.closed = true;
+    if (harness.unsaved) {
+      for (const handler of listeners.get('close-requested') ?? []) handler({ payload: null });
       return;
     }
-    for (const handler of listeners.get('close-requested') ?? []) handler({ payload: null });
+    if (running && isFetch(runningKind) && !closeAsked) {
+      closeAsked = true;
+      for (const handler of listeners.get('close-running') ?? []) handler({ payload: null });
+      return;
+    }
+    closeWindow();
   },
   job(key) {
     const found = find(key);
@@ -2125,11 +2183,13 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'portal_logout',
   'reset_all',
   'restore_backup',
+  'export_data',
+  'import_data',
 ]);
 
 /** Commands that refuse in the demo (`ensure_not_demo` in src-tauri): the mailbox, the
- *  portals, the vault, another work folder, the reset, a restore; `start_run` takes only a
- *  rescore. */
+ *  portals, the vault, another work folder, the reset, a restore, the data export and
+ *  import; `start_run` takes only a rescore. */
 const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'save_mailbox',
   'remove_mailbox',
@@ -2138,6 +2198,8 @@ const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'pick_workspace',
   'reset_all',
   'restore_backup',
+  'export_data',
+  'import_data',
 ]);
 
 function demoRefuses(command: string, args: Record<string, unknown>): boolean {

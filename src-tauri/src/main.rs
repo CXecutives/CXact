@@ -429,10 +429,12 @@ mod geometry {
 /// Closing and quitting (the close button, Alt+F4, Cmd+W and Cmd+Q, which the macOS menu turns
 /// into a close of the window): with unsaved changes in the Profil view the window stays and
 /// the page asks (`close-requested`: save, discard or cancel), then closes it itself; a page
-/// that does not answer within a moment does not keep it open. Otherwise the close button
-/// never asks. If something is running, the window stays briefly (the page shows a blocker on
-/// the `closing` event), the run is cancelled and gets at most ten seconds to finish writing
-/// its files - then the app ends in any case. Once the main window is gone the app ends too:
+/// that does not answer within a moment does not keep it open. While a fetch runs the page
+/// asks too (`close-running`: "Schließen" or "Abbrechen", `answer_close`); a second close
+/// while it asks closes anyway. Otherwise the close button never asks. If something is
+/// running, the window stays briefly (the page shows a blocker on the `closing` event), the
+/// run is cancelled and gets at most ten seconds to finish writing its files - then the app
+/// ends in any case. Once the main window is gone the app ends too:
 /// no process stays behind the single-instance lock. An end without any window event (macOS:
 /// quit from the Dock, logout) still saves the placement and gives a running fetch the same
 /// grace (`exiting`).
@@ -452,6 +454,9 @@ mod lifecycle {
     /// The event that asks the page about its unsaved changes (`ui/src/lib/ipc/api.ts`,
     /// `onCloseRequested`).
     const CLOSE_REQUESTED: &str = "close-requested";
+    /// The event that asks the page whether to close while a fetch runs
+    /// (`ui/src/lib/ipc/api.ts`, `onCloseRunning`).
+    const CLOSE_RUNNING: &str = "close-running";
     /// How long a close request waits for the page's first word before the window closes.
     const ANSWER: Duration = Duration::from_secs(3);
 
@@ -478,6 +483,20 @@ mod lifecycle {
                             return;
                         }
                         Err(e) => log::warn!("close request not sent to the page ({e})"),
+                    }
+                }
+                // A fetch runs: the page asks first whether to close anyway and answers with
+                // `answer_close`. Asked already (a page that cannot answer) or answered
+                // "Schließen": the window closes.
+                if state.fetching() && !CLOSING.load(Ordering::SeqCst) && state.close_guard.ask() {
+                    match win.emit(CLOSE_RUNNING, ()) {
+                        Ok(()) => {
+                            api.prevent_close();
+                            let _ = win.unminimize();
+                            let _ = win.set_focus();
+                            return;
+                        }
+                        Err(e) => log::warn!("close question not sent to the page ({e})"),
                     }
                 }
                 if !state.busy() {

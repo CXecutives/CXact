@@ -229,8 +229,42 @@ impl Settings {
     }
 
     pub fn save(&self, store: &Store) -> Result<()> {
-        let json = serde_json::to_string(&self.clone().normalized()).expect("serialisable");
-        store.kv_set(KEY, &json)
+        store.kv_set(KEY, &self.stored())
+    }
+
+    /// The settings as the database stores them (under [`KEY`]).
+    pub(crate) fn stored(&self) -> String {
+        serde_json::to_string(&self.clone().normalized()).expect("serialisable")
+    }
+
+    /// The settings as a data export carries them (`store/bundle.rs`): everything but the
+    /// work folder, a path of the computer that wrote it.
+    pub(crate) fn portable(&self) -> serde_json::Value {
+        let mut value = serde_json::to_value(self.clone().normalized()).expect("serialisable");
+        if let serde_json::Value::Object(fields) = &mut value {
+            fields.remove("workspace");
+        }
+        value
+    }
+
+    /// The settings of a data export on this computer: its work folder `workspace` (never
+    /// the file's). `None` when the value is no settings object. Like stored settings, a
+    /// field of a newer version reads as its default.
+    pub(crate) fn from_portable(
+        value: &serde_json::Value,
+        workspace: Option<PathBuf>,
+    ) -> Option<Settings> {
+        if !value.is_object() {
+            return None;
+        }
+        let settings = serde_json::from_value::<Settings>(value.clone()).ok()?;
+        Some(
+            Settings {
+                workspace,
+                ..settings
+            }
+            .normalized(),
+        )
     }
 
     /// Every portal present; sign-in only where the portal has one.

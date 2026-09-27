@@ -125,7 +125,12 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   fileLocked: 'A file is open in another program right now.',
   io: 'A file could not be read or written.',
   xlsx: 'The Excel file could not be written.',
-  corrupt: (p) => (p.what === 'backup' ? 'The backup is damaged.' : 'The app’s data is damaged.'),
+  corrupt: (p) =>
+    p.what === 'backup'
+      ? 'The backup is damaged.'
+      : p.what === 'dataFile'
+        ? 'The file is damaged.'
+        : 'The app’s data is damaged.',
   newerSchema: 'The data comes from a newer version of the app.',
   invalid: 'The input is not valid.',
   busy: (p) => busy[busyOf(p.activity)],
@@ -147,6 +152,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   mailNotGmail: 'This is not a Gmail mailbox.',
   mailServer: 'Gmail reports an error.',
   mailCancelled: 'Cancelled.',
+  offline: 'No connection to the internet.',
   secretStore: 'The system’s password store cannot be reached.',
   secretCorrupt: 'The stored app password cannot be read.',
   portalUnavailable: (p) => `No connection to ${portalOf(p.portal)}.`,
@@ -206,6 +212,7 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   mailAddress: 'The address is incomplete.',
   appPassword: 'An app password has 16 letters.',
   noSignIn: (p) => `There is no sign-in for ${portalOf(p.portal)}.`,
+  dataFileForeign: 'This file is not a data export of this app.',
 };
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
@@ -1140,10 +1147,20 @@ export const en: Catalog = {
       daily: null,
       update: 'before an update',
       restore: 'before a restore',
+      import: 'before an import',
     },
     backupText: 'The current state is backed up first.',
     backupRestored: 'Backup restored.',
     backupUndone: 'The previous state is back.',
+    exportData: 'Export all data',
+    exportAction: 'Export',
+    exported: 'Data exported.',
+    importData: 'Import data',
+    importAction: 'Import',
+    importHeading: 'Import data?',
+    importText: 'The file replaces the following, and the current state is backed up first.',
+    importItems: ['the jobs', 'the profile', 'the settings'],
+    imported: 'Data imported.',
     reset: 'All data',
     resetAction: 'Reset',
     resetHeading: 'Reset everything?',
@@ -1191,6 +1208,9 @@ export const en: Catalog = {
   shell: {
     loadFailed: 'The app could not load its data.',
     closing: (activity: string | null) => closing[busyOf(activity)],
+    /** Closing the window while a fetch runs asks first; its button closes anyway. */
+    closeRunning: 'The fetch is still running. Close anyway?',
+    closeAction: 'Close',
   },
   toast: {
     rescored: 'Jobs scored again',

@@ -48,6 +48,11 @@ pub enum MailError {
     #[error("cannot connect to imap.gmail.com: {0}")]
     Connect(String),
 
+    /// The computer has no connection to the internet: the name of the server did not
+    /// resolve, or the network is down or unreachable ([`connect_error`]).
+    #[error("no connection to the internet: {0}")]
+    Offline(String),
+
     #[error("Gmail rejected the login: {0}")]
     Auth(String),
 
@@ -73,6 +78,7 @@ impl MailError {
         match self {
             MailError::NoCredentials => ErrorKind::MailMissing,
             MailError::Connect(_) => ErrorKind::MailConnect,
+            MailError::Offline(_) => ErrorKind::Offline,
             MailError::Auth(_) => ErrorKind::MailAuth,
             MailError::Timeout => ErrorKind::MailTimeout,
             MailError::Lost(_) => ErrorKind::MailLost,
@@ -97,6 +103,38 @@ fn protocol(error: async_imap::error::Error) -> MailError {
 }
 
 const UNREADABLE: &str = "unreadable reply from Gmail";
+
+/// The start of std's text for a name that did not resolve on Unix (`getaddrinfo` failed:
+/// "failed to lookup address information: nodename nor servname provided, or not known").
+/// Its kind there is not public, so the text is the only mark.
+const LOOKUP_FAILED: &str = "failed to lookup address information";
+
+/// Windows' codes for a name that did not resolve (`WSAHOST_NOT_FOUND`, `WSATRY_AGAIN`,
+/// `WSANO_DATA`): offline, the DNS server is out of reach. They mean something else on
+/// other systems.
+const WINDOWS_LOOKUP_FAILED: [i32; 3] = [11001, 11002, 11004];
+
+/// The TCP connection to Gmail failed: without a network (the name of the server did not
+/// resolve, the network is down or unreachable) it is `Offline`, the page then says "Keine
+/// Verbindung zum Internet"; any other failure (refused, reset, a firewall) is `Connect`,
+/// "Gmail ist nicht erreichbar".
+fn connect_error(error: &std::io::Error) -> MailError {
+    use std::io::ErrorKind as Kind;
+    let lookup_failed = error.to_string().starts_with(LOOKUP_FAILED)
+        || (cfg!(windows)
+            && error
+                .raw_os_error()
+                .is_some_and(|code| WINDOWS_LOOKUP_FAILED.contains(&code)));
+    let no_network = matches!(
+        error.kind(),
+        Kind::NetworkDown | Kind::NetworkUnreachable | Kind::HostUnreachable
+    );
+    if lookup_failed || no_network {
+        MailError::Offline(clean(&error.to_string()))
+    } else {
+        MailError::Connect(clean(&error.to_string()))
+    }
+}
 
 /// I/O errors. Parser errors from async-imap carry the whole unread buffer (i.e. mail
 /// content) in their text - that never ends up in a message or the log.
@@ -269,7 +307,7 @@ impl Gmail {
         let server = rustls::pki_types::ServerName::try_from(HOST)
             .map_err(|e| MailError::Connect(e.to_string()))?;
         let tcp = guarded(&cancel, TcpStream::connect((HOST, PORT)), |e| {
-            MailError::Connect(e.to_string())
+            connect_error(&e)
         })
         .await?;
         // Idle limit instead of a total limit: a large mail on a slow line may take its
@@ -567,6 +605,58 @@ mod tests {
         assert_eq!(c.user, "erika.mueller@example.com");
         assert_eq!(c.password(), "abcdefghijklmnop");
         assert!(!format!("{c:?}").contains("abcd"));
+    }
+
+    /// No network is `Offline` ("Keine Verbindung zum Internet"): a name that does not
+    /// resolve (std's text on Unix, Windows' codes) or a network that is down or unreachable.
+    /// Everything else stays `Connect` ("Gmail ist nicht erreichbar").
+    #[test]
+    fn no_network_is_offline_anything_else_a_connect_error() {
+        use std::io::{Error, ErrorKind as Kind};
+        let offline = [
+            Error::other(
+                "failed to lookup address information: nodename nor servname provided, or not known",
+            ),
+            Error::other(
+                "failed to lookup address information: Temporary failure in name resolution",
+            ),
+            Error::new(Kind::NetworkUnreachable, "network is unreachable"),
+            Error::new(Kind::NetworkDown, "network is down"),
+            Error::new(Kind::HostUnreachable, "no route to host"),
+        ];
+        for error in &offline {
+            let mail = connect_error(error);
+            assert!(matches!(mail, MailError::Offline(_)), "{error}: {mail}");
+            assert_eq!(mail.kind(), ErrorKind::Offline);
+        }
+        for error in [
+            Error::new(Kind::ConnectionRefused, "connection refused"),
+            Error::new(Kind::ConnectionReset, "connection reset"),
+            Error::new(Kind::TimedOut, "timed out"),
+            Error::new(Kind::PermissionDenied, "blocked by a firewall"),
+            Error::other("the lookup of the address failed"),
+        ] {
+            let mail = connect_error(&error);
+            assert!(matches!(mail, MailError::Connect(_)), "{error}: {mail}");
+            assert_eq!(mail.kind(), ErrorKind::MailConnect);
+        }
+        // Windows says it by a code: no host of that name, try again, no data.
+        #[cfg(windows)]
+        for code in [11001, 11002, 11004] {
+            let mail = connect_error(&Error::from_raw_os_error(code));
+            assert!(matches!(mail, MailError::Offline(_)), "{code}: {mail}");
+        }
+        #[cfg(windows)]
+        assert!(matches!(
+            connect_error(&Error::from_raw_os_error(10061)),
+            MailError::Connect(_)
+        ));
+        // The page reads the code, never a text.
+        assert_eq!(
+            serde_json::to_value(crate::error::ErrorInfo::from(&connect_error(&offline[0])))
+                .unwrap(),
+            serde_json::json!({"kind": "offline", "params": {}})
+        );
     }
 
     /// A dropped connection at login is not a wrong password.

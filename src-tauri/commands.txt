@@ -27,6 +27,7 @@ restore_profile   {}                                                            
 asked_terms       {}                                                                 -> AskedTerm[]
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null
+answer_close      { close: boolean }                                                 -> null
 save_mailbox      { user: string; password: string }                                 -> Mailbox
 remove_mailbox    {}                                                                 -> boolean
 portal_login      { portal: Portal }                                                 -> boolean
@@ -37,5 +38,7 @@ save_settings     { patch: SettingsPatch }                                      
 reset_all         {}                                                                 -> null
 list_backups      {}                                                                 -> Backup[]
 restore_backup    { id: string }                                                     -> Backup
+export_data       {}                                                                 -> boolean
+import_data       {}                                                                 -> boolean
 report_ui_error   { message: string; source: string | null; line: number | null }    -> null
 clipboard_text    {}                                                                 -> string | null

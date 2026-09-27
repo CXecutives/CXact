@@ -58,6 +58,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         profile::asked_terms,
         profile::set_unsaved,
         profile::close_window,
+        profile::answer_close,
         mailbox::save_mailbox,
         mailbox::remove_mailbox,
         portals::portal_login,
@@ -68,6 +69,8 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::reset_all,
         app::list_backups,
         app::restore_backup,
+        app::export_data,
+        app::import_data,
         app::report_ui_error,
         app::clipboard_text,
     ]
@@ -82,6 +85,12 @@ mod texts {
         pub pick_workspace: &'static str,
         pub pick_profile: &'static str,
         pub profile_filter: &'static str,
+        /// The data file of the export and the import: the titles of their dialogs, its
+        /// filter and the start of its name (the date follows).
+        pub export_data: &'static str,
+        pub import_data: &'static str,
+        pub data_filter: &'static str,
+        pub data_file: &'static str,
     }
 
     pub fn of(language: Language) -> &'static Dialogs {
@@ -96,6 +105,10 @@ mod texts {
         pick_workspace: "Arbeitsordner wählen",
         pick_profile: "Profil wählen",
         profile_filter: "Profil (JSON)",
+        export_data: "Alle Daten exportieren",
+        import_data: "Daten importieren",
+        data_filter: "CXact-Daten (JSON)",
+        data_file: "CXact-Daten",
     };
     // end of user-facing text
 
@@ -104,6 +117,10 @@ mod texts {
         pick_workspace: "Choose the work folder",
         pick_profile: "Choose a profile",
         profile_filter: "Profile (JSON)",
+        export_data: "Export all data",
+        import_data: "Import data",
+        data_filter: "CXact data (JSON)",
+        data_file: "CXact-data",
     };
     // end of user-facing text
 }
@@ -147,13 +164,32 @@ pub struct AppState {
 /// window itself (`close_window`). Nothing unsaved: the window closes at once. Every word
 /// from the page counts as an answer; a page that says nothing to a request (gone or stuck)
 /// never keeps the window open (main.rs closes it after a moment).
+///
+/// A fetch in progress holds a close request too: the page asks whether to close anyway and
+/// answers with `answer_close`. A second close request while it asks closes anyway, so a
+/// page that cannot answer never keeps the window either.
 #[derive(Default)]
 pub struct CloseGuard {
     unsaved: AtomicBool,
     answers: AtomicU64,
+    /// The page asks about the fetch in progress, or the user chose to close anyway: the
+    /// next close request closes.
+    asking: AtomicBool,
 }
 
 impl CloseGuard {
+    /// A close request while a fetch runs: `true` when the page is to ask now, `false` when
+    /// it asks already or the user chose to close (the window then closes).
+    pub fn ask(&self) -> bool {
+        !self.asking.swap(true, Ordering::SeqCst)
+    }
+
+    /// The page's answer to the question about the fetch: close (the next close request goes
+    /// through) or stay (the next one asks again).
+    pub fn answer(&self, close: bool) {
+        self.asking.store(close, Ordering::SeqCst);
+    }
+
     /// What the page says: it holds unsaved changes or not.
     pub fn set(&self, unsaved: bool) {
         self.unsaved.store(unsaved, Ordering::SeqCst);
@@ -184,8 +220,8 @@ pub enum Activity {
     /// The session window is in use for signing in or out (cancellable).
     Session(CancellationToken),
     /// A file command writes or deletes the app's files (delete for good, empty the trash,
-    /// another work folder, restore a backup): nothing else writes them meanwhile - two
-    /// exports would fight over the Excel file.
+    /// another work folder, restore a backup, import a data file): nothing else writes them
+    /// meanwhile - two exports would fight over the Excel file.
     Files,
     /// The mailbox is being checked and stored, or removed (cancellable): no run reads the
     /// vault meanwhile, so none starts with the account that is just being replaced and
@@ -296,6 +332,11 @@ impl AppState {
 
     pub fn busy(&self) -> bool {
         !matches!(*lock(&self.activity), Activity::Idle)
+    }
+
+    /// A fetch ("Postfach abrufen") holds the app: closing the window asks first.
+    pub fn fetching(&self) -> bool {
+        matches!(&*lock(&self.activity), Activity::Run(run) if run.snapshot().kind.reads_mail())
     }
 
     /// What holds the app, as the page names it (`fetch`, `details`,

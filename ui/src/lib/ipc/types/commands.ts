@@ -45,6 +45,7 @@ export type Commands = {
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
   set_unsaved: { args: { on: boolean }; result: null };
   close_window: { args: Record<string, never>; result: null };
+  answer_close: { args: { close: boolean }; result: null };
   save_mailbox: { args: { user: string; password: string }; result: Mailbox };
   remove_mailbox: { args: Record<string, never>; result: boolean };
   portal_login: { args: { portal: Portal }; result: boolean };
@@ -55,6 +56,8 @@ export type Commands = {
   reset_all: { args: Record<string, never>; result: null };
   list_backups: { args: Record<string, never>; result: Backup[] };
   restore_backup: { args: { id: string }; result: Backup };
+  export_data: { args: Record<string, never>; result: boolean };
+  import_data: { args: Record<string, never>; result: boolean };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
   clipboard_text: { args: Record<string, never>; result: string | null };
 };
