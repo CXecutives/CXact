@@ -1,8 +1,10 @@
-//! Consultant profile: exactly one JSON file `profil/beraterprofil.json` in the workspace
-//! (the place and format of the old program's profile). The Profil view edits it through a form
+//! Consultant profiles: JSON files in `profil/` of the workspace (the place and format of the
+//! old program's profile, `beraterprofil.json` the first of them), one of them active
+//! ([`set`]: several profiles, the active one, their names). Everything here without a
+//! profile's number works on the active one. The Profil view edits it through a form
 //! ([`form`]): saving merges the form into the file, so keys the form does not know, their
 //! values and the order of the keys stay; the previous file stays next to it as the one
-//! backup. Removing the profile makes it that backup, so it can be restored; restoring over a
+//! backup. Deleting a profile makes it that backup, so it can be restored; restoring over a
 //! profile (the undo of another file that replaced it) swaps the two. A file or a
 //! pasted answer of an AI ([`prompt`], read by [`answer`]) fills the form first, the user
 //! reviews it and saves. No network: everything stays on the computer.
@@ -11,8 +13,10 @@ mod answer;
 mod form;
 mod json;
 pub mod prompt;
+mod set;
 
 use std::path::{Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, PoisonError};
 
 use jiff::Timestamp;
 use serde_json::Value;
@@ -29,13 +33,28 @@ pub use form::{
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
 use json::Json;
+pub use set::{
+    Entry as ProfileEntry, INDEX_FILE, MAX_NAME, create, delete, duplicate, file_name, id_of,
+    import, is_app_file, list, rename, restore, role, switch,
+};
 
 /// Folder and file name are a contract with the user's work folder (the old program's) - do
-/// not translate.
+/// not translate. The first profile's file (the one of earlier versions).
 pub const PROFILE_DIR: &str = "profil";
 pub const PROFILE_FILE: &str = "beraterprofil.json";
-/// The previous profile, kept next to it on every save (one backup, replaced each time).
+/// The first profile's previous version, kept next to it on every save (one backup, replaced
+/// each time); every profile has its own (`<file>.bak`).
 pub const BACKUP_FILE: &str = "beraterprofil.json.bak";
+
+/// One change of the profile files at a time: a save, a switch, a new profile. Two saves
+/// close together (two terms added from the reader) each read the file the other one wrote,
+/// so neither drops what the other changed, and no switch falls between the read and the
+/// write of a save.
+static WRITING: Mutex<()> = Mutex::new(());
+
+fn writing() -> MutexGuard<'static, ()> {
+    WRITING.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
 /// State of the stored profile.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,8 +66,9 @@ pub struct ProfileInfo {
     pub parse_error: Option<InvalidInput>,
 }
 
+/// The file of the active profile; without any profile, the file a new one gets.
 pub fn profile_path(workspace: &Path) -> PathBuf {
-    workspace.join(PROFILE_DIR).join(PROFILE_FILE)
+    set::active_path(workspace)
 }
 
 /// The stored profile; `None` if there is none.
@@ -107,45 +127,17 @@ pub fn load(workspace: &Path) -> Result<Option<Value>> {
     }
 }
 
+/// The one backup of the active profile.
 pub fn backup_path(workspace: &Path) -> PathBuf {
-    workspace.join(PROFILE_DIR).join(BACKUP_FILE)
+    set::backup_of(&profile_path(workspace))
 }
 
-/// Removes the profile: it becomes the one backup next to where it was (replacing an older
-/// one), so [`restore`] can bring it back. `false` if there was none.
-pub fn remove(workspace: &Path) -> Result<bool> {
-    let path = profile_path(workspace);
-    if !path.exists() {
-        return Ok(false);
-    }
-    let backup = backup_path(workspace);
-    std::fs::rename(&path, &backup).map_err(|e| Error::io(&path, e))?;
-    Ok(true)
-}
-
-/// Brings the backup back as the profile: the undo of a removal, and of a save that replaced
-/// the profile (another file). A profile that is there becomes the backup in its place, so
-/// the undo can itself be undone. `false` without a backup.
-pub fn restore(workspace: &Path) -> Result<bool> {
-    let path = profile_path(workspace);
-    let backup = backup_path(workspace);
-    if !backup.exists() {
-        return Ok(false);
-    }
-    if !path.exists() {
-        std::fs::rename(&backup, &path).map_err(|e| Error::io(&backup, e))?;
-        return Ok(true);
-    }
-    // A swap in three renames within the folder; the profile is never left missing longer
-    // than between the last two.
-    let aside = path.with_extension("json.swap");
-    std::fs::rename(&path, &aside).map_err(|e| Error::io(&path, e))?;
-    if let Err(e) = std::fs::rename(&backup, &path) {
-        let _ = std::fs::rename(&aside, &path);
-        return Err(Error::io(&backup, e));
-    }
-    std::fs::rename(&aside, &backup).map_err(|e| Error::io(&aside, e))?;
-    Ok(true)
+/// The number of the active profile; `None` without a profile.
+pub fn active_id(workspace: &Path) -> Result<Option<u32>> {
+    Ok(list(workspace)?
+        .into_iter()
+        .find(|entry| entry.active)
+        .map(|entry| entry.id))
 }
 
 /// A profile read for the editor: the form, the JSON text it came from (saving merges the
@@ -247,12 +239,12 @@ pub fn form_of(text: &str) -> Option<ProfileForm> {
     parse_doc(text).ok().map(|doc| form::read(&doc))
 }
 
-/// Saves the editor's form. `before` is the form as the editor received it: only fields
-/// that differ from it are written. They go into `source` (the JSON of a chosen file or a
-/// pasted answer, `{}` for a new profile) or, without one, into the stored profile. The
-/// previous file becomes the one backup next to it; the file is replaced atomically. One save
-/// at a time: two saves close together (two terms added from the reader) each read the file
-/// the other one wrote, so neither drops what the other changed.
+/// Saves the editor's form into the active profile (without any profile it becomes the
+/// first one). `before` is the form as the editor received it: only fields that differ from
+/// it are written. They go into `source` (the JSON of a chosen file or a pasted answer, `{}`
+/// for a new profile) or, without one, into the stored profile. The previous file becomes
+/// the one backup next to it; the file is replaced atomically. One save at a time
+/// ([`WRITING`]).
 pub fn save_form(
     workspace: &Path,
     source: Option<&str>,
@@ -260,10 +252,7 @@ pub fn save_form(
     after: &ProfileForm,
     clear: &[UnreadableField],
 ) -> Result<ProfileInfo> {
-    static SAVING: std::sync::Mutex<()> = std::sync::Mutex::new(());
-    let _one_at_a_time = SAVING
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _one_at_a_time = writing();
     let after = form::validate(after)?;
     let path = profile_path(workspace);
     let previous = match std::fs::read(&path) {
@@ -282,9 +271,12 @@ pub fn save_form(
     let keep = source.is_none() && previous.is_some() && doc == unchanged;
     if !keep {
         if let Some(old) = &previous {
-            write_atomic(&backup_path(workspace), old)?;
+            write_atomic(&set::backup_of(&path), old)?;
         }
         write_atomic(&path, doc.to_pretty().as_bytes())?;
+        if previous.is_none() {
+            set::forget_name(workspace, &path);
+        }
     }
     info(workspace)?.ok_or_else(|| Error::Corrupt("profile unreadable right after saving".into()))
 }
@@ -497,22 +489,20 @@ mod tests {
         files.sort();
         assert_eq!(files, [PROFILE_FILE, BACKUP_FILE], "exactly one backup");
 
-        // Removing the profile makes it the backup; restoring brings it back as it was.
+        // Deleting the profile makes it the backup; restoring brings it back as it was.
         let last = stored(dir.path());
-        assert!(remove(dir.path()).unwrap());
+        let first_backup = dir.path().join(PROFILE_DIR).join(BACKUP_FILE);
+        assert!(delete(dir.path(), 1).unwrap());
         assert!(info(dir.path()).unwrap().is_none(), "no profile");
-        assert_eq!(
-            std::fs::read_to_string(backup_path(dir.path())).unwrap(),
-            last
-        );
-        assert!(!remove(dir.path()).unwrap(), "nothing left to remove");
-        assert!(restore(dir.path()).unwrap());
+        assert_eq!(std::fs::read_to_string(&first_backup).unwrap(), last);
+        assert!(!delete(dir.path(), 1).unwrap(), "nothing left to delete");
+        assert!(restore(dir.path(), 1).unwrap());
         assert_eq!(stored(dir.path()), last);
-        assert!(!backup_path(dir.path()).exists());
-        assert!(!restore(dir.path()).unwrap(), "no backup left");
+        assert!(!first_backup.exists());
+        assert!(!restore(dir.path(), 1).unwrap(), "no backup left");
 
-        // "Reset everything" after a removal leaves neither the profile nor its backup.
-        assert!(remove(dir.path()).unwrap());
+        // "Reset everything" after a deletion leaves neither the profile nor its backup.
+        assert!(delete(dir.path(), 1).unwrap());
         let data = dir.path().join("data");
         std::fs::create_dir_all(&data).unwrap();
         let plan = crate::reset::ResetPlan {
@@ -626,11 +616,11 @@ mod tests {
 
         // Rückgängig: the old profile comes back, the chosen one becomes the backup, and a
         // second undo swaps them again.
-        assert!(restore(dir.path()).unwrap());
+        assert!(restore(dir.path(), 1).unwrap());
         assert!(stored(dir.path()).contains("hobbys"));
         let backup = std::fs::read_to_string(backup_path(dir.path())).unwrap();
         assert_eq!(backup, text);
-        assert!(restore(dir.path()).unwrap());
+        assert!(restore(dir.path(), 1).unwrap());
         assert_eq!(stored(dir.path()), text);
         let mut files: Vec<String> = std::fs::read_dir(dir.path().join(PROFILE_DIR))
             .unwrap()
@@ -723,7 +713,7 @@ mod tests {
             ["name", "stationen", "einsatzpraeferenzen"]
         );
         // Without a stored profile it is the draft of a new one.
-        assert!(remove(dir.path()).unwrap());
+        assert!(delete(dir.path(), 1).unwrap());
         assert_eq!(
             update_from_answer(dir.path(), answer).unwrap(),
             draft_from_answer(answer).unwrap()

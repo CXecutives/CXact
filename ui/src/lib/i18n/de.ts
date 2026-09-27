@@ -1026,13 +1026,25 @@ export const de = {
     /** The same way for a profile that exists: the answer fills the form for review. */
     updateFromCv: 'Aus Lebenslauf aktualisieren',
     pick: 'Profildatei wählen',
-    pickOther: 'Andere Datei wählen',
-    /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Profil
-     *  löschen). */
-    more: 'Weitere Aktionen',
-    /** In the head's menu, red; it asks first, and the toast offers Rückgängig. */
+    /** The switcher at the left of the head: the active profile's name opens the menu of
+     *  every profile (a check at the active one) and what can be done with them. Without a
+     *  name of its own a profile goes by its role, else by its number. The accessible name of
+     *  the menu. */
+    profiles: 'Profile',
+    numbered: (value: number) => `Profil ${n(value)}`,
+    newProfile: 'Neues Profil',
+    duplicate: 'Profil duplizieren',
+    /** The name a copy starts with (Umbenennen changes it). */
+    copyName: (name: string) => `${name} Kopie`,
+    rename: 'Umbenennen',
+    renameHeading: 'Profil umbenennen',
+    load: 'Aus Datei laden',
+    /** After another profile became the active one (its rescore runs in the background). */
+    switched: 'Profil gewechselt, Jobs neu bewertet',
+    /** In the switcher's menu, red; it asks first, naming the profile, and the toast offers
+     *  Rückgängig. */
     remove: 'Profil löschen',
-    removeHeading: 'Profil löschen?',
+    removeHeading: (name: string) => `„${name}“ löschen?`,
     removeConfirm: 'Löschen',
     removed: 'Profil gelöscht.',
     /** The toast of a save (during the setup with the way on). */

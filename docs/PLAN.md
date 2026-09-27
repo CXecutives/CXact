@@ -129,10 +129,10 @@ Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_stat
 `purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
 `ai_prompt(key) -> string` · `pick_profile -> ProfileDraft?` ·
 `parse_profile(text, update) -> ProfileDraft` · `profile_prompt(update)` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
-`remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
+`list_profiles` · `switch_profile(id)` · `create_profile` · `duplicate_profile(id, name?)` · `rename_profile(id, name)` · `delete_profile(id)` · `restore_profile(id?)` · `load_profile` (each but `delete_profile` and `restore_profile` answers `ProfileEntry[]`; `AppState.profiles` lists them too) · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
 `pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
 `save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
-Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
+Rust triggers `rescore` itself (after a save, a switch or a deletion of the active profile, at start, after an engine update, if pending > 0; pending = 0
 without a usable matcher); nothing else runs on its own.
 Events on channel `run` (struct variants, each < 8 KB): `Started{kind}` (first event of every run, also of the runs Rust
 starts itself) · `Progress{step: scan|fetch|score|export, portal?, done, total}` ·
@@ -743,3 +743,22 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   "Alles zurücksetzen", and deleting a job for good still removes the old text file the app
   wrote for it. The rubrics no longer name the skill.
 - [x] Skill, TXT export and `top_matches.json` out
+
+## Several profiles (user decision 2026-09-27; supersedes "several profiles" under Declined)
+- Each profile is a file of the old format in `profil/`: `beraterprofil.json` the first (the file of earlier
+  versions, so an existing profile simply is the first one: nothing is moved, copied or rewritten), every further
+  one `beraterprofil-<n>.json`, each with its one backup `<file>.bak`. `profil/profilliste.json` holds the active
+  one and the names the user gave (English keys, serde defaults; missing or unreadable: the first profile is active
+  and each goes by its role). A new profile takes the number after the highest file of the folder, a deleted
+  one's backup included, so its undo never meets another profile (`core/src/profile/set.rs`).
+- A switch (and a new, copied, loaded or deleted active profile) scores every job again (`scoring::profile_changed`).
+  Refused in the dry run like every write; the demo keeps its own work folder.
+- The head of the Profil: on the left the switcher (the active profile's name, `data-copy`, with a chevron; its menu:
+  every profile with a check at the active one, Neues Profil, Profil duplizieren, Umbenennen, Aus Datei laden,
+  Ordner öffnen, Profil löschen in red), on the right "Aus Lebenslauf aktualisieren"; the "…" menu is gone. A name
+  defaults to the profile's role, else "Profil 2"; only Umbenennen (a small dialog) changes it. Another profile
+  with unsaved changes asks first (Speichern, Verwerfen, Abbrechen); a switch says "Profil gewechselt, Jobs neu
+  bewertet"; deleting asks naming the profile, the next one is active and a toast offers Rückgängig; the last one
+  leaves the ways in. With profiles the head also stands over the ways in of a profile that does not read.
+- [x] Several profiles: storage, migration by reading, commands, the switcher, the stub (the preview's work folder
+  holds the demo profile and two test profiles, with the engine's matches of each in the snapshot), specs

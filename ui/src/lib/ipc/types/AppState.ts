@@ -6,6 +6,7 @@ import type { Mailbox } from "./Mailbox";
 import type { Palette } from "./Palette";
 import type { Platform } from "./Platform";
 import type { PortalState } from "./PortalState";
+import type { ProfileEntry } from "./ProfileEntry";
 import type { ProfileInfo } from "./ProfileInfo";
 import type { ResetSummary } from "./ResetSummary";
 import type { RunSnapshot } from "./RunSnapshot";
@@ -37,7 +38,15 @@ setupDone: boolean,
 /**
  * The run in progress (after a reload the interface picks up from here).
  */
-running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, profile: ProfileInfo | null, portals: Array<PortalState>, 
+running: RunSnapshot | null, settings: SettingsView, mailbox: Mailbox, 
+/**
+ * The active profile.
+ */
+profile: ProfileInfo | null, 
+/**
+ * Every profile of the work folder, the active one marked (empty without one).
+ */
+profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
 /**
  * Which alert mails "Postfach abrufen" reads.
  */

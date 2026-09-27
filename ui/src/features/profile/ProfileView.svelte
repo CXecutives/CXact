@@ -7,10 +7,11 @@
   holds a change. A chosen file and an AI's answer fill the form for review (an answer for
   the stored profile updates it); nothing is stored before "Speichern". A save is answered by
   a toast once the bar has gone ("Profil gespeichert."). Leaving the view or closing the
-  window with unsaved changes asks once ("Änderungen speichern?", the heading alone).
-  "Profil löschen" asks first, then a toast offers "Rückgängig" for a moment; so does saving
-  another file over the profile (the backup comes back, core's swap), and an undo that fails
-  says so. During setup the toast of the first save offers "Weiter zum ersten Abruf", which
+  window with unsaved changes asks once ("Änderungen speichern?", the heading alone), and
+  so does another profile from the switcher of the head (ProfileSet holds the profiles' own
+  actions and dialogs). With profiles the head stands also over the ways in of a profile
+  that does not read. Saving another file over the profile is answered by a toast with
+  "Rückgängig" (the backup comes back, core's swap), and an undo that fails says so. During setup the toast of the first save offers "Weiter zum ersten Abruf", which
   starts the fetch, or without a mailbox "Weiter zum Postfach", which goes back to the setup
   page; the setup page asks for the steps with an AI (`cvWanted`), which open when the view
   appears.
@@ -38,11 +39,18 @@
   import ProfileEditor from './ProfileEditor.svelte';
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfilePaste from './ProfilePaste.svelte';
+  import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
   import { valueText } from './sections';
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
+  /** Every profile of the work folder (the switcher; none without a profile). */
+  const profiles = $derived(app.state?.profiles ?? []);
+  const hasProfile = $derived(profiles.some((entry) => entry.active));
+  /** The profiles' own actions and dialogs; a change of them turns the switcher. */
+  let set = $state<ProfileSet | null>(null);
+  let switching = $state(false);
   const rescoring = $derived((run.active && run.kind === 'rescore') || (profile?.pending ?? 0) > 0);
 
   /** The prompts for a new profile and for an update of the stored one, loaded ahead so that
@@ -52,9 +60,7 @@
     update: null,
   });
   let copied = $state(false);
-  let busy = $state<'pick' | 'save' | 'remove' | 'paste' | null>(null);
-  /** "Profil löschen" asks first. */
-  let confirmRemove = $state(false);
+  let busy = $state<'pick' | 'save' | 'paste' | null>(null);
   /** A failure is said when it shows, so it follows a switch of the language. */
   type Words = () => string;
   let note = $state<Words | null>(null);
@@ -110,8 +116,15 @@
     navigation.go('jobs');
     if (app.hasMailbox && run.fetchBlocked === null) await run.start({ kind: 'fetch' });
   }
-  /** Where the user wanted to go with unsaved changes (a view, or closing the window). */
-  let leaving = $state<ViewId | 'close' | null>(null);
+  /** Where the user wanted to go with unsaved changes: a view, closing the window, or
+   *  another profile (what then runs). */
+  let leaving = $state<ViewId | 'close' | { then: () => void } | null>(null);
+
+  /** Another profile into the form: with unsaved changes it asks first, then runs. */
+  function guard(then: () => void): void {
+    if (editor.dirty) leaving = { then };
+    else then();
+  }
 
   // The stored profile fills the form while nothing unsaved is in it (also after a save).
   $effect(() => {
@@ -302,7 +315,7 @@
         replaced
           ? toasts.show(t.profile.replaced, 'success', {
               label: t.common.undo,
-              onclick: () => void restore(),
+              onclick: () => void set?.restore(null),
             })
           : savedToast(),
       );
@@ -341,48 +354,13 @@
     if (editor.origin === null) void caretTo('profile-create');
   }
 
-  async function remove(): Promise<void> {
-    busy = 'remove';
-    note = null;
-    try {
-      const removed = await invoke('remove_profile');
-      confirmRemove = false;
-      editor.close();
-      await reload();
-      if (removed) {
-        toasts.show(t.profile.removed, 'success', {
-          label: t.common.undo,
-          onclick: () => void restore(),
-        });
-      }
-    } catch (error) {
-      confirmRemove = false;
-      note = () => errorText(error);
-    } finally {
-      busy = null;
-    }
-  }
-
-  /** "Rückgängig" of a removal or of a file that replaced the profile: the backup becomes
-   *  the profile again (the form shows it, unless it holds changes). */
-  async function restore(): Promise<void> {
-    note = null;
-    let back: boolean;
-    try {
-      back = await invoke('restore_profile');
-    } catch {
-      back = false;
-    }
-    if (back) await reload();
-    else toasts.show(t.profile.restoreFailed, 'info');
-  }
-
   /** Leaving without saving. */
   function leave(): void {
     const next = leaving;
     leaving = null;
     editor.discard(stored);
     if (next === 'close') closeWindow();
+    else if (typeof next === 'object' && next !== null) next.then();
     else if (next !== null) navigation.go(next, true);
   }
 
@@ -397,6 +375,7 @@
     leaving = null;
     if (!done || next === null) return;
     if (next === 'close') closeWindow();
+    else if (typeof next === 'object') next.then();
     else navigation.go(next, true);
   }
 
@@ -486,64 +465,76 @@
       ontake={(answer) => void takeAnswer(answer)}
       oncancel={() => (editor.pasting = false)}
     />
-  {:else if editor.origin === null}
-    <div class="empty">
-      <ProfileStart
-        heading={profile?.parseError ? t.profile.unreadable : t.profile.none}
-        text={profile?.parseError
-          ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-          : t.profile.noneText}
-        picking={busy === 'pick'}
-        unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
-        note={note?.() ?? null}
-        oncreate={() => void create()}
-        onfromcv={() => void fromCv()}
-        onpick={() => void pick()}
-        onopenfolder={openFolder}
-      />
-    </div>
   {:else}
-    <ProfileHeader
-      origin={editor.origin}
-      {profile}
-      checks={checkList.length}
-      warnings={headWarnings}
-      {rescoring}
-      dirty={editor.dirty}
-      {replacing}
-      picking={busy === 'pick'}
-      note={note?.() ?? null}
-      onpick={() => void pick()}
-      onremove={() => (confirmRemove = true)}
-      onfromcv={() => void fromCv()}
-      onopenfolder={openFolder}
-      oncheck={checkFirst}
-    />
-    <ProfileEditor
-      bind:this={panel}
-      {quality}
-      {problems}
-      {warnings}
-      {fieldError}
-      busy={busy === 'save'}
-      note={saveNote?.() ?? null}
-      onsave={() => void save()}
-      ondiscard={discard}
-      onbargone={barGone}
-    />
+    {#if editor.origin !== null || hasProfile}
+      {@render head()}
+    {/if}
+    {#if editor.origin === null}
+      <div class="empty">
+        <ProfileStart
+          heading={profile?.parseError ? t.profile.unreadable : t.profile.none}
+          text={profile?.parseError
+            ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
+            : t.profile.noneText}
+          picking={busy === 'pick'}
+          unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
+          note={note?.() ?? null}
+          oncreate={() => void create()}
+          onfromcv={() => void fromCv()}
+          onpick={() => void pick()}
+          onopenfolder={openFolder}
+        />
+      </div>
+    {:else}
+      <ProfileEditor
+        bind:this={panel}
+        {quality}
+        {problems}
+        {warnings}
+        {fieldError}
+        busy={busy === 'save'}
+        note={saveNote?.() ?? null}
+        onsave={() => void save()}
+        ondiscard={discard}
+        onbargone={barGone}
+      />
+    {/if}
   {/if}
 </div>
 
-<!-- The headings say it all: the dialogs do not repeat them. -->
-<Dialog
-  bind:open={confirmRemove}
-  variant="danger"
-  heading={t.profile.removeHeading}
-  confirmLabel={t.profile.removeConfirm}
-  busy={busy === 'remove'}
-  testid="dialog-remove-profile"
-  onconfirm={() => void remove()}
+{#snippet head()}
+  <ProfileHeader
+    origin={editor.origin}
+    {profile}
+    {profiles}
+    checks={editor.origin === null ? 0 : checkList.length}
+    warnings={editor.origin === null ? [] : headWarnings}
+    {rescoring}
+    dirty={editor.dirty}
+    {replacing}
+    {switching}
+    note={editor.origin === null ? null : (note?.() ?? null)}
+    onswitch={(id) => set?.switchTo(id)}
+    onnew={() => set?.create()}
+    onduplicate={() => set?.duplicate()}
+    onrename={() => set?.askRename()}
+    onload={() => set?.load()}
+    onremove={() => set?.askRemove()}
+    onfromcv={() => void fromCv()}
+    onopenfolder={openFolder}
+    oncheck={checkFirst}
+  />
+{/snippet}
+
+<ProfileSet
+  bind:this={set}
+  onbusy={(on) => (switching = on)}
+  {guard}
+  {reload}
+  onnote={(words) => (note = words)}
 />
+
+<!-- The heading says it all: the dialog does not repeat it. -->
 <Dialog
   open={leaving !== null}
   heading={t.profile.leaveHeading}

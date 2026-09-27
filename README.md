@@ -44,7 +44,9 @@ Check mailbox).
 The Profil view edits the profile as a form. Saving writes only the changed fields into the
 file, keeps every other key as it is and leaves the previous version next to it
 (`profil/beraterprofil.json.bak`). "Aus Lebenslauf anlegen" copies a prompt for the AI
-chat you use; its answer, pasted back, fills the form for review.
+chat you use; its answer, pasted back, fills the form for review. Several profiles can live
+side by side in `profil/` (`beraterprofil.json`, `beraterprofil-2.json`, ...); the switcher in
+the head of the Profil view chooses the active one, and every job is scored again with it.
 
 The consultant profile is a JSON file with German keys (English keys are read too and kept
 where they are), in the structure shown by

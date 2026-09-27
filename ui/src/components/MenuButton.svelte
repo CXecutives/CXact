@@ -4,6 +4,9 @@
   Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; in a toolbar of fields it
   takes their height and look (`field`). Left click only, like every control; disabled it
   stays hoverable so the tooltip can say why. While its menu is open the button looks pressed.
+  Below the choices, after a line, the menu may hold what can be done with them (`actions`:
+  the profile switcher's Neues Profil, Umbenennen ...); a label a user would copy (a
+  profile's name) selects like text and ends in an ellipsis where the row ends (`copy`).
 -->
 <script lang="ts" module>
   export interface MenuOption<Id extends string = string> {
@@ -13,7 +16,8 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import { menuState, openMenu } from '$lib/state/menu.svelte';
+  import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
+  import type { Action } from 'svelte/action';
   import Button from './Button.svelte';
   import type { IconName } from './Icon.svelte';
 
@@ -29,6 +33,12 @@
     testid?: string | null;
     /** The accessible name of the menu ("Sortierung"). */
     menuLabel: string;
+    /** Entries after the choices, below a line. */
+    actions?: readonly MenuEntry[];
+    /** The label is text a user would copy. */
+    copy?: boolean;
+    /** Something runs for it (a switch): the spinner over the label. */
+    loading?: boolean;
     onchange: (id: Id) => void;
   }
 
@@ -41,8 +51,20 @@
     field = false,
     testid = null,
     menuLabel,
+    actions = [],
+    copy = false,
+    loading = false,
     onchange,
   }: Props = $props();
+
+  /** Text a user would copy: the label Button draws is marked (`data-copy`). */
+  const copyable: Action<HTMLElement, boolean> = (node, on) => {
+    const mark = (value: boolean): void => {
+      node.querySelector('.label')?.toggleAttribute('data-copy', value);
+    };
+    mark(on);
+    return { update: mark };
+  };
 
   let anchor = $state<HTMLElement | null>(null);
   let expanded = $state(false);
@@ -56,20 +78,23 @@
     openMenu({
       label: menuLabel,
       anchor: { kind: 'below', rect: anchor.getBoundingClientRect(), align: 'start' },
-      entries: options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        checked: option.id === value,
-        run: () => {
-          if (option.id !== value) onchange(option.id);
-        },
-      })),
+      entries: [
+        ...options.map((option) => ({
+          id: option.id,
+          label: option.label,
+          checked: option.id === value,
+          run: () => {
+            if (option.id !== value) onchange(option.id);
+          },
+        })),
+        ...(actions.length > 0 ? [{ kind: 'separator' as const }, ...actions] : []),
+      ],
       onclose: () => (expanded = false),
     });
   }
 </script>
 
-<span class="menu-button" bind:this={anchor}>
+<span class="menu-button" class:copy bind:this={anchor} use:copyable={copy}>
   <Button
     variant={field ? 'secondary' : 'ghost'}
     size={field ? 'field' : 'sm'}
@@ -80,6 +105,7 @@
     {expanded}
     {disabled}
     {disabledReason}
+    {loading}
     {testid}
     onclick={open}
   />
@@ -89,5 +115,20 @@
   .menu-button {
     display: inline-flex;
     flex: none;
+    max-width: 100%;
+  }
+
+  /* A name a user gave (a profile's) may be long: it ends in an ellipsis. */
+  .copy :global(.btn) {
+    max-width: 100%;
+  }
+
+  .copy :global(.content) {
+    min-width: 0;
+  }
+
+  .copy :global(.label) {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 </style>

@@ -3,7 +3,13 @@
 // from it, the specs read their expectations from it (docs/CHANGING.md, "The preview's demo
 // data").
 
-import type { JobDetail, JobView, Language, ProfileInfo } from '../../ui/src/lib/ipc/types';
+import type {
+  JobDetail,
+  JobMatch,
+  JobView,
+  Language,
+  ProfileInfo,
+} from '../../ui/src/lib/ipc/types';
 
 export interface Snapshot {
   /** The fixed "now" of the demo. */
@@ -19,6 +25,9 @@ export interface Snapshot {
   fetched: Record<string, { job: JobView; detail: JobDetail }>;
   /** The stored profile with what the engine understood of it. */
   profile: ProfileInfo;
+  /** The other profiles of the demo's work folder (tools/test-profiles/): what the app shows
+   *  of each and the match of every job of `jobs` with it, by `portal:id`. */
+  profiles: { file: string; profile: ProfileInfo; matches: Record<string, JobMatch | null> }[];
   /** The AI prompts per language: every job's by `portal:id`. */
   prompts: Record<Language, Record<string, string>>;
 }

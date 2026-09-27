@@ -6,7 +6,7 @@
 //! Company and location are cleaned here (the database holds the raw mail values).
 
 use std::collections::BTreeSet;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
 use jiff::Timestamp;
@@ -1233,8 +1233,14 @@ pub struct ProfileInfo {
 
 impl ProfileInfo {
     pub fn of(info: &crate::profile::ProfileInfo, file_name: Option<String>) -> ProfileInfo {
+        let own = info
+            .path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned());
         ProfileInfo {
-            file_name: file_name.unwrap_or_else(|| crate::profile::PROFILE_FILE.to_string()),
+            file_name: file_name
+                .or(own)
+                .unwrap_or_else(|| crate::profile::PROFILE_FILE.to_string()),
             bytes: info.bytes,
             saved_at: info.saved_at,
             quality: None,
@@ -1272,6 +1278,34 @@ impl ProfileInfo {
         }
         Ok(self)
     }
+}
+
+/// A profile of the work folder as the switcher of the Profil view lists it (one of them
+/// active; `profile::list`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct ProfileEntry {
+    /// Its number (`beraterprofil.json` is 1); the page's "Profil 2" without a name or role.
+    pub id: u32,
+    /// The name the user gave it ("Umbenennen").
+    pub name: Option<String>,
+    /// Its role (`titel`, else its first `wunschrollen`): its name without one of its own.
+    pub role: Option<String>,
+    pub active: bool,
+}
+
+/// The profiles of the work folder for the switcher, in the order of their numbers.
+pub fn profile_entries(workspace: &Path) -> crate::Result<Vec<ProfileEntry>> {
+    Ok(crate::profile::list(workspace)?
+        .into_iter()
+        .map(|entry| ProfileEntry {
+            id: entry.id,
+            role: crate::profile::role(&entry.path),
+            name: entry.name,
+            active: entry.active,
+        })
+        .collect())
 }
 
 /// The "understood" card: competences, where they were found (path patterns), every hard
@@ -1493,7 +1527,10 @@ pub struct AppState {
     pub running: Option<RunSnapshot>,
     pub settings: SettingsView,
     pub mailbox: Mailbox,
+    /// The active profile.
     pub profile: Option<ProfileInfo>,
+    /// Every profile of the work folder, the active one marked (empty without one).
+    pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
     /// Which alert mails "Postfach abrufen" reads.
     pub fetch_range: FetchRange,

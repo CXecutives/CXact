@@ -4,7 +4,9 @@
 //! with its reasons and passages, what the app understood of the profile, the AI prompts -
 //! comes from `tools/ui-harness/demo/snapshot.json`, which this test
 //! writes from the invented ads of `demo/ads.json` and the invented profile of
-//! `demo/profile.json`. So an engine change reaches the preview without mirroring it by hand.
+//! `demo/profile.json`, with the list rows' matches for a few invented test profiles of
+//! `tools/test-profiles/` (the preview's other profiles). So an engine change reaches the
+//! preview without mirroring it by hand.
 //!
 //! Like the generated TypeScript types: the test rewrites the snapshot and fails while the
 //! committed file differs (run it again, then commit the file):
@@ -32,6 +34,13 @@ const SCORED_HOURS_AGO: f64 = 1.0;
 const PROFILE_SAVED_HOURS_AGO: f64 = 72.0;
 /// The name of the profile file the preview shows.
 const PROFILE_FILE_NAME: &str = "profil-interim-finance.json";
+/// The preview's other profiles (`tools/test-profiles/`): the first two are in its work
+/// folder from the start, the last is the file "Aus Datei laden" chooses.
+const OTHER_PROFILES: [&str; 3] = [
+    "sap-fico.json",
+    "it-cloud-freelancer.json",
+    "ki-automatisierung.json",
+];
 /// The subject of the demo's alert mails (a mail's own words, German like the portals').
 const SUBJECT: &str = "Neue Jobs für Ihr Profil";
 /// The Gmail id of the first alert mail (the others count up from it).
@@ -123,9 +132,21 @@ struct Snapshot {
     fetched: BTreeMap<String, Fetched>,
     /// The stored profile with what the engine understood of it.
     profile: view::ProfileInfo,
+    /// The preview's other profiles ([`OTHER_PROFILES`]).
+    profiles: Vec<OtherProfile>,
     /// The AI prompts per language: every job's (`portal:id`, the scripted fetch's once their
     /// page came).
     prompts: BTreeMap<&'static str, BTreeMap<String, String>>,
+}
+
+/// Another profile of the preview: what the app shows of it and the engine's match of every
+/// listed job with it (`portal:id`), which the list shows once it is the active one.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OtherProfile {
+    file: &'static str,
+    profile: view::ProfileInfo,
+    matches: BTreeMap<String, Option<view::JobMatch>>,
 }
 
 fn now() -> Timestamp {
@@ -289,6 +310,10 @@ struct Demo {
 
 impl Demo {
     fn load() -> Demo {
+        Demo::with_profile(std::fs::read_to_string(demo_dir().join("profile.json")).unwrap())
+    }
+
+    fn with_profile(profile_text: String) -> Demo {
         let dir = demo_dir();
         let ads: Vec<Ad> =
             serde_json::from_str(&std::fs::read_to_string(dir.join("ads.json")).unwrap()).unwrap();
@@ -297,7 +322,6 @@ impl Demo {
             .filter(|ad| !ad.text.is_empty())
             .map(|ad| (format!("{}:{}", ad.portal, ad.id), ad.text.join("\n")))
             .collect();
-        let profile_text = std::fs::read_to_string(dir.join("profile.json")).unwrap();
         let profile: Value = serde_json::from_str(&profile_text).unwrap();
         let matcher = LocalMatcher::from_json(&profile);
         assert!(matcher.usable(), "the demo profile scores");
@@ -344,15 +368,15 @@ impl Demo {
         keys
     }
 
-    /// The stored profile as the app shows it.
-    fn profile_info(&self) -> view::ProfileInfo {
+    /// The stored profile as the app shows it, by the name of its file.
+    fn profile_info(&self, file_name: &str) -> view::ProfileInfo {
         let info = jobalert_core::profile::ProfileInfo {
             path: PathBuf::from(jobalert_core::profile::PROFILE_FILE),
             bytes: u64::try_from(self.profile_text.len()).unwrap(),
             saved_at: Some(ago(PROFILE_SAVED_HOURS_AGO)),
             parse_error: None,
         };
-        view::ProfileInfo::of(&info, Some(PROFILE_FILE_NAME.to_owned()))
+        view::ProfileInfo::of(&info, Some(file_name.to_owned()))
             .with_form(jobalert_core::profile::form_of(&self.profile_text))
             .understood_by(&self.matcher, &self.store)
             .unwrap()
@@ -394,6 +418,29 @@ impl Demo {
     }
 }
 
+/// One of the preview's other profiles, over the demo's listed jobs.
+fn other_profile(file: &'static str) -> OtherProfile {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../tools/test-profiles")
+        .join(file);
+    let demo = Demo::with_profile(std::fs::read_to_string(path).unwrap());
+    let listed = demo.fill();
+    let rows = rows(&demo.store);
+    let matches = listed
+        .iter()
+        .map(|(_, key)| {
+            let key = key.to_string();
+            let found = rows.get(&key).and_then(|job| job.match_.clone());
+            (key, found)
+        })
+        .collect();
+    OtherProfile {
+        file,
+        profile: demo.profile_info(file),
+        matches,
+    }
+}
+
 fn snapshot() -> Snapshot {
     let demo = Demo::load();
     let (store, matcher) = (&demo.store, &demo.matcher);
@@ -413,7 +460,7 @@ fn snapshot() -> Snapshot {
         let texts = job_prompts(store, matcher, &demo.profile, &keys, language);
         prompts.insert(name, texts);
     }
-    let profile = demo.profile_info();
+    let profile = demo.profile_info(PROFILE_FILE_NAME);
     let (announced, fetched) = demo.fetch(&listed);
     let arrived: Vec<JobKey> = announced.iter().map(|job| job.key.clone()).collect();
     for (name, language) in LANGUAGES {
@@ -428,6 +475,7 @@ fn snapshot() -> Snapshot {
         announced,
         fetched,
         profile,
+        profiles: OTHER_PROFILES.into_iter().map(other_profile).collect(),
         prompts,
     }
 }

@@ -7,7 +7,7 @@
 //! session windows (freelance.de
 //! sign-in; on macOS the app removes their `WKWebView` data stores right after the start,
 //! which needs the running app), the Gmail access in the keychain and, in the workspace, the
-//! app's files including `profil/beraterprofil.json`. `policy.json` stays - a block pause
+//! app's files including every profile in `profil/`. `policy.json` stays - a block pause
 //! must not be clickable away. Foreign files stay untouched.
 
 use std::path::{Path, PathBuf};
@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use crate::export::{RESULT_DIR, app_files, files_in, is_tmp};
 use crate::fetch::policy::Policy;
 use crate::portal::Portal;
-use crate::profile::{BACKUP_FILE, PROFILE_DIR, PROFILE_FILE, profile_path};
+use crate::profile::{PROFILE_DIR, is_app_file};
 use crate::secrets::Vault;
 use crate::store::BACKUP_DIR;
 use crate::{DB_FILE, POLICY_FILE, session_dir};
@@ -88,12 +88,11 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
     };
 
     let db = data_dir.join(DB_FILE);
-    let profile = profile_path(&plan.workspace);
     let profile_dir = plan.workspace.join(PROFILE_DIR);
     let result_dir = plan.workspace.join(RESULT_DIR);
     let sessions: Vec<String> = Portal::ALL.into_iter().map(session_dir).collect();
     let sidecars: Vec<String> = SIDECARS.iter().map(|s| format!("{DB_FILE}{s}")).collect();
-    let mut targets = vec![db, data_dir.join(BACKUP_DIR), profile];
+    let mut targets = vec![db, data_dir.join(BACKUP_DIR)];
     targets.extend(sidecars.iter().map(|name| data_dir.join(name)));
     targets.extend(sessions.iter().map(|dir| data_dir.join(dir)));
     // Take along the leftovers of earlier attempts - a renamed session profile with its
@@ -105,10 +104,10 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
             || sessions.iter().any(|dir| dir == base)
     };
     targets.extend(leftovers(data_dir, names_in_data));
-    // The profile, its backup and remains of an interrupted write - the old profile may carry
-    // name and contact data. Foreign files in the folder stay.
+    // Every profile, its backup, the index of the profiles and remains of an interrupted
+    // write - a profile may carry name and contact data. Foreign files in the folder stay.
     targets.extend(files_in(&profile_dir, |name| {
-        name == PROFILE_FILE || name == BACKUP_FILE || is_tmp(name)
+        is_app_file(name) || is_tmp(name)
     }));
     // Overviews, what earlier versions wrote (the report, the best matches, the text
     // files), temporary files and their leftovers in the result folder.
@@ -245,9 +244,17 @@ mod tests {
         std::fs::write(txt.join("20260919_LinkedIn_A_1.txt"), b"t").unwrap();
         std::fs::write(txt.join("fremd.txt"), b"f").unwrap();
         std::fs::write(txt.join(".jam-x1y2z3.tmp"), b"halb").unwrap();
+        // Every profile, the backups (one of a deleted profile) and the index.
         std::fs::create_dir_all(workspace.join("profil")).unwrap();
-        std::fs::write(profile_path(&workspace), b"{}").unwrap();
-        std::fs::write(crate::profile::backup_path(&workspace), b"{}").unwrap();
+        for name in [
+            "beraterprofil.json",
+            "beraterprofil.json.bak",
+            "beraterprofil-2.json",
+            "beraterprofil-3.json.bak",
+            "profilliste.json",
+        ] {
+            std::fs::write(workspace.join("profil").join(name), b"{}").unwrap();
+        }
         std::fs::write(workspace.join("profil").join(".jam-p1q2r3.tmp"), b"halb").unwrap();
         std::fs::write(workspace.join("Profil_Erika.json"), b"{}").unwrap();
         let plan = ResetPlan {
@@ -274,7 +281,7 @@ mod tests {
             "the copies go with the database"
         );
         assert!(!data.join("session-freelance").exists());
-        assert!(!profile_path(&plan.workspace).exists());
+        assert!(!plan.workspace.join("profil/beraterprofil-2.json").exists());
         assert!(
             !plan.workspace.join("profil").exists(),
             "profile, its backup and a half-written file go, and the folder with them"
