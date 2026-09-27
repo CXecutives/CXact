@@ -18,7 +18,6 @@
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
   import Briefcase from '@lucide/svelte/icons/briefcase';
-  import Building from '@lucide/svelte/icons/building';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import Check from '@lucide/svelte/icons/check';
@@ -91,7 +90,6 @@
     ban: Ban,
     banknote: Banknote,
     briefcase: Briefcase,
-    building: Building,
     'building-2': Building2,
     calendar: Calendar,
     check: Check,

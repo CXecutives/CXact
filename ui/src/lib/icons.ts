@@ -118,9 +118,8 @@ export const ICONS = {
   duration: 'hourglass',
   workload: 'clock',
   remote: 'house',
-  onsite: 'building-2',
   /** The company of a job (its row, its reader). */
-  company: 'building',
+  company: 'building-2',
   place: 'map-pin',
   industry: 'factory',
   experience: 'award',
