@@ -736,6 +736,10 @@ export const en: Catalog = {
       workspace: 'The result folder cannot be reached.',
     },
     checkMailbox: 'Review mailbox',
+    paused: (portal: string, until: string | null) =>
+      until === null
+        ? `${portalOf(portal)} paused`
+        : `${portalOf(portal)} paused until ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -1209,7 +1213,12 @@ export const en: Catalog = {
     included: 'Scored',
     excluded: 'Excluded',
     trashEmptied: 'Trash emptied',
-    runDone: (value: number) => (value === 0 ? 'No new jobs' : count(value, 'new job', 'new jobs')),
+    runDone: (value: number, high = 0) =>
+      value === 0
+        ? 'No new jobs'
+        : high === 0
+          ? count(value, 'new job', 'new jobs')
+          : `${count(value, 'new job', 'new jobs')}, ${n(high)} with a high match`,
     show: 'Show',
   },
   error: {

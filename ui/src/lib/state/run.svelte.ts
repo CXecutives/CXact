@@ -11,8 +11,11 @@
 //   the last fetch wherever it is read (sidebar, failed-fetch retry, empty list);
 // - `result`: the last finished run the list's run line speaks of when it went wrong (a
 //   fetch or details run, a rescore only when it failed or could not write the files).
-// What a fetch brought is a toast at its end ("5 neue Jobs"), in every view; the details of
-// a run (each mail, each portal) are in the log, not on screen.
+// What a fetch brought is a toast at its end ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in
+// every view; its "Zeigen" opens the Eingang filtered to them. A portal the fetch paused (or
+// that reached its limit) is said once in the run line ("freelancermap pausiert bis 14:00",
+// `pausedText`); the other details of a run (each mail, each portal) are in the log, not on
+// screen.
 
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
@@ -30,6 +33,7 @@ import type {
   Step,
 } from '../ipc/types';
 import { app } from './app.svelte';
+import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
 import { shell } from './shell.svelte';
@@ -202,12 +206,23 @@ class RunStore {
   }
 
   /** The Jobs view with its run line, from anywhere (the sidebar's status, the "Zeigen" of a
-   *  toast); an unsaved Profil may keep the view and ask first. */
-  show(): void {
+   *  toast), then `then`; an unsaved Profil may keep the view and ask first. */
+  show(then?: () => void): void {
     navigation.go('jobs', false, () => {
       this.panel = 'open';
       // In one column an open job hides the list and its run line: back to the list.
       if (viewport.narrow) jobs.clearSelection();
+      then?.();
+    });
+  }
+
+  /** The jobs a fetch brought (the "Zeigen" of its toast): the Eingang without a search,
+   *  filtered to the jobs not opened yet, of the high band when the fetch brought some (each
+   *  chip takes its part off again). */
+  showNew(high: boolean): void {
+    this.show(() => {
+      jobs.setPlace('inbox', true);
+      jobs.setFilter({ ...NO_FILTER, unread: true, minBand: high ? 'high' : null });
     });
   }
 
@@ -302,15 +317,22 @@ class RunStore {
       this.result = summary;
     }
     if (!live) return;
-    // What a fetch brought, in every view: "5 neue Jobs"; outside the list the way to it. A
-    // rescore speaks where it was started (Einstellungen), not as a fetch.
+    // What a fetch brought, in every view: "5 neue Jobs, 2 mit hoher Übereinstimmung" and the
+    // way to them (without new jobs outside the list the way to it). A rescore speaks where it
+    // was started (Einstellungen), not as a fetch.
     if (summary.outcome.kind === 'completed') {
       if (isFetch(kind)) {
         const inList = navigation.current === 'jobs' && !shell.listHidden;
-        const show = { label: t.toast.show, onclick: () => this.show(), undo: false };
+        const brought = summary.newJobs ?? { count: 0, high: 0 };
+        const show =
+          brought.count > 0
+            ? { label: t.toast.show, onclick: () => this.showNew(brought.high > 0), undo: false }
+            : inList
+              ? null
+              : { label: t.toast.show, onclick: () => this.show(), undo: false };
         // Files that could not be written make it no success: the run line says why.
         const kind = exportError(summary) === null ? 'success' : 'info';
-        toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), kind, inList ? null : show);
+        toasts.show(t.toast.runDone(brought.count, brought.high), kind, show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }
@@ -351,6 +373,18 @@ export function failureAction(
       if (summary !== null && isFetch(summary.kind) && app.hasMailbox) return null;
       return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
+}
+
+/** The portals a completed fetch stopped for a while (paused, or at their limit) in one line
+ *  ("freelancermap pausiert bis 14:00"), or null. */
+export function pausedText(summary: RunSummary): string | null {
+  if (summary.outcome.kind !== 'completed' || !isFetch(summary.kind)) return null;
+  const parts = summary.perPortal.flatMap(({ portal, stopped }) =>
+    stopped?.kind === 'paused' || stopped?.kind === 'quotaReached'
+      ? [t.run.paused(portal, stopped.until)]
+      : [],
+  );
+  return parts.length === 0 ? null : parts.join(', ');
 }
 
 /** The export error of a finished run, if its files could not all be written. */

@@ -1619,17 +1619,17 @@ test.describe('run line', () => {
     await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
     await runFinished(page);
     await expect(line).toHaveCount(0);
-    // Two new jobs (the third is excluded), no way anywhere: the list shows them.
-    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2) });
+    // Two new jobs (the third is excluded), one of the high band; its way lists them.
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2, 1) });
     await expect(toast).toHaveCount(1);
-    await expect(toast.getByTestId('toast-action')).toHaveCount(0);
+    await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     // The run re-sorts the list once it has finished: the new jobs in their places.
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
     // One word for one, the plural for more, none at 0.
-    expect([T.toast.runDone(0), T.toast.runDone(1), T.toast.runDone(2)]).toEqual([
+    expect([T.toast.runDone(0), T.toast.runDone(1), T.toast.runDone(2, 1)]).toEqual([
       'Keine neuen Jobs',
       '1 neuer Job',
-      '2 neue Jobs',
+      '2 neue Jobs, 1 mit hoher Übereinstimmung',
     ]);
   });
 
@@ -1638,7 +1638,7 @@ test.describe('run line', () => {
     await page.getByTestId('fetch').click();
     await page.getByTestId('nav-settings').click();
     await runFinished(page);
-    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2) });
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2, 1) });
     await toast.getByTestId('toast-action').click();
     await expect(page.getByTestId('view-jobs')).toBeVisible();
   });

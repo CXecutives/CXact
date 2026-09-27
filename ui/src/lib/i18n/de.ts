@@ -847,6 +847,12 @@ export const de = {
       workspace: 'Der Ergebnisordner ist nicht erreichbar.',
     },
     checkMailbox: 'Postfach prüfen',
+    /** A portal the fetch paused or that reached its limit, until when (the portal key and
+     *  an ISO moment): once in the run line after the fetch, several in one line. */
+    paused: (portal: string, until: string | null) =>
+      until === null
+        ? `${portalOf(portal)} pausiert`
+        : `${portalOf(portal)} pausiert bis ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -1466,9 +1472,14 @@ export const de = {
     included: 'Bewertet',
     excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert',
-    /** At the end of a fetch: what it brought (new, not excluded). */
-    runDone: (value: number) =>
-      value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),
+    /** At the end of a fetch: what it brought (new, not excluded), and how many of them are
+     *  in the high band. */
+    runDone: (value: number, high = 0) =>
+      value === 0
+        ? 'Keine neuen Jobs'
+        : high === 0
+          ? count(value, 'neuer Job', 'neue Jobs')
+          : `${count(value, 'neuer Job', 'neue Jobs')}, ${n(high)} mit hoher Übereinstimmung`,
     /** The way from a toast to what it tells of (the finished fetch in the Jobs view). */
     show: 'Zeigen',
   },

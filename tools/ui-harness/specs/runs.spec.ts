@@ -1,13 +1,17 @@
 // Runs and their numbers against the stub: every run shows as its kind (also the ones the
-// app starts by itself), the end toast says what a fetch brought, the run line what a run
-// could not write (once), and the list and the reader stay true while a run updates jobs.
+// app starts by itself), the end toast says what a fetch brought and leads to it, the run
+// line what a run could not write and which portal it paused (once), and the list and the
+// reader stay true while a run updates jobs.
 
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
-import { calls, expect, open, runFinished, settle, test } from './fixtures';
-import { tabCount, listed, T } from './helpers';
+import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
+import { chip, chips, chipWordsOf, lastQuery, stubList, tabCount, listed, T } from './helpers';
 
 const WIN = '?platform=windows';
+/** The end toast of the demo's fetch: two new jobs (the third is excluded), one of the high
+ *  band. */
+const DONE = T.toast.runDone(2, 1);
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
 const row = (page: Page, key: string) => page.getByTestId('job-list').getByTestId(`job-row-${key}`);
 
@@ -24,7 +28,7 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
+  await expect(page.getByTestId('toast-text')).toHaveText(DONE);
   // The profile changed: the app scores every job anew by itself, on the page's channel.
   await page.evaluate(() => {
     window.__harness.holdAfter = 2;
@@ -55,7 +59,7 @@ test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
   await expect(page.getByTestId('cancel-run')).toBeVisible();
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
+  await expect(page.getByTestId('toast-text')).toHaveText(DONE);
 });
 
 test('a rescore that cannot write the files says so once, with a retry', async ({ page }) => {
@@ -81,7 +85,7 @@ test('a fetch that cannot write the Excel file: the toast counts, the line says 
   await page.getByTestId('fetch').click();
   await page.getByTestId('nav-settings').click();
   await runFinished(page);
-  const toast = page.getByTestId('toast').filter({ hasText: '2 neue Jobs' });
+  const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('run-problem')).toHaveCount(1);
@@ -93,8 +97,73 @@ test('the end toast counts the run: the new jobs that are not excluded', async (
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // Three new jobs came in, one of them excluded: two new.
-  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
+  await expect(page.getByTestId('toast-text')).toHaveText(DONE);
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
+});
+
+test('the end toast names the new jobs of the high band; Zeigen lists them, chips to take off', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  // One word for one, the plural for more, none at 0, the high ones only when there are.
+  expect([
+    T.toast.runDone(0, 0),
+    T.toast.runDone(1, 0),
+    T.toast.runDone(5, 1),
+    T.toast.runDone(5, 2),
+  ]).toEqual([
+    'Keine neuen Jobs',
+    '1 neuer Job',
+    '5 neue Jobs, 1 mit hoher Übereinstimmung',
+    '5 neue Jobs, 2 mit hoher Übereinstimmung',
+  ]);
+  const toast = page.getByTestId('toast').filter({ hasText: DONE });
+  await toast.getByTestId('toast-action').click();
+  // The Eingang, the jobs not opened yet of the high band: the new high one among them.
+  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('band-high', 'unread-only'));
+  expect(await lastQuery(page)).toMatchObject({ place: 'inbox', unread: true, minBand: 'high' });
+  const { active } = await stubList(page, { unread: true, minBand: 'high' });
+  expect(active).toContain('linkedin-4100200399');
+  await expect.poll(() => listed(page)).toEqual(active);
+  // Each chip takes its part off.
+  await chip(page, 'minBand').click();
+  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
+  await expect.poll(() => listed(page)).toEqual((await stubList(page, { unread: true })).active);
+});
+
+test('from another view Zeigen opens the Eingang without its search, filtered to the new jobs', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('search').fill('Controller');
+  await page.getByTestId('fetch').click();
+  await page.getByTestId('nav-settings').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('search')).toHaveValue('');
+  expect(await lastQuery(page)).toMatchObject({ search: null, unread: true, minBand: 'high' });
+});
+
+test('a portal the fetch paused is said once in the run line, with its ×', async ({ page }) => {
+  await open(page, `${WIN}&tick=15`);
+  await expect(page.getByTestId('run-paused')).toHaveCount(0);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  // freelance.de rests a quarter of an hour after the fixed clock.
+  const paused = page.getByTestId('run-paused');
+  await expect(paused).toHaveText(
+    await text(page, 'run.paused', 'freelance', '2026-09-24T07:45:00.000Z'),
+  );
+  await expect(paused).toHaveText('freelance.de pausiert bis 09:45');
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
+  // Its × hides it; the next start of the app does not say it again.
+  await paused.getByTestId('run-close').click();
+  await expect(paused).toHaveCount(0);
+  await open(page, `${WIN}&tick=15`);
+  await expect(page.getByTestId('run-paused')).toHaveCount(0);
 });
 
 test('a details run shows its line and brings no fetch toast', async ({ page }) => {
