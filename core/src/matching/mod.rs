@@ -74,8 +74,9 @@ use params::FOCUS_MAX;
 /// heading, never a requirement line that starts with its words. 16: ANÜ as a topic of the
 /// requirements is no contract form, an hourly wage is employment pay (never a day rate), the
 /// workload, the minimum duration and the exclusion words of the profile, rules from the
-/// unseen held-out set 9.
-pub const ENGINE_VERSION: u32 = 16;
+/// unseen held-out set 9. 17: the application deadline and the contact of an ad (scores
+/// unchanged; stored jobs read them on their rescore).
+pub const ENGINE_VERSION: u32 = 17;
 
 /// Keys of the facts JSON the engine reads ([`JobInput::facts`]) - the one definition for
 /// the engine and for the pipeline that hands it the facts stored from the job page.

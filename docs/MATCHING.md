@@ -837,6 +837,15 @@ the fix six such pairs were excluded.
 Test profiles for the user: `tools/test-profiles/` (five invented profiles with the new keys;
 `the_test_profiles_load_and_score` loads each the way the file picker does).
 
+### Version 17: the application deadline and the contact
+
+v17: reads the application deadline and the contact of an ad; scores unchanged. The last round
+of engine 16 added both to the key facts (`application.rs`) without a new version, so a stored
+job showed them only after its next rescore; the new version makes the app score every stored
+job again once (revision `e17.{INPUTS}:{fingerprint}`). No rule moved: the corpus rows, every
+held-out set and `V3_ROWS_DIGEST` are unchanged, and the golden digest changed only by its
+version line.
+
 ### Rubric of the AI prompts
 
 `core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts (until
