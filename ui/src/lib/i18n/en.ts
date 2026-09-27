@@ -26,7 +26,6 @@ import type {
   PauseReason,
   Place,
   Portal,
-  PortalHealth,
   LanguageLevel,
   ProfileAvailability,
   ProfileQuality,
@@ -43,7 +42,6 @@ import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de'
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
-  formatCountdown,
   formatEuro,
   formatMoment,
   formatMoney,
@@ -62,13 +60,6 @@ const n = (value: number): string => formatNumber(value);
 /** English plural for a count. */
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
-
-/** A macOS key name is a symbol (⌘, ⇧); a click with it held is written with a hyphen
- *  ("⌘-click"), a Windows key name with a plus ("Ctrl+click"). */
-const isSymbolKey = (key: string): boolean => /^[⌘⇧⌥⌃]$/u.test(key);
-const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-click` : `${key}+click`);
-/** Shift in the same writing as the command key it stands beside. */
-const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Shift');
 
 const portalName = PORTAL_LABEL;
 const portalOf = (value: unknown): string =>
@@ -258,14 +249,6 @@ const OPEN_MAIL = 'Open alert email';
 
 /** The run that reads every alert email (`fullMailbox`), one name everywhere. */
 const FULL_MAILBOX = 'Fetch all alert emails';
-
-/** What a detail state means, the same in a row's badge tooltip and in the reader. */
-const detailSays = {
-  teaser: 'Without a sign-in, the portal shows only the start of the ad.',
-  unfetchable: 'The ad could not be fetched after several tries.',
-  gone: 'The ad is no longer online.',
-  onRequest: 'The app fetches these details only on request.',
-} as const;
 
 /** Alert emails in which the app found no jobs (the overview and the settings, next to the
  *  button that opens the email). */
@@ -672,17 +655,6 @@ export const en: Catalog = {
     tip: 'Resize',
     reset: 'Double-click to reset',
   },
-  selection: {
-    count: (value: number) => `${n(value)} selected`,
-    clear: 'Clear selection',
-    chosen: (value: number) => `${count(value, 'job', 'jobs')} selected`,
-    commandKey: { ctrl: 'Ctrl', cmd: '⌘' },
-    hint: (key: string) =>
-      `${clickWith(key)} adds or removes a job, ${clickWith(shiftBeside(key))} a whole range.`,
-    tip: (key: string) => `Choose several jobs at once with ${clickWith(key)}.`,
-    more: (value: number) => `+${n(value)}`,
-    pin: 'Favourite',
-  },
   place: {
     tabs: 'Locations',
     inbox: 'Inbox',
@@ -694,19 +666,6 @@ export const en: Catalog = {
       archive: 'Search the archive',
       trash: 'Search the trash',
     } satisfies Record<Place, string>,
-    count: {
-      inbox: (value: number) => `${count(value, 'job', 'jobs')} in Jobs`,
-      archive: (value: number) => `${count(value, 'job', 'jobs')} in the archive`,
-      trash: (value: number) => `${count(value, 'job', 'jobs')} in the trash`,
-    } satisfies Record<Place, (value: number) => string>,
-    found: {
-      inbox: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in Jobs`,
-      archive: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in the archive`,
-      trash: (value: number, query: string) =>
-        `${count(value, 'job', 'jobs')} for “${query}” in the trash`,
-    } satisfies Record<Place, (value: number, query: string) => string>,
     hitsIn: {
       inbox: (value: number) => `In the inbox (${n(value)})`,
       archive: (value: number) => `In the archive (${n(value)})`,
@@ -721,26 +680,25 @@ export const en: Catalog = {
       archive: 'The archive is empty.',
       trash: 'The trash is empty.',
     } satisfies Record<Place, string>,
-    reader: {
-      archive: 'Archived jobs stay here until you bring them back.',
-      trash: 'Jobs in the trash stay here until you restore them or empty the trash.',
-    } satisfies Record<Exclude<Place, 'inbox'>, string>,
-    trashFor: (days: number) =>
-      `Jobs in the trash are deleted forever after ${count(days, 'day', 'days')}.`,
   },
   actions: {
+    open: 'Open',
+    mail: OPEN_MAIL,
+    openAd: 'Open ad',
+    prompt: 'Copy AI prompt',
+    promptNoProfile: 'Without a profile, there is nothing to assess.',
+    include: 'Score anyway',
+    exclude: 'Exclude again',
     archive: 'Archive',
-    toInbox: 'Back to the inbox',
-    trash: 'Move to trash',
+    toInbox: 'Restore',
+    trash: 'Delete',
     restore: 'Restore',
     purge: 'Delete forever',
-    purgeConfirm: 'Delete',
+    purgeConfirm: 'Delete forever',
     purgeHeading: (value: number) =>
       value === 1 ? 'Delete the job forever?' : `Delete ${n(value)} jobs forever?`,
-    purgeOne: (name: string) => `Delete “${name}” forever?`,
     purgeText: 'Jobs deleted forever never come back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
-    emptyTrashConfirm: 'Empty',
     emptyTrashHeading: 'Empty the trash?',
     emptyTrashText: (value: number) =>
       value === 1
@@ -749,7 +707,6 @@ export const en: Catalog = {
   },
   menu: {
     job: 'Job',
-    open: 'Open',
   },
   edit: {
     menu: 'Edit',
@@ -759,36 +716,6 @@ export const en: Catalog = {
     paste: 'Paste',
     delete: 'Delete',
     selectAll: 'Select all',
-  },
-  keys: {
-    ctrl: 'Ctrl',
-    shift: 'Shift',
-    del: 'Del',
-    enter: 'Enter',
-    home: 'Home',
-    end: 'End',
-  },
-  keysHelp: {
-    heading: 'Keyboard shortcuts',
-    close: 'Close',
-    everywhere: 'Everywhere',
-    list: 'In the job list',
-    range: (first: string, last: string) => `${first} to ${last}`,
-    views: 'Choose a view',
-    search: 'Search',
-    fetch: 'Fetch',
-    undo: 'Undo',
-    menu: 'Open the menu',
-    back: 'Back',
-    help: 'Show keyboard shortcuts',
-    step: 'Previous or next job',
-    edge: 'First or last job',
-    extend: 'Choose several jobs',
-    archive: 'Archive',
-    trash: 'Move to the trash',
-    star: 'Favourite',
-    openAd: 'Open the ad',
-    closeJob: 'Close the job',
   },
   field: {
     reveal: 'Show password',
@@ -829,8 +756,6 @@ export const en: Catalog = {
     code: reasonCode,
   },
   job: {
-    choose: 'Select',
-    included: 'Included',
     workMode: {
       remote: 'Remote',
       hybrid: 'Hybrid',
@@ -844,25 +769,13 @@ export const en: Catalog = {
       gone: 'No longer online',
       onRequest: 'Details on request',
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    detailHint: {
-      pending: 'The full ad has not been fetched yet.',
-      teaser: detailSays.teaser,
-      failed: 'The full ad could not be fetched.',
-      unfetchable: detailSays.unfetchable,
-      gone: detailSays.gone,
-      onRequest: detailSays.onRequest,
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
     closed: 'No longer taking applications',
-    closedHint: 'The ad can still be read but no longer takes applications.',
     unread: 'New',
-    pinned: 'Favourite',
-    trashLeft: (days: number) => `${count(days, 'day', 'days')} left`,
-    trashSoon: 'deleted soon',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
   },
   toolbar: {
-    fetch: 'Fetch',
+    fetch: 'Check mailbox',
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
     sortMenu: 'Sort',
@@ -872,7 +785,6 @@ export const en: Catalog = {
     } satisfies Record<JobSort, string>,
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Filter',
-    favouritesOnly: 'Favourites only',
     portalHeading: 'Portal',
     bandHeading: 'Match',
     allPortals: 'All portals',
@@ -883,14 +795,18 @@ export const en: Catalog = {
     } satisfies Record<'any' | 'mid' | 'high', string>,
     bandNoProfile: 'Without a profile, there is no match.',
     filterReset: 'Reset filter',
-    filterLine: (parts: readonly string[]) => parts.join(' · '),
-    filterLineReset: 'Reset',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
   },
   run: {
     never: 'No fetch yet',
-    historyNotCopied: 'The history could not be copied.',
+    line: {
+      mailbox: 'Reading the mailbox',
+      ads: (done: number, total: number) => `Ads ${n(done)} of ${n(total)}`,
+      adsStart: 'Loading the ads',
+      scoring: 'Scoring the jobs',
+      files: 'Writing the files',
+    },
     step: {
       scan: 'Mailbox',
       fetch: 'Details',
@@ -901,41 +817,12 @@ export const en: Catalog = {
       const at = portal === null ? undefined : statusAt[code];
       return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
     },
-    ofTotal: (total: number) => `of ${n(total)}`,
-    newPill: (value: number) => `${n(value)} new`,
-    topPill: (value: number) => `${n(value)} high match`,
-    resumesIn: (ms: number) => `Resumes in ${formatCountdown(ms)}`,
-    resumesSoon: 'Resuming shortly',
-    portalRuns: 'Running',
-    portalPaused: 'Paused',
-    portalSignIn: 'Sign-in needed',
-    portalLayout: 'Pages look different',
-    portalNew: (value: number) => `${n(value)} new`,
-    portalDup: (value: number) => `${n(value)} duplicates`,
-    portalNoDetails: (value: number) => `${n(value)} without details`,
-    portalNothing: 'nothing new',
     kind: {
       fetch: 'Fetch',
       details: 'Fetch details',
       rescore: 'Score again',
     } satisfies Record<RunKindName, string>,
-    done: 'Fetch done',
-    rescored: 'Scored again',
-    nothingNew: 'Nothing new since the last fetch.',
-    cancelled: 'Fetch cancelled',
     failed: 'Fetch failed',
-    details: {
-      done: 'Details fetched',
-      none: 'No details fetched',
-      cancelled: 'Fetching details cancelled',
-      failed: 'Fetching details failed',
-      failedAds: (value: number) => `${count(value, 'ad', 'ads')} could not be fetched.`,
-      goneAds: (value: number) => `${count(value, 'ad is', 'ads are')} no longer online.`,
-    },
-    rescore: {
-      cancelled: 'Scoring cancelled',
-      failed: 'Scoring failed',
-    },
     rescoring: 'The jobs are being scored again.',
     exportFailed: {
       overview: 'The Excel file could not be written and was left unchanged.',
@@ -946,38 +833,13 @@ export const en: Catalog = {
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The work folder cannot be reached.',
     },
-    skipped: (value: number) => `${count(value, 'job is', 'jobs are')} left for the next fetch.`,
-    filesFailed: (value: number) => `${count(value, 'file', 'files')} could not be written.`,
-    excelRenamed: (name: string) => `The old Excel file is now called ${name}.`,
     openOverview: 'Open report',
-    history: 'History',
-    alert: (portal: Portal, postings: number) =>
-      `Alert email from ${portalName[portal]} with ${count(postings, 'job', 'jobs')}`,
-    health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {
-      const name = portalName[portal];
-      switch (kind) {
-        case 'paused':
-          return `Paused on ${name}`;
-        case 'quotaReached':
-          return `Limit reached on ${name}`;
-        case 'layoutSuspect':
-          return `Pages on ${name} look different than expected`;
-        case 'loginRequired':
-          return `Sign-in needed on ${name}`;
-      }
-    },
     checkMailbox: 'Check mailbox',
   },
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
-    formalMissing: {
-      degree: 'Degree missing',
-      licence: 'Licence missing',
-    },
     emptyWhileRun: 'The jobs show up here as the fetch goes on.',
-    createAlert: (portal: string) => `Create an alert on ${portal}`,
-    readOlder: FULL_MAILBOX,
     emptyAll: 'After the first fetch, the jobs show up here.',
     emptyAfterRun: 'The alert emails have had no jobs so far.',
     noHit: (query: string) => `No jobs for “${query}”.`,
@@ -1595,22 +1457,14 @@ export const en: Catalog = {
     rescored: 'Jobs scored again.',
     copied: 'Copied.',
     prompt: 'Prompt copied.',
-    archivedOne: (name: string) => `“${name}” archived.`,
-    trashedOne: (name: string) => `“${name}” moved to the trash.`,
-    trashedMany: (value: number) => `${n(value)} jobs moved to the trash.`,
-    inboxOne: (name: string) => `“${name}” is back in Jobs.`,
-    inboxMany: (value: number) => `${n(value)} jobs are back in Jobs.`,
-    restoredMany: (value: number) => `${n(value)} jobs restored.`,
-    archivedMany: (value: number) => `${n(value)} jobs archived.`,
-    restored: (name: string) => `“${name}” restored.`,
-    deletedOne: (name: string) => `“${name}” deleted forever.`,
-    deletedMany: (value: number) => `${n(value)} jobs deleted forever.`,
+    archived: 'Archived',
+    trashed: 'Deleted',
+    restored: 'Restored',
+    deleted: 'Deleted forever',
+    included: 'Scored',
+    excluded: 'Excluded',
     trashEmptied: 'Trash emptied.',
-    runDone: (value: number) =>
-      value === 0
-        ? 'Fetch done, nothing new.'
-        : `Fetch done, ${count(value, 'new job', 'new jobs')}.`,
-    runDoneFilesOld: 'Fetch done, but the files are not up to date.',
+    runDone: (value: number) => (value === 0 ? 'No new jobs' : count(value, 'new job', 'new jobs')),
     show: 'Show',
   },
   error: {

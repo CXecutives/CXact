@@ -23,6 +23,8 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
+  /** Open a job (its menu's first entry). */
+  open: 'corner-down-left',
   /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
   external: 'external-link',
   /** An alert mail: open it, read the older ones. */
@@ -31,8 +33,6 @@ export const ICONS = {
   prompt: 'message-square-text',
   /** Fetch the whole ad (Details holen). */
   details: 'download',
-  /** Open a job (an opened letter). */
-  read: 'mail-open',
   /** A reason that leads to its passage in the ad. */
   jump: 'arrow-down',
 
@@ -97,6 +97,8 @@ export const ICONS = {
   warning: 'triangle-alert',
   /** Excluded by a hard criterion. */
   excluded: 'ban',
+  /** An excluded job counts with its real match anyway ("Trotzdem bewerten"). */
+  include: 'scale',
   /** Met in part. */
   partial: 'contrast',
   /** The ad does not say. */
@@ -117,13 +119,13 @@ export const ICONS = {
   workload: 'clock',
   remote: 'house',
   onsite: 'building-2',
+  /** The company of a job (its row, its reader). */
+  company: 'building',
   place: 'map-pin',
   industry: 'factory',
   experience: 'award',
 
   // The reader (features/jobs/Reader.svelte): its head and its Jobdetails.
-  /** The company of a job. */
-  company: 'building',
   /** The portal that announced a job. */
   portal: 'globe',
   /** Not met: a requirement the profile lacks, a term of the ad that does not fit. */

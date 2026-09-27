@@ -1668,67 +1668,31 @@ fn one_answer_per_surface_kind() {
     fail(&problems, "controls read the kind tokens of their surface");
 }
 
-/// One shortcuts table: lib/input/keys.ts holds every key of the app (the views' keys come
-/// from lib/views.ts); input.ts dispatches from it, the cards list it and the tooltips name
-/// it. No other file writes a key of the app's own, and every row is dispatched.
+/// No shortcuts of the app's own (user decision 2026-09-27): only what every program does
+/// stays (typing and editing in fields, Tab, Enter, Esc, arrows in menus). No shortcuts table,
+/// no key names in tooltips or menus, no fetch, view or search keys.
 #[test]
-fn one_shortcuts_table() {
+fn no_app_shortcuts() {
     let all = scanned(MIN_FILES);
-    let keys = source(&all, "lib/input/keys.ts");
-    let input = source(&all, "lib/input/input.ts");
     let mut problems = Vec::new();
-    let actions: Vec<&str> = keys
-        .lines()
-        .filter_map(|(_, line)| {
-            let rest = line.split("action: '").nth(1)?;
-            rest.split('\'').next()
-        })
-        .collect();
-    assert!(
-        actions.len() >= 15,
-        "only {} shortcuts read from keys.ts",
-        actions.len()
-    );
-    // Moving in the list goes by the row's combos (up, down, home, end, esc); Enter opens a
-    // row by the row's own button.
-    for action in actions
-        .iter()
-        .filter(|a| !["step", "edge", "close", "open"].contains(a))
-    {
-        if !input.code.contains(&format!("'{action}'"))
-            && !input.code.contains(&format!("\"{action}\""))
-        {
-            problems.push(format!("input.ts does not dispatch the shortcut {action}"));
-        }
-    }
-    // The key literals the dispatch used to hold, and the combos of the cards and views.
-    for needle in [
-        "'F5'", "Digit", "=== 'z'", "=== 'f'", "=== 'r'", "=== 's'", "'mod+1'",
-    ] {
-        if input.code.contains(needle) {
-            problems.push(format!(
-                "input.ts: {needle} (a key of the app belongs in keys.ts)"
-            ));
-        }
+    if all.iter().any(|s| s.is("lib/input/keys.ts")) {
+        problems.push("lib/input/keys.ts: the shortcuts table is gone".to_owned());
     }
     problems.extend(find(
         &all,
         &[
-            "'mod+1'", "'mod+2'", "'mod+3'", "'mod+4'", "'mod+f'", "'mod+/'",
+            "'F5'",
+            "'mod+",
+            "\"mod+",
+            "Digit1",
+            "isFetchKey",
+            "onFetchKey",
+            "LIST_KEYS",
+            "KeysHelp",
         ],
-        |s| s.is("lib/input/keys.ts") || s.is("lib/views.ts") || s.under("features/gallery/"),
+        |_| false,
     ));
-    for path in [
-        "features/shell/KeysHelp.svelte",
-        "features/shared/KeyList.svelte",
-    ] {
-        if source(&all, path).code.contains("keyLabel(") {
-            problems.push(format!(
-                "{path}: names keys itself (the card renders keys.ts)"
-            ));
-        }
-    }
-    fail(&problems, "one shortcuts table (lib/input/keys.ts)");
+    fail(&problems, "no shortcuts of the app's own");
 }
 
 /// Coral means act, new and where you are (tokens.css): each coral role is drawn only by the

@@ -3,8 +3,8 @@
 // presses nothing), the wheel scrolls what lies under the pointer, text a user would copy
 // selects and copies. Keys: Tab moves the focus, Space presses controls and Enter buttons;
 // fields take every character of the keyboard layout (AltGr, Option) and the editing keys of
-// the OS; dialogs hold the focus; the app's shortcuts come from one table (lib/input/keys.ts)
-// that the card of the keys lists; everything else is swallowed.
+// the OS; dialogs hold the focus; the app has no shortcuts of its own, and a menu names no
+// keys; everything else is swallowed.
 
 import type { Locator, Page } from '@playwright/test';
 import { calls, expect, open, settle, test } from './fixtures';
@@ -262,8 +262,8 @@ test("the right click: the app's menu in fields and on selected copyable text, n
     'Alles auswählen',
   ]);
   await expect(menu.getByRole('separator')).toHaveCount(2);
-  // The keys as Windows writes them, right and quiet.
-  await expect(page.getByTestId('menu-item-cut').locator('.keys')).toHaveText('Strg+X');
+  // No entry names a key.
+  await expect(menu.locator('.keys')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(menu).toHaveCount(0);
   await expect(search).toBeFocused();
@@ -405,7 +405,7 @@ test('the menu stays inside the window: it flips at the right and the bottom edg
   expect(box.y).toBeGreaterThanOrEqual(8);
 });
 
-test("a field's menu on macOS: no undo and no delete, like the OS's own, keys as symbols", async ({
+test("a field's menu on macOS: no undo and no delete, like the OS's own, no keys", async ({
   page,
 }) => {
   await open(page, '?platform=macos');
@@ -419,7 +419,7 @@ test("a field's menu on macOS: no undo and no delete, like the OS's own, keys as
     'Einfügen',
     'Alles auswählen',
   ]);
-  await expect(page.getByTestId('menu-item-copy').locator('.keys')).toHaveText('⌘C');
+  await expect(page.getByTestId('menu').locator('.keys')).toHaveCount(0);
 });
 
 test('controls react to the left button only', async ({ page }) => {
@@ -459,8 +459,13 @@ test('keys outside fields: Tab moves, Enter and Space press, everything else is 
   page,
 }) => {
   const outside = await prevented(page, 'view', [
-    // F5 and Ctrl+R fetch (the app's own), so they stay out of this list of swallowed keys.
-    ...['Enter', 'Escape', 'F3', 'q', 'ArrowDown', ' '].map(plain),
+    // The app has no keys of its own: the former ones are swallowed like the web view's.
+    ...['Enter', 'Escape', 'F3', 'F5', 'q', 'e', 'Delete', 'ArrowDown', ' '].map(plain),
+    ['Ctrl+R', { key: 'r', ctrlKey: true }],
+    ['Ctrl+F', { key: 'f', ctrlKey: true }],
+    ['Ctrl+Z', { key: 'z', ctrlKey: true }],
+    ['Ctrl+1', { key: '1', code: 'Digit1', ctrlKey: true }],
+    ['Ctrl+/', { key: '/', ctrlKey: true }],
     ['Ctrl+P', { key: 'p', ctrlKey: true }],
     ['Ctrl+C without selection', { key: 'c', ctrlKey: true }],
     ['Alt+ArrowLeft', { key: 'ArrowLeft', altKey: true }],
@@ -872,15 +877,18 @@ test('over an open menu only the menu scrolls; the list behind stays and the men
 test('behind a modal dialog nothing scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 560 });
   await open(page, `${WIN}&view=settings`);
-  await page.keyboard.press('Control+/');
-  await expect(page.getByTestId('keys-help')).toBeVisible();
+  await page.getByTestId('reset').click();
+  const dialog = page.getByTestId('dialog-reset');
+  await expect(dialog).toBeVisible();
+  await settle(page);
+  const before = await scrollTop(page, 'view-settings');
   // Over the scrim, away from the card.
   await page.mouse.move(300, 60);
-  await page.mouse.wheel(0, 400);
+  await page.mouse.wheel(0, -400);
   await page.waitForTimeout(300);
-  expect(await scrollTop(page, 'view-settings')).toBe(0);
+  expect(await scrollTop(page, 'view-settings')).toBe(before);
   await page.keyboard.press('Escape');
-  await expect(page.getByTestId('keys-help')).toHaveCount(0);
+  await expect(dialog).toHaveCount(0);
 });
 
 test('a right click where nothing offers a menu does nothing', async ({ page }) => {
@@ -945,12 +953,20 @@ test('the back button goes back where the reader in one column has Zurück', asy
   await open(page, WIN);
   await rows(page).first().click();
   await expect(page.getByTestId('back')).toBeVisible();
+  // Alt+Left is no key of the app: only the mouse's back button goes back.
   await page.keyboard.press('Alt+ArrowLeft');
+  await page.waitForTimeout(200);
+  await expect(page.getByTestId('back')).toBeVisible();
+  await page.evaluate(() => {
+    const init = { bubbles: true, cancelable: true, button: 3 };
+    document.body.dispatchEvent(new MouseEvent('mousedown', init));
+    document.body.dispatchEvent(new MouseEvent('mouseup', init));
+  });
   await expect(page.getByTestId('back')).toHaveCount(0);
   await expect(rows(page).first()).toBeVisible();
 });
 
-test('single list keys type inside the search field', async ({ page }) => {
+test('letters type inside the search field and act on no job', async ({ page }) => {
   await open(page, WIN);
   await rows(page).first().click();
   const search = page.getByTestId('search');

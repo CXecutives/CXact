@@ -9,8 +9,8 @@ import type { JobKey, RunRequest } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, test } from './fixtures';
 import {
   excludedRows,
-  filterLine,
-  filterWordsOf,
+  chips,
+  chipWordsOf,
   funnel,
   lastQuery,
   listed,
@@ -68,7 +68,7 @@ test('Neu opens the Eingang without a filter, its unopened jobs dotted, the kept
   const count = await tile(page, 'tile-new');
   expect(count).toBe(6);
   await page.getByTestId('tile-new').click();
-  await expect(filterLine(page)).toHaveCount(0);
+  await expect(chips(page)).toHaveCount(0);
   await expect.poll(() => listed(page)).toEqual((await stubList(page, { sort: 'newest' })).active);
   await expect(page.getByTestId('job-rows').locator('.dot')).toHaveCount(count);
   expect(await lastQuery(page)).toMatchObject({ sort: 'newest', portal: null, minBand: null });
@@ -80,7 +80,7 @@ test('Hohe Passung opens the high band of the inbox, read or not', async ({ page
   const count = await tile(page, 'tile-high');
   expect(count).toBe(2);
   await page.getByTestId('tile-high').click();
-  await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('band-high'));
+  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('band-high'));
   await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
   await expect(rows(page)).toHaveCount(count);
   expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: 'high', unread: false });
@@ -94,7 +94,7 @@ test('the excluded jobs not opened yet: the Eingang with its excluded section op
   const point = page.getByTestId('issue-excluded');
   await expect(point).toContainText('1 neuer Job ausgeschlossen');
   await point.getByRole('button', { name: 'Ansehen' }).click();
-  await expect(filterLine(page)).toHaveCount(0);
+  await expect(chips(page)).toHaveCount(0);
   await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
   await expect(excludedRows(page)).toHaveCount((await stubList(page)).excluded.length);
   await expect(page.getByTestId('excluded-divider')).toBeInViewport();
@@ -279,7 +279,6 @@ test('a favourite shows once; more of them lead to all in Jobs', async ({ page }
   await expect(all).toHaveText(/Alle \d+ Favoriten/);
   const count = Number((await all.innerText()).replace(/\D/g, ''));
   await all.click();
-  await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('favourites'));
   await expect(rows(page)).toHaveCount(count);
 });
 

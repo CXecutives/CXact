@@ -1,11 +1,11 @@
 // Runs and their numbers against the stub: every run shows as its kind (also the ones the
-// app starts by itself), the run card says what a run brought and what it could not write
-// (once), and the list and the reader stay true while a run updates jobs.
+// app starts by itself), the end toast says what a fetch brought, the run line what a run
+// could not write (once), and the list and the reader stay true while a run updates jobs.
 
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
-import { inboxCount, listed } from './helpers';
+import { tabCount, listed } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -18,19 +18,13 @@ async function emit(page: Page, ...events: unknown[]): Promise<void> {
   }, events);
 }
 
-test('a rescore the app starts shows as a rescore and leaves the fetch card alone', async ({
+test('a rescore the app starts shows as a rescore: no run line, the fetch waits', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  const card = page.getByTestId('run-card');
-  await expect(card).toHaveAttribute('data-kind', 'fetch');
-  await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
-  await page.getByTestId('run-history').getByRole('button').first().click();
-  const history = await page.getByTestId('run-history').locator('li').count();
-
+  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
   // The profile changed: the app scores every job anew by itself, on the page's channel.
   await page.evaluate(() => {
     window.__harness.holdAfter = 2;
@@ -39,17 +33,14 @@ test('a rescore the app starts shows as a rescore and leaves the fetch card alon
   const fetch = page.getByTestId('fetch');
   await expect(fetch).toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByTestId('cancel-run')).toHaveCount(0);
-  await expect(page.getByTestId('run-running')).toHaveCount(0);
-  await expect(card).toHaveAttribute('data-kind', 'fetch');
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await page.mouse.move(0, 0);
   await fetch.hover();
   await expect(page.getByRole('tooltip')).toHaveText('Die Jobs werden gerade neu bewertet.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-
-  // Afterwards the fetch card is unchanged and Abrufen is back.
-  await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
-  await expect(page.getByTestId('run-history').locator('li')).toHaveCount(history);
+  // Afterwards nothing speaks of it, and Postfach abrufen is back.
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   expect(await calls(page, 'start_run')).toHaveLength(1);
 });
@@ -60,82 +51,65 @@ test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
     window.__harness.holdAfter = 3;
     window.__harness.appRun('fetch');
   });
-  await expect(page.getByTestId('run-running')).toBeVisible();
-  await expect(page.getByTestId('step-scan')).toBeVisible();
+  await expect(page.getByTestId('run-line')).toBeVisible();
   await expect(page.getByTestId('cancel-run')).toBeVisible();
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
+  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
 });
 
 test('a rescore that cannot write the files says so once, with a retry', async ({ page }) => {
   await open(page, `${WIN}&tick=15&export=locked`);
   await page.evaluate(() => window.__harness.appRun('rescore'));
   await runFinished(page);
-  const card = page.getByTestId('run-card');
-  await expect(card).toHaveAttribute('data-kind', 'rescore');
-  await expect(page.getByTestId('run-finished')).toContainText('Neu bewertet');
-  const note = page.getByTestId('export-failed');
-  await expect(note).toHaveCount(1);
-  await expect(note).toContainText(
+  const problem = page.getByTestId('run-problem');
+  await expect(problem).toHaveCount(1);
+  await expect(problem).toContainText(
     'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
   );
   await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-  await note.getByRole('button', { name: 'Erneut versuchen' }).click();
+  await problem.getByRole('button', { name: 'Erneut versuchen' }).click();
   await runFinished(page);
   const started = await calls(page, 'start_run');
   expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
 });
 
-test('a fetch that cannot write the Excel file says so once, and the toast too', async ({
+test('a fetch that cannot write the Excel file: the toast counts, the line says why', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15&export=locked`);
   await page.getByTestId('fetch').click();
-  // Elsewhere a toast brings the news, not "done" alone.
   await page.getByTestId('nav-settings').click();
   await runFinished(page);
-  await expect(page.getByTestId('toast-text')).toHaveText(
-    'Abruf fertig, die Dateien sind nicht aktuell.',
-  );
-  await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
-  await expect(page.getByTestId('export-failed')).toHaveCount(1);
+  const toast = page.getByTestId('toast').filter({ hasText: '2 neue Jobs' });
+  await toast.getByTestId('toast-action').click();
+  await expect(page.getByTestId('view-jobs')).toBeVisible();
+  await expect(page.getByTestId('run-problem')).toHaveCount(1);
   await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-  // The numbers of the run still stand next to it.
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
-  await expect(page.getByTestId('last-top')).toHaveText('1 mit hoher Passung');
 });
 
-test('the run card counts the run: new and not excluded, high among those', async ({ page }) => {
+test('the end toast counts the run: the new jobs that are not excluded', async ({ page }) => {
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  // Three new jobs came in, one of them excluded: two new, one with a high match.
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
-  await expect(page.getByTestId('last-top')).toHaveText('1 mit hoher Passung');
-  await expect(page.getByTestId('nothing-new')).toHaveCount(0);
+  // Three new jobs came in, one of them excluded: two new.
+  await expect(page.getByTestId('toast-text')).toHaveText('2 neue Jobs');
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
-test('Details holen reports the details, not a fetch', async ({ page }) => {
+test('a details run shows its line and brings no fetch toast', async ({ page }) => {
   await open(page, `${WIN}&tick=40`);
-  await row(page, 'linkedin-4100200302').click();
-  await expect(page.getByTestId('detail-note')).toBeVisible();
-  await page.evaluate(() => (window.__harness.holdAfter = 3));
-  await page.getByTestId('fetch-details').click();
-  const card = page.getByTestId('run-card');
-  await expect(card).toHaveAttribute('data-kind', 'details');
-  await expect(page.getByTestId('step-fetch')).toBeVisible();
-  await expect(page.getByTestId('step-score')).toBeVisible();
-  await expect(page.getByTestId('step-scan')).toHaveCount(0);
+  await page.evaluate(() => {
+    window.__harness.holdAfter = 3;
+    window.__harness.appRun('details');
+  });
+  await expect(page.getByTestId('run-line')).toBeVisible();
+  await expect(page.getByTestId('run-text')).not.toHaveText(/Postfach/);
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  await expect(page.getByTestId('run-finished')).toContainText('Details geholt');
-  await expect(card).not.toContainText('Abruf');
-  await expect(page.getByTestId('last-new')).toHaveCount(0);
-  await expect(page.getByTestId('nothing-new')).toHaveCount(0);
-  // The reader has the details now; the last fetch is still the last fetch.
-  await expect(page.getByTestId('detail-note')).toHaveCount(0);
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  // The last fetch is still the last fetch.
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('run-status')).toContainText('Abgerufen 08:30');
 });
@@ -155,16 +129,13 @@ test('a start that fails keeps the last result and says why', async ({ page }) =
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
   // A run the page has not heard of yet holds the slot: start_run answers "busy".
   await page.evaluate(() => {
     window.__harness.holdAfter = 0;
     window.__harness.appRun('rescore');
   });
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('start-error')).toHaveText('Gerade läuft schon ein Abruf.');
-  await expect(page.getByTestId('run-finished')).toContainText('Abruf fertig');
-  await expect(page.getByTestId('last-new')).toHaveText('2 neu');
+  await expect(page.getByTestId('run-problem-text')).toHaveText('Gerade läuft schon ein Abruf.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });
@@ -196,7 +167,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await open(page, `${WIN}&scenario=many`);
   await expect(rows(page).first()).toBeVisible();
   const first = await rows(page).first().getAttribute('data-testid');
-  const newBefore = await inboxCount(page);
+  const newBefore = await tabCount(page);
   // Job 100000 scores 0 and sorts far beyond the first page of 500.
   const far = await jobOf(page, 'linkedin', '100000');
   await emit(page, {
@@ -208,7 +179,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await settle(page);
   await expect(rows(page).first()).toHaveAttribute('data-testid', first!);
   await expect(page.getByTestId('job-row-linkedin-100000')).toHaveCount(0);
-  expect(await inboxCount(page)).toBe(newBefore);
+  expect(await tabCount(page)).toBe(newBefore);
 
   // A job new in the run comes in at the top, and the counts follow the backend.
   await emit(page, {
@@ -217,7 +188,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
     fresh: true,
   });
   await expect(rows(page).first()).toHaveAttribute('data-testid', 'job-row-linkedin-999999');
-  await expect.poll(() => inboxCount(page)).toBe(newBefore + 1);
+  await expect.poll(() => tabCount(page)).toBe(newBefore + 1);
 });
 
 test('a page that fails while scrolling says so and loads on retry', async ({ page }) => {
@@ -261,10 +232,6 @@ test('the excluded section names its count, every excluded row of the list', asy
 
 test('the portals follow the one order of the app', async ({ page }) => {
   await open(page, `${WIN}&scenario=empty`);
-  const order = await page
-    .locator('[data-testid^="alert-"]')
-    .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
-  expect(order).toEqual(['alert-linkedin', 'alert-freelance', 'alert-freelancermap']);
   await page.getByTestId('nav-settings').click();
   const cards = await page
     .locator('[data-testid^="portal-"]')
@@ -287,7 +254,8 @@ test('an archived job leaves the list and every count but the archive', async ({
   await open(page, WIN);
   const all = (await listed(page)).length;
   await row(page, 'linkedin-4100200301').click();
-  await page.getByTestId('reader-archive').click();
+  await row(page, 'linkedin-4100200301').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
   await expect.poll(async () => (await listed(page)).length).toBe(all - 1);
   expect((await calls(page, 'move_jobs')).map(([, args]) => args)).toEqual([

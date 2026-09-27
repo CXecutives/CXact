@@ -53,14 +53,16 @@ test('CRED-1: a fetch waits while the mailbox is checked, and says why', async (
   // The check goes on while she looks at the jobs: Abrufen is refused, naming the check.
   await page.getByTestId('nav-jobs').click();
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('start-error')).toHaveText('Gerade wird das Postfach geprüft.');
-  await expect(page.getByTestId('run-running')).toHaveCount(0);
+  await expect(page.getByTestId('run-problem-text')).toHaveText(
+    'Gerade wird das Postfach geprüft.',
+  );
+  await expect(page.getByTestId('run-line')).toHaveCount(0);
   // Once it is done (the page loads the saved state), Abrufen reads the new mailbox.
   const loads = (await calls(page, 'app_state')).length;
   await page.evaluate(() => (window.__harness.holdMailbox = false));
   await expect.poll(async () => (await calls(page, 'app_state')).length).toBeGreaterThan(loads);
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-running')).toBeVisible();
+  await expect(page.getByTestId('run-line')).toBeVisible();
 });
 
 test('CRED-3: signed in but not counted is connected, and a toast says the fetch counts', async ({

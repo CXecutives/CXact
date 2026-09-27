@@ -10,7 +10,6 @@
   import StatTile from '$components/StatTile.svelte';
   import { t } from '$lib/i18n/t';
   import { fade } from '$lib/motion/transitions';
-  import { keyConventions, keyLabel } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toHigh, toNew } from '../lead';
@@ -18,10 +17,6 @@
   import Block from './Block.svelte';
 
   const counts = $derived(overview.counts);
-  /** The keys that fetch too, in the button's tooltip. */
-  const fetchKeys = $derived(
-    keyConventions().command === 'metaKey' ? keyLabel('mod+r') : keyLabel('f5'),
-  );
 </script>
 
 {#snippet fetchButton(live: boolean)}
@@ -30,7 +25,6 @@
     variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
     icon="fetch"
     label={t.toolbar.fetch}
-    hint={fetchKeys}
     disabled={run.fetchBlocked !== null}
     disabledReason={run.fetchBlocked}
     wide

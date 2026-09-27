@@ -1,35 +1,27 @@
 <!--
   The job list: one list per place in the chosen order, rows in windows of 60 (a sentinel at
-  the end shows the next window), a new job of a run fades in where it lands (the rows below
-  simply make room). Rows move only for the user's own change and for the re-sort at the end
-  of a run: after the order, another place or a filter the rows on screen glide to their new
-  place (150 ms); rows off screen and new rows are simply there. A search and live updates
-  never move anything. An unopened job carries the coral dot until it is opened. At the end of
-  every place the excluded jobs, grey, in one section "Ausgeschlossen (n)" that is folded by
-  default (the choice is kept; the count where the list knows it; the arrows skip a folded
-  section, and it opens when its job is opened from elsewhere). A page that fails to load
-  while scrolling says so at the end of the list, with a retry. A search looks in the list's
-  place; under its hits a button names each other place with hits ("Im Archiv (2)", counted
-  without the inbox's filter) and goes there with the search; Enter or ArrowDown in the search
-  open its first hit. Each row's tools are the job's actions where it is (Archivieren,
-  Löschen, the star; in the Papierkorb Wiederherstellen, Endgültig löschen); a row the user
-  moves out folds away. Its menu (a right click) is the table JOB_MENU of actions.ts. Rows
-  are chosen like in a mail app: a click opens one, Ctrl+click (Cmd on macOS) or the checkbox
-  over its ring takes one in or out, Shift+click a range; the highlight shows what is chosen,
-  and in one column choosing never opens a job. One coral bar marks the open job's row and
-  slides from row to row (RowBar); the other chosen rows mark themselves. The list is one Tab
-  stop: the open row (else the row last focused, else the first) takes Tab, the arrows move
-  from there; the row tools are for the pointer. Back in the Jobs view, the open job's row is
-  in view again. A row move that fails says so in the list header. An empty inbox says where
-  jobs come from (an alert on each portal, older mails; reading the whole mailbox asks first,
-  as in Einstellungen); a filter that leaves nothing says so and takes itself off ("Filter
-  zurücksetzen"). Every empty state has exactly one reason and at most one way out
-  (secondary: the header holds the view's primary). Without a mailbox one slim note at the top
-  says how to connect one; without a usable profile one says that there is no fit without it
-  and leads to the Profil view (the rings stay, empty); a thin profile one calm line that the
-  fit stays rough. A list that fails to load says only that, with a retry (the header hides
-  its counts and tools). Every empty state of the list is one pattern: an icon, one sentence,
-  at most one way out, centred.
+  the end shows the next window), a new job of a run rises in where it lands (the rows below
+  simply make room; the rows already there never flicker). Rows move only for the user's own
+  change and for the re-sort at the end of a run: after the order, another place or a filter
+  the rows on screen glide to their new place (150 ms); rows off screen and new rows are
+  simply there. A search and live updates never move anything. A row the user moves out
+  (archive, delete, restore) folds its height away. An unopened job carries the coral dot
+  until it is opened. At the end of every place the excluded jobs, grey with the ban in the
+  ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
+  kept; it opens when its job is opened from elsewhere). A page that fails to load while
+  scrolling says so at the end of the list, with a retry. A search looks in the list's place;
+  under its hits a button names each other place with hits ("Im Archiv (2)", counted with
+  the same filter) and goes there with the search. A click opens a job, a double click opens
+  its ad in the browser, a right click its menu (jobMenu of actions.ts); one coral bar marks
+  the open job's row and slides from row to row (RowBar). Back in the Jobs view, the open
+  job's row is in view again. A job action that fails says so in the list header. Every
+  empty state is one pattern at one place: an icon and one short sentence, centred, at most
+  one way out (secondary: the header holds the view's primary). A filter that leaves nothing
+  says so and takes itself off ("Filter zurücksetzen"). Without a mailbox one slim note at
+  the top says how to connect one; without a usable profile one says that there is no match
+  without it and leads to the Profil view (the rings stay, empty); a thin profile one calm
+  line that the match stays rough. A list that fails to load says only that, with a retry
+  (the header hides its tools).
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
@@ -37,16 +29,13 @@
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import JobRow, { type RowTool, type SelectHow } from '$components/JobRow.svelte';
+  import JobRow from '$components/JobRow.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import { nearEnd } from '$lib/actions/nearEnd';
   import { t } from '$lib/i18n/t';
-  import { invoke } from '$lib/ipc/api';
-  import { errorText } from '$lib/i18n/texts';
-  import { displayTitle } from '$lib/i18n/format';
-  import type { JobView, Place, Portal } from '$lib/ipc/types';
+  import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
@@ -55,27 +44,10 @@
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
-  import { viewport } from '$lib/state/viewport.svelte';
   import type { ContextMenu } from '$lib/input/input';
-  import type { MenuEntry } from '$lib/state/menu.svelte';
-  import { keyLabel } from '$lib/platform';
-  import {
-    actionsOf,
-    disarm,
-    guarded,
-    hasStar,
-    JOB_MENU,
-    type JobMenuItem,
-    move,
-    moving,
-    purge,
-    toggleStar,
-  } from './actions';
+  import { disarm, jobMenu, moving, openAd, purge } from './actions';
   import { glideIntoView } from '$lib/motion/scroll';
-  import { bulk } from './bulk.svelte';
-  import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
-  import { selection } from './selection.svelte';
 
   interface Props {
     /** "Filter zurücksetzen" of a filter that leaves nothing: the header takes the filter off
@@ -93,13 +65,13 @@
   const excluded = $derived(shown.filter(isExcluded));
   // How many excluded jobs the list holds: the counts of each place know it (with the search
   // and the filter, like the list).
-  const excludedCount = $derived.by((): number | null => {
-    if (jobs.place === 'inbox') return jobs.counts.excluded;
-    if (jobs.place === 'archive') return jobs.counts.excludedArchive;
-    if (jobs.place === 'trash') return jobs.counts.excludedTrash;
-    if (jobs.rows.length < jobs.total) return null;
-    return jobs.visible.filter(isExcluded).length;
-  });
+  const excludedCount = $derived(
+    jobs.place === 'inbox'
+      ? jobs.counts.excluded
+      : jobs.place === 'archive'
+        ? jobs.counts.excludedArchive
+        : jobs.counts.excludedTrash,
+  );
 
   /** The excluded section is open (folded by default; the choice is kept like the order). */
   const EXCLUDED_KEY = 'jobs-excluded-open';
@@ -138,13 +110,19 @@
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
   const more = $derived(jobs.more && !foldedEnd);
   /**
-   * The inbox's filter leaves the list empty while the inbox holds jobs (the counts over
-   * every job): it says so and takes the filter off.
+   * The filter leaves the list empty while the place holds jobs (the counts over every job):
+   * it says so and takes the filter off.
    */
-  const filterEmptied = $derived(jobs.filtered && (jobs.overviewCounts ?? jobs.counts).inbox > 0);
+  const filterEmptied = $derived(
+    jobs.filtered && (jobs.overviewCounts ?? jobs.counts)[jobs.place] > 0,
+  );
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
+  /** The one sentence of an empty inbox. */
+  const emptyInbox = $derived(
+    run.active ? t.list.emptyWhileRun : mailRead ? t.list.emptyAfterRun : t.list.emptyAll,
+  );
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
   // No profile: the fit needs one. One that is there but cannot be used is named.
   const profileNote = $derived.by(() => {
@@ -175,39 +153,11 @@
   /** The rows the list shows (a row on the page that is not among them is leaving). */
   const listed = $derived(new Set(shown.map((job) => keyOf(job.key))));
   const openKey = $derived(jobs.selected ? keyOf(jobs.selected) : null);
-  /** The open job's row while it shows as selected: the list's one bar marks it (the other
-   *  rows of a choice mark themselves). */
-  const marked = $derived(
-    openKey !== null && (selection.size === 0 || selection.keys.includes(openKey)) ? openKey : null,
-  );
+  /** The open job's row: the list's one bar marks it. */
+  const marked = $derived(openKey);
   const markedExcluded = $derived(
     marked !== null && excluded.some((job) => keyOf(job.key) === marked),
   );
-
-  /**
-   * Open the job at `target` of the whole list (the keyboard), also one below the rows
-   * mounted or loaded so far: the pages up to it load, its row mounts, then it scrolls into
-   * view and takes the focus.
-   */
-  async function openAt(target: number | 'last'): Promise<void> {
-    const job = await reachable(target);
-    if (job === null) return;
-    selection.only(job);
-    if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
-  }
-
-  /**
-   * The row at `target` of the whole list (jobs.reach) that the keys can reach: while the
-   * excluded section is folded, the last row before it instead of an excluded one.
-   */
-  async function reachable(target: number | 'last'): Promise<JobView | null> {
-    const job = await jobs.reach(target, true);
-    if (job === null || excludedOpen || !isExcluded(job)) return job;
-    const last = jobs.visible.findLastIndex((row) => !isExcluded(row));
-    if (last >= 0) return jobs.reach(last, true);
-    jobs.reveal = null;
-    return null;
-  }
 
   // A job opened from elsewhere (the Übersicht, an undo) whose row is folded away: its
   // section opens (for now; the kept choice stays).
@@ -221,60 +171,6 @@
     });
   });
 
-  /** ArrowUp / ArrowDown (lib/input/input.ts): the previous or next job opens; with none
-   *  open, the first (down) or the last of the list (up). */
-  export function step(by: -1 | 1): void {
-    const at = jobs.visible.findIndex((job) => sameKey(jobs.selected, job.key));
-    void openAt(at === -1 ? (by === 1 ? 0 : 'last') : Math.max(0, at + by));
-  }
-
-  /** Enter or ArrowDown in the search: its first hit opens, its row takes the focus; `false`
-   *  when the list has no row. */
-  export function openFirst(): boolean {
-    if (jobs.visible.length === 0) return false;
-    void openAt(0);
-    return true;
-  }
-
-  /** Home / End: the first or the last job of the list. */
-  export function edge(last: boolean): void {
-    void openAt(last ? 'last' : 0);
-  }
-
-  /**
-   * Shift+ArrowUp / Shift+ArrowDown, Shift+Home / Shift+End (lib/input/input.ts): the choice
-   * reaches from its start to the previous or next row, or to the first or the last, like a
-   * Shift+click (Explorer, Mail); the row reached comes into view with the focus.
-   */
-  export function extend(to: -1 | 1 | 'first' | 'last'): void {
-    const end = selection.end;
-    const at = end === null ? -1 : jobs.visible.findIndex((job) => keyOf(job.key) === end);
-    // Without a row to start from, down starts at the first and up at the last.
-    let target: number | 'last' = to === 1 ? 0 : 'last';
-    if (to === 'first') target = 0;
-    else if (at !== -1 && to !== 'last') target = Math.max(0, at + to);
-    void reachable(target).then((job) => {
-      if (job === null) return;
-      selection.range(job, jobs.visible);
-      settle(true);
-    });
-  }
-
-  /** The row focused last (the list's one Tab stop when no job is open). */
-  let focused = $state<string | null>(null);
-  /** The row Tab stops at: the open job's, else the one focused last, else the first. */
-  const tabStop = $derived.by(() => {
-    if (openKey !== null && listed.has(openKey)) return openKey;
-    if (focused !== null && listed.has(focused)) return focused;
-    const first = order[0];
-    return first ? keyOf(first.key) : null;
-  });
-
-  function onfocusin(event: FocusEvent): void {
-    const item = (event.target as Element | null)?.closest<HTMLElement>('[data-key]');
-    if (item?.dataset['key']) focused = item.dataset['key'];
-  }
-
   // Back in the Jobs view (the list is built anew): what the header said about an action in
   // another list goes, and the open job's row comes into view.
   onMount(() => {
@@ -285,8 +181,8 @@
     }
   });
 
-  // A job the keys opened, or the open job after a re-sort: once its row is mounted it
-  // scrolls into view (and takes the focus when the keys opened it).
+  // The open job after a move or a re-sort: once its row is mounted it scrolls into view (and
+  // takes the focus when the focus was on the row that left).
   $effect(() => {
     const want = jobs.reveal;
     void shown;
@@ -300,69 +196,23 @@
     });
   });
 
-  /** A click opens the job (the open one stays open); with Ctrl/Cmd or Shift it chooses. */
-  function select(job: JobView, how: SelectHow): void {
-    if (!how.range && !how.toggle) {
-      selection.only(job);
-      if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
-      return;
-    }
-    if (how.range) selection.range(job, order);
-    else selection.toggle(job);
-    settle(true);
+  /** A click opens the job (the open one stays open). */
+  function select(job: JobView): void {
+    if (!sameKey(jobs.selected, job.key)) void jobs.select(job, true);
   }
 
-  /** The checkbox over a row's ring: the row in or out of the choice, like Ctrl+click. */
-  function choose(job: JobView): void {
-    select(job, { toggle: true, range: false });
-  }
-
-  /**
-   * One chosen row is no selection: that job simply opens (like a mail app), and a Ctrl+click
-   * that took the open job out of the choice closes it. In one column choosing never opens a
-   * job: the list stays, and its header's bar acts on the chosen rows. `click`: the user's
-   * click led here (the job then counts as read), not a row that left the list.
-   */
-  function settle(click: boolean): void {
-    if (viewport.narrow) return;
-    const [only, ...more] = selection.jobs(order);
-    if (more.length > 0) return;
-    if (only === undefined) {
-      if (click && selection.size === 0) jobs.clearSelection();
-      return;
-    }
-    selection.only(only);
-    if (!sameKey(jobs.selected, only.key)) void jobs.select(only, click);
-  }
-
-  // Two columns again: a single chosen row (one column's header bar acted on it) opens.
-  $effect(() => {
-    if (!viewport.narrow) untrack(() => settle(false));
-  });
-
-  // Rows that leave the list (a move, a reload) leave the choice too.
-  $effect(() => {
-    const listed = new Set(jobs.rows.map((row) => keyOf(row.key)));
-    untrack(() => {
-      if (selection.prune(listed)) settle(false);
-    });
-  });
-
-  // Another list, another search, order or filter: the choice starts anew, and a click right
-  // away counts (the guard after a move is for rows that slid under the pointer).
+  // Another list, another search, order or filter: a click right away counts (the guard
+  // after a move is for rows that slid under the pointer).
   $effect(() => {
     void jobs.place;
     void jobs.search;
     void jobs.sortChoice;
     void jobs.filterChoice;
-    untrack(() => {
-      selection.clear();
-      disarm();
-    });
+    untrack(disarm);
   });
 
   // A search looks in the list's place; the other places with hits are named under them,
-  // counted without the inbox's filter (the store's hitCounts).
+  // counted with the same filter (the counts of the list cover every place).
   const place = $derived(jobs.place);
   const PLACES: readonly Place[] = ['inbox', 'archive', 'trash'];
   /** The glyph of each place (the tabs' meaning: the inbox, the archive, the trash). */
@@ -373,22 +223,11 @@
   };
   const elsewhere = $derived.by(() => {
     if (!searching) return [];
-    const counts = jobs.hitCounts ?? jobs.counts;
+    const counts = jobs.counts;
     return PLACES.filter((other) => other !== place)
       .map((other) => ({ place: other, count: counts[other] }))
       .filter((hit) => hit.count > 0);
   });
-  const PORTALS = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
-  /** A portal's page that did not open (said under the links). */
-  let portalError = $state<string | null>(null);
-  function openPortal(portal: Portal): void {
-    portalError = null;
-    invoke('open_target', { target: { kind: 'portalHome', portal } }).catch((error: unknown) => {
-      portalError = errorText(error);
-    });
-  }
-  /** "Ältere Mails lesen" asks first, like Einstellungen: it fetches more portal pages. */
-  let confirmOlder = $state(false);
 
   /* --------------------------------------------------------------------- glides */
 
@@ -499,103 +338,29 @@
     });
   });
 
-  function pin(job: JobView): void {
-    if (!guarded()) toggleStar([job]);
-  }
-
   /** Ends with "Endgültig löschen" of a row: the dialog asks first. */
   let purging = $state<JobView | null>(null);
   let purgeBusy = $state(false);
   let purgeError = $state<string | null>(null);
 
-  /** The row's tools: the job's actions where it is (deleting for good waits for a run: the
-   *  backend refuses meanwhile). */
-  function toolsOf(job: JobView): RowTool[] {
-    return actionsOf(job.place).map((action) => ({
-      id: action.id,
-      icon: action.icon,
-      label: action.label,
-      disabled: action.id === 'purge' && run.active,
-      disabledReason: run.busyText,
-      onclick: () => {
-        if (action.id === 'purge') {
-          purgeError = null;
-          purging = job;
-        } else {
-          void move([job], action.id).then((error) => (jobs.actionError = error));
-        }
-      },
-    }));
+  /** A failed action of a row says so in the list header. */
+  function report(error: string | null): void {
+    if (error !== null) jobs.actionError = error;
   }
 
-  /**
-   * The job's menu on a right click (the table JOB_MENU of actions.ts): open it, its ad, the
-   * star, its moves and the prompt. On a chosen row with others chosen too, the moves and the
-   * star take them all.
-   */
+  /** The job's menu on a right click (jobMenu of actions.ts, the reader's "…" too). */
   function menuOf(job: JobView): ContextMenu {
-    const many = bulk.active && bulk.chosen.some((chosen) => sameKey(chosen.key, job.key));
-    const list = many ? bulk.chosen : [job];
-    const report = (error: string | null): void => {
-      if (error !== null) jobs.actionError = error;
+    return {
+      label: t.menu.job,
+      entries: jobMenu(job, {
+        open: () => select(job),
+        purge: () => {
+          purgeError = null;
+          purging = job;
+        },
+        report,
+      }),
     };
-    type Own = Exclude<JobMenuItem['id'], 'moves'>;
-    const runs: Record<Own, () => void> = {
-      open: () => select(job, { toggle: false, range: false }),
-      'open-ad': () => {
-        invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
-          (error: unknown) => report(errorText(error)),
-        );
-      },
-      star: () => toggleStar(list),
-      prompt: () => void copyJobPrompt(job.key).then(report),
-    };
-    const labels: Record<Own, string> = {
-      open: t.menu.open,
-      'open-ad': t.reader.open,
-      star: t.reader.pin,
-      prompt: t.reader.prompt,
-    };
-    const entries: MenuEntry[] = [];
-    for (const group of JOB_MENU) {
-      const items: MenuEntry[] = [];
-      for (const item of group) {
-        if (!item.shows(job, many)) continue;
-        if (item.id !== 'moves') {
-          items.push({
-            id: item.id,
-            label: labels[item.id],
-            icon: item.icon,
-            keys: item.key === null ? null : keyLabel(item.key),
-            run: runs[item.id],
-          });
-          continue;
-        }
-        for (const action of actionsOf(job.place)) {
-          items.push({
-            id: action.id,
-            label: action.label,
-            icon: action.icon,
-            keys: action.key === null ? null : keyLabel(action.key),
-            danger: action.id === 'purge',
-            disabled: action.id === 'purge' && run.active,
-            reason: action.id === 'purge' ? run.busyText : null,
-            run: () => {
-              if (action.id === 'purge') {
-                purgeError = null;
-                purging = job;
-              } else {
-                void move(list, action.id).then(report);
-              }
-            },
-          });
-        }
-      }
-      if (items.length === 0) continue;
-      if (entries.length > 0) entries.push({ kind: 'separator' });
-      entries.push(...items);
-    }
-    return { label: t.menu.job, entries };
   }
 
   async function purgeRow(): Promise<void> {
@@ -628,7 +393,6 @@
   data-testid="job-list"
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
-  {onfocusin}
 >
   {#if mailboxMissing}
     <div class="note">
@@ -702,23 +466,16 @@
   {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
     <div class="empty">
       {#if searching}
+        <!-- The search's × clears it; the other places' hits are the way on. -->
         <div class="stack">
           <EmptyState
             icon="search"
             tone="neutral"
             text={t.list.noHit(jobs.search.trim())}
-            secondary={{ label: t.field.clear, icon: 'close', onclick: () => jobs.setSearch('') }}
             testid="empty-search"
           />
           {#if elsewhere.length > 0}{@render alsoIn()}{/if}
         </div>
-      {:else if place !== 'inbox'}
-        <EmptyState
-          icon={place === 'trash' ? 'trash' : 'archive'}
-          tone="neutral"
-          text={t.place.empty[place]}
-          testid="empty-place-{place}"
-        />
       {:else if filterEmptied}
         <EmptyState
           icon="filter"
@@ -730,66 +487,30 @@
           }}
           testid="empty-filter"
         />
-      {:else if run.active || !mailRead}
-        <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
+      {:else if place !== 'inbox'}
         <EmptyState
-          icon="jobs"
+          icon={place === 'trash' ? 'trash' : 'archive'}
           tone="neutral"
-          text={run.active ? t.list.emptyWhileRun : t.list.emptyAll}
-          testid="empty-all"
+          text={t.place.empty[place]}
+          testid="empty-place-{place}"
         />
       {:else}
-        <div class="sources">
-          <EmptyState icon="jobs" tone="neutral" text={t.list.emptyAfterRun} testid="empty-all" />
-          <div class="sources-actions">
-            {#each PORTALS as portal (portal.portal)}
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="external"
-                external
-                label={t.list.createAlert(t.portal[portal.portal])}
-                testid="alert-{portal.portal}"
-                onclick={() => openPortal(portal.portal)}
-              />
-            {/each}
-            {#if app.hasMailbox}
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="alertMail"
-                label={t.list.readOlder}
-                disabled={run.fetchBlocked !== null}
-                disabledReason={run.fetchBlocked}
-                testid="read-older"
-                onclick={() => (confirmOlder = true)}
-              />
-            {/if}
-          </div>
-          {#if portalError}
-            <Notice tone="danger" variant="inline" text={portalError} testid="portal-error" />
-          {/if}
-        </div>
+        <!-- A fetch that goes, none yet, or one that read no jobs: what comes. -->
+        <EmptyState icon="jobs" tone="neutral" text={emptyInbox} testid="empty-all" />
       {/if}
     </div>
   {:else}
     {#snippet row(job: JobView, open: boolean)}
-      <!-- While rows are chosen the highlight shows exactly them (what the header's bar
-           counts and a Ctrl+click takes out); else the open job. The open job's row is
-           marked by the list's one bar, every other chosen row by its own. -->
+      <!-- The open job's row is marked by the list's one bar. -->
       <JobRow
         {job}
         ring={!profileMissing}
         pending={pending && job.match === null}
-        selected={selection.size > 0 ? selection.has(job) : open}
-        bar={!open}
-        tabbable={keyOf(job.key) === tabStop}
+        selected={open}
+        bar={false}
         onselect={select}
-        onpin={hasStar(job.place) ? pin : null}
-        tools={toolsOf(job)}
+        onopen={(job) => void openAd(job).then(report)}
         menu={() => menuOf(job)}
-        chosen={selection.size > 0 && selection.has(job) && (bulk.active || viewport.narrow)}
-        onchoose={choose}
       />
     {/snippet}
     {#snippet group(items: JobView[])}
@@ -856,27 +577,14 @@
     muted={markedExcluded}
     {listed}
     folding={moving}
-    several={selection.size > 0}
     generation={jobs.generation}
   />
 </div>
 
 <Dialog
-  bind:open={confirmOlder}
-  heading={t.settings.fullMailboxHeading}
-  text={t.settings.fullMailboxText}
-  confirmLabel={t.settings.fullMailboxConfirm}
-  testid="dialog-read-older"
-  onconfirm={() => {
-    confirmOlder = false;
-    void run.start({ kind: 'fetch' });
-  }}
-/>
-
-<Dialog
   open={purging !== null}
   variant="danger"
-  heading={purging ? t.actions.purgeOne(displayTitle(purging.title)) : t.actions.purgeHeading(1)}
+  heading={t.actions.purgeHeading(1)}
   text={t.actions.purgeText}
   confirmLabel={t.actions.purgeConfirm}
   busy={purgeBusy}
@@ -932,23 +640,6 @@
   .stack > .also {
     justify-content: center;
     padding-inline: 0;
-  }
-
-  /* The empty list says where jobs come from, like every empty state (an icon, one
-     sentence), and its ways out are the portals' alerts and the older mails. */
-  .sources {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-12);
-    max-width: var(--list-min);
-  }
-
-  /* The block is centred, its links start on one line (their icons on one axis). */
-  .sources-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .empty {

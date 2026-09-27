@@ -5,7 +5,7 @@
 
 import type { Page } from '@playwright/test';
 import { asReferenceMachine, expect, open, settle, test } from './fixtures';
-import { chooseFilter, lastQuery } from './helpers';
+import { chooseSort, lastQuery } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -53,7 +53,7 @@ test('2000 jobs render in windows without long tasks', async ({ page, browserNam
   const since = await page.evaluate(() => new Event('start').timeStamp);
   // Another order builds the list of 2000 jobs anew (a new generation of rows), then the
   // windows grow while scrolling.
-  await chooseFilter(page, 'newest');
+  await chooseSort(page, 'newest');
   await expect.poll(async () => (await lastQuery(page))?.sort).toBe('newest');
   await expect(rows(page).first()).toBeVisible();
   await settle(page);

@@ -11,60 +11,44 @@
 //   Undo | Cut, Copy, Paste, Delete | Select all; macOS: Cut, Copy, Paste | Select all;
 //   each enabled by the field's state), on selected copyable text (Copy) and on an element
 //   that offers its own (`contextMenu`: a job row). Everywhere else a right click does
-//   nothing. The Menu key and Shift+F10 (Windows) open it at the field or the open row.
-//   While a menu is open it takes every key (arrows, Home/End, the first letter, Enter and
-//   Space, Esc, Tab closes), and a press outside, the window's blur, resizing or a scroll
-//   outside it closes it; the left press that closes it does nothing else.
+//   nothing. The Menu key and Shift+F10 (Windows) open it at the field, the selection or
+//   the focused element. While a menu is open it takes every key (arrows, Home/End, the
+//   first letter, Enter and Space, Esc, Tab closes), and a press outside, the window's
+//   blur, resizing or a scroll outside it closes it; the left press that closes it does
+//   nothing else. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
 //   click never activates anything (no auxclick, no press, no new window). The back
-//   button of the mouse, Alt+Left (Windows) and Cmd+[ or Cmd+Left (macOS, outside fields)
-//   go back only where a view offers a way back (`onBack`: the reader in one column);
-//   forward does nothing, and neither ever navigates the web view.
+//   button of the mouse goes back only where a view offers a way back (`onBack`: the
+//   reader in one column); forward does nothing, and neither ever navigates the web view.
 // - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
 //   Over an open menu only the menu scrolls; behind a modal dialog nothing scrolls. The one
 //   non-passive wheel listener is attached only while it has to hold the wheel (Ctrl/Cmd
 //   held, a menu or a modal dialog open), so plain scrolling never waits for the page.
-// - a double click does nothing (in text that copies it selects a word, like everywhere)
+// - a double click does nothing (in text that copies it selects a word, like everywhere;
+//   an element that offers `doubleClick` handles it: a job row opens its ad)
 // - no dragging of text, links or images (only the column handle and the window's drag
 //   regions move)
 // - text is selectable only in fields and where a user would copy it (`data-copy`: the ad
 //   text, job title and facts, profile values, paths); Ctrl/Cmd+C copies such a selection
-// - keys like in a native window: Tab and Shift+Tab move the focus (a disabled control is
-//   passed, like a native one), Space presses the focused button, switch or radio, Enter a
-//   button only; in a radio group (the segments) the arrows, Home and End choose. Inside a
-//   field every character the keyboard layout types (AltGr on Windows, Option on macOS: @
-//   is Option+L on a German Mac) and the editing keys of the OS (word and line moves,
-//   delete word, Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc
-//   cancels a form or dialog; Ctrl+S (Cmd+S on macOS) saves the long Profil form from
-//   anywhere in it.
-// - a list with a reader (the Jobs view, `listKeys`) moves like a mail app: outside a field
-//   ArrowUp/ArrowDown open the previous/next item, Home/End the first/last, Shift with them
-//   extends the choice of items like Explorer and Mail (`extend`), Esc closes the open item
-//   (in the search field Esc first clears the search), Space on the open item's row pages
-//   through the reader (`reader`), and Ctrl+F (Cmd+F on macOS) goes to its search field from
-//   anywhere. After a click into the reader (the focus nowhere) the arrows scroll it by a
-//   line and Home/End to its top and end, like the message of a mail app; a click in the
-//   list gives them back to the list.
-//   Outside fields Ctrl+Z (Cmd+Z on macOS) takes back the last list action while it can
-//   still be undone (`onUndo`; the macOS menu bar's Edit > Undo does the same), and PageUp,
-//   PageDown, Space and Shift+Space scroll the pane that has the focus (or the one clicked
-//   last) by a page, like a native window; with the focus nowhere the arrows scroll the
-//   pane clicked last by a line and Home/End to its top and end (Einstellungen, Profil).
-//   Key scrolling glides in one short tween (lib/motion/scroll.ts), never the engine's
-//   smooth scroll. Ctrl+/ (Cmd+/ on macOS) opens the card of the keys (`help`). Every
-//   shortcut of the app is a row of lib/input/keys.ts: the dispatch below asks the table
-//   which row a key is (`is`, `matched`), so the keys, the card and the tooltips agree.
-//   Everything else, including every WebView shortcut (reload, find, print, zoom,
-//   devtools, caret browsing, Alt+Arrow back/forward), is swallowed.
+// - only the keys of the OS (user decision: the app has no shortcuts of its own): Tab and
+//   Shift+Tab move the focus (a disabled control is passed, like a native one), Space
+//   presses the focused button, switch or radio, Enter a button only; in a radio group (the
+//   segments) and a row of tabs the arrows, Home and End choose. Inside a field every
+//   character the keyboard layout types (AltGr on Windows, Option on macOS: @ is Option+L
+//   on a German Mac) and the editing keys of the OS (word and line moves, delete word,
+//   Shift selection, Ctrl/Cmd+C/V/X/A/Z, redo) work. Enter saves and Esc cancels a form or
+//   dialog. PageUp and PageDown scroll the pane that has the focus (or the one clicked
+//   last) by a page, and with the focus nowhere the arrows scroll that pane by a line and
+//   Home/End to its top and end, like a native scroll view. Key scrolling glides in one
+//   short tween (lib/motion/scroll.ts), never the engine's smooth scroll. Everything else,
+//   including every WebView shortcut (reload, find, print, zoom, devtools, caret browsing,
+//   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
-//   focus is. Esc closes only the layer on top: the menu, then the dialog, then the
-//   selection.
+//   focus is. Esc closes only the layer on top: the menu, then the dialog.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
-// - Esc outside fields and dialogs clears what is selected (`escape`: the selection of
-//   several jobs), like in a mail app
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -74,11 +58,8 @@ import {
   fieldMenuUndoDelete,
   hasAutoscroll,
   keyConventions,
-  keyLabel,
   type KeyConventions,
 } from '../platform';
-import { help } from '../state/help.svelte';
-import { navigation, type ViewId } from '../state/navigation.svelte';
 import {
   chooseEntry,
   closeMenu,
@@ -89,8 +70,6 @@ import {
   type MenuEntry,
 } from '../state/menu.svelte';
 import { tokenMs, tokenPx } from '../tokens';
-import { VIEWS } from '../views';
-import { combo, keysOf, matched, type ShortcutAction } from './keys';
 
 const FIELD = 'input, textarea, [contenteditable="true"], [contenteditable=""]';
 /** Text a user would copy (selectable, Ctrl/Cmd+C). */
@@ -99,15 +78,13 @@ const DIALOG = 'dialog, [role="dialog"], [role="alertdialog"]';
 /** An open modal dialog: it holds the focus. */
 const MODAL = '[aria-modal="true"]';
 const FORM = '[data-form-keys]';
-const LIST = '[data-list-keys]';
 /** Controls that Space presses. */
 const PRESSABLE = 'button, [role="button"], [role="switch"], [role="radio"]';
 /** Controls that Enter presses: buttons only. A switch or a radio toggles with Space, like the
  *  native ones; Enter there goes on to the form (its default action). */
 const ENTER_PRESSES = 'button:not([role="switch"], [role="radio"]), [role="button"]';
-/** The sidebar and the list's header: pressed, not focused (`data-press-only`). */
-const PRESS_ONLY_ZONE = '[data-press-only]';
-/** Controls a press does not focus: in the sidebar and the list's header. */
+/** Controls a press does not focus: in the sidebar and the list's header
+ *  (`data-press-only`), like the toolbar of Mail and Finder. */
 const PRESS_ONLY = '[data-press-only] :is(button, [role="button"], [role="tab"], [role="radio"])';
 /** Buttons inside a field (show password, clear search): a press leaves the focus there. */
 const KEEP_FOCUS = '[data-keep-focus]';
@@ -148,15 +125,6 @@ const MAC_MENU_KEYS = new Set(['q', 'w', 'm', 'h', ',']);
 
 /** The nearest match from `target` up (a text node - the target of selectstart - counts
  *  as its parent element). */
-/** The first key of a shortcut of the list (the same on both OS). */
-function listKey(action: ShortcutAction): string {
-  return keysOf(action, keyConventions()) ?? '';
-}
-
-/** Whether `event` is a key of the shortcut `action` on this OS (lib/input/keys.ts). */
-const is = (event: KeyboardEvent, action: ShortcutAction): boolean =>
-  combo(event, action, keyConventions()) !== null;
-
 function closest(target: EventTarget | null, selector: string): Element | null {
   const element = target instanceof Text ? target.parentElement : target;
   return element instanceof Element ? element.closest(selector) : null;
@@ -231,7 +199,12 @@ function typesWithAltGraph(event: KeyboardEvent, os: KeyConventions): boolean {
 }
 
 /** Shift+F10 alone or the Menu key: the context menu (Windows; a Mac keyboard has neither). */
-const isContextMenuKey = (event: KeyboardEvent): boolean => is(event, 'menu');
+function isContextMenuKey(event: KeyboardEvent): boolean {
+  if (!keyConventions().contextMenuKey || event.ctrlKey || event.altKey || event.metaKey) {
+    return false;
+  }
+  return event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+}
 
 function allowedInField(event: KeyboardEvent): boolean {
   if (isContextMenuKey(event)) return true;
@@ -256,10 +229,6 @@ export interface FormKeyHandlers {
   save?: () => void;
   /** Esc anywhere inside the form. */
   cancel?: () => void;
-  /** Ctrl+S (Cmd+S on macOS) anywhere inside the form: saves a long form also where Enter
-   *  means something else (the next row of a list, a chip). A form key like Enter and Esc,
-   *  not an app shortcut (docs/PLAN.md, Decisions "Keys"). */
-  shortcut?: () => void;
 }
 
 const forms = new WeakMap<Element, FormKeyHandlers>();
@@ -291,9 +260,6 @@ function handlerFor(target: EventTarget | null, key: keyof FormKeyHandlers): (()
   return null;
 }
 
-/** Ctrl+S or Cmd+S (the command key of the OS), without Alt or Shift. */
-const isSaveShortcut = (event: KeyboardEvent): boolean => is(event, 'save');
-
 /** Enter and Esc for the nearest form that handles them; `true` if one did. */
 function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = event.target): boolean {
   if (event.isComposing || hasModifier(event)) return false;
@@ -313,186 +279,8 @@ function dispatchFormKey(event: KeyboardEvent, target: EventTarget | null = even
   return true;
 }
 
-export interface ListKeyHandlers {
-  /** ArrowUp (-1) / ArrowDown (1): open the previous or next item. */
-  step: (by: -1 | 1) => void;
-  /** Home / End: open the first or the last item. */
-  edge: (last: boolean) => void;
-  /** Shift+ArrowUp/ArrowDown, Shift+Home/End: the choice of items reaches one further, or
-   *  to the first or the last item. */
-  extend?: (to: -1 | 1 | 'first' | 'last') => void;
-  /** Esc: close the open item. */
-  close: () => void;
-  /** Ctrl+F (Cmd+F on macOS): the search field. */
-  find: () => void;
-  /** The scroll area of the open item: Space and Shift+Space on the open item's row page
-   *  through it, like in a mail app (pressing the row again would change nothing), and after
-   *  a click into it the arrows, Home and End scroll it. */
-  reader?: () => HTMLElement | null;
-  /** Single keys for the open item (or the chosen ones), like a mail app (LIST_KEYS). Never
-   *  in a field. */
-  act?: (action: ListAction) => void;
-}
-
-/**
- * The single keys of the job list as keyLabel writes them, read from the shortcuts table
- * (lib/input/keys.ts): the job's actions and its menu name them in their hints. `del` is Entf
- * on Windows, Backspace or Delete on macOS; Enter opens a row by the row's own button (the
- * handler leaves it alone).
- */
-export const LIST_KEYS = {
-  open: listKey('open'),
-  archive: listKey('archive'),
-  trash: listKey('trash'),
-  star: listKey('star'),
-  openAd: listKey('openAd'),
-};
-
-export type ListAction = Exclude<keyof typeof LIST_KEYS, 'open'>;
-
-/** The shortcuts that act on the open item of a list (the other rows of the list move in it). */
-const LIST_ACTIONS: ReadonlySet<ShortcutAction> = new Set<ListAction>([
-  'archive',
-  'trash',
-  'star',
-  'openAd',
-]);
-
-/** The fetch of the app (lib/input/keys.ts: F5 or Ctrl+R on Windows, Cmd+R or F5 on macOS). */
-const isFetchKey = (event: KeyboardEvent): boolean => is(event, 'fetch');
-
-let fetchHandler: (() => void) | null = null;
-
-/** The fetch of the app (F5, Ctrl/Cmd+R); returns the function that removes it. */
-export function onFetchKey(handler: () => void): () => void {
-  fetchHandler = handler;
-  return () => {
-    if (fetchHandler === handler) fetchHandler = null;
-  };
-}
-
-const lists = new Map<HTMLElement, ListKeyHandlers>();
-
-/**
- * The keys of a list with a reader (the Jobs view): the one keydown handler below
- * dispatches to it while the focus is inside it or nowhere (a click on plain text leaves
- * the focus on the page).
- */
-export const listKeys: Action<HTMLElement, ListKeyHandlers> = (node, handlers) => {
-  lists.set(node, handlers);
-  node.dataset.listKeys = '';
-  return {
-    update(next: ListKeyHandlers) {
-      lists.set(node, next);
-    },
-    destroy() {
-      lists.delete(node);
-      delete node.dataset.listKeys;
-    },
-  };
-};
-
-/** A registered list the user sees (a view kept underneath another one is inert). */
-function shownList(): ListKeyHandlers | null {
-  for (const [node, handlers] of lists) {
-    if (!node.isConnected || node.closest('[inert]') !== null) continue;
-    if (node.getClientRects().length === 0 || getComputedStyle(node).visibility === 'hidden') {
-      continue;
-    }
-    return handlers;
-  }
-  return null;
-}
-
-/** The list the key belongs to: the one around the focus, or the shown one without a focus
- *  or with the focus on a control above it (the sidebar, the list's header). */
-function listFor(target: EventTarget | null): ListKeyHandlers | null {
-  const node = closest(target, LIST);
-  if (node instanceof HTMLElement) return lists.get(node) ?? null;
-  return isNowhere(target) || closest(target, PRESS_ONLY_ZONE) !== null ? shownList() : null;
-}
-
-/** Ctrl+F or Cmd+F (the command key of the OS), without Alt or Shift. */
-const isFindShortcut = (event: KeyboardEvent): boolean => is(event, 'search');
-
-/** The keys that move in a list, a radio group or a pane. */
-const MOVE_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
-
-/** Arrows, Home, End and Esc outside a field; `true` if a list took the key. */
-function dispatchListKey(event: KeyboardEvent): boolean {
-  if (event.isComposing || hasModifier(event)) return false;
-  // The arrows, Home and End of a radio group in a form are the group's; above the list
-  // (the tabs, the segments) left and right are.
-  const option = closest(event.target, '[role="radio"], [role="tab"]');
-  const rowOnly = closest(option, PRESS_ONLY_ZONE) !== null;
-  if (option !== null && MOVE_KEYS.has(event.key)) {
-    if (!rowOnly || event.key === 'ArrowLeft' || event.key === 'ArrowRight') return false;
-  }
-  const list = listFor(event.target);
-  if (list === null) return false;
-  const hit = matched(event, 'list', keyConventions());
-  if (hit !== null && LIST_ACTIONS.has(hit.action)) {
-    if (list.act === undefined) return false;
-    list.act(hit.action as ListAction);
-    return true;
-  }
-  if (hit?.action === 'extend') return extendList(list, hit.combo);
-  if (event.shiftKey) return false;
-  if (readsReader(event, list)) return true;
-  switch (hit?.combo) {
-    case 'up':
-      list.step(-1);
-      return true;
-    case 'down':
-      list.step(1);
-      return true;
-    case 'home':
-      list.edge(false);
-      return true;
-    case 'end':
-      list.edge(true);
-      return true;
-    case 'esc':
-      list.close();
-      return true;
-    default:
-      return false;
-  }
-}
-
-/** Shift with ArrowUp/ArrowDown, Home or End: the list's choice reaches further. */
-function extendList(list: ListKeyHandlers, keys: string): boolean {
-  const to = EXTEND_TO[keys];
-  if (to === undefined || list.extend === undefined) return false;
-  list.extend(to);
-  return true;
-}
-
-/** The combos of the row "extend" (lib/input/keys.ts) and how far each reaches. */
-const EXTEND_TO: Record<string, -1 | 1 | 'first' | 'last'> = {
-  'shift+up': -1,
-  'shift+down': 1,
-  'shift+home': 'first',
-  'shift+end': 'last',
-};
-
-/**
- * The focus is nowhere and the last left press was in the list's reader (the ad's text,
- * its head): the arrows scroll it by a line and Home/End to its top and end, like the
- * message of a mail app. `true` if the reader took the key.
- */
-function readsReader(event: KeyboardEvent, list: ListKeyHandlers): boolean {
-  if (!isNowhere(event.target) || !MOVE_KEYS.has(event.key)) return false;
-  const pane = list.reader?.() ?? null;
-  if (pane === null || lastPress === null || !pane.contains(lastPress)) return false;
-  // A press on one of its buttons (the star, a move) leaves the keys with the list, like a
-  // toolbar button of a mail app that takes no focus.
-  if (closest(lastPress, `${PRESSABLE}, a[href]`) !== null) return false;
-  return scrollByKey(pane, event.key);
-}
-
-/** The arrows, Home and End with the focus nowhere scroll the pane clicked last (a view
- *  without a list: Einstellungen, Profil). `true` if a pane took the key. */
+/** The arrows, Home and End with the focus nowhere scroll the pane clicked last (the reader,
+ *  Einstellungen, Profil), like a native scroll view. `true` if a pane took the key. */
 function scrollsLine(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey || !isNowhere(event.target)) return false;
   const pane = lastPane?.isConnected ? lastPane : null;
@@ -518,26 +306,25 @@ function isNowhere(target: EventTarget | null): boolean {
   return target === document.body || target === document.documentElement;
 }
 
-/** The arrows inside a radio group (the segments): the previous or the next option takes
- *  the focus and is chosen, wrapping at the ends, like native radio buttons; Home and End
- *  choose the first and the last. The group is one Tab stop (only the chosen option has
- *  tabindex 0). `true` if the group took the key. */
+/** The arrows inside a radio group (the segments) or a row of tabs: the previous or the next
+ *  option takes the focus and is chosen, wrapping at the ends, like native radio buttons and
+ *  tabs; Home and End choose the first and the last. A row of tabs goes left and right only.
+ *  The group is one Tab stop (only the chosen option has tabindex 0). `true` if the group
+ *  took the key. */
 function dispatchRadioKey(event: KeyboardEvent): boolean {
   if (hasModifier(event) || event.shiftKey) return false;
   const option = closest(event.target, '[role="radio"], [role="tab"]');
   const role = option?.getAttribute('role') ?? null;
   const group =
     option?.closest(role === 'tab' ? '[role="tablist"]' : '[role="radiogroup"]') ?? null;
-  // Above the job list (the tabs, the segments) only left and right choose: up, down, Home
-  // and End belong to the list. A group in a form takes every arrow, Home and End.
-  const rowOnly = role === 'tab' || closest(option, PRESS_ONLY_ZONE) !== null;
+  const tabs = role === 'tab';
   const step =
-    event.key === 'ArrowRight' || (!rowOnly && event.key === 'ArrowDown')
+    event.key === 'ArrowRight' || (!tabs && event.key === 'ArrowDown')
       ? 1
-      : event.key === 'ArrowLeft' || (!rowOnly && event.key === 'ArrowUp')
+      : event.key === 'ArrowLeft' || (!tabs && event.key === 'ArrowUp')
         ? -1
         : 0;
-  const edge = rowOnly ? null : event.key === 'Home' ? 0 : event.key === 'End' ? -1 : null;
+  const edge = event.key === 'Home' ? 0 : event.key === 'End' ? -1 : null;
   if ((step === 0 && edge === null) || option === null || group === null) return false;
   const options = [...group.querySelectorAll<HTMLElement>(`[role="${role}"]`)].filter(
     (node) => node.getAttribute('aria-disabled') !== 'true' && !node.matches(':disabled'),
@@ -599,8 +386,6 @@ export interface ChipKeyHandlers {
   clear: () => boolean;
   /** ArrowDown/ArrowUp: move the highlight of the field's suggestions; `true` if it moved. */
   step?: (by: -1 | 1) => boolean;
-  /** Ctrl/Cmd+S: turn the typed text into chips as leaving the field would. */
-  settle?: () => void;
 }
 
 const CHIPS = '[data-chip-keys]';
@@ -755,52 +540,11 @@ function onKeyDown(event: KeyboardEvent): void {
     }
   }
   if (isCopy(event)) return;
-  if (isHelpKey(event)) {
-    // The card of the keys, from anywhere (a field too); the same keys close it again.
-    event.preventDefault();
-    if (help.open) help.hide();
-    else if (modal === null) help.show();
-    return;
-  }
-  if (!inField(event.target) && (isBackKey(event) || isForwardKey(event))) {
-    // Never the web view's history: back only where a view has a way back.
-    event.preventDefault();
-    if (isBackKey(event)) goBack();
-    return;
-  }
   // Shift+F10 and the Menu key (Windows) open the app's menu at the field, the selected
-  // copyable text or the open item of the list; the page opens it, not the engine.
+  // copyable text or the focused element; the page opens it, not the engine.
   if (isContextMenuKey(event)) {
     event.preventDefault();
     openMenuByKey(event.target);
-    return;
-  }
-  if (isFetchKey(event)) {
-    // Never the WebView's reload: the app fetches instead (outside dialogs).
-    event.preventDefault();
-    if (modal === null) fetchHandler?.();
-    return;
-  }
-  const view = viewShortcut(event);
-  if (view !== null) {
-    // Ctrl/Cmd+1 to 4 and (Windows) Ctrl+, choose a view from anywhere, like the sidebar.
-    event.preventDefault();
-    if (modal === null) navigation.go(view);
-    return;
-  }
-  if (isFindShortcut(event)) {
-    // Never the WebView's find bar; a list with a search field takes it.
-    event.preventDefault();
-    if (modal === null) shownList()?.find();
-    return;
-  }
-  if (isSaveShortcut(event)) {
-    // Never the WebView's "save page"; a form that saves this way gets it, with the text
-    // typed into a chip field taken in first (the caret stays where it is).
-    event.preventDefault();
-    const field = closest(event.target, CHIPS);
-    if (field !== null) chipFields.get(field)?.settle?.();
-    handlerFor(event.target, 'shortcut')?.();
     return;
   }
   if (inField(event.target)) {
@@ -810,33 +554,21 @@ function onKeyDown(event: KeyboardEvent): void {
       return;
     }
     if (dispatchChipKey(event)) return;
-    // Esc that no form takes (a search that is empty already) closes the list's open item.
-    if (dispatchFormKey(event) || event.key !== 'Escape' || modal !== null) return;
-    if (closest(event.target, LIST) !== null) dispatchListKey(event);
+    dispatchFormKey(event);
     return;
   }
-  if (modal === null && pagesReader(event)) return;
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
+  // Everything else is the app's or nothing: never a shortcut of the web view (reload,
+  // find, print, zoom, history).
   event.preventDefault();
-  if (isUndo(event)) {
-    if (modal === null) undoLast();
-    return;
-  }
   if (modal === null && scrollsPage(event)) return;
   if (closest(event.target, `${FORM}, ${DIALOG}`) !== null && dispatchFormKey(event)) return;
-  if (event.key === 'Escape' && !hasModifier(event) && escapes.length > 0) {
-    escapes.at(-1)?.();
-    return;
-  }
-  // A list takes its keys first (the Jobs view), else the pane clicked last scrolls.
-  if (modal === null && !dispatchListKey(event)) scrollsLine(event);
+  if (modal === null) scrollsLine(event);
 }
 
 /** The scroll area the user clicked in last (the page keys scroll it while the focus is
  *  nowhere, e.g. after a click on the ad's text). */
 let lastPane: HTMLElement | null = null;
-/** What the left button pressed last (after a press in the reader its keys scroll it). */
-let lastPress: Element | null = null;
 /** A page is this much of the pane (a line of the last page stays in view). */
 const PAGE_SHARE = 0.9;
 
@@ -849,77 +581,35 @@ function scrollAreaOf(target: EventTarget | null): HTMLElement | null {
   return null;
 }
 
-/** PageUp, PageDown, Space, Shift+Space: the focused (or last clicked) pane scrolls a page. */
+/** PageUp and PageDown: the focused (or last clicked) pane scrolls a page. */
 function scrollsPage(event: KeyboardEvent): boolean {
-  if (event.ctrlKey || event.altKey || event.metaKey) return false;
-  const down = event.key === 'PageDown' || (event.key === ' ' && !event.shiftKey);
-  const up = event.key === 'PageUp' || (event.key === ' ' && event.shiftKey);
-  if (!down && !up) return false;
+  if (hasModifier(event)) return false;
+  const down = event.key === 'PageDown';
+  if (!down && event.key !== 'PageUp') return false;
   const pane =
     scrollAreaOf(event.target) ??
     (isNowhere(event.target) && lastPane?.isConnected ? lastPane : null);
   if (pane === null) return false;
-  scrollByPage(pane, down);
-  return true;
-}
-
-function scrollByPage(pane: HTMLElement, down: boolean): void {
   glideBy(pane, (down ? 1 : -1) * Math.round(pane.clientHeight * PAGE_SHARE));
-}
-
-/** Space or Shift+Space on the open item's row: its reader scrolls a page. */
-function pagesReader(event: KeyboardEvent): boolean {
-  if (event.key !== ' ' || hasModifier(event)) return false;
-  const row = closest(event.target, '[aria-current="true"]');
-  if (row === null || closest(row, LIST) === null) return false;
-  const pane = listFor(event.target)?.reader?.() ?? null;
-  if (pane === null || !pane.isConnected) return false;
-  event.preventDefault();
-  scrollByPage(pane, !event.shiftKey);
   return true;
-}
-
-/** What Ctrl/Cmd+Z takes back outside fields (the last list action, like Mail). */
-const undos: (() => boolean)[] = [];
-
-/** `onUndo(handler)`: Ctrl+Z (Cmd+Z on macOS) outside fields and dialogs runs the newest
- *  handler that has something to undo. Returns the unsubscribe function. */
-export function onUndo(handler: () => boolean): () => void {
-  undos.push(handler);
-  return () => {
-    const at = undos.indexOf(handler);
-    if (at !== -1) undos.splice(at, 1);
-  };
-}
-
-/** The newest undo that has something to take back runs; `true` if one did. */
-function undoLast(): boolean {
-  return [...undos].reverse().some((undo) => undo());
 }
 
 /**
- * Edit > Undo of the macOS menu bar (platform.rs: the item sends `menu-undo`): in a field
- * the field's own undo, elsewhere the app's (the last list action), like Cmd+Z; nothing
- * while a menu or a dialog is open.
+ * Edit > Undo of the macOS menu bar (platform.rs: the item sends `menu-undo`): the field's
+ * own undo, like Cmd+Z in it; nothing outside a field or while a menu or a dialog is open.
  */
 function undoFromMenu(): void {
   if (menuState.open !== null) return;
-  const active = document.activeElement;
-  if (inField(active)) {
-    document.execCommand('undo');
-    return;
-  }
-  if (topModal() === null) undoLast();
+  if (inField(document.activeElement)) document.execCommand('undo');
 }
 
 /** The ways back of the views (the reader in one column: its "Zurück"); the newest first. */
 const backs: (() => boolean)[] = [];
 
 /**
- * `onBack(handler)`: the mouse's back button, Alt+Left (Windows) and Cmd+[ or Cmd+Left
- * (macOS) outside fields run the newest handler that has a way back (it returns `true`
- * when it went back), like the Zurück of the view. Without one they do nothing; they never
- * navigate the web view. Returns the unsubscribe function.
+ * `onBack(handler)`: the mouse's back button runs the newest handler that has a way back (it
+ * returns `true` when it went back), like the Zurück of the view. Without one it does
+ * nothing; it never navigates the web view. Returns the unsubscribe function.
  */
 export function onBack(handler: () => boolean): () => void {
   backs.push(handler);
@@ -934,46 +624,6 @@ function goBack(): boolean {
   if (menuState.open !== null || topModal() !== null) return false;
   return [...backs].reverse().some((back) => back());
 }
-
-/** The back key of the OS: Alt+Left on Windows; Cmd+[ or Cmd+Left on macOS. */
-const isBackKey = (event: KeyboardEvent): boolean => is(event, 'back');
-
-/** Alt+Right (Windows), Cmd+] or Cmd+Right (macOS): forward, which the app has not. */
-function isForwardKey(event: KeyboardEvent): boolean {
-  if (event.shiftKey) return false;
-  if (keyConventions().back === 'alt') {
-    return event.altKey && !event.ctrlKey && !event.metaKey && event.key === 'ArrowRight';
-  }
-  return event.metaKey && !event.ctrlKey && (event.key === ']' || event.key === 'ArrowRight');
-}
-
-/** Ctrl+/ or Cmd+/ (any layout: the key that types a slash, or the one on the number pad):
- *  the card of the keys. */
-const isHelpKey = (event: KeyboardEvent): boolean => is(event, 'help');
-
-/** Ctrl+Z or Cmd+Z (the command key of the OS), without Alt or Shift. */
-const isUndo = (event: KeyboardEvent): boolean => is(event, 'undo');
-
-/** What Esc clears outside fields and dialogs; the newest first. */
-const escapes: (() => void)[] = [];
-
-/**
- * `use:escape={clear}`: while the node is mounted, Esc outside fields and dialogs calls
- * `clear` (the selection bar: Esc clears the selection). No listener of its own.
- */
-export const escape: Action<HTMLElement, () => void> = (_node, handler) => {
-  let current = handler;
-  const call = (): void => current();
-  escapes.push(call);
-  return {
-    update(next: () => void) {
-      current = next;
-    },
-    destroy() {
-      escapes.splice(escapes.indexOf(call), 1);
-    },
-  };
-};
 
 const prevent = (event: Event): void => event.preventDefault();
 
@@ -1028,7 +678,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
           id: 'undo',
           label: t.edit.undo,
           icon: 'undo',
-          keys: keyLabel('mod+z'),
           // The engine keeps one undo history for the page.
           disabled: !(editable && canUndo()),
           run: () => {
@@ -1045,7 +694,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
           id: 'delete',
           label: t.edit.delete,
           icon: 'delete',
-          keys: keyLabel('del'),
           disabled: !(editable && selected),
           run: () => {
             back();
@@ -1061,7 +709,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
       id: 'cut',
       label: t.edit.cut,
       icon: 'cut',
-      keys: keyLabel('mod+x'),
       disabled: !(editable && selected && !hidden),
       run: () => {
         back();
@@ -1074,7 +721,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
       id: 'copy',
       label: t.edit.copy,
       icon: 'copy',
-      keys: keyLabel('mod+c'),
       disabled: !(selected && !hidden),
       run: () => {
         back();
@@ -1085,7 +731,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
       id: 'paste',
       label: t.edit.paste,
       icon: 'paste',
-      keys: keyLabel('mod+v'),
       disabled: !editable,
       run: () => {
         back();
@@ -1102,7 +747,6 @@ function fieldMenu(field: HTMLInputElement | HTMLTextAreaElement): MenuEntry[] {
       id: 'select-all',
       label: t.edit.selectAll,
       icon: 'selectAll',
-      keys: keyLabel('mod+a'),
       disabled: field.value === '',
       run: () => {
         field.focus({ preventScroll: true });
@@ -1164,6 +808,41 @@ export const contextMenu: Action<HTMLElement, (() => ContextMenu | null) | null>
   };
 };
 
+const DOUBLE_HOST = '[data-double-click]';
+const doubleHosts = new WeakMap<Element, () => void>();
+
+/**
+ * `use:doubleClick={() => ...}`: a double click with the left button on the element runs it
+ * (a job row opens its ad); null offers none. No listener of its own: the one dblclick
+ * handler below calls it.
+ */
+export const doubleClick: Action<HTMLElement, (() => void) | null> = (node, handler) => {
+  const set = (next: (() => void) | null): void => {
+    if (next === null) {
+      doubleHosts.delete(node);
+      delete node.dataset.doubleClick;
+    } else {
+      doubleHosts.set(node, next);
+      node.dataset.doubleClick = '';
+    }
+  };
+  set(handler);
+  return {
+    update: set,
+    destroy: () => doubleHosts.delete(node),
+  };
+};
+
+/** A left double click on an element that offers one (`doubleClick`); `true` if it ran. */
+function runDouble(event: MouseEvent): boolean {
+  if (event.button !== LEFT) return false;
+  const host = closest(event.target, DOUBLE_HOST);
+  const handler = host === null ? undefined : doubleHosts.get(host);
+  if (handler === undefined) return false;
+  handler();
+  return true;
+}
+
 /** Open the menu of `host` at the pointer, or below the element itself from the keyboard. */
 function openHostMenu(host: Element, at: { x: number; y: number } | null): void {
   const offer = menuHosts.get(host)?.() ?? null;
@@ -1179,15 +858,9 @@ function openHostMenu(host: Element, at: { x: number; y: number } | null): void 
   });
 }
 
-/** The open item of the shown list (its row carries aria-current), for the Menu key. */
-function openItem(): Element | null {
-  const list = document.querySelector(LIST);
-  return list?.querySelector(`${MENU_HOST}[aria-current="true"]`) ?? null;
-}
-
 /** The right click: the app's menu in fields, on selected copyable text and on elements that
  *  offer one, else nothing. From the keyboard (the Menu key, Shift+F10: no button) the menu
- *  opens below the field or the element, not at the pointer. */
+ *  opens below the field or the focused element, not at the pointer. */
 function onContextMenu(event: MouseEvent): void {
   event.preventDefault();
   if (closest(event.target, MENU_LAYER) !== null) return;
@@ -1220,7 +893,6 @@ function onContextMenu(event: MouseEvent): void {
           id: 'copy',
           label: t.edit.copy,
           icon: 'copy',
-          keys: keyLabel('mod+c'),
           run: () => copyOut(text),
         },
       ],
@@ -1235,12 +907,13 @@ function onContextMenu(event: MouseEvent): void {
     });
     return;
   }
-  const host = closest(event.target, MENU_HOST) ?? (keyboard ? openItem() : null);
+  const host = closest(event.target, MENU_HOST);
   if (host !== null) openHostMenu(host, at);
 }
 
 /** Shift+F10 or the Menu key: the menu of the focused field, of the selected copyable text
- *  or of the open item of the list, below it (every engine alike, none opens its own). */
+ *  or of the focused element that offers one, below it (every engine alike, none opens its
+ *  own). */
 function openMenuByKey(target: EventTarget | null): void {
   const field = closest(target, 'input, textarea');
   if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
@@ -1262,7 +935,6 @@ function openMenuByKey(target: EventTarget | null): void {
           id: 'copy',
           label: t.edit.copy,
           icon: 'copy',
-          keys: keyLabel('mod+c'),
           run: () => copyOut(text),
         },
       ],
@@ -1276,17 +948,8 @@ function openMenuByKey(target: EventTarget | null): void {
     });
     return;
   }
-  const host = closest(target, MENU_HOST) ?? openItem();
+  const host = closest(target, MENU_HOST);
   if (host !== null) openHostMenu(host, null);
-}
-
-/** Ctrl/Cmd+1 to 4: the views in the sidebar's order (lib/views.ts); Ctrl+, the settings on
- *  Windows (the macOS menu has Cmd+, itself). Digits by their place, so every layout works. */
-function viewShortcut(event: KeyboardEvent): ViewId | null {
-  const os = keyConventions();
-  const view = VIEWS.find((each) => combo(event, 'views', os) === each.keys);
-  if (view !== undefined) return view.id;
-  return is(event, 'settings') ? 'settings' : null;
 }
 
 /** Letters typed quickly one after the other pick the entry that starts with them. */
@@ -1595,14 +1258,13 @@ export function installInput(): void {
       if (event.button === LEFT) {
         if (!otherButtonsDown(event)) auxPress(false);
         lastPane = scrollAreaOf(event.target);
-        lastPress = event.target instanceof Element ? event.target : null;
         // A button inside a field (show password, clear) leaves the caret in the field.
         if (closest(event.target, KEEP_FOCUS) !== null || pressesEditableChip(event)) {
           event.preventDefault();
         } else {
           leaveField(event);
-          // The sidebar and the list's header are pressed, not focused (like Mail and Finder
-          // on both OS): the list keeps its keys after a click there.
+          // The sidebar and the list's header are pressed, not focused (like the toolbar of
+          // Mail and Finder on both OS).
           if (closest(event.target, PRESS_ONLY) !== null) event.preventDefault();
         }
         return;
@@ -1683,7 +1345,9 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (editChip(event) || !selectable(event.target)) event.preventDefault();
+      if (editChip(event) || runDouble(event) || !selectable(event.target)) {
+        event.preventDefault();
+      }
     },
     capture,
   );

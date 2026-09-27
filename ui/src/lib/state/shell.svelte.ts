@@ -6,8 +6,9 @@ import { app } from './app.svelte';
 import { run } from './run.svelte';
 
 class Shell {
-  /** The Jobs view shows one job in place of its list (one column): the run card above the
-   *  list is out of sight, so the sidebar's run status stands in for it. Set by JobsView. */
+  /** The Jobs view shows one job in place of its list (one column): the run line under the
+   *  list header is out of sight, so the sidebar's run status stands in for it. Set by
+   *  JobsView. */
   listHidden = $state(false);
 
   /** Until `start_run` answers the first-run page stays (a failed start never flashes);
@@ -21,16 +22,14 @@ class Shell {
   }
 
   /**
-   * The run card above the list is up: while a fetch or details run goes, after it until it
-   * is hidden, and while a failed start has something to say. In one column an open job
-   * hides it with the list (`listHidden`).
+   * The run line under the list header speaks: while a fetch or details run goes, and after
+   * one that went wrong until it is hidden. In one column an open job hides it with the list
+   * (`listHidden`).
    */
-  get runCard(): boolean {
-    return (
-      run.fetching ||
-      run.startError !== null ||
-      (run.panel !== 'hidden' && (run.result ?? app.state?.lastRun ?? null) !== null)
-    );
+  get runLine(): boolean {
+    const last = run.result ?? app.state?.lastRun ?? null;
+    const wrong = last !== null && (last.outcome.kind === 'failed' || last.export?.error != null);
+    return run.fetching || run.startError !== null || (run.panel === 'open' && wrong);
   }
 }
 
