@@ -1,11 +1,12 @@
 <!--
   One portal in the card Portale, the same row for each: its tile and name, the calls of today
-  ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, then the portal in
-  the browser, "Anmelden" or "Abmelden" where the portal offers a sign-in, and its switch
-  (the name names the switch but, like every text next to a switch, does not switch it). The
-  meter turns ochre near the limit and while the portal rests. A problem of the portal is one
-  quiet line under the meter (whether she has to act, the time and the reason where it has
-  them, "Alert-Mail öffnen" when alert mails came without jobs); it fades in and out.
+  ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, then "Anmelden" or
+  "Abmelden" where the portal offers a sign-in, the portal in the browser (in one column in
+  every row) and its switch (the name names the switch but, like every text next to a switch,
+  does not switch it). The meter turns ochre near the limit and while the portal rests. A
+  problem of the portal is one quiet line under the meter (whether the user has to act, the
+  time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
+  jobs); it fades in and out.
   Signing in lets the fetch use the sign-in, signing out ends that. A stored sign-in that the
   fetch does not use looks like none while the portal is on, and "Anmelden" then only lets
   the fetch use it (no sign-in window); while the portal is off the row keeps "Abmelden"
@@ -185,15 +186,6 @@
     {/if}
   </div>
   <div class="tools">
-    <Button
-      variant="ghost"
-      size="sm"
-      iconOnly
-      icon="external"
-      label={t.settings.openPortal}
-      testid="open-portal-{portal.portal}"
-      onclick={() => open('home')}
-    />
     {#if loginShown}
       <span class="login" in:fade>
         {#if signedIn}
@@ -223,6 +215,15 @@
         {/if}
       </span>
     {/if}
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      icon="external"
+      label={t.settings.openPortal}
+      testid="open-portal-{portal.portal}"
+      onclick={() => open('home')}
+    />
     <Toggle
       {id}
       checked={portal.enabled}
