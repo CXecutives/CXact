@@ -152,9 +152,14 @@ test.describe('header', () => {
     // line under it.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
     await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
-    const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
     const chosen = (await page.getByTestId('place-inbox').boundingBox())!;
-    expect([line.x, line.width].map(Math.round)).toEqual([chosen.x, chosen.width].map(Math.round));
+    // The line slides back under it (180 ms).
+    await expect
+      .poll(async () => {
+        const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
+        return [line.x, line.width].map(Math.round);
+      })
+      .toEqual([chosen.x, chosen.width].map(Math.round));
     // A search or a filter does not change them.
     await page.getByTestId('search').fill('Interim');
     await expect(rows(page)).toHaveCount(3);

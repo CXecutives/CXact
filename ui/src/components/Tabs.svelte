@@ -104,7 +104,7 @@
     position: relative;
     display: flex;
     align-items: stretch;
-    gap: var(--space-16);
+    gap: var(--space-12);
     min-width: 0;
     height: var(--tabs-height);
     pointer-events: none;

@@ -375,7 +375,7 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-8) var(--space-16);
+    gap: var(--space-8) var(--space-12);
     min-height: var(--tabs-height);
     margin: 0 calc(-1 * var(--pane-padding));
     padding: 0 var(--pane-padding);
