@@ -17,11 +17,12 @@
         "backgroundColor": "#F8F5F1",
         "dragDropEnabled": true,
         "decorations": true,
+        "shadow": true,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "trafficLightPosition": {
-          "x": 20,
-          "y": 28
+          "x": 16,
+          "y": 24
         }
       }
     ]

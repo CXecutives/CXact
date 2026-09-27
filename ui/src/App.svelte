@@ -1,18 +1,16 @@
 <!--
-  The shell below the native title bar of the OS: the sidebar and the white sheet with the
-  three views. Every view switch is the same: the old view fades out (100 ms), then the new
+  The shell: the window's top bar (the same on both OS, TitleBar), below it the sidebar and
+  the white sheet with the three views. Every view switch is the same: the old view fades out (100 ms), then the new
   one fades in (100 ms), so two views are never readable at once (lib/motion). On start
   nothing animates and the app shows useful content at once: the first-run page while
   nothing was ever fetched, otherwise the Jobs view with the last results. Closing while the
   app is busy keeps the window until that has stopped; a calm note says what it waits for
   (a fetch, a rescore, a sign-in, the files). Profil and Einstellungen keep where they were
-  scrolled to while the app runs (a return finds the same place); on macOS their name
-  stands small in the toolbar row. A start whose data cannot load says so and offers to try
-  again, the log and the data folder.
+  scrolled to while the app runs (a return finds the same place). A start whose data cannot
+  load says so and offers to try again, the log and the data folder.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import DragBand from '$components/DragBand.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Menu from '$components/Menu.svelte';
   import Spinner from '$components/Spinner.svelte';
@@ -23,7 +21,6 @@
   import { invoke, onClosing, reportUiError } from '$lib/ipc/api';
   import type { OpenTarget } from '$lib/ipc/types';
   import { fade, viewIn, viewOut } from '$lib/motion/transitions';
-  import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
@@ -34,6 +31,7 @@
   import ProfileView from './features/profile/ProfileView.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
+  import TitleBar from './features/shell/TitleBar.svelte';
 
   run.install();
   jobs.install();
@@ -41,8 +39,6 @@
   void app.load().then((state) => run.attach(state?.running ?? null, state?.lastRun ?? null));
 
   const firstRun = $derived(shell.firstRun);
-  /** macOS: the views keep the toolbar row free (the Jobs view uses it for its list row). */
-  const band = dragBands();
   /** Closing while the app is busy: what the window waits for (null: not closing). */
   let closing = $state<{ activity: string | null } | null>(null);
   $effect(() => onClosing((activity) => (closing = { activity })));
@@ -56,12 +52,12 @@
 </script>
 
 <div class="shell" data-testid="shell">
+  <TitleBar />
   <div class="body">
     <Sidebar />
     <main class="views">
       {#if app.error !== null && app.state === null}
         <section class="view fixed stage" data-testid="view-error">
-          {#if band}<DragBand sheet />{/if}
           <div class="center">
             <EmptyState
               icon="warning"
@@ -95,7 +91,6 @@
       {:else if app.state === null}
         <!-- Until the state is known nothing is guessed (no jobs view flashing before the first run). -->
         <section class="view fixed stage" data-testid="view-loading">
-          {#if band}<DragBand sheet />{/if}
           <div class="center">
             {#if app.slow}<Spinner size="lg" />{/if}
           </div>
@@ -106,7 +101,6 @@
              simply there. -->
         {#if navigation.current === 'jobs' && firstRun}
           <section class="view" data-testid="view-first-run" in:viewIn out:viewOut>
-            {#if band}<DragBand sheet />{/if}
             <FirstRunView />
           </section>
         {:else if navigation.current === 'jobs'}
@@ -121,7 +115,6 @@
             out:viewOut
             use:keepScroll={'profile'}
           >
-            {#if band}<DragBand sheet name={t.nav.profile} />{/if}
             <ProfileView />
           </section>
         {:else}
@@ -132,7 +125,6 @@
             out:viewOut
             use:keepScroll={'settings'}
           >
-            {#if band}<DragBand sheet name={t.nav.settings} />{/if}
             <SettingsView />
           </section>
         {/if}
@@ -189,29 +181,25 @@
     font: var(--type-md);
   }
 
-  /* One white sheet for every view: the sidebar stays on the cream, the sheet's hairline and
-     rounded corner are the only divider between them. */
+  /* One white sheet for every view: the sidebar stays on the cream, the sheet's hairline is
+     the only divider between them (the top bar's hairline runs above both). */
   .views {
     display: grid;
     flex: 1;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
-    border-top: var(--sheet-top-edge) solid var(--border);
     border-left: var(--border-width) solid var(--border);
-    border-top-left-radius: var(--sheet-corner);
     background-color: var(--surface);
   }
 
-  /* All views share one cell; during a switch the new one lies on top and covers the old.
-     The keyboard focus stops below the macOS toolbar row (input.ts keepInView). */
+  /* All views share one cell; during a switch the new one lies on top and covers the old. */
   .view {
     grid-area: 1 / 1;
     min-width: 0;
     min-height: 0;
     overflow: auto;
     background-color: var(--surface);
-    scroll-padding-top: var(--window-top);
   }
 
   /* A view that scrolls always keeps its scrollbar's room (Windows: a transparent track,
@@ -225,7 +213,7 @@
     overflow: hidden;
   }
 
-  /* The loading and the failed start: the toolbar row on top (macOS), the rest centred. */
+  /* The loading and the failed start: centred. */
   .stage {
     display: flex;
     flex-direction: column;

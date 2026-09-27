@@ -612,6 +612,13 @@ export const de = {
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
     demo: 'Demo',
   },
+  /** The caption buttons of the Windows top bar, in the words of Windows. */
+  window: {
+    minimize: 'Minimieren',
+    maximize: 'Maximieren',
+    restore: 'Verkleinern',
+    close: 'Schließen',
+  },
   common: {
     loading: 'Wird geladen',
     cancel: 'Abbrechen',

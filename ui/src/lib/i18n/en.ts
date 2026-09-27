@@ -554,6 +554,12 @@ export const en: Catalog = {
     settings: 'Settings',
     demo: 'Demo',
   },
+  window: {
+    minimize: 'Minimize',
+    maximize: 'Maximize',
+    restore: 'Restore',
+    close: 'Close',
+  },
   common: {
     loading: 'Loading',
     cancel: 'Cancel',

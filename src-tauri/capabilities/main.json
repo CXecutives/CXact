@@ -28,6 +28,8 @@
     "allow-asked-terms",
     "allow-set-unsaved",
     "allow-close-window",
+    "allow-window-button",
+    "allow-window-maximized",
     "allow-save-mailbox",
     "allow-remove-mailbox",
     "allow-portal-login",

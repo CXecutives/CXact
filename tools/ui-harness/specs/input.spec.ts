@@ -384,8 +384,10 @@ test('a press outside closes the menu and does nothing else; so do the wheel and
   await expect.poll(() => scroller.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
   await page.waitForTimeout(200);
   await expect(menu).toBeVisible();
+  // Beside the menu (it hangs from the search over the top of the list).
   const box = (await scroller.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const open = (await menu.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, Math.max(open.y + open.height, box.y) + 24);
   await page.mouse.wheel(0, 200);
   await expect(menu).toHaveCount(0);
 });
@@ -1140,9 +1142,7 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   await expect(chips).toBeFocused();
 });
 
-test('a press on a drag region (the macOS toolbar row) ends the focus of a field', async ({
-  page,
-}) => {
+test('a press on the top bar (a drag region) ends the focus of a field', async ({ page }) => {
   // Tauri's drag script cancels the press on a drag region (the window moves instead):
   // stand in for it, after the input policy's own listener like in the app.
   await page.addInitScript(() => {
@@ -1156,13 +1156,16 @@ test('a press on a drag region (the macOS toolbar row) ends the focus of a field
       }
     });
   });
-  await open(page, '?platform=macos');
-  const search = page.getByTestId('search');
-  await search.click();
-  await expect(search).toBeFocused();
-  const bar = (await page.getByTestId('sidebar').getByTestId('drag-band').boundingBox())!;
-  await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
-  await expect(search).not.toBeFocused();
+  for (const os of ['?platform=macos', '?platform=windows']) {
+    await open(page, os);
+    const search = page.getByTestId('search');
+    await search.click();
+    await expect(search).toBeFocused();
+    // The empty part of the bar (Windows keeps its buttons at the right end).
+    const bar = (await page.getByTestId('title-bar').boundingBox())!;
+    await page.mouse.click(bar.x + 200, bar.y + bar.height / 2);
+    await expect(search).not.toBeFocused();
+  }
 });
 
 test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {

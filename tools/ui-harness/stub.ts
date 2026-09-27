@@ -126,6 +126,11 @@ interface Harness {
   /** The user closes the window (X, Alt+F4, Cmd+Q/W): like main.rs, the page is asked
    *  (`close-requested`) while it holds unsaved changes, else the window closes. */
   requestClose: () => void;
+  /** The window is maximized (`window_button` maximize toggles it and sends
+   *  `window-state`, like platform.rs). */
+  maximized: boolean;
+  /** The window was minimized (`window_button` minimize). */
+  minimized: boolean;
   /** A text of the UI's catalog in the page's language (`'keysHelp.fetch'`, a function
    *  entry called with `args`): specs read texts from the catalog instead of retyping them. */
   text: (path: string, ...args: unknown[]) => Promise<string>;
@@ -1887,6 +1892,18 @@ const handlers: Handlers = {
     harness.closed = true;
     return null;
   },
+  // Like platform.rs: minimize, maximize or restore, and a close request (the page asks
+  // about unsaved changes first).
+  window_button: ({ button }) => {
+    if (button === 'minimize') harness.minimized = true;
+    else if (button === 'close') harness.requestClose();
+    else {
+      harness.maximized = !harness.maximized;
+      harness.fire('window-state', { maximized: harness.maximized });
+    }
+    return null;
+  },
+  window_maximized: () => harness.maximized,
   save_mailbox: async ({ user, password }) => {
     // Like the command: the shape first (before the busy check), nothing is sent while it
     // cannot be right.
@@ -2042,6 +2059,8 @@ const harness: Harness = {
   clipboard: null,
   unsaved: false,
   closed: false,
+  maximized: false,
+  minimized: false,
   holdMailbox: false,
   requestClose() {
     if (!harness.unsaved) {

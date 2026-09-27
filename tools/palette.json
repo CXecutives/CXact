@@ -100,6 +100,13 @@
     "label-hover":            { "css": "hsl(45 7% 17%)", "rgb": [46, 45, 40] },
     "label-press":            { "css": "hsl(212 30% 26%)", "rgb": [46, 65, 86] },
     "label-glyph-hover":      { "css": "hsl(212 34% 37%)", "rgb": [62, 92, 126] },
+    "titlebar-bg":            { "css": "hsl(32 33% 96%)", "rgb": [248, 245, 241] },
+    "titlebar-border":        { "css": "hsl(40 14% 84%)", "rgb": [220, 216, 208] },
+    "titlebar-fg":            { "css": "hsl(45 7% 17%)", "rgb": [46, 45, 40] },
+    "titlebar-fg-inactive":   { "css": "hsl(30 4% 43%)", "rgb": [114, 110, 105] },
+    "titlebar-close-hover":   { "css": "hsl(4 55% 45%)", "rgb": [178, 60, 52] },
+    "titlebar-close-press":   { "css": "hsl(4 55% 41%)", "rgb": [162, 55, 47] },
+    "titlebar-close-fg":      { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "grip-rest":              { "css": "hsl(38 10% 74%)", "rgb": [195, 190, 182] },
     "grip-drag":              { "css": "hsl(30 4% 43%)", "rgb": [114, 110, 105] }
   }

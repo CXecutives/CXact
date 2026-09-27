@@ -83,6 +83,8 @@
   /* Hover and press steps of the filled danger button (same hue). */
   --p-danger-700: 4 55% 41%;
   --p-danger-750: 4 56% 37%;
+  /* The glyph of the top bar's close button on its red: white in every palette. */
+  --p-titlebar-close-glyph: 0 0% 100%;
   --p-on-accent: 0 0% 98%;
   --p-score-high: 150 32% 46%;
   --p-score-high-text: 152 50% 31%;
@@ -326,6 +328,23 @@
   --label-press: var(--pressed);
   --label-glyph-hover: var(--icon-accent);
 
+  /* ----------------------------------------------------------- top bar */
+  /* The window's top bar in the design's colours, never the system's (user, 2026-09-27):
+     the window's surface with a hairline under it; the caption buttons (Windows) take the
+     design's quiet wash under the pointer and a deeper one pressed, the close button the
+     app's own danger red of the delete actions with a white glyph and a darker red pressed;
+     the glyphs fade while the window is in the back. Every palette block names them again,
+     so a design change carries over. */
+  --titlebar-bg: var(--bg);
+  --titlebar-border: var(--border);
+  --titlebar-fg: var(--text);
+  --titlebar-fg-inactive: var(--text-subtle);
+  --titlebar-button-hover: var(--surface-hover);
+  --titlebar-button-press: var(--surface-press);
+  --titlebar-close-hover: var(--danger-strong);
+  --titlebar-close-press: var(--danger-hover);
+  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
+
   /* ------------------------------------------------------------------- radii */
   --radius-xs: 6px;
   --radius-sm: 8px;
@@ -374,29 +393,34 @@
   --row-height: 64px;
   /* The gutter of the unread dot, left of the ring. */
   --dot-gutter: 12px;
-  /* The window's title bar per OS (base.css switches the macOS values by data-platform).
-     Windows: the native title bar sits above the page, which starts right below it. macOS:
-     the unified toolbar row of a Mac app (Mail, Notes, Finder): the title bar is transparent
-     over the page, 52 px high, the traffic lights at x 20 centred in it (trafficLightPosition
-     in tauri.macos.conf.json) and 80 px wide in total. */
-  --mac-toolbar: 52px;
+  /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
+     row across the whole window above the sidebar and the sheet (its hairline under it),
+     empty but for the window buttons; below it the app is the same. Windows: 36 px (the
+     height of Claude's bar there), the app's own caption buttons at the right over the bar's
+     full height, as wide as the native ones of Windows 11 (src-tauri/src/platform.rs answers
+     the window procedure with the same two numbers, core's `window::BAR_HEIGHT` and
+     `CAPTION_BUTTON`, so the snap layouts open over Maximieren). macOS: 44 px (base.css
+     switches), the native traffic lights 16 px from the left and centred in the bar
+     (trafficLightPosition in tauri.macos.conf.json), 80 px of room in total. */
+  --titlebar-height: 36px;
+  --titlebar-height-macos: 44px;
+  --titlebar-button-width: 46px;
   --traffic-lights-width: 80px;
-  /* The top band the page keeps free for the title bar: 0 on Windows, the toolbar row on
-     macOS (empty parts of it move the window). */
-  --window-top: 0px;
+  /* A caption button's glyph: 10 px of thin lines, like Segoe Fluent Icons in the native
+     buttons (the line in the glyph's own units: one CSS pixel). */
+  --titlebar-glyph: 10px;
+  --titlebar-glyph-stroke: 1;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
-     15 px labels (one step above the first row and the sidebar's 14 px), a thin line; on
-     macOS the whole toolbar row next to the traffic lights. */
+     15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 44px;
   /* The chevron part of a split control ("Postfach abrufen" and its Zeitraum): narrower
      than it is high, like the OS's split buttons. */
   --split-menu-width: var(--control-sm);
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
-  /* The top of the list column's header: on Windows the pane padding less what the tabs'
-     row is higher than the first row, so the tabs stay centred on the first line of the
-     window with the sidebar's first entry; on macOS the toolbar row next to the traffic
-     lights (base.css). */
+  /* The top of the list column's header: the pane padding less what the tabs' row is higher
+     than the first row, so the tabs stay centred on the first line of the window with the
+     sidebar's first entry. */
   --list-header-top: calc(var(--pane-padding) - (var(--tabs-height) - var(--first-row)) / 2);
   --list-toolbar: var(--control-md);
   /* The portal's small tile at the start of a row's company line. */
@@ -404,10 +428,6 @@
   /* The round checkbox that takes a row's ring's place on hover (choosing several jobs). */
   --row-check: 20px;
   --row-check-border: 1.5px;
-  /* The white sheet meets the title bar with a hairline and a rounded corner on Windows; on
-     macOS it runs up to the window edge. */
-  --sheet-top-edge: var(--border-width);
-  --sheet-corner: var(--radius-card);
   /* The list column beside the reader: the handle keeps it at least this wide, and the
      reader at least --reader-min (and the list at most 60 % of the content, JobsView). The
      first width is 40 % of the content, at least --list-first-min (where the reader keeps
@@ -468,9 +488,6 @@
   --ring-lg: 96px;
   --ring-lg-stroke: 8px;
   --border-width: 1px;
-  /* No length at all, as a length: a per-OS value that vanishes (base.css) stays one, so
-     calc() can still add it (a bare 0 would void the whole calc). */
-  --length-none: 0px;
   --focus-width: 2px;
   --marker-height: 2px;
   --brand-mark-sm: 24px;
@@ -760,6 +777,17 @@
   --text-heading: hsl(var(--p-ink));
   --text-label: hsl(var(--p-ink));
   --nav-active-fg: hsl(var(--p-ink));
+
+  /* The top bar: the window's surface, the washes, the danger red (red-6 pressed). */
+  --titlebar-bg: var(--bg);
+  --titlebar-border: var(--border);
+  --titlebar-fg: var(--text);
+  --titlebar-fg-inactive: var(--text-subtle);
+  --titlebar-button-hover: var(--surface-hover);
+  --titlebar-button-press: var(--surface-press);
+  --titlebar-close-hover: var(--danger-strong);
+  --titlebar-close-press: var(--danger-hover);
+  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 }
 
 :root[data-palette='dark'] {
@@ -844,6 +872,18 @@
     0 0 0 1px hsl(var(--p-line)), 0 4px 12px hsl(var(--p-shade-pop) / 0.4),
     0 16px 40px hsl(var(--p-shade-pop) / 0.5);
   --sh-primary: 0 1px 2px hsl(var(--p-shade-xs) / 0.4);
+
+  /* The top bar: the window's surface, the washes, the danger red; pressed a shade darker
+     on the dark window (Primer's red steps grow lighter here). */
+  --titlebar-bg: var(--bg);
+  --titlebar-border: var(--border);
+  --titlebar-fg: var(--text);
+  --titlebar-fg-inactive: var(--text-subtle);
+  --titlebar-button-hover: var(--surface-hover);
+  --titlebar-button-press: var(--surface-press);
+  --titlebar-close-hover: var(--danger-strong);
+  --titlebar-close-press: hsl(var(--p-danger-strong) / 0.85);
+  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 }
 
 /* Reduced motion, switched by lib/motion/motion.ts (Svelte and WAAPI ignore the media query,

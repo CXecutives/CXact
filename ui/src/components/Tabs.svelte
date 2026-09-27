@@ -96,8 +96,7 @@
 </div>
 
 <style>
-  /* Only the tabs take the pointer: between them the row around (on macOS the toolbar row,
-     which moves the window) does. */
+  /* Only the tabs take the pointer: between them the row around does. */
   .tabs {
     position: relative;
     display: flex;

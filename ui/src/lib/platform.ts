@@ -1,9 +1,10 @@
 // The one place that decides which OS the UI runs on, and the only place that knows how the
 // two differ. Inside the window both are the same app; what differs does so by the
 // convention of the OS (docs/PLAN.md, "Platforms"):
-//   - the window frame is the native one of the OS (nothing of it is drawn here); on macOS
-//     its title bar is transparent over the page (unified toolbar row, base.css) and the
-//     page marks the empty parts of that row as drag regions (`dragBands()`),
+//   - the window buttons in the app's top bar (features/shell/TitleBar.svelte, the same bar
+//     on both, like the Claude app): Windows gets the app's own caption buttons at the right,
+//     macOS its native traffic lights at the left, whose room the bar keeps free
+//     (`drawsWindowButtons()`),
 //   - dialog buttons: Windows puts the primary first, macOS last (right),
 //   - scrollbars: slim styled ones on Windows, the native overlay scrollbars on macOS
 //     (base.css keys them off `:root[data-platform]`, like the font smoothing),
@@ -11,7 +12,7 @@
 //   - the editing keys of text fields and the context menu key (`keyConventions()`,
 //     applied by lib/input/input.ts: Ctrl on Windows, Cmd on macOS); the app has no
 //     shortcuts of its own.
-// Components ask here (`dragBands()`, `titleShown()`, `primaryFirst()`, `keyConventions()`,
+// Components ask here (`drawsWindowButtons()`, `primaryFirst()`, `keyConventions()`,
 // `platform()`),
 // never compare OS names themselves. The window's focus state is the same on both:
 // `:root[data-window]` is 'inactive' while the window is in the background, and selections
@@ -58,19 +59,11 @@ export function platform(): Platform {
 }
 
 /**
- * The page keeps the toolbar row free and marks its empty parts as drag regions (macOS: the
- * title bar is transparent over the page and WKWebView has no app-region). Windows has its
- * native title bar above the page.
+ * The top bar draws the window buttons itself: Windows (Minimieren, Maximieren, Schließen at
+ * the right, like the native ones of Windows 11). macOS keeps its native traffic lights,
+ * which sit at the left of the same bar; the bar keeps their room free.
  */
-export function dragBands(): boolean {
-  return platform() === 'macos';
-}
-
-/**
- * The window's title shows in its title bar (Windows: "CXact", in the demo "CXact Demo").
- * macOS hides it in the unified toolbar row, so what it says (the demo) stands in the page.
- */
-export function titleShown(): boolean {
+export function drawsWindowButtons(): boolean {
   return platform() === 'windows';
 }
 

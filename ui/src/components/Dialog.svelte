@@ -14,9 +14,9 @@
   open.
   Pressing inside and releasing on the scrim keeps it open; only the left button counts.
   The buttons follow the OS: the action first on Windows (then the third action, then
-  cancel), last (right) on macOS with the third action on the far left. On macOS the scrim
-  starts below the toolbar row, which keeps moving the window (a sheet leaves the title bar
-  free), and nothing in the row can be pressed meanwhile.
+  cancel), last (right) on macOS with the third action on the far left. The scrim starts
+  below the window's top bar, which keeps moving the window and its buttons keep working (a
+  sheet leaves the title bar free).
   A dialog may hold content of its own (`children`: the list of the backups, the mailbox
   form); `alone` leaves only its one button. The sentence under the heading is left out where
   the heading says it all; `items` lists what the action concerns (everything a reset
@@ -26,13 +26,12 @@
 <script lang="ts">
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import { dragBands, primaryFirst } from '$lib/platform';
+  import { primaryFirst } from '$lib/platform';
   import { dialogIn, dialogOut, scrim } from '$lib/motion/transitions';
   import { toasts } from '$lib/state/toasts.svelte';
   import { untrack, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
   import Button from './Button.svelte';
-  import DragBand from './DragBand.svelte';
   import Notice from './Notice.svelte';
 
   interface Props {
@@ -98,8 +97,6 @@
   }
 
   const actionFirst = primaryFirst();
-  /** macOS: the toolbar row stays free of the scrim and moves the window. */
-  const band = dragBands();
 
   /** Where the focus was before the dialog opened; it goes back there on close. */
   let opener: HTMLElement | null = null;
@@ -133,7 +130,6 @@
 
 {#if open}
   <div class="layer" transition:scrim>
-    {#if band}<DragBand />{/if}
     <div
       class="scrim"
       onpointerdown={(event) =>
@@ -214,11 +210,11 @@
 {/if}
 
 <style>
-  /* The whole window: the toolbar row (macOS; it moves the window) above the scrim. */
+  /* The window below its top bar (the bar keeps moving the window). */
   .layer {
     position: fixed;
     z-index: var(--z-overlay);
-    inset: 0;
+    inset: calc(var(--titlebar-height) + var(--border-width)) 0 0;
     display: flex;
     flex-direction: column;
   }

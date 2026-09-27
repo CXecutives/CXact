@@ -1,4 +1,4 @@
-// The shell of the app, in one place: the native frame and the macOS toolbar row, the sidebar
+// The shell of the app, in one place: the window's top bar and its buttons, the sidebar
 // and its views (one table, lib/views.ts), the switch between views, the window sizes it
 // survives, the press that follows the pointer, reduced motion, the tooltips, the toasts and
 // dialogs, the run status, the card of the keys, a start whose data cannot load and the
@@ -20,7 +20,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
-import { T, rowMenu, viaMenu } from './helpers';
+import { T, rowMenu, tokenColour, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -37,15 +37,17 @@ interface Fade {
   order: string[];
 }
 
-// macOS: every point of the 52 px toolbar row either moves the window (Tauri's drag script:
-// a direct hit on an element with data-tauri-drag-region; a double click there zooms) or is
-// a control. Hairlines (the borders between the columns) are the only exception.
+// Every point of the top bar and its hairline either moves the window (Tauri's drag script: a
+// direct hit on an element with data-tauri-drag-region; a double click there maximizes; on
+// Windows the caption window of platform.rs answers for it first) or is a window button.
 const DRAG_PROBE = (): string[] => {
   const CONTROL =
     'a, button, input, select, textarea, label, summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="tab"], [role="switch"], [role="radio"], [role="checkbox"], [role="option"], [role="menuitem"]';
   const dead: string[] = [];
   const width = document.documentElement.clientWidth;
-  for (const y of [1, 14, 26, 38, 51]) {
+  const bar = document.querySelector('[data-testid="title-bar"]')!.getBoundingClientRect();
+  const rows = [1, bar.height / 4, bar.height / 2, (bar.height * 3) / 4, bar.height - 2];
+  for (const y of [...rows.map(Math.round), bar.height - 1]) {
     for (let x = 1; x < width - 1; x += 5) {
       const hit = document.elementFromPoint(x, y);
       if (hit === null) {
@@ -259,73 +261,181 @@ test('the navigation switches the view', async ({ page }) => {
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
-// The window frame is the native one of each OS (icon, title, caption buttons, system menu,
-// snap layouts): the page draws none of it and has no drag region of its own.
-for (const os of ['windows', 'macos']) {
-  test(`${os}: no title bar in the page, the content starts at the top`, async ({ page }) => {
+// The window's top bar is the same on both OS, like the Claude app's: across the whole window
+// in the design's window colour with a hairline under it, empty but for the window buttons
+// (Windows: 36 px, the app's caption buttons at the right; macOS: 44 px, the room of the native
+// traffic lights at the left). Below it the app is the same.
+const BAR = { windows: 36, macos: 44 } as const;
+type Os = keyof typeof BAR;
+const osOf = (query: string): Os => (query.includes('macos') ? 'macos' : 'windows');
+/** The bar and its hairline: where the content starts. */
+const contentTop = (os: Os): number => BAR[os] + 1;
+
+for (const os of ['windows', 'macos'] as const) {
+  test(`${os}: the top bar spans the window, the content starts below it`, async ({ page }) => {
     await open(page, `?platform=${os}`);
     await expect(page.locator('html')).toHaveAttribute('data-platform', os);
-    await expect(page.getByTestId('titlebar')).toHaveCount(0);
-    expect((await page.getByTestId('sidebar').boundingBox())!.y).toBe(0);
+    const bar = page.getByTestId('title-bar');
+    const width = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(await bar.boundingBox()).toEqual({ x: 0, y: 0, width, height: contentTop(os) });
+    const look = await bar.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return [style.backgroundColor, style.borderBottomWidth, style.borderBottomColor];
+    });
+    expect(look).toEqual([
+      await tokenColour(page, '--titlebar-bg'),
+      '1px',
+      await tokenColour(page, '--titlebar-border'),
+    ]);
+    expect((await page.getByTestId('sidebar').boundingBox())!.y).toBe(contentTop(os));
+    const sheet = await page
+      .locator('main.views')
+      .evaluate((node) => [
+        node.getBoundingClientRect().top,
+        getComputedStyle(node).borderTopWidth,
+      ]);
+    expect(sheet).toEqual([contentTop(os), '0px']);
+    // Nothing but the bar moves the window (on macOS the room of the lights is part of it).
+    const drags = page.locator('[data-tauri-drag-region]');
+    await expect(drags).toHaveCount(os === 'macos' ? 2 : 1);
+    for (const node of await drags.all()) {
+      expect(await node.evaluate((el) => el.closest('[data-testid="title-bar"]') !== null)).toBe(
+        true,
+      );
+    }
   });
 }
 
-test('windows: no drag region; the first view is centred on the line of the place tabs', async ({
+test('below the bar the content is laid out the same on both OS, the first line included', async ({
   page,
 }) => {
-  await open(page, '?platform=windows');
-  await expect(page.locator('[data-tauri-drag-region]')).toHaveCount(0);
+  const at = async (os: Os): Promise<number[]> => {
+    await open(page, `?platform=${os}`);
+    const y = async (id: string): Promise<number> =>
+      (await page.getByTestId(id).boundingBox())!.y - contentTop(os);
+    return [await y('sidebar'), await y('nav-jobs'), await y('places'), await y('search')];
+  };
+  expect(await at('macos')).toEqual(await at('windows'));
   // The first entry (36 px) and the tabs (40 px) share their middle: the first line.
-  const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
   const nav = middle(await page.getByTestId('nav-jobs').boundingBox());
   const tabs = middle(await page.getByTestId('places').boundingBox());
   expect(nav).toBe(tabs);
 });
 
-// macOS: the unified toolbar row of a Mac app. The title bar is transparent over the page
-// (52 px, traffic lights at x 20, centred); the sidebar runs to the top with the lights in
-// its first 52 px, the list's first row is centred on them, the sheet reaches the top edge,
-// and the empty parts of the row move the window.
-test('macos: the unified toolbar row', async ({ page, browserName }) => {
-  await open(page, '?platform=macos');
-  const ROW = 52;
-  const lightsBand = page.getByTestId('sidebar').getByTestId('drag-band');
-  expect(await lightsBand.boundingBox()).toMatchObject({ x: 0, y: 0, height: ROW });
-  const tabs = (await page.getByTestId('places').boundingBox())!;
-  expect(tabs.y + tabs.height / 2).toBe(ROW / 2);
-  // The row itself (outside the tabs) drags; the reader side keeps a band of the row.
-  await expect(page.getByTestId('list-header').locator('.places')).toHaveAttribute(
-    'data-tauri-drag-region',
-    '',
+// Windows: Minimieren, Maximieren and Schließen at the right, 46 px wide over the bar's height,
+// named in tooltips in the words of Windows, not in the tab order; Schließen turns red with a
+// white glyph under the pointer. A click goes through `window_button`; Maximieren then names
+// itself Verkleinern.
+test('windows: the caption buttons of the top bar', async ({ page }) => {
+  await open(page, WIN);
+  const buttons = page.getByTestId('title-bar').getByRole('button');
+  await expect(buttons).toHaveCount(3);
+  const width = await page.evaluate(() => document.documentElement.clientWidth);
+  const boxes = await Promise.all(
+    ['window-minimize', 'window-maximize', 'window-close'].map(
+      async (id) => (await page.getByTestId(id).boundingBox())!,
+    ),
   );
-  const readerBand = page.getByTestId('reader-pane').getByTestId('drag-band');
-  expect(await readerBand.boundingBox()).toMatchObject({ y: 0, height: ROW });
-  // The views start below the lights; the sheet has no top edge.
-  expect((await page.getByTestId('nav-jobs').boundingBox())!.y).toBeGreaterThanOrEqual(ROW);
-  const sheet = await page
-    .locator('main.views')
-    .evaluate((node) => [node.getBoundingClientRect().top, getComputedStyle(node).borderTopWidth]);
-  expect(sheet).toEqual([0, '0px']);
-  // Profil and Einstellungen keep the row free too.
-  for (const view of ['profile', 'settings']) {
-    await page.getByTestId(`nav-${view}`).click();
-    const band = page.getByTestId(`view-${view}`).getByTestId('drag-band');
-    // Once the cross-fade has settled.
-    await expect.poll(async () => (await band.boundingBox())?.y).toBe(0);
-    expect(await band.boundingBox()).toMatchObject({ height: ROW });
+  boxes.forEach((box, at) => {
+    expect(box).toEqual({ x: width - 46 * (3 - at), y: 0, width: 46, height: BAR.windows });
+  });
+  for (const node of await buttons.all()) await expect(node).toHaveAttribute('tabindex', '-1');
+  const names: [string, string][] = [
+    ['window-minimize', 'window.minimize'],
+    ['window-maximize', 'window.maximize'],
+    ['window-close', 'window.close'],
+  ];
+  for (const [id, key] of names) {
+    const button = page.getByTestId(id);
+    await expect(button).toHaveAccessibleName(await text(page, key));
+    await button.hover();
+    await expect(tooltip(page)).toHaveText(await text(page, key));
+    await expect(button).not.toHaveAttribute('title');
   }
+  // Schließen under the pointer: red, the glyph white.
+  const close = page.getByTestId('window-close');
+  await close.hover();
+  await expect
+    .poll(() => close.evaluate((node) => getComputedStyle(node).backgroundColor))
+    .toBe(await tokenColour(page, '--titlebar-close-hover'));
+  await expect
+    .poll(() => close.evaluate((node) => getComputedStyle(node).color))
+    .toBe(await tokenColour(page, '--titlebar-close-fg'));
+  // Minimieren under the pointer: the quiet wash.
+  const minimize = page.getByTestId('window-minimize');
+  await minimize.hover();
+  await expect
+    .poll(() => minimize.evaluate((node) => getComputedStyle(node).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)');
+  // Maximieren maximizes and names itself Verkleinern; again, it restores.
+  const maximize = page.getByTestId('window-maximize');
+  await maximize.click();
+  await expect(maximize).toHaveAccessibleName(await text(page, 'window.restore'));
+  await maximize.click();
+  await expect(maximize).toHaveAccessibleName(await text(page, 'window.maximize'));
+  await minimize.click();
+  const pressed = (await calls(page, 'window_button')).map(
+    ([, args]) => (args as { button: string }).button,
+  );
+  expect(pressed).toEqual(['maximize', 'maximize', 'minimize']);
+  await expect.poll(() => page.evaluate(() => window.__harness.minimized)).toBe(true);
+  // A press on a button takes no focus (like a native caption button).
+  expect(
+    await page.evaluate(() => document.activeElement?.closest('[data-testid="title-bar"]')),
+  ).toBeNull();
+});
+
+// In the app a window of the OS lies over the bar (platform.rs) and reports the pointer; the
+// buttons show it as if the pointer were over them, the tooltip included, and the maximized
+// state comes from the window.
+test('windows: the caption buttons show what the window over the bar reports', async ({ page }) => {
+  await open(page, WIN);
+  const close = page.getByTestId('window-close');
+  await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: null }));
+  await expect(close).toHaveClass(/hover/);
+  await expect
+    .poll(() => close.evaluate((node) => getComputedStyle(node).backgroundColor))
+    .toBe(await tokenColour(page, '--titlebar-close-hover'));
+  await expect(tooltip(page)).toHaveText(await text(page, 'window.close'));
+  await page.evaluate(() => window.__harness.fire('caption', { hover: 'close', pressed: 'close' }));
+  await expect(close).toHaveClass(/pressed/);
+  await expect(tooltip(page)).toHaveCount(0);
+  await page.evaluate(() => window.__harness.fire('caption', { hover: null, pressed: null }));
+  await expect(close).not.toHaveClass(/hover|pressed/);
+  await page.evaluate(() => window.__harness.fire('window-state', { maximized: true }));
+  await expect(page.getByTestId('window-maximize')).toHaveAccessibleName(
+    await text(page, 'window.restore'),
+  );
+  // Schließen asks like the close button of the OS: unsaved changes first.
+  await page.evaluate(() => (window.__harness.unsaved = true));
+  await close.click();
+  expect(await page.evaluate(() => window.__harness.closed)).toBe(false);
+});
+
+// macOS: the native traffic lights sit at the left of the same bar, 16 px in and centred (x 16,
+// y 24 in
+// tauri.macos.conf.json); the page draws no window buttons and keeps their room free.
+test('macos: no window buttons in the page, the room of the traffic lights', async ({
+  page,
+  browserName,
+}) => {
+  await open(page, MAC);
+  await expect(page.getByTestId('window-buttons')).toHaveCount(0);
+  await expect(page.getByTestId('title-bar').getByRole('button')).toHaveCount(0);
+  const lights = page.getByTestId('traffic-lights');
+  expect(await lights.boundingBox()).toEqual({ x: 0, y: 0, width: 80, height: BAR.macos });
+  await expect(lights).toHaveAttribute('data-tauri-drag-region', '');
   // A picture with the traffic lights drawn in where macOS puts them (for humans; WebKit
   // reports Playwright's screenshot styles as a CSP violation).
   if (process.env.SHOTS_DIR && browserName === 'chromium') {
-    await page.getByTestId('nav-jobs').click();
     await page.evaluate(() => {
       const colours = ['#ff5f57', '#febc2e', '#28c840'];
       colours.forEach((colour, i) => {
         const dot = document.body.appendChild(document.createElement('div'));
         Object.assign(dot.style, {
           position: 'fixed',
-          left: `${20 + i * 20}px`,
-          top: '19px',
+          left: `${16 + i * 20}px`,
+          top: '15px',
           width: '14px',
           height: '14px',
           borderRadius: '7px',
@@ -334,43 +444,38 @@ test('macos: the unified toolbar row', async ({ page, browserName }) => {
         });
       });
     });
-    await page.screenshot({ path: `${process.env.SHOTS_DIR}/macos-toolbar-marked.png` });
+    await page.screenshot({ path: `${process.env.SHOTS_DIR}/macos-top-bar-marked.png` });
   }
 });
 
-test('macos: the whole toolbar row moves the window, in every view and width', async ({ page }) => {
-  const states: [string, { width: number; height: number }, (p: typeof page) => Promise<void>][] = [
-    ['jobs', { width: 1360, height: 900 }, async () => undefined],
-    [
-      'reader',
-      { width: 1360, height: 900 },
-      (p) => p.locator('[data-testid^="job-row-"]').first().click(),
-    ],
-    ['rail', { width: 1000, height: 700 }, async () => undefined],
-    ['narrow list', { width: 780, height: 560 }, async () => undefined],
-    [
-      'narrow reader',
-      { width: 780, height: 560 },
-      (p) => p.locator('[data-testid^="job-row-"]').first().click(),
-    ],
-    ['profile', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-profile').click()],
-    ['settings', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-settings').click()],
-    ['minimum', { width: 480, height: 360 }, async () => undefined],
-  ];
-  for (const [name, size, go] of states) {
-    await page.setViewportSize(size);
-    await open(page, '?platform=macos');
-    await go(page);
-    await settle(page);
-    // Probe once the new stage or view has risen into place: halfway, the band of the row
-    // stands a few pixels lower than the row.
-    await motionSettled(page);
-    expect(await page.evaluate(DRAG_PROBE), name).toEqual([]);
-  }
-  await page.setViewportSize({ width: 1360, height: 900 });
-  await open(page, '?platform=macos&scenario=first-run');
-  expect(await page.evaluate(DRAG_PROBE), 'first run').toEqual([]);
-});
+for (const os of [WIN, MAC]) {
+  test(`the whole top bar moves the window, in every view and width ${os}`, async ({ page }) => {
+    const states: [string, { width: number; height: number }, (p: typeof page) => Promise<void>][] =
+      [
+        ['jobs', { width: 1360, height: 900 }, async () => undefined],
+        [
+          'reader',
+          { width: 1360, height: 900 },
+          (p) => p.locator('[data-testid^="job-row-"]').first().click(),
+        ],
+        ['rail', { width: 1000, height: 700 }, async () => undefined],
+        ['profile', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-profile').click()],
+        ['settings', { width: 1360, height: 900 }, (p) => p.getByTestId('nav-settings').click()],
+        ['minimum', { width: 480, height: 360 }, async () => undefined],
+      ];
+    for (const [name, size, go] of states) {
+      await page.setViewportSize(size);
+      await open(page, os);
+      await go(page);
+      await settle(page);
+      await motionSettled(page);
+      expect(await page.evaluate(DRAG_PROBE), name).toEqual([]);
+    }
+    await page.setViewportSize({ width: 1360, height: 900 });
+    await open(page, `${os}&scenario=first-run`);
+    expect(await page.evaluate(DRAG_PROBE), 'first run').toEqual([]);
+  });
+}
 
 test('the native menu opens a view (macOS: Einstellungen with Cmd+,)', async ({ page }) => {
   await open(page, '?platform=macos');
@@ -576,11 +681,11 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
   expect(await loads()).toBe(all);
 });
 
-/* ------------------------------- Tooltips, focus, scroll places, toasts, the toolbar row */
+/* ------------------------------------------- Tooltips, focus, scroll places, toasts */
 
 // Final round, shell track: tooltips on keyboard focus, the focus back on the trigger, the
 // scroll place of Profil and Einstellungen, the first line of every view, the toasts above a
-// bottom bar and their keys, the macOS toolbar row, the card of the keys and a start whose
+// bottom bar and their keys, a dialog under the top bar, the card of the keys and a start whose
 // data cannot load.
 
 test('a tooltip shows on keyboard focus after the delay and goes on blur, resize and window blur', async ({
@@ -724,44 +829,20 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
-test('macOS: Profil and Einstellungen name the view in the toolbar row', async ({ page }) => {
-  for (const [view, name] of [
-    ['profile', 'Profil'],
-    ['settings', 'Einstellungen'],
-  ] as const) {
-    await open(page, `${MAC}&view=${view}`);
-    const title = page.getByTestId(`view-${view}`).getByTestId('toolbar-name');
-    await expect(title).toHaveText(name);
-    const box = (await title.boundingBox())!;
-    expect(box.y).toBeGreaterThanOrEqual(0);
-    expect(box.y + box.height).toBeLessThanOrEqual(52);
-    // The name moves the window like the rest of the row.
-    const hit = await page.evaluate(
-      ([x, y]) => document.elementFromPoint(x!, y!)?.hasAttribute('data-tauri-drag-region'),
-      [box.x + box.width / 2, box.y + box.height / 2],
+for (const os of [WIN, MAC]) {
+  test(`a dialog leaves the top bar free, and the bar moves the window ${os}`, async ({ page }) => {
+    await open(page, `${os}&view=settings`);
+    await page.getByTestId('reset').click();
+    await expect(page.getByTestId('dialog-reset')).toBeVisible();
+    await settle(page);
+    const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
+    expect(scrim.y).toBe(contentTop(osOf(os)));
+    const hit = await page.evaluate(() =>
+      document.elementFromPoint(600, 18)?.hasAttribute('data-tauri-drag-region'),
     );
     expect(hit).toBe(true);
-  }
-  // Windows has no row: no name.
-  await open(page, `${WIN}&view=profile`);
-  await expect(page.getByTestId('toolbar-name')).toHaveCount(0);
-});
-
-test('macOS: a dialog leaves the toolbar row free, and the row moves the window', async ({
-  page,
-}) => {
-  await open(page, `${MAC}&view=settings`);
-  await page.getByTestId('reset').click();
-  await expect(page.getByTestId('dialog-reset')).toBeVisible();
-  await settle(page);
-  const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
-  expect(scrim.y).toBe(52);
-  const hit = await page.evaluate(() =>
-    document.elementFromPoint(600, 26)?.hasAttribute('data-tauri-drag-region'),
-  );
-  expect(hit).toBe(true);
-});
-
+  });
+}
 test('a start whose data cannot load: try again, the log, the data folder', async ({ page }) => {
   await open(page, `${WIN}&scenario=load-failed`);
   const failed = page.getByTestId('view-error');
@@ -776,12 +857,16 @@ test('a start whose data cannot load: try again, the log, the data folder', asyn
   await expect(page.getByTestId('view-jobs')).toBeVisible();
 });
 
-test('macOS: the loading and the failed start keep the toolbar row', async ({ page }) => {
-  await open(page, `${MAC}&scenario=load-failed`);
-  const band = page.getByTestId('view-error').getByTestId('drag-band');
-  expect(await band.boundingBox()).toMatchObject({ y: 0, height: 52 });
+test('the failed start keeps the top bar', async ({ page }) => {
+  for (const os of [WIN, MAC]) {
+    await open(page, `${os}&scenario=load-failed`);
+    await expect(page.getByTestId('view-error')).toBeVisible();
+    expect(await page.getByTestId('title-bar').boundingBox()).toMatchObject({
+      y: 0,
+      height: contentTop(osOf(os)),
+    });
+  }
 });
-
 /* ------------------------------ Lists, panes, the run status, closing, shared components */
 
 // Wave 1, track "shell": the scrollbar's room in the Jobs view, the keys of lists, panes and
@@ -839,9 +924,7 @@ test('with scrollbars shown the list and the reader keep their room: edges line 
   }
 });
 
-test('keyboard focus stays clear of the macOS toolbar band and the reader bar', async ({
-  page,
-}) => {
+test('keyboard focus stays clear of the reader bar', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 600 });
   // The centre of the focused control is the control itself, not the band over it.
   const covered = async (): Promise<string | null> =>

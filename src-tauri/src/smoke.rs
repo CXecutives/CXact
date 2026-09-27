@@ -1,7 +1,8 @@
 //! Self-check for development and acceptance: `job-alert-monitor --smoke` loads the UI,
-//! checks the shell against the UI contract (`data-testid`), clicks through the three sidebar
-//! entries and exits with 0 (all fine), 1 (contract broken, a step failed or a CSP violation)
-//! or 2 (timeout).
+//! checks the shell against the UI contract (`data-testid`: the top bar, on Windows with its
+//! caption buttons, whose window answers `HTMAXBUTTON` over Maximieren), clicks through the
+//! three sidebar entries and exits with 0 (all fine), 1 (contract broken, a step failed or a
+//! CSP violation) or 2 (timeout).
 //!
 //! Every view stays on screen for [`HOLD`], longer than two intervals of the CI screenshot
 //! loop (1.5 s), so each one is captured; the output names the view shown
@@ -13,7 +14,8 @@
 //! run has to end in the idle state. After that it measures frames while switching views,
 //! scrolling and opening jobs in the reader (`SMOKE {"step":"views",...}`): frame intervals
 //! (p50, p95, max), dropped frames, long tasks and long animation frames. The numbers are
-//! printed, not gated - frame times on CI machines vary too much for a threshold.
+//! printed, not gated - frame times on CI machines vary too much for a threshold. Last, on
+//! Windows, Maximieren of the top bar maximizes and restores the window (`window`).
 //!
 //! Debug build only (`#[cfg(debug_assertions)]` where `main.rs` includes it).
 
@@ -30,7 +32,7 @@ const TABS: [&str; 3] = ["jobs", "profile", "settings"];
 /// How long each view stays on screen for the CI screenshots.
 const HOLD: Duration = Duration::from_secs(3);
 /// The steps of `--smoke-run`, in this order (`window.__smoke` in [`INIT`] runs them).
-const SCENARIOS: [&str; 5] = ["run", "run", "views", "scroll", "reader"];
+const SCENARIOS: [&str; 6] = ["run", "run", "views", "scroll", "reader", "window"];
 /// The whole check ends after this long (CI kills the process after 150 s).
 const WATCHDOG: Duration = Duration::from_secs(60);
 const WATCHDOG_RUN: Duration = Duration::from_secs(130);
@@ -153,6 +155,20 @@ const INIT: &str = r#"(() => {
       }
       return { ok: q('reader') !== null, opened: rows.length, perf: stop() };
     },
+    // The caption buttons of the top bar (Windows; macOS has its traffic lights): Maximieren
+    // maximizes the window through window_button and then names itself Verkleinern, a
+    // second click restores it.
+    async window() {
+      const max = () => q('window-maximize');
+      if (max() === null) return { ok: true, buttons: false };
+      const before = max().getAttribute('aria-label');
+      max().click();
+      const maximized = await until(() => max()?.getAttribute('aria-label') !== before, 5000);
+      const named = max()?.getAttribute('aria-label');
+      max().click();
+      const restored = await until(() => max()?.getAttribute('aria-label') === before, 5000);
+      return { ok: maximized && restored, buttons: true, before, named };
+    },
   };
 
   const results = [];
@@ -177,6 +193,9 @@ const PROBE: &str = r#"(() => { try {
     return JSON.stringify({
       // The sidebar's entries come with the app state (nothing is guessed before it).
       ready: shown(q('shell')) && shown(q('sidebar')) && q('nav-jobs') !== null,
+      // The top bar on both OS; the caption buttons only where the page draws them.
+      bar: q('title-bar')?.getBoundingClientRect().height ?? 0,
+      buttons: document.querySelectorAll('[data-testid="window-buttons"] button').length,
       tabs: document.querySelectorAll('[data-testid^="nav-"]').length,
       named: ['nav-jobs', 'nav-profile', 'nav-settings'].every((id) => !!q(id)),
       tauri: '__TAURI_INTERNALS__' in window,
@@ -236,10 +255,15 @@ pub fn attach<R: Runtime, M: Manager<R>>(
 }
 
 fn check_shell<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
-    // The three views of the sidebar.
+    // The three views of the sidebar, the top bar with the caption buttons of Windows (macOS
+    // has its traffic lights).
+    let buttons = if cfg!(windows) { 3 } else { 0 };
     let ok = value["tabs"] == TABS.len()
         && value["named"] == true
         && value["tauri"] == true
+        && value["bar"].as_f64().is_some_and(|height| height > 0.0)
+        && value["buttons"] == buttons
+        && caption_answers(window)
         && no_csp_violation(value);
     if ok {
         TAB.store(0, Ordering::SeqCst);
@@ -247,6 +271,38 @@ fn check_shell<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
     } else {
         window.app_handle().exit(1);
     }
+}
+
+/// Windows: the window has no native title bar, and over Maximieren both the window over the
+/// top bar and the main window answer HTMAXBUTTON, which opens the snap layouts
+/// (SMOKE {"caption":...}). macOS keeps its frame.
+#[cfg(windows)]
+fn caption_answers<R: Runtime>(window: &WebviewWindow<R>) -> bool {
+    let decorated = window.is_decorated().unwrap_or(true);
+    let Some(probe) = crate::platform::caption::probe(window) else {
+        println!("SMOKE caption window missing");
+        return false;
+    };
+    let line = serde_json::json!({
+        "caption": {
+            "decorated": decorated,
+            "barHit": probe.bar_hit,
+            "mainHit": probe.main_hit,
+            "maximize": probe.maximize,
+            "covers": probe.covers,
+            "bar": probe.bar,
+        }
+    });
+    println!("SMOKE {line}");
+    !decorated
+        && probe.covers == probe.bar
+        && probe.bar_hit == Some(probe.maximize)
+        && probe.main_hit == Some(probe.maximize)
+}
+
+#[cfg(not(windows))]
+fn caption_answers<R: Runtime>(window: &WebviewWindow<R>) -> bool {
+    window.is_decorated().unwrap_or(false)
 }
 
 /// Clicks the next tab and waits until its view is the only one on screen; after the
@@ -303,7 +359,7 @@ fn view_shown<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
 /// macOS, once the Jobs view is on screen: where the close button sits
 /// (`SMOKE {"lights":...}`: configured position, the button's x, y from the top, width and
 /// height in points, and its centre), so the CI log shows whether the lights are centred in
-/// the page's 52 px toolbar row (centre 26).
+/// the page's 44 px top bar (centre 22).
 #[cfg(target_os = "macos")]
 fn report_traffic_lights<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
     if value["tab"] != "jobs" {

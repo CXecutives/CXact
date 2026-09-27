@@ -11,8 +11,7 @@
   without a mailbox, saying why. In the Papierkorb "Papierkorb leeren" (outlined, the trash
   in red, asks first), in the Archiv none. The row stays one line at the usual widths: a
   narrow column first drops the tabs' numbers, a narrower one puts the action under the
-  tabs. On macOS this row is the list's part of the toolbar row next to the traffic lights,
-  and its empty parts move the window.
+  tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
   sets none), the one control of the order and the filter: its menu holds, under small
@@ -41,7 +40,6 @@
   import { t } from '$lib/i18n/t';
   import type { Place } from '$lib/ipc/types';
   import { fade, unfold } from '$lib/motion/transitions';
-  import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { inPortalOrder } from '$lib/portals';
   import { activeFilters, NO_FILTER, type ListFilter } from '$lib/state/filter';
@@ -247,7 +245,7 @@
 {/snippet}
 
 <div class="header" class:scrolled data-testid="list-header" data-press-only>
-  <div class="places" data-tauri-drag-region={dragBands() ? '' : undefined}>
+  <div class="places">
     <Tabs
       options={places}
       value={place}
@@ -285,7 +283,7 @@
       </span>
     {/if}
   </div>
-  <div class="top" data-tauri-drag-region={dragBands() ? '' : undefined}>
+  <div class="top">
     {#if tools}
       <span class="search" bind:this={searchBox}>
         <TextField
@@ -375,8 +373,7 @@
     border-bottom-color: var(--border);
   }
 
-  /* The rows span the header's side padding too, so on macOS their empty ends move the
-     window like the rest of the toolbar row. A narrow column puts the action under the
+  /* The rows span the header's side padding too. A narrow column puts the action under the
      tabs (after it dropped their numbers, below). */
   .places {
     display: flex;
