@@ -8,8 +8,9 @@
   erreichbar" or "Abgelehnt" only for a mail error of a fetch that finished after Gmail last
   accepted the mailbox (`mailbox.checkedAt`), with a sentence at the end of the card where it
   adds the next step; a sentence unfolds, so the cards below glide. A run, the dry run and
-  the demo lock the mailbox with their reason. A dialog whose action fails stays open and
-  says why inside; its button tries again.
+  the demo lock the mailbox with their reason. The demo has no mailbox (its sample address
+  only keeps the app from asking for one): the row says "Kein Postfach", like its note. A
+  dialog whose action fails stays open and says why inside; its button tries again.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -103,7 +104,7 @@
 </script>
 
 <Card padding="rows">
-  {#if cfg.mailbox.user}
+  {#if cfg.mailbox.user && !cfg.demo}
     <SettingRow label={cfg.mailbox.user} copyLabel testid="mailbox">
       {#snippet badges()}
         {#if mailFailure}

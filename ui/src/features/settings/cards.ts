@@ -23,7 +23,7 @@ export interface Lock {
   t: Catalog;
   /** A run goes (a fetch or a rescore). */
   running: boolean;
-  /** Why a run holds the app ("Ein Abruf läuft gerade."). */
+  /** Why a run holds the app, by its kind ("Gerade läuft schon ein Abruf."). */
   busyText: string;
 }
 
@@ -59,17 +59,19 @@ export const ACTIONS = {
     icon: 'folder',
     open: { kind: 'workspace' },
   },
+  // A file opens while its switch is on: the backend writes it fresh before it opens (also
+  // the first time); switched off the app writes none, and the row says how to get it.
   excelOpen: {
     label: (t) => t.common.open,
     icon: 'excel',
     open: { kind: 'excel' },
-    locked: ({ state, t }) => (state.settings.excelExists ? null : t.settings.excelMissing),
+    locked: ({ state, t }) => (state.exportExcel ? null : t.settings.excelOff),
   },
   csvOpen: {
     label: (t) => t.common.open,
     icon: 'document',
     open: { kind: 'csv' },
-    locked: ({ state, t }) => (state.settings.csvExists ? null : t.settings.csvMissing),
+    locked: ({ state, t }) => (state.exportCsv ? null : t.settings.csvOff),
   },
   // Opens the list of the copies; the restore can be undone.
   backupRestore: {

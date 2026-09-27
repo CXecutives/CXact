@@ -119,9 +119,10 @@ class RunStore {
     return this.#startFailure === null ? null : errorText(this.#startFailure.error);
   }
 
-  /** Why an action waits while a run goes. */
+  /** Why an action waits while a run goes, by its kind (a fetch, the ads of a details run, a
+   *  rescore): the words of the backend's busy error. */
   get busyText(): string {
-    return this.kind === 'rescore' ? t.run.rescoring : t.settings.running;
+    return t.error.text('busy', { activity: this.kind });
   }
 
   /** Why a run that reads the mailbox (Postfach abrufen) cannot start now, in the

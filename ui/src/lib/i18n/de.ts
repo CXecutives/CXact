@@ -879,7 +879,6 @@ export const de = {
       scoring: 'Jobs werden bewertet',
       files: 'Dateien werden geschrieben',
     },
-    rescoring: 'Die Jobs werden gerade neu bewertet.',
     /**
      * A file the export could not write (`export.error.params.target`); the old file stays.
      * `overviewLocked`: the Excel file is open in another program.
@@ -1479,13 +1478,14 @@ export const de = {
     signInWaiting: 'Das Anmeldefenster ist offen.',
     /** A portal that is on sent no alert mail for a week or longer (its alert may have run
      *  out), and the way to its page. */
-    alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
+    alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
     checkAlert: 'Alert prüfen',
     folder: 'Exportordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',
-    excelMissing: 'Die Excel-Datei entsteht beim nächsten Abruf.',
-    csvMissing: 'Die CSV-Datei entsteht beim nächsten Abruf.',
+    /** Why "Öffnen" of a file waits while its switch is off (the app writes none then). */
+    excelOff: 'Schalte die Excel-Datei ein.',
+    csvOff: 'Schalte die CSV-Datei ein.',
     /** Another result folder: the profile came along (or the folder has its own), the files
      *  are written there at once. */
     folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
@@ -1504,7 +1504,7 @@ export const de = {
       restore: 'vor dem Wiederherstellen',
     } satisfies Record<BackupKind, string | null>,
     backupText: 'Der jetzige Stand wird vorher gesichert.',
-    backupRestored: 'Sicherung wiederhergestellt.',
+    backupRestored: 'Sicherung wiederhergestellt',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
     /** The row of the reset, its button and its dialog. */
@@ -1512,11 +1512,12 @@ export const de = {
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText: 'Die App löscht Folgendes und startet dann neu.',
-    /** Everything the reset deletes, one item each (the dialog's list): the database, the
-     *  profile, the keychain entry, the portal sign-ins and the app's files. */
+    /** Everything the reset deletes, one item each (the dialog's list): the database, its
+     *  copies, every profile, the keychain entry, the portal sign-ins and the app's files. */
     resetItems: [
       'die Jobs und die Einstellungen',
-      'das Profil',
+      'die Sicherungen',
+      'die Profile',
       'das App-Passwort',
       'die Anmeldungen bei den Portalen',
       'die Dateien der App im Exportordner',
@@ -1525,7 +1526,6 @@ export const de = {
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
     resetPartly: (value: number) =>
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
-    running: 'Ein Abruf läuft gerade.',
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',

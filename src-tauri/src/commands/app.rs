@@ -267,8 +267,8 @@ fn daily_backup(app: &AppHandle) {
 }
 
 /// Saves portal switches, the fetch range, which files the export writes, the language and
-/// the palette. The workspace only changes through the dialog. Another language or the Excel
-/// file switched on writes the Excel file a moment later (like a mark); another palette
+/// the palette. The workspace only changes through the dialog. Another language, or the Excel
+/// or the CSV file switched on, writes the files a moment later (like a mark); another palette
 /// dresses the window at once.
 #[tauri::command]
 pub async fn save_settings(
@@ -278,17 +278,18 @@ pub async fn save_settings(
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
-    let (language, excel) = (
+    let (language, excel, csv) = (
         settings.language_or(state.system_language),
         settings.export_excel,
+        settings.export_csv,
     );
     patch.apply(&mut settings);
     settings.save(&state.store)?;
     if patch.palette.is_some() {
         crate::platform::dress(&window, settings.palette);
     }
-    if settings.language_or(state.system_language) != language || (settings.export_excel && !excel)
-    {
+    let switched_on = (settings.export_excel && !excel) || (settings.export_csv && !csv);
+    if settings.language_or(state.system_language) != language || switched_on {
         super::files::marked(&app);
     }
     build_state(&state)

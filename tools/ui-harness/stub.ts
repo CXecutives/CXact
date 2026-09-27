@@ -2269,13 +2269,13 @@ const handlers: Handlers = {
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };
   },
-  // Like `existing` (commands/files.rs): a result file nothing wrote yet is not found, nor
-  // one switched off (the Excel file, the CSV file alike).
+  // Like `overview` (commands/files.rs): a result file switched off is not found (the app
+  // writes none); one switched on is written fresh before it opens, also the first time.
   open_target: ({ target }) => {
-    if (target.kind === 'excel' && !state.settings.excelExists) {
+    if (target.kind === 'excel' && !state.exportExcel) {
       throw fail('notFound', { what: 'file', path: state.settings.excelPath });
     }
-    if (target.kind === 'csv' && !state.settings.csvExists) {
+    if (target.kind === 'csv' && !state.exportCsv) {
       throw fail('notFound', { what: 'file', path: state.settings.csvPath });
     }
     // A new mail only to the contact an ad names (commands/files.rs).

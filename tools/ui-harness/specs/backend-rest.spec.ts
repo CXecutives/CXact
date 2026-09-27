@@ -135,7 +135,8 @@ test('the demo never fetches and says why; it keeps to its own folders', async (
   await expect(page.getByTestId('demo-note')).toHaveText(
     'Demo mit Beispieldaten, ohne Postfach und Portale.',
   );
-  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
+  // No mailbox in the demo (its note says so): "Verbinden" waits like the folder and the reset.
+  for (const id of ['mailbox-connect', 'folder-change', 'reset']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-disabled', 'true');
   }
   // What stays in its own folders still works: the folder and the log open.

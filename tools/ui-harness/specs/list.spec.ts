@@ -1654,7 +1654,7 @@ test.describe('moves and undo', () => {
     await rowMenu(page, 'linkedin-4100200303');
     await expect(menuItem(page, 'purge')).toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'purge').hover();
-    await expect(page.getByRole('tooltip')).toHaveText(T.settings.running);
+    await expect(page.getByRole('tooltip')).toHaveText(T.error.text('busy', { activity: 'fetch' }));
     await page.keyboard.press('Escape');
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await runFinished(page);

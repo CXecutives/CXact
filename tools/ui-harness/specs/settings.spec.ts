@@ -534,7 +534,7 @@ test('export: the export folder with its path, Excel and CSV with their switches
   await expect(excel).toHaveAccessibleName(T.settings.excel);
   await expect(csv).toHaveAttribute('aria-checked', 'false');
   // CSV is off: its file waits and says why; switched on it opens.
-  expect(await reason(page, 'csv-open')).toBe(T.settings.csvMissing);
+  expect(await reason(page, 'csv-open')).toBe(T.settings.csvOff);
   await csv.click();
   await expect(csv).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('csv-open').click();
@@ -542,7 +542,7 @@ test('export: the export folder with its path, Excel and CSV with their switches
   // Excel off: no file is written, so it waits too.
   await excel.click();
   await expect(excel).toHaveAttribute('aria-checked', 'false');
-  expect(await reason(page, 'excel-open')).toBe(T.settings.excelMissing);
+  expect(await reason(page, 'excel-open')).toBe(T.settings.excelOff);
   expect(await saved(page)).toEqual([patch({ exportCsv: true }), patch({ exportExcel: false })]);
   // A file that does not open says so in its card; the note unfolds, so the cards below
   // glide down instead of jumping.
@@ -754,7 +754,7 @@ test('reset: the danger dialog lists what goes; a failure stays in it', async ({
 test('a run holds the mailbox, the folder and the sign-in, with its reason', async ({ page }) => {
   await settings(page, `${WIN}&scenario=running`);
   for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
-    expect(await reason(page, id), id).toBe('Ein Abruf läuft gerade.');
+    expect(await reason(page, id), id).toBe(T.error.text('busy', { activity: 'fetch' }));
   }
   // A rescore says its own reason; the sign-out waits too.
   await settings(page);
@@ -764,7 +764,7 @@ test('a run holds the mailbox, the folder and the sign-in, with its reason', asy
     window.__harness.appRun('rescore');
   });
   for (const id of ['mailbox-change', 'backup-restore', 'reset', 'sign-out-freelance']) {
-    expect(await reason(page, id), id).toBe('Die Jobs werden gerade neu bewertet.');
+    expect(await reason(page, id), id).toBe(T.error.text('busy', { activity: 'rescore' }));
   }
   await page.evaluate(() => (window.__harness.holdAfter = null));
 });
@@ -775,9 +775,13 @@ test('the dry run and the demo keep to their own data and say so', async ({ page
   expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
   await settings(page, `${WIN}&scenario=demo`);
   await expect(page.getByTestId('demo-note')).toBeVisible();
-  for (const id of ['mailbox-change', 'folder-change', 'reset']) {
+  for (const id of ['mailbox-connect', 'folder-change', 'reset']) {
     expect(await reason(page, id), id).toBe('In der Demo geht das nicht.');
   }
+  // What the note says is what the page shows: no mailbox, no calls of a portal.
+  await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
+  await expect(page.getByTestId('settings-mailbox')).not.toContainText(T.settings.connected);
+  await expect(page.locator('[data-testid^="quota-"]')).toHaveCount(0);
 });
 
 test('macOS shows Mac paths', async ({ page }) => {

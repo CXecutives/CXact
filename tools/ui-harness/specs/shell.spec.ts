@@ -745,7 +745,7 @@ test('a disabled button that says why stays a Tab stop; its reason shows on focu
   await page.getByTestId('toggle-exportExcel').focus();
   await page.keyboard.press('Tab');
   await expect(page.getByTestId('csv-open')).toBeFocused();
-  await expect(tooltip(page)).toHaveText(await text(page, 'settings.csvMissing'));
+  await expect(tooltip(page)).toHaveText(await text(page, 'settings.csvOff'));
 });
 
 test('the focus goes back to the trigger after a menu and a toast', async ({ page }) => {
