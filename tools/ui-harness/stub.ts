@@ -1147,13 +1147,19 @@ const fold = (text: string): string =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '');
 
-/** Like store::search_words: every word of a search (at most 8) is in the portal's name, the
- *  title, the company or the location, in any order; an empty search matches everything. */
-function matchesSearch(j: JobView, search: string | null | undefined): boolean {
-  const words = fold(search ?? '')
+/** The words of a search as store::search_words takes them (at most 8, folded). */
+function searchWords(search: string | null | undefined): string[] {
+  return fold(search ?? '')
     .split(/\s+/)
     .filter((word) => word !== '')
     .slice(0, 8);
+}
+
+/** Like store::search_words: every word of a search is in the portal's name, the title, the
+ *  company or the location, in any order; an empty search matches everything, and folds
+ *  nothing (the stub runs on the page's main thread, the backend it stands for does not). */
+function matchesSearch(j: JobView, words: readonly string[]): boolean {
+  if (words.length === 0) return true;
   const text = fold(`${PORTAL_LABEL[j.portal]}\n${j.title}\n${j.company}\n${j.location}`);
   return words.every((word) => text.includes(word));
 }
@@ -1165,7 +1171,8 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
     harness.failPages -= 1;
     throw fail('db');
   }
-  const base = jobs.filter((j) => matchesSearch(j, query.search) && inFilter(j, query));
+  const words = searchWords(query.search);
+  const base = jobs.filter((j) => matchesSearch(j, words) && inFilter(j, query));
   // The unread filter lists every unread job, excluded ones too (grey behind the divider);
   // only the count leaves them out (store::job_page). By date: the mail's, in the trash
   // the day the job went there.

@@ -59,9 +59,11 @@ export default defineConfig({
     // done and alone: a browser beside them on the same CPU would lengthen their tasks.
     // WebKit runs them in its project for what they check besides the timing. CI runs one
     // engine per job (HARNESS_ENGINES names it), so the timing waits for that one only.
+    // Without a trace: it records a snapshot of the page's DOM on every action, on the page's
+    // main thread, which added 10 to 16 ms to the tasks it measures.
     {
       name: 'timing',
-      use: { ...devices['Desktop Chrome'], viewport, deviceScaleFactor: 1 },
+      use: { ...devices['Desktop Chrome'], viewport, deviceScaleFactor: 1, trace: 'off' },
       testMatch: /timing\.spec\.ts/,
       dependencies: process.env.HARNESS_ENGINES?.split(',') ?? ['chromium', 'webkit'],
     },
