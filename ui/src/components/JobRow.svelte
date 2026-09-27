@@ -8,7 +8,8 @@
      and at the end of the line its stamp like a mail list (the time today, "Gestern",
      "Vorgestern", then "Mi 23.09."; in the Papierkorb the day the job went there). An ad
      that no longer takes applications says "Beendet" there, its title muted (the order by
-     match puts it after the open ones).
+     match puts it after the open ones); one whose application deadline is today or within
+     7 days names it there in red instead of the stamp ("Frist 15.10.").
   2. a building and the company, a map pin and the place (without the work mode a portal
      appends to it, lib/place.ts), and when the ad states it the euro and the day rate or
      the salary in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"); the company and
@@ -74,10 +75,11 @@
 <script lang="ts">
   import { contextMenu, doubleClick, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
-  import { displayTitle, formatStamp } from '$lib/i18n/format';
+  import { displayTitle, formatDay, formatStamp } from '$lib/i18n/format';
   import { dotOut, fade } from '$lib/motion/transitions';
   import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
+  import { localDay, soonDeadline } from '$lib/state/filter';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
@@ -130,9 +132,18 @@
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
   const place = $derived(placeOf(job.location));
   const pay = $derived(payOf(job));
-  /** The end of the title line: "Beendet" for an ad that takes no applications, else the
-   *  stamp. */
-  const stamp = $derived(job.closed ? t.job.closed : formatStamp(when, current));
+  /** The application deadline when it is today or within 7 days (the end of the title line
+   *  names it). */
+  const deadline = $derived(job.closed ? null : soonDeadline(job, localDay(current)));
+  /** The end of the title line: "Beendet" for an ad that takes no applications, a deadline
+   *  close by, else the stamp. */
+  const stamp = $derived(
+    job.closed
+      ? t.job.closed
+      : deadline !== null
+        ? t.job.deadline(formatDay(deadline, current))
+        : formatStamp(when, current),
+  );
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
@@ -201,7 +212,9 @@
         class:closed={job.closed}
         use:tooltip={{ text: heading, truncated: true }}>{heading}</span
       >
-      <span class="date" data-testid="row-date"><span class="stamp">{stamp}</span></span>
+      <span class="date" class:soon={deadline !== null} data-testid="row-date"
+        ><span class="stamp">{stamp}</span></span
+      >
     </span>
     <span class="meta">
       {#if job.company}<span class="part company" data-testid="row-company"
@@ -330,9 +343,14 @@
     font-variant-numeric: var(--numeric);
   }
 
-  .job:hover:where(:not([data-still])) .date {
+  .job:hover:where(:not([data-still])) .date:not(.soon) {
     color: var(--text-muted);
     transition-duration: var(--dur-hover);
+  }
+
+  /* A deadline close by is red, also under the pointer. */
+  .date.soon {
+    color: var(--danger-strong);
   }
 
   /* Company and place: one line, each with its icon, cut at the line's end. */
