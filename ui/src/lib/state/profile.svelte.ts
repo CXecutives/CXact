@@ -1,8 +1,8 @@
 // The profile editor (Profil view): the form as it was handed out (`before`), the form as
 // the user has it (`after`) and where it came from. Saving sends both; the backend writes
 // only what differs and keeps every other key of the file. A draft (a new profile, a chosen
-// file, an AI's answer) is unsaved until it is saved; the stored profile only once
-// something differs. Leaving the view or closing the window with unsaved changes asks first
+// file, also the one an AI wrote with the app's prompt) is unsaved until it is saved; the
+// stored profile only once something differs. Leaving the view or closing the window with unsaved changes asks first
 // (ProfileView holds the guard and the dialog).
 //
 // Values of the file the engine could not read are said at their field (`fieldProblems`);
@@ -41,9 +41,8 @@ import { TypedText } from './typed.svelte';
 
 export { MAX_FOCUS };
 
-/** Where the form in the editor came from: the stored profile, a new one, a chosen file, an
- *  AI's answer for a new profile, or an answer that updates the stored profile. */
-export type DraftOrigin = 'stored' | 'new' | 'file' | 'answer' | 'update';
+/** Where the form in the editor came from: the stored profile, a new one or a chosen file. */
+export type DraftOrigin = 'stored' | 'new' | 'file';
 
 /** Fewer terms than this make a thin profile (the engine's `THIN_BELOW`). */
 const THIN_BELOW = 5;
@@ -343,77 +342,6 @@ export function dayShaped(text: string): boolean {
 const dateTextOf = (form: ProfileForm): string =>
   form.criteria.available.kind === 'from' ? shownDate(form.criteria.available.date) : '';
 
-// ------------------------------------------------------------------ update from a CV
-
-/** Entries of both lists, the stored ones first, each once. */
-const union = (stored: readonly string[], added: readonly string[]): string[] =>
-  cleanList([...stored, ...added]);
-
-/** The higher of two numbers of years; a missing one leaves the other. */
-const higher = (a: number | null, b: number | null): number | null =>
-  a === null ? b : b === null ? a : Math.max(a, b);
-
-/**
- * The stored profile updated with an AI's answer to a CV (the user's decision: an update
- * only fills gaps and adds, it never overwrites). The answer fills what the profile leaves
- * empty (the name, the role, a level, the wishes and criteria, the Schwerpunkte while there
- * are none) and adds what is new (competences, list entries, languages, synonyms); years take
- * the higher number, in total and per competence. Everything else stays as stored. Rows keep
- * their place in the stored file (`origin`); new rows have none.
- */
-export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
-  const a = normalized(answer);
-  const form: ProfileForm = {
-    ...structuredClone(stored),
-    name: stored.name.trim() || a.name,
-    title: stored.title.trim() || a.title,
-    years: higher(stored.years, a.years),
-  };
-  for (const row of a.competences) {
-    const match = form.competences.find((own) => same(own.name.trim(), row.name));
-    if (match) {
-      match.years = higher(match.years, row.years);
-      match.aliases = union(match.aliases, row.aliases);
-    } else {
-      form.competences.push({ ...row, origin: null });
-    }
-  }
-  form.strengths = union(form.strengths, a.strengths);
-  form.keywords = union(form.keywords, a.keywords);
-  form.degrees = union(form.degrees, a.degrees);
-  form.industries = union(form.industries, a.industries);
-  form.tools = union(form.tools, a.tools);
-  form.certificates = union(form.certificates, a.certificates);
-  for (const row of a.languages) {
-    const match = form.languages.find((own) => same(own.language.trim(), row.language));
-    if (match) match.level ??= row.level;
-    else form.languages.push({ ...row, origin: null });
-  }
-  if (form.focus.length === 0) form.focus = a.focus.slice(0, MAX_FOCUS);
-  form.roles = union(form.roles, a.roles);
-  const w = form.wishes;
-  w.dayRate ??= a.wishes.dayRate;
-  w.remote ??= a.wishes.remote;
-  w.regions = union(w.regions, a.wishes.regions);
-  w.industries = union(w.industries, a.wishes.industries);
-  // The criteria as core describes them: a number or a list only where the profile has none.
-  const c = form.criteria;
-  const ac = a.criteria;
-  for (const key of NUMBER_KEYS) {
-    // The days a week are one range: the answer's only while the profile sets neither end.
-    if (key !== 'workloadMinDays' && key !== 'workloadMaxDays') c[key] ??= ac[key];
-  }
-  if (c.workloadMinDays === null && c.workloadMaxDays === null) {
-    c.workloadMinDays = ac.workloadMinDays;
-    c.workloadMaxDays = ac.workloadMaxDays;
-  }
-  for (const key of WORD_KEYS) if (c[key].length === 0) c[key] = ac[key];
-  c.noAnue ||= ac.noAnue;
-  c.noPermanent ||= ac.noPermanent;
-  if (c.available.kind === 'unset') c.available = ac.available;
-  return form;
-}
-
 // ------------------------------------------------------------------ the editor
 
 class ProfileEditor {
@@ -428,17 +356,10 @@ class ProfileEditor {
   source = $state<string | null>(null);
   /** How much the engine understands of a draft (the stored profile has its own). */
   quality = $state<ProfileQuality | null>(null);
-  /** What the engine reads in a draft from a file or an answer (its warnings, its terms). */
+  /** What the engine reads in a chosen file (its warnings, its terms). */
   understood = $state.raw<ProfileUnderstanding | null>(null);
   /** Values of the file the user removed ("Wert entfernen"); saving removes their keys. */
   cleared = $state<UnreadableField[]>([]);
-  /** The steps to fill the profile from a CV with an AI are open. */
-  pasting = $state(false);
-  /** The setup page asked for those steps: the Profil view opens them when it appears. */
-  cvWanted = $state(false);
-  /** The AI's answer as pasted: kept until it fills the form, also when the steps close or
-   *  the view changes. */
-  answer = $state('');
   /** The day of "Verfügbar ab" as typed (the form holds it as `YYYY-MM-DD`). */
   dateText = $state('');
   /** The day is judged (said when it does not read): once its field is left with text in it
@@ -447,12 +368,10 @@ class ProfileEditor {
   /** Text typed into a chip field that is no chip yet: a change like any other. */
   readonly typed = new TypedText();
 
-  /** Unsaved: a draft as it is (a file, an answer, an update), else a change of the form. */
+  /** Unsaved: a chosen file as it is, else a change of the form. */
   get dirty(): boolean {
     if (this.origin === null) return false;
-    if (this.origin === 'file' || this.origin === 'answer' || this.origin === 'update') {
-      return true;
-    }
+    if (this.origin === 'file') return true;
     return this.changed;
   }
 
@@ -469,7 +388,6 @@ class ProfileEditor {
     this.dateText = dateTextOf(after);
     this.judged = false;
     this.cleared = [];
-    this.pasting = false;
   }
 
   /** The stored profile (again, e.g. after a save). */
@@ -496,23 +414,14 @@ class ProfileEditor {
     this.understood = null;
   }
 
-  /** A chosen file or an AI's answer, to review before it is saved; `fresh`: saved beside
-   *  the other profiles (an answer for a new profile keeps what the form was). */
-  take(draft: ProfileDraft, origin: 'file' | 'answer', fresh = this.fresh): void {
+  /** A chosen file, to review before it is saved; `fresh`: saved beside the other
+   *  profiles. */
+  take(draft: ProfileDraft, fresh = false): void {
     this.fresh = fresh;
-    this.#start(origin, draft.form, draft.form);
+    this.#start('file', draft.form, draft.form);
     this.source = draft.source;
     this.quality = draft.quality;
     this.understood = draft.understood;
-  }
-
-  /** An AI's answer that updates the stored profile: saving merges it into the stored file,
-   *  which the draft brings with the answer's career stations (they are no field of the form). */
-  update(draft: ProfileDraft, stored: ProfileForm): void {
-    this.#start('update', stored, updated(copy(stored), copy(draft.form)));
-    this.source = draft.source;
-    this.quality = null;
-    this.understood = null;
   }
 
   /** Nothing in the editor (the empty state shows). */

@@ -39,8 +39,7 @@ export type Commands = {
   empty_trash: { args: Record<string, never>; result: Deleted };
   ai_prompt: { args: { key: JobKey }; result: string };
   pick_profile: { args: Record<string, never>; result: ProfileDraft | null };
-  parse_profile: { args: { text: string; update: boolean }; result: ProfileDraft };
-  profile_prompt: { args: { update: boolean }; result: string };
+  profile_prompt: { args: Record<string, never>; result: string };
   save_profile: { args: { save: ProfileSave }; result: ProfileInfo };
   list_profiles: { args: Record<string, never>; result: ProfileEntry[] };
   switch_profile: { args: { id: number }; result: ProfileEntry[] };

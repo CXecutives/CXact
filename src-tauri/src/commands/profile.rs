@@ -1,5 +1,6 @@
 //! The consultant profiles: the editor's form is saved by merging it into the active
-//! profile's file; a chosen file or a pasted answer of an AI fills the form first. Several
+//! profile's file; a chosen file (also the one an AI wrote with the app's prompt) fills the
+//! form first. Several
 //! profiles, one active: list, switch (every job is scored again), create, duplicate,
 //! rename, delete (it becomes the backup) and restore, load a file as a new one. While the
 //! form holds unsaved changes, closing the window asks; so it does while a fetch runs
@@ -45,32 +46,11 @@ pub async fn pick_profile(
     Ok(Some(profile::draft_from_file(file.path())?.into()))
 }
 
-/// Reads the AI's answer to the CV prompt (pasted) into the form for review; for an update
-/// the draft saves into the stored profile with the answer's career stations.
+/// The prompt that has any AI write a profile file from a CV (copied by the page), in the
+/// app's language.
 #[tauri::command]
-pub async fn parse_profile(
-    state: State<'_, AppState>,
-    text: String,
-    update: bool,
-) -> CmdResult<ProfileDraft> {
-    let draft = if update {
-        profile::update_from_answer(&state.workspace()?, &text)?
-    } else {
-        profile::draft_from_answer(&text).map_err(jobalert_core::Error::from)?
-    };
-    Ok(draft.into())
-}
-
-/// The prompt for an AI that turns a CV into a profile (copied by the page), in the app's
-/// language; with `update` for the stored profile (it carries the profile's CV part).
-#[tauri::command]
-pub async fn profile_prompt(state: State<'_, AppState>, update: bool) -> CmdResult<String> {
-    let workspace = if update {
-        Some(state.workspace()?)
-    } else {
-        None
-    };
-    Ok(profile::cv_prompt(workspace.as_deref(), state.language()?))
+pub async fn profile_prompt(state: State<'_, AppState>) -> CmdResult<String> {
+    Ok(profile::cv_prompt(state.language()?))
 }
 
 /// Saves the editor: merges the form into the active profile (or the draft it came from;

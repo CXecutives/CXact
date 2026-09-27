@@ -33,7 +33,7 @@ workflow's artifacts.
 ## First start
 
 Connect the Gmail mailbox with an app password, then create the profile in the **Profil**
-view (as a form, from a CV with the help of an AI, or from an existing file), then press
+view (as a form, or from a file, also one an AI wrote from a CV with the app's prompt), then press
 **Postfach abrufen**. Which alert mails it reads is the **Zeitraum** menu beside that button:
 since the last fetch (the default), the last 7 or 30 days, or all alert mails. The app
 starts in German; Einstellungen > Sprache switches it to English at once (the button is then
@@ -43,8 +43,10 @@ Check mailbox).
 
 The Profil view edits the profile as a form. Saving writes only the changed fields into the
 file, keeps every other key as it is and leaves the previous version next to it
-(`profil/beraterprofil.json.bak`). "Aus Lebenslauf anlegen" copies a prompt for the AI
-chat you use; its answer, pasted back, fills the form for review. Several profiles can live
+(`profil/beraterprofil.json.bak`). "KI-Prompt für Profilanfertigung kopieren" copies a
+prompt for the AI chat you use: with your CV attached, the AI asks what the CV cannot say and
+writes the file `beraterprofil.json`, which "Aus Datei laden" puts into the form for review.
+Several profiles can live
 side by side in `profil/` (`beraterprofil.json`, `beraterprofil-2.json`, ...); the switcher in
 the head of the Profil view chooses the active one, and every job is scored again with it.
 

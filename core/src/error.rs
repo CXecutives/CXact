@@ -84,12 +84,6 @@ pub enum InvalidInput {
         row: Option<u32>,
         max: Option<u32>,
     },
-    /// A pasted answer holds no profile JSON with anything the form can show.
-    #[error("the answer holds no profile")]
-    ProfileAnswer,
-    /// The profile JSON of a pasted answer breaks off (the AI stopped before its end).
-    #[error("the profile in the answer breaks off")]
-    ProfileAnswerCut,
     /// Not a complete e-mail address.
     #[error("not a complete mail address")]
     MailAddress,

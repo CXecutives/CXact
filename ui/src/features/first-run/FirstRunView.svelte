@@ -1,7 +1,7 @@
 <!--
   First run (full page) on the white sheet, in the column of every view: the app mark beside
   its name and the steps of steps.ts that tick themselves: connect the mailbox, a usable
-  profile (made in the Profil view, whose editor also imports a file or a CV), fetch. No
+  profile (made in the Profil view, whose editor also takes a file), fetch. No
   sentence introduces them: each step is its name and the controls it needs. The next open
   step carries the one primary button; the fetch stays locked with its reason until a mailbox
   is connected. After "Alles zurücksetzen" the app starts here again: a clean reset says so
@@ -19,9 +19,11 @@
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. Step 2 happens in the Profil view: "Aus Lebenslauf erstellen" opens its steps
-  with an AI at once, "Neues Profil" the empty form (the same button as on the Profil
-  view's empty state); after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
+  found none. Step 2 happens in the Profil view, with the same three ways as its empty
+  state: "Neues Profil" opens the empty form, "Aus Datei laden" a chosen file (also the one
+  an AI wrote) for review, and "KI-Prompt für Profilanfertigung kopieren" copies the prompt
+  that has any AI write that file from a CV (a toast says so, the page stays); after the
+  first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
   alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
   Every main action is 32 px.
@@ -50,6 +52,7 @@
   import { failureAction, isFetch, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
+  import { copyProfilePrompt, pickProfile } from '../shared/profileWays';
   import { STEPS, type StepId } from './steps';
 
   /** Done, per step, as the page shows it now. */
@@ -108,10 +111,18 @@
     navigation.go('profile');
   }
 
-  /** The steps with an AI open in the Profil view (it copies the prompt as it appears). */
-  function fromCv(): void {
-    editor.cvWanted = true;
-    navigation.go('profile');
+  /** A chosen file opens in the Profil view for review (a failure is said in the step). */
+  let picking = $state(false);
+  async function pick(): Promise<void> {
+    openError = null;
+    picking = true;
+    try {
+      if (await pickProfile()) navigation.go('profile');
+    } catch (error) {
+      openError = { step: 'profile', text: () => errorText(error) };
+    } finally {
+      picking = false;
+    }
   }
 
   /** Where the step's link or button failed to open (said in the step). */
@@ -239,8 +250,8 @@
     {/if}
   </div>
   {#if !done.profile}
-    <!-- A new profile comes from the CV with an AI (the recommended way) or the empty form; an
-         existing one that does not count yet opens as it is. -->
+    <!-- A new profile starts as the empty form (the recommended way), from a file, or from the
+         prompt for an AI; an existing one that does not count yet opens as it is. -->
     <div class="actions" bind:this={actions.profile}>
       {#if profile}
         <Button
@@ -255,18 +266,27 @@
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
           size="field"
-          icon="paste"
-          label={t.profile.fromCv}
+          icon="add"
+          label={t.profile.newProfile}
           testid="first-profile"
-          onclick={fromCv}
+          onclick={openProfile}
         />
         <Button
           variant="secondary"
           size="field"
-          icon="add"
-          label={t.profile.newProfile}
-          testid="first-profile-form"
-          onclick={openProfile}
+          icon="pickFile"
+          label={t.profile.load}
+          loading={picking}
+          testid="first-profile-file"
+          onclick={() => void pick()}
+        />
+        <Button
+          variant="secondary"
+          size="field"
+          icon="prompt"
+          label={t.profile.prompt}
+          testid="first-profile-prompt"
+          onclick={() => void copyProfilePrompt()}
         />
       {/if}
     </div>

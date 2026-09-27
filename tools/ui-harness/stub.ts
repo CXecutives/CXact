@@ -535,114 +535,10 @@ const REMOTE_UNREAD_PROFILE: ProfileInfo = {
   },
 };
 
-/** The prompts for an AI, for a new profile and for an update of the stored one (the real
- *  texts live in core/src/profile/prompt.rs). */
+/** The prompt that has an AI write a profile file from a CV (the real text lives in
+ *  core/src/profile/prompt.rs). */
 const PROMPT =
-  'Bitte erstelle aus meinem angehängten Lebenslauf das Profil für meine Job-Alert-App.';
-const PROMPT_UPDATE =
-  'Bitte aktualisiere das Profil meiner Job-Alert-App mit meinem angehängten Lebenslauf.';
-
-/** The stored profile's JSON an update saves into, with the answer's career stations. */
-function updateSource(answer: Record<string, unknown>): string {
-  const stored = { name: 'Erika Beispiel', harte_kriterien: { min_tagessatz: 1100 } };
-  const stations = answer.stationen;
-  return JSON.stringify(stations === undefined ? stored : { ...stored, stationen: stations });
-}
-
-type Json = Record<string, unknown>;
-const texts = (value: unknown, key?: string): string[] =>
-  (Array.isArray(value) ? value : [])
-    .map((item) =>
-      typeof item === 'string'
-        ? item
-        : key && item && typeof item === 'object'
-          ? (item as Json)[key]
-          : null,
-    )
-    .filter((item): item is string => typeof item === 'string' && item.trim() !== '');
-const LEVELS: Record<string, ProfileForm['languages'][number]['level']> = {
-  a1: 'a1',
-  a2: 'a2',
-  b1: 'b1',
-  b2: 'b2',
-  c1: 'c1',
-  c2: 'c2',
-  muttersprache: 'native',
-};
-
-/** An AI's answer as the backend reads it: the JSON (also in a code block) into the form; for
- *  an update the draft saves into the stored profile. */
-function answerDraft(answer: string, update = false): ProfileDraft {
-  const fenced = /```[a-z]*\s*([\s\S]*?)```/.exec(answer)?.[1];
-  const text = fenced ?? answer.slice(answer.indexOf('{'), answer.lastIndexOf('}') + 1);
-  let data: Json;
-  try {
-    data = JSON.parse(text) as Json;
-  } catch {
-    // An object that never closes: the answer breaks off.
-    const open = answer.split('{').length - answer.split('}').length;
-    throw fail('invalid', { reason: open > 0 ? 'profileAnswerCut' : 'profileAnswer' });
-  }
-  const list = (key: string): unknown[] =>
-    Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
-  const criteria = (data.harte_kriterien ?? {}) as Json;
-  const days = (value: unknown): number | null =>
-    typeof value === 'number' && value >= 1 && value <= 5 ? value : null;
-  const form: ProfileForm = {
-    ...structuredClone(PROFILE_FORM),
-    name: typeof data.name === 'string' ? data.name : '',
-    title: typeof data.titel === 'string' ? data.titel : '',
-    competences: list('kernkompetenzen').map((item, index) => {
-      const entry = item as Json;
-      return row(
-        String(entry.kompetenz ?? ''),
-        typeof entry.jahre === 'number' ? entry.jahre : null,
-        texts(entry.auch),
-        index,
-      );
-    }),
-    strengths: texts(data.alleinstellungsmerkmale),
-    keywords: texts(data.keywords),
-    years: typeof data.berufserfahrung_jahre === 'number' ? data.berufserfahrung_jahre : null,
-    degrees: texts(data.ausbildung, 'abschluss'),
-    industries: texts(data.branchen, 'branche'),
-    tools: texts(data.methoden_tools, 'name'),
-    certificates: texts(data.zertifizierungen, 'name'),
-    languages: list('sprachen').map((item, index) => {
-      const entry = item as Json;
-      return {
-        language: String(entry.sprache ?? ''),
-        level: LEVELS[String(entry.niveau ?? '').toLowerCase()] ?? null,
-        origin: index,
-      };
-    }),
-    focus: texts(data.schwerpunkte),
-    roles: [],
-    wishes: { dayRate: null, remote: null, regions: [], industries: [] },
-    criteria: {
-      ...PROFILE_FORM.criteria,
-      minDayRate: null,
-      // Countries an answer names (one the app does not know stays as it is).
-      countries: texts(criteria.laender),
-      noAnue: false,
-      // The rules of engine 16 the answer sets (a day of the week from 1 to 5).
-      workloadMinDays: days(criteria.auslastung_min_tage),
-      workloadMaxDays: days(criteria.auslastung_max_tage),
-      minMonths:
-        typeof criteria.min_laufzeit_monate === 'number' ? criteria.min_laufzeit_monate : null,
-      exclusionWords: texts(criteria.ausschlusswoerter),
-    },
-  };
-  if (form.competences.length === 0 && form.name === '')
-    throw fail('invalid', { reason: 'profileAnswer' });
-  const quality = form.competences.length >= 5 ? 'good' : 'thin';
-  const warnings: Notice[] =
-    quality === 'thin'
-      ? [{ code: 'fewCompetences', params: { count: form.competences.length } }]
-      : [];
-  const source = update ? updateSource(data) : text;
-  return { form, source, quality, understood: understoodOf(form, warnings) };
-}
+  'Du unterstützt mich als KI-Assistent bei meinem Beraterprofil. Du kennst meine Job-Alert-App nicht.';
 
 /** The domain packs the engine would switch on for a form (a rough stand-in: words of the
  *  competences, keywords and tools). */
@@ -2062,8 +1958,7 @@ const handlers: Handlers = {
     return promptOf(j);
   },
   pick_profile: () => structuredClone(params.get('file') === 'focus' ? FOCUS_DRAFT : FILE_DRAFT),
-  parse_profile: ({ text, update }) => answerDraft(text, update),
-  profile_prompt: ({ update }) => (update && state.profile !== null ? PROMPT_UPDATE : PROMPT),
+  profile_prompt: () => PROMPT,
   save_profile: ({ save }) => {
     const after = save.after;
     const refuse = (field: string, max: number | null, row: number | null = null): never => {

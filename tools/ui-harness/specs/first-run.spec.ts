@@ -150,23 +150,43 @@ test('no alert mail in 30 days says to set up an alert first', async ({ page }) 
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 
-test('step 2 opens the CV steps, "Neues Profil" the empty form', async ({ page }) => {
+test('step 2 offers the ways of the Profil view: the empty form, a file, the prompt', async ({
+  page,
+  browserName,
+}) => {
+  if (browserName === 'chromium') {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  }
   await open(page, `${WIN}&scenario=mailbox-only`);
   const step = page.getByTestId('step-profile');
-  await expect(step.getByTestId('first-profile')).toHaveText(T.profile.fromCv);
-  await step.getByTestId('first-profile').click();
-  const paste = page.getByTestId('profile-paste');
-  await expect(paste).toBeVisible();
-  await expect(paste.getByRole('heading', { level: 2 })).toHaveText(T.profile.fromCv);
-  await paste.getByTestId('dialog-cancel').click();
+  // The same buttons as on the Profil view's empty state: 32 px, each with its glyph, the
+  // empty form the primary one.
+  await expect(step.getByRole('button')).toHaveText([
+    T.profile.newProfile,
+    T.profile.load,
+    T.profile.prompt,
+  ]);
+  const create = step.getByTestId('first-profile');
+  await expect(create).toHaveClass(/primary/);
+  for (const [id, icon] of [
+    ['first-profile', 'add'],
+    ['first-profile-file', 'pickFile'],
+    ['first-profile-prompt', 'prompt'],
+  ] as const) {
+    await expect(step.getByTestId(id)).toHaveCSS('height', '32px');
+    await expect(step.getByTestId(id).locator('[data-icon]')).toHaveAttribute('data-icon', icon);
+  }
+  // The prompt goes to the clipboard and a toast says so; the page stays.
+  await step.getByTestId('first-profile-prompt').click();
+  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  await expect(page.getByTestId('view-first-run')).toBeVisible();
+  // A chosen file opens in the Profil view for review; nothing is stored yet.
+  await step.getByTestId('first-profile-file').click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
+  await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
+  await page.getByTestId('profile-discard').click();
   await page.getByTestId('nav-jobs').click();
-  // The empty form is the second way, named as the Profil view names it.
-  // The same button as on the Profil view's empty state: outlined, 32 px, with its glyph.
-  const create = page.getByTestId('first-profile-form');
-  await expect(create).toHaveText(T.profile.newProfile);
-  await expect(create).toHaveClass(/secondary/);
-  await expect(create).toHaveCSS('height', '32px');
-  await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
   await create.click();
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('profile-save').click();
@@ -215,8 +235,6 @@ test('after the first fetch the list opens on its inbox', async ({ page }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   await page.getByTestId('first-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  // The CV steps are a dialog over the view: it closes first.
-  await page.getByTestId('profile-paste').getByTestId('dialog-cancel').click();
   await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.getByTestId('first-fetch').click();

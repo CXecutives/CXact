@@ -35,14 +35,7 @@ import type {
   RemoteWish,
   WorkMode,
 } from '../ipc/types';
-import {
-  PROFILE_KEY_FIELD,
-  textOf,
-  type AnswerAdds,
-  type Catalog,
-  type ContractKind,
-  type TermVerdict,
-} from './de';
+import { PROFILE_KEY_FIELD, textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -208,8 +201,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
   profileNotObject: 'The file contains no profile.',
   profileValue: (p) => `The value of “${fieldName(p.field)}” is not valid.`,
-  profileAnswer: 'The answer contains no profile.',
-  profileAnswerCut: 'The answer stops in the middle of the profile.',
   mailAddress: 'The address is incomplete.',
   appPassword: 'An app password has 16 letters.',
   noSignIn: (p) => `There is no sign-in for ${portalOf(p.portal)}.`,
@@ -1041,8 +1032,6 @@ export const en: Catalog = {
     replacesStored: 'Saving replaces your profile.',
     replaced: 'Profile replaced.',
     restoreFailed: 'The previous profile could not be brought back.',
-    fromCv: 'Create from CV',
-    updateFromCv: 'Update from CV',
     profiles: 'Profiles',
     numbered: (value: number) => `Profile ${n(value)}`,
     newProfile: 'New profile',
@@ -1051,6 +1040,9 @@ export const en: Catalog = {
     rename: 'Rename',
     renameHeading: 'Rename profile',
     load: 'Load from file',
+    prompt: 'Copy AI prompt for a profile',
+    promptCopied: 'AI prompt copied',
+    promptNotCopied: 'The AI prompt could not be copied.',
     switched: 'Profile switched, jobs are being scored again.',
     created: (name: string) => `Profile created, “${name}” is active now.`,
     duplicated: (name: string) => `Copy created, “${name}” is active now.`,
@@ -1251,35 +1243,6 @@ export const en: Catalog = {
       tr: 'Turkish',
       uk: 'Ukrainian',
       hu: 'Hungarian',
-    },
-    paste: {
-      privacy: 'The CV goes to the AI you use.',
-      copy: 'Copy prompt',
-      copied: 'Copied',
-      copyFailed: 'The prompt could not be copied.',
-      preview: 'Show prompt',
-      step: 'Paste it into the AI chat and attach your CV',
-      answer: 'Paste the AI’s answer',
-      fromClipboard: 'Paste from clipboard',
-      take: 'Apply',
-      takeEmpty: 'Paste the AI’s answer first.',
-      summary: (adds: AnswerAdds, update: boolean): string => {
-        const parts = (
-          [
-            [adds.competences, 'skill', 'skills'],
-            [adds.tools, 'tool', 'tools'],
-            [adds.certificates, 'certificate', 'certificates'],
-            [adds.languages, 'language', 'languages'],
-            [adds.industries, 'industry', 'industries'],
-            [adds.degrees, 'degree', 'degrees'],
-            [adds.other, 'other detail', 'other details'],
-          ] as const
-        )
-          .filter(([value]) => value > 0)
-          .map(([value, one, many]) => count(value, one, many));
-        if (parts.length === 0) return 'The answer adds nothing.';
-        return `${update ? 'Adds' : 'The profile gets'} ${joined(parts)}.`;
-      },
     },
   },
   settings: {

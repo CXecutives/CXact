@@ -183,8 +183,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
   profileValue: (p) => `Der Wert bei „${fieldName(p.field)}“ passt nicht.`,
-  profileAnswer: 'In der Antwort steht kein Profil.',
-  profileAnswerCut: 'Die Antwort bricht mitten im Profil ab.',
   mailAddress: 'Die Adresse ist unvollständig.',
   appPassword: 'Ein App-Passwort hat 16 Buchstaben.',
   noSignIn: (p) => `Für ${portalOf(p.portal)} gibt es keine Anmeldung.`,
@@ -599,18 +597,6 @@ export type CriterionKey = keyof typeof criteria;
  *  part (a wish or a limit missed, never an exclusion), not met, unclear in the ad (check),
  *  nothing to judge (no icon). */
 export type TermVerdict = 'met' | 'partial' | 'violated' | 'unknown' | 'unset';
-
-/** What an AI's answer brings into the profile form, per kind (the CV dialog's summary). */
-export interface AnswerAdds {
-  competences: number;
-  tools: number;
-  certificates: number;
-  languages: number;
-  industries: number;
-  degrees: number;
-  /** Everything else: keywords, strengths, roles, synonyms, years, wishes, criteria. */
-  other: number;
-}
 
 /** `JobMatch.note` / `MatchDetail.summary` codes. */
 const note = {
@@ -1236,10 +1222,6 @@ export const de = {
     replaced: 'Profil ersetzt.',
     /** Rückgängig of a removal or a replacement that did not work. */
     restoreFailed: 'Das alte Profil ließ sich nicht zurückholen.',
-    /** The recommended way in, and the head's button for a new or empty profile. */
-    fromCv: 'Aus Lebenslauf erstellen',
-    /** The same way for a profile that exists: the answer fills the form for review. */
-    updateFromCv: 'Aus Lebenslauf aktualisieren',
     /** The switcher at the left of the head: the active profile's name opens the menu of
      *  every profile (a check at the active one) and what can be done with them. Without a
      *  name of its own a profile goes by its role, else by its number. The accessible name of
@@ -1254,8 +1236,14 @@ export const de = {
     copyName: (name: string) => `${name} Kopie`,
     rename: 'Umbenennen',
     renameHeading: 'Profil umbenennen',
-    /** In the menu and in the empty state alike: a file into the form for review. */
+    /** In the menu, in the empty state and on the first-run page alike: a file into the form
+     *  for review (also the one an AI wrote with the prompt below). */
     load: 'Aus Datei laden',
+    /** In the same places: the prompt that has any AI write a profile file from a CV. */
+    prompt: 'KI-Prompt für Profilanfertigung kopieren',
+    /** The toast of the copy (a participle, like the job's prompt), and why it failed. */
+    promptCopied: 'KI-Prompt kopiert',
+    promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
     /** After another profile became the active one (its rescore runs in the background). */
     switched: 'Profil gewechselt, Jobs werden neu bewertet.',
     /** The toasts of a new profile (saved) and a copy: the profile active now. */
@@ -1300,7 +1288,7 @@ export const de = {
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
-    /** Why another file or an update waits while the form holds changes. */
+    /** Why a deletion waits while the form holds changes. */
     saveFirst: 'Erst speichern oder verwerfen.',
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
@@ -1357,7 +1345,7 @@ export const de = {
       focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
       focusHint: 'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
       focusFull: 'Höchstens fünf Schwerpunkte.',
-      /** More Schwerpunkte in a file or an answer than count. */
+      /** More Schwerpunkte in a file than count. */
       focusTrimmed: 'Übernommen sind die ersten fünf Schwerpunkte.',
       strengths: 'Besondere Stärken',
       strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
@@ -1528,41 +1516,6 @@ export const de = {
       tr: 'Türkisch',
       uk: 'Ukrainisch',
       hu: 'Ungarisch',
-    },
-    paste: {
-      privacy: 'Der Lebenslauf geht an die KI, die du nutzt.',
-      /** Step 1 of the dialog: the button copies, then says so for a moment. */
-      copy: 'Prompt kopieren',
-      copied: 'Kopiert',
-      copyFailed: 'Der Prompt ließ sich nicht kopieren.',
-      preview: 'Prompt ansehen',
-      /** Step 2: what to do in the AI chat (no button). */
-      step: 'Im KI-Chat einfügen und Lebenslauf anhängen',
-      /** Step 3: the field for the answer, and the button that pastes the clipboard. */
-      answer: 'Antwort der KI einfügen',
-      fromClipboard: 'Aus Zwischenablage einfügen',
-      take: 'Übernehmen',
-      /** Why Übernehmen does nothing yet. */
-      takeEmpty: 'Füge erst die Antwort der KI ein.',
-      /** What the answer brings into the form once it reads (an update only fills gaps and
-       *  adds). */
-      summary: (adds: AnswerAdds, update: boolean): string => {
-        const parts = (
-          [
-            [adds.competences, 'Kompetenz', 'Kompetenzen'],
-            [adds.tools, 'Werkzeug', 'Werkzeuge'],
-            [adds.certificates, 'Zertifikat', 'Zertifikate'],
-            [adds.languages, 'Sprache', 'Sprachen'],
-            [adds.industries, 'Branche', 'Branchen'],
-            [adds.degrees, 'Abschluss', 'Abschlüsse'],
-            [adds.other, 'weitere Angabe', 'weitere Angaben'],
-          ] as const
-        )
-          .filter(([value]) => value > 0)
-          .map(([value, one, many]) => count(value, one, many));
-        if (parts.length === 0) return 'Die Antwort ergänzt nichts.';
-        return `${update ? 'Ergänzt werden' : 'Übernommen werden'} ${joined(parts)}.`;
-      },
     },
   },
   settings: {
