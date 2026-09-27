@@ -1130,6 +1130,54 @@ test.describe('the ad', () => {
     expect(await lit(page)).toEqual([]);
   });
 
+  test('the ad in its structure: headings, lists without their glyphs, paragraphs', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const text = stage(page).getByTestId('ad-text');
+    const headings = text.getByTestId('ad-heading');
+    await expect(headings).toHaveText(['Ihre Aufgaben', 'Ihr Profil', 'Wünschenswert', 'Rahmen']);
+    // Small and bold: the text's size, a heavier weight.
+    const [weight, size] = await headings
+      .first()
+      .evaluate((node) => [getComputedStyle(node).fontWeight, getComputedStyle(node).fontSize]);
+    expect(Number(weight)).toBeGreaterThanOrEqual(600);
+    expect(size).toBe(await text.evaluate((node) => getComputedStyle(node).fontSize));
+    // The bullets are an indented list; the ad's glyphs are gone.
+    const items = text.getByTestId('ad-item');
+    await expect(items).toHaveCount(10);
+    await expect(items.first()).toHaveText('Führung eines Teams von sechs Personen');
+    expect(await items.first().evaluate((node) => getComputedStyle(node).display)).toBe(
+      'list-item',
+    );
+    const indent = async (target: Locator): Promise<number> => (await target.boundingBox())!.x;
+    expect(await indent(items.first())).toBeGreaterThan(await indent(headings.first()));
+    expect(await text.innerText()).not.toContain('•');
+    // A line with a date is no heading, whatever its first word.
+    await expect(text.locator('p').last()).toContainText('Bewerbungsfrist 15.10.2026');
+    // One text to copy, its passages where they were.
+    await expect(text).toHaveAttribute('data-copy', '');
+    await expect(text.locator('mark[data-items]').first()).toBeAttached();
+  });
+
+  test('the words of the list search stand marked in the ad while the search is on', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const search = page.getByTestId('search');
+    // Words the job is found by: each in the ad, case aside.
+    await search.fill('interim cfo');
+    await expect(rows(page)).toHaveCount(1);
+    const hits = stage(page).getByTestId('ad-text').locator('mark.hit');
+    await expect(hits).toHaveText(['Interim', 'CFO', 'Interim', 'Interim']);
+    await expect(hits.first()).toHaveCSS(
+      'background-color',
+      await tokenColour(page, '--mark-search'),
+    );
+    await search.fill('');
+    await expect(hits).toHaveCount(0);
+  });
+
   test('a preview says so once, here, with the way to its sign-in', async ({ page }) => {
     await openAt(page, 'freelance-900411');
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.teaser);

@@ -25,7 +25,8 @@
     (addToProfile.ts), a tick once it is there.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
-    einrichten" where they help, and the ad as plain text (AdText.svelte).
+    einrichten" where they help, and the ad's text in its structure: its headings, its lists,
+    its paragraphs, the words of the list's search marked (AdText.svelte).
   Hovering a row or a requirement with passages tints them in the ad, a click brings the
   first into view and flashes it (passages.svelte.ts). Rows, requirements and the ad text
   that arrive later (the ad loaded, a new score) fade in; requirements glide in their group.
@@ -647,7 +648,14 @@
     {/if}
     {#if detail.text}
       <div in:fade>
-        <AdText text={detail.text} {passages} lit={hover.hovered} flash={hover.flashing} />
+        <AdText
+          text={detail.text}
+          layout={detail.layout}
+          {passages}
+          lit={hover.hovered}
+          flash={hover.flashing}
+          search={jobs.search}
+        />
       </div>
     {/if}
   </section>

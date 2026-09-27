@@ -237,6 +237,8 @@
   --info: hsl(var(--p-navy));
   --info-strong: hsl(var(--p-navy-deep));
   --info-soft: hsl(var(--p-navy-50));
+  /* The words of the list's search where they stand (the list, the ad's text). */
+  --mark-search: hsl(var(--p-warning) / 0.45);
 
   /* ------------------------------------------------------------------- score */
   /* The ring of a scored job: its decile's step; the digits are ink (the ring carries the
