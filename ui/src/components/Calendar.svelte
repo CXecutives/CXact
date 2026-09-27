@@ -1,11 +1,13 @@
 <!--
-  A small calendar beside a day field (Verfügbar ab): its button opens a month under it, the
-  week from Monday, the month's name from the catalog. The chosen day is filled, today has a
-  ring. The keys move like a native date picker (input.ts gridKeys): the arrows a day or a
-  week, Home and End the week's ends, PageUp and PageDown a month; Enter or Space and a click
-  take the day, Esc closes and gives the focus back to the button; leaving it closes it. The
-  month's buttons move the focus to the same day in the other month. It only offers a day:
-  the field beside it keeps what is typed.
+  A small calendar inside a day field at its right end, like a native date picker
+  (TextField's `trailing`; Verfügbar ab): its button (a small ghost one, a Tab stop of its own)
+  opens a month under the field, its right edge on the field's, the week from Monday, the
+  month's name from the catalog. The chosen day is filled, today has a ring. The keys move
+  like a native date picker (input.ts gridKeys): the arrows a day or a week, Home and End the
+  week's ends, PageUp and PageDown a month; Enter or Space and a click take the day, Esc
+  closes and gives the focus back to the button; leaving it closes it. The month's buttons
+  move the focus to the same day in the other month. It only offers a day: the field keeps
+  what is typed.
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -153,7 +155,7 @@
   <span class="toggle" data-calendar-button>
     <Button
       variant="ghost"
-      size="field"
+      size="sm"
       iconOnly
       icon="pickDay"
       label={t.calendar.open}
@@ -241,12 +243,13 @@
     display: inline-flex;
   }
 
-  /* Under its button, over what follows, like a menu. */
+  /* Under the field, over what follows, like a menu: the small button sits 2 px inside the
+     field's bottom edge and 4 px and the border inside its right edge. */
   .popover {
     position: absolute;
     z-index: var(--z-overlay);
-    top: calc(100% + var(--menu-gap));
-    right: 0;
+    top: calc(100% + var(--space-2) + var(--menu-gap));
+    right: calc(-1 * (var(--space-4) + var(--border-width)));
     display: flex;
     flex-direction: column;
     gap: var(--space-4);

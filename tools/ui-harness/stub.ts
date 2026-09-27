@@ -45,8 +45,9 @@
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // Several profiles, one active (core's profile::set): with a profile the work folder holds
 // the scenario's profile (1, active) and two invented test profiles (2 SAP FI/CO, 3 Cloud
-// Architect, tools/test-profiles/); "Aus Datei laden" (`load_profile`) takes a third one. A
-// switch scores the jobs with the new active profile at once: the list rows take the
+// Architect, tools/test-profiles/); `load_profile` takes a third one (the page's "Aus Datei
+// laden" picks a file into the form instead, `pick_profile`). A deleted active profile gives
+// the place back to the one active before it, like core. A switch scores the jobs with the new active profile at once: the list rows take the
 // engine's matches of that profile from the snapshot (`DEMO.profiles`); the reader keeps the
 // demo profile's reasons under the new score (the snapshot has one profile's readers).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
@@ -836,6 +837,8 @@ interface StubProfile {
 }
 let profiles: StubProfile[] = [];
 let activeId: number | null = null;
+/** The profile active before the active one (core's index `previous`). */
+let previousId: number | null = null;
 /** Deleted profiles by number (their backup), for the undo. */
 const deletedProfiles = new Map<number, StubProfile>();
 /** The number of the other profiles of the demo (`DEMO.profiles`) the work folder starts
@@ -1946,6 +1949,7 @@ function matchWithActive(j: JobView): Match | null {
 function activate(target: StubProfile | null): void {
   const from = profiles.find((p) => p.id === activeId);
   if (from !== undefined) from.info = state.profile;
+  if (activeId !== null && target !== null && target.id !== activeId) previousId = activeId;
   activeId = target?.id ?? null;
   state.profile = target === null ? null : structuredClone(target.info);
   backupProfile = null;
@@ -2148,16 +2152,18 @@ const handlers: Handlers = {
     profileOf(id).name = profileName(name);
     return profileEntries();
   },
-  // Like core: the file becomes its backup; the next profile in order is active (else the
-  // one before), the last one leaves none.
+  // Like core: the file becomes its backup; the one active before is active again, without
+  // it the next profile in order (else the one before), the last one leaves none.
   delete_profile: ({ id }) => {
     const index = profiles.findIndex((p) => p.id === id);
     if (index < 0) return false;
     const [gone] = profiles.splice(index, 1);
     if (id === activeId) {
       gone!.info = state.profile;
+      const back = profiles.find((p) => p.id === previousId);
       activeId = null;
-      activate(profiles[index] ?? profiles[index - 1] ?? null);
+      activate(back ?? profiles[index] ?? profiles[index - 1] ?? null);
+      previousId = null;
     }
     deletedProfiles.set(id, gone!);
     return true;

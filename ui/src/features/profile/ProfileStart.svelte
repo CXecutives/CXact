@@ -1,8 +1,9 @@
 <!--
   No profile yet (or one that no longer reads): one sentence what the profile is for and
   the three ways in, side by side as siblings (32 px like every main action): "Aus Lebenslauf
-  anlegen" (the primary, the recommended way: a prompt for an AI fills the whole form),
-  "Profil anlegen" (an empty form) and "Profildatei wählen" (an existing JSON file). A file
+  erstellen" (the primary, the recommended way: a prompt for an AI fills the whole form),
+  "Neues Profil" (an empty form) and "Aus Datei laden" (an existing JSON file), the same
+  words as in the menu of the profiles. A file
   that no longer reads also offers its folder, to fix it by hand. Sits at about 38 % of the
   height.
 -->
@@ -53,7 +54,7 @@
       variant="secondary"
       size="field"
       icon="add"
-      label={t.profile.create}
+      label={t.profile.newProfile}
       testid="profile-create"
       onclick={oncreate}
     />
@@ -61,7 +62,7 @@
       variant="secondary"
       size="field"
       icon="pickFile"
-      label={t.profile.pick}
+      label={t.profile.load}
       loading={picking}
       testid="profile-pick"
       onclick={onpick}

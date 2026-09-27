@@ -12,8 +12,9 @@
   options keep their widths and nothing jumps. An unchosen option washes on hover and darkens
   while pressed. Counts roll when they change.
   Like native radio buttons the group is one Tab stop and the arrows, Home and End choose.
-  One size everywhere (Einstellungen and Profil alike): as high as a small button
-  (--control-choice, 28 px) with its 13 px text.
+  One size everywhere (Einstellungen and Profil alike): as high as a field (--control-field,
+  32 px, so it lines up with the fields and buttons of its row) with the 13 px text of a small
+  button.
 -->
 <script lang="ts" module>
   export interface SegmentedOption<Id extends string = string> {
@@ -132,7 +133,7 @@
     display: inline-flex;
     min-width: 0;
     max-width: 100%;
-    height: var(--control-choice);
+    height: var(--control-field);
     padding: var(--space-2);
     border-radius: var(--radius-control);
     position: relative;

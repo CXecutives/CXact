@@ -1107,32 +1107,39 @@ export const de = {
     replaced: 'Profil ersetzt.',
     /** Rückgängig of a removal or a replacement that did not work. */
     restoreFailed: 'Das alte Profil ließ sich nicht zurückholen.',
-    create: 'Profil anlegen',
-    fromCv: 'Aus Lebenslauf anlegen',
+    /** The recommended way in, and the head's button for a new or empty profile. */
+    fromCv: 'Aus Lebenslauf erstellen',
     /** The same way for a profile that exists: the answer fills the form for review. */
     updateFromCv: 'Aus Lebenslauf aktualisieren',
-    pick: 'Profildatei wählen',
     /** The switcher at the left of the head: the active profile's name opens the menu of
      *  every profile (a check at the active one) and what can be done with them. Without a
      *  name of its own a profile goes by its role, else by its number. The accessible name of
      *  the menu. */
     profiles: 'Profile',
     numbered: (value: number) => `Profil ${n(value)}`,
+    /** In the menu of the profiles and in the empty state alike: a new form, stored on
+     *  "Speichern" (the title says it while the form holds it). */
     newProfile: 'Neues Profil',
     duplicate: 'Profil duplizieren',
     /** The name a copy starts with (Umbenennen changes it). */
     copyName: (name: string) => `${name} Kopie`,
     rename: 'Umbenennen',
     renameHeading: 'Profil umbenennen',
+    /** In the menu and in the empty state alike: a file into the form for review. */
     load: 'Aus Datei laden',
     /** After another profile became the active one (its rescore runs in the background). */
-    switched: 'Profil gewechselt, Jobs neu bewertet',
+    switched: 'Profil gewechselt, Jobs werden neu bewertet.',
+    /** The toasts of a new profile (saved) and a copy: the profile active now. */
+    created: (name: string) => `Profil angelegt, aktiv ist jetzt „${name}“.`,
+    duplicated: (name: string) => `Kopie angelegt, aktiv ist jetzt „${name}“.`,
     /** In the switcher's menu, red; it asks first, naming the profile, and the toast offers
      *  Rückgängig. */
     remove: 'Profil löschen',
     removeHeading: (name: string) => `„${name}“ löschen?`,
     removeConfirm: 'Löschen',
     removed: 'Profil gelöscht.',
+    /** The same toast when another profile is active now (the one active before). */
+    removedNow: (name: string) => `Profil gelöscht, aktiv ist jetzt „${name}“.`,
     /** The toast of a save (during the setup with the way on). */
     saved: 'Profil gespeichert.',
     /** The same toast with what the rescore of the save changed in the Eingang: the jobs
@@ -1161,23 +1168,6 @@ export const de = {
     /** The same place without a mailbox: back to the setup page. */
     nextMailbox: 'Weiter zum Postfach',
     warning,
-    /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
-    pack: {
-      finance: 'Finanzen',
-      sap: 'SAP',
-      itProject: 'IT-Projekte',
-      hr: 'Personal',
-      procurement: 'Einkauf',
-      data: 'Daten',
-      pharma: 'Pharma',
-      operations: 'Produktion',
-      sales: 'Vertrieb',
-      legal: 'Recht',
-      software: 'Software',
-      restructuring: 'Restrukturierung',
-      consulting: 'Unternehmensberatung',
-      energy: 'Energiewirtschaft',
-    } as Record<string, string>,
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
@@ -1210,9 +1200,10 @@ export const de = {
       wishes: 'Wünsche',
       permanent: 'Festanstellung',
     },
-    /** The two blocks whose effect is easy to get wrong say it in one sentence. */
+    /** The blocks whose effect is easy to get wrong say it in one sentence. */
     sectionHint: {
       criteria: 'Was hier nicht passt, schließt einen Job aus.',
+      permanent: 'Was hier nicht passt, schließt eine Festanstellung aus.',
       wishes: 'Wünsche schließen nichts aus.',
     } as Partial<Record<string, string>>,
     field: {
@@ -1237,8 +1228,7 @@ export const de = {
       focusHint: 'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
       focusFull: 'Höchstens fünf Schwerpunkte.',
       /** More Schwerpunkte in a file or an answer than count. */
-      focusTrimmed: (count: number) =>
-        `Die Datei nennt ${n(count)} Schwerpunkte, übernommen sind die ersten fünf.`,
+      focusTrimmed: 'Übernommen sind die ersten fünf Schwerpunkte.',
       strengths: 'Besondere Stärken',
       strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
       keywords: 'Stichworte',
@@ -1311,6 +1301,8 @@ export const de = {
       /** A value the backend refused, said at its field: the limit where one is. */
       refused: 'Dieser Wert passt nicht.',
       atMost: (max: number) => `Höchstens ${n(max)}.`,
+      /** A 0 where it would mean nothing (a day rate, a duration, days a week). */
+      atLeast: (min: number) => `Mindestens ${n(min)}.`,
       /** A value in the file that the app could not read, shown at its field. */
       unreadableNumber: (value: string) => `In der Datei stand „${value}“, das ist keine Zahl.`,
       unreadableDate: (value: string) => `In der Datei stand „${value}“, das ist kein Datum.`,

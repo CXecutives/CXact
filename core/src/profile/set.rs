@@ -8,7 +8,8 @@
 //! deleted by hand is gone, one of such a name put there is a profile.
 //!
 //! The index `profilliste.json` beside them holds what the files cannot: which profile is
-//! active and the names the user gave. Missing or unreadable (every field has a default), the
+//! active, the one active before it (a deleted active profile gives the place back to it)
+//! and the names the user gave. Missing or unreadable (every field has a default), the
 //! first profile is active and each goes by its role; an active profile whose file is gone
 //! gives way to the first one. Reading never writes: only the changes below write the index.
 //! A new profile takes the number after the highest any file of the folder carries, a backup
@@ -50,10 +51,20 @@ pub struct Entry {
 #[serde(rename_all = "camelCase", default)]
 struct Index {
     active: Option<u32>,
+    /// The profile active before the active one (the user came from there).
+    previous: Option<u32>,
     names: BTreeMap<String, String>,
 }
 
 impl Index {
+    /// `id` becomes the active profile; `now` (the active one until then) is the one before.
+    fn activate(&mut self, now: Option<u32>, id: u32) {
+        if now != Some(id) {
+            self.previous = now;
+        }
+        self.active = Some(id);
+    }
+
     fn name(&self, id: u32) -> Option<String> {
         self.names.get(&id.to_string()).cloned()
     }
@@ -254,8 +265,9 @@ pub fn switch(workspace: &Path, id: u32) -> Result<bool> {
         return Ok(false);
     }
     let mut index = read_index(&dir);
-    if active_of(&ids, &index) != Some(id) {
-        index.active = Some(id);
+    let now = active_of(&ids, &index);
+    if now != Some(id) {
+        index.activate(now, id);
         write_index(&dir, &index)?;
     }
     Ok(true)
@@ -266,12 +278,14 @@ pub fn switch(workspace: &Path, id: u32) -> Result<bool> {
 /// profiles stay as they were.
 fn add(workspace: &Path, bytes: &[u8], name: Option<&str>) -> Result<u32> {
     let dir = dir(workspace);
-    let id = scan(&dir)?.next();
+    let folder = scan(&dir)?;
+    let id = folder.next();
     let path = dir.join(file_name(id));
     write_atomic(&path, bytes)?;
     let mut index = read_index(&dir);
     index.set_name(id, name);
-    index.active = Some(id);
+    let now = active_of(&folder.ids, &index);
+    index.activate(now, id);
     if let Err(e) = write_index(&dir, &index) {
         let _ = std::fs::remove_file(&path);
         return Err(e);
@@ -327,9 +341,10 @@ pub fn rename(workspace: &Path, id: u32, name: &str) -> Result<bool> {
 }
 
 /// Deletes profile `id`: its file becomes its one backup (replacing an older one), so
-/// [`restore`] brings it back. The active profile gives way to the next one in order, else
-/// the one before; the last one leaves no profile, the state of a new work folder. `false`
-/// if there is no such profile.
+/// [`restore`] brings it back. The active profile gives the place back to the one active
+/// before it (user decision 2026-09-27: she came from there); without that one the next
+/// profile in order is active, else the one before; the last one leaves no profile, the
+/// state of a new work folder. `false` if there is no such profile.
 pub fn delete(workspace: &Path, id: u32) -> Result<bool> {
     let _one_at_a_time = writing();
     let dir = dir(workspace);
@@ -348,10 +363,13 @@ pub fn delete(workspace: &Path, id: u32) -> Result<bool> {
             .position(|&other| other == id)
             .unwrap_or(0);
         let rest: Vec<u32> = folder.ids.iter().copied().filter(|&o| o != id).collect();
-        index.active = rest
-            .get(at)
-            .or_else(|| at.checked_sub(1).and_then(|before| rest.get(before)))
-            .copied();
+        let back = index.previous.filter(|previous| rest.contains(previous));
+        index.active = back.or_else(|| {
+            rest.get(at)
+                .or_else(|| at.checked_sub(1).and_then(|before| rest.get(before)))
+                .copied()
+        });
+        index.previous = None;
         // Without the index the first profile is active: a valid state too.
         if let Err(e) = write_index(&dir, &index) {
             log::warn!("profile index not written after a deletion: {e}");
@@ -390,7 +408,7 @@ pub fn restore(workspace: &Path, id: u32) -> Result<bool> {
         std::fs::rename(&backup, &path).map_err(|e| Error::io(&backup, e))?;
     }
     if active != Some(id) {
-        index.active = Some(id);
+        index.activate(active, id);
         if let Err(e) = write_index(&dir, &index) {
             log::warn!("profile index not written after a restore: {e}");
         }
@@ -561,8 +579,8 @@ mod tests {
         assert_eq!(list(ws).unwrap()[1].name, None);
         assert!(!rename(ws, 5, "Nichts").unwrap());
 
-        // Deleting the active profile makes it its backup; the next one in order is active
-        // (here the one before), and a new profile never takes its number.
+        // Deleting the active profile makes it its backup; the one active before it is
+        // active again, and a new profile never takes its number.
         assert!(rename(ws, 2, "Zweites").unwrap());
         assert!(delete(ws, 2).unwrap());
         assert!(!copy.exists());
@@ -585,9 +603,39 @@ mod tests {
         // Deleting one that is not active keeps the active one.
         assert!(delete(ws, 1).unwrap());
         assert_eq!((ids(ws), active(ws)), (vec![2, 3], Some(2)));
-        // The next one in order follows the active one.
+        // The one active before is gone too: the next one in order follows the active one.
         assert!(delete(ws, 2).unwrap());
         assert_eq!(active(ws), Some(3));
+    }
+
+    /// Deleting the active profile gives the place back to the one active before it, not to
+    /// a neighbour: after a switch, a new profile, a copy or a file taken as a profile, the
+    /// user is back where she came from.
+    #[test]
+    fn deleting_the_active_profile_goes_back_to_the_one_active_before() {
+        let dir = tempfile::tempdir().unwrap();
+        let ws = dir.path();
+        for _ in 0..4 {
+            create(ws).unwrap();
+        }
+        assert!(switch(ws, 1).unwrap());
+        assert!(switch(ws, 3).unwrap());
+        assert!(delete(ws, 3).unwrap());
+        assert_eq!(active(ws), Some(1), "the one before, not the neighbour 4");
+        // A new profile deleted at once: the one active before it again.
+        assert_eq!(create(ws).unwrap(), 5);
+        assert!(delete(ws, 5).unwrap());
+        assert_eq!(active(ws), Some(1));
+        // Its undo makes it active again; deleting it again goes back once more.
+        assert!(restore(ws, 5).unwrap());
+        assert_eq!(active(ws), Some(5));
+        assert!(delete(ws, 5).unwrap());
+        assert_eq!(active(ws), Some(1));
+        // The one before is gone too: the neighbour follows.
+        assert!(switch(ws, 2).unwrap());
+        assert!(delete(ws, 1).unwrap());
+        assert!(delete(ws, 2).unwrap());
+        assert_eq!((ids(ws), active(ws)), (vec![4], Some(4)));
     }
 
     /// Deleting the last profile leaves the state of a work folder without one: no profile,

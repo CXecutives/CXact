@@ -575,8 +575,8 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   const palette = page.getByTestId('palette');
   const name = T.settings.paletteName;
   await expect(palette.getByRole('radio')).toHaveText(['CXact', 'Hell', 'Dunkel']);
-  // The one height of every choice of the app, as in the Profil form.
-  await expect(palette).toHaveCSS('height', '28px');
+  // The one height of every choice of the app, as in the Profil form: a field's.
+  await expect(palette).toHaveCSS('height', '32px');
   await palette.getByRole('radio', { name: name.dark }).click();
   await expect(root).toHaveAttribute('data-palette', 'dark');
   await expect(page.locator('body')).not.toHaveCSS('background-color', cream);

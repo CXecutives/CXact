@@ -1,12 +1,13 @@
 <!--
-  The profiles of the work folder behind the switcher of the Profil view (core's
-  profile::set): a switch (answered by a toast, "Profil gewechselt, Jobs neu bewertet"; the
-  rescore runs in the background), Neues Profil (the caret goes into its first field), Profil
-  duplizieren (named as a copy), Aus Datei laden (the file as a new profile), each of them the
-  active profile from then on, so with unsaved changes they ask first (the view's "Änderungen
-  speichern?", `guard`). "Umbenennen" asks for the name in a small dialog; emptied, the
-  profile goes by its role or number again. "Profil löschen" asks first naming the profile,
-  then a toast offers "Rückgängig" for a moment (the next profile is active meanwhile, the
+  The profiles of the work folder behind the menu of the Profil view's title (core's
+  profile::set): a switch (answered by a toast, "Profil gewechselt, Jobs werden neu
+  bewertet."; the rescore runs in the background) and Profil duplizieren (named as a copy,
+  the toast names it as the active one), each the active profile from then on, so with
+  unsaved changes they ask first (the view's "Änderungen speichern?", `guard`). Neues Profil
+  and Aus Datei laden are drafts of the view: nothing is written before "Speichern".
+  "Umbenennen" asks for the name in a small dialog; emptied, the profile goes by its role or
+  number again. "Profil löschen" asks first naming the profile, then a toast names the
+  profile active now (the one active before, core) and offers "Rückgängig" for a moment (the
   last one leaves the ways in); an undo that fails says so. Draws only its two dialogs; the
   view calls its functions (`bind:this`).
 -->
@@ -19,9 +20,8 @@
   import { app } from '$lib/state/app.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
-  import { tick } from 'svelte';
   import ProfileRename from './ProfileRename.svelte';
-  import { defaultName, profileName } from './profiles';
+  import { activeName, defaultName, profileName } from './profiles';
 
   type Words = () => string;
 
@@ -81,27 +81,16 @@
     });
   }
 
-  export function create(): void {
-    guard(() => {
-      void change(() => invoke('create_profile')).then(async (done) => {
-        if (!done) return;
-        await tick();
-        document.querySelector<HTMLElement>('[data-testid="profile-name-field"]')?.focus();
-      });
-    });
-  }
-
   export function duplicate(): void {
     guard(() => {
       const source = current;
       if (source === null) return;
       const name = t.profile.copyName(profileName(source));
-      void change(() => invoke('duplicate_profile', { id: source.id, name }));
+      void change(() => invoke('duplicate_profile', { id: source.id, name })).then((done) => {
+        const now = activeName(app.state?.profiles);
+        if (done && now !== null) toasts.show(t.profile.duplicated(now), 'success');
+      });
     });
-  }
-
-  export function load(): void {
-    guard(() => void change(() => invoke('load_profile')));
   }
 
   export function askRename(): void {
@@ -146,7 +135,8 @@
       await reload();
       showActive();
       if (removed) {
-        toasts.show(t.profile.removed, 'success', {
+        const now = activeName(app.state?.profiles);
+        toasts.show(now === null ? t.profile.removed : t.profile.removedNow(now), 'success', {
           label: t.common.undo,
           onclick: () => guard(() => void restore(entry.id)),
         });

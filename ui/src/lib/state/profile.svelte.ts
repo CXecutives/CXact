@@ -419,6 +419,10 @@ export function updated(stored: ProfileForm, answer: ProfileForm): ProfileForm {
 class ProfileEditor {
   /** `null`: nothing in the editor (no profile yet, or the view has not opened one). */
   origin = $state<DraftOrigin | null>(null);
+  /** The draft becomes a new profile beside the others when it is saved (the menu's Neues
+   *  Profil and Aus Datei laden): nothing is written before "Speichern", "Verwerfen" goes
+   *  back to the active profile as it was. */
+  fresh = $state(false);
   before = $state.raw<ProfileForm>(emptyForm());
   after = $state<ProfileForm>(emptyForm());
   source = $state<string | null>(null);
@@ -471,26 +475,31 @@ class ProfileEditor {
   /** The stored profile (again, e.g. after a save). */
   edit(form: ProfileForm): void {
     this.#start('stored', form, form);
+    this.fresh = false;
     this.source = null;
     this.quality = null;
     this.understood = null;
   }
 
-  /** An empty form for a new profile, with one empty competence and language row, so the
-   *  table and the star show at once. */
-  create(): void {
+  /** An empty form for a new profile, with one empty competence and language row (at B2,
+   *  the level the engine assumes), so the table and the star show at once; `fresh`: saved
+   *  beside the other profiles. */
+  create(fresh = false): void {
+    this.fresh = fresh;
     this.#start('new', emptyForm(), {
       ...emptyForm(),
       competences: [{ name: '', years: null, aliases: [], origin: null }],
-      languages: [{ language: '', level: null, origin: null }],
+      languages: [{ language: '', level: 'b2', origin: null }],
     });
     this.source = NEW_SOURCE;
     this.quality = null;
     this.understood = null;
   }
 
-  /** A chosen file or an AI's answer, to review before it is saved. */
-  take(draft: ProfileDraft, origin: 'file' | 'answer'): void {
+  /** A chosen file or an AI's answer, to review before it is saved; `fresh`: saved beside
+   *  the other profiles (an answer for a new profile keeps what the form was). */
+  take(draft: ProfileDraft, origin: 'file' | 'answer', fresh = this.fresh): void {
+    this.fresh = fresh;
     this.#start(origin, draft.form, draft.form);
     this.source = draft.source;
     this.quality = draft.quality;
@@ -510,6 +519,7 @@ class ProfileEditor {
   close(): void {
     this.#start('stored', emptyForm(), emptyForm());
     this.origin = null;
+    this.fresh = false;
     this.source = null;
     this.quality = null;
     this.understood = null;

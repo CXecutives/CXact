@@ -41,7 +41,10 @@ const countries = (page: Page): Locator => page.getByTestId('profile-countries')
 const countryInput = (page: Page): Locator => countries(page).locator('input');
 const options = (page: Page): Locator => page.getByTestId('profile-countries-options');
 const saves = async (page: Page): Promise<number> => (await calls(page, 'save_profile')).length;
+/** The chevron after the title that opens the menu of the profiles. */
 const switcher = (page: Page): Locator => page.getByTestId('profile-switcher');
+/** The title of the view: the active profile's name. */
+const heading = (page: Page): Locator => page.getByTestId('profile-heading');
 /** The other profiles of the demo's work folder, by their roles (the stub's 2 and 3). */
 const OTHERS = DEMO.profiles.slice(0, 2).map((other) => other.profile.form!.title);
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
@@ -194,15 +197,26 @@ function glided(tops: number[]): boolean {
 
 // ------------------------------------------------------------------ the head
 
-test('the head: the switcher, a status only when needed and one button; the form says who it is', async ({
+test('the head: the name as the title with its menu, a status only when needed and one button', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-remote-unread');
   const head = page.getByTestId('profile-head');
-  // The switcher names the profile by its role; no person, file, time of saving, quality or
-  // count above the form.
+  // The title names the profile by its role (the page's heading, text a user would copy); no
+  // person, file, time of saving, quality or count above the form.
   const role = DEMO.profile.form!.title;
-  await expect(switcher(page)).toHaveText(role);
+  await expect(heading(page)).toHaveText(role);
+  await expect(head.getByRole('heading', { level: 1 })).toHaveText(role);
+  await expect(heading(page)).toHaveAttribute('data-copy', '');
+  // A quiet chevron right after the name opens the menu (a small ghost icon button).
+  await expect(switcher(page)).toHaveAccessibleName(T.profile.profiles);
+  await expect(switcher(page)).toHaveAttribute('aria-haspopup', 'menu');
+  await expect(switcher(page)).toHaveClass(/ghost/);
+  await expect(switcher(page)).toHaveCSS('height', '28px');
+  const name = (await heading(page).boundingBox())!;
+  const chevron = (await switcher(page).boundingBox())!;
+  expect(chevron.x - (name.x + name.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(middle(chevron) - middle(name))).toBeLessThanOrEqual(1);
   for (const gone of ['Erika Beispiel', 'Gespeichert', 'Vollständig']) {
     await expect(head).not.toContainText(gone);
   }
@@ -253,30 +267,82 @@ test('the head: the switcher, a status only when needed and one button; the form
   expect(await tooltipOf(page, update)).toBe(T.profile.saveFirst);
   await switcher(page).click();
   await expect(page.getByTestId('menu-item-remove')).toHaveAttribute('aria-disabled', 'true');
-  // Without a value to check (the demo reads cleanly) the head holds the switcher and the
-  // button only.
+  // Without a value to check (the demo reads cleanly) the head holds the title, its chevron
+  // and the button only.
   await page.keyboard.press('Escape');
   await profile(page);
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').locator('.status > *')).toHaveCount(1);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
   await profile(page, '&scenario=profile-thin');
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').locator('.status > *')).toHaveCount(1);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
 });
 
-test('the head is one row as wide as the sections: the switcher left, the CV button right', async ({
+test('a long name ends in an ellipsis; the button keeps the line of the title', async ({
+  page,
+}) => {
+  await profile(page);
+  const long = 'Interim Managerin Finanzen und Controlling im Mittelstand';
+  await switcher(page).click();
+  await page.getByTestId('menu-item-rename').click();
+  await page.getByTestId('profile-rename').fill(long);
+  await page.keyboard.press('Enter');
+  await expect(heading(page)).toHaveText(long);
+  const clipped = await heading(page).evaluate((node) => node.scrollWidth > node.clientWidth);
+  expect(clipped).toBe(true);
+  await expect(heading(page)).toHaveCSS('text-overflow', 'ellipsis');
+  const update = (await page.getByTestId('profile-update-cv').boundingBox())!;
+  expect(Math.abs(middle(update) - middle(await heading(page).boundingBox()))).toBeLessThanOrEqual(
+    1,
+  );
+});
+
+test('the head is one row as wide as the sections: the title left, the CV button right', async ({
   page,
 }) => {
   await profile(page);
   const section = (await page.getByTestId('section-person').boundingBox())!;
-  const left = (await switcher(page).boundingBox())!;
-  const right = (await page.getByTestId('profile-update-cv').boundingBox())!;
+  const left = (await heading(page).boundingBox())!;
+  const button = page.getByTestId('profile-update-cv');
+  // Quiet (ghost) with its glyph: its words end on the column's edge.
+  await expect(button).toHaveClass(/ghost/);
+  await expect(button.locator('svg')).toHaveCount(1);
+  const words = (await button.locator('.label').boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
-  expect(Math.round(right.x + right.width)).toBe(Math.round(section.x + section.width));
-  expect(middle(left)).toBe(middle(right));
-  // Outlined, with its glyph.
-  await expect(page.getByTestId('profile-update-cv')).toHaveClass(/secondary/);
-  await expect(page.getByTestId('profile-update-cv').locator('svg')).toHaveCount(1);
+  expect(Math.round(words.x + words.width)).toBe(Math.round(section.x + section.width));
+  // On the title's line.
+  expect(Math.abs(middle(left) - middle(await button.boundingBox()))).toBeLessThanOrEqual(1);
+  // The title is the page's: 26 px in the heading colour, like the reader's job title.
+  await expect(heading(page)).toHaveCSS('font-size', '26px');
+});
+
+test('the page ends with room under the last section; the save bar never covers it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await profile(page);
+  const view = page.getByTestId('view-profile');
+  const last = page.getByTestId('section-wishes');
+  /** At the end of the page: the room under the last section, and above the bar. */
+  const end = async (): Promise<{ window: number; bar: number | null }> => {
+    await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight, behavior: 'instant' }));
+    return view.evaluate((node) => {
+      const section = node.querySelector('[data-testid="section-wishes"]')!;
+      const bottom = section.getBoundingClientRect().bottom;
+      const bar = node.querySelector('[data-testid="profile-save-bar"]');
+      return {
+        window: Math.round(node.getBoundingClientRect().bottom - bottom),
+        bar: bar === null ? null : Math.round(bar.getBoundingClientRect().top - bottom),
+      };
+    });
+  };
+  await expect(last).toBeVisible();
+  // The end of the page never sits on the window's edge (--page-end).
+  expect(await end()).toEqual({ window: 96, bar: null });
+  // With a change, the last section still scrolls fully above the save bar, with room.
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await expect(bar(page)).toBeVisible();
+  await expect.poll(async () => (await end()).bar).toBeGreaterThanOrEqual(32);
 });
 
 test('the head and the first section keep the rhythm of all sections', async ({ page }) => {
@@ -304,7 +370,9 @@ test('"n Werte prüfen" goes to the first value that does not read, in the order
 
 // ------------------------------------------------------------------ the form as the table
 
-test('the form in its order; only Bedingungen and Wünsche say what they do', async ({ page }) => {
+test('the form in its order; Bedingungen, Festanstellung and Wünsche say what they do', async ({
+  page,
+}) => {
   await profile(page);
   const order = await page
     .locator('[data-testid="profile-form"] section[data-testid^="section-"]')
@@ -502,10 +570,14 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
     await expect(placeholder(id, input), id).toHaveAttribute('placeholder', text);
   }
   // No field repeats the name of its column.
-  await expect(page.getByTestId('competence-aliases').locator('input')).not.toHaveAttribute(
-    'placeholder',
-    /./,
-  );
+  const aliases = page.getByTestId('competence-aliases').first().locator('input');
+  await expect(aliases).not.toHaveAttribute('placeholder', /./);
+  // Narrow, the synonyms stand under the competence without their column head: their field
+  // names itself.
+  await page.setViewportSize({ width: 480, height: 800 });
+  await expect(aliases).toHaveAttribute('placeholder', T.profile.field.aliases);
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await expect(aliases).not.toHaveAttribute('placeholder', /./);
   await profile(page, '&scenario=no-profile&lang=en');
   await page.getByTestId('profile-create').click();
   await expect(page.getByTestId('profile-name-field')).toHaveAttribute(
@@ -514,7 +586,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   );
 });
 
-test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels 13/500', async ({
+test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13/500', async ({
   page,
 }) => {
   await profile(page);
@@ -531,11 +603,11 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
   const entries = await boxes(form, '.chip-input > .field.entry');
   expect(entries.length).toBeGreaterThan(8);
   for (const entry of entries) expect(entry.height, entry.text).toBe(32);
-  // One choice component for every choice: the segments, 28 px like every choice of the app
-  // (Einstellungen too), with the 13 px text of a small button.
+  // One choice component for every choice: the segments, as high as a field like every
+  // choice of the app (Einstellungen too), with the 13 px text of a small button.
   const groups = await boxes(form, '[role="radiogroup"]');
   expect(groups.length).toBe(2);
-  for (const group of groups) expect(group.height, group.text).toBe(28);
+  for (const group of groups) expect(group.height, group.text).toBe(32);
   const choices = await boxes(form, '[role="radiogroup"] [role="radio"]');
   for (const choice of choices) expect(choice.size, choice.text).toBe('13px');
   await expect(form.locator('.segmented')).toHaveCount(2);
@@ -546,11 +618,24 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
     expect(label.size, label.text).toBe('13px');
     expect(label.weight, label.text).toBe('500');
   }
-  // The main actions are 32 px.
-  for (const id of ['profile-save', 'profile-discard', 'profile-update-cv', 'profile-switcher']) {
+  // The main actions are 32 px; the chevron of the title is a small icon button.
+  for (const id of ['profile-save', 'profile-discard', 'profile-update-cv']) {
     await expect(page.getByTestId(id)).toHaveCSS('height', '32px');
   }
-  // Every number field has one width; the day of "Datum" too.
+  await expect(switcher(page)).toHaveCSS('height', '28px');
+  // Every number field has one width; the day of "Datum" too (its field, the calendar's
+  // button inside it at the right end), as high as the choice beside it.
+  const dayField = page.getByTestId('profile-date').locator('xpath=..');
+  await expect(dayField.getByTestId('profile-date-calendar')).toBeVisible();
+  const [day, choice, button] = await Promise.all([
+    dayField.boundingBox(),
+    page.getByTestId('profile-available').boundingBox(),
+    page.getByTestId('profile-date-calendar').boundingBox(),
+  ]);
+  expect(day!.height).toBe(choice!.height);
+  expect(middle(day)).toBe(middle(choice));
+  expect(button!.x + button!.width).toBeLessThan(day!.x + day!.width);
+  expect(button!.x).toBeGreaterThan(day!.x + day!.width / 2);
   const widths = await Promise.all(
     [
       'profile-years',
@@ -561,7 +646,9 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
       'profile-remote-min',
       'profile-min-months',
       'profile-date',
-    ].map(async (id) => Math.round((await page.getByTestId(id).boundingBox())!.width)),
+    ].map(async (id) =>
+      Math.round((await page.getByTestId(id).locator('xpath=..').boundingBox())!.width),
+    ),
   );
   expect(new Set(widths).size, widths.join(' ')).toBe(1);
 });
@@ -950,7 +1037,8 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'aria-checked',
     'true',
   );
-  // The level of a language: a menu of the levels, "Offen" while none is chosen.
+  // The level of a language: a menu of the levels, no "Offen" (without one the engine
+  // assumes B2, so a row without one shows B2).
   const row = page.getByTestId('language-row').first();
   const level = row.getByTestId('language-level');
   await expect(level).toHaveAttribute('aria-haspopup', 'menu');
@@ -963,7 +1051,6 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   await level.click();
   const menu = page.getByTestId('menu');
   await expect(menu.getByRole('menuitemradio')).toHaveText([
-    T.profile.field.open,
     'A1',
     'A2',
     'B1',
@@ -972,11 +1059,15 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'C2',
     'Muttersprache',
   ]);
-  await page.getByTestId('menu-item-none').click();
-  await expect(level).toHaveText(T.profile.field.open);
+  await expect(page.getByTestId('menu-item-none')).toHaveCount(0);
+  await page.getByTestId('menu-item-c1').click();
+  await expect(level).toHaveText('C1');
+  // A new row starts at B2.
+  await page.getByTestId('language-add').click();
+  await expect(page.getByTestId('language-level').last()).toHaveText('B2');
   await save(page).click();
   const sent = await lastSave(page);
-  expect(sent.after.languages[0]!.level).toBeNull();
+  expect(sent.after.languages[0]!.level).toBe('c1');
   expect(sent.after.wishes.remote).toBeNull();
   expect(sent.after.criteria.available).toEqual({ kind: 'unset' });
 });
@@ -1285,6 +1376,31 @@ test('a value too large is said at once, stays with its error and holds the save
   await expect(names.nth(3)).toHaveAttribute('aria-invalid', 'true');
   await expect(names.nth(2)).not.toHaveAttribute('aria-invalid', 'true');
   await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
+  expect(await saves(page)).toBe(0);
+});
+
+test('a typed 0 is refused where at least 1 counts and holds the save', async ({ page }) => {
+  await profile(page);
+  for (const [id, name] of [
+    ['profile-min-rate', 'minDayRate'],
+    ['profile-wish-rate', 'wishDayRate'],
+    ['profile-min-months', 'minMonths'],
+  ] as const) {
+    const input = page.getByTestId(id);
+    await input.fill('0');
+    await expect(field(page, name), name).toContainText(T.profile.field.atLeast(1));
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
+    await input.fill('1');
+    await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+  }
+  // A day of the workload alike; Enter to save gives it the caret.
+  const min = page.getByTestId('profile-workload-min');
+  await min.fill('0');
+  await expect(field(page, 'workload')).toContainText(T.profile.field.atLeast(1));
+  await expect(min).toHaveAttribute('aria-invalid', 'true');
+  await page.getByTestId('profile-title').press('Enter');
+  await expect(min).toBeFocused();
   expect(await saves(page)).toBe(0);
 });
 
@@ -1653,7 +1769,7 @@ test('a file with seven Schwerpunkte: the first five are taken, saving works', a
   await page.getByTestId('profile-pick').click();
   await expect.poll(() => marked(page)).toHaveLength(5);
   await expect(page.getByTestId('focus-trimmed')).toHaveText(
-    'Die Datei nennt 7 Schwerpunkte, übernommen sind die ersten fünf.',
+    'Übernommen sind die ersten fünf Schwerpunkte.',
   );
   await expect(page.getByTestId('focus-count')).toHaveText('5/5');
   await save(page).click();
@@ -1762,6 +1878,14 @@ test('the language rows line up: the level like a select, one width; the x needs
   page,
 }) => {
   await profile(page);
+  // Their columns are named over the rows like the competences'.
+  const heads = page.getByTestId('languages').locator('.head > span');
+  await expect(heads).toHaveText([T.profile.field.language, T.profile.field.level, '']);
+  const [head, first] = await Promise.all([
+    heads.nth(1).boundingBox(),
+    page.getByTestId('language-level').first().boundingBox(),
+  ]);
+  expect(Math.round(head!.x)).toBe(Math.round(first!.x));
   // The level is a button in a row of fields: outlined and as high as the field, in one
   // column whatever its word, so the fields and the levels of all rows line up.
   const rows = page.getByTestId('language-row');
@@ -1867,12 +1991,13 @@ test('no profile: one sentence and the three ways in, the CV first', async ({ pa
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toContainText('Noch kein Profil');
   await expect(empty).toContainText(T.profile.noneText);
+  // The same words as the menu of the profiles.
   await expect(empty.getByRole('button')).toHaveText([
-    'Aus Lebenslauf anlegen',
-    'Profil anlegen',
-    'Profildatei wählen',
+    'Aus Lebenslauf erstellen',
+    T.profile.newProfile,
+    T.profile.load,
   ]);
-  await expect(empty.locator('.btn.primary')).toHaveText('Aus Lebenslauf anlegen');
+  await expect(empty.locator('.btn.primary')).toHaveText('Aus Lebenslauf erstellen');
 });
 
 test('a new form starts with one row each; the other ways stay at hand', async ({ page }) => {
@@ -2068,7 +2193,7 @@ test('a file over a profile that does not read replaces it; Rückgängig brings 
   expect((await calls(page, 'restore_profile')).at(-1)![1]).toEqual({ id: null });
 });
 
-test('"Profil löschen" asks naming the profile; the next one is active, Rückgängig brings it back', async ({
+test('"Profil löschen" asks naming the profile; the toast names the active one, Rückgängig brings it back', async ({
   page,
 }) => {
   await profile(page);
@@ -2081,34 +2206,34 @@ test('"Profil löschen" asks naming the profile; the next one is active, Rückg�
     await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.profile.removeConfirm);
     return dialog;
   };
-  const undo = (): Locator =>
-    page
-      .getByTestId('toast')
-      .filter({ hasText: T.profile.removed })
-      .getByRole('button', { name: T.common.undo });
+  const removed = (): Locator =>
+    page.getByTestId('toast').filter({ hasText: T.profile.removedNow(OTHERS[0]!) });
+  const undo = (): Locator => removed().getByRole('button', { name: T.common.undo });
   // Cancel keeps the profile.
   await (await ask()).getByTestId('dialog-cancel').click();
   expect(await calls(page, 'delete_profile')).toHaveLength(0);
   await (await ask()).getByTestId('dialog-confirm').click();
   expect((await calls(page, 'delete_profile')).at(-1)![1]).toEqual({ id: 1 });
-  // The next profile is active and in the form.
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  // Without one active before it, the next profile is active and in the form; the toast
+  // names it.
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
+  await expect(removed()).toBeVisible();
   await expect(page.getByTestId('profile-name-field')).toHaveValue(
     DEMO.profiles[0]!.profile.form!.name,
   );
   await undo().click();
-  await expect(switcher(page)).toHaveText(role);
+  await expect(heading(page)).toHaveText(role);
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
   expect((await calls(page, 'restore_profile')).at(-1)![1]).toEqual({ id: 1 });
   // An undo that fails says so.
   await (await ask()).getByTestId('dialog-confirm').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   await failNext(page, 'restore_profile');
   await undo().click();
   await expect(
     page.getByTestId('toast').filter({ hasText: T.profile.restoreFailed }),
   ).toBeVisible();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
 });
 
 test('the last profile deleted leaves the ways in', async ({ page }) => {
@@ -2125,6 +2250,23 @@ test('the last profile deleted leaves the ways in', async ({ page }) => {
   await expect(switcher(page)).toHaveCount(0);
 });
 
+test('a deleted profile gives the place back to the one active before it', async ({ page }) => {
+  await profile(page);
+  const role = DEMO.profile.form!.title;
+  // From the first to the third: deleting the third goes back to the first, not the second.
+  await switcher(page).click();
+  await page.getByTestId('menu-item-profile-3').click();
+  await expect(heading(page)).toHaveText(OTHERS[1]!);
+  await switcher(page).click();
+  await page.getByTestId('menu-item-remove').click();
+  await page.getByTestId('dialog-remove-profile').getByTestId('dialog-confirm').click();
+  await expect(heading(page)).toHaveText(role);
+  await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.removedNow(role) }),
+  ).toBeVisible();
+});
+
 // ------------------------------------------------------------------ several profiles
 
 test('the switcher lists every profile; a switch scores the jobs with the new one', async ({
@@ -2138,7 +2280,7 @@ test('the switcher lists every profile; a switch scores the jobs with the new on
   await page.getByTestId('nav-profile').click();
   await switcher(page).click();
   await page.getByTestId('menu-item-profile-2').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   expect((await calls(page, 'switch_profile')).at(-1)![1]).toEqual({ id: 2 });
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.switched })).toBeVisible();
   // The form shows the new profile.
@@ -2155,7 +2297,7 @@ test('the switcher lists every profile; a switch scores the jobs with the new on
   await switcher(page).click();
   await expect(page.getByTestId('menu-item-profile-2')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('menu-item-profile-1').click();
-  await expect(switcher(page)).toHaveText(DEMO.profile.form!.title);
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
   await page.getByTestId('nav-jobs').click();
   await expect(ring).toHaveText(String(demoScore(key)));
 });
@@ -2164,12 +2306,15 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await profile(page);
   const role = DEMO.profile.form!.title;
   const copy = T.profile.copyName(role);
-  // A copy of the active profile, named as a copy, active now.
+  // A copy of the active profile, named as a copy, active now; the toast names it.
   await switcher(page).click();
   await page.getByTestId('menu-item-duplicate').click();
-  await expect(switcher(page)).toHaveText(copy);
+  await expect(heading(page)).toHaveText(copy);
   expect((await calls(page, 'duplicate_profile')).at(-1)![1]).toEqual({ id: 1, name: copy });
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.duplicated(copy) }),
+  ).toBeVisible();
   // Umbenennen asks in a small dialog with the name selected; Enter renames.
   await switcher(page).click();
   await page.getByTestId('menu-item-rename').click();
@@ -2184,27 +2329,81 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await page.keyboard.type('Finanzen Süd');
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);
-  await expect(switcher(page)).toHaveText('Finanzen Süd');
+  await expect(heading(page)).toHaveText('Finanzen Süd');
   expect((await calls(page, 'rename_profile')).at(-1)![1]).toEqual({ id: 4, name: 'Finanzen Süd' });
   // The name is text a user would copy, and only Umbenennen changes it.
-  await expect(switcher(page).locator('[data-copy]')).toHaveText('Finanzen Süd');
-  // A new profile is empty and named by its number; the caret goes into its first field.
+  await expect(heading(page)).toHaveAttribute('data-copy', '');
+  // Neues Profil is an empty draft: the title says so, the caret goes into its first field,
+  // nothing is written. Verwerfen goes back to the active profile as it was.
+  const names = page.getByTestId('profile-name-field');
   await switcher(page).click();
   await page.getByTestId('menu-item-new').click();
-  await expect(switcher(page)).toHaveText(T.profile.numbered(5));
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('');
-  await expect(page.getByTestId('profile-name-field')).toBeFocused();
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(names).toHaveValue('');
+  await expect(names).toBeFocused();
+  await expect(page.getByTestId('profile-from-cv')).toHaveText(T.profile.fromCv);
+  await names.fill('Erika Neu');
+  await discard(page).click();
+  await expect(heading(page)).toHaveText('Finanzen Süd');
+  await expect(names).toHaveValue('Erika Beispiel');
+  expect(await calls(page, 'create_profile')).toHaveLength(0);
   await switcher(page).click();
   await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
     role,
     ...OTHERS,
     'Finanzen Süd',
-    T.profile.numbered(5),
   ]);
-  // Aus Datei laden takes the file as a new profile, active now.
+  // Saved, it becomes a new profile beside the others, active now, named by its role; the
+  // toast names it.
+  await page.getByTestId('menu-item-new').click();
+  await names.fill('Erika Neu');
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await save(page).click();
+  await expect(heading(page)).toHaveText('Interim CFO');
+  expect(await calls(page, 'create_profile')).toHaveLength(1);
+  expect((await lastSave(page)).after.name).toBe('Erika Neu');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.created('Interim CFO') }),
+  ).toBeVisible();
+  await switcher(page).click();
+  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+    role,
+    ...OTHERS,
+    'Finanzen Süd',
+    'Interim CFO',
+  ]);
+  // Aus Datei laden puts the file into the form for review, as a new profile (it replaces
+  // nothing); Speichern adds it.
   await page.getByTestId('menu-item-load').click();
-  await expect(switcher(page)).toHaveText(DEMO.profiles[2]!.profile.form!.title);
-  expect(await calls(page, 'load_profile')).toHaveLength(1);
+  await expect(names).toHaveValue('Jonas Muster');
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
+  expect(await calls(page, 'load_profile')).toHaveLength(0);
+  await save(page).click();
+  await expect(heading(page)).toHaveText(T.profile.numbered(6));
+  expect(await calls(page, 'create_profile')).toHaveLength(2);
+  await expect(names).toHaveValue('Jonas Muster');
+});
+
+test('a new profile whose save fails is not left behind', async ({ page }) => {
+  await profile(page);
+  await switcher(page).click();
+  await page.getByTestId('menu-item-new').click();
+  await page.getByTestId('profile-name-field').fill('Erika Neu');
+  await failNext(page, 'save_profile');
+  await save(page).click();
+  await expect(page.getByTestId('profile-save-error')).toBeVisible();
+  // The profile made for it goes again; the one active before is active, the draft stays.
+  expect(await calls(page, 'delete_profile')).toHaveLength(1);
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Neu');
+  await discard(page).click();
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
+  await switcher(page).click();
+  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+    DEMO.profile.form!.title,
+    ...OTHERS,
+  ]);
 });
 
 test('another profile with unsaved changes asks first', async ({ page }) => {
@@ -2224,13 +2423,13 @@ test('another profile with unsaved changes asks first', async ({ page }) => {
   // Verwerfen drops them and switches.
   await choose(2);
   await dialog.getByTestId('dialog-alt').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   expect(await saves(page)).toBe(0);
   // Speichern saves them first, then switches; the saved profile goes by its new role.
   await page.getByTestId('profile-title').fill('SAP Lead');
   await choose(1);
   await dialog.getByTestId('dialog-confirm').click();
-  await expect(switcher(page)).toHaveText(DEMO.profile.form!.title);
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
   expect(await saves(page)).toBe(1);
   expect((await lastSave(page)).after.title).toBe('SAP Lead');
   await switcher(page).click();
@@ -2263,7 +2462,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
     await expect(page.getByTestId(id)).toBeVisible();
   }
   await page.keyboard.press('Escape');
-  // Untouched, Esc goes back to the three ways in, and "Profil anlegen" takes the focus.
+  // Untouched, Esc goes back to the three ways in, and "Neues Profil" takes the focus.
   await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-name-field').focus();
   await page.keyboard.press('Escape');
@@ -2465,7 +2664,9 @@ test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; year
   page,
 }) => {
   await profile(page);
-  await page.getByTestId('profile-update-cv').click();
+  // From the keyboard (WebKit gives a clicked button no focus, like the OS on macOS).
+  await page.getByTestId('profile-update-cv').focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('profile-paste')).toContainText('Aus Lebenslauf aktualisieren');
   // The update prompt (it carries the stored profile), loaded with the profile.
   await page
@@ -2484,6 +2685,11 @@ test('"Aus Lebenslauf aktualisieren" fills gaps and adds, never overwrites; year
   await page.getByTestId('profile-paste').getByTestId('dialog-confirm').click();
   expect((await calls(page, 'parse_profile')).at(-1)![1]).toEqual({ text: UPDATE, update: true });
   await expect(bar(page)).toBeVisible();
+  // The button stays where it was and gets the focus back, waiting while the draft is in the
+  // form.
+  const update = page.getByTestId('profile-update-cv');
+  await expect(update).toBeFocused();
+  await expect(update).toHaveAttribute('aria-disabled', 'true');
   // What is set stays: the name, the role, the level, the Schwerpunkte, the criteria.
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
   await expect(page.getByTestId('profile-title')).toHaveValue('Interim Managerin Finanzen');
@@ -2543,7 +2749,8 @@ test('a thin profile marks its empty sections, and they follow the form', async 
 
 test('every value that does not read is said at its field and can be removed', async ({ page }) => {
   await profile(page, '&scenario=profile-unreadable');
-  await expect(check(page)).toHaveText(/\d+ Werte prüfen/);
+  // As many as the form says: one per field, the workload's two days one.
+  await expect(check(page)).toHaveText(T.profile.check(18));
   // A key the app does not read at all is named in the head as the file writes it, with the
   // folder to fix it.
   const warning = page.getByTestId('profile-warning');
@@ -2598,8 +2805,10 @@ test('every value that does not read is said at its field and can be removed', a
   await expect(form).not.toContainText('In der Datei stand „teuer“, das ist keine Zahl.');
   await page.getByTestId('profile-min-months').fill('6');
   await expect(field(page, 'minMonths')).not.toContainText('lang');
-  // The workload's one "Wert entfernen" takes both days.
+  // The workload's one "Wert entfernen" takes both days, and one value to check.
+  const before = Number((await check(page).textContent())!.replace(/\D/g, ''));
   await field(page, 'workload').getByTestId('value-remove').click();
+  await expect(check(page)).toHaveText(T.profile.check(before - 1));
   await expect(page.getByTestId('profile-workload-max')).not.toHaveAttribute(
     'aria-invalid',
     'true',

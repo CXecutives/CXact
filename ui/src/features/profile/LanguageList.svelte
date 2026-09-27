@@ -1,10 +1,10 @@
 <!--
-  The languages: one row each with the language and its level (a menu of A1 to C2 and
-  Muttersprache, "Offen" while none is chosen; the app then assumes B2: a button in a row of
-  fields, so as high as the field and like a select, in a column as wide as its longest
-  level, so every row lines up), then "Sprache hinzufügen". The x of a row needs no tooltip.
-  The language
-  field suggests common languages like the countries field (found by their German and
+  The languages: over the rows the heads of their columns (Sprache, Niveau, like the
+  competences), one row each with the language and its level (a menu of A1 to C2 and
+  Muttersprache: a button in a row of fields, so as high as the field and like a select, in a
+  column as wide as its longest level, so every row lines up), then "Sprache hinzufügen". A
+  row without a level shows B2, the level the engine assumes then (matching's fit), and a
+  new row starts at B2. The x of a row needs no tooltip. The language field suggests common languages like the countries field (found by their German and
   English names, taken in the app's language); any other language can be typed. A common
   language shows in the app's language (Englisch, English) and the profile keeps it under its
   German name, as the engine reads it (core matching::lexicon LANGUAGES); while the field has
@@ -37,15 +37,15 @@
 
   const words = $derived(t.profile.field);
   const id = $props.id();
-  /** The id of the level of a row without one. */
-  const NONE = 'none';
-  const LEVELS = $derived([
-    { id: NONE, label: words.open },
-    ...(Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
+  /** The level the engine assumes for a language without one (core matching's fit): a row
+   *  without a level shows it, and a new row starts at it. */
+  const ASSUMED: LanguageLevel = 'b2';
+  const LEVELS = $derived(
+    (Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
       id: level,
       label: t.profile.level[level],
     })),
-  ]);
+  );
   let list = $state<HTMLElement | null>(null);
 
   type LanguageCode = keyof typeof de.profile.languageName;
@@ -99,7 +99,7 @@
   });
 
   const append = (): void => {
-    rows = [...rows, { language: '', level: null, origin: null }];
+    rows = [...rows, { language: '', level: ASSUMED, origin: null }];
   };
   const remove = (row: ProfileLanguage): void => {
     rows = rows.filter((other) => other !== row);
@@ -116,13 +116,20 @@
       list,
       rows,
       row,
-      blank: (r) => r.language.trim() === '' && r.level === null,
+      blank: (r) => r.language.trim() === '',
       add: append,
       remove,
     });
 </script>
 
 <div class="list" bind:this={list} data-testid="languages" data-field="languages" data-removes>
+  {#if rows.length > 0}
+    <div class="head" aria-hidden="true">
+      <span>{words.language}</span>
+      <span>{words.level}</span>
+      <span></span>
+    </div>
+  {/if}
   {#each rows as row (row)}
     <div class="row" data-row data-testid="language-row" use:formKeys={{ save: () => enter(row) }}>
       <span class="name" onfocusout={() => (typing = null)}>
@@ -140,11 +147,11 @@
       <span class="level">
         <MenuButton
           options={LEVELS}
-          value={row.level ?? NONE}
+          value={row.level ?? ASSUMED}
           menuLabel={words.level}
           field
           testid="language-level"
-          onchange={(next) => (row.level = next === NONE ? null : (next as LanguageLevel))}
+          onchange={(next) => (row.level = next)}
         />
       </span>
       <span class="remove" data-remove>
@@ -186,13 +193,21 @@
   }
 
   /* language | level | remove: the level in one width in every row (its longest word fits),
-     the button filling it; the language takes the rest. */
+     the button filling it; the language takes the rest. The heads stand over their columns
+     like the competences' (13/500). */
+  .head,
   .row {
     display: grid;
     grid-template-columns: minmax(var(--space-64), 1fr) var(--level-width) var(--control-sm);
     align-items: center;
     gap: var(--space-6) var(--space-12);
     width: 100%;
+  }
+
+  .head {
+    color: var(--text);
+    font: var(--type-sm);
+    font-weight: var(--weight-medium);
   }
 
   .level,

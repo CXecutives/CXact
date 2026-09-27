@@ -3,8 +3,8 @@
   the three ways in (from a CV with an AI, the recommended one; a new form; an existing
   file); a file that no longer reads says so in the same place, with its folder at hand.
   With a profile its head
-  (the switcher, a status when there is one, the update from a CV) and the form, whose save
-  bar shows while it holds a change. A chosen file and an AI's answer (its steps in a dialog,
+  (the profile's name as the title with the menu of the profiles, a status when there is one,
+  the update from a CV) and the form, whose save bar shows while it holds a change. A chosen file and an AI's answer (its steps in a dialog,
   ProfilePaste) fill the form for review (an answer for the stored profile updates it);
   nothing is stored before "Speichern". A save is answered by a toast once the bar has gone,
   with what its rescore changed (saveEffect.ts). Leaving the view or closing the window with
@@ -42,6 +42,7 @@
   import ProfilePaste from './ProfilePaste.svelte';
   import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
+  import { activeName } from './profiles';
   import { watchSave } from './saveEffect';
   import { valueText } from './sections';
 
@@ -203,12 +204,14 @@
     return loaded !== null;
   }
 
-  async function pick(): Promise<void> {
+  /** A chosen file into the form for review; `fresh` (the menu's Aus Datei laden): saved as
+   *  a new profile beside the others. */
+  async function pick(fresh = false): Promise<void> {
     busy = 'pick';
     note = null;
     try {
       const draft = await invoke('pick_profile');
-      if (draft !== null) editor.take(draft, 'file');
+      if (draft !== null) editor.take(draft, 'file', fresh);
     } catch (error) {
       note = () => errorText(error);
     } finally {
@@ -223,15 +226,20 @@
     );
   }
 
+  /** The stored profile holds something a CV would update; a new empty one is created from
+   *  a CV like a new form ("Aus Lebenslauf erstellen"). */
+  const updatable = $derived(stored !== null && profile?.quality !== 'empty');
+
   /** The steps with an AI, in their dialog: for the stored profile they update it. */
   function fromCv(): void {
-    updating = editor.origin === 'stored' && stored !== null;
+    updating = editor.origin === 'stored' && updatable;
     editor.pasting = true;
   }
 
-  /** A new form: the caret goes into its first field. */
-  async function create(): Promise<void> {
-    editor.create();
+  /** A new form: the caret goes into its first field; `fresh` (the menu's Neues Profil): saved
+   *  as a new profile beside the others. */
+  async function create(fresh = false): Promise<void> {
+    editor.create(fresh);
     await caretTo('profile-name-field');
   }
 
@@ -270,15 +278,20 @@
   }
 
   /** `true` when the profile is saved. Another file saved over the profile replaces it: a
-   *  toast offers the old one back. */
+   *  toast offers the old one back. A fresh draft becomes a new profile first, which goes
+   *  again when its save fails (the one active before is active again). */
   async function save(): Promise<boolean> {
     busy = 'save';
     saveNote = null;
     fieldError = null;
     refusedValue = null;
     const replaced = replacing;
+    const fresh = editor.fresh;
+    let created: number | null = null;
     const effect = watchSave();
     try {
+      // The new profile, active from now on: the draft is saved into it.
+      if (fresh) created = (await invoke('create_profile')).find((each) => each.active)?.id ?? null;
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
       // again never puts the old values back.
@@ -287,6 +300,11 @@
       if (form) editor.edit(form);
       else editor.close();
       whenBarGone(() => {
+        const name = activeName(app.state?.profiles);
+        if (fresh && name !== null) {
+          effect.stop();
+          return savedToast(t.profile.created(name));
+        }
         if (!replaced) return void effect.said().then(savedToast);
         effect.stop();
         toasts.show(t.profile.replaced, 'success', {
@@ -297,6 +315,10 @@
       return true;
     } catch (error) {
       effect.stop();
+      if (created !== null) {
+        await invoke('delete_profile', { id: created }).catch(() => undefined);
+        await reload();
+      }
       const at = refused(error);
       if (at === null) {
         saveNote = () => errorText(error);
@@ -390,13 +412,19 @@
     }
     return local.quality;
   });
+  /** The workload's two days: one field with one message and one "Wert entfernen". */
+  const WORKLOAD_DAYS = new Set(['workloadMinDays', 'workloadMaxDays']);
   /** What "n Werte prüfen" counts: each value of the file that does not read, by the field
-   *  it is said at. */
-  const checkList = $derived(
-    problems.flatMap((problem) =>
-      problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
-    ),
-  );
+   *  it is said at, as many as the form says (the workload once for both days). */
+  const checkList = $derived.by(() => {
+    const fields = problems
+      .flatMap((problem) =>
+        problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
+      )
+      .map((field) => (WORKLOAD_DAYS.has(field) ? 'workload' : field));
+    const workload = fields.indexOf('workload');
+    return fields.filter((field, index) => field !== 'workload' || index === workload);
+  });
 
   /** "n Werte prüfen": the caret to the first of them, in the order of the form. */
   function checkFirst(): void {
@@ -422,11 +450,12 @@
     'focusTrimmed',
   ]);
   const headWarnings = $derived(warnings.filter((w) => HEAD.has(w.code) || !ELSEWHERE.has(w.code)));
-  /** Another file over the stored profile: saving replaces it. */
-  const replacing = $derived(editor.origin === 'file' && profile !== null);
+  /** Another file over the stored profile: saving replaces it (a fresh one is a new
+   *  profile). */
+  const replacing = $derived(editor.origin === 'file' && profile !== null && !editor.fresh);
 </script>
 
-<div class="page" class:editing={editor.origin !== null} data-testid="profile">
+<div class="page" data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
   {:else}
@@ -471,6 +500,8 @@
     origin={editor.origin}
     {profile}
     {profiles}
+    fresh={editor.fresh}
+    {updatable}
     checks={editor.origin === null ? 0 : checkList.length}
     warnings={editor.origin === null ? [] : headWarnings}
     {rescoring}
@@ -479,10 +510,10 @@
     {switching}
     note={editor.origin === null ? null : (note?.() ?? null)}
     onswitch={(id) => set?.switchTo(id)}
-    onnew={() => set?.create()}
+    onnew={() => guard(() => void create(true))}
     onduplicate={() => set?.duplicate()}
     onrename={() => set?.askRename()}
-    onload={() => set?.load()}
+    onload={() => guard(() => void pick(true))}
     onremove={() => set?.askRemove()}
     onfromcv={fromCv}
     onopenfolder={openFolder}
@@ -533,8 +564,9 @@
     padding: var(--pane-padding) var(--pane-padding) var(--page-end);
   }
 
-  /* The save bar ends the page at the bottom edge. */
-  .editing {
+  /* While the save bar is there (its way out too), it ends the page at the bottom edge;
+     otherwise the room under the last section stays (--page-end). */
+  .page:has(> :global([data-save-bar])) {
     padding-bottom: 0;
   }
 

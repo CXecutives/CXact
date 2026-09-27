@@ -408,13 +408,10 @@
 
   /* ------------------------------------------------------------------- sizes */
   --control-sm: 28px;
-  /* Every text field, chip field and choice beside them, and the buttons of their row
-     (the list's Abrufen beside the search): calm, like the OS's own settings (user,
-     2026-09-25). */
+  /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
+     Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
+     calm, like the OS's own settings (user, 2026-09-25). */
   --control-field: 32px;
-  /* Every choice of a few (Segmented), in Einstellungen and in the Profil form alike: as high
-     as a small button. */
-  --control-choice: var(--control-sm);
   --control-md: 36px;
   --control-lg: 40px;
   --icon-xs: 12px;
