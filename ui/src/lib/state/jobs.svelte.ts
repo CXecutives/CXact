@@ -11,9 +11,9 @@
 //   renders again, and no proxy sits between the template and 2000 jobs.
 // - Every number comes from the backend (one truth): the counts of the list (with the
 //   search and the filter) and the counts over every job (what each place holds, whatever
-//   the search and the filter). A change the page makes itself (read, a move) or a run update of a listed row moves
-//   them at once; during a run a counts-only query follows every update (throttled), so
-//   they stay exact for rows the page does not hold.
+//   the search and the filter). A change the page makes itself (read, a move) or a run
+//   update of a listed row moves them at once; during a run a counts-only query follows
+//   every update (throttled), so they stay exact for rows the page does not hold.
 // - During a run the new jobs of the run are inserted at the top (they fade in) and listed
 //   rows update in place (rings fill live); a job further down the list stays where the
 //   next load puts it. The list re-sorts once, when the run finishes, and keeps the
@@ -221,9 +221,6 @@ function keepFilter(filter: ListFilter): void {
 class JobsStore {
   /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
-  /** The Übersicht asked to show the excluded jobs: the list opens their section and brings
-   *  it into view once (JobList resets it). */
-  revealExcluded = $state(false);
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter as chosen (kept); `filter` is what applies. */
@@ -256,9 +253,9 @@ class JobsStore {
   /** The next page did not load (the list stays, the end of it offers a retry). */
   pageError = $state<string | null>(null);
   /**
-   * A job action of the list that failed (a move of a row or of the chosen jobs, its undo,
-   * the star): one sentence in the list header until the next action succeeds or another
-   * list comes (place, search, order, filter).
+   * A job action of the list that failed (a move of a row, its undo, "Trotzdem bewerten",
+   * the choice of the Zeitraum): one sentence in the list header until the next action
+   * succeeds or another list comes (place, search, order, filter).
    */
   actionError = $state<string | null>(null);
   /** Jobs were deleted for good, but a result file could not follow (the Excel file is open
@@ -289,7 +286,8 @@ class JobsStore {
   detailSlow = $state(false);
   detailError = $state<string | null>(null);
 
-  /** The counts over every job, without the search (day overview, the places' own counts). */
+  /** The counts over every job, without the search and the filter: what each place holds
+   *  (the Papierkorb's to empty, whether a filter or a search left a place empty). */
   overviewCounts = $state<JobCounts | null>(null);
   overviewStatus = $state<Status>('idle');
 
@@ -464,7 +462,7 @@ class JobsStore {
    *  a folder of a mail app (the "Im Archiv (n)" links keep it). */
   setPlace(place: Place, dropSearch = false): void {
     // Another place: an open job of the one left behind closes, like a mail of another
-    // folder (here, not in the list: the place also changes from the Übersicht).
+    // folder (here, not in the list: the place also changes from a run's toast).
     const selected = this.selected;
     const open =
       this.detail?.job ??
@@ -649,8 +647,8 @@ class JobsStore {
   }
 
   /**
-   * The counts over every job for the day overview and the list header: one counts-only query
-   * (on an error the overview says nothing, not "nothing new").
+   * The counts over every job for the list header and the empty states: one counts-only
+   * query (on an error they stay as they were).
    */
   async loadOverview(): Promise<void> {
     const request = ++this.#overviewRequest;
@@ -945,7 +943,7 @@ class JobsStore {
     const row = this.rows.find((job) => sameKey(job.key, key)) ?? null;
     const shown = this.detail && sameKey(this.detail.job.key, key) ? this.detail.job : null;
     const before = row ?? shown;
-    // A job the page does not hold (a row of the overview, an undo after the row left):
+    // A job the page does not hold (an undo after the row left):
     // the counts still follow, from the backend.
     if (before === null) {
       this.countsSoon();

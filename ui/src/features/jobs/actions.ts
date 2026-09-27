@@ -249,7 +249,7 @@ const SAID: Record<MoveId, () => string> = {
 };
 
 /** The job to open when `gone` leave the list: the next one below, else the one above; none
- *  when the list did not hold them (a job opened from the day overview). */
+ *  when the list did not hold them (the open job no longer listed after a search). */
 function nextAfter(gone: readonly JobView[]): JobView | null {
   const rows = jobs.shown;
   const out = new Set(gone.map((job) => keyOf(job.key)));

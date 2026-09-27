@@ -57,7 +57,7 @@ const LIB_UI_HELPERS = {};
 /** Modules a feature offers to the others (besides everything in features/shared/). */
 const FEATURE_PUBLIC = {
   'ui/src/features/jobs/actions.ts':
-    'the actions of a job (move, favourite, open) every job row offers',
+    'the actions of a job (move, open, delete for good) every job row offers',
   'ui/src/features/jobs/prompt.ts': 'copies the AI prompt of one job or a comparison',
   'ui/src/features/jobs/addToProfile.ts': 'takes a word of an ad into the profile, with undo',
 };

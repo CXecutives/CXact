@@ -597,7 +597,7 @@
 <Dialog
   bind:open={confirmPurge}
   variant="danger"
-  heading={t.actions.purgeHeading(1)}
+  heading={t.actions.purgeHeading}
   text={t.actions.purgeText}
   confirmLabel={t.actions.purge}
   busy={purging}

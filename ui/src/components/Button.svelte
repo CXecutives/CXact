@@ -28,8 +28,6 @@
     rest, before the dialog asks; no icon warns by itself.
   - deletes: a quiet icon button that deletes (a job row's Löschen and Endgültig löschen):
     its glyph red at rest like every delete of the app, on a red wash under the pointer.
-  - joined: a part of a split control: the action (`start`) and its menu's narrower chevron
-    (`end`) share one edge (a seam on a filled one) and never part on press.
   - count: a quiet number after the label (how many lie there), like the place tabs.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
@@ -92,7 +90,6 @@
     deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
-    joined?: 'start' | 'end' | null;
     count?: number | null;
     testid?: string | null;
     onclick?: (event: MouseEvent) => void;
@@ -122,7 +119,6 @@
     warns = false,
     deletes = false,
     plain = false,
-    joined = null,
     count = null,
     testid = null,
     onclick,
@@ -158,8 +154,6 @@
   class:default={isDefault}
   class:warns
   class:deletes
-  class:joined-start={joined === 'start'}
-  class:joined-end={joined === 'end'}
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
@@ -471,30 +465,5 @@
 
   .wide {
     width: 100%;
-  }
-
-  /* A split control: square inner corners, the chevron's narrower part over the action's
-     right border, no press scale (the parts never part). */
-  .joined-start {
-    border-start-end-radius: 0;
-    border-end-end-radius: 0;
-    --btn-press: 1;
-  }
-
-  .joined-end {
-    width: var(--split-menu-width);
-    margin-inline-start: calc(-1 * var(--border-width));
-    border-start-start-radius: 0;
-    border-end-start-radius: 0;
-    --btn-press: 1;
-  }
-
-  /* On a filled part the shared edge vanishes: a short seam in a deeper shade marks it. */
-  .primary.joined-end::before {
-    position: absolute;
-    inset: var(--space-6) auto var(--space-6) calc(-1 * var(--border-width));
-    width: var(--border-width);
-    background-color: var(--primary-active);
-    content: '';
   }
 </style>

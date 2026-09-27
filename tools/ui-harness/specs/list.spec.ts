@@ -1357,8 +1357,7 @@ test.describe('one list', () => {
   });
 
   test('one primary button in every state of the list, and with a job open', async ({ page }) => {
-    // A split control is one button: its chevron's part wears the colour of its action.
-    const primary = '.btn.primary:not(.joined-end)';
+    const primary = '.btn.primary';
     for (const scenario of ['default', 'empty', 'no-profile', 'offline']) {
       await open(page, `${WIN}&scenario=${scenario}`);
       expect(await visibleCount(page, primary), scenario).toBeLessThanOrEqual(1);
@@ -1685,7 +1684,7 @@ test.describe('moves and undo', () => {
     // Endgültig löschen asks first, with its own verb on the button and no title.
     await viaMenu(page, 'purge', 'freelancermap-2803');
     const dialog = page.getByTestId('dialog-purge');
-    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading(1));
+    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading);
     await dialog.getByRole('button', { name: T.actions.purgeConfirm, exact: true }).click();
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
     await expect(dialog).toHaveCount(0);
@@ -2423,9 +2422,9 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
 
 /* ==================================================================== baselines */
 
-test('baseline: jobs with the day overview', async ({ page }) => {
+test('baseline: the jobs', async ({ page }) => {
   await open(page, WIN);
-  await expectShot(page, 'jobs-overview');
+  await expectShot(page, 'jobs-list');
 });
 
 test('baseline: jobs while a run is going', async ({ page }) => {

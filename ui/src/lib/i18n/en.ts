@@ -608,10 +608,9 @@ export const en: Catalog = {
       trash: 'In the trash',
     } satisfies Record<Place, string>,
     empty: {
-      inbox: 'No jobs.',
       archive: 'The archive is empty.',
       trash: 'The trash is empty.',
-    } satisfies Record<Place, string>,
+    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   actions: {
     open: 'Open',
@@ -627,8 +626,7 @@ export const en: Catalog = {
     restore: 'Restore',
     purge: 'Delete forever',
     purgeConfirm: 'Delete forever',
-    purgeHeading: (value: number) =>
-      value === 1 ? 'Delete the job forever?' : `Delete ${n(value)} jobs forever?`,
+    purgeHeading: 'Delete the job forever?',
     purgeText: 'The job never comes back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
     emptyTrashHeading: 'Empty the trash?',

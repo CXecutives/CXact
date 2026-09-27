@@ -71,8 +71,8 @@ export interface ToastItem {
 }
 
 const MAX = 3;
-/** A result of the same kind within this time joins the toast that is up ("2 Jobs
- *  archiviert."), whose one undo takes back all of them. */
+/** A result of the same kind within this time joins the toast that is up (it says the same
+ *  short word), whose one undo takes back all of them. */
 const MERGE_MS = 2000;
 
 /** An undo; it may take a while (the next one of a merged toast waits for it). A sentence it
@@ -181,10 +181,10 @@ class Toasts {
 
   /**
    * A result the user may take back (jobs archived, deleted, restored). One of the same
-   * `kind` within 2 s joins the toast that is up: `text(n)` says how many ("„Titel“
-   * archiviert." for one, "2 Jobs archiviert." for more), the one undo (`undoLabel`) takes
-   * back all of them, the last result first, and the toast stays its full time from the last
-   * one. `count` is how many jobs this result moved, `keys` which ones.
+   * `kind` within 2 s joins the toast that is up: `text(n)` says it for all of them (the job
+   * actions one short word, "Archiviert", however many; never a title), the one undo
+   * (`undoLabel`) takes back all of them, the last result first, and the toast stays its full
+   * time from the last one. `count` is how many jobs this result moved, `keys` which ones.
    */
   undoable(
     kind: string,
