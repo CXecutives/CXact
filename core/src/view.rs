@@ -49,13 +49,23 @@ pub enum WorkMode {
     Onsite,
 }
 
-/// Work mode words in a location ("Berlin (Remote)", "Hybrid", "Vor Ort") - the same words
-/// the mail heuristics keep (`text::page_location`). German mail patterns, do not translate.
-static REMOTE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)\b(?:remote|home ?office)\b").unwrap());
-static HYBRID: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)\bhybrid\b").unwrap());
-static ONSITE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"(?i)\b(?:vor ort|on-site|onsite)\b").unwrap());
+/// Work mode words in a location ("Berlin (Remote)", "Hybrid", "Vor Ort"), whole words in
+/// any case - the same words the mail heuristics keep (`text::page_location`). German mail
+/// patterns, do not translate. The list's remote filter reads the same words in SQL
+/// (`store::jobs`).
+pub(crate) const REMOTE_WORDS: [&str; 3] = ["remote", "home office", "homeoffice"];
+pub(crate) const HYBRID_WORDS: [&str; 1] = ["hybrid"];
+pub(crate) const ONSITE_WORDS: [&str; 3] = ["vor ort", "on-site", "onsite"];
+
+/// A pattern that finds one of `words` as a whole word, in any case.
+fn whole_words(words: &[&str]) -> Regex {
+    let words: Vec<String> = words.iter().map(|word| regex::escape(word)).collect();
+    Regex::new(&format!(r"(?i)\b(?:{})\b", words.join("|"))).expect("a valid pattern")
+}
+
+static REMOTE: LazyLock<Regex> = LazyLock::new(|| whole_words(&REMOTE_WORDS));
+static HYBRID: LazyLock<Regex> = LazyLock::new(|| whole_words(&HYBRID_WORDS));
+static ONSITE: LazyLock<Regex> = LazyLock::new(|| whole_words(&ONSITE_WORDS));
 
 /// Work mode of a raw location value; remote and on-site together count as hybrid.
 pub fn work_mode(location: &str) -> Option<WorkMode> {
@@ -767,17 +777,28 @@ pub struct JobQuery {
     /// high only); unscored and excluded jobs pass only with `null`.
     #[serde(default)]
     pub min_band: Option<Band>,
+    /// The filter: only jobs of these contract types, as the engine read them
+    /// (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
+    /// those without a contract type too.
+    #[serde(default)]
+    pub contracts: Vec<String>,
+    /// The filter: only remote jobs, as the job details say it - the remote share the ad
+    /// states is 100 %, or, where it states none, the location names the work mode remote.
+    #[serde(default)]
+    pub remote_only: bool,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The portal and band filter of the query.
+    /// The filter of the query: portal, band, contract types and remote.
     pub fn filter(&self) -> ListFilter {
         ListFilter {
             portal: self.portal,
             min_band: self.min_band,
+            contracts: self.contracts.clone(),
+            remote_only: self.remote_only,
         }
     }
 }
@@ -1651,6 +1672,18 @@ mod tests {
         assert_eq!(work_mode("Remote oder vor Ort"), Some(WorkMode::Hybrid));
         assert_eq!(work_mode("Remotely-Str. 5, München"), None);
         assert_eq!(work_mode("Köln"), None);
+        assert_eq!(work_mode("Home Office"), Some(WorkMode::Remote));
+        assert_eq!(work_mode("ON-SITE Stuttgart"), Some(WorkMode::Onsite));
+        // The list's remote filter reads the words in SQL (a GLOB on the lowercase location):
+        // lowercase, and nothing a GLOB or a string literal would read otherwise.
+        for word in REMOTE_WORDS
+            .iter()
+            .chain(&HYBRID_WORDS)
+            .chain(&ONSITE_WORDS)
+        {
+            assert_eq!(*word, word.to_lowercase());
+            assert!(!word.contains(['*', '?', '[', ']', '\'']), "{word}");
+        }
     }
 
     #[test]
@@ -1748,6 +1781,8 @@ mod tests {
             search: None,
             portal: None,
             min_band: None,
+            contracts: Vec::new(),
+            remote_only: false,
             limit,
             offset,
         }
@@ -1819,6 +1854,97 @@ mod tests {
             (new.portal, new.min_band),
             (Some(Portal::FreelanceDe), Some(Band::High))
         );
+        assert!(new.contracts.is_empty() && !new.remote_only);
+        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
+                       "contracts":["interim","anue"],"remoteOnly":true,"limit":10,"offset":0}"#;
+        let new: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(new.filter().contracts, ["interim", "anue"]);
+        assert!(new.filter().remote_only);
+    }
+
+    /// The contract and the remote filter narrow the list and every count like the others:
+    /// contract types as the engine read them (a job without one passes only without the
+    /// filter); remote as the job details say it - the share the ad states first, else the
+    /// work mode of the location, read in SQL exactly as `work_mode` reads it.
+    #[test]
+    fn contract_types_and_remote_narrow_list_and_counts() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        // Title, location, contract type, remote share; `None` in the last two: no key fact.
+        let jobs: [(&str, &str, Option<&str>, Option<u8>); 11] = [
+            ("A", "Berlin (Remote)", Some("interim"), None),
+            ("B", "Köln", Some("freelance"), Some(100)),
+            ("C", "Remote", Some("permanent"), Some(60)),
+            ("D", "Hamburg (Hybrid)", Some("anue"), None),
+            ("E", "Homeoffice", None, None),
+            ("F", "Remote oder vor Ort", None, None),
+            ("G", "Remotely-Str. 5, München", Some("interim"), None),
+            ("H", "Vor Ort", Some("interim"), Some(0)),
+            ("I", "home office, Frankfurt", Some("anue"), None),
+            ("J", "REMOTE_ONLY", None, None),
+            ("K", "", None, None),
+        ];
+        let mut matches = Vec::new();
+        let mut keys = Vec::new();
+        for (i, (title, location, contract, share)) in jobs.iter().enumerate() {
+            let link = job_link(&format!(
+                "https://www.freelancermap.de/nproj/{}.html",
+                12_300 + i
+            ))
+            .unwrap();
+            keys.push(link.key.clone());
+            let posting = Posting::new(link.key.clone(), link.url, title, "", location);
+            let mail = MailRef {
+                subject: "x",
+                date: None,
+                gmail_id: None,
+            };
+            store
+                .upsert_posting(run, &posting, mail, Timestamp::now())
+                .unwrap();
+            // "E" stays unscored: only its location speaks.
+            if *title != "E" {
+                let mut m = record(MatchStatus::Scored, 50);
+                m.facts.contract = contract.map(str::to_owned);
+                m.facts.remote_from = *share;
+                m.facts.remote_to = share.map(|_| 100);
+                matches.push((link.key, m));
+            }
+        }
+        store.save_matches(&matches, "r", Timestamp::now()).unwrap();
+        let page = |contracts: &[&str], remote_only| {
+            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
+            q.contracts = contracts.iter().map(|c| (*c).to_owned()).collect();
+            q.remote_only = remote_only;
+            let page = job_page(&store, &q).unwrap();
+            assert_eq!(
+                page.counts.inbox as usize,
+                page.jobs.len(),
+                "the counts follow"
+            );
+            let mut titles: Vec<String> = page.jobs.iter().map(|j| j.title.clone()).collect();
+            titles.sort();
+            titles
+        };
+        assert_eq!(page(&[], false).len(), jobs.len());
+        assert_eq!(page(&["interim", "anue"], false), ["A", "D", "G", "H", "I"]);
+        assert_eq!(page(&["freelance"], false), ["B"]);
+        let remote = page(&[], true);
+        assert_eq!(remote, ["A", "B", "E", "I"]);
+        // The same as the job details: the share first, else the stored location's work mode.
+        let expected: Vec<&str> = jobs
+            .iter()
+            .zip(&keys)
+            .filter(|((.., share), key)| {
+                let location = store.job(key).unwrap().unwrap().location;
+                share.map_or(work_mode(&location) == Some(WorkMode::Remote), |from| {
+                    from >= 100
+                })
+            })
+            .map(|((title, ..), _)| *title)
+            .collect();
+        assert_eq!(remote, expected);
+        assert_eq!(page(&["interim"], true), ["A"]);
     }
 
     /// The jobs of a company however a mail wrote it, in its window only; at 2,000 jobs it
@@ -2039,6 +2165,8 @@ mod tests {
                     search: search.map(str::to_owned),
                     portal: None,
                     min_band: None,
+                    contracts: Vec::new(),
+                    remote_only: false,
                     limit: 0,
                     offset: 0,
                 },

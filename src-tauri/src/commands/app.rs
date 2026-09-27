@@ -132,6 +132,8 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             offset: 0,
             portal: None,
             min_band: None,
+            contracts: Vec::new(),
+            remote_only: false,
         },
     )?
     .counts;

@@ -1057,10 +1057,22 @@ function inQuery(j: JobView, query: Pick<JobQuery, 'place' | 'unread'>): boolean
   return j.place === query.place && (!query.unread || j.unread);
 }
 
-/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs. */
-function inFilter(j: JobView, query: Pick<JobQuery, 'portal' | 'minBand'>): boolean {
+/** The funnel's filter (store::ListFilter): one portal, a lowest band of scored jobs, the
+ *  contract types the engine read (none of them passes only without the filter), remote as
+ *  the job details say it (the stated share first, else the location's work mode). */
+function inFilter(
+  j: JobView,
+  query: Pick<JobQuery, 'portal' | 'minBand' | 'contracts' | 'remoteOnly'>,
+): boolean {
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
+  }
+  const facts = j.match?.facts ?? null;
+  const contracts = query.contracts ?? [];
+  if (contracts.length > 0 && !contracts.includes(facts?.contract ?? '')) return false;
+  if (query.remoteOnly === true) {
+    const share = facts?.remoteFrom ?? facts?.remoteTo ?? null;
+    if (share === null ? j.workMode !== 'remote' : share < 100) return false;
   }
   if (query.minBand === null || query.minBand === undefined) return true;
   return j.match?.status === 'scored' && j.match.score >= BAND_FROM[query.minBand];
@@ -1973,6 +1985,8 @@ const harness: Harness = {
         search: null,
         portal: null,
         minBand: null,
+        contracts: [],
+        remoteOnly: false,
         limit: 500,
         offset: 0,
         ...query,

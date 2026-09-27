@@ -569,6 +569,8 @@ class JobsStore {
       search: this.search.trim() === '' ? null : this.search.trim(),
       portal: filter.portal,
       minBand: filter.minBand,
+      contracts: [],
+      remoteOnly: false,
       limit,
       offset,
     };
@@ -674,6 +676,8 @@ class JobsStore {
           search: null,
           portal: null,
           minBand: null,
+          contracts: [],
+          remoteOnly: false,
           limit: 0,
           offset: 0,
         },

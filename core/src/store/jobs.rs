@@ -90,21 +90,33 @@ impl JobRow {
     }
 }
 
-/// The list's filter (the funnel menu) beside the search: one portal, and a lowest band.
-/// Like the search it narrows the list and all its counts.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+/// The list's filter (the funnel menu) beside the search: one portal, a lowest band, contract
+/// types and remote only. Like the search it narrows the list and all its counts.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
     /// Only this portal's jobs (`None` = every portal).
     pub portal: Option<Portal>,
     /// Only jobs scored in this band or better (`Mid` = mid and high); unscored and excluded
     /// jobs pass only without it.
     pub min_band: Option<Band>,
+    /// Only jobs of these contract types (the codes of `KeyFacts.contract`); empty = every
+    /// job, those without a contract type too.
+    pub contracts: Vec<String>,
+    /// Only remote jobs: the remote share of the key facts is 100 %, or, where they state
+    /// none, the location names the work mode remote (`view::work_mode`).
+    pub remote_only: bool,
 }
 
 impl ListFilter {
     /// The lowest score of the band filter (`None` = none).
-    pub(super) fn min_score(self) -> Option<u8> {
+    pub(super) fn min_score(&self) -> Option<u8> {
         self.min_band.map(Band::lowest)
+    }
+
+    /// The contract types as a JSON array for the statement (`None` = none).
+    pub(super) fn contracts_json(&self) -> Option<String> {
+        (!self.contracts.is_empty())
+            .then(|| serde_json::to_string(&self.contracts).unwrap_or_default())
     }
 }
 
@@ -154,11 +166,43 @@ fn per_portal_columns(new: &str) -> (String, String) {
 }
 
 /// The condition of a [`ListFilter`] on the `job` table: `portal` binds its key, `score` the
-/// lowest score (each `NULL` for no filter).
-pub(super) fn filter_condition(portal: &str, score: &str) -> String {
+/// lowest score, `contracts` a JSON array of contract types (each `NULL` for no filter),
+/// `remote` whether only remote jobs pass. Contract type and remote share come from the key
+/// facts in the match note, the work mode from the location.
+pub(super) fn filter_condition(portal: &str, score: &str, contracts: &str, remote: &str) -> String {
+    let share = "COALESCE(json_extract(match_note, '$.facts.remoteFrom'),
+                          json_extract(match_note, '$.facts.remoteTo'))";
     format!(
         "({portal} IS NULL OR portal = {portal})
-         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))"
+         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))
+         AND ({contracts} IS NULL OR json_extract(match_note, '$.facts.contract')
+                                     IN (SELECT value FROM json_each({contracts})))
+         AND (NOT {remote} OR CASE WHEN {share} IS NOT NULL THEN {share} >= 100
+                                   ELSE {} END)",
+        location_remote()
+    )
+}
+
+/// SQL that is true where the location names the work mode remote, like `view::work_mode`:
+/// a remote word and neither a hybrid nor an on-site word, each a whole word in any case.
+fn location_remote() -> String {
+    use crate::view::{HYBRID_WORDS, ONSITE_WORDS, REMOTE_WORDS};
+    // A word between two characters that are no word characters (the location padded with
+    // spaces, so its start and end count too). The words are constants of the code.
+    let any = |words: &[&str]| {
+        let each: Vec<String> = words
+            .iter()
+            .map(|word| {
+                format!("(' ' || lower(location) || ' ') GLOB '*[^a-z0-9_]{word}[^a-z0-9_]*'")
+            })
+            .collect();
+        format!("({})", each.join(" OR "))
+    };
+    format!(
+        "({} AND NOT {} AND NOT {})",
+        any(&REMOTE_WORDS),
+        any(&HYBRID_WORDS),
+        any(&ONSITE_WORDS)
     )
 }
 
@@ -419,7 +463,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition("?5", "?6"),
+            filter = filter_condition("?5", "?6", "?7", "?8"),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -438,7 +482,9 @@ impl Store {
             query.offset,
             HIGH_FROM,
             portal,
-            min
+            min,
+            query.filter.contracts_json(),
+            query.filter.remote_only,
         ])?;
         while let Some(row) = rows.next()? {
             let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());

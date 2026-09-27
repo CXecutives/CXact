@@ -71,6 +71,8 @@ function inboxQuery(change: Partial<JobQuery>): JobQuery {
     search: null,
     portal: null,
     minBand: null,
+    contracts: [],
+    remoteOnly: false,
     limit: 0,
     offset: 0,
     ...change,

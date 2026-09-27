@@ -244,6 +244,8 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
             search: None,
             portal: None,
             min_band: None,
+            contracts: Vec::new(),
+            remote_only: false,
             limit: view::MAX_PAGE,
             offset: 0,
         };
