@@ -6,9 +6,7 @@
 //!
 //! `schema` creates and migrates the tables, `jobs` holds the job, alert mail, job detail
 //! and text file methods, `matches` the match and read columns of schema 3, `marks` the
-//! user's marks: the place (inbox, archive, trash) and "fits anyway". `backup` keeps the
-//! copies of the database and restores them, `bundle` exports and imports all the data in
-//! one file.
+//! user's marks: the place (inbox, archive, trash) and "fits anyway".
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -22,7 +20,6 @@ use crate::portal::Portal;
 use crate::time::{from_db, to_db};
 
 mod backup;
-mod bundle;
 mod duplicates;
 mod jobs;
 pub mod marks;
@@ -32,7 +29,6 @@ mod pages;
 mod schema;
 
 pub use backup::{BACKUP_DIR, Backup, BackupKind, backup_dir};
-pub use bundle::{DataImport, EXTENSION as DATA_EXTENSION};
 pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts, PageQuery, Seen};
 pub use matches::Judgement;
 pub use overview::BandCounts;
@@ -40,10 +36,6 @@ pub use overview::BandCounts;
 /// Key of the Gmail address whose mails the last mailbox scan read: the files link the
 /// alert mails in that account (`model::gmail_url_for`). Never a password.
 pub(crate) const GMAIL_ACCOUNT: &str = "gmail_account";
-/// Key of the moment Gmail last accepted the mailbox on this computer (`Mailbox.checked_at`
-/// in src-tauri's `mailbox.rs`; empty: none). It belongs to the computer: a data export
-/// leaves it out, an import keeps it (`bundle`).
-pub const MAILBOX_CHECKED: &str = "mailbox_checked_at";
 
 pub struct Store {
     conn: Mutex<Connection>,

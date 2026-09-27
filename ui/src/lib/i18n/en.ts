@@ -125,12 +125,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   fileLocked: 'A file is open in another program right now.',
   io: 'A file could not be read or written.',
   xlsx: 'The Excel file could not be written.',
-  corrupt: (p) =>
-    p.what === 'backup'
-      ? 'The backup is damaged.'
-      : p.what === 'dataFile'
-        ? 'The file is damaged.'
-        : 'The app’s data is damaged.',
+  corrupt: (p) => (p.what === 'backup' ? 'The backup is damaged.' : 'The app’s data is damaged.'),
   newerSchema: 'The data comes from a newer version of the app.',
   invalid: 'The input is not valid.',
   busy: (p) => busy[busyOf(p.activity)],
@@ -212,7 +207,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   mailAddress: 'The address is incomplete.',
   appPassword: 'An app password has 16 letters.',
   noSignIn: (p) => `There is no sign-in for ${portalOf(p.portal)}.`,
-  dataFileForeign: 'This file is not a data export of this app.',
 };
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
@@ -1148,20 +1142,10 @@ export const en: Catalog = {
       daily: null,
       update: 'before an update',
       restore: 'before a restore',
-      import: 'before an import',
     },
     backupText: 'The current state is backed up first.',
     backupRestored: 'Backup restored.',
     backupUndone: 'The previous state is back.',
-    exportData: 'Export all data',
-    exportAction: 'Export',
-    exported: 'Data exported.',
-    importData: 'Import data',
-    importAction: 'Import',
-    importHeading: 'Import data?',
-    importText: 'The file replaces the following, and the current state is backed up first.',
-    importItems: ['the jobs', 'the profile', 'the settings'],
-    imported: 'Data imported.',
     reset: 'All data',
     resetAction: 'Reset',
     resetHeading: 'Reset everything?',

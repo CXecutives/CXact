@@ -12,7 +12,7 @@ use super::app::mailbox;
 use super::{AppState, CmdResult, GmailUser, lock};
 
 /// Key of the time Gmail last accepted the mailbox (`Mailbox.checked_at`; empty: none).
-pub(super) const CHECKED_AT: &str = jobalert_core::store::MAILBOX_CHECKED;
+pub(super) const CHECKED_AT: &str = "mailbox_checked_at";
 
 /// Saves the Gmail access after a real sign-in (`mail::check`): an address or password
 /// Gmail can never accept is refused first, before the app is held or anything is sent

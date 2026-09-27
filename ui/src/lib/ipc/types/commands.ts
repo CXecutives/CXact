@@ -56,8 +56,6 @@ export type Commands = {
   reset_all: { args: Record<string, never>; result: null };
   list_backups: { args: Record<string, never>; result: Backup[] };
   restore_backup: { args: { id: string }; result: Backup };
-  export_data: { args: Record<string, never>; result: boolean };
-  import_data: { args: Record<string, never>; result: boolean };
   report_ui_error: { args: { message: string; source: string | null; line: number | null }; result: null };
   clipboard_text: { args: Record<string, never>; result: string | null };
 };

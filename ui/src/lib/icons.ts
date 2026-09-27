@@ -56,10 +56,8 @@ export const ICONS = {
   excel: 'file-spreadsheet',
   /** Show a file or folder in Explorer or Finder. */
   folder: 'folder-open',
-  /** Choose a file (the profile, a data file to import). */
+  /** Choose a file (the profile). */
   pickFile: 'file-up',
-  /** Save a file where she chooses (all the data in one file). */
-  saveFile: 'file-down',
   /** Write files again (the text files). */
   rewrite: 'file-pen-line',
   /** Restore a copy of the database (Sicherung wiederherstellen). */

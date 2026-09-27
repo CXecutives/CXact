@@ -93,11 +93,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   io: 'Eine Datei ließ sich nicht lesen oder schreiben.',
   xlsx: 'Die Excel-Datei ließ sich nicht schreiben.',
   corrupt: (p) =>
-    p.what === 'backup'
-      ? 'Die Sicherung ist beschädigt.'
-      : p.what === 'dataFile'
-        ? 'Die Datei ist beschädigt.'
-        : 'Die Daten der App sind beschädigt.',
+    p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten der App sind beschädigt.',
   newerSchema: 'Die Daten stammen von einer neueren Version der App.',
   invalid: 'Die Eingabe passt nicht.',
   busy: (p) => busy[busyOf(p.activity)],
@@ -184,7 +180,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   mailAddress: 'Die Adresse ist unvollständig.',
   appPassword: 'Ein App-Passwort hat 16 Buchstaben.',
   noSignIn: (p) => `Für ${portalOf(p.portal)} gibt es keine Anmeldung.`,
-  dataFileForeign: 'Die Datei ist kein Datenexport dieser App.',
 };
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
@@ -1330,7 +1325,7 @@ export const de = {
     export: 'Export',
     /** The card of how the app looks and speaks: its colours and its language. */
     look: 'Darstellung',
-    /** The card of the app's data: its backups, its export and import, its log, the reset. */
+    /** The card of the app's data: its backups, its log, the reset. */
     data: 'Daten',
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
     backToJob: 'Zurück zum Job',
@@ -1383,23 +1378,11 @@ export const de = {
       daily: null,
       update: 'vor einem Update',
       restore: 'vor dem Wiederherstellen',
-      import: 'vor dem Import',
     } satisfies Record<BackupKind, string | null>,
     backupText: 'Der jetzige Stand wird vorher gesichert.',
     backupRestored: 'Sicherung wiederhergestellt.',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
-    /** The rows that take the data along: all of it in one file (never the app password),
-     *  and the import of such a file, which asks first what it replaces. */
-    exportData: 'Alle Daten exportieren',
-    exportAction: 'Exportieren',
-    exported: 'Daten exportiert.',
-    importData: 'Daten importieren',
-    importAction: 'Importieren',
-    importHeading: 'Daten importieren?',
-    importText: 'Die Datei ersetzt Folgendes, der jetzige Stand wird vorher gesichert.',
-    importItems: ['die Jobs', 'das Profil', 'die Einstellungen'] as string[],
-    imported: 'Daten importiert.',
     /** The row of the reset, its button and its dialog. */
     reset: 'Alle Daten',
     resetAction: 'Zurücksetzen',

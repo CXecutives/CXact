@@ -52,8 +52,6 @@
 // `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
 // comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette.
-// `?data=cancel` closes the file dialogs of the data export and import without a choice,
-// `?data=foreign|damaged|newer` lets the import find such a file (refused like core does).
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
 // come in the order of the backend (`Portal::ALL`).
 
@@ -254,8 +252,6 @@ const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 const NO_INTERNET = params.get('mail') === 'no-internet';
 /** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
-/** `data=`: what the file dialogs of the data export and import choose (see the header). */
-const DATA_FILE = params.get('data');
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
 /** The palette as the backend says it (`palette=light|dark`; Coast by default). */
@@ -806,12 +802,11 @@ const DEMO_BACKUPS: readonly Backup[] = [
 /** Copies from before a restore kept, like core. */
 const RESTORE_KEPT = 3;
 
-/** The name core gives the copy before a restore (or an import, `kind`) at `ms` (UTC, to
- *  the millisecond). */
-function restoreName(ms: number, kind: 'restore' | 'import' = 'restore'): string {
+/** The name core gives the copy before a restore at `ms` (UTC, to the millisecond). */
+function restoreName(ms: number): string {
   // 2026-09-24T07:30:00.000Z: 20260924, 073000, 000
   const digits = new Date(ms).toISOString().replace(/\D/g, '');
-  return `jobs.before-${kind}-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
+  return `jobs.before-restore-${digits.slice(0, 8)}-${digits.slice(8, 14)}-${digits.slice(14, 17)}.db`;
 }
 
 function initial(): void {
@@ -2083,26 +2078,6 @@ const handlers: Handlers = {
     );
     return structuredClone(before);
   },
-  // Like the commands: the OS's dialog (`?data=cancel`: closed without a choice), then the
-  // file. The import refuses a foreign, damaged or newer file like core, else the state
-  // before is a copy of its own (listed by the Sicherung); the demo data stays as it is.
-  export_data: () => DATA_FILE !== 'cancel',
-  import_data: () => {
-    if (running || mailboxCheck !== null) throw fail('busy');
-    if (DATA_FILE === 'cancel') return false;
-    if (DATA_FILE === 'foreign') throw fail('invalid', { reason: 'dataFileForeign' });
-    if (DATA_FILE === 'damaged') throw fail('corrupt', { what: 'dataFile' });
-    if (DATA_FILE === 'newer') throw fail('newerSchema', { what: 'dataFile', format: 2 });
-    const ms = Date.now();
-    const before: Backup = {
-      id: restoreName(ms, 'import'),
-      kind: 'import',
-      at: new Date(ms).toISOString(),
-      bytes: backups[0]?.bytes ?? 0,
-    };
-    backups = [before, ...backups];
-    return true;
-  },
   report_ui_error: () => null,
   clipboard_text: async () =>
     harness.clipboard ?? (await navigator.clipboard.readText().catch(() => null)),
@@ -2233,13 +2208,11 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'portal_logout',
   'reset_all',
   'restore_backup',
-  'export_data',
-  'import_data',
 ]);
 
 /** Commands that refuse in the demo (`ensure_not_demo` in src-tauri): the mailbox, the
- *  portals, the vault, another work folder, the reset, a restore, the data export and
- *  import; `start_run` takes only a rescore. */
+ *  portals, the vault, another work folder, the reset, a restore; `start_run` takes only a
+ *  rescore. */
 const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'save_mailbox',
   'remove_mailbox',
@@ -2248,8 +2221,6 @@ const DEMO_REFUSED: ReadonlySet<string> = new Set([
   'pick_workspace',
   'reset_all',
   'restore_backup',
-  'export_data',
-  'import_data',
 ]);
 
 function demoRefuses(command: string, args: Record<string, unknown>): boolean {

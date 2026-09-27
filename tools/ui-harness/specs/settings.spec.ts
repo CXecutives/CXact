@@ -184,8 +184,6 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'excel-open',
     'csv-open',
     'backup-restore',
-    'data-export',
-    'data-import',
     'logs-open',
     'reset',
   ]);
@@ -202,7 +200,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     const button = page.getByTestId(id);
     if (warns) {
       await expect(button, id).toHaveCSS('color', danger);
-      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
+      await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'purge');
     } else await expect(button, id).not.toHaveCSS('color', danger);
   }
   // Every row ends on the same edge: its last button, switch or choice.
@@ -242,16 +240,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
   // Label and control side by side, one line, like the wider rows.
-  for (const id of [
-    'excel',
-    'row-palette',
-    'row-language',
-    'backup',
-    'export-data',
-    'import-data',
-    'logs',
-    'reset-all',
-  ]) {
+  for (const id of ['excel', 'row-palette', 'row-language', 'backup', 'logs', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(Math.round(box.height), id).toBe(60);
   }
@@ -655,23 +644,17 @@ test('Darstellung: the language switches everything at once; notes follow it', a
 
 /* ------------------------------------------------------------------- Daten */
 
-test('Daten: Sicherung, Export, Import, Protokoll, Alle Daten; no data path, no list of what a reset deletes', async ({
+test('Daten: Sicherung, Protokoll, Alle Daten; no data path, no list of what a reset deletes', async ({
   page,
 }) => {
   await settings(page);
   const data = page.getByTestId('settings-data');
   expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual([
     'backup',
-    'export-data',
-    'import-data',
     'logs',
     'reset-all',
   ]);
   await expect(page.getByTestId('backup-restore')).toHaveText(T.settings.backupAction);
-  await expect(page.getByTestId('export-data')).toContainText(T.settings.exportData);
-  await expect(page.getByTestId('data-export')).toHaveText(T.settings.exportAction);
-  await expect(page.getByTestId('import-data')).toContainText(T.settings.importData);
-  await expect(page.getByTestId('data-import')).toHaveText(T.settings.importAction);
   await expect(page.getByTestId('logs-open')).toHaveText(T.common.open);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
   await expect(data.locator('[data-copy]')).toHaveCount(0);
@@ -731,92 +714,6 @@ test('backups: one date format, no sizes; restored with the same verb, then undo
   // The demo restores nothing and says why.
   await settings(page, `${WIN}&scenario=demo`);
   expect(await reason(page, 'backup-restore')).toBe('In der Demo geht das nicht.');
-});
-
-test('export: all the data in one file, said by a toast; a closed dialog says nothing', async ({
-  page,
-}) => {
-  await settings(page);
-  await page.getByTestId('data-export').click();
-  await expect(page.getByTestId('toast').filter({ hasText: T.settings.exported })).toBeVisible();
-  expect(await calls(page, 'export_data')).toHaveLength(1);
-  await expect(page.getByTestId('data-note')).toHaveCount(0);
-  // Nothing chosen in the OS's dialog: nothing written, nothing said.
-  await settings(page, `${WIN}&data=cancel`);
-  await page.getByTestId('data-export').click();
-  await expect.poll(async () => (await calls(page, 'export_data')).length).toBe(1);
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-  // A failure is the card's note.
-  await failNext(page, 'export_data');
-  await page.getByTestId('data-export').click();
-  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
-});
-
-test('import: asks what the file replaces, then everything loads again', async ({ page }) => {
-  await settings(page);
-  await page.getByTestId('data-import').click();
-  const dialog = page.getByTestId('dialog-import');
-  await expect(dialog.getByRole('heading')).toHaveText(T.settings.importHeading);
-  await expect(dialog).toContainText(T.settings.importText);
-  await expect(dialog.getByTestId('dialog-items').locator('li')).toHaveText(T.settings.importItems);
-  // The verb of the button that opened it.
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.importAction);
-  await dialog.getByTestId('dialog-cancel').click();
-  await expect(dialog).toBeHidden();
-  expect(await calls(page, 'import_data')).toHaveLength(0);
-
-  const loads = (await calls(page, 'app_state')).length;
-  await page.getByTestId('data-import').click();
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog).toBeHidden();
-  await expect(page.getByTestId('toast').filter({ hasText: T.settings.imported })).toBeVisible();
-  expect(await calls(page, 'import_data')).toHaveLength(1);
-  expect((await calls(page, 'app_state')).length).toBeGreaterThan(loads);
-  // The state before is a copy of its own: the newest in the Sicherung, named for the import.
-  await page.getByTestId('backup-restore').click();
-  const first = page.getByTestId('dialog-backup').getByRole('radio').first();
-  await expect(first).toContainText(T.settings.backupKind.import);
-});
-
-test('import: a foreign, damaged or newer file is refused inside the dialog', async ({ page }) => {
-  for (const [file, words] of [
-    ['foreign', T.error.text('invalid', { reason: 'dataFileForeign' })],
-    ['damaged', 'Die Datei ist beschädigt.'],
-    ['newer', T.error.text('newerSchema', { what: 'dataFile' })],
-  ] as const) {
-    await settings(page, `${WIN}&data=${file}`);
-    await page.getByTestId('data-import').click();
-    const dialog = page.getByTestId('dialog-import');
-    await dialog.getByTestId('dialog-confirm').click();
-    await expect(dialog.getByTestId('dialog-error'), file).toHaveText(words);
-    await expect(page.getByTestId('toast')).toHaveCount(0);
-  }
-  expect(T.error.text('invalid', { reason: 'dataFileForeign' })).toBe(
-    'Die Datei ist kein Datenexport dieser App.',
-  );
-  // Nothing chosen in the OS's dialog: the question goes too, nothing changed.
-  await settings(page, `${WIN}&data=cancel`);
-  await page.getByTestId('data-import').click();
-  await page.getByTestId('dialog-import').getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('dialog-import')).toBeHidden();
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-});
-
-test('export and import: the demo and the dry run refuse both, a run holds the import', async ({
-  page,
-}) => {
-  await settings(page, `${WIN}&scenario=demo`);
-  for (const id of ['data-export', 'data-import']) {
-    expect(await reason(page, id), id).toBe('In der Demo geht das nicht.');
-  }
-  await settings(page, `${WIN}&scenario=dry-run`);
-  for (const id of ['data-export', 'data-import']) {
-    expect(await reason(page, id), id).toBe('Im Probelauf geht das nicht.');
-  }
-  // A fetch holds the import (it replaces what the fetch writes); the export only reads.
-  await settings(page, `${WIN}&scenario=running`);
-  expect(await reason(page, 'data-import')).toBe('Ein Abruf läuft gerade.');
-  await expect(page.getByTestId('data-export')).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {

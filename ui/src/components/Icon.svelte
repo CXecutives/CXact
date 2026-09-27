@@ -47,7 +47,6 @@
   import Factory from '@lucide/svelte/icons/factory';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
-  import FileDown from '@lucide/svelte/icons/file-down';
   import FileText from '@lucide/svelte/icons/file-text';
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
@@ -120,7 +119,6 @@
     factory: Factory,
     'file-pen-line': FilePenLine,
     'file-spreadsheet': FileSpreadsheet,
-    'file-down': FileDown,
     'file-text': FileText,
     'file-up': FileUp,
     'folder-open': FolderOpen,
