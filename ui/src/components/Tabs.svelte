@@ -1,20 +1,25 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 15 px in a row
-  44 px high, the chosen one in ink with a thin line under it that slides to the next choice
-  like the sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and
-  a change of size never slide). A tab is its label only (user decision 2026-09-27: no
-  numbers). An unchosen tab darkens on hover. Like native tabs the row is one Tab stop and the left and
-  right arrows choose (lib/input/input.ts).
+  The places of a list as tabs (Eingang, Archiv, Papierkorb): an icon and a quiet label of
+  15 px in a row 44 px high (user decision 2026-09-27, no numbers). The chosen one in ink, its
+  icon and the line under it in the accent like the sidebar's chosen entry; the line slides
+  to the next choice like the sidebar's pill and the segments' thumb (180 ms, emphasized; the
+  first placement and a change of size never slide). An unchosen tab darkens on hover. Like
+  native tabs the row is one Tab stop and the left and right arrows choose
+  (lib/input/input.ts).
 -->
 <script lang="ts" module>
+  import type { IconName } from './Icon.svelte';
+
   export interface TabOption<Id extends string = string> {
     id: Id;
     label: string;
+    icon?: IconName | null;
     testid?: string;
   }
 </script>
 
 <script lang="ts" generics="Id extends string">
+  import Icon from './Icon.svelte';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { settled } from '$lib/motion/settled.svelte';
 
@@ -76,8 +81,11 @@
       data-testid={option.testid ?? undefined}
       onclick={() => {
         if (!chosen) onchange(option.id);
-      }}>{option.label}</button
+      }}
     >
+      {#if option.icon}<Icon name={option.icon} size="sm" />{/if}
+      {option.label}
+    </button>
   {/each}
   {#if line}<span
       class="line"
@@ -103,6 +111,7 @@
     pointer-events: auto;
     display: inline-flex;
     flex: none;
+    gap: var(--space-6);
     align-items: center;
     padding: 0;
     border: none;
@@ -123,6 +132,10 @@
     color: var(--nav-active-fg);
   }
 
+  .tab[aria-selected='true'] > :global(.icon) {
+    color: var(--nav-active-icon);
+  }
+
   .tab:focus-visible {
     border-radius: var(--radius-xs);
     box-shadow: var(--focus-ring);
@@ -137,7 +150,7 @@
     width: var(--line-width);
     height: var(--tabs-line);
     border-radius: var(--radius-full);
-    background-color: var(--nav-active-fg);
+    background-color: var(--nav-active-icon);
     transform: translateX(var(--line-x));
     transition: transform var(--dur-slow) var(--ease-emphasized);
   }

@@ -64,9 +64,9 @@
   const totals = $derived(jobs.overviewCounts ?? jobs.counts);
 
   const places = $derived<TabOption<Place>[]>([
-    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
-    { id: 'archive', label: t.place.archive, testid: 'place-archive' },
-    { id: 'trash', label: t.place.trash, testid: 'place-trash' },
+    { id: 'inbox', label: t.place.inbox, icon: 'inbox', testid: 'place-inbox' },
+    { id: 'archive', label: t.place.archive, icon: 'archive', testid: 'place-archive' },
+    { id: 'trash', label: t.place.trash, icon: 'trash', testid: 'place-trash' },
   ]);
 
   /** Another place starts without the search. */
