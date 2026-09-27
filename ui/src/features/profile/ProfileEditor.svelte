@@ -1,52 +1,47 @@
 <!--
   The profile as a form: the sections of `sections.ts` in their order, each field as the
-  table describes it, and at the end what the app reads in the file ("So liest die App dein
-  Profil"). Each block says in one sentence what it is for. Every field of a block is 32 px
-  high, the choices too (14 px text), every control label 13/500, and every number field has
-  one width with its unit beside it. A single choice (Remote-Anteil, Verfügbar ab) is cleared
-  by its option "Offen". An empty optional block says "Noch leer" quietly (the thin profile
-  itself is said once, in the head). A value of the file the app could not read is said at
-  its field with "Wert entfernen"; a value the backend refused is said there too, and the
-  field gets the caret (said once, at the field). Values that contradict each other say so
-  quietly in the hint's place (a wished rate under the minimum, jobs for more years than her
-  experience), and the remote share of permanent roles waits for their places. The rules
-  for permanent roles hide while those are excluded, unless one of their values does not
-  read or a save refused one (then they stay until the form is saved or discarded).
-  The save bar stays at the bottom of the view: "Speichern" (the one primary, only with a
-  change) and "Verwerfen"; without a change both say why they wait. While it shows, the
-  toasts rise above it (the toast stack measures it). An untouched new form goes back to the
-  ways in with "Verwerfen" or Esc. Enter in a field saves, as in every form (in the row lists
-  it goes to the next row, in a chip field it adds what was typed), and Ctrl/Cmd+S saves from
-  anywhere in the form.
+  table describes it. Only Konditionen and Wünsche say in one sentence what they do (the rest
+  is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
+  control label 13/500, and every number field has one width with its unit beside it; a
+  number is formatted when its field is left. A single choice (Remote-Anteil, Verfügbar ab)
+  is cleared by its option "Offen". An empty optional block says "Noch leer" quietly. A value
+  of the file the app could not read is said at its field with "Wert entfernen"; a value that
+  is too large, a second day below the first, a day that does not read and a value the
+  backend refused are said there too, stay with their error until they change, and hold the
+  save (the field gets the caret when a save is tried). Values that contradict each other say
+  so quietly in the hint's place (a wished rate under the minimum, jobs for more years than
+  her experience), and the remote share of permanent roles waits for their places. The
+  rules for permanent roles hide while those are excluded, unless one of their values does
+  not read or a save refused one (then they stay until the form is saved or discarded).
+  The save bar rises in at the bottom of the view only while the form holds a change:
+  "Speichern" (the one primary) and "Verwerfen"; it leaves once saved (the view says so in a
+  toast) or discarded. While it shows, the toasts rise above it (the toast stack measures
+  it). An untouched new form goes back to the ways in with Esc. Enter in a field saves, as in
+  every form (in the row lists it goes to the next row, in a chip field it adds what was
+  typed), and Ctrl/Cmd+S saves from anywhere in the form.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import Field from '$components/Field.svelte';
-  import type { IconName } from '$components/Icon.svelte';
   import Notice from '$components/Notice.svelte';
+  import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import TextField from '$components/TextField.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
-  import type {
-    Notice as NoticeData,
-    ProfileQuality,
-    ProfileUnderstanding,
-    RemoteWish,
-  } from '$lib/ipc/types';
-  import { NUMBER_CRITERIA } from '$lib/ipc/types/profile';
+  import type { Notice as NoticeData, ProfileQuality, RemoteWish } from '$lib/ipc/types';
+  import { MAX_YEARS, NUMBER_CRITERIA } from '$lib/ipc/types/profile';
+  import { fade, rise } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
   import { editor, type FieldError, type FieldProblem } from '$lib/state/profile.svelte';
   import { tick, untrack } from 'svelte';
   import AvailableField from './AvailableField.svelte';
-  import ChoiceButtons from './ChoiceButtons.svelte';
   import CompetenceList from './CompetenceList.svelte';
   import CountriesField from './CountriesField.svelte';
   import LanguageList from './LanguageList.svelte';
   import NumberField from './NumberField.svelte';
-  import ProfileReading from './ProfileReading.svelte';
   import ProfileSection from './ProfileSection.svelte';
   import {
     SECTIONS,
@@ -61,6 +56,7 @@
     unitOf,
     type Control,
     type Line,
+    type NumberKey,
     type Section,
   } from './sections';
   import ValueNote from './ValueNote.svelte';
@@ -73,34 +69,19 @@
     problems: readonly FieldProblem[];
     /** The engine's warnings of the profile (Schwerpunkte taken over). */
     warnings: readonly NoticeData[];
-    /** What the app reads in the file ("So liest die App dein Profil"); `null` for a new one. */
-    understood: ProfileUnderstanding | null;
     /** A value the backend refused on the last save. */
     fieldError: FieldError | null;
     busy: boolean;
     /** A failure of the last save, in words. */
     note: string | null;
-    /** The outcome of the last save (until the next change). */
-    result: string | null;
-    /** The way on after the first save during setup (next to the result); `null` otherwise. */
-    next: { label: string; icon: IconName; onclick: () => void } | null;
     onsave: () => void;
     ondiscard: () => void;
+    /** The save bar has left (after a save: the view's toast comes now). */
+    onbargone?: () => void;
   }
 
-  let {
-    quality,
-    problems,
-    warnings,
-    understood,
-    fieldError,
-    busy,
-    note,
-    result,
-    next,
-    onsave,
-    ondiscard,
-  }: Props = $props();
+  let { quality, problems, warnings, fieldError, busy, note, onsave, ondiscard, onbargone }: Props =
+    $props();
 
   // Text typed into a chip field of the form counts as a change.
   editor.typed.share();
@@ -108,6 +89,44 @@
   const words = $derived(t.profile.field);
   const id = $props.id();
   const form = $derived(editor.after);
+
+  // ------------------------------------------------------------ values that hold the save
+
+  /** The largest value of a number of the form (the backend's limits, core). */
+  const MAX: Record<NumberKey, number> = {
+    ...Object.fromEntries(
+      Object.entries(NUMBER_CRITERIA).map(([key, criterion]) => [key, criterion.max]),
+    ),
+    years: MAX_YEARS,
+    wishDayRate: NUMBER_CRITERIA.minDayRate.max,
+  } as Record<NumberKey, number>;
+
+  /** Values the form knows are wrong before anything is sent: too large, or the second day
+   *  of the workload below the first. Each is said at its field and holds the save. */
+  const invalid = $derived.by((): { field: string; row: number | null; text: string }[] => {
+    const found: { field: string; row: number | null; text: string }[] = [];
+    for (const key of Object.keys(MAX) as NumberKey[]) {
+      const value = numberOf(form, key);
+      if (value !== null && value > MAX[key]) {
+        found.push({ field: key, row: null, text: words.atMost(MAX[key]) });
+      }
+    }
+    const { workloadMinDays: min, workloadMaxDays: max } = form.criteria;
+    if (min !== null && max !== null && max < min && max <= MAX.workloadMaxDays) {
+      found.push({ field: 'workloadMaxDays', row: null, text: words.workloadOrder });
+    }
+    // A competence's years, counted among the rows with a name (as the backend does).
+    const named = form.competences.filter((row) => row.name.trim() !== '');
+    const row = named.findIndex((each) => each.years !== null && each.years > MAX_YEARS);
+    if (row >= 0) found.push({ field: 'competences', row, text: words.atMost(MAX_YEARS) });
+    return found;
+  });
+  const invalidOf = (field: string): string | null =>
+    invalid.find((each) => each.field === field)?.text ?? null;
+  /** A value is marked: Speichern waits until it is put right. */
+  const held = $derived(
+    invalid.length > 0 || fieldError !== null || (editor.judged && editor.dateInvalid),
+  );
 
   /** The words of a value the app could not read, by the kind of its field: a number that is
    *  none, or (digits out of range, anything else) a value the app cannot read. */
@@ -131,17 +150,20 @@
     else editor.clear(problem.field);
   }
 
-  /** The error of a field: a value the backend refused, else the first value of the file
-   *  that does not read (said by `Field` with "Wert entfernen" as its way on). */
+  /** The error of a field: a value the backend refused, a value that is wrong as it is, else
+   *  the first value of the file that does not read (said by `Field` with "Wert entfernen" as
+   *  its way on). */
   function errorOf(field: string): string | null {
     if (fieldError?.field === field) return fieldError.text();
+    const wrong = invalidOf(field);
+    if (wrong !== null) return wrong;
     const first = problemsOf(field).find((problem) => !problem.entry);
     return first ? unreadText(first) : null;
   }
 
   type Remove = { label: string; testid: string; onclick: () => void };
   function removeOf(field: string): Remove | null {
-    if (fieldError?.field === field) return null;
+    if (fieldError?.field === field || invalidOf(field) !== null) return null;
     const first = problemsOf(field).find((problem) => !problem.entry);
     return first
       ? { label: words.removeValue, testid: 'value-remove', onclick: () => drop(first) }
@@ -155,38 +177,48 @@
       .filter((problem) => !entries || problem.entry)
       .map((problem) => ({ text: unreadText(problem), onremove: () => drop(problem) }));
 
-  const listError = (field: string): { row: number | null; text: string } | null =>
-    fieldError?.field === field ? { row: fieldError.row, text: fieldError.text() } : null;
+  /** The row of a list that is marked (a refusal first, then a value that is wrong). */
+  function listError(field: string): { row: number | null; text: string } | null {
+    if (fieldError?.field === field) return { row: fieldError.row, text: fieldError.text() };
+    const wrong = invalid.find((each) => each.field === field);
+    return wrong ? { row: wrong.row, text: wrong.text } : null;
+  }
 
   /** The workload is one field of two days (von, bis): one message for both, and "Wert
-   *  entfernen" takes every value of the file behind it. A refusal of either day comes
-   *  first, as at every field, before a value of the file that does not read. */
+   *  entfernen" takes every value of the file behind it. A refusal or a wrong value of either
+   *  day comes first, as at every field, before a value of the file that does not read. */
   const WORKLOAD = ['workloadMinDays', 'workloadMaxDays'];
   const workloadError = (): string | null =>
     (fieldError !== null && WORKLOAD.includes(fieldError.field) ? fieldError.text() : null) ??
+    invalidOf('workloadMinDays') ??
+    invalidOf('workloadMaxDays') ??
     errorOf('workloadMinDays') ??
     errorOf('workloadMaxDays');
   function workloadRemove(): Remove | null {
     if (WORKLOAD.includes(fieldError?.field ?? '')) return null;
+    if (WORKLOAD.some((field) => invalidOf(field) !== null)) return null;
     const found = WORKLOAD.flatMap(problemsOf).filter((problem) => !problem.entry);
     return found.length === 0
       ? null
       : { label: words.removeValue, testid: 'value-remove', onclick: () => found.forEach(drop) };
   }
-  const invalid = (field: string): boolean =>
-    fieldError?.field === field || problemsOf(field).length > 0;
+  const marked = (field: string): boolean =>
+    fieldError?.field === field || invalidOf(field) !== null || problemsOf(field).length > 0;
 
   const trimmed = $derived.by((): number | null => {
     const notice = warnings.find((w) => w.code === 'focusTrimmed');
     return notice ? Number(notice.params.count) : null;
   });
 
-  const REMOTE = $derived<{ id: RemoteWish; label: string }[]>(
-    (['full', 'mostly', 'partly', 'onSite'] as const).map((wish) => ({
+  /** The remote wish, "Offen" first (no wish). */
+  const OPEN = 'open';
+  const REMOTE = $derived<{ id: RemoteWish | typeof OPEN; label: string }[]>([
+    { id: OPEN, label: words.open },
+    ...(['full', 'mostly', 'partly', 'onSite'] as const).map((wish) => ({
       id: wish,
       label: t.profile.remoteWish[wish],
     })),
-  );
+  ]);
 
   const unreadIn = (fields: readonly string[]): boolean =>
     problems.some((problem) => fields.includes(problem.field));
@@ -204,41 +236,42 @@
     );
   }
 
-  /** A group whose values a save refused stays until the form is saved or discarded, so it
-   *  can be put right; one with a value of the file that does not read stays too, so the
-   *  head's "n Werte prüfen" always leads to it. */
-  type Group = Extract<Line, { kind: 'group' }>;
-  const fieldsIn = (group: Group): string[] => controlsOf(group.lines).flatMap(fieldsOf);
-  const GROUPS = SECTIONS.flatMap((section) => section.lines).filter(
-    (line): line is Group => line.kind === 'group',
-  );
-  let held = $state<string[]>([]);
+  /** A section that waits (`hidden`) and whose values a save refused stays until the form is
+   *  saved or discarded, so it can be put right; one with a value of the file that does not
+   *  read stays too, so the head's "n Werte prüfen" always leads to it. */
+  const fieldsIn = (section: Section): string[] => controlsOf(section.lines).flatMap(fieldsOf);
+  const WAITING = SECTIONS.filter((section) => section.hidden !== undefined);
+  let kept = $state<string[]>([]);
   $effect(() => {
     const refused = fieldError?.field ?? '';
     const dirty = editor.dirty;
-    const now = GROUPS.map((group) => ({
-      id: group.id,
-      refused: fieldsIn(group).includes(refused),
-      hidden: group.hidden(form),
+    const now = WAITING.map((section) => ({
+      id: section.id,
+      refused: fieldsIn(section).includes(refused),
+      hidden: section.hidden?.(form) ?? false,
     }));
     untrack(() => {
-      held = now
-        .filter((group) => group.refused || (held.includes(group.id) && dirty && group.hidden))
-        .map((group) => group.id);
+      kept = now
+        .filter((each) => each.refused || (kept.includes(each.id) && dirty && each.hidden))
+        .map((each) => each.id);
     });
   });
-  const shown = (group: Group): boolean =>
-    !group.hidden(form) || held.includes(group.id) || unreadIn(fieldsIn(group));
+  const shown = (section: Section): boolean =>
+    !(section.hidden?.(form) ?? false) || kept.includes(section.id) || unreadIn(fieldsIn(section));
 
   const actionFirst = primaryFirst();
   let root = $state<HTMLElement | null>(null);
 
-  /** Ready to save: a day that does not read is said at its field, which gets the caret. */
+  /** Ready to save: a value that holds the save is said at its field, which gets the caret. */
   export function ready(): boolean {
     editor.judged = true;
-    if (!editor.dateInvalid) return true;
-    document.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus();
-    return false;
+    if (editor.dateInvalid) {
+      document.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus();
+      return false;
+    }
+    const wrong = invalid[0] ?? null;
+    if (wrong !== null) void focusField(wrong.field);
+    return wrong === null && fieldError === null;
   }
 
   /** The caret into the field a refused value belongs to (its marked control first), in
@@ -274,7 +307,7 @@
     if (ready()) onsave();
   }
 
-  /** A new form nothing was typed into: "Verwerfen" and Esc go back to the ways in. */
+  /** A new form nothing was typed into: Esc goes back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
 
   const kebab = (text: string): string => text.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -288,22 +321,22 @@
   data-testid="profile-form"
 >
   {#each SECTIONS as section (section.id)}
-    <ProfileSection
-      heading={t.profile.section[section.id]}
-      hint={t.profile.sectionHint[section.id]}
-      empty={emptySection(section)}
-      required={section.required ?? false}
-      testid="section-{section.id}"
-    >
-      {#each section.lines as line, index (index)}
-        {@render lineOf(line)}
-      {/each}
-    </ProfileSection>
+    {#if shown(section)}
+      <div class="section" transition:fade>
+        <ProfileSection
+          heading={t.profile.section[section.id]}
+          hint={t.profile.sectionHint[section.id] ?? null}
+          empty={emptySection(section)}
+          required={section.required ?? false}
+          testid="section-{section.id}"
+        >
+          {#each section.lines as line, index (index)}
+            {@render lineOf(line)}
+          {/each}
+        </ProfileSection>
+      </div>
+    {/if}
   {/each}
-
-  {#if understood}
-    <ProfileReading {understood} {form} stale={editor.changed} />
-  {/if}
 </div>
 
 {#snippet lineOf(line: Line)}
@@ -350,14 +383,6 @@
         </div>
       {/each}
     </div>
-  {:else if line.kind === 'group'}
-    {#if shown(line)}
-      <div class="sub" data-testid="profile-{line.id}">
-        <h3 class="sub-heading">{t.profile.section[line.id]}</h3>
-        <p class="hint">{t.profile.sectionHint[line.id]}</p>
-      </div>
-      {#each line.lines as sub, index (index)}{@render lineOf(sub)}{/each}
-    {/if}
   {:else}
     {@render control(line)}
   {/if}
@@ -452,19 +477,18 @@
       bind:max={form.criteria.workloadMaxDays}
       error={workloadError()}
       action={workloadRemove()}
-      invalidMin={invalid('workloadMinDays')}
-      invalidMax={invalid('workloadMaxDays')}
+      invalidMin={marked('workloadMinDays')}
+      invalidMax={marked('workloadMaxDays')}
     />
   {:else if c.kind === 'remote'}
     <div class="block" data-field="remote">
       <span class="label">{words.remote}</span>
-      <ChoiceButtons
+      <Segmented
         options={REMOTE}
-        selected={form.wishes.remote === null ? [] : [form.wishes.remote]}
+        value={form.wishes.remote ?? OPEN}
         label={words.remote}
-        none={words.open}
         testid="profile-remote"
-        onchange={(chosen) => (form.wishes.remote = (chosen[0] as RemoteWish | undefined) ?? null)}
+        onchange={(wish) => (form.wishes.remote = wish === OPEN ? null : wish)}
       />
       {#each notesOf('remote') as unread (unread.text)}
         <ValueNote text={unread.text} testid="remote-unread" onremove={unread.onremove} />
@@ -473,60 +497,57 @@
   {/if}
 {/snippet}
 
-<div class="bar" bind:this={bar} data-testid="profile-save-bar">
-  <div class="status" data-testid="profile-save-status">
-    {#if note}
-      <Notice tone="danger" variant="inline" text={note} testid="profile-save-error" />
-    {:else if editor.dirty}
-      <span class="quiet">{t.profile.unsaved}</span>
-    {:else if result}
-      <span class="result">
-        <Notice tone="success" variant="inline" text={result} testid="profile-saved" />
-        {#if next}
-          <Button
-            variant="secondary"
-            size="field"
-            icon={next.icon}
-            label={next.label}
-            testid="profile-next"
-            onclick={next.onclick}
-          />
-        {/if}
-      </span>
-    {/if}
-  </div>
-  <div class="buttons">
-    {#snippet discard()}
+{#if editor.dirty}
+  <div
+    class="bar"
+    bind:this={bar}
+    data-testid="profile-save-bar"
+    in:rise={{ distance: 'lg' }}
+    out:fade
+    onoutroend={() => onbargone?.()}
+  >
+    <div class="status">
+      {#if note}
+        <Notice tone="danger" variant="inline" text={note} testid="profile-save-error" />
+      {/if}
+    </div>
+    <div class="buttons">
+      {#snippet discard()}
+        <Button
+          variant="secondary"
+          size="field"
+          label={t.profile.discard}
+          disabled={busy}
+          testid="profile-discard"
+          onclick={ondiscard}
+        />
+      {/snippet}
+      {#if !actionFirst}{@render discard()}{/if}
       <Button
-        variant="secondary"
+        variant="primary"
         size="field"
-        label={t.profile.discard}
-        disabled={(!editor.dirty && !untouched) || busy}
-        disabledReason={editor.dirty ? null : t.profile.noChanges}
-        testid="profile-discard"
-        onclick={ondiscard}
+        label={t.profile.save}
+        disabled={held}
+        disabledReason={t.profile.fixFirst}
+        loading={busy}
+        testid="profile-save"
+        onclick={save}
       />
-    {/snippet}
-    {#if !actionFirst}{@render discard()}{/if}
-    <Button
-      variant="primary"
-      size="field"
-      label={t.profile.save}
-      disabled={!editor.dirty}
-      disabledReason={t.profile.noChanges}
-      loading={busy}
-      testid="profile-save"
-      onclick={save}
-    />
-    {#if actionFirst}{@render discard()}{/if}
+      {#if actionFirst}{@render discard()}{/if}
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .editor {
     display: flex;
     flex-direction: column;
     gap: var(--space-32);
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
   }
 
   .pair {
@@ -545,6 +566,7 @@
   .block {
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--space-6);
     min-width: 0;
   }
@@ -554,11 +576,6 @@
     color: var(--text);
     font: var(--type-sm);
     font-weight: var(--weight-medium);
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   /* The switches are one list between two hairlines: each row but the last has its own
@@ -582,21 +599,8 @@
     border-bottom: 0;
   }
 
-  /* Festanstellung: its own group below the switches' hairline, a real subheading (H3). */
-  .sub {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    padding-top: var(--space-4);
-  }
-
-  .sub-heading {
-    color: var(--text-heading);
-    font: var(--type-field);
-    font-weight: var(--weight-semibold);
-  }
-
-  /* The save bar stays in view at the bottom of the scrolling view. */
+  /* The save bar stays in view at the bottom of the scrolling view while there is a
+     change. */
   .bar {
     position: sticky;
     z-index: var(--z-sticky);
@@ -615,18 +619,6 @@
   .status {
     flex: 1;
     min-width: 0;
-  }
-
-  .result {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8) var(--space-16);
-  }
-
-  .quiet {
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   /* Tab and focus scrolling keep a field clear of the sticky save bar. */

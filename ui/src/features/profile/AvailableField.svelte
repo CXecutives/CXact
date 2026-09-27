@@ -1,17 +1,19 @@
 <!--
-  Verfügbar ab: a single choice ("Offen", "Sofort", "Ab Datum"). The day of "Ab Datum"
-  exists only while it is chosen and gets the caret when it is; it is judged when its field
-  is left with text in it or on saving (`editor.judged`), never while it is typed, and a day
-  that does not read is said once, at the field. A value of the file that does not read is
-  said under it with "Wert entfernen".
+  Verfügbar ab: one choice of the segments ("Offen", "Sofort", "Ab Datum"). The day of "Ab
+  Datum" exists only while it is chosen and gets the caret when it is (it fades in beside the
+  choice); it is judged when its field is left with text in it or on saving
+  (`editor.judged`), never while it is typed, and a day that does not read is said once, at
+  the field, and holds the save. A value of the file that does not read is said under it
+  with "Wert entfernen".
 -->
 <script lang="ts">
   import Notice from '$components/Notice.svelte';
+  import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
+  import { fade } from '$lib/motion/transitions';
   import { dayShaped, editor, isoDate } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
-  import ChoiceButtons from './ChoiceButtons.svelte';
   import ValueNote from './ValueNote.svelte';
 
   interface Props {
@@ -28,14 +30,16 @@
   const c = $derived(editor.after.criteria);
   let date = $state<HTMLElement | null>(null);
 
-  const CHOICES = $derived<{ id: 'now' | 'from'; label: string }[]>(
-    (['now', 'from'] as const).map((kind) => ({ id: kind, label: t.profile.availability[kind] })),
-  );
+  type Choice = 'open' | 'now' | 'from';
+  const CHOICES = $derived<{ id: Choice; label: string }[]>([
+    { id: 'open', label: words.open },
+    { id: 'now', label: t.profile.availability.now },
+    { id: 'from', label: t.profile.availability.from },
+  ]);
 
   /** "Offen" is no availability. "Ab Datum" puts the caret into its day, which is judged
    *  anew when it is left. */
-  async function choose(chosen: string[]): Promise<void> {
-    const kind = chosen[0];
+  async function choose(kind: Choice): Promise<void> {
     c.available =
       kind === 'from'
         ? { kind, date: isoDate(editor.dateText) ?? editor.dateText.trim() }
@@ -67,18 +71,18 @@
 <div class="block" data-field="available">
   <span class="label">{words.available}</span>
   <div class="choice">
-    <ChoiceButtons
+    <Segmented
       options={CHOICES}
-      selected={c.available.kind === 'unset' ? [] : [c.available.kind]}
+      value={c.available.kind === 'unset' ? 'open' : c.available.kind}
       label={words.available}
-      none={words.open}
       testid="profile-available"
-      onchange={(chosen) => void choose(chosen)}
+      onchange={(kind) => void choose(kind)}
     />
     {#if c.available.kind === 'from'}
       <span
         class="date"
         role="presentation"
+        in:fade
         bind:this={date}
         onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
       >
@@ -103,8 +107,6 @@
         testid={wrong !== null ? 'profile-date-error' : null}
       />
     </div>
-  {:else}
-    <p class="hint">{words.availableHint}</p>
   {/if}
   {#each notes as note (note.text)}
     <ValueNote text={note.text} testid="available-unread" onremove={note.onremove} />
@@ -124,11 +126,6 @@
     color: var(--text);
     font: var(--type-sm);
     font-weight: var(--weight-medium);
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   .choice {

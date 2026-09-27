@@ -5,7 +5,7 @@
   is sent, one line on what to do in the AI, then the field for its answer. "Übernehmen"
   (waiting, and saying so, until there is an answer) reads the answer (also inside a code
   block) with the same checks as a file and fills the form for review; nothing is saved yet.
-  The answer is the caller's (bound): closing the steps ("Schließen") keeps it.
+  The answer is the caller's (bound): "Abbrechen" closes the steps and keeps it.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -99,7 +99,7 @@
         <Button
           variant="secondary"
           size="field"
-          label={words.close}
+          label={t.common.cancel}
           testid="paste-cancel"
           onclick={oncancel}
         />

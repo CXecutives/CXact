@@ -719,6 +719,8 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await page.setViewportSize({ width: 1360, height: 700 });
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
+  // The save bar shows while the form holds a change.
+  await page.getByTestId('profile-title').fill('Interim CFO');
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   const toast = page.getByTestId('toast');
@@ -730,7 +732,8 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
       return box.y + box.height <= bar.y;
     })
     .toBe(true);
-  // Zeigen is no undo: Ctrl+Z leaves it, a click opens the run in Jobs.
+  // Zeigen is no undo: a click opens the run in Jobs (once the change is discarded).
+  await page.getByTestId('profile-discard').click();
   const show = toast.getByTestId('toast-action');
   await expect(show).toHaveText('Zeigen');
   await show.click();

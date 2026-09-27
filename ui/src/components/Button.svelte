@@ -7,7 +7,8 @@
     row and tools; field (32 px, the default) for everything else: action bars, dialogs,
     empty states, a button in a row of fields. Both use the small type; every glyph is 16 px.
   - At most one primary per view (checked by core/tests/ui_contract.rs).
-  - iconOnly needs its label: it becomes aria-label and tooltip.
+  - iconOnly needs its label: it becomes aria-label and tooltip. A glyph that says it all
+    (the x that removes a row) goes without the tooltip (`plain`); its label stays its name.
   - keys: the shortcut that does the same (an action of lib/input/keys.ts: 'search',
     'archive'); the tooltip names its key under the label, for labelled and icon-only buttons
     alike, as the OS names it (Strg+F, ⌘F).
@@ -95,6 +96,8 @@
     isDefault?: boolean;
     /** Removes or resets something: red text on hover (secondary and ghost). */
     warns?: boolean;
+    /** An icon-only button whose glyph says it all: no tooltip of its name. */
+    plain?: boolean;
     testid?: string | null;
     onclick?: (event: MouseEvent) => void;
   }
@@ -123,6 +126,7 @@
     expanded = false,
     isDefault = false,
     warns = false,
+    plain = false,
     testid = null,
     onclick,
   }: Props = $props();
@@ -134,7 +138,7 @@
   const tip = $derived(
     disabled && disabledReason
       ? disabledReason
-      : iconOnly || second !== null
+      : (iconOnly && !plain) || second !== null
         ? { text: label, hint: second }
         : null,
   );

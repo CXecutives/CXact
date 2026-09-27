@@ -1,13 +1,15 @@
 <!--
-  The core competences: one row each with the target (Schwerpunkt), the competence, its
-  years and its synonyms (`auch`, one line with "+n" for those that do not fit), then
-  "Kompetenz hinzufügen". The target says what a click does (mark, or remove the
-  Schwerpunkt); the count stands over the targets ("2/5") and a line under the rows says what
-  they do. At most five: a sixth target is disabled and its tooltip says why, as does the
-  target of a row without a competence. Renaming or removing a marked competence takes its Schwerpunkt
-  along. A file with more Schwerpunkte says under the rows that the first five were taken;
-  one that does not count (no competence of that name) or a value that does not read is said
-  there with "Wert entfernen". A value the backend refused marks its row. Enter goes to the
+  The core competences: one row each with the marker of a Schwerpunkt (one glyph, outlined,
+  filled while marked), the competence, its years and its synonyms (one line with "+n" for
+  those that do not fit), then "Kompetenz hinzufügen". The marker says what a click does
+  (mark, or remove the Schwerpunkt); the count stands over the markers ("2/5") and a line
+  under the rows says what they do. At most five: a sixth marker is disabled and its tooltip
+  says why, as does the marker of a row without a competence. The x of a row needs no
+  tooltip, and no field repeats its column's name as a placeholder. Renaming or removing a
+  marked competence takes its Schwerpunkt along. A file with more Schwerpunkte says under the
+  rows that the first five were taken; one that does not count (no competence of that name)
+  or a value that does not read is said there with "Wert entfernen". A value that is too large
+  (the years) or that the backend refused marks its row. Enter goes to the
   next row, adds one after the last and ends the list on an empty last row (rows.ts); it
   never saves the profile. A row's focused x hands the focus to the next row (rows.ts).
 -->
@@ -15,7 +17,6 @@
   import Button from '$components/Button.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import TextField from '$components/TextField.svelte';
-  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
   import type { ProfileCompetence } from '$lib/ipc/types';
@@ -123,8 +124,8 @@
         {words.focusCount(focus.length, MAX_FOCUS)}
       </span>
       <span>{words.competence}</span>
-      <span use:tooltip={words.yearsHint}>{words.years}</span>
-      <span class="aliases-head" use:tooltip={words.aliasesHint}>{words.aliases}</span>
+      <span>{words.years}</span>
+      <span class="aliases-head">{words.aliases}</span>
       <span></span>
     </div>
   {/if}
@@ -175,7 +176,6 @@
         <ChipInput
           bind:values={row.aliases}
           label={words.aliases}
-          placeholder={words.aliasesPlaceholder}
           oneLine
           testid="competence-aliases"
         />
@@ -186,6 +186,7 @@
           size="sm"
           iconOnly
           icon="close"
+          plain
           label={words.removeCompetence(row.name.trim())}
           testid="competence-remove"
           onclick={(event) => removeByButton(row, event)}

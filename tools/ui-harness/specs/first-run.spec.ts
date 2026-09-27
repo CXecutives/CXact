@@ -155,7 +155,9 @@ test('step 2 opens the CV steps, "Profil anlegen" the empty form', async ({ page
   await create.click();
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('profile-save').click();
-  await expect(page.getByTestId('profile-next')).toHaveText(T.profile.next);
+  // Saved during the setup: the toast leads on to the first fetch.
+  const toast = page.getByTestId('toast').filter({ hasText: T.profile.saved });
+  await expect(toast.getByTestId('toast-action')).toHaveText(T.profile.next);
   await page.getByTestId('nav-jobs').click();
   await expect(step).toHaveAttribute('data-done', 'true');
   await expect(step.locator('.done-text')).toHaveText(T.profile.unnamed);

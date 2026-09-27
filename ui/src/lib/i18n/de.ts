@@ -32,7 +32,6 @@ import type {
   PortalHealth,
   LanguageLevel,
   ProfileAvailability,
-  ProfileQuality,
   ReasonKind,
   ReasonWeight,
   RemoteWish,
@@ -166,7 +165,7 @@ const profileField: Record<string, string> = {
   workloadMaxDays: 'Auslastung',
   minMonths: 'Mindestlaufzeit',
   exclusionWords: 'Ausschlusswörter',
-  targetYears: 'Jobs ab',
+  targetYears: 'Verlangte Erfahrung ab',
   minSalary: 'Mindest-Jahresgehalt',
   permanentPlaces: 'Orte für Festanstellung',
   permanentRemoteMin: 'Mindest-Remote-Anteil',
@@ -1246,34 +1245,21 @@ export const de = {
     pickOther: 'Andere Datei wählen',
     /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Entfernen). */
     more: 'Weitere Aktionen',
-    remove: 'Entfernen',
-    /** Removing needs no question: the toast offers Rückgängig. */
-    removed: 'Profil entfernt.',
-    /** The moment like every moment of the app (`21.09. 09:30`, the time alone today). */
-    savedAt: (moment: string) => `Gespeichert ${moment}`,
+    /** In the head's menu, red; it asks first, and the toast offers Rückgängig. */
+    remove: 'Profil löschen',
+    removeHeading: 'Profil löschen?',
+    removeConfirm: 'Löschen',
+    removed: 'Profil gelöscht.',
+    /** The toast of a save (during the setup with the way on). */
+    saved: 'Profil gespeichert.',
     unnamed: 'Profil ohne Namen',
-    quality: {
-      good: 'Vollständig',
-      thin: 'Wenig Inhalt',
-      empty: 'Ohne Kompetenzen',
-    } satisfies Record<ProfileQuality, string>,
-    qualityText: {
-      good: 'Die Passung stützt sich auf das ganze Profil.',
-      thin: 'Wenige Kompetenzen, die Passung bleibt grob.',
-      empty: 'Ohne Kompetenzen wird nichts bewertet.',
-    } satisfies Record<ProfileQuality, string>,
-    /** No competence rows, but other terms: the match works, roughly. */
-    noRowsText: 'Ohne Kompetenzen bleibt die Passung grob.',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
-    rescored: 'Gespeichert, Jobs neu bewertet.',
     /** Values of the file that do not read and a rule that stays off: a click goes to the
      *  first one. */
     check: (value: number) => count(value, 'Wert prüfen', 'Werte prüfen'),
     next: 'Weiter zum ersten Abruf',
     /** The same place without a mailbox: back to the setup page. */
     nextMailbox: 'Weiter zum Postfach',
-    /** The head's stats line, the same word as in "So liest die App dein Profil". */
-    understood: (terms: number) => count(terms, 'Suchbegriff', 'Suchbegriffe'),
     warning,
     /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
     pack: {
@@ -1292,22 +1278,13 @@ export const de = {
       consulting: 'Unternehmensberatung',
       energy: 'Energiewirtschaft',
     } as Record<string, string>,
-    draft: {
-      new: 'Neues Profil',
-      file: 'Profil aus einer Datei',
-      answer: 'Profil aus dem Lebenslauf',
-      update: 'Aktualisierung aus dem Lebenslauf',
-    },
-    unsaved: 'Nicht gespeichert',
-    review: 'Prüfe die Angaben und speichere sie.',
     save: 'Speichern',
     discard: 'Verwerfen',
-    /** Why Speichern and Verwerfen wait. */
-    noChanges: 'Noch nichts geändert.',
-    saved: 'Gespeichert.',
     leaveHeading: 'Änderungen speichern?',
     /** Why another file or an update waits while the form holds changes. */
     saveFirst: 'Erst speichern oder verwerfen.',
+    /** Why Speichern waits while a value is marked. */
+    fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
     section: {
       person: 'Person',
@@ -1317,34 +1294,23 @@ export const de = {
       languages: 'Sprachen',
       wishes: 'Wünsche',
       permanent: 'Festanstellung',
-      understood: 'So liest die App dein Profil',
     },
-    /** One sentence per block: what it is for. */
+    /** The two blocks whose effect is easy to get wrong say it in one sentence. */
     sectionHint: {
-      person: 'Die Rolle zählt für die Passung.',
-      competences: 'Nur dieser Block ist nötig, danach bewertet die App jeden Job.',
-      experience: 'Damit prüft die App, was eine Anzeige verlangt.',
-      languages: 'Die App vergleicht sie mit den Sprachen einer Anzeige.',
-      wishes: 'Wünsche verschieben die Passung leicht, sie schließen nichts aus.',
-      criteria: 'Ein Job, der hier nicht passt, gilt als ausgeschlossen.',
-      permanent: 'Diese Regeln gelten nur für Festanstellungen.',
-      understood: 'Damit vergleicht die App jede Anzeige.',
-    },
+      criteria: 'Was hier nicht passt, schließt einen Job aus.',
+      wishes: 'Wünsche schließen nichts aus.',
+    } as Partial<Record<string, string>>,
     field: {
       name: 'Name',
       namePlaceholder: 'Vor- und Nachname',
       title: 'Rolle',
       titlePlaceholder: 'z. B. Interim Manager',
       roles: 'Wunschrollen',
-      rolesHint: 'Passt der Titel einer Anzeige dazu, steigt die Passung leicht.',
       rolesPlaceholder: 'z. B. Interim CFO',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',
-      yearsHint: 'Die Jahre zählen, wenn eine Anzeige Erfahrung in Jahren verlangt.',
       aliases: 'Synonyme',
-      aliasesHint: 'Andere Wörter für dieselbe Kompetenz, auch englische.',
-      aliasesPlaceholder: 'Synonyme',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
       star: 'Als Schwerpunkt markieren',
@@ -1359,13 +1325,10 @@ export const de = {
       focusTrimmed: (count: number) =>
         `Die Datei nennt ${n(count)} Schwerpunkte, übernommen sind die ersten fünf.`,
       strengths: 'Besondere Stärken',
-      strengthsHint: 'Sie stützen die Passung, belegen aber keine Anforderung.',
       strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
       keywords: 'Stichworte',
       keywordsPlaceholder: 'z. B. Transformation',
-      keywordsHint: 'Begriffe, die in passenden Anzeigen stehen.',
       totalYears: 'Berufserfahrung',
-      totalYearsHint: 'Ab zehn Jahren bewertet die App Jobs für Einsteiger niedrig.',
       degrees: 'Abschlüsse',
       degreesPlaceholder: 'z. B. Master',
       industries: 'Branchen',
@@ -1377,7 +1340,6 @@ export const de = {
       language: 'Sprache',
       languagePlaceholder: 'z. B. Englisch',
       level: 'Niveau',
-      levelHint: 'Ohne Niveau rechnet die App mit B2.',
       addLanguage: 'Sprache hinzufügen',
       removeLanguage: (name: string) => `${name || 'Sprache'} entfernen`,
       wishRate: 'Wunschtagessatz',
@@ -1394,15 +1356,11 @@ export const de = {
       countriesPlaceholder: 'Land suchen',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
-      /** One click for Deutschland, Österreich and Schweiz. */
-      dach: 'DACH hinzufügen',
       remoteOutside: 'Remote-Jobs im Ausland ausschließen',
       remoteOutsideOff: 'Wähle erst die Einsatzländer.',
       noAnue: 'Zeitarbeit ausschließen',
       noPermanent: 'Festanstellung ausschließen',
-      noPermanentHint: 'Nur bei klarem Wortlaut, sonst markiert die App den Job zum Prüfen.',
       available: 'Verfügbar ab',
-      availableHint: 'Beginnt ein Job früher, markiert die App ihn zum Prüfen.',
       /** Days per week, from and to (either may stay empty): "von 3 bis 5 Tage pro Woche". */
       workload: 'Auslastung',
       workloadFrom: 'von',
@@ -1410,13 +1368,10 @@ export const de = {
       /** The names of the two day fields for a screen reader. */
       workloadMin: 'Auslastung von',
       workloadMax: 'Auslastung bis',
-      workloadHint: 'Passt ein Job nicht dazu, markiert die App ihn zum Prüfen.',
       /** The second day lies below the first (the backend refuses it). */
       workloadOrder: 'Der zweite Wert liegt unter dem ersten.',
       minMonths: 'Mindestlaufzeit',
-      minMonthsHint: 'Ist ein Job kürzer, markiert die App ihn zum Prüfen.',
       exclusionWords: 'Ausschlusswörter',
-      exclusionWordsHint: 'Jobs mit diesen Wörtern im Titel oder Text werden ausgeschlossen.',
       exclusionWordsPlaceholder: 'z. B. Werkstudent',
       /** The option of a single choice that leaves it open (Remote-Anteil, Verfügbar ab). */
       open: 'Offen',
@@ -1425,14 +1380,13 @@ export const de = {
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
-      /** "Jobs ab 15 Jahren Erfahrung": jobs for far less experience are excluded. */
-      targetYears: 'Jobs ab',
+      /** "Verlangte Erfahrung ab 15 Jahren": a job that asks for far less is excluded. */
+      targetYears: 'Verlangte Erfahrung ab',
       minSalary: 'Mindest-Jahresgehalt',
       places: 'Orte für Festanstellung',
       placesPlaceholder: 'z. B. München',
       remoteMin: 'Mindest-Remote-Anteil',
-      remoteMinHint:
-        'Außerhalb der Orte für Festanstellung braucht ein Job mindestens diesen Remote-Anteil.',
+      remoteMinHint: 'Gilt für Jobs außerhalb dieser Orte.',
       /** The remote share waits for the places it counts outside of. */
       placesFirst: 'Trag erst Orte ein.',
       /** A euro amount with cents: the app counts whole euros. */
@@ -1455,8 +1409,8 @@ export const de = {
     unit: {
       euro: '€',
       years: 'Jahre',
-      /** "Jobs ab 15 Jahren Erfahrung". */
-      experience: 'Jahren Erfahrung',
+      /** "Verlangte Erfahrung ab 15 Jahren". */
+      experience: 'Jahren',
       percent: '%',
       days: 'Tage pro Woche',
       months: 'Monate',
@@ -1470,20 +1424,11 @@ export const de = {
       c2: 'C2',
       native: 'Muttersprache',
     } satisfies Record<LanguageLevel, string>,
-    /** What a level means, in the tooltip of its button. */
-    levelMeaning: {
-      a1: 'Anfänger',
-      a2: 'Grundkenntnisse',
-      b1: 'Mittelstufe',
-      b2: 'Gute Kenntnisse',
-      c1: 'Fließend',
-      c2: 'Verhandlungssicher',
-      native: 'Muttersprache',
-    } satisfies Record<LanguageLevel, string>,
+    /** The remote wish in the words of the jobs (the reader's work mode). */
     remoteWish: {
-      full: 'Ganz remote',
+      full: 'Voll remote',
       mostly: 'Überwiegend remote',
-      partly: 'Teilweise remote',
+      partly: 'Hybrid',
       onSite: 'Vor Ort',
     } satisfies Record<RemoteWish, string>,
     /** Nothing chosen means no availability (pressing the chosen one again clears it). */
@@ -1552,41 +1497,11 @@ export const de = {
       uk: 'Ukrainisch',
       hu: 'Ungarisch',
     },
-    /** "So liest die App dein Profil": what the engine reads in the file. */
-    reading: {
-      termsLabel: 'Suchbegriffe',
-      more: (value: number) => `und ${n(value)} weitere`,
-      sources: 'Gelesen aus',
-      /** A part of the file the form does not show (career stations and the like). */
-      fileOnly: (name: string) => `${name}, nur in der Datei`,
-      years: 'Berufserfahrung',
-      yearsValue: (value: number) => count(value, 'Jahr', 'Jahre'),
-      degrees: 'Abschlüsse',
-      packs: 'Fachwortschatz',
-      /** The form holds changes this reading does not know yet. */
-      stale: 'Das gilt ohne die Änderungen.',
-      /** Parts of the profile file by their key (an external contract), in the form's words. */
-      source: {
-        titel: 'Rolle',
-        kernkompetenzen: 'Kompetenzen',
-        methoden_tools: 'Werkzeuge und Methoden',
-        zertifizierungen: 'Zertifikate',
-        branchen: 'Branchen',
-        sprachen: 'Sprachen',
-        alleinstellungsmerkmale: 'Besondere Stärken',
-        keywords: 'Stichworte',
-        abschluss: 'Abschlüsse',
-        ausbildung: 'Abschlüsse',
-        schwerpunkte: 'Schwerpunkte',
-        stationen: 'Stationen',
-        projekte: 'Projekte',
-      } as Record<string, string>,
-    },
     paste: {
       privacy: 'Der Lebenslauf geht an die KI, die du nutzt.',
       copied: 'Der Prompt ist kopiert.',
       copyFailed: 'Der Prompt ließ sich nicht kopieren.',
-      copy: 'Prompt kopieren',
+      copy: 'KI-Prompt kopieren',
       copyAgain: 'Erneut kopieren',
       step: 'Füge ihn in eine KI ein und hänge den Lebenslauf an.',
       preview: 'Prompt ansehen',
@@ -1594,8 +1509,6 @@ export const de = {
       take: 'Übernehmen',
       /** Why Übernehmen waits. */
       takeEmpty: 'Füge erst die Antwort der KI ein.',
-      /** The steps close (an answer pasted so far stays for the next time). */
-      close: 'Schließen',
     },
   },
   settings: {

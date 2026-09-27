@@ -1,7 +1,7 @@
 <!--
-  The languages: one row each with the language and its level (A1 to C2 or Muttersprache as
-  toggle buttons, each explaining itself in a tooltip; pressing the chosen level again
-  clears it, and without one the app assumes B2), then "Sprache hinzufügen". The language
+  The languages: one row each with the language and its level (a menu of A1 to C2 and
+  Muttersprache, "Offen" while none is chosen; the app then assumes B2), then "Sprache
+  hinzufügen". The x of a row needs no tooltip. The language
   field suggests common languages like the countries field (found by their German and
   English names, taken in the app's language); any other language can be typed. Enter moves
   through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
@@ -9,6 +9,7 @@
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
+  import MenuButton from '$components/MenuButton.svelte';
   import TextField from '$components/TextField.svelte';
   import { de } from '$lib/i18n/de';
   import { en } from '$lib/i18n/en';
@@ -16,7 +17,6 @@
   import { formKeys } from '$lib/input/input';
   import type { LanguageLevel, ProfileLanguage } from '$lib/ipc/types';
   import { tick } from 'svelte';
-  import ChoiceButtons from './ChoiceButtons.svelte';
   import { enterRow, focusAfterRemove, focusRow } from './rows';
 
   interface Props {
@@ -29,13 +29,15 @@
 
   const words = $derived(t.profile.field);
   const id = $props.id();
-  const LEVELS = $derived(
-    (Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
+  /** The id of the level of a row without one. */
+  const NONE = 'none';
+  const LEVELS = $derived([
+    { id: NONE, label: words.open },
+    ...(Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
       id: level,
       label: t.profile.level[level],
-      hint: t.profile.levelMeaning[level],
     })),
-  );
+  ]);
   let list = $state<HTMLElement | null>(null);
 
   type LanguageCode = keyof typeof de.profile.languageName;
@@ -99,12 +101,12 @@
           testid="language-name"
         />
       </span>
-      <ChoiceButtons
+      <MenuButton
         options={LEVELS}
-        selected={row.level === null ? [] : [row.level]}
-        label={words.level}
+        value={row.level ?? NONE}
+        menuLabel={words.level}
         testid="language-level"
-        onchange={(next) => (row.level = (next[0] as LanguageLevel | undefined) ?? null)}
+        onchange={(next) => (row.level = next === NONE ? null : (next as LanguageLevel))}
       />
       <span class="remove">
         <Button
@@ -112,6 +114,7 @@
           size="sm"
           iconOnly
           icon="close"
+          plain
           label={words.removeLanguage(row.language.trim())}
           testid="language-remove"
           onclick={(event) => removeByButton(row, event)}
@@ -122,17 +125,14 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="language-error">{error.text}</p>
   {/if}
-  <div class="foot">
-    <Button
-      variant="secondary"
-      size="sm"
-      icon="add"
-      label={words.addLanguage}
-      testid="language-add"
-      onclick={() => void add()}
-    />
-    <p class="hint">{words.levelHint}</p>
-  </div>
+  <Button
+    variant="secondary"
+    size="sm"
+    icon="add"
+    label={words.addLanguage}
+    testid="language-add"
+    onclick={() => void add()}
+  />
 </div>
 
 <style>
@@ -144,7 +144,7 @@
     container-type: inline-size;
   }
 
-  /* The levels take the room they need on one line; the language takes the rest. */
+  /* The level takes the room it needs; the language takes the rest. */
   .row {
     display: grid;
     grid-template-columns: minmax(var(--space-64), 1fr) auto var(--control-sm);
@@ -162,31 +162,5 @@
   .error {
     color: var(--danger-strong);
     font: var(--type-sm);
-  }
-
-  .foot {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-8) var(--space-16);
-  }
-
-  .hint {
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  /* Narrow (the levels would wrap beside the language): the levels go in one wrapping line
-     under the language, the x stays beside it. */
-  @container (width < 640px) {
-    .row {
-      grid-template-columns: minmax(0, 1fr) var(--control-sm);
-      align-items: start;
-    }
-
-    .row > :global([role='radiogroup']) {
-      grid-column: 1 / 2;
-      grid-row: 2;
-    }
   }
 </style>
