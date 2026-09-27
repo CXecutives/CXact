@@ -41,7 +41,10 @@ const countries = (page: Page): Locator => page.getByTestId('profile-countries')
 const countryInput = (page: Page): Locator => countries(page).locator('input');
 const options = (page: Page): Locator => page.getByTestId('profile-countries-options');
 const saves = async (page: Page): Promise<number> => (await calls(page, 'save_profile')).length;
+/** The chevron after the title that opens the menu of the profiles. */
 const switcher = (page: Page): Locator => page.getByTestId('profile-switcher');
+/** The title of the view: the active profile's name. */
+const heading = (page: Page): Locator => page.getByTestId('profile-heading');
 /** The other profiles of the demo's work folder, by their roles (the stub's 2 and 3). */
 const OTHERS = DEMO.profiles.slice(0, 2).map((other) => other.profile.form!.title);
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
@@ -194,15 +197,26 @@ function glided(tops: number[]): boolean {
 
 // ------------------------------------------------------------------ the head
 
-test('the head: the switcher, a status only when needed and one button; the form says who it is', async ({
+test('the head: the name as the title with its menu, a status only when needed and one button', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-remote-unread');
   const head = page.getByTestId('profile-head');
-  // The switcher names the profile by its role; no person, file, time of saving, quality or
-  // count above the form.
+  // The title names the profile by its role (the page's heading, text a user would copy); no
+  // person, file, time of saving, quality or count above the form.
   const role = DEMO.profile.form!.title;
-  await expect(switcher(page)).toHaveText(role);
+  await expect(heading(page)).toHaveText(role);
+  await expect(head.getByRole('heading', { level: 1 })).toHaveText(role);
+  await expect(heading(page)).toHaveAttribute('data-copy', '');
+  // A quiet chevron right after the name opens the menu (a small ghost icon button).
+  await expect(switcher(page)).toHaveAccessibleName(T.profile.profiles);
+  await expect(switcher(page)).toHaveAttribute('aria-haspopup', 'menu');
+  await expect(switcher(page)).toHaveClass(/ghost/);
+  await expect(switcher(page)).toHaveCSS('height', '28px');
+  const name = (await heading(page).boundingBox())!;
+  const chevron = (await switcher(page).boundingBox())!;
+  expect(chevron.x - (name.x + name.width)).toBeLessThanOrEqual(8);
+  expect(Math.abs(middle(chevron) - middle(name))).toBeLessThanOrEqual(1);
   for (const gone of ['Erika Beispiel', 'Gespeichert', 'Vollständig']) {
     await expect(head).not.toContainText(gone);
   }
@@ -253,30 +267,53 @@ test('the head: the switcher, a status only when needed and one button; the form
   expect(await tooltipOf(page, update)).toBe(T.profile.saveFirst);
   await switcher(page).click();
   await expect(page.getByTestId('menu-item-remove')).toHaveAttribute('aria-disabled', 'true');
-  // Without a value to check (the demo reads cleanly) the head holds the switcher and the
-  // button only.
+  // Without a value to check (the demo reads cleanly) the head holds the title, its chevron
+  // and the button only.
   await page.keyboard.press('Escape');
   await profile(page);
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').locator('.status > *')).toHaveCount(1);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
   await profile(page, '&scenario=profile-thin');
   await expect(check(page)).toHaveCount(0);
-  await expect(page.getByTestId('profile-head').locator('.status > *')).toHaveCount(1);
+  await expect(page.getByTestId('profile-head').getByRole('button')).toHaveCount(2);
 });
 
-test('the head is one row as wide as the sections: the switcher left, the CV button right', async ({
+test('a long name ends in an ellipsis; the button keeps the line of the title', async ({
+  page,
+}) => {
+  await profile(page);
+  const long = 'Interim Managerin Finanzen und Controlling im Mittelstand';
+  await switcher(page).click();
+  await page.getByTestId('menu-item-rename').click();
+  await page.getByTestId('profile-rename').fill(long);
+  await page.keyboard.press('Enter');
+  await expect(heading(page)).toHaveText(long);
+  const clipped = await heading(page).evaluate((node) => node.scrollWidth > node.clientWidth);
+  expect(clipped).toBe(true);
+  await expect(heading(page)).toHaveCSS('text-overflow', 'ellipsis');
+  const update = (await page.getByTestId('profile-update-cv').boundingBox())!;
+  expect(Math.abs(middle(update) - middle(await heading(page).boundingBox()))).toBeLessThanOrEqual(
+    1,
+  );
+});
+
+test('the head is one row as wide as the sections: the title left, the CV button right', async ({
   page,
 }) => {
   await profile(page);
   const section = (await page.getByTestId('section-person').boundingBox())!;
-  const left = (await switcher(page).boundingBox())!;
-  const right = (await page.getByTestId('profile-update-cv').boundingBox())!;
+  const left = (await heading(page).boundingBox())!;
+  const button = page.getByTestId('profile-update-cv');
+  // Quiet (ghost) with its glyph: its words end on the column's edge.
+  await expect(button).toHaveClass(/ghost/);
+  await expect(button.locator('svg')).toHaveCount(1);
+  const words = (await button.locator('.label').boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
-  expect(Math.round(right.x + right.width)).toBe(Math.round(section.x + section.width));
-  expect(middle(left)).toBe(middle(right));
-  // Outlined, with its glyph.
-  await expect(page.getByTestId('profile-update-cv')).toHaveClass(/secondary/);
-  await expect(page.getByTestId('profile-update-cv').locator('svg')).toHaveCount(1);
+  expect(Math.round(words.x + words.width)).toBe(Math.round(section.x + section.width));
+  // On the title's line.
+  expect(Math.abs(middle(left) - middle(await button.boundingBox()))).toBeLessThanOrEqual(1);
+  // The title is the page's: 26 px in the heading colour, like the reader's job title.
+  await expect(heading(page)).toHaveCSS('font-size', '26px');
 });
 
 test('the head and the first section keep the rhythm of all sections', async ({ page }) => {
@@ -546,10 +583,11 @@ test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13
     expect(label.size, label.text).toBe('13px');
     expect(label.weight, label.text).toBe('500');
   }
-  // The main actions are 32 px.
-  for (const id of ['profile-save', 'profile-discard', 'profile-update-cv', 'profile-switcher']) {
+  // The main actions are 32 px; the chevron of the title is a small icon button.
+  for (const id of ['profile-save', 'profile-discard', 'profile-update-cv']) {
     await expect(page.getByTestId(id)).toHaveCSS('height', '32px');
   }
+  await expect(switcher(page)).toHaveCSS('height', '28px');
   // Every number field has one width; the day of "Datum" too (its field, the calendar's
   // button inside it at the right end), as high as the choice beside it.
   const dayField = page.getByTestId('profile-date').locator('xpath=..');
@@ -2106,23 +2144,23 @@ test('"Profil löschen" asks naming the profile; the next one is active, Rückg�
   await (await ask()).getByTestId('dialog-confirm').click();
   expect((await calls(page, 'delete_profile')).at(-1)![1]).toEqual({ id: 1 });
   // The next profile is active and in the form.
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   await expect(page.getByTestId('profile-name-field')).toHaveValue(
     DEMO.profiles[0]!.profile.form!.name,
   );
   await undo().click();
-  await expect(switcher(page)).toHaveText(role);
+  await expect(heading(page)).toHaveText(role);
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
   expect((await calls(page, 'restore_profile')).at(-1)![1]).toEqual({ id: 1 });
   // An undo that fails says so.
   await (await ask()).getByTestId('dialog-confirm').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   await failNext(page, 'restore_profile');
   await undo().click();
   await expect(
     page.getByTestId('toast').filter({ hasText: T.profile.restoreFailed }),
   ).toBeVisible();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
 });
 
 test('the last profile deleted leaves the ways in', async ({ page }) => {
@@ -2152,7 +2190,7 @@ test('the switcher lists every profile; a switch scores the jobs with the new on
   await page.getByTestId('nav-profile').click();
   await switcher(page).click();
   await page.getByTestId('menu-item-profile-2').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   expect((await calls(page, 'switch_profile')).at(-1)![1]).toEqual({ id: 2 });
   await expect(page.getByTestId('toast').filter({ hasText: T.profile.switched })).toBeVisible();
   // The form shows the new profile.
@@ -2169,7 +2207,7 @@ test('the switcher lists every profile; a switch scores the jobs with the new on
   await switcher(page).click();
   await expect(page.getByTestId('menu-item-profile-2')).toHaveAttribute('aria-checked', 'true');
   await page.getByTestId('menu-item-profile-1').click();
-  await expect(switcher(page)).toHaveText(DEMO.profile.form!.title);
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
   await page.getByTestId('nav-jobs').click();
   await expect(ring).toHaveText(String(demoScore(key)));
 });
@@ -2181,7 +2219,7 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   // A copy of the active profile, named as a copy, active now.
   await switcher(page).click();
   await page.getByTestId('menu-item-duplicate').click();
-  await expect(switcher(page)).toHaveText(copy);
+  await expect(heading(page)).toHaveText(copy);
   expect((await calls(page, 'duplicate_profile')).at(-1)![1]).toEqual({ id: 1, name: copy });
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
   // Umbenennen asks in a small dialog with the name selected; Enter renames.
@@ -2198,14 +2236,14 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await page.keyboard.type('Finanzen Süd');
   await page.keyboard.press('Enter');
   await expect(dialog).toHaveCount(0);
-  await expect(switcher(page)).toHaveText('Finanzen Süd');
+  await expect(heading(page)).toHaveText('Finanzen Süd');
   expect((await calls(page, 'rename_profile')).at(-1)![1]).toEqual({ id: 4, name: 'Finanzen Süd' });
   // The name is text a user would copy, and only Umbenennen changes it.
-  await expect(switcher(page).locator('[data-copy]')).toHaveText('Finanzen Süd');
+  await expect(heading(page)).toHaveAttribute('data-copy', '');
   // A new profile is empty and named by its number; the caret goes into its first field.
   await switcher(page).click();
   await page.getByTestId('menu-item-new').click();
-  await expect(switcher(page)).toHaveText(T.profile.numbered(5));
+  await expect(heading(page)).toHaveText(T.profile.numbered(5));
   await expect(page.getByTestId('profile-name-field')).toHaveValue('');
   await expect(page.getByTestId('profile-name-field')).toBeFocused();
   await switcher(page).click();
@@ -2217,7 +2255,7 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   ]);
   // Aus Datei laden takes the file as a new profile, active now.
   await page.getByTestId('menu-item-load').click();
-  await expect(switcher(page)).toHaveText(DEMO.profiles[2]!.profile.form!.title);
+  await expect(heading(page)).toHaveText(DEMO.profiles[2]!.profile.form!.title);
   expect(await calls(page, 'load_profile')).toHaveLength(1);
 });
 
@@ -2238,13 +2276,13 @@ test('another profile with unsaved changes asks first', async ({ page }) => {
   // Verwerfen drops them and switches.
   await choose(2);
   await dialog.getByTestId('dialog-alt').click();
-  await expect(switcher(page)).toHaveText(OTHERS[0]!);
+  await expect(heading(page)).toHaveText(OTHERS[0]!);
   expect(await saves(page)).toBe(0);
   // Speichern saves them first, then switches; the saved profile goes by its new role.
   await page.getByTestId('profile-title').fill('SAP Lead');
   await choose(1);
   await dialog.getByTestId('dialog-confirm').click();
-  await expect(switcher(page)).toHaveText(DEMO.profile.form!.title);
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
   expect(await saves(page)).toBe(1);
   expect((await lastSave(page)).after.title).toBe('SAP Lead');
   await switcher(page).click();

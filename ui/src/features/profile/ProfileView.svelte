@@ -3,8 +3,8 @@
   the three ways in (from a CV with an AI, the recommended one; a new form; an existing
   file); a file that no longer reads says so in the same place, with its folder at hand.
   With a profile its head
-  (the switcher, a status when there is one, the update from a CV) and the form, whose save
-  bar shows while it holds a change. A chosen file and an AI's answer (its steps in a dialog,
+  (the profile's name as the title with the menu of the profiles, a status when there is one,
+  the update from a CV) and the form, whose save bar shows while it holds a change. A chosen file and an AI's answer (its steps in a dialog,
   ProfilePaste) fill the form for review (an answer for the stored profile updates it);
   nothing is stored before "Speichern". A save is answered by a toast once the bar has gone,
   with what its rescore changed (saveEffect.ts). Leaving the view or closing the window with
@@ -223,9 +223,13 @@
     );
   }
 
+  /** The stored profile holds something a CV would update; a new empty one is created from
+   *  a CV like a new form ("Aus Lebenslauf erstellen"). */
+  const updatable = $derived(stored !== null && profile?.quality !== 'empty');
+
   /** The steps with an AI, in their dialog: for the stored profile they update it. */
   function fromCv(): void {
-    updating = editor.origin === 'stored' && stored !== null;
+    updating = editor.origin === 'stored' && updatable;
     editor.pasting = true;
   }
 
@@ -471,6 +475,7 @@
     origin={editor.origin}
     {profile}
     {profiles}
+    {updatable}
     checks={editor.origin === null ? 0 : checkList.length}
     warnings={editor.origin === null ? [] : headWarnings}
     {rescoring}
