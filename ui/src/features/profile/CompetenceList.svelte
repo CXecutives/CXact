@@ -14,7 +14,9 @@
   never saves the profile. Removing a row puts no caret anywhere (input.ts removeBy): after a
   click the focus is dropped, from the keyboard it goes to the next row's x (the previous one
   after the last, "Kompetenz hinzufügen" once none is left). The competence and its synonyms
-  suggest the engine's words while typing (vocabulary.svelte.ts).
+  suggest the engine's words while typing (vocabulary.svelte.ts). Narrower than 520 px the
+  synonyms go under the competence and their column head goes, so their field names itself
+  ("Synonyme" as its placeholder).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -56,6 +58,11 @@
   vocabulary.load();
   const id = $props.id();
   let list = $state<HTMLElement | null>(null);
+  /** The list's width: narrower than the container query below (520 px) the synonyms stand
+   *  under the competence without their column head. */
+  let width = $state(0);
+  const NARROW = 520;
+  const narrow = $derived(width > 0 && width < NARROW);
 
   const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
   const starred = (name: string): boolean =>
@@ -114,7 +121,14 @@
   }
 </script>
 
-<div class="list" bind:this={list} data-testid="competences" data-field="competences" data-removes>
+<div
+  class="list"
+  bind:this={list}
+  bind:clientWidth={width}
+  data-testid="competences"
+  data-field="competences"
+  data-removes
+>
   {#if rows.length > 0}
     <div class="head" aria-hidden="true">
       <span class="count" data-testid="focus-count">
@@ -174,6 +188,7 @@
         <ChipInput
           bind:values={row.aliases}
           label={words.aliases}
+          placeholder={narrow ? words.aliases : null}
           oneLine
           suggestions={vocabulary.skills}
           testid="competence-aliases"

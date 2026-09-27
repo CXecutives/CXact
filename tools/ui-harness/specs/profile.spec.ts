@@ -541,10 +541,14 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
     await expect(placeholder(id, input), id).toHaveAttribute('placeholder', text);
   }
   // No field repeats the name of its column.
-  await expect(page.getByTestId('competence-aliases').locator('input')).not.toHaveAttribute(
-    'placeholder',
-    /./,
-  );
+  const aliases = page.getByTestId('competence-aliases').first().locator('input');
+  await expect(aliases).not.toHaveAttribute('placeholder', /./);
+  // Narrow, the synonyms stand under the competence without their column head: their field
+  // names itself.
+  await page.setViewportSize({ width: 480, height: 800 });
+  await expect(aliases).toHaveAttribute('placeholder', T.profile.field.aliases);
+  await page.setViewportSize({ width: 1360, height: 900 });
+  await expect(aliases).not.toHaveAttribute('placeholder', /./);
   await profile(page, '&scenario=no-profile&lang=en');
   await page.getByTestId('profile-create').click();
   await expect(page.getByTestId('profile-name-field')).toHaveAttribute(
@@ -1004,7 +1008,8 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'aria-checked',
     'true',
   );
-  // The level of a language: a menu of the levels, "Offen" while none is chosen.
+  // The level of a language: a menu of the levels, no "Offen" (without one the engine
+  // assumes B2, so a row without one shows B2).
   const row = page.getByTestId('language-row').first();
   const level = row.getByTestId('language-level');
   await expect(level).toHaveAttribute('aria-haspopup', 'menu');
@@ -1017,7 +1022,6 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   await level.click();
   const menu = page.getByTestId('menu');
   await expect(menu.getByRole('menuitemradio')).toHaveText([
-    T.profile.field.open,
     'A1',
     'A2',
     'B1',
@@ -1026,11 +1030,15 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'C2',
     'Muttersprache',
   ]);
-  await page.getByTestId('menu-item-none').click();
-  await expect(level).toHaveText(T.profile.field.open);
+  await expect(page.getByTestId('menu-item-none')).toHaveCount(0);
+  await page.getByTestId('menu-item-c1').click();
+  await expect(level).toHaveText('C1');
+  // A new row starts at B2.
+  await page.getByTestId('language-add').click();
+  await expect(page.getByTestId('language-level').last()).toHaveText('B2');
   await save(page).click();
   const sent = await lastSave(page);
-  expect(sent.after.languages[0]!.level).toBeNull();
+  expect(sent.after.languages[0]!.level).toBe('c1');
   expect(sent.after.wishes.remote).toBeNull();
   expect(sent.after.criteria.available).toEqual({ kind: 'unset' });
 });
@@ -1816,6 +1824,14 @@ test('the language rows line up: the level like a select, one width; the x needs
   page,
 }) => {
   await profile(page);
+  // Their columns are named over the rows like the competences'.
+  const heads = page.getByTestId('languages').locator('.head > span');
+  await expect(heads).toHaveText([T.profile.field.language, T.profile.field.level, '']);
+  const [head, first] = await Promise.all([
+    heads.nth(1).boundingBox(),
+    page.getByTestId('language-level').first().boundingBox(),
+  ]);
+  expect(Math.round(head!.x)).toBe(Math.round(first!.x));
   // The level is a button in a row of fields: outlined and as high as the field, in one
   // column whatever its word, so the fields and the levels of all rows line up.
   const rows = page.getByTestId('language-row');

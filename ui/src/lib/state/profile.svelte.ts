@@ -481,14 +481,15 @@ class ProfileEditor {
     this.understood = null;
   }
 
-  /** An empty form for a new profile, with one empty competence and language row, so the
-   *  table and the star show at once; `fresh`: saved beside the other profiles. */
+  /** An empty form for a new profile, with one empty competence and language row (at B2,
+   *  the level the engine assumes), so the table and the star show at once; `fresh`: saved
+   *  beside the other profiles. */
   create(fresh = false): void {
     this.fresh = fresh;
     this.#start('new', emptyForm(), {
       ...emptyForm(),
       competences: [{ name: '', years: null, aliases: [], origin: null }],
-      languages: [{ language: '', level: null, origin: null }],
+      languages: [{ language: '', level: 'b2', origin: null }],
     });
     this.source = NEW_SOURCE;
     this.quality = null;
