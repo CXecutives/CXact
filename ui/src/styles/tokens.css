@@ -385,6 +385,8 @@
      the app, like the window title of a Mac app's unified toolbar. */
   --font-mac-title: 15px;
   --weight-mac-title: 700;
+  /* A day of the calendar beside a day field: as high as a small button, seven a week. */
+  --calendar-cell: var(--control-sm);
   /* The top band the page keeps free for the title bar: 0 on Windows, the toolbar row on
      macOS (empty parts of it move the window). */
   --window-top: 0px;

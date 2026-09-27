@@ -1012,6 +1012,72 @@ test('money is grouped like everywhere; cents and decimals count whole, and say 
   expect(sent.after.wishes.dayRate).toBe(1300);
 });
 
+test('a calendar beside the day offers one, by the keys too; typing still works', async ({
+  page,
+}) => {
+  await profile(page);
+  await page
+    .getByTestId('profile-available')
+    .getByRole('radio', { name: T.profile.availability.from, exact: true })
+    .click();
+  const date = page.getByTestId('profile-date');
+  const button = page.getByTestId('profile-date-calendar');
+  const popover = page.getByTestId('profile-date-calendar-popover');
+  const month = page.getByTestId('profile-date-calendar-month');
+  const day = (iso: string): Locator => popover.locator(`[data-day="${iso}"]`);
+  // Without a day it opens on today's month (the clock stands on 24 September 2026), the
+  // week from Monday, the focus on today.
+  await date.fill('');
+  await button.click();
+  await expect(popover).toBeVisible();
+  await expect(month).toHaveText(`${T.calendar.months[8]} 2026`);
+  await expect(popover.getByRole('columnheader')).toHaveText(T.calendar.weekdays);
+  await expect(day('2026-09-24')).toBeFocused();
+  await expect(day('2026-09-24')).toHaveAttribute('aria-current', 'date');
+  // 1 September 2026 is a Tuesday: the second cell of the first week.
+  const first = popover.getByRole('row').nth(1).getByRole('gridcell');
+  await expect(first.nth(0).locator('button')).toHaveCount(0);
+  await expect(first.nth(1)).toHaveText('1');
+  // The arrows a day or a week, End the week's end, PageDown a month on.
+  await page.keyboard.press('ArrowRight');
+  await expect(day('2026-09-25')).toBeFocused();
+  await page.keyboard.press('ArrowDown');
+  await expect(day('2026-10-02')).toBeFocused();
+  await expect(month).toHaveText(`${T.calendar.months[9]} 2026`);
+  await page.keyboard.press('PageUp');
+  await expect(day('2026-09-02')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(day('2026-09-06')).toBeFocused();
+  // Enter takes the day into the field in its form; the focus goes back to the button.
+  await page.keyboard.press('Enter');
+  await expect(popover).toHaveCount(0);
+  await expect(date).toHaveValue('06.09.2026');
+  await expect(button).toBeFocused();
+  // Typing still works, and the calendar opens on the typed day, chosen.
+  await date.fill('1.11.2026');
+  await button.click();
+  await expect(month).toHaveText(`${T.calendar.months[10]} 2026`);
+  await expect(day('2026-11-01')).toBeFocused();
+  await expect(day('2026-11-01')).toHaveClass(/chosen/);
+  // Its buttons turn the month; Esc closes and gives the focus back.
+  await page.getByTestId('profile-date-calendar-next').click();
+  await expect(month).toHaveText(`${T.calendar.months[11]} 2026`);
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
+  await expect(button).toBeFocused();
+  await expect(bar(page)).toBeVisible();
+  // A click elsewhere closes it too; a click on a day takes it.
+  await button.click();
+  await page.getByTestId('profile-name-field').click();
+  await expect(popover).toHaveCount(0);
+  await button.click();
+  await day('2026-11-15').click();
+  await expect(date).toHaveValue('15.11.2026');
+  await save(page).click();
+  const sent = await lastSave(page);
+  expect(sent.after.criteria.available).toEqual({ kind: 'from', date: '2026-11-15' });
+});
+
 test('the day exists only for "Ab Datum", gets the caret and is judged when left or saved', async ({
   page,
 }) => {

@@ -1460,6 +1460,29 @@ export const de = {
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
   },
+  /** The calendar beside a day field (Verfügbar ab): the week starts on Monday. */
+  calendar: {
+    open: 'Kalender öffnen',
+    previous: 'Vorheriger Monat',
+    next: 'Nächster Monat',
+    months: [
+      'Januar',
+      'Februar',
+      'März',
+      'April',
+      'Mai',
+      'Juni',
+      'Juli',
+      'August',
+      'September',
+      'Oktober',
+      'November',
+      'Dezember',
+    ] as string[],
+    weekdays: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as string[],
+    /** A day as a screen reader says it. */
+    day: (day: number, month: string, year: number) => `${day}. ${month} ${year}`,
+  },
   /** Short confirmations without a period (a participle like "Archiviert"); only a full
    *  sentence ends with one. */
   toast: {
