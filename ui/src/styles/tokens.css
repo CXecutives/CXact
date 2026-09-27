@@ -233,6 +233,9 @@
   --danger-soft: hsl(var(--p-danger-soft));
   --danger-hover: hsl(var(--p-danger-700));
   --danger-active: hsl(var(--p-danger-750));
+  /* The words of a search in the list's titles: a soft yellow under the ink, translucent, so
+     it reads on a plain, a hovered and a selected row alike. */
+  --mark: hsl(var(--p-warning) / 0.4);
   /* One blue in the app: info is the navy. */
   --info: hsl(var(--p-navy));
   --info-strong: hsl(var(--p-navy-deep));

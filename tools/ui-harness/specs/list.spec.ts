@@ -1359,6 +1359,29 @@ test.describe('rows', () => {
 /* ======================================================================= search */
 
 test.describe('search', () => {
+  test('the words of a search are marked in the titles, in any case and with or without accents', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    // "kaufmannisch" finds "Kaufmännische" like the backend's folded search, "leitung" too.
+    await page.getByTestId('search').fill('kaufmannisch LEITUNG');
+    const target = row(page, 'freelancermap-2803');
+    await expect(target).toBeVisible();
+    const marks = target.locator('.title mark');
+    await expect(marks).toHaveText(['Kaufmännisch', 'Leitung']);
+    await expect(marks.first()).toHaveCSS('background-color', await tokenColour(page, '--mark'));
+    // The title keeps its ink and its one line; the full title in its tooltip.
+    await expect(target.locator('.title')).toHaveText('Kaufmännische Leitung Projektgeschäft');
+    await expect(marks.first()).toHaveCSS(
+      'color',
+      await target.locator('.title').evaluate((node) => getComputedStyle(node).color),
+    );
+    // Without a search nothing is marked.
+    await page.getByRole('button', { name: T.field.clear }).click();
+    await expect(rows(page).first()).toBeVisible();
+    await expect(list(page).locator('.title mark')).toHaveCount(0);
+  });
+
   test('no hit: one empty state; the search clears by its ×', async ({ page }) => {
     await open(page, WIN);
     await page.getByTestId('search').fill('Kernfusion');

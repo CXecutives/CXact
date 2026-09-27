@@ -64,6 +64,8 @@
 
   const shown = $derived(jobs.shown);
   const searching = $derived(jobs.search.trim() !== '');
+  /** The words of the search, marked in the rows' titles (at most 8, like the backend). */
+  const searchWords = $derived(searching ? jobs.search.trim().split(/\s+/).slice(0, 8) : []);
   /** The rows as far as the window reaches: the active ones, then the excluded ones. */
   const active = $derived(shown.filter((job) => !isExcluded(job)));
   const excluded = $derived(shown.filter(isExcluded));
@@ -560,6 +562,7 @@
       <JobRow
         {job}
         ring={!profileMissing}
+        marks={searchWords}
         pending={pending && job.match === null}
         selected={open}
         bar={false}
