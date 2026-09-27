@@ -39,6 +39,8 @@
     "allow-reset-all",
     "allow-list-backups",
     "allow-restore-backup",
+    "allow-export-data",
+    "allow-import-data",
     "allow-report-ui-error",
     "allow-clipboard-text",
     "core:event:allow-listen",

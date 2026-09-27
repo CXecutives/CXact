@@ -38,15 +38,14 @@ export interface Action {
   warns?: boolean;
 }
 
-/** Why the dry run or the demo refuse a change of what is outside their own data. */
-const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
-  state.demo
-    ? t.error.text('demo', {})
-    : state.dryRun
-      ? t.error.text('dryRun', {})
-      : running
-        ? busyText
-        : null;
+/** Why the dry run or the demo refuse to hand out or take in data: theirs is nobody's. */
+const realOnly = ({ state, t }: Lock): string | null =>
+  state.demo ? t.error.text('demo', {}) : state.dryRun ? t.error.text('dryRun', {}) : null;
+
+/** Why the dry run or the demo refuse a change of what is outside their own data, and why a
+ *  run holds it. */
+const ownOnly = (lock: Lock): string | null =>
+  realOnly(lock) ?? (lock.running ? lock.busyText : null);
 
 export const ACTIONS = {
   folderChange: {
@@ -77,6 +76,19 @@ export const ACTIONS = {
     icon: 'backup',
     locked: ownOnly,
   },
+  // All the data in one file where she chooses (never the app password); it only reads, so
+  // a run may go on.
+  dataExport: {
+    label: (t) => t.settings.exportAction,
+    icon: 'saveFile',
+    locked: realOnly,
+  },
+  // Asks first what the file replaces, then the file is chosen.
+  dataImport: {
+    label: (t) => t.settings.importAction,
+    icon: 'pickFile',
+    locked: ownOnly,
+  },
   logsOpen: {
     label: (t) => t.common.open,
     icon: 'folder',
@@ -94,7 +106,7 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'folderChange' | 'backupRestore' | 'reset';
+export type CommandId = 'folderChange' | 'backupRestore' | 'dataExport' | 'dataImport' | 'reset';
 
 /** A switch of a row: on or off at once (the state is patched before the save). */
 export interface Switch {
@@ -223,6 +235,19 @@ export const CARDS: readonly CardSpec[] = [
         id: 'backup',
         label: (t) => t.settings.backup,
         actions: ['backupRestore'],
+      },
+      // Taking the data along: one file out, and in again (on this or another computer).
+      {
+        kind: 'actions',
+        id: 'export-data',
+        label: (t) => t.settings.exportData,
+        actions: ['dataExport'],
+      },
+      {
+        kind: 'actions',
+        id: 'import-data',
+        label: (t) => t.settings.importData,
+        actions: ['dataImport'],
       },
       { kind: 'actions', id: 'logs', label: (t) => t.settings.logs, actions: ['logsOpen'] },
       // The one action that deletes for good, last; what it deletes is said in its dialog.

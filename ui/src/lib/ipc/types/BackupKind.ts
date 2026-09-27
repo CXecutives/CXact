@@ -3,4 +3,4 @@
 /**
  * Why a copy was made.
  */
-export type BackupKind = "daily" | "update" | "restore";
+export type BackupKind = "daily" | "update" | "restore" | "import";

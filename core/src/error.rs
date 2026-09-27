@@ -47,6 +47,15 @@ pub enum Error {
     #[error("backup {name} is not a readable database: {detail}")]
     BackupCorrupt { name: String, detail: String },
 
+    /// A data file to import ("Daten importieren", `store/bundle.rs`) that is one of this app
+    /// but damaged: cut off, a checksum that does not match, a database that does not read.
+    #[error("the data file is damaged: {0}")]
+    DataFileCorrupt(String),
+
+    /// A data file of a newer version of the app (its format version).
+    #[error("the data file comes from a newer version of this app (format {0})")]
+    DataFileNewer(u64),
+
     /// Input of the user that cannot be used.
     #[error("invalid input: {0}")]
     Invalid(InvalidInput),
@@ -98,6 +107,9 @@ pub enum InvalidInput {
     AppPassword,
     #[error("{portal} has no sign-in")]
     NoSignIn { portal: Portal },
+    /// A file to import that is no data export of this app (`store/bundle.rs`).
+    #[error("the file is no data export of this app")]
+    DataFileForeign,
 }
 
 /// Stable error codes for the interface (it reacts to these, never to a text).
@@ -222,8 +234,10 @@ impl Error {
             Error::FileLocked(_) => ErrorKind::FileLocked,
             Error::Io { .. } => ErrorKind::Io,
             Error::Xlsx(_) => ErrorKind::Xlsx,
-            Error::Corrupt(_) | Error::BackupCorrupt { .. } => ErrorKind::Corrupt,
-            Error::NewerSchema(_) => ErrorKind::NewerSchema,
+            Error::Corrupt(_) | Error::BackupCorrupt { .. } | Error::DataFileCorrupt(_) => {
+                ErrorKind::Corrupt
+            }
+            Error::NewerSchema(_) | Error::DataFileNewer(_) => ErrorKind::NewerSchema,
             Error::BackupMissing(_) => ErrorKind::NotFound,
             Error::Invalid(_) => ErrorKind::Invalid,
             Error::FetchUnavailable { .. } => ErrorKind::PortalUnavailable,
@@ -271,6 +285,9 @@ impl From<&Error> for ErrorInfo {
             Error::BackupMissing(name) | Error::BackupCorrupt { name, .. } => {
                 info.with("what", "backup").with("name", name.as_str())
             }
+            // `what` names the chosen file, so the page says "the file", not "the app's data".
+            Error::DataFileCorrupt(_) => info.with("what", "dataFile"),
+            Error::DataFileNewer(format) => info.with("what", "dataFile").with("format", *format),
             Error::Invalid(input) => ErrorInfo::from(input),
             Error::FetchUnavailable { portal, .. } => info.with("portal", portal.key()),
             Error::Db(_) | Error::Xlsx(_) | Error::Corrupt(_) => info,

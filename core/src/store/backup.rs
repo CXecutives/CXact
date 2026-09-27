@@ -1,9 +1,10 @@
 //! Copies of the database in `backups/` next to it - in the data folder, never in the work
 //! folder: the marks, tombstones, overrides and old texts it holds come back from no fetch.
 //! One copy before every migration (`jobs.pre-v4.db`: the database as schema 4 left it), one
-//! a day (`jobs-2026-09-25.db`, local date) and one before every restore
+//! a day (`jobs-2026-09-25.db`, local date), one before every restore
 //! (`jobs.before-restore-20260926-081530-123.db`, UTC to the millisecond, so the names sort
-//! across a change of the clocks), a few of each kept. `VACUUM INTO` writes a consistent,
+//! across a change of the clocks) and one before every import of a data file
+//! (`jobs.before-import-20260927-081530-123.db`, `bundle.rs`), a few of each kept. `VACUUM INTO` writes a consistent,
 //! compact copy while the app keeps working; it goes to a temporary name first, so a copy
 //! that was cut off never looks like one. The dry run (in memory) has none, and the reset
 //! of everything deletes the folder (`reset.rs`).
@@ -37,14 +38,18 @@ const DAILY_KEPT: usize = 3;
 const MIGRATION_KEPT: usize = 3;
 /// Copies from before a restore kept.
 const RESTORE_KEPT: usize = 3;
+/// Copies from before an import kept.
+const IMPORT_KEPT: usize = 3;
 /// Name parts of the copies.
 const DAILY_PREFIX: &str = "jobs-";
 const MIGRATION_PREFIX: &str = "jobs.pre-v";
 const RESTORE_PREFIX: &str = "jobs.before-restore-";
+const IMPORT_PREFIX: &str = "jobs.before-import-";
 const SUFFIX: &str = ".db";
 /// A copy while it is written.
 const PARTIAL: &str = ".partial";
-/// The moment in the name of a copy before a restore (UTC; the milliseconds follow).
+/// The moment in the name of a copy before a restore or an import (UTC; the milliseconds
+/// follow).
 const RESTORE_STAMP: &str = "%Y%m%d-%H%M%S";
 
 /// A copy of the database the user can go back to.
@@ -71,6 +76,8 @@ pub enum BackupKind {
     Update,
     /// The state a restore replaced (restoring it undoes that restore).
     Restore,
+    /// The state an import of a data file replaced (`bundle.rs`).
+    Import,
 }
 
 /// The folder of the copies of the database at `db`.
@@ -154,6 +161,8 @@ fn kind_of(name: &str) -> Option<BackupKind> {
         Some(BackupKind::Update)
     } else if restore_stamp(name).is_some() {
         Some(BackupKind::Restore)
+    } else if import_stamp(name).is_some() {
+        Some(BackupKind::Import)
     } else {
         None
     }
@@ -187,12 +196,18 @@ fn stage(db: &Path, id: &str) -> Result<Connection> {
     if !path.is_file() {
         return Err(missing());
     }
-    let corrupt = |detail: String| Error::BackupCorrupt {
+    stage_file(&path, &|detail| Error::BackupCorrupt {
         name: id.to_owned(),
         detail,
-    };
+    })
+}
+
+/// The database file at `path` in memory, checked and brought to the current schema: one
+/// that is no readable database of this app is `corrupt`, one of a newer app `NewerSchema`.
+/// The file is only read.
+pub(super) fn stage_file(path: &Path, corrupt: &dyn Fn(String) -> Error) -> Result<Connection> {
     let source = Connection::open_with_flags(
-        &path,
+        path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
     )
     .map_err(|e| corrupt(e.to_string()))?;
@@ -225,18 +240,37 @@ fn stage(db: &Path, id: &str) -> Result<Connection> {
 
 /// Before a restore: the database as it is now, the newest three such copies kept.
 fn before_restore(conn: &Connection, db: &Path, now: Timestamp) -> Result<Backup> {
+    before_change(conn, db, now, RESTORE_PREFIX, RESTORE_KEPT, restore_stamp)
+}
+
+/// Before an import of a data file: the database as it is now, the newest three such copies
+/// kept (the Sicherung dialog restores it).
+pub(super) fn before_import(conn: &Connection, db: &Path, now: Timestamp) -> Result<Backup> {
+    before_change(conn, db, now, IMPORT_PREFIX, IMPORT_KEPT, import_stamp)
+}
+
+/// The database as it is now under `prefix` and the moment `now`, the newest `kept` of the
+/// kind kept.
+fn before_change(
+    conn: &Connection,
+    db: &Path,
+    now: Timestamp,
+    prefix: &str,
+    kept: usize,
+    order: fn(&str) -> Option<String>,
+) -> Result<Backup> {
     let dir = backup_dir(db);
-    // A name of its own, also for two restores within a millisecond.
-    let mut target = dir.join(restore_name(now));
+    // A name of its own, also for two changes within a millisecond.
+    let mut target = dir.join(stamped_name(prefix, now));
     let mut at = now;
     while target.exists() {
         at = at
             .checked_add(SignedDuration::from_millis(1))
             .map_err(|e| Error::Corrupt(format!("backup name: {e}")))?;
-        target = dir.join(restore_name(at));
+        target = dir.join(stamped_name(prefix, at));
     }
     copy(conn, &target)?;
-    prune(&dir, RESTORE_KEPT, restore_stamp);
+    prune(&dir, kept, order);
     described(&target).ok_or_else(|| Error::Corrupt(format!("backup {}", target.display())))
 }
 
@@ -271,7 +305,7 @@ fn keep_app_state(live: &Connection, staged: &Connection) -> Result<()> {
 
 /// The whole content of `from` into `to`, in one step: `SQLite` writes it as one transaction
 /// of `to`, which it rolls back when the step fails.
-fn replace(from: &Connection, to: &mut Connection) -> Result<()> {
+pub(super) fn replace(from: &Connection, to: &mut Connection) -> Result<()> {
     let copy = rusqlite::backup::Backup::new(from, to)?;
     match copy.step(-1)? {
         StepResult::Done => Ok(()),
@@ -285,9 +319,15 @@ fn replace(from: &Connection, to: &mut Connection) -> Result<()> {
 }
 
 /// The name of the copy before a restore at `at`.
+#[cfg(test)]
 fn restore_name(at: Timestamp) -> String {
+    stamped_name(RESTORE_PREFIX, at)
+}
+
+/// The name of a copy before a change (`prefix`: a restore, an import) at `at`.
+fn stamped_name(prefix: &str, at: Timestamp) -> String {
     format!(
-        "{RESTORE_PREFIX}{}-{:03}{SUFFIX}",
+        "{prefix}{}-{:03}{SUFFIX}",
         at.to_zoned(TimeZone::UTC).strftime(RESTORE_STAMP),
         at.subsec_millisecond()
     )
@@ -365,7 +405,17 @@ fn migration_version(name: &str) -> Option<i64> {
 /// The moment of a copy before a restore, as its name writes it (`20260926-081530-123`,
 /// which sorts like the moment).
 fn restore_stamp(name: &str) -> Option<String> {
-    let stamp = name.strip_prefix(RESTORE_PREFIX)?.strip_suffix(SUFFIX)?;
+    stamp_of(name, RESTORE_PREFIX)
+}
+
+/// The moment of a copy before an import, as its name writes it.
+fn import_stamp(name: &str) -> Option<String> {
+    stamp_of(name, IMPORT_PREFIX)
+}
+
+/// The moment in the name of a copy before a change (`prefix`).
+fn stamp_of(name: &str, prefix: &str) -> Option<String> {
+    let stamp = name.strip_prefix(prefix)?.strip_suffix(SUFFIX)?;
     let shape = stamp.len() == 19
         && stamp.char_indices().all(|(i, c)| {
             if i == 8 || i == 15 {
@@ -497,6 +547,11 @@ mod tests {
         }
         assert_eq!(kind_of("jobs-2026-09-20.db"), Some(BackupKind::Daily));
         assert_eq!(kind_of("jobs.pre-v4.db"), Some(BackupKind::Update));
+        assert_eq!(
+            kind_of("jobs.before-import-20260927-081530-123.db"),
+            Some(BackupKind::Import)
+        );
+        assert_eq!(kind_of("jobs.before-import-20260927-081530.db"), None);
     }
 
     // ------------------------------------------------------------------ Restore

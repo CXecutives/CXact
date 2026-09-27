@@ -12,9 +12,10 @@
   the backend follows with the window and the files. A success that shows nowhere else is a
   toast (another result folder); errors and warnings stay a note at the end of their card,
   which unfolds (the cards below glide down instead of jumping).
-  Only "Zurücksetzen", "Entfernen" of the mailbox and the restore of a backup
-  (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
-  inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
+  Only "Zurücksetzen", "Entfernen" of the mailbox, the restore of a backup
+  (BackupDialog.svelte) and the import of a data file (ImportDialog.svelte) ask first; a
+  dialog whose action fails stays open and says why inside. The export of all the data asks
+  nothing: the OS's save dialog is its question. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
   result folder and reset are locked with its reason. Opened from a job for one portal
@@ -44,6 +45,7 @@
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
   import BackupDialog from './BackupDialog.svelte';
+  import ImportDialog from './ImportDialog.svelte';
   import {
     ACTIONS,
     CARDS,
@@ -77,6 +79,7 @@
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
   let backupDialog = $state<BackupDialog | null>(null);
+  let importDialog = $state<ImportDialog | null>(null);
   /** Only the answer to the latest save may replace the state (quick double flips). */
   let saves = 0;
 
@@ -144,6 +147,13 @@
       else toasts.show(t.settings.folderFiles);
     });
 
+  /** All the data in one file where she chooses (the OS's dialog); the toast says it is
+   *  written, a closed dialog says nothing. */
+  const exportData = (card: string): Promise<void> =>
+    command(card, 'dataExport', async () => {
+      if (await invoke('export_data')) toasts.show(t.settings.exported);
+    });
+
   /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
   async function reset(): Promise<void> {
     busy = 'reset';
@@ -171,6 +181,8 @@
           (work) => command(card, 'backupRestore', work),
           () => note(card, { tone: 'info', text: () => t.settings.backupNone }),
         ),
+      dataExport: () => void exportData(card),
+      dataImport: () => importDialog?.show(),
       reset: () => {
         resetError = null;
         confirmReset = true;
@@ -352,6 +364,7 @@
 />
 
 <BackupDialog bind:this={backupDialog} />
+<ImportDialog bind:this={importDialog} />
 
 <style>
   .page {
