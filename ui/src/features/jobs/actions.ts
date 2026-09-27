@@ -28,6 +28,7 @@ import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText, run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
+import { copyJobText } from './jobText';
 import { copyJobPrompt } from './prompt';
 
 export type MoveId = 'archive' | 'unarchive' | 'trash' | 'restore';
@@ -82,7 +83,8 @@ export function openAd(job: JobView): Promise<string | null> {
 export interface JobMenuContext {
   /** "Öffnen": the job opens (none where it is open already, the reader). */
   open?: (() => void) | null;
-  /** Only what changes the job: the reader has its own buttons for what shows it. */
+  /** Only Als Text kopieren and what changes the job: the reader has its own buttons for
+   *  the rest of what shows it. */
   changesOnly?: boolean;
   /** A move of the place, where the caller hands the focus on (the reader); by default the
    *  job simply moves. */
@@ -96,14 +98,21 @@ export interface JobMenuContext {
 /**
  * The job's menu, one table for the row's right click and the reader's "…", in two groups
  * with a line between them: what shows the job (Öffnen, Alert-Mail öffnen, Anzeige öffnen,
- * KI-Prompt kopieren; the reader shows them as its buttons), then what changes it (an
- * excluded job's "Trotzdem bewerten", or "Wieder ausschließen" once it counts, then the
- * moves of its place). No entry names a key. The test id of an entry is `menu-item-<id>`.
+ * KI-Prompt kopieren, Als Text kopieren; the reader shows all but the last as its buttons,
+ * its "…" starts with that one), then what changes it (for an excluded job the entry that
+ * counts it anyway, or the one that excludes it again once it counts, then the moves of its
+ * place). No entry names a key. The test id of an entry is `menu-item-<id>`.
  */
 export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const change = changesOf(job, context);
-  if (context.changesOnly === true) return change;
+  const copy: MenuItem = {
+    id: 'copy-text',
+    label: t.actions.copyText,
+    icon: 'copy',
+    run: () => void copyJobText(job).then(report),
+  };
+  if (context.changesOnly === true) return [copy, { kind: 'separator' }, ...change];
   const show: MenuEntry[] = [];
   if (context.open) {
     show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
@@ -130,6 +139,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
       reason: noProfile,
       run: () => void copyJobPrompt(job.key).then(report),
     },
+    copy,
   );
   return [...show, { kind: 'separator' }, ...change];
 }

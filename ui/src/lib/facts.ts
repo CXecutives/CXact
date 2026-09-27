@@ -48,6 +48,21 @@ export function termIcon(key: TermKey, job: JobView): IconMeaning {
   return TERM_ROWS.find((row) => row.key === key)?.icon ?? 'info';
 }
 
+/** The pay the ad states in the one money form ("1.250 €/Tag", "95.000 €/Jahr"): employment
+ *  (a permanent job, temporary agency work) its salary, any other job its day or hour rate;
+ *  null when the ad names none. */
+export function payWords(job: JobView): string | null {
+  const facts = factsOf(job);
+  if (facts === null) return null;
+  if (facts.contract === 'permanent' || facts.contract === 'anue') {
+    return facts.salary === undefined
+      ? null
+      : t.facts.pay(facts.salary, 'year', null, facts.salaryLowerBound === true);
+  }
+  if (facts.rate === null) return null;
+  return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', facts.currency);
+}
+
 /** A start in words: "ab sofort", "nach Absprache", "ab 01.11.". */
 export function startWords(start: string): string | null {
   if (start === 'now') return t.facts.now;

@@ -673,6 +673,8 @@ export const de = {
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
     prompt: 'KI-Prompt kopieren',
+    /** The job as plain lines (title, company, place, pay, start, duration, link). */
+    copyText: 'Als Text kopieren',
     /** Without a usable profile there is nothing to judge the job by. */
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
@@ -1011,8 +1013,9 @@ export const de = {
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
     prompt: 'KI-Prompt kopieren',
-    /** The clipboard refused the prompt. */
+    /** The clipboard refused the prompt, or the job as text. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
+    textNotCopied: 'Der Text ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
     setUpSignIn: 'Anmeldung einrichten',
@@ -1490,6 +1493,8 @@ export const de = {
     rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
     prompt: 'Prompt kopiert',
+    /** A job as text on the clipboard. */
+    copied: 'Kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Dearchiviert',

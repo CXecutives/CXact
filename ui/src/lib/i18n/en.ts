@@ -604,6 +604,7 @@ export const en: Catalog = {
     mail: OPEN_MAIL,
     openAd: 'Open ad',
     prompt: 'Copy AI prompt',
+    copyText: 'Copy as text',
     promptNoProfile: 'Without a profile, there is nothing to assess.',
     include: 'Score anyway',
     exclude: 'Exclude again',
@@ -866,6 +867,7 @@ export const en: Catalog = {
     more: 'More actions',
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
+    textNotCopied: 'The text could not be copied.',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
     setUpSignIn: 'Set up sign-in',
@@ -1232,6 +1234,7 @@ export const en: Catalog = {
   toast: {
     rescored: 'Jobs scored again',
     prompt: 'Prompt copied',
+    copied: 'Copied',
     archived: 'Archived',
     unarchived: 'Unarchived',
     trashed: 'Deleted',
