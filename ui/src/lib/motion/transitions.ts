@@ -102,6 +102,19 @@ export function rise(node: Element, params: RiseParams = {}): TransitionConfig {
   };
 }
 
+/** Fade in while sliding in from the start side by a token distance (default 8 px): a field
+ *  that appears beside the choice that asked for it (the day of Verfügbar ab), 150 ms. */
+export function slideIn(node: Element, params: RiseParams = {}): TransitionConfig {
+  if (isReducedMotion()) return crossfade(node);
+  const x = move(params.distance ?? 'lg');
+  return {
+    duration: duration(params.duration ?? 'base'),
+    easing: easing(params.easing ?? 'out'),
+    delay: params.delay ?? 0,
+    css: (t, u) => `transform: translateX(${-u * x}px); opacity: ${t}`,
+  };
+}
+
 /** Fade in from --scale-enter (popovers, dialogs, tooltips). */
 export function pop(node: Element, params: MotionParams = {}): TransitionConfig {
   if (isReducedMotion()) return crossfade(node);

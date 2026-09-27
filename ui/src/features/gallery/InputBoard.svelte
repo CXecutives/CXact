@@ -19,6 +19,7 @@
   import { text } from './gallery';
   import { t as app } from '$lib/i18n/t';
   import { formatBytes, formatDayTime } from '$lib/i18n/format';
+  import { isoDate, shownDate } from '$lib/state/profile.svelte';
 
   const t = text.inputs;
 
@@ -54,7 +55,8 @@
   let industries = $state<string[]>([]);
   let focus = $state([...t.chipsShownValues]);
   let answer = $state('');
-  let day = $state<string | null>('2026-11-01');
+  /** A day as typed in its field; the calendar inside it writes one in the field's form. */
+  let dayText = $state(shownDate('2026-11-01'));
   /** A field that suggests the chips' sample words while typing. */
   const sampleWords = vocabularyOf([...t.chipValues, ...t.chipsShownValues]);
   let term = $state('');
@@ -195,7 +197,13 @@
       <TextField kind="search" label={t.search} placeholder={t.search} bind:value={search} />
       <TextField kind="search" label={t.search} placeholder={t.search} bind:value={empty} />
       <TextField label={t.address} bind:value={address} disabled />
-      <Calendar value={day} onpick={(picked) => (day = picked)} />
+      <span class="narrow">
+        <TextField label={app.profile.field.date} bind:value={dayText}>
+          {#snippet trailing()}
+            <Calendar value={isoDate(dayText)} onpick={(picked) => (dayText = shownDate(picked))} />
+          {/snippet}
+        </TextField>
+      </span>
       <TextField label={t.chips} bind:value={term} suggestions={sampleWords} />
     </div>
     <div class="stack">

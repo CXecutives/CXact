@@ -1,12 +1,13 @@
 <!--
   Verfügbar ab: one choice of the segments ("Offen", "Sofort", "Datum"; after the label they
   read "ab sofort", "ab Datum"). The day of "Datum" exists only while it is chosen and gets
-  the caret when it is (it fades in beside the choice); it is judged when its field is left
-  with text in it or on saving (`editor.judged`), never while it is typed, and a day that
-  does not read is said once, at the field, in the error line of every field (Field), and
-  holds the save. A value of the file that does not read is said under it with
-  "Wert entfernen". Beside the day a calendar offers one (Calendar); typing stays the way to
-  write it, and a chosen day is written into the field in its form.
+  the caret when it is (it slides in beside the choice, as high as the choice and as wide as
+  every number field); it is judged when its field is left with text in it or on saving
+  (`editor.judged`), never while it is typed, and a day that does not read is said once, at
+  the field, in the error line of every field (Field), and holds the save. A value of the
+  file that does not read is said under it with "Wert entfernen". Inside the day's field at
+  its right end a calendar offers one (Calendar), like a native date picker; typing stays
+  the way to write it, and a chosen day is written into the field in its form.
 -->
 <script lang="ts">
   import Calendar from '$components/Calendar.svelte';
@@ -14,7 +15,7 @@
   import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
-  import { fade } from '$lib/motion/transitions';
+  import { slideIn } from '$lib/motion/transitions';
   import { dayShaped, editor, isoDate, shownDate } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import ValueNote from './ValueNote.svelte';
@@ -85,26 +86,27 @@
       <span
         class="date"
         role="presentation"
-        in:fade
+        in:slideIn
         bind:this={date}
         onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
       >
-        <span class="field">
-          <TextField
-            value={editor.dateText}
-            label={words.date}
-            placeholder={words.datePlaceholder}
-            invalid={said !== null}
-            describedby={said !== null ? `${id}-message` : null}
-            testid="profile-date"
-            oninput={type}
-          />
-        </span>
-        <Calendar
-          value={isoDate(editor.dateText)}
-          testid="profile-date-calendar"
-          onpick={(day) => type(shownDate(day))}
-        />
+        <TextField
+          value={editor.dateText}
+          label={words.date}
+          placeholder={words.datePlaceholder}
+          invalid={said !== null}
+          describedby={said !== null ? `${id}-message` : null}
+          testid="profile-date"
+          oninput={type}
+        >
+          {#snippet trailing()}
+            <Calendar
+              value={isoDate(editor.dateText)}
+              testid="profile-date-calendar"
+              onpick={(day) => type(shownDate(day))}
+            />
+          {/snippet}
+        </TextField>
       </span>
     {/if}
   </div>
@@ -148,14 +150,9 @@
     gap: var(--space-12);
   }
 
-  /* The day is as wide as every number field, its calendar beside it. */
+  /* The day is as wide as every number field (NumberField), its calendar inside it. */
   .date {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
-  .field {
+    display: flex;
     width: calc(var(--stat-min) - var(--space-48));
   }
 

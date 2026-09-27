@@ -514,7 +514,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   );
 });
 
-test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels 13/500', async ({
+test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13/500', async ({
   page,
 }) => {
   await profile(page);
@@ -531,11 +531,11 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
   const entries = await boxes(form, '.chip-input > .field.entry');
   expect(entries.length).toBeGreaterThan(8);
   for (const entry of entries) expect(entry.height, entry.text).toBe(32);
-  // One choice component for every choice: the segments, 28 px like every choice of the app
-  // (Einstellungen too), with the 13 px text of a small button.
+  // One choice component for every choice: the segments, as high as a field like every
+  // choice of the app (Einstellungen too), with the 13 px text of a small button.
   const groups = await boxes(form, '[role="radiogroup"]');
   expect(groups.length).toBe(2);
-  for (const group of groups) expect(group.height, group.text).toBe(28);
+  for (const group of groups) expect(group.height, group.text).toBe(32);
   const choices = await boxes(form, '[role="radiogroup"] [role="radio"]');
   for (const choice of choices) expect(choice.size, choice.text).toBe('13px');
   await expect(form.locator('.segmented')).toHaveCount(2);
@@ -550,7 +550,19 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
   for (const id of ['profile-save', 'profile-discard', 'profile-update-cv', 'profile-switcher']) {
     await expect(page.getByTestId(id)).toHaveCSS('height', '32px');
   }
-  // Every number field has one width; the day of "Datum" too.
+  // Every number field has one width; the day of "Datum" too (its field, the calendar's
+  // button inside it at the right end), as high as the choice beside it.
+  const dayField = page.getByTestId('profile-date').locator('xpath=..');
+  await expect(dayField.getByTestId('profile-date-calendar')).toBeVisible();
+  const [day, choice, button] = await Promise.all([
+    dayField.boundingBox(),
+    page.getByTestId('profile-available').boundingBox(),
+    page.getByTestId('profile-date-calendar').boundingBox(),
+  ]);
+  expect(day!.height).toBe(choice!.height);
+  expect(middle(day)).toBe(middle(choice));
+  expect(button!.x + button!.width).toBeLessThan(day!.x + day!.width);
+  expect(button!.x).toBeGreaterThan(day!.x + day!.width / 2);
   const widths = await Promise.all(
     [
       'profile-years',
@@ -561,7 +573,9 @@ test('fields and chip fields are 32 px, choices 28 (as in Einstellungen), labels
       'profile-remote-min',
       'profile-min-months',
       'profile-date',
-    ].map(async (id) => Math.round((await page.getByTestId(id).boundingBox())!.width)),
+    ].map(async (id) =>
+      Math.round((await page.getByTestId(id).locator('xpath=..').boundingBox())!.width),
+    ),
   );
   expect(new Set(widths).size, widths.join(' ')).toBe(1);
 });

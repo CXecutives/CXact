@@ -14,9 +14,11 @@
   as typed (the field takes free text). With `suggestions` (the engine's words, a
   competence) it suggests terms the same way (Suggestions.svelte), but nothing is marked
   until the arrows or the pointer mark one: Enter without a mark goes on to the form.
+  `trailing` puts a small control inside the field at its right end, like the picker button
+  of a native date field (the calendar of Verfügbar ab); it keeps its own Tab stop.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import type { Action } from 'svelte/action';
   import { chipKeys, FIELD_ATTRIBUTES, formKeys, type ChipKeyHandlers } from '$lib/input/input';
   import { t } from '$lib/i18n/t';
@@ -44,6 +46,8 @@
     /** Terms to suggest while typing, none marked at first (null: not loaded yet). */
     suggestions?: Vocabulary | null | undefined;
     testid?: string | null;
+    /** A small control inside the field at its right end (a calendar's button). */
+    trailing?: Snippet | null;
     oninput?: (value: string) => void;
   }
 
@@ -59,6 +63,7 @@
     options = null,
     suggestions = undefined,
     testid = null,
+    trailing = null,
     oninput,
   }: Props = $props();
 
@@ -166,7 +171,14 @@
   }
 </script>
 
-<div bind:this={box} class="field {kind}" class:invalid class:disabled use:formKeys={keys}>
+<div
+  bind:this={box}
+  class="field {kind}"
+  class:invalid
+  class:disabled
+  class:trailed={trailing !== null}
+  use:formKeys={keys}
+>
   {#if kind === 'search'}
     <span class="lead"><Icon name="search" size="sm" /></span>
   {/if}
@@ -267,6 +279,8 @@
         onclick={clear}
       />
     </span>
+  {:else if trailing}
+    <span class="trail">{@render trailing()}</span>
   {/if}
 </div>
 
@@ -313,6 +327,11 @@
     color: var(--text);
     font: var(--type-field);
     outline: none;
+  }
+
+  /* A control at the end takes the room of the text's right padding. */
+  .trailed .input {
+    padding-right: var(--space-4);
   }
 
   .input::placeholder {
