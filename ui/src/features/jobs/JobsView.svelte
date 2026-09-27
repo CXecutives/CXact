@@ -22,7 +22,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Button from '$components/Button.svelte';
-  import DragBand from '$components/DragBand.svelte';
   import Splitter, { cappedLimits, splitLimits } from '$components/Splitter.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
@@ -31,7 +30,6 @@
   import { fade, rise, viewOut } from '$lib/motion/transitions';
   import { inView } from '$lib/actions/inView';
   import { onBack } from '$lib/input/input';
-  import { dragBands } from '$lib/platform';
   import { tokenPx } from '$lib/tokens';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
@@ -220,7 +218,6 @@
     <section class="right" data-testid="reader-pane" bind:this={right}>
       {#key stage.turn}
         <div class="stage" data-testid="stage" in:enter={stage.what !== OVERVIEW} out:leave>
-          {#if dragBands()}<DragBand sheet />{/if}
           <div class="column">
             {#if stage.what === OVERVIEW}
               <!-- No job open: the one empty state of every place (its icon, one sentence);
@@ -344,15 +341,13 @@
     overflow: hidden;
   }
 
-  /* Each stage scrolls on its own; the sheet colour lets the next one cover the last. The
-     keyboard focus stops below the macOS toolbar row. */
+  /* Each stage scrolls on its own; the sheet colour lets the next one cover the last. */
   .stage {
     grid-area: 1 / 1;
     min-height: 0;
     overflow-x: auto;
     overflow-y: scroll;
     background-color: var(--surface);
-    scroll-padding-top: var(--window-top);
   }
 
   /* Centred on a whole pixel (rounded down to the step of a hairline): an odd pane width
@@ -383,8 +378,8 @@
 
   @media (width < 900px) {
     /* One column scrolls as a whole, so the run card never squeezes the list; the header
-       (the tabs, the search and the tools, on macOS the toolbar row that moves the window) stays on top, and a
-       row brought into view stops below it (the header at its tallest, two lines). */
+       (the tabs, the search and the tools) stays on top, and a row brought into view stops below it
+       (the header at its tallest, two lines). */
     .left {
       width: 100%;
       overflow-x: auto;

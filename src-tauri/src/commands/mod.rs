@@ -17,6 +17,7 @@ mod portals;
 mod profile;
 mod run;
 mod scoring;
+mod window;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -60,6 +61,8 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         profile::set_unsaved,
         profile::close_window,
         profile::answer_close,
+        window::window_button,
+        window::window_maximized,
         mailbox::save_mailbox,
         mailbox::remove_mailbox,
         portals::portal_login,

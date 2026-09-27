@@ -6,16 +6,19 @@
 //! (Ctrl/Cmd+C/V/X/A/Z). The same rules apply in every build, so exactly what ships is
 //! what gets tested.
 //!
-//! Both OS show the native window frame (title bar, caption buttons, system menu, snap
-//! layouts). Documented differences: WebView2 switches and the title bar in the app's
-//! colours (Windows) vs. a minimal app menu, link preview, first-mouse clicks and the
-//! traffic lights centred in the page's toolbar row (macOS), how a file is shown in its
-//! folder (Explorer, Finder) and the user agent of the HTTP client. What differs inside the
-//! page (dialog button order, scrollbars, OS words) lives in `ui/src/lib/platform.ts`.
+//! The window has one top bar on both OS, drawn by the page like the Claude app's
+//! (`ui/src/features/shell/TitleBar.svelte`, user 2026-09-27); below it the app is the same.
+//! Only the window buttons differ: Windows has no native title bar (`decorations: false`; the
+//! shadow, the rounded corners and the resize borders stay) and the page draws its caption
+//! buttons, which [`caption`] turns into a native caption for the OS (moving, double click,
+//! system menu, the snap layouts over Maximieren); macOS keeps its traffic lights, centred in
+//! the bar. Further documented differences: WebView2 switches (Windows) vs. a minimal app
+//! menu, link preview and first-mouse clicks (macOS), how a file is shown in its folder
+//! (Explorer, Finder) and the user agent of the HTTP client. What differs inside the page
+//! (the window buttons, dialog button order, scrollbars, OS words) lives in
+//! `ui/src/lib/platform.ts`.
 
 use std::path::Path;
-#[cfg(windows)]
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -29,30 +32,17 @@ pub const MAIN: &str = "main";
 
 // ------------------------------------------------------------------ window colours
 
-// The colours of the window in the palette the user chose (Einstellungen, Darstellung): the
-// native Windows title bar (Windows 11; DWM) and the window behind the page on both OS.
-// Tokens of `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates.
-// A new colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the
-// window at another token is a change here (`core/tests/ui_contract.rs` checks which ones).
+// The colour of the window in the palette the user chose (Einstellungen, Darstellung): the
+// window behind the page on both OS, the colour of the top bar and the sidebar. A token of
+// `ui/src/styles/tokens.css`, read through the palette `tools/tokens.mjs` generates. A new
+// colour is a change of tokens.css and `npm run regen` (docs/CHANGING.md); pointing the
+// window at another token is a change here (`core/tests/ui_contract.rs` checks which one).
 
 /// What the window wears in one palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WindowColours {
-    /// `--bg`: the Windows caption and the window before the page paints (the colour of the
-    /// sidebar below the caption).
+    /// `--bg`: the window before the page paints (the colour of the top bar and the sidebar).
     pub background: Rgb,
-    /// `--text`: the title of the active window.
-    #[cfg_attr(
-        not(windows),
-        allow(dead_code, reason = "only Windows colours its title bar")
-    )]
-    pub title: Rgb,
-    /// `--text-subtle`: the title while the window is inactive.
-    #[cfg_attr(
-        not(windows),
-        allow(dead_code, reason = "only Windows colours its title bar")
-    )]
-    pub title_inactive: Rgb,
 }
 
 /// The window's colours in a palette.
@@ -60,18 +50,12 @@ pub const fn window_colours(chosen: Palette) -> WindowColours {
     match chosen {
         Palette::Coast => WindowColours {
             background: palette::BG.rgb,
-            title: palette::TEXT.rgb,
-            title_inactive: palette::TEXT_SUBTLE.rgb,
         },
         Palette::Light => WindowColours {
             background: palette::LIGHT_BG.rgb,
-            title: palette::LIGHT_TEXT.rgb,
-            title_inactive: palette::LIGHT_TEXT_SUBTLE.rgb,
         },
         Palette::Dark => WindowColours {
             background: palette::DARK_BG.rgb,
-            title: palette::DARK_TEXT.rgb,
-            title_inactive: palette::DARK_TEXT_SUBTLE.rgb,
         },
     }
 }
@@ -79,21 +63,10 @@ pub const fn window_colours(chosen: Palette) -> WindowColours {
 /// A colour as red, green and blue bytes.
 pub type Rgb = [u8; 3];
 
-/// The palette the window wears now (the Windows title dims and brightens with the focus).
-#[cfg(windows)]
-static CHOSEN: Mutex<Palette> = Mutex::new(Palette::Coast);
-
-#[cfg(windows)]
-fn chosen() -> Palette {
-    *CHOSEN
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-/// Dresses the window in a palette at once: its background before the page paints, the
-/// system's light or dark frame (the macOS title bar and traffic lights, the Windows caption
-/// buttons) and, on Windows, the title bar's colours. At the start before the window shows
-/// (the stored choice), then on every choice in Einstellungen (`save_settings`).
+/// Dresses the window in a palette at once: its background before the page paints and the
+/// system's light or dark frame (the macOS traffic lights; on Windows the system menu and the
+/// window's edge). At the start before the window shows (the stored choice), then on every
+/// choice in Einstellungen (`save_settings`).
 pub fn dress<R: Runtime>(window: &WebviewWindow<R>, palette: Palette) {
     let colours = window_colours(palette);
     let [r, g, b] = colours.background;
@@ -107,15 +80,6 @@ pub fn dress<R: Runtime>(window: &WebviewWindow<R>, palette: Palette) {
     };
     if let Err(e) = window.set_theme(Some(theme)) {
         log::warn!("window theme not set: {e}");
-    }
-    #[cfg(windows)]
-    {
-        *CHOSEN
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = palette;
-        if let Ok(hwnd) = window.hwnd() {
-            frame::paint(hwnd, colours, window.is_focused().unwrap_or(true));
-        }
     }
 }
 
@@ -280,17 +244,22 @@ pub fn harden<'a, R: Runtime, M: Manager<R>>(
 /// blocks the context menu in JavaScript on both OS.
 #[cfg(windows)]
 pub fn apply<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
-    // The title bar in the app's colours before the window is shown (`dress` repaints it in
-    // the chosen palette); the title dims while the window is inactive, like on native apps.
-    if let Ok(hwnd) = window.hwnd() {
-        frame::paint(hwnd, window_colours(chosen()), true);
-    }
+    use tauri::Emitter as _;
+
+    // The page's top bar answers the OS like a native caption.
+    caption::attach(window);
+    // Maximieren shows Verkleinern while the window is maximized (`window-state`,
+    // `ui/src/lib/ipc/api.ts` `onWindowState`).
     let watched = window.clone();
+    let maximized = AtomicBool::new(window.is_maximized().unwrap_or(false));
     window.on_window_event(move |event| {
-        if let tauri::WindowEvent::Focused(focused) = event
-            && let Ok(hwnd) = watched.hwnd()
-        {
-            frame::focus(hwnd, window_colours(chosen()), *focused);
+        if let tauri::WindowEvent::Resized(_) = event {
+            let now = watched.is_maximized().unwrap_or(false);
+            if maximized.swap(now, Ordering::SeqCst) != now
+                && let Err(e) = watched.emit(WINDOW_STATE, serde_json::json!({ "maximized": now }))
+            {
+                log::warn!("window state not sent to the page: {e}");
+            }
         }
     });
     window.with_webview(|webview| {
@@ -300,10 +269,14 @@ pub fn apply<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     })
 }
 
+/// The event that tells the page whether the window is maximized.
+#[cfg(windows)]
+const WINDOW_STATE: &str = "window-state";
+
 /// macOS: the traffic lights of the unified title bar sit where `trafficLightPosition` says
-/// (centred in the page's 52 px toolbar row), and stay there whenever macOS lays the title
-/// bar out again: on resize (fullscreen exit and zoom included), focus, theme and scale
-/// changes, and once the window is shown ([`reveal`]).
+/// (centred in the page's top bar), and stay there whenever macOS lays the title bar out
+/// again: on resize (fullscreen exit and zoom included), focus, theme and scale changes, and
+/// once the window is shown ([`reveal`]).
 #[cfg(target_os = "macos")]
 #[allow(
     clippy::unnecessary_wraps,
@@ -343,9 +316,9 @@ mod webview2 {
     };
     use windows_core::Interface as _;
 
-    /// One of the app's few `unsafe` spots (the others colour the Windows title bar and
-    /// place the macOS traffic lights): Tauri does not pass these WebView2 switches through,
-    /// so they are set on WebView2 directly.
+    /// One of the app's few `unsafe` spots (the others are the caption of the Windows top
+    /// bar and the macOS traffic lights): Tauri does not pass these WebView2 switches
+    /// through, so they are set on WebView2 directly.
     #[expect(
         unsafe_code,
         reason = "WebView2 switches that Tauri does not pass through"
@@ -378,58 +351,530 @@ mod webview2 {
     }
 }
 
-/// The native title bar in the palette's colours ([`WindowColours`]). Windows 11 only:
-/// Windows 10 ignores the attributes (its bar follows the light or dark theme `dress` sets),
-/// so the result is not checked.
+/// The page's top bar as the OS sees it (Windows). The window has no native title bar; the
+/// page draws the bar and its caption buttons (`ui/src/components/WindowButtons.svelte`). The
+/// web view's windows belong to the engine's own processes, so a window of ours lies over the
+/// bar (`CXactCaption`: without a surface of its own, the page shows through it)
+/// and answers `WM_NCHITTEST` like a native caption, by the geometry of
+/// [`jobalert_core::window::Bar`]: the empty bar is `HTCAPTION` (moving, Aero Snap, a double
+/// click maximizes; a right click opens the system menu, `system_menu`), the top edge of a window that is
+/// not maximized `HTTOP`, and the buttons `HTMINBUTTON`, `HTMAXBUTTON` and `HTCLOSE` - only
+/// such an answer opens the snap layouts of Windows 11 over Maximieren. It hands the
+/// caption's mouse messages to the main window, whose default procedure moves, sizes and
+/// opens the menu (the main window answers `WM_NCHITTEST` for the bar the same way, for the
+/// hit test of the menu); it performs a click on a button itself (`WM_SYSCOMMAND`, so
+/// Schließen is a normal close request: unsaved changes and a running fetch still ask) and
+/// reports which button the pointer is over and which one is pressed (`caption`), which the
+/// page shows. It follows the window's size and DPI; Tauri's strip that sizes the window at
+/// its top edge stays above it.
 #[cfg(windows)]
-mod frame {
-    use windows::Win32::Foundation::{COLORREF, HWND};
-    use windows::Win32::Graphics::Dwm::{
-        DWMWA_CAPTION_COLOR, DWMWA_TEXT_COLOR, DWMWINDOWATTRIBUTE, DwmSetWindowAttribute,
+pub mod caption {
+    #![expect(
+        unsafe_code,
+        reason = "the window procedure of the top bar: Win32 calls that Tauri does not make"
+    )]
+
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Mutex, OnceLock, PoisonError};
+
+    use jobalert_core::window::{Bar, BarHit};
+    use tauri::{Emitter as _, Runtime, WebviewWindow};
+    use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+    use windows::Win32::Graphics::Gdi::ScreenToClient;
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+    use windows::Win32::UI::HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi};
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        TME_LEAVE, TME_NONCLIENT, TRACKMOUSEEVENT, TrackMouseEvent,
+    };
+    use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        CreateWindowExW, DefWindowProcW, EnableMenuItem, FindWindowExW, GetClientRect, GetParent,
+        GetSystemMenu, HTCAPTION, HTCLOSE, HTMAXBUTTON, HTMINBUTTON, HTTOP, HTTRANSPARENT,
+        HWND_TOP, IDC_ARROW, IsZoomed, LoadCursorW, MF_BYCOMMAND, MF_ENABLED, MF_GRAYED,
+        PostMessageW, RegisterClassExW, SC_CLOSE, SC_MAXIMIZE, SC_MINIMIZE, SC_MOVE, SC_RESTORE,
+        SC_SIZE, SM_CYFRAME, SWP_NOACTIVATE, SWP_NOOWNERZORDER, SendMessageW, SetWindowPos,
+        TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, WM_DPICHANGED, WM_NCHITTEST,
+        WM_NCLBUTTONDBLCLK, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP, WM_NCMOUSELEAVE, WM_NCMOUSEMOVE,
+        WM_NCRBUTTONDBLCLK, WM_NCRBUTTONDOWN, WM_NCRBUTTONUP, WM_SIZE, WM_SYSCOMMAND, WNDCLASSEXW,
+        WS_CHILD, WS_CLIPSIBLINGS, WS_EX_NOREDIRECTIONBITMAP, WS_VISIBLE,
+    };
+    use windows::core::{PCWSTR, w};
+
+    /// The class of the window over the bar.
+    const CLASS: PCWSTR = w!("CXactCaption");
+    /// Tauri's strip at the top edge that sizes an undecorated window
+    /// (`tauri-runtime-wry`, `undecorated_resizing.rs`).
+    const TAURI_EDGE: PCWSTR = w!("TAURI_DRAG_RESIZE_BORDERS");
+    /// Our subclass of the main window's procedure.
+    const SUBCLASS_ID: usize = 0x4358_4254; // "CXBT"
+    /// The event that tells the page the state of the buttons (`ui/src/lib/ipc/api.ts`,
+    /// `onCaption`).
+    const EVENT: &str = "caption";
+
+    /// A caption button of the bar.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Button {
+        Minimize,
+        Maximize,
+        Close,
+    }
+
+    impl Button {
+        /// Its name in the page (`WindowButton` of `ui/src/lib/ipc/api.ts`).
+        pub const fn name(self) -> &'static str {
+            match self {
+                Button::Minimize => "minimize",
+                Button::Maximize => "maximize",
+                Button::Close => "close",
+            }
+        }
+
+        /// The button of a hit-test code.
+        fn of(code: u32) -> Option<Button> {
+            match code {
+                HTMINBUTTON => Some(Button::Minimize),
+                HTMAXBUTTON => Some(Button::Maximize),
+                HTCLOSE => Some(Button::Close),
+                _ => None,
+            }
+        }
+    }
+
+    /// What the buttons show: the one under the pointer and the one pressed.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    struct Shown {
+        hover: Option<Button>,
+        pressed: Option<Button>,
+    }
+
+    const AT_REST: Shown = Shown {
+        hover: None,
+        pressed: None,
     };
 
-    use super::{Rgb, WindowColours};
+    static SHOWN: Mutex<Shown> = Mutex::new(AT_REST);
+    /// `TrackMouseEvent` is asked once per stay over the bar.
+    static TRACKING: AtomicBool = AtomicBool::new(false);
+    /// Sends the state of the buttons to the page.
+    static REPORT: OnceLock<Box<dyn Fn(Shown) + Send + Sync>> = OnceLock::new();
 
-    /// Bytes of a COLORREF (a `u32`).
-    const COLORREF_SIZE: u32 = 4;
-    const _: () = assert!(size_of::<COLORREF>() == COLORREF_SIZE as usize);
-
-    pub fn paint(hwnd: HWND, colours: WindowColours, focused: bool) {
-        set(hwnd, DWMWA_CAPTION_COLOR, colours.background);
-        focus(hwnd, colours, focused);
+    /// Lays the window over the bar of the main window.
+    pub fn attach<R: Runtime>(window: &WebviewWindow<R>) {
+        let Ok(parent) = window.hwnd() else {
+            return;
+        };
+        let page = window.clone();
+        let _ = REPORT.set(Box::new(move |shown: Shown| {
+            let payload = serde_json::json!({
+                "hover": shown.hover.map(Button::name),
+                "pressed": shown.pressed.map(Button::name),
+            });
+            if let Err(e) = page.emit(EVENT, payload) {
+                log::warn!("caption state not sent to the page: {e}");
+            }
+        }));
+        match create(parent) {
+            Ok(()) => log::info!("top bar: the caption window answers for it"),
+            Err(e) => log::warn!("top bar: no caption window ({e}); the page's bar stays"),
+        }
     }
 
-    pub fn focus(hwnd: HWND, colours: WindowColours, focused: bool) {
-        set(
-            hwnd,
-            DWMWA_TEXT_COLOR,
-            if focused {
-                colours.title
-            } else {
-                colours.title_inactive
-            },
-        );
+    fn create(parent: HWND) -> windows::core::Result<()> {
+        // SAFETY: plain Win32 calls on the live main window (Tauri's, on the main thread,
+        // where `apply` runs); the class names are static wide strings; the window procedures
+        // below only read their arguments and the main window's state.
+        unsafe {
+            let module = GetModuleHandleW(PCWSTR::null())?;
+            let instance = HINSTANCE(module.0);
+            let class = WNDCLASSEXW {
+                cbSize: u32::try_from(size_of::<WNDCLASSEXW>()).unwrap_or_default(),
+                lpfnWndProc: Some(bar_proc),
+                hInstance: instance,
+                hCursor: LoadCursorW(None, IDC_ARROW)?,
+                lpszClassName: CLASS,
+                ..WNDCLASSEXW::default()
+            };
+            // Registered once per process: a second main window never exists.
+            let _ = RegisterClassExW(&raw const class);
+            // Without a surface of its own it takes the pointer and draws nothing: the page shows
+            // through it. (A layered child window would need the app manifest to name Windows 8.)
+            let bar = CreateWindowExW(
+                WS_EX_NOREDIRECTIONBITMAP,
+                CLASS,
+                PCWSTR::null(),
+                WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+                0,
+                0,
+                0,
+                0,
+                Some(parent),
+                None,
+                Some(instance),
+                None,
+            )?;
+            place(parent, bar);
+            if !SetWindowSubclass(
+                parent,
+                Some(main_proc),
+                SUBCLASS_ID,
+                bar.0.expose_provenance(),
+            )
+            .as_bool()
+            {
+                return Err(windows::core::Error::from_win32());
+            }
+            Ok(())
+        }
     }
 
-    #[expect(
-        unsafe_code,
-        reason = "DWM colours of the native title bar, which Tauri does not set"
-    )]
-    fn set(hwnd: HWND, attribute: DWMWINDOWATTRIBUTE, [r, g, b]: Rgb) {
-        let value = COLORREF(u32::from(r) | (u32::from(g) << 8) | (u32::from(b) << 16));
-        // SAFETY: `hwnd` is the live main window handed out by Tauri; the pointer and the
-        // size describe `value`, a COLORREF on this stack frame that outlives the call.
+    /// The bar of the main window as the OS measures it now.
+    unsafe fn bar_of(parent: HWND) -> Option<Bar> {
+        let mut client = RECT::default();
+        // SAFETY: `parent` is the live main window, `client` a RECT on this stack frame.
+        unsafe { GetClientRect(parent, &raw mut client) }.ok()?;
+        // SAFETY: plain queries of the live main window.
+        let (dpi, maximized) = unsafe { (GetDpiForWindow(parent), IsZoomed(parent).as_bool()) };
+        let edge = if maximized {
+            0
+        } else {
+            // SAFETY: a plain system metric.
+            unsafe { GetSystemMetricsForDpi(SM_CYFRAME, dpi) }
+        };
+        Some(Bar {
+            width: client.right - client.left,
+            dpi,
+            edge,
+        })
+    }
+
+    /// What the screen point `at` is on the main window's bar.
+    unsafe fn hit_at(parent: HWND, at: POINT) -> BarHit {
+        let mut local = at;
+        // SAFETY: `local` is a POINT on this stack frame.
+        if !unsafe { ScreenToClient(parent, &raw mut local) }.as_bool() {
+            return BarHit::Page;
+        }
+        // SAFETY: see `bar_of`.
+        unsafe { bar_of(parent) }.map_or(BarHit::Page, |bar| bar.hit(local.x, local.y))
+    }
+
+    /// The hit-test code of a point of the bar (`None`: the page's, or the frame's).
+    fn code(hit: BarHit) -> Option<u32> {
+        match hit {
+            BarHit::Page => None,
+            BarHit::Caption => Some(HTCAPTION),
+            BarHit::TopEdge => Some(HTTOP),
+            BarHit::Minimize => Some(HTMINBUTTON),
+            BarHit::Maximize => Some(HTMAXBUTTON),
+            BarHit::Close => Some(HTCLOSE),
+        }
+    }
+
+    fn answer(code: u32) -> LRESULT {
+        LRESULT(isize::try_from(code).unwrap_or_default())
+    }
+
+    /// The screen point of a mouse message (`GET_X_LPARAM`, `GET_Y_LPARAM`).
+    fn point(lparam: LPARAM) -> POINT {
+        let word = |shift: u32| {
+            let bits = u16::try_from((lparam.0 >> shift) & 0xFFFF).unwrap_or_default();
+            i32::from(bits.cast_signed())
+        };
+        POINT {
+            x: word(0),
+            y: word(16),
+        }
+    }
+
+    /// Over the bar, right under Tauri's top edge strip (which puts itself on top at every
+    /// size change) and above the web view; as wide as the window, as high as the bar.
+    unsafe fn place(parent: HWND, bar: HWND) {
+        // SAFETY: see `bar_of`.
+        let Some(measure) = (unsafe { bar_of(parent) }) else {
+            return;
+        };
+        // SAFETY: a plain lookup among the main window's children.
+        let above = unsafe { FindWindowExW(Some(parent), None, TAURI_EDGE, PCWSTR::null()) }
+            .unwrap_or(HWND_TOP);
+        // SAFETY: both windows are live children of the main window.
         let _ = unsafe {
-            DwmSetWindowAttribute(
-                hwnd,
-                attribute,
-                std::ptr::from_ref(&value).cast(),
-                COLORREF_SIZE,
+            SetWindowPos(
+                bar,
+                Some(above),
+                0,
+                0,
+                measure.width,
+                measure.height(),
+                SWP_NOACTIVATE | SWP_NOOWNERZORDER,
             )
         };
     }
-}
 
+    /// Changes what the buttons show and tells the page when it changed.
+    fn show(change: impl FnOnce(&mut Shown)) {
+        let now = {
+            let mut shown = SHOWN.lock().unwrap_or_else(PoisonError::into_inner);
+            let before = *shown;
+            change(&mut shown);
+            if *shown == before {
+                return;
+            }
+            *shown
+        };
+        if let Some(report) = REPORT.get() {
+            report(now);
+        }
+    }
+
+    fn pressed() -> Option<Button> {
+        SHOWN.lock().unwrap_or_else(PoisonError::into_inner).pressed
+    }
+
+    /// Asks for `WM_NCMOUSELEAVE` once the pointer leaves the bar.
+    unsafe fn track(bar: HWND) {
+        if TRACKING.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let mut request = TRACKMOUSEEVENT {
+            cbSize: u32::try_from(size_of::<TRACKMOUSEEVENT>()).unwrap_or_default(),
+            dwFlags: TME_LEAVE | TME_NONCLIENT,
+            hwndTrack: bar,
+            dwHoverTime: 0,
+        };
+        // SAFETY: `request` is a TRACKMOUSEEVENT on this stack frame, sized as required.
+        if unsafe { TrackMouseEvent(&raw mut request) }.is_err() {
+            TRACKING.store(false, Ordering::SeqCst);
+        }
+    }
+
+    /// A click on a button, the way the native one does it.
+    unsafe fn click(parent: HWND, button: Button) {
+        let command = match button {
+            Button::Minimize => SC_MINIMIZE,
+            // SAFETY: a plain query of the live main window.
+            Button::Maximize if unsafe { IsZoomed(parent) }.as_bool() => SC_RESTORE,
+            Button::Maximize => SC_MAXIMIZE,
+            Button::Close => SC_CLOSE,
+        };
+        // SAFETY: a message to the live main window, handled after this one.
+        let sent = unsafe {
+            PostMessageW(
+                Some(parent),
+                WM_SYSCOMMAND,
+                WPARAM(usize::try_from(command).unwrap_or_default()),
+                LPARAM(0),
+            )
+        };
+        if let Err(e) = sent {
+            log::warn!("{} not sent to the window: {e}", button.name());
+        }
+    }
+
+    /// The window's system menu at `at` (screen pixels), its entries in the window's state
+    /// (Wiederherstellen only while maximized, Verschieben and Größe ändern only while not), the
+    /// chosen one performed like the menu of a native caption.
+    unsafe fn system_menu(parent: HWND, at: POINT) {
+        // SAFETY: the menu of the live main window, shown modally on its thread (ours).
+        unsafe {
+            let menu = GetSystemMenu(parent, false);
+            if menu.is_invalid() {
+                return;
+            }
+            let maximized = IsZoomed(parent).as_bool();
+            for (item, on) in [
+                (SC_RESTORE, maximized),
+                (SC_MOVE, !maximized),
+                (SC_SIZE, !maximized),
+                (SC_MINIMIZE, true),
+                (SC_MAXIMIZE, !maximized),
+                (SC_CLOSE, true),
+            ] {
+                let state = if on { MF_ENABLED } else { MF_GRAYED };
+                let _ = EnableMenuItem(menu, item, MF_BYCOMMAND | state);
+            }
+            let chosen = TrackPopupMenu(
+                menu,
+                TPM_RETURNCMD | TPM_RIGHTBUTTON,
+                at.x,
+                at.y,
+                None,
+                parent,
+                None,
+            );
+            if let Ok(command) = usize::try_from(chosen.0)
+                && command != 0
+            {
+                let _ = PostMessageW(Some(parent), WM_SYSCOMMAND, WPARAM(command), LPARAM(0));
+            }
+        }
+    }
+
+    /// The window over the bar.
+    unsafe extern "system" fn bar_proc(
+        bar: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) -> LRESULT {
+        // SAFETY: `bar` is our live child window; its parent is the main window.
+        let Ok(parent) = (unsafe { GetParent(bar) }) else {
+            // SAFETY: the default for a window without a parent (never: it is a child).
+            return unsafe { DefWindowProcW(bar, message, wparam, lparam) };
+        };
+        // The hit-test code the OS gives the mouse messages of the non-client area.
+        let hit = u32::try_from(wparam.0).unwrap_or_default();
+        // SAFETY: `parent` is the live main window; the messages handed on to it are the
+        // ones it gets over a native caption, with the same parameters.
+        let hand_on = || unsafe { SendMessageW(parent, message, Some(wparam), Some(lparam)) };
+        match message {
+            WM_NCHITTEST => {
+                // SAFETY: see `hit_at`.
+                let at = unsafe { hit_at(parent, point(lparam)) };
+                return code(at).map_or(
+                    LRESULT(isize::try_from(HTTRANSPARENT).unwrap_or(-1)),
+                    answer,
+                );
+            }
+            WM_NCMOUSEMOVE => {
+                // SAFETY: see `track`.
+                unsafe { track(bar) };
+                let button = Button::of(hit);
+                show(|shown| shown.hover = button);
+                if button.is_none() {
+                    return hand_on();
+                }
+                return LRESULT(0);
+            }
+            WM_NCMOUSELEAVE => {
+                TRACKING.store(false, Ordering::SeqCst);
+                show(|shown| *shown = AT_REST);
+                return LRESULT(0);
+            }
+            WM_NCLBUTTONDOWN | WM_NCLBUTTONDBLCLK => {
+                let Some(button) = Button::of(hit) else {
+                    return hand_on();
+                };
+                show(|shown| {
+                    shown.hover = Some(button);
+                    shown.pressed = Some(button);
+                });
+                return LRESULT(0);
+            }
+            WM_NCLBUTTONUP => {
+                let Some(button) = Button::of(hit) else {
+                    show(|shown| shown.pressed = None);
+                    return hand_on();
+                };
+                let was = pressed();
+                show(|shown| shown.pressed = None);
+                // A click needs the press and the release on the same button.
+                if was == Some(button) {
+                    // SAFETY: see `click`.
+                    unsafe { click(parent, button) };
+                }
+                return LRESULT(0);
+            }
+            // A right click on the empty bar opens the window's system menu, like on a native
+            // caption (the default procedure opens none for a window without a title bar).
+            // Alt+Space opens it the native way.
+            WM_NCRBUTTONUP if hit == HTCAPTION => {
+                // SAFETY: see `system_menu`.
+                unsafe { system_menu(parent, point(lparam)) };
+                return LRESULT(0);
+            }
+            WM_NCRBUTTONDOWN | WM_NCRBUTTONDBLCLK | WM_NCRBUTTONUP => return LRESULT(0),
+            _ => {}
+        }
+        // SAFETY: the default procedure for everything else.
+        unsafe { DefWindowProcW(bar, message, wparam, lparam) }
+    }
+
+    /// The main window: it answers `WM_NCHITTEST` for the bar like the window over it (the
+    /// system menu's hit test asks the main window), and lays that window anew after every
+    /// change of size or DPI.
+    unsafe extern "system" fn main_proc(
+        parent: HWND,
+        message: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        _id: usize,
+        bar: usize,
+    ) -> LRESULT {
+        match message {
+            WM_NCHITTEST => {
+                // SAFETY: see `hit_at`.
+                if let Some(found) = code(unsafe { hit_at(parent, point(lparam)) }) {
+                    return answer(found);
+                }
+            }
+            WM_SIZE | WM_DPICHANGED => {
+                // SAFETY: the next procedure of the chain first (tao, Tauri's strip).
+                let result = unsafe { DefSubclassProc(parent, message, wparam, lparam) };
+                let bar = HWND(std::ptr::with_exposed_provenance_mut(bar));
+                // SAFETY: `bar` is our live child window (its handle is the subclass data).
+                unsafe { place(parent, bar) };
+                // Maximized, minimized or restored: the buttons at rest.
+                show(|shown| *shown = AT_REST);
+                return result;
+            }
+            _ => {}
+        }
+        // SAFETY: the next procedure of the chain.
+        unsafe { DefSubclassProc(parent, message, wparam, lparam) }
+    }
+
+    /// What the window over the bar answers, measured in the running app (the smoke check
+    /// prints it): the hit-test code of the window over the bar and of the main window in
+    /// the middle of Maximieren, the code that opens the snap layouts there, and the size of
+    /// the window over the bar next to the bar's (physical pixels).
+    #[cfg(debug_assertions)]
+    #[derive(Debug)]
+    pub struct Probe {
+        pub bar_hit: Option<u32>,
+        pub main_hit: Option<u32>,
+        pub maximize: u32,
+        pub covers: [i32; 2],
+        pub bar: [i32; 2],
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn probe<R: Runtime>(window: &WebviewWindow<R>) -> Option<Probe> {
+        use jobalert_core::window::CAPTION_BUTTON;
+        use windows::Win32::Graphics::Gdi::ClientToScreen;
+
+        let parent = window.hwnd().ok()?;
+        // SAFETY: plain queries and a hit-test message to our own live windows.
+        unsafe {
+            let bar = FindWindowExW(Some(parent), None, CLASS, PCWSTR::null()).ok()?;
+            let measure = bar_of(parent)?;
+            let mut at = POINT {
+                x: measure.width - measure.scaled(CAPTION_BUTTON + CAPTION_BUTTON / 2),
+                y: measure.height() / 2,
+            };
+            if !ClientToScreen(parent, &raw mut at).as_bool() {
+                return None;
+            }
+            let pack = |value: i32| {
+                let word = i16::try_from(value).unwrap_or_default().cast_unsigned();
+                isize::try_from(u32::from(word)).unwrap_or_default()
+            };
+            let lparam = LPARAM(pack(at.x) | (pack(at.y) << 16));
+            let asked = |target: HWND| {
+                let answer = SendMessageW(target, WM_NCHITTEST, None, Some(lparam));
+                u32::try_from(answer.0).ok()
+            };
+            let mut covers = RECT::default();
+            GetClientRect(bar, &raw mut covers).ok()?;
+            Some(Probe {
+                bar_hit: asked(bar),
+                main_hit: asked(parent),
+                maximize: HTMAXBUTTON,
+                covers: [covers.right, covers.bottom],
+                bar: [measure.width, measure.height()],
+            })
+        }
+    }
+}
 // ------------------------------------------------------------------ traffic lights (macOS)
 
 /// The traffic lights of the unified title bar, placed exactly like tao's
@@ -439,7 +884,7 @@ mod frame {
 /// geometry is applied after every event that lets macOS lay the title bar out again.
 ///
 /// The position is read from the main window's configuration (`tauri.macos.conf.json`, the
-/// single source); `core/tests/ui_contract.rs` ties it to the page's 52 px toolbar row.
+/// single source); `core/tests/ui_contract.rs` ties it to the page's top bar (`--titlebar-height`).
 #[cfg(target_os = "macos")]
 pub mod lights {
     use dispatch2::DispatchQueue;

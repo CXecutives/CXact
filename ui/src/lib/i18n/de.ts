@@ -11,8 +11,8 @@
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
-// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Ergebnisordner, Ausgeschlossen, Trotzdem
-// bewerten, Neu, Archiv (Dearchivieren: back into the Eingang), Papierkorb, Löschen (into the
+// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Exportordner, Ausgeschlossen, Trotzdem
+// bewerten, Neu, Archiv (In den Eingang: back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
 // data: its backups, its log, the reset), Aufrufe (what a portal allows a day).
 // "Bedingungen" only names the profile's section. A profile field has one name: the label of
@@ -613,6 +613,13 @@ export const de = {
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
     demo: 'Demo',
   },
+  /** The caption buttons of the Windows top bar, in the words of Windows. */
+  window: {
+    minimize: 'Minimieren',
+    maximize: 'Maximieren',
+    restore: 'Verkleinern',
+    close: 'Schließen',
+  },
   common: {
     loading: 'Wird geladen',
     cancel: 'Abbrechen',
@@ -682,7 +689,7 @@ export const de = {
     archive: 'Archivieren',
     /** Back into the Eingang from the Archiv (the user's word; Wiederherstellen is the
      *  Papierkorb's). */
-    unarchive: 'Dearchivieren',
+    unarchive: 'In den Eingang',
     trash: 'Löschen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
@@ -881,7 +888,7 @@ export const de = {
       csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
       backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
       /** The work folder itself (a drive that is gone): nothing was written. */
-      workspace: 'Der Ergebnisordner ist nicht erreichbar.',
+      workspace: 'Der Exportordner ist nicht erreichbar.',
     },
     checkMailbox: 'Postfach prüfen',
     /** A portal the fetch paused or that reached its limit, until when (the portal key and
@@ -1421,7 +1428,7 @@ export const de = {
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail`,
     checkAlert: 'Alert prüfen',
-    folder: 'Ergebnisordner',
+    folder: 'Exportordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',
     excelMissing: 'Die Excel-Datei entsteht beim nächsten Abruf.',
@@ -1461,7 +1468,7 @@ export const de = {
       'das Profil',
       'das App-Passwort',
       'die Anmeldungen bei den Portalen',
-      'die Dateien der App im Ergebnisordner',
+      'die Dateien der App im Exportordner',
     ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
@@ -1471,7 +1478,7 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
-    palette: 'Farben',
+    palette: 'Design',
     /** The palettes (tokens.css): the app's own by the app's name (first, the default), then
      *  light and dark. */
     paletteName: {
@@ -1547,7 +1554,7 @@ export const de = {
     prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
-    unarchived: 'Dearchiviert',
+    unarchived: 'In den Eingang verschoben',
     trashed: 'Gelöscht',
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */

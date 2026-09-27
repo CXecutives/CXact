@@ -29,6 +29,8 @@ vocabulary        {}                                                            
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null
 answer_close      { close: boolean }                                                 -> null
+window_button     { button: 'minimize' | 'maximize' | 'close' }                      -> null
+window_maximized  {}                                                                 -> boolean
 save_mailbox      { user: string; password: string }                                 -> Mailbox
 remove_mailbox    {}                                                                 -> boolean
 portal_login      { portal: Portal }                                                 -> boolean

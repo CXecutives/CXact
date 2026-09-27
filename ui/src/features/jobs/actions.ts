@@ -35,7 +35,7 @@ export type ActionId = MoveId | 'purge';
 
 /** Where a move goes. Wiederherstellen from the Papierkorb puts a job back where it lay (the
  *  backend knows: the archive for one thrown away from there); the page takes the inbox until
- *  it hears back. Dearchivieren puts a job of the Archiv back into the inbox. */
+ *  it hears back. In den Eingang puts a job of the Archiv back into the inbox. */
 const TARGET: Record<MoveId, Place> = {
   archive: 'archive',
   unarchive: 'inbox',
@@ -43,7 +43,7 @@ const TARGET: Record<MoveId, Place> = {
   restore: 'inbox',
 };
 
-/** One icon per meaning: archiving looks like the archive, Dearchivieren like taking out of
+/** One icon per meaning: archiving looks like the archive, In den Eingang like taking out of
  *  it, Wiederherstellen from the Papierkorb like taking back. Deleting is one look
  *  everywhere: Löschen and Endgültig löschen take the trash, in red (`deletes`: the row's
  *  tool, the entry of the menu and of the reader's "…"). */

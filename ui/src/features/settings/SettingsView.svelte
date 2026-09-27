@@ -10,14 +10,14 @@
   A switch or a choice moves at once (the state is patched before the save) and is its own
   answer; Darstellung switches the colours and the language of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
-  toast (another result folder); errors and warnings stay a note at the end of their card,
+  toast (another export folder); errors and warnings stay a note at the end of their card,
   which unfolds (the cards below glide down instead of jumping).
   Only "Zurücksetzen", "Entfernen" of the mailbox and the restore of a backup
   (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
   inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
-  result folder and reset are locked with its reason. Opened from a job for one portal
+  export folder and reset are locked with its reason. Opened from a job for one portal
   ("Anmeldung einrichten") the page glides to that portal's row, focuses its sign-in, lets
   the row light up once and offers "Zurück zum Job".
 -->
@@ -133,7 +133,7 @@
     }
   }
 
-  /** Another result folder: the profile comes along (or the folder's own is used) and the
+  /** Another export folder: the profile comes along (or the folder's own is used) and the
    *  files are written there at once (pick_workspace); the toast says which. */
   const pickFolder = (card: string): Promise<void> =>
     command(card, 'folderChange', async () => {

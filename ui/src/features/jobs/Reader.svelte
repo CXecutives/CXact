@@ -13,7 +13,7 @@
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
     shows it too, its tools the moves): for an excluded job "Trotzdem bewerten" or "Wieder
     ausschließen", then the moves of the place (Eingang Archivieren, Löschen; Archiv
-    Dearchivieren, Löschen; Papierkorb Wiederherstellen, Endgültig löschen). A job that just
+    In den Eingang, Löschen; Papierkorb Wiederherstellen, Endgültig löschen). A job that just
     moved away offers none while the next one loads. Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and every
     failure is a toast.

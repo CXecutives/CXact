@@ -244,7 +244,7 @@ test('narrow, a row puts its control under the label only where the two do not f
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(Math.round(box.height), id).toBe(60);
   }
-  // At the smallest window the path of the result folder keeps its room: the buttons go under it.
+  // At the smallest window the path of the export folder keeps its room: the buttons go under it.
   await page.setViewportSize({ width: 480, height: 800 });
   const folder = page.getByTestId('folder');
   const [text, control] = await Promise.all([
@@ -519,7 +519,7 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
 
 /* ------------------------------------------------------------------ Export */
 
-test('export: the result folder with its path, Excel and CSV with their switches', async ({
+test('export: the export folder with its path, Excel and CSV with their switches', async ({
   page,
 }) => {
   await settings(page);
@@ -559,7 +559,7 @@ test('export: the result folder with its path, Excel and CSV with their switches
   expect(glided(tops), tops.join(' ')).toBe(true);
 });
 
-test('export: another result folder takes the profile along; its own profile is said', async ({
+test('export: another export folder takes the profile along; its own profile is said', async ({
   page,
 }) => {
   await settings(page, `${WIN}&folder=other`);
@@ -658,7 +658,7 @@ test('Darstellung: the language switches everything at once; notes follow it', a
   await page.getByTestId('folder-open').click();
   await expect(page.getByTestId('export-note')).toHaveText('Die Datenbank meldet einen Fehler.');
   await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByTestId('settings-export')).toContainText('Result folder');
+  await expect(page.getByTestId('settings-export')).toContainText('Export folder');
   await expect(page.getByTestId('export-note')).toHaveText('The database reports an error.');
   await expect(page.getByTestId('portal-freelance')).toContainText('Today 11 of 100 calls');
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));

@@ -5,7 +5,6 @@
 -->
 <script lang="ts">
   import BrandMark from '$components/BrandMark.svelte';
-  import DragBand from '$components/DragBand.svelte';
   import Button, { BUTTON_SIZES, BUTTON_VARIANTS } from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Icon, { ICON_NAMES } from '$components/Icon.svelte';
@@ -16,6 +15,7 @@
   import Toast from '$components/Toast.svelte';
   import Menu from '$components/Menu.svelte';
   import Tooltip from '$components/Tooltip.svelte';
+  import WindowButtons from '$components/WindowButtons.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tooltip } from '$lib/actions/tooltip';
   import ColourBoard from './ColourBoard.svelte';
@@ -163,8 +163,11 @@
         onclick={() => toasts.show(text.navigation.toastText)}
       />
     </div>
-    <!-- The empty part of the macOS toolbar row (as high as --window-top: 0 here). -->
-    <DragBand sheet />
+    <!-- The caption buttons of the Windows top bar (maximize shows the restore glyph while
+         the window is maximized). -->
+    <div class="caption-buttons">
+      <WindowButtons testid="gallery-window-buttons" />
+    </div>
   </Section>
 
   <Section heading={text.sections.tiles} id="tiles">
@@ -311,6 +314,17 @@
   .bar {
     display: flex;
     align-items: center;
+  }
+
+  /* As high as the top bar, on its colour. */
+  .caption-buttons {
+    display: flex;
+    justify-content: flex-end;
+    box-sizing: content-box;
+    height: var(--titlebar-height);
+    border-radius: var(--radius-md);
+    border: var(--border-width) solid var(--titlebar-border);
+    background-color: var(--titlebar-bg);
   }
 
   .empty {

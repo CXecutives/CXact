@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "window-bar",
+  "description": "The window's top bar (TitleBar.svelte, both OS): its empty parts move the window and a double click maximizes it (Tauri's drag script for data-tauri-drag-region). On Windows the caption window of platform.rs answers for the bar first; the script is its stand-in.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize"
+  ]
+}

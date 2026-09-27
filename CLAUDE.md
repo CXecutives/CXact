@@ -15,10 +15,15 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
   modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
   patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
 - UI: three palettes (Coast, the default, Light and Dark: GitHub's Primer colours), defined only in
-  `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app: the native window frame of the OS on
-  both (Windows: its title bar in the palette's colours via DWM, `window_colours` in `platform.rs`; macOS: the unified
-  title bar, traffic lights over the page's 52 px toolbar row whose empty parts move the window; no title bar or
-  caption buttons drawn in the page; minimum window 480 x 360 for the snap layouts); the
+  `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
+  like the Claude app's (user 2026-09-27): the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
+  Windows, 44 px on macOS, the design's `--titlebar-*` tokens, a hairline under it; Windows shows the app's icon and name at the left, macOS only the traffic lights;
+  its empty parts move the window, a double click maximizes). Windows: no native title bar (`decorations: false`, the
+  shadow, rounded corners and resize borders stay); the page draws Minimieren, Maximieren and Schließen
+  (`components/WindowButtons.svelte`, 46 px, the design's washes, Schließen in the app's danger red) and `caption` in
+  `platform.rs` answers `WM_NCHITTEST` for the bar like a native caption (`HTMAXBUTTON` opens the snap layouts; right
+  click and Alt+Space the system menu). macOS: the native traffic lights 16 px in and centred in the bar (Overlay,
+  hidden title), no buttons drawn. Minimum window 480 x 360 for the snap layouts. Below the bar the
   content inside the window is identical, and it differs between Windows and macOS only where the OS convention does
   (listed in docs/PLAN.md "Platforms", decided in `ui/src/lib/platform.ts` and `src-tauri/src/platform.rs` only).
   Buttons and controls react to the left click only; scroll areas also scroll with the middle mouse button
@@ -59,7 +64,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
 - Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the report, Excel,
-  title bar, window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
+  window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
   every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with
   `npm run preview:refresh` only when a block is finished and green, then tell the user to reload it.

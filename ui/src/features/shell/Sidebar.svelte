@@ -1,21 +1,16 @@
 <!--
-  The calm sidebar (196 px, icons only below 1100 px) on the cream: no surface of its own,
-  the white sheet of the content is the divider. App icon and name live in the native title
-  bar of the OS, so the sidebar starts with the views (on macOS below the traffic lights,
-  whose 52 px band moves the window): Jobs, Profil, Einstellungen, each with its icon and no
-  count, the first on the first line of every view. The places of the jobs (Eingang, Archiv,
-  Papierkorb) are tabs above the list. Before the first fetch the setup page stands for Jobs;
-  every entry can be chosen, as always. In the demo a quiet line "Demo" stands at the foot
-  where the OS hides the window's title (macOS); on Windows the title bar says "CXact Demo"
-  already (`titleShown`, lib/platform.ts). A press here never takes the
-  focus (the list keeps its keys). Below 1100 px it folds to its icons by the window width
-  alone; only then do the names show as tooltips.
+  The calm sidebar (196 px, icons only below 1100 px) on the cream below the top bar: no
+  surface of its own, the white sheet of the content is the divider. It starts with the views:
+  Jobs, Profil, Einstellungen, each with its icon and no count, the first on the first line
+  of every view. The places of the jobs (Eingang, Archiv, Papierkorb) are tabs above the
+  list. Before the first fetch the setup page stands for Jobs; every entry can be chosen, as
+  always. In the demo a quiet line "Demo" stands at the foot (the top bar shows no title). A
+  press here never takes the focus (the list keeps its keys). Below 1100 px it folds to its
+  icons by the window width alone; only then do the names show as tooltips.
 -->
 <script lang="ts">
-  import DragBand from '$components/DragBand.svelte';
   import SideNav, { type SideNavItem } from '$components/SideNav.svelte';
   import { t } from '$lib/i18n/t';
-  import { dragBands, titleShown } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { viewport } from '$lib/state/viewport.svelte';
@@ -38,7 +33,6 @@
 </script>
 
 <aside class="sidebar" class:rail={viewport.rail} data-testid="sidebar" data-press-only>
-  {#if dragBands()}<span class="lights"><DragBand /></span>{/if}
   <!-- Until the state is known nothing is guessed (like the views): the entries come with it,
        as they are, instead of changing their colours in front of the user. -->
   {#if app.state !== null}
@@ -53,9 +47,8 @@
     </div>
   {/if}
 
-  {#if app.state?.demo && !titleShown()}
-    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real (on
-         Windows its title bar does). -->
+  {#if app.state?.demo}
+    <!-- The demo (`--demo`) says so on every view, so nobody takes its samples for real. -->
     <p class="demo" data-testid="demo-mark">{t.nav.demo}</p>
   {/if}
 </aside>
@@ -76,26 +69,14 @@
     width: var(--rail-width);
   }
 
-  /* The traffic lights' band spans the whole width of the sidebar. */
-  .lights {
-    display: flex;
-    flex-direction: column;
-    align-self: stretch;
-    margin: 0 calc(-1 * var(--space-12));
-  }
-
-  /* The first entry is centred in the first row of every view (below the sheet's top edge,
-     which macOS does not draw): a 36 px entry, in the rail a 40 px one. */
+  /* The first entry is centred in the first row of every view: a 36 px entry, in the rail a
+     40 px one. */
   .nav {
-    margin-top: calc(
-      var(--pane-padding) + var(--sheet-top-edge) + (var(--first-row) - var(--control-md)) / 2
-    );
+    margin-top: calc(var(--pane-padding) + (var(--first-row) - var(--control-md)) / 2);
   }
 
   .rail .nav {
-    margin-top: calc(
-      var(--pane-padding) + var(--sheet-top-edge) + (var(--first-row) - var(--control-lg)) / 2
-    );
+    margin-top: calc(var(--pane-padding) + (var(--first-row) - var(--control-lg)) / 2);
   }
 
   /* The demo's quiet line at the foot (the text where the nav's icons start; centred in the

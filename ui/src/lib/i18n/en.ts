@@ -9,8 +9,8 @@
 // the name of the German language. Glossary (de.ts, one word per thing): Job, Portal, Match
 // (High, Medium, Low), Job details, Requirements (Met, Partly met, Not met, Unclear), Profile,
 // Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
-// file, CSV file, Result folder, Excluded, Score anyway, New, Inbox (the place of the active
-// jobs), Archive (Unarchive: back into the Inbox), Trash, Delete (into the Trash; there Delete
+// file, CSV file, Export folder, Excluded, Score anyway, New, Inbox (the place of the active
+// jobs), Archive (Move to inbox: back from there), Trash, Delete (into the Trash; there Delete
 // forever and Restore), Data (the card of the app's data), Calls (what a portal allows a day),
 // Skill, Preference. "Conditions" only names the profile's section. Plain British English:
 // "email", never "mail" for one message; "preferences", never "wishes"; "forever" for
@@ -555,6 +555,12 @@ export const en: Catalog = {
     settings: 'Settings',
     demo: 'Demo',
   },
+  window: {
+    minimize: 'Minimize',
+    maximize: 'Maximize',
+    restore: 'Restore',
+    close: 'Close',
+  },
   common: {
     loading: 'Loading',
     cancel: 'Cancel',
@@ -609,7 +615,7 @@ export const en: Catalog = {
     include: 'Score anyway',
     exclude: 'Exclude again',
     archive: 'Archive',
-    unarchive: 'Unarchive',
+    unarchive: 'Move to inbox',
     trash: 'Delete',
     restore: 'Restore',
     purge: 'Delete forever',
@@ -766,7 +772,7 @@ export const en: Catalog = {
       csv: 'The CSV file could not be written and was left unchanged.',
       csvLocked: 'The CSV file is open in another program and was left unchanged.',
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
-      workspace: 'The result folder cannot be reached.',
+      workspace: 'The export folder cannot be reached.',
     },
     checkMailbox: 'Review mailbox',
     paused: (portal: string, until: string | null) =>
@@ -1174,7 +1180,7 @@ export const en: Catalog = {
     signInWaiting: 'The sign-in window is open.',
     alertQuiet: (days: number) => `No alert email for ${n(days)} days`,
     checkAlert: 'Check alert',
-    folder: 'Result folder',
+    folder: 'Export folder',
     excel: 'Excel file',
     csv: 'CSV file',
     excelMissing: 'The Excel file is created at the next fetch.',
@@ -1205,7 +1211,7 @@ export const en: Catalog = {
       'the profile',
       'the app password',
       'the sign-ins at the portals',
-      'the app’s files in the result folder',
+      'the app’s files in the export folder',
     ],
     resetDone: 'The app is reset.',
     resetPartly: (value: number) =>
@@ -1213,7 +1219,7 @@ export const en: Catalog = {
     running: 'A fetch is running right now.',
     dryRun: 'Dry run, so no data is changed.',
     demo: 'Demo with sample data, without the mailbox or the portals.',
-    palette: 'Colours',
+    palette: 'Theme',
     paletteName: {
       coast: 'CXact',
       light: 'Light',
@@ -1272,7 +1278,7 @@ export const en: Catalog = {
     rescored: 'Jobs scored again',
     prompt: 'Prompt copied',
     archived: 'Archived',
-    unarchived: 'Unarchived',
+    unarchived: 'Moved to inbox',
     trashed: 'Deleted',
     restored: 'Restored',
     deleted: 'Deleted forever',

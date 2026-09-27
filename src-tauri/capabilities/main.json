@@ -30,6 +30,8 @@
     "allow-set-unsaved",
     "allow-close-window",
     "allow-answer-close",
+    "allow-window-button",
+    "allow-window-maximized",
     "allow-save-mailbox",
     "allow-remove-mailbox",
     "allow-portal-login",

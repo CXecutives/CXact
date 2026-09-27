@@ -1320,7 +1320,7 @@ function onScrollbar(event: MouseEvent): boolean {
 /**
  * A left press beside the focused field ends its focus, like a click on the empty part of a
  * native window. The engine does that by itself only where the press keeps its default: a
- * drag region (the title bar, the toolbar row) cancels it. The field stays focused for a
+ * drag region (the window's top bar) cancels it. The field stays focused for a
  * press inside it or its box (the chips, the clear button), on a button that keeps the caret
  * (`data-keep-focus`), on its own label, and on a scrollbar.
  */

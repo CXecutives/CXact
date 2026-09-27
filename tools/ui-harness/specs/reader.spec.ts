@@ -445,7 +445,7 @@ test.describe('the actions', () => {
     await openJob(page, 'linkedin-4100200306');
     let menu = await moreMenu(page);
     expect(menu.ids).toEqual(['unarchive', 'trash']);
-    expect(menu.labels).toEqual(['Dearchivieren', 'Löschen']);
+    expect(menu.labels).toEqual([T.actions.unarchive, T.actions.trash]);
     await choose(page, 'trash');
     await settleMoves(page);
     await openPlace(page, 'trash');

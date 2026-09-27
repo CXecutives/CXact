@@ -721,20 +721,23 @@ fn config(name: &str) -> serde_json::Value {
         .unwrap_or_else(|e| panic!("{name}: {e}"))
 }
 
-/// Both OS show their native window frame (title bar, caption buttons, system menu, snap
-/// layouts); the page draws no title bar and no caption buttons. Windows: the native bar
-/// above the page (coloured in platform.rs). macOS: the unified toolbar row of a Mac app -
-/// the title bar transparent over the page, the title hidden, the traffic lights moved into
-/// the 52 px row; the page keeps that row free and marks its empty parts as drag regions
-/// (only `DragBand` and the list's first row, through Tauri's drag script).
+/// The window has one top bar on both OS, drawn by the page like the Claude app's (user,
+/// 2026-09-27): `TitleBar` above the sidebar and the sheet, the page's only drag region
+/// (Tauri's drag script: its empty parts move the window, a double click maximizes). Windows
+/// has no native title bar (`decorations: false`, the shadow, the rounded corners and the
+/// resize borders stay): the page draws the caption buttons (`WindowButtons`, the only file
+/// that presses them) and platform.rs answers the window procedure for the bar (`caption`:
+/// `HTMAXBUTTON` over Maximieren opens the snap layouts). macOS keeps its native frame with
+/// the traffic lights in the bar (`titleBarStyle` Overlay, the title hidden). The window only
+/// through the app's commands in api.ts; no CSS app-region, no font of one OS for the glyphs.
 #[test]
-fn the_window_frame_is_native_on_both_os() {
+fn the_window_has_the_apps_own_top_bar() {
     let all = scanned(MIN_FILES);
     fail(
         &find(&all, &["data-tauri-drag-region"], |s| {
-            s.is("components/DragBand.svelte") || s.is("features/jobs/ListHeader.svelte")
+            s.is("features/shell/TitleBar.svelte")
         }),
-        "drag regions only in DragBand and the list's toolbar row",
+        "drag regions only in the top bar",
     );
     fail(
         &find(
@@ -749,47 +752,65 @@ fn the_window_frame_is_native_on_both_os() {
             ],
             |_| false,
         ),
-        "no title bar and no caption buttons in the page: the frame of the OS carries them",
+        "the window only through the app's commands (lib/ipc/api.ts); the caption glyphs are drawn",
     );
-    // The list row sets the attribute only where dragBands() says so (macOS).
-    let header = all
-        .iter()
-        .find(|s| s.is("features/jobs/ListHeader.svelte"))
-        .expect("ListHeader.svelte");
+    fail(
+        &find(&all, &["window_button"], |s| {
+            s.is("components/WindowButtons.svelte")
+                || s.is("lib/ipc/api.ts")
+                || s.under("lib/ipc/types/")
+        }),
+        "only the caption buttons press the window's buttons",
+    );
+    let source = |path: &str| {
+        all.iter()
+            .find(|s| s.is(path))
+            .unwrap_or_else(|| panic!("{path}"))
+    };
+    let bar = &source("features/shell/TitleBar.svelte").code;
     assert!(
-        header
-            .code
-            .contains("data-tauri-drag-region={dragBands() ? '' : undefined}"),
-        "the list row is a drag region on macOS only"
+        bar.contains("drawsWindowButtons()") && bar.contains("<WindowButtons"),
+        "the top bar draws the caption buttons where platform.ts says so (Windows)"
+    );
+    assert!(
+        source("App.svelte").code.contains("<TitleBar />"),
+        "the shell starts with the top bar"
     );
 
     let shared = config("tauri.conf.json");
     let window = &shared["app"]["windows"][0];
+    assert_eq!(window["decorations"], false, "Windows: no native title bar");
     assert_eq!(
-        window["decorations"], true,
-        "Windows keeps the native frame"
+        window["shadow"], true,
+        "the shadow, the rounded corners and the resize borders stay"
     );
     let windows = std::fs::read_to_string(repo("src-tauri/tauri.windows.conf.json"))
         .expect("tauri.windows.conf.json");
-    for bad in ["decorations", "titleBarStyle", "hiddenTitle"] {
+    for bad in ["decorations", "shadow", "titleBarStyle", "hiddenTitle"] {
         assert!(!windows.contains(bad), "tauri.windows.conf.json: {bad}");
     }
     let macos = config("tauri.macos.conf.json");
     let mac = &macos["app"]["windows"][0];
     assert_eq!(mac["decorations"], true, "macOS keeps its native frame");
-    assert_eq!(mac["titleBarStyle"], "Overlay", "unified toolbar row");
-    assert_eq!(mac["hiddenTitle"], true, "the title stays set but hidden");
     assert_eq!(
-        mac["trafficLightPosition"]["x"], 20,
-        "traffic lights at x 20"
+        mac["titleBarStyle"], "Overlay",
+        "the traffic lights over the bar"
     );
-    // The platform file replaces the window array: apart from the title bar it is the same
+    assert_eq!(mac["hiddenTitle"], true, "the title stays set but hidden");
+    // The platform file replaces the window array: apart from the frame it is the same
     // window as the shared one.
     let mut same = mac.clone();
-    for key in ["titleBarStyle", "hiddenTitle", "trafficLightPosition"] {
+    let mut shared_window = window.clone();
+    for key in [
+        "decorations",
+        "titleBarStyle",
+        "hiddenTitle",
+        "trafficLightPosition",
+    ] {
         same.as_object_mut().expect("window").remove(key);
+        shared_window.as_object_mut().expect("window").remove(key);
     }
-    assert_eq!(&same, window, "one window, two title bars");
+    assert_eq!(same, shared_window, "one window, two frames");
     // Small enough to snap into every Windows 11 layout, quarters of 1366 x 768 included.
     let (min_width, min_height) = (window["minWidth"].as_u64(), window["minHeight"].as_u64());
     assert!(
@@ -800,12 +821,32 @@ fn the_window_frame_is_native_on_both_os() {
         min_height.is_some_and(|h| h <= 360),
         "minHeight {min_height:?}"
     );
+
+    // Windows: the window procedure answers for the bar like a native caption.
+    let platform = std::fs::read_to_string(repo("src-tauri/src/platform.rs")).expect("platform.rs");
+    for needle in [
+        "WM_NCHITTEST",
+        "HTCAPTION",
+        "HTMINBUTTON",
+        "HTMAXBUTTON",
+        "HTCLOSE",
+        "SetWindowSubclass",
+        "caption::attach(window)",
+    ] {
+        assert!(
+            platform.contains(needle),
+            "platform.rs: the caption of the top bar ({needle})"
+        );
+    }
 }
 
-/// The macOS toolbar row in the page matches the window: the band is as high as the row the
-/// traffic lights are centred in, and the rail is as wide as the lights.
+/// The page's bar and the window procedure measure it the same: `--titlebar-height` and
+/// `--titlebar-button-width` of tokens.css are core's `BAR_HEIGHT` and `CAPTION_BUTTON`, which
+/// platform.rs hit-tests with (Windows, 36 px like Claude's bar there). On macOS the bar is
+/// `--titlebar-height-macos` (44 px, base.css switches): the traffic lights sit 16 px from the
+/// left and centred in it, and the bar keeps their room free.
 #[test]
-fn the_macos_toolbar_row_matches_the_traffic_lights() {
+fn the_top_bar_measures_the_same_everywhere() {
     let tokens = std::fs::read_to_string(repo("ui/src/styles/tokens.css")).expect("tokens.css");
     let px = |name: &str| -> u64 {
         let line = tokens
@@ -821,7 +862,17 @@ fn the_macos_toolbar_row_matches_the_traffic_lights() {
             .parse()
             .unwrap_or_else(|e| panic!("{name}: {e}"))
     };
-    let row = px("--mac-toolbar");
+    let bar = px("--titlebar-height");
+    assert_eq!(
+        bar,
+        u64::from(jobalert_core::window::BAR_HEIGHT),
+        "--titlebar-height = window::BAR_HEIGHT"
+    );
+    assert_eq!(
+        px("--titlebar-button-width"),
+        u64::from(jobalert_core::window::CAPTION_BUTTON),
+        "--titlebar-button-width = window::CAPTION_BUTTON"
+    );
     let lights =
         config("tauri.macos.conf.json")["app"]["windows"][0]["trafficLightPosition"].clone();
     let (x, y) = (
@@ -830,21 +881,15 @@ fn the_macos_toolbar_row_matches_the_traffic_lights() {
     );
     // Measured on the macOS CI runner (smoke line `SMOKE {"lights":...}`): the buttons are
     // 14 pt high and their centre sits 2 pt above `y` (y 18 gave centre 16), so y - 2 is the
-    // centre that must meet the middle of the row.
-    assert_eq!(y - 2, row / 2, "traffic lights centred in the {row} px row");
+    // centre that must meet the middle of the bar.
+    let mac = px("--titlebar-height-macos");
+    assert_eq!(y - 2, mac / 2, "traffic lights centred in the {mac} px bar");
+    assert_eq!(x, 16, "traffic lights 16 px from the left, like Claude's");
     // Three buttons of 14 pt, 6 pt apart, and room to the right.
     assert!(
         x + 3 * 14 + 2 * 6 < px("--traffic-lights-width"),
-        "the rail holds the lights"
+        "the bar keeps room for the lights"
     );
-    let base = std::fs::read_to_string(repo("ui/src/styles/base.css")).expect("base.css");
-    for rule in [
-        "--window-top: var(--mac-toolbar);",
-        "--list-toolbar: var(--mac-toolbar);",
-        "--rail-width: var(--traffic-lights-width);",
-    ] {
-        assert!(base.contains(rule), "base.css (macOS): {rule}");
-    }
     // The app places the lights itself (tao applies the inset only while its covered content
     // view draws) and reads the position from this configuration: one source, no second
     // number in the code.
@@ -859,27 +904,36 @@ fn the_macos_toolbar_row_matches_the_traffic_lights() {
             "platform.rs repeats the position ({literal}); read it from the configuration"
         );
     }
+    // The one per-OS measure of the layout: the bar's height (below it the app is the same).
+    let base = std::fs::read_to_string(repo("ui/src/styles/base.css")).expect("base.css");
+    let mac_rules = base
+        .split(":root[data-platform='macos'] {")
+        .nth(1)
+        .and_then(|rest| rest.split('}').next())
+        .unwrap_or_default();
+    assert_eq!(
+        mac_rules.trim(),
+        "--titlebar-height: var(--titlebar-height-macos);",
+        "base.css: only the bar's height differs on macOS"
+    );
 }
 
-/// The native Windows title bar wears the colours of the chosen palette (platform.rs, DWM):
-/// its caption is the colour of the sidebar below it (`--bg`, which is also the window's
-/// background, so nothing flashes before the first paint), its title the text colour, dimmed
-/// to the subtle text. platform.rs names the tokens of every palette and writes no colour of
-/// its own; the generated palette follows tokens.css (core/tests/palette.rs). Coast's `--bg`
-/// is the window's `backgroundColor` in the configuration (the start before the choice is read).
+/// The window wears the colour of the chosen palette before the page paints (platform.rs):
+/// `--bg`, the colour of the top bar and the sidebar, which is also Coast's `backgroundColor`
+/// in the configuration (the start before the choice is read). platform.rs names the token of
+/// every palette and writes no colour of its own; the generated palette follows tokens.css
+/// (core/tests/palette.rs).
 #[test]
-fn the_title_bar_colours_are_the_tokens() {
+fn the_window_colour_is_the_token() {
     let platform = std::fs::read_to_string(repo("src-tauri/src/platform.rs")).expect("platform.rs");
     for (palette, prefix) in [("Coast", ""), ("Light", "LIGHT_"), ("Dark", "DARK_")] {
         let arm = format!(
             "Palette::{palette} => WindowColours {{\n            \
-             background: palette::{prefix}BG.rgb,\n            \
-             title: palette::{prefix}TEXT.rgb,\n            \
-             title_inactive: palette::{prefix}TEXT_SUBTLE.rgb,\n        }}"
+             background: palette::{prefix}BG.rgb,\n        }}"
         );
         assert!(
             platform.contains(&arm),
-            "window_colours({palette}) is --bg, --text and --text-subtle of the palette"
+            "window_colours({palette}) is --bg of the palette"
         );
     }
     let shared = config("tauri.conf.json");
@@ -1050,7 +1104,10 @@ fn the_catalog_keeps_the_glossary() {
             ("Passung", "Übereinstimmung"),
             ("Mailbox", "Postfach"),
             ("Details holen", "Anzeige laden"),
-            ("Arbeitsordner", "Ergebnisordner"),
+            ("Arbeitsordner", "Exportordner"),
+            ("Ergebnisordner", "Exportordner"),
+            ("Dearchivieren", "In den Eingang"),
+            ("Farben", "Design"),
             ("Wartung", "App"),
             ("Favorit", "nothing (favourites are gone)"),
             ("Übersicht", "nothing (the overview is gone)"),
@@ -1077,7 +1134,10 @@ fn the_catalog_keeps_the_glossary() {
             ("Favourite", "nothing (favourites are gone)"),
             ("Overview", "nothing (the overview is gone)"),
             ("Fetch details", "Load ad"),
-            ("Work folder", "Result folder"),
+            ("Work folder", "Export folder"),
+            ("Result folder", "Export folder"),
+            ("Unarchive", "Move to inbox"),
+            ("Colours", "Theme"),
             ("Maintenance", "App"),
             // Plain English, not German word for word (usability round 2): one message is
             // an "email", the profile's Wünsche are "preferences", Kompetenzen "skills", Orte

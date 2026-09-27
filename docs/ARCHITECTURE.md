@@ -36,13 +36,14 @@ A decision is written once; everything else reads it or is generated from it.
 
 | Decision | Source | Read by |
 |---|---|---|
-| Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (Excel, title bar, window, icon) |
+| Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (Excel, window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts`; in the backend `filter_condition` in `core/src/store/jobs.rs` (portal, band, contract types, remote) | funnel menu, filter chips, reset, harness |
 | The job's menu (what shows it, what changes it, the moves per place) | `jobMenu` in `ui/src/features/jobs/actions.ts` | a row's right click, the reader's "…" (its second group) |
 | Icons (meaning to glyph) | `ui/src/lib/icons.ts` | `Icon.svelte`, every icon position |
 | Views of the sidebar (name, icon) | `ui/src/lib/views.ts` | sidebar |
 | Keys (only the OS's editing keys; the app has none of its own) | `keyConventions()` in `ui/src/lib/platform.ts` | `input.ts` |
+| The window's top bar (the page draws it on both OS; Windows' caption buttons) | `--titlebar-*` in `tokens.css`, the bar's measures `window::BAR_HEIGHT` and `CAPTION_BUTTON` in `core/src/window.rs` (`ui_contract.rs` ties them), `drawsWindowButtons()` in `ui/src/lib/platform.ts` | `TitleBar.svelte`, `WindowButtons.svelte`, `caption` in `src-tauri/src/platform.rs` (the window procedure's hit test, the snap layouts) |
 | Toasts (kinds, life) | `TOAST_KINDS`, `TOAST_LIFE` in `ui/src/lib/state/toasts.svelte.ts` | `Toast.svelte` |
 | Hover, press, focus | one answer per surface kind in `tokens.css` | every control |
 | Screens as tables | `features/jobs/reader-sections.ts`, `features/settings/cards.ts` (the five cards), `features/first-run/steps.ts`, `features/profile/sections.ts` | their views |

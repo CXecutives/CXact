@@ -145,7 +145,7 @@ export function onClosing(handler: (activity: string | null) => void): () => voi
 
 /**
  * The OS window gained (true) or lost (false) the focus: Tauri's window events, the moment
- * the native title bar dims. Returns an unsubscribe function.
+ * the window buttons dim. Returns an unsubscribe function.
  */
 export function onWindowFocus(handler: (focused: boolean) => void): () => void {
   const stopFocus = subscribe(() => listen('tauri://focus', () => handler(true)));
@@ -154,6 +154,48 @@ export function onWindowFocus(handler: (focused: boolean) => void): () => void {
     stopFocus();
     stopBlur();
   };
+}
+
+/** A caption button of the Windows top bar (components/WindowButtons.svelte). */
+export type WindowButton = CommandArgs<'window_button'>['button'];
+
+/** Which caption button the pointer is over and which one is pressed (null: none). */
+export interface CaptionState {
+  hover: WindowButton | null;
+  pressed: WindowButton | null;
+}
+
+function windowButton(value: unknown): WindowButton | null {
+  return value === 'minimize' || value === 'maximize' || value === 'close' ? value : null;
+}
+
+/**
+ * Windows: the window over the top bar reports the pointer on the caption buttons
+ * (src-tauri/src/platform.rs answers the window procedure there, so the snap layouts of
+ * Windows 11 open over Maximieren, and performs the click itself); the page shows the state.
+ * Returns an unsubscribe function.
+ */
+export function onCaption(handler: (state: CaptionState) => void): () => void {
+  return subscribe(() =>
+    listen<{ hover?: unknown; pressed?: unknown } | null>('caption', (event) =>
+      handler({
+        hover: windowButton(event.payload?.hover),
+        pressed: windowButton(event.payload?.pressed),
+      }),
+    ),
+  );
+}
+
+/**
+ * The window was maximized (true) or restored (false): Maximieren shows Verkleinern then.
+ * Returns an unsubscribe function.
+ */
+export function onWindowState(handler: (maximized: boolean) => void): () => void {
+  return subscribe(() =>
+    listen<{ maximized?: unknown } | null>('window-state', (event) =>
+      handler(event.payload?.maximized === true),
+    ),
+  );
 }
 
 /**

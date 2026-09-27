@@ -41,7 +41,7 @@ async function finish(page: Page, files: Partial<ExportSummary>): Promise<void> 
   }, finished(files));
 }
 
-test('an unreachable result folder is said as such in the run line, with a retry', async ({
+test('an unreachable export folder is said as such in the run line, with a retry', async ({
   page,
 }) => {
   await open(page, WIN);

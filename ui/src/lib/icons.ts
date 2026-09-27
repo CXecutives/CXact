@@ -15,7 +15,7 @@ export const ICONS = {
   // The places of a job and the moves between them: the place's icon is also the move there.
   inbox: 'inbox',
   archive: 'archive',
-  /** Dearchivieren: out of the archive, back into the inbox. */
+  /** In den Eingang: out of the archive, back into the inbox. */
   unarchive: 'archive-restore',
   /** Delete (Löschen), delete for good, empty the trash, remove the mailbox: one glyph, in
    *  red wherever it deletes. */

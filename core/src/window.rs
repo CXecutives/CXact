@@ -1,7 +1,9 @@
 //! Placement of the app window across restarts, as plain numbers (physical pixels): what is
 //! stored when the window closes, and where the window goes at the next start - only onto a
 //! screen that still exists, and never larger than that screen. The app reads the window and
-//! the screens and applies the result (`src-tauri/src/main.rs`).
+//! the screens and applies the result (`src-tauri/src/main.rs`). And what a point of the
+//! window's top bar is to the OS ([`Bar::hit`], `src-tauri/src/platform.rs` answers the
+//! window procedure with it on Windows).
 
 use serde::{Deserialize, Serialize};
 
@@ -146,9 +148,146 @@ pub fn restore(stored: Option<Placement>, screens: &[Screen]) -> Restore {
     }
 }
 
+// ------------------------------------------------------------------ the top bar
+
+/// The window's top bar in CSS pixels: `--titlebar-height` and `--titlebar-button-width` of
+/// `ui/src/styles/tokens.css` (`core/tests/ui_contract.rs` ties the numbers together). On
+/// Windows the page draws the bar with its three caption buttons at the right, and
+/// `src-tauri/src/platform.rs` answers the window procedure there with [`Bar::hit`], so the
+/// bar behaves like a native caption: it moves the window, a double click maximizes, a right
+/// click opens the system menu, and the snap layouts of Windows 11 open over Maximieren. The
+/// hairline under the bar belongs to the page.
+pub const BAR_HEIGHT: u32 = 36;
+pub const CAPTION_BUTTON: u32 = 46;
+
+/// What a point of the window's client area is to the OS.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BarHit {
+    /// Below the bar or outside the client area: the page (or the frame) decides.
+    Page,
+    /// The empty bar.
+    Caption,
+    /// The top resize edge of a window that is not maximized.
+    TopEdge,
+    Minimize,
+    Maximize,
+    Close,
+}
+
+/// The bar of one window as the OS measures it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bar {
+    /// Width of the client area in physical pixels.
+    pub width: i32,
+    /// Dots per inch of the window (96 = 100 %).
+    pub dpi: u32,
+    /// Height of the top resize edge in physical pixels (0 while maximized).
+    pub edge: i32,
+}
+
+impl Bar {
+    /// A length of the page (CSS pixels) in physical pixels, rounded.
+    pub fn scaled(&self, css: u32) -> i32 {
+        let physical = (u64::from(css) * u64::from(self.dpi.max(1)) + 48) / 96;
+        i32::try_from(physical).unwrap_or(i32::MAX)
+    }
+
+    /// The bar's height in physical pixels.
+    pub fn height(&self) -> i32 {
+        self.scaled(BAR_HEIGHT)
+    }
+
+    /// What the pixel at `x`, `y` (physical pixels from the client area's top-left corner)
+    /// is: the top resize edge first (it lies over the whole width, as on a native window),
+    /// then the buttons from the right (Schließen, Maximieren, Minimieren, each
+    /// [`CAPTION_BUTTON`] wide), then the empty bar.
+    pub fn hit(&self, x: i32, y: i32) -> BarHit {
+        if x < 0 || x >= self.width || y < 0 || y >= self.height() {
+            return BarHit::Page;
+        }
+        if y < self.edge {
+            return BarHit::TopEdge;
+        }
+        // The pixel's middle, in CSS pixels from the right edge.
+        let from_right =
+            (f64::from(self.width) - f64::from(x) - 0.5) * 96.0 / f64::from(self.dpi.max(1));
+        let button = f64::from(CAPTION_BUTTON);
+        if from_right < button {
+            BarHit::Close
+        } else if from_right < 2.0 * button {
+            BarHit::Maximize
+        } else if from_right < 3.0 * button {
+            BarHit::Minimize
+        } else {
+            BarHit::Caption
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The buttons at 100 %: 46 px each from the right, the bar 36 px high.
+    #[test]
+    fn the_caption_buttons_lie_at_the_right_end_of_the_bar() {
+        let bar = Bar {
+            width: 1360,
+            dpi: 96,
+            edge: 0,
+        };
+        assert_eq!(bar.hit(1359, 0), BarHit::Close);
+        assert_eq!(bar.hit(1360 - 46, 20), BarHit::Close);
+        assert_eq!(bar.hit(1360 - 47, 20), BarHit::Maximize);
+        assert_eq!(bar.hit(1360 - 92, 35), BarHit::Maximize);
+        assert_eq!(bar.hit(1360 - 93, 35), BarHit::Minimize);
+        assert_eq!(bar.hit(1360 - 138, 0), BarHit::Minimize);
+        assert_eq!(bar.hit(1360 - 139, 0), BarHit::Caption);
+        assert_eq!(bar.hit(0, 0), BarHit::Caption);
+        // Below the bar and beside the client area: the page and the frame.
+        assert_eq!(bar.hit(1359, 36), BarHit::Page);
+        assert_eq!(bar.hit(-1, 10), BarHit::Page);
+        assert_eq!(bar.hit(1360, 10), BarHit::Page);
+    }
+
+    /// At 150 % everything is half as large again: the bar 54 px, a button 69 px.
+    #[test]
+    fn the_bar_scales_with_the_window() {
+        let bar = Bar {
+            width: 2040,
+            dpi: 144,
+            edge: 0,
+        };
+        assert_eq!(bar.height(), 54);
+        assert_eq!(bar.hit(2040 - 69, 53), BarHit::Close);
+        assert_eq!(bar.hit(2040 - 70, 53), BarHit::Maximize);
+        assert_eq!(bar.hit(2040 - 138, 0), BarHit::Maximize);
+        assert_eq!(bar.hit(2040 - 139, 0), BarHit::Minimize);
+        assert_eq!(bar.hit(2040 - 208, 0), BarHit::Caption);
+        assert_eq!(bar.hit(10, 54), BarHit::Page);
+        // 125 %: the bar is 45 px high.
+        assert_eq!(Bar { dpi: 120, ..bar }.height(), 45);
+    }
+
+    /// A window that is not maximized can be sized at its top edge, over the buttons too;
+    /// maximized it has no edge and the corner is Schließen.
+    #[test]
+    fn the_top_edge_sizes_a_window_that_is_not_maximized() {
+        let restored = Bar {
+            width: 1000,
+            dpi: 96,
+            edge: 4,
+        };
+        assert_eq!(restored.hit(500, 3), BarHit::TopEdge);
+        assert_eq!(restored.hit(999, 0), BarHit::TopEdge);
+        assert_eq!(restored.hit(999, 4), BarHit::Close);
+        assert_eq!(restored.hit(500, 4), BarHit::Caption);
+        let maximized = Bar {
+            edge: 0,
+            ..restored
+        };
+        assert_eq!(maximized.hit(999, 0), BarHit::Close);
+    }
 
     fn placement(x: i32, y: i32, width: u32, height: u32) -> Placement {
         Placement {

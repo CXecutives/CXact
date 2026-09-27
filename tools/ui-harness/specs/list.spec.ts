@@ -1535,7 +1535,7 @@ test.describe('search', () => {
 /* ======================================================================== moves */
 
 test.describe('moves and undo', () => {
-  test('archive from the row: short toasts that merge, one undo, Dearchivieren', async ({
+  test('archive from the row: short toasts that merge, one undo, In den Eingang', async ({
     page,
   }) => {
     await open(page, WIN);
