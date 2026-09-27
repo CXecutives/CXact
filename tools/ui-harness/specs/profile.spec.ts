@@ -1751,6 +1751,98 @@ test('a new form starts with one row each; the other ways stay at hand', async (
   await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
 });
 
+test('a competence suggests the words of the engine; nothing replaces what was typed', async ({
+  page,
+}) => {
+  await create(page);
+  const name = page.getByTestId('competence-name');
+  const list = page.getByTestId('competence-name-suggestions');
+  const items = list.getByRole('option');
+  // From the second character: terms that start with it or have a word that does.
+  await name.fill('C');
+  await expect(items).toHaveCount(0);
+  await name.fill('Contr');
+  await expect(items.first()).toBeVisible();
+  await expect(items).toContainText(['Controlling']);
+  for (const text of await items.allTextContents()) {
+    expect(
+      text
+        .toLowerCase()
+        .split(/[\s\-/]+/)
+        .some((word) => word.startsWith('contr')),
+    ).toBe(true);
+  }
+  await expect(name).toHaveAttribute('role', 'combobox');
+  await expect(name).toHaveAttribute('aria-expanded', 'true');
+  // Nothing is marked: Enter keeps what was typed (and goes on like every Enter of a row).
+  await expect(list.locator('[aria-selected="true"]')).toHaveCount(0);
+  await name.press('Enter');
+  await expect(name.first()).toHaveValue('Contr');
+  await name.first().fill('Contr');
+  // The arrows mark one, Enter takes it; the list is gone until the next character.
+  await name.first().press('ArrowDown');
+  const first = (await items.first().textContent())!.trim();
+  await expect(items.first()).toHaveAttribute('aria-selected', 'true');
+  await expect(name.first()).toHaveAttribute('aria-activedescendant', /hints-0$/);
+  await name.first().press('Enter');
+  await expect(name.first()).toHaveValue(first);
+  await expect(list.first()).toBeHidden();
+  // Esc closes the list and keeps the text; a click takes a term.
+  await name.first().fill('Treas');
+  await expect(items).toContainText(['Treasury']);
+  await name.first().press('Escape');
+  await expect(list.first()).toBeHidden();
+  await expect(name.first()).toHaveValue('Treas');
+  await name.first().press('Backspace');
+  await list.first().getByRole('option', { name: 'Treasury', exact: true }).click();
+  await expect(name.first()).toHaveValue('Treasury');
+  await expect(name.first()).toBeFocused();
+});
+
+test('synonyms, tools and industries suggest their words as chips; typed text stays', async ({
+  page,
+}) => {
+  await create(page);
+  await page.getByTestId('competence-name').fill('Controlling');
+  // A synonym: a click takes the term as a chip.
+  const aliases = page.getByTestId('competence-aliases');
+  const aliasInput = aliases.locator('input');
+  await aliasInput.fill('Power');
+  const aliasList = page.getByTestId('competence-aliases-suggestions');
+  await aliasList.getByRole('option', { name: 'Power BI', exact: true }).click();
+  await expect(chips(aliases)).toHaveText(['Power BI']);
+  await expect(aliasInput).toHaveValue('');
+  // Enter without a mark takes the typed text; with the arrows the marked term.
+  await aliasInput.fill('Reporting Pack');
+  await aliasInput.press('Enter');
+  await expect(chips(aliases)).toHaveText(['Power BI', 'Reporting Pack']);
+  // A term that is a chip already is not suggested again.
+  await aliasInput.fill('Power B');
+  await expect(aliasList.getByRole('option', { name: 'Power BI', exact: true })).toHaveCount(0);
+  await aliasInput.fill('');
+  const tools = page.getByTestId('profile-tools');
+  await tools.locator('input').fill('SAP S/4');
+  await tools.locator('input').press('ArrowDown');
+  await tools.locator('input').press('Enter');
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA']);
+  // The industries suggest industries, not skills.
+  const industries = page.getByTestId('profile-industries');
+  await industries.locator('input').fill('Maschin');
+  const industryList = page.getByTestId('profile-industries-suggestions');
+  await expect(industryList.getByRole('option')).toContainText(['Maschinenbau']);
+  await industries.locator('input').fill('Controll');
+  await expect(industryList.getByRole('option')).toHaveCount(0);
+  // Esc closes the list first, the second Esc drops the text.
+  await industries.locator('input').fill('Maschin');
+  await industries.locator('input').press('Escape');
+  await expect(industryList).toBeHidden();
+  await expect(industries.locator('input')).toHaveValue('Maschin');
+  await industries.locator('input').press('Escape');
+  await expect(industries.locator('input')).toHaveValue('');
+  // The words are asked once.
+  expect(await calls(page, 'vocabulary')).toHaveLength(1);
+});
+
 test('create and save: an empty row is not saved; the level comes from its menu', async ({
   page,
 }) => {

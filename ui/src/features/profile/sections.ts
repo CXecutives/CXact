@@ -68,6 +68,8 @@ export type Control =
       placeholder: Word;
       /** Entries are sentences: only a line break splits a pasted list. */
       lines?: true;
+      /** The engine's words it suggests while typing (vocabulary.svelte.ts). */
+      suggest?: 'skills' | 'industries';
       testid: string;
     }
   | {
@@ -148,6 +150,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'keywords',
         label: 'keywords',
         placeholder: 'keywordsPlaceholder',
+        suggest: 'skills',
         testid: 'profile-keywords',
       },
     ],
@@ -183,6 +186,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'tools',
         label: 'tools',
         placeholder: 'toolsPlaceholder',
+        suggest: 'skills',
         testid: 'profile-tools',
       },
       {
@@ -190,6 +194,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'industries',
         label: 'industries',
         placeholder: 'industriesPlaceholder',
+        suggest: 'industries',
         testid: 'profile-industries',
       },
     ],
@@ -324,6 +329,7 @@ export const SECTIONS: readonly Section[] = [
         key: 'wishIndustries',
         label: 'wishIndustries',
         placeholder: 'wishIndustriesPlaceholder',
+        suggest: 'industries',
         testid: 'profile-wish-industries',
       },
     ],

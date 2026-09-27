@@ -11,7 +11,8 @@
   or a value that does not read is said there with "Wert entfernen". A value that is too large
   (the years) or that the backend refused marks its row. Enter goes to the
   next row, adds one after the last and ends the list on an empty last row (rows.ts); it
-  never saves the profile. A row's focused x hands the focus to the next row (rows.ts).
+  never saves the profile. A row's focused x hands the focus to the next row (rows.ts). The
+  competence and its synonyms suggest the engine's words while typing (vocabulary.svelte.ts).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -25,6 +26,7 @@
   import NumberField from './NumberField.svelte';
   import { enterRow, focusAfterRemove, focusRow } from './rows';
   import ValueNote from './ValueNote.svelte';
+  import { vocabulary } from './vocabulary.svelte';
 
   interface Props {
     rows: ProfileCompetence[];
@@ -49,6 +51,7 @@
   }: Props = $props();
 
   const words = $derived(t.profile.field);
+  vocabulary.load();
   const id = $props.id();
   let list = $state<HTMLElement | null>(null);
 
@@ -160,6 +163,7 @@
           placeholder={rows.length === 1 ? words.competencePlaceholder : null}
           invalid={wrong}
           describedby={wrong ? `${id}-error` : null}
+          suggestions={vocabulary.skills}
           testid="competence-name"
           oninput={(next) => rename(row, next)}
         />
@@ -177,6 +181,7 @@
           bind:values={row.aliases}
           label={words.aliases}
           oneLine
+          suggestions={vocabulary.skills}
           testid="competence-aliases"
         />
       </span>

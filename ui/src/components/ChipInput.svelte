@@ -18,6 +18,10 @@
   is no option (from a file) stays and shows as it is. Text that matches no option stays in
   the field and says so (`noMatch`); text that matches only chosen ones says nothing.
   Typed text that is no chip yet is a change of the form around the field (`typedText`).
+  With `suggestions` (the engine's words) a field without options suggests terms while
+  typing (Suggestions.svelte): nothing is marked until the arrows or the pointer mark one,
+  Enter or a click takes the marked term as a chip, Esc closes the list; Enter without a
+  mark and leaving the field take the typed text as always.
   The field is as tall as a text field (32 px) with one line of chips. With `oneLine` (the
   other terms of a competence) it stays one line while it has no focus: the chips that fit,
   then a quiet "+n" for the rest (their values in its tooltip); with the focus every chip
@@ -31,10 +35,7 @@
     terms?: readonly string[];
   }
 
-  /** Lower case without accents (`Österreich` is found by `oster` and `öster`). */
-  export function folded(text: string): string {
-    return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/ß/g, 'ss').trim();
-  }
+  import { folded } from './Suggestions.svelte';
 
   /** The options whose names start with `text` (a whole name first, then a word of one),
    *  by name; none for no text. Shared with the suggestions of a TextField. */
@@ -65,6 +66,7 @@
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
   import Icon from './Icon.svelte';
+  import Suggestions, { suggest, type Vocabulary } from './Suggestions.svelte';
 
   interface Props {
     values: string[];
@@ -87,6 +89,8 @@
     noMatch?: string | null;
     /** One line without the focus: the chips that fit and "+n" for the rest. */
     oneLine?: boolean;
+    /** Terms to suggest while typing, free text stays (null: not loaded yet). */
+    suggestions?: Vocabulary | null | undefined;
     testid?: string | null;
     onchange?: (values: string[]) => void;
   }
@@ -103,6 +107,7 @@
     options = null,
     noMatch = null,
     oneLine = false,
+    suggestions = undefined,
     testid = null,
     onchange,
   }: Props = $props();
@@ -207,10 +212,27 @@
   /** The typed text names no option at all (one that is chosen already is no news). */
   const nothing = $derived(options !== null && folded(draft) !== '' && found.length === 0);
 
+  /** The marked suggestion (-1: none, Enter takes the typed text), and whether Esc closed
+   *  the list until the next character. */
+  let hint = $state(-1);
+  let hintsClosed = $state(false);
+  const hints = $derived(
+    suggestions && focused && !hintsClosed ? suggest(suggestions, draft, values) : [],
+  );
+  const suggesting = $derived(suggestions !== undefined);
+
   $effect(() => {
     void draft;
     active = 0;
+    hint = -1;
+    hintsClosed = false;
   });
+
+  /** A suggested term goes in as a chip; the typed text is done. */
+  function takeHint(term: string): void {
+    if (!known(values, term)) update([...values, term]);
+    draft = '';
+  }
 
   function update(next: string[]): void {
     values = next;
@@ -281,18 +303,32 @@
 
   /** The keys of input.ts; the arrows move the mark in the list of options. */
   const keys: ChipKeyHandlers & { step: (by: -1 | 1) => boolean } = {
-    commit,
+    commit: (): boolean => {
+      const term = hints[hint];
+      if (term === undefined) return commit();
+      takeHint(term);
+      return true;
+    },
     removeLast: (): boolean => {
       if (draft !== '' || values.length === 0) return false;
       update(values.slice(0, -1));
       return true;
     },
     clear: (): boolean => {
+      if (hints.length > 0) {
+        hintsClosed = true;
+        return true;
+      }
       if (draft === '') return false;
       draft = '';
       return true;
     },
     step: (by: -1 | 1): boolean => {
+      if (hints.length > 0) {
+        // Through the terms and back to none (the typed text).
+        hint = hint + by < -1 ? hints.length - 1 : hint + by >= hints.length ? -1 : hint + by;
+        return true;
+      }
       if (!listed) return false;
       active = (active + by + matches.length) % matches.length;
       return true;
@@ -331,7 +367,7 @@
   }
 </script>
 
-<div class="chip-input" class:suggests={options !== null}>
+<div class="chip-input" class:suggests={options !== null || suggesting}>
   <div
     bind:this={box}
     class="field"
@@ -377,11 +413,19 @@
         class="input"
         type="text"
         id={id ?? undefined}
-        role={options !== null ? 'combobox' : undefined}
-        aria-autocomplete={options !== null ? 'list' : undefined}
-        aria-expanded={options !== null ? listed : undefined}
-        aria-controls={options !== null ? `${own}-options` : undefined}
-        aria-activedescendant={listed ? `${own}-option-${active}` : undefined}
+        role={options !== null || suggesting ? 'combobox' : undefined}
+        aria-autocomplete={options !== null || suggesting ? 'list' : undefined}
+        aria-expanded={options !== null ? listed : suggesting ? hints.length > 0 : undefined}
+        aria-controls={options !== null
+          ? `${own}-options`
+          : suggesting
+            ? `${own}-hints`
+            : undefined}
+        aria-activedescendant={listed
+          ? `${own}-option-${active}`
+          : hints[hint] !== undefined
+            ? `${own}-hints-${hint}`
+            : undefined}
         aria-label={label ?? undefined}
         aria-invalid={invalid ? 'true' : undefined}
         aria-describedby={[describedby ?? described(), nothing ? `${own}-none` : null]
@@ -399,6 +443,17 @@
       />
     {/if}
   </div>
+  {#if suggesting}
+    <Suggestions
+      id="{own}-hints"
+      items={hints}
+      active={hint}
+      label={label ?? placeholder}
+      testid={testid ? `${testid}-suggestions` : null}
+      onpick={takeHint}
+      onmark={(index) => (hint = index)}
+    />
+  {/if}
   {#if options !== null}
     <div
       class="options"

@@ -10,6 +10,7 @@
   import RadioList from '$components/RadioList.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
+  import { vocabularyOf } from '$components/Suggestions.svelte';
   import Tabs from '$components/Tabs.svelte';
   import TextArea from '$components/TextArea.svelte';
   import TextField from '$components/TextField.svelte';
@@ -54,6 +55,9 @@
   let focus = $state([...t.chipsShownValues]);
   let answer = $state('');
   let day = $state<string | null>('2026-11-01');
+  /** A field that suggests the chips' sample words while typing. */
+  const sampleWords = vocabularyOf([...t.chipValues, ...t.chipsShownValues]);
+  let term = $state('');
   /** The copies of "Sicherung wiederherstellen": a day, the day before, one before an update. */
   const copies = $derived(
     (
@@ -192,6 +196,7 @@
       <TextField kind="search" label={t.search} placeholder={t.search} bind:value={empty} />
       <TextField label={t.address} bind:value={address} disabled />
       <Calendar value={day} onpick={(picked) => (day = picked)} />
+      <TextField label={t.chips} bind:value={term} suggestions={sampleWords} />
     </div>
     <div class="stack">
       <Field label={t.chips} for="gallery-chips" hint={t.chipsHint}>

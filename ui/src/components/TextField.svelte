@@ -11,7 +11,9 @@
   With `options` (the languages of the profile) it suggests while typing, like the countries
   field: the options whose names start with the text drop down under it, the arrows move the
   one mark, Enter or a click takes the marked one, Esc closes the list; any other text stays
-  as typed (the field takes free text).
+  as typed (the field takes free text). With `suggestions` (the engine's words, a
+  competence) it suggests terms the same way (Suggestions.svelte), but nothing is marked
+  until the arrows or the pointer mark one: Enter without a mark goes on to the form.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -21,8 +23,9 @@
   import { describedBy } from '$lib/state/described';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
-  import { folded, suggested, type ChipOption } from './ChipInput.svelte';
+  import { suggested, type ChipOption } from './ChipInput.svelte';
   import Icon from './Icon.svelte';
+  import Suggestions, { folded, suggest, type Vocabulary } from './Suggestions.svelte';
 
   interface Props {
     value: string;
@@ -38,6 +41,8 @@
     describedby?: string | null;
     /** Names to suggest while typing (free text stays possible). */
     options?: readonly ChipOption[] | null;
+    /** Terms to suggest while typing, none marked at first (null: not loaded yet). */
+    suggestions?: Vocabulary | null | undefined;
     testid?: string | null;
     oninput?: (value: string) => void;
   }
@@ -52,6 +57,7 @@
     disabled = false,
     describedby = null,
     options = null,
+    suggestions = undefined,
     testid = null,
     oninput,
   }: Props = $props();
@@ -83,10 +89,26 @@
     closed = true;
   }
 
+  /** The suggested terms (none while the list is closed) and the marked one (-1: none). */
+  let hint = $state(-1);
+  const hints = $derived(suggestions && focused && !closed ? suggest(suggestions, value) : []);
+  const suggesting = $derived(suggestions !== undefined);
+
+  function takeHint(term: string): void {
+    update(term);
+    closed = true;
+    hint = -1;
+  }
+
   /** Enter takes the marked option, Esc closes the list, the arrows move the mark; with
    *  no list every key goes on to the field and the form. */
   const suggestKeys: ChipKeyHandlers = {
     commit: () => {
+      const term = hints[hint];
+      if (term !== undefined) {
+        takeHint(term);
+        return true;
+      }
       const option = listed ? (found[active] ?? found[0]) : undefined;
       if (option === undefined) return false;
       take(option);
@@ -94,19 +116,24 @@
     },
     removeLast: () => false,
     clear: () => {
-      if (!listed) return false;
+      if (!listed && hints.length === 0) return false;
       closed = true;
       return true;
     },
     step: (by) => {
+      if (hints.length > 0) {
+        // Through the terms and back to none (the typed text).
+        hint = hint + by < -1 ? hints.length - 1 : hint + by >= hints.length ? -1 : hint + by;
+        return true;
+      }
       if (!listed) return false;
       active = (active + by + found.length) % found.length;
       return true;
     },
   };
   /** The keys of the list only for a field that suggests. */
-  const suggesting: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =>
-    options === null ? undefined : chipKeys(node, handlers);
+  const listKeys: Action<HTMLElement, ChipKeyHandlers> = (node, handlers) =>
+    options === null && suggestions === undefined ? undefined : chipKeys(node, handlers);
 
   function clear(): void {
     update('');
@@ -155,21 +182,26 @@
     placeholder={placeholder ?? undefined}
     {disabled}
     data-testid={testid ?? undefined}
-    role={options !== null ? 'combobox' : undefined}
-    aria-autocomplete={options !== null ? 'list' : undefined}
-    aria-expanded={options !== null ? listed : undefined}
-    aria-controls={options !== null ? `${own}-options` : undefined}
-    aria-activedescendant={listed ? `${own}-option-${active}` : undefined}
+    role={options !== null || suggesting ? 'combobox' : undefined}
+    aria-autocomplete={options !== null || suggesting ? 'list' : undefined}
+    aria-expanded={options !== null ? listed : suggesting ? hints.length > 0 : undefined}
+    aria-controls={options !== null ? `${own}-options` : suggesting ? `${own}-hints` : undefined}
+    aria-activedescendant={listed
+      ? `${own}-option-${active}`
+      : hints[hint] !== undefined
+        ? `${own}-hints-${hint}`
+        : undefined}
     spellcheck={FIELD_ATTRIBUTES.spellcheck}
     autocorrect={FIELD_ATTRIBUTES.autocorrect}
     autocapitalize={FIELD_ATTRIBUTES.autocapitalize}
     autocomplete={FIELD_ATTRIBUTES.autocomplete}
-    use:suggesting={suggestKeys}
+    use:listKeys={suggestKeys}
     onfocus={() => (focused = true)}
     onblur={() => (focused = false)}
     oninput={(event) => {
       closed = false;
       active = 0;
+      hint = -1;
       update(event.currentTarget.value);
     }}
   />
@@ -199,6 +231,17 @@
         </button>
       {/each}
     </div>
+  {/if}
+  {#if suggesting}
+    <Suggestions
+      id="{own}-hints"
+      items={hints}
+      active={hint}
+      label={label ?? placeholder}
+      testid={testid ? `${testid}-suggestions` : null}
+      onpick={takeHint}
+      onmark={(index) => (hint = index)}
+    />
   {/if}
   {#if kind === 'password'}
     <span class="trail">
