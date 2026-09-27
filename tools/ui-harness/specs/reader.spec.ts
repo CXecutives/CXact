@@ -1345,6 +1345,27 @@ test.describe('the ad', () => {
   });
 });
 
+test('while a job loads, the reader stands in its shape as placeholders', async ({ page }) => {
+  await open(page, WIN);
+  await settle(page);
+  await slowDetails(page, 1500);
+  await row(page, 'freelancermap-2801').click();
+  const skeleton = stage(page).getByTestId('reader-skeleton');
+  await expect(skeleton).toBeVisible();
+  // The title, the ring, the actions, rows of the Jobdetails and lines of the ad.
+  await expect(skeleton.getByTestId('skeleton-title')).toBeVisible();
+  await expect(skeleton.locator('.skeleton.circle')).toHaveCount(1);
+  expect(await skeleton.getByTestId('skeleton-row').count()).toBeGreaterThanOrEqual(4);
+  expect(await skeleton.getByTestId('skeleton-line').count()).toBeGreaterThanOrEqual(4);
+  const placeholder = (await skeleton.getByTestId('skeleton-title').boundingBox())!;
+  // The job takes its place: its title starts where the placeholder's did.
+  await expect(stage(page).getByTestId('reader-title')).toBeVisible({ timeout: 5000 });
+  await expect(stage(page).getByTestId('reader-skeleton')).toHaveCount(0);
+  const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
+  expect(Math.abs(placeholder.x - title.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(placeholder.y - title.y)).toBeLessThanOrEqual(8);
+});
+
 test('switching jobs fades the old one out before the new one comes in', async ({ page }) => {
   await openAt(page, 'freelancermap-2801');
   // Every frame from the click on: how many stages show at once, and whether two were there.
