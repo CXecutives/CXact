@@ -310,6 +310,38 @@ test.describe('header', () => {
     expect((await page.getByTestId('list-scroll').boundingBox())!.y).toBe(top);
   });
 
+  test('a fetch into an empty Eingang leaves no empty band: the search row stands above the run line', async ({
+    page,
+  }) => {
+    for (const platform of [WIN, MAC]) {
+      // Where the search stands under the tabs in a list with jobs.
+      await open(page, platform);
+      const under = async (): Promise<number> => {
+        const tabs = (await page.getByTestId('places').boundingBox())!;
+        return (await page.getByTestId('search').boundingBox())!.y - (tabs.y + tabs.height);
+      };
+      const usual = await under();
+      await open(page, `${platform}&scenario=empty&tick=40`);
+      await expect(page.getByTestId('search')).toHaveCount(0);
+      await page.evaluate(() => (window.__harness.holdAfter = 4));
+      await page.getByTestId('fetch').click();
+      const line = page.getByTestId('run-line');
+      await expect(line).toBeVisible();
+      // The row under the tabs holds the search and the funnel; the run line follows it.
+      const search = (await page.getByTestId('search').boundingBox())!;
+      await expect(funnel(page)).toBeVisible();
+      await animationsDone(page);
+      const at = (await line.boundingBox())!;
+      expect(at.y - (search.y + search.height)).toBeLessThanOrEqual(16);
+      expect(Math.abs((await under()) - usual)).toBeLessThan(1);
+      // The first jobs come in: nothing above them moves.
+      await page.evaluate(() => (window.__harness.holdAfter = null));
+      await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(0);
+      expect((await page.getByTestId('search').boundingBox())!.y).toBe(search.y);
+      await runFinished(page);
+    }
+  });
+
   test('a list that did not load says so with a retry; the header has no tools', async ({
     page,
   }) => {

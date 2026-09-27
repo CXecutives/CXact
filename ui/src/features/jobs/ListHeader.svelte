@@ -16,14 +16,17 @@
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
   sets none), the one control of the order and the filter: its menu holds, under small
-  headings, "Sortierung" (Nach Übereinstimmung, Nach Datum), then the filter table
-  (lib/state/filter.ts: Portal, Übereinstimmung, Vertragsart, then "Nur remote" as a switch
-  of its own; the portals in the UI's order, lib/portals.ts), and "Filter zurücksetzen" at
-  the end, off while no filter is on (so the menu never changes its height). The menu stays
-  open while choosing (several groups in one go, the check marks move with each choice) and
-  closes on a press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a
-  usable profile the order and the bands are off, saying why. A place that holds nothing has
-  nothing to search, order or filter: the row stays, empty. While a filter is on, its parts
+  headings, "Sortierung" (Nach Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter
+  table (lib/state/filter.ts: Portal, Übereinstimmung, Vertragsart, the work mode, the pay
+  floor, then "Nur neue" and "Frist in 7 Tagen" as switches of their own; the portals in the
+  UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter is
+  on (so the menu never changes its height). The menu stays open while choosing (several
+  groups in one go, the check marks move with each choice) and closes on a press outside,
+  Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable profile the order and
+  the bands are off, saying why. A place that holds nothing has nothing to search, order or
+  filter: the row stays, empty; while a fetch fills the Eingang its tools stand already (no
+  empty band above the run line, nothing moves when the first jobs come). While a filter is
+  on, its parts
   stand as small chips under the row, each with its × (the row unfolds and folds away, the
   list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
   what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
@@ -81,9 +84,14 @@
   }
 
   /** The search and the funnel: while the place holds jobs (or a search or a filter is on,
-   *  to be taken off); a list that did not load has nothing to order. */
+   *  to be taken off, or a fetch fills the Eingang); a list that did not load has nothing to
+   *  order. */
   const tools = $derived(
-    jobs.status !== 'error' && (totals[place] > 0 || jobs.search.trim() !== '' || jobs.filtered),
+    jobs.status !== 'error' &&
+      (totals[place] > 0 ||
+        jobs.search.trim() !== '' ||
+        jobs.filtered ||
+        (run.fetching && place === 'inbox')),
   );
 
   let searchBox = $state<HTMLElement | null>(null);
