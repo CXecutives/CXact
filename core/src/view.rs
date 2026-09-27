@@ -882,21 +882,6 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
     })
 }
 
-/// The jobs of the company a job names (its `company` as the list shows it) whose alert mail
-/// came in the last `days` days, the job itself included; the trash and duplicates left
-/// out, the name compared without case, punctuation and legal forms ("GmbH").
-pub fn company_count(
-    store: &Store,
-    company: &str,
-    days: u32,
-    now: Timestamp,
-) -> crate::Result<u32> {
-    let since = now
-        .checked_sub(jiff::SignedDuration::from_hours(24 * i64::from(days)))
-        .unwrap_or(Timestamp::UNIX_EPOCH);
-    store.company_count(company, since)
-}
-
 /// An alert mail of a run without recognised jobs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1947,37 +1932,48 @@ mod tests {
         assert_eq!(page(&["interim"], true), ["A"]);
     }
 
-    /// The jobs of a company however a mail wrote it, in its window only; at 2,000 jobs it
-    /// takes moments, not seconds.
+    /// A page with every filter on takes moments at 2,000 jobs, not seconds.
     #[test]
-    fn the_company_count_is_quick_at_2000_jobs() {
+    fn a_filtered_page_is_quick_at_2000_jobs() {
         let store = Store::in_memory().unwrap();
         let now = Timestamp::now();
         let run = store.begin_run().unwrap();
+        let mut matches = Vec::new();
         for i in 0..2000_i64 {
             let link = job_link(&format!(
                 "https://www.linkedin.com/jobs/view/{}/",
                 4_100_000_000 + i
             ))
             .unwrap();
-            let company = if i % 2 == 0 {
-                format!("FIRMA {} GmbH", i % 97)
+            let location = if i % 2 == 0 {
+                "Remote"
             } else {
-                format!("Firma {}", i % 97)
+                "Köln (Hybrid)"
             };
-            let posting = Posting::new(link.key.clone(), link.url, "Rolle", &company, "Remote");
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", location);
             let mail = MailRef {
                 subject: "x",
                 date: Some(now - jiff::SignedDuration::from_hours(i % 60 * 24)),
                 gmail_id: None,
             };
             store.upsert_posting(run, &posting, mail, now).unwrap();
+            let mut m = record(MatchStatus::Scored, 70);
+            m.facts.contract = Some(if i % 3 == 0 { "interim" } else { "permanent" }.into());
+            matches.push((link.key, m));
         }
+        store.save_matches(&matches, "r", now).unwrap();
+        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        q.contracts = vec!["interim".into()];
+        q.remote_only = true;
+        q.min_band = Some(Band::Mid);
         let started = std::time::Instant::now();
-        let month = company_count(&store, "Firma 3", 30, now).unwrap();
+        let page = job_page(&store, &q).unwrap();
         let took = started.elapsed();
-        let longer = company_count(&store, "Firma 3", 90, now).unwrap();
-        assert!(month > 0 && longer > month, "{month} {longer}");
+        assert_eq!(
+            page.counts.inbox, 334,
+            "every sixth job: interim and remote"
+        );
+        assert_eq!(page.jobs.len(), 50);
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
 

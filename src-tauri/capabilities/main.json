@@ -39,7 +39,6 @@
     "allow-restore-backup",
     "allow-report-ui-error",
     "allow-clipboard-text",
-    "allow-company-count",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
     "core:resources:allow-close"

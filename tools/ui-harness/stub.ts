@@ -1082,8 +1082,6 @@ function refresh(): void {
   state.counts = countsOf(jobs);
 }
 
-const DAY_MS = 24 * HOUR;
-
 /** Moves jobs to a place; returns how many moved. */
 /** Moves jobs to a place; returns the keys that really moved (store::move_jobs). */
 function moveJobs(keys: JobKey[], to: Place): JobKey[] {
@@ -1679,12 +1677,6 @@ const handlers: Handlers = {
   move_jobs: ({ keys, to }) => moveJobs(keys, to),
   move_back: ({ jobs: back }) => moveBack(back),
   restore_jobs: ({ keys }) => restoreJobs(keys),
-  company_count: ({ company, days }) => {
-    const since = Date.now() - days * DAY_MS;
-    return jobs.filter(
-      (j) => j.company === company && Date.parse(j.firstSeenAt) >= since && j.place !== 'trash',
-    ).length;
-  },
   // "Fits anyway": scored with its fit score and the note `userOverride`; taken back, the
   // engine's verdict again (store::set_override, view::JobView).
   set_override: ({ key, include }) => {

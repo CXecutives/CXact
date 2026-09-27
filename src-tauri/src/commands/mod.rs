@@ -69,7 +69,6 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         app::restore_backup,
         app::report_ui_error,
         app::clipboard_text,
-        jobs::company_count,
     ]
 }
 
