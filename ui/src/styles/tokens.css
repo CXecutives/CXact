@@ -16,8 +16,8 @@
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
  *
  * What is not the page takes its colours from here too: `npm run regen` (tools/tokens.mjs,
- * then tools/icon.py) writes the colour tokens into core/src/export/palette.rs (the report,
- * the Excel file, the Windows title bar), tools/palette.json (the app icon) and the window's
+ * then tools/icon.py) writes the colour tokens into core/src/export/palette.rs (the Excel
+ * file, the window), tools/palette.json (the app icon) and the window's
  * backgroundColor (src-tauri/tauri*.conf.json). core/tests/palette.rs and `npm run check`
  * fail while one of them is stale.
  *
@@ -110,8 +110,8 @@
   --p-score-low: 30 5% 56%;
   --p-score-low-text: 30 4% 42%;
   /* The ring colour in ten steps by decile of the score (0-9 ... 90-100), red through
-     orange and yellow to green, clean and not neon (computed in OKLCH). The report and the
-     Excel file take the same steps (--score-ring-*, core/src/export/scale.rs). */
+     orange and yellow to green, clean and not neon (computed in OKLCH). The Excel file takes
+     the same steps (--score-ring-*, core/src/export/scale.rs). */
   --p-score-0: 4 62% 58%;
   --p-score-1: 13 69% 58%;
   --p-score-2: 19 75% 58%;
@@ -755,10 +755,10 @@
    without gradients. A palette sets the palette entries under Coast's names, so every role
    follows, and then the few roles whose part differs from Coast. Primer has one accent:
    coral (act, new, where you are) and navy (focus, links, progress, filters) both hold its
-   blue here. What is not the page stays on Coast (the report, the Excel file, the app icon:
-   tools/tokens.mjs reads the :root block for them), except the window and the Windows title
-   bar, which wear --bg, --text and --text-subtle of the chosen palette (tools/tokens.mjs
-   writes them per palette into core/src/export/palette.rs). `node tools/tokens.mjs --check`
+   blue here. What is not the page stays on Coast (the Excel file, the app icon:
+   tools/tokens.mjs reads the :root block for them), except the window, which wears --bg of
+   the chosen palette (tools/tokens.mjs writes it per palette into
+   core/src/export/palette.rs; the top bar is the page's own). `node tools/tokens.mjs --check`
    measures every text on its backgrounds in all three palettes (WCAG AA). */
 
 :root[data-palette='light'] {

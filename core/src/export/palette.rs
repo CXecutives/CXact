@@ -2,8 +2,8 @@
 //! tokens.css and run `npm run regen` (docs/CHANGING.md, "Change the look").
 //!
 //! The colours of the app that something besides the page wears: the Excel file, the
-//! window and the Windows title bar (src-tauri) and the app icon. Each constant is a colour
-//! token of tokens.css, resolved to its palette entry (the doc comment names the chain);
+//! window (src-tauri) and the app icon. Each constant is a colour token of tokens.css,
+//! resolved to its palette entry (the doc comment names the chain);
 //! `core/tests/palette.rs` fails when this file no longer says what tokens.css says.
 
 pub use super::colour::Colour;
@@ -80,7 +80,5 @@ pub const LIGHT_BG: Colour = Colour::new("hsl(210 28.6% 97.3%)", [0xF6, 0xF8, 0x
 pub const DARK_BG: Colour = Colour::new("hsl(218 80% 2%)", [0x01, 0x04, 0x09]);
 
 /// The constants above by palette and token.
-pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] = [
-    ("light", "bg", LIGHT_BG),
-    ("dark", "bg", DARK_BG),
-];
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] =
+    [("light", "bg", LIGHT_BG), ("dark", "bg", DARK_BG)];

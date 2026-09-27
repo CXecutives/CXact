@@ -222,10 +222,11 @@ function item(head, value) {
   return line.length <= WIDTH ? line : `${head} =\n    ${value};`;
 }
 
-/** An array literal as rustfmt writes it: one line when it fits, else one entry a line. */
+/** An array literal as rustfmt writes it: a short one (its `array_width`, 60) on one line,
+ *  after the `=` where the head leaves no room for it; else one entry a line. */
 function array(head, entries) {
-  const line = `${head} = [${entries.join(', ')}];`;
-  if (line.length <= WIDTH && entries.join(', ').length <= 60) return line;
+  const inline = entries.join(', ');
+  if (inline.length <= 60) return item(head, `[${inline}]`);
   return `${head} = [\n${entries.map((e) => `    ${e},\n`).join('')}];`;
 }
 
@@ -269,8 +270,8 @@ function rust(all, windows) {
     '//! tokens.css and run `npm run regen` (docs/CHANGING.md, "Change the look").',
     '//!',
     '//! The colours of the app that something besides the page wears: the Excel file, the',
-    '//! window and the Windows title bar (src-tauri) and the app icon. Each constant is a colour',
-    '//! token of tokens.css, resolved to its palette entry (the doc comment names the chain);',
+    '//! window (src-tauri) and the app icon. Each constant is a colour token of tokens.css,',
+    '//! resolved to its palette entry (the doc comment names the chain);',
     '//! `core/tests/palette.rs` fails when this file no longer says what tokens.css says.',
     '',
     'pub use super::colour::Colour;',
