@@ -5,66 +5,52 @@
 // the JobQuery), another word one in the catalog. The filter is the same in every
 // place (Eingang, Archiv, Papierkorb) and kept per user like the order. The order of the list
 // (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
-// sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists only its
-// choices, none is checked while it filters nothing: a choice is checked while it is on,
-// another one of its group takes over, a second choice turns it off. Portal, Übereinstimmung
-// and Vertragsart stand under a heading, the work mode and the pay floor speak for
-// themselves, "Nur neue" is a switch of its own (the menu fits under the funnel in the usual
-// window). The pay floor compares a job with the profile (`FilterContext`): one the profile
-// does not name is not offered. There is no deadline filter (user decision 2026-09-27): a
-// deadline close by stands in red in the row (`soonDeadline`).
+// sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists every value of
+// its dimension or is not there at all (user decision 2026-09-27): Portal, Übereinstimmung
+// (Hoch, Mittel, Gering), Vertragsart and Arbeitsmodell (Remote, Hybrid, Vor Ort) under a
+// heading, "Nur neue" a switch of its own. None is checked while a group filters nothing: a
+// choice is checked while it is on, another one of its group takes over, a second click
+// turns it off. There is no deadline and no pay filter: the reader's Jobdetails name the
+// deadline, the order by Tagessatz stays.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
 import type { Catalog } from '../i18n/de';
-import type { Band, JobQuery, JobSort, JobView, Portal } from '../ipc/types';
-
-/** The lowest band the filter asks for: `mid` lists the mid and the high band. */
-export type FilterBand = Exclude<Band, 'low'>;
+import type { Band, JobQuery, JobSort, JobView, Portal, WorkMode } from '../ipc/types';
 
 /** The contract types the filter offers (KeyFacts.contract). */
 export const CONTRACTS = ['interim', 'freelance', 'permanent', 'anue'] as const;
 export type ContractCode = (typeof CONTRACTS)[number];
 
-/** The work mode the filter asks for: remote only, or remote and hybrid. */
-export type WorkChoice = 'remote' | 'hybrid';
-/** The pay floor the filter asks for: the profile's minimum or wished day rate. */
-export type PayChoice = 'min' | 'wish';
+/** The bands the filter offers, the highest first. */
+export const BANDS: readonly Band[] = ['high', 'mid', 'low'];
+
+/** The work modes the filter offers. */
+export const WORK_MODES: readonly WorkMode[] = ['remote', 'hybrid', 'onsite'];
 
 /** The filter: each group's choice, null = none (`toQuery` hands it to the JobQuery). */
 export interface ListFilter {
   /** Only this portal's jobs. */
   portal: Portal | null;
-  /** Only jobs scored in this band or better (unscored and excluded jobs never pass). */
-  minBand: FilterBand | null;
+  /** Only jobs scored in this band (unscored and excluded jobs never pass). */
+  band: Band | null;
   /** Only jobs of this contract type. */
   contract: ContractCode | null;
-  /** Only fully remote jobs, or remote and hybrid ones. */
-  remote: WorkChoice | null;
-  /** Only jobs whose pay reaches this floor of the profile (employment: its salary floor). */
-  pay: PayChoice | null;
+  /** Only jobs of this work mode (`workModeOf`; a job of no known mode never passes). */
+  workMode: WorkMode | null;
   /** Only the jobs not opened yet ("Nur neue"). */
   unread: true | null;
 }
 
 export const NO_FILTER: ListFilter = {
   portal: null,
-  minBand: null,
+  band: null,
   contract: null,
-  remote: null,
-  pay: null,
+  workMode: null,
   unread: null,
 };
 
-/** What the pay floor of the filter compares a job with: the profile's pay floors (null: the
- *  profile names none). */
-export interface FilterContext {
-  minDayRate: number | null;
-  wishDayRate: number | null;
-  minSalary: number | null;
-}
-
-/** How many days ahead a deadline counts as close by (core::view::DEADLINE_DAYS). */
+/** How many days ahead a deadline counts as close by. */
 const DEADLINE_DAYS = 7;
 
 /** The local calendar day of `date`, `days` on, as an ISO date (`2026-09-24`). */
@@ -84,39 +70,27 @@ export function soonDeadline(job: JobView, today: string): string | null {
   return deadline >= today && deadline <= last ? deadline : null;
 }
 
-/** Employment pays a salary, no day rate (the list row's pay, core's store::EMPLOYMENT). */
-const employed = (job: JobView): boolean =>
-  job.match?.facts.contract === 'permanent' || job.match?.facts.contract === 'anue';
-
-/** The day rate the ad states in euros (an hourly rate times 8); null for employment, a rate
- *  in another currency and without one (core's store::day_rate). */
-function dayRate(job: JobView): number | null {
+/** The work mode of a job as its Jobdetails name it (core's store::filter_condition): the
+ *  remote share the ad states first (all of it remote, none of it on site, anything between
+ *  hybrid), the location's work mode only without one; null when neither says. */
+export function workModeOf(job: JobView): WorkMode | null {
   const facts = job.match?.facts ?? null;
-  if (facts === null || facts.rate === null || employed(job)) return null;
-  if (facts.currency !== null && facts.currency !== 'EUR') return null;
-  return facts.hourly === true ? facts.rate * 8 : facts.rate;
+  const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;
+  const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
+  if (from === null || to === null) return job.workMode;
+  return from >= 100 ? 'remote' : to <= 0 ? 'onsite' : 'hybrid';
 }
-
-/** The day rate floor of a pay choice. */
-const payFloor = (pay: PayChoice, context: FilterContext): number | null =>
-  pay === 'min' ? context.minDayRate : context.wishDayRate;
 
 /** The filter's part of a JobQuery. */
 export function toQuery(
   filter: ListFilter,
-  context: FilterContext,
 ): Omit<JobQuery, 'place' | 'sort' | 'search' | 'limit' | 'offset'> {
   return {
     unread: filter.unread === true,
     portal: filter.portal,
-    minBand: filter.minBand,
+    band: filter.band,
     contracts: filter.contract === null ? [] : [filter.contract],
-    remoteOnly: filter.remote === 'remote',
-    remoteOrHybrid: filter.remote === 'hybrid',
-    minDayRate: filter.pay === null ? null : payFloor(filter.pay, context),
-    minSalary: filter.pay === null ? null : context.minSalary,
-    // The backend still reads it; the list offers no deadline filter.
-    deadlineSoon: false,
+    workMode: filter.workMode,
   };
 }
 
@@ -127,11 +101,9 @@ export interface FilterEntry<K extends keyof ListFilter = keyof ListFilter> {
   value: ListFilter[K];
   /** Its words in the menu, under the group's heading. */
   label: (words: Catalog) => string;
-  /** Its words as a chip, where the menu's short words need their heading ("Ab mittel"
-   *  under "Übereinstimmung" is the chip "Ab mittlerer Übereinstimmung"); else the label. */
+  /** Its words as a chip, where the menu's short words need their heading ("Mittel" under
+   *  "Übereinstimmung" is the chip "Mittlere Übereinstimmung"); else the label. */
   chip?: (words: Catalog) => string;
-  /** Whether the menu offers it now (a pay floor the profile names); always without. */
-  offered?: (context: FilterContext) => boolean;
 }
 
 export interface FilterGroup<K extends keyof ListFilter = keyof ListFilter> {
@@ -147,7 +119,7 @@ export interface FilterGroup<K extends keyof ListFilter = keyof ListFilter> {
   /** A kept value this group can hold. */
   valid(value: unknown): boolean;
   /** Whether a job passes a choice (the backend's store::filter_condition). */
-  passes(job: JobView, value: NonNullable<ListFilter[K]>, context: FilterContext): boolean;
+  passes(job: JobView, value: NonNullable<ListFilter[K]>): boolean;
 }
 
 /** The orders of every list, the funnel menu's first group in its order. */
@@ -155,9 +127,6 @@ export const SORTS: readonly JobSort[] = ['match', 'newest', 'rate'];
 
 /** The id of an order in the funnel's menu (its test id `menu-item-sort-<order>`). */
 export const sortEntryId = (sort: JobSort): string => `sort-${sort}`;
-
-/** The bands each lowest band of the filter lets through. */
-const BAND_FROM: Record<FilterBand, Band[]> = { mid: ['mid', 'high'], high: ['high'] };
 
 const PORTAL: FilterGroup<'portal'> = {
   key: 'portal',
@@ -173,20 +142,20 @@ const PORTAL: FilterGroup<'portal'> = {
   passes: (job, portal) => job.key.portal === portal,
 };
 
-const BAND: FilterGroup<'minBand'> = {
-  key: 'minBand',
+const BAND: FilterGroup<'band'> = {
+  key: 'band',
   heading: (w) => w.toolbar.bandHeading,
   entries: () =>
-    (['mid', 'high'] as const).map((band) => ({
+    BANDS.map((band) => ({
       id: `band-${band}`,
       value: band,
       label: (w) => w.toolbar.band[band],
-      chip: (w) => w.toolbar.bandChip[band],
+      chip: (w) => w.score.band[band],
     })),
   needsProfile: (w) => w.toolbar.bandNoProfile,
-  valid: (value) => value === 'mid' || value === 'high',
+  valid: (value) => BANDS.includes(value as Band),
   passes: (job, band) =>
-    job.match !== null && job.match.status === 'scored' && BAND_FROM[band].includes(job.match.band),
+    job.match !== null && job.match.status === 'scored' && job.match.band === band,
 };
 
 const CONTRACT: FilterGroup<'contract'> = {
@@ -203,50 +172,18 @@ const CONTRACT: FilterGroup<'contract'> = {
   passes: (job, contract) => job.match?.facts.contract === contract,
 };
 
-const REMOTE: FilterGroup<'remote'> = {
-  key: 'remote',
-  heading: null,
-  entries: () => [
-    { id: 'remote-only', value: 'remote', label: (w) => w.toolbar.remoteOnly },
-    { id: 'remote-hybrid', value: 'hybrid', label: (w) => w.toolbar.remoteOrHybrid },
-  ],
-  needsProfile: null,
-  valid: (value) => value === 'remote' || value === 'hybrid',
-  // As the backend: the share the ad states first, the location's work mode only without one.
-  passes: (job, mode) => {
-    const facts = job.match?.facts;
-    if (mode === 'remote') {
-      const share = facts?.remoteFrom ?? facts?.remoteTo ?? null;
-      return share === null ? job.workMode === 'remote' : share >= 100;
-    }
-    const most = facts?.remoteTo ?? facts?.remoteFrom ?? null;
-    return most === null ? job.workMode === 'remote' || job.workMode === 'hybrid' : most > 0;
-  },
-};
-
-const PAY: FilterGroup<'pay'> = {
-  key: 'pay',
-  heading: null,
+const WORK_MODE: FilterGroup<'workMode'> = {
+  key: 'workMode',
+  heading: (w) => w.toolbar.workHeading,
   entries: () =>
-    (['min', 'wish'] as const).map((pay) => ({
-      id: `pay-${pay}`,
-      value: pay,
-      label: (w) => w.toolbar.pay[pay],
-      offered: (context) => payFloor(pay, context) !== null,
+    WORK_MODES.map((mode) => ({
+      id: `mode-${mode}`,
+      value: mode,
+      label: (w) => w.toolbar.work[mode],
     })),
   needsProfile: null,
-  valid: (value) => value === 'min' || value === 'wish',
-  // As the backend: employment by its salary, any other job by its day rate in euros; a job
-  // without a stated pay, or without a floor for its kind, never passes.
-  passes: (job, pay, context) => {
-    if (employed(job)) {
-      const salary = job.match?.facts.salary ?? null;
-      return salary !== null && context.minSalary !== null && salary >= context.minSalary;
-    }
-    const rate = dayRate(job);
-    const floor = payFloor(pay, context);
-    return rate !== null && floor !== null && rate >= floor;
-  },
+  valid: (value) => WORK_MODES.includes(value as WorkMode),
+  passes: (job, mode) => workModeOf(job) === mode,
 };
 
 const UNREAD: FilterGroup<'unread'> = {
@@ -259,23 +196,7 @@ const UNREAD: FilterGroup<'unread'> = {
 };
 
 /** The groups of the filter in the menu's order (and the chips'). */
-export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, CONTRACT, REMOTE, PAY, UNREAD];
-
-/** The entries of a group the menu offers now. */
-export function offeredEntries<K extends keyof ListFilter>(
-  group: FilterGroup<K>,
-  portals: readonly Portal[],
-  context: FilterContext,
-): FilterEntry<K>[] {
-  return group.entries(portals).filter((entry) => entry.offered?.(context) ?? true);
-}
-
-/** The filter as it applies: a pay floor the profile does not name any more is none. */
-export function applicable(filter: ListFilter, context: FilterContext): ListFilter {
-  return filter.pay !== null && payFloor(filter.pay, context) === null
-    ? { ...filter, pay: null }
-    : filter;
-}
+export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, CONTRACT, WORK_MODE, UNREAD];
 
 /** Some part of the filter is chosen. */
 export function isFiltered(filter: ListFilter): boolean {
@@ -289,7 +210,7 @@ export interface ActiveFilter {
 }
 
 /** The chosen parts of the filter in the chips' words, group by group ("linkedin.com",
- *  "Ab mittlerer Übereinstimmung", "Nur remote"). */
+ *  "Mittlere Übereinstimmung", "Remote"). */
 export function activeFilters(
   filter: ListFilter,
   portals: readonly Portal[],
@@ -307,20 +228,20 @@ export function activeFilters(
 
 /** Does a job pass the filter (the backend's store::filter_condition)? It narrows the list
  *  and its counts alike. */
-export function passesFilter(job: JobView, filter: ListFilter, context: FilterContext): boolean {
+export function passesFilter(job: JobView, filter: ListFilter): boolean {
   return FILTER_GROUPS.every((group) => {
     const value = filter[group.key];
-    return value === null || group.passes(job, value as never, context);
+    return value === null || group.passes(job, value as never);
   });
 }
 
-/** A kept filter (localStorage): each part a group can hold, none for anything else (a kept
- *  "Nur remote" of an earlier version is the remote choice of Arbeitsmodell). */
+/** A kept filter (localStorage): each part a group can hold, none for anything else (the
+ *  parts of an earlier version, a lowest band, "Nur remote", a pay floor, are none). */
 export function parseFilter(kept: unknown): ListFilter {
   const parts = typeof kept === 'object' && kept !== null ? (kept as Record<string, unknown>) : {};
   const filter: Record<string, unknown> = { ...NO_FILTER };
   for (const group of FILTER_GROUPS) {
-    const value = group.key === 'remote' && parts.remote === true ? 'remote' : parts[group.key];
+    const value = parts[group.key];
     if (group.valid(value)) filter[group.key] = value;
   }
   return filter as unknown as ListFilter;

@@ -123,12 +123,12 @@ test('the end toast names the new jobs of the high band; Zeigen lists them, chip
   await toast.getByTestId('toast-action').click();
   // The Eingang, the jobs not opened yet of the high band: the new high one among them.
   await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('band-high', 'unread-only'));
-  expect(await lastQuery(page)).toMatchObject({ place: 'inbox', unread: true, minBand: 'high' });
-  const { active } = await stubList(page, { unread: true, minBand: 'high' });
+  expect(await lastQuery(page)).toMatchObject({ place: 'inbox', unread: true, band: 'high' });
+  const { active } = await stubList(page, { unread: true, band: 'high' });
   expect(active).toContain('linkedin-4100200399');
   await expect.poll(() => listed(page)).toEqual(active);
   // Each chip takes its part off.
-  await chip(page, 'minBand').click();
+  await chip(page, 'band').click();
   await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
   await expect.poll(() => listed(page)).toEqual((await stubList(page, { unread: true })).active);
 });
@@ -144,7 +144,7 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('search')).toHaveValue('');
-  expect(await lastQuery(page)).toMatchObject({ search: null, unread: true, minBand: 'high' });
+  expect(await lastQuery(page)).toMatchObject({ search: null, unread: true, band: 'high' });
 });
 
 test('a portal the fetch paused is said once in the run line, with its ×', async ({ page }) => {

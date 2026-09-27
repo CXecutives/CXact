@@ -3,6 +3,7 @@ import type { Band } from "./Band";
 import type { JobSort } from "./JobSort";
 import type { Place } from "./Place";
 import type { Portal } from "./Portal";
+import type { WorkMode } from "./WorkMode";
 
 /**
  * Which jobs the list shows: the jobs of one place, optionally only the unread ones.
@@ -23,10 +24,10 @@ sort: JobSort, search: string | null,
  */
 portal: Portal | null, 
 /**
- * The filter: only jobs scored in this band or better (`mid` = mid and high, `high` =
- * high only); unscored and excluded jobs pass only with `null`.
+ * The filter: only jobs scored in this band (`high`, `mid` or `low`); unscored and
+ * excluded jobs pass only with `null`.
  */
-minBand: Band | null, 
+band: Band | null, 
 /**
  * The filter: only jobs of these contract types, as the engine read them
  * (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
@@ -34,27 +35,12 @@ minBand: Band | null,
  */
 contracts: Array<string>, 
 /**
- * The filter: only remote jobs, as the job details say it - the remote share the ad
- * states is 100 %, or, where it states none, the location names the work mode remote.
+ * The filter: only jobs of this work mode, as the job details say it - the remote share
+ * the ad states first (100 % remote, 0 % on site, anything between hybrid), the
+ * location's work mode only where it states none; a job whose mode is unknown passes
+ * none. `null` = every job.
  */
-remoteOnly: boolean, 
-/**
- * The filter: only remote or hybrid jobs - the highest remote share the ad states is
- * above 0 %, or, where it states none, the location names the work mode remote or hybrid.
- */
-remoteOrHybrid: boolean, 
-/**
- * The filter: only jobs whose pay reaches the profile's floor - the day rate in euros
- * (an hourly rate times 8) at least `min_day_rate`, for employment (`permanent`,
- * `anue`) the annual salary at least `min_salary`. A job without a stated pay, or of a
- * kind whose floor is `null`, does not pass; both `null` = no pay filter.
- */
-minDayRate: number | null, minSalary: number | null, 
-/**
- * The filter: only jobs whose application deadline (`KeyFacts.deadline`) is today or
- * within the next [`DEADLINE_DAYS`] days, local time.
- */
-deadlineSoon: boolean, 
+workMode: WorkMode | null, 
 /**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */

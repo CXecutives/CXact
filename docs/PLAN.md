@@ -789,6 +789,7 @@ The user clicked through the reworked preview; one more round in four tracks.
 - [ ] Fetch range at the button, the list filters and the sort by rate
 - [ ] Explanation popover, deadline and contact, verdict colours from the rings
 - [ ] Alert health
+- [x] Every filter group lists all values of its dimension or is gone (user decision 2026-09-27): Übereinstimmung Hoch, Mittel, Gering (`JobQuery.band`), Arbeitsmodell Remote, Hybrid, Vor Ort (`JobQuery.workMode`, the stated share first, else the location); no Tagessatz floor; the row's date is when the job came in, the deadline only in the Jobdetails
 
 ## Top bar round 2026-09-27 (decision of the user, binding)
 "Mach es wie Claude": one top bar drawn by the app on both OS, the window buttons the only difference (Decisions,

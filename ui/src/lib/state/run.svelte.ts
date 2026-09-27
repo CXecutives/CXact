@@ -222,7 +222,7 @@ class RunStore {
   showNew(high: boolean): void {
     this.show(() => {
       jobs.setPlace('inbox', true);
-      jobs.setFilter({ ...NO_FILTER, unread: true, minBand: high ? 'high' : null });
+      jobs.setFilter({ ...NO_FILTER, unread: true, band: high ? 'high' : null });
     });
   }
 

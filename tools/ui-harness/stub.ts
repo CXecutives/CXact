@@ -95,8 +95,9 @@ import type {
   RunSummary,
   ScoreDelta,
   TermField,
+  WorkMode,
 } from '../../ui/src/lib/ipc/types';
-import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
+import { bandOf, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 import {
   EMPTY_FORM,
@@ -1168,18 +1169,21 @@ function dayRate(j: JobView): number | null {
   return facts.hourly === true ? facts.rate * 8 : facts.rate;
 }
 
-/** Today and `days` on as ISO dates of the local calendar (the page's clock). */
-function localDay(days = 0): string {
-  const date = new Date(Date.now());
-  date.setDate(date.getDate() + days);
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+/** The work mode as store::filter_condition reads it: the remote share the ad states first
+ *  (all of it remote, none of it on site, anything between hybrid), the location's work mode
+ *  only without one; null when neither says. */
+function workModeOf(j: JobView): WorkMode | null {
+  const facts = j.match?.facts ?? null;
+  const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;
+  const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
+  if (from === null || to === null) return j.workMode;
+  return from >= 100 ? 'remote' : to <= 0 ? 'onsite' : 'hybrid';
 }
 
-/** The funnel's filter (store::ListFilter): unread only, one portal, a lowest band of scored
- *  jobs, the contract types the engine read (none of them passes only without the filter),
- *  the work mode as the job details say it (the stated share first, else the location's),
- *  the pay against the floor of its kind and the deadline from today to 7 days on. */
+/** The funnel's filter (store::ListFilter): unread only, one portal, the band of scored jobs
+ *  (unscored and excluded ones never pass), the contract types the engine read (none of them
+ *  passes only without the filter) and the work mode as the job details say it (a job of no
+ *  known mode never passes). */
 function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   if (query.unread === true && !j.unread) return false;
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
@@ -1188,31 +1192,11 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   const facts = j.match?.facts ?? null;
   const contracts = query.contracts ?? [];
   if (contracts.length > 0 && !contracts.includes(facts?.contract ?? '')) return false;
-  if (query.remoteOnly === true) {
-    const share = facts?.remoteFrom ?? facts?.remoteTo ?? null;
-    if (share === null ? j.workMode !== 'remote' : share < 100) return false;
+  if (query.workMode !== null && query.workMode !== undefined) {
+    if (workModeOf(j) !== query.workMode) return false;
   }
-  if (query.remoteOrHybrid === true) {
-    const most = facts?.remoteTo ?? facts?.remoteFrom ?? null;
-    const away = j.workMode === 'remote' || j.workMode === 'hybrid';
-    if (most === null ? !away : most <= 0) return false;
-  }
-  const minRate = query.minDayRate ?? null;
-  const minSalary = query.minSalary ?? null;
-  if (minRate !== null || minSalary !== null) {
-    const salary = facts?.salary ?? null;
-    const rate = dayRate(j);
-    const pays = employed(j)
-      ? salary !== null && minSalary !== null && salary >= minSalary
-      : rate !== null && minRate !== null && rate >= minRate;
-    if (!pays) return false;
-  }
-  if (query.deadlineSoon === true) {
-    const deadline = facts?.deadline ?? null;
-    if (deadline === null || deadline < localDay() || deadline > localDay(7)) return false;
-  }
-  if (query.minBand === null || query.minBand === undefined) return true;
-  return j.match?.status === 'scored' && j.match.score >= BAND_FROM[query.minBand];
+  if (query.band === null || query.band === undefined) return true;
+  return j.match?.status === 'scored' && bandOf(j.match.score) === query.band;
 }
 
 function refresh(): void {
@@ -2424,13 +2408,9 @@ const harness: Harness = {
         sort: 'match',
         search: null,
         portal: null,
-        minBand: null,
+        band: null,
         contracts: [],
-        remoteOnly: false,
-        remoteOrHybrid: false,
-        minDayRate: null,
-        minSalary: null,
-        deadlineSoon: false,
+        workMode: null,
         limit: 500,
         offset: 0,
         ...query,

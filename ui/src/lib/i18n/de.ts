@@ -849,28 +849,23 @@ export const de = {
     chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
-    /** The lowest band of the filter under its heading, and as a chip, where the heading is
-     *  not beside it. */
+    /** The bands under their heading; as a chip, where the heading is not beside it, each
+     *  says the ring's name of its band (`score.band`). */
     band: {
-      mid: 'Ab mittel',
-      high: 'Nur hoch',
-    } satisfies Record<'mid' | 'high', string>,
-    bandChip: {
-      mid: 'Ab mittlerer Übereinstimmung',
-      high: 'Nur hohe Übereinstimmung',
-    } satisfies Record<'mid' | 'high', string>,
+      high: 'Hoch',
+      mid: 'Mittel',
+      low: 'Gering',
+    } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     contractHeading: 'Vertragsart',
-    /** The work mode: two choices behind a line, their words speak for themselves. */
-    remoteOnly: 'Nur remote',
-    remoteOrHybrid: 'Remote oder hybrid',
-    /** The pay against the profile's floors: each only while the profile names its day rate
-     *  (employment is held against the minimum salary). */
-    pay: {
-      min: 'Ab meinem Mindesttagessatz',
-      wish: 'Ab meinem Wunschtagessatz',
-    } satisfies Record<'min' | 'wish', string>,
+    /** The work mode as the Jobdetails name it, under its heading and as chips. */
+    workHeading: 'Arbeitsmodell',
+    work: {
+      remote: 'Remote',
+      hybrid: 'Hybrid',
+      onsite: 'Vor Ort',
+    } satisfies Record<WorkMode, string>,
     /** A switch of its own behind a line: the jobs not opened yet. */
     unreadOnly: 'Nur neue',
     filterReset: 'Filter zurücksetzen',
