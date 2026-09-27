@@ -62,7 +62,7 @@
     icon: IconName;
     /** Its name: the tooltip and the accessible name of the icon. */
     label: string;
-    /** It deletes (Löschen, Endgültig löschen): red. */
+    /** It deletes the job (Löschen, Endgültig löschen): drawn in red. */
     deletes: boolean;
     disabled: boolean;
     /** Why a disabled tool waits (its tooltip). */
