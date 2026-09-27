@@ -8,6 +8,7 @@
 // (stubList), not typed again.
 
 import type { Page } from '@playwright/test';
+import { ICONS } from '../../../ui/src/lib/icons';
 import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
 import {
   animationsDone,
@@ -143,7 +144,8 @@ test.describe('header', () => {
     await expect(funnel(page)).toBeVisible();
     await expect(page.getByTestId('place-action')).toHaveCount(0);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
-    // Papierkorb: "Papierkorb leeren", red, in the action's place.
+    // Papierkorb: "Papierkorb leeren", an outlined button with the trash in red, in the
+    // action's place.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
       await viaMenu(page, 'trash', key);
@@ -152,7 +154,10 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
+    await expect(empty).toHaveClass(/secondary/);
     await expect(empty).toHaveClass(/warns/);
+    await expect(empty).toHaveCSS('color', await tokenColour(page, '--danger-strong'));
+    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
     expect(await rightOf(page, 'empty-trash')).toBe(await rightOf(page, 'filter'));
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // No second row, no count line.
@@ -954,6 +959,9 @@ test.describe('rows', () => {
       T.actions.trash,
     ]);
     await expectMenuIcons(page, [...showIcons, 'archive', 'trash']);
+    // Deleting is one look everywhere: the trash, in red.
+    await expect(menuItem(page, 'trash')).toHaveClass(/danger/);
+    await expect(menuItem(page, 'archive')).not.toHaveClass(/danger/);
     await expect(menu.getByRole('separator')).toHaveCount(1);
     await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
@@ -983,8 +991,9 @@ test.describe('rows', () => {
       T.actions.restore,
       T.actions.purge,
     ]);
-    await expectMenuIcons(page, [...showIcons, 'undo', 'purge']);
+    await expectMenuIcons(page, [...showIcons, 'undo', 'trash']);
     await expect(menuItem(page, 'purge')).toHaveClass(/danger/);
+    await expect(menuItem(page, 'restore')).not.toHaveClass(/danger/);
   });
 
   test('an excluded job counts anyway from its menu, with an undo, and can be excluded again', async ({

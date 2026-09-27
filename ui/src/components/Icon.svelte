@@ -62,7 +62,6 @@
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
-  import OctagonX from '@lucide/svelte/icons/octagon-x';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -135,7 +134,6 @@
     mail: Mail,
     'map-pin': MapPin,
     'message-square-text': MessageSquareText,
-    'octagon-x': OctagonX,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,

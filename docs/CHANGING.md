@@ -162,7 +162,7 @@ menu names a key.
 Each role of the UI has one pattern, decided in one place; the components only read it, and
 `core/tests/ui_contract.rs` fails when a copy appears elsewhere.
 
-- **An icon**: `ui/src/lib/icons.ts` maps each meaning (`trash`, `purge`, `external`,
+- **An icon**: `ui/src/lib/icons.ts` maps each meaning (`trash`, `archive`, `external`,
   `prompt`, `fetch`, `retry`, ...) to one Lucide glyph; components and views pass the
   meaning. Another glyph for a meaning is one edit there (a new glyph also gets its import in
   `ui/src/components/Icon.svelte`, a type error says so). One glyph means one thing: a new

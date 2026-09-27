@@ -267,9 +267,9 @@
     {:else if place === 'trash' && inTrash > 0}
       <span class="action" data-testid="place-action">
         <Button
-          variant="ghost"
+          variant="secondary"
           size="field"
-          icon="purge"
+          icon="trash"
           label={t.actions.emptyTrash}
           disabled={run.active}
           disabledReason={run.busyText}

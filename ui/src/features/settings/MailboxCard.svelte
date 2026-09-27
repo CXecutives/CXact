@@ -128,7 +128,7 @@
         <Button
           variant="secondary"
           size="sm"
-          icon="purge"
+          icon="trash"
           label={t.common.remove}
           disabled={locked !== null}
           disabledReason={locked}

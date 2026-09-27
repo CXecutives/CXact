@@ -28,12 +28,11 @@
   - inField: a button inside a text field (show password, clear search), like the native
     ones: not in the Tab order, and a click leaves the caret in the field.
   - isDefault: the default of a dialog, the one Enter presses; the dialog marks it.
-  - warns: a quiet (secondary or ghost) button whose action loses something for good
-    (empty the trash, delete for good, remove the mailbox, reset the app): its text and
-    glyph are red at rest, before the dialog asks. Moving a job to the trash can be undone
-    and does not warn; no icon warns by itself.
-  - deletes: a quiet button that deletes (a job row's Löschen and Endgültig löschen): at rest
-    like every ghost, under the pointer its glyph turns red on a red wash.
+  - warns: a quiet (secondary or ghost) button whose action deletes or loses something
+    (empty the trash, remove the mailbox, reset the app): its text and glyph are red at
+    rest, before the dialog asks; no icon warns by itself.
+  - deletes: a quiet icon button that deletes (a job row's Löschen and Endgültig löschen):
+    its glyph red at rest like every delete of the app, on a red wash under the pointer.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -88,9 +87,9 @@
     expanded?: boolean;
     /** The default of a dialog (Enter presses it); Dialog marks it with the focus ring. */
     isDefault?: boolean;
-    /** Removes or resets something: red text on hover (secondary and ghost). */
+    /** Deletes, removes or resets something: red text and glyph (secondary and ghost). */
     warns?: boolean;
-    /** Deletes (a row's tool): quiet at rest, red under the pointer (ghost). */
+    /** Deletes (a row's tool): red at rest, on a red wash under the pointer (ghost). */
     deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
@@ -365,8 +364,10 @@
     --btn-fg-hover: var(--danger-strong);
   }
 
-  /* Deleting (a row's tool): quiet at rest, red on a red wash under the pointer. */
+  /* Deleting (a row's tool): red at rest like every delete, on a red wash under the
+     pointer. */
   .ghost.deletes {
+    --btn-fg: var(--danger-strong);
     --btn-fg-hover: var(--danger-strong);
     --btn-bg-hover: var(--danger-soft);
     --btn-bg-active: var(--danger-soft);

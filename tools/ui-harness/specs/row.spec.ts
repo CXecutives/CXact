@@ -113,7 +113,7 @@ const MOVE_ICONS: Record<string, IconMeaning> = {
   unarchive: 'unarchive',
   trash: 'trash',
   restore: 'undo',
-  purge: 'purge',
+  purge: 'trash',
 };
 
 test.describe('tools', () => {
@@ -186,31 +186,32 @@ test.describe('tools', () => {
     expect(await boxes()).toBe(rest);
   });
 
-  test('a tool that deletes turns red under the pointer, the others stay quiet', async ({
+  test('a tool that deletes is red, on a red wash under the pointer; the others stay quiet', async ({
     page,
   }) => {
     await open(page, WIN);
     const danger = await tokenColour(page, '--danger-strong');
+    const wash = await tokenColour(page, '--danger-soft');
     const key = 'linkedin-4100200301';
     await pointAt(page, key);
     const trash = job(page, key).getByTestId('tool-trash');
     const archive = job(page, key).getByTestId('tool-archive');
-    await expect(trash).not.toHaveCSS('color', danger);
+    await expect(trash).toHaveCSS('color', danger);
     await trash.hover();
     await expect(trash).toHaveCSS('color', danger);
-    await expect(trash).toHaveCSS('background-color', await tokenColour(page, '--danger-soft'));
+    await expect(trash).toHaveCSS('background-color', wash);
     await archive.hover();
     await expect(archive).not.toHaveCSS('color', danger);
-    await expect(trash).not.toHaveCSS('color', danger);
-    // In the Papierkorb Endgültig löschen turns red the same way.
+    await expect(trash).not.toHaveCSS('background-color', wash);
+    // In the Papierkorb Endgültig löschen looks the same.
     await viaMenu(page, 'trash', key);
     await settleMoves(page);
     await openPlace(page, 'trash');
     await pointAt(page, key);
     const purge = job(page, key).getByTestId('tool-purge');
-    await expect(purge).not.toHaveCSS('color', danger);
-    await purge.hover();
     await expect(purge).toHaveCSS('color', danger);
+    await purge.hover();
+    await expect(purge).toHaveCSS('background-color', wash);
     const restore = job(page, key).getByTestId('tool-restore');
     await restore.hover();
     await expect(restore).not.toHaveCSS('color', danger);

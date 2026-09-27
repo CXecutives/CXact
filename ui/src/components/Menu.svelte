@@ -167,7 +167,8 @@
     transition-duration: var(--dur-instant);
   }
 
-  /* Losing something for good: red at rest like its button, on a red wash when active. */
+  /* Deleting (Löschen, Endgültig löschen): red at rest like its button, on a red wash when
+     active. */
   .item.danger:not([aria-disabled='true']) {
     color: var(--danger-strong);
   }
