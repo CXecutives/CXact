@@ -842,7 +842,9 @@ fn the_window_has_the_apps_own_top_bar() {
 
 /// The page's bar and the window procedure measure it the same: `--titlebar-height` and
 /// `--titlebar-button-width` of tokens.css are core's `BAR_HEIGHT` and `CAPTION_BUTTON`, which
-/// platform.rs hit-tests with (Windows, 36 px like Claude's bar there). On macOS the bar is
+/// platform.rs hit-tests with (Windows, 36 px like Claude's bar there), and
+/// `--titlebar-tools-start` and `--titlebar-tools-end` its `TOOLS_START` and `TOOLS_END`, the
+/// room of the page's own buttons in the bar. On macOS the bar is
 /// `--titlebar-height-macos` (44 px, base.css switches): the traffic lights sit 16 px from the
 /// left and centred in it, and the bar keeps their room free.
 #[test]
@@ -872,6 +874,18 @@ fn the_top_bar_measures_the_same_everywhere() {
         px("--titlebar-button-width"),
         u64::from(jobalert_core::window::CAPTION_BUTTON),
         "--titlebar-button-width = window::CAPTION_BUTTON"
+    );
+    // Where the page draws its own buttons in the bar, the window over it leaves the pointer
+    // to the page (`Bar::tools`).
+    assert_eq!(
+        px("--titlebar-tools-start"),
+        u64::from(jobalert_core::window::TOOLS_START),
+        "--titlebar-tools-start = window::TOOLS_START"
+    );
+    assert_eq!(
+        px("--titlebar-tools-end"),
+        u64::from(jobalert_core::window::TOOLS_END),
+        "--titlebar-tools-end = window::TOOLS_END"
     );
     let lights =
         config("tauri.macos.conf.json")["app"]["windows"][0]["trafficLightPosition"].clone();

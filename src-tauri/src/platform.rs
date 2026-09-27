@@ -365,8 +365,10 @@ mod webview2 {
 /// hit test of the menu); it performs a click on a button itself (`WM_SYSCOMMAND`, so
 /// Schließen is a normal close request: unsaved changes and a running fetch still ask) and
 /// reports which button the pointer is over and which one is pressed (`caption`), which the
-/// page shows. It follows the window's size and DPI; Tauri's strip that sizes the window at
-/// its top edge stays above it.
+/// page shows. Where the page draws its own buttons in the bar (`Bar::tools`: the sidebar,
+/// Zurück and Vor at the left, the reader before the caption buttons) the window leaves a
+/// hole, and the page takes the pointer there. It follows the window's size and DPI; Tauri's
+/// strip that sizes the window at its top edge stays above it.
 #[cfg(windows)]
 pub mod caption {
     #![expect(
@@ -380,7 +382,9 @@ pub mod caption {
     use jobalert_core::window::{Bar, BarHit};
     use tauri::{Emitter as _, Runtime, WebviewWindow};
     use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
-    use windows::Win32::Graphics::Gdi::ScreenToClient;
+    use windows::Win32::Graphics::Gdi::{
+        CombineRgn, CreateRectRgn, DeleteObject, RGN_DIFF, ScreenToClient, SetWindowRgn,
+    };
     use windows::Win32::System::LibraryLoader::GetModuleHandleW;
     use windows::Win32::UI::HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi};
     use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -587,7 +591,8 @@ pub mod caption {
     }
 
     /// Over the bar, right under Tauri's top edge strip (which puts itself on top at every
-    /// size change) and above the web view; as wide as the window, as high as the bar.
+    /// size change) and above the web view; as wide as the window, as high as the bar, but
+    /// for the page's own buttons (`leave_tools`).
     unsafe fn place(parent: HWND, bar: HWND) {
         // SAFETY: see `bar_of`.
         let Some(measure) = (unsafe { bar_of(parent) }) else {
@@ -608,6 +613,35 @@ pub mod caption {
                 SWP_NOACTIVATE | SWP_NOOWNERZORDER,
             )
         };
+        // SAFETY: `bar` is our live child window.
+        unsafe { leave_tools(bar, &measure) };
+    }
+
+    /// Leaves the page's own buttons in the bar ([`Bar::tools`]) to the page: the window over
+    /// the bar takes the pointer everywhere else (its region), and there the pointer reaches the
+    /// web view, which lies in the engine's processes (`HTTRANSPARENT` only passes it on to
+    /// windows of this thread). Below the top resize edge only, like [`Bar::hit`].
+    unsafe fn leave_tools(bar: HWND, measure: &Bar) {
+        let height = measure.height();
+        // SAFETY: regions created here; the one given to the window belongs to the system from
+        // then on, every other one is deleted.
+        unsafe {
+            let region = CreateRectRgn(0, 0, measure.width, height);
+            if region.is_invalid() {
+                return;
+            }
+            for zone in measure.tools() {
+                let cut = CreateRectRgn(zone.start, measure.edge, zone.end, height);
+                if !cut.is_invalid() {
+                    let _ = CombineRgn(Some(region), Some(region), Some(cut), RGN_DIFF);
+                    let _ = DeleteObject(cut.into());
+                }
+            }
+            // Nothing to redraw: the window has no surface of its own.
+            if SetWindowRgn(bar, Some(region), false) == 0 {
+                let _ = DeleteObject(region.into());
+            }
+        }
     }
 
     /// Changes what the buttons show and tells the page when it changed.
@@ -825,8 +859,9 @@ pub mod caption {
 
     /// What the window over the bar answers, measured in the running app (the smoke check
     /// prints it): the hit-test code of the window over the bar and of the main window in
-    /// the middle of Maximieren, the code that opens the snap layouts there, and the size of
-    /// the window over the bar next to the bar's (physical pixels).
+    /// the middle of Maximieren, the code that opens the snap layouts there, the size of
+    /// the window over the bar next to the bar's (physical pixels), and the spots at the edges
+    /// of the page's own buttons in the bar.
     #[cfg(debug_assertions)]
     #[derive(Debug)]
     pub struct Probe {
@@ -835,42 +870,101 @@ pub mod caption {
         pub maximize: u32,
         pub covers: [i32; 2],
         pub bar: [i32; 2],
+        pub tools: Vec<Spot>,
+    }
+
+    /// A spot of the bar at an edge of the page's own buttons, in the middle of its height.
+    #[cfg(debug_assertions)]
+    #[derive(Debug)]
+    pub struct Spot {
+        /// Client pixels of the main window.
+        pub at: [i32; 2],
+        /// The page takes the pointer here.
+        pub page: bool,
+        /// The answer the window over the bar owes here: `HTTRANSPARENT` (-1) on the page's
+        /// buttons, `HTCAPTION` or `HTMINBUTTON` beside them.
+        pub wants: isize,
+        /// Its answer.
+        pub hit: isize,
+        /// Its region holds the spot.
+        pub covered: bool,
+    }
+
+    #[cfg(debug_assertions)]
+    impl Spot {
+        /// The page's spots lie in the window's hole, the others under it with their answer.
+        pub fn holds(&self) -> bool {
+            self.hit == self.wants && self.covered != self.page
+        }
     }
 
     #[cfg(debug_assertions)]
     pub fn probe<R: Runtime>(window: &WebviewWindow<R>) -> Option<Probe> {
         use jobalert_core::window::CAPTION_BUTTON;
-        use windows::Win32::Graphics::Gdi::ClientToScreen;
+        use windows::Win32::Graphics::Gdi::{ClientToScreen, GetWindowRgn, PtInRegion, RGN_ERROR};
 
         let parent = window.hwnd().ok()?;
-        // SAFETY: plain queries and a hit-test message to our own live windows.
+        // SAFETY: plain queries and hit-test messages to our own live windows; the region
+        // created here is deleted before the return.
         unsafe {
             let bar = FindWindowExW(Some(parent), None, CLASS, PCWSTR::null()).ok()?;
             let measure = bar_of(parent)?;
-            let mut at = POINT {
-                x: measure.width - measure.scaled(CAPTION_BUTTON + CAPTION_BUTTON / 2),
-                y: measure.height() / 2,
+            let asked = |target: HWND, x: i32, y: i32| -> Option<isize> {
+                let mut at = POINT { x, y };
+                if !ClientToScreen(parent, &raw mut at).as_bool() {
+                    return None;
+                }
+                let pack = |value: i32| {
+                    let word = i16::try_from(value).unwrap_or_default().cast_unsigned();
+                    isize::try_from(u32::from(word)).unwrap_or_default()
+                };
+                let lparam = LPARAM(pack(at.x) | (pack(at.y) << 16));
+                Some(SendMessageW(target, WM_NCHITTEST, None, Some(lparam)).0)
             };
-            if !ClientToScreen(parent, &raw mut at).as_bool() {
-                return None;
-            }
-            let pack = |value: i32| {
-                let word = i16::try_from(value).unwrap_or_default().cast_unsigned();
-                isize::try_from(u32::from(word)).unwrap_or_default()
-            };
-            let lparam = LPARAM(pack(at.x) | (pack(at.y) << 16));
-            let asked = |target: HWND| {
-                let answer = SendMessageW(target, WM_NCHITTEST, None, Some(lparam));
-                u32::try_from(answer.0).ok()
+            let middle = measure.height() / 2;
+            let maximize_at = measure.width - measure.scaled(CAPTION_BUTTON + CAPTION_BUTTON / 2);
+            let over_maximize = |target: HWND| {
+                asked(target, maximize_at, middle).and_then(|answer| u32::try_from(answer).ok())
             };
             let mut covers = RECT::default();
             GetClientRect(bar, &raw mut covers).ok()?;
+            // The window's region: none set means the whole window.
+            let region = CreateRectRgn(0, 0, 0, 0);
+            let shaped = !region.is_invalid() && GetWindowRgn(bar, region) != RGN_ERROR;
+            let covered = |x: i32| !shaped || PtInRegion(region, x, middle).as_bool();
+            let transparent = isize::try_from(HTTRANSPARENT).unwrap_or(-1);
+            let caption = isize::try_from(HTCAPTION).unwrap_or_default();
+            let minimize = isize::try_from(HTMINBUTTON).unwrap_or_default();
+            let [left, right] = measure.tools();
+            let spots = [
+                (left.start, true, transparent),
+                (left.end - 1, true, transparent),
+                (left.end, false, caption),
+                (right.start - 1, false, caption),
+                (right.start, true, transparent),
+                (right.end - 1, true, transparent),
+                (right.end, false, minimize),
+            ];
+            let tools = spots
+                .into_iter()
+                .map(|(x, page, wants)| Spot {
+                    at: [x, middle],
+                    page,
+                    wants,
+                    hit: asked(bar, x, middle).unwrap_or(0),
+                    covered: covered(x),
+                })
+                .collect();
+            if !region.is_invalid() {
+                let _ = DeleteObject(region.into());
+            }
             Some(Probe {
-                bar_hit: asked(bar),
-                main_hit: asked(parent),
+                bar_hit: over_maximize(bar),
+                main_hit: over_maximize(parent),
                 maximize: HTMAXBUTTON,
                 covers: [covers.right, covers.bottom],
                 bar: [measure.width, measure.height()],
+                tools,
             })
         }
     }
