@@ -7,10 +7,11 @@
 // (the competences table, the languages, the countries, the day, the workload, the remote
 // choice, the switches) are components the table names by their kind.
 //
-// Every section has its heading and its one sentence under the same id in the catalog
-// (`t.profile.section`, `t.profile.sectionHint`) and the testid `section-{id}`. Order (user
-// decision 2026-09-26): the one block the profile needs first, the conditions next to the
-// wishes, "So liest die App dein Profil" (not in this table) at the end.
+// Every section has its heading under its id in the catalog (`t.profile.section`) and the
+// testid `section-{id}`; the two whose effect is easy to get wrong (Konditionen, Wünsche) say
+// it in one sentence (`t.profile.sectionHint`). Order (user decision 2026-09-26): the one
+// block the profile needs first, the conditions and the rules of permanent roles next to the
+// wishes.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, UnreadableField } from '$lib/ipc/types';
@@ -85,27 +86,23 @@ export type Control =
   | { kind: 'workload' }
   | { kind: 'remote' };
 
-/** A line of a section: one field, two side by side (one under the other when narrow), the
- *  switches of a group (one hairline list), or a group with its own subheading
- *  (`t.profile.section[id]`, `t.profile.sectionHint[id]`) hidden while `hidden` says so. */
+/** A line of a section: one field, two side by side (one under the other when narrow), or
+ *  the switches of a group (one hairline list). */
 export type Line =
   | Control
   | { kind: 'pair'; fields: readonly [Control, Control] }
-  | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] }
-  | {
-      kind: 'group';
-      id: 'permanent';
-      hidden: (form: ProfileForm) => boolean;
-      lines: readonly Line[];
-    };
+  | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] };
 
 export type SectionId =
-  'person' | 'competences' | 'experience' | 'languages' | 'criteria' | 'wishes';
+  'person' | 'competences' | 'experience' | 'languages' | 'criteria' | 'permanent' | 'wishes';
 
 export interface Section {
   id: SectionId;
   /** The one block the profile needs: its "Noch leer" is amber. */
   required?: true;
+  /** The section waits while the form says so (the rules of permanent roles while those are
+   *  excluded). */
+  hidden?: (form: ProfileForm) => boolean;
   lines: readonly Line[];
 }
 
@@ -142,7 +139,6 @@ export const SECTIONS: readonly Section[] = [
         kind: 'chips',
         key: 'strengths',
         label: 'strengths',
-        hint: 'strengthsHint',
         placeholder: 'strengthsPlaceholder',
         lines: true,
         testid: 'profile-strengths',
@@ -151,7 +147,6 @@ export const SECTIONS: readonly Section[] = [
         kind: 'chips',
         key: 'keywords',
         label: 'keywords',
-        hint: 'keywordsHint',
         placeholder: 'keywordsPlaceholder',
         testid: 'profile-keywords',
       },
@@ -164,7 +159,6 @@ export const SECTIONS: readonly Section[] = [
         kind: 'number',
         key: 'years',
         label: 'totalYears',
-        hint: 'totalYearsHint',
         unit: 'years',
         testid: 'profile-years',
       },
@@ -203,7 +197,7 @@ export const SECTIONS: readonly Section[] = [
   { id: 'languages', lines: [{ kind: 'languages' }] },
   {
     // What excludes a job, from when she is free, the days a week and the duration, the
-    // words that exclude, the countries and the switches, then the rules of permanent roles.
+    // words that exclude, the countries and the switches.
     id: 'criteria',
     lines: [
       pair(
@@ -228,7 +222,6 @@ export const SECTIONS: readonly Section[] = [
           kind: 'number',
           key: 'minMonths',
           label: 'minMonths',
-          hint: 'minMonthsHint',
           testid: 'profile-min-months',
         },
       ),
@@ -236,7 +229,6 @@ export const SECTIONS: readonly Section[] = [
         kind: 'chips',
         key: 'exclusionWords',
         label: 'exclusionWords',
-        hint: 'exclusionWordsHint',
         placeholder: 'exclusionWordsPlaceholder',
         testid: 'profile-exclusion-words',
       },
@@ -257,45 +249,43 @@ export const SECTIONS: readonly Section[] = [
             kind: 'switch',
             key: 'noPermanent',
             label: 'noPermanent',
-            hint: 'noPermanentHint',
             testid: 'profile-no-permanent',
           },
         ],
       },
+    ],
+  },
+  {
+    // The rules of permanent roles: they wait while those are excluded.
+    id: 'permanent',
+    hidden: (form) => form.criteria.noPermanent,
+    lines: [
       {
-        kind: 'group',
-        id: 'permanent',
-        hidden: (form) => form.criteria.noPermanent,
-        lines: [
-          {
-            kind: 'chips',
-            key: 'permanentPlaces',
-            label: 'places',
-            placeholder: 'placesPlaceholder',
-            testid: 'profile-places',
-          },
-          pair(
-            {
-              kind: 'number',
-              key: 'minSalary',
-              label: 'minSalary',
-              testid: 'profile-min-salary',
-            },
-            {
-              // The share counts only outside the places: without them it waits.
-              kind: 'number',
-              key: 'permanentRemoteMin',
-              label: 'remoteMin',
-              hint: 'remoteMinHint',
-              advice: (form) => (form.criteria.permanentPlaces.length === 0 ? 'placesFirst' : null),
-              off: (form) =>
-                form.criteria.permanentPlaces.length === 0 &&
-                form.criteria.permanentRemoteMin === null,
-              testid: 'profile-remote-min',
-            },
-          ),
-        ],
+        kind: 'chips',
+        key: 'permanentPlaces',
+        label: 'places',
+        placeholder: 'placesPlaceholder',
+        testid: 'profile-places',
       },
+      pair(
+        {
+          kind: 'number',
+          key: 'minSalary',
+          label: 'minSalary',
+          testid: 'profile-min-salary',
+        },
+        {
+          // The share counts only outside the places: without them it waits.
+          kind: 'number',
+          key: 'permanentRemoteMin',
+          label: 'remoteMin',
+          hint: 'remoteMinHint',
+          advice: (form) => (form.criteria.permanentPlaces.length === 0 ? 'placesFirst' : null),
+          off: (form) =>
+            form.criteria.permanentPlaces.length === 0 && form.criteria.permanentRemoteMin === null,
+          testid: 'profile-remote-min',
+        },
+      ),
     ],
   },
   {
@@ -305,7 +295,6 @@ export const SECTIONS: readonly Section[] = [
         kind: 'chips',
         key: 'roles',
         label: 'roles',
-        hint: 'rolesHint',
         placeholder: 'rolesPlaceholder',
         testid: 'profile-roles',
       },
@@ -382,6 +371,20 @@ export function setList(form: ProfileForm, key: ListKey, value: string[]): void 
   object[name] = value;
 }
 
+/** A field's value as text, to see when it changes (a refused value stays marked until
+ *  then): a wish, a criterion, or a value of the form itself. */
+export function valueText(form: ProfileForm, field: string): string {
+  if (field === 'remote') return JSON.stringify(form.wishes.remote);
+  const key = field in WISHES ? WISHES[field as keyof typeof WISHES] : field;
+  const object: Record<string, unknown> =
+    field in WISHES
+      ? (form.wishes as Record<string, unknown>)
+      : field in form.criteria
+        ? (form.criteria as unknown as Record<string, unknown>)
+        : (form as unknown as Record<string, unknown>);
+  return JSON.stringify(object[key] ?? null);
+}
+
 /** The unit of a number: a criterion's from core, else the table's. */
 export function unitOf(control: Extract<Control, { kind: 'number' }>): Unit | null {
   return control.key in NUMBER_CRITERIA
@@ -391,14 +394,10 @@ export function unitOf(control: Extract<Control, { kind: 'number' }>): Unit | nu
 
 // ------------------------------------------------------------------ what a section holds
 
-/** Every field of some lines, in order (the fields of pairs, switches and groups too). */
+/** Every field of some lines, in order (the fields of pairs and switches too). */
 export function controlsOf(lines: readonly Line[]): Control[] {
   return lines.flatMap((line): Control[] =>
-    line.kind === 'pair' || line.kind === 'switches'
-      ? [...line.fields]
-      : line.kind === 'group'
-        ? controlsOf(line.lines)
-        : [line],
+    line.kind === 'pair' || line.kind === 'switches' ? [...line.fields] : [line],
   );
 }
 

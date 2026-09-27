@@ -1,5 +1,6 @@
-// "Verbinden" in Einstellungen while it signs in and counts: it holds the app, it can be
-// stopped, and a sign-in whose count did not finish is still a connected mailbox.
+// "Verbinden" in the mailbox dialog of Einstellungen while it signs in and counts: it holds
+// the page, it can be stopped, and a sign-in whose count did not finish is still a connected
+// mailbox.
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test, text } from './fixtures';
@@ -14,20 +15,22 @@ async function changeMailbox(page: Page, query = WIN): Promise<void> {
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
 }
 
-test('CRED-1: cancel stops a check in progress, quietly', async ({ page }) => {
+const dialog = (page: Page) => page.getByTestId('dialog-mailbox');
+
+test('CRED-1: cancel and Esc stop a check in progress, quietly', async ({ page }) => {
   await changeMailbox(page);
   await page.evaluate(() => (window.__harness.holdMailbox = true));
-  await page.getByTestId('mailbox-save').click();
-  const cancel = page.getByTestId('mailbox-cancel');
-  await expect(page.getByTestId('mailbox-save')).toHaveAttribute('aria-busy', 'true');
+  const connect = dialog(page).getByTestId('dialog-confirm');
+  await connect.click();
+  await expect(connect).toHaveAttribute('aria-busy', 'true');
   // While it signs in and counts, cancel stays live and stops it.
+  const cancel = dialog(page).getByTestId('dialog-cancel');
   await expect(cancel).not.toHaveAttribute('aria-disabled', 'true');
   await cancel.click();
   expect(await calls(page, 'cancel_run')).toHaveLength(1);
-  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(dialog(page)).toBeHidden();
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
   // The stop says nothing, and nothing was saved.
-  await expect(page.getByTestId('mailbox-note')).toHaveCount(0);
   await expect(page.getByTestId('mailbox-error')).toHaveCount(0);
   await expect(page.getByTestId('settings-mailbox')).not.toContainText('Abgebrochen');
   await page.evaluate(() => (window.__harness.holdMailbox = false));
@@ -37,51 +40,27 @@ test('CRED-1: cancel stops a check in progress, quietly', async ({ page }) => {
   await page.evaluate(() => (window.__harness.holdMailbox = true));
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
-  await expect(page.getByTestId('mailbox-save')).toHaveAttribute('aria-busy', 'true');
+  await expect(dialog(page).getByTestId('dialog-confirm')).toHaveAttribute('aria-busy', 'true');
   await page.keyboard.press('Escape');
   expect(await calls(page, 'cancel_run')).toHaveLength(2);
-  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
-  await expect(page.getByTestId('mailbox-note')).toHaveCount(0);
+  await expect(dialog(page)).toBeHidden();
   await page.evaluate(() => (window.__harness.holdMailbox = false));
 });
 
-test('CRED-1: a fetch waits while the mailbox is checked, and says why', async ({ page }) => {
-  await changeMailbox(page);
-  await page.evaluate(() => (window.__harness.holdMailbox = true));
-  await page.getByTestId('mailbox-save').click();
-  await expect(page.getByTestId('mailbox-save')).toHaveAttribute('aria-busy', 'true');
-  // The check goes on while she looks at the jobs: Abrufen is refused, naming the check.
-  await page.getByTestId('nav-jobs').click();
-  await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-problem-text')).toHaveText(
-    'Gerade wird das Postfach geprüft.',
-  );
-  await expect(page.getByTestId('run-line')).toHaveCount(0);
-  // Once it is done (the page loads the saved state), Abrufen reads the new mailbox.
-  const loads = (await calls(page, 'app_state')).length;
-  await page.evaluate(() => (window.__harness.holdMailbox = false));
-  await expect.poll(async () => (await calls(page, 'app_state')).length).toBeGreaterThan(loads);
-  await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-line')).toBeVisible();
-});
-
-test('CRED-3: signed in but not counted is connected, and a toast says the fetch counts', async ({
-  page,
-}) => {
+test('CRED-3: signed in but not counted is connected, and a toast says so', async ({ page }) => {
   await changeMailbox(page, `${WIN}&mail=uncounted`);
-  await page.getByTestId('mailbox-save').click();
+  await dialog(page).getByTestId('dialog-confirm').click();
   await expect(page.getByTestId('toast-text')).toHaveText(
     await text(page, 'settings.mailboxNotCounted'),
   );
-  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await expect(dialog(page)).toBeHidden();
   const connected = await text(page, 'settings.connected');
   await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
-  // With the count there, the badge is the answer: no note, no toast.
+  // With the count there, the badge is the answer: no toast.
   await changeMailbox(page);
-  await page.getByTestId('mailbox-save').click();
-  await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
+  await dialog(page).getByTestId('dialog-confirm').click();
+  await expect(dialog(page)).toBeHidden();
   await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
-  await expect(page.getByTestId('mailbox-note')).toHaveCount(0);
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 
@@ -89,20 +68,21 @@ test('CRED-2: a mistyped app password is named at once, also while a fetch runs'
   page,
 }) => {
   await changeMailbox(page);
-  // The auto fetch starts while the form is open.
+  // A fetch starts while the dialog is open.
   await page.evaluate(() => {
     window.__harness.holdAfter = 1;
     window.__harness.appRun('fetch');
   });
   await page.getByTestId('mailbox-password').fill('kurz');
-  await page.getByTestId('mailbox-save').click();
+  await dialog(page).getByTestId('dialog-confirm').click();
   await expect(page.getByTestId('mailbox-form')).toContainText(
     'Ein App-Passwort hat 16 Buchstaben.',
   );
-  // In the right shape it waits for the fetch, which the form says.
+  // In the right shape it waits for the fetch, which the form says; the dialog stays.
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
-  await page.getByTestId('mailbox-save').click();
+  await dialog(page).getByTestId('dialog-confirm').click();
   await expect(page.getByTestId('mailbox-form')).toContainText('Gerade läuft schon ein Abruf.');
+  await expect(dialog(page)).toBeVisible();
   expect(await calls(page, 'save_mailbox')).toHaveLength(2);
   await page.evaluate(() => (window.__harness.holdAfter = null));
 });

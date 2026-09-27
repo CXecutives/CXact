@@ -105,12 +105,6 @@ export function formatTime(iso: string): string {
   return Number.isNaN(date.getTime()) ? '' : formats().clock.format(date);
 }
 
-/** `24.09.2026`, `24/09/2026` */
-export function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : formats().dayMonthYear.format(date);
-}
-
 /** `24.09.`, `24/09`, with the year when it is not this one (`24.09.2025`): the one date of a
  *  job's facts (the day of its alert mail, a start "ab 01.11."). */
 export function formatDay(iso: string, now: Date = new Date()): string {
@@ -158,17 +152,6 @@ export function formatDayTime(iso: string, now: Date = new Date()): string {
   const day = dayOf(date, now) ?? relative.format(0, 'day');
   const text = `${day} ${clock.format(date)}`.replace(/ /g, NBSP);
   return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
-}
-
-/**
- * `08:30` today, `gestern`, `vorgestern`, `Mo` up to a week back, then `24.09.` (`24/09`):
- * when something happened, in the fewest characters (the sidebar's run status keeps to one
- * line; the run card has the time).
- */
-export function formatStamp(iso: string, now: Date = new Date()): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return dayOf(date, now) ?? formats().clock.format(date);
 }
 
 /** `18 KB`, `1,2 MB` (`1.2 MB`): the size of a backup. */

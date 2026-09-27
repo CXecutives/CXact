@@ -1,43 +1,28 @@
 <!--
-  The head of the Profil view. Its first line sits on the first row of the window
-  (`data-first-row`, like the first heading of Übersicht and Einstellungen): the file's tile,
-  the person (name and role, copyable; the file name as the tooltip) or the draft, how well
-  the form reads (an honest badge that follows the form: "Vollständig" only with competences
-  and nothing to check, else "Wenig Inhalt" or "Ohne Kompetenzen", red only when nothing at
-  all can be scored, its tooltip why) and "n Werte prüfen" while values of the file do not
-  read (a click goes to the first one). Under it a card: when it was saved and how many
-  Suchbegriffe the app reads (the Schwerpunkte are said at their "2/5"), keys the app does
-  not read (with the folder at hand), the rescore a save starts, and the actions: one main
-  button (an update from a CV, or for a new form one from a CV) and the "…" menu with the
-  rest (another file, the profile folder, remove; remove goes at once, the toast offers
-  Rückgängig). While the form holds changes, what would replace or drop them waits and says
-  "Erst speichern oder verwerfen." Drafts say once that they are to be reviewed, a draft that
-  replaces a profile says that saving replaces it.
+  The head of the Profil view, on the first row of the window (`data-first-row`): on the left
+  a status only when there is one ("n Werte prüfen" while values of the file do not read, a
+  click goes to the first one; the rescore a save started), on the right the actions: one
+  button (an update from a CV, for a new form one from a CV) and the "…" menu with the rest
+  (another file, the profile folder, "Profil löschen" in red, which asks first). The form
+  below says who the profile is about, so the head does not repeat it. While the form holds
+  changes, what would replace or drop them waits and says "Erst speichern oder verwerfen."
+  Under the row, only where it prevents a mistake: keys of the file the app does not read
+  (with the folder at hand), that saving a chosen file replaces the profile, and a failure.
 -->
 <script lang="ts">
-  import Badge, { type BadgeTone } from '$components/Badge.svelte';
-  import { tooltip } from '$lib/actions/tooltip';
   import Button from '$components/Button.svelte';
-  import Card from '$components/Card.svelte';
-  import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import Spinner from '$components/Spinner.svelte';
   import { t } from '$lib/i18n/t';
-  import { formatDate, formatMoment, formatTime } from '$lib/i18n/format';
   import { warningText } from '$lib/i18n/texts';
-  import type { Notice as NoticeData, ProfileInfo, ProfileQuality } from '$lib/ipc/types';
+  import type { Notice as NoticeData, ProfileInfo } from '$lib/ipc/types';
+  import { fade } from '$lib/motion/transitions';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import type { DraftOrigin } from '$lib/state/profile.svelte';
 
   interface Props {
     origin: DraftOrigin;
     profile: ProfileInfo | null;
-    /** How well the form as it is reads. */
-    quality: ProfileQuality | null;
-    /** The form has competences ("Vollständig" needs them). */
-    competences: boolean;
-    /** Suchbegriffe (the engine's count, moved by the changes of the form). */
-    terms: number | null;
     /** How many values are still to check. */
     checks: number;
     /** Warnings said here: what the form cannot change (keys the app does not read). */
@@ -60,9 +45,6 @@
   let {
     origin,
     profile,
-    quality,
-    competences,
-    terms,
     checks,
     warnings,
     rescoring,
@@ -80,50 +62,22 @@
   const stored = $derived(origin === 'stored' && profile !== null);
   /** A new form for a stored file that does not read: saving replaces that file. */
   const replacesBroken = $derived(origin === 'new' && (profile?.parseError ?? null) !== null);
-  /** The badge: honest about competences; with values to check "n Werte prüfen" stands in
-   *  place of "Vollständig". Without competence rows but with other terms the match is only
-   *  rough (amber); red only when nothing can be scored. */
-  const badge = $derived.by((): { label: string; tone: BadgeTone; hint: string | null } | null => {
-    if (quality === null) return null;
-    if (quality === 'empty') {
-      return { label: t.profile.quality.empty, tone: 'danger', hint: t.profile.qualityText.empty };
-    }
-    if (!competences) {
-      return { label: t.profile.quality.empty, tone: 'warning', hint: t.profile.noRowsText };
-    }
-    if (quality === 'thin') {
-      return { label: t.profile.quality.thin, tone: 'warning', hint: t.profile.qualityText.thin };
-    }
-    if (checks > 0) return null;
-    return { label: t.profile.quality.good, tone: 'success', hint: null };
-  });
   const notes = $derived(
     warnings.flatMap((notice) => {
       const text = warningText(notice);
       return text === null ? [] : [{ text, folder: notice.code === 'ignoredKeys' }];
     }),
   );
-  /** The person first: the name (the file name only as its tooltip), the role muted. */
-  const person = $derived(profile?.form ?? null);
-  /** When it was saved, in the format of every moment of the app (`21.09. 09:30`, the time
-   *  alone today); a save of another year keeps its year. */
-  function moment(iso: string): string {
-    return new Date(iso).getFullYear() === new Date().getFullYear()
-      ? formatMoment(iso)
-      : `${formatDate(iso)} ${formatTime(iso)}`;
-  }
-  const savedAt = $derived(
-    stored && profile?.savedAt ? t.profile.savedAt(moment(profile.savedAt)) : null,
-  );
-  const summary = $derived(terms === null ? null : t.profile.understood(terms));
+  /** The actions: for the stored profile and a new form (a draft is saved or discarded). */
+  const actions = $derived(stored || origin === 'new');
 
   // ------------------------------------------------------------------ the "…" menu
   let anchor = $state<HTMLElement | null>(null);
   let expanded = $state(false);
 
-  /** What the menu holds: for the stored profile another file, its folder and remove (all
-   *  wait while the form holds changes, the folder aside; remove can be undone, so it is no
-   *  warning); for a new form a file (and the folder of a file that does not read). */
+  /** What the menu holds: for the stored profile another file, its folder and the deletion
+   *  (all but the folder wait while the form holds changes); for a new form a file (and the
+   *  folder of a file that does not read). */
   const entries = $derived.by((): MenuEntry[] => {
     const held = { disabled: dirty, reason: dirty ? t.profile.saveFirst : null };
     const pick: MenuEntry = {
@@ -144,7 +98,14 @@
       pick,
       folder,
       { kind: 'separator' },
-      { id: 'remove', label: t.profile.remove, icon: 'trash', ...held, run: onremove },
+      {
+        id: 'remove',
+        label: t.profile.remove,
+        icon: 'trash',
+        danger: true,
+        ...held,
+        run: onremove,
+      },
     ];
   });
 
@@ -161,166 +122,111 @@
   }
 </script>
 
-<div class="head" data-testid="profile-file">
-  <div class="first" data-first-row>
-    <IconTile tone="navy" icon="document" size="sm" />
-    {#if stored && profile}
-      <h2 class="name" data-copy use:tooltip={profile.fileName}>
-        <span data-testid="profile-name">{person?.name || t.profile.unnamed}</span>
-        {#if person?.title}<span class="role" data-testid="profile-role">{person.title}</span>{/if}
-      </h2>
-    {:else}
-      <h2 class="name" data-testid="profile-name">
-        {t.profile.draft[origin === 'stored' ? 'new' : origin]}
-      </h2>
-    {/if}
-    {#if badge}
-      <span class="quality" data-testid="profile-quality">
-        <Badge label={badge.label} tone={badge.tone} hint={badge.hint} />
-      </span>
-    {/if}
-    {#if checks > 0}
-      <span class="check">
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="warning"
-          label={t.profile.check(checks)}
-          testid="profile-check"
-          onclick={oncheck}
-        />
-      </span>
-    {/if}
-  </div>
-
-  <Card padding="md">
-    <div class="body">
-      {#if savedAt || summary}
-        <p class="meta">
-          {#if savedAt}<span data-testid="profile-saved-at">{savedAt}</span>{/if}
-          {#if summary}<span data-testid="profile-understood">{summary}</span>{/if}
-        </p>
-      {/if}
-      {#each notes as warning, index (index)}
-        <Notice
-          tone="info"
-          variant="inline"
-          text={warning.text}
-          action={warning.folder
-            ? { label: t.common.openFolder, icon: 'folder', onclick: onopenfolder }
-            : null}
-          testid="profile-warning"
-        />
-      {/each}
-      {#if replacing}
-        <Notice
-          tone="info"
-          variant="inline"
-          text={t.profile.replacesStored}
-          testid="profile-replaces"
-        />
-      {:else if origin === 'file' || origin === 'answer' || origin === 'update'}
-        <Notice tone="info" variant="inline" text={t.profile.review} testid="profile-review" />
-      {/if}
-      {#if replacesBroken}
-        <Notice tone="info" variant="inline" text={t.profile.replaces} testid="profile-replaces" />
+{#if actions || checks > 0 || rescoring}
+  <div class="head" data-first-row data-testid="profile-head">
+    <div class="status">
+      {#if checks > 0}
+        <span class="check" in:fade>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="warning"
+            label={t.profile.check(checks)}
+            testid="profile-check"
+            onclick={oncheck}
+          />
+        </span>
       {/if}
       {#if rescoring}
-        <p class="status" data-testid="profile-rescoring">
+        <p class="quiet" data-testid="profile-rescoring" in:fade>
           <Spinner size="sm" label={null} />{t.profile.rescoring(profile?.pending ?? 0)}
         </p>
       {/if}
-
-      {#if stored || origin === 'new'}
-        <div class="actions">
+    </div>
+    {#if actions}
+      <div class="actions">
+        <Button
+          variant="secondary"
+          size="field"
+          icon="paste"
+          label={stored ? t.profile.updateFromCv : t.profile.fromCv}
+          disabled={dirty}
+          disabledReason={t.profile.saveFirst}
+          testid={stored ? 'profile-update-cv' : 'profile-from-cv'}
+          onclick={onfromcv}
+        />
+        <span class="more" bind:this={anchor}>
           <Button
             variant="secondary"
             size="field"
-            icon="paste"
-            label={stored ? t.profile.updateFromCv : t.profile.fromCv}
-            disabled={dirty}
-            disabledReason={t.profile.saveFirst}
-            testid={stored ? 'profile-update-cv' : 'profile-from-cv'}
-            onclick={onfromcv}
+            iconOnly
+            icon="more"
+            label={t.profile.more}
+            menu
+            {expanded}
+            loading={picking}
+            testid="profile-more"
+            onclick={more}
           />
-          <span class="more" bind:this={anchor}>
-            <Button
-              variant="secondary"
-              size="field"
-              iconOnly
-              icon="more"
-              label={t.profile.more}
-              menu
-              {expanded}
-              loading={picking}
-              testid="profile-more"
-              onclick={more}
-            />
-          </span>
-        </div>
-      {/if}
-      {#if note}
-        <Notice tone="danger" variant="inline" text={note} testid="profile-note" />
-      {/if}
-    </div>
-  </Card>
-</div>
+        </span>
+      </div>
+    {/if}
+  </div>
+{/if}
+{#if notes.length > 0 || replacing || replacesBroken || note}
+  <div class="notes">
+    {#each notes as warning, index (index)}
+      <Notice
+        tone="info"
+        variant="inline"
+        text={warning.text}
+        action={warning.folder
+          ? { label: t.common.openFolder, icon: 'folder', onclick: onopenfolder }
+          : null}
+        testid="profile-warning"
+      />
+    {/each}
+    {#if replacing}
+      <Notice
+        tone="info"
+        variant="inline"
+        text={t.profile.replacesStored}
+        testid="profile-replaces"
+      />
+    {/if}
+    {#if replacesBroken}
+      <Notice tone="info" variant="inline" text={t.profile.replaces} testid="profile-replaces" />
+    {/if}
+    {#if note}
+      <Notice tone="danger" variant="inline" text={note} testid="profile-note" />
+    {/if}
+  </div>
+{/if}
 
 <style>
   .head {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-  }
-
-  .first {
-    gap: var(--space-12);
-  }
-
-  .body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-12);
-  }
-
-  /* The badge's box, no line around it. */
-  .quality,
-  .check,
-  .more {
-    display: flex;
-  }
-
-  /* The ghost button's text ends on the column's edge, like the badge. */
-  .check {
-    margin-right: calc(-1 * var(--ghost-inset));
-  }
-
-  .name {
-    flex: 1;
-    overflow: hidden;
-    min-width: 0;
-    color: var(--text-heading);
-    font: var(--type-lg);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .role {
-    margin-left: var(--space-8);
-    color: var(--text-muted);
-    font: var(--type-md);
-  }
-
-  .meta {
-    display: flex;
     flex-wrap: wrap;
-    gap: var(--space-4) var(--space-16);
-    color: var(--text-muted);
-    font: var(--type-sm);
-    font-variant-numeric: var(--numeric);
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
   }
 
   .status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-8) var(--space-16);
+    min-width: 0;
+  }
+
+  /* The ghost button's text starts on the column's edge. */
+  .check {
+    display: flex;
+    margin-left: calc(-1 * var(--ghost-inset));
+  }
+
+  .quiet {
     display: flex;
     align-items: center;
     gap: var(--space-8);
@@ -333,5 +239,17 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8);
+    margin-left: auto;
+  }
+
+  .more {
+    display: flex;
+  }
+
+  .notes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    margin-top: calc(-1 * var(--space-16));
   }
 </style>

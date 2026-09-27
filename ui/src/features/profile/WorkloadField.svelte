@@ -34,7 +34,7 @@
 </script>
 
 <div data-field="workload">
-  <Field label={words.workload} for={id} hint={words.workloadHint} {error} {action}>
+  <Field label={words.workload} for={id} {error} {action}>
     <div class="range" data-testid="profile-workload">
       <span class="word">{words.workloadFrom}</span>
       <div class="day" data-field="workloadMinDays">

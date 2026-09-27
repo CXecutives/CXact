@@ -440,12 +440,12 @@ test('controls react to the left button only', async ({ page }) => {
   await expect(page.getByTestId('reader')).toHaveCount(0);
   expect(await focused()).toBeNull();
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-archive');
+  const toggle = page.getByTestId('toggle-enabled-freelance');
   await toggle.click({ button: 'right' });
   await toggle.click({ button: 'middle' });
   await page.waitForTimeout(300);
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  expect(await focused()).not.toBe('toggle-auto-archive');
+  expect(await focused()).not.toBe('toggle-enabled-freelance');
   const calls = await page.evaluate(() => window.__harness.calls.map(([name]) => name));
   expect(calls).not.toContain('save_settings');
   // Over a scroll area the middle click started the autoscroll of the engine (Windows
@@ -508,7 +508,7 @@ test('Tab from a field goes on through the controls, Enter and Space press them'
   await page.getByTestId('nav-settings').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  const toggle = page.getByTestId('toggle-auto-archive');
+  const toggle = page.getByTestId('toggle-enabled-freelance');
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Space');
@@ -823,9 +823,9 @@ test('native cursor: the arrow on controls, the text cursor on copyable text', a
 test('the wheel over a switch changes nothing and scrolls the page', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 560 });
   await open(page, `${WIN}&view=settings`);
-  const toggle = page.getByTestId('toggle-auto-archive');
+  const toggle = page.getByTestId('toggle-enabled-freelance');
   const before = await toggle.getAttribute('aria-checked');
-  await wheelOver(page, 'toggle-auto-archive');
+  await wheelOver(page, 'toggle-enabled-freelance');
   await expect(toggle).toHaveAttribute('aria-checked', before ?? 'false');
   expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(0);
 });
@@ -1071,7 +1071,7 @@ test('the right and the middle button never press a control', async ({ page }) =
 test('a switch held with the right button looks at rest and keeps its state', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-archive');
+  const toggle = page.getByTestId('toggle-enabled-freelance');
   await expect(toggle).toBeVisible();
   const before = await toggle.getAttribute('aria-checked');
   for (const button of ['right', 'middle'] as const) {
@@ -1146,7 +1146,7 @@ test('a press on a drag region (the macOS toolbar row) ends the focus of a field
 test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-auto-archive');
+  const toggle = page.getByTestId('toggle-enabled-freelance');
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Enter');

@@ -1,6 +1,5 @@
-// Which of the four views is shown. No router: the app has exactly these. It starts in the
-// Übersicht (the morning's first look); before the first fetch Jobs shows the setup page. The
-// native menu may ask for a view too (macOS: Cmd+, opens the settings). A view with unsaved
+// Which of the three views is shown. No router: the app has exactly these. It starts in Jobs;
+// before the first fetch Jobs shows the setup page. The native menu may ask for a view too (macOS: Cmd+, opens the settings). A view with unsaved
 // work (the Profil editor) holds a guard: it may keep the switch and ask first, then switch
 // itself; what was to happen with the switch waits for it. The places of the jobs (Eingang,
 // Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
@@ -11,16 +10,16 @@ import { VIEWS, type ViewId } from '../views';
 
 export type { ViewId };
 
-/** In the sidebar's order (lib/views.ts; Ctrl/Cmd+1 to 4 choose them in this order). */
+/** In the sidebar's order (lib/views.ts). */
 export const VIEW_IDS: readonly ViewId[] = VIEWS.map((view) => view.id);
 
 const isView = (value: string): value is ViewId => (VIEW_IDS as readonly string[]).includes(value);
 
-/** The first view: the Übersicht. The preview and the harness may name another in the
- *  address (`?view=jobs`); the app itself is loaded without one. */
+/** The first view: Jobs. The preview and the harness may name another in the address
+ *  (`?view=settings`); the app itself is loaded without one. */
 function firstView(): ViewId {
   const asked = new URLSearchParams(location.search).get('view');
-  return asked !== null && isView(asked) ? asked : 'overview';
+  return asked !== null && isView(asked) ? asked : 'jobs';
 }
 
 /** `true` lets the switch to `next` happen; `false` keeps the current view. */

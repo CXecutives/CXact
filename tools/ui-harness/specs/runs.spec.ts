@@ -109,9 +109,6 @@ test('a details run shows its line and brings no fetch toast', async ({ page }) 
   await runFinished(page);
   await expect(page.getByTestId('run-line')).toHaveCount(0);
   await expect(page.getByTestId('toast')).toHaveCount(0);
-  // The last fetch is still the last fetch.
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('run-status')).toContainText('Abgerufen 08:30');
 });
 
 test('a failed first fetch does not claim the alert mails were empty', async ({ page }) => {
@@ -230,15 +227,15 @@ test('the excluded section names its count, every excluded row of the list', asy
   await expect.poll(named).toBe(true);
 });
 
-test('the portals follow the one order of the app', async ({ page }) => {
+test('Einstellungen shows the portals in the order of the UI', async ({ page }) => {
   await open(page, `${WIN}&scenario=empty`);
   await page.getByTestId('nav-settings').click();
   const cards = await page
     .locator('[data-testid^="portal-"]')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
   expect(cards.filter((id) => /^portal-[a-z]+$/.test(id ?? ''))).toEqual([
-    'portal-linkedin',
     'portal-freelance',
+    'portal-linkedin',
     'portal-freelancermap',
   ]);
 });

@@ -1,16 +1,9 @@
 // The words of the final text audit: what a text promises is what the app does, one name
 // for one thing, numbers formatted like every other count, rows in short words.
 
-import type { Page } from '@playwright/test';
 import { expect, open, runFinished, test } from './fixtures';
 
 const WIN = '?platform=windows';
-
-async function settings(page: Page, query = WIN): Promise<void> {
-  await open(page, query);
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('settings')).toBeVisible();
-}
 
 test('the English reader counts the must-have requirements, as the German one does', async ({
   page,
@@ -31,13 +24,6 @@ test('an empty list during a fetch says the jobs come in as it goes, not at its 
   await expect(page.getByTestId('empty-all')).toHaveText('Die Jobs erscheinen hier nach und nach.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-});
-
-test('one word per thing: the Excel file', async ({ page }) => {
-  await open(page, WIN);
-  // The glossary's Excel-Datei, as in Einstellungen ("Excel öffnen" read as "start Excel").
-  await page.getByTestId('nav-overview').click();
-  await expect(page.getByTestId('overview-excel')).toHaveText('Excel-Datei öffnen');
 });
 
 test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async ({ page }) => {
@@ -88,12 +74,4 @@ test('English names the preferred rate one way everywhere', async ({ page }) => 
   await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();
   await page.getByTestId('criteria').getByTestId('term-rate').locator('.verdict').hover();
   await expect(page.getByRole('tooltip')).toContainText('preferred rate of €1,200');
-});
-
-test('a sentence speaks to the user and quotes the control it names', async ({ page }) => {
-  await settings(page);
-  // "Erst Details holen einschalten." read as "first fetch details, then switch on".
-  await page.getByTestId('toggle-details-freelance').click();
-  await page.getByTestId('sign-in-freelance').hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Schalte erst „Details holen“ ein.');
 });

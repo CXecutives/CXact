@@ -3,16 +3,17 @@
   the three ways in (from a CV with an AI, the recommended one; a new form; an existing
   file); a file that no longer reads says so in the same place, with its folder at hand.
   With a profile its head
-  (the person, an honest quality, what the app reads, the file actions) and the form with
-  the save bar. A chosen file and an AI's answer fill the form for review (an answer for the
-  stored profile updates it); nothing is stored before "Speichern". Leaving the view or
-  closing the window with unsaved changes asks once ("Änderungen speichern?", the heading
-  alone). Removing the profile needs no question: it goes at once and a toast offers
-  "Rückgängig" for a moment; so does saving another file over the profile (the backup comes
-  back, core's swap), and an undo that fails says so. During setup the first save offers
-  "Weiter zum ersten Abruf", which starts the fetch, or without a mailbox "Weiter zum
-  Postfach", which goes back to the setup page; the setup page asks for the steps with an AI
-  (`cvWanted`), which open when the view appears.
+  (a status when there is one, the file actions) and the form, whose save bar shows while it
+  holds a change. A chosen file and an AI's answer fill the form for review (an answer for
+  the stored profile updates it); nothing is stored before "Speichern". A save is answered by
+  a toast once the bar has gone ("Profil gespeichert."). Leaving the view or closing the
+  window with unsaved changes asks once ("Änderungen speichern?", the heading alone).
+  "Profil löschen" asks first, then a toast offers "Rückgängig" for a moment; so does saving
+  another file over the profile (the backup comes back, core's swap), and an undo that fails
+  says so. During setup the toast of the first save offers "Weiter zum ersten Abruf", which
+  starts the fetch, or without a mailbox "Weiter zum Postfach", which goes back to the setup
+  page; the setup page asks for the steps with an AI (`cvWanted`), which open when the view
+  appears.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -20,6 +21,7 @@
   import { errorText, warningText } from '$lib/i18n/texts';
   import { IpcError, invoke, onCloseRequested } from '$lib/ipc/api';
   import type { Notice } from '$lib/ipc/types';
+  import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
@@ -37,6 +39,7 @@
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfilePaste from './ProfilePaste.svelte';
   import ProfileStart from './ProfileStart.svelte';
+  import { valueText } from './sections';
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
@@ -50,6 +53,8 @@
   });
   let copied = $state(false);
   let busy = $state<'pick' | 'save' | 'remove' | 'paste' | null>(null);
+  /** "Profil löschen" asks first. */
+  let confirmRemove = $state(false);
   /** A failure is said when it shows, so it follows a switch of the language. */
   type Words = () => string;
   let note = $state<Words | null>(null);
@@ -58,34 +63,46 @@
   /** The steps with an AI update the stored profile (else they make a new one). */
   let updating = $state(false);
   const prompt = $derived(updating ? prompts.update : prompts.create);
-  let saved = $state(false);
   /** A value the backend refused on the last save, said at its field. */
   let fieldError = $state<FieldError | null>(null);
-  // The outcome of a save stands until the next change.
+  /** The refused field's value then, as text. */
+  let refusedValue: string | null = null;
+  // A refused value stays with its error until that value changes.
   $effect(() => {
-    if (editor.dirty) saved = false;
+    const error = fieldError;
+    if (error === null) return;
+    const now = valueText(editor.after, error.field);
+    untrack(() => {
+      if (refusedValue === null) refusedValue = now;
+      else if (now !== refusedValue) fieldError = null;
+    });
   });
-  // A refused value is said until the form changes.
-  $effect(() => {
-    void JSON.stringify(editor.after);
-    untrack(() => (fieldError = null));
-  });
-  const result = $derived(
-    !saved
-      ? null
-      : !rescoring && (app.state?.counts.inbox ?? 0) > 0
-        ? t.profile.rescored
-        : t.profile.saved,
-  );
-  /** During setup, a saved profile leads on (once, in the save bar): to the first fetch
-   *  with a mailbox, else back to the setup page, whose next step is the mailbox. */
-  const next = $derived(
-    saved && app.state?.firstRun && app.hasProfile
-      ? app.hasMailbox
-        ? { label: t.profile.next, icon: 'next' as const, onclick: () => void onward() }
-        : { label: t.profile.nextMailbox, icon: 'next' as const, onclick: onward }
-      : null,
-  );
+
+  /** The toast that answers a save waits until the save bar has gone (the stack then stands
+   *  at the bottom), at most as long as the bar takes. */
+  let afterBar: (() => void) | null = null;
+  function whenBarGone(show: () => void): void {
+    afterBar = show;
+    setTimeout(barGone, duration('slow') + crossfadeDuration());
+  }
+  function barGone(): void {
+    const show = afterBar;
+    afterBar = null;
+    show?.();
+  }
+
+  /** The toast of a save; during setup it leads on: to the first fetch with a mailbox, else
+   *  back to the setup page, whose next step is the mailbox. */
+  function savedToast(): void {
+    const next =
+      app.state?.firstRun && app.hasProfile
+        ? {
+            label: app.hasMailbox ? t.profile.next : t.profile.nextMailbox,
+            onclick: () => void onward(),
+          }
+        : null;
+    toasts.show(t.profile.saved, 'success', next);
+  }
 
   /** The setup page, or the Jobs view that shows the first fetch, which starts at once when
    *  nothing holds it (a start that fails is said in the last step of the setup page). */
@@ -271,22 +288,24 @@
     busy = 'save';
     saveNote = null;
     fieldError = null;
+    refusedValue = null;
     const replaced = replacing;
     try {
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
-      // again never puts the old values back next to "Gespeichert".
+      // again never puts the old values back.
       if (!(await reload()) && app.state) app.state.profile = info;
       const form = info.form ?? app.state?.profile?.form;
       if (form) editor.edit(form);
       else editor.close();
-      saved = true;
-      if (replaced) {
-        toasts.show(t.profile.replaced, 'success', {
-          label: t.common.undo,
-          onclick: () => void restore(),
-        });
-      }
+      whenBarGone(() =>
+        replaced
+          ? toasts.show(t.profile.replaced, 'success', {
+              label: t.common.undo,
+              onclick: () => void restore(),
+            })
+          : savedToast(),
+      );
       return true;
     } catch (error) {
       const at = refused(error);
@@ -327,8 +346,8 @@
     note = null;
     try {
       const removed = await invoke('remove_profile');
+      confirmRemove = false;
       editor.close();
-      saved = false;
       await reload();
       if (removed) {
         toasts.show(t.profile.removed, 'success', {
@@ -337,6 +356,7 @@
         });
       }
     } catch (error) {
+      confirmRemove = false;
       note = () => errorText(error);
     } finally {
       busy = null;
@@ -415,15 +435,6 @@
     }
     return local.quality;
   });
-  const hasCompetences = $derived(editor.after.competences.some((row) => row.name.trim() !== ''));
-  /** Terms for the match: the engine's count while nothing changed, else followed. */
-  const terms = $derived(
-    understood === null || local === null
-      ? null
-      : sameForm(editor.before, editor.after)
-        ? understood.competenceCount
-        : local.terms,
-  );
   /** What "n Werte prüfen" counts: each value of the file that does not read, by the field
    *  it is said at. */
   const checkList = $derived(
@@ -443,9 +454,9 @@
   }
   /** Said in the head: what the form cannot change (keys of the file the app does not read). */
   const HEAD = new Set(['ignoredKeys']);
-  /** Said elsewhere: the quality in the badge, empty criteria at their section, a value at
-   *  its field, a region rule at the remote share, the Schwerpunkte taken over at the
-   *  Schwerpunkte. */
+  /** Said elsewhere or not at all: the quality (the sections say "Noch leer"), empty
+   *  criteria at their section, a value at its field, a region rule at the remote share, the
+   *  Schwerpunkte taken over at the Schwerpunkte. */
   const ELSEWHERE = new Set([
     'fewCompetences',
     'noCompetences',
@@ -478,10 +489,10 @@
   {:else if editor.origin === null}
     <div class="empty">
       <ProfileStart
-        heading={profile?.parseError ? t.overview.profileUnreadable : t.profile.none}
+        heading={profile?.parseError ? t.profile.unreadable : t.profile.none}
         text={profile?.parseError
           ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-          : t.overview.noProfileText}
+          : t.profile.noneText}
         picking={busy === 'pick'}
         unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
         note={note?.() ?? null}
@@ -495,9 +506,6 @@
     <ProfileHeader
       origin={editor.origin}
       {profile}
-      {quality}
-      competences={hasCompetences}
-      {terms}
       checks={checkList.length}
       warnings={headWarnings}
       {rescoring}
@@ -506,7 +514,7 @@
       picking={busy === 'pick'}
       note={note?.() ?? null}
       onpick={() => void pick()}
-      onremove={() => void remove()}
+      onremove={() => (confirmRemove = true)}
       onfromcv={() => void fromCv()}
       onopenfolder={openFolder}
       oncheck={checkFirst}
@@ -516,19 +524,26 @@
       {quality}
       {problems}
       {warnings}
-      {understood}
       {fieldError}
       busy={busy === 'save'}
       note={saveNote?.() ?? null}
-      {result}
-      {next}
       onsave={() => void save()}
       ondiscard={discard}
+      onbargone={barGone}
     />
   {/if}
 </div>
 
-<!-- The heading says it all: the dialog does not repeat it. -->
+<!-- The headings say it all: the dialogs do not repeat them. -->
+<Dialog
+  bind:open={confirmRemove}
+  variant="danger"
+  heading={t.profile.removeHeading}
+  confirmLabel={t.profile.removeConfirm}
+  busy={busy === 'remove'}
+  testid="dialog-remove-profile"
+  onconfirm={() => void remove()}
+/>
 <Dialog
   open={leaving !== null}
   heading={t.profile.leaveHeading}

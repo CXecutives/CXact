@@ -402,16 +402,3 @@ export async function purge(list: readonly JobView[]): Promise<string | null> {
 export function trashEmptied(deleted: Deleted): void {
   deletedFor(deleted);
 }
-
-/**
- * The full ad of this job can still be fetched ("Details holen"): its text is missing and its
- * portal is on (a teaser only with the portal's sign-in).
- */
-export function detailsWanted(job: JobView): boolean {
-  const kind = job.detail.kind;
-  if (kind !== 'pending' && kind !== 'onRequest' && kind !== 'failed' && kind !== 'teaser') {
-    return false;
-  }
-  const portal = app.state?.portals.find((state) => state.portal === job.portal);
-  return portal?.enabled === true && (kind !== 'teaser' || portal.loginEnabled);
-}

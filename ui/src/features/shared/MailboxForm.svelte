@@ -3,17 +3,14 @@
   at the field they belong to (empty fields are said before anything is sent); when Gmail
   refuses the pair, both fields are marked, the password shakes once and the one sentence
   stands above the button. The password never leaves this form except to save_mailbox (it
-  goes straight into the OS keychain). Under both fields (none has a hint of its own, so the
-  two stay one row) one line says what an app password is and needs, with the two pages in
-  the order she needs them: the 2-step verification, then the app password. The fields and
-  that line keep the measure of a form; save and cancel follow the OS like the dialogs (save
-  first on Windows, last on macOS), 12 apart, as high as the fields (32 px). In Einstellungen
-  (`compact`) they end on the trailing edge of the card; the single "Verbinden" of the first
-  run is its step's main action and stays under the fields. A saved mailbox needs no note: its
-  badge "Verbunden" (Einstellungen) or its ticked step (first run) is the answer; a sign-in
-  whose count did not finish says so in a toast. While Verbinden signs in and counts (it can
-  take a while), cancel and Esc stay live: they stop the check (`cancel_run`, the backend
-  holds the app for it) and close the form; the stop itself says nothing.
+  goes straight into the OS keychain). Under both fields the two Google pages in the order
+  she needs them: the 2-step verification, then the app password. The first run shows the
+  form in its step with its one button "Verbinden"; Einstellungen shows it in a dialog
+  (`dialog`), whose buttons are the dialog's: it calls `save` and `cancel`. A saved mailbox
+  needs no note: its badge "Verbunden" (Einstellungen) or its ticked step (first run) is the
+  answer. While Verbinden signs in and counts (it can take a while), cancel and Esc stay
+  live: they stop the check (`cancel_run`, the backend holds the app for it); the stop itself
+  says nothing.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -25,42 +22,33 @@
   import { formKeys } from '$lib/input/input';
   import { invoke, IpcError } from '$lib/ipc/api';
   import type { Mailbox } from '$lib/ipc/types';
-  import { primaryFirst } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { onMount } from 'svelte';
 
   interface Props {
-    /**
-     * Label of the save button, the primary of the form ("Verbinden" first, "Speichern" when
-     * changing, next to cancel). "Abrufen" lives in the Jobs view, so it never competes.
-     */
-    saveLabel: string;
-    /** Only when changing an existing mailbox. */
-    oncancel?: (() => void) | null;
     /** The mailbox as saved (`check` null: signed in, the alert mails not counted). */
     onsaved?: ((saved: Mailbox) => void) | null;
     /**
-     * The caret starts in the first empty field once the form appears (the first run, where
-     * this form is the first step, and "Ändern", which keeps the address): the address, or
-     * the app password next to an address that is there.
+     * The caret starts in the first empty field once the form appears: the address, or the
+     * app password next to an address that is there. On the first run only while the focus
+     * has nowhere else to be; in a dialog always.
      */
     autofocus?: boolean;
-    /** A block of Einstellungen: the buttons at the end of the card. */
-    compact?: boolean;
+    /** In a dialog: no buttons of its own, the dialog's call `save` and `cancel`. */
+    dialog?: boolean;
+    /** A check is on its way (the dialog's button turns meanwhile). */
+    busy?: boolean;
   }
   let {
-    saveLabel,
-    oncancel = null,
     onsaved = null,
     autofocus = false,
-    compact = false,
+    dialog = false,
+    busy = $bindable(false),
   }: Props = $props();
 
   const id = $props.id();
-  const saveFirst = primaryFirst();
   let user = $state(app.state?.mailbox.user ?? '');
   let password = $state('');
-  let busy = $state(false);
   /** An error is said when it shows, so it follows a switch of the language. */
   type Words = () => string;
   let userError = $state<Words | null>(null);
@@ -73,22 +61,22 @@
   const focus = (field: 'user' | 'password', preventScroll = false): void =>
     document.getElementById(`${id}-${field}`)?.focus({ preventScroll });
 
-  // Only while the focus has nowhere else to be (the page just opened, or "Ändern" gave way
-  // to this form). The page stays where it is (the intro and a reset's report stay in view
-  // at a small window); typing brings the field into view. Once the form is laid out: a
-  // field focused before that is scrolled to by WebKit anyway.
+  // Once the form is laid out (a field focused before that is scrolled to by WebKit anyway).
+  // The first run keeps the page where it is (the reset's report stays in view at a small
+  // window); a dialog has just taken the focus for its own and gives it to the field.
   onMount(() => {
     if (!autofocus) return;
     const frame = requestAnimationFrame(() => {
-      if (document.activeElement === document.body) {
+      if (dialog || document.activeElement === document.body) {
         focus(user.trim() === '' ? 'user' : 'password', true);
       }
     });
     return () => cancelAnimationFrame(frame);
   });
 
-  async function save(): Promise<void> {
-    if (busy) return;
+  /** Signs in and saves; `true` once the mailbox is saved. */
+  export async function save(): Promise<boolean> {
+    if (busy) return false;
     userError = passwordError = formError = null;
     refused = false;
     // Empty fields are said at once, both of them, without asking Gmail.
@@ -96,7 +84,7 @@
     if (password.trim() === '') passwordError = () => t.settings.passwordMissing;
     if (userError !== null || passwordError !== null) {
       focus(userError !== null ? 'user' : 'password');
-      return;
+      return false;
     }
     busy = true;
     try {
@@ -104,6 +92,7 @@
       password = '';
       await app.load();
       onsaved?.(saved);
+      return true;
     } catch (error) {
       const kind = error instanceof IpcError ? error.kind : null;
       const reason = error instanceof IpcError ? error.params.reason : null;
@@ -122,18 +111,18 @@
       } else {
         formError = words;
       }
+      return false;
     } finally {
       busy = false;
     }
   }
 
-  /** Cancel and Esc: a check in progress is stopped first (the answer to save_mailbox is then
-   *  `mailCancelled`, said by nobody); the form closes at once either way. */
-  function cancel(): void {
+  /** Cancel and Esc of the dialog: a check in progress is stopped (the answer to
+   *  save_mailbox is then `mailCancelled`, said by nobody). */
+  export function cancel(): void {
     if (busy) {
       invoke('cancel_run').catch((error: unknown) => (formError = () => errorText(error)));
     }
-    oncancel?.();
   }
 
   function openPage(kind: 'appPasswordPage' | 'twoStepPage'): void {
@@ -143,11 +132,7 @@
   }
 </script>
 
-<div
-  class="form"
-  data-testid="mailbox-form"
-  use:formKeys={oncancel ? { save: () => void save(), cancel } : { save: () => void save() }}
->
+{#snippet body()}
   <div class="fields">
     <Field label={t.settings.address} for="{id}-user" error={userError?.() ?? null}>
       <TextField
@@ -170,57 +155,50 @@
       />
     </Field>
   </div>
-  <!-- What an app password is and needs, and the two pages in the order she needs them. -->
-  <div class="help">
-    <p>{t.settings.twoStep}</p>
-    <div class="links">
-      <Button
-        variant="link"
-        size="sm"
-        icon="external"
-        external
-        label={t.settings.twoStepAction}
-        testid="two-step"
-        onclick={() => openPage('twoStepPage')}
-      />
-      <Button
-        variant="link"
-        size="sm"
-        icon="external"
-        external
-        label={t.settings.createPassword}
-        testid="create-password"
-        onclick={() => openPage('appPasswordPage')}
-      />
-    </div>
+  <!-- The two pages in the order she needs them. -->
+  <div class="links">
+    <Button
+      variant="link"
+      size="sm"
+      icon="external"
+      external
+      label={t.settings.twoStepAction}
+      testid="two-step"
+      onclick={() => openPage('twoStepPage')}
+    />
+    <Button
+      variant="link"
+      size="sm"
+      icon="external"
+      external
+      label={t.settings.createPassword}
+      testid="create-password"
+      onclick={() => openPage('appPasswordPage')}
+    />
   </div>
   {#if formError}
     <Notice tone="danger" variant="inline" text={formError()} testid="mailbox-error" />
   {/if}
-  <div class="actions" class:end={compact || oncancel !== null}>
-    {#snippet dismiss()}
-      {#if oncancel}
-        <Button
-          variant="secondary"
-          size="field"
-          label={t.common.cancel}
-          testid="mailbox-cancel"
-          onclick={cancel}
-        />
-      {/if}
-    {/snippet}
-    {#if !saveFirst}{@render dismiss()}{/if}
-    <Button
-      variant="primary"
-      size="field"
-      label={saveLabel}
-      loading={busy}
-      testid="mailbox-save"
-      onclick={() => void save()}
-    />
-    {#if saveFirst}{@render dismiss()}{/if}
+{/snippet}
+
+{#if dialog}
+  <!-- The dialog's own keys answer Enter and Esc. -->
+  <div class="form" data-testid="mailbox-form">{@render body()}</div>
+{:else}
+  <div class="form" data-testid="mailbox-form" use:formKeys={{ save: () => void save() }}>
+    {@render body()}
+    <div class="actions">
+      <Button
+        variant="primary"
+        size="field"
+        label={t.settings.connect}
+        loading={busy}
+        testid="mailbox-save"
+        onclick={() => void save()}
+      />
+    </div>
   </div>
-</div>
+{/if}
 
 <style>
   .form {
@@ -230,24 +208,17 @@
     container-type: inline-size;
   }
 
-  /* A form's measure for the fields and what they need; the buttons use the whole width. */
+  /* A form's measure for the fields and their pages. */
   .fields,
-  .help {
+  .links {
     max-width: var(--form-width);
-  }
-
-  .help {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   .links {
     display: flex;
     flex-wrap: wrap;
     column-gap: var(--space-16);
+    margin-top: calc(-1 * var(--space-8));
   }
 
   /* Address and password side by side where there is room (the first run stays short). */
@@ -266,14 +237,6 @@
 
   .actions {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-12);
-  }
-
-  /* Save and cancel on the card's trailing edge, 12 apart, like the profile's save bar and
-     every dialog; in Einstellungen a single "Verbinden" too. */
-  .end {
-    justify-content: flex-end;
   }
 </style>

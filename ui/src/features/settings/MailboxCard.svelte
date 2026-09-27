@@ -1,12 +1,13 @@
 <!--
-  The Postfach card of Einstellungen: the connected address with its badge, "Ändern"
-  (secondary: it changes the row's own value) and "Entfernen" (quiet, asks first), then "Alle
-  Alert-Mails abrufen"; without a mailbox, or while changing it, the form. The badge is the
-  answer to a saved mailbox ("Verbunden", no note). It says "Nicht erreichbar" or "Abgelehnt"
-  only for a mail error of a fetch that finished after Gmail last accepted the mailbox
-  (`mailbox.checkedAt`), with a sentence under the row where it adds the next step. A run, the
-  dry run and the demo lock the mailbox with their reason. A dialog whose action fails stays
-  open and says why inside; its button tries again.
+  The Postfach card of Einstellungen: the connected address with its badge, "Ändern" and
+  "Entfernen" (the same kind of button; Entfernen is red at rest and asks first), without a
+  mailbox the row "Kein Postfach" with "Verbinden". Ändern and Verbinden open the form in a
+  dialog whose button is "Verbinden". The rows of the card follow (Zeitraum, `children`).
+  The badge is the answer to a saved mailbox ("Verbunden", no note). It says "Nicht
+  erreichbar" or "Abgelehnt" only for a mail error of a fetch that finished after Gmail last
+  accepted the mailbox (`mailbox.checkedAt`), with a sentence at the end of the card where it
+  adds the next step. A run, the dry run and the demo lock the mailbox with their reason. A
+  dialog whose action fails stays open and says why inside; its button tries again.
 -->
 <script lang="ts">
   import Badge from '$components/Badge.svelte';
@@ -20,18 +21,18 @@
   import { invoke } from '$lib/ipc/api';
   import type { AppState } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
-  import { navigation } from '$lib/state/navigation.svelte';
-  import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
-  import { tick } from 'svelte';
+  import type { Snippet } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
   interface Props {
     cfg: AppState;
     /** Why the mailbox cannot change now (the demo, the dry run, a run), or null. */
     locked: string | null;
+    /** The card's other rows (Zeitraum). */
+    children: Snippet;
   }
-  let { cfg, locked }: Props = $props();
+  let { cfg, locked, children }: Props = $props();
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -43,13 +44,19 @@
     'mailServer',
   ];
 
-  let editing = $state(false);
+  let connecting = $state(false);
+  /** Opens the form's dialog from its button, which holds the focus meanwhile (WebKit does
+   *  not focus a clicked button), so the dialog gives the focus back to it when it closes. */
+  function openForm(event: MouseEvent): void {
+    if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
+    connecting = true;
+  }
+  let checking = $state(false);
+  let form = $state<MailboxForm | null>(null);
   let confirmRemove = $state(false);
-  let confirmFull = $state(false);
   let removing = $state(false);
   /** Said when it shows, so in the language of the moment. */
   let removeError = $state<(() => string) | null>(null);
-  let fullError = $state<(() => string) | null>(null);
 
   /** The last fetch failed at the mailbox after Gmail last accepted it: a sign-in since then
    *  (`checkedAt`) makes the failure past. */
@@ -62,7 +69,7 @@
     if (checked !== null && Date.parse(last.finishedAt) <= Date.parse(checked)) return null;
     return outcome.error;
   });
-  /** The sentence under the row: what to do when Gmail refused the password, else the cause
+  /** The sentence of the card: what to do when Gmail refused the password, else the cause
    *  where it says more than the badge ("Gmail ist nicht erreichbar" is the badge itself). */
   const mailFailureText = $derived(
     mailFailure === null || mailFailure.kind === 'mailConnect'
@@ -71,19 +78,6 @@
         ? t.settings.mailRefused
         : t.error.text(mailFailure.kind, mailFailure.params),
   );
-
-  /** Ändern and Entfernen of the connected mailbox. */
-  let buttons = $state<HTMLElement | null>(null);
-
-  /** The change form closes: the focus it held goes back to "Ändern", as a dialog's goes back
-   *  to its opener (only when it fell to the page, never taken from elsewhere). */
-  async function closeForm(): Promise<void> {
-    editing = false;
-    await tick();
-    if (document.activeElement === document.body) {
-      buttons?.querySelector<HTMLElement>('button')?.focus();
-    }
-  }
 
   /** The dialog closes only once the mailbox is gone; a failure stays inside it. */
   async function remove(): Promise<void> {
@@ -100,26 +94,15 @@
     }
   }
 
-  /** Every alert mail again, not only the new ones: a run, shown in the Jobs view. */
-  async function readAll(): Promise<void> {
-    fullError = null;
-    if (await run.start({ kind: 'fetch' })) {
-      confirmFull = false;
-      navigation.go('jobs');
-    } else {
-      fullError = () => run.startError ?? t.run.failed;
-    }
+  /** "Verbinden" in the dialog: it closes once the mailbox is saved. */
+  async function connect(): Promise<void> {
+    if (await form?.save()) connecting = false;
   }
 </script>
 
-<Card padding={cfg.mailbox.user && !editing ? 'rows' : 'md'}>
-  {#if cfg.mailbox.user && !editing}
-    <SettingRow
-      label={cfg.mailbox.user}
-      copyLabel
-      hint={t.settings.vault[cfg.mailbox.vault]}
-      testid="mailbox"
-    >
+<Card padding="rows">
+  {#if cfg.mailbox.user}
+    <SettingRow label={cfg.mailbox.user} copyLabel testid="mailbox">
       {#snippet badges()}
         {#if mailFailure}
           <Badge
@@ -131,7 +114,7 @@
           <Badge label={t.settings.connected} tone="success" icon="check" />
         {/if}
       {/snippet}
-      <div class="buttons" bind:this={buttons}>
+      <div class="buttons">
         <Button
           variant="secondary"
           size="sm"
@@ -140,10 +123,10 @@
           disabled={locked !== null}
           disabledReason={locked}
           testid="mailbox-change"
-          onclick={() => (editing = true)}
+          onclick={openForm}
         />
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           icon="purge"
           label={t.common.remove}
@@ -158,40 +141,22 @@
         />
       </div>
     </SettingRow>
-    <SettingRow label={t.settings.fullMailbox} hint={t.settings.fullMailboxHint}>
+  {:else}
+    <SettingRow label={t.settings.notConnected} testid="mailbox">
       <Button
         variant="secondary"
         size="sm"
-        icon="fetch"
-        label={t.settings.fullMailboxAction}
-        disabled={run.fetchBlocked !== null}
-        disabledReason={run.fetchBlocked}
-        testid="full-mailbox"
-        onclick={() => {
-          fullError = null;
-          confirmFull = true;
-        }}
+        icon="signIn"
+        label={t.settings.connect}
+        disabled={locked !== null}
+        disabledReason={locked}
+        testid="mailbox-connect"
+        onclick={openForm}
       />
     </SettingRow>
-  {:else}
-    {#if !cfg.mailbox.user}
-      <p class="lead">{t.settings.notConnected}</p>
-    {/if}
-    <!-- "Ändern" gives way to the form, which takes the caret; closing it gives it back. The
-         badge "Verbunden" answers a saved change. -->
-    <MailboxForm
-      saveLabel={cfg.mailbox.user ? t.common.save : t.settings.connect}
-      autofocus={editing}
-      compact
-      oncancel={cfg.mailbox.user ? () => void closeForm() : null}
-      onsaved={(saved) => {
-        // Signed in, but the alert mails were not counted in time: the next fetch reads them.
-        if (saved.check === null) toasts.show(t.settings.mailboxNotCounted, 'info');
-        void closeForm();
-      }}
-    />
   {/if}
-  {#if mailFailureText && !editing}
+  {@render children()}
+  {#if mailFailureText}
     <Notice tone="danger" variant="inline" text={mailFailureText} testid="mailbox-failure" />
   {/if}
   {#if cfg.mailbox.error}
@@ -204,6 +169,27 @@
 </Card>
 
 <Dialog
+  bind:open={connecting}
+  heading={t.settings.connectHeading}
+  confirmLabel={t.settings.connect}
+  busy={checking}
+  stoppable
+  testid="dialog-mailbox"
+  onconfirm={() => void connect()}
+  oncancel={() => form?.cancel()}
+>
+  <MailboxForm
+    bind:this={form}
+    bind:busy={checking}
+    dialog
+    autofocus
+    onsaved={(saved) => {
+      // Signed in, but the alert mails were not counted in time: the next fetch reads them.
+      if (saved.check === null) toasts.show(t.settings.mailboxNotCounted, 'info');
+    }}
+  />
+</Dialog>
+<Dialog
   bind:open={confirmRemove}
   variant="danger"
   heading={t.settings.removeMailbox}
@@ -214,23 +200,8 @@
   testid="dialog-remove-mailbox"
   onconfirm={() => void remove()}
 />
-<Dialog
-  bind:open={confirmFull}
-  heading={t.settings.fullMailboxHeading}
-  text={t.settings.fullMailboxText}
-  confirmLabel={t.settings.fullMailboxConfirm}
-  error={fullError?.() ?? null}
-  testid="dialog-full-mailbox"
-  onconfirm={() => void readAll()}
-/>
 
 <style>
-  .lead {
-    margin-bottom: var(--space-16);
-    color: var(--text-muted);
-    font: var(--type-md);
-  }
-
   /* The buttons of a row end on its trailing edge, 12 apart, one size (28). */
   .buttons {
     display: flex;

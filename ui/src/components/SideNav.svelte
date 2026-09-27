@@ -4,7 +4,8 @@
   The active entry sits on one white pill that slides to it (180 ms, emphasized; the
   sibling of the segmented thumb), its label ink and its icon coral. An idle entry washes
   on hover and its icon turns coral. Collapsed (icon rail) the labels move into tooltips
-  right of the icons (never over the next entry). While the window is inactive the active
+  right of the icons (never over the next entry); with its label in view an entry has no
+  tooltip, unless it waits and says why. While the window is inactive the active
   label turns ink.
   An entry may carry sub-entries (Archiv, Papierkorb under Jobs), a group of its own:
   quieter (13 px, muted), indented under the parent's label, as high as the main entries so
@@ -26,8 +27,6 @@
     label: string;
     icon: IconName;
     testid?: string;
-    /** Its shortcut ("Strg+1", "⌘1"), the second line of its tooltip. */
-    hint?: string | null;
     /** Why it cannot be chosen now (its tooltip); null: it can. */
     disabled?: string | null;
     /** Quieter entries right under this one (the places of the Jobs view). */
@@ -201,8 +200,8 @@
     data-testid={item.testid}
     use:tooltip={item.disabled
       ? { text: item.disabled, placement: 'right' }
-      : collapsed || item.hint
-        ? { text: item.label, hint: item.hint ?? null, placement: 'right' }
+      : collapsed
+        ? { text: item.label, placement: 'right' }
         : null}
     onclick={() => {
       if (!item.disabled) onselect(item.id);

@@ -536,7 +536,7 @@ test('a modal dialog dims the toasts, blocks their undo and keeps their time', a
   await expect(toast).toHaveCount(0, { timeout: 5000 });
 });
 
-test('only the switch of a switch row switches; an empty tile is no filter', async ({ page }) => {
+test('only the switch of a switch row switches', async ({ page }) => {
   await open(page, '?gallery');
   const toggle = page.getByTestId('gallery-row-toggle');
   await toggle.scrollIntoViewIfNeeded();
@@ -545,9 +545,6 @@ test('only the switch of a switch row switches; an empty tile is no filter', asy
   await expect(toggle).toHaveAttribute('aria-checked', before!);
   await toggle.click();
   await expect(toggle).not.toHaveAttribute('aria-checked', before!);
-  // The tile with 0 is plain text; the chosen filter is pressed.
-  expect(await page.getByTestId('tile-empty').evaluate((node) => node.tagName)).toBe('DIV');
-  await expect(page.getByTestId('tile-filter')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a segmented control never overlaps: each pill covers exactly its option', async ({

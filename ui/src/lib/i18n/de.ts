@@ -21,6 +21,7 @@ import type {
   Band,
   DetailState,
   ErrorKind,
+  FetchRange,
   InvalidInput,
   JobSort,
   Language,
@@ -30,26 +31,16 @@ import type {
   Portal,
   LanguageLevel,
   ProfileAvailability,
-  ProfileQuality,
   ReasonKind,
   ReasonWeight,
   RemoteWish,
   RunKindName,
   StatusCode,
   Step,
-  VaultKind,
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
-import {
-  NBSP,
-  formatEuro,
-  formatMoment,
-  formatMoney,
-  formatNumber,
-  formatPercent,
-  formatStamp,
-} from './format';
+import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
 type Params = Record<string, string | number | boolean | null>;
 type Text = string | ((params: Params) => string);
@@ -158,7 +149,7 @@ const profileField: Record<string, string> = {
   workloadMaxDays: 'Auslastung',
   minMonths: 'Mindestlaufzeit',
   exclusionWords: 'Ausschlusswörter',
-  targetYears: 'Jobs ab',
+  targetYears: 'Verlangte Erfahrung ab',
   minSalary: 'Mindest-Jahresgehalt',
   permanentPlaces: 'Orte für Festanstellung',
   permanentRemoteMin: 'Mindest-Remote-Anteil',
@@ -222,10 +213,6 @@ const emptyMails = (mails: number): string =>
 
 /** A profile file the app cannot read (the list, the overview, the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
-
-/** The run that reads every alert mail (`fullMailbox`): one name in the list, the run card
- *  and the settings. */
-const FULL_MAILBOX = 'Alle Alert-Mails abrufen';
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
@@ -626,12 +613,9 @@ export const de = {
   },
   nav: {
     label: 'Bereiche',
-    overview: 'Übersicht',
     jobs: 'Jobs',
     profile: 'Profil',
     settings: 'Einstellungen',
-    /** Why the Übersicht waits during the first run. */
-    overviewLater: 'Nach dem ersten Abruf',
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
     demo: 'Demo',
   },
@@ -1050,59 +1034,6 @@ export const de = {
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',
   },
-  overview: {
-    noProfileText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
-    profileUnreadable: PROFILE_UNREADABLE,
-    label: 'Übersicht',
-    /** The first block: the inbox as counts that lead into the list (its name in Jobs). */
-    since: 'Eingang',
-    tileNew: 'Neu',
-    tileHigh: 'Hohe Passung',
-    today: 'Heute ansehen',
-    favourites: 'Favoriten',
-    /** More favourites than the block shows: all of them in Jobs. */
-    allFavourites: (value: number) => `Alle ${n(value)} Favoriten`,
-    noDetail: (value: number) =>
-      value === 1 ? '1 Job ohne ganze Anzeige' : `${n(value)} Jobs ohne ganze Anzeige`,
-    fetchDetails: 'Details holen',
-    /** Excluded jobs not opened yet, an open point until she has looked at them. */
-    excludedNew: (value: number) =>
-      value === 1 ? '1 neuer Job ausgeschlossen' : `${n(value)} neue Jobs ausgeschlossen`,
-    look: 'Ansehen',
-    /** The open points, the most important first. */
-    issues: 'Offene Punkte',
-    excel: 'Excel-Datei öffnen',
-    /** The best matches as one prompt for any AI chat. */
-    promptTop: 'KI-Prompt kopieren',
-    /** Its tooltip: what goes into it (favourites first, read or not). */
-    promptTopHint: 'Kopiert deine Favoriten und die besten Jobs mit dem Profil als einen Prompt.',
-    /** No scored job and no favourite to compare yet. */
-    promptTopNone: 'Noch ist kein Job bewertet.',
-    /** A portal that never sent an alert mail: its site, where the alert is made. */
-    createAlert: 'Alert anlegen',
-    files: 'Dateien',
-    /** Under the portal's name, so the sentence does not name it again; next to the button
-     *  that opens the mail. */
-    emptyAlerts: emptyMails,
-    lastRun: 'Letzter Abruf',
-    /** The musts the profile lacks most often (30 days). */
-    openMusts: 'Oft verlangt, nicht im Profil',
-    inJobs: (value: number) => `in ${n(value)} Jobs`,
-    addToProfile: 'Zum Profil hinzufügen',
-    /** The market of the last 30 days, every row over the same days. */
-    market: 'Markt der letzten 30 Tage',
-    marketNew: 'Jobs je Portal',
-    marketRate: 'Tagessatz passender Jobs',
-    marketRateValue: (median: string, jobs: number) =>
-      `${median} im Median aus ${count(jobs, 'Job', 'Jobs')}`,
-    marketMin: (value: string) => `dein Minimum ${value}`,
-    marketRemote: 'Überwiegend remote',
-    marketRemoteValue: (share: number, known: number) =>
-      `${formatPercent(share)} von ${count(known, 'Job', 'Jobs')}`,
-    /** A portal whose alert mails stopped (none for a week). */
-    quietSince: (when: string) => `Seit ${when} keine Alert-Mail.`,
-    quietNever: 'Noch keine Alert-Mail angekommen.',
-  },
   health: {
     /** A portal problem in one sentence that says whether to act, the same in the run card,
      *  the day overview and the settings. */
@@ -1123,6 +1054,9 @@ export const de = {
   },
   profile: {
     none: 'Noch kein Profil',
+    /** The file does not read (edited by hand): the empty state says so. */
+    unreadable: PROFILE_UNREADABLE,
+    noneText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
     /** Another file over the stored profile, and the toast after saving it (Rückgängig). */
@@ -1138,34 +1072,21 @@ export const de = {
     pickOther: 'Andere Datei wählen',
     /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Entfernen). */
     more: 'Weitere Aktionen',
-    remove: 'Entfernen',
-    /** Removing needs no question: the toast offers Rückgängig. */
-    removed: 'Profil entfernt.',
-    /** The moment like every moment of the app (`21.09. 09:30`, the time alone today). */
-    savedAt: (moment: string) => `Gespeichert ${moment}`,
+    /** In the head's menu, red; it asks first, and the toast offers Rückgängig. */
+    remove: 'Profil löschen',
+    removeHeading: 'Profil löschen?',
+    removeConfirm: 'Löschen',
+    removed: 'Profil gelöscht.',
+    /** The toast of a save (during the setup with the way on). */
+    saved: 'Profil gespeichert.',
     unnamed: 'Profil ohne Namen',
-    quality: {
-      good: 'Vollständig',
-      thin: 'Wenig Inhalt',
-      empty: 'Ohne Kompetenzen',
-    } satisfies Record<ProfileQuality, string>,
-    qualityText: {
-      good: 'Die Passung stützt sich auf das ganze Profil.',
-      thin: 'Wenige Kompetenzen, die Passung bleibt grob.',
-      empty: 'Ohne Kompetenzen wird nichts bewertet.',
-    } satisfies Record<ProfileQuality, string>,
-    /** No competence rows, but other terms: the match works, roughly. */
-    noRowsText: 'Ohne Kompetenzen bleibt die Passung grob.',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
-    rescored: 'Gespeichert, Jobs neu bewertet.',
     /** Values of the file that do not read and a rule that stays off: a click goes to the
      *  first one. */
     check: (value: number) => count(value, 'Wert prüfen', 'Werte prüfen'),
     next: 'Weiter zum ersten Abruf',
     /** The same place without a mailbox: back to the setup page. */
     nextMailbox: 'Weiter zum Postfach',
-    /** The head's stats line, the same word as in "So liest die App dein Profil". */
-    understood: (terms: number) => count(terms, 'Suchbegriff', 'Suchbegriffe'),
     warning,
     /** Every domain pack of the engine (core/src/matching/lexicon/domains). */
     pack: {
@@ -1184,22 +1105,13 @@ export const de = {
       consulting: 'Unternehmensberatung',
       energy: 'Energiewirtschaft',
     } as Record<string, string>,
-    draft: {
-      new: 'Neues Profil',
-      file: 'Profil aus einer Datei',
-      answer: 'Profil aus dem Lebenslauf',
-      update: 'Aktualisierung aus dem Lebenslauf',
-    },
-    unsaved: 'Nicht gespeichert',
-    review: 'Prüfe die Angaben und speichere sie.',
     save: 'Speichern',
     discard: 'Verwerfen',
-    /** Why Speichern and Verwerfen wait. */
-    noChanges: 'Noch nichts geändert.',
-    saved: 'Gespeichert.',
     leaveHeading: 'Änderungen speichern?',
     /** Why another file or an update waits while the form holds changes. */
     saveFirst: 'Erst speichern oder verwerfen.',
+    /** Why Speichern waits while a value is marked. */
+    fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
     section: {
       person: 'Person',
@@ -1209,34 +1121,23 @@ export const de = {
       languages: 'Sprachen',
       wishes: 'Wünsche',
       permanent: 'Festanstellung',
-      understood: 'So liest die App dein Profil',
     },
-    /** One sentence per block: what it is for. */
+    /** The two blocks whose effect is easy to get wrong say it in one sentence. */
     sectionHint: {
-      person: 'Die Rolle zählt für die Passung.',
-      competences: 'Nur dieser Block ist nötig, danach bewertet die App jeden Job.',
-      experience: 'Damit prüft die App, was eine Anzeige verlangt.',
-      languages: 'Die App vergleicht sie mit den Sprachen einer Anzeige.',
-      wishes: 'Wünsche verschieben die Passung leicht, sie schließen nichts aus.',
-      criteria: 'Ein Job, der hier nicht passt, gilt als ausgeschlossen.',
-      permanent: 'Diese Regeln gelten nur für Festanstellungen.',
-      understood: 'Damit vergleicht die App jede Anzeige.',
-    },
+      criteria: 'Was hier nicht passt, schließt einen Job aus.',
+      wishes: 'Wünsche schließen nichts aus.',
+    } as Partial<Record<string, string>>,
     field: {
       name: 'Name',
       namePlaceholder: 'Vor- und Nachname',
       title: 'Rolle',
       titlePlaceholder: 'z. B. Interim Manager',
       roles: 'Wunschrollen',
-      rolesHint: 'Passt der Titel einer Anzeige dazu, steigt die Passung leicht.',
       rolesPlaceholder: 'z. B. Interim CFO',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',
-      yearsHint: 'Die Jahre zählen, wenn eine Anzeige Erfahrung in Jahren verlangt.',
       aliases: 'Synonyme',
-      aliasesHint: 'Andere Wörter für dieselbe Kompetenz, auch englische.',
-      aliasesPlaceholder: 'Synonyme',
       addCompetence: 'Kompetenz hinzufügen',
       removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
       star: 'Als Schwerpunkt markieren',
@@ -1251,13 +1152,10 @@ export const de = {
       focusTrimmed: (count: number) =>
         `Die Datei nennt ${n(count)} Schwerpunkte, übernommen sind die ersten fünf.`,
       strengths: 'Besondere Stärken',
-      strengthsHint: 'Sie stützen die Passung, belegen aber keine Anforderung.',
       strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
       keywords: 'Stichworte',
       keywordsPlaceholder: 'z. B. Transformation',
-      keywordsHint: 'Begriffe, die in passenden Anzeigen stehen.',
       totalYears: 'Berufserfahrung',
-      totalYearsHint: 'Ab zehn Jahren bewertet die App Jobs für Einsteiger niedrig.',
       degrees: 'Abschlüsse',
       degreesPlaceholder: 'z. B. Master',
       industries: 'Branchen',
@@ -1269,7 +1167,6 @@ export const de = {
       language: 'Sprache',
       languagePlaceholder: 'z. B. Englisch',
       level: 'Niveau',
-      levelHint: 'Ohne Niveau rechnet die App mit B2.',
       addLanguage: 'Sprache hinzufügen',
       removeLanguage: (name: string) => `${name || 'Sprache'} entfernen`,
       wishRate: 'Wunschtagessatz',
@@ -1286,15 +1183,11 @@ export const de = {
       countriesPlaceholder: 'Land suchen',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
-      /** One click for Deutschland, Österreich and Schweiz. */
-      dach: 'DACH hinzufügen',
       remoteOutside: 'Remote-Jobs im Ausland ausschließen',
       remoteOutsideOff: 'Wähle erst die Einsatzländer.',
       noAnue: 'Zeitarbeit ausschließen',
       noPermanent: 'Festanstellung ausschließen',
-      noPermanentHint: 'Nur bei klarem Wortlaut, sonst markiert die App den Job zum Prüfen.',
       available: 'Verfügbar ab',
-      availableHint: 'Beginnt ein Job früher, markiert die App ihn zum Prüfen.',
       /** Days per week, from and to (either may stay empty): "von 3 bis 5 Tage pro Woche". */
       workload: 'Auslastung',
       workloadFrom: 'von',
@@ -1302,13 +1195,10 @@ export const de = {
       /** The names of the two day fields for a screen reader. */
       workloadMin: 'Auslastung von',
       workloadMax: 'Auslastung bis',
-      workloadHint: 'Passt ein Job nicht dazu, markiert die App ihn zum Prüfen.',
       /** The second day lies below the first (the backend refuses it). */
       workloadOrder: 'Der zweite Wert liegt unter dem ersten.',
       minMonths: 'Mindestlaufzeit',
-      minMonthsHint: 'Ist ein Job kürzer, markiert die App ihn zum Prüfen.',
       exclusionWords: 'Ausschlusswörter',
-      exclusionWordsHint: 'Jobs mit diesen Wörtern im Titel oder Text werden ausgeschlossen.',
       exclusionWordsPlaceholder: 'z. B. Werkstudent',
       /** The option of a single choice that leaves it open (Remote-Anteil, Verfügbar ab). */
       open: 'Offen',
@@ -1317,14 +1207,13 @@ export const de = {
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
-      /** "Jobs ab 15 Jahren Erfahrung": jobs for far less experience are excluded. */
-      targetYears: 'Jobs ab',
+      /** "Verlangte Erfahrung ab 15 Jahren": a job that asks for far less is excluded. */
+      targetYears: 'Verlangte Erfahrung ab',
       minSalary: 'Mindest-Jahresgehalt',
       places: 'Orte für Festanstellung',
       placesPlaceholder: 'z. B. München',
       remoteMin: 'Mindest-Remote-Anteil',
-      remoteMinHint:
-        'Außerhalb der Orte für Festanstellung braucht ein Job mindestens diesen Remote-Anteil.',
+      remoteMinHint: 'Gilt für Jobs außerhalb dieser Orte.',
       /** The remote share waits for the places it counts outside of. */
       placesFirst: 'Trag erst Orte ein.',
       /** A euro amount with cents: the app counts whole euros. */
@@ -1347,8 +1236,8 @@ export const de = {
     unit: {
       euro: '€',
       years: 'Jahre',
-      /** "Jobs ab 15 Jahren Erfahrung". */
-      experience: 'Jahren Erfahrung',
+      /** "Verlangte Erfahrung ab 15 Jahren". */
+      experience: 'Jahren',
       percent: '%',
       days: 'Tage pro Woche',
       months: 'Monate',
@@ -1362,20 +1251,11 @@ export const de = {
       c2: 'C2',
       native: 'Muttersprache',
     } satisfies Record<LanguageLevel, string>,
-    /** What a level means, in the tooltip of its button. */
-    levelMeaning: {
-      a1: 'Anfänger',
-      a2: 'Grundkenntnisse',
-      b1: 'Mittelstufe',
-      b2: 'Gute Kenntnisse',
-      c1: 'Fließend',
-      c2: 'Verhandlungssicher',
-      native: 'Muttersprache',
-    } satisfies Record<LanguageLevel, string>,
+    /** The remote wish in the words of the jobs (the reader's work mode). */
     remoteWish: {
-      full: 'Ganz remote',
+      full: 'Voll remote',
       mostly: 'Überwiegend remote',
-      partly: 'Teilweise remote',
+      partly: 'Hybrid',
       onSite: 'Vor Ort',
     } satisfies Record<RemoteWish, string>,
     /** Nothing chosen means no availability (pressing the chosen one again clears it). */
@@ -1444,41 +1324,11 @@ export const de = {
       uk: 'Ukrainisch',
       hu: 'Ungarisch',
     },
-    /** "So liest die App dein Profil": what the engine reads in the file. */
-    reading: {
-      termsLabel: 'Suchbegriffe',
-      more: (value: number) => `und ${n(value)} weitere`,
-      sources: 'Gelesen aus',
-      /** A part of the file the form does not show (career stations and the like). */
-      fileOnly: (name: string) => `${name}, nur in der Datei`,
-      years: 'Berufserfahrung',
-      yearsValue: (value: number) => count(value, 'Jahr', 'Jahre'),
-      degrees: 'Abschlüsse',
-      packs: 'Fachwortschatz',
-      /** The form holds changes this reading does not know yet. */
-      stale: 'Das gilt ohne die Änderungen.',
-      /** Parts of the profile file by their key (an external contract), in the form's words. */
-      source: {
-        titel: 'Rolle',
-        kernkompetenzen: 'Kompetenzen',
-        methoden_tools: 'Werkzeuge und Methoden',
-        zertifizierungen: 'Zertifikate',
-        branchen: 'Branchen',
-        sprachen: 'Sprachen',
-        alleinstellungsmerkmale: 'Besondere Stärken',
-        keywords: 'Stichworte',
-        abschluss: 'Abschlüsse',
-        ausbildung: 'Abschlüsse',
-        schwerpunkte: 'Schwerpunkte',
-        stationen: 'Stationen',
-        projekte: 'Projekte',
-      } as Record<string, string>,
-    },
     paste: {
       privacy: 'Der Lebenslauf geht an die KI, die du nutzt.',
       copied: 'Der Prompt ist kopiert.',
       copyFailed: 'Der Prompt ließ sich nicht kopieren.',
-      copy: 'Prompt kopieren',
+      copy: 'KI-Prompt kopieren',
       copyAgain: 'Erneut kopieren',
       step: 'Füge ihn in eine KI ein und hänge den Lebenslauf an.',
       preview: 'Prompt ansehen',
@@ -1486,134 +1336,96 @@ export const de = {
       take: 'Übernehmen',
       /** Why Übernehmen waits. */
       takeEmpty: 'Füge erst die Antwort der KI ein.',
-      /** The steps close (an answer pasted so far stays for the next time). */
-      close: 'Schließen',
     },
   },
   settings: {
     mailbox: 'Postfach',
-    /** The section of what the app does on its own: archive, empty the trash. */
-    automatic: 'Automatisch',
     portals: 'Portale',
+    export: 'Export',
+    /** The card of how the app looks and speaks: its colours and its language. */
+    look: 'Darstellung',
+    /** The card of the app itself: its backups, its log, the reset. */
+    app: 'App',
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
     backToJob: 'Zurück zum Job',
-    files: 'Dateien',
-    maintenance: 'Wartung',
     connected: 'Verbunden',
-    notConnected: 'Kein Postfach verbunden.',
+    /** The row of the mailbox while none is connected. */
+    notConnected: 'Kein Postfach',
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
     unreachable: 'Nicht erreichbar',
     refused: 'Abgelehnt',
     mailRefused: 'Gmail lehnt Adresse oder App-Passwort ab, trag sie über „Ändern“ neu ein.',
-    vault: {
-      windowsCredentialManager:
-        'Das App-Passwort liegt in der Windows-Anmeldeinformationsverwaltung.',
-      macosKeychain: 'Das App-Passwort liegt im macOS-Schlüsselbund.',
-    } satisfies Record<VaultKind, string>,
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
     createPassword: 'App-Passwort erstellen',
-    /** Under both fields: what an app password is and needs (the pages follow). */
-    twoStep: 'Ein App-Passwort hat 16 Buchstaben und braucht die Bestätigung in zwei Schritten.',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
     /** Google's own words for its 2-step verification. */
     twoStepAction: 'Bestätigung in zwei Schritten einschalten',
     connect: 'Verbinden',
+    /** The dialog of "Verbinden" and "Ändern". */
+    connectHeading: 'Postfach verbinden',
     /** Saved after the sign-in, but the alert mails were not counted in time (a toast). */
-    mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
+    mailboxNotCounted: 'Postfach verbunden.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoArchive: (days: number) => `Jobs nach ${n(days)} Tagen archivieren`,
-    autoArchiveHint: 'Favoriten werden nie archiviert.',
-    autoEmptyTrash: (days: number) => `Papierkorb nach ${n(days)} Tagen leeren`,
-    autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
-    active: 'Aktiv',
-    details: 'Details holen',
-    /** Once at the top of the portals: what "Details holen" is for. */
-    portalsHint: 'Ohne „Details holen“ bekommen die Jobs eines Portals keine Passung.',
-    needsDetails: 'Schalte erst „Details holen“ ein.',
-    /** The sign-in row of a portal that offers one. */
-    loginHint: 'Zeigt ganze Anzeigen.',
-    quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Seiten`,
-    quotaHour: (used: number, cap: number) => `Diese Stunde ${n(used)} von ${n(cap)} Seiten`,
-    /** The sign-in row of a portal: its label, and its state. */
-    session: 'Anmeldung',
-    signedIn: 'Angemeldet',
-    /** A portal that is off. */
-    portalOff: 'Wird beim Abruf übersprungen.',
+    /** Which alert mails "Postfach abrufen" reads (`fetchRange`). */
+    range: 'Zeitraum',
+    rangeName: {
+      sinceLast: 'Seit dem letzten Abruf',
+      days7: '7 Tage',
+      days30: '30 Tage',
+      all: 'Alle',
+    } satisfies Record<FetchRange, string>,
+    /** The calls of a portal today (counted from midnight). */
+    quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Aufrufen`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
     signInWaiting: 'Das Anmeldefenster ist offen.',
-    workspace: 'Arbeitsordner',
-    workspaceDefault: 'Standard',
+    folder: 'Ergebnisordner',
     excel: 'Excel-Datei',
-    excelMissing: 'Die Excel-Datei entsteht beim ersten Abruf.',
-    /** The HTML file of the favourites and new matches. */
-    overview: 'Bericht',
-    overviewLater: 'Der Bericht entsteht beim ersten Abruf.',
-    txt: 'Textdateien',
-    /** What the text files are (one per ad) and what they are for, with their number. */
-    txtCount: (value: number) =>
-      `${count(value, 'Anzeige', 'Anzeigen')} als Text für eine KI-Bewertung`,
-    txtLater: 'Die Textdateien entstehen beim ersten Abruf.',
-    txtNone: 'Es gibt keine Textdateien.',
-    txtRewrite: 'Neu schreiben',
-    txtClear: 'Löschen',
-    /** The toasts of "Neu schreiben" and "Löschen" (a deletion can be undone: it writes them again). */
-    txtRewritten: 'Textdateien neu geschrieben.',
-    txtNothing: 'Es gibt noch keine Anzeige mit ganzem Text.',
-    txtCleared: 'Textdateien gelöscht.',
-    txtFailed: (value: number) => `${count(value, 'Datei ist', 'Dateien sind')} gerade geöffnet.`,
-    /** Another work folder: the profile came along (or the folder has its own), the files are
-     *  written there at once. */
-    workspaceMoved: 'Profil und Dateien liegen jetzt im neuen Ordner.',
-    workspaceFiles: 'Die Dateien liegen jetzt im neuen Ordner.',
-    workspaceOwnProfile: 'Die App nutzt jetzt das Profil aus diesem Ordner.',
-    fullMailbox: FULL_MAILBOX,
-    fullMailboxHint: 'Liest alle Alert-Mails, nicht nur die neuen.',
-    fullMailboxAction: 'Abrufen',
-    fullMailboxConfirm: 'Abrufen',
-    fullMailboxHeading: 'Alle Alert-Mails abrufen?',
-    fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
+    csv: 'CSV-Datei',
+    excelMissing: 'Die Excel-Datei entsteht beim nächsten Abruf.',
+    csvMissing: 'Die CSV-Datei entsteht beim nächsten Abruf.',
+    /** Another result folder: the profile came along (or the folder has its own), the files
+     *  are written there at once. */
+    folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
+    folderFiles: 'Die Dateien liegen im neuen Ordner.',
+    folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
     logs: 'Protokoll',
-    data: 'Daten der App',
-    /** The row of the app's version in Wartung. */
-    version: 'Version',
-    /** The row of the database's copies in Wartung, and its dialog. */
-    backup: 'Sicherung wiederherstellen',
-    backupHint: 'Die App sichert die Jobs einmal am Tag.',
+    /** The app's version, the quiet line under the last card. */
+    version: (value: string) => `Version ${value}`,
+    /** The row of the database's copies, and its dialog. */
+    backup: 'Sicherung',
+    backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
     backupNone: 'Es gibt noch keine Sicherung.',
+    /** A copy of today: its time with the day's name (another day: its date and time). */
+    backupToday: (time: string) => `Heute ${time}`,
     /** After a copy's day and time: why it is there (the copy of a day says nothing). */
     backupKind: {
       daily: null,
       update: 'vor einem Update',
       restore: 'vor dem Wiederherstellen',
     } satisfies Record<BackupKind, string | null>,
-    /** The question before a restore names the copy's date and time. */
-    backupConfirm: (date: string, time: string) =>
-      `Sicherung vom ${date} um ${time} wiederherstellen?`,
-    backupConfirmText: 'Der jetzige Stand wird vorher gesichert.',
+    backupText: 'Der jetzige Stand wird vorher gesichert.',
     backupRestored: 'Sicherung wiederhergestellt.',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
-    reset: 'Alles zurücksetzen',
-    /** Everything core's reset deletes: the database, the profile, the keychain entry, the
-     *  portal sign-ins; the dialog adds the app's files in the work folder. */
-    resetHint:
-      'Löscht Jobs, Einstellungen, Profil, App-Passwort, Anmeldungen und die Dateien der App im Arbeitsordner.',
+    /** The row of the reset, its button and its dialog. */
+    reset: 'Alle Daten',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText: 'Die App startet danach neu und löscht',
-    /** Everything the reset deletes, one item each (the dialog's list). */
+    /** Everything the reset deletes, one item each (the dialog's list): the database, the
+     *  profile, the keychain entry, the portal sign-ins and the app's files. */
     resetItems: [
       'die Jobs und die Einstellungen',
       'das Profil',
       'das App-Passwort',
       'die Anmeldungen bei den Portalen',
-      'Excel-Datei, Bericht und Textdateien im Arbeitsordner',
+      'die Dateien der App im Ergebnisordner',
     ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
@@ -1623,8 +1435,6 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
-    /** The card of how the app looks and speaks: its colours and its language. */
-    look: 'Darstellung',
     palette: 'Farben',
     /** The palettes (tokens.css): Coast by its name, GitHub's light and dark as the OS says. */
     paletteName: {
@@ -1638,12 +1448,8 @@ export const de = {
       de: 'Deutsch',
       en: 'English',
     } satisfies Record<Language, string>,
-    /** The card of the app's keys (lib/input/keys.ts; the rows are those of keysHelp). */
-    keys: 'Tastenkürzel',
   },
   firstRun: {
-    benefit: 'Die App liest die Alert-Mails aus Gmail und zeigt, welche Jobs zum Profil passen.',
-    privacy: 'Alles bleibt auf diesem Rechner.',
     steps: 'Erste Schritte',
     mailbox: 'Postfach',
     /** Where the jobs come from: the portals switched on by name, in the app's order. */
@@ -1659,18 +1465,12 @@ export const de = {
     /** "Verbinden" found no alert mail of any portal: a fetch would find nothing. */
     noAlerts: 'In den letzten 30 Tagen kam keine Alert-Mail an, leg erst einen Alert an.',
     profile: 'Profil',
-    profileText: 'Das Profil entsteht in der App, auf Wunsch aus dem Lebenslauf.',
+    /** A profile without competences: the step stays open. */
+    profileEmpty: 'Ohne Kompetenzen wird nichts bewertet.',
     fetch: 'Erster Abruf',
-    fetchHint:
-      'Der erste Abruf liest die Alert-Mails der letzten 30 Tage und dauert ein paar Minuten.',
   },
   shell: {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',
-    /** The sidebar's run status, one line: the time today, the date on another day. */
-    last: (iso: string) => `Abgerufen ${formatStamp(iso)}`,
-    showRun: 'Abruf anzeigen',
-    runFailed: (iso: string) => `Fehlgeschlagen ${formatStamp(iso)}`,
-    runCancelled: (iso: string) => `Abgebrochen ${formatStamp(iso)}`,
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
   },

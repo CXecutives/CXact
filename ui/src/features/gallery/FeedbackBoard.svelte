@@ -6,7 +6,6 @@
   import Notice, { NOTICE_TONES } from '$components/Notice.svelte';
   import ScoreRing, { type RingState } from '$components/ScoreRing.svelte';
   import { bandOf } from '$lib/ipc/types/bands';
-  import StatTile from '$components/StatTile.svelte';
   import Section from './Section.svelte';
   import { text } from './gallery';
 
@@ -36,7 +35,6 @@
   ];
 
   let count = $state(12);
-  let filtered = $state(true);
   let confirmOpen = $state(false);
   let dangerOpen = $state(false);
   /** The danger dialog fails like an action in the dry run: the error shows inside. */
@@ -65,21 +63,6 @@
 </Section>
 
 <Section heading={t.stats} id="stats">
-  <div class="row">
-    <StatTile label={t.statNew} value={12} icon="inbox" hint={t.statHint} onclick={noop} />
-    <StatTile label={t.statHigh} value={3} icon="star" tone="success" />
-    <StatTile label={t.statIssues} value={1248} icon="warning" tone="warning" onclick={noop} />
-    <!-- A chosen filter (navy) and an empty tile (static, quiet). -->
-    <StatTile
-      label={t.statFilter}
-      value={4}
-      icon="unstated"
-      active={filtered}
-      onclick={() => (filtered = !filtered)}
-      testid="tile-filter"
-    />
-    <StatTile label={t.statPinned} value={0} icon="star" onclick={noop} testid="tile-empty" />
-  </div>
   <!-- Counts roll when they change on screen (not when they first appear). -->
   <div class="row">
     {#each COUNT_TONES as tone (tone)}

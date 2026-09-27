@@ -1249,17 +1249,18 @@ test.describe('run line', () => {
   test('failed: one quiet line with Erneut versuchen and its ×; cancelled says nothing', async ({
     page,
   }) => {
-    await open(page, `${WIN}&scenario=offline`);
+    await open(page, `${WIN}&mail=offline&tick=15`);
     await expect(page.getByTestId('run-problem')).toHaveCount(0);
-    await page.getByTestId('run-status').click();
+    await page.getByTestId('fetch').click();
+    await runFinished(page);
     const problem = page.getByTestId('run-problem');
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
     await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+    await problem.getByTestId('run-retry').click();
+    expect(await calls(page, 'start_run')).toHaveLength(2);
+    await runFinished(page);
     await page.getByTestId('run-close').click();
     await expect(problem).toHaveCount(0);
-    await page.getByTestId('run-status').click();
-    await problem.getByTestId('run-retry').click();
-    expect(await calls(page, 'start_run')).toHaveLength(1);
     await open(page, `${WIN}&tick=200`);
     await page.getByTestId('fetch').click();
     await page.getByTestId('cancel-run').click();
@@ -1586,24 +1587,23 @@ test.describe("the open row's bar", () => {
 /* ====================================================================== sidebar */
 
 test.describe('sidebar', () => {
-  test('four views, no counts; the app starts in the Übersicht; no keys of their own', async ({
+  test('three views, no counts, no tooltips beside their names; the app starts in Jobs', async ({
     page,
   }) => {
     await open(page, `${WIN}&view=start`);
-    await expect(page.getByTestId('view-overview')).toBeVisible();
+    await expect(page.getByTestId('view-jobs')).toBeVisible();
     const sidebar = page.getByTestId('sidebar');
     await expect(sidebar.locator('nav button')).toHaveText([
-      T.nav.overview,
       T.nav.jobs,
       T.nav.profile,
       T.nav.settings,
     ]);
     await expect(sidebar.locator('nav .count, nav .dot')).toHaveCount(0);
-    // Only the keys of the OS: Ctrl+2 and Ctrl+, choose nothing.
-    await page.keyboard.press('Control+2');
-    await page.keyboard.press('Control+,');
-    await page.waitForTimeout(200);
-    await expect(page.getByTestId('view-overview')).toBeVisible();
+    await page.getByTestId('nav-settings').click();
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await page.getByTestId('nav-jobs').hover();
+    await page.waitForTimeout(700);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     // It folds only by the window width: no edge to drag, Ctrl+B and Cmd+B change nothing.
     const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
     await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
@@ -1613,30 +1613,23 @@ test.describe('sidebar', () => {
     expect(await width()).toBe(full);
     await page.setViewportSize({ width: 1000, height: 700 });
     await expect.poll(width).toBeLessThan(full);
+    // Folded to its icons, the names are the tooltips.
+    await page.getByTestId('nav-profile').hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.nav.profile);
     await page.setViewportSize({ width: 1360, height: 900 });
     await expect.poll(width).toBe(full);
-  });
-
-  test('before the first fetch the Übersicht waits and says why', async ({ page }) => {
-    await open(page, `${WIN}&scenario=first-run&view=start`);
-    await expect(page.getByTestId('view-first-run')).toBeVisible();
-    const overview = page.getByTestId('nav-overview');
-    await expect(overview).toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-    await overview.hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Nach dem ersten Abruf');
   });
 
   for (const os of [WIN, MAC]) {
     test(`the rail keeps every entry in the window down to 480 x 360 ${os}`, async ({ page }) => {
       await page.setViewportSize({ width: 1000, height: 700 });
       await open(page, os);
-      for (const id of ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings']) {
+      for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         const box = (await page.getByTestId(id).boundingBox())!;
         expect([box.width, box.height], id).toEqual([40, 40]);
       }
       await page.setViewportSize({ width: 480, height: 360 });
-      for (const id of ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings', 'run-status']) {
+      for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 1 });
       }
       await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);

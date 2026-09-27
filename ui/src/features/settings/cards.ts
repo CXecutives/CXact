@@ -1,16 +1,24 @@
-// Einstellungen as data: the cards in their order, each with its heading and its rows, and
-// every button of a row. SettingsView.svelte renders this list and nothing else, so adding,
-// moving or removing a setting is one entry here (docs/CHANGING.md). Texts are read from
-// the catalog where they render (`(t) => t.settings.…`), so they follow the language.
+// Einstellungen as data: the cards in their order (Postfach, Portale, Export, Darstellung,
+// App), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// renders this list and nothing else, so adding, moving or removing a setting is one entry
+// here (docs/CHANGING.md). Texts are read from the catalog where they render
+// (`(t) => t.settings.…`), so they follow the language.
 //
 // Rules the list keeps (docs/PLAN.md, Einstellungen): a switch or a choice moves at once and
-// is its own answer; the button that changes the row's own value is secondary (Ändern,
-// Abrufen, Anmelden), the ones that open, reveal, write again or remove are ghost; a locked
-// button says why (`locked`); only "Alles zurücksetzen" warns, alone on the last card.
+// is its own answer; the button that changes the row's own value is secondary (Ändern), the
+// ones that open are ghost; a locked button says why (`locked`); only "Zurücksetzen" warns,
+// alone on the last row.
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
+import type {
+  AppState,
+  FetchRange,
+  Language,
+  OpenTarget,
+  Palette,
+  SettingsPatch,
+} from '$lib/ipc/types';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -23,8 +31,6 @@ export interface Lock {
   running: boolean;
   /** Why a run holds the app ("Ein Abruf läuft gerade."). */
   busyText: string;
-  /** The first fetch has not happened yet: the files do not exist. */
-  beforeFirstFetch: boolean;
 }
 
 /** A button of a row. It opens a checked target (`open`), or runs the view's command of
@@ -50,14 +56,14 @@ const ownOnly = ({ state, t, running, busyText }: Lock): string | null =>
         : null;
 
 export const ACTIONS = {
-  workspaceChange: {
+  folderChange: {
     label: (t) => t.common.change,
     icon: 'edit',
     variant: 'secondary',
     locked: ownOnly,
   },
-  workspaceOpen: {
-    label: (t) => t.common.openFolder,
+  folderOpen: {
+    label: (t) => t.common.open,
     icon: 'folder',
     variant: 'ghost',
     open: { kind: 'workspace' },
@@ -69,30 +75,25 @@ export const ACTIONS = {
     open: { kind: 'excel' },
     locked: ({ state, t }) => (state.settings.excelExists ? null : t.settings.excelMissing),
   },
-  excelReveal: {
-    label: (t) => t.common.openFolder,
-    icon: 'folder',
+  csvOpen: {
+    label: (t) => t.common.open,
+    icon: 'document',
     variant: 'ghost',
-    open: { kind: 'excelInFolder' },
+    open: { kind: 'csv' },
+    locked: ({ state, t }) => (state.settings.csvExists ? null : t.settings.csvMissing),
   },
-  logsOpen: {
-    label: (t) => t.common.openFolder,
-    icon: 'folder',
-    variant: 'ghost',
-    open: { kind: 'logDir' },
-  },
-  dataOpen: {
-    label: (t) => t.common.openFolder,
-    icon: 'folder',
-    variant: 'ghost',
-    open: { kind: 'dataDir' },
-  },
-  // Opens the list of the copies; the restore asks first and can be undone.
+  // Opens the list of the copies; the restore can be undone.
   backupRestore: {
     label: (t) => t.settings.backupAction,
     icon: 'backup',
     variant: 'ghost',
     locked: ownOnly,
+  },
+  logsOpen: {
+    label: (t) => t.common.open,
+    icon: 'folder',
+    variant: 'ghost',
+    open: { kind: 'logDir' },
   },
   reset: {
     label: (t) => t.settings.resetAction,
@@ -105,14 +106,11 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'workspaceChange' | 'backupRestore' | 'reset';
+export type CommandId = 'folderChange' | 'backupRestore' | 'reset';
 
-/** A switch: on or off at once (the state is patched before the save). */
-export interface SwitchRow {
-  kind: 'switch';
+/** A switch of a row: on or off at once (the state is patched before the save). */
+export interface Switch {
   id: string;
-  label: Text;
-  hint: Text;
   on: (state: AppState) => boolean;
   patch: (on: boolean) => Partial<SettingsPatch>;
   /** The state as it will be (the switch follows before the answer). */
@@ -132,34 +130,25 @@ export interface ChoiceRow<Id extends string = string> {
   set(state: AppState, id: Id): void;
 }
 
-/** A row with its buttons at the end. */
+/** A row with its buttons at the end, and a switch after them. */
 export interface ActionsRow {
   kind: 'actions';
   id: string;
   label: Text;
-  hint?: Text;
-  /** The hint is a value to copy (a path). */
-  copy?: boolean;
-  badge?: (t: Catalog, state: AppState) => string | null;
+  /** A value under the label to copy (a path). */
+  path?: (state: AppState) => string;
   actions: readonly ActionId[];
+  toggle?: Switch;
 }
 
-/** A value to read and copy (the app's version). */
-export interface ValueRow {
-  kind: 'value';
-  id: string;
-  label: Text;
-  value: (state: AppState) => string;
-}
+export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ChoiceRow<FetchRange> | ActionsRow;
 
-export type Row = SwitchRow | ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow | ValueRow;
-
-/** A card: its rows, or a block of its own (the mailbox, the portals). */
+/** A card: its rows, and for the mailbox and the portals a block of their own above them. */
 export interface CardSpec {
   id: string;
-  heading: Text | null;
-  hint?: Text;
-  body: readonly Row[] | 'mailbox' | 'portals';
+  heading: Text;
+  block?: 'mailbox' | 'portals';
+  rows: readonly Row[];
 }
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
@@ -172,6 +161,17 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   palette: null,
   ...change,
 });
+
+const range: ChoiceRow<FetchRange> = {
+  kind: 'choice',
+  id: 'range',
+  label: (t) => t.settings.range,
+  options: ['sinceLast', 'days7', 'days30', 'all'],
+  name: (t, id) => t.settings.rangeName[id],
+  value: (state) => state.fetchRange,
+  patch: (id) => ({ fetchRange: id }),
+  set: (state, id) => void (state.fetchRange = id),
+};
 
 const palette: ChoiceRow<Palette> = {
   kind: 'choice',
@@ -196,81 +196,59 @@ const language: ChoiceRow<Language> = {
 };
 
 export const CARDS: readonly CardSpec[] = [
-  { id: 'mailbox', heading: (t) => t.settings.mailbox, body: 'mailbox' },
+  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [range] },
+  { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
   {
-    id: 'portals',
-    heading: (t) => t.settings.portals,
-    hint: (t) => t.settings.portalsHint,
-    body: 'portals',
-  },
-  {
-    id: 'files',
-    heading: (t) => t.settings.files,
-    body: [
+    id: 'export',
+    heading: (t) => t.settings.export,
+    rows: [
       {
         kind: 'actions',
-        id: 'workspace',
-        label: (t) => t.settings.workspace,
-        hint: (_t, state) => state.settings.workspace,
-        copy: true,
-        badge: (t, state) =>
-          state.settings.workspaceIsDefault ? t.settings.workspaceDefault : null,
-        actions: ['workspaceChange', 'workspaceOpen'],
+        id: 'folder',
+        label: (t) => t.settings.folder,
+        path: (state) => state.settings.workspace,
+        actions: ['folderChange', 'folderOpen'],
       },
       {
         kind: 'actions',
         id: 'excel',
         label: (t) => t.settings.excel,
-        actions: ['excelOpen', 'excelReveal'],
+        actions: ['excelOpen'],
+        toggle: {
+          id: 'exportExcel',
+          on: (state) => state.exportExcel,
+          patch: (on) => ({ exportExcel: on }),
+          set: (state, on) => void (state.exportExcel = on),
+        },
+      },
+      {
+        kind: 'actions',
+        id: 'csv',
+        label: (t) => t.settings.csv,
+        actions: ['csvOpen'],
+        toggle: {
+          id: 'exportCsv',
+          on: (state) => state.exportCsv,
+          patch: (on) => ({ exportCsv: on }),
+          set: (state, on) => void (state.exportCsv = on),
+        },
       },
     ],
   },
-  { id: 'look', heading: (t) => t.settings.look, body: [palette, language] },
+  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language] },
   {
-    id: 'care',
-    heading: (t) => t.settings.maintenance,
-    body: [
-      {
-        kind: 'actions',
-        id: 'logs',
-        label: (t) => t.settings.logs,
-        actions: ['logsOpen'],
-      },
-      {
-        kind: 'actions',
-        id: 'data',
-        label: (t) => t.settings.data,
-        hint: (_t, state) => state.dataDir,
-        copy: true,
-        actions: ['dataOpen'],
-      },
+    id: 'app',
+    heading: (t) => t.settings.app,
+    rows: [
       {
         kind: 'actions',
         id: 'backup',
         label: (t) => t.settings.backup,
-        hint: (t) => t.settings.backupHint,
         actions: ['backupRestore'],
       },
-      {
-        kind: 'value',
-        id: 'version',
-        label: (t) => t.settings.version,
-        value: (state) => state.version,
-      },
-    ],
-  },
-  // The one action that deletes for good, alone and last, apart from the harmless rows.
-  {
-    id: 'reset',
-    heading: null,
-    body: [
-      {
-        kind: 'actions',
-        id: 'reset-all',
-        label: (t) => t.settings.reset,
-        hint: (t) => t.settings.resetHint,
-        actions: ['reset'],
-      },
+      { kind: 'actions', id: 'logs', label: (t) => t.settings.logs, actions: ['logsOpen'] },
+      // The one action that deletes for good, last; what it deletes is said in its dialog.
+      { kind: 'actions', id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
   },
 ];
