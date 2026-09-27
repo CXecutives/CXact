@@ -26,7 +26,6 @@ import type {
   PauseReason,
   Place,
   Portal,
-  PortalHealth,
   LanguageLevel,
   ProfileAvailability,
   ProfileQuality,
@@ -43,7 +42,6 @@ import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de'
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
-  formatCountdown,
   formatEuro,
   formatMoment,
   formatMoney,
@@ -814,7 +812,13 @@ export const en: Catalog = {
   },
   run: {
     never: 'No fetch yet',
-    historyNotCopied: 'The history could not be copied.',
+    line: {
+      mailbox: 'Reading the mailbox',
+      ads: (done: number, total: number) => `Ads ${n(done)} of ${n(total)}`,
+      adsStart: 'Loading the ads',
+      scoring: 'Scoring the jobs',
+      files: 'Writing the files',
+    },
     step: {
       scan: 'Mailbox',
       fetch: 'Details',
@@ -825,42 +829,13 @@ export const en: Catalog = {
       const at = portal === null ? undefined : statusAt[code];
       return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
     },
-    ofTotal: (total: number) => `of ${n(total)}`,
-    newPill: (value: number) => `${n(value)} new`,
-    topPill: (value: number) => `${n(value)} high match`,
-    resumesIn: (ms: number) => `Resumes in ${formatCountdown(ms)}`,
-    resumesSoon: 'Resuming shortly',
-    portalRuns: 'Running',
-    portalPaused: 'Paused',
-    portalSignIn: 'Sign-in needed',
-    portalLayout: 'Pages look different',
-    portalNew: (value: number) => `${n(value)} new`,
-    portalDup: (value: number) => `${n(value)} duplicates`,
-    portalNoDetails: (value: number) => `${n(value)} without details`,
-    portalNothing: 'nothing new',
     kind: {
       fetch: 'Fetch',
       details: 'Fetch details',
       rescore: 'Score again',
       fullMailbox: FULL_MAILBOX,
     } satisfies Record<RunKindName, string>,
-    done: 'Fetch done',
-    rescored: 'Scored again',
-    nothingNew: 'Nothing new since the last fetch.',
-    cancelled: 'Fetch cancelled',
     failed: 'Fetch failed',
-    details: {
-      done: 'Details fetched',
-      none: 'No details fetched',
-      cancelled: 'Fetching details cancelled',
-      failed: 'Fetching details failed',
-      failedAds: (value: number) => `${count(value, 'ad', 'ads')} could not be fetched.`,
-      goneAds: (value: number) => `${count(value, 'ad is', 'ads are')} no longer online.`,
-    },
-    rescore: {
-      cancelled: 'Scoring cancelled',
-      failed: 'Scoring failed',
-    },
     rescoring: 'The jobs are being scored again.',
     exportFailed: {
       overview: 'The Excel file could not be written and was left unchanged.',
@@ -871,26 +846,7 @@ export const en: Catalog = {
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The work folder cannot be reached.',
     },
-    skipped: (value: number) => `${count(value, 'job is', 'jobs are')} left for the next fetch.`,
-    filesFailed: (value: number) => `${count(value, 'file', 'files')} could not be written.`,
-    excelRenamed: (name: string) => `The old Excel file is now called ${name}.`,
     openOverview: 'Open report',
-    history: 'History',
-    alert: (portal: Portal, postings: number) =>
-      `Alert email from ${portalName[portal]} with ${count(postings, 'job', 'jobs')}`,
-    health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {
-      const name = portalName[portal];
-      switch (kind) {
-        case 'paused':
-          return `Paused on ${name}`;
-        case 'quotaReached':
-          return `Limit reached on ${name}`;
-        case 'layoutSuspect':
-          return `Pages on ${name} look different than expected`;
-        case 'loginRequired':
-          return `Sign-in needed on ${name}`;
-      }
-    },
     checkMailbox: 'Check mailbox',
   },
   list: {
@@ -1547,11 +1503,7 @@ export const en: Catalog = {
     included: 'Scored',
     excluded: 'Excluded',
     trashEmptied: 'Trash emptied.',
-    runDone: (value: number) =>
-      value === 0
-        ? 'Fetch done, nothing new.'
-        : `Fetch done, ${count(value, 'new job', 'new jobs')}.`,
-    runDoneFilesOld: 'Fetch done, but the files are not up to date.',
+    runDone: (value: number) => (value === 0 ? 'No new jobs' : count(value, 'new job', 'new jobs')),
     show: 'Show',
   },
   error: {

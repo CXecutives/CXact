@@ -2,7 +2,7 @@
 // its unopened jobs), Archiv, Papierkorb; one toolbar row (the search, the funnel, Abrufen);
 // the funnel's menu from the filter table and the line that names an active filter; one list
 // per place in the chosen order with the excluded jobs folded at its end; the empty states;
-// the search and its hits elsewhere; moves and their undo; the run card; the open row's bar;
+// the search and its hits elsewhere; moves and their undo; the run line; the open row's bar;
 // the sidebar; the smallest window.
 // Texts come from the catalog (T) and the filter table, the demo data from the stub
 // (stubList), not typed again.
@@ -15,7 +15,6 @@ import {
   expect,
   expectShot,
   motionSettled,
-  NOW,
   open,
   runFinished,
   settle,
@@ -54,8 +53,6 @@ import {
   viaMenu,
   WIN,
 } from './helpers';
-
-const DAY = 86_400_000;
 
 /** The rows outside the fold as the stub lists them: the inbox by match unless said. */
 async function inbox(page: Page, query: Partial<JobQuery> = {}): Promise<string[]> {
@@ -591,9 +588,9 @@ test.describe('one list', () => {
       return page.evaluate(() => (window as unknown as { __glides: number }).__glides);
     };
     await page.getByTestId('fetch').click();
-    await expect(page.getByTestId('run-running')).toBeVisible();
+    await expect(page.getByTestId('run-line')).toBeVisible();
     const before = await rows(page).count();
-    await watch(600, '[data-testid="run-running"]');
+    await watch(600, '[data-testid="cancel-run"]');
     expect(await glides()).toBe(0);
     expect(await rows(page).count()).toBeGreaterThan(before);
     await runFinished(page);
@@ -1130,7 +1127,9 @@ test.describe('moves and undo', () => {
     await openPlace(page, 'trash');
     await viaMenu(page, 'purge', 'freelancermap-2802');
     await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
-    await expect(page.getByTestId('toast-text').filter({ hasText: 'gelöscht' })).toBeVisible();
+    await expect(
+      page.getByTestId('toast-text').getByText(T.toast.deleted, { exact: true }),
+    ).toBeVisible();
     await expect(page.getByTestId('toast-action')).toHaveCount(1);
     await expect(page.getByTestId('dialog-purge')).toHaveCount(0);
     await page.getByTestId('toast-action').click();
@@ -1140,83 +1139,102 @@ test.describe('moves and undo', () => {
   });
 });
 
-/* ===================================================================== run card */
+/* ===================================================================== run line */
 
-test.describe('run card', () => {
-  test('a fetch: the card runs, finishes with a line per portal, its history copies', async ({
+test.describe('run line', () => {
+  test('a fetch: a slim bar and one line under the header, then a toast of what it brought', async ({
     page,
   }) => {
-    await open(page, `${WIN}&tick=30`);
+    await open(page, `${WIN}&tick=60`);
+    // The rows already there stay the same elements while the run brings new ones.
+    await rows(page)
+      .first()
+      .evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
+    const before = await listed(page);
     await page.getByTestId('fetch').click();
-    await expect(page.getByTestId('run-running')).toBeVisible();
-    // A step that finishes while the card is on screen draws its check.
-    await expect(page.getByTestId('step-scan').locator('.mark')).toHaveClass(/drawn/, {
-      timeout: 10_000,
-    });
+    const line = page.getByTestId('run-line');
+    await expect(line).toBeVisible();
+    await expect(line.getByTestId('run-progress')).toHaveAttribute('role', 'progressbar');
+    // Under the header's rows, in the header.
+    const search = (await page.getByTestId('search').boundingBox())!;
+    expect((await line.boundingBox())!.y).toBeGreaterThan(search.y + search.height);
+    await expect(page.getByTestId('list-header').getByTestId('run-line')).toHaveCount(1);
+    // One line of what happens, in the catalog's words.
+    const said = new Set<string>();
+    await expect
+      .poll(
+        async () => {
+          said.add((await page.getByTestId('run-text').textContent()) ?? '');
+          return [...said].some((text) => /^Anzeigen \d+ von \d+$/.test(text));
+        },
+        { intervals: [20], timeout: 10_000 },
+      )
+      .toBe(true);
+    const words = new Set<string>([
+      T.run.line.mailbox,
+      T.run.line.adsStart,
+      T.run.line.scoring,
+      T.run.line.files,
+    ]);
+    for (const text of said) {
+      expect(words.has(text) || /^Anzeigen \d+ von \d+$/.test(text), text).toBe(true);
+    }
+    await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
+    await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
     await runFinished(page);
-    await expect(page.getByTestId('run-finished')).toBeVisible();
-    await expect(page.getByTestId('portal-line-linkedin')).toContainText('linkedin.com');
-    await expect(page.getByTestId('last-new')).toBeVisible();
-    await expect(page.getByTestId('run-toggle')).toHaveCount(0);
-    await page.getByTestId('run-history').getByRole('button').first().click();
-    const line = await page.getByTestId('run-card').locator('.history li').first().textContent();
-    expect(line?.trim()).toMatch(/^\d{2}:\d{2} \S/);
+    await expect(line).toHaveCount(0);
+    // Two new jobs (the third is excluded), no way anywhere: the list shows them.
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2) });
+    await expect(toast).toHaveCount(1);
+    await expect(toast.getByTestId('toast-action')).toHaveCount(0);
     // The run re-sorts the list once it has finished: the new jobs in their places.
     await expect.poll(() => listed(page)).toEqual(await inbox(page));
-    await page.getByTestId('run-close').click();
-    await expect(page.getByTestId('run-card')).toHaveCount(0);
+    // One word for one, the plural for more, none at 0.
+    expect([T.toast.runDone(0), T.toast.runDone(1), T.toast.runDone(2)]).toEqual([
+      'Keine neuen Jobs',
+      '1 neuer Job',
+      '2 neue Jobs',
+    ]);
   });
 
-  test('the counts of the last fetch lead to the inbox, the good ones first', async ({ page }) => {
-    await open(page, WIN);
-    await chooseSort(page, 'newest');
-    await openPlace(page, 'archive');
-    await page.getByTestId('run-status').click();
-    const linkedin = page.getByTestId('portal-line-linkedin');
-    await expect(linkedin).toContainText('2 neu, 1 doppelt, 1 ohne Details');
-    await page.getByTestId('last-top').click();
-    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.match);
-    await openPlace(page, 'trash');
-    await page.getByTestId('last-new').click();
-    await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
+  test('elsewhere the end toast leads to the list', async ({ page }) => {
+    await open(page, `${WIN}&tick=15`);
+    await page.getByTestId('fetch').click();
+    await page.getByTestId('nav-settings').click();
+    await runFinished(page);
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.runDone(2) });
+    await toast.getByTestId('toast-action').click();
+    await expect(page.getByTestId('view-jobs')).toBeVisible();
   });
 
-  test('running: steps side by side, one line per portal with its countdown', async ({ page }) => {
+  test('a run that is on its way: the step and its count', async ({ page }) => {
     await open(page, `${WIN}&scenario=running`);
-    const tops = await Promise.all(
-      ['scan', 'fetch', 'score'].map(async (step) =>
-        Math.round((await page.getByTestId(`step-${step}`).boundingBox())!.y),
-      ),
-    );
-    expect(new Set(tops).size).toBe(1);
-    await expect(page.getByTestId('step-fetch')).toContainText('5 von 7');
-    await expect(page.getByTestId('run-running')).toContainText('Wartet auf linkedin.com');
-    await expect(page.getByTestId('countdown-linkedin')).toHaveText('Weiter in 0:42');
-    await expect(page.getByTestId('countdown-freelance')).toHaveText('Weiter in 12:00');
-    // A card that mounts with a step already done shows a plain check.
-    await expect(page.getByTestId('step-scan').locator('.mark')).not.toHaveClass(/drawn/);
-    await page.getByTestId('countdown-freelance').hover();
-    await expect(page.getByRole('tooltip')).toContainText(
-      'Das Portal bremst die Anfragen, der Abruf macht ab 09:42 von selbst weiter.',
-    );
-    await page.clock.setFixedTime(new Date(NOW.getTime() + 60_000));
-    await expect(page.getByTestId('countdown-linkedin')).toHaveText(T.run.resumesSoon);
+    await expect(page.getByTestId('run-text')).toHaveText(T.run.line.ads(5, 7));
+    await expect(page.getByTestId('run-progress')).toHaveAttribute('aria-valuenow', '71');
+    await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  test('failed: the time, why, a way to try again; cancelled says so', async ({ page }) => {
+  test('failed: one quiet line with Erneut versuchen and its ×; cancelled says nothing', async ({
+    page,
+  }) => {
     await open(page, `${WIN}&scenario=offline`);
+    await expect(page.getByTestId('run-problem')).toHaveCount(0);
     await page.getByTestId('run-status').click();
-    await expect(page.getByTestId('run-finished')).toContainText('08:30');
-    const failed = page.getByTestId('run-failed');
-    await expect(failed).toContainText('Gmail ist nicht erreichbar.');
-    await failed.getByRole('button', { name: T.common.retry }).click();
+    const problem = page.getByTestId('run-problem');
+    await expect(problem).toContainText('Gmail ist nicht erreichbar.');
+    await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+    await page.getByTestId('run-close').click();
+    await expect(problem).toHaveCount(0);
+    await page.getByTestId('run-status').click();
+    await problem.getByTestId('run-retry').click();
     expect(await calls(page, 'start_run')).toHaveLength(1);
     await open(page, `${WIN}&tick=200`);
     await page.getByTestId('fetch').click();
     await page.getByTestId('cancel-run').click();
     await runFinished(page);
-    await expect(page.getByTestId('run-finished')).toContainText(T.run.cancelled);
+    await expect(page.getByTestId('run-line')).toHaveCount(0);
+    await expect(page.getByTestId('run-problem')).toHaveCount(0);
+    await expect(page.getByTestId('toast')).toHaveCount(0);
   });
 
   test('two runs in a row end idle; a rescore is no fetch', async ({ page }) => {
@@ -1224,7 +1242,7 @@ test.describe('run card', () => {
     for (const round of [1, 2]) {
       await page.getByTestId('fetch').click();
       await runFinished(page);
-      await expect(page.getByTestId('run-finished'), `run ${round}`).toContainText(T.run.done);
+      await expect(page.getByTestId('run-line'), `run ${round}`).toHaveCount(0);
       await expect(page.getByTestId('fetch'), `run ${round}`).toBeVisible();
     }
     expect(await calls(page, 'start_run')).toHaveLength(2);
@@ -1233,7 +1251,8 @@ test.describe('run card', () => {
     await page.evaluate(() => window.__harness.appRun('rescore'));
     await runFinished(page);
     await page.getByTestId('nav-jobs').click();
-    await expect(page.getByTestId('run-card')).toHaveCount(0);
+    await expect(page.getByTestId('run-line')).toHaveCount(0);
+    await expect(page.getByTestId('run-problem')).toHaveCount(0);
     expect(await calls(page, 'start_run')).toHaveLength(0);
   });
 
@@ -1241,7 +1260,7 @@ test.describe('run card', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await open(page, `${WIN}&tick=3000`);
     await page.getByTestId('fetch').click();
-    const bar = page.getByTestId('run-running').getByRole('progressbar');
+    const bar = page.getByTestId('run-progress');
     await expect(bar).toBeVisible();
     const inside = await bar.evaluate((track) => {
       const fill = track.firstElementChild!.getBoundingClientRect();
@@ -1251,45 +1270,6 @@ test.describe('run card', () => {
     expect(inside).toBe(true);
     await page.getByTestId('cancel-run').click();
     await runFinished(page);
-  });
-
-  test('the history head darkens its chevron while pressed, only under the pointer', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&tick=15`);
-    await page.getByTestId('fetch').click();
-    await runFinished(page);
-    const head = page.getByTestId('run-history').locator('button').first();
-    const chevron = head.locator('.chevron');
-    const pressed = await tokenColour(page, '--pressed');
-    const colour = (): Promise<string> => chevron.evaluate((node) => getComputedStyle(node).color);
-    const box = (await head.boundingBox())!;
-    const on = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    const away = { x: box.x + box.width + 200, y: box.y + box.height + 200 };
-    await page.mouse.move(away.x, away.y);
-    await page.waitForTimeout(250);
-    const rest = await colour();
-    await page.mouse.move(on.x, on.y);
-    await page.waitForTimeout(250);
-    expect(await colour()).not.toBe(pressed);
-    await page.mouse.down();
-    await expect.poll(colour).toBe(pressed);
-    await page.mouse.move(away.x, away.y, { steps: 4 });
-    await expect.poll(colour).toBe(rest);
-    await page.mouse.up();
-    await expect(head).toHaveAttribute('aria-expanded', 'false');
-    await page.mouse.move(4, 4);
-  });
-
-  test('the run card names the day of its fetch once midnight has passed', async ({ page }) => {
-    await open(page, `${WIN}&tick=15`);
-    await page.getByTestId('fetch').click();
-    await runFinished(page);
-    const time = page.getByTestId('run-finished').locator('.time');
-    await expect(time).toHaveText('09:30');
-    await page.clock.setFixedTime(new Date(NOW.getTime() + DAY));
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(time).toHaveText(/^gestern\s09:30$/);
   });
 });
 

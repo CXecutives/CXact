@@ -28,7 +28,6 @@ import type {
   PauseReason,
   Place,
   Portal,
-  PortalHealth,
   LanguageLevel,
   ProfileAvailability,
   ProfileQuality,
@@ -44,7 +43,6 @@ import type {
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
-  formatCountdown,
   formatEuro,
   formatMoment,
   formatMoney,
@@ -863,8 +861,14 @@ export const de = {
   },
   run: {
     never: 'Noch kein Abruf',
-    /** The clipboard refused the history. */
-    historyNotCopied: 'Der Verlauf ließ sich nicht kopieren.',
+    /** The one line under the list header while a fetch goes: what happens now. */
+    line: {
+      mailbox: 'Postfach wird gelesen',
+      ads: (done: number, total: number) => `Anzeigen ${n(done)} von ${n(total)}`,
+      adsStart: 'Anzeigen werden geladen',
+      scoring: 'Jobs werden bewertet',
+      files: 'Dateien werden geschrieben',
+    },
     step: {
       scan: 'Postfach',
       fetch: 'Details',
@@ -876,50 +880,13 @@ export const de = {
       const at = portal === null ? undefined : statusAt[code];
       return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
     },
-    /** After the rolling number of a step counter: "von 7". */
-    ofTotal: (total: number) => `von ${n(total)}`,
-    newPill: (value: number) => `${n(value)} neu`,
-    topPill: (value: number) => `${n(value)} mit hoher Passung`,
-    resumesIn: (ms: number) => `Weiter in ${formatCountdown(ms)}`,
-    /** A pause whose end has come: the portal goes on in a moment. */
-    resumesSoon: 'Geht gleich weiter',
-    /** A portal's line while a run goes, when it has no countdown. */
-    portalRuns: 'Läuft',
-    portalPaused: 'Pausiert',
-    portalSignIn: 'Anmeldung nötig',
-    portalLayout: 'Seiten sehen anders aus',
-    /** A portal's line after a fetch ("linkedin.com 4 neu, 2 doppelt, 3 ohne Details"). */
-    portalNew: (value: number) => `${n(value)} neu`,
-    portalDup: (value: number) => `${n(value)} doppelt`,
-    portalNoDetails: (value: number) => `${n(value)} ohne Details`,
-    portalNothing: 'nichts Neues',
     kind: {
       fetch: 'Abruf',
       details: 'Details holen',
       rescore: 'Neu bewerten',
       fullMailbox: FULL_MAILBOX,
     } satisfies Record<RunKindName, string>,
-    done: 'Abruf fertig',
-    rescored: 'Neu bewertet',
-    nothingNew: 'Nichts Neues seit dem letzten Abruf.',
-    cancelled: 'Abruf abgebrochen',
     failed: 'Abruf fehlgeschlagen',
-    /** A details run (the reader's "Details holen"): its title, what it did not get. */
-    details: {
-      done: 'Details geholt',
-      none: 'Keine Details geholt',
-      cancelled: 'Details holen abgebrochen',
-      failed: 'Details holen fehlgeschlagen',
-      failedAds: (value: number) =>
-        `${count(value, 'Anzeige ließ', 'Anzeigen ließen')} sich nicht holen.`,
-      goneAds: (value: number) =>
-        `${count(value, 'Anzeige ist', 'Anzeigen sind')} nicht mehr online.`,
-    },
-    /** A rescore the card speaks about (only when something went wrong). */
-    rescore: {
-      cancelled: 'Bewertung abgebrochen',
-      failed: 'Bewertung fehlgeschlagen',
-    },
     rescoring: 'Die Jobs werden gerade neu bewertet.',
     /**
      * A file the export could not write (`export.error.params.target`); the old file stays.
@@ -936,29 +903,7 @@ export const de = {
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Arbeitsordner ist nicht erreichbar.',
     },
-    skipped: (value: number) => `${count(value, 'Job folgt', 'Jobs folgen')} beim nächsten Abruf.`,
-    filesFailed: (value: number) =>
-      count(value, 'Datei ließ', 'Dateien ließen') + ' sich nicht schreiben.',
-    /** The old program's Excel file, renamed before the app wrote its own (by its name). */
-    excelRenamed: (name: string) => `Die alte Excel-Datei heißt jetzt ${name}.`,
     openOverview: 'Bericht öffnen',
-    history: 'Verlauf',
-    alert: (portal: Portal, postings: number) =>
-      `Alert-Mail von ${portalName[portal]} mit ${count(postings, 'Job', 'Jobs')}`,
-    /** A line of the history when a portal's health changes. */
-    health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {
-      const name = portalName[portal];
-      switch (kind) {
-        case 'paused':
-          return `Pause bei ${name}`;
-        case 'quotaReached':
-          return `Limit bei ${name} erreicht`;
-        case 'layoutSuspect':
-          return `Seiten von ${name} sehen anders aus als erwartet`;
-        case 'loginRequired':
-          return `Anmeldung bei ${name} nötig`;
-      }
-    },
     checkMailbox: 'Postfach prüfen',
   },
   list: {
@@ -1788,11 +1733,9 @@ export const de = {
     included: 'Bewertet',
     excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert.',
+    /** At the end of a fetch: what it brought (new, not excluded). */
     runDone: (value: number) =>
-      value === 0
-        ? 'Abruf fertig, nichts Neues.'
-        : `Abruf fertig, ${count(value, 'neuer Job', 'neue Jobs')}.`,
-    runDoneFilesOld: 'Abruf fertig, die Dateien sind nicht aktuell.',
+      value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),
     /** The way from a toast to what it tells of (the finished fetch in the Jobs view). */
     show: 'Zeigen',
   },

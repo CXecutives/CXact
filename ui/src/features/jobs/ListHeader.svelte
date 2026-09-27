@@ -15,7 +15,8 @@
   zurücksetzen" while a filter is on. Without a usable profile the match order and the bands
   are off, saying why. A place that holds nothing has nothing to search, order or filter:
   the row stays, empty. While a filter is on, its parts stand as small chips under the row,
-  each with its × (the row unfolds and folds away, the list glides). The bottom hairline
+  each with its × (the row unfolds and folds away, the list glides). Under them the run's
+  one line (RunLine): its progress while a fetch goes, or what went wrong. The bottom hairline
   shows only once the list below is scrolled. Under the rows one sentence says when a job
   action of the list failed (a move, its undo) or when jobs deleted for good could not leave
   the Excel file; it goes with the next list or the next action that works.
@@ -45,6 +46,7 @@
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
+  import RunLine from './RunLine.svelte';
 
   interface Props {
     /** The list below is scrolled away from its top. */
@@ -313,6 +315,7 @@
       </div>
     </div>
   {/if}
+  <RunLine />
   {#if jobs.actionError}
     <div class="note">
       <Notice tone="danger" variant="inline" text={jobs.actionError} testid="header-error" />

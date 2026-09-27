@@ -5,13 +5,14 @@
 // `app_state` replays the events that describe the current state.
 //
 // Three things are kept apart:
-// - the run in progress (`active`, `kind`, steps, status, portal health), of any kind;
+// - the run in progress (`active`, `kind`, its step, progress and status), of any kind;
 // - `summary`: the last finished fetch of this session (fetch or whole mailbox). It means the
 //   same as `app.state.lastRun` ("the last fetch"), so `run.summary ?? app.state.lastRun` is
 //   the last fetch wherever it is read (sidebar, failed-fetch retry, empty list);
-// - `result` and `history`: what the run card shows, the last fetch or details run the card
-//   followed. A rescore opens no run card and brings no fetch news; only when it failed or
-//   could not write the files the card says so.
+// - `result`: the last finished run the list's run line speaks of when it went wrong (a
+//   fetch or details run, a rescore only when it failed or could not write the files).
+// What a fetch brought is a toast at its end ("5 neue Jobs"), in every view; the details of
+// a run (each mail, each portal) are in the log, not on screen.
 
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
@@ -20,7 +21,6 @@ import { invoke, IpcError, onRun } from '../ipc/api';
 import type {
   ErrorInfo,
   Portal,
-  PortalHealth,
   RunEvent,
   RunKindName,
   RunRequest,
@@ -36,42 +36,9 @@ import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
 
-export const STEPS: readonly Step[] = ['scan', 'fetch', 'score'];
-const ORDER: readonly Step[] = ['scan', 'fetch', 'score', 'export'];
-/** The steps each kind goes through (a details run reads no mail, a rescore only scores). */
-const KIND_STEPS: Record<RunKindName, readonly Step[]> = {
-  fetch: STEPS,
-  fullMailbox: STEPS,
-  details: ['fetch', 'score'],
-  rescore: ['score'],
-};
-const HISTORY_MAX = 200;
-const SECOND = 1000;
-
 export interface Progress {
   done: number;
   total: number;
-}
-
-export interface HistoryLine {
-  at: number;
-  text: string;
-}
-
-/**
- * A line of the history. Its words are made when it is shown, so after a switch of the
- * language the history reads in the new one (a class: `$state` leaves its instances as they
- * are, with the getter).
- */
-class Line implements HistoryLine {
-  constructor(
-    readonly at: number,
-    private readonly say: () => string,
-  ) {}
-
-  get text(): string {
-    return this.say();
-  }
 }
 
 /** A mailbox run: what "the last fetch" means (`app.state.lastRun`). */
@@ -83,25 +50,20 @@ class RunStore {
   step = $state<Step | null>(null);
   progress = $state<Partial<Record<Step, Progress>>>({});
   status = $state<{ code: StatusCode; portal: Portal | null; until: string | null } | null>(null);
-  health = $state<Partial<Record<Portal, PortalHealth>>>({});
   loginNeeded = $state<Portal | null>(null);
   /** The last finished fetch of this session (see above). */
   summary = $state<RunSummary | null>(null);
-  /** The finished run the run card shows (a fetch or details run, a rescore in trouble). */
+  /** The finished run the run line speaks of when it went wrong (a fetch or details run, a
+   *  rescore in trouble). */
   result = $state<RunSummary | null>(null);
-  /** The history of the run the card shows. */
-  history = $state<HistoryLine[]>([]);
   /** An error of `start_run` itself (busy, no mailbox ...); said in the current language. */
   #startFailure = $state.raw<{ error: unknown } | null>(null);
   /** `start_run` is on its way: nothing is known yet (the first-run page stays until then). */
   starting = $state(false);
   cancelling = $state(false);
-  /** The run card above the list: open while running and right after, collapsible. */
-  panel = $state<'open' | 'collapsed' | 'hidden'>('hidden');
-  /** Ticks every second while a countdown is shown. */
-  now = $state(Date.now());
+  /** What went wrong in the last run shows under the list header until its × hides it. */
+  panel = $state<'open' | 'hidden'>('hidden');
 
-  #ticker: ReturnType<typeof setInterval> | null = null;
   #listeners = new Set<(event: RunEvent) => void>();
   #installed = false;
   /** The last run the page started (a retry starts it again). */
@@ -110,9 +72,7 @@ class RunStore {
   #epoch = 0;
   /** A `started` came through the channel: the page follows the runs live. */
   #followed = false;
-  /** The history of a rescore: shown only if the card takes it on. */
-  #quiet: HistoryLine[] = [];
-  /** The rescore going now writes the files again that the card's run could not write. */
+  /** The rescore going now writes the files again that the last run could not write. */
   #rewriting = false;
 
   /** Subscribe once to the run channel (App.svelte). */
@@ -139,7 +99,7 @@ class RunStore {
     for (const event of snapshot.replay) this.handle(event, false);
   }
 
-  /** A run the run card shows is going (a fetch or details run, never a rescore). */
+  /** A run the run line shows is going (a fetch or details run, never a rescore). */
   get fetching(): boolean {
     return this.active && this.kind !== 'rescore';
   }
@@ -174,11 +134,6 @@ class RunStore {
     return null;
   }
 
-  /** The steps of the run in progress. */
-  get steps(): readonly Step[] {
-    return KIND_STEPS[this.kind ?? 'fetch'];
-  }
-
   private begin(kind: RunKindName): void {
     this.#epoch += 1;
     this.active = true;
@@ -186,25 +141,19 @@ class RunStore {
     this.step = null;
     this.progress = {};
     this.status = null;
-    this.health = {};
     this.loginNeeded = null;
     this.cancelling = false;
-    this.tick(false);
-    if (kind === 'rescore') {
-      // The card keeps showing the last fetch.
-      this.#quiet = [];
-      return;
-    }
+    // A rescore keeps what the line said about the last fetch.
+    if (kind === 'rescore') return;
     this.result = null;
-    this.history = [];
     this.#startFailure = null;
-    if (this.panel === 'hidden') this.panel = 'open';
+    this.panel = 'open';
   }
 
   async start(request: RunRequest): Promise<boolean> {
     if (this.active) return false;
-    // Nothing is lost when the start fails: the card shows what it showed before.
-    const before = { result: this.result, history: this.history, panel: this.panel };
+    // Nothing is lost when the start fails: the line says what it said before.
+    const before = { result: this.result, panel: this.panel };
     this.#request = request;
     this.starting = true;
     this.begin(request.kind);
@@ -217,9 +166,8 @@ class RunStore {
         this.active = false;
         this.kind = null;
         this.result = before.result;
-        this.history = before.history;
-        this.panel = before.panel;
       }
+      this.panel = 'open';
       this.#startFailure = { error };
       if (error instanceof IpcError && error.kind === 'busy') void app.load();
       return false;
@@ -238,7 +186,7 @@ class RunStore {
   /**
    * Write the files again that a run could not write (an Excel file open elsewhere): a
    * rescore, which reads no mail and asks no portal, scores what is due and writes every
-   * file. When it succeeds the card's run counts its files as written.
+   * file. When it succeeds the last run counts its files as written.
    */
   rewriteFiles(): void {
     this.#rewriting = true;
@@ -247,17 +195,17 @@ class RunStore {
     });
   }
 
-  /** The run card in the Jobs view, from anywhere (the sidebar's status, the "Zeigen" of a
+  /** The Jobs view with its run line, from anywhere (the sidebar's status, the "Zeigen" of a
    *  toast); an unsaved Profil may keep the view and ask first. */
   show(): void {
     navigation.go('jobs', false, () => {
       this.panel = 'open';
-      // In one column an open job hides the list and its run card: back to the list.
+      // In one column an open job hides the list and its run line: back to the list.
       if (viewport.narrow) jobs.clearSelection();
     });
   }
 
-  /** Close the run card (and the note of a failed start with it). */
+  /** Hide what the run line says after a run (and the note of a failed start with it). */
   hide(): void {
     this.panel = 'hidden';
     this.#startFailure = null;
@@ -274,13 +222,6 @@ class RunStore {
     }
   }
 
-  /** Remaining milliseconds of the current pause, or null. */
-  get waitLeft(): number | null {
-    const until = this.status?.code === 'waiting' ? this.status.until : null;
-    if (until === null) return null;
-    return Math.max(0, new Date(until).getTime() - this.now);
-  }
-
   /** Overall progress of the current step (null = indeterminate). */
   get fraction(): number | null {
     const step = this.step;
@@ -288,34 +229,6 @@ class RunStore {
     const p = this.progress[step];
     if (!p || p.total === 0) return null;
     return p.done / p.total;
-  }
-
-  stepState(step: Step): 'done' | 'current' | 'waiting' {
-    if (!this.active) return this.result === null ? 'waiting' : 'done';
-    const current = this.step === null ? -1 : ORDER.indexOf(this.step);
-    const index = ORDER.indexOf(step);
-    return index < current ? 'done' : index === current ? 'current' : 'waiting';
-  }
-
-  /** Adds a line to the history; `say` makes its words whenever it is shown. */
-  private log(say: () => string): void {
-    const line = new Line(Date.now(), say);
-    if (this.kind === 'rescore') {
-      this.#quiet = [...this.#quiet, line].slice(-HISTORY_MAX);
-      return;
-    }
-    const next = [...this.history, line];
-    this.history = next.length > HISTORY_MAX ? next.slice(-HISTORY_MAX) : next;
-  }
-
-  private tick(on: boolean): void {
-    if (on && this.#ticker === null) {
-      this.now = Date.now();
-      this.#ticker = setInterval(() => (this.now = Date.now()), SECOND);
-    } else if (!on && this.#ticker !== null) {
-      clearInterval(this.#ticker);
-      this.#ticker = null;
-    }
   }
 
   handle(event: RunEvent, live = true): void {
@@ -338,25 +251,14 @@ class RunStore {
         }
         break;
       }
-      case 'status': {
+      case 'status':
         if (!this.active) break;
-        const changed = this.status?.code !== event.code || this.status?.portal !== event.portal;
         this.status = { code: event.code, portal: event.portal, until: event.until };
-        this.tick(event.code === 'waiting' && event.until !== null);
-        if (changed) this.log(() => t.run.statusOf(event.code, event.portal));
         break;
-      }
       case 'alert':
-        if (this.active) this.log(() => t.run.alert(event.portal, event.postings));
         break;
       case 'portalHealth':
         app.setHealth(event.portal, event.health);
-        if (!this.active) break;
-        this.health = { ...this.health, [event.portal]: event.health };
-        if (event.health.kind !== 'ok') {
-          const kind = event.health.kind;
-          this.log(() => t.run.health(event.portal, kind));
-        }
         break;
       case 'loginNeeded':
         this.loginNeeded = event.waiting ? event.portal : null;
@@ -377,58 +279,36 @@ class RunStore {
     this.cancelling = false;
     this.status = null;
     this.loginNeeded = null;
-    this.tick(false);
     const rewrote = this.#rewriting && kind === 'rescore';
     this.#rewriting = false;
     if (rewrote && this.result !== null && summary.outcome.kind !== 'failed') {
-      // The files written again: the card keeps its run, with the files as they are now.
+      // The files written again: the last run counts them as they are now.
       this.result = { ...this.result, export: summary.export };
-      this.#quiet = [];
     } else if (kind === 'rescore') {
-      // Quiet unless something needs attention: then the card says it.
+      // Quiet unless something needs attention: then the run line says it.
       const trouble = summary.outcome.kind === 'failed' || exportError(summary) !== null;
       if (trouble) {
         this.result = summary;
-        this.history = [...this.#quiet, new Line(Date.now(), () => outcomeText(summary))];
         if (live) this.panel = 'open';
       }
-      this.#quiet = [];
     } else {
       if (isFetch(kind)) this.summary = summary;
       this.result = summary;
-      this.log(() => outcomeText(summary));
-      if (live && this.panel === 'hidden') this.panel = 'open';
     }
     if (!live) return;
-    // In the Jobs view the run card says it; elsewhere, and while one column shows a job in
-    // place of the list and its card, a toast brings the news. A rescore speaks where it was
-    // started (the Profil view), not as a fetch.
-    const cardShown = navigation.current === 'jobs' && !shell.listHidden;
-    if (summary.outcome.kind === 'completed' && !cardShown) {
+    // What a fetch brought, in every view: "5 neue Jobs"; outside the list the way to it. A
+    // rescore speaks where it was started (Einstellungen), not as a fetch.
+    if (summary.outcome.kind === 'completed') {
       if (isFetch(kind)) {
-        // Files that could not be written are no success: a calm note, the card has the way.
-        // Its "Zeigen" opens the run card in the Jobs view.
+        const inList = navigation.current === 'jobs' && !shell.listHidden;
         const show = { label: t.toast.show, onclick: () => this.show(), undo: false };
-        if (exportError(summary) === null)
-          toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), 'success', show);
-        else toasts.show(t.toast.runDoneFilesOld, 'info', show);
+        toasts.show(t.toast.runDone(summary.newJobs?.count ?? 0), 'success', inList ? null : show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }
     }
     void app.load();
   }
-}
-
-/**
- * The user has to act on a portal's health (as the backend's `PortalHealth::action_needed`):
- * a sign-in that is needed, or alert mails without jobs. A pause, a cap or pages without a
- * description resolve themselves: a calm note, not a warning.
- */
-export function needsAction(health: PortalHealth): boolean {
-  return (
-    health.kind === 'loginRequired' || (health.kind === 'layoutSuspect' && health.emptyMails > 0)
-  );
 }
 
 export interface FailureAction {
@@ -488,31 +368,6 @@ export function exportText(error: ErrorInfo | null): string | null {
       return texts.workspace;
     default:
       return texts.txt;
-  }
-}
-
-/** The title of a finished run: done, cancelled or failed, in the words of its kind. */
-export function outcomeText(summary: RunSummary): string {
-  const outcome = summary.outcome.kind;
-  switch (summary.kind) {
-    case 'rescore':
-      return outcome === 'completed'
-        ? t.run.rescored
-        : outcome === 'cancelled'
-          ? t.run.rescore.cancelled
-          : t.run.rescore.failed;
-    case 'details': {
-      if (outcome === 'cancelled') return t.run.details.cancelled;
-      if (outcome === 'failed') return t.run.details.failed;
-      const fetched = summary.perPortal.reduce((sum, p) => sum + p.fetched, 0);
-      return fetched > 0 ? t.run.details.done : t.run.details.none;
-    }
-    default:
-      return outcome === 'completed'
-        ? t.run.done
-        : outcome === 'cancelled'
-          ? t.run.cancelled
-          : t.run.failed;
   }
 }
 

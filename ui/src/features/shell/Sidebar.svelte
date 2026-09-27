@@ -70,7 +70,7 @@
   const statusShown = $derived(
     (run.active || last !== null) &&
       !onSetup &&
-      !(navigation.current === 'jobs' && !shell.firstRun && shell.runCard && !shell.listHidden),
+      !(navigation.current === 'jobs' && !shell.firstRun && shell.runLine && !shell.listHidden),
   );
 
   /** The view (an unsaved Profil may keep it and ask). */

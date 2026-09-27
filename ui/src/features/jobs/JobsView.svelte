@@ -7,8 +7,8 @@
   440 px; the limits follow the window and the sidebar, and never shrink while the window
   grows (also across the rail's breakpoint). Below 900 px one column: the list
   under its pinned header, or the reader with a back button (the mouse's back button too).
-  The run card rises in above the list and fades out when it is closed (the list moves up
-  without animation). Closing a job from inside the reader hands the focus to its row.
+  The run's line is part of the header (RunLine). Closing a job from inside the reader hands
+  the focus to its row.
 
   The right pane is a stage with its own scroll position. A job opens once its details are
   there: until then the pane keeps what it shows (the overview or the previous job), so it
@@ -39,7 +39,6 @@
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
   import ListHeader from './ListHeader.svelte';
-  import RunCard from './RunCard.svelte';
 
   const OVERVIEW = 'overview';
   const ERROR = 'error';
@@ -201,11 +200,6 @@
       </div>
       <div class="scroll" data-testid="list-scroll">
         <span class="top" use:inView={(place) => (scrolled = place === 'above')}></span>
-        {#if shell.runCard}
-          <div class="run" in:rise={{ distance: 'md' }} out:fade>
-            <RunCard />
-          </div>
-        {/if}
         <JobList onresetfilter={() => void header?.resetFilter()} />
       </div>
     </aside>
@@ -318,10 +312,6 @@
     overflow-x: hidden;
     overflow-y: scroll;
     container-type: inline-size;
-  }
-
-  .run {
-    flex: none;
   }
 
   /* The handle lies over the list's border and takes no room. */

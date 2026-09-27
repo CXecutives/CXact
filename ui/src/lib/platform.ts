@@ -78,12 +78,6 @@ export function fieldMenuUndoDelete(): boolean {
   return platform() === 'windows';
 }
 
-/** The file manager of the OS, for the words that name it ("Im Explorer zeigen", "Im Finder
- *  zeigen"); the backend shows the file the same way (`platform::show_in_folder`). */
-export function fileManager(): 'explorer' | 'finder' {
-  return platform() === 'macos' ? 'finder' : 'explorer';
-}
-
 /** How the keyboard of the OS edits text in a field (lib/input/input.ts applies it). */
 export interface KeyConventions {
   /** Option types characters (@ is Option+L on a German Mac) and moves by word, like

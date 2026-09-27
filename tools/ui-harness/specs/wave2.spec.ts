@@ -322,13 +322,3 @@ test('with the focus nowhere the arrows, Home and End scroll Profil too', async 
   await page.keyboard.press('Home');
   await expect.poll(top).toBe(0);
 });
-
-test('the new jobs of a fetch lead to the inbox from the Archiv', async ({ page }) => {
-  await open(page, WIN);
-  await page.getByTestId('fetch').click();
-  await page.getByTestId('place-archive').click();
-  await runFinished(page);
-  // The run's count of new jobs leads to them, from any place: the inbox.
-  await page.getByTestId('last-new').click();
-  await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
-});
