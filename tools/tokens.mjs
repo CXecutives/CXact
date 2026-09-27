@@ -222,10 +222,11 @@ function item(head, value) {
   return line.length <= WIDTH ? line : `${head} =\n    ${value};`;
 }
 
-/** An array literal as rustfmt writes it: one line when it fits, else one entry a line. */
+/** An array literal as rustfmt writes it: a short one (its `array_width`, 60) on one line,
+ *  after the `=` where the whole line does not fit; a longer one an entry a line. */
 function array(head, entries) {
-  const line = `${head} = [${entries.join(', ')}];`;
-  if (line.length <= WIDTH && entries.join(', ').length <= 60) return line;
+  const joined = entries.join(', ');
+  if (joined.length <= 60) return item(head, `[${joined}]`);
   return `${head} = [\n${entries.map((e) => `    ${e},\n`).join('')}];`;
 }
 
