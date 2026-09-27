@@ -104,11 +104,10 @@ details run and a delete for good do too). `set_override(key, include)`: an excl
 score (note and first reason `userOverride`), every rescore keeps it, and `top_matches.json` lists it like a scored job
 with `userOverride` and the codes of the exclusion first in `checks` (the AI prompts build their own assessment, `PromptSource::load`);
 taken back, the job is assessed again at once.
-A list is a place (or the favourites of inbox and archive) plus an `unread` filter ("Neu", no day window) and a sort
-(by match, or by date: the mail's, in the trash the day it went there); the counts per place (inbox, unread,
-favourites, archive, trash) come from the same statement and follow the search, so the page can say "Auch im Archiv
-(n)". The inbox adds the funnel's filter (`portal`, `minBand` mid|high; kept, off in the archive and the trash),
-which narrows the list and all its counts like the search. A job is read when it is opened (`mark_read`); there is no
+A list is a place plus an `unread` filter ("Neu", no day window) and a sort (by match, by date: the mail's, in the
+trash the day it went there, or by day rate); the counts per place (inbox, unread, archive, trash) come from the same
+statement and follow the search. The funnel's filter (`portal`, the exact `band`, `contracts`, the `workMode`; the
+same in every place) narrows the list and all its counts like the search. A job is read when it is opened (`mark_read`); there is no
 "all read" and no "unread again" (removed 2026-09-26).
 `top_matches.json` is schema 2 (`appStatus` "saved" for a favourite, the first sighting per job; the unread or
 favourite inbox matches of the last 14 days). The first mailbox scan reads 30 days.
@@ -122,8 +121,8 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore})` (a fetch reads the range of the setting `fetchRange`) · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest, search?, portal?, minBand?, contracts[], remoteOnly, limit, offset}) -> JobPage{jobs, counts{inbox, unread, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
-(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `contracts` are `KeyFacts.contract` codes, empty = all; `remoteOnly` = the stated remote share is 100 %, else the location's work mode is remote) ·
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
+(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode) ·
 `job_detail(key)` · `mark_read(key) -> bool` ·
 `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·

@@ -16,8 +16,8 @@
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
   sets none), the one control of the order and the filter: its menu holds, under small
   headings, "Sortierung" (Nach Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter
-  table (lib/state/filter.ts: Portal, Übereinstimmung, Vertragsart, the work mode, the pay
-  floor, then "Nur neue" as a switch of its own; the portals in the
+  table (lib/state/filter.ts: Portal, Übereinstimmung, Vertragsart, Arbeitsmodell, each with
+  every value of its dimension, then "Nur neue" as a switch of its own; the portals in the
   UI's order, lib/portals.ts), and "Filter zurücksetzen" at the end, off while no filter is
   on (so the menu never changes its height). The menu stays open while choosing (several
   groups in one go, the check marks move with each choice) and closes on a press outside,
