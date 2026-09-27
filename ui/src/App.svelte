@@ -38,7 +38,7 @@
   run.install();
   jobs.install();
   navigation.install();
-  void app.load().then((state) => run.attach(state?.running ?? null));
+  void app.load().then((state) => run.attach(state?.running ?? null, state?.lastRun ?? null));
 
   const firstRun = $derived(shell.firstRun);
   /** macOS: the views keep the toolbar row free (the Jobs view uses it for its list row). */

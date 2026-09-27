@@ -5,7 +5,7 @@
 import type { Page } from '@playwright/test';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
-import { tabCount, listed } from './helpers';
+import { tabCount, listed, T } from './helpers';
 
 const WIN = '?platform=windows';
 const rows = (page: Page) => page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -120,6 +120,28 @@ test('a failed first fetch does not claim the alert mails were empty', async ({ 
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await expect(page.getByTestId('first-fetch-failed')).toContainText('Gmail ist nicht erreichbar.');
   await expect(page.getByText('enthielten bisher keine Jobs')).toHaveCount(0);
+});
+
+test('after a restart a failed last fetch says so once in the run line, a new fetch clears it', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=last-failed&tick=15`);
+  const problem = page.getByTestId('run-problem');
+  await expect(problem).toHaveCount(1);
+  await expect(problem).toContainText(T.error.text('mailConnect', {}));
+  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  // Nowhere else: the sidebar has no status line.
+  await expect(page.getByTestId('sidebar')).not.toContainText(T.error.text('mailConnect', {}));
+  await problem.getByTestId('run-retry').click();
+  await runFinished(page);
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
+  expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
+    request: { kind: 'fetch' },
+  });
+  // Its × hides it until the next run.
+  await open(page, `${WIN}&scenario=last-failed`);
+  await page.getByTestId('run-close').click();
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
 test('a start that fails keeps the last result and says why', async ({ page }) => {

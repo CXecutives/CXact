@@ -89,12 +89,18 @@ class RunStore {
   }
 
   /**
-   * The run in progress at the first load (a reload of the page). A run whose `started`
-   * already came through the channel is followed live; its snapshot could be older than
-   * what arrived since (even its end).
+   * The run in progress at the first load (a start of the app, a reload of the page). A run
+   * whose `started` already came through the channel is followed live; its snapshot could be
+   * older than what arrived since (even its end). Without one, a last fetch that failed
+   * (`last`, before a restart) is said once in the run line, with its way on, until its ×
+   * hides it or the next run begins.
    */
-  attach(snapshot: RunSnapshot | null): void {
-    if (snapshot === null || this.#followed) return;
+  attach(snapshot: RunSnapshot | null, last: RunSummary | null = null): void {
+    if (this.#followed || this.active) return;
+    if (snapshot === null) {
+      if (last !== null && last.outcome.kind === 'failed') this.panel = 'open';
+      return;
+    }
     this.begin(snapshot.kind);
     for (const event of snapshot.replay) this.handle(event, false);
   }

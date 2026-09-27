@@ -896,6 +896,10 @@ function initial(): void {
     case 'offline':
       state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
       break;
+    case 'last-failed':
+      // The last fetch before this start failed; Gmail answers again now.
+      state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
+      break;
     case 'paused':
       state.portals[0]!.health = { kind: 'paused', until: later(95), reason: 'throttled' };
       state.portals[1]!.health = { kind: 'layoutSuspect', emptyMails: 2, pages: 0 };
