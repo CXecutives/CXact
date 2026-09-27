@@ -10,7 +10,9 @@
   German name, as the engine reads it (core matching::lexicon LANGUAGES); while the field has
   the focus it shows what was typed. Enter moves
   through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
-  saves. A value the backend refused marks its row.
+  saves. Removing a row puts no caret anywhere (input.ts removeBy): after a click the focus is
+  dropped, from the keyboard it goes to the next row's x (the previous one after the last,
+  "Sprache hinzufügen" once none is left). A value the backend refused marks its row.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -20,10 +22,10 @@
   import { de } from '$lib/i18n/de';
   import { en } from '$lib/i18n/en';
   import { t } from '$lib/i18n/t';
-  import { formKeys } from '$lib/input/input';
+  import { formKeys, removeBy } from '$lib/input/input';
   import type { LanguageLevel, ProfileLanguage } from '$lib/ipc/types';
   import { tick } from 'svelte';
-  import { enterRow, focusAfterRemove, focusRow } from './rows';
+  import { enterRow, focusRow } from './rows';
 
   interface Props {
     rows: ProfileLanguage[];
@@ -103,14 +105,6 @@
     rows = rows.filter((other) => other !== row);
   };
 
-  /** The x of a row: the focus it had goes to the next row (rows.ts). */
-  function removeByButton(row: ProfileLanguage, event: MouseEvent): void {
-    const focused = event.currentTarget === document.activeElement;
-    const index = rows.indexOf(row);
-    remove(row);
-    if (focused) void focusAfterRemove(list, index, 'language-add');
-  }
-
   async function add(): Promise<void> {
     append();
     await tick();
@@ -128,7 +122,7 @@
     });
 </script>
 
-<div class="list" bind:this={list} data-testid="languages" data-field="languages">
+<div class="list" bind:this={list} data-testid="languages" data-field="languages" data-removes>
   {#each rows as row (row)}
     <div class="row" data-row data-testid="language-row" use:formKeys={{ save: () => enter(row) }}>
       <span class="name" onfocusout={() => (typing = null)}>
@@ -153,7 +147,7 @@
           onchange={(next) => (row.level = next === NONE ? null : (next as LanguageLevel))}
         />
       </span>
-      <span class="remove">
+      <span class="remove" data-remove>
         <Button
           variant="ghost"
           size="sm"
@@ -162,7 +156,7 @@
           plain
           label={words.removeLanguage(shown(row.language).trim())}
           testid="language-remove"
-          onclick={(event) => removeByButton(row, event)}
+          onclick={(event) => removeBy(event.currentTarget, () => remove(row))}
         />
       </span>
     </div>
@@ -170,14 +164,16 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="language-error">{error.text}</p>
   {/if}
-  <Button
-    variant="secondary"
-    size="sm"
-    icon="add"
-    label={words.addLanguage}
-    testid="language-add"
-    onclick={() => void add()}
-  />
+  <span data-remove-fallback>
+    <Button
+      variant="secondary"
+      size="sm"
+      icon="add"
+      label={words.addLanguage}
+      testid="language-add"
+      onclick={() => void add()}
+    />
+  </span>
 </div>
 
 <style>

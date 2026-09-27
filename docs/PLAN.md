@@ -798,5 +798,5 @@ The user clicked through the reworked preview; one more round in four tracks.
 - [x] "Frist in 7 Tagen" out of the filter
 - [x] No hover marking in the reader
 - [x] Language names in the UI language
-- [ ] The focus after removing
+- [x] The focus after removing
 - [ ] Mouse buttons and the wheel, audited

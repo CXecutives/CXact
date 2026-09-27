@@ -1,15 +1,15 @@
 <!--
   A list of short values as chips in a field: type and press Enter (or leave the field) to
   add, x removes, Backspace in the empty field removes the last one, Esc drops what was
-  typed, a double click on a chip takes it back into the text to edit it. A chip's value is
-  copyable text (a drag selects it, Ctrl/Cmd+C copies); its x names what it removes for a
-  screen reader only (the chip beside it says what it is, so no tooltip repeats it, like the
-  plain x of a row). A list of terms
-  (`split` list) also splits at commas and semicolons, typed or pasted; a list of sentences
-  or names that hold commas (`split` lines) only at line breaks. A value that is already
-  there (in any case) is not added twice. Without `entry` the field only shows and removes
-  (chips chosen elsewhere). Keys and the double click come from input.ts (chipKeys,
-  chipEdit).
+  typed, a double click on a chip takes it back into the text to edit it. Removing puts no
+  caret anywhere, from the keyboard the next x takes the focus (input.ts removeBy). A chip's
+  value is copyable text (a drag selects it, Ctrl/Cmd+C copies); its x names what it removes
+  for a screen reader only (the chip beside it says what it is, so no tooltip repeats it, like
+  the plain x of a row). A list of terms (`split` list) also splits at commas and semicolons,
+  typed or pasted; a list of sentences or names that hold commas (`split` lines) only at line
+  breaks. A value that is already there (in any case) is not added twice. Without `entry` the
+  field only shows and removes (chips chosen elsewhere). Keys and the double click come from
+  input.ts (chipKeys, chipEdit).
   With `options` the field takes only those (the countries of the profile): typing shows the
   options whose name or other names start with it (any word of them, in any case, with or
   without accents) in a list under the field, Enter or a click takes the marked one (the
@@ -62,7 +62,13 @@
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { untrack } from 'svelte';
-  import { chipEdit, chipKeys, FIELD_ATTRIBUTES, type ChipKeyHandlers } from '$lib/input/input';
+  import {
+    chipEdit,
+    chipKeys,
+    FIELD_ATTRIBUTES,
+    removeBy,
+    type ChipKeyHandlers,
+  } from '$lib/input/input';
   import { describedBy } from '$lib/state/described';
   import { typedText } from '$lib/state/typed.svelte';
   import Icon from './Icon.svelte';
@@ -274,10 +280,10 @@
     return added;
   }
 
-  /** The field is left: typed text becomes chips; with options only a single match. */
-  function leave(): void {
-    focused = false;
-    settle();
+  /** The focus left the field and its chips (not for one of its x). */
+  function leave(event: FocusEvent & { currentTarget: HTMLElement }): void {
+    const next = event.relatedTarget;
+    if (!(next instanceof Node && event.currentTarget.contains(next))) focused = false;
   }
 
   /** Typed text becomes chips as when leaving the field; with options only a single match. */
@@ -297,8 +303,8 @@
   }
 
   function remove(index: number): void {
-    update(values.filter((_, at) => at !== index));
-    if (entry) input?.focus();
+    const button = box?.querySelectorAll('[data-remove]').item(index) ?? null;
+    removeBy(button, () => update(values.filter((_, at) => at !== index)));
   }
 
   /** The keys of input.ts; the arrows move the mark in the list of options. */
@@ -311,7 +317,7 @@
     },
     removeLast: (): boolean => {
       if (draft !== '' || values.length === 0) return false;
-      update(values.slice(0, -1));
+      remove(values.length - 1);
       return true;
     },
     clear: (): boolean => {
@@ -367,7 +373,12 @@
   }
 </script>
 
-<div class="chip-input" class:suggests={options !== null || suggesting}>
+<div
+  class="chip-input"
+  class:suggests={options !== null || suggesting}
+  onfocusin={() => (focused = true)}
+  onfocusout={leave}
+>
   <div
     bind:this={box}
     class="field"
@@ -377,6 +388,7 @@
     class:lined
     role="presentation"
     data-testid={testid ?? undefined}
+    data-removes
     onpointerdown={focusInput}
     use:chipEdit={entry && options === null ? edit : null}
   >
@@ -388,6 +400,7 @@
           class="remove"
           tabindex="-1"
           data-keep-focus
+          data-remove
           aria-label={t.chips.remove(labelOf(value))}
           onclick={() => remove(index)}
         >
@@ -438,8 +451,7 @@
         autocomplete={FIELD_ATTRIBUTES.autocomplete}
         use:chipKeys={keys}
         onpaste={paste}
-        onfocus={() => (focused = true)}
-        onblur={leave}
+        onblur={settle}
       />
     {/if}
   </div>
@@ -571,6 +583,10 @@
   .remove:hover {
     background-color: var(--active-hover);
     transition-duration: var(--dur-hover);
+  }
+
+  .remove:focus-visible {
+    box-shadow: var(--focus-ring);
   }
 
   .input {

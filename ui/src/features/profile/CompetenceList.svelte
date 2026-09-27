@@ -11,20 +11,22 @@
   or a value that does not read is said there with "Wert entfernen". A value that is too large
   (the years) or that the backend refused marks its row. Enter goes to the
   next row, adds one after the last and ends the list on an empty last row (rows.ts); it
-  never saves the profile. A row's focused x hands the focus to the next row (rows.ts). The
-  competence and its synonyms suggest the engine's words while typing (vocabulary.svelte.ts).
+  never saves the profile. Removing a row puts no caret anywhere (input.ts removeBy): after a
+  click the focus is dropped, from the keyboard it goes to the next row's x (the previous one
+  after the last, "Kompetenz hinzufügen" once none is left). The competence and its synonyms
+  suggest the engine's words while typing (vocabulary.svelte.ts).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import ChipInput from '$components/ChipInput.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
-  import { formKeys } from '$lib/input/input';
+  import { formKeys, removeBy } from '$lib/input/input';
   import type { ProfileCompetence } from '$lib/ipc/types';
   import { MAX_FOCUS, type FieldProblem } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
   import NumberField from './NumberField.svelte';
-  import { enterRow, focusAfterRemove, focusRow } from './rows';
+  import { enterRow, focusRow } from './rows';
   import ValueNote from './ValueNote.svelte';
   import { vocabulary } from './vocabulary.svelte';
 
@@ -90,14 +92,6 @@
     if (starred(name)) focus = focus.filter((entry) => !same(entry, name));
   }
 
-  /** The x of a row: the focus it had goes to the next row. */
-  function removeByButton(row: ProfileCompetence, event: MouseEvent): void {
-    const focused = event.currentTarget === document.activeElement;
-    const index = rows.indexOf(row);
-    remove(row);
-    if (focused) void focusAfterRemove(list, index, 'competence-add');
-  }
-
   const append = (): void => {
     rows = [...rows, { name: '', years: null, aliases: [], origin: null }];
   };
@@ -120,7 +114,7 @@
   }
 </script>
 
-<div class="list" bind:this={list} data-testid="competences" data-field="competences">
+<div class="list" bind:this={list} data-testid="competences" data-field="competences" data-removes>
   {#if rows.length > 0}
     <div class="head" aria-hidden="true">
       <span class="count" data-testid="focus-count">
@@ -185,7 +179,7 @@
           testid="competence-aliases"
         />
       </span>
-      <span class="remove">
+      <span class="remove" data-remove>
         <Button
           variant="ghost"
           size="sm"
@@ -194,7 +188,7 @@
           plain
           label={words.removeCompetence(row.name.trim())}
           testid="competence-remove"
-          onclick={(event) => removeByButton(row, event)}
+          onclick={(event) => removeBy(event.currentTarget, () => remove(row))}
         />
       </span>
     </div>
@@ -202,7 +196,7 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="competence-error">{error.text}</p>
   {/if}
-  <span class="add" class:indent={rows.length > 0}>
+  <span class="add" class:indent={rows.length > 0} data-remove-fallback>
     <Button
       variant="secondary"
       size="sm"
@@ -217,7 +211,7 @@
   {/if}
   <!-- What the file said about the Schwerpunkte that the targets cannot show. -->
   {#if problems.length > 0 || trimmed !== null}
-    <div class="focus" data-testid="focus" data-field="focus">
+    <div class="focus" data-testid="focus" data-field="focus" data-removes>
       {#each problems as problem (problem.value)}
         <ValueNote
           text={problem.entry

@@ -952,32 +952,114 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   expect(sent.after.criteria.available).toEqual({ kind: 'unset' });
 });
 
-test('a button that goes hands its focus on', async ({ page }) => {
+/** What has the focus: a field (a caret shows), a button by its accessible name, or none. */
+const focusOf = (page: Page): Promise<string> =>
+  page.evaluate(() => {
+    const active = document.activeElement;
+    if (active === null || active === document.body) return 'none';
+    if (active.matches('input, textarea')) return 'field';
+    return active.getAttribute('aria-label') ?? active.textContent?.trim() ?? '?';
+  });
+
+test('removing a row: a click drops the focus, the keyboard goes on to the next x', async ({
+  page,
+}) => {
   await create(page);
-  // A row's x: the row now in its place, else the one before, else the add button.
   const names = page.getByTestId('competence-name');
-  await names.first().fill('Controlling');
-  await page.getByTestId('competence-add').click();
-  await names.nth(1).fill('Treasury');
-  await page.getByTestId('competence-add').click();
-  await names.nth(2).fill('Reporting');
   const remove = page.getByTestId('competence-remove');
+  for (const [at, name] of ['Controlling', 'Treasury', 'Reporting', 'Tax'].entries()) {
+    if (at > 0) await page.getByTestId('competence-add').click();
+    await names.nth(at).fill(name);
+  }
+  // A click on an x: the row goes, no caret and no ring anywhere.
+  await remove.nth(3).click();
+  await expect(names).toHaveCount(3);
+  expect(await focusOf(page)).toBe('none');
+  // Enter or Space on a focused x: the next row's x, the previous one after the last, then
+  // the add button; never a field.
   await remove.nth(1).focus();
   await page.keyboard.press('Enter');
   await expect(names).toHaveCount(2);
-  await expect(names.nth(1)).toBeFocused();
   await expect(names.nth(1)).toHaveValue('Reporting');
-  await remove.nth(1).focus();
+  await expect(remove.nth(1)).toBeFocused();
   await page.keyboard.press('Space');
-  await expect(names.nth(0)).toBeFocused();
-  await remove.nth(0).focus();
+  await expect(names).toHaveCount(1);
+  await expect(remove.nth(0)).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(names).toHaveCount(0);
   await expect(page.getByTestId('competence-add')).toBeFocused();
+  // The languages alike.
+  const languages = page.getByTestId('language-name');
+  await languages.first().fill('Englisch');
+  await page.getByTestId('language-add').click();
+  await languages.nth(1).fill('Deutsch');
+  await page.getByTestId('language-remove').first().click();
+  await expect(languages).toHaveCount(1);
+  expect(await focusOf(page)).toBe('none');
   await page.getByTestId('language-remove').focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('language-name')).toHaveCount(0);
+  await expect(languages).toHaveCount(0);
   await expect(page.getByTestId('language-add')).toBeFocused();
+});
+
+test('removing a chip: a click ends the caret, Backspace and Delete go on to the next x', async ({
+  page,
+}) => {
+  await profile(page);
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  const x = (name: string): Locator => tools.getByRole('button', { name: T.chips.remove(name) });
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'LucaNet', 'Power BI']);
+  // With the caret in the field, a click on an x removes its chip and ends the caret.
+  await input.click();
+  await x('LucaNet').click();
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'Power BI']);
+  expect(await focusOf(page)).toBe('none');
+  // Backspace in the empty field: the last chip goes, the x before it takes the focus (with
+  // its ring), the caret leaves the field.
+  await input.fill('Excel, Jira, Miro');
+  await input.press('Enter');
+  await input.press('Backspace');
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'Power BI', 'Excel', 'Jira']);
+  await expect(x('Jira')).toBeFocused();
+  expect(await x('Jira').evaluate((node) => node.matches(':focus-visible'))).toBe(true);
+  // On a focused x Backspace, Delete, Enter and Space remove its chip: the next x, the
+  // previous one after the last.
+  await page.keyboard.press('Backspace');
+  await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'Power BI', 'Excel']);
+  await expect(x('Excel')).toBeFocused();
+  await x('SAP S/4HANA').focus();
+  await page.keyboard.press('Delete');
+  await expect(chips(tools)).toHaveText(['Power BI', 'Excel']);
+  await expect(x('Power BI')).toBeFocused();
+  await page.keyboard.press('Space');
+  await expect(chips(tools)).toHaveText(['Excel']);
+  await expect(x('Excel')).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(chips(tools)).toHaveCount(0);
+  expect(await focusOf(page)).not.toBe('field');
+  // Backspace in the field of its only chip: the chip goes, the caret stays where it was.
+  await input.fill('Excel');
+  await input.press('Enter');
+  await input.press('Backspace');
+  await expect(chips(tools)).toHaveCount(0);
+  await expect(input).toBeFocused();
+});
+
+test('the one-line synonyms stay open while the keyboard removes their chips', async ({ page }) => {
+  await profile(page);
+  const aliases = page.getByTestId('competence-aliases').nth(1);
+  const input = aliases.locator('input');
+  await input.fill('Konzerncontrolling, Management Reporting, Unternehmensplanung, Forecasting');
+  await input.press('Enter');
+  await input.press('Backspace');
+  // The focus on an x of the field: every chip shows, none spare.
+  const focused = aliases.locator('.remove:focus');
+  await expect(focused).toHaveCount(1);
+  await expect(aliases.locator('.chip.spare')).toHaveCount(0);
+  await expect(focused).toBeVisible();
+  await page.keyboard.press('Delete');
+  await expect(aliases.locator('.remove:focus')).toBeVisible();
 });
 
 // ------------------------------------------------------------------ numbers and days
