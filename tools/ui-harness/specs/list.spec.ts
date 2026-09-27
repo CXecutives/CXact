@@ -1881,7 +1881,7 @@ test.describe('run line', () => {
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  test('failed: one quiet line with Erneut versuchen and its ×; cancelled says nothing', async ({
+  test('failed: one quiet line and its ×, no second way to fetch; cancelled says nothing', async ({
     page,
   }) => {
     await open(page, `${WIN}&mail=offline&tick=15`);
@@ -1890,14 +1890,10 @@ test.describe('run line', () => {
     await runFinished(page);
     const problem = page.getByTestId('run-problem');
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
-    await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
-    // Drawn like every note of the column: the sentence in 14 px ink, the way on a small
-    // outlined button with its glyph, the × at the column's edge.
+    // Drawn like every note of the column: the sentence in 14 px ink, the × at the column's
+    // edge. No "Erneut versuchen" beside a working "Postfach abrufen", which does the same.
     await expect(problem.locator('.text')).toHaveCSS('font-size', '14px');
-    await expect(problem.getByTestId('run-retry')).toHaveClass(/secondary/);
-    await expect(problem.getByTestId('run-retry').locator('svg')).toHaveClass(
-      new RegExp(`lucide-${ICONS.retry}`),
-    );
+    await expect(problem.getByTestId('run-retry')).toHaveCount(0);
     // A fetch that ends at once brings back a working "Postfach abrufen".
     await expect(page.getByTestId('fetch')).toBeEnabled();
     expect(
@@ -1906,7 +1902,7 @@ test.describe('run line', () => {
         .evaluate((node) => node.querySelector('[inert] [data-testid="fetch"]')),
     ).toBeNull();
     expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-range'));
-    await problem.getByTestId('run-retry').click();
+    await page.getByTestId('fetch').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);
     await page.getByTestId('run-close').click();

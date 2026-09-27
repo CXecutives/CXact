@@ -4,6 +4,7 @@
 // reader stay true while a run updates jobs.
 
 import type { Page } from '@playwright/test';
+import { ICONS } from '../../../ui/src/lib/icons';
 import type { JobView } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
 import { chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
@@ -72,7 +73,12 @@ test('a rescore that cannot write the files says so once, with a retry', async (
     'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
   );
   await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-  await problem.getByRole('button', { name: 'Erneut versuchen' }).click();
+  // Its way on is drawn like every note's: a small outlined button with its glyph.
+  const retry = problem.getByTestId('run-retry');
+  await expect(retry).toHaveText(T.common.retry);
+  await expect(retry).toHaveClass(/secondary/);
+  await expect(retry.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.retry}`));
+  await retry.click();
   await runFinished(page);
   const started = await calls(page, 'start_run');
   expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
@@ -228,10 +234,11 @@ test('after a restart a failed last fetch says so once in the run line, a new fe
   const problem = page.getByTestId('run-problem');
   await expect(problem).toHaveCount(1);
   await expect(problem).toContainText(T.error.text('mailConnect', {}));
-  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  // "Postfach abrufen" is the way on, no second one in the line.
+  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
   // Nowhere else: the sidebar has no status line.
   await expect(page.getByTestId('sidebar')).not.toContainText(T.error.text('mailConnect', {}));
-  await problem.getByTestId('run-retry').click();
+  await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
   expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
@@ -385,7 +392,7 @@ test('an archived job leaves the list and every count but the archive', async ({
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
 
-test('a fetch without internet says so in the run line and tries again from there', async ({
+test('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({
   page,
 }) => {
   await open(page, `${WIN}&mail=no-internet&tick=15`);
@@ -395,10 +402,10 @@ test('a fetch without internet says so in the run line and tries again from ther
   // Its own words, not the words of a Gmail that does not answer.
   await expect(problem).toContainText(T.error.text('offline', {}));
   await expect(problem).not.toContainText(T.error.text('mailConnect', {}));
-  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
   // The next run's end, not the last one's.
   await page.evaluate(() => (window.__harness.done = false));
-  await problem.getByTestId('run-retry').click();
+  await page.getByTestId('fetch').click();
   await runFinished(page);
   const starts = (await calls(page, 'start_run')).map(([, args]) => args);
   expect(starts).toMatchObject([{ request: { kind: 'fetch' } }, { request: { kind: 'fetch' } }]);

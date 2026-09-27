@@ -6,9 +6,10 @@
   the header. What a fetch brought is a toast at its end ("5 neue Jobs",
   lib/state/run.svelte.ts); its details are in the log. A run that failed, a start that was
   refused or files that could not be written leave one note instead, drawn like every other
-  note of the list column (Notice, a row in the warning tone): what went wrong, the way on
-  ("Erneut versuchen" with its glyph, or where the fix is) and a × that hides it until the
-  next run. A fetch that went well but paused a portal on its way (or found it at its limit)
+  note of the list column (Notice, a row in the warning tone): what went wrong, the failure's
+  own way on (lib/state/run.svelte.ts failureAction: where the fix is, the log, or "Erneut
+  versuchen" with its glyph where nothing else starts the run again; none beside a working
+  "Postfach abrufen") and a × that hides it until the next run. A fetch that went well but paused a portal on its way (or found it at its limit)
   says so once in the same place, quietly ("freelancermap pausiert bis 14:00", with its ×).
   The line unfolds and folds away (lib/motion unfold), so the list below glides; its rows
   never flicker.
@@ -72,10 +73,9 @@
           (failure: unknown) => (openError = errorText(failure)),
         );
       });
-      return {
-        text: t.error.text(error.kind, error.params),
-        action: fix ?? { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) },
-      };
+      // Only the failure's own fix, as on the first-run page: never a second "fetch again"
+      // beside "Postfach abrufen".
+      return { text: t.error.text(error.kind, error.params), action: fix };
     }
     const files = exportText(exportError(summary));
     if (files !== null) {
