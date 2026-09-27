@@ -246,6 +246,13 @@ one entry there (a new section also needs its heading and sentence in `profile.s
 `profile.sectionHint`); a quiet hint where values contradict each other is the field's
 `advice`, a field that waits for another its `off`.
 
+"Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
+what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
+`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`; what counts as a term (a skill
+of at most five words, `TERM_WORDS`, and at most `MAX_TERMS` per job) is `is_term` and `terms`
+in `core/src/pipeline/local.rs`, stored with each match (a change there raises `INPUTS`, so
+every job is scored again). The stub's `askedTerms` (`tools/ui-harness/stub.ts`) mirrors them.
+
 ## Add a column of the Excel and the CSV file
 
 One row of `COLUMNS` in `core/src/export/columns.rs`: a key, the German and the English
