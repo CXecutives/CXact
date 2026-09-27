@@ -358,8 +358,8 @@ export function exportText(error: ErrorInfo | null): string | null {
   switch (error.params['target']) {
     case 'overview':
       return error.kind === 'fileLocked' ? texts.overviewLocked : texts.overview;
-    case 'overviewHtml':
-      return texts.overviewHtml;
+    case 'csv':
+      return error.kind === 'fileLocked' ? texts.csvLocked : texts.csv;
     case 'txtFolder':
       return texts.txtFolder;
     case 'backup':

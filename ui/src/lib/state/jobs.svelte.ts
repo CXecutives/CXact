@@ -46,7 +46,14 @@ import type {
 import { tokenMs } from '../tokens';
 import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
-import { isFiltered, NO_FILTER, parseFilter, passesFilter, type ListFilter } from './filter';
+import {
+  isFiltered,
+  NO_FILTER,
+  parseFilter,
+  passesFilter,
+  toQuery,
+  type ListFilter,
+} from './filter';
 import { run } from './run.svelte';
 
 export const PAGE = 120;
@@ -320,6 +327,8 @@ class JobsStore {
           ? chosen.portal
           : null,
       minBand: app.hasProfile ? chosen.minBand : null,
+      contract: chosen.contract,
+      remote: chosen.remote,
     };
   }
 
@@ -540,10 +549,7 @@ class JobsStore {
       unread: false,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
-      // The contract and remote filter of the backend, until ListFilter carries them.
-      contracts: [],
-      remoteOnly: false,
-      ...filter,
+      ...toQuery(filter),
       limit,
       offset,
     };
@@ -628,9 +634,7 @@ class JobsStore {
           unread: false,
           sort: 'newest',
           search: null,
-          contracts: [],
-          remoteOnly: false,
-          ...NO_FILTER,
+          ...toQuery(NO_FILTER),
           limit: 0,
           offset: 0,
         },
