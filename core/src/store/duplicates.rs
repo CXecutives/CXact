@@ -477,8 +477,8 @@ mod tests {
         let keys = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
             jobs.into_iter().map(|j| j.key).collect()
         };
-        let top = keys(store.best_matches(10).unwrap());
-        assert_eq!(top, [first.key]);
+        let sheet = keys(store.sheet_jobs().unwrap());
+        assert_eq!(sheet, [first.key], "the original's row stands for it");
     }
 
     /// A job the user marked stays a job of its own: linked as a duplicate it would leave
@@ -740,10 +740,10 @@ mod tests {
                 (add("https://www.freelancermap.de/nproj/2971857.html"), slug)
             };
             assert!(!slug.has_portal_id());
-            // The slug row got its text file in an earlier run.
+            // An earlier version wrote a text file for the slug row.
             let name = "20260918_Freelancermap_SAP_FI_CO_Berater.txt";
             if !id_first {
-                store.mark_txt_written(&slug, name, now()).unwrap();
+                store.mark_old_txt(&slug, name, now());
             }
             let later = if id_first { &slug } else { &id };
             assert_eq!(store.link_duplicate(later).unwrap(), Some(id.clone()));
@@ -751,13 +751,13 @@ mod tests {
             assert_eq!(store.dup_of(&id).unwrap(), None);
             assert!(store.also_on(&[&id]).unwrap().is_empty(), "no other portal");
             if !id_first {
-                // That file stays the job's one file: the id row takes it over.
+                // That file stays the job's one file (the cleanup knows it): the id row
+                // takes it over.
                 assert_eq!(
                     store.job(&id).unwrap().unwrap().txt_name.as_deref(),
                     Some(name)
                 );
                 assert_eq!(store.job(&slug).unwrap().unwrap().txt_name, None);
-                assert!(store.txt_jobs(false).unwrap().is_empty(), "no second file");
                 assert_eq!(store.txt_names().unwrap(), [name]);
             }
         }

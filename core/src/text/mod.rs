@@ -1,12 +1,10 @@
-//! Text building blocks with no network and no state: HTML to text, whitespace, file
-//! names, company and location.
+//! Text building blocks with no network and no state: HTML to text, whitespace, company
+//! and location.
 
 mod company_location;
-mod filename;
 mod html_text;
 
 pub use company_location::{page_location, split_company_location};
-pub(crate) use filename::job_file_name;
 pub(crate) use html_text::{SKIP, html_to_text};
 
 /// Smooth out whitespace: trim lines, collapse spaces, at most one blank line, no

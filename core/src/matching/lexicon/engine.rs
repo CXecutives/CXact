@@ -955,7 +955,7 @@ pub(crate) const NUMBER_WORDS: &[(&str, u32)] = &[
     ("ten", 10),
 ];
 
-/// Profile keys of the new engine (German JSON keys shared with the skill).
+/// Profile keys of the new engine (German JSON keys of the profile format).
 pub(crate) const KEY_LANGUAGES: &str = "sprachen";
 pub(crate) const KEY_LANGUAGE: &str = "sprache";
 pub(crate) const KEY_LEVEL: &str = "niveau";

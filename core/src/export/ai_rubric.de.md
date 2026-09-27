@@ -1,8 +1,7 @@
 # Bewertungsregel
 
-Diese Regel gilt für die Prüfung in einem KI-Chat aus der App und für den Skill job-matching.
-Beide lesen genau diesen Text. Das Profil gewinnt: Jede Schwelle kommt aus dem Profil, ein Schlüssel,
-den das Profil nicht setzt, schaltet seine Regel ab.
+Diese Regel gilt für die Prüfung in einem KI-Chat aus der App. Das Profil gewinnt: Jede Schwelle
+kommt aus dem Profil, ein Schlüssel, den das Profil nicht setzt, schaltet seine Regel ab.
 
 Die weiteren Anzeigen, die ein Portal unter einer Anzeige zeigt (etwa „Ähnliche Projekte“ oder
 „Similar jobs“), gehören nicht zu ihr. Keine Regel liest sie, und sie schließen nichts aus.

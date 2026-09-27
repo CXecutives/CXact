@@ -72,7 +72,6 @@ Commit them together with tokens.css.
 - The diagnostic sheets of `tools/icon.py` (`--compare`, `--fringe-sheet`) show the icon on
   neutral desktops (dark, mid grey, white).
 - Test mails and pages in `core/tests/fixtures/` keep the colours of whoever wrote them.
-- The TXT files have no colours.
 
 ## Add or change a palette
 
@@ -119,8 +118,8 @@ ask which palette is on.
   variant of `FetchRange` (`core/src/settings.rs`), its arm in `scan_since` and its word.
 - The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
   `exportCsv` off by default); the export writes a file only while its switch is on, and its
-  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The text files for the
-  job-matching skill have no switch.
+  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The app writes no other
+  files (no text files, no `top_matches.json` since 2026-09-27).
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 
@@ -246,6 +245,13 @@ their order and each one's lines of fields. Moving, adding or removing a field o
 one entry there (a new section also needs its heading and sentence in `profile.section` and
 `profile.sectionHint`); a quiet hint where values contradict each other is the field's
 `advice`, a field that waits for another its `off`.
+
+"Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
+what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
+`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`; what counts as a term (a skill
+of at most five words, `TERM_WORDS`, and at most `MAX_TERMS` per job) is `is_term` and `terms`
+in `core/src/pipeline/local.rs`, stored with each match (a change there raises `INPUTS`, so
+every job is scored again). The stub's `askedTerms` (`tools/ui-harness/stub.ts`) mirrors them.
 
 ## Add a column of the Excel and the CSV file
 

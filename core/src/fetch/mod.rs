@@ -162,7 +162,7 @@ pub enum PageOutcome {
         facts: Facts,
     },
     /// Only the teaser a guest sees (freelance.de without sign-in): short, but the right
-    /// page - stored for matching and marked, never as a text file.
+    /// page - stored for matching and marked as a teaser.
     Teaser {
         text: String,
         fields: Option<PageFields>,

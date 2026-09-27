@@ -11,7 +11,8 @@
 
 import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
-import { calls, expect, expectShot, open, settle, test } from './fixtures';
+import { DEMO } from './demo';
+import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
 import { MAC, T, WIN, failNext } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
@@ -2023,6 +2024,124 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
     ([, args]) => (args as { request: unknown }).request,
   );
   expect(started).toEqual([{ kind: 'fetch' }]);
+});
+
+// ------------------------------------------------------------------ the block "Häufig verlangt"
+
+const asked = (page: Page): Locator => page.getByTestId('asked');
+const askedWords = (page: Page): Promise<string[]> =>
+  page.getByTestId('asked-words').allTextContents();
+const askedCounts = async (page: Page): Promise<number[]> =>
+  (await page.getByTestId('asked-count').allTextContents()).map(Number);
+const competenceNames = (page: Page): Promise<string[]> =>
+  page
+    .getByTestId('competence-name')
+    .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
+
+/** The demo jobs whose reader names `term` as an open requirement (the engine's words). */
+const askingJobs = (term: string): number =>
+  Object.values(DEMO.details).filter((detail) =>
+    detail.match?.reasons.some((reason) => reason.kind === 'open' && reason.label === term),
+  ).length;
+
+test('"Häufig verlangt" under the competences: what the jobs ask for most that the profile lacks', async ({
+  page,
+}) => {
+  await profile(page);
+  const block = asked(page);
+  await expect(block).toBeVisible();
+  await expect(page.getByTestId('section-competences').getByTestId('asked')).toHaveCount(1);
+  await expect(block).toContainText(T.profile.asked);
+  // Under the competence list, above the next field of the section.
+  const list = await page.getByTestId('competences').boundingBox();
+  const own = await block.boundingBox();
+  const strengths = await page.getByTestId('profile-strengths').boundingBox();
+  expect(own!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
+  expect(strengths!.y).toBeGreaterThanOrEqual(own!.y + own!.height);
+  const words = await askedWords(page);
+  const counts = await askedCounts(page);
+  expect(words.length).toBeGreaterThan(0);
+  expect(words.length).toBeLessThanOrEqual(8);
+  expect(counts).toEqual([...counts].sort((a, b) => b - a));
+  expect(counts.every((count) => count >= 2)).toBe(true);
+  // The engine's words of open requirements, asked by at least that many demo jobs, none of
+  // them a competence of the profile.
+  const stored = (await page.evaluate(() => window.__harness.form()))!;
+  const names = stored.competences.flatMap((c) => [c.name, ...c.aliases]);
+  words.forEach((term, index) => {
+    expect(askingJobs(term)).toBeGreaterThanOrEqual(counts[index]!);
+    expect(names.map((name) => name.toLowerCase())).not.toContain(term.toLowerCase());
+  });
+  // The number says what it counts, the "+" what it does.
+  await expect(page.getByTestId('asked-count').first()).toHaveAccessibleName(
+    T.profile.askedIn(counts[0]!),
+  );
+  await expect(page.getByTestId('asked-add').first()).toHaveAccessibleName(T.profile.askedAdd);
+  expect(await calls(page, 'asked_terms')).not.toHaveLength(0);
+});
+
+test('its "+" adds the term as a competence, an unsaved change like any other', async ({
+  page,
+}) => {
+  await profile(page);
+  const [term] = await askedWords(page);
+  await expect(bar(page)).toHaveCount(0);
+  await page.getByTestId('asked-add').first().click();
+  expect(await competenceNames(page)).toContain(term);
+  await expect(page.getByTestId('asked-words')).not.toContainText([term!]);
+  await expect(bar(page)).toBeVisible();
+  expect(await saves(page)).toBe(0);
+  // Discarded: the row goes, the term is asked again.
+  await discard(page).click();
+  expect(await competenceNames(page)).not.toContain(term);
+  await expect(page.getByTestId('asked-words').first()).toHaveText(term!);
+  // Saved: it goes to the backend as a competence, and the block asks again.
+  await page.getByTestId('asked-add').first().click();
+  const before = (await calls(page, 'asked_terms')).length;
+  await save(page).click();
+  await expect(savedToast(page)).toBeVisible();
+  const sent = await lastSave(page);
+  expect(sent.after.competences.map((row) => row.name)).toContain(term);
+  expect(sent.before.competences.map((row) => row.name)).not.toContain(term);
+  await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(before);
+  expect(await askedWords(page)).not.toContain(term);
+});
+
+test('the block goes with its last term; a focused "+" hands the focus on', async ({ page }) => {
+  await profile(page);
+  const count = (await askedWords(page)).length;
+  const add = page.getByTestId('asked-add');
+  for (let left = count; left > 1; left -= 1) {
+    await add.first().focus();
+    await page.keyboard.press('Enter');
+    await expect(add).toHaveCount(left - 1);
+    await expect(add.first()).toBeFocused();
+  }
+  await add.first().focus();
+  await page.keyboard.press('Enter');
+  await expect(asked(page)).toHaveCount(0);
+  await expect(page.getByTestId('competence-add')).toBeFocused();
+  expect((await competenceNames(page)).length).toBeGreaterThanOrEqual(count);
+});
+
+test('the block asks again after a fetch', async ({ page }) => {
+  await profile(page);
+  await expect(asked(page)).toBeVisible();
+  const before = (await calls(page, 'asked_terms')).length;
+  await page.evaluate(() => window.__harness.appRun('fetch'));
+  await runFinished(page);
+  await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(before);
+  await expect(asked(page)).toBeVisible();
+});
+
+test('without an answer the block stays away', async ({ page }) => {
+  read.delete(page);
+  await open(page, WIN);
+  await failNext(page, 'asked_terms');
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(0);
+  await expect(asked(page)).toHaveCount(0);
 });
 
 // ------------------------------------------------------------------ baselines

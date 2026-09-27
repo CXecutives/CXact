@@ -1318,7 +1318,7 @@ fn teaser() -> PageOutcome {
 }
 
 /// Without the sign-in freelance.de goes as a guest: the teaser is stored for matching and
-/// marked as such - no text file, and it counts as no full text.
+/// marked as such, and it counts as no full text.
 #[tokio::test(start_paused = true)]
 async fn a_guest_teaser_is_stored_and_marked() {
     let c = clock();
@@ -1339,7 +1339,6 @@ async fn a_guest_teaser_is_stored_and_marked() {
         store.description(&job.key).unwrap().as_deref(),
         Some("Derzeit suchen wir einen Controller.")
     );
-    assert!(store.txt_jobs(true).unwrap().is_empty(), "no text file");
     // The facts of the page head, and the parser that read it.
     assert_eq!(
         store.facts(&job.key).unwrap().unwrap().start.as_deref(),

@@ -1,5 +1,5 @@
-//! Consultant profile: exactly one JSON file `profil/beraterprofil.json` in the workspace -
-//! that is where the matching skill reads it. The Profil view edits it through a form
+//! Consultant profile: exactly one JSON file `profil/beraterprofil.json` in the workspace
+//! (the place and format of the old program's profile). The Profil view edits it through a form
 //! ([`form`]): saving merges the form into the file, so keys the form does not know, their
 //! values and the order of the keys stay; the previous file stays next to it as the one
 //! backup. Removing the profile makes it that backup, so it can be restored; restoring over a
@@ -30,7 +30,8 @@ pub use form::{
 };
 use json::Json;
 
-/// Folder and file name are a contract with the matching skill - do not translate.
+/// Folder and file name are a contract with the user's work folder (the old program's) - do
+/// not translate.
 pub const PROFILE_DIR: &str = "profil";
 pub const PROFILE_FILE: &str = "beraterprofil.json";
 /// The previous profile, kept next to it on every save (one backup, replaced each time).
@@ -823,7 +824,7 @@ mod tests {
         }
     }
 
-    /// A new profile from the empty form: the keys in the order of the skill's template and
+    /// A new profile from the empty form: the keys in the order of the profile template and
     /// an engine that understands all of it (good quality, every criterion, no warning).
     #[test]
     fn a_new_profile_from_the_empty_form() {

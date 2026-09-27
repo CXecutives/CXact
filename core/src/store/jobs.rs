@@ -768,39 +768,22 @@ impl Store {
 
     // ------------------------------------------------------------------ Text files
 
-    /// Jobs with a full text of an open ad (a closed one takes no application, so the
-    /// matching skill never gets it), together with the text: only those whose text file
-    /// was never written - or, with `all`, every one ("rewrite text files"). A job another
-    /// portal announced too has one file, its original's (the skill would rate it twice), and
-    /// a job in the trash none (one restored from it gets its file with the next export).
-    pub fn txt_jobs(&self, all: bool) -> Result<Vec<(JobRow, String)>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS}, desc_text FROM job
-             WHERE desc_status = 'ok' AND desc_text IS NOT NULL AND desc_closed = 0
-               AND dup_of IS NULL AND trashed_at IS NULL
-               AND (?1 OR txt_written_at IS NULL)
-             ORDER BY first_seen_at, portal, job_id"
-        ))?;
-        let rows = stmt.query_map([all], |r| {
-            let text: String = r.get(JOB_COLUMN_COUNT)?;
-            Ok(job_row(r)?.map(|job| (job, text)))
-        })?;
-        rows.map(|r| r?).collect()
+    /// Test: the text file an earlier version of the app wrote for a job (the app writes
+    /// none any more; the names it knows stay for the cleanup).
+    #[cfg(test)]
+    pub(crate) fn mark_old_txt(&self, key: &JobKey, file_name: &str, now: Timestamp) {
+        self.conn()
+            .execute(
+                "UPDATE job SET txt_name = ?3, txt_written_at = ?4
+                 WHERE portal = ?1 AND job_id = ?2",
+                params![key.portal.key(), key.id, file_name, to_db(now)],
+            )
+            .expect("the name is stored");
     }
 
-    /// Text file written - it is never created again on its own, even if the user deletes
-    /// it (the matching skill reads every file in the folder).
-    pub fn mark_txt_written(&self, key: &JobKey, file_name: &str, now: Timestamp) -> Result<()> {
-        self.conn().execute(
-            "UPDATE job SET txt_name = ?3, txt_written_at = ?4 WHERE portal = ?1 AND job_id = ?2",
-            params![key.portal.key(), key.id, file_name, to_db(now)],
-        )?;
-        Ok(())
-    }
-
-    /// Names of all text files the app has written (for "empty the results folder"), with
-    /// the ones of deleted jobs that are still on disk ([`Store::txt_leftovers`]).
+    /// Names of all text files earlier versions of the app wrote (for deleting jobs for good
+    /// and "reset everything"), with the ones of deleted jobs that are still on disk
+    /// ([`Store::txt_leftovers`]).
     pub fn txt_names(&self) -> Result<Vec<String>> {
         let mut names: Vec<String> = {
             let conn = self.conn();
@@ -817,9 +800,9 @@ impl Store {
         Ok(names)
     }
 
-    /// Text files of jobs deleted for good that could not be removed (open in another
-    /// program): their rows are gone, so their names live on here until a later export,
-    /// "Textdateien löschen" or a reset removes them.
+    /// Old text files of jobs deleted for good that could not be removed (open in another
+    /// program): their rows are gone, so their names live on here until a later export or a
+    /// reset removes them.
     pub fn txt_leftovers(&self) -> Result<Vec<String>> {
         Ok(self
             .kv_get(TXT_LEFTOVERS)?
@@ -1785,40 +1768,6 @@ mod tests {
         assert_eq!(status(&trashed), DescStatus::Failed);
     }
 
-    /// One text file per job: a duplicate of another portal's job has none (the skill would
-    /// rate the job twice), a job in the trash neither - until it comes back.
-    #[test]
-    fn duplicates_and_the_trash_get_no_text_file() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let (full, _) = full_text_and_its_teaser(&store, run);
-        // The same job with its full text on a third portal, linked to the first.
-        let p = posting(
-            "https://www.linkedin.com/jobs/view/4000000009/",
-            "SAP FI/CO Berater (m/w/d)",
-            "Ferrum Systems SE",
-            "Hamburg",
-        );
-        store.upsert_posting(run, &p, mail(), now()).unwrap();
-        store.record_text(&p.key, AD, false, false, now()).unwrap();
-        assert_eq!(store.link_duplicate(&p.key).unwrap(), Some(full.clone()));
-        let keys = |all: bool| -> Vec<JobKey> {
-            store
-                .txt_jobs(all)
-                .unwrap()
-                .into_iter()
-                .map(|(job, _)| job.key)
-                .collect()
-        };
-        assert_eq!(keys(false), std::slice::from_ref(&full));
-        assert_eq!(keys(true), std::slice::from_ref(&full), "rewriting too");
-        let one = std::slice::from_ref(&full);
-        store.move_jobs(one, Place::Trash, now()).unwrap();
-        assert!(keys(false).is_empty() && keys(true).is_empty());
-        store.move_jobs(one, Place::Inbox, now()).unwrap();
-        assert_eq!(keys(false), one, "back from the trash, its file follows");
-    }
-
     /// A failure or "gone" after a successful fetch does not downgrade the job - the text
     /// stays, nothing is fetched again.
     #[test]
@@ -1845,8 +1794,10 @@ mod tests {
         assert_eq!(store.data_rev().unwrap(), rev);
     }
 
+    /// The names of the text files earlier versions wrote stay known (for the cleanup), with
+    /// the ones of deleted jobs that stayed on disk.
     #[test]
-    fn txt_written_exactly_once() {
+    fn old_text_file_names_stay_known() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         let a = posting(
@@ -1856,24 +1807,15 @@ mod tests {
             "",
         );
         store.upsert_posting(run, &a, mail(), now()).unwrap();
-        assert!(store.txt_jobs(false).unwrap().is_empty());
-        store
-            .record_text(&a.key, "Text", false, false, now())
-            .unwrap();
-        let pending = store.txt_jobs(false).unwrap();
-        assert_eq!(pending.len(), 1);
-        assert_eq!(pending[0].1, "Text");
-        store
-            .mark_txt_written(&a.key, "20260918_LinkedIn_A_4000000001.txt", now())
-            .unwrap();
-        assert!(store.txt_jobs(false).unwrap().is_empty());
+        assert!(store.txt_names().unwrap().is_empty());
+        store.mark_old_txt(&a.key, "20260918_LinkedIn_A_4000000001.txt", now());
+        store.set_txt_leftovers(&["gone.txt".to_owned()]).unwrap();
         assert_eq!(
             store.txt_names().unwrap(),
-            ["20260918_LinkedIn_A_4000000001.txt"]
+            ["20260918_LinkedIn_A_4000000001.txt", "gone.txt"]
         );
-        // Rewriting sees every job - without touching the mark.
-        assert_eq!(store.txt_jobs(true).unwrap().len(), 1);
-        assert!(store.txt_jobs(false).unwrap().is_empty());
+        store.set_txt_leftovers(&[]).unwrap();
+        assert!(store.txt_leftovers().unwrap().is_empty());
     }
 
     /// Failure reasons often come from the page (redirect target, script error): one short
@@ -2200,9 +2142,6 @@ mod tests {
             .record_text(&a.key, "Text", false, false, now())
             .unwrap();
         assert!(store.data_rev().unwrap() > v2);
-        let v3 = store.data_rev().unwrap();
-        store.mark_txt_written(&a.key, "x.txt", now()).unwrap();
-        assert_eq!(store.data_rev().unwrap(), v3);
     }
 
     /// A mail that linked the title as a bare address left the URL as the title - and it

@@ -25,6 +25,7 @@
     "allow-save-profile",
     "allow-remove-profile",
     "allow-restore-profile",
+    "allow-asked-terms",
     "allow-set-unsaved",
     "allow-close-window",
     "allow-save-mailbox",

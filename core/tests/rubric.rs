@@ -1,8 +1,6 @@
-//! One scoring rubric for the app's Claude check and the `job-matching` skill: the German
-//! file `core/src/export/ai_rubric.de.md` and its copy in the skill folder are identical, the
-//! skill's instructions and its render check carry the same caps, and the rubric's high band
-//! is the app's. The English rubric of the English prompts (`ai_rubric.en.md`) has the same
-//! sections, bands and caps.
+//! The scoring rubric of the AI prompts: the German file `core/src/export/ai_rubric.de.md`
+//! covers the bands 1 to 10 and stops wishes below the app's high band; the English rubric of
+//! the English prompts (`ai_rubric.en.md`) has the same sections, bands and caps.
 
 use std::path::{Path, PathBuf};
 
@@ -22,33 +20,9 @@ fn read(path: &str) -> String {
 }
 
 const RUBRIC: &str = "core/src/export/ai_rubric.de.md";
-const SKILL_RUBRIC: &str = "tools/job-matching-skill/rubric.de.md";
-const SKILL: &str = "tools/job-matching-skill/SKILL.md";
-const SKILL_SCRIPT: &str = "tools/job-matching-skill/scripts/matching.py";
 
 /// A cap: an upper (`true`) or lower bound and its score.
 type Cap = (bool, u32);
-
-/// The numbers right after every `marker` in `text`.
-fn numbers_after(text: &str, marker: &str) -> Vec<u32> {
-    text.match_indices(marker)
-        .filter_map(|(at, _)| {
-            let rest = &text[at + marker.len()..];
-            let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
-            digits.parse().ok()
-        })
-        .collect()
-}
-
-/// Upper (`at most`) and lower bounds of a text.
-fn bounds(text: &str, upper: &str, lower: &str) -> Vec<Cap> {
-    let mut caps: Vec<Cap> = numbers_after(text, upper)
-        .into_iter()
-        .map(|n| (true, n))
-        .collect();
-    caps.extend(numbers_after(text, lower).into_iter().map(|n| (false, n)));
-    sorted(caps)
-}
 
 fn sorted(mut caps: Vec<Cap>) -> Vec<Cap> {
     caps.sort_unstable();
@@ -78,20 +52,6 @@ fn rubric_caps(rubric: &str) -> Vec<Cap> {
 }
 
 #[test]
-fn the_skill_carries_the_same_rubric_as_the_app() {
-    let rubric = read(RUBRIC);
-    assert_eq!(
-        rubric,
-        read(SKILL_RUBRIC),
-        "copy {RUBRIC} to {SKILL_RUBRIC} (the skill ships it)"
-    );
-    assert!(
-        read(SKILL).contains("rubric.de.md"),
-        "SKILL.md names the rubric"
-    );
-}
-
-#[test]
 fn the_bands_cover_one_to_ten() {
     let rubric = read(RUBRIC);
     let section = rubric
@@ -113,38 +73,6 @@ fn the_bands_cover_one_to_ten() {
         rubric.contains(&format!("auf {high} oder mehr")),
         "high band {high}"
     );
-}
-
-#[test]
-fn skill_text_and_render_check_have_the_rubrics_caps() {
-    let caps = rubric_caps(&read(RUBRIC));
-    assert_eq!(caps.len(), 6, "{caps:?}");
-
-    let skill = read(SKILL);
-    let section = skill
-        .split("\n## ")
-        .find(|s| s.starts_with("5. Score"))
-        .expect("SKILL.md section 5");
-    let caps_sentence = section[section.find("caps of the rubric").expect("caps")..]
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ");
-    assert_eq!(
-        bounds(&caps_sentence, "at most ", "at least "),
-        caps,
-        "SKILL.md section 5"
-    );
-
-    // The render check: `score > N`, `score < N` and the lowest score of a shown job
-    // (`not 2 <= score <= 10`).
-    let script = read(SKILL_SCRIPT);
-    let mut in_script = bounds(&script, "score > ", "score < ");
-    in_script.extend(
-        numbers_after(&script, "or not ")
-            .into_iter()
-            .map(|n| (false, n)),
-    );
-    assert_eq!(sorted(in_script), caps, "{SKILL_SCRIPT} check()");
 }
 
 const RUBRIC_EN: &str = "core/src/export/ai_rubric.en.md";

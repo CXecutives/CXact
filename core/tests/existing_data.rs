@@ -73,19 +73,27 @@ fn existing_database(path: &Path) {
             .collect(),
     };
     store.record_alert(run, &alert, now()).unwrap();
-    for link in links {
+    for link in &links {
         store
             .record_text(&link.key, &"Volltext. ".repeat(20), false, false, now())
             .unwrap();
-        store
-            .mark_txt_written(
-                &link.key,
-                &format!("20260920_Rolle_{}.txt", link.key.id),
-                now(),
-            )
-            .unwrap();
     }
     store.kv_set("settings", OLD_SETTINGS).unwrap();
+    drop(store);
+    // Earlier versions wrote a text file per job and kept its name.
+    let conn = rusqlite::Connection::open(path).unwrap();
+    for link in &links {
+        conn.execute(
+            "UPDATE job SET txt_name = ?3, txt_written_at = ?4 WHERE portal = ?1 AND job_id = ?2",
+            rusqlite::params![
+                link.key.portal.key(),
+                link.key.id,
+                format!("20260920_Rolle_{}.txt", link.key.id),
+                now().as_second(),
+            ],
+        )
+        .unwrap();
+    }
 }
 
 #[test]
@@ -100,9 +108,9 @@ fn settings_policy_and_database_of_an_earlier_version_keep_working() {
     let store = Store::open(&database).unwrap();
     assert_eq!(store.job_count().unwrap(), 2);
     assert_eq!(store.jobs(&JobFilter::default()).unwrap().len(), 2);
+    // The names of the old text files stay known: deleting a job for good and a reset
+    // still take them along.
     assert_eq!(store.txt_names().unwrap().len(), 2, "names stay known");
-    // Written text files still count as written.
-    assert!(store.txt_jobs(false).unwrap().is_empty());
 
     // The portal choice survives as the switches; the fields of earlier versions are skipped.
     let settings = Settings::load(&store).unwrap();

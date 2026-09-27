@@ -17,10 +17,23 @@ use crate::store::{JobRow, Judgement};
 /// Met requirements quoted in the list row.
 const TOP: usize = 2;
 
-/// Version of what a stored job hands the engine besides its text (2: page facts and the
-/// teaser flag; 3: the company, for the industry wish; 4: career level, industries and a
-/// remote field in words). Part of the revision: a change scores every stored job again.
-const INPUTS: u32 = 5;
+/// Open terms a stored match keeps ("Häufig verlangt" counts them across the jobs).
+pub const MAX_TERMS: usize = 8;
+
+/// A term has at most this many words; longer words are a sentence. The reader's "+" has the
+/// same rule (`TERM_WORDS` and `addable` in `ui/src/features/jobs/reader-sections.ts`; a test
+/// holds both at the same number).
+pub const TERM_WORDS: usize = 5;
+
+/// Most characters of a term (a longer one is no term the profile could take).
+const TERM_CHARS: usize = 80;
+
+/// Version of what a stored job hands the engine besides its text, and of what the store
+/// keeps of the assessment (2: page facts and the teaser flag; 3: the company, for the
+/// industry wish; 4: career level, industries and a remote field in words; 5: the workload
+/// in the stored facts; 6: the open terms for "Häufig verlangt"). Part of the revision: a
+/// change scores every stored job again.
+const INPUTS: u32 = 6;
 
 /// The local engine with one profile.
 pub struct LocalMatcher {
@@ -216,17 +229,64 @@ fn note(assessment: &Assessment) -> Option<Notice> {
     })
 }
 
-/// What the store keeps of an assessment: its [`record`] and up to two open must
-/// requirements ([`open`]).
+/// What the store keeps of an assessment: its [`record`], up to two open must requirements
+/// ([`open`]) and its open terms ([`terms`]).
 pub fn judgement(assessment: &Assessment) -> Judgement {
     Judgement {
         record: record(assessment),
         open: open(assessment),
+        terms: terms(assessment),
     }
 }
 
-/// Up to two open must requirements quoted from the ad, in the ad's order: what the list's
-/// `open` shows and the overview counts across jobs.
+/// The open must and nice requirements that are skills and terms (see [`is_term`]; a
+/// language, a degree, a licence, a soft skill or a frame condition is no competence), the
+/// musts first, each in the ad's order and once (case aside), at most [`MAX_TERMS`]: what
+/// "Häufig verlangt" counts across the jobs.
+pub fn terms(assessment: &Assessment) -> Vec<String> {
+    let open = |weight: Weight| {
+        assessment.reasons.iter().filter(move |r| {
+            r.kind == ReasonKind::Open
+                && r.weight == weight
+                && r.params.get("class").and_then(Value::as_str) == Some("skill")
+                && match r.code {
+                    ReasonCode::Term => true,
+                    ReasonCode::Requirement => {
+                        r.params.get("source").and_then(Value::as_str) != Some("sentence")
+                    }
+                    _ => false,
+                }
+        })
+    };
+    let mut out: Vec<String> = Vec::new();
+    for reason in open(Weight::Must).chain(open(Weight::Nice)) {
+        let Some(label) = reason.label.as_deref().map(str::trim) else {
+            continue;
+        };
+        let known = out.iter().any(|t| t.to_lowercase() == label.to_lowercase());
+        if is_term(label) && !known {
+            out.push(label.to_owned());
+        }
+        if out.len() == MAX_TERMS {
+            break;
+        }
+    }
+    out
+}
+
+/// A requirement the profile could take as it stands: a keyword or a bullet of at most
+/// [`TERM_WORDS`] words that ends like no sentence, never a whole sentence (the reader's
+/// "+" follows the same rule).
+pub fn is_term(label: &str) -> bool {
+    let words = label.trim();
+    !words.is_empty()
+        && words.split_whitespace().count() <= TERM_WORDS
+        && words.chars().count() <= TERM_CHARS
+        && !words.ends_with(['.', '!', '?', ':', ';'])
+}
+
+/// Up to two open must requirements quoted from the ad, in the ad's order: the list's
+/// `open`.
 pub fn open(assessment: &Assessment) -> Vec<String> {
     assessment
         .reasons
@@ -389,6 +449,86 @@ Rahmenbedingungen:
         let judged = matcher.judge(&row, Some(FIT)).unwrap();
         assert_eq!(judged.record, record);
         assert_eq!(judged.open, ["Kenntnisse in Zollabwicklung"]);
+        assert_eq!(judged.terms, ["Kenntnisse in Zollabwicklung"], "a term too");
+    }
+
+    /// The open terms: musts first, then nice ones, each once; a sentence, a language, a met
+    /// or a partly met requirement is none of them.
+    #[test]
+    fn the_open_terms_are_musts_then_nice_ones() {
+        let matcher = LocalMatcher::from_json(&profile());
+        let text = "Wir suchen einen Interim CFO (m/w/d).
+
+Anforderungen:
+- Erfahrung im Controlling
+- Kenntnisse in Zollabwicklung
+- Kenntnisse in Zollabwicklung
+- Mehrjährige Erfahrung mit Lagerverwaltungssystemen in der Hafenlogistik
+
+Wünschenswert:
+- Erfahrung mit Qlik Sense
+- Portugiesisch in Wort und Schrift
+
+Rahmenbedingungen:
+- Einsatzort Hamburg";
+        let (store, key) = job("Interim CFO (m/w/d)", "Hamburg", text);
+        let row = store.job(&key).unwrap().unwrap();
+        let judged = matcher.judge(&row, Some(text)).unwrap();
+        assert_eq!(
+            judged.terms,
+            ["Kenntnisse in Zollabwicklung", "Erfahrung mit Qlik Sense"],
+            "{:?}",
+            matcher.explain(&row, Some(text)).map(|a| a.reasons)
+        );
+        let reasons = matcher.explain(&row, Some(text)).unwrap().reasons;
+        let long = |r: &&matching::Reason| {
+            r.label
+                .as_deref()
+                .is_some_and(|l| l.split_whitespace().count() > TERM_WORDS)
+        };
+        assert!(
+            reasons
+                .iter()
+                .filter(long)
+                .any(|r| r.kind == ReasonKind::Open && r.weight == Weight::Must),
+            "an open must of more words stays out: {reasons:?}"
+        );
+        let language = |r: &&matching::Reason| {
+            r.params.get("class").and_then(Value::as_str) == Some("language")
+        };
+        assert!(
+            reasons
+                .iter()
+                .filter(language)
+                .any(|r| r.kind == ReasonKind::Open && r.weight == Weight::Nice),
+            "an open language stays out: {reasons:?}"
+        );
+    }
+
+    /// A term is a keyword or a bullet of up to five words that ends like no sentence.
+    #[test]
+    fn a_term_has_few_words_and_no_full_stop() {
+        assert!(is_term("SAP S/4HANA"));
+        assert!(is_term("  Kenntnisse in Zollabwicklung  "));
+        assert!(is_term("one two three four five"));
+        assert!(!is_term("one two three four five six"));
+        assert!(!is_term("Erfahrung in SAP."));
+        assert!(!is_term("Aufgaben:"));
+        assert!(!is_term(""));
+        assert!(!is_term(&"x".repeat(81)));
+    }
+
+    /// The reader's "+" and the stored terms follow one rule: its number of words stands in
+    /// both places.
+    #[test]
+    fn the_reader_counts_the_words_of_a_term_alike() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../ui/src/features/jobs/reader-sections.ts");
+        let reader = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            reader.contains(&format!("const TERM_WORDS = {TERM_WORDS};")),
+            "TERM_WORDS in reader-sections.ts is {TERM_WORDS}, as in pipeline/local.rs"
+        );
     }
 
     #[test]

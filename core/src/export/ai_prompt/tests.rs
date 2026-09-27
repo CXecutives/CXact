@@ -1097,7 +1097,7 @@ fn the_prompts_name_no_product_and_carry_the_rubric() {
 }
 
 /// The other listings a portal shows under an ad are no part of it, as for the engine: the
-/// rubric of the prompt and the skill says so (an ANÜ in a footer excludes nothing).
+/// rubric of the prompt says so (an ANÜ in a footer excludes nothing).
 #[test]
 fn the_rubric_leaves_out_the_other_listings_under_an_ad() {
     let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");

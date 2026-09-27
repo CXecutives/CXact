@@ -26,8 +26,6 @@ function finished(files: Partial<ExportSummary>): RunEvent {
       export: {
         overviewXlsx: null,
         backup: null,
-        txtWritten: 0,
-        txtFailed: 0,
         error: null,
         ...files,
       },

@@ -47,6 +47,7 @@ fn scan_only(workspace: &Path) -> RunContext {
     }
 }
 
+/// The files in the folder of the text files earlier versions wrote.
 fn txt_files(workspace: &Path) -> usize {
     std::fs::read_dir(workspace.join(RESULT_DIR).join(TXT_DIR)).map_or(0, Iterator::count)
 }
@@ -163,9 +164,8 @@ async fn one_click_run_writes_everything_and_finishes_once() {
         }
     )));
     let export = s.export.as_ref().unwrap();
-    assert_eq!(export.txt_written, 4);
     assert!(export.overview_xlsx.as_ref().unwrap().exists());
-    assert_eq!(txt_files(dir.path()), 4);
+    assert_eq!(txt_files(dir.path()), 0, "no text files any more");
     assert_eq!(finished(&events), 1);
     assert_small(&events);
     assert!(last_run(&store).unwrap().is_some_and(|l| l.run == s.run));
@@ -237,8 +237,6 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     )
     .await;
     assert_eq!(s.scan.as_ref().unwrap().new, 0);
-    assert_eq!(s.export.as_ref().unwrap().txt_written, 0);
-    assert_eq!(txt_files(dir.path()), 4);
     // Without a change the overview is not touched (an open Excel file is not disturbed).
     let again = export_all(&store, dir.path(), &[], s.run, c(), Language::De);
     assert_eq!(again.overview_xlsx, None);
@@ -269,11 +267,14 @@ async fn cancel_during_fetch_keeps_work_and_still_exports() {
     )
     .await;
     assert_eq!(s.outcome, Outcome::Cancelled);
-    assert_eq!(
-        s.export.as_ref().unwrap().txt_written,
-        1,
-        "what was fetched is stored and exported"
-    );
+    let fetched = store
+        .jobs(&JobFilter::default())
+        .unwrap()
+        .iter()
+        .filter(|job| job.desc_status == DescStatus::Ok)
+        .count();
+    assert_eq!(fetched, 1, "what was fetched is stored");
+    assert!(s.export.is_some(), "and exported");
     assert_eq!(finished(&events), 1);
 }
 
@@ -533,7 +534,7 @@ async fn rescore_only_exports() {
     )
     .await;
     assert!(s.scan.is_none() && s.fetch.is_none());
-    assert_eq!(s.export.as_ref().unwrap().txt_written, 2);
+    assert!(s.export.as_ref().unwrap().overview_xlsx.is_some());
     assert_eq!(finished(&events), 1);
 }
 
@@ -750,55 +751,23 @@ fn an_unreadable_export_stamp_leaves_the_overview_alone() {
     assert_eq!(backups, 0);
 }
 
-/// If a written text file cannot be marked, the remaining ones count as open too - and the
-/// first message, closest to the cause, stays.
-#[test]
-fn a_failed_mark_counts_the_rest_and_keeps_the_first_error() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, db) = store_on_disk(dir.path());
-    // No change of the job table: reading works, marking fails.
-    rusqlite::Connection::open(&db)
-        .unwrap()
-        .execute(
-            "CREATE TRIGGER no_marking BEFORE UPDATE ON job
-             BEGIN SELECT RAISE(ABORT, 'locked'); END",
-            [],
-        )
-        .unwrap();
-    let summary = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
-    assert_eq!(
-        (summary.txt_written, summary.txt_failed),
-        (0, 2),
-        "{summary:?}"
-    );
-    // The number comes with at least one example.
-    assert!(!summary.txt_failed_keys.is_empty(), "{summary:?}");
-    assert!(
-        summary
-            .error
-            .as_ref()
-            .is_some_and(|e| e.kind == ErrorKind::Db),
-        "{summary:?}"
-    );
-}
-
-/// If text files and overview fail at the same unusable folder, the run reports the first
-/// message, closest to the cause - not the bare consequential error of the overview.
+/// If the Excel and the CSV file fail at the same unusable folder, the run reports the first
+/// message, closest to the cause - the Excel file's, not the consequential one of the CSV file.
 #[test]
 fn the_first_error_survives_a_later_one() {
     let dir = tempfile::tempdir().unwrap();
     let (store, _) = store_with_texts();
+    let settings = crate::settings::Settings {
+        export_csv: true,
+        ..crate::settings::Settings::default()
+    };
+    settings.save(&store).unwrap();
     // A file stands where the result folder should be: nothing can be written there.
     std::fs::write(dir.path().join(RESULT_DIR), b"no folder").unwrap();
     let summary = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
-    assert_eq!((summary.txt_written, summary.txt_failed), (0, 2));
-    assert_eq!(summary.overview_xlsx, None);
+    assert_eq!((summary.overview_xlsx, summary.overview_csv), (None, None));
     let error = summary.error.expect("an error");
-    assert_eq!(error.params["target"], "txtFolder");
-    assert!(
-        error.params["path"].as_str().unwrap().contains(TXT_DIR),
-        "{error:?}"
-    );
+    assert_eq!(error.params["target"], "overview");
 }
 
 /// A failed mailbox scan does not overwrite the numbers of the last good one.
@@ -1008,66 +977,9 @@ fn info_rows_of_an_earlier_version_use_todays_words() {
     );
 }
 
-/// Safety invariant: a text file the user deleted or emptied is not recreated by the next
-/// run - the mark stays used. Only "rewrite text files" brings it back.
-#[test]
-fn a_text_file_the_user_removed_is_never_recreated_by_itself() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let now = Timestamp::now();
-    assert_eq!(
-        export_all(&store, dir.path(), &[], 1, now, Language::De).txt_written,
-        2
-    );
-    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
-    let name = |key| store.job(key).unwrap().unwrap().txt_name.unwrap();
-    let (deleted, emptied) = (txt_dir.join(name(&keys[0])), txt_dir.join(name(&keys[1])));
-    std::fs::remove_file(&deleted).unwrap();
-    std::fs::write(&emptied, b"").unwrap();
-
-    let next = export_all(&store, dir.path(), &[], 2, now, Language::De);
-    assert_eq!((next.txt_written, next.txt_failed), (0, 0));
-    assert!(!deleted.exists(), "a deleted file stays away");
-    assert!(
-        std::fs::read(&emptied).unwrap().is_empty(),
-        "empty stays empty"
-    );
-    // Only the explicit command brings them back.
-    assert_eq!(rewrite_txt(&store, dir.path(), now).txt_written, 2);
-    assert!(deleted.exists() && !std::fs::read(&emptied).unwrap().is_empty());
-}
-
-/// "Rewrite text files": what cannot be written keeps its mark - so the next run does not
-/// recreate it by itself.
-#[test]
-fn a_failed_rewrite_keeps_the_marks() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let now = Timestamp::now();
-    let first = export_all(&store, dir.path(), &[], 1, now, Language::De);
-    assert_eq!(first.txt_written, 2);
-    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
-    let blocked = txt_dir.join(store.job(&keys[1]).unwrap().unwrap().txt_name.unwrap());
-    // A folder stands where the second file should be: writing fails.
-    std::fs::remove_file(&blocked).unwrap();
-    std::fs::create_dir(&blocked).unwrap();
-
-    let rewrite = rewrite_txt(&store, dir.path(), now);
-    assert_eq!((rewrite.txt_written, rewrite.txt_failed), (1, 1));
-    assert_eq!(rewrite.txt_failed_keys, [keys[1].to_string()]);
-    // No mark was removed: nothing counts as "still to write".
-    assert!(store.txt_jobs(false).unwrap().is_empty());
-    let next = export_all(&store, dir.path(), &[], 2, now, Language::De);
-    assert_eq!(
-        (next.txt_written, next.txt_failed),
-        (0, 0),
-        "nothing anew by itself"
-    );
-}
-
 /// A work folder that cannot be reached (a network drive or a stick that is gone) is one
-/// clear error that names it; nothing is written and the text files wait for the next
-/// export. A text file of a job deleted meanwhile is remembered until the folder is back.
+/// clear error that names it; nothing is written. The old text file of a job deleted
+/// meanwhile is remembered until the folder is back.
 #[test]
 fn an_unreachable_work_folder_is_one_clear_error() {
     let dir = tempfile::tempdir().unwrap();
@@ -1080,41 +992,16 @@ fn an_unreachable_work_folder_is_one_clear_error() {
     let s = export_all(&store, &gone, &[], 1, now, Language::De);
     let target = |s: &ExportSummary| s.error.as_ref().unwrap().params["target"].clone();
     assert_eq!(target(&s), "workspace");
-    assert_eq!((s.txt_written, s.txt_failed), (0, 0));
     assert_eq!(s.overview_xlsx, None);
-    assert_eq!(store.txt_jobs(false).unwrap().len(), 2, "the files wait");
-    assert_eq!(target(&rewrite_txt(&store, &gone, now)), "workspace");
-    // Emptied from the trash meanwhile: the name waits for the folder.
-    store.mark_txt_written(&keys[0], "a.txt", now).unwrap();
+    // Emptied from the trash meanwhile: the name of its old text file waits for the folder.
+    store.mark_old_txt(&keys[0], "a.txt", now);
     let one = &keys[..1];
     store.move_jobs(one, Place::Trash, now).unwrap();
-    let deleted = delete_jobs(&store, Some(&gone), None, one, (now, Language::De)).unwrap();
+    let deleted = delete_jobs(&store, Some(&gone), one, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 1);
     assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"]);
     export_all(&store, &gone, &[], 2, now, Language::De);
     assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"], "still waiting");
-}
-
-/// If the folder for the text files is unusable, there is one clear error instead of one
-/// attempt per file - and the real number.
-#[test]
-fn an_unusable_text_folder_is_one_clear_error() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let result_dir = dir.path().join(RESULT_DIR);
-    std::fs::create_dir_all(&result_dir).unwrap();
-    std::fs::write(result_dir.join(TXT_DIR), b"a file instead of the folder").unwrap();
-    let summary = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
-    assert_eq!((summary.txt_written, summary.txt_failed), (0, 2));
-    // Here too the list names the affected jobs - it is never empty next to a number.
-    let mut failed = summary.txt_failed_keys.clone();
-    failed.sort();
-    let mut expected: Vec<String> = keys.iter().map(ToString::to_string).collect();
-    expected.sort();
-    assert_eq!(failed, expected);
-    let error = summary.error.expect("an error");
-    assert_eq!(error.params["target"], "txtFolder");
-    assert!(error.params["path"].as_str().unwrap().contains(TXT_DIR));
 }
 
 /// If no run can be created (database locked or broken), it ends as an error - without
@@ -1209,7 +1096,13 @@ async fn scoring_follows_the_matcher() {
     )
     .await;
     assert_eq!(s.score, None);
-    assert!(store.best_matches(5).unwrap().is_empty());
+    assert!(
+        store
+            .jobs(&JobFilter::default())
+            .unwrap()
+            .iter()
+            .all(|job| job.match_.is_none())
+    );
     let rescore = RunRequest {
         kind: RunKind::Rescore,
     };
@@ -1268,9 +1161,6 @@ fn the_finished_event_always_fits_the_channel() {
         overview_xlsx: Some(long.join("a.xlsx")),
         overview_csv: Some(long.join("a.csv")),
         backup: Some(long.join("b.xlsx")),
-        txt_written: 3,
-        txt_failed: 0,
-        txt_failed_keys: Vec::new(),
         error: Some(error),
     });
     assert!(
@@ -1286,7 +1176,10 @@ fn the_finished_event_always_fits_the_channel() {
         !fitted.empty_alerts.is_empty(),
         "only as much goes as needed"
     );
-    assert_eq!(fitted.export.as_ref().unwrap().txt_written, 3);
+    assert!(
+        fitted.export.as_ref().unwrap().error.is_some(),
+        "the export stays"
+    );
     // Absurd paths go too.
     let huge = PathBuf::from("C:/".to_owned() + &"verzeichnis/".repeat(400));
     let export = summary.export.as_mut().unwrap();
@@ -1370,67 +1263,6 @@ async fn an_engine_panic_marks_the_job_and_the_run_goes_on() {
         );
         assert_eq!(job.match_rev.as_deref(), Some("boom"), "not asked again");
     }
-}
-
-/// The text files do not know the match: byte-identical with and without a matcher.
-#[tokio::test(start_paused = true)]
-async fn txt_is_blind_to_the_match() {
-    let c = clock();
-    let read_all = |root: &Path| {
-        let dir = root.join(RESULT_DIR).join(TXT_DIR);
-        let mut files: Vec<(String, Vec<u8>)> = std::fs::read_dir(&dir)
-            .unwrap()
-            .map(|e| {
-                let e = e.unwrap();
-                (
-                    e.file_name().to_string_lossy().into_owned(),
-                    std::fs::read(e.path()).unwrap(),
-                )
-            })
-            .collect();
-        files.sort();
-        files
-    };
-    let (with, without) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-    let scored = Store::in_memory().unwrap();
-    let (s, _) = go(
-        &mut DemoBackends,
-        &scored,
-        &request(),
-        &ctx(with.path(), false),
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert!(s.score.is_some());
-    let plain = Store::in_memory().unwrap();
-    go(
-        &mut Unscored,
-        &plain,
-        &request(),
-        &ctx(without.path(), false),
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    let (a, b) = (read_all(with.path()), read_all(without.path()));
-    assert_eq!(a.len(), 4);
-    // The fetch time is part of the header; the simulated clocks of both runs differ, so
-    // compare everything but that line.
-    let strip = |files: &[(String, Vec<u8>)]| -> Vec<(String, String)> {
-        files
-            .iter()
-            .map(|(name, bytes)| {
-                let text = String::from_utf8(bytes.clone()).unwrap();
-                let kept: Vec<&str> = text
-                    .split_inclusive('\n')
-                    .filter(|l| !l.starts_with("Abgerufen am: "))
-                    .collect();
-                (name.clone(), kept.concat())
-            })
-            .collect()
-    };
-    assert_eq!(strip(&a), strip(&b));
 }
 
 /// A rescore (after the profile was saved) says what it changed: the excluded and the high
@@ -1528,13 +1360,15 @@ fn run_requests_are_flat_json() {
     }
 }
 
-/// `top_matches.json` for the matching skill: the scored jobs of the mailbox run, best
-/// first, with met and open requirements, checks and the text file - excluded ones not.
+/// A run writes no text files and no `top_matches.json` any more (the external matching skill
+/// is gone); what earlier versions wrote stays untouched until "reset everything", which
+/// still knows it.
 #[tokio::test(start_paused = true)]
-async fn the_skill_gets_the_top_matches() {
+async fn a_run_writes_no_text_files_and_no_top_matches() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
+    let result_dir = dir.path().join(RESULT_DIR);
     let (s, _) = go(
         &mut DemoBackends,
         &store,
@@ -1545,48 +1379,21 @@ async fn the_skill_gets_the_top_matches() {
     )
     .await;
     assert_eq!(s.outcome, Outcome::Completed);
-    let path = dir.path().join(RESULT_DIR).join(export::TOP_MATCHES_NAME);
-    let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(file["schema"], 3);
-    assert_eq!(file["rev"], demo::matcher().rev());
-    let jobs = file["jobs"].as_array().unwrap();
-    let titles: Vec<&str> = jobs.iter().map(|j| j["title"].as_str().unwrap()).collect();
-    assert_eq!(
-        titles,
-        [
-            "Interim CFO (m/w/d)",
-            "Leiter Controlling (m/w/d)",
-            "SAP FI/CO Berater (m/w/d)"
-        ],
-        "scored only, best first"
-    );
-    let best = &jobs[0];
-    assert_eq!(
-        (best["score"].as_u64(), best["band"].as_str()),
-        (Some(100), Some("high"))
-    );
-    assert_eq!(best["key"], "linkedin:4999000001");
+    assert!(!result_dir.join(TXT_DIR).exists());
+    assert!(!result_dir.join("top_matches.json").exists());
     assert!(
-        std::path::Path::new(best["txtFile"].as_str().unwrap())
-            .extension()
-            .is_some_and(|e| e == "txt")
-    );
-    let mid = &jobs[1];
-    assert!(!mid["met"].as_array().unwrap().is_empty());
-    assert!(
-        mid["open"]
-            .as_array()
+        store
+            .jobs(&JobFilter::default())
             .unwrap()
             .iter()
-            .any(|o| o == "Staplerschein"),
-        "{mid}"
+            .all(|job| job.txt_name.is_none())
     );
-    assert_eq!(mid["mustTotal"], 7);
-    assert!(mid["checks"].is_array() && best["url"].as_str().unwrap().starts_with("https://"));
-    assert_eq!(best["appStatus"], serde_json::Value::Null);
-    assert!(best["firstSeenAt"].is_string());
-    // A second fetch without new jobs keeps the list (it follows the open jobs, not the run).
-    let (again, _) = go(
+    // The files of an earlier version stay as they are through the next run.
+    let old = result_dir.join("top_matches.json");
+    std::fs::write(&old, b"{}").unwrap();
+    std::fs::create_dir_all(result_dir.join(TXT_DIR)).unwrap();
+    std::fs::write(result_dir.join(TXT_DIR).join("old.txt"), b"alt").unwrap();
+    go(
         &mut DemoBackends,
         &store,
         &request(),
@@ -1595,23 +1402,12 @@ async fn the_skill_gets_the_top_matches() {
         &c,
     )
     .await;
-    assert_eq!(again.new_jobs.map(|n| n.count), Some(0));
-    let kept: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    let kept: Vec<&str> = kept["jobs"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|j| j["title"].as_str().unwrap())
-        .collect();
-    assert_eq!(kept, titles, "the list stays after a fetch without news");
-    // Without a profile the file stays, with no jobs.
-    write_top_matches(&store, dir.path(), None, c());
-    store.clear_matches().unwrap();
-    write_top_matches(&store, dir.path(), None, c());
-    let file: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
-    assert_eq!(file["jobs"].as_array().unwrap().len(), 0);
-    assert_eq!(file["rev"], serde_json::Value::Null);
-    assert!(export::app_files(&dir.path().join(RESULT_DIR), &[]).contains(&path));
+    assert_eq!(std::fs::read(&old).unwrap(), b"{}");
+    assert_eq!(txt_files(dir.path()), 1);
+    assert!(
+        export::app_files(&result_dir, &[]).contains(&old),
+        "a reset takes it"
+    );
 }
 
 /// Records which fetch path the run builds per portal (mails and pages from the demo).
@@ -1962,8 +1758,9 @@ async fn a_fetch_counts_its_new_jobs() {
     assert_eq!(r.new_jobs, None);
 }
 
-/// Summaries stored by an earlier version (without `newJobs`, or of a run over the whole
-/// mailbox) are still read, the latter as a fetch.
+/// Summaries stored by an earlier version (without `newJobs`, of a run over the whole
+/// mailbox, or with the counts of the text files it wrote) are still read, the second as a
+/// fetch, the text files forgotten.
 #[test]
 fn an_older_stored_summary_still_reads() {
     let store = Store::in_memory().unwrap();
@@ -1974,11 +1771,18 @@ fn an_older_stored_summary_still_reads() {
     assert_eq!(last_run(&store).unwrap(), Some(summary.clone()));
     json["kind"] = "fullMailbox".into();
     store.kv_set(LAST_RUN, &json.to_string()).unwrap();
-    assert_eq!(last_run(&store).unwrap(), Some(summary));
+    assert_eq!(last_run(&store).unwrap(), Some(summary.clone()));
+    let mut exported = summary;
+    exported.export = Some(ExportSummary::default());
+    let mut json = serde_json::to_value(&exported).unwrap();
+    json["export"]["txtWritten"] = 7.into();
+    json["export"]["txtFailed"] = 0.into();
+    store.kv_set(LAST_RUN, &json.to_string()).unwrap();
+    assert_eq!(last_run(&store).unwrap(), Some(exported));
 }
 
 /// With the Excel file switched off (`exportExcel`) an export writes none, and asked for it
-/// (`refresh_excel`) neither; the text files are written all the same.
+/// (`refresh_excel`) neither.
 #[test]
 fn an_excel_file_switched_off_is_not_written() {
     let dir = tempfile::tempdir().unwrap();
@@ -1992,7 +1796,6 @@ fn an_excel_file_switched_off_is_not_written() {
     let s = export_all(&store, dir.path(), &[], 1, Timestamp::now(), Language::De);
     assert_eq!(s.overview_xlsx, None);
     assert_eq!(s.error, None);
-    assert_eq!(s.txt_written, 2);
     assert!(!xlsx.exists());
     let asked = refresh_overviews(&store, dir.path(), Timestamp::now(), Language::De);
     assert_eq!((asked.overview_xlsx, asked.error), (None, None));
@@ -2105,15 +1908,13 @@ fn an_open_csv_file_is_reported_as_locked() {
 }
 
 /// A failed export does not fail the run, but the summary names it as a code with its
-/// target - the page says it (the text files cannot be written where a file sits in place
-/// of their folder).
+/// target - the page says it (the Excel file cannot be written where a file sits in place of
+/// the result folder).
 #[tokio::test(start_paused = true)]
 async fn a_failed_export_is_reported_as_a_code() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
-    let result_dir = dir.path().join(RESULT_DIR);
-    std::fs::create_dir_all(&result_dir).unwrap();
-    std::fs::write(result_dir.join(TXT_DIR), b"a file instead of the folder").unwrap();
+    std::fs::write(dir.path().join(RESULT_DIR), b"a file instead of the folder").unwrap();
     let (store, _) = store_with_texts();
     let (s, events) = go(
         &mut DemoBackends,
@@ -2132,8 +1933,11 @@ async fn a_failed_export_is_reported_as_a_code() {
         "the export never fails the run"
     );
     let error = s.export.as_ref().unwrap().error.as_ref().unwrap();
-    assert_eq!(error.params["target"], "txtFolder");
-    assert_eq!(error.params["name"], TXT_DIR, "the base name");
+    assert_eq!(error.params["target"], "overview");
+    assert_eq!(
+        error.params["name"], RESULT_DIR,
+        "the base name of what failed"
+    );
     assert!(
         matches!(error.kind, ErrorKind::Io | ErrorKind::FileLocked),
         "{error:?}"
@@ -2287,8 +2091,8 @@ fn overview_rows(workspace: &Path) -> usize {
         .count()
 }
 
-/// A job deleted for good takes its text file and its Excel row along, and the next run
-/// never brings it back from the old alert mail.
+/// A job deleted for good takes the text file an earlier version wrote for it and its Excel
+/// row along, and the next run never brings it back from the old alert mail.
 #[tokio::test(start_paused = true)]
 async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     let c = clock();
@@ -2317,23 +2121,23 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
         .jobs(&JobFilter::default())
         .unwrap()
         .into_iter()
-        .find(|job| job.txt_name.is_some())
+        .find(|job| job.desc_status == DescStatus::Ok && job.place() == Place::Inbox)
         .unwrap();
-    let file = dir
-        .path()
-        .join(RESULT_DIR)
-        .join(TXT_DIR)
-        .join(victim.txt_name.as_deref().unwrap());
-    assert!(file.exists());
+    // An earlier version wrote a text file for it.
+    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
+    std::fs::create_dir_all(&txt_dir).unwrap();
+    let file = txt_dir.join("20260901_LinkedIn_Rolle_1.txt");
+    std::fs::write(&file, b"alt").unwrap();
+    store.mark_old_txt(&victim.key, "20260901_LinkedIn_Rolle_1.txt", c());
     let rows = overview_rows(dir.path());
     let one = std::slice::from_ref(&victim.key);
     // Only the trash is deleted for good.
-    let kept = delete_jobs(&store, Some(dir.path()), None, one, (c(), Language::De)).unwrap();
+    let kept = delete_jobs(&store, Some(dir.path()), one, (c(), Language::De)).unwrap();
     assert_eq!(kept.count, 0);
     assert!(file.exists());
     store.move_jobs(one, Place::Trash, c()).unwrap();
     let rows = rows - 1;
-    let deleted = delete_jobs(&store, Some(dir.path()), None, one, (c(), Language::De)).unwrap();
+    let deleted = delete_jobs(&store, Some(dir.path()), one, (c(), Language::De)).unwrap();
     assert_eq!(deleted.export_error, None);
     assert_eq!(deleted.count, 1, "the one row the user deleted");
     let gone = i64::try_from(deleted.keys.len()).unwrap();
@@ -2393,45 +2197,6 @@ async fn the_excel_sheet_leaves_out_the_trash() {
     assert_eq!(u64::try_from(listed).unwrap(), store.sheet_count().unwrap());
 }
 
-/// A mark changes the skill's list without a run: a job moved to the trash leaves
-/// `top_matches.json` at once; the Excel file waits until it is asked for.
-#[tokio::test(start_paused = true)]
-async fn a_mark_refreshes_the_top_matches() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let cancel = CancellationToken::new();
-    go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &ctx(dir.path(), false),
-        &cancel,
-        &c,
-    )
-    .await;
-    let result_dir = dir.path().join(RESULT_DIR);
-    let top = || std::fs::read_to_string(result_dir.join(export::TOP_MATCHES_NAME)).unwrap();
-    let xlsx = || std::fs::read(export::overview_path(&result_dir)).unwrap();
-    let excel = xlsx();
-    let jobs = store.jobs(&JobFilter::default()).unwrap();
-    let cfo = jobs
-        .iter()
-        .find(|job| job.title.starts_with("Interim CFO"))
-        .unwrap();
-    assert!(top().contains("Interim CFO"));
-    let matcher = demo::matcher();
-    store
-        .move_jobs(std::slice::from_ref(&cfo.key), Place::Trash, c())
-        .unwrap();
-    refresh_exports(&store, dir.path(), Some(&*matcher as &dyn Matcher), c());
-    assert!(
-        !top().contains("Interim CFO"),
-        "the trash leaves the skill's list"
-    );
-    assert_eq!(xlsx(), excel, "the Excel file waits");
-}
-
 /// One job two portals announced, as the list shows it: the freelancermap row with the
 /// LinkedIn duplicate behind it. `(original, duplicate)`.
 fn job_on_two_portals(store: &Store) -> (JobKey, JobKey) {
@@ -2479,7 +2244,7 @@ fn a_purge_counts_the_rows_it_deleted() {
     let now = Timestamp::now();
     let one = std::slice::from_ref(&original);
     store.move_jobs(one, Place::Trash, now).unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), None, one, (now, Language::De)).unwrap();
+    let deleted = delete_jobs(&store, Some(dir.path()), one, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 1, "one row");
     assert_eq!(deleted.keys.len(), 2);
     assert!(
@@ -2491,7 +2256,7 @@ fn a_purge_counts_the_rows_it_deleted() {
     let (store, keys) = store_with_texts();
     store.move_jobs(&keys, Place::Trash, now).unwrap();
     let all = store.trashed_keys().unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), None, &all, (now, Language::De)).unwrap();
+    let deleted = delete_jobs(&store, Some(dir.path()), &all, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 2);
 }
 
@@ -2526,8 +2291,9 @@ fn a_text_file_that_stayed_is_removed_later() {
     assert!(store.txt_leftovers().unwrap().is_empty(), "and forgotten");
 }
 
-/// A text file open in another program (Windows: without delete sharing, as Word holds it)
-/// stays when its job is deleted for good; it is remembered, and the next export removes it.
+/// An old text file open in another program (Windows: without delete sharing, as Word holds
+/// it) stays when its job is deleted for good; it is remembered, and the next export removes
+/// it.
 #[cfg(windows)]
 #[test]
 fn an_open_text_file_of_a_deleted_job_is_remembered_and_removed_later() {
@@ -2535,9 +2301,13 @@ fn an_open_text_file_of_a_deleted_job_is_remembered_and_removed_later() {
     let dir = tempfile::tempdir().unwrap();
     let (store, keys) = store_with_texts();
     let now = Timestamp::now();
-    export_all(&store, dir.path(), &[], 1, now, Language::De);
-    let name = store.job(&keys[0]).unwrap().unwrap().txt_name.unwrap();
-    let file = dir.path().join(RESULT_DIR).join(TXT_DIR).join(&name);
+    // The text file an earlier version wrote for the job.
+    let name = "20260901_LinkedIn_Rolle_4000000001.txt".to_owned();
+    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
+    std::fs::create_dir_all(&txt_dir).unwrap();
+    let file = txt_dir.join(&name);
+    std::fs::write(&file, b"alt").unwrap();
+    store.mark_old_txt(&keys[0], &name, now);
     let one = std::slice::from_ref(&keys[0]);
     store.move_jobs(one, Place::Trash, now).unwrap();
     let lock = std::fs::OpenOptions::new()
@@ -2545,7 +2315,7 @@ fn an_open_text_file_of_a_deleted_job_is_remembered_and_removed_later() {
         .share_mode(0)
         .open(&file)
         .unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), None, one, (now, Language::De)).unwrap();
+    let deleted = delete_jobs(&store, Some(dir.path()), one, (now, Language::De)).unwrap();
     assert_eq!(deleted.count, 1);
     assert!(file.exists());
     assert_eq!(store.txt_leftovers().unwrap(), std::slice::from_ref(&name));

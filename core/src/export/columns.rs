@@ -85,9 +85,9 @@ impl Column {
 
 /// The columns in their order: what decides first (title, match, musts, exclusion), then who
 /// and where, the terms in the app's words, the portal and the alert mail's subject, the
-/// place, the ad's text, the dates, the links and the job's key last. Unlike the text files
-/// nobody reads them by machine - so they say "Portal" like the interface, not "Quelle" like
-/// the skill contract; "Ablage" is the place (Jobs or Archiv). The widths fit the longest
+/// place, the ad's text, the dates, the links and the job's key last. Nobody reads them by
+/// machine, so they say "Portal" like the interface; "Ablage" is the place (Jobs or Archiv).
+/// The widths fit the longest
 /// values: the exclusion holds a sentence, the ad's text its longest state, which is
 /// "Keine Bewerbung mehr möglich" in German.
 pub(super) const COLUMNS: [Column; 21] = [

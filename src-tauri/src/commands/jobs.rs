@@ -3,7 +3,7 @@
 use jiff::Timestamp;
 use jobalert_core::export;
 use jobalert_core::model::Place;
-use jobalert_core::pipeline::{self, Matcher, demo};
+use jobalert_core::pipeline::{self, demo};
 use jobalert_core::portal::JobKey;
 use jobalert_core::profile;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
@@ -35,7 +35,7 @@ pub async fn job_detail(state: State<'_, AppState>, key: JobKey) -> CmdResult<Jo
 }
 
 /// Marks a job as read - only on a real click in the list; `false` = it was read already.
-/// The skill's list and the Excel file follow.
+/// The Excel and the CSV file follow.
 #[tauri::command]
 pub async fn mark_read(app: AppHandle, state: State<'_, AppState>, key: JobKey) -> CmdResult<bool> {
     let changed = state.store.mark_read(&key, Timestamp::now())?;
@@ -153,12 +153,9 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
     } else {
         Some(state.workspace()?)
     };
-    let matcher = state.matcher();
-    let matcher = matcher.as_deref().map(|m| m as &dyn Matcher);
     Ok(pipeline::delete_jobs(
         &state.store,
         workspace.as_deref(),
-        matcher,
         &keys,
         (Timestamp::now(), state.language()?),
     )?)

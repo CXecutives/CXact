@@ -1,6 +1,7 @@
 //! The private gold folder (`core/tests/fixtures/private/gold`, ignored by git): `jobs.json`,
-//! one TXT per job (`<portal>_<id>.txt`, TXT contract format), `labels.json` from the blind
-//! labelers, `labeling/` for them and the `report.md` of `match_eval`.
+//! one TXT per job (`<portal>_<id>.txt`, the corpus format: the text files earlier versions
+//! of the app wrote), `labels.json` from the blind labelers, `labeling/` for them and the
+//! `report.md` of `match_eval`.
 
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -114,7 +115,7 @@ pub fn jobs_json(jobs: &[GoldJob]) -> String {
     out
 }
 
-/// A job file in the TXT contract format: the header values and the body.
+/// A job file in the corpus format: the header values and the body.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TxtFile {
     pub title: String,
@@ -122,6 +123,24 @@ pub struct TxtFile {
     pub location: String,
     pub source: String,
     pub body: String,
+}
+
+/// A job file in the corpus format that [`parse_txt`] reads (the text files earlier versions
+/// of the app wrote): six header lines (German names, the corpus's contract), an empty line,
+/// the text. Header values are one line each - a line break in a title could otherwise fake
+/// a header line.
+pub fn txt_file(file: &TxtFile, link: &str, fetched_at: &str) -> String {
+    use jobalert_core::text::{normalize, one_line};
+    format!(
+        "Titel: {}\nUnternehmen: {}\nOrt: {}\nQuelle: {}\nLink: {}\nAbgerufen am: {}\n\n{}\n",
+        one_line(&file.title),
+        one_line(&file.company),
+        one_line(&file.location),
+        one_line(&file.source),
+        one_line(link),
+        one_line(fetched_at),
+        normalize(&file.body),
+    )
 }
 
 /// Reads the header lines up to the first empty line; the rest (trimmed) is the body.

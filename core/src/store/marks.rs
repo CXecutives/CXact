@@ -440,91 +440,6 @@ mod tests {
         );
     }
 
-    /// Archive and trash leave the skill's top matches; back in the inbox, the job is back.
-    #[test]
-    fn only_inbox_jobs_reach_the_top_matches() {
-        let (store, keys) = store_with_jobs(1);
-        let key = &keys[0];
-        let scored = crate::model::MatchRecord {
-            status: MatchStatus::Scored,
-            score: 88,
-            note: None,
-            must_met: 3,
-            must_total: 3,
-            top: Vec::new(),
-            facts: crate::model::KeyFacts::default(),
-            rank: 0,
-        };
-        store
-            .save_matches(&[(key.clone(), scored)], "r", now())
-            .unwrap();
-        let listed = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
-            jobs.into_iter().map(|j| j.key).collect()
-        };
-        let one = std::slice::from_ref(key);
-        assert_eq!(listed(store.best_matches(5).unwrap()), one);
-        for away in [Place::Archive, Place::Trash] {
-            store.move_jobs(one, away, now()).unwrap();
-            assert!(store.best_matches(5).unwrap().is_empty());
-            store.move_jobs(one, Place::Inbox, now()).unwrap();
-            assert_eq!(listed(store.best_matches(5).unwrap()), one);
-        }
-    }
-
-    /// The best matches for the matching skill: the best by score; never excluded, archived,
-    /// trashed, unscored or gone.
-    #[test]
-    fn the_best_matches_leave_out_the_rest() {
-        let (store, keys) = store_with_jobs(7);
-        let record = |status, score| crate::model::MatchRecord {
-            status,
-            score,
-            note: None,
-            must_met: 1,
-            must_total: 1,
-            top: Vec::new(),
-            facts: crate::model::KeyFacts::default(),
-            rank: 0,
-        };
-        store
-            .save_matches(
-                &[
-                    (keys[0].clone(), record(MatchStatus::Scored, 60)),
-                    (keys[1].clone(), record(MatchStatus::Scored, 90)),
-                    (keys[2].clone(), record(MatchStatus::Excluded, 99)),
-                    (keys[3].clone(), record(MatchStatus::Scored, 95)),
-                    (keys[4].clone(), record(MatchStatus::Scored, 80)),
-                    (keys[6].clone(), record(MatchStatus::Scored, 97)),
-                ],
-                "r",
-                now(),
-            )
-            .unwrap();
-        // Job 6 has no score; job 4 is archived; job 7 is in the trash.
-        store
-            .move_jobs(std::slice::from_ref(&keys[3]), Place::Archive, now())
-            .unwrap();
-        store
-            .move_jobs(std::slice::from_ref(&keys[6]), Place::Trash, now())
-            .unwrap();
-        let titles = |limit| -> Vec<String> {
-            store
-                .best_matches(limit)
-                .unwrap()
-                .into_iter()
-                .map(|j| j.title)
-                .collect()
-        };
-        assert_eq!(titles(5), ["Job 2", "Job 5", "Job 1"]);
-        assert_eq!(titles(2), ["Job 2", "Job 5"]);
-        store.record_gone(&keys[1], now()).unwrap();
-        assert_eq!(
-            titles(5),
-            ["Job 5", "Job 1"],
-            "an ad no longer online is out"
-        );
-    }
-
     /// Only the trash is deleted for good; a deleted job leaves only its tombstone: the row,
     /// its duplicate and its text file name go, and the same link in an old alert mail never
     /// brings it back.
@@ -532,7 +447,7 @@ mod tests {
     fn a_deleted_job_never_comes_back() {
         let (store, keys) = store_with_jobs(2);
         let link = "https://www.linkedin.com/jobs/view/4000000001/";
-        store.mark_txt_written(&keys[0], "a.txt", now()).unwrap();
+        store.mark_old_txt(&keys[0], "a.txt", now());
         store
             .move_jobs(std::slice::from_ref(&keys[0]), Place::Trash, now())
             .unwrap();

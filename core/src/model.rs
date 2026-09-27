@@ -9,7 +9,7 @@ use crate::text::{one_line, truncate_chars};
 
 /// Placeholder when a link carries no recognisable title. Replaced later by a real title
 /// (merge rule: only empty values and this placeholder). Stored in the database and written
-/// to Excel and the TXT files - German by product decision, do not translate.
+/// to the Excel file - German by product decision, do not translate.
 pub const TITLE_PLACEHOLDER: &str = "(Titel nicht erkannt)";
 
 /// Maximum length of title, company and location when ingested (in characters).

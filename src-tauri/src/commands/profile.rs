@@ -7,9 +7,11 @@
     reason = "Tauri passes command arguments by value"
 )]
 
+use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
+use jobalert_core::pipeline::demo;
 use jobalert_core::profile;
-use jobalert_core::view::{ProfileDraft, ProfileInfo, ProfileSave};
+use jobalert_core::view::{self, AskedTerm, ProfileDraft, ProfileInfo, ProfileSave};
 use tauri::{AppHandle, State, WebviewWindow};
 
 use super::app::{PROFILE_SOURCE, profile_info};
@@ -110,6 +112,26 @@ pub async fn restore_profile(app: AppHandle, state: State<'_, AppState>) -> CmdR
         scoring::profile_changed(&app, &state);
     }
     Ok(restored)
+}
+
+/// "Häufig verlangt": the terms the jobs of the last 30 days ask for most that the stored
+/// profile does not name (the dry run's sample profile in the dry run); none without a
+/// profile.
+#[tauri::command]
+pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>> {
+    let form = if state.dry_run {
+        profile::form_of(demo::PROFILE_JSON)
+    } else {
+        profile::stored_form(&state.workspace()?)
+    };
+    let Some(form) = form else {
+        return Ok(Vec::new());
+    };
+    Ok(view::asked_terms(
+        &state.store,
+        Some(&form),
+        Timestamp::now(),
+    )?)
 }
 
 /// The page holds unsaved changes (or no longer): closing the window then asks first.

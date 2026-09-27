@@ -2,7 +2,7 @@
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelancermap,
 freelance.de) from Gmail, fetches the job pages, **scores every job against a consultant profile**, and
-writes Excel, CSV and TXT (contract with the external `job-matching` skill).
+writes an Excel and a CSV file.
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
 **Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
 
@@ -12,9 +12,8 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - Secrets: never ask for, read, log, print or commit passwords. The Gmail app password lives only in the OS keychain.
   The repo is public: no real mails, profiles or labels outside `core/tests/fixtures/private/` (ignored).
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
-  modules marked `external contract - do not translate` (TXT header, folder names, profile JSON keys, German mail
-  patterns, matching lexicon) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
-- The TXT files stay byte-identical (`header_is_exactly_the_contract`, `txt_is_blind_to_the_match`).
+  modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
+  patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
 - UI: three palettes (Coast, the default, Light and Dark: GitHub's Primer colours), defined only in
   `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app: the native window frame of the OS on
   both (Windows: its title bar in the palette's colours via DWM, `window_colours` in `platform.rs`; macOS: the unified
@@ -47,14 +46,13 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
   `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` profile form, JSON merge
   with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan → fetch → score →
-  export) · `export/` xlsx, csv, txt, top_matches.json, AI prompts · `text/` HTML to text, file names, company
-  and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
+  export) · `export/` xlsx, csv, AI prompts (and the cleanup of the text files and `top_matches.json` earlier
+  versions wrote) · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start, `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
   `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
   (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).
 - `ui/`: Svelte 5 + Vite + TypeScript. `styles/`, `components/` (design system), `features/` (screens), `lib/`.
-- `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `eval/legacy_baseline.py`, `icon.py`, `third-party.mjs`,
-  `job-matching-skill/` (optional stage-2 Claude skill for the top matches; `python tools/job-matching-skill/tests/test_matching.py`).
+- `tools/`: `ui-harness/` (Playwright, Chromium + WebKit), `eval/legacy_baseline.py`, `icon.py`, `third-party.mjs`.
 
 ## Commands
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`

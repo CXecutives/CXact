@@ -1377,6 +1377,87 @@ pub struct ProfileSave {
     pub clear: Vec<UnreadableField>,
 }
 
+/// The days "Häufig verlangt" looks back.
+pub const ASKED_DAYS: i64 = 30;
+/// Most terms "Häufig verlangt" names.
+pub const MAX_ASKED: usize = 8;
+/// A term counts as often asked from this many jobs on (one job is no pattern).
+pub const MIN_ASKED: u32 = 2;
+
+/// A term the ads ask for that the profile does not cover, and in how many jobs
+/// ("Häufig verlangt" in the Profil).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub struct AskedTerm {
+    /// The ad's words (of the newest job that asks for it).
+    pub term: String,
+    pub count: u32,
+}
+
+/// "Häufig verlangt" at `now`: the open terms of the scored jobs of the inbox and the
+/// archive of the last [`ASKED_DAYS`] days (the engine's open must and nice requirements
+/// that are skills and terms, `pipeline::local::terms`), counted once per job however
+/// written (case, punctuation), asked by at least [`MIN_ASKED`] jobs, the most frequent first
+/// (equal counts by their words), at most [`MAX_ASKED`]. A term the profile (`form`) already
+/// names as a competence, a synonym of one, a keyword, a tool or a certificate is none of
+/// them: its jobs may not be scored again yet after a save. One pass over the stored notes.
+pub fn asked_terms(
+    store: &Store,
+    form: Option<&ProfileForm>,
+    now: Timestamp,
+) -> crate::Result<Vec<AskedTerm>> {
+    let since = now
+        .checked_sub(jiff::SignedDuration::from_hours(24 * ASKED_DAYS))
+        .unwrap_or(Timestamp::UNIX_EPOCH);
+    let known: BTreeSet<String> = form
+        .map(|f| {
+            f.competences
+                .iter()
+                .flat_map(|c| std::iter::once(&c.name).chain(&c.aliases))
+                .chain(&f.keywords)
+                .chain(&f.tools)
+                .chain(&f.certificates)
+                .map(|word| term_key(word))
+                .collect()
+        })
+        .unwrap_or_default();
+    // Per key the words of the newest job (the store's order) and the count.
+    let mut counted: std::collections::BTreeMap<String, (String, u32)> =
+        std::collections::BTreeMap::new();
+    for terms in store.asked_terms(since)? {
+        let mut seen = BTreeSet::new();
+        for term in terms {
+            let key = term_key(&term);
+            if key.is_empty() || known.contains(&key) || !seen.insert(key.clone()) {
+                continue;
+            }
+            counted.entry(key).or_insert((term, 0)).1 += 1;
+        }
+    }
+    // The map is in key order: a stable sort by count keeps it for equal counts.
+    let mut asked: Vec<(String, u32)> = counted
+        .into_values()
+        .filter(|(_, count)| *count >= MIN_ASKED)
+        .collect();
+    asked.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+    Ok(asked
+        .into_iter()
+        .take(MAX_ASKED)
+        .map(|(term, count)| AskedTerm { term, count })
+        .collect())
+}
+
+/// A term for comparing: lower case, its words without punctuation between them
+/// ("Power-BI" and "power bi" are one; `+` and `#` belong to a word, "C++" is no "C#").
+fn term_key(term: &str) -> String {
+    term.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric() && c != '+' && c != '#')
+        .filter(|w| !w.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Result of "reset everything" after the restart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1479,8 +1560,6 @@ pub enum OpenTarget {
     ExcelBackupInFolder {
         name: String,
     },
-    /// The folder of the text files (`auswertung/beschreibungen_txt`).
-    TxtDir,
     LogDir,
 }
 
@@ -1562,10 +1641,9 @@ mod tests {
         );
     }
 
-    /// A closed ad reaches the list (a quiet badge, below the open ones) and never becomes a
-    /// text file for the matching skill.
+    /// A closed ad reaches the list, marked as closed, until its page says it is open again.
     #[test]
-    fn a_closed_ad_is_marked_and_gets_no_text_file() {
+    fn a_closed_ad_is_marked() {
         let (store, key) = store_with(
             "https://www.linkedin.com/jobs/view/4123456789/",
             "Controller",
@@ -1580,12 +1658,10 @@ mod tests {
         assert!(view.closed);
         assert_eq!(view.detail, DetailState::Ok);
         assert_eq!(serde_json::to_value(&view).unwrap()["closed"], true);
-        assert!(store.txt_jobs(true).unwrap().is_empty(), "no text file");
         store
             .record_text(&key, &text, false, false, Timestamp::now())
             .unwrap();
         assert!(!JobView::from(&store.job(&key).unwrap().unwrap()).closed);
-        assert_eq!(store.txt_jobs(true).unwrap().len(), 1);
     }
 
     /// A job older than the automatic fetch reaches is never promised for "the next fetch":
@@ -2542,5 +2618,153 @@ Rahmenbedingungen:
             (info.quality, info.pending),
             (Some(ProfileQuality::Empty), 0)
         );
+    }
+
+    /// Jobs of the last days, one per list of open terms, their alert mails a day apart.
+    fn jobs_asking(lists: &[&[&str]], now: Timestamp) -> Store {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let mut judged = Vec::new();
+        for (i, terms) in lists.iter().enumerate() {
+            let link = job_link(&format!(
+                "https://www.linkedin.com/jobs/view/{}/",
+                4_200_000_000 + i
+            ))
+            .unwrap();
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
+            let day = jiff::SignedDuration::from_hours(24 * i64::try_from(i).unwrap());
+            let mail = MailRef {
+                subject: "x",
+                date: Some(now - day),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &posting, mail, now).unwrap();
+            judged.push((
+                link.key,
+                crate::store::Judgement {
+                    record: record(MatchStatus::Scored, 60),
+                    open: Vec::new(),
+                    terms: terms.iter().map(|t| (*t).to_owned()).collect(),
+                },
+            ));
+        }
+        store.save_judgements(&judged, "r", now).unwrap();
+        store
+    }
+
+    /// "Häufig verlangt": counted once per job however written, from two jobs on, the most
+    /// frequent first (equal counts by their words), in the words of the newest job; what
+    /// the profile names already is none of them.
+    #[test]
+    fn the_terms_asked_most_that_the_profile_lacks() {
+        let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
+        let store = jobs_asking(
+            &[
+                &["Power BI", "SAP FI", "power-bi", "Once"],
+                &["power bi", "Zollabwicklung", "C#", "Kanban", "Treasury"],
+                &["POWER BI", "C++", "Scrum", "Zollabwicklung"],
+                &["SAP FI", "C#", "Treasury", "C++", "Scrum"],
+                &["Kanban"],
+            ],
+            now,
+        );
+        let asked = |form: Option<&ProfileForm>| -> Vec<(String, u32)> {
+            asked_terms(&store, form, now)
+                .unwrap()
+                .into_iter()
+                .map(|a| (a.term, a.count))
+                .collect()
+        };
+        let pairs = |list: &[(&str, u32)]| -> Vec<(String, u32)> {
+            list.iter().map(|(t, n)| ((*t).to_owned(), *n)).collect()
+        };
+        assert_eq!(
+            asked(None),
+            pairs(&[
+                ("Power BI", 3),
+                ("C#", 2),
+                ("C++", 2),
+                ("Kanban", 2),
+                ("SAP FI", 2),
+                ("Scrum", 2),
+                ("Treasury", 2),
+                ("Zollabwicklung", 2),
+            ])
+        );
+        let mut form = ProfileForm::default();
+        form.competences.push(ProfileCompetence {
+            name: "Microsoft Power-BI".into(),
+            years: None,
+            aliases: vec!["power bi".into()],
+            origin: None,
+        });
+        form.keywords.push("Kanban".into());
+        form.tools.push("scrum".into());
+        form.certificates.push("C++".into());
+        assert_eq!(
+            asked(Some(&form)),
+            pairs(&[
+                ("C#", 2),
+                ("SAP FI", 2),
+                ("Treasury", 2),
+                ("Zollabwicklung", 2),
+            ])
+        );
+    }
+
+    /// At most eight terms, and only of the last 30 days.
+    #[test]
+    fn the_asked_terms_are_few_and_recent() {
+        let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
+        let many: Vec<String> = (0..12).map(|i| format!("Begriff {i:02}")).collect();
+        let many: Vec<&str> = many.iter().map(String::as_str).collect();
+        let mut lists: Vec<&[&str]> = vec![&many, &many];
+        lists.extend(std::iter::repeat_n(&[][..], 29));
+        lists.extend([&["Alt"][..], &["Alt"][..]]);
+        let store = jobs_asking(&lists, now);
+        let asked = asked_terms(&store, None, now).unwrap();
+        assert_eq!(asked.len(), MAX_ASKED);
+        assert_eq!(asked[0].term, "Begriff 00");
+        assert!(asked.iter().all(|a| a.term != "Alt"), "{asked:?}");
+    }
+
+    /// 2,000 jobs of the window with eight terms each stay well below half a second (a debug
+    /// build takes about 60 ms).
+    #[test]
+    fn the_asked_terms_are_fast() {
+        let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let mut judged = Vec::new();
+        for i in 0..2000_u32 {
+            let link = job_link(&format!(
+                "https://www.linkedin.com/jobs/view/{}/",
+                4_300_000_000 + u64::from(i)
+            ))
+            .unwrap();
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
+            let mail = MailRef {
+                subject: "x",
+                date: Some(now - jiff::SignedDuration::from_mins(i64::from(i))),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &posting, mail, now).unwrap();
+            judged.push((
+                link.key,
+                crate::store::Judgement {
+                    record: record(MatchStatus::Scored, 60),
+                    open: Vec::new(),
+                    terms: (0..8)
+                        .map(|t| format!("Begriff {}", (i + t) % 300))
+                        .collect(),
+                },
+            ));
+        }
+        store.save_judgements(&judged, "r", now).unwrap();
+        let started = std::time::Instant::now();
+        let asked = asked_terms(&store, None, now).unwrap();
+        let took = started.elapsed();
+        assert_eq!(asked.len(), MAX_ASKED);
+        assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
 }

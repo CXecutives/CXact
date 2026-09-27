@@ -1,18 +1,18 @@
 //! Generated files in the workspace: `JobAlerts.xlsx` and `JobAlerts.csv` (the jobs of the
-//! inbox and the archive, each with its own switch), `top_matches.json` and one text file per
-//! job for the matching. Everything is generated from the database and written atomically - an
-//! open Excel file or a crash never leaves half a file behind.
+//! inbox and the archive, each with its own switch), generated from the database and written
+//! atomically - an open Excel file or a crash never leaves half a file behind. Earlier versions
+//! also wrote one text file per job and `top_matches.json` for an external matching skill; the
+//! app writes neither any more, and only the cleanup (deleting jobs for good, "reset
+//! everything") still knows them.
 
 mod ai_prompt;
 mod colour;
 mod columns;
 mod csv;
-mod job_txt;
 pub mod palette;
 pub mod personal;
 pub mod scale;
 pub mod texts;
-mod top_matches;
 mod xlsx;
 
 use std::collections::HashSet;
@@ -23,16 +23,11 @@ use crate::error::{Error, Result};
 
 pub use ai_prompt::{MAX_AD_CHARS, MAX_PROFILE_CHARS, PromptJob, PromptSource, ai_prompt};
 pub use csv::write_csv;
-pub use job_txt::{TXT_DIR, write_job_txt};
 pub use texts::{Texts, details_label};
-pub use top_matches::{
-    Found, TOP_MATCHES_MAX, TOP_MATCHES_NAME, TOP_MATCHES_SCHEMA, TopMatch, TopMatches, findings,
-    found, top_matches,
-};
 pub use xlsx::{InfoValue, write_xlsx};
 
-/// File and folder names below are a contract with the user's workspace and the matching
-/// skill - do not translate.
+/// File and folder names below are a contract with the user's workspace (and the files of
+/// earlier versions) - do not translate.
 pub const XLSX_NAME: &str = "JobAlerts.xlsx";
 /// Name part of an Excel file of the old program the app renamed before its first write
 /// (`JobAlerts.alt-20260925-093000.xlsx`, next to its own).
@@ -42,6 +37,13 @@ pub const XLSX_BACKUP_PREFIX: &str = "JobAlerts.alt-";
 pub const CSV_NAME: &str = "JobAlerts.csv";
 /// The HTML report of earlier versions; only kept so that "reset everything" takes it along.
 const LEGACY_HTML_NAME: &str = "JobAlerts.html";
+/// The list of the best matches earlier versions wrote for an external matching skill; only
+/// kept so that "reset everything" takes it along.
+const LEGACY_TOP_MATCHES_NAME: &str = "top_matches.json";
+/// Subfolder of the result folder where earlier versions wrote one text file per job (for an
+/// external matching skill). The app writes none any more; deleting a job for good still
+/// removes its old file, and "reset everything" the ones the database names.
+pub const TXT_DIR: &str = "beschreibungen_txt";
 /// Subfolder of the workspace for results (as before).
 pub const RESULT_DIR: &str = "auswertung";
 /// Temporary files of [`write_atomic`] - only left behind after a crash in the middle of
@@ -87,8 +89,8 @@ pub(crate) fn ensure_dir(dir: &Path) -> Result<()> {
 }
 
 /// Windows paths from 260 characters on need the long form `\\?\`: `tempfile` passes the
-/// path unchanged to Windows when renaming - a long workspace would otherwise make exactly
-/// the text files with long titles fail.
+/// path unchanged to Windows when renaming - a long workspace would otherwise make a file in
+/// it fail.
 fn long_path(path: &Path) -> PathBuf {
     let Ok(absolute) = std::path::absolute(path) else {
         return path.to_path_buf();
@@ -104,16 +106,17 @@ fn long_path(path: &Path) -> PathBuf {
     }
 }
 
-/// The app's files in the result folder that exist right now: the overviews, the known text
-/// files (plain file names only), leftover temporary files and remains of an earlier reset.
-/// The list for resetting - foreign files (script and reports of the matching skill,
-/// consultant profiles ...) are never included. One directory listing per folder instead of
-/// one query per file (network drive, thousands of text files).
+/// The app's files in the result folder that exist right now: the overviews, what earlier
+/// versions wrote (the HTML report, `top_matches.json`, the known text files, plain file
+/// names only), leftover temporary files and remains of an earlier reset. The list for
+/// resetting - foreign files (reports of other tools, consultant profiles ...) are never
+/// included. One directory listing per folder instead of one query per file (network drive,
+/// thousands of old text files).
 pub fn app_files(result_dir: &Path, txt_names: &[String]) -> Vec<PathBuf> {
     let mut files = files_in(result_dir, |name| {
         name.eq_ignore_ascii_case(XLSX_NAME)
             || name.eq_ignore_ascii_case(LEGACY_HTML_NAME)
-            || name.eq_ignore_ascii_case(TOP_MATCHES_NAME)
+            || name.eq_ignore_ascii_case(LEGACY_TOP_MATCHES_NAME)
             || name.eq_ignore_ascii_case(CSV_NAME)
             || is_tmp(name)
     });
@@ -121,8 +124,9 @@ pub fn app_files(result_dir: &Path, txt_names: &[String]) -> Vec<PathBuf> {
     files
 }
 
-/// Only the app's text files in the subfolder `beschreibungen_txt` - the overview stays out.
-/// One list for "delete text files" and the display of their number.
+/// Only the text files earlier versions of the app wrote into the subfolder
+/// `beschreibungen_txt` (the names the database knows) - the overview and foreign files stay
+/// out.
 pub fn txt_files(result_dir: &Path, txt_names: &[String]) -> Vec<PathBuf> {
     let known: HashSet<&str> = txt_names
         .iter()
@@ -159,8 +163,8 @@ pub(crate) fn is_tmp(name: &str) -> bool {
     name.starts_with(TMP_PREFIX) && name.ends_with(TMP_SUFFIX)
 }
 
-/// "Delete text files": removes **only** the app's text files ([`txt_files`]) - the Excel
-/// overview and foreign files stay.
+/// Removes **only** the named text files of earlier versions ([`txt_files`]; the old files of
+/// jobs deleted for good) - the Excel overview and foreign files stay.
 ///
 /// Returns the number of deleted files and the names of the files that could not be
 /// deleted (e.g. open right now).
@@ -281,8 +285,10 @@ mod tests {
         std::fs::create_dir_all(root.join("beschreibungen_matching")).unwrap();
         for (path, body) in [
             (root.join(XLSX_NAME), "x"),
-            // The report of earlier versions: a reset still takes it along.
+            // The report and the best matches of earlier versions: a reset still takes them
+            // along.
             (root.join(LEGACY_HTML_NAME), "alt"),
+            (root.join(LEGACY_TOP_MATCHES_NAME), "alt"),
             (
                 root.join("beschreibungen_matching")
                     .join("20260919_1200_matching.html"),
@@ -302,7 +308,7 @@ mod tests {
             "missing.txt".to_string(),
         ];
         // Counted is exactly what gets deleted.
-        assert_eq!(app_files(root, &names).len(), 4);
+        assert_eq!(app_files(root, &names).len(), 5);
         assert_eq!(txt_files(root, &names).len(), 2);
         let (removed, failed) = clear_txt_files(root, &names);
         assert_eq!(removed, 2);

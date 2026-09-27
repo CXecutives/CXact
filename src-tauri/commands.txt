@@ -24,6 +24,7 @@ profile_prompt    { update: boolean }                                           
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
 remove_profile    {}                                                                 -> boolean
 restore_profile   {}                                                                 -> boolean
+asked_terms       {}                                                                 -> AskedTerm[]
 set_unsaved       { on: boolean }                                                    -> null
 close_window      {}                                                                 -> null
 save_mailbox      { user: string; password: string }                                 -> Mailbox

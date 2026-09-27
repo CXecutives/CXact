@@ -839,11 +839,11 @@ Test profiles for the user: `tools/test-profiles/` (five invented profiles with 
 
 ### Rubric of the AI prompts
 
-`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts and the
-`job-matching` skill (`tools/job-matching-skill/rubric.de.md`, identical): bands 1 to 10 (9 to
-10 only with a met Schwerpunkt when the profile names some), the caps of the render check,
-contract and ANÜ rules, wishes never exclude and move at most one point. `core/tests/rubric.rs`
-keeps both files identical and the caps of SKILL.md and `matching.py` equal to the rubric.
+`core/src/export/ai_rubric.de.md` (German) is the one rubric for the app's AI prompts (until
+2026-09-27 also for the `job-matching` skill, which is gone): bands 1 to 10 (9 to 10 only with
+a met Schwerpunkt when the profile names some), the caps, contract and ANÜ rules, wishes never
+exclude and move at most one point. `core/tests/rubric.rs` checks its bands and that the
+English rubric says the same.
 
 The copied prompts (`core/src/export/ai_prompt.rs`) carry the rubric whole (German, or
 `ai_rubric.en.md` in English), the skill's method and the engine's assessment of the job in

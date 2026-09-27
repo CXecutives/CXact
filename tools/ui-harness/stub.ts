@@ -749,8 +749,6 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
       overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
       overviewCsv: null,
       backup: null,
-      txtWritten: 7,
-      txtFailed: 0,
       error: null,
     },
     emptyAlerts: [
@@ -1208,6 +1206,75 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
     jobs: page.slice(query.offset, query.offset + Math.min(query.limit, 500)),
     counts: countsOf(base),
   };
+}
+
+/* ------------------------------------------------------------------- asked */
+
+/** "Häufig verlangt" like core (`view::asked_terms`, `pipeline::local::terms`): the open
+ *  must and nice requirements that are skills and terms (at most five words, no end of a
+ *  sentence, a requirement no sentence) of the engine's readers of the scored jobs of the
+ *  Eingang and the Archiv of the last 30 days, once per job however written, asked by two
+ *  jobs at least, the most frequent first (equal counts by their words), at most eight; what
+ *  the stored profile names (competences, synonyms, keywords, tools, certificates) is none of
+ *  them. */
+function askedTerms(): { term: string; count: number }[] {
+  const form = state.profile?.form ?? null;
+  if (form === null) return [];
+  const key = (term: string): string =>
+    term
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}+#]+/u)
+      .filter((word) => word !== '')
+      .join(' ');
+  const isTerm = (words: string): boolean =>
+    words !== '' && words.split(/\s+/).length <= 5 && words.length <= 80 && !/[.!?:;]$/.test(words);
+  const known = new Set(
+    [
+      ...form.competences.flatMap((c) => [c.name, ...c.aliases]),
+      ...form.keywords,
+      ...form.tools,
+      ...form.certificates,
+    ].map(key),
+  );
+  const since = NOW - 30 * 24 * HOUR;
+  const counted = new Map<string, { term: string; count: number }>();
+  const newest = [...jobs].sort((a, b) =>
+    (b.mailDate ?? b.firstSeenAt).localeCompare(a.mailDate ?? a.firstSeenAt),
+  );
+  for (const j of newest) {
+    if (j.place === 'trash' || j.match?.status !== 'scored') continue;
+    if (new Date(j.mailDate ?? j.firstSeenAt).getTime() < since) continue;
+    let reasons: Reason[];
+    try {
+      reasons = detailOf(j).match?.reasons ?? [];
+    } catch {
+      continue;
+    }
+    const open = (weight: 'must' | 'nice'): Reason[] =>
+      reasons.filter(
+        (r) =>
+          r.kind === 'open' &&
+          r.weight === weight &&
+          r.params['class'] === 'skill' &&
+          (r.code === 'term' || (r.code === 'requirement' && r.params['source'] !== 'sentence')),
+      );
+    const seen = new Set<string>();
+    for (const reason of [...open('must'), ...open('nice')]) {
+      const words = reason.label.trim();
+      const k = key(words);
+      if (!isTerm(words) || k === '' || seen.has(k) || seen.size === 8) continue;
+      seen.add(k);
+      if (known.has(k)) continue;
+      const entry = counted.get(k);
+      if (entry === undefined) counted.set(k, { term: words, count: 1 });
+      else entry.count += 1;
+    }
+  }
+  return [...counted.entries()]
+    .filter(([, entry]) => entry.count >= 2)
+    .sort(([ka, a], [kb, b]) => b.count - a.count || (ka < kb ? -1 : ka > kb ? 1 : 0))
+    .slice(0, 8)
+    .map(([, entry]) => entry);
 }
 
 /* ------------------------------------------------------------------- detail */
@@ -1792,6 +1859,7 @@ const handlers: Handlers = {
     [state.profile, backupProfile] = [backupProfile, state.profile];
     return true;
   },
+  asked_terms: () => askedTerms(),
   set_unsaved: ({ on }) => {
     harness.unsaved = on;
     return null;

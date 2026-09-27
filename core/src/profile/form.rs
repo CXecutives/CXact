@@ -1,5 +1,5 @@
-//! The profile editor's form: exactly the profile keys the matching engine and the external
-//! `job-matching` skill use, read the way the engine reads them, and written back by merging
+//! The profile editor's form: exactly the profile keys the matching engine and the AI prompts
+//! use, read the way the engine reads them, and written back by merging
 //! into the JSON the form came from. Only fields that differ from what the editor started
 //! with are written; every other key, its value and the order of the keys stay as they were.
 //! A key under its English name (`focus_areas`, `target_roles`, `preferences`, `languages`,
@@ -7,7 +7,8 @@
 //! never as a German duplicate next to it. A value the engine cannot read can be removed on
 //! its own ([`UnreadableField`], "Wert entfernen").
 //!
-//! The profile keys are an external contract (skill, hand-made profiles) - do not translate.
+//! The profile keys are an external contract (hand-made profiles, the CV prompt's answer) - do
+//! not translate.
 
 use jiff::civil::Date;
 use serde::{Deserialize, Serialize};
@@ -101,7 +102,7 @@ struct Criterion {
     kind: Kind,
 }
 
-/// Every hard criterion, in the order a new profile writes them (the skill's template).
+/// Every hard criterion, in the order a new profile writes them (the profile template).
 /// Normalizing, the limits, reading, writing, "Wert entfernen" and the interface's
 /// description (`ui/src/lib/ipc/types/profile.ts`) follow this table: a new number or word
 /// criterion is a field of [`ProfileCriteria`], a variant of [`UnreadableField`] and a row
@@ -226,7 +227,7 @@ const CRITERIA: [Criterion; 13] = [
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct ProfileForm {
-    /// `name` (the skill names the consultant with it; the engine never reads it).
+    /// `name` (the consultant's name; the engine never reads it, the AI prompts leave it out).
     pub name: String,
     /// `titel`, the professional role.
     pub title: String,
@@ -1072,7 +1073,7 @@ fn focus_overflows(doc: &Json) -> bool {
 
 /// Writes into `doc` every field of `after` that differs from `before` (the form as the
 /// editor received it), after removing the values of `clear` wherever they are. Fields in
-/// canonical order, so a new profile reads like the template of the skill; a key that is
+/// canonical order, so a new profile reads like the profile template; a key that is
 /// new in an existing profile goes to its end.
 pub(crate) fn merge(
     doc: &mut Json,
@@ -1654,7 +1655,7 @@ fn write_contracts(doc: &mut Json, before: &ProfileCriteria, after: &ProfileCrit
     }
 }
 
-/// `2026-11-01` -> `01.11.2026`, the way the engine and the skill read a start.
+/// `2026-11-01` -> `01.11.2026`, the way the engine reads a start.
 fn german_date(iso: &str) -> String {
     match iso.parse::<Date>() {
         Ok(day) => format!("{:02}.{:02}.{:04}", day.day(), day.month(), day.year()),

@@ -2,7 +2,7 @@
 
 Five invented consultant profiles to try the app with. Nobody real stands behind them; names,
 careers and numbers are made up. Each one is a complete profile file in the app's format
-(German keys, the format of the `job-matching` skill).
+(German keys, the format of the old program's profile).
 
 Load one in the app: Profil, then the file picker ("Datei wählen"), choose the file, check the
 form and save. The app scores every stored job against it again.

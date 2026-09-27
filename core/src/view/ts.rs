@@ -27,14 +27,14 @@ use crate::portal::{JobKey, Portal};
 use crate::settings::{FetchRange, Language, Palette};
 use crate::store::{Backup, BackupKind};
 use crate::view::{
-    AppState, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts, JobDetail, JobMail,
-    JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox, MailboxCheck,
-    MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin, PortalNew, PortalPatch,
-    PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileDraft,
-    ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave, ProfileSource,
-    ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight, RemoteWish,
-    ResetSummary, SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind, WorkMode,
-    WorkspacePick, WorkspaceProfile,
+    AppState, AskedTerm, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
+    JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
+    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin, PortalNew,
+    PortalPatch, PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria,
+    ProfileDraft, ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality, ProfileSave,
+    ProfileSource, ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind, ReasonWeight,
+    RemoteWish, ResetSummary, SettingsPatch, SettingsView, TextRange, UnreadableField, VaultKind,
+    WorkMode, WorkspacePick, WorkspaceProfile,
 };
 
 /// `Portal` lives in `portal/mod.rs` without the derive: its TypeScript is the keys of the
@@ -217,6 +217,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ProfileForm>();
     f.add::<ProfileDraft>();
     f.add::<ProfileSave>();
+    f.add::<AskedTerm>();
     f.add::<ResetSummary>();
     f.add::<BackupKind>();
     f.add::<Backup>();

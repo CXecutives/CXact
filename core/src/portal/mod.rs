@@ -108,8 +108,8 @@ pub trait PortalAdapter: Send + Sync {
     fn label(&self) -> &'static str;
     /// The portal's two-letter mark in the interface (brand-neutral, no logo).
     fn monogram(&self) -> &'static str;
-    /// Tag in the file name of the job details (without ".de") - part of the contract with
-    /// the matching skill, which also shows it in the `Quelle:` header line.
+    /// The portal's name in the `Quelle:` header line of the evaluation corpus (the text
+    /// files earlier versions wrote; `core/examples/common/gold.rs`), without ".de".
     fn file_tag(&self) -> &'static str;
     /// Start page of the portal ("open in the browser" after a block).
     fn home_url(&self) -> &'static str;
