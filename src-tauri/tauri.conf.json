@@ -21,7 +21,7 @@
         "preventOverflow": true,
         "visible": false,
         "theme": "Light",
-        "backgroundColor": "#F8F5F1",
+        "backgroundColor": "#F8F1EA",
         "dragDropEnabled": true,
         "decorations": true
       }
