@@ -242,6 +242,9 @@ class JobsStore {
   rows = $state.raw<JobView[]>([]);
   /** The counts of the list: with the search and the filter, whatever the place. */
   counts = $state<JobCounts>(ZERO);
+  /** The search the counts were loaded with: a typed one follows --dur-base later, until
+   *  then the counts are another search's. */
+  countedSearch = $state('');
   /** Rows the backend has for the current query: its count, or exactly how many once a page
    *  came back short. */
   total = $state(0);
@@ -497,13 +500,15 @@ class JobsStore {
     }, tokenMs('--delay-placeholder'));
     try {
       const limit = keep ? Math.min(MAX_PAGE, Math.max(PAGE, this.rows.length)) : PAGE;
-      const page = await invoke('list_jobs', { query: this.query(0, limit) });
+      const query = this.query(0, limit);
+      const page = await invoke('list_jobs', { query });
       if (request !== this.#request) return;
       const mounted = keep ? new Set(this.shown.map((job) => keyOf(job.key))) : null;
       this.#own.clear();
       this.#served = page.jobs.length;
       this.rows = keep ? reused(this.rows, page.jobs) : page.jobs;
       this.counts = page.counts;
+      this.countedSearch = query.search ?? '';
       this.total = page.jobs.length < limit ? page.jobs.length : this.countOf(page.counts);
       this.window = keep ? Math.max(WINDOW, this.window) : WINDOW;
       this.rendered = mounted ? this.kept(mounted, Math.min(this.rendered, this.window)) : CHUNK;
@@ -558,7 +563,8 @@ class JobsStore {
   /** The next page of the backend's list (see #served): its rows the list does not hold yet. */
   private async page(request: number): Promise<boolean> {
     if (this.#served >= this.total) return false;
-    const page = await invoke('list_jobs', { query: this.query(this.#served) });
+    const query = this.query(this.#served);
+    const page = await invoke('list_jobs', { query });
     if (request !== this.#request) return false;
     this.#served += page.jobs.length;
     if (page.jobs.length < PAGE) this.total = this.#served;
@@ -566,6 +572,7 @@ class JobsStore {
     const known = new Set(this.rows.map((job) => keyOf(job.key)));
     this.rows = [...this.rows, ...page.jobs.filter((job) => !known.has(keyOf(job.key)))];
     this.counts = page.counts;
+    this.countedSearch = query.search ?? '';
     return true;
   }
 
@@ -653,9 +660,11 @@ class JobsStore {
     const request = this.#request;
     const narrowed = this.search.trim() !== '' || this.filtered;
     try {
-      const page = await invoke('list_jobs', { query: this.query(0, 0) });
+      const query = this.query(0, 0);
+      const page = await invoke('list_jobs', { query });
       if (request !== this.#request) return;
       this.counts = page.counts;
+      this.countedSearch = query.search ?? '';
       // Without a search and a filter the list's counts are the counts over every job.
       if (!narrowed) {
         this.#overviewRequest++;

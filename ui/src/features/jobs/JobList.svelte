@@ -222,7 +222,9 @@
     trash: 'trash',
   };
   const elsewhere = $derived.by(() => {
-    if (!searching) return [];
+    // Only once the hits of the typed search are there: the counts before are another
+    // search's, and the links would show them and then move.
+    if (!searching || jobs.search.trim() !== jobs.countedSearch) return [];
     const counts = jobs.counts;
     return PLACES.filter((other) => other !== place)
       .map((other) => ({ place: other, count: counts[other] }))
