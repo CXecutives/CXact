@@ -743,8 +743,8 @@ export const en: Catalog = {
     remoteOrHybrid: 'Remote or hybrid',
     pay: {
       min: 'From my minimum day rate',
-      wish: 'From my preferred day rate',
-    } satisfies Record<'min' | 'wish', string>,
+      wish: 'From my wished day rate',
+    },
     unreadOnly: 'New only',
     deadlineSoon: 'Deadline within 7 days',
     filterReset: 'Reset filter',
