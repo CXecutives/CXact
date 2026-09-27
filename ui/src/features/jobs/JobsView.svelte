@@ -219,20 +219,14 @@
           {#if dragBands()}<DragBand sheet />{/if}
           <div class="column">
             {#if stage.what === OVERVIEW}
-              <!-- No job open: what lies here, quietly (the day's overview is a place of its
-                   own). Beside an empty list, which shows its own empty state, only the
-                   sentence. -->
-              {@const text = place === 'inbox' ? t.place.pickJob : t.place.reader[place]}
+              <!-- No job open: the one empty state of every place (its icon, one sentence);
+                   beside an empty list, which says it all, nothing. -->
               <div class="place-reader">
-                {#if placeEmpty && place === 'inbox'}
-                  <!-- An empty inbox: its list says it all, nothing to choose. -->
-                {:else if placeEmpty}
-                  <p class="place-note" data-testid="place-reader">{text}</p>
-                {:else}
+                {#if !placeEmpty}
                   <EmptyState
                     icon={place === 'trash' ? 'trash' : place === 'archive' ? 'archive' : 'inbox'}
                     tone="neutral"
-                    {text}
+                    text={t.place.pickJob}
                     testid="place-reader"
                   />
                 {/if}
@@ -378,19 +372,11 @@
     margin-left: calc(-1 * (var(--ghost-inset) + var(--space-6)));
   }
 
-  /* The reader of the archive and the trash with nothing open: centred across the pane,
-     near its top. */
+  /* The reader with nothing open: centred across the pane, near its top. */
   .place-reader {
     display: flex;
     justify-content: center;
     padding-top: var(--space-48);
-  }
-
-  .place-note {
-    max-width: var(--measure-intro);
-    color: var(--text-muted);
-    font: var(--type-body);
-    text-align: center;
   }
 
   .skeleton {

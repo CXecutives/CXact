@@ -705,12 +705,6 @@ export const de = {
       archive: 'Das Archiv ist leer.',
       trash: 'Der Papierkorb ist leer.',
     } satisfies Record<Place, string>,
-    /** The reader of the archive and the trash while no job is open. */
-    reader: {
-      archive: 'Archivierte Jobs bleiben hier, bis du sie zurückholst.',
-      trash:
-        'Jobs im Papierkorb bleiben hier, bis du sie wiederherstellst oder den Papierkorb leerst.',
-    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   /** What a job can do where it is: one name and icon in its menu (a right click on its row,
    *  the reader's "…") and in the reader. */

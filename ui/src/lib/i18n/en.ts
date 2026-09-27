@@ -684,10 +684,6 @@ export const en: Catalog = {
       archive: 'The archive is empty.',
       trash: 'The trash is empty.',
     } satisfies Record<Place, string>,
-    reader: {
-      archive: 'Archived jobs stay here until you bring them back.',
-      trash: 'Jobs in the trash stay here until you restore them or empty the trash.',
-    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   actions: {
     open: 'Open',

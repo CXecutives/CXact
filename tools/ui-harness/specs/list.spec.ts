@@ -210,6 +210,8 @@ test.describe('header', () => {
     for (const id of ['search', 'sort', 'filter', 'place-action']) {
       await expect(page.getByTestId(id), id).toHaveCount(0);
     }
+    // The list says it: the reader beside it adds no second empty state.
+    await expect(page.getByTestId('place-reader')).toHaveCount(0);
     // The row stays: the list starts where it starts in the other places.
     expect((await page.getByTestId('list-scroll').boundingBox())!.y).toBe(top);
   });
@@ -337,6 +339,36 @@ test.describe('filter', () => {
     await expect.poll(() => listed(page)).toEqual(all);
     await expect(funnel(page)).toBeFocused();
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
+  });
+
+  test('the chips unfold under the toolbar and fold away: the list glides, nothing jumps', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await openFilter(page);
+    // Picked in the page itself, so the next frame can be watched.
+    const unfolding = await page.evaluate(async () => {
+      document.querySelector<HTMLElement>('[data-testid="menu-item-portal-linkedin"]')!.click();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      const wrapper = document.querySelector('[data-testid="filter-chips"]')!.parentElement!;
+      return wrapper
+        .getAnimations()
+        .some((animation) =>
+          ((animation.effect as KeyframeEffect).getKeyframes() ?? []).some(
+            (key) => 'height' in key,
+          ),
+        );
+    });
+    expect(unfolding).toBe(true);
+    await animationsDone(page);
+    const folding = await page.evaluate(async () => {
+      const wrapper = document.querySelector('[data-testid="filter-chips"]')!.parentElement!;
+      document.querySelector<HTMLElement>('[data-testid="chip-portal"]')!.click();
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      return wrapper.getAnimations().length;
+    });
+    expect(folding).toBeGreaterThan(0);
+    await expect(chips(page)).toHaveCount(0);
   });
 
   test('the filter is the same in every place and kept; Filter zurücksetzen takes it off', async ({
@@ -989,7 +1021,7 @@ test.describe('moves and undo', () => {
     }
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
-    await expect(page.getByTestId('place-reader')).toContainText(T.place.trash);
+    await expect(page.getByTestId('place-reader')).toHaveText(T.place.pickJob);
     await viaMenu(page, 'restore', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
     await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
