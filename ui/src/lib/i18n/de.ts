@@ -748,6 +748,15 @@ export const de = {
   },
   toolbar: {
     fetch: 'Postfach abrufen',
+    /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of its chevron
+     *  (its name, its heading and its tooltip). */
+    range: 'Zeitraum',
+    rangeName: {
+      sinceLast: 'Seit dem letzten Abruf',
+      days7: 'Letzte 7 Tage',
+      days30: 'Letzte 30 Tage',
+      all: 'Alle Alert-Mails',
+    } satisfies Record<FetchRange, string>,
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
     /** The first group of the funnel's menu: the order of the list. */
@@ -760,24 +769,29 @@ export const de = {
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
     /** The funnel (its tooltip and the name of its menu): the order and the filter of the
-     *  list (lib/state/filter.ts), its groups under small headings; the chosen parts of the
-     *  filter stand as chips under the toolbar in the same words. */
-    filter: 'Filter',
+     *  list (lib/state/filter.ts), its groups under small headings. */
+    filter: 'Sortieren und filtern',
+    /** The chosen parts of the filter as chips under the toolbar (their group's name). */
+    chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
     allPortals: 'Alle Portale',
-    /** The lowest band of the filter (`any`: every job, also one without a score). */
+    /** The lowest band of the filter under its heading (`any`: every job, also one without a
+     *  score), and as a chip, where the heading is not beside it. */
     band: {
-      any: 'Jede Übereinstimmung',
+      any: 'Jede',
+      mid: 'Ab mittel',
+      high: 'Nur hoch',
+    } satisfies Record<'any' | 'mid' | 'high', string>,
+    bandChip: {
       mid: 'Ab mittlerer Übereinstimmung',
       high: 'Nur hohe Übereinstimmung',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     contractHeading: 'Vertragsart',
     anyContract: 'Jede Vertragsart',
-    workHeading: 'Arbeitsort',
-    anyWork: 'Jeder Arbeitsort',
+    /** A switch of its own behind a line (remote or not is no place). */
     remoteOnly: 'Nur remote',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',

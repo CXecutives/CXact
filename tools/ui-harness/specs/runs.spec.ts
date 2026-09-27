@@ -154,7 +154,7 @@ test('a start that fails keeps the last result and says why', async ({ page }) =
     window.__harness.appRun('rescore');
   });
   await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-problem-text')).toHaveText('Gerade läuft schon ein Abruf.');
+  await expect(page.getByTestId('run-problem')).toHaveText('Gerade läuft schon ein Abruf.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
 });

@@ -2,13 +2,30 @@
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
-// app's language and palette, which the whole page follows at once.
+// app's language and palette, which the whole page follows at once. The range of "Postfach
+// abrufen" (`fetchRange`, the menu of its chevron) is saved from here through the settings
+// patch.
 
 import { language } from '../i18n/language.svelte';
+import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
 import { applyPalette } from '../palette';
-import type { AppState, Portal, PortalHealth } from '../ipc/types';
+import type { AppState, FetchRange, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
 import { tokenMs } from '../tokens';
+
+/** The ranges of "Postfach abrufen" in the order of its menu. */
+export const FETCH_RANGES: readonly FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
+
+/** A whole patch of the settings from what changes (everything else `null`: unchanged). */
+const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
+  portals: [],
+  fetchRange: null,
+  exportExcel: null,
+  exportCsv: null,
+  language: null,
+  palette: null,
+  ...change,
+});
 
 class AppStore {
   state = $state<AppState | null>(null);
@@ -40,6 +57,28 @@ class AppStore {
     this.state = next;
     language.set(next.language);
     applyPalette(next.palette);
+  }
+
+  /** Only the answer to the latest save may replace the state (quick choices in a row). */
+  #saves = 0;
+
+  /**
+   * The range of "Postfach abrufen": the page follows at once, the save after. Resolves with
+   * the error text of a save that failed (the stored state is loaded again), or null.
+   */
+  async setFetchRange(range: FetchRange): Promise<string | null> {
+    const state = this.state;
+    if (state === null || state.fetchRange === range) return null;
+    const mine = ++this.#saves;
+    state.fetchRange = range;
+    try {
+      const next = await invoke('save_settings', { patch: patchOf({ fetchRange: range }) });
+      if (mine === this.#saves) this.set(next);
+      return null;
+    } catch (error) {
+      void this.load();
+      return errorText(error);
+    }
   }
 
   /** Portal health from a run event, without a reload. */

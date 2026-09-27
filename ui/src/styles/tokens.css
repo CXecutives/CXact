@@ -376,15 +376,21 @@
   /* The top band the page keeps free for the title bar: 0 on Windows, the toolbar row on
      macOS (empty parts of it move the window). */
   --window-top: 0px;
-  /* The first row of the list column (search and Abrufen): on Windows below the pane
-     padding, on macOS centred in the toolbar row next to the traffic lights. */
-  --list-header-top: var(--pane-padding);
-  --list-toolbar: var(--control-md);
-  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs as high as the
-     first row (40 px) with 14 px labels, a thin line; on macOS the whole toolbar row next to
-     the traffic lights. */
-  --tabs-height: max(var(--first-row), var(--list-toolbar));
+  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
+     15 px labels (one step above the first row and the sidebar's 14 px), a thin line; on
+     macOS the whole toolbar row next to the traffic lights. */
+  --tabs-min: 44px;
+  /* The chevron part of a split control ("Postfach abrufen" and its Zeitraum): narrower
+     than it is high, like the OS's split buttons. */
+  --split-menu-width: var(--control-sm);
+  --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
+  /* The top of the list column's header: on Windows the pane padding less what the tabs'
+     row is higher than the first row, so the tabs stay centred on the first line of the
+     window with the sidebar's first entry; on macOS the toolbar row next to the traffic
+     lights (base.css). */
+  --list-header-top: calc(var(--pane-padding) - (var(--tabs-height) - var(--first-row)) / 2);
+  --list-toolbar: var(--control-md);
   /* The portal's small tile at the start of a row's company line. */
   --portal-tile: 16px;
   /* The round checkbox that takes a row's ring's place on hover (choosing several jobs). */
@@ -567,6 +573,9 @@
   /* The sidebar entries (14/20, weight 500). */
   --font-tab: 14px;
   --leading-tab: 20px;
+  /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
+  --font-place: 15px;
+  --leading-place: 20px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
   --font-body: 14px;
   --leading-body: 22px;
@@ -585,6 +594,7 @@
   --type-md: var(--weight-regular) var(--font-md) / var(--leading-md) var(--font-sans);
   --type-title: var(--weight-medium) var(--font-title) / var(--leading-title) var(--font-sans);
   --type-tab: var(--weight-medium) var(--font-tab) / var(--leading-tab) var(--font-sans);
+  --type-place: var(--weight-medium) var(--font-place) / var(--leading-place) var(--font-sans);
   --type-body: var(--weight-regular) var(--font-body) / var(--leading-body) var(--font-sans);
   --type-lg: var(--weight-semibold) var(--font-lg) / var(--leading-lg) var(--font-sans);
   --type-xl: var(--weight-semibold) var(--font-xl) / var(--leading-xl) var(--font-sans);

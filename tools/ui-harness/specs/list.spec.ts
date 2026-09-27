@@ -9,7 +9,7 @@
 
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
-import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
+import type { FetchRange, JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
 import {
   animationsDone,
   calls,
@@ -103,9 +103,9 @@ test.describe('header', () => {
       'color',
       await tokenColour(page, '--text-subtle'),
     );
-    // 40 px high, 14 px labels.
-    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(40);
-    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '14px');
+    // 44 px high, 15 px labels (one step above the sidebar's entries).
+    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
+    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
     // A search or a filter does not change them.
     await page.getByTestId('search').fill('Interim');
     await expect(rows(page)).toHaveCount(3);
@@ -137,6 +137,7 @@ test.describe('header', () => {
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
+    expect(T.toolbar.filter).toBe('Sortieren und filtern');
     const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
@@ -162,6 +163,79 @@ test.describe('header', () => {
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // No second row, no count line.
     await expect(page.getByTestId('place-count')).toHaveCount(0);
+  });
+
+  test('Postfach abrufen is one split control: its chevron chooses the Zeitraum', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const fetch = page.getByTestId('fetch');
+    const chevron = page.getByTestId('fetch-range');
+    // One control: the same row and height, the chevron's part right against the action,
+    // both the view's primary.
+    const main = (await fetch.boundingBox())!;
+    const part = (await chevron.boundingBox())!;
+    expect(part.y).toBe(main.y);
+    expect(part.height).toBe(main.height);
+    expect(Math.abs(part.x - (main.x + main.width))).toBeLessThanOrEqual(1);
+    await expect(fetch).toHaveClass(/primary/);
+    await expect(chevron).toHaveClass(/primary/);
+    await expect(chevron).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(chevron).toHaveAttribute('aria-haspopup', 'menu');
+    // Its menu: "Zeitraum" and the four ranges, the current one checked.
+    const ranges: FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
+    await chevron.click();
+    const menu = page.getByTestId('menu');
+    await expect(menu).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(chevron).toHaveAttribute('aria-expanded', 'true');
+    await expect(menu.getByTestId('menu-heading')).toHaveText([T.toolbar.range]);
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText(
+      ranges.map((range) => T.toolbar.rangeName[range]),
+    );
+    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'true');
+    // Right edge on the control's.
+    const box = (await menu.boundingBox())!;
+    expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
+    // A choice is saved at once through the settings patch, and the menu closes.
+    await menuItem(page, 'range-days30').click();
+    await expect(menu).toHaveCount(0);
+    await expect
+      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
+      .toMatchObject({ patch: { fetchRange: 'days30', portals: [], exportExcel: null } });
+    await chevron.click();
+    await expect(menuItem(page, 'range-days30')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'false');
+    await page.keyboard.press('Escape');
+    // The fetch itself still starts from the main part.
+    await fetch.click();
+    await expect(page.getByTestId('cancel-run')).toBeVisible();
+    await expect(chevron).toHaveCount(0);
+    await page.getByTestId('cancel-run').click();
+    await runFinished(page);
+  });
+
+  test('the tabs row keeps one line: a narrow column drops the numbers of the tabs first', async ({
+    page,
+  }) => {
+    const places = page.getByTestId('places');
+    const oneLine = async (): Promise<void> => {
+      const row = (await page.getByTestId('list-header').locator('.places').boundingBox())!;
+      expect(Math.round(row.height)).toBe(Math.round((await places.boundingBox())!.height));
+    };
+    // A wide window: the numbers stand beside the labels.
+    await open(page, WIN);
+    await expect(page.getByTestId('place-inbox-count')).toBeVisible();
+    await oneLine();
+    // 1024 px (the list at its first width): the numbers go, the row stays one line, in the
+    // Eingang and in the Papierkorb alike.
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(page.getByTestId('place-inbox-count')).toBeHidden();
+    await oneLine();
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await openPlace(page, 'trash');
+    await expect(page.getByTestId('empty-trash')).toBeVisible();
+    await oneLine();
   });
 
   test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
@@ -245,7 +319,7 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Arbeitsort, none chosen', async ({
+  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Nur remote, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -258,13 +332,22 @@ test.describe('filter', () => {
       T.toolbar.portalHeading,
       T.toolbar.bandHeading,
       T.toolbar.contractHeading,
-      T.toolbar.workHeading,
     ]);
-    await expect(menu.getByTestId('menu-heading')).toHaveText(table.map((group) => group.heading));
-    await expect(menu.locator('[role^="menuitem"]')).toHaveText(
-      table.flatMap((group) => group.entries),
+    await expect(menu.getByTestId('menu-heading')).toHaveText(
+      table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
     );
-    await expect(menu.getByRole('separator')).toHaveCount(table.length - 1);
+    // Every entry of the table, then the way back (off while no filter is on).
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
+      ...table.flatMap((group) => group.entries),
+      T.toolbar.filterReset,
+    ]);
+    await expect(menu.getByRole('separator')).toHaveCount(table.length);
+    // The band's words stand under their heading without repeating it.
+    await expect(menuItem(page, 'band-mid')).toHaveText(T.toolbar.band.mid);
+    expect(T.toolbar.band.mid).not.toContain(T.toolbar.bandHeading);
+    // Remote or not is one switch of its own, behind a line, without a heading.
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('role', 'menuitemcheckbox');
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
     // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
@@ -276,12 +359,12 @@ test.describe('filter', () => {
       'menu-item-portal-freelancermap',
     ]);
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
-    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any', 'remote-any']) {
+    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
     }
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
-    await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
+    await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');
@@ -305,9 +388,10 @@ test.describe('filter', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { sort: 'newest', portal: 'linkedin' }));
-    // The way back appears at the end once a filter is on.
+    // The way back at the end turns on once a filter is on; the menu keeps its height.
     const items = menu.locator('[role^="menuitem"]');
     await expect(items.last()).toHaveText(T.toolbar.filterReset);
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'band-mid').click();
     await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'true');
     await expect(chips(page).getByRole('button')).toHaveText(
@@ -343,10 +427,10 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
     await openFilter(page);
-    await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
+    await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'contract-interim').click();
     await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
-    await expect(menuItem(page, 'filter-reset')).toBeVisible();
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'filter-reset').click();
     await expect(page.getByTestId('menu')).toHaveCount(0);
     await expect(chips(page)).toHaveCount(0);
@@ -375,7 +459,7 @@ test.describe('filter', () => {
       });
       const menu = await openFilter(page);
       await expect(menu.getByTestId('menu-heading')).toHaveText(
-        filterMenu().map((group) => group.heading),
+        filterMenu().flatMap((group) => (group.heading === null ? [] : [group.heading])),
       );
       await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
       await expect(menuItem(page, 'portal-freelancermap')).toHaveAttribute('aria-checked', 'true');
@@ -394,10 +478,43 @@ test.describe('filter', () => {
     await page.keyboard.press('Escape');
     await expect(chips(page).getByRole('button')).toHaveText([
       T.portal.freelance,
-      filterLabel('band-mid'),
+      T.toolbar.bandChip.mid,
       filterLabel('contract-freelance'),
-      filterLabel('remote-only'),
+      T.toolbar.remoteOnly,
     ]);
+    expect(
+      chipWordsOf('remote-only', 'contract-freelance', 'band-mid', 'portal-freelance'),
+    ).toEqual([
+      T.portal.freelance,
+      T.toolbar.bandChip.mid,
+      filterLabel('contract-freelance'),
+      T.toolbar.remoteOnly,
+    ]);
+    // Nur remote is a switch: a second choice takes it off again, the menu stays.
+    await openFilter(page);
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'remote-only').click();
+    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByTestId('menu')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(chip(page, 'remote')).toHaveCount(0);
+  });
+
+  test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await open(page, WIN);
+    const menu = await openFilter(page);
+    const before = (await menu.boundingBox())!;
+    await menuItem(page, 'portal-linkedin').click();
+    await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
+    const after = (await menu.boundingBox())!;
+    expect(after).toEqual(before);
+    // Its last entry stands inside the window, within reach.
+    const reset = (await menuItem(page, 'filter-reset').boundingBox())!;
+    expect(reset.y + reset.height).toBeLessThanOrEqual(768);
+    await page.keyboard.press('Escape');
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
@@ -877,13 +994,15 @@ test.describe('one list', () => {
   });
 
   test('one primary button in every state of the list, and with a job open', async ({ page }) => {
+    // A split control is one button: its chevron's part wears the colour of its action.
+    const primary = '.btn.primary:not(.joined-end)';
     for (const scenario of ['default', 'empty', 'no-profile', 'offline']) {
       await open(page, `${WIN}&scenario=${scenario}`);
-      expect(await visibleCount(page, '.btn.primary'), scenario).toBeLessThanOrEqual(1);
+      expect(await visibleCount(page, primary), scenario).toBeLessThanOrEqual(1);
     }
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
-    expect(await visibleCount(page, '.btn.primary')).toBeLessThanOrEqual(1);
+    expect(await visibleCount(page, primary)).toBeLessThanOrEqual(1);
   });
 });
 
@@ -1344,6 +1463,15 @@ test.describe('run line', () => {
         { intervals: [20], timeout: 10_000 },
       )
       .toBe(true);
+    // The count moves on in place: the same words, only the number changes (no blink).
+    const text = page.getByTestId('run-text');
+    const count = /^Anzeigen \d+ von \d+$/;
+    const now = async (): Promise<string> => (await text.textContent()) ?? '';
+    await expect.poll(now, { intervals: [10], timeout: 10_000 }).toMatch(count);
+    await text.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
+    const counted = await now();
+    await expect.poll(now, { intervals: [10], timeout: 10_000 }).not.toBe(counted);
+    if (count.test(await now())) await expect(text).toHaveAttribute('data-kept', 'yes');
     const words = new Set<string>([
       T.run.line.mailbox,
       T.run.line.adsStart,
@@ -1398,6 +1526,14 @@ test.describe('run line', () => {
     const problem = page.getByTestId('run-problem');
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
     await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+    // Drawn like every note of the column: the sentence in 14 px ink, the way on a small
+    // outlined button with its glyph, the × at the column's edge.
+    await expect(problem.locator('.text')).toHaveCSS('font-size', '14px');
+    await expect(problem.getByTestId('run-retry')).toHaveClass(/secondary/);
+    await expect(problem.getByTestId('run-retry').locator('svg')).toHaveClass(
+      new RegExp(`lucide-${ICONS.retry}`),
+    );
+    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'filter'));
     await problem.getByTestId('run-retry').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);

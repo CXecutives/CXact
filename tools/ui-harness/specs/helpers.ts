@@ -145,16 +145,17 @@ export async function chooseFilter(page: Page, id: string): Promise<void> {
   await expect(page.getByTestId('menu')).toHaveCount(0);
 }
 
-/** The funnel's menu as the tables say it: per group its heading and entries, the order
- *  ("Sortierung") first, then the filter's groups (the stub's portals). */
-export function filterMenu(): { heading: string; entries: string[] }[] {
+/** The funnel's menu as the tables say it: per group its heading (null for a switch of its
+ *  own) and entries, the order ("Sortierung") first, then the filter's groups (the stub's
+ *  portals). */
+export function filterMenu(): { heading: string | null; entries: string[] }[] {
   return [
     {
       heading: T.toolbar.sortHeading,
       entries: SORTS.map((sort) => T.toolbar.sortLabel[sort]),
     },
     ...FILTER_GROUPS.map((group) => ({
-      heading: group.heading(T),
+      heading: group.heading?.(T) ?? null,
       entries: group.entries(PORTALS).map((entry) => entry.label(T)),
     })),
   ];

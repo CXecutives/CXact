@@ -1,6 +1,6 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 14 px in a row
-  40 px high, the chosen one in ink with a thin line under it that slides to the next choice
+  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 15 px in a row
+  44 px high, the chosen one in ink with a thin line under it that slides to the next choice
   like the sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and
   a change of size never slide). A tab may carry a quiet number after its label (how many
   jobs lie there; none at 0). An unchosen tab darkens on hover. Like native tabs the row is
@@ -117,8 +117,7 @@
     border: none;
     background: none;
     color: var(--text-muted);
-    font: var(--type-md);
-    font-weight: var(--weight-medium);
+    font: var(--type-place);
     white-space: nowrap;
     cursor: default;
     transition: color var(--dur-base) var(--ease-standard);

@@ -3,26 +3,33 @@
   (Eingang, Archiv, Papierkorb, each with how many jobs lie there, quiet; the Eingang's number
   moves on only once a fetch has ended; another place starts without the search, like a
   folder of a mail app) and at its right end the place's one action: in the Eingang "Postfach
-  abrufen", the one primary of the Jobs view ("Abbrechen" in its place while a fetch goes;
-  locked while the app scores the jobs anew, and without a mailbox, saying why; the slot is
-  as wide as the wider of the two, so nothing jumps when a run starts), in the Papierkorb
-  "Papierkorb leeren" (red, asks first), in the Archiv none. On macOS this row is the list's
-  part of the toolbar row next to the traffic lights, and its empty parts move the window.
+  abrufen", the one primary of the Jobs view, as a split control whose chevron opens the menu
+  "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30 Tage, Alle Alert-Mails, the
+  current one checked; a choice is saved at once, lib/state/app.svelte.ts); "Abbrechen"
+  stands in its place while a fetch goes, the two cross-fade in one cell as wide as the
+  wider, so nothing jumps; the fetch is locked while the app scores the jobs anew, and
+  without a mailbox, saying why. In the Papierkorb "Papierkorb leeren" (outlined, the trash
+  in red, asks first), in the Archiv none. The row stays one line at the usual widths: a
+  narrow column first drops the tabs' numbers, a narrower one puts the action under the
+  tabs. On macOS this row is the list's part of the toolbar row next to the traffic lights,
+  and its empty parts move the window.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
-  funnel (an icon button, a coral dot while a filter is on; the order sets none), the one
-  control of the order and the filter: its menu holds, under small headings, "Sortierung"
-  (Nach Übereinstimmung, Nach Datum), then the filter table (lib/state/filter.ts: Portal,
-  Übereinstimmung, Vertragsart, Arbeitsort; the portals in the UI's order, lib/portals.ts),
-  and "Filter zurücksetzen" at the end while a filter is on. The menu stays open while
-  choosing (several groups in one go, the check marks move with each choice) and closes on a
-  press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable profile
-  the order and the bands are off, saying why. A place that holds nothing has nothing to
-  search, order or filter: the row stays, empty. While a filter is on, its parts stand as small chips under the row,
-  each with its × (the row unfolds and folds away, the list glides). Under them the run's
-  one line (RunLine): its progress while a fetch goes, or what went wrong. The bottom hairline
-  shows only once the list below is scrolled. Under the rows one sentence says when a job
-  action of the list failed (a move, its undo) or when jobs deleted for good could not leave
-  the Excel file; it goes with the next list or the next action that works.
+  funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
+  sets none), the one control of the order and the filter: its menu holds, under small
+  headings, "Sortierung" (Nach Übereinstimmung, Nach Datum), then the filter table
+  (lib/state/filter.ts: Portal, Übereinstimmung, Vertragsart, then "Nur remote" as a switch
+  of its own; the portals in the UI's order, lib/portals.ts), and "Filter zurücksetzen" at
+  the end, off while no filter is on (so the menu never changes its height). The menu stays
+  open while choosing (several groups in one go, the check marks move with each choice) and
+  closes on a press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a
+  usable profile the order and the bands are off, saying why. A place that holds nothing has
+  nothing to search, order or filter: the row stays, empty. While a filter is on, its parts
+  stand as small chips under the row, each with its × (the row unfolds and folds away, the
+  list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
+  what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
+  rows one sentence says when a job action of the list failed (a move, its undo, the choice
+  of the Zeitraum) or when jobs deleted for good could not leave the Excel file; it goes
+  with the next list or the next action that works.
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
@@ -37,19 +44,13 @@
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
   import { inPortalOrder } from '$lib/portals';
-  import {
-    activeFilters,
-    FILTER_GROUPS,
-    NO_FILTER,
-    SORTS,
-    sortEntryId,
-    type ListFilter,
-  } from '$lib/state/filter';
+  import { activeFilters, NO_FILTER, type ListFilter } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
-  import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
+  import { menuState, openMenu } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
+  import { funnelEntries, rangeEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
 
   interface Props {
@@ -131,51 +132,6 @@
   }
 
   /**
-   * The entries of the funnel's menu as the list stands now: "Sortierung" first (without a
-   * usable profile only by date, saying why), then the table's groups in their order, each
-   * under its heading, the chosen entry checked; every choice keeps the menu open. While a
-   * filter is on (the order does not count), the way back at the end.
-   */
-  function funnelEntries(): MenuEntry[] {
-    const filter = jobs.filter;
-    const noProfile = app.hasProfile ? null : t.toolbar.sortNoProfile;
-    const entries: MenuEntry[] = [{ kind: 'heading', label: t.toolbar.sortHeading }];
-    for (const sort of SORTS) {
-      entries.push({
-        id: sortEntryId(sort),
-        label: t.toolbar.sortLabel[sort],
-        checked: jobs.sort === sort,
-        disabled: noProfile !== null,
-        reason: noProfile,
-        stays: true,
-        run: () => jobs.setSort(sort),
-      });
-    }
-    for (const group of FILTER_GROUPS) {
-      entries.push({ kind: 'separator' }, { kind: 'heading', label: group.heading(t) });
-      const reason = app.hasProfile ? null : (group.needsProfile?.(t) ?? null);
-      for (const entry of group.entries(portals)) {
-        entries.push({
-          id: entry.id,
-          label: entry.label(t),
-          checked: filter[group.key] === entry.value,
-          disabled: reason !== null,
-          reason,
-          stays: true,
-          run: () => jobs.setFilter({ [group.key]: entry.value }),
-        });
-      }
-    }
-    if (jobs.filtered) {
-      entries.push(
-        { kind: 'separator' },
-        { id: 'filter-reset', label: t.toolbar.filterReset, run: () => jobs.setFilter(NO_FILTER) },
-      );
-    }
-    return entries;
-  }
-
-  /**
    * The funnel's menu below it, its right edge on the button's. A second click on the open
    * funnel closes it (the press outside does). Opened from the keyboard, its first entry is
    * active at once (like the OS).
@@ -186,10 +142,42 @@
     openMenu({
       label: t.toolbar.filter,
       anchor: { kind: 'below', rect: funnelBox.getBoundingClientRect(), align: 'end' },
-      entries: funnelEntries(),
-      refresh: funnelEntries,
+      entries: funnelEntries(portals),
+      refresh: () => funnelEntries(portals),
       fromKeyboard: event.detail === 0,
       onclose: () => (funnelOpen = false),
+    });
+  }
+
+  /* ----------------------------------------------------------------------- fetch */
+
+  /** The button that gives way ("Postfach abrufen" when a fetch starts, "Abbrechen" when it
+   *  ends) fades out under the next one in the same cell, out of reach meanwhile (no click,
+   *  no test id). */
+  function leave(node: HTMLElement): ReturnType<typeof fade> {
+    node.inert = true;
+    for (const element of [node, ...node.querySelectorAll('[data-testid]')]) {
+      element.removeAttribute('data-testid');
+    }
+    return fade(node);
+  }
+
+  /** The chevron's menu is open (its button keeps its hover look). */
+  let rangeOpen = $state(false);
+  /** The fetch's colour: the view's primary once a fetch can bring jobs. */
+  const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
+
+  /** The chevron's menu below the whole control, its right edge on the control's. */
+  function openRange(event: MouseEvent): void {
+    const control = (event.currentTarget as HTMLElement | null)?.closest('.split');
+    if (!control || menuState.open !== null) return;
+    rangeOpen = true;
+    openMenu({
+      label: t.toolbar.range,
+      anchor: { kind: 'below', rect: control.getBoundingClientRect(), align: 'end' },
+      entries: rangeEntries(),
+      fromKeyboard: event.detail === 0,
+      onclose: () => (rangeOpen = false),
     });
   }
 
@@ -218,17 +206,31 @@
 </script>
 
 {#snippet fetchButton(live: boolean)}
-  <Button
-    size="field"
-    variant={app.hasMailbox && app.hasPortal ? 'primary' : 'secondary'}
-    icon="fetch"
-    label={t.toolbar.fetch}
-    disabled={run.fetchBlocked !== null}
-    disabledReason={run.fetchBlocked}
-    wide
-    testid={live ? 'fetch' : null}
-    onclick={() => void run.start({ kind: 'fetch' })}
-  />
+  <span class="split" role="group" aria-label={t.toolbar.fetch}>
+    <Button
+      size="field"
+      variant={fetchVariant}
+      icon="fetch"
+      label={t.toolbar.fetch}
+      disabled={run.fetchBlocked !== null}
+      disabledReason={run.fetchBlocked}
+      joined="start"
+      testid={live ? 'fetch' : null}
+      onclick={() => void run.start({ kind: 'fetch' })}
+    />
+    <Button
+      size="field"
+      variant={fetchVariant}
+      iconOnly
+      icon="expand"
+      label={t.toolbar.range}
+      menu
+      expanded={live && rangeOpen}
+      joined="end"
+      testid={live ? 'fetch-range' : null}
+      onclick={openRange}
+    />
+  </span>
 {/snippet}
 
 {#snippet cancelButton(live: boolean)}
@@ -257,10 +259,10 @@
       <!-- The other button stands invisible in the same cell and only keeps the width. -->
       <span class="action" data-testid="place-action">
         {#if run.fetching}
-          <span class="live" in:fade>{@render cancelButton(true)}</span>
+          <span class="live" in:fade out:leave>{@render cancelButton(true)}</span>
           <span class="spare" aria-hidden="true" inert>{@render fetchButton(false)}</span>
         {:else}
-          <span class="live" in:fade>{@render fetchButton(true)}</span>
+          <span class="live" in:fade out:leave>{@render fetchButton(true)}</span>
           <span class="spare" aria-hidden="true" inert>{@render cancelButton(false)}</span>
         {/if}
       </span>
@@ -313,7 +315,7 @@
   </div>
   {#if chips.length > 0}
     <div class="unfold" transition:unfold>
-      <div class="chips" data-testid="filter-chips">
+      <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
         {#each chips as chip (chip.key)}
           <span class="chip" transition:fade>
             <Button
@@ -375,7 +377,7 @@
 
   /* The rows span the header's side padding too, so on macOS their empty ends move the
      window like the rest of the toolbar row. A narrow column puts the action under the
-     tabs. */
+     tabs (after it dropped their numbers, below). */
   .places {
     display: flex;
     flex-wrap: wrap;
@@ -425,6 +427,21 @@
 
   .spare {
     visibility: hidden;
+  }
+
+  /* "Postfach abrufen" and its chevron: one control. */
+  .split {
+    display: flex;
+  }
+
+  /* The header's column (JobsView .head) is narrower than the tabs with their numbers and
+     the action (Postfach abrufen with its chevron, Papierkorb leeren) side by side: the
+     numbers go first (the rows' dots still say what is new), so the row keeps one line at
+     the usual widths; only a narrower column puts the action under the tabs. */
+  @container (width < 500px) {
+    .places :global([role='tab'] > span) {
+      display: none;
+    }
   }
 
   .unfold {

@@ -2,37 +2,35 @@
   The button of the app: primary | secondary | ghost | danger | link × sm | field. Native
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press lets the button
-  give a little, uniformly (0.98, 60 ms), and it settles back in 150 ms. Nothing stretches; no lift, no glow, no bounce.
+  give a little (0.98, 60 ms) and settles back in 150 ms; no stretch, lift, glow or bounce.
   - Two heights only (core/tests/ui_contract.rs): sm (28 px) for trailing actions inside a
     row and tools; field (32 px, the default) for everything else: action bars, dialogs,
     empty states, a button in a row of fields. Both use the small type; every glyph is 16 px.
   - At most one primary per view (checked by core/tests/ui_contract.rs).
-  - iconOnly needs its label: it becomes aria-label and tooltip. A glyph that says it all
-    (the x that removes a row) goes without the tooltip (`plain`); its label stays its name.
-    A button with its words shows no tooltip of them (a tooltip never repeats what stands
-    there, core/tests/ui_contract.rs), only why it waits.
+  - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
+    (the x that removes a row) goes without the tooltip (`plain`). A button with its words
+    never repeats them in a tooltip (core/tests/ui_contract.rs), it only says why it waits.
   - Disabled buttons stay hoverable (aria-disabled) so the tooltip can say why; they do
     not react otherwise. Tab passes them like native disabled buttons, except one that says
     why (`disabledReason`): it stays a Tab stop, and its tooltip shows on keyboard focus
     (one that is disabled while focused keeps the focus).
-  - Loading keeps the width: the content fades out under the spinner.
-  - A ghost toggle (the star of a Schwerpunkt) pops once when it is switched on by a click.
-  - radio: an option of a group with one choice (profile/ChoiceButtons, a radiogroup): it
-    looks like a secondary toggle, is chosen while `checked`, and only the group's one Tab
-    stop (`stop`) is in the Tab order; the arrows move between the options (input.ts). A
-    choice reads like a field: 14 px text.
-  - turned: the glyph stands half a turn; it turns in 180 ms.
-  - dot: a small coral dot at the glyph's corner says that something of it is on (the
-    funnel of the list while a filter narrows it; the chips under the header say what).
-  - link: navy text that underlines on hover (a way on, e.g. under a field).
-  - inField: a button inside a text field (show password, clear search), like the native
-    ones: not in the Tab order, and a click leaves the caret in the field.
-  - isDefault: the default of a dialog, the one Enter presses; the dialog marks it.
+  - Loading keeps the width: the content fades out under the spinner. A ghost toggle (the
+    star of a Schwerpunkt) pops once when a click switches it on.
+  - radio: an option of a radiogroup (profile/ChoiceButtons), like a secondary toggle, chosen
+    while `checked`, only the group's Tab stop (`stop`) in the Tab order, the arrows move
+    (input.ts); 14 px text like a field. turned: the glyph stands half a turn (180 ms).
+  - dot: a coral dot at the glyph's corner, something of it is on (the list's funnel while a
+    filter narrows it; the chips say what). link: navy text that underlines on hover.
+  - inField: inside a text field (show password, clear search): no Tab stop, a click keeps
+    the caret in the field. isDefault: the one Enter presses in a dialog (it marks it).
   - warns: a quiet (secondary or ghost) button whose action deletes or loses something
     (empty the trash, remove the mailbox, reset the app): its text and glyph are red at
     rest, before the dialog asks; no icon warns by itself.
   - deletes: a quiet icon button that deletes (a job row's Löschen and Endgültig löschen):
     its glyph red at rest like every delete of the app, on a red wash under the pointer.
+  - joined: a part of a split control: the action (`start`) and its menu's narrower chevron
+    (`end`) share one edge (a seam on a filled one) and never part on press.
+  - count: a quiet number after the label (how many lie there), like the place tabs.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -50,6 +48,7 @@
 
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
+  import { formatNumber } from '$lib/i18n/format';
   import { fade, pulseOnce } from '$lib/motion/transitions';
   import Icon, { type IconName } from './Icon.svelte';
   import Spinner from './Spinner.svelte';
@@ -93,6 +92,8 @@
     deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
+    joined?: 'start' | 'end' | null;
+    count?: number | null;
     testid?: string | null;
     onclick?: (event: MouseEvent) => void;
   }
@@ -121,6 +122,8 @@
     warns = false,
     deletes = false,
     plain = false,
+    joined = null,
+    count = null,
     testid = null,
     onclick,
   }: Props = $props();
@@ -155,6 +158,8 @@
   class:default={isDefault}
   class:warns
   class:deletes
+  class:joined-start={joined === 'start'}
+  class:joined-end={joined === 'end'}
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
@@ -182,6 +187,7 @@
     {/if}
     {#if !iconOnly}
       <span class="label">{label}</span>
+      {#if count !== null}<span class="count">{formatNumber(count)}</span>{/if}
     {/if}
     {#if trailing}
       <span class="trailing" aria-hidden="true"><Icon name={trailing} size="sm" /></span>
@@ -210,6 +216,9 @@
     font-weight: var(--weight-medium);
     white-space: nowrap;
     --btn-press: var(--scale-press);
+    --btn-pad: var(--space-12);
+    --btn-gap: var(--space-6);
+    --btn-type: var(--type-sm);
 
     transition:
       background-color var(--dur-base) var(--ease-standard),
@@ -230,18 +239,22 @@
     margin-right: calc(-1 * var(--space-4));
   }
 
+  /* Quiet, like the count of a place tab: how many lie there. */
+  .count {
+    color: var(--text-subtle);
+    font-variant-numeric: var(--numeric);
+  }
+
   .glyph {
     position: relative;
     display: inline-flex;
     transition: transform var(--dur-base) var(--ease-emphasized);
   }
 
-  /* Something of the button is on: a small coral dot on the glyph's upper corner, like the
-     mark of a filter that is set (the approved design, 2026-09-26). */
+  /* Something of it is on: a coral dot on the glyph's corner (approved design, 2026-09-26). */
   .dot {
     position: absolute;
-    top: calc(-1 * var(--space-4));
-    right: calc(-1 * var(--space-4));
+    inset: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) auto auto;
     width: var(--dot-unread);
     height: var(--dot-unread);
     border-radius: var(--radius-full);
@@ -329,8 +342,7 @@
     --btn-shadow: var(--sh-xs);
   }
 
-  /* A secondary toggle that is on (a filter chip) or a chosen option of a radiogroup: the
-     navy trio of a chosen filter. */
+  /* A secondary toggle that is on or a chosen option of a radiogroup: the navy trio. */
   .secondary[aria-pressed='true'],
   .secondary[aria-checked='true'] {
     --btn-bg: var(--active-surface);
@@ -356,16 +368,14 @@
     --btn-shadow: none;
   }
 
-  /* Losing something for good: red at rest, before the dialog asks (ghost or secondary in
-     the danger colour; the filled danger is the dialog's confirm). */
+  /* Deleting or losing something: red at rest, before the dialog asks (its confirm fills). */
   .ghost.warns,
   .secondary.warns {
     --btn-fg: var(--danger-strong);
     --btn-fg-hover: var(--danger-strong);
   }
 
-  /* Deleting (a row's tool): red at rest like every delete, on a red wash under the
-     pointer. */
+  /* Deleting (a row's tool): red at rest like every delete, on a red wash under the pointer. */
   .ghost.deletes {
     --btn-fg: var(--danger-strong);
     --btn-fg-hover: var(--danger-strong);
@@ -416,9 +426,7 @@
 
   .link .label::after {
     position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
+    inset: auto 0 0;
     height: var(--border-width);
     background-color: currentcolor;
     content: '';
@@ -442,19 +450,13 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* Two heights, one type: 28 px in rows and tools, 32 px everywhere else. */
+  /* Two heights, one type (on .btn): 28 px in rows and tools, 32 px everywhere else. */
   .sm {
     --btn-height: var(--control-sm);
-    --btn-pad: var(--space-12);
-    --btn-gap: var(--space-6);
-    --btn-type: var(--type-sm);
   }
 
   .field {
     --btn-height: var(--control-field);
-    --btn-pad: var(--space-12);
-    --btn-gap: var(--space-6);
-    --btn-type: var(--type-sm);
   }
 
   /* A choice reads like the field beside it: 14 px text. */
@@ -469,5 +471,30 @@
 
   .wide {
     width: 100%;
+  }
+
+  /* A split control: square inner corners, the chevron's narrower part over the action's
+     right border, no press scale (the parts never part). */
+  .joined-start {
+    border-start-end-radius: 0;
+    border-end-end-radius: 0;
+    --btn-press: 1;
+  }
+
+  .joined-end {
+    width: var(--split-menu-width);
+    margin-inline-start: calc(-1 * var(--border-width));
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
+    --btn-press: 1;
+  }
+
+  /* On a filled part the shared edge vanishes: a short seam in a deeper shade marks it. */
+  .primary.joined-end::before {
+    position: absolute;
+    inset: var(--space-6) auto var(--space-6) calc(-1 * var(--border-width));
+    width: var(--border-width);
+    background-color: var(--primary-active);
+    content: '';
   }
 </style>
