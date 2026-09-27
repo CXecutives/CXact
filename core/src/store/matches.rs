@@ -20,8 +20,8 @@ use crate::time::{from_db, to_db};
 ///
 /// - `match_score`: score 0-100.
 /// - `match_status`: `scored`, `excluded` or `unscorable`.
-/// - `match_note`: JSON `{code, params, mustMet, mustTotal, top[<=2], open[<=2], facts,
-///   rank}`, at most 640 bytes.
+/// - `match_note`: JSON `{code, params, mustMet, mustTotal, top[<=2], open[<=2],
+///   terms[<=8], facts, rank}`, at most 1024 bytes.
 /// - `match_at`: when the job was scored.
 /// - `match_rev`: revision of engine, profile and model that produced the score; `NULL`
 ///   after a change of title or text (the job is scored again).
@@ -44,18 +44,20 @@ pub const SCHEMA_3_JOB_COLUMNS: &[(&str, &str)] = &[
 ];
 
 /// Most bytes a stored note takes.
-const MAX_NOTE_BYTES: usize = 640;
+const MAX_NOTE_BYTES: usize = 1024;
 /// Most characters of one quoted requirement in the note.
 const MAX_TOP_CHARS: usize = 80;
 /// Most quoted requirements in the note, met ones and open ones each.
 const MAX_TOP: usize = 2;
 
-/// A match as the store keeps it: what the matcher says ([`MatchRecord`]) and up to two open
-/// must requirements quoted from the ad (the list's `open`).
+/// A match as the store keeps it: what the matcher says ([`MatchRecord`]), up to two open
+/// must requirements quoted from the ad (the list's `open`) and the open requirements that
+/// are terms ("Häufig verlangt" counts them, [`Store::asked_terms`]).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Judgement {
     pub record: MatchRecord,
     pub open: Vec<String>,
+    pub terms: Vec<String>,
 }
 
 impl From<MatchRecord> for Judgement {
@@ -64,6 +66,7 @@ impl From<MatchRecord> for Judgement {
         Judgement {
             record,
             open: Vec::new(),
+            terms: Vec::new(),
         }
     }
 }
@@ -93,6 +96,9 @@ struct StoredNote {
     /// Open must requirements (quoted); older notes have none.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     open: Vec<String>,
+    /// Open must and nice requirements that are terms; older notes have none.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    terms: Vec<String>,
     #[serde(skip_serializing_if = "KeyFacts::is_empty", serialize_with = "compact")]
     facts: KeyFacts,
     /// Per-mille score before caps (tie-breaker of the list order).
@@ -109,9 +115,10 @@ fn compact<S: serde::Serializer>(facts: &KeyFacts, serializer: S) -> Result<S::O
 }
 
 /// The note of a match as JSON of at most [`MAX_NOTE_BYTES`] bytes (quotes are cut, then
-/// dropped - the open ones first, then the met ones, then the note's params; the key facts
-/// stay).
-pub(super) fn encode_note(record: &MatchRecord, open: &[String]) -> String {
+/// dropped - the open ones first, then the terms from the last, then the met ones, then the
+/// note's params; the key facts stay).
+pub(super) fn encode_note(judged: &Judgement) -> String {
+    let (record, open) = (&judged.record, judged.open.as_slice());
     let quotes = |list: &[String]| -> Vec<String> {
         list.iter()
             .take(MAX_TOP)
@@ -129,19 +136,35 @@ pub(super) fn encode_note(record: &MatchRecord, open: &[String]) -> String {
         must_total: record.must_total,
         top: quotes(&record.top),
         open: quotes(open),
+        terms: judged.terms.clone(),
         facts: record.facts.clone(),
         rank: record.rank,
     };
     loop {
         let json = serde_json::to_string(&note).unwrap_or_default();
-        let nothing_left = note.open.is_empty() && note.top.is_empty() && note.params.is_empty();
+        let nothing_left = note.open.is_empty()
+            && note.terms.is_empty()
+            && note.top.is_empty()
+            && note.params.is_empty();
         if json.len() <= MAX_NOTE_BYTES || nothing_left {
             return json;
         }
-        if note.open.pop().is_none() && note.top.pop().is_none() {
+        if note.open.pop().is_none() && note.terms.pop().is_none() && note.top.pop().is_none() {
             note.params.clear();
         }
     }
+}
+
+/// The open terms of a stored note (none in an older or unreadable one).
+pub(super) fn note_terms(note: &str) -> Vec<String> {
+    #[derive(Deserialize)]
+    struct Terms {
+        #[serde(default)]
+        terms: Vec<String>,
+    }
+    serde_json::from_str::<Terms>(note)
+        .map(|n| n.terms)
+        .unwrap_or_default()
 }
 
 /// A match from its stored columns with its open must requirements; `None` without a status
@@ -191,10 +214,17 @@ impl Store {
         rev: &str,
         now: Timestamp,
     ) -> Result<()> {
-        self.save_all(matches.iter().map(|(key, r)| (key, r, &[][..])), rev, now)
+        self.save_all(
+            matches.iter().map(|(key, r)| {
+                let note = encode_note(&Judgement::from(r.clone()));
+                (key, r, note)
+            }),
+            rev,
+            now,
+        )
     }
 
-    /// Stores the matches of a page of jobs with their open must requirements as one change
+    /// Stores the matches of a page of jobs with their open requirements as one change
     /// (`rev`: who scored them).
     pub fn save_judgements(
         &self,
@@ -205,7 +235,7 @@ impl Store {
         self.save_all(
             judged
                 .iter()
-                .map(|(key, j)| (key, &j.record, j.open.as_slice())),
+                .map(|(key, j)| (key, &j.record, encode_note(j))),
             rev,
             now,
         )
@@ -213,7 +243,7 @@ impl Store {
 
     fn save_all<'a>(
         &self,
-        matches: impl ExactSizeIterator<Item = (&'a JobKey, &'a MatchRecord, &'a [String])>,
+        matches: impl ExactSizeIterator<Item = (&'a JobKey, &'a MatchRecord, String)>,
         rev: &str,
         now: Timestamp,
     ) -> Result<()> {
@@ -228,13 +258,13 @@ impl Store {
                                 match_rev = ?6, match_at = ?7
                  WHERE portal = ?1 AND job_id = ?2",
             )?;
-            for (key, record, open) in matches {
+            for (key, record, note) in matches {
                 stmt.execute(params![
                     key.portal.key(),
                     key.id,
                     record.score,
                     record.status.as_str(),
-                    encode_note(record, open),
+                    note,
                     rev,
                     to_db(now),
                 ])?;
@@ -267,7 +297,7 @@ impl Store {
                     key.id,
                     record.score,
                     record.status.as_str(),
-                    encode_note(record, &judged.open),
+                    encode_note(judged),
                     rev,
                     to_db(now),
                     expected,
@@ -463,6 +493,15 @@ mod tests {
         }
     }
 
+    /// The note of a record with these open must requirements and no terms.
+    fn note(record: &MatchRecord, open: &[String]) -> String {
+        encode_note(&Judgement {
+            record: record.clone(),
+            open: open.to_vec(),
+            terms: Vec::new(),
+        })
+    }
+
     #[test]
     fn the_read_mark() {
         let (store, key) = store_with_job();
@@ -488,14 +527,14 @@ mod tests {
         assert_eq!(back.note, scored.note);
         assert_eq!(back.top.len(), 2);
         assert!(back.top[1].chars().count() <= MAX_TOP_CHARS);
-        assert!(encode_note(&scored, &[]).len() <= MAX_NOTE_BYTES);
+        assert!(note(&scored, &[]).len() <= MAX_NOTE_BYTES);
         let mut huge = scored;
         huge.note
             .as_mut()
             .unwrap()
             .params
             .insert("x".into(), "y".repeat(600).into());
-        assert!(encode_note(&huge, &[]).len() <= MAX_NOTE_BYTES);
+        assert!(note(&huge, &[]).len() <= MAX_NOTE_BYTES);
         // The key facts come back; the note keeps them without null values.
         let mut with_facts = record(MatchStatus::Scored, 83);
         with_facts.facts = crate::model::KeyFacts {
@@ -508,7 +547,7 @@ mod tests {
             contract: Some("interim".into()),
             ..crate::model::KeyFacts::default()
         };
-        let json = encode_note(&with_facts, &[]);
+        let json = note(&with_facts, &[]);
         assert!(
             json.len() <= MAX_NOTE_BYTES && !json.contains("null"),
             "{json}"
@@ -520,7 +559,7 @@ mod tests {
         // The rank (tie-breaker of equal scores) comes back.
         let mut ranked = record(MatchStatus::Scored, 40);
         ranked.rank = 437;
-        let json = encode_note(&ranked, &[]);
+        let json = note(&ranked, &[]);
         assert_eq!(
             decode_match(Some("scored"), Some(40), Some(&json))
                 .unwrap()
@@ -534,19 +573,28 @@ mod tests {
             "Zollabwicklung".into(),
             "drittes".into(),
         ];
-        let json = encode_note(&ranked, &open);
+        let json = note(&ranked, &open);
         let (_, back) = decode_match(Some("scored"), Some(40), Some(&json)).unwrap();
         assert_eq!(back, ["Power BI", "Zollabwicklung"]);
-        let long: Vec<String> = vec!["ö".repeat(200); 2];
+        // A full note drops the open quotes first, then the terms from the last (the nice
+        // ones come last), and keeps the met quotes and the facts.
         let mut full = record(MatchStatus::Scored, 40);
         full.top = vec!["ü".repeat(200); 2];
         full.facts = with_facts.facts.clone();
-        let json = encode_note(&full, &long);
+        let terms: Vec<String> = (0..8).map(|i| format!("{i}{}", "ä".repeat(60))).collect();
+        let json = encode_note(&Judgement {
+            record: full,
+            open: vec!["ö".repeat(200); 2],
+            terms: terms.clone(),
+        });
         assert!(json.len() <= MAX_NOTE_BYTES, "{}", json.len());
         let (kept, open) = decode_match(Some("scored"), Some(40), Some(&json)).unwrap();
-        assert!(open.len() < 2 && kept.top.len() == 2, "{json}");
+        let left = note_terms(&json);
+        assert!(open.is_empty() && kept.top.len() == 2, "{json}");
+        assert!(!left.is_empty() && left.len() < 8, "{json}");
+        assert_eq!(left, terms[..left.len()], "the first terms stay");
         assert_eq!(kept.facts, with_facts.facts, "the facts stay");
-        // A note of an earlier version has none.
+        // A note of an earlier version has none, neither open quotes nor terms.
         let old = r#"{"code":null,"params":{},"mustMet":1,"mustTotal":2,"top":["A"]}"#;
         assert!(
             decode_match(Some("scored"), Some(40), Some(old))
@@ -554,6 +602,8 @@ mod tests {
                 .1
                 .is_empty()
         );
+        assert!(note_terms(old).is_empty());
+        assert!(note_terms("no json").is_empty());
         // A new text or title makes the job pending again.
         store
             .record_text(&key, "Volltext", false, false, now())
