@@ -796,7 +796,7 @@ The user clicked through the reworked preview; one more round in four tracks.
 - Language names follow the UI language (the suggestions and the rows); the profile keeps a known language under
   its German name, as the engine reads it.
 - [x] "Frist in 7 Tagen" out of the filter
-- [ ] No hover marking in the reader
+- [x] No hover marking in the reader
 - [ ] Language names in the UI language
 - [ ] The focus after removing
 - [ ] Mouse buttons and the wheel, audited

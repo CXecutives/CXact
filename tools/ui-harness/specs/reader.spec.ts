@@ -2,8 +2,8 @@
 // the ring or the ban of an excluded job, the four actions and their "…" menu per place, the
 // Jobdetails (the order and icons of lib/facts.ts, "/" for what the ad does not say, quiet
 // notes, verdicts as icons whose tooltip is the reason), the Anforderungen (only requirements,
-// a quiet count, "+" for a missing term), the ad as plain text with its one note and its
-// passages tinted under the pointer, and the switch between two jobs. At the end what the
+// a quiet count, "+" for a missing term), the ad as plain text with its one note (nothing in it
+// marked by the rows above), and the switch between two jobs. At the end what the
 // reader's rounds of fixes carried around it (one column, the run card, the focus).
 //
 // The stub's demo profile: a minimum day rate of 1.100 € and a wish of 1.200 €, mostly remote,
@@ -1034,115 +1034,52 @@ test.describe('Anforderungen', () => {
 });
 
 test.describe('the ad', () => {
-  /** The words of the passages that are tinted now. */
-  const lit = (page: Page): Promise<string[]> =>
-    stage(page)
-      .getByTestId('ad-text')
-      .locator('mark.lit')
-      .evaluateAll((all) => all.map((mark) => mark.textContent ?? ''));
-
-  /** Longer than the reader rests after a scroll before a hover counts again. */
-  const REST = 300;
-
-  /** Whether a node stands whole in the window. */
-  const isInViewport = (target: Locator): Promise<boolean> =>
-    target.evaluate((node) => {
-      const box = node.getBoundingClientRect();
-      return box.top >= 0 && box.bottom <= innerHeight;
+  /** The reader's scroll position. */
+  const readerTop = (page: Page): Promise<number> =>
+    page.getByTestId('reader-pane').evaluate((pane) => {
+      for (let node: Element | null = pane.querySelector('[data-testid="reader"]'); node;) {
+        if (node.scrollHeight > node.clientHeight + 1) {
+          const overflow = getComputedStyle(node).overflowY;
+          if (/auto|scroll/.test(overflow)) return node.scrollTop;
+        }
+        node = node.parentElement;
+      }
+      return -1;
     });
 
-  /** Move the pointer onto a node (twice: only a pointer that moves counts). */
-  async function pointAt(page: Page, target: Locator): Promise<void> {
-    // Into view first, and a hover waits until the reader rests after a scroll.
-    if (!(await target.isVisible()) || !(await isInViewport(target))) {
-      await target.scrollIntoViewIfNeeded();
-      await page.waitForTimeout(REST);
-    }
-    const box = (await target.boundingBox())!;
-    await page.mouse.move(box.x + 4, box.y + box.height / 2);
-    await page.mouse.move(box.x + 8, box.y + box.height / 2);
-  }
-
-  test('plain text, its passages untinted until a row or a requirement is hovered', async ({
-    page,
-  }) => {
-    await openAt(page, 'freelancermap-2801');
-    const text = stage(page).getByTestId('ad-text');
-    await expect(text).toContainText('Reporting nach IFRS');
-    await expect(text).toHaveAttribute('data-copy', '');
-    // No underline, no colour, no tooltip, nothing to press.
-    const mark = text.locator('mark').first();
-    expect(
-      await mark.evaluate((node) => [
-        getComputedStyle(node).textDecorationLine,
-        getComputedStyle(node).backgroundColor,
-      ]),
-    ).toEqual(['none', 'rgba(0, 0, 0, 0)']);
-    await expect(stage(page).locator('.jump, button.chip, button.reason')).toHaveCount(0);
-    await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
-    expect(await lit(page)).toEqual([]);
-  });
-
-  test('hovering tints the passages, leaving takes them away, a click brings them and flashes', async ({
+  test('plain text: hovering or clicking a row or a requirement marks nothing in the ad', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 700 });
     await openAt(page, 'freelancermap-2801');
-    const soft = await tokenColour(page, '--info-soft');
-    // A row of the Jobdetails: its passage in the ad takes the soft tint.
-    await pointAt(page, term(page, 'rate'));
-    await expect.poll(() => lit(page)).toEqual(['Tagessatz 1.200 €, Einsatz zu 60 % remote.']);
-    const tinted = stage(page).getByTestId('ad-text').locator('mark.lit');
-    await expect(tinted).toHaveCSS('background-color', soft);
-    // Away from it: gone.
-    await pointAt(page, stage(page).getByTestId('terms').locator('h2'));
-    await expect.poll(() => lit(page)).toEqual([]);
-    // A requirement.
-    await pointAt(page, why(page).locator('li', { hasText: 'Reporting nach IFRS' }));
-    await expect.poll(() => lit(page)).toEqual(['Reporting nach IFRS']);
-    // A click on a row brings its passage into view and flashes it once.
-    const pane = stage(page).getByTestId('ad-text');
-    await term(page, 'experience').click();
-    const flash = pane.locator('mark.flash');
-    await expect(flash).toHaveText('Mindestens 15 Jahre Berufserfahrung im Controlling');
-    await expect(flash).toBeInViewport();
-    await expect(flash).toHaveCount(0);
-    // A row without passages does nothing.
-    await pointAt(page, term(page, 'company'));
-    await page.mouse.down();
-    await page.mouse.up();
-    await expect.poll(() => lit(page)).toEqual([]);
-    await expect(pane.locator('mark.flash')).toHaveCount(0);
-  });
-
-  test('no tint stays after the pointer moved across several rows, nor while it scrolls', async ({
-    page,
-  }) => {
-    await openAt(page, 'freelancermap-2801');
-    const items = (): Promise<string[]> =>
-      stage(page)
-        .getByTestId('ad-text')
-        .locator('mark.lit')
-        .evaluateAll((all) => all.map((mark) => mark.getAttribute('data-items') ?? ''));
-    for (const key of ['contract', 'rate', 'start', 'duration', 'experience']) {
-      await pointAt(page, term(page, key));
-      // Only the passages of the row under the pointer.
-      await expect
-        .poll(async () => {
-          const now = await items();
-          return now.length > 0 && now.every((item) => item.split(' ').includes(`row:${key}`));
-        }, key)
-        .toBe(true);
+    const text = stage(page).getByTestId('ad-text');
+    await expect(text).toContainText('Reporting nach IFRS');
+    await expect(text).toHaveAttribute('data-copy', '');
+    // No marks without a search: no underline, no colour, no tooltip, nothing to press.
+    await expect(text.locator('mark')).toHaveCount(0);
+    await expect(stage(page).locator('.jump, button.chip, button.reason, [data-item]')).toHaveCount(
+      0,
+    );
+    await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
+    // A row of the Jobdetails and a requirement under the pointer, then clicked: the ad keeps
+    // its plain text and the reader stays where it is.
+    const top = await readerTop(page);
+    for (const target of [
+      term(page, 'rate'),
+      term(page, 'experience'),
+      why(page).locator('li', { hasText: 'Reporting nach IFRS' }),
+    ]) {
+      const box = (await target.boundingBox())!;
+      await page.mouse.move(box.x + 4, box.y + box.height / 2);
+      await page.mouse.move(box.x + 8, box.y + box.height / 2);
+      await page.waitForTimeout(200);
+      await expect(text.locator('mark')).toHaveCount(0);
+      await page.mouse.down();
+      await page.mouse.up();
+      await page.waitForTimeout(250);
+      await expect(text.locator('mark')).toHaveCount(0);
+      expect(await readerTop(page)).toBe(top);
     }
-    await pointAt(page, stage(page).getByTestId('reader-title'));
-    await expect.poll(() => lit(page)).toEqual([]);
-    // The reader scrolls under a still pointer: the row that comes under it takes no tint.
-    await pointAt(page, term(page, 'rate'));
-    await expect.poll(async () => (await lit(page)).length).toBeGreaterThan(0);
-    await page.mouse.wheel(0, 120);
-    await expect.poll(() => lit(page)).toEqual([]);
-    await page.waitForTimeout(400);
-    expect(await lit(page)).toEqual([]);
   });
 
   test('the ad in its structure: headings, lists without their glyphs, paragraphs', async ({
@@ -1170,9 +1107,9 @@ test.describe('the ad', () => {
     expect(await text.innerText()).not.toContain('•');
     // A line with a date is no heading, whatever its first word.
     await expect(text.locator('p').last()).toContainText('Bewerbungsfrist 15.10.2026');
-    // One text to copy, its passages where they were.
+    // One text to copy, nothing marked in it.
     await expect(text).toHaveAttribute('data-copy', '');
-    await expect(text.locator('mark[data-items]').first()).toBeAttached();
+    await expect(text.locator('mark')).toHaveCount(0);
   });
 
   test('the words of the list search stand marked in the ad while the search is on', async ({

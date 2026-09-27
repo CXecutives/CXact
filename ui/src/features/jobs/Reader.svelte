@@ -29,9 +29,9 @@
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
     einrichten" where they help, and the ad's text in its structure: its headings, its lists,
     its paragraphs, the words of the list's search marked (ReaderAd.svelte, AdText.svelte).
-  Hovering a row or a requirement with passages tints them in the ad, a click brings the
-  first into view and flashes it (passages.svelte.ts). Rows, requirements and the ad text
-  that arrive later (the ad loaded, a new score) fade in; requirements glide in their group.
+  Hovering or clicking a row or a requirement marks nothing in the ad (user decision
+  2026-09-27). Rows, requirements and the ad text that arrive later (the ad loaded, a new
+  score) fade in; requirements glide in their group.
 -->
 <script lang="ts" module>
   /** A button of the reader had the focus when its job moved away: the same button of the
@@ -60,12 +60,10 @@
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
-  import type { Passage } from './AdText.svelte';
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import { guarded, jobMenu, move, purge, seen, type MoveId } from './actions';
-  import { Passages } from './passages.svelte';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
@@ -171,23 +169,6 @@
       items: listed.filter((reason) => reason.kind === group.kind).sort(byWeight),
     })).filter((group) => group.items.length > 0),
   );
-
-  /** The passages of every row and requirement that has some in the text shown. */
-  const passages = $derived.by((): Passage[] => {
-    const length = detail.text?.length ?? 0;
-    const inText = (range: { start: number; end: number }): boolean =>
-      range.start < range.end && range.end <= length;
-    return [
-      ...rows.flatMap((row) => row.ranges.map((range) => ({ item: `row:${row.key}`, ...range }))),
-      ...listed.flatMap((reason) =>
-        reason.ranges.filter(inText).map((range) => ({ item: reason.id, ...range })),
-      ),
-    ];
-  });
-  const withPassage = $derived(new Set(passages.map((passage) => passage.item)));
-  /** The `data-item` of a row with passages: its pointer and its click reach them. */
-  const itemOf = (item: string): string | undefined => (withPassage.has(item) ? item : undefined);
-  const hover = new Passages();
 
   /** Why the prompt cannot work yet (no profile to assess against, no text of the ad). */
   const promptOff = $derived(
@@ -453,7 +434,6 @@
           class="term"
           class:tall={row.parts !== null}
           data-row={row.key}
-          data-item={itemOf(`row:${row.key}`)}
           data-testid="term-{row.key}"
           in:fade
         >
@@ -519,7 +499,6 @@
                 <li
                   class="reason-line"
                   data-weight={reason.weight}
-                  data-item={itemOf(reason.id)}
                   animate:flip={{ count: group.items.length }}
                   in:fade
                 >
@@ -567,7 +546,7 @@
 {#snippet ad()}
   <section class="block ad" data-testid="ad">
     <h2 class="section">{t.reader.ad}</h2>
-    <ReaderAd {detail} {passages} lit={hover.hovered} flash={hover.flashing} />
+    <ReaderAd {detail} />
   </section>
 {/snippet}
 
@@ -575,7 +554,6 @@
   class="reader"
   data-testid="reader"
   bind:this={article}
-  use:hover.watch
   onpointerdown={(event) => {
     // Only a left press counts as looking at the job (a right or middle press is no reading).
     if (event.button === 0) seen(job.key);
@@ -735,7 +713,7 @@
   /* The Jobdetails: name, value and verdict in three columns that line up row by row (two
      without a match: nothing to judge); the verdicts stand right after the widest judged
      value (a value without a verdict takes the verdict's column too). Each row is one box on
-     the columns of the list (its pointer tints its passages). The same metrics as the
+     the columns of the list. The same metrics as the
      requirements below: their text, their icon gap. */
   .terms {
     display: grid;

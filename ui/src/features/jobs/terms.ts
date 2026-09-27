@@ -3,8 +3,7 @@
 // stands for, when it shows, and how it reads the ad's value. A row says only what the ad says
 // (its facts, else the value the engine read into a criterion; "/" where it says nothing), and
 // a verdict when there is a match to judge by: the worst of its criteria and reasons, with the
-// sentence of the reason that decided it as the verdict's tooltip. Its passages are the ranges
-// of those reasons in the ad's text (hovering the row tints them).
+// sentence of the reason that decided it as the verdict's tooltip.
 //
 // One check per fact: a row is judged by its own criteria and codes only. A requirement that
 // states a row's value ("Mindestens 15 Jahre Berufserfahrung im Controlling" states the years)
@@ -50,8 +49,6 @@ export interface TermRow {
   why: string | null;
   /** The verdict is a hard criterion the ad violates: it excludes the job. */
   excludes: boolean;
-  /** Where the ad states the value: the passages of the row's reasons in the text shown. */
-  ranges: readonly TextRange[];
 }
 
 /** Where the ad's facts live (the one line that changes when they move to the job itself). */
@@ -400,9 +397,8 @@ function build(
   const reasons = input.reasons.filter((reason) => checks.codes.includes(reason.code));
   const shown = (range: TextRange): boolean =>
     range.start < range.end && range.end <= input.textLength;
-  const ranges = [...criteria, ...reasons, ...claimed].flatMap((reason) =>
-    reason.ranges.filter(shown),
-  );
+  /** A passage of the text shown states the value. */
+  const stated = [...criteria, ...reasons, ...claimed].some((reason) => reason.ranges.some(shown));
   const ctx: Context = {
     job: input.job,
     facts,
@@ -410,7 +406,7 @@ function build(
     criterion: (key) => criteria.find((reason) => criterionKey(reason.code) === key),
     code: (name) => reasons.find((reason) => reason.code === name),
     claimed,
-    stated: ranges.length > 0,
+    stated,
     now: input.now,
     offline: input.offline ?? null,
   };
@@ -458,6 +454,5 @@ function build(
     verdict: verdict === null ? null : (verdict.verdict as Exclude<Verdict, 'unset'>),
     why: verdict?.why ?? null,
     excludes: verdict?.excludes === true,
-    ranges,
   };
 }
