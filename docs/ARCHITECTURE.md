@@ -51,7 +51,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Profile criteria | `CRITERIA` in `core/src/profile/form.rs` | form, engine, `profile.ts` |
 | Columns of the Excel and the CSV file | `COLUMNS` in `core/src/export/columns.rs` (each column gives a value) | the Excel file (`xlsx.rs` formats), the CSV file (`csv.rs` prints) |
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
-| What a term is (a skill of at most five words that ends like no sentence) | `is_term`, `TERM_WORDS` in `core/src/pipeline/local.rs` (the reader's `addable` in `reader-sections.ts` holds the same number, a test checks) | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" |
+| What a term is and the profile field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan": at most five words, lead and wish words stripped) | `core_term` in `core/src/matching/terms.rs` (its words in `lexicon/terms.rs`); which open requirements offer one: `open_term` in `core/src/pipeline/local.rs` | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" (`params.term`, `params.field` of a reason; `addable` in `reader-sections.ts` only reads them) |
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |

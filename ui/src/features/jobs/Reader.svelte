@@ -19,7 +19,7 @@
     read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
     is the reason that decided it (the ban where it excludes the job).
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
-    each title; a missing must that is a term has a small "+" into the profile
+    each title; a missing must that is a term has a small "+" into its field of the profile
     (addToProfile.ts), a tick once it is there.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
@@ -57,6 +57,7 @@
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
+  import type { ProfileTerm } from '$lib/state/terms';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import AdText, { type Passage } from './AdText.svelte';
@@ -275,9 +276,9 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  /** A missing must into the profile (its term, without the ad's lead words); a failure is a
-   *  toast. */
-  async function add(term: string): Promise<void> {
+  /** A missing must into its field of the profile (its term, without the ad's lead words); a
+   *  failure is a toast. */
+  async function add(term: ProfileTerm): Promise<void> {
     fail(await addTerm(term));
   }
 
@@ -557,7 +558,7 @@
                           size="sm"
                           iconOnly
                           icon="add"
-                          label={t.reader.addToProfile}
+                          label={t.reader.addTo[term.field](term.term)}
                           testid="add-to-profile"
                           onclick={() => void add(term)}
                         />

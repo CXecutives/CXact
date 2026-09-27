@@ -860,7 +860,7 @@ test.describe('Anforderungen', () => {
     await expect(why(page).locator('.sub')).toHaveText(['Nicht erfüllt 1']);
   });
 
-  test('a missing must that is a term goes into the profile with "+", a sentence has none', async ({
+  test('a missing must that is a term goes into its field of the profile with "+", a sentence has none', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2802');
@@ -868,9 +868,10 @@ test.describe('Anforderungen', () => {
       hasText: 'Branchenerfahrung Energie',
     });
     await expect(missing).toHaveCount(1);
+    // The "+" names the term and the field it goes into: the industry "Energie".
     const add = missing.getByTestId('add-to-profile');
-    await expect(add).toHaveAccessibleName('Zum Profil hinzufügen');
-    expect(await tip(page, add)).toBe('Zum Profil hinzufügen');
+    await expect(add).toHaveAccessibleName(T.reader.addTo.industry('Energie'));
+    expect(await tip(page, add)).toBe(T.reader.addTo.industry('Energie'));
     // An optional one has none.
     await expect(
       why(page)
@@ -887,25 +888,34 @@ test.describe('Anforderungen', () => {
     await expect(added).toHaveText('');
     const toast = page.getByTestId('toast').last();
     await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
-    // The term is among the profile's keywords.
+    // The term is among the profile's industries, saved; not among its keywords.
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-keywords')).toContainText('Energie');
-    await expect(page.getByTestId('profile-keywords')).not.toContainText('Branchenerfahrung');
+    await expect(page.getByTestId('profile-industries')).toContainText('Energie');
+    await expect(page.getByTestId('profile-industries')).not.toContainText('Branchenerfahrung');
+    await expect(page.getByTestId('profile-keywords')).not.toContainText('Energie');
+    await expect(page.getByTestId('profile-save-bar')).toHaveCount(0);
     // The toast takes it back.
     await page.getByTestId('nav-jobs').click();
     await page.getByTestId('toast').last().getByTestId('toast-action').click();
     await expect(missing.getByTestId('add-to-profile')).toBeVisible();
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-keywords')).not.toContainText('Energie');
-    // The other bullets lose their lead words too.
+    await expect(page.getByTestId('profile-industries')).not.toContainText('Energie');
+    // The other bullets lose their lead words too, and go into their own field: the tool
+    // "Anaplan" into the tools.
     await page.getByTestId('nav-jobs').click();
     const anaplan = why(page).getByTestId('reasons-open').locator('li', {
       hasText: 'Kenntnisse in Anaplan',
     });
+    await expect(anaplan.getByTestId('add-to-profile')).toHaveAccessibleName(
+      T.reader.addTo.tool('Anaplan'),
+    );
     await anaplan.getByTestId('add-to-profile').click();
     await expect(page.getByTestId('toast').last()).toContainText(
       T.reader.addedToProfile('Anaplan'),
     );
+    await page.getByTestId('nav-profile').click();
+    await expect(page.getByTestId('profile-tools')).toContainText('Anaplan');
+    await expect(page.getByTestId('profile-keywords')).not.toContainText('Anaplan');
     // A requirement the ad words as a sentence cannot go into the profile.
     await page.getByTestId('nav-jobs').click();
     await openJob(page, 'freelancermap-2804');

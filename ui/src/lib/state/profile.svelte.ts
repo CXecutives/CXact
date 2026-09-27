@@ -36,6 +36,7 @@ import {
   type NumberCriterion,
   type WordCriterion,
 } from '../ipc/types/profile';
+import { putTerm, takeTerm, type ProfileTerm } from './terms';
 import { TypedText } from './typed.svelte';
 
 export { MAX_FOCUS };
@@ -554,15 +555,17 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
-/** The stored profile's keywords changed by `change`, saved like a save of the form (the
- *  previous file is the backup, every job is scored again) and built on the profile as it is
- *  stored when its turn comes. `false` when nothing changes or there is no profile. */
-function saveKeywords(change: (keywords: string[]) => string[]): Promise<boolean> {
+/** The stored profile changed by `change`, saved like a save of the form (the previous file
+ *  is the backup, every job is scored again) and built on the profile as it is stored when
+ *  its turn comes. `false` when nothing changes or there is no profile. */
+function saveStored(change: (form: ProfileForm) => void): Promise<boolean> {
   return serial(async () => {
     const stored = app.state?.profile?.form ?? null;
     if (stored === null) return false;
     const before = copy(stored);
-    const after = normalized({ ...copy(stored), keywords: change([...before.keywords]) });
+    const changed = copy(stored);
+    change(changed);
+    const after = normalized(changed);
     if (sameForm(after, before)) return false;
     await invoke('save_profile', { save: { before, after, source: null, clear: [] } });
     await app.load();
@@ -571,16 +574,16 @@ function saveKeywords(change: (keywords: string[]) => string[]): Promise<boolean
 }
 
 /**
- * "Zum Profil hinzufügen": a requirement the ads name becomes a search term of the stored
- * profile, saved at once. Returns its undo, which takes out this term only (a term added
- * meanwhile stays); null when the term is in the profile already or there is no profile.
- * Refused while the form holds unsaved changes (they come first).
+ * The reader's "+": a term the ads ask for goes into its field of the stored profile (the
+ * tool "Anaplan" into the tools), saved at once. Returns its undo, which takes out this term
+ * only (a term added meanwhile stays); null when the field names it already or there is no
+ * profile. Refused while the form holds unsaved changes (they come first).
  */
-export async function addToProfile(term: string): Promise<(() => Promise<void>) | null> {
+export async function addToProfile(term: ProfileTerm): Promise<(() => Promise<void>) | null> {
   if (editor.dirty) return null;
-  const text = term.trim();
-  if (!(await saveKeywords((keywords) => cleanList([...keywords, text])))) return null;
+  const put: ProfileTerm = { term: term.term.trim(), field: term.field };
+  if (!(await saveStored((form) => void putTerm(form, put)))) return null;
   return async () => {
-    await saveKeywords((keywords) => keywords.filter((keyword) => !same(keyword.trim(), text)));
+    await saveStored((form) => takeTerm(form, put));
   };
 }

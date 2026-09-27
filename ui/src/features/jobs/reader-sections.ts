@@ -2,7 +2,8 @@
 // moves its section or group; removing it hides it. The rows of "Jobdetails" are the table of
 // lib/facts.ts (read by terms.ts), the "…" menu is the table in Reader.svelte.
 
-import type { Reason, ReasonKind } from '$lib/ipc/types';
+import type { Reason, ReasonKind, TermField } from '$lib/ipc/types';
+import type { ProfileTerm } from '$lib/state/terms';
 import type { Verdict } from './terms';
 
 /**
@@ -48,28 +49,32 @@ export function kindOf(verdict: Exclude<Verdict, 'unset'>): ReasonKind {
  *  licence); a title, a wish or a Schwerpunkt is no requirement, and a fact has its row. */
 export const REQUIREMENT_CODES: readonly string[] = ['requirement', 'term', 'formalOpen'];
 
-/** A term has at most this many words; longer words are a sentence. */
-const TERM_WORDS = 5;
+const FIELDS: ReadonlySet<string> = new Set<TermField>([
+  'competence',
+  'tool',
+  'industry',
+  'language',
+  'certificate',
+  'degree',
+]);
+const isField = (value: unknown): value is TermField =>
+  typeof value === 'string' && FIELDS.has(value);
 
-/** The words an ad puts before a term ("Kenntnisse in Anaplan", "Erfahrung mit SAP Analytics
- *  Cloud", "Branchenerfahrung Energie", "experience with Workday"): the term is what follows.
- *  External contract - the ad's own German and English wording. */
-const LEAD =
-  /^(?:(?:sehr\s+)?(?:gute|fundierte|solide|erste|tiefe|langjährige)\s+)?(?:kenntnisse|erfahrungen?|know-how|expertise|praxis)\s+(?:in|im|mit|der|von)\s+(?:der\s+|dem\s+|den\s+)?|^branchenerfahrung\s+(?:in\s+(?:der\s+)?)?|^(?:(?:good|solid|strong|deep)\s+)?(?:knowledge|experience|expertise)\s+(?:with|in|of)\s+(?:the\s+)?/iu;
-
-/** The term of a missing must: the ad's words without their lead ("Anaplan"). */
-export function termOf(reason: Reason): string {
-  const words = reason.label.trim();
-  const term = words.replace(LEAD, '').trim();
-  return term === '' ? words : term;
+/** The term of an open requirement and the field of the profile it goes into, as core names
+ *  them (`params.term`, `params.field`, `pipeline::local::open_term`: "Kenntnisse in Anaplan"
+ *  is the tool "Anaplan", "Branchenerfahrung Energie" the industry "Energie"); null for one
+ *  the profile could not take (a sentence, a soft skill, a frame condition). */
+function profileTerm(reason: Reason): ProfileTerm | null {
+  const { term, field } = reason.params;
+  return typeof term === 'string' && term !== '' && isField(field) ? { term, field } : null;
 }
 
-/** A missing must that can go into the profile: a term of the ad (a keyword, a bullet of a
- *  few words), never a whole sentence. */
+/** The term a missing must adds (`addable` says whether it has one; else the ad's words). */
+export function termOf(reason: Reason): ProfileTerm {
+  return profileTerm(reason) ?? { term: reason.label.trim(), field: 'competence' };
+}
+
+/** A missing must that can go into the profile: core names its term. */
 export function addable(reason: Reason): boolean {
-  if (reason.kind !== 'open' || reason.weight !== 'must') return false;
-  if (reason.code === 'term') return true;
-  if (reason.code !== 'requirement' || reason.params.source === 'sentence') return false;
-  const words = reason.label.trim();
-  return words !== '' && words.split(/\s+/).length <= TERM_WORDS && !/[.!?:;]$/.test(words);
+  return reason.kind === 'open' && reason.weight === 'must' && profileTerm(reason) !== null;
 }
