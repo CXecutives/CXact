@@ -5,7 +5,7 @@
 import { t } from '$lib/i18n/t';
 import type { Portal } from '$lib/ipc/types';
 import { app, FETCH_RANGES } from '$lib/state/app.svelte';
-import { FILTER_GROUPS, NO_FILTER, offeredEntries, SORTS, sortEntryId } from '$lib/state/filter';
+import { FILTER_GROUPS, NO_FILTER, SORTS, sortEntryId } from '$lib/state/filter';
 import { jobs } from '$lib/state/jobs.svelte';
 import type { MenuEntry } from '$lib/state/menu.svelte';
 
@@ -14,14 +14,12 @@ import type { MenuEntry } from '$lib/state/menu.svelte';
  * date, saying why), then the table's groups in their order behind a line, each under its
  * heading where it has one: the chosen entry checked, a second choice turns it off (the
  * choices of a group are radio items, a group of one is a switch, and switches follow each
- * other on one line); a group the menu offers nothing of (no pay floor in the profile) is
- * left out; every choice keeps the menu open. The way back at the end, off while no filter
- * is on (the order does not count). `portals`: the portals the menu offers, in the UI's
- * order.
+ * other on one line); a group without entries (no portal) is left out; every choice keeps
+ * the menu open. The way back at the end, off while no filter is on (the order does not
+ * count). `portals`: the portals the menu offers, in the UI's order.
  */
 export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
   const filter = jobs.filter;
-  const context = jobs.context;
   const noProfile = app.hasProfile ? null : t.toolbar.sortNoProfile;
   const entries: MenuEntry[] = [{ kind: 'heading', label: t.toolbar.sortHeading }];
   for (const sort of SORTS) {
@@ -37,7 +35,7 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
   }
   let switched = false;
   for (const group of FILTER_GROUPS) {
-    const offered = offeredEntries(group, portals, context);
+    const offered = group.entries(portals);
     if (offered.length === 0) continue;
     const toggle = offered.length === 1 && group.heading === null;
     if (!(toggle && switched)) entries.push({ kind: 'separator' });

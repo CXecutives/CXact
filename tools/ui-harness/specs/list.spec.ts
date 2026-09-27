@@ -10,6 +10,7 @@
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
 import type { FetchRange, JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
+import { WORK_MODES, workModeOf } from '../../../ui/src/lib/state/filter';
 import {
   animationsDone,
   calls,
@@ -415,7 +416,7 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, work mode, pay, two switches, none chosen', async ({
+  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Arbeitsmodell, Nur neue, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -428,6 +429,7 @@ test.describe('filter', () => {
       T.toolbar.portalHeading,
       T.toolbar.bandHeading,
       T.toolbar.contractHeading,
+      T.toolbar.workHeading,
     ]);
     await expect(menu.getByTestId('menu-heading')).toHaveText(
       table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
@@ -442,24 +444,26 @@ test.describe('filter', () => {
       group.heading === null && group.entries.length === 1;
     const shared = table.filter((group, at) => at > 0 && lone(group) && lone(table[at - 1]!));
     await expect(menu.getByRole('separator')).toHaveCount(table.length - shared.length);
-    // The band's words stand under their heading without repeating it.
-    await expect(menuItem(page, 'band-mid')).toHaveText(T.toolbar.band.mid);
-    expect(T.toolbar.band.mid).not.toContain(T.toolbar.bandHeading);
+    // A group lists every value of its dimension: the three bands and the three work modes,
+    // their words under their heading without repeating it.
+    for (const band of ['high', 'mid', 'low'] as const) {
+      await expect(menuItem(page, `band-${band}`)).toHaveText(T.toolbar.band[band]);
+      expect(T.toolbar.band[band]).not.toContain(T.toolbar.bandHeading);
+    }
+    for (const mode of ['remote', 'hybrid', 'onsite'] as const) {
+      await expect(menuItem(page, `mode-${mode}`)).toHaveText(T.toolbar.work[mode]);
+    }
     // The choices of a group are radio items, none checked while the group filters nothing;
-    // Nur neue is a switch of its own. There is no deadline filter.
-    for (const id of [
-      'portal-linkedin',
-      'band-mid',
-      'contract-interim',
-      'remote-only',
-      'pay-min',
-    ]) {
+    // Nur neue is a switch of its own. There is no deadline and no pay filter.
+    for (const id of ['portal-linkedin', 'band-mid', 'contract-interim', 'mode-remote']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
     }
     await expect(menuItem(page, 'unread-only')).toHaveAttribute('role', 'menuitemcheckbox');
     await expect(menuItem(page, 'unread-only')).toHaveAttribute('aria-checked', 'false');
-    await expect(menuItem(page, 'deadline-soon')).toHaveCount(0);
+    for (const gone of ['deadline-soon', 'pay-min', 'pay-wish', 'remote-only', 'remote-hybrid']) {
+      await expect(menuItem(page, gone)).toHaveCount(0);
+    }
     await expect(menu).not.toContainText('Frist');
     // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
     const portals = await menu
@@ -529,7 +533,7 @@ test.describe('filter', () => {
     expect(await lastQuery(page)).toMatchObject({
       sort: 'newest',
       portal: 'linkedin',
-      minBand: 'mid',
+      band: 'mid',
     });
   });
 
@@ -585,36 +589,37 @@ test.describe('filter', () => {
     await open(page, WIN);
     const menu = await openFilter(page);
     // Picked from the last group to the first: the chips still stand in the menu's order.
-    for (const id of ['remote-only', 'contract-freelance', 'band-mid', 'portal-freelance']) {
+    for (const id of ['mode-remote', 'contract-freelance', 'band-mid', 'portal-freelance']) {
       await menuItem(page, id).click();
     }
     await expect(menu).toBeVisible();
     await page.keyboard.press('Escape');
+    // The band's chip says its heading with it: the ring's name of the band.
     await expect(chips(page).getByRole('button')).toHaveText([
       T.portal.freelance,
-      T.toolbar.bandChip.mid,
+      T.score.band.mid,
       filterLabel('contract-freelance'),
-      T.toolbar.remoteOnly,
+      T.toolbar.work.remote,
     ]);
     expect(
-      chipWordsOf('remote-only', 'contract-freelance', 'band-mid', 'portal-freelance'),
+      chipWordsOf('mode-remote', 'contract-freelance', 'band-mid', 'portal-freelance'),
     ).toEqual([
       T.portal.freelance,
-      T.toolbar.bandChip.mid,
+      T.score.band.mid,
       filterLabel('contract-freelance'),
-      T.toolbar.remoteOnly,
+      T.toolbar.work.remote,
     ]);
     // A second choice takes a part off again, the menu stays.
     await openFilter(page);
-    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'remote-only').click();
-    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'mode-remote')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'mode-remote').click();
+    await expect(menuItem(page, 'mode-remote')).toHaveAttribute('aria-checked', 'false');
     await menuItem(page, 'band-mid').click();
     await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('menu')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(chip(page, 'remote')).toHaveCount(0);
-    await expect(chip(page, 'minBand')).toHaveCount(0);
+    await expect(chip(page, 'workMode')).toHaveCount(0);
+    await expect(chip(page, 'band')).toHaveCount(0);
   });
 
   test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
@@ -678,16 +683,22 @@ test.describe('filter', () => {
     const linkedin = await inbox(page, { portal: 'linkedin' });
     expect(linkedin.every((key) => key.startsWith('linkedin-'))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(linkedin);
-    expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', minBand: null });
+    expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', band: null });
     await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
       'background-color',
       await tokenColour(page, '--unread'),
     );
     await chooseFilter(page, 'band-mid');
-    await expect
-      .poll(() => listed(page))
-      .toEqual(await inbox(page, { portal: 'linkedin', minBand: 'mid' }));
-    // The band leaves the unscored and the excluded jobs out.
+    const mid = await inbox(page, { portal: 'linkedin', band: 'mid' });
+    expect(mid.length).toBeGreaterThan(0);
+    await expect.poll(() => listed(page)).toEqual(mid);
+    expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', band: 'mid' });
+    // Exactly that band: no job of another band, no unscored and no excluded job.
+    const bandOf = (key: string): string | null => {
+      const match = jobs.find((job) => keyOf(job) === key)?.match ?? null;
+      return match?.status === 'scored' ? match.band : null;
+    };
+    for (const key of mid) expect(bandOf(key)).toBe('mid');
     const unscored = jobs.filter((job) => job.match === null).map(keyOf);
     expect(unscored.length).toBeGreaterThan(0);
     for (const key of unscored) expect(await listed(page)).not.toContain(key);
@@ -696,8 +707,17 @@ test.describe('filter', () => {
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-linkedin', 'band-mid'),
     );
+    // Gering takes the band's place: only the low band.
+    await chooseFilter(page, 'band-low');
+    const low = await inbox(page, { portal: 'linkedin', band: 'low' });
+    expect(low.length).toBeGreaterThan(0);
+    await expect.poll(() => listed(page)).toEqual(low);
+    for (const key of low) expect(bandOf(key)).toBe('low');
+    await expect(chips(page).getByRole('button')).toHaveText(
+      chipWordsOf('portal-linkedin', 'band-low'),
+    );
     // A chip's × takes its part off; the last one hands the focus to the funnel.
-    await chip(page, 'minBand').click();
+    await chip(page, 'band').click();
     await expect.poll(() => listed(page)).toEqual(linkedin);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
     await chip(page, 'portal').click();
@@ -707,39 +727,36 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
-  test('the work mode, the pay floor and Nur neue narrow the list; each a chip', async ({
-    page,
-  }) => {
+  test('the work mode and Nur neue narrow the list; each a chip', async ({ page }) => {
     await open(page, WIN);
-    const form = (await page.evaluate(() => window.__harness.form()))!;
-    const { jobs } = await stubList(page);
-    // Remote or hybrid, then remote only takes its place in the same group.
-    await chooseFilter(page, 'remote-hybrid');
-    const away = await inbox(page, { remoteOrHybrid: true });
-    await expect.poll(() => listed(page)).toEqual(away);
-    expect(await lastQuery(page)).toMatchObject({ remoteOrHybrid: true, remoteOnly: false });
-    await chooseFilter(page, 'remote-only');
-    const remote = await inbox(page, { remoteOnly: true });
-    expect(remote.length).toBeLessThan(away.length);
-    await expect.poll(() => listed(page)).toEqual(remote);
-    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('remote-only'));
-    await chip(page, 'remote').click();
-    // The pay against the profile's floors: a job without a stated pay never passes.
-    await chooseFilter(page, 'pay-min');
-    const floors = { minDayRate: form.criteria.minDayRate, minSalary: form.criteria.minSalary };
-    expect(await lastQuery(page)).toMatchObject(floors);
-    const paid = await inbox(page, floors);
-    expect(paid.length).toBeGreaterThan(0);
-    await expect.poll(() => listed(page)).toEqual(paid);
-    const unpaid = jobs.filter((job) => (job.match?.facts.rate ?? null) === null).map(keyOf);
-    for (const key of unpaid) expect(paid).not.toContain(key);
-    await chooseFilter(page, 'pay-wish');
-    const wished = await inbox(page, { ...floors, minDayRate: form.wishes.dayRate });
-    expect(await lastQuery(page)).toMatchObject({ minDayRate: form.wishes.dayRate });
-    expect(wished.length).toBeLessThan(paid.length);
-    await expect.poll(() => listed(page)).toEqual(wished);
-    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('pay-wish'));
-    await chip(page, 'pay').click();
+    const { jobs, active: all } = await stubList(page);
+    const jobOf = (key: string): JobView => jobs.find((job) => keyOf(job) === key)!;
+    // Remote, Hybrid, Vor Ort: each takes the place of the one before in the same group and
+    // lists the jobs of its mode as the Jobdetails name it (the stated share first, the
+    // location without one).
+    const moded: string[] = [];
+    for (const mode of WORK_MODES) {
+      await chooseFilter(page, `mode-${mode}`);
+      const listedMode = await inbox(page, { workMode: mode });
+      expect(listedMode.length).toBeGreaterThan(0);
+      await expect.poll(() => listed(page)).toEqual(listedMode);
+      expect(await lastQuery(page)).toMatchObject({ workMode: mode });
+      await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf(`mode-${mode}`));
+      for (const key of listedMode) expect(workModeOf(jobOf(key))).toBe(mode);
+      moded.push(...listedMode);
+    }
+    // A share the ad states wins over a location that says nothing.
+    const stated = all.find((key) => {
+      const job = jobOf(key);
+      return job.workMode === null && (job.match?.facts.remoteFrom ?? null) !== null;
+    });
+    expect(stated).toBeDefined();
+    expect(moded).toContain(stated);
+    // A job whose mode is unknown passes none of the three.
+    const unknown = all.filter((key) => !moded.includes(key));
+    expect(unknown.length).toBeGreaterThan(0);
+    for (const key of unknown) expect(workModeOf(jobOf(key))).toBeNull();
+    await chip(page, 'workMode').click();
     // Nur neue: the jobs not opened yet, its counts too.
     await chooseFilter(page, 'unread-only');
     const fresh = await inbox(page, { unread: true });
@@ -748,27 +765,37 @@ test.describe('filter', () => {
     expect(await lastQuery(page)).toMatchObject({ unread: true });
     for (const key of fresh) expect(jobs.find((job) => keyOf(job) === key)?.unread).toBe(true);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
-    // Kept like the rest of the filter; the list never asks for a deadline.
+    // Kept like the rest of the filter; the list asks for no deadline and no pay.
     await open(page, WIN);
-    expect(await lastQuery(page)).toMatchObject({ unread: true, deadlineSoon: false });
+    const kept = await lastQuery(page);
+    expect(kept).toMatchObject({ unread: true, band: null, workMode: null });
+    for (const gone of ['deadlineSoon', 'minDayRate', 'minSalary', 'minBand', 'remoteOnly']) {
+      expect(kept).not.toHaveProperty(gone);
+    }
   });
 
-  test('a pay floor is offered only while the profile names it', async ({ page }) => {
+  test('a filter kept by an earlier version: its lowest band, work mode and pay floor are none', async ({
+    page,
+  }) => {
     await page.addInitScript(() =>
-      localStorage.setItem('jobs-filter', JSON.stringify({ pay: 'min', remote: true })),
+      localStorage.setItem(
+        'jobs-filter',
+        JSON.stringify({ portal: 'linkedin', minBand: 'mid', remote: 'remote', pay: 'min' }),
+      ),
     );
-    await open(page, `${WIN}&scenario=no-minimum`);
-    // The kept floor the profile no longer names is none; a kept "Nur remote" of an earlier
-    // version is the remote choice of the work mode.
+    await open(page, WIN);
     expect(await lastQuery(page)).toMatchObject({
-      minDayRate: null,
-      minSalary: null,
-      remoteOnly: true,
+      portal: 'linkedin',
+      band: null,
+      workMode: null,
+      contracts: [],
     });
-    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('remote-only'));
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { portal: 'linkedin' }));
     await openFilter(page);
-    await expect(menuItem(page, 'pay-min')).toHaveCount(0);
-    await expect(menuItem(page, 'pay-wish')).toHaveAttribute('aria-checked', 'false');
+    for (const id of ['band-mid', 'mode-remote']) {
+      await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
+    }
     await page.keyboard.press('Escape');
   });
 
@@ -830,19 +857,19 @@ test.describe('filter', () => {
     await chooseFilter(page, 'band-mid');
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { portal: 'freelancermap', minBand: 'mid' }));
+      .toEqual(await inbox(page, { portal: 'freelancermap', band: 'mid' }));
     // The app starts again: the same filter.
     await open(page, WIN);
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-freelancermap', 'band-mid'),
     );
-    expect(await lastQuery(page)).toMatchObject({ portal: 'freelancermap', minBand: 'mid' });
+    expect(await lastQuery(page)).toMatchObject({ portal: 'freelancermap', band: 'mid' });
     // The archive lists with it too.
     await openPlace(page, 'archive');
     expect(await lastQuery(page)).toMatchObject({
       place: 'archive',
       portal: 'freelancermap',
-      minBand: 'mid',
+      band: 'mid',
     });
     await expect(chips(page).getByRole('button')).toHaveCount(2);
     await openPlace(page, 'inbox');
@@ -856,11 +883,11 @@ test.describe('filter', () => {
 
   test('without a profile the bands and the match order are off and say why', async ({ page }) => {
     await page.addInitScript(() =>
-      localStorage.setItem('jobs-filter', JSON.stringify({ minBand: 'high' })),
+      localStorage.setItem('jobs-filter', JSON.stringify({ band: 'high' })),
     );
     await open(page, `${WIN}&scenario=no-profile`);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-    expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: null });
+    expect(await lastQuery(page)).toMatchObject({ sort: 'newest', band: null });
     await openFilter(page);
     // By date only: the order is off and says why.
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
@@ -869,7 +896,7 @@ test.describe('filter', () => {
     }
     await menuItem(page, 'sort-match').hover();
     await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.sortNoProfile);
-    for (const id of ['band-mid', 'band-high']) {
+    for (const id of ['band-high', 'band-mid', 'band-low']) {
       await expect(menuItem(page, id)).toHaveAttribute('aria-disabled', 'true');
     }
     await menuItem(page, 'band-high').hover();
@@ -880,14 +907,11 @@ test.describe('filter', () => {
     const kept = (): Promise<unknown> =>
       page.evaluate(() => JSON.parse(localStorage.getItem('jobs-filter') ?? 'null') as unknown);
     await menuItem(page, 'portal-freelance').click();
-    expect(await lastQuery(page)).toMatchObject({ portal: 'freelance', minBand: null });
+    expect(await lastQuery(page)).toMatchObject({ portal: 'freelance', band: null });
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
-    expect(await kept()).toEqual({ ...NO_FILTER, portal: 'freelance', minBand: 'high' });
-    // Without a profile there is no pay floor: the menu offers none.
-    await expect(menuItem(page, 'pay-min')).toHaveCount(0);
-    await expect(menuItem(page, 'pay-wish')).toHaveCount(0);
+    expect(await kept()).toEqual({ ...NO_FILTER, portal: 'freelance', band: 'high' });
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
   });
 
@@ -896,7 +920,7 @@ test.describe('filter', () => {
     // A portal whose inbox has no job of the high band.
     let empty: string | null = null;
     for (const portal of ['freelance', 'freelancermap', 'linkedin'] as const) {
-      const { active, excluded: out } = await stubList(page, { portal, minBand: 'high' });
+      const { active, excluded: out } = await stubList(page, { portal, band: 'high' });
       if (active.length + out.length === 0) empty = `portal-${portal}`;
     }
     expect(empty).not.toBeNull();
@@ -916,14 +940,14 @@ test.describe('filter', () => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
     await chooseFilter(page, 'band-high');
-    const high = await inbox(page, { minBand: 'high' });
+    const high = await inbox(page, { band: 'high' });
     expect(high).toContain('freelancermap-2801');
     await expect.poll(() => listed(page)).toEqual(high);
     await expect(page.getByTestId('reader-title')).toBeVisible();
     await expect(row(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
     await chooseFilter(page, 'portal-linkedin');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-    expect(await listed(page)).toEqual(await inbox(page, { minBand: 'high', portal: 'linkedin' }));
+    expect(await listed(page)).toEqual(await inbox(page, { band: 'high', portal: 'linkedin' }));
   });
 
   test('macOS: the same funnel, menu and chips', async ({ page }) => {

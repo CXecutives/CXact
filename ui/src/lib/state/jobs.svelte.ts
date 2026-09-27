@@ -25,8 +25,8 @@
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
 // - Each place is one list in the chosen order, the excluded jobs last. Every place has the
-//   same filter beside the search (the funnel, lib/state/filter.ts: one portal, a lowest
-//   band; kept like the order). It narrows the list and its counts like the search. The
+//   same filter beside the search (the funnel, lib/state/filter.ts: one portal, one band,
+//   one contract type, one work mode, the new jobs; kept like the order). It narrows the list and its counts like the search. The
 //   overview's counts never follow it.
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
@@ -49,13 +49,11 @@ import { tokenMs } from '../tokens';
 import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
 import {
-  applicable,
   isFiltered,
   NO_FILTER,
   parseFilter,
   passesFilter,
   toQuery,
-  type FilterContext,
   type ListFilter,
 } from './filter';
 import { keepOpen, keptOpen, type KeptOpen } from './openJob';
@@ -322,33 +320,18 @@ class JobsStore {
 
   /**
    * The filter actually used, the same in every place: without a profile no band (there is
-   * no match to filter by), only a portal the app knows and a pay floor the profile names.
-   * Sent with every query of the list.
+   * no match to filter by), only a portal the app knows. Sent with every query of the list.
    */
   get filter(): ListFilter {
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
-    return applicable(
-      {
-        ...chosen,
-        portal:
-          chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
-            ? chosen.portal
-            : null,
-        minBand: app.hasProfile ? chosen.minBand : null,
-      },
-      this.context,
-    );
-  }
-
-  /** What the pay floor of the filter compares a job with: the pay floors of a usable
-   *  profile. */
-  get context(): FilterContext {
-    const form = app.hasProfile ? (app.state?.profile?.form ?? null) : null;
     return {
-      minDayRate: form?.criteria.minDayRate ?? null,
-      wishDayRate: form?.wishes.dayRate ?? null,
-      minSalary: form?.criteria.minSalary ?? null,
+      ...chosen,
+      portal:
+        chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
+          ? chosen.portal
+          : null,
+      band: app.hasProfile ? chosen.band : null,
     };
   }
 
@@ -358,7 +341,7 @@ class JobsStore {
   }
 
   /** A job passes the filter (the backend's rule, store::filter_condition). */
-  readonly #passes = (job: JobView): boolean => passesFilter(job, this.filter, this.context);
+  readonly #passes = (job: JobView): boolean => passesFilter(job, this.filter);
 
   /** A job belongs to the list: its place and the filter (the backend's rule,
    *  store::job_page). */
@@ -603,7 +586,7 @@ class JobsStore {
       place: this.place,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
-      ...toQuery(filter, this.context),
+      ...toQuery(filter),
       limit,
       offset,
     };
@@ -689,7 +672,7 @@ class JobsStore {
           place: 'inbox',
           sort: 'newest',
           search: null,
-          ...toQuery(NO_FILTER, this.context),
+          ...toQuery(NO_FILTER),
           limit: 0,
           offset: 0,
         },

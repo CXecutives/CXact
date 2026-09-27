@@ -40,8 +40,8 @@ pub const MAX_PAGE: u32 = 500;
 
 // ---------------------------------------------------------------------- Jobs
 
-/// How the job is done, as far as the location field says.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+/// How the job is done, as far as the location field says (and the list's filter by it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum WorkMode {
@@ -818,17 +818,10 @@ pub enum JobSort {
     Rate,
 }
 
-/// How many days ahead the deadline filter looks (`deadline_soon`): today and the next 7.
-pub const DEADLINE_DAYS: i64 = 7;
-
 /// Which jobs the list shows: the jobs of one place, optionally only the unread ones.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "the switches of the list's filter, each on its own"
-)]
 pub struct JobQuery {
     pub place: Place,
     /// The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
@@ -841,64 +834,34 @@ pub struct JobQuery {
     /// search it narrows the list and all its counts.
     #[serde(default)]
     pub portal: Option<Portal>,
-    /// The filter: only jobs scored in this band or better (`mid` = mid and high, `high` =
-    /// high only); unscored and excluded jobs pass only with `null`.
+    /// The filter: only jobs scored in this band (`high`, `mid` or `low`); unscored and
+    /// excluded jobs pass only with `null`.
     #[serde(default)]
-    pub min_band: Option<Band>,
+    pub band: Option<Band>,
     /// The filter: only jobs of these contract types, as the engine read them
     /// (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
     /// those without a contract type too.
     #[serde(default)]
     pub contracts: Vec<String>,
-    /// The filter: only remote jobs, as the job details say it - the remote share the ad
-    /// states is 100 %, or, where it states none, the location names the work mode remote.
+    /// The filter: only jobs of this work mode, as the job details say it - the remote share
+    /// the ad states first (100 % remote, 0 % on site, anything between hybrid), the
+    /// location's work mode only where it states none; a job whose mode is unknown passes
+    /// none. `null` = every job.
     #[serde(default)]
-    pub remote_only: bool,
-    /// The filter: only remote or hybrid jobs - the highest remote share the ad states is
-    /// above 0 %, or, where it states none, the location names the work mode remote or hybrid.
-    #[serde(default)]
-    pub remote_or_hybrid: bool,
-    /// The filter: only jobs whose pay reaches the profile's floor - the day rate in euros
-    /// (an hourly rate times 8) at least `min_day_rate`, for employment (`permanent`,
-    /// `anue`) the annual salary at least `min_salary`. A job without a stated pay, or of a
-    /// kind whose floor is `null`, does not pass; both `null` = no pay filter.
-    #[serde(default)]
-    pub min_day_rate: Option<u32>,
-    #[serde(default)]
-    pub min_salary: Option<u32>,
-    /// The filter: only jobs whose application deadline (`KeyFacts.deadline`) is today or
-    /// within the next [`DEADLINE_DAYS`] days, local time.
-    #[serde(default)]
-    pub deadline_soon: bool,
+    pub work_mode: Option<WorkMode>,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The filter of the query now.
+    /// The filter of the query: portal, band, contract types and work mode.
     pub fn filter(&self) -> ListFilter {
-        self.filter_at(Timestamp::now())
-    }
-
-    /// The filter of the query at `now` (the deadline counts from its local day): portal,
-    /// band, contract types, work mode, pay and deadline.
-    pub fn filter_at(&self, now: Timestamp) -> ListFilter {
-        let today = crate::time::local_date(now);
         ListFilter {
             portal: self.portal,
-            min_band: self.min_band,
+            band: self.band,
             contracts: self.contracts.clone(),
-            remote_only: self.remote_only,
-            remote_or_hybrid: self.remote_or_hybrid,
-            min_day_rate: self.min_day_rate,
-            min_salary: self.min_salary,
-            deadline: self.deadline_soon.then(|| {
-                (
-                    today,
-                    today.saturating_add(jiff::Span::new().days(DEADLINE_DAYS)),
-                )
-            }),
+            work_mode: self.work_mode,
         }
     }
 }
@@ -2021,21 +1984,17 @@ mod tests {
             sort,
             search: None,
             portal: None,
-            min_band: None,
+            band: None,
             contracts: Vec::new(),
-            remote_only: false,
-            remote_or_hybrid: false,
-            min_day_rate: None,
-            min_salary: None,
-            deadline_soon: false,
+            work_mode: None,
             limit,
             offset,
         }
     }
 
     /// The filter narrows the list and every count like the search: one portal's jobs, or
-    /// only jobs scored in a band or better (unscored and excluded ones only without it). A
-    /// query without the fields reads as none.
+    /// only the jobs scored in one band (unscored and excluded ones only without it). A query
+    /// without the fields, or with the fields of an earlier version, reads as none.
     #[test]
     fn the_filter_narrows_list_and_counts() {
         let store = four_jobs();
@@ -2053,15 +2012,15 @@ mod tests {
             .unwrap();
         store
             .save_matches(
-                &[(other, record(MatchStatus::Scored, 45))],
+                &[(other, record(MatchStatus::Scored, 25))],
                 "r",
                 Timestamp::now(),
             )
             .unwrap();
-        let page = |portal, min_band| {
+        let page = |portal, band| {
             let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
             q.portal = portal;
-            q.min_band = min_band;
+            q.band = band;
             job_page(&store, &q).unwrap()
         };
         let all = page(None, None);
@@ -2075,48 +2034,61 @@ mod tests {
             (map.counts.inbox, map.counts.unread, map.counts.excluded),
             (1, 1, 0)
         );
-        // A: 50, B: 85, C: excluded 95, D: unscored, E: 45.
+        // A: 50, B: 85, C: excluded 95, D: unscored, E: 25. Each band only its own scores.
         let mid = page(None, Some(Band::Mid));
-        assert_eq!(titles(&mid), ["B", "A", "E"], "no unscored, no excluded");
-        assert_eq!((mid.counts.inbox, mid.counts.excluded), (3, 0));
+        assert_eq!(
+            titles(&mid),
+            ["A"],
+            "no unscored, no excluded, no other band"
+        );
+        assert_eq!((mid.counts.inbox, mid.counts.excluded), (1, 0));
         let high = page(None, Some(Band::High));
         assert_eq!(titles(&high), ["B"]);
         assert_eq!(high.counts.high, 1);
-        assert_eq!(titles(&page(None, Some(Band::Low))), ["B", "A", "E"]);
+        assert_eq!(titles(&page(None, Some(Band::Low))), ["E"]);
         assert_eq!(
             titles(&page(Some(Portal::LinkedIn), Some(Band::Mid))),
-            ["B", "A"]
+            ["A"]
         );
+        assert!(titles(&page(Some(Portal::LinkedIn), Some(Band::Low))).is_empty());
         // The fields may be missing (an older page): no filter.
         let json = r#"{"place":"inbox","unread":false,"sort":"match",
                        "search":null,"limit":10,"offset":0}"#;
         let old: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(old.filter(), ListFilter::default());
-        let json = r#"{"place":"inbox","unread":false,"sort":"match",
-                       "search":null,"portal":"freelance","minBand":"high","limit":10,"offset":0}"#;
+        // The fields of an earlier version filter nothing.
+        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
+                       "minBand":"mid","remoteOnly":true,"remoteOrHybrid":true,
+                       "minDayRate":900,"minSalary":90000,"deadlineSoon":true,
+                       "limit":10,"offset":0}"#;
+        let old: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(old.filter(), ListFilter::default());
+        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
+                       "portal":"freelance","band":"low","contracts":["interim","anue"],
+                       "workMode":"onsite","limit":10,"offset":0}"#;
         let new: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(
-            (new.portal, new.min_band),
-            (Some(Portal::FreelanceDe), Some(Band::High))
+            new.filter(),
+            ListFilter {
+                portal: Some(Portal::FreelanceDe),
+                band: Some(Band::Low),
+                contracts: vec!["interim".into(), "anue".into()],
+                work_mode: Some(WorkMode::Onsite),
+            }
         );
-        assert!(new.contracts.is_empty() && !new.remote_only);
-        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
-                       "contracts":["interim","anue"],"remoteOnly":true,"limit":10,"offset":0}"#;
-        let new: JobQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(new.filter().contracts, ["interim", "anue"]);
-        assert!(new.filter().remote_only);
     }
 
-    /// The contract and the remote filter narrow the list and every count like the others:
+    /// The contract types and the work mode narrow the list and every count like the others:
     /// contract types as the engine read them (a job without one passes only without the
-    /// filter); remote as the job details say it - the share the ad states first, else the
-    /// work mode of the location, read in SQL exactly as `work_mode` reads it.
+    /// filter); the work mode as the job details say it - the share the ad states first (100 %
+    /// remote, 0 % on site, anything between hybrid), else the work mode of the location,
+    /// read in SQL exactly as `work_mode` reads it. A job of no known mode passes none.
     #[test]
-    fn contract_types_and_remote_narrow_list_and_counts() {
+    fn contract_types_and_work_mode_narrow_list_and_counts() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         // Title, location, contract type, remote share; `None` in the last two: no key fact.
-        let jobs: [(&str, &str, Option<&str>, Option<u8>); 11] = [
+        let jobs: [(&str, &str, Option<&str>, Option<u8>); 13] = [
             ("A", "Berlin (Remote)", Some("interim"), None),
             ("B", "Köln", Some("freelance"), Some(100)),
             ("C", "Remote", Some("permanent"), Some(60)),
@@ -2128,6 +2100,8 @@ mod tests {
             ("I", "home office, Frankfurt", Some("anue"), None),
             ("J", "REMOTE_ONLY", None, None),
             ("K", "", None, None),
+            ("L", "ON-SITE Stuttgart", None, None),
+            ("M", "Berlin (Remote)", None, Some(0)),
         ];
         let mut matches = Vec::new();
         let mut keys = Vec::new();
@@ -2152,15 +2126,15 @@ mod tests {
                 let mut m = record(MatchStatus::Scored, 50);
                 m.facts.contract = contract.map(str::to_owned);
                 m.facts.remote_from = *share;
-                m.facts.remote_to = share.map(|_| 100);
+                m.facts.remote_to = *share;
                 matches.push((link.key, m));
             }
         }
         store.save_matches(&matches, "r", Timestamp::now()).unwrap();
-        let page = |contracts: &[&str], remote_only| {
+        let page = |contracts: &[&str], mode| {
             let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
             q.contracts = contracts.iter().map(|c| (*c).to_owned()).collect();
-            q.remote_only = remote_only;
+            q.work_mode = mode;
             let page = job_page(&store, &q).unwrap();
             assert_eq!(
                 page.counts.inbox as usize,
@@ -2171,68 +2145,69 @@ mod tests {
             titles.sort();
             titles
         };
-        assert_eq!(page(&[], false).len(), jobs.len());
-        assert_eq!(page(&["interim", "anue"], false), ["A", "D", "G", "H", "I"]);
-        assert_eq!(page(&["freelance"], false), ["B"]);
-        let remote = page(&[], true);
+        assert_eq!(page(&[], None).len(), jobs.len());
+        assert_eq!(page(&["interim", "anue"], None), ["A", "D", "G", "H", "I"]);
+        assert_eq!(page(&["freelance"], None), ["B"]);
+        let remote = page(&[], Some(WorkMode::Remote));
         assert_eq!(remote, ["A", "B", "E", "I"]);
+        let hybrid = page(&[], Some(WorkMode::Hybrid));
+        assert_eq!(hybrid, ["C", "D", "F"]);
+        let onsite = page(&[], Some(WorkMode::Onsite));
+        assert_eq!(onsite, ["H", "L", "M"], "the share before the location");
         // The same as the job details: the share first, else the stored location's work mode.
-        let expected: Vec<&str> = jobs
-            .iter()
-            .zip(&keys)
-            .filter(|((.., share), key)| {
-                let location = store.job(key).unwrap().unwrap().location;
-                share.map_or(work_mode(&location) == Some(WorkMode::Remote), |from| {
-                    from >= 100
+        let of_share = |share: u8| match share {
+            100.. => WorkMode::Remote,
+            0 => WorkMode::Onsite,
+            _ => WorkMode::Hybrid,
+        };
+        for (mode, listed) in [
+            (WorkMode::Remote, &remote),
+            (WorkMode::Hybrid, &hybrid),
+            (WorkMode::Onsite, &onsite),
+        ] {
+            let expected: Vec<&str> = jobs
+                .iter()
+                .zip(&keys)
+                .filter(|((.., share), key)| {
+                    let location = store.job(key).unwrap().unwrap().location;
+                    share.map_or(work_mode(&location), |share| Some(of_share(share))) == Some(mode)
                 })
-            })
-            .map(|((title, ..), _)| *title)
-            .collect();
-        assert_eq!(remote, expected);
-        assert_eq!(page(&["interim"], true), ["A"]);
+                .map(|((title, ..), _)| *title)
+                .collect();
+            assert_eq!(listed, &expected);
+        }
+        // A job whose mode is unknown passes none of the three.
+        let known: Vec<&String> = remote.iter().chain(&hybrid).chain(&onsite).collect();
+        assert_eq!(known.len(), jobs.len() - 3);
+        for unknown in ["G", "J", "K"] {
+            assert!(!known.iter().any(|title| *title == unknown), "{unknown}");
+        }
+        assert_eq!(page(&["interim"], Some(WorkMode::Remote)), ["A"]);
+        assert_eq!(page(&["interim"], Some(WorkMode::Onsite)), ["H"]);
     }
 
-    /// The work mode, the pay and the deadline narrow the list and every count like the rest
-    /// of the filter, and the list orders by day rate. Remote or hybrid as the job details
-    /// say it (any remote share the ad states, else a remote or hybrid location); the pay
-    /// against the floor of its kind (a day rate in euros, an hourly one times 8, a salary for
-    /// employment; no pay, another currency or no floor never passes); the deadline from
-    /// today to 7 days on. By rate the highest first, equal ones by date, the rest last.
+    /// A range of remote shares is a work mode like one share (from 100 % remote, to 0 % on
+    /// site, else hybrid), and the list orders by day rate: the highest first (in euros, an
+    /// hourly one times 8), equal ones by date, the rest last; the unread filter narrows it
+    /// and its counts like the rest of the filter.
     #[test]
-    #[expect(
-        clippy::too_many_lines,
-        reason = "every new part of the filter on one set of jobs"
-    )]
-    fn work_mode_pay_and_deadline_narrow_list_and_counts() {
+    fn work_mode_ranges_the_rate_order_and_unread() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
-        let today = crate::time::local_date(Timestamp::now());
-        let day = |days: i64| {
-            Some(
-                today
-                    .saturating_add(jiff::Span::new().days(days))
-                    .to_string(),
-            )
-        };
-        let facts = |contract: &str, rate: Option<u32>, deadline: Option<String>| KeyFacts {
+        let facts = |contract: &str, rate: Option<u32>| KeyFacts {
             contract: Some(contract.to_owned()),
             rate,
-            deadline,
             ..KeyFacts::default()
         };
         // Title, location and the key facts; `None`: the job is not scored.
         let jobs: [(&str, &str, Option<KeyFacts>); 8] = [
-            (
-                "A",
-                "Berlin (Remote)",
-                Some(facts("freelance", Some(1200), day(0))),
-            ),
+            ("A", "Berlin (Remote)", Some(facts("freelance", Some(1200)))),
             (
                 "B",
                 "Köln (Hybrid)",
                 Some(KeyFacts {
                     hourly: Some(true),
-                    ..facts("interim", Some(150), day(DEADLINE_DAYS))
+                    ..facts("interim", Some(150))
                 }),
             ),
             (
@@ -2241,33 +2216,35 @@ mod tests {
                 Some(KeyFacts {
                     remote_from: Some(0),
                     remote_to: Some(40),
-                    ..facts("freelance", Some(1000), day(DEADLINE_DAYS + 1))
+                    ..facts("freelance", Some(1000))
                 }),
             ),
             (
                 "D",
-                "Vor Ort",
+                "Remote",
                 Some(KeyFacts {
                     remote_from: Some(0),
                     remote_to: Some(0),
                     currency: Some("CHF".into()),
-                    ..facts("freelance", Some(1300), day(-1))
+                    ..facts("freelance", Some(1300))
                 }),
             ),
             (
                 "E",
-                "Hamburg",
+                "Vor Ort",
                 Some(KeyFacts {
                     salary: Some(95_000),
-                    ..facts("permanent", Some(2000), None)
+                    remote_from: Some(100),
+                    remote_to: Some(100),
+                    ..facts("permanent", Some(2000))
                 }),
             ),
-            ("F", "Remote", Some(facts("anue", None, None))),
+            ("F", "Remote", Some(facts("anue", None))),
             ("G", "", Some(KeyFacts::default())),
             ("H", "Hybrid", None),
         ];
-        let mut matches = Vec::new();
         let mut keys = Vec::new();
+        let mut matches = Vec::new();
         for (i, (title, location, facts)) in jobs.iter().enumerate() {
             let link = job_link(&format!(
                 "https://www.freelancermap.de/nproj/{}.html",
@@ -2290,36 +2267,23 @@ mod tests {
             }
         }
         store.save_matches(&matches, "r", Timestamp::now()).unwrap();
-        let page = |change: &dyn Fn(&mut JobQuery)| {
+        let page = |mode| {
             let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
-            change(&mut q);
+            q.work_mode = Some(mode);
             let page = job_page(&store, &q).unwrap();
             assert_eq!(
                 page.counts.inbox as usize,
                 page.jobs.len(),
                 "the counts follow"
             );
-            let mut titles: Vec<String> = page.jobs.iter().map(|j| j.title.clone()).collect();
+            let mut titles: Vec<String> = page.jobs.into_iter().map(|j| j.title).collect();
             titles.sort();
             titles
         };
-        assert_eq!(page(&|_| {}).len(), jobs.len());
-        assert_eq!(
-            page(&|q| q.remote_or_hybrid = true),
-            ["A", "B", "C", "F", "H"]
-        );
-        assert_eq!(page(&|q| q.remote_only = true), ["A", "F"]);
-        assert_eq!(page(&|q| q.min_day_rate = Some(1100)), ["A", "B"]);
-        assert_eq!(
-            page(&|q| {
-                q.min_day_rate = Some(1100);
-                q.min_salary = Some(90_000);
-            }),
-            ["A", "B", "E"]
-        );
-        assert_eq!(page(&|q| q.min_salary = Some(100_000)), [] as [&str; 0]);
-        assert!(page(&|q| q.min_day_rate = Some(1250)).is_empty());
-        assert_eq!(page(&|q| q.deadline_soon = true), ["A", "B"]);
+        // The stated share before the location: D is on site, E remote.
+        assert_eq!(page(WorkMode::Hybrid), ["B", "C", "H"]);
+        assert_eq!(page(WorkMode::Remote), ["A", "E", "F"]);
+        assert_eq!(page(WorkMode::Onsite), ["D"]);
         // By rate: the equal rates of A and B by date (B is newer), then C, then the rest by
         // date, the newest first.
         let mut q = query(Place::Inbox, false, JobSort::Rate, 50, 0);
@@ -2331,21 +2295,6 @@ mod tests {
         let unread = job_page(&store, &q).unwrap();
         assert_eq!(titles(&unread), ["B", "C", "H", "G", "F", "E", "D"]);
         assert_eq!((unread.counts.inbox, unread.counts.unread), (7, 7));
-        // The fields may be missing (an older page): no filter.
-        let json = r#"{"place":"inbox","unread":false,"sort":"rate","search":null,
-                       "remoteOrHybrid":true,"minDayRate":900,"minSalary":null,
-                       "deadlineSoon":true,"limit":10,"offset":0}"#;
-        let new: JobQuery = serde_json::from_str(json).unwrap();
-        assert_eq!(new.sort, JobSort::Rate);
-        let filter = new.filter_at(Timestamp::now());
-        assert!(filter.remote_or_hybrid && filter.min_salary.is_none());
-        assert_eq!(filter.min_day_rate, Some(900));
-        assert_eq!(
-            filter
-                .deadline
-                .map(|(from, to)| (from.to_string(), to.to_string())),
-            day(0).zip(day(DEADLINE_DAYS))
-        );
     }
 
     /// A page with every filter on takes moments at 2,000 jobs, not seconds.
@@ -2380,8 +2329,8 @@ mod tests {
         store.save_matches(&matches, "r", now).unwrap();
         let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
         q.contracts = vec!["interim".into()];
-        q.remote_only = true;
-        q.min_band = Some(Band::Mid);
+        q.work_mode = Some(WorkMode::Remote);
+        q.band = Some(Band::Mid);
         let started = std::time::Instant::now();
         let page = job_page(&store, &q).unwrap();
         let took = started.elapsed();
@@ -2584,13 +2533,9 @@ mod tests {
                     sort: JobSort::Match,
                     search: search.map(str::to_owned),
                     portal: None,
-                    min_band: None,
+                    band: None,
                     contracts: Vec::new(),
-                    remote_only: false,
-                    remote_or_hybrid: false,
-                    min_day_rate: None,
-                    min_salary: None,
-                    deadline_soon: false,
+                    work_mode: None,
                     limit: 0,
                     offset: 0,
                 },

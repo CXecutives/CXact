@@ -3,7 +3,6 @@
 
 use std::fmt::Write as _;
 
-use jiff::civil::Date;
 use jiff::{SignedDuration, Timestamp};
 use rusqlite::types::Value;
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
@@ -16,12 +15,13 @@ use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
 use crate::mail::MAIL_PARSER_VERSION;
 use crate::mail::extract::{has_gender_tag, looks_like_job_title};
 use crate::model::{
-    AlertMail, Band, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MatchRecord, Place,
-    Posting, is_usable_title,
+    AlertMail, Band, DescStatus, HIGH_FROM, MAX_FIELD_CHARS, MAX_TITLE_CHARS, MID_FROM,
+    MatchRecord, Place, Posting, is_usable_title,
 };
 use crate::portal::{Facts, JobKey, Portal};
 use crate::text::{one_line, page_location, split_company_location, truncate_chars};
 use crate::time::{from_db, to_db};
+use crate::view::WorkMode;
 
 /// Maximum length of a stored failure reason (in characters).
 const MAX_ERROR_CHARS: usize = 200;
@@ -92,55 +92,60 @@ impl JobRow {
     }
 }
 
-/// The list's filter (the funnel menu) beside the search: one portal, a lowest band, contract
-/// types, the work mode, the pay and the deadline. Like the search it narrows the list and
-/// all its counts.
+/// The list's filter (the funnel menu) beside the search: one portal, one band, contract
+/// types and one work mode. Like the search it narrows the list and all its counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
     /// Only this portal's jobs (`None` = every portal).
     pub portal: Option<Portal>,
-    /// Only jobs scored in this band or better (`Mid` = mid and high); unscored and excluded
+    /// Only jobs scored in this band (`model::band` of their score); unscored and excluded
     /// jobs pass only without it.
-    pub min_band: Option<Band>,
+    pub band: Option<Band>,
     /// Only jobs of these contract types (the codes of `KeyFacts.contract`); empty = every
     /// job, those without a contract type too.
     pub contracts: Vec<String>,
-    /// Only remote jobs: the remote share of the key facts is 100 %, or, where they state
-    /// none, the location names the work mode remote (`view::work_mode`).
-    pub remote_only: bool,
-    /// Only remote or hybrid jobs: the highest remote share of the key facts is above 0 %,
-    /// or, where they state none, the location names the work mode remote or hybrid.
-    pub remote_or_hybrid: bool,
-    /// Only jobs whose pay reaches a floor: the day rate in euros ([`day_rate`]) at least
-    /// `min_day_rate`, for employment the annual salary at least `min_salary`; a job without
-    /// a stated pay, or of a kind whose floor is `None`, does not pass. Both `None` = none.
-    pub min_day_rate: Option<u32>,
-    pub min_salary: Option<u32>,
-    /// Only jobs whose application deadline (`KeyFacts.deadline`) lies between these days,
-    /// both included (`None` = none).
-    pub deadline: Option<(Date, Date)>,
+    /// Only jobs of this work mode as the job details say it: the remote share of the key
+    /// facts first (all of it remote, none of it on site, anything between hybrid), the
+    /// location's work mode (`view::work_mode`) only where they state none. A job whose mode
+    /// is unknown passes none.
+    pub work_mode: Option<WorkMode>,
 }
 
 impl ListFilter {
     /// The values [`filter_condition`] binds, in the order of its placeholders.
     pub(super) fn values(&self) -> [Value; FILTER_VALUES] {
-        let int = |value: Option<i64>| value.map_or(Value::Null, Value::Integer);
+        let int = |value: Option<u8>| value.map_or(Value::Null, |v| Value::Integer(i64::from(v)));
         let text = |value: Option<String>| value.map_or(Value::Null, Value::Text);
         [
             text(self.portal.map(|portal| portal.key().to_owned())),
-            int(self.min_band.map(|band| i64::from(Band::lowest(band)))),
+            int(self.band.map(Band::lowest)),
+            int(self.band.and_then(above)),
             // The contract types as a JSON array.
             text(
                 (!self.contracts.is_empty())
                     .then(|| serde_json::to_string(&self.contracts).unwrap_or_default()),
             ),
-            Value::Integer(i64::from(self.remote_only)),
-            Value::Integer(i64::from(self.remote_or_hybrid)),
-            int(self.min_day_rate.map(i64::from)),
-            int(self.min_salary.map(i64::from)),
-            text(self.deadline.map(|(from, _)| from.to_string())),
-            text(self.deadline.map(|(_, to)| to.to_string())),
+            text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
         ]
+    }
+}
+
+/// The lowest score above a band (`None` for the high band): a band's scores lie between
+/// its [`Band::lowest`] and this one.
+const fn above(band: Band) -> Option<u8> {
+    match band {
+        Band::High => None,
+        Band::Mid => Some(HIGH_FROM),
+        Band::Low => Some(MID_FROM),
+    }
+}
+
+/// A work mode as [`filter_condition`] names it in SQL (constants of the code, never input).
+const fn mode_key(mode: WorkMode) -> &'static str {
+    match mode {
+        WorkMode::Remote => "remote",
+        WorkMode::Hybrid => "hybrid",
+        WorkMode::Onsite => "onsite",
     }
 }
 
@@ -217,66 +222,34 @@ fn per_portal_columns(new: &str) -> (String, String) {
 }
 
 /// How many values [`filter_condition`] binds ([`ListFilter::values`]).
-pub(super) const FILTER_VALUES: usize = 9;
+pub(super) const FILTER_VALUES: usize = 5;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
-/// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score, a
-/// JSON array of contract types, remote only, remote or hybrid, the day rate and the salary
-/// floor, the first and the last day of the deadline (each `NULL` for none). Contract type,
-/// remote share, pay and deadline come from the key facts in the match note, the work mode
-/// from the location.
+/// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score
+/// of the band and the lowest one above it, a JSON array of contract types and the work mode
+/// (each `NULL` for none). Contract type and remote share come from the key facts in the
+/// match note, the work mode without a share from the location.
 pub(super) fn filter_condition(first: usize) -> String {
-    let [
-        portal,
-        score,
-        contracts,
-        remote,
-        hybrid,
-        min_rate,
-        min_salary,
-        deadline_from,
-        deadline_to,
-    ] = std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
-    // The share the ad states first (remote only: all of it; hybrid: any of it).
-    let share = format!(
-        "COALESCE({}, {})",
-        fact("", "remoteFrom"),
-        fact("", "remoteTo")
-    );
-    let most = format!(
-        "COALESCE({}, {})",
-        fact("", "remoteTo"),
-        fact("", "remoteFrom")
-    );
+    let [portal, from, below, contracts, mode] =
+        std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
         "({portal} IS NULL OR portal = {portal})
-         AND ({score} IS NULL OR (match_status = 'scored' AND match_score >= {score}))
+         AND ({from} IS NULL OR (match_status = 'scored' AND match_score >= {from}
+                                 AND ({below} IS NULL OR match_score < {below})))
          AND ({contracts} IS NULL OR {contract}
                                      IN (SELECT value FROM json_each({contracts})))
-         AND (NOT {remote} OR CASE WHEN {share} IS NOT NULL THEN {share} >= 100
-                                   ELSE {location_remote} END)
-         AND (NOT {hybrid} OR CASE WHEN {most} IS NOT NULL THEN {most} > 0
-                                   ELSE {location_away} END)
-         AND (({min_rate} IS NULL AND {min_salary} IS NULL)
-              OR COALESCE(CASE WHEN COALESCE({contract}, '') IN {EMPLOYMENT}
-                               THEN {salary} >= {min_salary}
-                               ELSE {rate} >= {min_rate} END, 0))
-         AND ({deadline_from} IS NULL
-              OR {deadline} BETWEEN {deadline_from} AND {deadline_to})",
+         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))",
         contract = fact("", "contract"),
-        salary = fact("", "salary"),
-        deadline = fact("", "deadline"),
-        rate = day_rate(""),
-        location_remote = location_mode(false),
-        location_away = location_mode(true),
+        job_mode = job_mode(),
     )
 }
 
-/// SQL that is true where the location names the work mode remote, like `view::work_mode`:
-/// a remote word and neither a hybrid nor an on-site word, each a whole word in any case.
-/// `or_hybrid`: remote or hybrid - a remote or a hybrid word (remote and on-site together
-/// are hybrid).
-fn location_mode(or_hybrid: bool) -> String {
+/// SQL for the work mode of a job as the job details say it (`remote`, `hybrid`, `onsite`,
+/// `NULL` for unknown): the remote share the ad states first - all of it remote, none of it
+/// on site, anything between hybrid - else the location's, like `view::work_mode`: a hybrid
+/// word, or a remote and an on-site word together, hybrid; else a remote word remote, an
+/// on-site word on site. Each word whole, in any case.
+fn job_mode() -> String {
     use crate::view::{HYBRID_WORDS, ONSITE_WORDS, REMOTE_WORDS};
     // A word between two characters that are no word characters (the location padded with
     // spaces, so its start and end count too). The words are constants of the code.
@@ -289,14 +262,27 @@ fn location_mode(or_hybrid: bool) -> String {
             .collect();
         format!("({})", each.join(" OR "))
     };
-    if or_hybrid {
-        return format!("({} OR {})", any(&REMOTE_WORDS), any(&HYBRID_WORDS));
-    }
+    let (remote, hybrid, onsite) = (any(&REMOTE_WORDS), any(&HYBRID_WORDS), any(&ONSITE_WORDS));
+    // The share from and to (one of them stands for both where the ad states only one).
+    let from = format!(
+        "COALESCE({}, {})",
+        fact("", "remoteFrom"),
+        fact("", "remoteTo")
+    );
+    let to = format!(
+        "COALESCE({}, {})",
+        fact("", "remoteTo"),
+        fact("", "remoteFrom")
+    );
     format!(
-        "({} AND NOT {} AND NOT {})",
-        any(&REMOTE_WORDS),
-        any(&HYBRID_WORDS),
-        any(&ONSITE_WORDS)
+        "(CASE WHEN {from} IS NOT NULL THEN
+                   CASE WHEN {from} >= 100 THEN '{r}' WHEN {to} <= 0 THEN '{o}' ELSE '{h}' END
+               WHEN {hybrid} OR ({remote} AND {onsite}) THEN '{h}'
+               WHEN {remote} THEN '{r}'
+               WHEN {onsite} THEN '{o}' END)",
+        r = mode_key(WorkMode::Remote),
+        h = mode_key(WorkMode::Hybrid),
+        o = mode_key(WorkMode::Onsite),
     )
 }
 
