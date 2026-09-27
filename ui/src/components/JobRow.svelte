@@ -1,22 +1,25 @@
 <!--
   One job in the list, mail-style with fixed gutters: the unread dot (6 px, coral) centred
   in the pane padding on the axis of the ring (so a title never moves when the job is read),
-  the ring, then two lines (user decision 2026-09-27: the row says what and where, the
-  reader everything else):
+  the ring, then two lines (user decision 2026-09-27: the row says what, where and for how
+  much, the reader everything else):
   1. the title on one line (every row one height; a cut title shows in full in a tooltip; an
-     unread title is drawn heavier without getting wider, so reading a job never moves it),
-     right after it the portal's small tile ("in", "fd", "fm"; "+1" when another portal
-     announced the job too; its tooltip names the portals), and the relative date at the
-     end of the line (in the Papierkorb the day the job went there);
+     unread title is drawn heavier without getting wider, so reading a job never moves it)
+     and at the end of the line its stamp like a mail list (the time today, "Gestern",
+     "Vorgestern", then "Mi 23.09."; in the Papierkorb the day the job went there). An ad
+     that no longer takes applications says "Beendet" there, its title muted (the order by
+     match puts it after the open ones).
   2. a building and the company, a map pin and the place (without the work mode a portal
-     appends to it, lib/place.ts), cut at the line's end.
-  No facts, no badges: the reader has them. Under the pointer (and while the row's menu is
-  open) the row's tools, the moves of its place (actions.ts rowTools: Archivieren and
-  Löschen, Dearchivieren and Löschen, Wiederherstellen and Endgültig löschen), fade in as
-  icons over the date, which fades out: they stand in a fixed slot at the end of the title
-  line that is always as wide as they are, so nothing moves and the title keeps its room.
-  Each names itself in its tooltip; the ones that delete turn red under the pointer. They
-  are siblings of the row's button (a click on one never opens the job), out of the Tab
+     appends to it, lib/place.ts), and when the ad states it the euro and the day rate or
+     the salary in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"); the company and
+     the place are cut at the line's end, the pay never.
+  No portal, no facts, no badges: the reader has them. Under the pointer (and while the
+  row's menu is open) the row's tools, the moves of its place (actions.ts rowTools:
+  Archivieren and Löschen, Dearchivieren and Löschen, Wiederherstellen and Endgültig
+  löschen), fade in as icons over the date, which fades out: they stand in a fixed slot at
+  the end of the title line that is always as wide as they are, so nothing moves and the
+  title keeps its room. Each names itself in its tooltip; the ones that delete are red.
+  They are siblings of the row's button (a click on one never opens the job), out of the Tab
   order (the row's menu is there for the keyboard), and exist only while they show. After a
   tool took its row away, the row that slides under the pointer shows its tools only once
   the pointer moves (input.ts `hover`). The row's menu (a right click, the app's own) and a
@@ -24,12 +27,34 @@
   stays hollow on the open row (its track is never tinted); without a usable profile it is
   empty (a dash). An excluded job shows the ban in the ring's place, and the whole row is
   muted. When a job is read while its row is on screen the dot shrinks away; only the
-  inbox has dots, an excluded row none. Relative dates follow the page's clock (they move on
-  while the app stays open). Layout stays inside the row (containment); like the row, its
+  inbox has dots, an excluded row none. Stamps follow the page's clock (they move on while
+  the app stays open). Layout stays inside the row (containment); like the row, its
   hover rests while the list scrolls (`data-still`, see ListRow).
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
+
+  import { termIcon } from '$lib/facts';
+  import { t } from '$lib/i18n/t';
+  import type { JobView } from '$lib/ipc/types';
+
+  /** The pay the ad states, in the reader's money form ("1.250 €/Tag", "95.000 €/Jahr"):
+   *  employment (a permanent job, temporary agency work) its salary, any other job its day
+   *  or hour rate; null when the ad names none. */
+  function payOf(job: JobView): string | null {
+    const facts = job.match?.facts ?? null;
+    if (facts === null) return null;
+    if (facts.contract === 'permanent' || facts.contract === 'anue') {
+      return facts.salary === undefined
+        ? null
+        : t.facts.pay(facts.salary, 'year', null, facts.salaryLowerBound === true);
+    }
+    if (facts.rate === null) return null;
+    return t.facts.pay(facts.rate, facts.hourly === true ? 'hour' : 'day', facts.currency);
+  }
+
+  /** The icon of the pay: the euro, pay in another currency its banknote (lib/facts.ts). */
+  const payIcon = (job: JobView): IconName => termIcon('rate', job);
 
   /** A tool of the row under the pointer: a move of the job's place (actions.ts rowTools). */
   export interface RowTool {
@@ -37,7 +62,7 @@
     icon: IconName;
     /** Its name: the tooltip and the accessible name of the icon. */
     label: string;
-    /** It deletes (Löschen, Endgültig löschen): red under the pointer. */
+    /** It deletes (Löschen, Endgültig löschen): red. */
     deletes: boolean;
     disabled: boolean;
     /** Why a disabled tool waits (its tooltip). */
@@ -49,11 +74,8 @@
 <script lang="ts">
   import { contextMenu, doubleClick, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
-  import { t } from '$lib/i18n/t';
-  import { displayTitle, formatRelative } from '$lib/i18n/format';
-  import type { JobView } from '$lib/ipc/types';
+  import { displayTitle, formatStamp } from '$lib/i18n/format';
   import { dotOut, fade } from '$lib/motion/transitions';
-  import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
   import Button from './Button.svelte';
@@ -70,7 +92,7 @@
     pending?: boolean;
     /** A usable profile is there (without one the ring is an empty placeholder: no match). */
     ring?: boolean;
-    /** Fixed "now" for relative dates (gallery and tests). */
+    /** Fixed "now" for the stamp (gallery and tests). */
     now?: Date;
     /** A click on the row. */
     onselect?: ((job: JobView) => void) | null;
@@ -106,10 +128,11 @@
   const current = $derived(now ?? clock.now);
   const rowId = $derived(testid ?? `job-row-${job.key.portal}-${job.key.id}`);
   const heading = $derived(job.title ? displayTitle(job.title) : t.job.untitled);
-  /** The portals that announced this job, its own first. */
-  const portals = $derived([job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)]);
-  const portalNames = $derived(portals.map((portal) => t.portal[portal]).join(', '));
   const place = $derived(placeOf(job.location));
+  const pay = $derived(payOf(job));
+  /** The end of the title line: "Beendet" for an ad that takes no applications, else the
+   *  stamp. */
+  const stamp = $derived(job.closed ? t.job.closed : formatStamp(when, current));
 
   /** The pointer is on the row (after a tool took a row away: once it moved). */
   let here = $state(false);
@@ -172,15 +195,13 @@
     testid={rowId}
   >
     <span class="head">
-      <span class="title" class:unread={job.unread} use:tooltip={{ text: heading, truncated: true }}
-        >{heading}</span
+      <span
+        class="title"
+        class:unread={job.unread}
+        class:closed={job.closed}
+        use:tooltip={{ text: heading, truncated: true }}>{heading}</span
       >
-      <span class="portal" role="img" aria-label={portalNames} use:tooltip={portalNames}
-        >{PORTAL_MONOGRAM[job.portal]}{#if portals.length > 1}<span class="also"
-            >+{portals.length - 1}</span
-          >{/if}</span
-      >
-      <span class="date"><span class="stamp">{formatRelative(when, current, true)}</span></span>
+      <span class="date" data-testid="row-date"><span class="stamp">{stamp}</span></span>
     </span>
     <span class="meta">
       {#if job.company}<span class="part company" data-testid="row-company"
@@ -188,6 +209,9 @@
         >{/if}
       {#if place}<span class="part place" data-testid="row-place"
           ><Icon name="place" size="sm" /><span class="text">{place}</span></span
+        >{/if}
+      {#if pay}<span class="part pay" data-testid="row-pay"
+          ><Icon name={payIcon(job)} size="sm" /><span class="text">{pay}</span></span
         >{/if}
     </span>
   </ListRow>
@@ -249,7 +273,7 @@
     color: var(--text-subtle);
   }
 
-  /* The title line: the title, the portal's tile right after it, the date at the end. */
+  /* The title line: the title, the stamp at the end. */
   .head {
     display: flex;
     align-items: center;
@@ -276,28 +300,14 @@
     -webkit-text-stroke: calc(var(--border-width) * 0.4) currentcolor;
   }
 
-  /* The portal's small tile right after the title. */
-  .portal {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: var(--space-2);
-    height: var(--portal-tile);
-    padding: 0 var(--space-4);
-    border-radius: var(--radius-xs);
-    background-color: var(--surface-track);
+  /* An ad that takes no applications any more: its title steps back. */
+  .title.closed {
     color: var(--text-muted);
-    font: var(--type-2xs);
-    font-weight: var(--weight-semibold);
   }
 
-  .also {
-    color: var(--text-subtle);
-  }
-
-  /* The relative date at the end of the title line, in the tools' slot (as wide as the two
-     tools at least, so the title's room never changes); it steps up from subtle to muted on
-     hover and fades out while the tools show. */
+  /* The stamp at the end of the title line, in the tools' slot (as wide as the two tools at
+     least, so the title's room never changes); it steps up from subtle to muted on hover and
+     fades out while the tools show. */
   .date {
     flex: none;
     min-width: calc(2 * var(--control-sm) + var(--space-2) + var(--space-6));
@@ -347,6 +357,11 @@
 
   .part.company {
     flex-shrink: 2;
+  }
+
+  /* The pay is short and never cut. */
+  .part.pay {
+    flex: none;
   }
 
   .part :global(.icon) {

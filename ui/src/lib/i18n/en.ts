@@ -708,6 +708,7 @@ export const en: Catalog = {
     unread: 'New',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
+    closed: 'Closed',
   },
   toolbar: {
     fetch: 'Check mailbox',

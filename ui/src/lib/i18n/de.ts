@@ -743,6 +743,8 @@ export const de = {
     unread: 'Neu',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
+    /** An ad that takes no applications any more (the end of its row's first line). */
+    closed: 'Beendet',
   },
   toolbar: {
     fetch: 'Postfach abrufen',

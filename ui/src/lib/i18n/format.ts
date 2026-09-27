@@ -15,7 +15,6 @@ interface Formats {
   integer: Intl.NumberFormat;
   oneDecimal: Intl.NumberFormat;
   relative: Intl.RelativeTimeFormat;
-  relativeShort: Intl.RelativeTimeFormat;
   dayMonth: Intl.DateTimeFormat;
   weekday: Intl.DateTimeFormat;
   dayMonthYear: Intl.DateTimeFormat;
@@ -34,7 +33,6 @@ function formats(): Formats {
       integer: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
       oneDecimal: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
       relative: new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }),
-      relativeShort: new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' }),
       dayMonth: new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit' }),
       weekday: new Intl.DateTimeFormat(locale, { weekday: 'short' }),
       dayMonthYear: new Intl.DateTimeFormat(locale, {
@@ -72,31 +70,25 @@ function startOfDay(date: Date): number {
 }
 
 /**
- * `jetzt` · `vor 5 Minuten` · `vor 3 Stunden` · `gestern` · `vorgestern`, then `So 20.09.`
- * (with the year if it is not the current one); in English `now` · `5 minutes ago` ·
- * `yesterday` · `2 days ago`, then `Sun 20/09`. `short` abbreviates the units for dense
- * lines (`vor 3 Std.`, `3 hr ago`).
+ * The stamp of a list row, like a mail list: the time today (`14:05`), then `Gestern` and
+ * `Vorgestern` (`Yesterday`, `2 days ago`), then the weekday with the date (`Mi 23.09.`,
+ * `Wed 23/09`), with the year when it is not this one (`23.09.2025`).
  */
-export function formatRelative(iso: string, now: Date = new Date(), short = false): string {
+export function formatStamp(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
-  const time = date.getTime();
-  if (Number.isNaN(time)) return '';
-  const { relative, relativeShort, dayMonth, weekday, dayMonthYear } = formats();
-  const format = short ? relativeShort : relative;
-  // The clock steps once a minute: a moment after its last step is still "now".
-  const ahead = now.getTime() - time;
-  const diff = ahead < 0 && ahead > -MINUTE ? 0 : ahead;
+  if (Number.isNaN(date.getTime())) return '';
+  const { clock, relative, dayMonth, weekday, dayMonthYear } = formats();
   const days = Math.round((startOfDay(now) - startOfDay(date)) / DAY);
-  if (diff >= 0 && days === 0) {
-    if (diff < MINUTE) return format.format(0, 'second');
-    if (diff < HOUR) return format.format(-Math.floor(diff / MINUTE), 'minute');
-    return format.format(-Math.floor(diff / HOUR), 'hour');
-  }
-  if (days > 0 && days <= RELATIVE_DAYS) return format.format(-days, 'day');
-  // Older: the weekday with the date ("So 20.09.", "Sun 20/09"), so last week is found
-  // without counting.
+  if (days === 0) return clock.format(date);
+  if (days > 0 && days <= RELATIVE_DAYS) return capitalised(relative.format(-days, 'day'));
+  // Older: the weekday with the date, so last week is found without counting.
   if (date.getFullYear() !== now.getFullYear()) return dayMonthYear.format(date);
   return `${weekday.format(date).replace(/\.$/, '')} ${dayMonth.format(date)}`;
+}
+
+/** The text with its first letter in capitals (`gestern` becomes `Gestern`). */
+function capitalised(text: string): string {
+  return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
 }
 
 /** `14:05` */
@@ -150,8 +142,7 @@ export function formatDayTime(iso: string, now: Date = new Date()): string {
   if (Number.isNaN(date.getTime())) return '';
   const { clock, relative } = formats();
   const day = dayOf(date, now) ?? relative.format(0, 'day');
-  const text = `${day} ${clock.format(date)}`.replace(/ /g, NBSP);
-  return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
+  return capitalised(`${day} ${clock.format(date)}`.replace(/ /g, NBSP));
 }
 
 /** `18 KB`, `1,2 MB` (`1.2 MB`): the size of a backup. */

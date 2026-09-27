@@ -22,8 +22,9 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
   await open(page, WIN);
   const date = (key: string) =>
     page.getByTestId('job-rows').getByTestId(`job-row-${key}`).locator('.date');
-  // Two days back still reads as a word, earlier days by weekday and date.
-  await expect(date('freelance-900413')).toHaveText('vorgestern');
+  // Two days back still reads as a word (capitalised like the start of a line), earlier days
+  // by weekday and date.
+  await expect(date('freelance-900413')).toHaveText('Vorgestern');
   await expect(date('freelancermap-2805')).toHaveText('Mo 21.09.');
   await expect(date('freelancermap-2806')).toHaveText('So 20.09.');
 });
