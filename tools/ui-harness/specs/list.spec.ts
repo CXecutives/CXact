@@ -1,6 +1,6 @@
 // The list area of the Jobs view (the approved design of 2026-09-26): the tabs Eingang (with
 // its unopened jobs), Archiv, Papierkorb; one toolbar row (the search, the funnel, Abrufen);
-// the funnel's menu from the filter table and the line that names an active filter; one list
+// the funnel's menu (the order, then the filter table) and the chips of an active filter; one list
 // per place in the chosen order with the excluded jobs folded at its end; the empty states;
 // the search and its hits elsewhere; moves and their undo; the run line; the open row's bar;
 // the sidebar; the smallest window.
@@ -22,6 +22,7 @@ import {
   visibleCount,
 } from './fixtures';
 import {
+  checkedSort,
   chip,
   chips,
   chipWordsOf,
@@ -48,6 +49,8 @@ import {
   rowMenu,
   rows,
   settleMoves,
+  SORTS,
+  sortEntryId,
   stubList,
   T,
   tabCount,
@@ -110,7 +113,7 @@ test.describe('header', () => {
     await expect.poll(() => tabCount(page, 'inbox')).toBe(after);
   });
 
-  test('one header in the three places: the tabs with the action, the search, order, funnel', async ({
+  test('one header in the three places: the tabs with the action, the search and the funnel', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -119,20 +122,18 @@ test.describe('header', () => {
     const tabs = await middleOf(page, 'places');
     expect(Math.abs((await middleOf(page, 'fetch')) - tabs)).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
-    // The toolbar row: search, order, funnel on one line, left to right.
+    // The toolbar row: the search and the funnel on one line, left to right; no sort button
+    // beside them (the order is the funnel's first group).
     const line = await middleOf(page, 'search');
-    for (const id of ['sort', 'filter']) {
-      expect(Math.abs((await middleOf(page, id)) - line), id).toBeLessThanOrEqual(1);
-    }
-    expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'sort'));
-    expect(await rightOf(page, 'sort')).toBeLessThan(await rightOf(page, 'filter'));
-    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.match);
+    expect(Math.abs((await middleOf(page, 'filter')) - line)).toBeLessThanOrEqual(1);
+    expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
+    await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
     const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.archive);
-    for (const id of ['sort', 'filter']) await expect(page.getByTestId(id)).toBeVisible();
+    await expect(funnel(page)).toBeVisible();
     await expect(page.getByTestId('place-action')).toHaveCount(0);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // Papierkorb: "Papierkorb leeren", red, in the action's place.
@@ -209,7 +210,7 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
     await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
-    for (const id of ['search', 'sort', 'filter', 'place-action']) {
+    for (const id of ['search', 'filter', 'place-action']) {
       await expect(page.getByTestId(id), id).toHaveCount(0);
     }
     // The list says it: the reader beside it adds no second empty state.
@@ -226,14 +227,13 @@ test.describe('header', () => {
     await expect(error).toContainText(T.list.loadFailed);
     await expect(error.getByRole('button', { name: T.common.retry })).toBeVisible();
     await expect(funnel(page)).toHaveCount(0);
-    await expect(page.getByTestId('sort')).toHaveCount(0);
   });
 });
 
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('the menu is the table: small headings, its entries, none chosen at first', async ({
+  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Arbeitsort, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -241,17 +241,34 @@ test.describe('filter', () => {
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'true');
     await expect(menu).toHaveAttribute('aria-label', T.toolbar.filter);
     const table = filterMenu();
+    await expect(menu.getByTestId('menu-heading')).toHaveText([
+      T.toolbar.sortHeading,
+      T.toolbar.portalHeading,
+      T.toolbar.bandHeading,
+      T.toolbar.contractHeading,
+      T.toolbar.workHeading,
+    ]);
     await expect(menu.getByTestId('menu-heading')).toHaveText(table.map((group) => group.heading));
     await expect(menu.locator('[role^="menuitem"]')).toHaveText(
       table.flatMap((group) => group.entries),
     );
     await expect(menu.getByRole('separator')).toHaveCount(table.length - 1);
-    for (const id of ['portal-all', 'band-any']) {
+    // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
+    const portals = await menu
+      .locator('[data-testid^="menu-item-portal-"]')
+      .evaluateAll((all) => all.map((item) => item.getAttribute('data-testid')));
+    expect(portals).toEqual([
+      'menu-item-portal-all',
+      'menu-item-portal-freelance',
+      'menu-item-portal-linkedin',
+      'menu-item-portal-freelancermap',
+    ]);
+    await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
+    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any', 'remote-any']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
     }
-    // The order is no part of the filter: it has its own button.
-    await expect(menuItem(page, 'match')).toHaveCount(0);
+    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
     await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
@@ -259,23 +276,116 @@ test.describe('filter', () => {
     await expect(chips(page)).toHaveCount(0);
   });
 
-  test('the order is a button of its own in every place, kept for every list', async ({ page }) => {
+  test('the menu stays open while choosing: two picks, the checks move; Esc, outside, funnel close', async ({
+    page,
+  }) => {
     await open(page, WIN);
-    const sort = page.getByTestId('sort');
-    await sort.click();
-    const menu = page.getByTestId('menu');
-    await expect(menu).toHaveAttribute('aria-label', T.toolbar.sortMenu);
-    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
-      T.toolbar.sortLabel.match,
-      T.toolbar.sortLabel.newest,
-    ]);
-    await expect(menuItem(page, 'match')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'newest').click();
-    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
+    const menu = await openFilter(page);
+    await menuItem(page, 'sort-newest').click();
+    await expect(menu).toBeVisible();
+    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'false');
+    await menuItem(page, 'portal-linkedin').click();
+    await expect(menu).toBeVisible();
+    await expect(menuItem(page, 'portal-linkedin')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'portal-all')).toHaveAttribute('aria-checked', 'false');
+    // Both apply at once, the list follows while the menu is open.
+    await expect
+      .poll(() => listed(page))
+      .toEqual(await inbox(page, { sort: 'newest', portal: 'linkedin' }));
+    // The way back appears at the end once a filter is on.
+    const items = menu.locator('[role^="menuitem"]');
+    await expect(items.last()).toHaveText(T.toolbar.filterReset);
+    await menuItem(page, 'band-mid').click();
+    await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'true');
+    await expect(chips(page).getByRole('button')).toHaveText(
+      chipWordsOf('portal-linkedin', 'band-mid'),
+    );
+    // Esc closes it.
+    await page.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+    // A press outside closes it (and does nothing else).
+    await openFilter(page);
+    await page.getByTestId('search').click();
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await expect(page.getByTestId('search')).not.toBeFocused();
+    // The funnel closes it.
+    await openFilter(page);
+    await funnel(page).click();
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');
+    // Kept: the next start has the same order and filter.
+    await open(page, WIN);
+    expect(await lastQuery(page)).toMatchObject({
+      sort: 'newest',
+      portal: 'linkedin',
+      minBand: 'mid',
+    });
+  });
+
+  test('the order sets no dot and no chip; Filter zurücksetzen keeps it, then closes', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseSort(page, 'newest');
+    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
+    await expect(chips(page)).toHaveCount(0);
+    await openFilter(page);
+    await expect(menuItem(page, 'filter-reset')).toHaveCount(0);
+    await menuItem(page, 'contract-interim').click();
+    await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
+    await expect(menuItem(page, 'filter-reset')).toBeVisible();
+    await menuItem(page, 'filter-reset').click();
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await expect(chips(page)).toHaveCount(0);
+    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
+    expect(await checkedSort(page)).toBe('newest');
     await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'newest' }));
-    await openPlace(page, 'archive');
-    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
-    expect(await lastQuery(page)).toMatchObject({ place: 'archive', sort: 'newest' });
+  });
+
+  test('the same control in the Eingang, the Archiv and the Papierkorb, kept for every list', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await chooseSort(page, 'newest');
+    await chooseFilter(page, 'portal-freelancermap');
+    for (const place of ['inbox', 'archive', 'trash'] as const) {
+      await openPlace(page, place);
+      await expect(page.getByTestId('sort')).toHaveCount(0);
+      await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
+      await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-freelancermap'));
+      expect(await lastQuery(page)).toMatchObject({
+        place,
+        sort: 'newest',
+        portal: 'freelancermap',
+      });
+      const menu = await openFilter(page);
+      await expect(menu.getByTestId('menu-heading')).toHaveText(
+        filterMenu().map((group) => group.heading),
+      );
+      await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
+      await expect(menuItem(page, 'portal-freelancermap')).toHaveAttribute('aria-checked', 'true');
+      await page.keyboard.press('Escape');
+    }
+  });
+
+  test('the chips follow the menu: the groups in its order', async ({ page }) => {
+    await open(page, WIN);
+    const menu = await openFilter(page);
+    // Picked from the last group to the first: the chips still stand in the menu's order.
+    for (const id of ['remote-only', 'contract-freelance', 'band-mid', 'portal-freelance']) {
+      await menuItem(page, id).click();
+    }
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(chips(page).getByRole('button')).toHaveText([
+      T.portal.freelance,
+      filterLabel('band-mid'),
+      filterLabel('contract-freelance'),
+      filterLabel('remote-only'),
+    ]);
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
@@ -290,20 +400,26 @@ test.describe('filter', () => {
         const id = menu?.getAttribute('aria-activedescendant');
         return id ? (document.getElementById(id)?.dataset['testid'] ?? null) : null;
       });
-    // The last entry of the last group (lib/state/filter.ts).
+    // The first order, the last entry of the last group (lib/state/filter.ts).
+    const first = `menu-item-${sortEntryId(SORTS[0]!)}`;
     const last = `menu-item-${FILTER_GROUPS.at(-1)!.entries(PORTALS).at(-1)!.id}`;
-    await expect.poll(active).toBe('menu-item-portal-all');
+    await expect.poll(active).toBe(first);
     await page.keyboard.press('ArrowUp');
     await expect.poll(active).toBe(last);
     await page.keyboard.press('Home');
-    await expect.poll(active).toBe('menu-item-portal-all');
+    await expect.poll(active).toBe(first);
     await page.keyboard.press('End');
     await expect.poll(active).toBe(last);
     // A heading's word is no entry: typing it finds the entry that starts with it instead.
     await page.keyboard.type(filterLabel('portal-linkedin').slice(0, 4).toLowerCase());
     await expect.poll(active).toBe('menu-item-portal-linkedin');
+    // Enter chooses it and the menu stays for the next choice.
     await page.keyboard.press('Enter');
     await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-linkedin'));
+    await expect(menuItem(page, 'portal-linkedin')).toHaveAttribute('aria-checked', 'true');
+    await expect.poll(active).toBe('menu-item-portal-linkedin');
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('menu')).toHaveCount(0);
   });
 
   test('the portal and the band narrow the list; each stands as a chip with its ×', async ({
@@ -415,13 +531,14 @@ test.describe('filter', () => {
     await open(page, `${WIN}&scenario=no-profile`);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     expect(await lastQuery(page)).toMatchObject({ sort: 'newest', minBand: null });
-    const sort = page.getByTestId('sort');
-    await expect(sort).toHaveText(T.toolbar.sortLabel.newest);
-    await expect(sort).toHaveAttribute('aria-disabled', 'true');
-    await sort.hover();
-    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.sortNoProfile);
-    await page.mouse.move(0, 0);
     await openFilter(page);
+    // By date only: the order is off and says why.
+    await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
+    for (const id of ['sort-match', 'sort-newest']) {
+      await expect(menuItem(page, id)).toHaveAttribute('aria-disabled', 'true');
+    }
+    await menuItem(page, 'sort-match').hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.sortNoProfile);
     for (const id of ['band-any', 'band-mid', 'band-high']) {
       await expect(menuItem(page, id)).toHaveAttribute('aria-disabled', 'true');
     }
@@ -590,7 +707,7 @@ test.describe('one list', () => {
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await expect(row(page, 'freelancermap-2803')).toBeInViewport();
     await openPlace(page, 'archive');
-    await expect(page.getByTestId('sort')).toHaveText(T.toolbar.sortLabel.newest);
+    expect(await checkedSort(page)).toBe('newest');
     await open(page, WIN);
     expect(await lastQuery(page)).toMatchObject({ sort: 'newest' });
   });
@@ -1699,7 +1816,7 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await chooseFilter(page, 'portal-linkedin');
-  for (const id of ['search', 'sort', 'filter', 'fetch', 'chip-portal']) {
+  for (const id of ['search', 'filter', 'fetch', 'chip-portal']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(box.x + box.width, id).toBeLessThanOrEqual(480);
   }

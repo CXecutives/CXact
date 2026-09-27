@@ -13,7 +13,8 @@
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
 // the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Ergebnisordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Archiv (Dearchivieren: back into the Eingang), Papierkorb, Löschen (into the
-// Papierkorb; there Endgültig löschen and Wiederherstellen), App (the card of the app itself), Aufrufe (what a portal allows a day).
+// Papierkorb; there Endgültig löschen and Wiederherstellen), App (the card of the app
+// itself), Aufrufe (what a portal allows a day).
 // "Konditionen" only names the profile's section. A profile field has one name: the label of
 // its form field (without the unit) in errors, warnings and the profile.
 //
@@ -747,18 +748,18 @@ export const de = {
     fetch: 'Postfach abrufen',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
-    /** The menu of the sort button (its accessible name). */
-    sortMenu: 'Sortierung',
-    /** The order of the list in words (the sort button). */
+    /** The first group of the funnel's menu: the order of the list. */
+    sortHeading: 'Sortierung',
+    /** The order of the list in words (the funnel's menu). */
     sortLabel: {
       match: 'Nach Übereinstimmung',
       newest: 'Nach Datum',
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
-    /** The funnel (its tooltip and the name of its menu): the filter of the list
-     *  (lib/state/filter.ts), its groups under small headings; the chosen parts stand as
-     *  chips under the toolbar in the same words. */
+    /** The funnel (its tooltip and the name of its menu): the order and the filter of the
+     *  list (lib/state/filter.ts), its groups under small headings; the chosen parts of the
+     *  filter stand as chips under the toolbar in the same words. */
     filter: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',

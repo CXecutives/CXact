@@ -11,13 +11,12 @@
 // Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
 // file, CSV file, Result folder, Excluded, Score anyway, New, Inbox (the place of the active
 // jobs), Archive (Unarchive: back into the Inbox), Trash, Delete (into the Trash; there Delete
-// forever and Restore), App (the card
-// of the app itself), Calls (what a portal allows a day), Skill, Preference. "Conditions"
-// only names the profile's section. Plain British English: "email", never "mail" for one
-// message; "preferences", never "wishes"; "forever" for endgültig, never "for good"; two main
-// clauses are joined by a conjunction, never by a comma alone; an introductory phrase takes
-// its comma ("Without a profile, …"); apostrophes and quotes are typographic (’ “ ”), a named
-// control stands in quotes (“Load ad”).
+// forever and Restore), App (the card of the app itself), Calls (what a portal allows a day),
+// Skill, Preference. "Conditions" only names the profile's section. Plain British English:
+// "email", never "mail" for one message; "preferences", never "wishes"; "forever" for
+// endgültig, never "for good"; two main clauses are joined by a conjunction, never by a
+// comma alone; an introductory phrase takes its comma ("Without a profile, …"); apostrophes
+// and quotes are typographic (’ “ ”), a named control stands in quotes (“Load ad”).
 
 import type {
   Band,
@@ -714,7 +713,7 @@ export const en: Catalog = {
     fetch: 'Check mailbox',
     cancel: 'Cancel',
     progress: 'Progress of the fetch',
-    sortMenu: 'Sort',
+    sortHeading: 'Sort',
     sortLabel: {
       match: 'By match',
       newest: 'By date',

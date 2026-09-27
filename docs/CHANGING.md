@@ -141,7 +141,11 @@ menu names a key.
   in `ListFilter` (`toQuery` hands it to the `JobQuery`), its words in the catalog, and in the
   backend its field of `JobQuery` (`view.rs`) and its condition in `filter_condition`
   (`core/src/store/jobs.rs`), which narrows the list and its counts alike.
-- **The order**: `SORTS` in the same file (the sort button: by match, by date).
+- **The order**: `SORTS` in the same file, the first group of the same funnel menu
+  ("Sortierung": by match, by date). There is no sort button: the funnel is the one control of
+  the order and the filter, and its menu stays open while choosing (`stays` entries of
+  `lib/state/menu.svelte.ts`, which shows the entries anew after each choice). The order is no
+  part of the filter: it sets no dot and no chip, and "Filter zurücksetzen" keeps it.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
   on a row shows both groups (what shows the job: Öffnen, Alert-Mail öffnen, Anzeige öffnen,
   KI-Prompt kopieren; what changes it: Trotzdem bewerten or Wieder ausschließen, then the moves

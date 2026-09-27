@@ -707,3 +707,17 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   in `de.ts` and `en.ts` with unused texts removed; guiding rules as tests in `ui_contract.rs` (no "·", tooltips
   only where something is missing, the new glossary words); a view switch fades out, then in; the docs
 - [x] CI harness per browser (`HARNESS_ENGINES`, one job per engine)
+
+## List round 2026-09-27 (decisions of the user, binding)
+- Row tools again: under the pointer (and while its menu is open) a row shows the moves of its place as icons over
+  the date, from the one table of the menus (`rowTools`): Eingang Archivieren, Löschen; Archiv Dearchivieren, Löschen;
+  Papierkorb Wiederherstellen, Endgültig löschen. The label is the tooltip, the delete glyphs turn red, nothing
+  shifts; a row that slides under a resting pointer waits for it to move.
+- "Dearchivieren" replaces "Wiederherstellen" in the Archiv (row, menu, reader, toast "Dearchiviert").
+- One filter control: no sort button; the funnel menu holds Sortierung, Portal, Übereinstimmung, Vertragsart,
+  Arbeitsort (portals in the UI order), stays open while choosing, "Filter zurücksetzen" last while filtered; the dot
+  only for a filter.
+- The reader's "…" follows the job's place like the row; the company icon is `building-2`.
+- [x] Row tools, Dearchivieren, the company glyph
+- [x] One filter control
+- [ ] The reader's "…" per place

@@ -8,13 +8,16 @@
   as wide as the wider of the two, so nothing jumps when a run starts), in the Papierkorb
   "Papierkorb leeren" (red, asks first), in the Archiv none. On macOS this row is the list's
   part of the toolbar row next to the traffic lights, and its empty parts move the window.
-  Second row: the search, whose placeholder names what it searches (its × clears it), the
-  order (a button with its menu: Nach Übereinstimmung, Nach Datum) and the funnel (an icon
-  button, a coral dot while a filter is on), whose menu is the filter table
-  (lib/state/filter.ts): Portal, Übereinstimmung under small headings, and "Filter
-  zurücksetzen" while a filter is on. Without a usable profile the match order and the bands
-  are off, saying why. A place that holds nothing has nothing to search, order or filter:
-  the row stays, empty. While a filter is on, its parts stand as small chips under the row,
+  Second row: the search, whose placeholder names what it searches (its × clears it), and the
+  funnel (an icon button, a coral dot while a filter is on; the order sets none), the one
+  control of the order and the filter: its menu holds, under small headings, "Sortierung"
+  (Nach Übereinstimmung, Nach Datum), then the filter table (lib/state/filter.ts: Portal,
+  Übereinstimmung, Vertragsart, Arbeitsort; the portals in the UI's order, lib/portals.ts),
+  and "Filter zurücksetzen" at the end while a filter is on. The menu stays open while
+  choosing (several groups in one go, the check marks move with each choice) and closes on a
+  press outside, Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable profile
+  the order and the bands are off, saying why. A place that holds nothing has nothing to
+  search, order or filter: the row stays, empty. While a filter is on, its parts stand as small chips under the row,
   each with its × (the row unfolds and folds away, the list glides). Under them the run's
   one line (RunLine): its progress while a fetch goes, or what went wrong. The bottom hairline
   shows only once the list below is scrolled. Under the rows one sentence says when a job
@@ -25,7 +28,6 @@
   import { tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import MenuButton from '$components/MenuButton.svelte';
   import Notice from '$components/Notice.svelte';
   import Tabs from '$components/Tabs.svelte';
   import TextField from '$components/TextField.svelte';
@@ -34,11 +36,13 @@
   import { fade, unfold } from '$lib/motion/transitions';
   import { dragBands } from '$lib/platform';
   import { app } from '$lib/state/app.svelte';
+  import { inPortalOrder } from '$lib/portals';
   import {
     activeFilters,
     FILTER_GROUPS,
     NO_FILTER,
     SORTS,
+    sortEntryId,
     type ListFilter,
   } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
@@ -75,24 +79,24 @@
     if (jobs.place !== next) jobs.setPlace(next, true);
   }
 
-  /** The search, the order and the funnel: while the place holds jobs (or a search or a
-   *  filter is on, to be taken off); a list that did not load has nothing to order. */
+  /** The search and the funnel: while the place holds jobs (or a search or a filter is on,
+   *  to be taken off); a list that did not load has nothing to order. */
   const tools = $derived(
     jobs.status !== 'error' && (totals[place] > 0 || jobs.search.trim() !== '' || jobs.filtered),
   );
 
   let searchBox = $state<HTMLElement | null>(null);
 
-  const sorts = $derived(SORTS.map((sort) => ({ id: sort, label: t.toolbar.sortLabel[sort] })));
-
   /* ---------------------------------------------------------------------- filter */
 
-  /** The portals of the menu: the enabled ones in the app's order, and a chosen one switched
-   *  off since (so it can be seen and taken off). */
+  /** The portals of the menu: the enabled ones in the UI's order (lib/portals.ts), and a
+   *  chosen one switched off since (so it can be seen and taken off). */
   const portals = $derived(
-    (app.state?.portals ?? [])
-      .filter((line) => line.enabled || line.portal === jobs.filterChoice.portal)
-      .map((line) => line.portal),
+    inPortalOrder(
+      (app.state?.portals ?? []).filter(
+        (line) => line.enabled || line.portal === jobs.filterChoice.portal,
+      ),
+    ).map((line) => line.portal),
   );
   /** The chosen parts of the filter, one chip each. */
   const chips = $derived(activeFilters(jobs.filter, portals, t));
@@ -127,18 +131,28 @@
   }
 
   /**
-   * The funnel's menu below it, its right edge on the button's: the table's groups in their
-   * order, each under its heading, the chosen entry checked; while a filter is on, the way
-   * back. A second click on the open funnel closes it (the press outside does). Opened from
-   * the keyboard, its first entry is active at once (like the OS).
+   * The entries of the funnel's menu as the list stands now: "Sortierung" first (without a
+   * usable profile only by date, saying why), then the table's groups in their order, each
+   * under its heading, the chosen entry checked; every choice keeps the menu open. While a
+   * filter is on (the order does not count), the way back at the end.
    */
-  function openFunnel(event: MouseEvent): void {
-    if (funnelBox === null || menuState.open !== null) return;
+  function funnelEntries(): MenuEntry[] {
     const filter = jobs.filter;
-    const entries: MenuEntry[] = [];
+    const noProfile = app.hasProfile ? null : t.toolbar.sortNoProfile;
+    const entries: MenuEntry[] = [{ kind: 'heading', label: t.toolbar.sortHeading }];
+    for (const sort of SORTS) {
+      entries.push({
+        id: sortEntryId(sort),
+        label: t.toolbar.sortLabel[sort],
+        checked: jobs.sort === sort,
+        disabled: noProfile !== null,
+        reason: noProfile,
+        stays: true,
+        run: () => jobs.setSort(sort),
+      });
+    }
     for (const group of FILTER_GROUPS) {
-      if (entries.length > 0) entries.push({ kind: 'separator' });
-      entries.push({ kind: 'heading', label: group.heading(t) });
+      entries.push({ kind: 'separator' }, { kind: 'heading', label: group.heading(t) });
       const reason = app.hasProfile ? null : (group.needsProfile?.(t) ?? null);
       for (const entry of group.entries(portals)) {
         entries.push({
@@ -147,6 +161,7 @@
           checked: filter[group.key] === entry.value,
           disabled: reason !== null,
           reason,
+          stays: true,
           run: () => jobs.setFilter({ [group.key]: entry.value }),
         });
       }
@@ -157,11 +172,22 @@
         { id: 'filter-reset', label: t.toolbar.filterReset, run: () => jobs.setFilter(NO_FILTER) },
       );
     }
+    return entries;
+  }
+
+  /**
+   * The funnel's menu below it, its right edge on the button's. A second click on the open
+   * funnel closes it (the press outside does). Opened from the keyboard, its first entry is
+   * active at once (like the OS).
+   */
+  function openFunnel(event: MouseEvent): void {
+    if (funnelBox === null || menuState.open !== null) return;
     funnelOpen = true;
     openMenu({
       label: t.toolbar.filter,
       anchor: { kind: 'below', rect: funnelBox.getBoundingClientRect(), align: 'end' },
-      entries,
+      entries: funnelEntries(),
+      refresh: funnelEntries,
       fromKeyboard: event.detail === 0,
       onclose: () => (funnelOpen = false),
     });
@@ -269,18 +295,6 @@
           oninput={(value) => jobs.setSearch(value)}
         />
       </span>
-      <span class="order">
-        <MenuButton
-          options={sorts}
-          value={app.hasProfile ? jobs.sortChoice : 'newest'}
-          disabled={!app.hasProfile}
-          disabledReason={t.toolbar.sortNoProfile}
-          field
-          testid="sort"
-          menuLabel={t.toolbar.sortMenu}
-          onchange={(sort) => jobs.setSort(sort)}
-        />
-      </span>
       <span class="funnel" bind:this={funnelBox}>
         <Button
           variant="secondary"
@@ -374,7 +388,7 @@
   }
 
   /* One height whatever it holds (an empty place keeps the row, empty). A narrow column
-     puts the order and the funnel under the search. */
+     puts the funnel under the search. */
   .top {
     display: flex;
     flex-wrap: wrap;
@@ -391,7 +405,6 @@
     min-width: 0;
   }
 
-  .order,
   .funnel {
     display: inline-flex;
     flex: none;

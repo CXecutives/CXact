@@ -30,6 +30,9 @@ export interface MenuItem {
   reason?: string | null;
   /** Something that is lost for good (Endgültig löschen): red while hovered. */
   danger?: boolean;
+  /** A choice that keeps the menu open (the funnel's groups: several are set in one go, the
+   *  check marks move with each choice). */
+  stays?: boolean;
   run: () => void;
 }
 
@@ -47,6 +50,8 @@ export interface MenuSpec {
   fromKeyboard?: boolean;
   /** Called after the menu closed (the menu button's pressed look ends). */
   onclose?: () => void;
+  /** The entries anew after a choice that keeps the menu open (`stays`) ran. */
+  refresh?: () => readonly MenuEntry[];
 }
 
 interface MenuState {
@@ -85,10 +90,17 @@ export function closeMenu(restore = true): void {
   if (restore && open.returnFocus?.isConnected) open.returnFocus.focus({ preventScroll: true });
 }
 
-/** Run an entry (enabled only): the menu closes first, the focus goes back, then it runs. */
+/** Run an entry (enabled only): the menu closes first, the focus goes back, then it runs. A
+ *  choice that keeps the menu open runs in it, and the menu shows its entries anew. */
 export function chooseEntry(index: number): void {
-  const entry = menuState.open?.entries[index];
-  if (entry === undefined || !isItem(entry) || entry.disabled === true) return;
+  const open = menuState.open;
+  const entry = open?.entries[index];
+  if (open == null || entry === undefined || !isItem(entry) || entry.disabled === true) return;
+  if (entry.stays === true) {
+    entry.run();
+    if (menuState.open?.id === open.id && open.refresh) menuState.open.entries = open.refresh();
+    return;
+  }
   closeMenu();
   entry.run();
 }

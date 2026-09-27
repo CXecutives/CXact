@@ -4,7 +4,8 @@
 // group is one entry of FILTER_GROUPS (and its field in ListFilter, which `toQuery` hands to
 // the JobQuery), another word one in the catalog. The filter is the same in every
 // place (Eingang, Archiv, Papierkorb) and kept per user like the order. The order of the list
-// is a choice of its own (SORTS, the sort button).
+// (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
+// sets no dot and no chip, and "Filter zurücksetzen" leaves it.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
@@ -57,7 +58,7 @@ export interface FilterGroup<K extends keyof ListFilter = keyof ListFilter> {
   /** The small heading above the group in the menu. */
   heading: (words: Catalog) => string;
   /** The choices in the menu's order, none first; the portal group lists the portals it is
-   *  given (the app's order). */
+   *  given (the UI's order, lib/portals.ts). */
   entries(portals: readonly Portal[]): FilterEntry<K>[];
   /** Without a usable profile there is no match: the group is off and says why. */
   needsProfile: ((words: Catalog) => string) | null;
@@ -67,8 +68,11 @@ export interface FilterGroup<K extends keyof ListFilter = keyof ListFilter> {
   passes(job: JobView, value: NonNullable<ListFilter[K]>): boolean;
 }
 
-/** The orders of every list, in the sort button's order. */
+/** The orders of every list, the funnel menu's first group in its order. */
 export const SORTS: readonly JobSort[] = ['match', 'newest'];
+
+/** The id of an order in the funnel's menu (its test id `menu-item-sort-<order>`). */
+export const sortEntryId = (sort: JobSort): string => `sort-${sort}`;
 
 /** The bands each lowest band of the filter lets through. */
 const BAND_FROM: Record<FilterBand, Band[]> = { mid: ['mid', 'high'], high: ['high'] };

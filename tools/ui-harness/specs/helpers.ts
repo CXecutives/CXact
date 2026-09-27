@@ -6,24 +6,27 @@ import './runes';
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
 import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
-import type { JobCounts, JobQuery, JobView, Portal } from '../../../ui/src/lib/ipc/types';
+import type { JobCounts, JobQuery, JobSort, JobView, Portal } from '../../../ui/src/lib/ipc/types';
+import { PORTAL_ORDER } from '../../../ui/src/lib/portals';
 import {
   activeFilters,
   FILTER_GROUPS,
   type ListFilter,
   NO_FILTER,
+  SORTS,
+  sortEntryId,
 } from '../../../ui/src/lib/state/filter';
 import { animationsDone, calls, expect, settle } from './fixtures';
 
 /** The German catalog (the harness runs in de-DE). */
 export const T = de;
-export { FILTER_GROUPS };
+export { FILTER_GROUPS, SORTS, sortEntryId };
 
 export const WIN = '?platform=windows';
 export const MAC = '?platform=macos';
 
-/** The portals of the stub, in the app's order (the settings'). */
-export const PORTALS: readonly Portal[] = ['linkedin', 'freelance', 'freelancermap'];
+/** The portals of the stub in the UI's order (lib/portals.ts): the funnel's menu lists them so. */
+export const PORTALS: readonly Portal[] = PORTAL_ORDER;
 
 /* ---------------------------------------------------------------------- list */
 
@@ -132,19 +135,29 @@ export async function openFilter(page: Page): Promise<Locator> {
   return menu;
 }
 
-/** Pick an entry of the funnel's menu by its id (the table's); the menu closes. */
+/** Pick an entry of the funnel's menu by its id (the table's); the menu stays open for the
+ *  next choice, Esc closes it. */
 export async function chooseFilter(page: Page, id: string): Promise<void> {
   await openFilter(page);
   await menuItem(page, id).click();
+  await expect(page.getByTestId('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('menu')).toHaveCount(0);
 }
 
-/** The menu as the table says it: per group its heading and entries (the stub's portals). */
+/** The funnel's menu as the tables say it: per group its heading and entries, the order
+ *  ("Sortierung") first, then the filter's groups (the stub's portals). */
 export function filterMenu(): { heading: string; entries: string[] }[] {
-  return FILTER_GROUPS.map((group) => ({
-    heading: group.heading(T),
-    entries: group.entries(PORTALS).map((entry) => entry.label(T)),
-  }));
+  return [
+    {
+      heading: T.toolbar.sortHeading,
+      entries: SORTS.map((sort) => T.toolbar.sortLabel[sort]),
+    },
+    ...FILTER_GROUPS.map((group) => ({
+      heading: group.heading(T),
+      entries: group.entries(PORTALS).map((entry) => entry.label(T)),
+    })),
+  ];
 }
 
 /** The label of an entry of the table by its id. */
@@ -156,11 +169,27 @@ export function filterLabel(id: string): string {
   throw new Error(`no filter entry ${id}`);
 }
 
-/** Pick an order with the sort button ('match', 'newest'); the menu closes. */
-export async function chooseSort(page: Page, id: 'match' | 'newest'): Promise<void> {
-  await page.getByTestId('sort').click();
-  await menuItem(page, id).click();
+/** Pick an order in the funnel's menu ('match', 'newest'), then close it with Esc. */
+export async function chooseSort(page: Page, id: JobSort): Promise<void> {
+  await openFilter(page);
+  await menuItem(page, sortEntryId(id)).click();
+  await expect(menuItem(page, sortEntryId(id))).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
   await expect(page.getByTestId('menu')).toHaveCount(0);
+}
+
+/** The order the funnel's menu has checked ('match', 'newest'); the menu closes again. */
+export async function checkedSort(page: Page): Promise<JobSort | undefined> {
+  await openFilter(page);
+  const checked: JobSort[] = [];
+  for (const sort of SORTS) {
+    if ((await menuItem(page, sortEntryId(sort)).getAttribute('aria-checked')) === 'true') {
+      checked.push(sort);
+    }
+  }
+  await page.keyboard.press('Escape');
+  expect(checked).toHaveLength(1);
+  return checked[0];
 }
 
 /** The words of the chips once these entries are picked, in their order. */
