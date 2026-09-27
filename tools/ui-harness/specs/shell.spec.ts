@@ -610,7 +610,7 @@ for (const os of [WIN, MAC]) {
     const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
     const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
     const boxes = await Promise.all(ids.map(box));
-    for (const b of boxes) expect([b.width, b.height]).toEqual([40, 40]);
+    for (const b of boxes) expect([b.width, b.height]).toEqual([37, 37]);
     const centre = (b: { x: number; width: number }): number => b.x + b.width / 2;
     for (const b of boxes) expect(centre(b)).toBe(centre(boxes[0]!));
     await page.getByTestId('nav-profile').hover();
@@ -648,14 +648,14 @@ test('the sidebar folds only by the window width: no edge, Ctrl+B and Cmd+B chan
 }) => {
   await open(page, WIN);
   await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-  expect(await sidebarWidth(page)).toBe(196);
+  expect(await sidebarWidth(page)).toBe(206);
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
-  expect(await sidebarWidth(page)).toBe(196);
+  expect(await sidebarWidth(page)).toBe(206);
   await page.setViewportSize({ width: 1000, height: 700 });
   await expect.poll(() => sidebarWidth(page)).toBe(64);
   await page.setViewportSize({ width: 1360, height: 900 });
-  await expect.poll(() => sidebarWidth(page)).toBe(196);
+  await expect.poll(() => sidebarWidth(page)).toBe(206);
 });
 
 test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
@@ -1611,7 +1611,7 @@ for (const [width, rail] of [
     await page.setViewportSize({ width, height: 700 });
     await open(page, '?platform=windows');
     const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(rail ? 64 : 196);
+    expect(sidebar?.width).toBe(rail ? 64 : 206);
     const label = page.getByTestId('nav-profile');
     if (rail) {
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));

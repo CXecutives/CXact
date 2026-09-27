@@ -232,7 +232,7 @@ test('the hairline under a row spans it, or insets where the list reaches past i
       });
   expect(await rule()).toEqual({ left: '0px', right: '0px', height: '1px' });
   await list.evaluate((node) => node.style.setProperty('--row-rule-inset', 'var(--pane-padding)'));
-  expect(await rule()).toEqual({ left: '16px', right: '16px', height: '1px' });
+  expect(await rule()).toEqual({ left: '14px', right: '14px', height: '1px' });
 });
 
 test('job rows: no tools, provisional ring, no dot on excluded', async ({ page }) => {

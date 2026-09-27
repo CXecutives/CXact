@@ -385,13 +385,13 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  --control-sm: 28px;
+  --control-sm: 27px;
   /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
      Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
      calm, like the OS's own settings (user, 2026-09-25). */
-  --control-field: 32px;
-  --control-md: 36px;
-  --control-lg: 40px;
+  --control-field: 30px;
+  --control-md: 33px;
+  --control-lg: 37px;
   --icon-xs: 12px;
   --icon-sm: 16px;
   --icon-md: 20px;
@@ -425,7 +425,7 @@
   --titlebar-glyph-stroke: 1;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
-  --tabs-min: 44px;
+  --tabs-min: 41px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -478,7 +478,7 @@
   --ghost-inset: calc(var(--space-12) + var(--border-width));
   /* The one inner padding of every content column: list header, list rows, reader, overview,
      and the left edge of the top strip, so their edges line up. */
-  --pane-padding: var(--space-16);
+  --pane-padding: 14px;
   /* The room under the last section of a page that scrolls (Einstellungen, Profil): the end
      of the page never sits on the window's edge. */
   --page-end: 96px;
@@ -489,9 +489,9 @@
   --first-row: var(--control-lg);
   /* The sides of the reader column (a document, a little more air than the list). */
   --reader-padding: var(--space-24);
-  --ring-sm: 40px;
+  --ring-sm: 36px;
   --ring-sm-stroke: 4px;
-  --ring-md: 56px;
+  --ring-md: 51px;
   --ring-md-stroke: 5px;
   --ring-lg: 96px;
   --ring-lg-stroke: 8px;
@@ -542,7 +542,7 @@
   /* The level of a language in the Profil form: its longest word (Muttersprache) fits. */
   --level-width: 140px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
-  --sidebar-width: 196px;
+  --sidebar-width: 206px;
   --rail-width: 64px;
   /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
      Übereinstimmung") with its action and ×. */
@@ -559,9 +559,9 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/40, 36/56 and 36/96. */
-  --ring-sm-scale: 0.9;
-  --ring-md-scale: 0.643;
+     scaled into viewBox units: 36/36, 36/51 and 36/96. */
+  --ring-sm-scale: 1;
+  --ring-md-scale: 0.706;
   --ring-lg-scale: 0.375;
 
   /* -------------------------------------------------------------- typography */
@@ -576,7 +576,7 @@
   --leading-2xs: 14px;
   --font-xs: 12px;
   --leading-xs: 16px;
-  --font-sm: 13px;
+  --font-sm: 12.5px;
   --leading-sm: 18px;
   /* The text in fields. */
   --font-field: 14px;
@@ -591,17 +591,17 @@
   --font-tab: 14px;
   --leading-tab: 20px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 15px;
+  --font-place: 14.5px;
   --leading-place: 20px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
   --font-body: 14px;
   --leading-body: 22px;
-  --font-lg: 17px;
-  --leading-lg: 24px;
-  --font-xl: 20px;
-  --leading-xl: 28px;
-  --font-2xl: 26px;
-  --leading-2xl: 32px;
+  --font-lg: 16px;
+  --leading-lg: 22px;
+  --font-xl: 19px;
+  --leading-xl: 26px;
+  --font-2xl: 23.5px;
+  --leading-2xl: 29px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);

@@ -212,7 +212,7 @@ test('the head: the name as the title with its menu and a status only when neede
   await expect(switcher(page)).toHaveAccessibleName(T.profile.profiles);
   await expect(switcher(page)).toHaveAttribute('aria-haspopup', 'menu');
   await expect(switcher(page)).toHaveClass(/ghost/);
-  await expect(switcher(page)).toHaveCSS('height', '28px');
+  await expect(switcher(page)).toHaveCSS('height', '27px');
   const name = (await heading(page).boundingBox())!;
   const chevron = (await switcher(page).boundingBox())!;
   expect(chevron.x - (name.x + name.width)).toBeLessThanOrEqual(8);
@@ -228,8 +228,8 @@ test('the head: the name as the title with its menu and a status only when neede
   // A value to check: the status on the first row of the window, like the sidebar's first
   // entry; a click goes there.
   await expect(check(page)).toHaveText('1 Wert prüfen');
-  // As high as the other buttons of the row (32 px).
-  await expect(check(page)).toHaveCSS('height', '32px');
+  // As high as the other buttons of the row (30 px).
+  await expect(check(page)).toHaveCSS('height', '30px');
   const first = page.locator('[data-testid="view-profile"] [data-first-row]').first();
   await expect(first.getByTestId('profile-check')).toBeVisible();
   expect(middle(await first.boundingBox())).toBe(
@@ -301,7 +301,7 @@ test("the head starts on the edge of the sections; the title is the page's", asy
   const left = (await heading(page).boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
   // The title is the page's: 26 px in the heading colour, like the reader's job title.
-  await expect(heading(page)).toHaveCSS('font-size', '26px');
+  await expect(heading(page)).toHaveCSS('font-size', '23.5px');
 });
 
 test('the page ends with room under the last section; the save bar never covers it', async ({
@@ -576,7 +576,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   );
 });
 
-test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13/500', async ({
+test('fields, chip fields and choices are 30 px (as in Einstellungen), labels 12.5/500', async ({
   page,
 }) => {
   await profile(page);
@@ -588,31 +588,31 @@ test('fields, chip fields and choices are 32 px (as in Einstellungen), labels 13
   const form = page.getByTestId('profile-form');
   const fields = await boxes(form, '.field.text');
   expect(fields.length).toBeGreaterThan(8);
-  for (const box of fields) expect(box.height, box.text).toBe(32);
+  for (const box of fields) expect(box.height, box.text).toBe(30);
   // Chip fields of one line (every one of the demo profile), the synonyms included.
   const entries = await boxes(form, '.chip-input > .field.entry');
   expect(entries.length).toBeGreaterThan(8);
-  for (const entry of entries) expect(entry.height, entry.text).toBe(32);
+  for (const entry of entries) expect(entry.height, entry.text).toBe(30);
   // One choice component for every choice: the segments, as high as a field like every
-  // choice of the app (Einstellungen too), with the 13 px text of a small button.
+  // choice of the app (Einstellungen too), with the 12.5 px text of a small button.
   const groups = await boxes(form, '[role="radiogroup"]');
   expect(groups.length).toBe(2);
-  for (const group of groups) expect(group.height, group.text).toBe(32);
+  for (const group of groups) expect(group.height, group.text).toBe(30);
   const choices = await boxes(form, '[role="radiogroup"] [role="radio"]');
-  for (const choice of choices) expect(choice.size, choice.text).toBe('13px');
+  for (const choice of choices) expect(choice.size, choice.text).toBe('12.5px');
   await expect(form.locator('.segmented')).toHaveCount(2);
   // Every control label of a field and a choice (the switches are rows like in Einstellungen).
   const labels = [...(await boxes(form, 'label')), ...(await boxes(form, '.block > .label'))];
   expect(labels.length).toBeGreaterThan(15);
   for (const label of labels) {
-    expect(label.size, label.text).toBe('13px');
+    expect(label.size, label.text).toBe('12.5px');
     expect(label.weight, label.text).toBe('500');
   }
-  // The main actions are 32 px; the chevron of the title is a small icon button.
+  // The main actions are 30 px; the chevron of the title is a small icon button.
   for (const id of ['profile-save', 'profile-discard']) {
-    await expect(page.getByTestId(id)).toHaveCSS('height', '32px');
+    await expect(page.getByTestId(id)).toHaveCSS('height', '30px');
   }
-  await expect(switcher(page)).toHaveCSS('height', '28px');
+  await expect(switcher(page)).toHaveCSS('height', '27px');
   // Every number field has one width; the day of "Datum" too (its field, the calendar's
   // button inside it at the right end), as high as the choice beside it.
   const dayField = page.getByTestId('profile-date').locator('xpath=..');
@@ -1838,7 +1838,7 @@ test('the synonyms keep one line, "+n" names the rest, also narrow', async ({ pa
   // With the focus every chip shows (to remove or edit one).
   await expect(aliases.locator('.chip:not(.more):not(.spare)')).toHaveCount(6);
   await page.getByTestId('section-competences').getByRole('heading').click();
-  await expect(aliases).toHaveCSS('height', '32px');
+  await expect(aliases).toHaveCSS('height', '30px');
   const more = aliases.getByTestId('competence-aliases-more');
   await expect(more).toHaveText(/^\+\d$/);
   const hidden = Number((await more.textContent())!.trim().slice(1));
@@ -1846,7 +1846,7 @@ test('the synonyms keep one line, "+n" names the rest, also narrow', async ({ pa
   expect(await tooltipOf(page, more)).toContain('Forecasting');
   await page.setViewportSize({ width: 480, height: 640 });
   await aliases.scrollIntoViewIfNeeded();
-  expect(Math.round((await aliases.boundingBox())!.height)).toBe(32);
+  expect(Math.round((await aliases.boundingBox())!.height)).toBe(30);
 });
 
 test('the language rows line up: the level like a select, one width; the x needs no tooltip', async ({
@@ -1881,7 +1881,7 @@ test('the language rows line up: the level like a select, one width; the x needs
   const names = await boxesOf('language-name');
   expect(new Set(levels.map((box) => `${box.x} ${box.width} ${box.height}`)).size).toBe(1);
   expect(new Set(names.map((box) => `${box.x} ${box.width}`)).size).toBe(1);
-  expect(levels[0]!.height).toBe(32);
+  expect(levels[0]!.height).toBe(30);
   await expect(rows.nth(0).getByTestId('language-level')).toHaveClass(/secondary/);
   // Narrow, a row keeps its level beside the name.
   await page.setViewportSize({ width: 480, height: 600 });

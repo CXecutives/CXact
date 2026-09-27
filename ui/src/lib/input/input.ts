@@ -976,10 +976,13 @@ export function holdHover(event: MouseEvent): void {
 }
 
 /** The pointer moved since the hold (which then ends); the engines send `pointerenter` and
- *  `pointermove` at the old place when content slides under a pointer that rests. */
+ *  `pointermove` at the old place when content slides under a pointer that rests. Less than
+ *  a pixel is no move: a click reports whole pixels, a pointer event the fraction too. */
 function pointerMoved(event: PointerEvent): boolean {
   if (heldAt === null) return true;
-  if (event.clientX === heldAt.x && event.clientY === heldAt.y) return false;
+  if (Math.abs(event.clientX - heldAt.x) < 1 && Math.abs(event.clientY - heldAt.y) < 1) {
+    return false;
+  }
   heldAt = null;
   return true;
 }

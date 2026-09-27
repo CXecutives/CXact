@@ -126,10 +126,10 @@ test.describe('header', () => {
     for (const place of ['inbox', 'archive', 'trash'] as const) {
       await expect(page.getByTestId(`place-${place}`)).toHaveText(T.place[place]);
     }
-    // 44 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
+    // 41 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
     // line under it; it slides to another choice.
-    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
-    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
+    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(41);
+    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '14.5px');
     const under = async (place: 'inbox' | 'archive'): Promise<void> => {
       const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
       await expect
@@ -1599,7 +1599,7 @@ test.describe('search', () => {
     expect(Math.abs(a.x + a.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
     // The one way on under an empty state: a field button, as far below the sentence as the
     // empty state's own (16 px).
-    expect(Math.round(b.height)).toBe(32);
+    expect(Math.round(b.height)).toBe(30);
     const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
     expect(Math.round(b.y - (sentence.y + sentence.height))).toBe(16);
     // The reader beside a search without hits has nothing to choose from: it says nothing.
@@ -2349,7 +2349,7 @@ test.describe('sidebar', () => {
       await open(page, os);
       for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         const box = (await page.getByTestId(id).boundingBox())!;
-        expect([box.width, box.height], id).toEqual([40, 40]);
+        expect([box.width, box.height], id).toEqual([37, 37]);
       }
       await page.setViewportSize({ width: 480, height: 360 });
       for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {

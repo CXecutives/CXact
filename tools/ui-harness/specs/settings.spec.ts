@@ -157,7 +157,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   page,
 }) => {
   await settings(page);
-  // Every button with words in a row of a card: the one outlined kind, 28 px.
+  // Every button with words in a row of a card: the one outlined kind, 27 px.
   const kinds = await page
     .getByTestId('settings')
     .locator('.card button.btn:not(.icon-only)')
@@ -178,7 +178,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'csv-open',
     'reset',
   ]);
-  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 28)).toEqual([]);
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 27)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
@@ -217,7 +217,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     page.getByTestId('portal-freelance').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
-  // Every button of the page is at most 32 px high.
+  // Every button of the page is at most 30 px high.
   const heights = await page
     .getByTestId('settings')
     .locator('button:not([role="switch"]):not([role="radio"])')
@@ -233,7 +233,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   // Label and control side by side, one line, like the wider rows.
   for (const id of ['excel', 'row-palette', 'row-language', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
-    expect(Math.round(box.height), id).toBe(60);
+    expect(Math.round(box.height), id).toBe(57);
   }
   // At the smallest window the path of the export folder keeps its room: the buttons go under it.
   await page.setViewportSize({ width: 480, height: 800 });
@@ -576,7 +576,7 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   const name = T.settings.paletteName;
   await expect(palette.getByRole('radio')).toHaveText(['Hell', 'Dunkel']);
   // The one height of every choice of the app, as in the Profil form: a field's.
-  await expect(palette).toHaveCSS('height', '32px');
+  await expect(palette).toHaveCSS('height', '30px');
   await palette.getByRole('radio', { name: name.dark }).click();
   await expect(root).toHaveAttribute('data-palette', 'dark');
   await expect(page.locator('body')).not.toHaveCSS('background-color', cream);
