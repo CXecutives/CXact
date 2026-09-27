@@ -1299,7 +1299,7 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
   const toggle = await edge(page.getByTestId('toggle-exportExcel'));
-  for (const id of ['folder-open', 'backup-restore', 'logs-open', 'reset']) {
+  for (const id of ['folder-open', 'reset']) {
     const button = await edge(page.getByTestId(id));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }

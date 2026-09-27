@@ -176,8 +176,6 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'folder-open',
     'excel-open',
     'csv-open',
-    'backup-restore',
-    'logs-open',
     'reset',
   ]);
   expect(kinds.filter((kind) => !kind.secondary || kind.height !== 28)).toEqual([]);
@@ -188,7 +186,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     ['mailbox-remove', true],
     ['reset', true],
     ['mailbox-change', false],
-    ['logs-open', false],
+    ['folder-open', false],
   ] as const) {
     const button = page.getByTestId(id);
     if (warns) {
@@ -211,7 +209,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
         ),
       ),
     );
-  expect(ends.length).toBeGreaterThan(10);
+  expect(ends.length).toBeGreaterThan(8);
   expect(new Set(ends).size).toBe(1);
   // The portals' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
@@ -233,7 +231,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
   // Label and control side by side, one line, like the wider rows.
-  for (const id of ['excel', 'row-palette', 'row-language', 'backup', 'logs', 'reset-all']) {
+  for (const id of ['excel', 'row-palette', 'row-language', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(Math.round(box.height), id).toBe(60);
   }
@@ -659,76 +657,18 @@ test('Darstellung: the language switches everything at once; notes follow it', a
 
 /* ------------------------------------------------------------------- Daten */
 
-test('Daten: Sicherung, Protokoll, Alle Daten; no data path, no list of what a reset deletes', async ({
+test('Daten: only Alle Daten zurücksetzen; no Sicherung, no Protokoll, no data path', async ({
   page,
 }) => {
   await settings(page);
   const data = page.getByTestId('settings-data');
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual([
-    'backup',
-    'logs',
-    'reset-all',
-  ]);
-  await expect(page.getByTestId('backup-restore')).toHaveText(T.settings.backupAction);
-  await expect(page.getByTestId('logs-open')).toHaveText(T.common.open);
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['reset-all']);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
+  for (const gone of ['backup-restore', 'logs-open']) {
+    await expect(page.getByTestId(gone)).toHaveCount(0);
+  }
   await expect(data.locator('[data-copy]')).toHaveCount(0);
   await expect(data).not.toContainText('Excel');
-  await page.getByTestId('logs-open').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'logDir' } });
-});
-
-test('backups: one date format, no sizes; restored with the same verb, then undone', async ({
-  page,
-}) => {
-  await settings(page);
-  await page.getByTestId('backup-restore').click();
-  const dialog = page.getByTestId('dialog-backup');
-  await expect(dialog.getByRole('heading')).toHaveText(T.settings.backupHeading);
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.settings.backupAction);
-  await expect(dialog).toContainText(T.settings.backupText);
-  const rows = dialog.getByTestId('backup-list').getByRole('radio');
-  // Newest first and chosen; each by the one moment of a line in a list of days (the day in
-  // words while it is near, the weekday within a week), day and time never apart; no size.
-  await expect(rows).toHaveCount(4);
-  await expect(rows.nth(0)).toHaveAttribute('aria-checked', 'true');
-  for (const [index, text] of [
-    [0, 'Heute\u00a008:05'],
-    [1, 'Gestern\u00a008:41'],
-    [2, 'Vorgestern\u00a009:12'],
-    [3, 'Fr\u00a010:20'],
-  ] as const) {
-    const label = await rows.nth(index).evaluate((node) => node.textContent ?? '');
-    expect(label).toContain(text);
-  }
-  await expect(rows.nth(3)).toContainText('vor einem Update');
-  await expect(dialog).not.toContainText('MB');
-  // The arrows choose like native radio buttons; a failure stays in the dialog.
-  await rows.nth(0).focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'true');
-  await failNext(page, 'restore_backup');
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog.getByTestId('dialog-error')).toHaveText('Die Datenbank meldet einen Fehler.');
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog).toBeHidden();
-  const toast = page.getByTestId('toast').filter({ hasText: T.settings.backupRestored });
-  await expect(toast).toBeVisible();
-  await toast.getByTestId('toast-action').click();
-  await expect(
-    page.getByTestId('toast').filter({ hasText: T.settings.backupUndone }),
-  ).toBeVisible();
-  const restored = (await calls(page, 'restore_backup')).map(
-    ([, args]) => (args as { id: string }).id,
-  );
-  expect(restored).toEqual([
-    'jobs-2026-09-23.db',
-    'jobs-2026-09-23.db',
-    'jobs.before-restore-20260924-073000-000.db',
-  ]);
-  // The demo restores nothing and says why.
-  await settings(page, `${WIN}&scenario=demo`);
-  expect(await reason(page, 'backup-restore')).toBe('In der Demo geht das nicht.');
 });
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
@@ -763,7 +703,7 @@ test('a run holds the mailbox, the folder and the sign-in, with its reason', asy
     window.__harness.holdAfter = 2;
     window.__harness.appRun('rescore');
   });
-  for (const id of ['mailbox-change', 'backup-restore', 'reset', 'sign-out-freelance']) {
+  for (const id of ['mailbox-change', 'reset', 'sign-out-freelance']) {
     expect(await reason(page, id), id).toBe(T.error.text('busy', { activity: 'rescore' }));
   }
   await page.evaluate(() => (window.__harness.holdAfter = null));

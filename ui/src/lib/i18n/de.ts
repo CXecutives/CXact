@@ -1499,7 +1499,6 @@ export const de = {
     folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
     folderFiles: 'Die Dateien liegen im neuen Ordner.',
     folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
-    logs: 'Protokoll',
     /** The row of the database's copies, and its dialog. */
     backup: 'Sicherung',
     backupHeading: 'Sicherung wiederherstellen',

@@ -1228,7 +1228,6 @@ export const en: Catalog = {
     folderMoved: 'The profile and the files are in the new folder.',
     folderFiles: 'The files are in the new folder.',
     folderOwnProfile: 'The app now uses the profile in this folder.',
-    logs: 'Log',
     backup: 'Backup',
     backupHeading: 'Restore a backup',
     backupAction: 'Restore',

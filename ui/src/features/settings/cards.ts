@@ -73,17 +73,6 @@ export const ACTIONS = {
     open: { kind: 'csv' },
     locked: ({ state, t }) => (state.exportCsv ? null : t.settings.csvOff),
   },
-  // Opens the list of the copies; the restore can be undone.
-  backupRestore: {
-    label: (t) => t.settings.backupAction,
-    icon: 'backup',
-    locked: ownOnly,
-  },
-  logsOpen: {
-    label: (t) => t.common.open,
-    icon: 'folder',
-    open: { kind: 'logDir' },
-  },
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
   reset: {
@@ -96,7 +85,7 @@ export const ACTIONS = {
 
 export type ActionId = keyof typeof ACTIONS;
 /** The buttons that run a command of the view (the others open a target). */
-export type CommandId = 'folderChange' | 'backupRestore' | 'reset';
+export type CommandId = 'folderChange' | 'reset';
 
 /** A switch of a row: on or off at once (the state is patched before the save). */
 export interface Switch {
@@ -220,14 +209,8 @@ export const CARDS: readonly CardSpec[] = [
     id: 'data',
     heading: (t) => t.settings.data,
     rows: [
-      {
-        kind: 'actions',
-        id: 'backup',
-        label: (t) => t.settings.backup,
-        actions: ['backupRestore'],
-      },
-      { kind: 'actions', id: 'logs', label: (t) => t.settings.logs, actions: ['logsOpen'] },
-      // The one action that deletes for good, last; what it deletes is said in its dialog.
+      // The one action that deletes for good; what it deletes is said in its dialog (user
+      // decision 2026-09-27: no Sicherung and no Protokoll rows here).
       { kind: 'actions', id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
   },

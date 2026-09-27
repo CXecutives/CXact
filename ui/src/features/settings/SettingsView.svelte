@@ -43,7 +43,6 @@
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
-  import BackupDialog from './BackupDialog.svelte';
   import {
     ACTIONS,
     CARDS,
@@ -76,7 +75,6 @@
   let notes = $state<Record<string, Feedback | null>>({});
   let confirmReset = $state(false);
   let resetError = $state<(() => string) | null>(null);
-  let backupDialog = $state<BackupDialog | null>(null);
   /** Only the answer to the latest save may replace the state (quick double flips). */
   let saves = 0;
 
@@ -166,11 +164,6 @@
     }
     const commands: Record<CommandId, () => void> = {
       folderChange: () => void pickFolder(card),
-      backupRestore: () =>
-        void backupDialog?.show(
-          (work) => command(card, 'backupRestore', work),
-          () => note(card, { tone: 'info', text: () => t.settings.backupNone }),
-        ),
       reset: () => {
         resetError = null;
         confirmReset = true;
@@ -365,8 +358,6 @@
   testid="dialog-reset"
   onconfirm={() => void reset()}
 />
-
-<BackupDialog bind:this={backupDialog} />
 
 <style>
   .page {
