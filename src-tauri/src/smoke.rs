@@ -102,15 +102,15 @@ const INIT: &str = r#"(() => {
   const ready = () => fetchButton() !== null && fetchButton().getAttribute('aria-disabled') !== 'true';
 
   const scenarios = {
-    // Abrufen -> run events -> rows with rings -> Finished, back in the idle state.
+    // Postfach abrufen -> the run line -> rows with rings -> the line goes, back at rest.
     async run() {
       if (!(await until(ready, 5000))) return { ok: false, why: 'no enabled fetch button' };
       start();
       fetchButton().click();
-      if (!(await until(() => q('run-running') !== null, 5000))) {
+      if (!(await until(() => q('run-line') !== null, 5000))) {
         return { ok: false, why: 'the run did not start', perf: stop() };
       }
-      const idle = () => q('run-running') === null && q('run-finished') !== null && ready();
+      const idle = () => q('run-line') === null && q('run-problem') === null && ready();
       if (!(await until(idle, 30000))) {
         return { ok: false, why: 'the run did not end in the idle state', perf: stop() };
       }
@@ -178,7 +178,7 @@ const PROBE: &str = r#"(() => { try {
       // The sidebar's entries come with the app state (nothing is guessed before it).
       ready: shown(q('shell')) && shown(q('sidebar')) && q('nav-jobs') !== null,
       tabs: document.querySelectorAll('[data-testid^="nav-"]').length,
-      named: ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings'].every((id) => !!q(id)),
+      named: ['nav-jobs', 'nav-profile', 'nav-settings'].every((id) => !!q(id)),
       tauri: '__TAURI_INTERNALS__' in window,
       csp: window.__smokeCsp ?? null,
     });
@@ -236,8 +236,8 @@ pub fn attach<R: Runtime, M: Manager<R>>(
 }
 
 fn check_shell<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
-    // The four views of the sidebar.
-    let ok = value["tabs"] == 4
+    // The three views of the sidebar.
+    let ok = value["tabs"] == TABS.len()
         && value["named"] == true
         && value["tauri"] == true
         && no_csp_violation(value);
