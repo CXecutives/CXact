@@ -870,7 +870,7 @@ export const de = {
     openProfile: 'Profil öffnen',
     noMailbox: 'Ohne Postfach kommen keine neuen Jobs dazu.',
     /** No usable profile: said once, at the top of the list. */
-    noProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
+    noProfile: 'Ohne Profil keine Übereinstimmung.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil ohne Kompetenzen',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',

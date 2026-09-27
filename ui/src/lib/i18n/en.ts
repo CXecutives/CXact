@@ -752,7 +752,7 @@ export const en: Catalog = {
     createProfile: 'Create profile',
     openProfile: 'Open profile',
     noMailbox: 'Without a mailbox, no new jobs come in.',
-    noProfile: 'Without a profile, there is no match.',
+    noProfile: 'No match without a profile.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profile without skills',
     profileBrokenText: 'That is why the jobs show no match.',
