@@ -38,5 +38,5 @@ export async function copyProfilePrompt(): Promise<void> {
     toasts.show(t.profile.promptNotCopied, 'warning');
     return;
   }
-  toasts.show(t.profile.promptCopied);
+  toasts.show(t.toast.prompt);
 }

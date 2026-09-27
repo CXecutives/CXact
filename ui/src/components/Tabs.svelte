@@ -111,7 +111,7 @@
     pointer-events: auto;
     display: inline-flex;
     flex: none;
-    gap: var(--space-6);
+    gap: var(--space-4);
     align-items: center;
     padding: 0;
     border: none;

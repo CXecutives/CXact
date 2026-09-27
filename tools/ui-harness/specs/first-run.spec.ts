@@ -178,7 +178,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
   }
   // The prompt goes to the clipboard and a toast says so; the page stays.
   await step.getByTestId('first-profile-prompt').click();
-  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  await expect(page.getByTestId('toast').last()).toContainText(T.toast.prompt);
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   // A chosen file opens in the Profil view for review; nothing is stored yet.
   await step.getByTestId('first-profile-file').click();

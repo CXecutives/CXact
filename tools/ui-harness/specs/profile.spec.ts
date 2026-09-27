@@ -2466,7 +2466,7 @@ test('"KI-Prompt kopieren" puts the prompt on the clipboard and says so, whereve
   await expect(copy).toHaveText(T.profile.prompt);
   await expect(copy).toHaveClass(/secondary/);
   await copy.click();
-  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  await expect(page.getByTestId('toast').last()).toContainText(T.toast.prompt);
   expect(await calls(page, 'profile_prompt')).toHaveLength(1);
   if (browserName === 'chromium') {
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain(
@@ -2482,7 +2482,7 @@ test('"KI-Prompt kopieren" puts the prompt on the clipboard and says so, whereve
   const item = page.getByTestId('menu-item-prompt');
   await expect(item).toHaveText(T.profile.prompt);
   await item.click();
-  await expect(page.getByTestId('toast').last()).toContainText(T.profile.promptCopied);
+  await expect(page.getByTestId('toast').last()).toContainText(T.toast.prompt);
   expect(await calls(page, 'profile_prompt')).toHaveLength(1);
   await expect(bar(page)).toHaveCount(0);
 });

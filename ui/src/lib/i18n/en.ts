@@ -1041,7 +1041,6 @@ export const en: Catalog = {
     renameHeading: 'Rename profile',
     load: 'Load from file',
     prompt: 'Copy AI prompt for a profile',
-    promptCopied: 'AI prompt copied',
     promptNotCopied: 'The AI prompt could not be copied.',
     switched: 'Profile switched, jobs are being scored again.',
     created: (name: string) => `Profile created, “${name}” is active now.`,
@@ -1370,7 +1369,7 @@ export const en: Catalog = {
   },
   toast: {
     rescored: 'Jobs scored again',
-    prompt: 'Prompt copied',
+    prompt: 'AI prompt copied',
     archived: 'Archived',
     unarchived: 'Moved to inbox',
     trashed: 'Deleted',

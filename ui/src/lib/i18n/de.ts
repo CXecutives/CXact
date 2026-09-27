@@ -1242,7 +1242,6 @@ export const de = {
     /** In the same places: the prompt that has any AI write a profile file from a CV. */
     prompt: 'KI-Prompt für Profilanfertigung kopieren',
     /** The toast of the copy (a participle, like the job's prompt), and why it failed. */
-    promptCopied: 'KI-Prompt kopiert',
     promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
     /** After another profile became the active one (its rescore runs in the background). */
     switched: 'Profil gewechselt, Jobs werden neu bewertet.',
@@ -1678,7 +1677,7 @@ export const de = {
   toast: {
     rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
-    prompt: 'Prompt kopiert',
+    prompt: 'KI-Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'In den Eingang verschoben',
