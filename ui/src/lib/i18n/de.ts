@@ -21,6 +21,7 @@ import type {
   Band,
   DetailState,
   ErrorKind,
+  FetchRange,
   InvalidInput,
   JobSort,
   Language,
@@ -38,7 +39,6 @@ import type {
   RunKindName,
   StatusCode,
   Step,
-  VaultKind,
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
@@ -50,7 +50,6 @@ import {
   formatMoney,
   formatNumber,
   formatPercent,
-  formatStamp,
 } from './format';
 
 type Params = Record<string, string | number | boolean | null>;
@@ -644,12 +643,9 @@ export const de = {
   },
   nav: {
     label: 'Bereiche',
-    overview: 'Übersicht',
     jobs: 'Jobs',
     profile: 'Profil',
     settings: 'Einstellungen',
-    /** Why the Übersicht waits during the first run. */
-    overviewLater: 'Nach dem ersten Abruf',
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
     demo: 'Demo',
   },
@@ -1212,59 +1208,6 @@ export const de = {
     short: SHORT_TEXT,
     loadFailed: 'Der Job ließ sich nicht laden.',
   },
-  overview: {
-    noProfileText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
-    profileUnreadable: PROFILE_UNREADABLE,
-    label: 'Übersicht',
-    /** The first block: the inbox as counts that lead into the list (its name in Jobs). */
-    since: 'Eingang',
-    tileNew: 'Neu',
-    tileHigh: 'Hohe Passung',
-    today: 'Heute ansehen',
-    favourites: 'Favoriten',
-    /** More favourites than the block shows: all of them in Jobs. */
-    allFavourites: (value: number) => `Alle ${n(value)} Favoriten`,
-    noDetail: (value: number) =>
-      value === 1 ? '1 Job ohne ganze Anzeige' : `${n(value)} Jobs ohne ganze Anzeige`,
-    fetchDetails: 'Details holen',
-    /** Excluded jobs not opened yet, an open point until she has looked at them. */
-    excludedNew: (value: number) =>
-      value === 1 ? '1 neuer Job ausgeschlossen' : `${n(value)} neue Jobs ausgeschlossen`,
-    look: 'Ansehen',
-    /** The open points, the most important first. */
-    issues: 'Offene Punkte',
-    excel: 'Excel-Datei öffnen',
-    /** The best matches as one prompt for any AI chat. */
-    promptTop: 'KI-Prompt kopieren',
-    /** Its tooltip: what goes into it (favourites first, read or not). */
-    promptTopHint: 'Kopiert deine Favoriten und die besten Jobs mit dem Profil als einen Prompt.',
-    /** No scored job and no favourite to compare yet. */
-    promptTopNone: 'Noch ist kein Job bewertet.',
-    /** A portal that never sent an alert mail: its site, where the alert is made. */
-    createAlert: 'Alert anlegen',
-    files: 'Dateien',
-    /** Under the portal's name, so the sentence does not name it again; next to the button
-     *  that opens the mail. */
-    emptyAlerts: emptyMails,
-    lastRun: 'Letzter Abruf',
-    /** The musts the profile lacks most often (30 days). */
-    openMusts: 'Oft verlangt, nicht im Profil',
-    inJobs: (value: number) => `in ${n(value)} Jobs`,
-    addToProfile: 'Zum Profil hinzufügen',
-    /** The market of the last 30 days, every row over the same days. */
-    market: 'Markt der letzten 30 Tage',
-    marketNew: 'Jobs je Portal',
-    marketRate: 'Tagessatz passender Jobs',
-    marketRateValue: (median: string, jobs: number) =>
-      `${median} im Median aus ${count(jobs, 'Job', 'Jobs')}`,
-    marketMin: (value: string) => `dein Minimum ${value}`,
-    marketRemote: 'Überwiegend remote',
-    marketRemoteValue: (share: number, known: number) =>
-      `${formatPercent(share)} von ${count(known, 'Job', 'Jobs')}`,
-    /** A portal whose alert mails stopped (none for a week). */
-    quietSince: (when: string) => `Seit ${when} keine Alert-Mail.`,
-    quietNever: 'Noch keine Alert-Mail angekommen.',
-  },
   health: {
     /** A portal problem in one sentence that says whether to act, the same in the run card,
      *  the day overview and the settings. */
@@ -1285,6 +1228,9 @@ export const de = {
   },
   profile: {
     none: 'Noch kein Profil',
+    /** The file does not read (edited by hand): the empty state says so. */
+    unreadable: PROFILE_UNREADABLE,
+    noneText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
     /** Another file over the stored profile, and the toast after saving it (Rückgängig). */
@@ -1654,128 +1600,95 @@ export const de = {
   },
   settings: {
     mailbox: 'Postfach',
-    /** The section of what the app does on its own: archive, empty the trash. */
-    automatic: 'Automatisch',
     portals: 'Portale',
+    export: 'Export',
+    /** The card of how the app looks and speaks: its colours and its language. */
+    look: 'Darstellung',
+    /** The card of the app itself: its backups, its log, the reset. */
+    app: 'App',
     /** Back to the job whose "Anmeldung einrichten" led here (the job stays open). */
     backToJob: 'Zurück zum Job',
-    files: 'Dateien',
-    maintenance: 'Wartung',
     connected: 'Verbunden',
-    notConnected: 'Kein Postfach verbunden.',
+    /** The row of the mailbox while none is connected. */
+    notConnected: 'Kein Postfach',
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
     unreachable: 'Nicht erreichbar',
     refused: 'Abgelehnt',
     mailRefused: 'Gmail lehnt Adresse oder App-Passwort ab, trag sie über „Ändern“ neu ein.',
-    vault: {
-      windowsCredentialManager:
-        'Das App-Passwort liegt in der Windows-Anmeldeinformationsverwaltung.',
-      macosKeychain: 'Das App-Passwort liegt im macOS-Schlüsselbund.',
-    } satisfies Record<VaultKind, string>,
     address: 'Gmail-Adresse',
     password: 'App-Passwort',
     createPassword: 'App-Passwort erstellen',
-    /** Under both fields: what an app password is and needs (the pages follow). */
-    twoStep: 'Ein App-Passwort hat 16 Buchstaben und braucht die Bestätigung in zwei Schritten.',
     addressMissing: 'Die Gmail-Adresse fehlt.',
     passwordMissing: 'Das App-Passwort fehlt.',
     /** Google's own words for its 2-step verification. */
     twoStepAction: 'Bestätigung in zwei Schritten einschalten',
     connect: 'Verbinden',
+    /** The dialog of "Verbinden" and "Ändern". */
+    connectHeading: 'Postfach verbinden',
     /** Saved after the sign-in, but the alert mails were not counted in time (a toast). */
-    mailboxNotCounted: 'Postfach verbunden, die Alert-Mails zählt der nächste Abruf.',
+    mailboxNotCounted: 'Postfach verbunden.',
     removeMailbox: 'Postfach entfernen?',
     removeMailboxText: 'Das App-Passwort wird gelöscht, die Jobs bleiben.',
-    autoArchive: (days: number) => `Jobs nach ${n(days)} Tagen archivieren`,
-    autoArchiveHint: 'Favoriten werden nie archiviert.',
-    autoEmptyTrash: (days: number) => `Papierkorb nach ${n(days)} Tagen leeren`,
-    autoEmptyTrashHint: 'Jobs im Papierkorb werden dann endgültig gelöscht.',
-    active: 'Aktiv',
-    details: 'Details holen',
-    /** Once at the top of the portals: what "Details holen" is for. */
-    portalsHint: 'Ohne „Details holen“ bekommen die Jobs eines Portals keine Passung.',
-    needsDetails: 'Schalte erst „Details holen“ ein.',
-    /** The sign-in row of a portal that offers one. */
-    loginHint: 'Zeigt ganze Anzeigen.',
-    quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Seiten`,
-    quotaHour: (used: number, cap: number) => `Diese Stunde ${n(used)} von ${n(cap)} Seiten`,
-    /** The sign-in row of a portal: its label, and its state. */
-    session: 'Anmeldung',
-    signedIn: 'Angemeldet',
-    /** A portal that is off. */
-    portalOff: 'Wird beim Abruf übersprungen.',
+    /** Which alert mails "Postfach abrufen" reads (`fetchRange`). */
+    range: 'Zeitraum',
+    rangeName: {
+      sinceLast: 'Seit dem letzten Abruf',
+      days7: '7 Tage',
+      days30: '30 Tage',
+      all: 'Alle',
+    } satisfies Record<FetchRange, string>,
+    /** The calls of a portal today (counted from midnight). */
+    quota: (used: number, cap: number) => `Heute ${n(used)} von ${n(cap)} Aufrufen`,
     signIn: 'Anmelden',
     signOut: 'Abmelden',
     openPortal: 'Im Browser öffnen',
     signInWaiting: 'Das Anmeldefenster ist offen.',
-    workspace: 'Arbeitsordner',
-    workspaceDefault: 'Standard',
+    folder: 'Ergebnisordner',
     excel: 'Excel-Datei',
-    excelMissing: 'Die Excel-Datei entsteht beim ersten Abruf.',
-    /** The HTML file of the favourites and new matches. */
-    overview: 'Bericht',
-    overviewLater: 'Der Bericht entsteht beim ersten Abruf.',
-    txt: 'Textdateien',
-    /** What the text files are (one per ad) and what they are for, with their number. */
-    txtCount: (value: number) =>
-      `${count(value, 'Anzeige', 'Anzeigen')} als Text für eine KI-Bewertung`,
-    txtLater: 'Die Textdateien entstehen beim ersten Abruf.',
-    txtNone: 'Es gibt keine Textdateien.',
-    txtRewrite: 'Neu schreiben',
-    txtClear: 'Löschen',
-    /** The toasts of "Neu schreiben" and "Löschen" (a deletion can be undone: it writes them again). */
-    txtRewritten: 'Textdateien neu geschrieben.',
-    txtNothing: 'Es gibt noch keine Anzeige mit ganzem Text.',
-    txtCleared: 'Textdateien gelöscht.',
-    txtFailed: (value: number) => `${count(value, 'Datei ist', 'Dateien sind')} gerade geöffnet.`,
-    /** Another work folder: the profile came along (or the folder has its own), the files are
-     *  written there at once. */
-    workspaceMoved: 'Profil und Dateien liegen jetzt im neuen Ordner.',
-    workspaceFiles: 'Die Dateien liegen jetzt im neuen Ordner.',
-    workspaceOwnProfile: 'Die App nutzt jetzt das Profil aus diesem Ordner.',
-    fullMailbox: FULL_MAILBOX,
-    fullMailboxHint: 'Liest alle Alert-Mails, nicht nur die neuen.',
-    fullMailboxAction: 'Abrufen',
+    csv: 'CSV-Datei',
+    excelMissing: 'Die Excel-Datei entsteht beim nächsten Abruf.',
+    csvMissing: 'Die CSV-Datei entsteht beim nächsten Abruf.',
+    /** Another result folder: the profile came along (or the folder has its own), the files
+     *  are written there at once. */
+    folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
+    folderFiles: 'Die Dateien liegen im neuen Ordner.',
+    folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
     fullMailboxConfirm: 'Abrufen',
     fullMailboxHeading: 'Alle Alert-Mails abrufen?',
     fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
     logs: 'Protokoll',
-    data: 'Daten der App',
-    /** The row of the app's version in Wartung. */
-    version: 'Version',
-    /** The row of the database's copies in Wartung, and its dialog. */
-    backup: 'Sicherung wiederherstellen',
-    backupHint: 'Die App sichert die Jobs einmal am Tag.',
+    /** The app's version, the quiet line under the last card. */
+    version: (value: string) => `Version ${value}`,
+    /** The row of the database's copies, and its dialog. */
+    backup: 'Sicherung',
+    backupHeading: 'Sicherung wiederherstellen',
     backupAction: 'Wiederherstellen',
     backupNone: 'Es gibt noch keine Sicherung.',
+    /** A copy of today: its time with the day's name (another day: its date and time). */
+    backupToday: (time: string) => `Heute ${time}`,
     /** After a copy's day and time: why it is there (the copy of a day says nothing). */
     backupKind: {
       daily: null,
       update: 'vor einem Update',
       restore: 'vor dem Wiederherstellen',
     } satisfies Record<BackupKind, string | null>,
-    /** The question before a restore names the copy's date and time. */
-    backupConfirm: (date: string, time: string) =>
-      `Sicherung vom ${date} um ${time} wiederherstellen?`,
-    backupConfirmText: 'Der jetzige Stand wird vorher gesichert.',
+    backupText: 'Der jetzige Stand wird vorher gesichert.',
     backupRestored: 'Sicherung wiederhergestellt.',
     /** Its undo brought the state before it back. */
     backupUndone: 'Der vorherige Stand ist zurück.',
-    reset: 'Alles zurücksetzen',
-    /** Everything core's reset deletes: the database, the profile, the keychain entry, the
-     *  portal sign-ins; the dialog adds the app's files in the work folder. */
-    resetHint:
-      'Löscht Jobs, Einstellungen, Profil, App-Passwort, Anmeldungen und die Dateien der App im Arbeitsordner.',
+    /** The row of the reset, its button and its dialog. */
+    reset: 'Alle Daten',
     resetAction: 'Zurücksetzen',
     resetHeading: 'Alles zurücksetzen?',
     resetText: 'Die App startet danach neu und löscht',
-    /** Everything the reset deletes, one item each (the dialog's list). */
+    /** Everything the reset deletes, one item each (the dialog's list): the database, the
+     *  profile, the keychain entry, the portal sign-ins and the app's files. */
     resetItems: [
       'die Jobs und die Einstellungen',
       'das Profil',
       'das App-Passwort',
       'die Anmeldungen bei den Portalen',
-      'Excel-Datei, Bericht und Textdateien im Arbeitsordner',
+      'die Dateien der App im Ergebnisordner',
     ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */
@@ -1785,8 +1698,6 @@ export const de = {
     dryRun: 'Probelauf, es werden keine Daten verändert.',
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
-    /** The card of how the app looks and speaks: its colours and its language. */
-    look: 'Darstellung',
     palette: 'Farben',
     /** The palettes (tokens.css): Coast by its name, GitHub's light and dark as the OS says. */
     paletteName: {
@@ -1800,12 +1711,8 @@ export const de = {
       de: 'Deutsch',
       en: 'English',
     } satisfies Record<Language, string>,
-    /** The card of the app's keys (lib/input/keys.ts; the rows are those of keysHelp). */
-    keys: 'Tastenkürzel',
   },
   firstRun: {
-    benefit: 'Die App liest die Alert-Mails aus Gmail und zeigt, welche Jobs zum Profil passen.',
-    privacy: 'Alles bleibt auf diesem Rechner.',
     steps: 'Erste Schritte',
     mailbox: 'Postfach',
     /** Where the jobs come from: the portals switched on by name, in the app's order. */
@@ -1821,18 +1728,12 @@ export const de = {
     /** "Verbinden" found no alert mail of any portal: a fetch would find nothing. */
     noAlerts: 'In den letzten 30 Tagen kam keine Alert-Mail an, leg erst einen Alert an.',
     profile: 'Profil',
-    profileText: 'Das Profil entsteht in der App, auf Wunsch aus dem Lebenslauf.',
+    /** A profile without competences: the step stays open. */
+    profileEmpty: 'Ohne Kompetenzen wird nichts bewertet.',
     fetch: 'Erster Abruf',
-    fetchHint:
-      'Der erste Abruf liest die Alert-Mails der letzten 30 Tage und dauert ein paar Minuten.',
   },
   shell: {
     loadFailed: 'Die App konnte ihre Daten nicht laden.',
-    /** The sidebar's run status, one line: the time today, the date on another day. */
-    last: (iso: string) => `Abgerufen ${formatStamp(iso)}`,
-    showRun: 'Abruf anzeigen',
-    runFailed: (iso: string) => `Fehlgeschlagen ${formatStamp(iso)}`,
-    runCancelled: (iso: string) => `Abgebrochen ${formatStamp(iso)}`,
     /** Closing while the app is busy: the window waits until what holds it has stopped. */
     closing: (activity: string | null) => closing[busyOf(activity)],
   },

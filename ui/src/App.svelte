@@ -8,8 +8,7 @@
   (a fetch, a rescore, a sign-in, the files). Profil and Einstellungen keep where they were
   scrolled to while the app runs (a return finds the same place); on macOS their name
   stands small in the toolbar row. A start whose data cannot load says so and offers to try
-  again, the log and the data folder. Ctrl+/ (Cmd+/) shows the card of the keys; F5 (Cmd+R)
-  fetches in every view.
+  again, the log and the data folder. F5 (Cmd+R) fetches in every view.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -33,10 +32,8 @@
   import { shell } from '$lib/state/shell.svelte';
   import FirstRunView from './features/first-run/FirstRunView.svelte';
   import JobsView from './features/jobs/JobsView.svelte';
-  import OverviewView from './features/overview/OverviewView.svelte';
   import ProfileView from './features/profile/ProfileView.svelte';
   import SettingsView from './features/settings/SettingsView.svelte';
-  import KeysHelp from './features/shell/KeysHelp.svelte';
   import Sidebar from './features/shell/Sidebar.svelte';
 
   run.install();
@@ -45,10 +42,6 @@
   void app.load().then((state) => run.attach(state?.running ?? null));
 
   const firstRun = $derived(shell.firstRun);
-  // Before the first fetch there is nothing to sum up: the app starts on the setup page.
-  $effect(() => {
-    if (firstRun && navigation.current === 'overview') navigation.go('jobs', true);
-  });
   /** macOS: the views keep the toolbar row free (the Jobs view uses it for its list row). */
   const band = dragBands();
   // F5, Ctrl/Cmd+R: Abrufen in every view, like the button (while it is allowed); the keys
@@ -116,14 +109,9 @@
           </div>
         </section>
       {:else}
-        <!-- The four views are the branches of one block: a switch between them cross-fades
+        <!-- The views are the branches of one block: a switch between them cross-fades
              (local transitions), while the first view after loading is simply there. -->
-        {#if navigation.current === 'overview' && !firstRun}
-          <section class="view" data-testid="view-overview" transition:fade>
-            {#if band}<DragBand sheet />{/if}
-            <OverviewView />
-          </section>
-        {:else if (navigation.current === 'jobs' || navigation.current === 'overview') && firstRun}
+        {#if navigation.current === 'jobs' && firstRun}
           <section class="view" data-testid="view-first-run" transition:fade>
             {#if band}<DragBand sheet />{/if}
             <FirstRunView />
@@ -164,7 +152,6 @@
     {/if}
   </div>
   <Toast />
-  <KeysHelp />
   <Menu />
   <Tooltip />
 </div>

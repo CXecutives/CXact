@@ -1,23 +1,24 @@
 <!--
-  Einstellungen (centred 720): the cards of cards.ts in their order, each a heading and a
-  card of setting rows (Postfach, Portale and Tastenkürzel are blocks of their own), and
-  "Alles zurücksetzen" alone on the last card. This file only renders the list and runs its
-  commands; what a row is, says and does is one entry in cards.ts.
+  Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Portale,
+  Export, Darstellung, App), each a heading and a card of setting rows (Postfach and Portale
+  begin with a block of their own), and the app's version as a quiet line under the last
+  card. This file only renders the list and runs its commands; what a row is, says and does
+  is one entry in cards.ts.
 
   A switch or a choice moves at once (the state is patched before the save) and is its own
   answer; Darstellung switches the colours and the language of the whole app at once, and
   the backend follows with the window and the files. A success that shows nowhere else is a
-  toast (files written or deleted, another work folder); errors and warnings stay a note at
-  the end of their card. Only "Alles zurücksetzen", "Postfach entfernen" and a restore of a
-  backup (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
-  inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile change) holds the mailbox, the folder and
-  the files, so what they cannot do is locked with the reason of that run instead of
-  failing. The demo keeps to its own folders: mailbox, work folder and reset are locked with
-  its reason. Opened from a job for one portal ("Anmeldung einrichten") the page glides to
-  that portal's card, focuses its sign-in and offers "Zurück zum Job".
+  toast (another result folder); errors and warnings stay a note at the end of their card.
+  Only "Zurücksetzen", "Entfernen" of the mailbox and the restore of a backup
+  (BackupDialog.svelte) ask first; a dialog whose action fails stays open and says why
+  inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
+  change) holds the mailbox, the folder and the files, so what they cannot do is locked with
+  the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
+  result folder and reset are locked with its reason. Opened from a job for one portal
+  ("Anmeldung einrichten") the page glides to that portal's row, focuses its sign-in and
+  offers "Zurück zum Job".
 -->
 <script lang="ts">
-  import Badge from '$components/Badge.svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
@@ -31,13 +32,14 @@
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
   import { glideIntoView } from '$lib/motion/scroll';
+  import { rise } from '$lib/motion/transitions';
+  import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
-  import KeyList from '../shared/KeyList.svelte';
   import BackupDialog from './BackupDialog.svelte';
   import {
     ACTIONS,
@@ -49,10 +51,10 @@
     type CommandId,
     type Lock,
     type Row,
-    type SwitchRow,
+    type Switch,
   } from './cards';
   import MailboxCard from './MailboxCard.svelte';
-  import PortalCard from './PortalCard.svelte';
+  import PortalRow from './PortalRow.svelte';
 
   /** A note keeps what happened and says it when it shows, so it follows a switch of the
    *  language (a sentence made at once would stay in the old one). */
@@ -61,18 +63,11 @@
   const cfg = $derived(app.state);
   /** What a locked button asks (null until the state is there). */
   const lock = $derived<Lock | null>(
-    cfg === null
-      ? null
-      : {
-          state: cfg,
-          t,
-          running: run.active,
-          busyText: run.busyText,
-          beforeFirstFetch: cfg.lastRun === null,
-        },
+    cfg === null ? null : { state: cfg, t, running: run.active, busyText: run.busyText },
   );
   /** The mailbox is outside the demo's and the dry run's own data, and a run holds it. */
-  const mailboxLocked = $derived(lock === null ? null : ACTIONS.workspaceChange.locked(lock));
+  const mailboxLocked = $derived(lock === null ? null : ACTIONS.folderChange.locked(lock));
+  const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
   let busy = $state<CommandId | null>(null);
   /** The note at the end of each card, by card id. */
   let notes = $state<Record<string, Feedback | null>>({});
@@ -102,10 +97,10 @@
     }
   }
 
-  function flip(card: string, row: SwitchRow, on: boolean): void {
-    if (cfg === null) return;
-    row.set(cfg, on);
-    void save(card, row.patch(on));
+  function flip(card: string, toggle: Switch, on: boolean): Promise<void> {
+    if (cfg === null) return Promise.resolve();
+    toggle.set(cfg, on);
+    return save(card, toggle.patch(on));
   }
 
   function choose<Id extends string>(card: string, row: ChoiceRow<Id>, id: Id): void {
@@ -134,16 +129,16 @@
     }
   }
 
-  /** Another work folder: the profile comes along (or the folder's own is used) and the
+  /** Another result folder: the profile comes along (or the folder's own is used) and the
    *  files are written there at once (pick_workspace); the toast says which. */
-  const pickWorkspace = (card: string): Promise<void> =>
-    command(card, 'workspaceChange', async () => {
+  const pickFolder = (card: string): Promise<void> =>
+    command(card, 'folderChange', async () => {
       const picked = await invoke('pick_workspace');
       if (picked === null) return;
       await app.load();
-      if (picked.profile === 'own') toasts.show(t.settings.workspaceOwnProfile, 'info');
-      else if (picked.profile === 'copied') toasts.show(t.settings.workspaceMoved);
-      else toasts.show(t.settings.workspaceFiles);
+      if (picked.profile === 'own') toasts.show(t.settings.folderOwnProfile, 'info');
+      else if (picked.profile === 'copied') toasts.show(t.settings.folderMoved);
+      else toasts.show(t.settings.folderFiles);
     });
 
   /** On success the app restarts empty; a failure stays in the dialog, which tries again. */
@@ -167,7 +162,7 @@
       return;
     }
     const commands: Record<CommandId, () => void> = {
-      workspaceChange: () => void pickWorkspace(card),
+      folderChange: () => void pickFolder(card),
       backupRestore: () =>
         void backupDialog?.show(
           (work) => command(card, 'backupRestore', work),
@@ -185,7 +180,7 @@
 
   /**
    * Einstellungen opened for one portal from a job (the reader's "Anmeldung einrichten",
-   * `navigation.focusPortal`, read once and set back): its card glides into view, its sign-in
+   * `navigation.focusPortal`, read once and set back): its row glides into view, its sign-in
    * button (else its switch) takes the focus, and a link leads back to the job, which stays
    * open in Jobs.
    */
@@ -210,13 +205,13 @@
     fromJob = jobs.selected !== null;
     const scope = root;
     void tick().then(() => {
-      const card = scope.querySelector(`[data-testid="portal-${portal}"]`);
-      if (card === null) return;
-      glideIntoView(card, 'center');
+      const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
+      if (row === null) return;
+      glideIntoView(row, 'center');
       const target =
-        card.querySelector<HTMLElement>(
+        row.querySelector<HTMLElement>(
           `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
-        ) ?? card.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
+        ) ?? row.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
       target?.focus({ preventScroll: true });
     });
   });
@@ -224,22 +219,7 @@
 
 {#snippet row(card: string, item: Row)}
   {#if cfg !== null && lock !== null}
-    {#if item.kind === 'switch'}
-      <SettingRow
-        label={item.label(t, cfg)}
-        hint={item.hint(t, cfg)}
-        for="switch-{item.id}"
-        testid="row-{item.id}"
-      >
-        <Toggle
-          id="switch-{item.id}"
-          checked={item.on(cfg)}
-          label={item.label(t, cfg)}
-          testid="toggle-{item.id}"
-          onchange={(on) => flip(card, item, on)}
-        />
-      </SettingRow>
-    {:else if item.kind === 'choice'}
+    {#if item.kind === 'choice'}
       {@const choice = item as ChoiceRow}
       <SettingRow label={choice.label(t, cfg)} testid="row-{choice.id}">
         <Segmented
@@ -251,17 +231,15 @@
           onchange={(id) => choose(card, choice, id)}
         />
       </SettingRow>
-    {:else if item.kind === 'actions'}
+    {:else}
+      {@const toggle = item.toggle ?? null}
       <SettingRow
         label={item.label(t, cfg)}
-        hint={item.hint?.(t, cfg) ?? null}
-        copy={item.copy ?? false}
+        hint={item.path?.(cfg) ?? null}
+        copy={item.path !== undefined}
+        for={toggle === null ? null : `switch-${toggle.id}`}
         testid={item.id}
       >
-        {#snippet badges()}
-          {@const badge = item.badge?.(t, cfg) ?? null}
-          {#if badge}<Badge label={badge} />{/if}
-        {/snippet}
         <div class="buttons">
           {#each item.actions as id (id)}
             {@const action: Action = ACTIONS[id]}
@@ -279,11 +257,16 @@
               onclick={() => act(card, id)}
             />
           {/each}
+          {#if toggle}
+            <Toggle
+              id="switch-{toggle.id}"
+              checked={toggle.on(cfg)}
+              label={item.label(t, cfg)}
+              testid="toggle-{toggle.id}"
+              onchange={(on) => flip(card, toggle, on)}
+            />
+          {/if}
         </div>
-      </SettingRow>
-    {:else}
-      <SettingRow label={item.label(t, cfg)} testid={item.id}>
-        <span class="value" data-copy>{item.value(cfg)}</span>
       </SettingRow>
     {/if}
   {/if}
@@ -306,40 +289,23 @@
     {/if}
 
     {#each CARDS as card, index (card.id)}
+      {@const feedback = notes[card.id] ?? null}
       <section class="section" data-testid="settings-{card.id}">
-        {#if card.heading}
-          <div class="title">
-            <div class="title-row" data-first-row={index === 0 ? '' : undefined}>
-              <h2 class="heading">{card.heading(t, cfg)}</h2>
-              {#if card.body === 'portals' && backToJob}
-                <Button
-                  variant="link"
-                  size="sm"
-                  label={t.settings.backToJob}
-                  testid="back-to-job"
-                  onclick={goBackToJob}
-                />
-              {/if}
-            </div>
-            {#if card.hint}
-              <p class="hint" data-testid="{card.id}-hint">{card.hint(t, cfg)}</p>
-            {/if}
-          </div>
-        {/if}
-        {#if card.body === 'mailbox'}
-          <MailboxCard {cfg} locked={mailboxLocked} />
-        {:else if card.body === 'portals'}
-          {#each cfg.portals as portal (portal.portal)}
-            <PortalCard {portal} />
-          {/each}
-        {:else if card.body === 'keys'}
-          <Card padding="md"><KeyList /></Card>
-        {:else}
-          <Card padding="rows">
-            {#each card.body as item (item.id)}
-              {@render row(card.id, item)}
-            {/each}
-            {@const feedback = notes[card.id] ?? null}
+        <div class="title" data-first-row={index === 0 ? '' : undefined}>
+          <h2 class="heading">{card.heading(t, cfg)}</h2>
+          {#if card.block === 'portals' && backToJob}
+            <Button
+              variant="link"
+              size="sm"
+              label={t.settings.backToJob}
+              testid="back-to-job"
+              onclick={goBackToJob}
+            />
+          {/if}
+        </div>
+        {#if card.block === 'mailbox'}
+          <MailboxCard {cfg} locked={mailboxLocked}>
+            {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
             {#if feedback}
               <Notice
                 tone={feedback.tone}
@@ -348,10 +314,28 @@
                 testid="{card.id}-note"
               />
             {/if}
+          </MailboxCard>
+        {:else}
+          <Card padding="rows" testid={card.block === 'portals' ? 'portals' : null}>
+            {#if card.block === 'portals'}
+              {#each portals as portal (portal.portal)}<PortalRow {portal} />{/each}
+            {/if}
+            {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+            {#if feedback}
+              <div class="note" in:rise={{ distance: 'sm' }}>
+                <Notice
+                  tone={feedback.tone}
+                  variant="inline"
+                  text={feedback.text()}
+                  testid="{card.id}-note"
+                />
+              </div>
+            {/if}
           </Card>
         {/if}
       </section>
     {/each}
+    <p class="version" data-copy data-testid="version">{t.settings.version(cfg.version)}</p>
   {/if}
 </div>
 
@@ -378,7 +362,7 @@
     gap: var(--space-32);
     max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--pane-padding) var(--pane-padding) var(--space-64);
+    padding: var(--pane-padding) var(--pane-padding) var(--space-48);
   }
 
   .section {
@@ -387,14 +371,8 @@
     gap: var(--space-12);
   }
 
-  .title {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
   /* The heading, and at its end the way back to the job she came from. */
-  .title-row {
+  .title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -406,24 +384,27 @@
     font: var(--type-lg);
   }
 
-  .hint {
-    color: var(--text-muted);
-    font: var(--type-sm);
-  }
-
-  /* The buttons of a row end on its trailing edge, 12 apart, one size (28). */
+  /* The buttons of a row end on its trailing edge, 12 apart, one size (28); a switch after
+     them. */
   .buttons {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     justify-content: flex-end;
     gap: var(--space-12);
   }
 
-  /* The app's version: a value to copy, quiet like the keys. */
-  .value {
-    color: var(--text-muted);
-    font: var(--type-sm);
+  .note {
+    display: flex;
+  }
+
+  /* The app's version: a quiet line to copy, under the last card. */
+  .version {
+    margin-top: calc(-1 * var(--space-16));
+    color: var(--text-subtle);
+    font: var(--type-xs);
     font-variant-numeric: var(--numeric);
+    text-align: center;
   }
 
   .skeleton {

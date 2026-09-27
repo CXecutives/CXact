@@ -17,9 +17,11 @@
   cancel), last (right) on macOS with the third action on the far left. On macOS the scrim
   starts below the toolbar row, which keeps moving the window (a sheet leaves the title bar
   free), and nothing in the row can be pressed meanwhile.
-  A card that only informs (the keys) has content of its own (`children`) and one button
-  that closes it (`alone`). The sentence under the heading is left out where the heading
-  says it all; `items` lists what the action concerns (everything a reset deletes) under it.
+  A dialog may hold content of its own (`children`: the list of the backups, the mailbox
+  form); `alone` leaves only its one button. The sentence under the heading is left out where
+  the heading says it all; `items` lists what the action concerns (everything a reset
+  deletes) under it. An action that can be stopped while it runs (the sign-in of "Verbinden")
+  keeps cancel and Esc live (`stoppable`).
 -->
 <script lang="ts">
   import { t } from '$lib/i18n/t';
@@ -41,7 +43,7 @@
     text?: string | null;
     /** What the action concerns, one item each (what a reset deletes). */
     items?: readonly string[] | null;
-    /** Content of its own under the text (the list of the keys). */
+    /** Content of its own under the text (the backups, the mailbox form). */
     children?: Snippet;
     /** Only the confirm button: a card that informs and closes. */
     alone?: boolean;
@@ -50,6 +52,8 @@
     confirmLabel: string;
     cancelLabel?: string;
     busy?: boolean;
+    /** Cancel and Esc stay live while busy (they stop the action; `oncancel` does). */
+    stoppable?: boolean;
     /** Why the action failed (shown inside the dialog, which stays open). */
     error?: string | null;
     testid?: string | null;
@@ -71,6 +75,7 @@
     confirmLabel,
     cancelLabel,
     busy = false,
+    stoppable = false,
     error = null,
     testid = null,
     altLabel = null,
@@ -83,7 +88,7 @@
   let pressedOnScrim = false;
 
   function cancel(): void {
-    if (busy) return;
+    if (busy && !stoppable) return;
     open = false;
     oncancel?.();
   }
@@ -173,7 +178,7 @@
             <Button
               variant="secondary"
               label={cancelLabel ?? t.common.cancel}
-              disabled={busy}
+              disabled={busy && !stoppable}
               isDefault={variant === 'danger'}
               testid="dialog-cancel"
               onclick={cancel}

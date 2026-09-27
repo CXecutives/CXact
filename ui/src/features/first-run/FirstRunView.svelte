@@ -1,13 +1,13 @@
 <!--
   First run (full page) on the white sheet, in the column of every view: the app mark beside
-  its name, one sentence of what the app does, one about privacy, and the steps of steps.ts
-  that tick themselves: connect the mailbox, a usable profile (made in the Profil view, whose
-  editor also imports a file or a CV), fetch. The next open step carries the one primary
-  button; "Abrufen" stays locked with its reason until a mailbox is connected. After "Alles
-  zurücksetzen" the app starts here again: a clean reset says so once in a toast, one that
-  left something stands as a warning above the steps with the way to the log. Compact enough
-  that all three steps are in view at 1280 x 720 on both OS; the sidebar is inert here (the
-  Profil view frees it again), and its run status waits until the setup is done.
+  its name and the steps of steps.ts that tick themselves: connect the mailbox, a usable
+  profile (made in the Profil view, whose editor also imports a file or a CV), fetch. No
+  sentence introduces them: each step is its name and the controls it needs. The next open
+  step carries the one primary button; the fetch stays locked with its reason until a mailbox
+  is connected. After "Alles zurücksetzen" the app starts here again: a clean reset says so
+  once in a toast, one that left something stands as a warning above the steps with the way
+  to the log. Compact enough that all three steps are in view at 1280 x 720 on both OS; the
+  sidebar works as always, with Jobs current while this page stands for it.
 
   A vertical stepper: 28 px markers (the current one in the tooltip's dark, "you are here";
   upcoming ones outlined; done ones green with a check) joined by a hairline that fills green
@@ -15,15 +15,15 @@
   open: the marker cross-fades to its check, which draws itself, the line fills downwards,
   the next marker turns dark and the done text rises in. Nothing plays when the page appears.
 
-  Step 1 names the portals that are on (none on: a warning with "Einstellungen öffnen");
-  connected, each of them shows the alert mails "Verbinden" found in the last 30 days, or
-  "Alert anlegen" (the portal's page) where it found none. Step 2 happens in the Profil view:
-  "Aus Lebenslauf anlegen" opens its steps with an AI at once, "Profil anlegen" the empty
-  form; after the first save the Profil view offers the way on. Step 3 says that the first
-  fetch reads the alert mails of 30 days (or that none came, so an alert comes first); a first
-  fetch that failed keeps this page (the app leaves it only after a completed one) and says
-  why in step 3, with the fitting action where there is one besides "Abrufen". Every main
-  action is 32 px.
+  Step 1 names the portals that are on, in the UI's order, since their alert mails must go
+  to this address (none on: a warning with "Einstellungen öffnen"); connected, each of them
+  shows the alert mails "Verbinden" found in the last 30 days, or "Alert anlegen" (the
+  portal's page) where it found none. Step 2 happens in the Profil view: "Aus Lebenslauf
+  anlegen" opens its steps with an AI at once, "Profil anlegen" the empty form; after the
+  first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
+  alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
+  only after a completed one), with the fitting action where there is one besides the fetch.
+  Every main action is 32 px.
 -->
 <script lang="ts" module>
   /** The toast of a clean reset shows once per start of the app. */
@@ -42,6 +42,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, Portal } from '$lib/ipc/types';
   import { rise } from '$lib/motion/transitions';
+  import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
@@ -63,8 +64,8 @@
     profile === null || done.profile
       ? null
       : profile.parseError
-        ? t.overview.profileUnreadable
-        : t.profile.qualityText.empty,
+        ? t.profile.unreadable
+        : t.firstRun.profileEmpty,
   );
   /** Who the profile is about: the name, else the role, else what the Profil view calls a
    *  profile without a name. */
@@ -72,8 +73,8 @@
     profile?.form?.name.trim() || profile?.form?.title.trim() || t.profile.unnamed,
   );
 
-  /** The portals whose alerts are wanted (the ones switched on), in the app's order. */
-  const portals = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
+  /** The portals whose alerts are wanted (the ones switched on), in the UI's order. */
+  const portals = $derived(inPortalOrder(app.state?.portals ?? []).filter((p) => p.enabled));
   /** What "Verbinden" found per portal in this session (null: not asked in this session). */
   const check = $derived(app.state?.mailbox.check ?? null);
   const mailsOf = (portal: Portal): number | null =>
@@ -207,7 +208,7 @@
         <p class="hint">{t.firstRun.mailboxText(portals.map((p) => p.portal))}</p>
       {/if}
     </div>
-    <MailboxForm saveLabel={t.settings.connect} autofocus />
+    <MailboxForm autofocus />
   {/if}
   {#if portals.length === 0}
     <!-- Every portal is off: nothing would be read. -->
@@ -232,8 +233,6 @@
       <p class="done-text" in:rise>{profileName}</p>
     {:else if profileProblem}
       {@render problem(profileProblem, 'first-profile-problem')}
-    {:else}
-      <p class="hint">{t.firstRun.profileText}</p>
     {/if}
   </div>
   {#if !done.profile}
@@ -275,8 +274,6 @@
     <h2 class="name">{t.firstRun.fetch}</h2>
     {#if noAlerts}
       {@render problem(t.firstRun.noAlerts, 'first-no-alerts')}
-    {:else}
-      <p class="hint">{t.firstRun.fetchHint}</p>
     {/if}
   </div>
   <div class="actions" bind:this={actions.fetch}>
@@ -320,12 +317,8 @@
 <div class="hero" data-testid="first-run">
   <div class="column">
     <header class="intro">
-      <div class="brand">
-        <BrandMark size="lg" />
-        <h1 class="title">{t.app.name}</h1>
-      </div>
-      <p class="benefit">{t.firstRun.benefit}</p>
-      <p class="privacy"><Icon name="privacy" size="sm" />{t.firstRun.privacy}</p>
+      <BrandMark size="lg" />
+      <h1 class="title">{t.app.name}</h1>
     </header>
 
     {#if resetLeft && reset}
@@ -380,18 +373,11 @@
     margin: 0 auto;
   }
 
+  /* The mark beside the name, like the app's lockup: one row, not two. */
   .intro {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: var(--space-8);
-    text-align: center;
-  }
-
-  /* The mark beside the name, like the app's lockup: one row, not two. */
-  .brand {
-    display: flex;
-    align-items: center;
+    justify-content: center;
     gap: var(--space-12);
   }
 
@@ -399,22 +385,6 @@
     color: var(--text-heading);
     font: var(--type-2xl);
     letter-spacing: var(--tracking-tight);
-  }
-
-  .benefit {
-    max-width: var(--measure-intro);
-    color: var(--text);
-    font: var(--type-lg);
-    font-weight: var(--weight-regular);
-    text-wrap: balance;
-  }
-
-  .privacy {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-6);
-    color: var(--text-muted);
-    font: var(--type-sm);
   }
 
   /* No gap between the steps: the hairline runs on from one marker to the next. */

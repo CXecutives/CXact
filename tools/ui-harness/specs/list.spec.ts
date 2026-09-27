@@ -358,7 +358,7 @@ test.describe('filter', () => {
     page,
   }) => {
     await open(page, WIN);
-    const { active: all, counts } = await stubList(page);
+    const { active: all } = await stubList(page);
     await chooseFilter(page, 'portal-freelancermap');
     await chooseFilter(page, 'band-mid');
     await expect
@@ -383,10 +383,6 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
     expect(await page.evaluate(() => localStorage.getItem('jobs-filter'))).toBeNull();
-    // The Übersicht never follows it.
-    await chooseFilter(page, 'portal-linkedin');
-    await page.getByTestId('nav-overview').click();
-    await expect(page.getByTestId('tile-new').locator('.digits')).toHaveText(String(counts.unread));
   });
 
   test('without a profile the bands and the match order are off and say why', async ({ page }) => {
@@ -447,9 +443,7 @@ test.describe('filter', () => {
     expect(await listed(page)).toEqual(await inbox(page, { minBand: 'high', portal: 'linkedin' }));
   });
 
-  test('the run card opens the inbox with its filter; the Übersicht with exactly its own', async ({
-    page,
-  }) => {
+  test('the run card opens the inbox with its filter', async ({ page }) => {
     await open(page, WIN);
     await chooseFilter(page, 'portal-linkedin');
     await openPlace(page, 'archive');
@@ -458,14 +452,6 @@ test.describe('filter', () => {
     await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('filter-words')).toHaveText(filterWordsOf('portal-linkedin'));
     expect(await lastQuery(page)).toMatchObject({ place: 'inbox', sort: 'match' });
-    await page.getByTestId('search').fill('Controller');
-    await page.getByTestId('nav-overview').click();
-    await page.getByTestId('tile-new').click();
-    await expect(page.getByTestId('view-jobs')).toBeVisible();
-    await expect(page.getByTestId('search')).toHaveValue('');
-    // "Neu" counts the unopened jobs of every portal: its list has no filter.
-    await expect(filterLine(page)).toHaveCount(0);
-    expect(await lastQuery(page)).toMatchObject({ place: 'inbox', portal: null });
   });
 
   test('macOS: the same funnel and menu', async ({ page }) => {
@@ -1934,27 +1920,23 @@ test.describe("the open row's bar", () => {
 /* ====================================================================== sidebar */
 
 test.describe('sidebar', () => {
-  test('four views, no counts; the app starts in the Übersicht; Ctrl+1 to 4 choose', async ({
+  test('three views, no counts, no tooltips beside their names; the app starts in Jobs', async ({
     page,
   }) => {
     await open(page, `${WIN}&view=start`);
-    await expect(page.getByTestId('view-overview')).toBeVisible();
+    await expect(page.getByTestId('view-jobs')).toBeVisible();
     const sidebar = page.getByTestId('sidebar');
     await expect(sidebar.locator('nav button')).toHaveText([
-      T.nav.overview,
       T.nav.jobs,
       T.nav.profile,
       T.nav.settings,
     ]);
     await expect(sidebar.locator('nav .count, nav .dot')).toHaveCount(0);
-    await page.keyboard.press('Control+2');
-    await expect(page.getByTestId('view-jobs')).toBeVisible();
-    await page.keyboard.press('Control+4');
-    await expect(page.getByTestId('view-settings')).toBeVisible();
-    await page.keyboard.press('Control+,');
+    await page.getByTestId('nav-settings').click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
     await page.getByTestId('nav-jobs').hover();
-    await expect(page.getByRole('tooltip')).toContainText('Strg+2');
+    await page.waitForTimeout(700);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     // It folds only by the window width: no edge to drag, Ctrl+B and Cmd+B change nothing.
     const width = async (): Promise<number> => Math.round((await sidebar.boundingBox())!.width);
     await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
@@ -1964,30 +1946,23 @@ test.describe('sidebar', () => {
     expect(await width()).toBe(full);
     await page.setViewportSize({ width: 1000, height: 700 });
     await expect.poll(width).toBeLessThan(full);
+    // Folded to its icons, the names are the tooltips.
+    await page.getByTestId('nav-profile').hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.nav.profile);
     await page.setViewportSize({ width: 1360, height: 900 });
     await expect.poll(width).toBe(full);
-  });
-
-  test('before the first fetch the Übersicht waits and says why', async ({ page }) => {
-    await open(page, `${WIN}&scenario=first-run&view=start`);
-    await expect(page.getByTestId('view-first-run')).toBeVisible();
-    const overview = page.getByTestId('nav-overview');
-    await expect(overview).toHaveAttribute('aria-disabled', 'true');
-    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-    await overview.hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Nach dem ersten Abruf');
   });
 
   for (const os of [WIN, MAC]) {
     test(`the rail keeps every entry in the window down to 480 x 360 ${os}`, async ({ page }) => {
       await page.setViewportSize({ width: 1000, height: 700 });
       await open(page, os);
-      for (const id of ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings']) {
+      for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         const box = (await page.getByTestId(id).boundingBox())!;
         expect([box.width, box.height], id).toEqual([40, 40]);
       }
       await page.setViewportSize({ width: 480, height: 360 });
-      for (const id of ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings', 'run-status']) {
+      for (const id of ['nav-jobs', 'nav-profile', 'nav-settings']) {
         await expect(page.getByTestId(id), id).toBeInViewport({ ratio: 1 });
       }
       await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);

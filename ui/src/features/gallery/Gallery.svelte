@@ -12,7 +12,6 @@
   import IconTile, { TILE_TONES } from '$components/IconTile.svelte';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import SideNav, { type SideNavFold } from '$components/SideNav.svelte';
-  import StatusLine from '$components/StatusLine.svelte';
   import Spinner from '$components/Spinner.svelte';
   import Toast from '$components/Toast.svelte';
   import Menu from '$components/Menu.svelte';
@@ -155,23 +154,6 @@
             fold={foldOf(demo.key)}
             onselect={(id) => (activeTab = id)}
           />
-          <StatusLine
-            text={text.navigation.status}
-            label={text.navigation.status}
-            collapsed={rail}
-            onclick={noop}
-          />
-          {#if demo.key === 'full'}
-            {#if !rail}
-              <StatusLine
-                text={text.navigation.running}
-                label={text.navigation.running}
-                busy
-                progress={0.4}
-                onclick={noop}
-              />
-            {/if}
-          {/if}
         </div>
       {/each}
     </div>

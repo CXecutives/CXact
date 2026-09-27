@@ -897,8 +897,8 @@ function initial(): void {
       state.portals[1]!.health = { kind: 'layoutSuspect', emptyMails: 2, pages: 0 };
       // Alert mails without jobs ask her to look (core's PortalHealth::action_needed).
       state.portals[1]!.actionNeeded = true;
-      // The hour binds: the bar and its words both speak of the hour.
-      state.portals[2]!.quota = { usedHour: 38, capHour: 40, usedDay: 61, capDay: 100 };
+      // Near the day's limit: the meter turns ochre.
+      state.portals[2]!.quota = { usedHour: 12, capHour: 40, usedDay: 92, capDay: 100 };
       break;
     case 'reset':
       // After "reset everything" the app starts empty: the first-run page, with the report.

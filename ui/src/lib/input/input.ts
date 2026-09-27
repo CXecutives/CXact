@@ -77,7 +77,6 @@ import {
   keyLabel,
   type KeyConventions,
 } from '../platform';
-import { help } from '../state/help.svelte';
 import { navigation, type ViewId } from '../state/navigation.svelte';
 import {
   chooseEntry,
@@ -755,13 +754,6 @@ function onKeyDown(event: KeyboardEvent): void {
     }
   }
   if (isCopy(event)) return;
-  if (isHelpKey(event)) {
-    // The card of the keys, from anywhere (a field too); the same keys close it again.
-    event.preventDefault();
-    if (help.open) help.hide();
-    else if (modal === null) help.show();
-    return;
-  }
   if (!inField(event.target) && (isBackKey(event) || isForwardKey(event))) {
     // Never the web view's history: back only where a view has a way back.
     event.preventDefault();
@@ -946,10 +938,6 @@ function isForwardKey(event: KeyboardEvent): boolean {
   }
   return event.metaKey && !event.ctrlKey && (event.key === ']' || event.key === 'ArrowRight');
 }
-
-/** Ctrl+/ or Cmd+/ (any layout: the key that types a slash, or the one on the number pad):
- *  the card of the keys. */
-const isHelpKey = (event: KeyboardEvent): boolean => is(event, 'help');
 
 /** Ctrl+Z or Cmd+Z (the command key of the OS), without Alt or Shift. */
 const isUndo = (event: KeyboardEvent): boolean => is(event, 'undo');

@@ -12,7 +12,6 @@ import {
   expect,
   expectShot,
   motionSettled,
-  NOW,
   open,
   runFinished,
   settle,
@@ -106,8 +105,6 @@ const anyRows = (page: Page) => page.locator('[data-testid^="job-row-"]');
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
-
-const DAY = 24 * 60 * 60 * 1000;
 
 const rows = (page: Page): Locator =>
   page.getByTestId('job-rows').locator('[data-testid^="job-row-"]');
@@ -292,7 +289,7 @@ test('windows: no drag region; the first view is centred on the line of the plac
   await expect(page.locator('[data-tauri-drag-region]')).toHaveCount(0);
   // The first entry (36 px) and the tabs (36 px) share their middle: the first line.
   const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
-  const nav = middle(await page.getByTestId('nav-overview').boundingBox());
+  const nav = middle(await page.getByTestId('nav-jobs').boundingBox());
   const tabs = middle(await page.getByTestId('places').boundingBox());
   expect(nav).toBe(tabs);
 });
@@ -355,7 +352,7 @@ test('macos: the unified toolbar row', async ({ page, browserName }) => {
 
 test('macos: the whole toolbar row moves the window, in every view and width', async ({ page }) => {
   const states: [string, { width: number; height: number }, (p: typeof page) => Promise<void>][] = [
-    ['overview', { width: 1360, height: 900 }, async () => undefined],
+    ['jobs', { width: 1360, height: 900 }, async () => undefined],
     [
       'reader',
       { width: 1360, height: 900 },
@@ -399,89 +396,14 @@ test('per-OS convention: the order of dialog buttons', async ({ page }) => {
   const order = async (os: string): Promise<string[]> => {
     await open(page, `?platform=${os}`);
     await page.getByTestId('nav-settings').click();
-    await page.getByTestId('full-mailbox').click();
-    const dialog = page.getByTestId('dialog-full-mailbox');
+    await page.getByTestId('mailbox-remove').click();
+    const dialog = page.getByTestId('dialog-remove-mailbox');
     await expect(dialog).toBeVisible();
     return dialog.getByRole('button').allInnerTexts();
   };
   // Windows: the action first; macOS: cancel, then the action on the right.
-  expect(await order('windows')).toEqual(['Abrufen', 'Abbrechen']);
-  expect(await order('macos')).toEqual(['Abbrechen', 'Abrufen']);
-});
-
-test('the run status in the sidebar opens the last run', async ({ page }) => {
-  await open(page, '?platform=windows');
-  await expect(page.getByTestId('run-card')).toHaveCount(0);
-  await expect(page.getByTestId('run-status')).toContainText('Abgerufen 08:30');
-  await page.getByTestId('nav-settings').click();
-  await page.getByTestId('run-status').click();
-  await expect(page.getByTestId('view-jobs')).toBeVisible();
-  // Seven new in the mails, one of them excluded: the run brought six new jobs.
-  await expect(page.getByTestId('run-finished')).toContainText('6 neu');
-  await page.getByTestId('run-close').click();
-  await expect(page.getByTestId('run-card')).toHaveCount(0);
-});
-
-// A click on the status opens the run card: before the first fetch there is none, so the
-// status is not there at all (the first-run page says it) instead of a dead button.
-test('the run status shows only when there is a run to open', async ({ page }) => {
-  await open(page, '?platform=windows&scenario=first-run');
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await expect(page.getByTestId('run-status')).toHaveCount(0);
-  await open(page, '?platform=windows');
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('run-status')).toBeVisible();
-});
-
-// In one column an open job hides the list; the status brings the list with the run card back.
-test('narrow: the run status opens the run card even while a job is open', async ({ page }) => {
-  await page.setViewportSize({ width: 780, height: 560 });
-  await open(page, '?platform=windows');
-  await page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first().click();
-  await expect(page.getByTestId('list-scroll')).toBeHidden();
-  await page.getByTestId('run-status').click();
-  await expect(page.getByTestId('list-scroll')).toBeVisible();
-  await expect(page.getByTestId('run-card')).toBeVisible();
-});
-
-test('every run status is one line; a cut one says itself in its tooltip', async ({ page }) => {
-  await open(page, '?platform=windows');
-  await page.getByTestId('nav-settings').click();
-  const codes = [
-    'connectingMail',
-    'searchingMail',
-    'readingMails',
-    'fetchingDetails',
-    'signingIn',
-    'waiting',
-    'scoring',
-    'writingFiles',
-  ] as const;
-  // A run begins with its kind, like every run of the backend.
-  await page.evaluate(() => {
-    window.__harness.emit({ type: 'started', kind: 'fetch' });
-    window.__harness.emit({ type: 'progress', step: 'scan', portal: null, done: 0, total: 3 });
-  });
-  for (const code of codes) {
-    await page.evaluate(
-      (c) => window.__harness.emit({ type: 'status', code: c, portal: 'freelance', until: null }),
-      code,
-    );
-    const status = page.getByTestId('run-status');
-    await expect(status).not.toContainText('Abgerufen');
-    const line = await status.locator('.text').evaluate((node) => ({
-      text: node.textContent ?? '',
-      lines: Math.round(node.clientHeight / parseFloat(getComputedStyle(node).lineHeight)),
-      cut: node.scrollWidth > node.clientWidth + 1,
-    }));
-    expect(line.lines, `${code}: ${line.text}`).toBe(1);
-    if (line.cut) {
-      await status.hover();
-      await expect(page.getByRole('tooltip')).toHaveText(line.text);
-      await page.mouse.move(700, 450);
-      await expect(page.getByRole('tooltip')).toHaveCount(0);
-    }
-  }
+  expect(await order('windows')).toEqual(['Entfernen', 'Abbrechen']);
+  expect(await order('macos')).toEqual(['Abbrechen', 'Entfernen']);
 });
 
 test('icon-only buttons show a styled tooltip after the delay', async ({ page }) => {
@@ -489,10 +411,9 @@ test('icon-only buttons show a styled tooltip after the delay', async ({ page })
   await page.locator('[data-testid^="job-row-"]').first().click();
   const close = page.getByTestId('reader-close');
   await close.hover();
-  // The name of the button, and its key on a second line.
+  // The name of the button, drawn by the app (no native title).
   const tip = page.getByRole('tooltip');
   await expect(tip).toContainText(await text(page, 'reader.close'));
-  await expect(tip.locator('.hint')).toHaveText('Esc');
   await expect(close).not.toHaveAttribute('title');
 });
 
@@ -508,10 +429,10 @@ test('baseline: shell on macOS', async ({ page }) => {
 
 /* --------------------------------------------------------------------------- The sidebar */
 
-// The sidebar: four views (Übersicht, Jobs, Profil, Einstellungen), the app starts in the
-// Übersicht, Ctrl/Cmd+1 to 4 choose them, no counts, the rail at small widths, that the
-// sidebar folds only by the window width, and the order of a click when an unsaved profile
-// asks first. The places of the jobs are tabs above the list.
+// The sidebar: three views (Jobs, Profil, Einstellungen), the app starts in Jobs, no counts,
+// no status line, tooltips only in the rail at small widths, that the sidebar folds only by
+// the window width, and the order of a click when an unsaved profile asks first. The places
+// of the jobs are tabs above the list.
 
 test('the sidebar shows no counts and no dots: the list says how many jobs are new', async ({
   page,
@@ -526,60 +447,51 @@ test('the sidebar shows no counts and no dots: the list says how many jobs are n
   }
 });
 
-test('the app starts in the Übersicht; Ctrl+1 to 4 choose the views, the keys in the tooltips', async ({
+test('the app starts in Jobs; three views, their names without tooltips, no status line', async ({
   page,
 }) => {
   await open(page, `${WIN}&view=start`);
-  await expect(page.getByTestId('view-overview')).toBeVisible();
-  await expect(page.getByTestId('nav-overview')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('sidebar').locator('nav button')).toHaveText([
-    'Übersicht',
-    'Jobs',
-    'Profil',
-    'Einstellungen',
-  ]);
-  await page.keyboard.press('Control+2');
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await page.keyboard.press('Control+4');
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  const sidebar = page.getByTestId('sidebar');
+  await expect(sidebar.locator('nav button')).toHaveText(['Jobs', 'Profil', 'Einstellungen']);
+  await expect(page.getByTestId('view-overview')).toHaveCount(0);
+  await expect(sidebar.locator('button:not(nav button)')).toHaveCount(0);
+  await expect(page.getByTestId('run-status')).toHaveCount(0);
+  await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  await page.keyboard.press('Control+3');
+  await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  await page.keyboard.press('Control+1');
-  await expect(page.getByTestId('view-overview')).toBeVisible();
-  // Ctrl+, opens the settings on Windows too (macOS has it in its menu).
-  await page.keyboard.press('Control+,');
-  await expect(page.getByTestId('view-settings')).toBeVisible();
+  // The name is on the entry: no tooltip repeats it, on hover or on focus.
   await page.getByTestId('nav-jobs').hover();
-  const tip = page.getByRole('tooltip');
-  await expect(tip).toContainText(await text(page, 'nav.jobs'));
-  await expect(tip).toContainText('Strg+2');
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await page.getByTestId('nav-settings').focus();
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
-test('before the first fetch the Übersicht waits and says why; Jobs is the setup page', async ({
+test('before the first fetch Jobs is the setup page; every entry works as always', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=first-run&view=start`);
   await expect(page.getByTestId('view-first-run')).toBeVisible();
-  const overview = page.getByTestId('nav-overview');
-  await expect(overview).toHaveAttribute('aria-disabled', 'true');
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await overview.click({ force: true });
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  await page.mouse.move(600, 600);
-  await overview.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(await text(page, 'nav.overviewLater'));
+  await expect(page.getByTestId('sidebar').locator('[aria-disabled="true"]')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
+  await page.getByTestId('nav-jobs').click();
+  await expect(page.getByTestId('view-first-run')).toBeVisible();
 });
 
 for (const os of [WIN, MAC]) {
-  test(`the rail: four squares in a column, the names in tooltips on the right ${os}`, async ({
+  test(`the rail: three squares in a column, the names in tooltips on the right ${os}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1000, height: 700 });
     await open(page, os);
     const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
-    const ids = ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings'];
+    const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
     const boxes = await Promise.all(ids.map(box));
     for (const b of boxes) expect([b.width, b.height]).toEqual([40, 40]);
     const centre = (b: { x: number; width: number }): number => b.x + b.width / 2;
@@ -590,18 +502,16 @@ for (const os of [WIN, MAC]) {
     await expect(tip.locator('div')).toHaveCSS('opacity', '1');
     const anchor = await box('nav-profile');
     expect((await tip.locator('div').boundingBox())!.x).toBeGreaterThan(anchor.x + anchor.width);
-    for (const id of ['nav-settings', 'nav-overview', 'nav-jobs']) {
+    for (const id of ['nav-settings', 'nav-profile', 'nav-jobs']) {
       await page.getByTestId(id).click();
       await pillOn(page, id);
     }
   });
 
-  test(`at 480 x 360 the rail keeps every entry and the status in the window ${os}`, async ({
-    page,
-  }) => {
+  test(`at 480 x 360 the rail keeps every entry in the window ${os}`, async ({ page }) => {
     await page.setViewportSize({ width: 480, height: 360 });
     await open(page, os);
-    const ids = ['nav-overview', 'nav-jobs', 'nav-profile', 'nav-settings', 'run-status'];
+    const ids = ['nav-jobs', 'nav-profile', 'nav-settings'];
     const boxes = await Promise.all(
       ids.map(async (id) => (await page.getByTestId(id).boundingBox())!),
     );
@@ -688,37 +598,39 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
 test('a tooltip shows on keyboard focus after the delay and goes on blur, resize and window blur', async ({
   page,
 }) => {
-  await open(page, WIN);
-  await page.getByTestId('nav-jobs').focus();
-  await page.keyboard.press('Shift+Tab');
-  await expect(page.getByTestId('nav-overview')).toBeFocused();
+  await open(page, `${WIN}&view=settings`);
+  const words = await text(page, 'settings.openPortal');
+  const first = page.getByTestId('open-portal-freelance');
+  await first.focus();
   // Not at once: after the same delay as hovering.
   await page.waitForTimeout(150);
   await expect(tooltip(page)).toHaveCount(0);
-  await expect(tooltip(page)).toContainText(await text(page, 'nav.overview'));
-  await expect(tooltip(page)).toContainText('Strg+1');
-  // Blur: the focus moves on, the next one waits for its delay again.
+  await expect(tooltip(page)).toHaveText(words);
+  // Blur: the focus moves on to a button that names itself, which has none.
   await page.keyboard.press('Tab');
-  await expect(tooltip(page)).toContainText(await text(page, 'nav.jobs'));
+  await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
+  await expect(tooltip(page)).toHaveCount(0);
+  await first.focus();
+  await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('resize')));
   await expect(tooltip(page)).toHaveCount(0);
-  await page.keyboard.press('Shift+Tab');
-  await expect(tooltip(page)).toContainText(await text(page, 'nav.overview'));
+  await page.getByTestId('open-portal-linkedin').focus();
+  await expect(tooltip(page)).toHaveText(words);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   await expect(tooltip(page)).toHaveCount(0);
 });
 
-test('a disabled entry that says why stays a Tab stop; its reason shows on focus', async ({
+test('a disabled button that says why stays a Tab stop; its reason shows on focus', async ({
   page,
 }) => {
-  await open(page, `${WIN}&scenario=first-run`);
-  await page.getByTestId('nav-jobs').focus();
-  await page.keyboard.press('Shift+Tab');
-  await expect(page.getByTestId('nav-overview')).toBeFocused();
-  await expect(tooltip(page)).toHaveText(await text(page, 'nav.overviewLater'));
+  await open(page, `${WIN}&view=settings`);
+  await page.getByTestId('toggle-exportExcel').focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByTestId('csv-open')).toBeFocused();
+  await expect(tooltip(page)).toHaveText(await text(page, 'settings.csvMissing'));
 });
 
-test('the focus goes back to the trigger after a menu, a dialog and a toast', async ({ page }) => {
+test('the focus goes back to the trigger after a menu and a toast', async ({ page }) => {
   await open(page, WIN);
   // A menu opened from the keyboard (the funnel's), closed with Esc.
   const funnel = page.getByTestId('filter');
@@ -728,14 +640,7 @@ test('the focus goes back to the trigger after a menu, a dialog and a toast', as
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('menu')).toHaveCount(0);
   await expect(funnel).toBeFocused();
-  // The card of the keys from the search field.
   const search = page.getByTestId('search');
-  await search.focus();
-  await page.keyboard.press('Control+/');
-  await expect(page.getByTestId('keys-help')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('keys-help')).toHaveCount(0);
-  await expect(search).toBeFocused();
   // A toast's undo reached from the search field gives the focus back to it.
   await anyRows(page).first().click();
   await page.keyboard.press('e');
@@ -788,17 +693,17 @@ test('the first line: the sidebar entry, the tabs and the first headings share o
   page,
 }) => {
   await open(page, WIN);
-  const line = middle(await page.getByTestId('nav-overview').boundingBox());
+  const line = middle(await page.getByTestId('nav-jobs').boundingBox());
   expect(middle(await page.getByTestId('places').boundingBox())).toBe(line);
   // The views' first headings take the row with `data-first-row` (tokens.css --first-row).
   // Profil and Einstellungen carry the attribute; their views still place the heading on
   // the row (until then the offset is noted, not failed).
-  for (const view of ['overview', 'profile', 'settings']) {
+  for (const view of ['profile', 'settings']) {
     await open(page, `${WIN}&view=${view}`);
     const first = page.locator(`[data-testid="view-${view}"] [data-first-row]`).first();
     await expect(first, view).toBeVisible();
     const at = middle(await first.boundingBox());
-    if (view !== 'overview' && at !== line) {
+    if (at !== line) {
       test
         .info()
         .annotations.push({ type: 'first-row', description: `${view}: ${at} for ${line}` });
@@ -874,8 +779,8 @@ test('macOS: a dialog leaves the toolbar row free, and the row moves the window'
   page,
 }) => {
   await open(page, `${MAC}&view=settings`);
-  await page.keyboard.press('Meta+/');
-  await expect(page.getByTestId('keys-help')).toBeVisible();
+  await page.getByTestId('reset').click();
+  await expect(page.getByTestId('dialog-reset')).toBeVisible();
   await settle(page);
   const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
   expect(scrim.y).toBe(52);
@@ -883,37 +788,6 @@ test('macOS: a dialog leaves the toolbar row free, and the row moves the window'
     document.elementFromPoint(600, 26)?.hasAttribute('data-tauri-drag-region'),
   );
   expect(hit).toBe(true);
-  // The keys are named as a Mac names them.
-  await expect(page.getByTestId('keys-help').getByTestId('key-search')).toContainText('⌘F');
-});
-
-test('Ctrl+/ shows the card of the keys, named as the OS names them; Esc closes it', async ({
-  page,
-}) => {
-  await open(page, WIN);
-  await page.keyboard.press('Control+/');
-  const card = page.getByTestId('keys-help');
-  await expect(card).toBeVisible();
-  await expect(
-    card.getByRole('heading', { name: await text(page, 'keysHelp.heading') }),
-  ).toBeVisible();
-  // Each row of the table (lib/input/keys.ts) names what it does and its key as Windows does.
-  await expect(card.getByTestId('key-views')).toContainText(await text(page, 'keysHelp.views'));
-  await expect(card.getByTestId('key-views')).toContainText(
-    await text(page, 'keysHelp.range', 'Strg+1', 'Strg+4'),
-  );
-  await expect(page.getByTestId('key-search')).toContainText('Strg+F');
-  await expect(page.getByTestId('key-fetch')).toContainText('F5');
-  await expect(page.getByTestId('key-undo')).toContainText('Strg+Z');
-  await expect(page.getByTestId('key-menu')).toContainText('Umschalt+F10');
-  await expect(page.getByTestId('key-trash')).toContainText('Entf');
-  await page.keyboard.press('Escape');
-  await expect(card).toHaveCount(0);
-  // The same keys close it again.
-  await page.keyboard.press('Control+/');
-  await expect(card).toBeVisible();
-  await page.keyboard.press('Control+/');
-  await expect(card).toHaveCount(0);
 });
 
 test('macOS: the multi-select hints write ⌘-Klick and ⇧-Klick', async ({ page }) => {
@@ -1071,11 +945,9 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
     await page.mouse.up();
     return [rest, hover, pressed];
   };
-  // One switch off (the trash that empties itself, switched off here), one on.
-  const off = page.getByTestId('toggle-auto-empty-trash');
-  await off.click();
-  await expect(off).toHaveAttribute('aria-checked', 'false');
-  for (const id of ['toggle-auto-empty-trash', 'toggle-auto-archive']) {
+  // One switch off (the CSV file), one on (the Excel file).
+  await expect(page.getByTestId('toggle-exportCsv')).toHaveAttribute('aria-checked', 'false');
+  for (const id of ['toggle-exportCsv', 'toggle-exportExcel']) {
     const [rest, hover, pressed] = await steps(id);
     expect(new Set([rest, hover, pressed]).size, `${id}: ${rest} ${hover} ${pressed}`).toBe(3);
   }
@@ -1105,9 +977,9 @@ test('only what loses something for good warns: the trash does not, delete for g
 
 test('a dialog confirms with the bare verb of its heading', async ({ page }) => {
   await settings(page);
-  await page.getByTestId('full-mailbox').click();
-  await expect(page.getByTestId('dialog-full-mailbox').getByTestId('dialog-confirm')).toHaveText(
-    'Abrufen',
+  await page.getByTestId('mailbox-remove').click();
+  await expect(page.getByTestId('dialog-remove-mailbox').getByTestId('dialog-confirm')).toHaveText(
+    'Entfernen',
   );
   await page.keyboard.press('Escape');
   await page.getByTestId('nav-jobs').click();
@@ -1124,88 +996,6 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   await expect(page.getByTestId('dialog-purge').getByTestId('dialog-confirm')).toHaveText(
     'Löschen',
   );
-});
-
-test('one column: a running fetch shows in the sidebar while a job is open', async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 640 });
-  await open(page, WIN);
-  await page.evaluate(() => (window.__harness.holdAfter = 6));
-  await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-card')).toBeVisible();
-  await expect(page.getByTestId('run-status')).toHaveCount(0);
-  await rows(page).first().click();
-  await expect(page.getByTestId('list-scroll')).toBeHidden();
-  const status = page.getByTestId('run-status');
-  await expect(status).toBeVisible();
-  await status.click();
-  await expect(page.getByTestId('list-scroll')).toBeVisible();
-  await expect(page.getByTestId('run-card')).toBeVisible();
-  await expect(page.getByTestId('cancel-run')).toBeVisible();
-  await page.evaluate(() => (window.__harness.holdAfter = null));
-});
-
-test('the run status is one line as high as a nav entry, today and on another day', async ({
-  page,
-}) => {
-  const check = async (text: string): Promise<void> => {
-    const status = page.getByTestId('run-status');
-    await expect(status).toContainText(text);
-    const line = await status.evaluate((node) => {
-      const text = node.querySelector('.text')!;
-      return {
-        lines: Math.round(text.getBoundingClientRect().height / 18),
-        height: node.getBoundingClientRect().height,
-      };
-    });
-    const nav = (await page.getByTestId('nav-jobs').boundingBox())!.height;
-    expect(line.lines, text).toBe(1);
-    expect(line.height, text).toBe(nav);
-  };
-  const nextDay = async (): Promise<void> => {
-    await page.clock.setFixedTime(new Date(NOW.getTime() + DAY));
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  };
-  for (const [lang, fetched, failed, cancelled] of [
-    ['de', 'Abgerufen', 'Fehlgeschlagen', 'Abgebrochen'],
-    ['en', 'Fetched', 'Failed', 'Cancelled'],
-  ] as const) {
-    await settings(page, `${WIN}&lang=${lang}`);
-    await check(`${fetched} 08:30`);
-    await nextDay();
-    await check(`${fetched} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
-    await settings(page, `${WIN}&lang=${lang}&scenario=offline`);
-    await check(`${failed} 08:30`);
-    await nextDay();
-    await check(`${failed} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
-    // A fetch cancelled: the status says so, not that it fetched.
-    await open(page, `${WIN}&lang=${lang}`);
-    await page.evaluate(() => (window.__harness.holdAfter = 4));
-    await page.getByTestId('fetch').click();
-    await page.getByTestId('cancel-run').click();
-    await page.evaluate(() => (window.__harness.holdAfter = null));
-    await page.getByTestId('nav-settings').click();
-    await check(cancelled);
-    await nextDay();
-    await check(`${cancelled} ${lang === 'de' ? 'gestern' : 'yesterday'}`);
-  }
-});
-
-test('the status opens the run only once an unsaved Profil lets the view go', async ({ page }) => {
-  await open(page, WIN);
-  await row(page, 'freelancermap-2801').click();
-  await expect(page.getByTestId('reader-close')).toBeVisible();
-  await page.getByTestId('nav-profile').click();
-  await page.getByTestId('profile-name-field').fill('Erika Muster');
-  await page.getByTestId('run-status').click();
-  const dialog = page.getByTestId('dialog-leave-profile');
-  await dialog.getByRole('button', { name: 'Abbrechen' }).click();
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  // Later, Jobs without the status: the open job stays and no run card came up.
-  await page.getByTestId('nav-jobs').click();
-  await dialog.getByRole('button', { name: 'Verwerfen' }).click();
-  await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('reader-close')).toBeVisible();
-  await expect(page.getByTestId('run-card')).toHaveCount(0);
 });
 
 test('the closing note names what the window waits for', async ({ page }) => {
@@ -1303,7 +1093,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   await settings(page);
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  await page.getByTestId('settings-fetch').locator('h2').click();
+  await page.getByTestId('settings-export').locator('h2').click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
   await expect
@@ -1410,8 +1200,8 @@ test('ghost buttons at the end of a row end on the edge of the switches', async 
   await settings(page);
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
-  const toggle = await edge(page.getByTestId('toggle-auto-archive'));
-  for (const id of ['mailbox-remove', 'excel-reveal', 'logs-open']) {
+  const toggle = await edge(page.getByTestId('toggle-exportExcel'));
+  for (const id of ['folder-open', 'backup-restore', 'logs-open', 'reset']) {
     const label = await edge(page.getByTestId(id).locator('.label'));
     expect(Math.abs(label - toggle), id).toBeLessThanOrEqual(0.5);
   }
@@ -1423,7 +1213,7 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const labelId = await page.getByTestId('toggle-auto-archive').getAttribute('aria-labelledby');
+  const labelId = await page.getByTestId('toggle-exportExcel').getAttribute('aria-labelledby');
   const label = (await page.locator(`[id="${labelId}"]`).boundingBox())!.x;
   expect(icon).toBe(label);
   const same = async (notice: Locator): Promise<boolean> =>
@@ -1772,8 +1562,8 @@ for (const [width, rail] of [
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));
       await label.hover();
       const tip = page.getByRole('tooltip');
-      // The name, and its key as the second line.
-      await expect(tip).toHaveText(`${await text(page, 'nav.profile')}Strg+3`);
+      // The name alone: the rail hides it.
+      await expect(tip).toHaveText(await text(page, 'nav.profile'));
       // Right of the icon, centred on it, never over the next entry (like a native rail).
       await expect(tip.locator('div')).toHaveCSS('opacity', '1');
       const icon = (await label.boundingBox())!;
@@ -1915,7 +1705,7 @@ test('Sprache switches the whole app to English and back at once', async ({ page
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
   await expect(page.getByTestId('nav-profile')).toContainText('Profile');
   await expect(page.getByTestId('settings-look')).toContainText('Appearance');
-  await expect(page.getByTestId('settings-fetch')).toContainText('Archive jobs after 30 days');
+  await expect(page.getByTestId('settings-export')).toContainText('Result folder');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
     'aria-checked',
@@ -1925,41 +1715,37 @@ test('Sprache switches the whole app to English and back at once', async ({ page
     {
       patch: {
         portals: [],
-        autoArchiveDays: null,
-        autoEmptyTrashDays: null,
+        fetchRange: null,
+        exportExcel: null,
+        exportCsv: null,
         language: 'en',
         palette: null,
       },
     },
   ]);
 
-  // The Jobs view in English: the list header, the reader, its numbers and words.
+  // The Jobs view in English: the list header and the reader follow.
   await readFirst(page);
-  await expect(page.getByTestId('list-header')).toContainText('Fetch');
+  await expect(page.getByTestId('list-header')).toContainText(await text(page, 'toolbar.fetch'));
   await expect(page.getByTestId('reader-ring')).toHaveAttribute(
     'aria-label',
-    new RegExp(`^Match ${BEST}%`),
+    new RegExp(`${BEST}%`),
   );
-  await expect(page.getByTestId('band')).toHaveText('High match');
   await expect(page.getByTestId('reader')).not.toContainText('Passung');
-  await page.getByTestId('reader-more').click();
-  await expect(page.getByTestId('menu-item-prompt')).toContainText('AI prompt');
-  await page.keyboard.press('Escape');
 
   // Back to German, the same way.
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('language').getByRole('radio', { name: 'Deutsch' }).click();
   await expect(page.getByTestId('nav-settings')).toContainText('Einstellungen');
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
-  // The job stays open; its reader speaks German again.
+  // The job stays open; its reader speaks German again, with a narrow no-break space before
+  // the percent sign.
   await page.getByTestId('nav-jobs').click();
-  await expect(page.getByTestId('band')).toHaveText('Hohe Passung');
-  // German puts a narrow no-break space before the percent sign.
   await expect(page.getByTestId('reader-ring')).toHaveAttribute(
     'aria-label',
-    new RegExp(`^Passung ${BEST}\\s%`),
+    new RegExp(`${BEST}\\s%`),
   );
-  await expect(page.getByTestId('list-header')).toContainText('Abrufen');
+  await expect(page.getByTestId('list-header')).toContainText(await text(page, 'toolbar.fetch'));
 });
 
 test('the app starts in the language the backend says', async ({ page }) => {

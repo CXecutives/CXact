@@ -478,10 +478,10 @@
   {:else if editor.origin === null}
     <div class="empty">
       <ProfileStart
-        heading={profile?.parseError ? t.overview.profileUnreadable : t.profile.none}
+        heading={profile?.parseError ? t.profile.unreadable : t.profile.none}
         text={profile?.parseError
           ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-          : t.overview.noProfileText}
+          : t.profile.noneText}
         picking={busy === 'pick'}
         unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
         note={note?.() ?? null}

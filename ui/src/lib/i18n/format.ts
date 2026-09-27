@@ -160,17 +160,6 @@ export function formatDayTime(iso: string, now: Date = new Date()): string {
   return text.charAt(0).toLocaleUpperCase(language.locale) + text.slice(1);
 }
 
-/**
- * `08:30` today, `gestern`, `vorgestern`, `Mo` up to a week back, then `24.09.` (`24/09`):
- * when something happened, in the fewest characters (the sidebar's run status keeps to one
- * line; the run card has the time).
- */
-export function formatStamp(iso: string, now: Date = new Date()): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return dayOf(date, now) ?? formats().clock.format(date);
-}
-
 /** `18 KB`, `1,2 MB` (`1.2 MB`): the size of a backup. */
 export function formatBytes(bytes: number): string {
   const { integer, oneDecimal } = formats();

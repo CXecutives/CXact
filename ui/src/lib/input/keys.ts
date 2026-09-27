@@ -9,7 +9,7 @@
 // lib/views.ts. A key is one row; what differs between the OS is platform.ts (keyConventions).
 
 import { t } from '../i18n/t';
-import { keyConventions, keyLabel, type KeyConventions } from '../platform';
+import type { KeyConventions } from '../platform';
 import { VIEWS } from '../views';
 
 export type ShortcutAction =
@@ -255,39 +255,4 @@ export function matched(
     if (keys !== undefined) return { action: row.action, combo: keys };
   }
   return null;
-}
-
-/** A row of a card of the keys: what the key does and the key as the OS writes it. */
-export interface KeyRow {
-  id: ShortcutAction;
-  label: string;
-  keys: string;
-}
-
-export interface KeyGroup {
-  id: ShortcutScope;
-  heading: string;
-  rows: KeyRow[];
-}
-
-/** How a card writes a row's keys: the first, the first two, or first to last. */
-function written(row: Shortcut, os: KeyConventions): string {
-  const keys = row.keys(os).map(keyLabel);
-  if (row.shows === 'range') return t.keysHelp.range(keys[0] ?? '', keys.at(-1) ?? '');
-  if (row.shows === 'pair') return keys.slice(0, 2).join(' ');
-  return keys[0] ?? '';
-}
-
-/** The listed keys by where they work, in the language of the moment (read it in a
- *  `$derived`): the cards of the keys render it. */
-export function keyGroups(): KeyGroup[] {
-  const os = keyConventions();
-  const rows = (scope: ShortcutScope): KeyRow[] =>
-    SHORTCUTS.filter(
-      (row) => row.scope === scope && row.label !== null && row.keys(os).length > 0,
-    ).map((row) => ({ id: row.action, label: row.label?.() ?? '', keys: written(row, os) }));
-  return [
-    { id: 'everywhere', heading: t.keysHelp.everywhere, rows: rows('everywhere') },
-    { id: 'list', heading: t.keysHelp.list, rows: rows('list') },
-  ];
 }
