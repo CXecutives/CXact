@@ -350,6 +350,8 @@ test.describe('tools', () => {
 test('the row menu and the reader offer the same: no alert mail, no ad text, an ad gone offline', async ({
   page,
 }) => {
+  // A wide window: the reader's buttons show their words.
+  await page.setViewportSize({ width: 1800, height: 900 });
   await open(page, WIN);
   // freelancermap-2805: its ad never came, and here its alert mail cannot be opened;
   // linkedin-4100200304: its ad takes no applications any more. The list loads them again.

@@ -4,7 +4,9 @@
   Abbrechen.
   Schließen cancels the fetch and closes once it has stopped (the closing note of App.svelte
   says so meanwhile); Abbrechen keeps the window and the fetch. A fetch that ends while the
-  question is open ends the question too: the next close goes through without one.
+  question is open ends the question too: the next close goes through without one. Only a
+  fetch the page has seen running ends it: a close asked right as a fetch starts (the backend
+  knows before the page does) keeps its question.
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -13,12 +15,21 @@
   import { run } from '$lib/state/run.svelte';
 
   let open = $state(false);
+  /** The page has seen the fetch run while the question was open. */
+  let seen = false;
 
-  $effect(() => onCloseRunning(() => (open = true)));
+  $effect(() =>
+    onCloseRunning(() => {
+      seen = run.active;
+      open = true;
+    }),
+  );
 
   // The fetch ended meanwhile: nothing to ask any more.
   $effect(() => {
-    if (open && !run.active) answer(false);
+    if (!open) return;
+    if (run.active) seen = true;
+    else if (seen) answer(false);
   });
 
   function answer(close: boolean): void {
