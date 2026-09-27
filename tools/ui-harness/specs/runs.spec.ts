@@ -285,3 +285,23 @@ test('an archived job leaves the list and every count but the archive', async ({
   await page.getByTestId('place-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
+
+test('a fetch without internet says so in the run line and tries again from there', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&mail=no-internet&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  const problem = page.getByTestId('run-problem');
+  // Its own words, not the words of a Gmail that does not answer.
+  await expect(problem).toContainText(T.error.text('offline', {}));
+  await expect(problem).not.toContainText(T.error.text('mailConnect', {}));
+  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  // The next run's end, not the last one's.
+  await page.evaluate(() => (window.__harness.done = false));
+  await problem.getByTestId('run-retry').click();
+  await runFinished(page);
+  const starts = (await calls(page, 'start_run')).map(([, args]) => args);
+  expect(starts).toMatchObject([{ request: { kind: 'fetch' } }, { request: { kind: 'fetch' } }]);
+  await expect(page.getByTestId('run-problem')).toContainText(T.error.text('offline', {}));
+});

@@ -84,9 +84,9 @@ impl Credentials {
 /// Checks `credentials` and signs in to Gmail with them, then counts the alert mails of
 /// `portals` of the last [`CHECK_DAYS`] days. `Ok(None)`: the sign-in worked, the count did
 /// not finish in time or failed (logged by its code). Errors: `Invalid` (the shape, nothing
-/// sent), `MailAuth` (the app password was refused), `MailNotGmail`, `MailConnect` (offline,
-/// no server), `MailTimeout` (no answer to the sign-in in time), `MailLost`, `MailServer`,
-/// `MailCancelled` (also while counting: the user stopped "Verbinden").
+/// sent), `MailAuth` (the app password was refused), `MailNotGmail`, `Offline` (no network),
+/// `MailConnect` (no server), `MailTimeout` (no answer to the sign-in in time), `MailLost`,
+/// `MailServer`, `MailCancelled` (also while counting: the user stopped "Verbinden").
 pub async fn check_mailbox(
     credentials: &Credentials,
     portals: &[Portal],

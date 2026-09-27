@@ -117,6 +117,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   mailNotGmail: 'Das ist kein Gmail-Postfach.',
   mailServer: 'Gmail meldet einen Fehler.',
   mailCancelled: 'Abgebrochen.',
+  offline: 'Keine Verbindung zum Internet.',
   secretStore: 'Der Passwortspeicher des Systems ist nicht erreichbar.',
   secretCorrupt: 'Das gespeicherte App-Passwort ist nicht lesbar.',
   portalUnavailable: (p) => `Keine Verbindung zu ${portalOf(p.portal)}.`,

@@ -128,6 +128,9 @@ pub enum ErrorKind {
     MailNotGmail,
     MailServer,
     MailCancelled,
+    /// No connection to the internet: the name of the mail server did not resolve, or the
+    /// network is down (`MailError::Offline`).
+    Offline,
     SecretStore,
     SecretCorrupt,
     /// The fetch path of a portal could not be created.

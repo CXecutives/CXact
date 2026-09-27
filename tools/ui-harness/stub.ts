@@ -48,7 +48,8 @@
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
 // `?tick=ms` sets the pace of a scripted run (default 40); `?export=locked` lets the export
-// of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail;
+// of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail,
+// `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
 // comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette.
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
@@ -245,6 +246,8 @@ const TICK = Number(params.get('tick') ?? 40);
 const DELAY = scenario === 'slow' ? 900 : 0;
 const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
+/** `mail=no-internet`: every fetch finds no network at all (`offline`, not `mailConnect`). */
+const NO_INTERNET = params.get('mail') === 'no-internet';
 /** `mail=uncounted`: "Verbinden" signs in, but the count does not finish in time. */
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
@@ -1619,8 +1622,8 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   runSender = sender?.hold() ?? null;
   harness.done = false;
   const events =
-    MAIL_OFFLINE && isFetch(kind)
-      ? offlineScript()
+    (MAIL_OFFLINE || NO_INTERNET) && isFetch(kind)
+      ? offlineScript(NO_INTERNET ? 'offline' : 'mailConnect')
       : request.kind === 'rescore'
         ? rescoreScript()
         : request.kind === 'details'
@@ -1671,14 +1674,15 @@ function rescoreScript(): RunEvent[] {
   ];
 }
 
-function offlineScript(): RunEvent[] {
+/** A fetch that cannot reach Gmail (`mailConnect`) or finds no network at all (`offline`). */
+function offlineScript(kind: 'mailConnect' | 'offline'): RunEvent[] {
   return [
     { type: 'started', kind: 'fetch' },
     { type: 'status', code: 'connectingMail', portal: null, until: null },
     {
       type: 'finished',
       summary: {
-        ...lastRun({ kind: 'failed', error: fail('mailConnect') }),
+        ...lastRun({ kind: 'failed', error: fail(kind) }),
         perPortal: [],
         newJobs: { count: 0, high: 0 },
         emptyAlerts: [],
