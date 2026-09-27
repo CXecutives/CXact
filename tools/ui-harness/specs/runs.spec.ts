@@ -5,7 +5,7 @@
 
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
-import type { JobView } from '../../../ui/src/lib/ipc/types';
+import type { JobView, RunEvent } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
 import { chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
 
@@ -390,6 +390,41 @@ test('an archived job leaves the list and every count but the archive', async ({
   // The archive lists it.
   await page.getByTestId('place-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
+});
+
+test('a mailbox that refused the fetch: its way on opens the mailbox settings, in English too', async ({
+  page,
+}) => {
+  const refused: RunEvent = {
+    type: 'finished',
+    summary: {
+      run: 42,
+      kind: 'fetch',
+      outcome: { kind: 'failed', error: { kind: 'mailAuth', params: {} } },
+      dryRun: false,
+      startedAt: '2026-09-24T07:29:00Z',
+      finishedAt: '2026-09-24T07:30:00Z',
+      scan: null,
+      perPortal: [],
+      newJobs: null,
+      score: null,
+      export: null,
+      emptyAlerts: [],
+    },
+  };
+  // English says it apart from "Check mailbox", the fetch.
+  for (const [query, label] of [
+    [WIN, T.run.checkMailbox],
+    [`${WIN}&lang=en`, 'Mailbox settings'],
+  ] as const) {
+    await open(page, query);
+    await emit(page, { type: 'started', kind: 'fetch' }, refused);
+    const way = page.getByTestId('run-problem').getByTestId('run-retry');
+    await expect(way).toHaveText(label);
+    await expect(page.getByTestId('fetch')).not.toHaveText(label);
+  }
+  await page.getByTestId('run-retry').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
 });
 
 test('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({

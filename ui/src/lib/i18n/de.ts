@@ -896,6 +896,7 @@ export const de = {
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Exportordner ist nicht erreichbar.',
     },
+    /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
     checkMailbox: 'Postfach prüfen',
     /** A portal the fetch paused or that reached its limit, until when (the portal key and
      *  an ISO moment): once in the run line after the fetch, several in one line. */

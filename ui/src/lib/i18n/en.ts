@@ -777,7 +777,7 @@ export const en: Catalog = {
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The export folder cannot be reached.',
     },
-    checkMailbox: 'Review mailbox',
+    checkMailbox: 'Mailbox settings',
     paused: (portal: string, until: string | null) =>
       until === null
         ? `${portalOf(portal)} paused`
