@@ -11,7 +11,7 @@
 // more, no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
-import { demoScore } from './demo';
+import { DEMO, demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
@@ -223,6 +223,109 @@ test.describe('the head and the match', () => {
     }
     // The short text says so once, where the text is.
     await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
+  });
+
+  test('"Warum diese Zahl?": the ring opens what moved the score, Esc or a press outside closes it', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const ring = stage(page).getByTestId('reader-ring');
+    const popover = page.getByTestId('menu');
+    // A button named by its match; its tooltip says what it opens.
+    await expect(ring).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    expect(await tip(page, ring)).toBe(T.score.why);
+    await ring.click();
+    await expect(popover).toHaveAttribute('role', 'dialog');
+    await expect(popover).toHaveAccessibleName(T.score.why);
+    await expect(ring).toHaveAttribute('aria-expanded', 'true');
+    // The engine's lines in their order, each with the icon of its verdict: here the musts,
+    // the optional ones, the Schwerpunkte, the target role and the wishes.
+    const factors = DEMO.details['freelancermap:2801']!.match!.factors;
+    const lines = popover.locator('[data-testid^="menu-line-"]');
+    expect(
+      await lines.evaluateAll((all) => all.map((line) => line.getAttribute('data-testid'))),
+    ).toEqual(factors.map((factor) => `menu-line-${factor.code}`));
+    expect(factors.length).toBeGreaterThanOrEqual(3);
+    expect(factors.length).toBeLessThanOrEqual(5);
+    const musts = factors[0]!.params;
+    await expect(lines.first()).toHaveText(
+      T.score.factor.musts(Number(musts.met), Number(musts.partial), Number(musts.total)),
+    );
+    await expect(popover.getByTestId('menu-line-targetRole')).toHaveText(
+      T.score.factor.role('Interim CFO', true),
+    );
+    const icon = (id: string) => popover.getByTestId(`menu-line-${id}`).locator('.reason > .icon');
+    await expect(icon('targetRole')).toHaveCSS('color', await tokenColour(page, '--verdict-met'));
+    // Nothing in it is chosen; Esc closes it.
+    await expect(popover.locator('[role^="menuitem"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    // From the keyboard: Enter opens it, Esc gives the focus back to the ring.
+    await ring.focus();
+    await page.keyboard.press('Enter');
+    await expect(popover).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await expect(ring).toBeFocused();
+    // A press outside closes it.
+    await page.keyboard.press('Enter');
+    await expect(popover).toBeVisible();
+    await page.mouse.click(5, 5);
+    await expect(popover).toHaveCount(0);
+  });
+
+  test('a cap and a permanent role say why the number stays low; no number, no button', async ({
+    page,
+  }) => {
+    const line = (id: string) => page.getByTestId('menu').getByTestId(`menu-line-${id}`);
+    // Several musts open: the cap is the last line, in the colour of a verdict not met.
+    await openAt(page, 'freelancermap-2803');
+    await stage(page).getByTestId('reader-ring').click();
+    const cap = DEMO.details['freelancermap:2803']!.match!.factors.at(-1)!;
+    expect(cap.code).toBe('cap');
+    await expect(line('cap')).toHaveText(
+      T.score.factor.cap(T.score.factor.capWhy.severalOpen, Number(cap.params.max)),
+    );
+    await expect(line('cap').locator('.reason > .icon')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--verdict-unmet'),
+    );
+    await page.keyboard.press('Escape');
+    // A permanent role.
+    await openJob(page, 'linkedin-4100200303');
+    await stage(page).getByTestId('reader-ring').click();
+    await expect(line('permanent')).toHaveText(T.score.factor.permanent);
+    await page.keyboard.press('Escape');
+    // A ring without a number is no button.
+    await openJob(page, 'freelancermap-2806');
+    const ring = stage(page).getByTestId('reader-ring');
+    await expect(ring).toHaveAttribute('role', 'img');
+    await expect(ring).not.toHaveAttribute('aria-haspopup');
+  });
+
+  test('every line of "Warum diese Zahl?" is short, without colons or a full stop', async () => {
+    const f = T.score.factor;
+    const all = [
+      f.musts(4, 2, 6),
+      f.musts(1, 0, 1),
+      f.nice(1, 2),
+      f.focus(0, 3),
+      f.focus(2, 3),
+      f.focus(1, 1),
+      f.role('Interim CFO', true),
+      f.role('Interim CFO', false),
+      f.noRole,
+      f.wishesUp,
+      f.wishesDown,
+      ...Object.values(f.evidence),
+      f.permanent,
+      ...Object.values(f.capWhy).map((why) => f.cap(why, 40)),
+    ];
+    for (const words of all) expect(words, words).toMatch(/^[^:.!]+$/);
+    expect(f.musts(4, 2, 6)).toBe('4 von 6 Pflichtanforderungen erfüllt, 2 teilweise');
+    expect(f.cap(f.capWhy.formal, 40)).toBe('Formale Pflicht offen, deshalb höchstens 40');
   });
 
   test('the close "×" stands at the same place at every width, no way back besides', async ({

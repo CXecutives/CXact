@@ -14,6 +14,9 @@
   Every ring without a score is one state and one look (not scored yet, being scored, not
   scorable, and off without a usable profile): the empty track with a dash. A score of 100 sets
   its digits smaller in the list ring.
+  With `onclick` the ring is a button (the reader's: it opens "Warum diese Zahl?", named by
+  `why` in its tooltip; `expanded` while that is open): a Tab stop with the focus ring round
+  it, the same look otherwise.
 -->
 <script lang="ts" module>
   import type { Band, DetailState, JobMatch } from '$lib/ipc/types';
@@ -61,6 +64,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { cssVars } from '$lib/actions/cssVars';
+  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { formatPercent } from '$lib/i18n/format';
   import { duration, isReducedMotion, play } from '$lib/motion/motion';
@@ -71,10 +75,24 @@
     size?: 'sm' | 'md' | 'lg';
     /** Fill on mount the first time this job is shown (the reader passes the job's key). */
     animate?: string | null;
+    /** The ring opens a popover of its own (a button). */
+    onclick?: ((event: MouseEvent) => void) | null;
+    /** What the button opens (its tooltip). */
+    why?: string | null;
+    /** Its popover is open. */
+    expanded?: boolean;
     testid?: string | null;
   }
 
-  let { ring, size = 'sm', animate = null, testid = null }: Props = $props();
+  let {
+    ring,
+    size = 'sm',
+    animate = null,
+    onclick = null,
+    why = null,
+    expanded = false,
+    testid = null,
+  }: Props = $props();
 
   /** A number on the ring (final or provisional). */
   const valued = $derived(
@@ -163,13 +181,33 @@
   });
 </script>
 
-<span
-  class="ring {size} {ring.status} {step}"
-  class:full={valued && score === 100}
-  role="img"
-  aria-label={label}
-  data-testid={testid ?? undefined}
->
+{#if onclick}
+  <button
+    type="button"
+    class="ring button {size} {ring.status} {step}"
+    class:full={valued && score === 100}
+    aria-label={label}
+    aria-haspopup="dialog"
+    aria-expanded={expanded}
+    data-testid={testid ?? undefined}
+    use:tooltip={why}
+    {onclick}
+  >
+    {@render face()}
+  </button>
+{:else}
+  <span
+    class="ring {size} {ring.status} {step}"
+    class:full={valued && score === 100}
+    role="img"
+    aria-label={label}
+    data-testid={testid ?? undefined}
+  >
+    {@render face()}
+  </span>
+{/if}
+
+{#snippet face()}
   <svg class="svg" viewBox="0 0 36 36" aria-hidden="true">
     <circle class="track" cx="18" cy="18" r="15.9155" />
     {#if valued}
@@ -190,9 +228,20 @@
       –
     {/if}
   </span>
-</span>
+{/snippet}
 
 <style>
+  /* The ring as a button: nothing but the ring, the focus ring round it. */
+  .button {
+    padding: 0;
+    border-radius: var(--radius-full);
+    cursor: default;
+  }
+
+  .button:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+
   .ring {
     position: relative;
     display: inline-flex;

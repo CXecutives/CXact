@@ -3,7 +3,9 @@
   (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
   - head: the title (without gender tags) and the close "×" (the same at every width).
   - match: the ring (56, hollow; opening a job fills its arc once, the number stands at once)
-    beside its band; every ring without a score says "Noch nicht bewertet". An excluded job
+    beside its band; every ring without a score says "Noch nicht bewertet". A ring with a
+    number is a button: "Warum diese Zahl?" opens below it, a popover of what moved the score
+    (scoreWhy.ts, in the menu layer: Esc, Tab and a press outside close it). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
   - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…", all alike. The
@@ -72,6 +74,7 @@
     kindOf,
     termOf,
   } from './reader-sections';
+  import { whyLines } from './scoreWhy';
   import { rowOf, termRows } from './terms';
 
   interface Props {
@@ -113,6 +116,22 @@
   const band = $derived(
     ring.status === 'scored' || ring.status === 'provisional' ? ring.band : null,
   );
+  /** "Warum diese Zahl?": what moved the score (scoreWhy.ts), for a ring with a number. */
+  const why = $derived(judged && band !== null ? whyLines(match?.factors ?? []) : []);
+  let whyOpen = $state(false);
+
+  /** The ring's popover, right below it (a second click closes it: the press outside does). */
+  function openWhy(event: MouseEvent): void {
+    const anchor = event.currentTarget;
+    if (!(anchor instanceof HTMLElement) || menuState.open !== null) return;
+    whyOpen = true;
+    openMenu({
+      label: t.score.why,
+      anchor: { kind: 'below', rect: anchor.getBoundingClientRect(), align: 'start' },
+      entries: why,
+      onclose: () => (whyOpen = false),
+    });
+  }
 
   const detailKind = $derived(job.detail.kind);
   /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
@@ -404,7 +423,15 @@
           <p class="why-line" data-testid="exclusion">{exclusion}</p>
         </div>
       {:else}
-        <ScoreRing {ring} size="md" animate={keyOf(job.key)} testid="reader-ring" />
+        <ScoreRing
+          {ring}
+          size="md"
+          animate={keyOf(job.key)}
+          onclick={why.length > 0 ? openWhy : null}
+          why={t.score.why}
+          expanded={whyOpen}
+          testid="reader-ring"
+        />
         <p class="band {band ?? 'none'}" data-testid="band">
           {band ? t.score.band[band] : t.score.none}
         </p>
