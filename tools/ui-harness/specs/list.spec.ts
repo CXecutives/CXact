@@ -1465,10 +1465,7 @@ test.describe('search', () => {
     await expect(marks.first()).toHaveCSS('background-color', await tokenColour(page, '--mark'));
     // The title keeps its ink and its one line; the full title in its tooltip.
     await expect(target.locator('.title')).toHaveText('Kaufmännische Leitung Projektgeschäft');
-    await expect(marks.first()).toHaveCSS(
-      'color',
-      await target.locator('.title').evaluate((node) => getComputedStyle(node).color),
-    );
+    await expect(marks.first()).toHaveCSS('color', await tokenColour(page, '--text'));
     // Without a search nothing is marked.
     await page.getByRole('button', { name: T.field.clear }).click();
     await expect(rows(page).first()).toBeVisible();
