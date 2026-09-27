@@ -802,3 +802,23 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   checked in the real Windows app: no caption, maximize and restore without gaps, minimize, close, the snap layouts
   under the real pointer, drag, double click, the system menu
 - [ ] macOS: the traffic lights in the 44 px bar on the CI screenshots (SMOKE {"lights":...}: centre 22)
+
+- [ ] Alert health, Mac title row
+
+## Input and reader round 2026-09-27 (decisions of the user, binding)
+- Removing never puts a caret anywhere: a click on an × (a chip, a language row, a competence row, any list row)
+  removes it and drops the focus without a ring; removed by the keyboard (Backspace or Delete in a chip field,
+  Enter or Space on a focused ×) the focus goes to the next × of that list (the previous one after the last),
+  never into a text field (`afterRemove` in `lib/input/input.ts`).
+- Mouse buttons everywhere: controls act on the left button only; a right click opens the app's menu where there
+  is one and does nothing else; a middle click never activates anything; the wheel only scrolls.
+- No hover marking in the reader: hovering a requirement or a Jobdetails row tints nothing in the ad and a click
+  scrolls nothing; the ad keeps its structure and the marks of the list's search.
+- No "Frist in 7 Tagen" filter: the red deadline in the row stays, the list never asks for `deadlineSoon`.
+- Language names follow the UI language (the suggestions and the rows); the profile keeps a known language under
+  its German name, as the engine reads it.
+- [x] "Frist in 7 Tagen" out of the filter
+- [x] No hover marking in the reader
+- [x] Language names in the UI language
+- [x] The focus after removing
+- [x] Mouse buttons and the wheel, audited (the one gap: a middle press over a scroll area moved the focus for a moment, so a chip field took its typed text as a chip and the calendar closed; `keepFocus` now holds the focus events until it is back)

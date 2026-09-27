@@ -752,7 +752,6 @@ export const en: Catalog = {
       wish: 'From my wished day rate',
     },
     unreadOnly: 'New only',
-    deadlineSoon: 'Deadline within 7 days',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',

@@ -2,8 +2,8 @@
   What the reader's section "Anzeige" holds under its heading (Reader.svelte): the note on a
   text that is not all there (a preview, an ad still to come or being loaded, one the app
   cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung einrichten" where they
-  help, the quiet note on a very short text, and the ad's text in its structure, its passages
-  and the words of the list's search marked (AdText.svelte).
+  help, the quiet note on a very short text, and the ad's text in its structure with the words
+  of the list's search marked (AdText.svelte).
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -17,16 +17,12 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
-  import AdText, { type Passage } from './AdText.svelte';
+  import AdText from './AdText.svelte';
 
   interface Props {
     detail: JobDetail;
-    passages: readonly Passage[];
-    /** The item whose passages are tinted, and the one that flashes (passages.svelte.ts). */
-    lit: string | null;
-    flash: string | null;
   }
-  let { detail, passages, lit, flash }: Props = $props();
+  let { detail }: Props = $props();
 
   const job = $derived(detail.job);
   const detailKind = $derived(job.detail.kind);
@@ -119,14 +115,7 @@
 {/if}
 {#if detail.text}
   <div in:fade>
-    <AdText
-      text={detail.text}
-      layout={detail.layout}
-      {passages}
-      {lit}
-      {flash}
-      search={jobs.search}
-    />
+    <AdText text={detail.text} layout={detail.layout} search={jobs.search} />
   </div>
 {/if}
 

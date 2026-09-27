@@ -18,7 +18,8 @@
 //   nothing else. A menu names no keys.
 // - the middle button scrolls: pressed over a scroll area it starts the autoscroll of the
 //   OS (WebView2 on Windows; macOS has none); anywhere else it does nothing; a middle
-//   click never activates anything (no auxclick, no press, no new window). The back
+//   click never activates anything (no auxclick, no press, no new window, no focus: the
+//   focus its default moves comes back unseen, `keepFocus`). The back
 //   button of the mouse goes back only where a view offers a way back (`onBack`: the
 //   reader in one column); forward does nothing, and neither ever navigates the web view.
 // - the wheel only scrolls, the area under the pointer: no field, switch or choice takes it.
@@ -47,6 +48,9 @@
 //   Alt+Arrow back/forward), is swallowed.
 // - a modal dialog holds the focus: Tab cycles inside it, Esc cancels it wherever the
 //   focus is. Esc closes only the layer on top: the menu, then the dialog.
+// - removing never puts a caret anywhere (`removeBy`): a click on an × drops the focus; from
+//   the keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×) the
+//   next × of the same list takes it, the previous one after the last.
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
@@ -534,6 +538,67 @@ function dispatchChipKey(event: KeyboardEvent): boolean {
  *  next press of a mouse button. */
 let keyboardFocus = false;
 
+/** A list whose items a button removes: the chips of a chip field, the rows of the
+ *  competences and the languages, the notes of values that do not read. */
+const REMOVE_LIST = '[data-removes]';
+/** A remove button of such a list, or the slot that holds it. */
+const REMOVE = '[data-remove]';
+/** Where the keyboard's focus goes once a list has no remove button left (its add button, or
+ *  the slot that holds it). */
+const REMOVE_FALLBACK = '[data-remove-fallback]';
+
+/** The button a remove slot holds (or the slot itself when it is the button). */
+const buttonIn = (slot: Element): HTMLElement | null =>
+  slot.matches('button') ? (slot as HTMLElement) : slot.querySelector<HTMLElement>('button');
+
+/** The remove buttons of `list` in order, not those of a list inside it. */
+function removeButtons(list: Element): Element[] {
+  return [...list.querySelectorAll(REMOVE)].filter((slot) => slot.closest(REMOVE_LIST) === list);
+}
+
+/**
+ * The one rule of removing (a chip, a row, a value): `remove` takes the item of `button` (its
+ * remove button; for Backspace in a chip field the × of the last chip) away, and no caret
+ * appears anywhere. Removed with the mouse, the focus is simply dropped, without a ring: the
+ * button's own, or the caret a press on a chip's × left in its field. Removed with the
+ * keyboard (Backspace or Delete in a chip field, Enter or Space on a focused ×), the next
+ * remove button of the same list (`data-removes`) takes the focus, the previous one after the
+ * last, else the list's `data-remove-fallback` (its add button); never a text field. It moves
+ * there before the item goes, so it never drops to the page on the way (a chip field keeps its
+ * chips open). With none of them the focus stays where it was (Backspace in the field of its
+ * only chip).
+ */
+export function removeBy(button: EventTarget | null, remove: () => void): void {
+  const slot = closest(button, REMOVE);
+  const list = slot?.closest(REMOVE_LIST) ?? null;
+  if (!keyboardFocus) {
+    remove();
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && (inField(active) || list?.contains(active) === true)) {
+      active.blur();
+    }
+    return;
+  }
+  const slots = list === null ? [] : removeButtons(list);
+  const at = slot === null ? -1 : slots.indexOf(slot);
+  const next =
+    at === -1 ? null : (slots[at + 1] ?? slots[at - 1] ?? list?.querySelector(REMOVE_FALLBACK));
+  if (next) buttonIn(next)?.focus();
+  remove();
+}
+
+/** Backspace or Delete on the focused × of a chip presses it (it removes the chip, like
+ *  Backspace in its field removes the last one); `true` if it did. */
+function removesByKey(event: KeyboardEvent): boolean {
+  if (hasModifier(event) || event.shiftKey) return false;
+  if (event.key !== 'Backspace' && event.key !== 'Delete') return false;
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || !target.matches(`${CHIP} button${REMOVE}`)) return false;
+  event.preventDefault();
+  target.click();
+  return true;
+}
+
 /**
  * A control the keyboard focuses stays clear of its scroll area's edges with its ring and a
  * gap (--space-8), below a sticky band too (the area's scroll-padding). The engines scroll a
@@ -610,7 +675,7 @@ function onKeyDown(event: KeyboardEvent): void {
     return;
   }
   if (isFocusMove(event) || pressesControl(event) || dispatchRadioKey(event)) return;
-  if (dispatchGridKey(event)) return;
+  if (dispatchGridKey(event) || removesByKey(event)) return;
   // Everything else is the app's or nothing: never a shortcut of the web view (reload,
   // find, print, zoom, history).
   event.preventDefault();
@@ -1277,19 +1342,38 @@ function onPointerOut(event: PointerEvent): void {
   if (event.relatedTarget === null) underPointer = null;
 }
 
+/** A middle press over a scroll area moved the focus and it is on its way back: no focus
+ *  event reaches the page meanwhile (`keepFocus`). */
+let holdingFocus = false;
+
 /**
  * The middle button keeps its default over a scroll area (the autoscroll needs it), but a
  * press must not focus the control or the field under the pointer: after the default action
- * the focus goes back to where it was.
+ * the focus goes back to where it was. Both engines move the focus on that default (onto a
+ * chip's x, a day of the calendar, or off a field), so until it is back no focus event
+ * reaches the page (`holdFocusEvents`): a chip field does not take its typed text as a chip,
+ * the calendar does not close, a field does not judge its value.
  */
 function keepFocus(): void {
   const before = document.activeElement;
+  holdingFocus = true;
   setTimeout(() => {
     const now = document.activeElement;
-    if (now === before || !(now instanceof HTMLElement)) return;
-    now.blur();
-    if (before instanceof HTMLElement && before !== document.body) before.focus();
+    if (now !== before && now instanceof HTMLElement) {
+      if (before instanceof HTMLElement && before !== document.body && before.isConnected) {
+        before.focus({ preventScroll: true });
+      } else {
+        now.blur();
+      }
+    }
+    holdingFocus = false;
   }, 0);
+}
+
+/** The focus events of an element while a middle press's focus is on its way back (the
+ *  window's own blur still counts). */
+function holdFocusEvents(event: FocusEvent): void {
+  if (holdingFocus && event.target !== window) event.stopImmediatePropagation();
 }
 
 /**
@@ -1475,6 +1559,9 @@ export function installInput(): void {
   );
   document.addEventListener('keydown', onKeyDown, capture);
   document.addEventListener('focusin', onFocusIn, { capture: true, passive: true });
+  for (const type of ['focus', 'blur', 'focusin', 'focusout'] as const) {
+    window.addEventListener(type, holdFocusEvents, capture);
+  }
   document.addEventListener(
     'keyup',
     (event) => {

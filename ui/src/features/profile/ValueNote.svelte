@@ -2,12 +2,15 @@
   A value of the profile file the app could not read, said where its field is: what the file
   had, in the danger tone of a field's error, and "Wert entfernen" as the way on at the end of
   the line (the link of a field's help line). Removing it takes effect when the profile is
-  saved (or, for one entry of a list, removes the entry at once).
+  saved (or, for one entry of a list, removes the entry at once). It goes like any removed
+  item (input.ts removeBy): in a list of notes (`data-removes`) the keyboard's focus moves on
+  to the next one.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Icon from '$components/Icon.svelte';
   import { t } from '$lib/i18n/t';
+  import { removeBy } from '$lib/input/input';
 
   interface Props {
     text: string;
@@ -25,13 +28,13 @@
     <Icon name="warning" size="sm" />
     <span>{text}</span>
   </p>
-  <span class="action">
+  <span class="action" data-remove>
     <Button
       variant="link"
       size="sm"
       label={t.profile.field.removeValue}
       testid="value-remove"
-      onclick={onremove}
+      onclick={(event) => removeBy(event.currentTarget, onremove)}
     />
   </span>
 </div>
