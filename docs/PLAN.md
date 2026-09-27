@@ -7,7 +7,7 @@ project layout. Windows and macOS as identical as possible. Done = shippable Win
 ## Decisions (user answers, binding)
 | Topic | Decision |
 |---|---|
-| UI language | superseded (user, 2026-09-25): German and English. Einstellungen > Sprache ("Deutsch" and "English", each language in its own words in both catalogs; wave 2) switches the whole app at once, no restart; the app starts German, English only when chosen (amended 2026-09-25: many German consultants run an English OS; only the macOS menu follows the OS, `sys-locale` in `platform.rs`); the choice is stored in the settings (`language`, `save_settings`). `de.ts` stays the source catalog, `en.ts` has its type (a missing or extra key is a type error), the screens read `t` (`lib/i18n/t.ts`); numbers and dates de-DE / en-GB. Excel file, HTML overview, the AI prompts (with `ai_rubric.en.md`), the CV prompt, file dialogs and the sign-in window follow the setting, the macOS menu the OS; the TXT files stay German and byte-identical |
+| UI language | superseded (user, 2026-09-25): German and English. Einstellungen > Sprache ("Deutsch" and "English", each language in its own words in both catalogs; wave 2) switches the whole app at once, no restart; the app starts German, English only when chosen (amended 2026-09-25: many German consultants run an English OS; only the macOS menu follows the OS, `sys-locale` in `platform.rs`); the choice is stored in the settings (`language`, `save_settings`). `de.ts` stays the source catalog, `en.ts` has its type (a missing or extra key is a type error), the screens read `t` (`lib/i18n/t.ts`); numbers and dates de-DE / en-GB. Excel file, HTML overview, the AI prompts (with `ai_rubric.en.md`), the CV prompt, file dialogs and the sign-in window follow the setting, the macOS menu the OS; the TXT files stayed German and byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone) |
 | Frontend | Svelte 5 + Vite + TypeScript, no SvelteKit, no animation library, Lucide icons only |
 | Keys | only inside fields/dialogs: Tab/Shift+Tab, Enter = save, Esc = cancel, Ctrl/Cmd+C/V/X/A/Z. Amended by the input audit (2026-09-24): fields take every character of the layout (AltGr on Windows, Option on macOS) and the OS editing keys (word/line moves, delete word, redo, Shift selection); Tab/Shift+Tab move the focus everywhere, Space presses the focused button, switch or radio and Enter a button only (a switch or a radio toggles with Space like the native ones, Enter there goes on to the form), so there is no dead end after a field; a modal dialog holds the focus; Cmd+, reaches the macOS menu. No WebView shortcut. Amended (user, final round 2026-09-25): the app's own shortcuts are exactly three, with the command key of the OS (Ctrl on Windows, Cmd on macOS; `keyConventions()` in platform.ts, handled only in input.ts): Ctrl/Cmd+F (the list's search), Ctrl/Cmd+Z outside fields (the last list action) and Ctrl/Cmd+B outside fields (fold the sidebar; in a field it does nothing). Amended (user, 2026-09-25 evening): the fold is gone, so the shortcuts are two, Ctrl/Cmd+F and Ctrl/Cmd+Z. Amended (wave 2): Ctrl/Cmd+S is a form key like Enter and Esc, not a third shortcut: it saves the Profil form from anywhere in it, takes text typed into a chip field in first and never opens the WebView's "save page"; Enter in its single-line fields saves too, except in its row lists (next row) and chip fields (adds the chip). Outside fields and controls PageUp, PageDown, Space and Shift+Space scroll the pane by a page; Space on the open job's row pages through the reader |
 | OS window functions | keep Alt+F4, Cmd+Q/W/M/H, double-click on title bar; no own shortcuts besides the two under "Keys" |
@@ -46,7 +46,7 @@ project layout. Windows and macOS as identical as possible. Done = shippable Win
 | UI logic round (user, 2026-09-25) | only the left mouse button presses anything (right and middle never do; the middle button scrolls, with autoscroll on Windows); a press beside a text field ends its focus; one focus ring, only from the keyboard; only the switch itself toggles; no manual sidebar fold (the icon rail below 1100 px); no count at Jobs in the sidebar; the only resize handle sits between list and reader (a grey 4 x 44 px grip on hover, no line) |
 | CV prompt (2026-09-25) | "Aus Lebenslauf erstellen" copies a prompt in the app's language (`profile/prompt.rs`) for any AI chat; for the stored profile "Aus Lebenslauf aktualisieren" copies an update prompt that carries the stored profile's CV part (no name, wishes or criteria). `profile/answer.rs` finds the profile JSON in the answer (also inside a code block), repairs and reshapes it; an update fills the stored profile for review and takes the answer's `stationen` over into the stored JSON (`update_from_answer`) |
 | Wave 2 (one cloud session, 2026-09-25) | Jobs, Archiv and Papierkorb chosen in the sidebar open without the search (like a mail app's folders); the "Auch im …" links and a trip to another view keep it. The reader's terms strip ("Rahmen") also shows the ad's rate and start as plain chips from its facts (banknote, calendar) where no criterion of the profile covers them, never one value twice. The list search matches every word of the query (at most 8) in any field (title, company, location, text) and the portal's name, in the list, its counts and "Alle als gelesen markieren"; a `search_version` in kv makes the store recompute the search column of stored jobs once after a change. Engine 15: a heading of the other listings under an ad counts only as a whole heading, and the engine reads every country name the Profil view offers in both languages (`docs/MATCHING.md`). The settings section of what the app does on its own (auto fetch at start, archive, empty the trash) is "Automatisch". A value the backend refuses says its limit ("Höchstens 100.000.", `InvalidInput::ProfileValue.max`), and one of the hidden Festanstellung block brings the block back. Text typed into a chip field counts as an unsaved change (Speichern, `set_unsaved`, leaving and closing ask); an AI answer pasted in the CV steps is kept in the editor until it fills the form (Esc, Abbrechen and another view keep it, reopening leaves the clipboard alone), but closing the window with only an answer held does not ask. No risk grades and no `risk` field in the IPC. The Excel file and the HTML overview show the title the app shows (`view::display_title`). The day overview's blocks stand in the DOM in their order on screen. A reload of Neu that keeps the list (the end of a run, a sort) keeps the jobs opened in this visit where the list's order puts them; entering Neu again drops them. The arrow keys, Home, End and the next job after a move count rows in the order the list draws them (active, then excluded) |
-| Self-decided | TXT header stays German and byte-identical · primary button light coral 13 73% 63% (user test 2026-09-24), label 500 · excluded jobs grey behind a divider, also under "Neu" but not counted · Excel for excluded: domain score, grey row · merge cross-portal duplicates · Smart App Control is off on the dev PC · dates in the files (Excel, HTML overview, TXT, file names) follow the OS time zone like the page's; Europe/Berlin until the app sets it at its start, so every test keeps Berlin (`time::follow_system_zone`, `core/tests/time_zone.rs`) · copies of `jobs.db` in the data folder's `backups/` (never the work folder): `jobs.pre-v4.db` before every migration and `jobs-YYYY-MM-DD.db` once a day after the first page load, off the window thread, the newest three of each kind; none in the dry run; "Alles zurücksetzen" deletes them; restored in Einstellungen > Wartung ("Restore a backup" below; `store/backup.rs`) |
+| Self-decided | TXT header stayed German and byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone) · primary button light coral 13 73% 63% (user test 2026-09-24), label 500 · excluded jobs grey behind a divider, also under "Neu" but not counted · Excel for excluded: domain score, grey row · merge cross-portal duplicates · Smart App Control is off on the dev PC · dates in the files (Excel, HTML overview, TXT, file names) follow the OS time zone like the page's; Europe/Berlin until the app sets it at its start, so every test keeps Berlin (`time::follow_system_zone`, `core/tests/time_zone.rs`) · copies of `jobs.db` in the data folder's `backups/` (never the work folder): `jobs.pre-v4.db` before every migration and `jobs-YYYY-MM-DD.db` once a day after the first page load, off the window thread, the newest three of each kind; none in the dry run; "Alles zurücksetzen" deletes them; restored in Einstellungen > Wartung ("Restore a backup" below; `store/backup.rs`) |
 | Restore a backup (user, 2026-09-26) | Einstellungen > Wartung > "Sicherung wiederherstellen" lists the copies of `backups/` by day in the app's time words (newest first and chosen, the size, "vor einem Update" / "vor dem Wiederherstellen"), asks with the copy's date and says the current state is saved first. The restore checks the copy and brings it to the current schema in memory, copies the current database to `jobs.before-restore-<UTC>.db` (the newest three kept), then replaces the content in one SQLite transaction on the app's own connection (backup API; a failure leaves the database as it was); the settings and the export stamps stay, the files and the scores follow. Refused in the demo and the dry run and while the activity slot is held (`list_backups`, `restore_backup`). The page loads everything again; a toast offers "Rückgängig" (restores the copy of the state before) |
 
 ## Contracts
@@ -69,8 +69,8 @@ New nullable `job` columns: `app_status TEXT` (applied|interview|offer|rejected)
 (<= 2000 characters, no export shows it), `hidden_at` ("Nicht interessant"). Frozen fixture
 `core/tests/fixtures/schema_v3.sql`. A hidden job is in no list but "hidden" and in no count but its own; the HTML
 overview and `top_matches.json` leave it out. The Excel file has no mark column (schema 5: the favourite is the only
-mark and stays in the app); an excluded job keeps its domain score in a grey row, links included. The TXT files stay
-byte-identical. The AI prompts (user decision: universal for any AI chat, they replace the skill for
+mark and stays in the app); an excluded job keeps its domain score in a grey row, links included. The TXT files stayed
+byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The AI prompts (user decision: universal for any AI chat, they replace the skill for
 normal use; `export/ai_prompt.rs`, external contract) address the assistant as "du" without naming a product and carry
 the whole rubric, the skill's method and the app's pre-assessment (superseded in detail by the decision "AI prompts",
 2026-09-25) and the profile without name, contact data, links and references (<= 8,000
@@ -129,9 +129,9 @@ Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_stat
 `purge_jobs(keys) -> Deleted{count, keys, exportError?}` · `empty_trash -> Deleted` ·
 `ai_prompt(key) -> string` · `pick_profile -> ProfileDraft?` ·
 `parse_profile(text, update) -> ProfileDraft` · `profile_prompt(update)` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
-`remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
+`remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `answer_close(close)` (the question while a fetch runs) · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
 `pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
+`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `export_data` · `import_data` (the data file, `store/bundle.rs`) · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
 Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
 without a usable matcher); nothing else runs on its own.
 Events on channel `run` (struct variants, each < 8 KB): `Started{kind}` (first event of every run, also of the runs Rust
@@ -395,7 +395,7 @@ macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc si
       verified on both OS).
 - [x] Integration: engine wired (LocalMatcher, rescore, job detail, profile summary, template, top_matches.json), scraping merged, prescore orders the fetch queue; engine v3 with the skill rubric, domain packs and aliases (in band 49/51/49/51 of 52 for the four profiles). A + B done (LocalMatcher, Rust-triggered
       rescore, reader recompute, profile summary, template, demo on the real engine, `auswertung/top_matches.json` for the
-      skill as optional stage 2); D done (the fetch queue follows `matching::prescore`).
+      skill as optional stage 2; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone); D done (the fetch queue follows `matching::prescore`).
 - [x] Engine v4 (`docs/MATCHING.md`): Schwerpunkte, target roles and wishes (bounded, never an exclusion, no lift
       into the high band while fewer than half of the musts are met); fixes of held-out sets 1 and 2, now regression
       corpora with frozen floors (NDCG@10 0.822 to 0.930 and 0.632 to 0.805); criteria met only with the ad's value
@@ -496,7 +496,7 @@ macOS: Apple Silicon only (M1 and newer, since 2020; user 2026-09-24), ad-hoc si
       place has no blank header row, the overview hint only beside a list with jobs, date and time never break)
 
 ### Phase 6 - delivery
-- [x] Skill `job-matching` (stage 2): back up the original, drop the hard-coded foreign path (use the app's work folder, works on macOS), read the app's top-matches file instead of screening every ad, align the rubric wording with the engine, test, deliver as a folder with a short install guide (`tools/job-matching-skill/`: `SKILL.md`, `scripts/matching.py` brief + render with the rubric caps, README, test on the corpus; original backed up outside the repo)
+- [x] Skill `job-matching` (stage 2): back up the original, drop the hard-coded foreign path (use the app's work folder, works on macOS), read the app's top-matches file instead of screening every ad, align the rubric wording with the engine, test, deliver as a folder with a short install guide (`tools/job-matching-skill/`: `SKILL.md`, `scripts/matching.py` brief + render with the rubric caps, README, test on the corpus; original backed up outside the repo; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone)
 - [x] The copied AI prompts at least as good as the skill (2026-09-25, see Decisions "AI prompts"): the gap analysis
       against the skill's brief closed (method, frame rows, codes in words) and what neither had added (exclusions,
       hard criteria with the ad's words, key facts and text status, profile evidence with years, page labels, risks,
@@ -555,7 +555,7 @@ The whole round is one plan (Parts A to L, kept by the integrator); the boxes be
 as the parts land on `main`.
 - Name: the app is shown as **CXact** (read "exact", like cxpertise and CXecutives). Only the
   visible name changes: identifier `de.cxecutives.job-alert-monitor`, binary, data and work
-  folders (`Documents\Job-Alert-Monitor`), keychain service and the TXT contract stay. The
+  folders (`Documents\Job-Alert-Monitor`) and keychain service stay (the TXT contract stayed too; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The
   NSIS installer speaks German and English and first removes an install named
   Job-Alert-Monitor silently (its data stays).
 - Icon: one flat coral, no gradient; on Windows the plate fills the square (48 of 48 px, like
@@ -675,7 +675,7 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
 - Fetch: the button "Postfach abrufen"; its range in Einstellungen > Postfach (`fetchRange`: since the last fetch,
   the last 7 or 30 days, all alert mails; `RunKind::FullMailbox` is gone).
 - Export: the Excel file and a CSV file, each with its switch (`exportExcel` on, `exportCsv` off by default), in the
-  result folder; the text files for the job-matching skill stay byte-identical. The CSV file has the Excel file's
+  result folder; the text files for the job-matching skill stayed byte-identical (superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The CSV file has the Excel file's
   columns (one table, `core/src/export/columns.rs`) in the old program's format: `;`, UTF-8 with BOM, CRLF,
   headers in the app's language, dates `DD.MM.YYYY HH:MM` as text, links as addresses. Columns: "Übereinstimmung"
   instead of "Passung", the alert mail's subject ("Mail-Betreff") after the portal, no favourite.
@@ -686,7 +686,7 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   as chips.
 - Commands without a caller go (`set_pinned`, `overview_stats`, `ai_prompt_top`, `rewrite_txt`, `clear_txt`,
   `company_count`); `commands.txt` stays the one list.
-- One word per thing in the UI, Excel, CSV and the AI prompt (glossary above; the TXT files stay as they are). Guiding
+- One word per thing in the UI, Excel, CSV and the AI prompt (glossary above; the TXT files stayed as they were; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). Guiding
   rules: no "·" anywhere, tooltips only where something is missing, little text, the same thing looks the same,
   quiet motion everywhere (<= 180 ms).
 - [x] Backend (track B): favourites, Übersicht, automatic actions, the details switch, the HTML report and the
@@ -743,3 +743,42 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   "Alles zurücksetzen", and deleting a job for good still removes the old text file the app
   wrote for it. The rubrics no longer name the skill.
 - [x] Skill, TXT export and `top_matches.json` out
+
+## Round two 2026-09-27 (decisions of the user, binding)
+The user clicked through the reworked preview; one more round in four tracks.
+- Fetch range at the fetch button: the range of "Postfach abrufen" (since the last fetch, the last 7 or 30 days, all
+  alert mails; `fetchRange`) is chosen at the button itself, not in Einstellungen.
+- List filters: Tagessatz, Nur neue, Remote oder hybrid, Frist (an application deadline); the list sorts by the day
+  rate too.
+- The match explains itself in a popover (why the ring says what it says).
+- Deadline and contact: the reader shows the application deadline and the contact an ad names.
+- The verdict colours of the Jobdetails and the requirements come from the rings (one colour per verdict, the
+  ring's).
+- Data export and import (Einstellungen > Daten): "Alle Daten exportieren" writes one JSON file with the database,
+  the profile file and the settings, chosen with the OS's save dialog (`export_data`; its layout, checks and what it
+  leaves out at the top of `core/src/store/bundle.rs`). Never in it: the app password (only in the keychain), the
+  portal sign-ins, the portals' request counts, the log, and what belongs to the computer (the work folder, the
+  window's place, the stamps of the files in the work folder, the mailbox's last check). "Daten importieren" asks
+  first what the file replaces (the jobs, the profile, the settings; the current state is backed up first), then
+  reads the chosen file (`import_data`), checks all of it before anything changes (a foreign file
+  `invalid/dataFileForeign`, a newer one `newerSchema`, a damaged one `corrupt`, each with `what: dataFile`), copies
+  the database to `backups/jobs.before-import-<UTC>.db` ("vor dem Import" in the Sicherung), puts the file's profile
+  in the work folder (the one there becomes its backup) and replaces the database in one transaction with the
+  file's settings in this computer's work folder. Both refuse in the demo and the dry run; the import is held by a
+  run like a restore, the export only reads.
+- Closing the window while a fetch runs asks first: "Der Abruf läuft noch. Trotzdem schließen?" with Schließen
+  (the fetch is cancelled, the window closes once it stopped) and Abbrechen (`close-running`, `answer_close`). A
+  second close while it asks closes anyway; a fetch that ends takes the question with it.
+- No internet: a fetch whose connection to Gmail finds no network (the name does not resolve, the network is down or
+  unreachable) fails with its own code `offline`; the run line says "Keine Verbindung zum Internet" with "Erneut
+  versuchen". Any other connection failure stays `mailConnect` ("Gmail ist nicht erreichbar").
+- Alert health: each portal says whether its alert mails still arrive.
+- Mac title row: the macOS toolbar row under the traffic lights, reworked.
+- Decision: the `job-matching` skill, its text files (TXT) and `top_matches.json` are gone for good. This supersedes
+  every older line that says they stay (the UI language, the self-decided TXT header, schema 4, the integration and
+  delivery tasks of phases 2 and 6, the name of the final round, the export and glossary lines of the cleanup
+  round); the Profile round above made the change, this round confirms it.
+- [x] Data export and import, the close question during a fetch, the `offline` code (track B3)
+- [ ] Fetch range at the button, the list filters and the sort by rate
+- [ ] Explanation popover, deadline and contact, verdict colours from the rings
+- [ ] Alert health, Mac title row

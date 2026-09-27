@@ -292,10 +292,30 @@ text.
   refuses above them; `profile.ts` carries them to the stub and the editor).
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
-  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
-  Einstellungen > App lists and restores them (`list_backups`, `restore_backup`).
+  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`,
+  `IMPORT_KEPT`); Einstellungen > Daten lists and restores them (`list_backups`,
+  `restore_backup`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
+
+## Change the data file (export and import)
+
+"Alle Daten exportieren" and "Daten importieren" (Einstellungen > Daten, `export_data`,
+`import_data`) write and read one JSON file; its layout, its checks and what it leaves out are
+documented once, at the top of `core/src/store/bundle.rs`.
+
+- A field an older app may skip (serde ignores unknown fields): add it, `VERSION` stays.
+  A change an older app would read wrongly: raise `VERSION`; older apps then refuse the file
+  as newer (`newerSchema`, `what: dataFile`).
+- A new key of the database's key/value table that belongs to the computer rather than to
+  the data (a place, a path, a moment of this machine): add it to `local_keys` and
+  `drop_local_keys`; the export leaves it out and the import keeps the one here.
+- A secret never goes into the database (the app password lives in the keychain only), so
+  the file never holds one; `the_file_holds_no_secret_and_nothing_of_the_computer` checks it.
+- A new database layout needs nothing here: the import brings the file's database to the
+  current schema like a restore does (`backup::stage_file`).
+- The stub answers both commands (`?data=cancel|foreign|damaged|newer`); settings.spec
+  covers the rows and the dialog.
 
 ## The preview's demo data
 
@@ -355,7 +375,9 @@ and profiles: an external contract, never translated):
 2. **Data of the old version**: a new field of `Settings` came with its file of the new
    version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
    of the schema chain (`core/src/store/schema.rs`, with its `schema_vN.sql` fixture). The
-   store copies the database to `backups/` before it migrates.
+   store copies the database to `backups/` before it migrates. A data file the old version
+   exported still imports (the chain migrates its database); a new layout of the data file
+   itself raises its `VERSION` ("Change the data file" above).
 3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
    and the full harness in both engines once.
 4. **Build**: `npx tauri build` writes
