@@ -47,8 +47,8 @@
     children?: Snippet;
     /** Only the confirm button: a card that informs and closes. */
     alone?: boolean;
-    /** The bare verb of the heading ("Postfach entfernen?": Entfernen; "Ganzes Postfach
-     *  lesen?": Lesen), the same pattern in every dialog. */
+    /** The verb of the button that opened it ("Entfernen" opens "Postfach entfernen?", its
+     *  button says Entfernen; "Zurücksetzen" opens "Alles zurücksetzen?"), in every dialog. */
     confirmLabel: string;
     cancelLabel?: string;
     busy?: boolean;

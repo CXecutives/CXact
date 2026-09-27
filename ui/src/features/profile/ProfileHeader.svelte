@@ -75,9 +75,9 @@
   let anchor = $state<HTMLElement | null>(null);
   let expanded = $state(false);
 
-  /** What the menu holds: for the stored profile another file, its folder and "Profil
-   *  löschen" (all but the folder wait while the form holds changes); for a new form a file
-   *  (and the folder of a file that does not read). */
+  /** What the menu holds: for the stored profile another file, its folder and the deletion
+   *  (all but the folder wait while the form holds changes); for a new form a file (and the
+   *  folder of a file that does not read). */
   const entries = $derived.by((): MenuEntry[] => {
     const held = { disabled: dirty, reason: dirty ? t.profile.saveFirst : null };
     const pick: MenuEntry = {
