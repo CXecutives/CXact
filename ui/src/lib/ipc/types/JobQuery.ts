@@ -43,6 +43,12 @@ contracts: Array<string>,
  */
 workMode: WorkMode | null, 
 /**
+ * The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
+ * jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
+ * it, not excluded). `null` = every job.
+ */
+run: number | null, 
+/**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */
 limit: number, offset: number, };

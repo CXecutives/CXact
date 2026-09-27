@@ -865,6 +865,8 @@ export const de = {
     } satisfies Record<WorkMode, string>,
     /** A switch of its own behind a line: the jobs not opened yet. */
     unreadOnly: 'Nur neue',
+    /** The chip of a fetch's "Zeigen": only the new jobs of that fetch. */
+    lastFetch: 'Aus dem letzten Abruf',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */

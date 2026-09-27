@@ -1186,6 +1186,10 @@ function workModeOf(j: JobView): WorkMode | null {
  *  known mode never passes). */
 function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   if (query.unread === true && !isNewJob(j)) return false;
+  // The new jobs of one run: first seen in it, none excluded (store::new_jobs).
+  if (query.run !== null && query.run !== undefined) {
+    if (seenIn.get(markKey(j.key)) !== query.run || j.match?.status === 'excluded') return false;
+  }
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -1567,9 +1571,16 @@ function exported(): RunSummary['export'] {
   };
 }
 
+/** The number of the last run (the demo's last fetch is 41), and the run each job the
+ *  scripted fetches brought was first seen in (store `first_seen_run`). */
+let lastRunNumber = 41;
+const seenIn = new Map<string, number>();
+
 function script(kind: RunSummary['kind']): RunEvent[] {
   const fresh = unknown();
   const total = fresh.length;
+  const number = ++lastRunNumber;
+  for (const j of fresh) seenIn.set(markKey(j.key), number);
   const events: RunEvent[] = [
     { type: 'started', kind },
     { type: 'status', code: 'connectingMail', portal: null, until: null },
@@ -1652,6 +1663,7 @@ function script(kind: RunSummary['kind']): RunEvent[] {
     type: 'finished',
     summary: {
       ...lastRun(),
+      run: number,
       kind,
       startedAt: at(0.05),
       finishedAt: at(0),
@@ -2416,6 +2428,7 @@ const harness: Harness = {
         band: null,
         contracts: [],
         workMode: null,
+        run: null,
         limit: 500,
         offset: 0,
         ...query,

@@ -1614,6 +1614,7 @@ async fn the_same_job_on_two_portals_is_one_row() {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            run: None,
             limit: 50,
             offset: 0,
         },

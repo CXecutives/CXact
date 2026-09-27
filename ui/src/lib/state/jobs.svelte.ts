@@ -206,9 +206,11 @@ function keptFilter(): ListFilter {
   }
 }
 
+/** Keeps the user's filter; the run of a fetch's "Zeigen" is never kept. */
 function keepFilter(filter: ListFilter): void {
+  const kept = { ...filter, run: null };
   try {
-    if (isFiltered(filter)) localStorage.setItem(FILTER_KEY, JSON.stringify(filter));
+    if (isFiltered(kept)) localStorage.setItem(FILTER_KEY, JSON.stringify(kept));
     else localStorage.removeItem(FILTER_KEY);
   } catch {
     // Without a store the filter lasts for this session only.
@@ -336,18 +338,19 @@ class JobsStore {
   }
 
   /**
-   * Another filter (a part of it, or `NO_FILTER` to reset it), kept like the order. The list
-   * loads again from the top; the open job stays open when the filter still lists it (its
-   * row comes into view), else it closes like a job the search no longer finds.
+   * Another filter (a part of it, or `NO_FILTER` to reset it), kept like the order unless
+   * `keep` is false (the "Zeigen" of a fetch's toast: its filter lasts until the user changes
+   * it). The list loads again from the top; the open job stays open when the filter still
+   * lists it (its row comes into view), else it closes like a job the search no longer finds.
    */
-  setFilter(change: Partial<ListFilter>): void {
+  setFilter(change: Partial<ListFilter>, keep = true): void {
     const next = { ...this.filterChoice, ...change };
     const now = this.filterChoice;
     if ((Object.keys(next) as (keyof ListFilter)[]).every((key) => next[key] === now[key])) {
       return;
     }
     this.filterChoice = next;
-    keepFilter(next);
+    if (keep) keepFilter(next);
     this.quiet();
     const open = this.selected;
     const job = open === null ? null : this.held(open);
@@ -966,6 +969,10 @@ class JobsStore {
   }
 
   private onRun(event: RunEvent): void {
+    // Another fetch: "Aus dem letzten Abruf" would speak of the one before.
+    if (event.type === 'started' && event.kind === 'fetch' && this.filterChoice.run !== null) {
+      this.setFilter({ run: null }, false);
+    }
     if (event.type === 'jobUpdated') this.upsert(event.job, event.fresh);
     else if (event.type === 'finished') void this.afterRun();
     else if (event.type === 'progress' && event.step === 'scan' && event.done === 0) {

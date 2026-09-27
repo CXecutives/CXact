@@ -850,19 +850,25 @@ pub struct JobQuery {
     /// none. `null` = every job.
     #[serde(default)]
     pub work_mode: Option<WorkMode>,
+    /// The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
+    /// jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
+    /// it, not excluded). `null` = every job.
+    #[serde(default)]
+    pub run: Option<i64>,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The filter of the query: portal, band, contract types and work mode.
+    /// The filter of the query: portal, band, contract types, work mode and run.
     pub fn filter(&self) -> ListFilter {
         ListFilter {
             portal: self.portal,
             band: self.band,
             contracts: self.contracts.clone(),
             work_mode: self.work_mode,
+            run: self.run,
         }
     }
 }
@@ -1964,6 +1970,7 @@ mod tests {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            run: None,
             limit,
             offset,
         }
@@ -2039,7 +2046,7 @@ mod tests {
         assert_eq!(old.filter(), ListFilter::default());
         let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
                        "portal":"freelance","band":"low","contracts":["interim","anue"],
-                       "workMode":"onsite","limit":10,"offset":0}"#;
+                       "workMode":"onsite","run":7,"limit":10,"offset":0}"#;
         let new: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(
             new.filter(),
@@ -2048,8 +2055,62 @@ mod tests {
                 band: Some(Band::Low),
                 contracts: vec!["interim".into(), "anue".into()],
                 work_mode: Some(WorkMode::Onsite),
+                run: Some(7),
             }
         );
+    }
+
+    /// The "Zeigen" of a fetch's toast lists exactly the jobs the toast counts: the new jobs
+    /// of that run (first seen in it, another portal's duplicate once, none excluded), with
+    /// the band of the high ones where it names them; the counts follow.
+    #[test]
+    fn the_run_filter_lists_the_jobs_its_toast_counts() {
+        let store = four_jobs();
+        let run = store.begin_run().unwrap();
+        let mut keys = Vec::new();
+        for (i, title) in [(5, "E"), (6, "F"), (7, "G")] {
+            let link =
+                job_link(&format!("https://www.linkedin.com/jobs/view/400000000{i}/")).unwrap();
+            let posting = Posting::new(link.key.clone(), link.url, title, "", "");
+            let mail = MailRef {
+                subject: "x",
+                date: None,
+                gmail_id: None,
+            };
+            store
+                .upsert_posting(run, &posting, mail, Timestamp::now())
+                .unwrap();
+            keys.push(link.key);
+        }
+        // E high, F excluded, G unscored.
+        store
+            .save_matches(
+                &[
+                    (keys[0].clone(), record(MatchStatus::Scored, 90)),
+                    (keys[1].clone(), record(MatchStatus::Excluded, 95)),
+                ],
+                "r",
+                Timestamp::now(),
+            )
+            .unwrap();
+        let page = |band| {
+            let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+            q.run = Some(run);
+            q.band = band;
+            job_page(&store, &q).unwrap()
+        };
+        let (count, high) = store.new_jobs(run).unwrap();
+        let all = page(None);
+        assert_eq!(
+            titles(&all),
+            ["G", "E"],
+            "no job of an earlier run, none excluded"
+        );
+        assert_eq!((all.counts.inbox, all.counts.excluded), (2, 0));
+        assert_eq!(all.jobs.len(), count);
+        let best = page(Some(Band::High));
+        assert_eq!(titles(&best), ["E"]);
+        assert_eq!(best.jobs.len(), high);
     }
 
     /// The contract types and the work mode narrow the list and every count like the others:

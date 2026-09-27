@@ -101,7 +101,7 @@ test('the end toast counts the run: the new jobs that are not excluded', async (
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
-test('the end toast names the new jobs of the high band; Zeigen lists them, chips to take off', async ({
+test('the end toast names the new jobs of the high band; Zeigen lists exactly those, chips to take off', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15`);
@@ -121,16 +121,27 @@ test('the end toast names the new jobs of the high band; Zeigen lists them, chip
   ]);
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
-  // The Eingang, the jobs not opened yet of the high band: the new high one among them.
-  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('band-high', 'unread-only'));
-  expect(await lastQuery(page)).toMatchObject({ place: 'inbox', unread: true, band: 'high' });
-  const { active } = await stubList(page, { unread: true, band: 'high' });
+  // The Eingang with the new jobs of that fetch in the high band: the one the toast names.
+  await expect(chips(page).getByRole('button')).toHaveText([
+    T.toolbar.lastFetch,
+    ...chipWordsOf('band-high'),
+  ]);
+  const query = (await lastQuery(page))!;
+  expect(query).toMatchObject({ place: 'inbox', unread: false, band: 'high' });
+  expect(query.run).toEqual(expect.any(Number));
+  await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
+  // Each chip takes its part off: without the band the two new jobs the toast counts, not
+  // the excluded one of the fetch.
+  await chip(page, 'band').click();
+  await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.lastFetch]);
+  const { active } = await stubList(page, { run: query.run });
+  expect(active).toHaveLength(2);
   expect(active).toContain('linkedin-4100200399');
   await expect.poll(() => listed(page)).toEqual(active);
-  // Each chip takes its part off.
-  await chip(page, 'band').click();
-  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
-  await expect.poll(() => listed(page)).toEqual((await stubList(page, { unread: true })).active);
+  // Never kept: the next start lists the Eingang as before.
+  await open(page, `${WIN}&tick=15`);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
+  await expect(page.getByTestId('filter-chips')).toHaveCount(0);
 });
 
 test('from another view Zeigen opens the Eingang without its search, filtered to the new jobs', async ({
@@ -144,7 +155,26 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('search')).toHaveValue('');
-  expect(await lastQuery(page)).toMatchObject({ search: null, unread: true, band: 'high' });
+  const run = (await lastQuery(page))?.run;
+  expect(await lastQuery(page)).toMatchObject({ search: null, unread: false, band: 'high' });
+  expect(run).toEqual(expect.any(Number));
+  // The next fetch takes "Aus dem letzten Abruf" off (it would speak of the one before).
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await expect(chip(page, 'run')).toHaveCount(0);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: 'high' });
+});
+
+test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await page.getByTestId('filter').click();
+  await page.getByTestId('menu-item-filter-reset').click();
+  await expect(page.getByTestId('filter-chips')).toHaveCount(0);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
 });
 
 test('a portal the fetch paused is said once in the run line, with its ×', async ({ page }) => {

@@ -755,6 +755,7 @@ export const en: Catalog = {
       onsite: 'On site',
     } satisfies Record<WorkMode, string>,
     unreadOnly: 'New only',
+    lastFetch: 'From the last fetch',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',

@@ -267,6 +267,7 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            run: None,
             limit: view::MAX_PAGE,
             offset: 0,
         };

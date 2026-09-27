@@ -11,7 +11,9 @@
 // heading, "Nur neue" a switch of its own. None is checked while a group filters nothing: a
 // choice is checked while it is on, another one of its group takes over, a second click
 // turns it off. There is no deadline and no pay filter: the reader's Jobdetails name the
-// deadline, the order by Tagessatz stays.
+// deadline, the order by Tagessatz stays. Beside the groups the "Zeigen" of a fetch's toast
+// narrows the list to the new jobs of that fetch (`run`, the chip "Aus dem letzten Abruf"):
+// no entry of the menu, never kept, gone with "Filter zurücksetzen" and the next fetch.
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
@@ -40,6 +42,10 @@ export interface ListFilter {
   workMode: WorkMode | null;
   /** Only the new jobs ("Nur neue", `isNew`). */
   unread: true | null;
+  /** Only the new jobs of this fetch (`RunSummary.run`), the ones its toast counts: the
+   *  "Zeigen" of the toast sets it, its chip "Aus dem letzten Abruf" takes it off. No group
+   *  of the menu, never kept, and the next fetch drops it (its chip would say another). */
+  run: number | null;
 }
 
 export const NO_FILTER: ListFilter = {
@@ -48,6 +54,7 @@ export const NO_FILTER: ListFilter = {
   contract: null,
   workMode: null,
   unread: null,
+  run: null,
 };
 
 /** A new job, in any place: not opened yet and not excluded. "Nur neue" lists these, the
@@ -75,6 +82,7 @@ export function toQuery(
     band: filter.band,
     contracts: filter.contract === null ? [] : [filter.contract],
     workMode: filter.workMode,
+    run: filter.run,
   };
 }
 
@@ -182,9 +190,9 @@ const UNREAD: FilterGroup<'unread'> = {
 /** The groups of the filter in the menu's order (and the chips'). */
 export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, CONTRACT, WORK_MODE, UNREAD];
 
-/** Some part of the filter is chosen. */
+/** Some part of the filter is chosen (the run of a fetch's "Zeigen" too). */
 export function isFiltered(filter: ListFilter): boolean {
-  return FILTER_GROUPS.some((group) => filter[group.key] !== null);
+  return filter.run !== null || FILTER_GROUPS.some((group) => filter[group.key] !== null);
 }
 
 /** A chosen part of the filter: its group and its words (a chip under the list header). */
@@ -193,26 +201,34 @@ export interface ActiveFilter {
   label: string;
 }
 
-/** The chosen parts of the filter in the chips' words, group by group ("linkedin.com",
+/** The chosen parts of the filter in the chips' words: the run of a fetch's "Zeigen" first
+ *  (its own words), then group by group ("linkedin.com",
  *  "Mittlere Übereinstimmung", "Remote"). */
 export function activeFilters(
   filter: ListFilter,
   portals: readonly Portal[],
   words: Catalog,
 ): ActiveFilter[] {
-  return FILTER_GROUPS.flatMap((group) => {
-    const value = filter[group.key];
-    if (value === null) return [];
-    const entry = group.entries(portals).find((candidate) => candidate.value === value);
-    return entry === undefined
-      ? []
-      : [{ key: group.key, label: (entry.chip ?? entry.label)(words) }];
-  });
+  const run: ActiveFilter[] =
+    filter.run === null ? [] : [{ key: 'run', label: words.toolbar.lastFetch }];
+  return [
+    ...run,
+    ...FILTER_GROUPS.flatMap((group) => {
+      const value = filter[group.key];
+      if (value === null) return [];
+      const entry = group.entries(portals).find((candidate) => candidate.value === value);
+      return entry === undefined
+        ? []
+        : [{ key: group.key, label: (entry.chip ?? entry.label)(words) }];
+    }),
+  ];
 }
 
 /** Does a job pass the filter (the backend's store::filter_condition)? It narrows the list
- *  and its counts alike. */
+ *  and its counts alike. A row does not say the run it came with: the run lets through every
+ *  job it could hold (none excluded), the backend's list decides the rest. */
 export function passesFilter(job: JobView, filter: ListFilter): boolean {
+  if (filter.run !== null && job.match?.status === 'excluded') return false;
   return FILTER_GROUPS.every((group) => {
     const value = filter[group.key];
     return value === null || group.passes(job, value as never);
@@ -220,7 +236,8 @@ export function passesFilter(job: JobView, filter: ListFilter): boolean {
 }
 
 /** A kept filter (localStorage): each part a group can hold, none for anything else (the
- *  parts of an earlier version, a lowest band, "Nur remote", a pay floor, are none). */
+ *  parts of an earlier version, a lowest band, "Nur remote", a pay floor, are none; a run is
+ *  never kept). */
 export function parseFilter(kept: unknown): ListFilter {
   const parts = typeof kept === 'object' && kept !== null ? (kept as Record<string, unknown>) : {};
   const filter: Record<string, unknown> = { ...NO_FILTER };

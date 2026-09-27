@@ -91,9 +91,13 @@ impl JobRow {
 }
 
 /// The list's filter (the funnel menu) beside the search: one portal, one band, contract
-/// types and one work mode. Like the search it narrows the list and all its counts.
+/// types and one work mode; and the new jobs of one run (the "Zeigen" of a fetch's toast).
+/// Like the search it narrows the list and all its counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
+    /// Only the new jobs a run brought, as [`Store::new_jobs`] counts them: first seen in
+    /// this run, not excluded (`None` = every job).
+    pub run: Option<i64>,
     /// Only this portal's jobs (`None` = every portal).
     pub portal: Option<Portal>,
     /// Only jobs scored in this band (`model::band` of their score); unscored and excluded
@@ -124,6 +128,7 @@ impl ListFilter {
                     .then(|| serde_json::to_string(&self.contracts).unwrap_or_default()),
             ),
             text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
+            self.run.map_or(Value::Null, Value::Integer),
         ]
     }
 }
@@ -203,15 +208,15 @@ fn page_order(query: &PageQuery, p: &str) -> String {
 }
 
 /// How many values [`filter_condition`] binds ([`ListFilter::values`]).
-pub(super) const FILTER_VALUES: usize = 5;
+pub(super) const FILTER_VALUES: usize = 6;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
 /// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score
-/// of the band and the lowest one above it, a JSON array of contract types and the work mode
-/// (each `NULL` for none). Contract type and remote share come from the key facts in the
-/// match note, the work mode without a share from the location.
+/// of the band and the lowest one above it, a JSON array of contract types, the work mode
+/// and the run (each `NULL` for none). Contract type and remote share come from the key facts
+/// in the match note, the work mode without a share from the location.
 pub(super) fn filter_condition(first: usize) -> String {
-    let [portal, from, below, contracts, mode] =
+    let [portal, from, below, contracts, mode, run] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
         "({portal} IS NULL OR portal = {portal})
@@ -219,7 +224,9 @@ pub(super) fn filter_condition(first: usize) -> String {
                                  AND ({below} IS NULL OR match_score < {below})))
          AND ({contracts} IS NULL OR {contract}
                                      IN (SELECT value FROM json_each({contracts})))
-         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))",
+         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))
+         AND ({run} IS NULL OR (first_seen_run = {run}
+                                AND match_status IS NOT 'excluded'))",
         contract = fact("", "contract"),
         job_mode = job_mode(),
     )
