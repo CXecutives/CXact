@@ -346,6 +346,7 @@
             hint={t.profile.sectionHint[section.id] ?? null}
             empty={emptySection(section)}
             required={section.required ?? false}
+            optional={section.optional ?? false}
             testid="section-{section.id}"
           >
             {#each section.lines as line, index (index)}

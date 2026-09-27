@@ -1,5 +1,6 @@
 <!--
-  One section of the profile form: the heading (H2, 17/600; with "Noch leer" when a thin
+  One section of the profile form: the heading (H2, 17/600; a quiet "optional" after it for a
+  block that only refines the match; with "Noch leer" when a thin
   profile leaves it empty: quiet for an optional block, amber only for the one block that is
   needed), at most one sentence 4 px under it, the fields in a card 12 px below.
 -->
@@ -16,6 +17,8 @@
     empty?: boolean;
     /** The block the profile needs (the competences): its "Noch leer" is amber. */
     required?: boolean;
+    /** Only refines the match: a quiet "optional" after the heading. */
+    optional?: boolean;
     testid?: string | null;
     children: Snippet;
   }
@@ -25,6 +28,7 @@
     hint = null,
     empty = false,
     required = false,
+    optional = false,
     testid = null,
     children,
   }: Props = $props();
@@ -34,6 +38,8 @@
 <section class="section" aria-labelledby="{id}-heading" data-testid={testid ?? undefined}>
   <div class="head">
     <h2 class="heading" id="{id}-heading">{heading}</h2>
+    {#if optional}<span class="optional" data-testid="section-optional">{t.profile.optional}</span
+      >{/if}
     {#if empty}<Badge label={t.profile.empty} tone={required ? 'warning' : 'neutral'} />{/if}
   </div>
   {#if hint}<p class="hint">{hint}</p>{/if}
@@ -58,6 +64,11 @@
   .heading {
     color: var(--text-heading);
     font: var(--type-lg);
+  }
+
+  .optional {
+    color: var(--text-subtle);
+    font: var(--type-sm);
   }
 
   /* 4 px under the heading: it belongs to it, the card keeps the 12 px. */

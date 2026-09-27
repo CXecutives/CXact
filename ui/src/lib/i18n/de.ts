@@ -1305,6 +1305,7 @@ export const de = {
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
+    optional: 'optional',
     /** Under the competences: the terms the jobs of the last 30 days ask for most that the
      *  profile does not name, each with the field it belongs to and its number of jobs;
      *  "Hinzufügen" puts it into that field (an unsaved change like any other). */

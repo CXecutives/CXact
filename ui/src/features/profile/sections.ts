@@ -8,10 +8,11 @@
 // choice, the switches) are components the table names by their kind.
 //
 // Every section has its heading under its id in the catalog (`t.profile.section`) and the
-// testid `section-{id}`; the two whose effect is easy to get wrong (Bedingungen, Wünsche) say
-// it in one sentence (`t.profile.sectionHint`). Order (user decision 2026-09-26): the one
-// block the profile needs first, the conditions and the rules of permanent roles next to the
-// wishes.
+// testid `section-{id}`; the ones whose effect is easy to get wrong say it in one sentence
+// (`t.profile.sectionHint`). Order (user decision 2026-09-27): what carries the match first
+// (the wished roles, the competences, the experience, the conditions), the rest after it and
+// marked optional (the person, the rules of permanent roles, the languages): nothing has to
+// be filled in, an empty field is simply not judged.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, UnreadableField } from '$lib/ipc/types';
@@ -102,6 +103,8 @@ export interface Section {
   id: SectionId;
   /** The one block the profile needs: its "Noch leer" is amber. */
   required?: true;
+  /** Only refines the match: the heading says "optional". */
+  optional?: true;
   /** The section waits while the form says so (the rules of permanent roles while those are
    *  excluded). */
   hidden?: (form: ProfileForm) => boolean;
@@ -113,6 +116,7 @@ const pair = (a: Control, b: Control): Line => ({ kind: 'pair', fields: [a, b] }
 export const SECTIONS: readonly Section[] = [
   {
     id: 'person',
+    optional: true,
     lines: [
       pair(
         {
@@ -130,6 +134,57 @@ export const SECTIONS: readonly Section[] = [
           testid: 'profile-title',
         },
       ),
+    ],
+  },
+  {
+    id: 'wishes',
+    lines: [
+      {
+        kind: 'chips',
+        key: 'roles',
+        label: 'roles',
+        placeholder: 'rolesPlaceholder',
+        testid: 'profile-roles',
+      },
+      {
+        kind: 'number',
+        key: 'wishDayRate',
+        label: 'wishRate',
+        unit: 'euro',
+        advice: (form) =>
+          form.wishes.dayRate !== null &&
+          form.criteria.minDayRate !== null &&
+          form.wishes.dayRate < form.criteria.minDayRate
+            ? 'belowMinRate'
+            : null,
+        testid: 'profile-wish-rate',
+      },
+      { kind: 'remote' },
+      // The days a week and the duration are checked, never an exclusion (engine 16).
+      pair(
+        { kind: 'workload' },
+        {
+          kind: 'number',
+          key: 'minMonths',
+          label: 'minMonths',
+          testid: 'profile-min-months',
+        },
+      ),
+      {
+        kind: 'chips',
+        key: 'regions',
+        label: 'regions',
+        placeholder: 'regionsPlaceholder',
+        testid: 'profile-regions',
+      },
+      {
+        kind: 'chips',
+        key: 'wishIndustries',
+        label: 'wishIndustries',
+        placeholder: 'wishIndustriesPlaceholder',
+        suggest: 'industries',
+        testid: 'profile-wish-industries',
+      },
     ],
   },
   {
@@ -199,23 +254,13 @@ export const SECTIONS: readonly Section[] = [
       },
     ],
   },
-  { id: 'languages', lines: [{ kind: 'languages' }] },
   {
-    // What excludes a job, from when she is free, the days a week and the duration, the
-    // words that exclude, the countries and the switches.
+    // What excludes a job: the day rate floor, from when she is free, the words that
+    // exclude, the countries and the switches.
     id: 'criteria',
     lines: [
       { kind: 'number', key: 'minDayRate', label: 'minDayRate', testid: 'profile-min-rate' },
       { kind: 'available' },
-      pair(
-        { kind: 'workload' },
-        {
-          kind: 'number',
-          key: 'minMonths',
-          label: 'minMonths',
-          testid: 'profile-min-months',
-        },
-      ),
       {
         kind: 'chips',
         key: 'exclusionWords',
@@ -249,6 +294,7 @@ export const SECTIONS: readonly Section[] = [
   {
     // The rules of permanent roles: they wait while those are excluded.
     id: 'permanent',
+    optional: true,
     hidden: (form) => form.criteria.noPermanent,
     lines: [
       {
@@ -279,47 +325,7 @@ export const SECTIONS: readonly Section[] = [
       ),
     ],
   },
-  {
-    id: 'wishes',
-    lines: [
-      {
-        kind: 'chips',
-        key: 'roles',
-        label: 'roles',
-        placeholder: 'rolesPlaceholder',
-        testid: 'profile-roles',
-      },
-      {
-        kind: 'number',
-        key: 'wishDayRate',
-        label: 'wishRate',
-        unit: 'euro',
-        advice: (form) =>
-          form.wishes.dayRate !== null &&
-          form.criteria.minDayRate !== null &&
-          form.wishes.dayRate < form.criteria.minDayRate
-            ? 'belowMinRate'
-            : null,
-        testid: 'profile-wish-rate',
-      },
-      { kind: 'remote' },
-      {
-        kind: 'chips',
-        key: 'regions',
-        label: 'regions',
-        placeholder: 'regionsPlaceholder',
-        testid: 'profile-regions',
-      },
-      {
-        kind: 'chips',
-        key: 'wishIndustries',
-        label: 'wishIndustries',
-        placeholder: 'wishIndustriesPlaceholder',
-        suggest: 'industries',
-        testid: 'profile-wish-industries',
-      },
-    ],
-  },
+  { id: 'languages', optional: true, lines: [{ kind: 'languages' }] },
 ];
 
 // ------------------------------------------------------------------ the values of the form

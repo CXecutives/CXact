@@ -1083,6 +1083,7 @@ export const en: Catalog = {
     saveFirst: 'Save or discard first.',
     fixFirst: 'Correct the marked value first.',
     empty: 'Still empty',
+    optional: 'optional',
     asked: 'Often asked for',
     askedAdd: 'Add',
     askedIn: (value: number) => `in ${count(value, 'job', 'jobs')}`,

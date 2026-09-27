@@ -52,12 +52,12 @@ const middle = (box: { y: number; height: number } | null): number => box!.y + b
 /** The sections of the form, in order. */
 const SECTIONS = [
   'section-person',
+  'section-wishes',
   'section-competences',
   'section-experience',
-  'section-languages',
   'section-criteria',
   'section-permanent',
-  'section-wishes',
+  'section-languages',
 ];
 
 /** The toast that answers a save (with what its rescore changed, when it did). */
@@ -322,12 +322,12 @@ test('the page ends with room under the last section; the save bar never covers 
   await page.setViewportSize({ width: 1100, height: 560 });
   await profile(page);
   const view = page.getByTestId('view-profile');
-  const last = page.getByTestId('section-wishes');
+  const last = page.getByTestId('section-languages');
   /** At the end of the page: the room under the last section, and above the bar. */
   const end = async (): Promise<{ window: number; bar: number | null }> => {
     await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight, behavior: 'instant' }));
     return view.evaluate((node) => {
-      const section = node.querySelector('[data-testid="section-wishes"]')!;
+      const section = node.querySelector('[data-testid="section-languages"]')!;
       const bottom = section.getBoundingClientRect().bottom;
       const bar = node.querySelector('[data-testid="profile-save-bar"]');
       return {
@@ -349,7 +349,7 @@ test('the head and the first section keep the rhythm of all sections', async ({ 
   await profile(page);
   const head = (await page.getByTestId('profile-head').boundingBox())!;
   const person = (await page.getByTestId('section-person').boundingBox())!;
-  const next = (await page.getByTestId('section-competences').boundingBox())!;
+  const next = (await page.getByTestId('section-wishes').boundingBox())!;
   expect(person.y - (head.y + head.height)).toBe(next.y - (person.y + person.height));
 });
 
@@ -361,11 +361,11 @@ test('"n Werte prüfen" goes to the first value that does not read, in the order
   await check(page).click();
   const focused = page.locator(':focus');
   await expect(focused).toBeVisible();
-  // The Schwerpunkte come first now: the competences stand before the Konditionen.
+  // The Wünsche come first now (user decision 2026-09-27): the wished roles lead.
   const at = await focused.evaluate((node) =>
     node.closest('[data-field]')?.getAttribute('data-field'),
   );
-  expect(at).toBe('focus');
+  expect(at).toBe('roles');
 });
 
 // ------------------------------------------------------------------ the form as the table
@@ -454,10 +454,12 @@ test('the stored profile fills every field', async ({ page }) => {
     'Werkstudent',
     'Praktikum',
   ]);
-  // After Verfügbar ab, before the countries; the two days on one line.
+  // The days a week and the duration are wishes (checked, never an exclusion), before the
+  // Bedingungen; Verfügbar ab, the words and the countries in the Bedingungen.
   const y = async (id: string): Promise<number> => (await page.getByTestId(id).boundingBox())!.y;
-  expect(await y('profile-workload-min')).toBeGreaterThan(await y('profile-available'));
-  expect(await y('profile-exclusion-words')).toBeGreaterThan(await y('profile-workload-min'));
+  expect(await y('profile-workload-min')).toBeGreaterThan(await y('profile-roles'));
+  expect(await y('profile-available')).toBeGreaterThan(await y('profile-workload-min'));
+  expect(await y('profile-exclusion-words')).toBeGreaterThan(await y('profile-available'));
   expect(await y('profile-countries')).toBeGreaterThan(await y('profile-exclusion-words'));
   expect(await y('profile-workload-max')).toBe(await y('profile-workload-min'));
   // The demo reads cleanly: its remote share of permanent roles is a number, nothing to check.
@@ -1549,20 +1551,20 @@ test('excluding permanent roles folds their block away and back: the sections be
   page,
 }) => {
   await profile(page);
-  const away = await topsAfterClick(page, 'profile-no-permanent', 'section-wishes');
+  const away = await topsAfterClick(page, 'profile-no-permanent', 'section-languages');
   await expect(page.getByTestId('section-permanent')).toHaveCount(0);
   expect(away.at(-1)!).toBeLessThan(away[0]!);
   expect(glided(away), away.join(' ')).toBe(true);
-  const back = await topsAfterClick(page, 'profile-no-permanent', 'section-wishes');
+  const back = await topsAfterClick(page, 'profile-no-permanent', 'section-languages');
   await expect(page.getByTestId('section-permanent')).toBeVisible();
   expect(back.at(-1)!).toBeGreaterThan(back[0]!);
   expect(glided(back), back.join(' ')).toBe(true);
   // Back in its place: 32 above it as above every section.
-  const [permanent, wishes] = await Promise.all([
+  const [permanent, languages] = await Promise.all([
     page.getByTestId('section-permanent').boundingBox(),
-    page.getByTestId('section-wishes').boundingBox(),
+    page.getByTestId('section-languages').boundingBox(),
   ]);
-  expect(Math.round(wishes!.y - (permanent!.y + permanent!.height))).toBe(32);
+  expect(Math.round(languages!.y - (permanent!.y + permanent!.height))).toBe(32);
 });
 
 test('Festanstellung: places first, the remote share waits for them; excluded, the block goes', async ({
@@ -2744,8 +2746,9 @@ test('a thin profile marks its empty sections, and they follow the form', async 
 
 test('every value that does not read is said at its field and can be removed', async ({ page }) => {
   await profile(page, '&scenario=profile-unreadable');
-  // As many as the form says: one per field, the workload's two days one.
-  await expect(check(page)).toHaveText(T.profile.check(18));
+  // As many as the form says: one per field, the workload's two days one (the retired
+  // target years are read and ignored, not named).
+  await expect(check(page)).toHaveText(T.profile.check(17));
   // A key the app does not read at all is named in the head as the file writes it, with the
   // folder to fix it.
   const warning = page.getByTestId('profile-warning');
