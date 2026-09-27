@@ -6,8 +6,8 @@ of each decision and the checks that hold them: `docs/ARCHITECTURE.md`.
 ## Change the look
 
 Every colour of the app is written in one file, `ui/src/styles/tokens.css`. Everything else
-derives from it: the page, the Excel file, the app icon, the window background and the
-Windows title bar. No other file may hold a colour
+derives from it: the page (the window's top bar and its buttons included), the Excel file, the
+app icon and the window background. No other file may hold a colour
 (`core/tests/palette.rs`, `no_colour_is_written_twice`); the UI lint rejects colours outside
 tokens.css as well.
 
@@ -29,7 +29,7 @@ Components use roles only; so do the consumers outside the page:
 | Consumer | Roles | Read through |
 |---|---|---|
 | Excel file (`JobAlerts.xlsx`; the CSV file has no colours) | `surface-muted` (header row), `score-excluded` (excluded rows), `score-ring-0` ... `score-ring-9` (score cells) | `palette.rs` (`xlsx.rs`, `scale.rs`) |
-| Windows title bar | `bg` (caption), `text` (title), `text-subtle` (title of an inactive window), of the chosen palette | `palette.rs` (`window_colours` in `src-tauri/src/platform.rs`) |
+| Window colours of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`); `text` and `text-subtle` are left from the native Windows title bar (gone 2026-09-27: the top bar is the page's, `--titlebar-*`) and can leave `OUTSIDE` | `palette.rs` |
 | Window background, both OS | `bg`: Coast's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 
@@ -43,7 +43,7 @@ It runs `node tools/tokens.mjs`, then `python tools/icon.py` (Python with Pillow
 30 s). It rewrites, never edit these by hand:
 
 - `core/src/export/palette.rs`: the colour roles of the table above as Rust constants (the
-  Excel file, the window and the Windows title bar, the icon's tests)
+  Excel file, the window, the icon's tests)
 - `tools/palette.json`: every colour role for the icon generator
 - `backgroundColor` in `src-tauri/tauri.conf.json` and `src-tauri/tauri.macos.conf.json`
 - `src-tauri/icons/icon.ico`, `icon.icns`, `icon.png`, `src-tauri/icons/CXact.icon/` and
@@ -56,17 +56,18 @@ Commit them together with tokens.css.
 - `npm run check`: its last step, `check:tokens`, fails while a generated file is stale.
 - `cargo test -p jobalert-core --test palette --test icon --test ui_contract`: the generated
   files say what tokens.css says, no colour is written anywhere else, every icon file carries
-  `--brand`, the title bar names its roles. CI runs these with `cargo test`.
+  `--brand`, the window names its role. CI runs these with `cargo test`.
 - Contrast: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to the
   address) measures the text roles against white and the cream. Body text keeps 4.5:1.
-- Look at the page (`tools/ui-preview.cmd`), a new Excel file (write it from the app) and, after `npx tauri build` and installing, the title bar, the window before the page
+- Look at the page (`tools/ui-preview.cmd`), a new Excel file (write it from the app) and, after `npx tauri build` and installing, the top bar, the window before the page
   paints, and the icon in the taskbar, the Dock and Finder.
 
 ### What does not follow the palette
 
 - The Excel file and the app icon keep Coast whatever palette is chosen in Einstellungen
   (Light and Dark reach only the page and the window).
-- The macOS traffic lights and window frame, and the Windows caption buttons: the system's.
+- The macOS traffic lights and the window's frame (shadow, edge): the system's. The top bar and
+  the Windows caption buttons are the page's and follow the palette (`--titlebar-*`).
 - `tools/ui-harness/specs/shell.spec.ts` paints Apple's traffic light colours into a screenshot
   for people to look at.
 - The diagnostic sheets of `tools/icon.py` (`--compare`, `--fringe-sheet`) show the icon on
