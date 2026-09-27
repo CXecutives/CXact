@@ -455,7 +455,7 @@
   const replacing = $derived(editor.origin === 'file' && profile !== null && !editor.fresh);
 </script>
 
-<div class="page" class:editing={editor.origin !== null} data-testid="profile">
+<div class="page" data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
   {:else}
@@ -564,8 +564,9 @@
     padding: var(--pane-padding) var(--pane-padding) var(--page-end);
   }
 
-  /* The save bar ends the page at the bottom edge. */
-  .editing {
+  /* While the save bar is there (its way out too), it ends the page at the bottom edge;
+     otherwise the room under the last section stays (--page-end). */
+  .page:has(> :global([data-save-bar])) {
     padding-bottom: 0;
   }
 

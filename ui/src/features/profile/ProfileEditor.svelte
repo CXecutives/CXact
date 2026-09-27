@@ -522,6 +522,7 @@
   <div
     class="bar"
     bind:this={bar}
+    data-save-bar
     data-testid="profile-save-bar"
     in:rise={{ distance: 'lg' }}
     out:fade

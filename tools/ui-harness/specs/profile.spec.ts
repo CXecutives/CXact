@@ -316,6 +316,35 @@ test('the head is one row as wide as the sections: the title left, the CV button
   await expect(heading(page)).toHaveCSS('font-size', '26px');
 });
 
+test('the page ends with room under the last section; the save bar never covers it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 560 });
+  await profile(page);
+  const view = page.getByTestId('view-profile');
+  const last = page.getByTestId('section-wishes');
+  /** At the end of the page: the room under the last section, and above the bar. */
+  const end = async (): Promise<{ window: number; bar: number | null }> => {
+    await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight, behavior: 'instant' }));
+    return view.evaluate((node) => {
+      const section = node.querySelector('[data-testid="section-wishes"]')!;
+      const bottom = section.getBoundingClientRect().bottom;
+      const bar = node.querySelector('[data-testid="profile-save-bar"]');
+      return {
+        window: Math.round(node.getBoundingClientRect().bottom - bottom),
+        bar: bar === null ? null : Math.round(bar.getBoundingClientRect().top - bottom),
+      };
+    });
+  };
+  await expect(last).toBeVisible();
+  // The end of the page never sits on the window's edge (--page-end).
+  expect(await end()).toEqual({ window: 96, bar: null });
+  // With a change, the last section still scrolls fully above the save bar, with room.
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await expect(bar(page)).toBeVisible();
+  await expect.poll(async () => (await end()).bar).toBeGreaterThanOrEqual(32);
+});
+
 test('the head and the first section keep the rhythm of all sections', async ({ page }) => {
   await profile(page);
   const head = (await page.getByTestId('profile-head').boundingBox())!;
