@@ -97,7 +97,7 @@ import type {
   TermField,
   WorkMode,
 } from '../../ui/src/lib/ipc/types';
-import { bandOf, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
+import { bandOf } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 import {
   EMPTY_FORM,
@@ -1106,40 +1106,40 @@ function initial(): void {
 }
 
 /**
- * The counts of store::job_page: per place, and within the inbox; "Neu" is unread and not
- * excluded, per portal too; the excluded ones of the archive and the trash each in their place.
+ * The counts of store::job_page: per place, and the excluded ones of each place.
  */
 function countsOf(list: JobView[]): JobCounts {
   const c: JobCounts = {
     inbox: 0,
-    unread: 0,
     archive: 0,
     trash: 0,
     excluded: 0,
     excludedArchive: 0,
     excludedTrash: 0,
-    high: 0,
-    noDetail: 0,
-    newByPortal: PORTALS.map((portal) => ({ portal, new: 0 })),
   };
   for (const j of list) {
     const out = j.match?.status === 'excluded';
-    if (j.place === 'archive') c.archive += 1;
-    if (j.place === 'trash') c.trash += 1;
+    c[j.place] += 1;
+    if (out && j.place === 'inbox') c.excluded += 1;
     if (out && j.place === 'archive') c.excludedArchive += 1;
     if (out && j.place === 'trash') c.excludedTrash += 1;
-    if (j.place !== 'inbox') continue;
-    const isNew = j.unread && !out;
-    c.inbox += 1;
-    c.unread += isNew ? 1 : 0;
-    c.excluded += out ? 1 : 0;
-    c.high += j.match?.status === 'scored' && j.match.score >= HIGH_FROM ? 1 : 0;
-    c.noDetail += j.detail.kind !== 'ok' ? 1 : 0;
-    const line = c.newByPortal.find((p) => p.portal === j.portal);
-    if (line && isNew) line.new += 1;
   }
   return c;
 }
+
+/** The excluded jobs of the Eingang and those scored in the high band (a rescore's
+ *  `ScoreDelta`). */
+function bandsOf(list: JobView[]): { excluded: number; high: number } {
+  const inbox = list.filter((j) => j.place === 'inbox');
+  return {
+    excluded: inbox.filter((j) => j.match?.status === 'excluded').length,
+    high: inbox.filter((j) => j.match?.status === 'scored' && bandOf(j.match.score) === 'high')
+      .length,
+  };
+}
+
+/** A new job (store::NEW): not opened yet and not excluded, in any place. */
+const isNewJob = (j: JobView): boolean => j.unread && j.match?.status !== 'excluded';
 
 /* ------------------------------------------------------------------- marks */
 
@@ -1180,12 +1180,12 @@ function workModeOf(j: JobView): WorkMode | null {
   return from >= 100 ? 'remote' : to <= 0 ? 'onsite' : 'hybrid';
 }
 
-/** The funnel's filter (store::ListFilter): unread only, one portal, the band of scored jobs
+/** The funnel's filter (store::ListFilter): new ones only, one portal, the band of scored jobs
  *  (unscored and excluded ones never pass), the contract types the engine read (none of them
  *  passes only without the filter) and the work mode as the job details say it (a job of no
  *  known mode never passes). */
 function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
-  if (query.unread === true && !j.unread) return false;
+  if (query.unread === true && !isNewJob(j)) return false;
   if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
     return false;
   }
@@ -1290,9 +1290,8 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   }
   const words = searchWords(query.search);
   const base = jobs.filter((j) => matchesSearch(j, words) && inFilter(j, query));
-  // The unread filter lists every unread job, excluded ones too (grey behind the divider),
-  // and narrows the counts like the rest of the filter (store::job_page). By date: the
-  // mail's, in the trash the day the job went there.
+  // The filter narrows the counts like the list (store::job_page). By date: the mail's, in
+  // the trash the day the job went there.
   const date = (j: JobView): string =>
     query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
   // store::page_order: the excluded last; by match the jobs without a score first (on top of
@@ -2107,14 +2106,14 @@ const handlers: Handlers = {
       form,
     };
     // Scored with the profile: the engine's scores of the demo.
-    const bandsBefore = countsOf(jobs);
+    const bandsBefore = bandsOf(jobs);
     if (jobs.every((j) => j.match === null)) {
       for (const j of jobs) j.match = demoMatch(j);
     }
     refresh();
     // Like core (scoring::profile_changed): the jobs are scored again, and the rescore says
     // what changed in the Eingang (`ScoreDelta`); no run without jobs, none while one goes.
-    const bandsAfter = countsOf(jobs);
+    const bandsAfter = bandsOf(jobs);
     rescoreDelta = {
       excludedBefore: bandsBefore.excluded,
       excludedAfter: bandsAfter.excluded,

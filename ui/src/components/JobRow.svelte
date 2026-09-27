@@ -3,8 +3,8 @@
   in the pane padding on the axis of the ring (so a title never moves when the job is read),
   the ring, then two lines (user decision 2026-09-27: the row says what, where and for how
   much, the reader everything else):
-  1. the title on one line (every row one height; a cut title shows in full in a tooltip; an
-     unread title is drawn heavier without getting wider, so reading a job never moves it;
+  1. the title on one line (every row one height; a cut title shows in full in a tooltip; a
+     new job's title is drawn heavier without getting wider, so reading a job never moves it;
      while a search is on, its words are marked in the title in a soft yellow, in any case
      and with or without accents, as the search finds them)
      and at the end of the line its stamp like a mail list: when the job came in (the time
@@ -29,8 +29,9 @@
   double click (the ad in the browser) act on the job too. The ring
   stays hollow on the open row (its track is never tinted); without a usable profile it is
   empty (a dash). An excluded job shows the ban in the ring's place, and the whole row is
-  muted. When a job is read while its row is on screen the dot shrinks away; only the
-  inbox has dots, an excluded row none. Stamps follow the page's clock (they move on while
+  muted. A new job (lib/state/filter.ts `isNew`: not opened yet and not excluded) carries
+  the dot and the heavier title in every place, like a mail app's unread mark; when it is
+  read while its row is on screen the dot shrinks away. Stamps follow the page's clock (they move on while
   the app stays open). Layout stays inside the row (containment); like the row, its
   hover rests while the list scrolls (`data-still`, see ListRow).
 -->
@@ -119,6 +120,7 @@
   import { dotOut, fade } from '$lib/motion/transitions';
   import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
+  import { isNew } from '$lib/state/filter';
   import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
@@ -165,6 +167,8 @@
   }: Props = $props();
 
   const excluded = $derived(job.match?.status === 'excluded');
+  /** Not opened yet and not excluded: the dot and the heavier title, in every place. */
+  const fresh = $derived(isNew(job));
   /** In the Papierkorb the moment the job went there (the date the trash sorts by). */
   const when = $derived(
     (job.place === 'trash' ? job.trashedAt : null) ?? job.mailDate ?? job.firstSeenAt,
@@ -243,7 +247,7 @@
     <span class="head">
       <span
         class="title"
-        class:unread={job.unread}
+        class:unread={fresh}
         class:closed={job.closed}
         use:tooltip={{ text: heading, truncated: true }}
         >{#each titleParts as part, index (index)}{#if part.mark}<mark class="hit">{part.text}</mark
@@ -263,12 +267,7 @@
         >{/if}
     </span>
   </ListRow>
-  {#if job.unread && !excluded && job.place === 'inbox'}<span
-      class="dot"
-      role="img"
-      aria-label={t.job.unread}
-      out:dotOut
-    ></span>{/if}
+  {#if fresh}<span class="dot" role="img" aria-label={t.job.unread} out:dotOut></span>{/if}
   {#if tooled && tools}
     <span class="tools" data-testid="row-tools" transition:fade>
       {#each tools() as tool (tool.id)}

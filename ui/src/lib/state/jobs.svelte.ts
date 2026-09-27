@@ -10,8 +10,8 @@
 // - Rows are plain objects (`$state.raw`): a change replaces the row, so only that row
 //   renders again, and no proxy sits between the template and 2000 jobs.
 // - Every number comes from the backend (one truth): the counts of the list (with the
-//   search) and the counts over every job (day overview, new jobs per portal, places).
-//   A change the page makes itself (read, a move) or a run update of a listed row moves
+//   search and the filter) and the counts over every job (what each place holds, whatever
+//   the search and the filter). A change the page makes itself (read, a move) or a run update of a listed row moves
 //   them at once; during a run a counts-only query follows every update (throttled), so
 //   they stay exact for rows the page does not hold.
 // - During a run the new jobs of the run are inserted at the top (they fade in) and listed
@@ -19,15 +19,15 @@
 //   next load puts it. The list re-sorts once, when the run finishes, and keeps the
 //   selection.
 // - `mark_read` when the user opens a job (a click, the keyboard); a job the app opens by
-//   itself (the next one after a move) only once it has been looked at (`markSeen`). An
-//   unread job keeps its dot until then; the list itself never changes for it.
+//   itself (the next one after a move) only once it has been looked at (`markSeen`). A new
+//   job keeps its dot until then; the list itself never changes for it.
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
 // - Each place is one list in the chosen order, the excluded jobs last. Every place has the
 //   same filter beside the search (the funnel, lib/state/filter.ts: one portal, one band,
-//   one contract type, one work mode, the new jobs; kept like the order). It narrows the list and its counts like the search. The
-//   overview's counts never follow it.
+//   one contract type, one work mode, the new jobs; kept like the order). It narrows the
+//   list and its counts like the search. The counts over every job never follow it.
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
 
@@ -46,7 +46,6 @@ import type {
   RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
-import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
 import {
   isFiltered,
@@ -74,15 +73,11 @@ type Status = 'idle' | 'loading' | 'ready' | 'error';
 
 const ZERO: JobCounts = {
   inbox: 0,
-  unread: 0,
   archive: 0,
   trash: 0,
   excluded: 0,
   excludedArchive: 0,
   excludedTrash: 0,
-  high: 0,
-  noDetail: 0,
-  newByPortal: [],
 };
 
 export function keyOf(key: JobKey): string {
@@ -99,9 +94,9 @@ export const isExcluded = (job: JobView): boolean => job.match?.status === 'excl
 const everyJob = (): boolean => true;
 
 /**
- * What one job adds to the counts (the backend's definitions, store::job_page): the inbox
- * counts only inbox jobs; a job the filter of the counts (`passes`) leaves out adds nothing (a
- * change can take a job out of it or bring it in).
+ * What one job adds to the counts (the backend's definitions, store::job_page): each place
+ * counts its jobs and its excluded ones; a job the filter of the counts (`passes`) leaves out
+ * adds nothing (a change can take a job out of it or bring it in).
  */
 function add(
   counts: JobCounts,
@@ -110,24 +105,15 @@ function add(
   passes: (job: JobView) => boolean = everyJob,
 ): JobCounts {
   if (job === null || !passes(job)) return counts;
-  const shown = job.place === 'inbox' ? sign : 0;
+  const at = (place: Place): number => (job.place === place ? sign : 0);
   const out = isExcluded(job);
-  const isNew = job.unread && !out ? shown : 0;
-  const high = job.match?.status === 'scored' && job.match.score >= HIGH_FROM;
   return {
-    ...counts,
-    inbox: counts.inbox + shown,
-    unread: counts.unread + isNew,
-    archive: counts.archive + (job.place === 'archive' ? sign : 0),
-    trash: counts.trash + (job.place === 'trash' ? sign : 0),
-    excluded: counts.excluded + (out ? shown : 0),
-    excludedArchive: counts.excludedArchive + (out && job.place === 'archive' ? sign : 0),
-    excludedTrash: counts.excludedTrash + (out && job.place === 'trash' ? sign : 0),
-    high: counts.high + (high ? shown : 0),
-    noDetail: counts.noDetail + (job.detail.kind !== 'ok' ? shown : 0),
-    newByPortal: counts.newByPortal.map((line) =>
-      line.portal === job.portal ? { ...line, new: line.new + isNew } : line,
-    ),
+    inbox: counts.inbox + at('inbox'),
+    archive: counts.archive + at('archive'),
+    trash: counts.trash + at('trash'),
+    excluded: counts.excluded + (out ? at('inbox') : 0),
+    excludedArchive: counts.excludedArchive + (out ? at('archive') : 0),
+    excludedTrash: counts.excludedTrash + (out ? at('trash') : 0),
   };
 }
 

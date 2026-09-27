@@ -121,8 +121,8 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore})` (a fetch reads the range of the setting `fetchRange`) · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
-(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode) ·
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, limit, offset}) -> JobPage{jobs, counts{inbox, archive, trash, excluded, excludedArchive, excludedTrash}}`
+(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `unread` = the new jobs, not opened and not excluded (the row's dot, in every place), `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode) ·
 `job_detail(key)` · `mark_read(key) -> bool` ·
 `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·

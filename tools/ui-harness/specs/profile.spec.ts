@@ -696,11 +696,13 @@ test('the toast of a save says what the rescore changed, only the parts that did
   // Once the save reached the stub, the jobs carry their scores.
   await lastSave(page);
   const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
-  expect(counts.high).toBeGreaterThan(0);
+  const high = (await page.evaluate(() => window.__harness.list({ place: 'inbox', band: 'high' })))
+    .counts.inbox;
+  expect(high).toBeGreaterThan(0);
   expect(counts.excluded).toBeGreaterThan(0);
-  const said = T.profile.savedEffect(counts.high, counts.excluded);
+  const said = T.profile.savedEffect(high, counts.excluded);
   expect(said).toBe(
-    `Profil gespeichert, ${counts.high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen.`,
+    `Profil gespeichert, ${high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen.`,
   );
   await expect(savedToast(page).getByTestId('toast-text')).toHaveText(said);
   // Only what changed, fewer as well as more; alone the excluded ones name the jobs.

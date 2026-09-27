@@ -818,14 +818,15 @@ pub enum JobSort {
     Rate,
 }
 
-/// Which jobs the list shows: the jobs of one place, optionally only the unread ones.
+/// Which jobs the list shows: the jobs of one place, optionally only the new ones.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct JobQuery {
     pub place: Place,
-    /// The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
-    /// narrows the list and all its counts.
+    /// The filter "Nur neue": only the new jobs, not opened yet and not excluded (what the
+    /// row's dot marks, in every place). Like the rest of the filter it narrows the list and
+    /// all its counts.
     pub unread: bool,
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
@@ -866,17 +867,16 @@ impl JobQuery {
     }
 }
 
-/// Counts of the list (with the search applied, whatever the place and the filter), from
-/// the same statement as the page. Every number of the page comes from here: the places, the
-/// list's filter segments, the tiles and the unread jobs per portal.
+/// Counts of the list (with the search and the filter applied, whatever the place), from the
+/// same statement as the page. Every number of the list comes from here: the rows each place
+/// holds (the length of the list, the other places' search hits, "Papierkorb leeren") and
+/// its section "Ausgeschlossen".
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct JobCounts {
     /// In the inbox ("Eingang").
     pub inbox: u32,
-    /// Unread in the inbox, not excluded.
-    pub unread: u32,
     pub archive: u32,
     /// In the trash ("Papierkorb").
     pub trash: u32,
@@ -886,21 +886,6 @@ pub struct JobCounts {
     pub excluded_archive: u32,
     /// Excluded, in the trash (the section "Ausgeschlossen" of the Papierkorb tab).
     pub excluded_trash: u32,
-    /// Scored in the high band, in the inbox.
-    pub high: u32,
-    /// Without a full text, in the inbox.
-    pub no_detail: u32,
-    /// `unread` per portal: every portal, in the order of `Portal::ALL`.
-    pub new_by_portal: Vec<PortalNew>,
-}
-
-/// The unread jobs of one portal (in the inbox, not excluded).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct PortalNew {
-    pub portal: Portal,
-    pub new: u32,
 }
 
 /// One page of the job list with its counts.
@@ -928,19 +913,11 @@ pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
         jobs: job_views(store, &rows)?,
         counts: JobCounts {
             inbox: counts.inbox,
-            unread: counts.unread,
             archive: counts.archive,
             trash: counts.trash,
             excluded: counts.excluded,
             excluded_archive: counts.excluded_archive,
             excluded_trash: counts.excluded_trash,
-            high: counts.high,
-            no_detail: counts.no_detail,
-            new_by_portal: counts
-                .new_by_portal
-                .into_iter()
-                .map(|(portal, new)| PortalNew { portal, new })
-                .collect(),
         },
     })
 }
@@ -2030,10 +2007,7 @@ mod tests {
         assert_eq!(linkedin.counts.inbox, 4, "the counts follow");
         let map = page(Some(Portal::Freelancermap), None);
         assert_eq!(titles(&map), ["E"]);
-        assert_eq!(
-            (map.counts.inbox, map.counts.unread, map.counts.excluded),
-            (1, 1, 0)
-        );
+        assert_eq!((map.counts.inbox, map.counts.excluded), (1, 0));
         // A: 50, B: 85, C: excluded 95, D: unscored, E: 25. Each band only its own scores.
         let mid = page(None, Some(Band::Mid));
         assert_eq!(
@@ -2044,7 +2018,7 @@ mod tests {
         assert_eq!((mid.counts.inbox, mid.counts.excluded), (1, 0));
         let high = page(None, Some(Band::High));
         assert_eq!(titles(&high), ["B"]);
-        assert_eq!(high.counts.high, 1);
+        assert_eq!(high.counts.inbox, 1);
         assert_eq!(titles(&page(None, Some(Band::Low))), ["E"]);
         assert_eq!(
             titles(&page(Some(Portal::LinkedIn), Some(Band::Mid))),
@@ -2294,7 +2268,7 @@ mod tests {
         q.unread = true;
         let unread = job_page(&store, &q).unwrap();
         assert_eq!(titles(&unread), ["B", "C", "H", "G", "F", "E", "D"]);
-        assert_eq!((unread.counts.inbox, unread.counts.unread), (7, 7));
+        assert_eq!(unread.counts.inbox, 7);
     }
 
     /// A page with every filter on takes moments at 2,000 jobs, not seconds.
@@ -2347,50 +2321,31 @@ mod tests {
         let store = four_jobs();
         let expected = JobCounts {
             inbox: 4,
-            unread: 2,
             archive: 0,
             trash: 0,
             excluded: 1,
             excluded_archive: 0,
             excluded_trash: 0,
-            high: 1,
-            no_detail: 3,
-            new_by_portal: vec![
-                PortalNew {
-                    portal: Portal::LinkedIn,
-                    new: 2,
-                },
-                PortalNew {
-                    portal: Portal::FreelanceDe,
-                    new: 0,
-                },
-                PortalNew {
-                    portal: Portal::Freelancermap,
-                    new: 0,
-                },
-            ],
         };
         let page = |unread, sort, limit, offset| {
             job_page(&store, &query(Place::Inbox, unread, sort, limit, offset)).unwrap()
         };
-        // Unread ("Nur neue") lists every unread job: the excluded one behind the others
-        // (grey in the list), the unscored one first. Like the filter it narrows the counts:
-        // the read job A is in none; the unread count leaves the excluded one out.
+        // "Nur neue" lists the new jobs, unread and not excluded, the unscored one first:
+        // neither the read job A nor the unread but excluded C is new. Like the filter it
+        // narrows the counts.
         let new = page(true, JobSort::Match, 50, 0);
-        assert_eq!(titles(&new), ["D", "B", "C"]);
+        assert_eq!(titles(&new), ["D", "B"]);
         assert_eq!(
             &new.counts,
             &JobCounts {
-                inbox: 3,
-                no_detail: 2,
+                inbox: 2,
+                excluded: 0,
                 ..expected.clone()
             }
         );
         assert!(new.jobs[0].unread && new.jobs[0].match_.is_none());
         assert!(new.jobs[1].unread && new.jobs[1].match_.is_some());
-        let excluded = new.jobs[2].match_.as_ref().unwrap();
-        assert!(new.jobs[2].unread && excluded.status == MatchStatus::Excluded);
-        assert_eq!(titles(&page(true, JobSort::Newest, 50, 0)), ["D", "B", "C"]);
+        assert_eq!(titles(&page(true, JobSort::Newest, 50, 0)), ["D", "B"]);
         assert_eq!(
             titles(&page(false, JobSort::Match, 50, 0)),
             ["D", "B", "A", "C"]
@@ -2434,8 +2389,8 @@ mod tests {
         assert_eq!(titles(&inbox), ["B", "A"]);
         let counts = &inbox.counts;
         assert_eq!(
-            (counts.inbox, counts.unread, counts.excluded),
-            (2, 1, 0),
+            (counts.inbox, counts.excluded),
+            (2, 0),
             "archive and trash in no inbox count"
         );
         assert_eq!((counts.archive, counts.trash), (1, 1));
@@ -2450,10 +2405,21 @@ mod tests {
         let trash = page(Place::Trash);
         assert_eq!(titles(&trash), ["D"]);
         assert_eq!(trash.counts, inbox.counts, "the counts ignore the place");
+        let new_in = |place| {
+            let page = job_page(&store, &query(place, true, JobSort::Match, 50, 0)).unwrap();
+            titles(&page)
+                .into_iter()
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        };
         assert_eq!(
-            titles(&job_page(&store, &query(Place::Trash, true, JobSort::Match, 50, 0)).unwrap()),
+            new_in(Place::Trash),
             ["D"],
             "the unread filter works in every place"
+        );
+        assert!(
+            new_in(Place::Archive).is_empty(),
+            "an excluded job is no new one, in any place"
         );
         // Every place lists exactly as many jobs as its count says.
         assert_eq!(u32::try_from(inbox.jobs.len()).unwrap(), counts.inbox);
@@ -2481,96 +2447,6 @@ mod tests {
                 counts.excluded_trash
             ),
             (0, 0, 1)
-        );
-    }
-
-    /// The new jobs per portal come with every page, from the same statement: every portal in the order of `Portal::ALL` (one order on every screen), read
-    /// or excluded jobs are no new ones, the search narrows them like the other counts.
-    #[test]
-    fn new_per_portal_come_with_the_counts() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let add = |url: &str, title: &str| {
-            let link = job_link(url).unwrap();
-            let posting = Posting::new(link.key.clone(), link.url, title, "", "");
-            let mail = MailRef {
-                subject: "x",
-                date: None,
-                gmail_id: None,
-            };
-            store
-                .upsert_posting(run, &posting, mail, Timestamp::now())
-                .unwrap();
-            link.key
-        };
-        add(
-            "https://www.freelancermap.de/nproj/12345.html",
-            "Controlling",
-        );
-        let map_out = add(
-            "https://www.freelancermap.de/nproj/12346.html",
-            "Buchhaltung",
-        );
-        add(
-            "https://www.linkedin.com/jobs/view/4000000001/",
-            "Interim CFO",
-        );
-        let li_read = add(
-            "https://www.linkedin.com/jobs/view/4000000002/",
-            "Controller",
-        );
-        let now = Timestamp::now();
-        store.mark_read(&li_read, now).unwrap();
-        store
-            .save_matches(&[(map_out, record(MatchStatus::Excluded, 90))], "r", now)
-            .unwrap();
-        let counts = |search: Option<&str>| {
-            job_page(
-                &store,
-                &JobQuery {
-                    place: Place::Inbox,
-                    unread: true,
-                    sort: JobSort::Match,
-                    search: search.map(str::to_owned),
-                    portal: None,
-                    band: None,
-                    contracts: Vec::new(),
-                    work_mode: None,
-                    limit: 0,
-                    offset: 0,
-                },
-            )
-            .unwrap()
-            .counts
-        };
-        let per_portal = |counts: &JobCounts| -> Vec<(Portal, u32)> {
-            counts
-                .new_by_portal
-                .iter()
-                .map(|p| (p.portal, p.new))
-                .collect()
-        };
-        let all = counts(None);
-        assert_eq!(
-            per_portal(&all),
-            [
-                (Portal::LinkedIn, 1),
-                (Portal::FreelanceDe, 0),
-                (Portal::Freelancermap, 1)
-            ]
-        );
-        assert_eq!(
-            all.new_by_portal.iter().map(|p| p.new).sum::<u32>(),
-            all.unread
-        );
-        let found = counts(Some("interim"));
-        assert_eq!(
-            per_portal(&found),
-            [
-                (Portal::LinkedIn, 1),
-                (Portal::FreelanceDe, 0),
-                (Portal::Freelancermap, 0)
-            ]
         );
     }
 

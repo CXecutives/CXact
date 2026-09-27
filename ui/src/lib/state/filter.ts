@@ -38,7 +38,7 @@ export interface ListFilter {
   contract: ContractCode | null;
   /** Only jobs of this work mode (`workModeOf`; a job of no known mode never passes). */
   workMode: WorkMode | null;
-  /** Only the jobs not opened yet ("Nur neue"). */
+  /** Only the new jobs ("Nur neue", `isNew`). */
   unread: true | null;
 }
 
@@ -49,6 +49,10 @@ export const NO_FILTER: ListFilter = {
   workMode: null,
   unread: null,
 };
+
+/** A new job, in any place: not opened yet and not excluded. "Nur neue" lists these, the
+ *  row's dot marks them (like a mail app's unread mark); the backend's store::NEW. */
+export const isNew = (job: JobView): boolean => job.unread && job.match?.status !== 'excluded';
 
 /** The work mode of a job as its Jobdetails name it (core's store::filter_condition): the
  *  remote share the ad states first (all of it remote, none of it on site, anything between
@@ -172,7 +176,7 @@ const UNREAD: FilterGroup<'unread'> = {
   entries: () => [{ id: 'unread-only', value: true, label: (w) => w.toolbar.unreadOnly }],
   needsProfile: null,
   valid: (value) => value === true,
-  passes: (job) => job.unread,
+  passes: isNew,
 };
 
 /** The groups of the filter in the menu's order (and the chips'). */

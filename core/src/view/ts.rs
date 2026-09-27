@@ -29,7 +29,7 @@ use crate::store::{Backup, BackupKind};
 use crate::view::{
     AppState, AskedTerm, Deleted, DetailState, EmptyAlert, Evidence, Highlight, JobCounts,
     JobDetail, JobMail, JobMatch, JobPage, JobQuery, JobSort, JobView, LanguageLevel, Mailbox,
-    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin, PortalNew,
+    MailboxCheck, MatchDetail, MoveBack, OpenTarget, Platform, PortalCount, PortalLogin,
     PortalPatch, PortalState, ProfileAvailability, ProfileCompetence, ProfileCriteria,
     ProfileDraft, ProfileEntry, ProfileForm, ProfileInfo, ProfileLanguage, ProfileQuality,
     ProfileSave, ProfileSource, ProfileUnderstanding, ProfileWishes, Quota, Reason, ReasonKind,
@@ -183,7 +183,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<JobDetail>();
     f.add::<JobSort>();
     f.add::<JobQuery>();
-    f.add::<PortalNew>();
     f.add::<JobCounts>();
     f.add::<JobPage>();
     f.add::<EmptyAlert>();

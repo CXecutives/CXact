@@ -6,12 +6,13 @@ import type { Portal } from "./Portal";
 import type { WorkMode } from "./WorkMode";
 
 /**
- * Which jobs the list shows: the jobs of one place, optionally only the unread ones.
+ * Which jobs the list shows: the jobs of one place, optionally only the new ones.
  */
 export type JobQuery = { place: Place, 
 /**
- * The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
- * narrows the list and all its counts.
+ * The filter "Nur neue": only the new jobs, not opened yet and not excluded (what the
+ * row's dot marks, in every place). Like the rest of the filter it narrows the list and
+ * all its counts.
  */
 unread: boolean, 
 /**

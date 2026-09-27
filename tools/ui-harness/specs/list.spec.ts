@@ -58,6 +58,7 @@ import {
   stubList,
   T,
   tokenColour,
+  unfoldExcluded,
   viaMenu,
   WIN,
 } from './helpers';
@@ -107,13 +108,14 @@ test.describe('header', () => {
     const readOf = async (key: string): Promise<boolean | undefined> =>
       (await stubList(page)).jobs.find((j) => `${j.key.portal}-${j.key.id}` === key)?.unread;
     await expect.poll(() => readOf(newest)).toBe(false);
-    const unread = (await stubList(page)).counts.unread;
+    const fresh = async (): Promise<number> =>
+      (await stubList(page, { unread: true })).counts.inbox;
+    const before = await fresh();
     // The same mails again: every job is known, nothing is added, nothing turns new.
     await page.getByTestId('fetch').click();
     await runFinished(page);
     expect(await listed(page)).toEqual(first);
-    const after = await stubList(page);
-    expect(after.counts.unread).toBe(unread);
+    expect(await fresh()).toBe(before);
     expect(await readOf(newest)).toBe(false);
   });
 
@@ -718,13 +720,16 @@ test.describe('filter', () => {
     expect(unknown.length).toBeGreaterThan(0);
     for (const key of unknown) expect(workModeOf(jobOf(key))).toBeNull();
     await chip(page, 'workMode').click();
-    // Nur neue: the jobs not opened yet, its counts too.
+    // Nur neue: the jobs not opened yet and not excluded, its counts too.
     await chooseFilter(page, 'unread-only');
     const fresh = await inbox(page, { unread: true });
     expect(fresh.length).toBeGreaterThan(0);
     await expect.poll(() => listed(page)).toEqual(fresh);
     expect(await lastQuery(page)).toMatchObject({ unread: true });
-    for (const key of fresh) expect(jobs.find((job) => keyOf(job) === key)?.unread).toBe(true);
+    for (const key of fresh) {
+      const job = jobs.find((each) => keyOf(each) === key);
+      expect(job?.unread && job.match?.status !== 'excluded', key).toBe(true);
+    }
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
     // Kept like the rest of the filter; the list asks for no deadline and no pay.
     await open(page, WIN);
@@ -979,6 +984,41 @@ test.describe('one list', () => {
     await page.getByTestId('nav-settings').click();
     await page.getByTestId('nav-jobs').click();
     await expect.poll(() => listed(page)).toEqual(all);
+  });
+
+  test('new is unread and not excluded: the dot in every place, Nur neue lists those rows', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const { jobs } = await stubList(page);
+    const isNew = (job: JobView): boolean => job.unread && !excluded(job);
+    const fresh = jobs.filter(isNew).map(keyOf).sort();
+    /** The keys of the mounted rows that carry the dot (the fold's too). */
+    const dotted = async (): Promise<string[]> =>
+      (
+        await list(page)
+          .locator('[data-testid^="job-row-"]')
+          .evaluateAll((items) =>
+            items
+              .filter((item) => item.closest('.job')?.querySelector('.dot') != null)
+              .map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
+          )
+      ).sort();
+    // An unread excluded job carries none: it is no new one.
+    expect(jobs.some((job) => job.unread && excluded(job))).toBe(true);
+    await unfoldExcluded(page);
+    expect(await dotted()).toEqual(fresh);
+    // "Nur neue" lists exactly the dotted rows, no excluded one behind the fold.
+    await chooseFilter(page, 'unread-only');
+    await expect.poll(async () => (await listed(page)).sort()).toEqual(fresh);
+    await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
+    await chip(page, 'unread').click();
+    // A new job moved to the Archiv keeps its dot there, like a mail app's unread mark.
+    const moved = fresh[0]!;
+    await viaMenu(page, 'archive', moved);
+    await settleMoves(page);
+    await openPlace(page, 'archive');
+    await expect.poll(dotted).toContain(moved);
   });
 
   test('the excluded jobs are one folded section at the end, counted per place; kept open', async ({
