@@ -665,6 +665,8 @@ test('the toast of a save says what the rescore changed, only the parts that did
   await create(page);
   await page.getByTestId('competence-name').fill('Controlling');
   await save(page).click();
+  // Once the save reached the stub, the jobs carry their scores.
+  await lastSave(page);
   const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
   expect(counts.high).toBeGreaterThan(0);
   expect(counts.excluded).toBeGreaterThan(0);

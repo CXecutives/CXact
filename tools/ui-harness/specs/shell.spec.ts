@@ -136,7 +136,7 @@ async function look(target: Locator): Promise<string> {
   });
 }
 
-async function pressAndLeave(page: Page, target: Locator): Promise<{ rest: string; left: string }> {
+async function pressAndLeave(page: Page, target: Locator): Promise<void> {
   const box = (await target.boundingBox())!;
   // At rest, with the pointer away.
   await page.mouse.move(box.x + box.width + 200, box.y + box.height + 200);
@@ -145,10 +145,10 @@ async function pressAndLeave(page: Page, target: Locator): Promise<{ rest: strin
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width + 200, box.y + box.height + 200, { steps: 4 });
-  await page.waitForTimeout(250);
-  const left = await look(target);
+  // Its hover and press relax (150 ms) back to the look at rest while the button is still
+  // held; polled, so a busy machine that draws the frames late waits for them.
+  await expect.poll(() => look(target)).toBe(rest);
   await page.mouse.up();
-  return { rest, left };
 }
 
 const EN = `${WIN}&lang=en`;
@@ -1167,13 +1167,13 @@ test('one glyph per action: retries load again, what deletes for good shares its
   await open(page, `${WIN}&scenario=list-error`);
   const retry = page.getByTestId('list-error').getByRole('button');
   await expect(retry.locator('[data-icon]')).toHaveAttribute('data-icon', 'retry');
-  // The reset deletes everything for good: the glyph of Entfernen of the mailbox, never one
-  // of an undo or a retry.
+  // The reset deletes everything for good: the one glyph of deleting, like Entfernen of the
+  // mailbox, never one of an undo or a retry.
   await settings(page);
   for (const id of ['reset', 'mailbox-remove']) {
     await expect(page.getByTestId(id).locator('[data-icon]'), id).toHaveAttribute(
       'data-icon',
-      'purge',
+      'trash',
     );
   }
 });
@@ -1500,6 +1500,8 @@ test('empty screens are never dead: an icon, one sentence, one way on, centred',
 });
 
 test('toasts: at most three, they stay while hovered and leave on their own', async ({ page }) => {
+  // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.
+  test.slow();
   // Plain toasts (4 s) from the gallery: Einstellungen answers every action in place.
   await open(page, '?gallery&platform=windows');
   // The window in the back holds their time, so a slow machine still sees all of them.
@@ -1561,16 +1563,14 @@ for (const [width, height] of [
 test('a held button that the pointer leaves looks at rest and does not fire', async ({ page }) => {
   await open(page, WIN);
   const fetch = page.getByTestId('fetch');
-  const { rest, left } = await pressAndLeave(page, fetch);
-  expect(left).toBe(rest);
+  await pressAndLeave(page, fetch);
   expect(await calls(page, 'start_run')).toHaveLength(0);
 });
 
 test('a held sidebar entry that the pointer leaves looks at rest', async ({ page }) => {
   await open(page, WIN);
   const entry = page.getByTestId('nav-settings');
-  const { rest, left } = await pressAndLeave(page, entry);
-  expect(left).toBe(rest);
+  await pressAndLeave(page, entry);
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
 });
 
