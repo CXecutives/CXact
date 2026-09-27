@@ -423,6 +423,10 @@
      buttons (the line in the glyph's own units: one CSS pixel). */
   --titlebar-glyph: 10px;
   --titlebar-glyph-stroke: 1;
+  /* The page's own buttons at the left of the bar: 6 px in, three 28 px buttons 2 px apart. */
+  --titlebar-tools-start: 94px;
+  /* The page's own button left of the caption buttons: 28 px and 6 px before them. */
+  --titlebar-tools-end: 34px;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 41px;

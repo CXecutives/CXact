@@ -5,6 +5,8 @@
 //! window's top bar is to the OS ([`Bar::hit`], `src-tauri/src/platform.rs` answers the
 //! window procedure with it on Windows).
 
+use std::ops::Range;
+
 use serde::{Deserialize, Serialize};
 
 use crate::store::Store;
@@ -155,15 +157,23 @@ pub fn restore(stored: Option<Placement>, screens: &[Screen]) -> Restore {
 /// Windows the page draws the bar with its three caption buttons at the right, and
 /// `src-tauri/src/platform.rs` answers the window procedure there with [`Bar::hit`], so the
 /// bar behaves like a native caption: it moves the window, a double click maximizes, a right
-/// click opens the system menu, and the snap layouts of Windows 11 open over Maximieren. The
+/// click opens the system menu, and the snap layouts of Windows 11 open over Maximieren. Where
+/// the page draws its own buttons in the bar ([`Bar::tools`]) it takes the pointer itself. The
 /// hairline under the bar belongs to the page.
 pub const BAR_HEIGHT: u32 = 36;
 pub const CAPTION_BUTTON: u32 = 46;
+/// The page's own buttons at the left of the bar, from the window's edge: an inset of 6 px and
+/// three 28 px buttons 2 px apart (the sidebar, Zurück, Vor). `--titlebar-tools-start`.
+pub const TOOLS_START: u32 = 94;
+/// The page's own button at the right of the bar, directly left of the caption buttons: a
+/// 28 px button and 6 px before them (the reader). `--titlebar-tools-end`.
+pub const TOOLS_END: u32 = 34;
 
 /// What a point of the window's client area is to the OS.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BarHit {
-    /// Below the bar or outside the client area: the page (or the frame) decides.
+    /// Below the bar, outside the client area, or the page's own buttons in the bar
+    /// ([`Bar::tools`]): the page (or the frame) decides.
     Page,
     /// The empty bar.
     Caption,
@@ -197,10 +207,32 @@ impl Bar {
         self.scaled(BAR_HEIGHT)
     }
 
+    /// How many columns (physical pixels) lie within `css` CSS pixels of an edge of the bar,
+    /// each measured at its middle: column `n` (from 1) is within when
+    /// `(n - 0.5) * 96 / dpi < css`, that is `n < (2 * css * dpi + 96) / 192`.
+    fn columns(&self, css: u32) -> i32 {
+        let columns = (2 * u64::from(css) * u64::from(self.dpi.max(1)) + 95) / 192;
+        i32::try_from(columns).unwrap_or(i32::MAX)
+    }
+
+    /// The columns (physical pixels, the end excluded) where the page draws its own buttons
+    /// in the bar and takes the pointer itself: [`TOOLS_START`] from the left edge, and
+    /// [`TOOLS_END`] directly left of the three caption buttons.
+    pub fn tools(&self) -> [Range<i32>; 2] {
+        let width = self.width.max(0);
+        let within = |x: i32| x.clamp(0, width);
+        let buttons = width - self.columns(3 * CAPTION_BUTTON);
+        [
+            0..within(self.columns(TOOLS_START)),
+            within(width - self.columns(3 * CAPTION_BUTTON + TOOLS_END))..within(buttons),
+        ]
+    }
+
     /// What the pixel at `x`, `y` (physical pixels from the client area's top-left corner)
     /// is: the top resize edge first (it lies over the whole width, as on a native window),
     /// then the buttons from the right (Schließen, Maximieren, Minimieren, each
-    /// [`CAPTION_BUTTON`] wide), then the empty bar.
+    /// [`CAPTION_BUTTON`] wide), then the page's own buttons ([`Bar::tools`]), then the empty
+    /// bar. A pixel belongs to what its middle lies in.
     pub fn hit(&self, x: i32, y: i32) -> BarHit {
         if x < 0 || x >= self.width || y < 0 || y >= self.height() {
             return BarHit::Page;
@@ -208,16 +240,16 @@ impl Bar {
         if y < self.edge {
             return BarHit::TopEdge;
         }
-        // The pixel's middle, in CSS pixels from the right edge.
-        let from_right =
-            (f64::from(self.width) - f64::from(x) - 0.5) * 96.0 / f64::from(self.dpi.max(1));
-        let button = f64::from(CAPTION_BUTTON);
-        if from_right < button {
+        // Columns from the right edge: the last one is 1.
+        let from_right = self.width - x;
+        if from_right <= self.columns(CAPTION_BUTTON) {
             BarHit::Close
-        } else if from_right < 2.0 * button {
+        } else if from_right <= self.columns(2 * CAPTION_BUTTON) {
             BarHit::Maximize
-        } else if from_right < 3.0 * button {
+        } else if from_right <= self.columns(3 * CAPTION_BUTTON) {
             BarHit::Minimize
+        } else if self.tools().iter().any(|zone| zone.contains(&x)) {
+            BarHit::Page
         } else {
             BarHit::Caption
         }
@@ -242,8 +274,8 @@ mod tests {
         assert_eq!(bar.hit(1360 - 92, 35), BarHit::Maximize);
         assert_eq!(bar.hit(1360 - 93, 35), BarHit::Minimize);
         assert_eq!(bar.hit(1360 - 138, 0), BarHit::Minimize);
-        assert_eq!(bar.hit(1360 - 139, 0), BarHit::Caption);
-        assert_eq!(bar.hit(0, 0), BarHit::Caption);
+        assert_eq!(bar.hit(1360 - 173, 0), BarHit::Caption);
+        assert_eq!(bar.hit(94, 0), BarHit::Caption);
         // Below the bar and beside the client area: the page and the frame.
         assert_eq!(bar.hit(1359, 36), BarHit::Page);
         assert_eq!(bar.hit(-1, 10), BarHit::Page);
@@ -263,7 +295,9 @@ mod tests {
         assert_eq!(bar.hit(2040 - 70, 53), BarHit::Maximize);
         assert_eq!(bar.hit(2040 - 138, 0), BarHit::Maximize);
         assert_eq!(bar.hit(2040 - 139, 0), BarHit::Minimize);
-        assert_eq!(bar.hit(2040 - 208, 0), BarHit::Caption);
+        assert_eq!(bar.hit(2040 - 208, 0), BarHit::Page);
+        assert_eq!(bar.hit(2040 - 259, 0), BarHit::Caption);
+        assert_eq!(bar.hit(141, 0), BarHit::Caption);
         assert_eq!(bar.hit(10, 54), BarHit::Page);
         // 125 %: the bar is 45 px high.
         assert_eq!(Bar { dpi: 120, ..bar }.height(), 45);
@@ -287,6 +321,68 @@ mod tests {
             ..restored
         };
         assert_eq!(maximized.hit(999, 0), BarHit::Close);
+    }
+
+    /// The page's own buttons take the pointer at the left (94 px from the edge) and right
+    /// before the caption buttons (34 px), over the bar's full height; the top resize edge of
+    /// a window that is not maximized still lies over them.
+    #[test]
+    fn the_page_keeps_its_own_buttons_in_the_bar() {
+        let maximized = Bar {
+            width: 1920,
+            dpi: 96,
+            edge: 0,
+        };
+        assert_eq!(maximized.tools(), [0..94, 1920 - 172..1920 - 138]);
+        assert_eq!(maximized.hit(0, 0), BarHit::Page);
+        assert_eq!(maximized.hit(93, 0), BarHit::Page);
+        assert_eq!(maximized.hit(93, 35), BarHit::Page);
+        assert_eq!(maximized.hit(94, 0), BarHit::Caption);
+        assert_eq!(maximized.hit(1920 - 138, 10), BarHit::Minimize);
+        assert_eq!(maximized.hit(1920 - 139, 10), BarHit::Page);
+        assert_eq!(maximized.hit(1920 - 172, 35), BarHit::Page);
+        assert_eq!(maximized.hit(1920 - 173, 35), BarHit::Caption);
+
+        let restored = Bar {
+            width: 1000,
+            dpi: 96,
+            edge: 4,
+        };
+        assert_eq!(restored.tools(), [0..94, 1000 - 172..1000 - 138]);
+        assert_eq!(restored.hit(0, 3), BarHit::TopEdge);
+        assert_eq!(restored.hit(93, 3), BarHit::TopEdge);
+        assert_eq!(restored.hit(1000 - 139, 3), BarHit::TopEdge);
+        assert_eq!(restored.hit(0, 4), BarHit::Page);
+        assert_eq!(restored.hit(93, 4), BarHit::Page);
+        assert_eq!(restored.hit(94, 4), BarHit::Caption);
+        assert_eq!(restored.hit(1000 - 139, 4), BarHit::Page);
+        assert_eq!(restored.hit(1000 - 172, 35), BarHit::Page);
+        assert_eq!(restored.hit(1000 - 173, 35), BarHit::Caption);
+        assert_eq!(restored.hit(1000 - 138, 35), BarHit::Minimize);
+        assert_eq!(restored.hit(93, 36), BarHit::Page);
+
+        // 150 %: 141 px at the left, 51 px before the caption buttons' 207.
+        let large = Bar {
+            width: 2040,
+            dpi: 144,
+            edge: 0,
+        };
+        assert_eq!(large.tools(), [0..141, 2040 - 258..2040 - 207]);
+        // 125 %: 117.5 px; the column whose middle lies on the line belongs to the bar.
+        let odd = Bar {
+            width: 1600,
+            dpi: 120,
+            edge: 0,
+        };
+        assert_eq!(odd.hit(116, 10), BarHit::Page);
+        assert_eq!(odd.hit(117, 10), BarHit::Caption);
+        // Minimized (no client area): no room for the page's buttons.
+        let minimized = Bar {
+            width: 0,
+            dpi: 96,
+            edge: 0,
+        };
+        assert_eq!(minimized.tools(), [0..0, 0..0]);
     }
 
     fn placement(x: i32, y: i32, width: u32, height: u32) -> Placement {

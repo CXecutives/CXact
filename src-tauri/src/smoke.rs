@@ -1,6 +1,7 @@
 //! Self-check for development and acceptance: `job-alert-monitor --smoke` loads the UI,
 //! checks the shell against the UI contract (`data-testid`: the top bar, on Windows with its
-//! caption buttons, whose window answers `HTMAXBUTTON` over Maximieren), clicks through the
+//! caption buttons, whose window answers `HTMAXBUTTON` over Maximieren and leaves the page's
+//! own buttons in the bar to the page), clicks through the
 //! three sidebar entries and exits with 0 (all fine), 1 (contract broken, a step failed or a
 //! CSP violation) or 2 (timeout).
 //!
@@ -275,7 +276,9 @@ fn check_shell<R: Runtime>(window: &WebviewWindow<R>, value: &Value) {
 
 /// Windows: the window has no native title bar, and over Maximieren both the window over the
 /// top bar and the main window answer HTMAXBUTTON, which opens the snap layouts
-/// (SMOKE {"caption":...}). macOS keeps its frame.
+/// (SMOKE {"caption":...}). On the page's own buttons in the bar the window over it leaves the
+/// pointer to the page, right beside them it still answers (SMOKE {"tools":...}). macOS keeps
+/// its frame.
 #[cfg(windows)]
 fn caption_answers<R: Runtime>(window: &WebviewWindow<R>) -> bool {
     let decorated = window.is_decorated().unwrap_or(true);
@@ -294,10 +297,30 @@ fn caption_answers<R: Runtime>(window: &WebviewWindow<R>) -> bool {
         }
     });
     println!("SMOKE {line}");
+    let tools = probe
+        .tools
+        .iter()
+        .all(crate::platform::caption::Spot::holds);
+    let spots: Vec<Value> = probe
+        .tools
+        .iter()
+        .map(|spot| {
+            serde_json::json!({
+                "at": spot.at,
+                "page": spot.page,
+                "wants": spot.wants,
+                "hit": spot.hit,
+                "covered": spot.covered,
+            })
+        })
+        .collect();
+    let line = serde_json::json!({ "tools": { "ok": tools, "spots": spots } });
+    println!("SMOKE {line}");
     !decorated
         && probe.covers == probe.bar
         && probe.bar_hit == Some(probe.maximize)
         && probe.main_hit == Some(probe.maximize)
+        && tools
 }
 
 #[cfg(not(windows))]
