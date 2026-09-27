@@ -81,6 +81,7 @@ export type { Step } from "./Step";
 export type { TextRange } from "./TextRange";
 export type { UnreadableField } from "./UnreadableField";
 export type { VaultKind } from "./VaultKind";
+export type { Vocabulary } from "./Vocabulary";
 export type { WorkMode } from "./WorkMode";
 export type { WorkspacePick } from "./WorkspacePick";
 export type { WorkspaceProfile } from "./WorkspaceProfile";

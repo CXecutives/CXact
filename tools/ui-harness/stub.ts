@@ -98,6 +98,8 @@ import {
   type WordCriterion,
 } from '../../ui/src/lib/ipc/types/profile';
 import snapshot from './demo/snapshot.json';
+// The engine's words of the suggestions (written by core's matching::vocabulary test).
+import VOCABULARY from './demo/vocabulary.json';
 import type { Snapshot } from './snapshot';
 
 interface Harness {
@@ -1925,6 +1927,7 @@ const handlers: Handlers = {
     return true;
   },
   asked_terms: () => askedTerms(),
+  vocabulary: () => structuredClone(VOCABULARY),
   set_unsaved: ({ on }) => {
     harness.unsaved = on;
     return null;

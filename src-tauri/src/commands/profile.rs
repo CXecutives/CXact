@@ -9,6 +9,7 @@
 
 use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
+use jobalert_core::matching::{self, Vocabulary};
 use jobalert_core::pipeline::demo;
 use jobalert_core::profile;
 use jobalert_core::view::{self, AskedTerm, ProfileDraft, ProfileInfo, ProfileSave};
@@ -132,6 +133,13 @@ pub async fn asked_terms(state: State<'_, AppState>) -> CmdResult<Vec<AskedTerm>
         Some(&form),
         Timestamp::now(),
     )?)
+}
+
+/// The engine's words as terms, for the suggestions of the profile's fields (skills and
+/// industries); the page asks once.
+#[tauri::command]
+pub fn vocabulary() -> Vocabulary {
+    matching::vocabulary().clone()
 }
 
 /// The page holds unsaved changes (or no longer): closing the window then asks first.

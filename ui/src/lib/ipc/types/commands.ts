@@ -19,6 +19,7 @@ import type { ProfileSave } from "./ProfileSave";
 import type { RunEvent } from "./RunEvent";
 import type { RunRequest } from "./RunRequest";
 import type { SettingsPatch } from "./SettingsPatch";
+import type { Vocabulary } from "./Vocabulary";
 import type { WorkspacePick } from "./WorkspacePick";
 
 /** Every IPC command: its arguments and its result. */
@@ -43,6 +44,7 @@ export type Commands = {
   remove_profile: { args: Record<string, never>; result: boolean };
   restore_profile: { args: Record<string, never>; result: boolean };
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
+  vocabulary: { args: Record<string, never>; result: Vocabulary };
   set_unsaved: { args: { on: boolean }; result: null };
   close_window: { args: Record<string, never>; result: null };
   save_mailbox: { args: { user: string; password: string }; result: Mailbox };

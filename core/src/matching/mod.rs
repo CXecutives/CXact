@@ -32,6 +32,7 @@ mod sections;
 mod seniority;
 mod signals;
 mod types;
+mod vocabulary;
 mod wishes;
 
 #[doc(hidden)]
@@ -44,6 +45,7 @@ use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
 pub use types::*;
+pub use vocabulary::{Vocabulary, vocabulary};
 
 use engine::EngineProfile;
 use facts::{Availability, HardCriteria};
