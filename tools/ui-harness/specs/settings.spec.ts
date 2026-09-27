@@ -138,15 +138,8 @@ test('the cards in their order, the first heading on the first row, the version 
   for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
     await expect(page.getByTestId('settings')).not.toContainText(gone);
   }
-  // The version is a quiet line under the last card, to copy.
-  const version = page.getByTestId('version');
-  await expect(version).toHaveText(T.settings.version('3.0.0'));
-  await expect(version).toHaveAttribute('data-copy', '');
-  const [data, line] = await Promise.all([
-    page.getByTestId('settings-data').boundingBox(),
-    version.boundingBox(),
-  ]);
-  expect(line!.y).toBeGreaterThan(data!.y + data!.height);
+  // No version line (user decision 2026-09-27).
+  await expect(page.getByTestId('version')).toHaveCount(0);
   // "Postfach" stands on the first row, as the sidebar's first entry (macOS too).
   for (const query of [WIN, MAC]) {
     await settings(page, query);

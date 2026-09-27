@@ -1234,7 +1234,6 @@ export const en: Catalog = {
     folderFiles: 'The files are in the new folder.',
     folderOwnProfile: 'The app now uses the profile in this folder.',
     logs: 'Log',
-    version: (value: string) => `Version ${value}`,
     backup: 'Backup',
     backupHeading: 'Restore a backup',
     backupAction: 'Restore',

@@ -1,8 +1,7 @@
 <!--
   Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Portale,
   Export, Darstellung, Daten), each a heading 12 px above a card of setting rows (Postfach
-  and Portale are a block of their own), and the app's version as a quiet line under the
-  last card. Every text button of a row is the same outlined button, and every row ends on
+  and Portale are a block of their own). Every text button of a row is the same outlined button, and every row ends on
   the card's inner edge (its buttons, switch or choice flush with the rows above and
   below). This file only renders the list and runs its commands; what a row is, says and does
   is one entry in cards.ts.
@@ -351,7 +350,6 @@
         {/if}
       </section>
     {/each}
-    <p class="version" data-copy data-testid="version">{t.settings.version(cfg.version)}</p>
   {/if}
 </div>
 
@@ -438,15 +436,6 @@
   .note {
     display: flex;
     padding-block: var(--space-12);
-  }
-
-  /* The app's version: a quiet line to copy, under the last card. */
-  .version {
-    margin-top: calc(-1 * var(--space-16));
-    color: var(--text-subtle);
-    font: var(--type-xs);
-    font-variant-numeric: var(--numeric);
-    text-align: center;
   }
 
   .skeleton {

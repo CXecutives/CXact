@@ -1,20 +1,17 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb), drawn like the sidebar's entries:
-  an icon and a quiet label of 15 px; the chosen one sits on the sidebar's white pill (hairline,
-  a faint shadow, its icon in the accent) that slides to the next choice (180 ms, emphasized;
-  the first placement and a change of size never slide). An unchosen tab takes the quiet wash
-  on hover. A tab may carry how many jobs lie there as a round count after its label (none at
-  0), warm on the chosen tab, plain on the others, like the segments. Like native tabs the row
-  is one Tab stop and the left and right arrows choose (lib/input/input.ts).
+  The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 15 px in a row
+  44 px high, the chosen one in ink with a thin line under it that slides to the next choice
+  like the sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and
+  a change of size never slide). A tab may carry how many jobs lie there as a round count
+  after its label (none at 0): warm on the chosen tab, grey on the others, one shape for all.
+  An unchosen tab darkens on hover. Like native tabs the row is one Tab stop and the left and
+  right arrows choose (lib/input/input.ts).
 -->
 <script lang="ts" module>
-  import type { IconName } from './Icon.svelte';
-
   export interface TabOption<Id extends string = string> {
     id: Id;
     label: string;
-    icon?: IconName | null;
-    /** A quiet number after the label (how many lie there); null, absent or 0: none. */
+    /** A round count after the label (how many lie there); null, absent or 0: none. */
     count?: number | null;
     testid?: string;
   }
@@ -22,7 +19,6 @@
 
 <script lang="ts" generics="Id extends string">
   import Count from './Count.svelte';
-  import Icon from './Icon.svelte';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { settled } from '$lib/motion/settled.svelte';
 
@@ -38,13 +34,13 @@
 
   const motion = settled();
   let row: HTMLDivElement | undefined = $state();
-  let pill = $state<{ x: number; width: number } | null>(null);
+  let line = $state<{ x: number; width: number } | null>(null);
   let instant = $state(true);
   let slidingUntil = 0;
 
   function measure(): void {
     const chosen = row?.querySelector<HTMLElement>('[aria-selected="true"]');
-    pill = chosen ? { x: chosen.offsetLeft, width: chosen.offsetWidth } : null;
+    line = chosen ? { x: chosen.offsetLeft, width: chosen.offsetWidth } : null;
   }
 
   $effect(() => {
@@ -86,20 +82,19 @@
         if (!chosen) onchange(option.id);
       }}
     >
-      {#if option.icon}<Icon name={option.icon} size="sm" />{/if}
       <span>{option.label}</span>
       {#if option.count}<Count
           value={option.count}
-          tone={chosen ? 'soft' : 'plain'}
+          tone={chosen ? 'soft' : 'quiet'}
           testid={option.testid ? `${option.testid}-count` : null}
         />{/if}
     </button>
   {/each}
-  {#if pill}<span
-      class="pill"
+  {#if line}<span
+      class="line"
       class:instant
       aria-hidden="true"
-      use:cssVars={{ 'pill-x': px(pill.x), 'pill-width': px(pill.width) }}
+      use:cssVars={{ 'line-x': px(line.x), 'line-width': px(line.width) }}
     ></span>{/if}
 </div>
 
@@ -108,11 +103,10 @@
   .tabs {
     position: relative;
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
+    align-items: stretch;
+    gap: var(--space-16);
     min-width: 0;
     height: var(--tabs-height);
-    isolation: isolate;
     pointer-events: none;
   }
 
@@ -120,71 +114,47 @@
     pointer-events: auto;
     display: inline-flex;
     flex: none;
+    gap: var(--space-6);
     align-items: center;
-    gap: var(--space-8);
-    height: var(--control-md);
-    padding: 0 var(--space-12);
+    padding: 0;
     border: none;
-    border-radius: var(--radius-md);
     background: none;
     color: var(--text-muted);
     font: var(--type-place);
     white-space: nowrap;
     cursor: default;
-    transition:
-      background-color var(--dur-base) var(--ease-standard),
-      color var(--dur-base) var(--ease-standard);
+    transition: color var(--dur-base) var(--ease-standard);
   }
 
   .tab[aria-selected='false']:hover {
-    background-color: var(--quiet-hover);
     color: var(--text);
     transition-duration: var(--dur-hover);
-  }
-
-  :global(:where(:root:not([data-aux-press]))) .tab[aria-selected='false']:active:hover {
-    background-color: var(--quiet-press);
-    transition-duration: var(--dur-instant);
   }
 
   .tab[aria-selected='true'] {
     color: var(--nav-active-fg);
   }
 
-  .tab[aria-selected='true'] > :global(.icon) {
-    color: var(--nav-active-icon);
-  }
-
   .tab:focus-visible {
+    border-radius: var(--radius-xs);
     box-shadow: var(--focus-ring);
     outline: none;
   }
 
-  /* The sidebar's white pill under the chosen tab: only the move animates (a width is
-     layout). */
-  .pill {
+  /* The line under the chosen tab: only the move animates (a width is layout). */
+  .line {
     position: absolute;
-    z-index: var(--z-below);
-    top: calc((var(--tabs-height) - var(--control-md)) / 2);
+    bottom: 0;
     left: 0;
-    box-sizing: border-box;
-    width: var(--pill-width);
-    height: var(--control-md);
-    border: var(--border-width) solid var(--nav-active-border);
-    border-radius: var(--radius-md);
-    background-color: var(--nav-active-bg);
-    box-shadow: var(--sh-xs);
-    transform: translateX(var(--pill-x));
+    width: var(--line-width);
+    height: var(--tabs-line);
+    border-radius: var(--radius-full);
+    background-color: var(--nav-active-fg);
+    transform: translateX(var(--line-x));
     transition: transform var(--dur-slow) var(--ease-emphasized);
   }
 
-  .pill.instant {
+  .line.instant {
     transition: none;
-  }
-
-  /* Like the sidebar: the choice greys out while the window is in the back. */
-  :global(:root[data-window='inactive']) .tab[aria-selected='true'],
-  :global(:root[data-window='inactive']) .tab[aria-selected='true'] > :global(.icon) {
-    color: var(--text);
   }
 </style>

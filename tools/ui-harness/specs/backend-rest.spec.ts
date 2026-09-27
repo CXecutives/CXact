@@ -85,13 +85,11 @@ for (const [place, tab] of [
   });
 }
 
-test('Einstellungen names the version of the app under the last card, to copy', async ({
-  page,
-}) => {
+test('Einstellungen names no version of the app (user decision 2026-09-27)', async ({ page }) => {
   await open(page, `${WIN}&view=settings`);
-  const line = page.getByTestId('version');
-  await expect(line).toHaveText('Version 3.0.0');
-  await expect(line).toHaveAttribute('data-copy', '');
+  await expect(page.getByTestId('settings')).toBeVisible();
+  await expect(page.getByTestId('version')).toHaveCount(0);
+  await expect(page.getByTestId('settings')).not.toContainText('3.0.0');
 });
 
 test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({

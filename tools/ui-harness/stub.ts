@@ -1558,9 +1558,16 @@ function endRun(): void {
   runSender = null;
 }
 
-/** The scripted fetch's new jobs once their page came and the engine scored them. */
-function arrived(): JobView[] {
-  return DEMO.announced.map((j) => structuredClone(DEMO.fetched[markKey(j.key)]!.job));
+/** The scripted fetch's jobs the store does not know yet, as their mails announce them. A job
+ *  it holds in any place, or deleted for good, is known and stays as it is (store::upsert:
+ *  no page is loaded again, nothing turns new again), so a second fetch brings nothing. */
+function unknown(): JobView[] {
+  return DEMO.announced.filter((j) => find(j.key) === undefined && !tombstones.has(markKey(j.key)));
+}
+
+/** Those jobs once their page came and the engine scored them. */
+function arrived(fresh: readonly JobView[]): JobView[] {
+  return fresh.map((j) => structuredClone(DEMO.fetched[markKey(j.key)]!.job));
 }
 
 /** What the export of a run reports (`?export=locked`: the Excel file is open elsewhere). */
@@ -1578,6 +1585,8 @@ function exported(): RunSummary['export'] {
 }
 
 function script(kind: RunSummary['kind']): RunEvent[] {
+  const fresh = unknown();
+  const total = fresh.length;
   const events: RunEvent[] = [
     { type: 'started', kind },
     { type: 'status', code: 'connectingMail', portal: null, until: null },
@@ -1610,36 +1619,49 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       gmailId: 'a3',
     },
     { type: 'progress', step: 'scan', portal: null, done: 3, total: 3 },
-    ...DEMO.announced.map((j): RunEvent => ({
+    ...fresh.map((j): RunEvent => ({
       type: 'jobUpdated',
       job: structuredClone(j),
       fresh: true,
     })),
-    { type: 'status', code: 'fetchingDetails', portal: 'linkedin', until: null },
-    { type: 'progress', step: 'fetch', portal: null, done: 0, total: 3 },
-    { type: 'progress', step: 'fetch', portal: null, done: 1, total: 3 },
-    { type: 'progress', step: 'fetch', portal: null, done: 2, total: 3 },
-    { type: 'progress', step: 'fetch', portal: null, done: 3, total: 3 },
-    {
-      type: 'portalHealth',
-      portal: 'freelance',
-      health: { kind: 'paused', until: later(15), reason: 'throttled' },
-      actionNeeded: false,
-    },
-    { type: 'status', code: 'waiting', portal: 'freelance', until: later(0.5) },
-    { type: 'status', code: 'scoring', portal: null, until: null },
-    { type: 'progress', step: 'score', portal: null, done: 0, total: 3 },
   ];
+  if (total > 0) {
+    events.push(
+      { type: 'status', code: 'fetchingDetails', portal: fresh[0]!.portal, until: null },
+      ...Array.from({ length: total + 1 }, (_, done): RunEvent => ({
+        type: 'progress',
+        step: 'fetch',
+        portal: null,
+        done,
+        total,
+      })),
+    );
+    if (fresh.some((j) => j.portal === 'freelance')) {
+      events.push(
+        {
+          type: 'portalHealth',
+          portal: 'freelance',
+          health: { kind: 'paused', until: later(15), reason: 'throttled' },
+          actionNeeded: false,
+        },
+        { type: 'status', code: 'waiting', portal: 'freelance', until: later(0.5) },
+      );
+    }
+    events.push(
+      { type: 'status', code: 'scoring', portal: null, until: null },
+      { type: 'progress', step: 'score', portal: null, done: 0, total },
+    );
+  }
   // Their pages and scores; without a profile nothing is scored (the backend has no matcher).
   const profiled = state.profile !== null;
-  const done = arrived();
+  const done = arrived(fresh);
   done.forEach((j, i) => {
     events.push({
       type: 'jobUpdated',
       job: { ...j, match: profiled ? j.match : null },
       fresh: true,
     });
-    events.push({ type: 'progress', step: 'score', portal: null, done: i + 1, total: 3 });
+    events.push({ type: 'progress', step: 'score', portal: null, done: i + 1, total });
   });
   events.push({ type: 'status', code: 'writingFiles', portal: null, until: null });
   events.push({ type: 'progress', step: 'export', portal: null, done: 1, total: 1 });
@@ -1650,41 +1672,25 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       kind,
       startedAt: at(0.05),
       finishedAt: at(0),
-      perPortal: [
-        {
-          portal: 'linkedin',
-          new: 1,
-          known: 0,
+      // Each portal's mail names one job: new the first time, known after (a known job
+      // loads no page again).
+      perPortal: (['linkedin', 'freelance', 'freelancermap'] as const).map((portal) => {
+        const now = fresh.filter((j) => j.portal === portal).length;
+        return {
+          portal,
+          new: now,
+          known: 1 - now,
           dup: 0,
-          fetched: 1,
+          fetched: now,
           failed: 0,
           gone: 0,
           skipped: 0,
-          stopped: null,
-        },
-        {
-          portal: 'freelance',
-          new: 1,
-          known: 0,
-          dup: 0,
-          fetched: 1,
-          failed: 0,
-          gone: 0,
-          skipped: 0,
-          stopped: { kind: 'paused', until: later(15), reason: 'throttled' },
-        },
-        {
-          portal: 'freelancermap',
-          new: 1,
-          known: 0,
-          dup: 0,
-          fetched: 1,
-          failed: 0,
-          gone: 0,
-          skipped: 0,
-          stopped: null,
-        },
-      ],
+          stopped:
+            portal === 'freelance' && now > 0
+              ? { kind: 'paused' as const, until: later(15), reason: 'throttled' as const }
+              : null,
+        };
+      }),
       // The new jobs as store::new_jobs counts them: the excluded ones are none, the high
       // ones apart (without a profile none is excluded and none is high).
       newJobs: {

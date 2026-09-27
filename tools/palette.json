@@ -46,6 +46,7 @@
     "count-soft-bg":          { "css": "hsl(20 78% 94.5%)", "rgb": [252, 237, 230] },
     "count-soft-fg":          { "css": "hsl(13 66% 40%)", "rgb": [169, 64, 35] },
     "count-soft-hover":       { "css": "hsl(21 68% 93%)", "rgb": [249, 234, 225] },
+    "count-quiet-fg":         { "css": "hsl(30 4% 35%)", "rgb": [93, 89, 86] },
     "icon-accent":            { "css": "hsl(212 38% 33%)", "rgb": [52, 82, 116] },
     "active-surface":         { "css": "hsl(212 40% 95.5%)", "rgb": [239, 243, 248] },
     "active-edge":            { "css": "hsl(212 38% 33%)", "rgb": [52, 82, 116] },
@@ -111,8 +112,8 @@
     "titlebar-border":        { "css": "hsl(33 22% 82.5%)", "rgb": [220, 211, 201] },
     "titlebar-fg":            { "css": "hsl(45 7% 17%)", "rgb": [46, 45, 40] },
     "titlebar-fg-inactive":   { "css": "hsl(30 5% 42%)", "rgb": [112, 107, 102] },
-    "titlebar-close-hover":   { "css": "hsl(4 55% 45%)", "rgb": [178, 60, 52] },
-    "titlebar-close-press":   { "css": "hsl(4 55% 41%)", "rgb": [162, 55, 47] },
+    "titlebar-close-hover":   { "css": "hsl(358 75% 59%)", "rgb": [229, 72, 77] },
+    "titlebar-close-press":   { "css": "hsl(358 66% 52%)", "rgb": [213, 52, 57] },
     "titlebar-close-fg":      { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "grip-rest":              { "css": "hsl(33 14% 73%)", "rgb": [196, 187, 177] },
     "grip-drag":              { "css": "hsl(30 5% 42%)", "rgb": [112, 107, 102] }

@@ -96,6 +96,10 @@
   --p-danger-750: 4 56% 37%;
   /* The glyph of the top bar's close button on its red: white in every palette. */
   --p-titlebar-close-glyph: 0 0% 100%;
+  /* Schließen under the pointer: a clear red of its own (not Windows' #C42B1C, not the
+     muted danger of the notes), the same in every palette. */
+  --p-titlebar-close: 358 75% 59%;
+  --p-titlebar-close-press: 358 66% 52%;
   --p-on-accent: 0 0% 98%;
   --p-score-high: 150 32% 46%;
   --p-score-high-text: 152 50% 31%;
@@ -216,6 +220,8 @@
   --count-soft-bg: var(--accent-wash);
   --count-soft-fg: var(--accent-wash-text);
   --count-soft-hover: var(--accent-wash-hover);
+  --count-quiet-bg: var(--surface-hover);
+  --count-quiet-fg: var(--text-muted);
 
   /* ------------------------------------------ navy: the data and the quiet structure */
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a
@@ -373,8 +379,8 @@
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
   --titlebar-button-press: var(--surface-press);
-  --titlebar-close-hover: var(--danger-strong);
-  --titlebar-close-press: var(--danger-hover);
+  --titlebar-close-hover: hsl(var(--p-titlebar-close));
+  --titlebar-close-press: hsl(var(--p-titlebar-close-press));
   --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 
   /* ------------------------------------------------------------------- radii */
@@ -826,8 +832,8 @@
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
   --titlebar-button-press: var(--surface-press);
-  --titlebar-close-hover: var(--danger-strong);
-  --titlebar-close-press: var(--danger-hover);
+  --titlebar-close-hover: hsl(var(--p-titlebar-close));
+  --titlebar-close-press: hsl(var(--p-titlebar-close-press));
   --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 }
 
@@ -924,8 +930,8 @@
   --titlebar-fg-inactive: var(--text-subtle);
   --titlebar-button-hover: var(--surface-hover);
   --titlebar-button-press: var(--surface-press);
-  --titlebar-close-hover: var(--danger-strong);
-  --titlebar-close-press: hsl(var(--p-danger-strong) / 0.85);
+  --titlebar-close-hover: hsl(var(--p-titlebar-close));
+  --titlebar-close-press: hsl(var(--p-titlebar-close-press));
   --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
 }
 

@@ -93,6 +93,30 @@ function middlesApart(page: Page, a: string, b: string): Promise<number> {
 }
 
 test.describe('header', () => {
+  test('a job comes in once: a second fetch brings nothing new and no dot comes back', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&tick=60`);
+    // The first fetch brings the new jobs of its mails.
+    await page.getByTestId('fetch').click();
+    await runFinished(page);
+    const first = await listed(page);
+    // The newest one read: it stays read.
+    const newest = first[0]!;
+    await row(page, newest).click();
+    const readOf = async (key: string): Promise<boolean | undefined> =>
+      (await stubList(page)).jobs.find((j) => `${j.key.portal}-${j.key.id}` === key)?.unread;
+    await expect.poll(() => readOf(newest)).toBe(false);
+    const unread = (await stubList(page)).counts.unread;
+    // The same mails again: every job is known, nothing is added, nothing turns new.
+    await page.getByTestId('fetch').click();
+    await runFinished(page);
+    expect(await listed(page)).toEqual(first);
+    const after = await stubList(page);
+    expect(after.counts.unread).toBe(unread);
+    expect(await readOf(newest)).toBe(false);
+  });
+
   test('each tab counts the jobs of its place, quietly; the Eingang waits for the run to end', async ({
     page,
   }) => {
@@ -101,35 +125,36 @@ test.describe('header', () => {
     expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
     expect(await tabCount(page, 'archive')).toBe(counts.archive);
     await expect(page.getByTestId('place-trash-count')).toHaveCount(0);
-    // The chosen tab's number is a warm round count, the others' plain like their label.
+    // One round count for every tab: warm on the chosen tab, grey on the others.
     await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--count-soft-fg'),
+      'background-color',
+      await tokenColour(page, '--count-soft-bg'),
     );
     await expect(page.getByTestId('place-archive-count')).toHaveCSS(
       'background-color',
-      'rgba(0, 0, 0, 0)',
+      await tokenColour(page, '--count-quiet-bg'),
     );
-    // 44 px high, 15 px labels (one step above the sidebar's entries), each with its icon;
-    // the chosen one on the sidebar's white pill with its icon in the accent.
+    const radius = (testid: string): Promise<string> =>
+      page.getByTestId(testid).evaluate((node) => getComputedStyle(node).borderRadius);
+    expect(await radius('place-archive-count')).toBe(await radius('place-inbox-count'));
+    // Choosing another place swaps the tones.
+    await openPlace(page, 'archive');
+    await expect(page.getByTestId('place-archive-count')).toHaveCSS(
+      'background-color',
+      await tokenColour(page, '--count-soft-bg'),
+    );
+    await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
+      'background-color',
+      await tokenColour(page, '--count-quiet-bg'),
+    );
+    await openPlace(page, 'inbox');
+    // 44 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
+    // line under it.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
     await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
-    for (const place of ['inbox', 'archive', 'trash'] as const) {
-      await expect(page.getByTestId(`place-${place}`).locator('svg')).toHaveClass(
-        new RegExp(`lucide-${ICONS[place]}`),
-      );
-    }
-    const pill = page.getByTestId('places').locator('.pill');
-    await expect(pill).toHaveCSS('background-color', await tokenColour(page, '--nav-active-bg'));
+    const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
     const chosen = (await page.getByTestId('place-inbox').boundingBox())!;
-    const under = (await pill.boundingBox())!;
-    expect([under.x, under.width].map(Math.round)).toEqual(
-      [chosen.x, chosen.width].map(Math.round),
-    );
-    await expect(page.getByTestId('place-inbox').locator('.icon')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--nav-active-icon'),
-    );
+    expect([line.x, line.width].map(Math.round)).toEqual([chosen.x, chosen.width].map(Math.round));
     // A search or a filter does not change them.
     await page.getByTestId('search').fill('Interim');
     await expect(rows(page)).toHaveCount(3);
@@ -146,23 +171,22 @@ test.describe('header', () => {
     await expect.poll(() => tabCount(page, 'inbox')).toBe(after);
   });
 
-  test('one header in the three places: the tabs, then the search, the funnel and the action', async ({
+  test('one header in the three places: the tabs with the action, the search and the funnel', async ({
     page,
   }) => {
     await open(page, WIN);
-    // The toolbar row under the tabs: the search, the funnel and in the Eingang "Postfach
-    // abrufen" with the Zeitraum's button at its end, on one line, left to right; no sort
-    // button (the order is the funnel's first group).
+    // Eingang: "Postfach abrufen" with the Zeitraum's button at the end of the tabs' row.
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
     // Measured in one frame, once the header has its final layout.
+    await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
+    expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
+    // The toolbar row under it: the search and the funnel on one line, left to right, the
+    // funnel's right edge on the action's; no sort button (the order is the funnel's first
+    // group).
     await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
-    await expect.poll(() => middlesApart(page, 'search', 'fetch')).toBeLessThanOrEqual(1);
-    expect((await page.getByTestId('places').boundingBox())!.y).toBeLessThan(
-      (await page.getByTestId('search').boundingBox())!.y,
-    );
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
-    expect(await rightOf(page, 'filter')).toBeLessThan(await rightOf(page, 'fetch'));
     const end = await rightOf(page, 'fetch-range');
+    expect(await rightOf(page, 'filter')).toBe(end);
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
     expect(T.toolbar.filter).toBe('Sortieren und filtern');

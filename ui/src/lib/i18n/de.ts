@@ -1500,8 +1500,6 @@ export const de = {
     folderFiles: 'Die Dateien liegen im neuen Ordner.',
     folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
     logs: 'Protokoll',
-    /** The app's version, the quiet line under the last card. */
-    version: (value: string) => `Version ${value}`,
     /** The row of the database's copies, and its dialog. */
     backup: 'Sicherung',
     backupHeading: 'Sicherung wiederherstellen',

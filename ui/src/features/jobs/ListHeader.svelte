@@ -1,17 +1,18 @@
 <!--
   The header of the list column, the same in the three places. First row: the places as tabs
-  (Eingang, Archiv, Papierkorb, each with its icon and how many jobs lie there; the Eingang's
-  number moves on only once a fetch has ended; another place starts without the search, like
-  a folder of a mail app). A narrow column drops the tabs' numbers first, then their icons.
-  Second row: the search, whose placeholder names what it searches (its × clears it), the
-  funnel, and at the right end the place's one action: in the Eingang "Postfach abrufen", the
-  one primary of the Jobs view, with an outlined icon button beside it that opens the menu
-  "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30 Tage, Alle Alert-Mails, the
-  current one checked; a choice is saved at once, lib/state/app.svelte.ts); "Abbrechen"
-  stands in the fetch's place while a fetch goes, the two cross-fade in one cell as wide as
-  the wider, so nothing jumps; the fetch is locked while the app scores the jobs anew, and
-  without a mailbox, saying why. In the Papierkorb "Papierkorb leeren" (outlined, the trash
-  in red, asks first), in the Archiv none. A narrow column puts the action under the search.
+  (Eingang, Archiv, Papierkorb, each with how many jobs lie there as a round count; the
+  Eingang's number moves on only once a fetch has ended; another place starts without the
+  search, like a folder of a mail app) and at its right end the place's one action: in the
+  Eingang "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
+  beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
+  Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
+  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, the
+  two cross-fade in one cell as wide as the wider, so nothing jumps; the fetch is locked
+  while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
+  "Papierkorb leeren" (outlined, the trash in red, asks first), in the Archiv none. A narrow
+  column drops the tabs' counts first, a narrower one puts the action under the tabs.
+  Second row: the search, whose placeholder names what it searches (its × clears it), and the
+  funnel.
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
   sets none), the one control of the order and the filter: its menu holds, under small
   headings, "Sortierung" (Nach Übereinstimmung, Nach Datum, Nach Tagessatz), then the filter
@@ -70,21 +71,9 @@
     if (!run.active) inbox = now;
   });
   const places = $derived<TabOption<Place>[]>([
-    { id: 'inbox', label: t.place.inbox, icon: 'inbox', testid: 'place-inbox', count: inbox },
-    {
-      id: 'archive',
-      label: t.place.archive,
-      icon: 'archive',
-      testid: 'place-archive',
-      count: totals.archive,
-    },
-    {
-      id: 'trash',
-      label: t.place.trash,
-      icon: 'trash',
-      testid: 'place-trash',
-      count: totals.trash,
-    },
+    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox', count: inbox },
+    { id: 'archive', label: t.place.archive, testid: 'place-archive', count: totals.archive },
+    { id: 'trash', label: t.place.trash, testid: 'place-trash', count: totals.trash },
   ]);
 
   /** Another place starts without the search. */
@@ -259,36 +248,7 @@
       testid="places"
       onchange={choosePlace}
     />
-  </div>
-  <div class="top">
-    {#if tools}
-      <span class="search" bind:this={searchBox}>
-        <TextField
-          kind="search"
-          value={jobs.search}
-          label={t.place.search[place]}
-          placeholder={t.place.search[place]}
-          testid="search"
-          oninput={(value) => jobs.setSearch(value)}
-        />
-      </span>
-      <span class="funnel" bind:this={funnelBox}>
-        <Button
-          variant="secondary"
-          size="field"
-          iconOnly
-          icon="filter"
-          label={t.toolbar.filter}
-          dot={jobs.filtered}
-          menu
-          expanded={funnelOpen}
-          testid="filter"
-          onclick={openFunnel}
-        />
-      </span>
-    {/if}
     {#if place === 'inbox'}
-      <!-- The other button stands invisible in the same cell and only keeps the width. -->
       <!-- Both stand in one cell as wide as the wider; only the one that fits the run shows
            and takes clicks (a fetch that ends at once simply shows "Postfach abrufen" again). -->
       <span class="action" data-testid="place-action">
@@ -314,6 +274,34 @@
             emptyError = null;
             confirmEmpty = true;
           }}
+        />
+      </span>
+    {/if}
+  </div>
+  <div class="top">
+    {#if tools}
+      <span class="search" bind:this={searchBox}>
+        <TextField
+          kind="search"
+          value={jobs.search}
+          label={t.place.search[place]}
+          placeholder={t.place.search[place]}
+          testid="search"
+          oninput={(value) => jobs.setSearch(value)}
+        />
+      </span>
+      <span class="funnel" bind:this={funnelBox}>
+        <Button
+          variant="secondary"
+          size="field"
+          iconOnly
+          icon="filter"
+          label={t.toolbar.filter}
+          dot={jobs.filtered}
+          menu
+          expanded={funnelOpen}
+          testid="filter"
+          onclick={openFunnel}
         />
       </span>
     {/if}
@@ -380,15 +368,21 @@
     border-bottom-color: var(--border);
   }
 
-  /* The tabs' row: the chosen pill's edge lines up with the search field's below. */
+  /* The rows span the header's side padding too. A narrow column puts the action under the
+     tabs (after it dropped their counts, below). */
   .places {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8) var(--space-16);
     min-height: var(--tabs-height);
+    margin: 0 calc(-1 * var(--pane-padding));
+    padding: 0 var(--pane-padding);
   }
 
-  /* One height whatever it holds (an empty place keeps the row with its action). A narrow
-     column puts the action under the search. */
+  /* One height whatever it holds (an empty place keeps the row, empty). A narrow column
+     puts the funnel under the search. */
   .top {
     display: flex;
     flex-wrap: wrap;
@@ -435,16 +429,12 @@
     gap: var(--space-8);
   }
 
-  /* A column (JobsView .head) narrower than the three tabs drops their numbers first (the
-     rows' dots still say what is new), then their icons; the labels always stay. */
-  @container (width < 440px) {
+  /* The header's column (JobsView .head) narrower than the tabs with their counts and the
+     action side by side: the counts go first (the rows' dots still say what is new), so the
+     row keeps one line at the usual widths; only a narrower column puts the action under the
+     tabs. */
+  @container (width < 500px) {
     .places :global([role='tab'] > .count) {
-      display: none;
-    }
-  }
-
-  @container (width < 380px) {
-    .places :global([role='tab'] > .icon) {
       display: none;
     }
   }
