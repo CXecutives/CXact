@@ -145,9 +145,10 @@ menu names a key.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
   on a row shows both groups (what shows the job: Öffnen, Alert-Mail öffnen, Anzeige öffnen,
   KI-Prompt kopieren; what changes it: Trotzdem bewerten or Wieder ausschließen, then the moves
-  of its place); the reader's "…" shows the second group (its buttons are the first). The
-  moves per place are `OF_PLACE`, their icons `ACTIONS`, their toast words `SAID`. No entry
-  names a key.
+  of its place); the reader's "…" shows the second group (its buttons are the first), and
+  the row's tools under the pointer are the moves of its place (`rowTools`, icons with their
+  label as tooltip; the ones that delete turn red). The moves per place are `OF_PLACE`, their
+  icons `ACTIONS`, their toast words `SAID`. No entry names a key.
 - **The portals' order in the UI**: `PORTAL_ORDER` in `ui/src/lib/portals.ts` (freelance.de,
   LinkedIn, freelancermap: Einstellungen, the first-run page, the filter). Core's
   `Portal::ALL` is the order the backend works in and stays as it is.

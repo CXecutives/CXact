@@ -10,8 +10,17 @@
      end of the line (in the Papierkorb the day the job went there);
   2. a building and the company, a map pin and the place (without the work mode a portal
      appends to it, lib/place.ts), cut at the line's end.
-  No facts, no badges, no tools on hover: the reader has them, and the row's menu (a right
-  click, the app's own) and a double click (the ad in the browser) act on the job. The ring
+  No facts, no badges: the reader has them. Under the pointer (and while the row's menu is
+  open) the row's tools, the moves of its place (actions.ts rowTools: Archivieren and
+  Löschen, Dearchivieren and Löschen, Wiederherstellen and Endgültig löschen), fade in as
+  icons over the date, which fades out: they stand in a fixed slot at the end of the title
+  line that is always as wide as they are, so nothing moves and the title keeps its room.
+  Each names itself in its tooltip; the ones that delete turn red under the pointer. They
+  are siblings of the row's button (a click on one never opens the job), out of the Tab
+  order (the row's menu is there for the keyboard), and exist only while they show. After a
+  tool took its row away, the row that slides under the pointer shows its tools only once
+  the pointer moves (input.ts `hover`). The row's menu (a right click, the app's own) and a
+  double click (the ad in the browser) act on the job too. The ring
   stays hollow on the open row (its track is never tinted); without a usable profile it is
   empty (a dash). An excluded job shows the ban in the ring's place, and the whole row is
   muted. When a job is read while its row is on screen the dot shrinks away; only the
@@ -19,16 +28,35 @@
   while the app stays open). Layout stays inside the row (containment); like the row, its
   hover rests while the list scrolls (`data-still`, see ListRow).
 -->
+<script lang="ts" module>
+  import type { IconName } from './Icon.svelte';
+
+  /** A tool of the row under the pointer: a move of the job's place (actions.ts rowTools). */
+  export interface RowTool {
+    id: string;
+    icon: IconName;
+    /** Its name: the tooltip and the accessible name of the icon. */
+    label: string;
+    /** It deletes (Löschen, Endgültig löschen): red under the pointer. */
+    deletes: boolean;
+    disabled: boolean;
+    /** Why a disabled tool waits (its tooltip). */
+    reason: string | null;
+    run: () => void;
+  }
+</script>
+
 <script lang="ts">
-  import { contextMenu, doubleClick, type ContextMenu } from '$lib/input/input';
+  import { contextMenu, doubleClick, holdHover, hover, type ContextMenu } from '$lib/input/input';
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
   import { displayTitle, formatRelative } from '$lib/i18n/format';
   import type { JobView } from '$lib/ipc/types';
-  import { dotOut } from '$lib/motion/transitions';
+  import { dotOut, fade } from '$lib/motion/transitions';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { placeOf } from '$lib/place';
   import { clock } from '$lib/state/clock.svelte';
+  import Button from './Button.svelte';
   import Icon from './Icon.svelte';
   import ListRow from './ListRow.svelte';
   import ScoreRing, { ringState } from './ScoreRing.svelte';
@@ -50,6 +78,8 @@
     onopen?: ((job: JobView) => void) | null;
     /** The job's menu on a right click (null: none). */
     menu?: (() => ContextMenu | null) | null;
+    /** The row's tools under the pointer (null: none). */
+    tools?: (() => readonly RowTool[]) | null;
     /** The row's test id (another list of the same jobs needs its own). */
     testid?: string | null;
   }
@@ -64,6 +94,7 @@
     onselect = null,
     onopen = null,
     menu = null,
+    tools = null,
     testid = null,
   }: Props = $props();
 
@@ -79,6 +110,35 @@
   const portals = $derived([job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)]);
   const portalNames = $derived(portals.map((portal) => t.portal[portal]).join(', '));
   const place = $derived(placeOf(job.location));
+
+  /** The pointer is on the row (after a tool took a row away: once it moved). */
+  let here = $state(false);
+  /** The row's menu is open (its tools stay while the pointer is on the menu). */
+  let menuOpen = $state(false);
+  const tooled = $derived(tools !== null && (here || menuOpen));
+
+  /** The job's menu, which keeps the row's tools while it is open. */
+  const offer = $derived.by(() => {
+    const own = menu;
+    if (own === null) return null;
+    return (): ContextMenu | null => {
+      const opened = own();
+      if (opened === null) return null;
+      menuOpen = true;
+      return { ...opened, onclose: () => (menuOpen = false) };
+    };
+  });
+
+  /** A tool is for the pointer: out of the Tab order (the row and its menu are the keys'). */
+  function untabbed(node: HTMLElement): void {
+    for (const button of node.querySelectorAll('button')) button.tabIndex = -1;
+  }
+
+  /** A tool: its row leaves, and the next one waits for the pointer to move. */
+  function runTool(tool: RowTool, event: MouseEvent): void {
+    holdHover(event);
+    tool.run();
+  }
 </script>
 
 {#snippet leading()}
@@ -96,8 +156,11 @@
 
 <div
   class="job"
+  class:tooled
+  class:excluded
   data-rests=""
-  use:contextMenu={menu}
+  use:hover={(on) => (here = on)}
+  use:contextMenu={offer}
   use:doubleClick={onopen ? () => onopen?.(job) : null}
 >
   <ListRow
@@ -134,6 +197,26 @@
       aria-label={t.job.unread}
       out:dotOut
     ></span>{/if}
+  {#if tooled && tools}
+    <span class="tools" data-testid="row-tools" transition:fade>
+      {#each tools() as tool (tool.id)}
+        <span class="tool" use:untabbed>
+          <Button
+            variant="ghost"
+            size="sm"
+            iconOnly
+            icon={tool.icon}
+            label={tool.label}
+            deletes={tool.deletes}
+            disabled={tool.disabled}
+            disabledReason={tool.reason}
+            testid="tool-{tool.id}"
+            onclick={(event) => runTool(tool, event)}
+          />
+        </span>
+      {/each}
+    </span>
+  {/if}
 </div>
 
 <style>
@@ -212,15 +295,24 @@
     color: var(--text-subtle);
   }
 
-  /* The relative date at the end of the title line; it steps up from subtle to muted on
-     hover. */
+  /* The relative date at the end of the title line, in the tools' slot (as wide as the two
+     tools at least, so the title's room never changes); it steps up from subtle to muted on
+     hover and fades out while the tools show. */
   .date {
     flex: none;
+    min-width: calc(2 * var(--control-sm) + var(--space-2) + var(--space-6));
     margin-left: auto;
     padding-left: var(--space-6);
     color: var(--text-subtle);
+    text-align: end;
     white-space: nowrap;
-    transition: color var(--dur-base) var(--ease-standard);
+    transition:
+      color var(--dur-base) var(--ease-standard),
+      opacity var(--dur-fast) var(--ease-standard);
+  }
+
+  .tooled:where(:not([data-still])) .date {
+    opacity: 0;
   }
 
   .stamp {
@@ -259,6 +351,49 @@
 
   .part :global(.icon) {
     color: var(--text-subtle);
+  }
+
+  /* The row keeps its wash while the pointer is on a tool (a sibling of the row's button);
+     a pressed row keeps its own look. */
+  .job:hover:where(:not([data-still])) :global(.row:not(.selected, :active)) {
+    background-color: var(--quiet-hover);
+  }
+
+  .job:hover:where(:not([data-still])) :global(.row.selected:not(:active)) {
+    background-color: var(--surface-selected-hover);
+  }
+
+  /* The tools over the date, centred on the title line, their right edge on the date's. */
+  .tools {
+    position: absolute;
+    top: calc(var(--space-12) + (var(--leading-title) - var(--control-sm)) / 2);
+    right: var(--pane-padding);
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  /* Shown while the row is tooled; while the list scrolls the row rests: no tools, the date
+     stays. */
+  .tool {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-standard);
+  }
+
+  .tooled:where(:not([data-still])) .tool {
+    opacity: 1;
+  }
+
+  /* An excluded row is muted as a whole, its tools too (as bright as the row under the
+     pointer). */
+  .excluded.tooled:where(:not([data-still])) .tool {
+    opacity: var(--opacity-muted-hover);
+  }
+
+  /* On the washed row a tool's own hover is one step deeper (the red of one that deletes
+     stays its own). */
+  .tool :global(.btn.ghost:not(.deletes)) {
+    --btn-bg-hover: var(--quiet-press);
   }
 
   .text {

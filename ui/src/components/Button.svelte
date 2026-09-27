@@ -32,6 +32,8 @@
     (empty the trash, delete for good, remove the mailbox, reset the app): its text and
     glyph are red at rest, before the dialog asks. Moving a job to the trash can be undone
     and does not warn; no icon warns by itself.
+  - deletes: a quiet button that deletes (a job row's Löschen and Endgültig löschen): at rest
+    like every ghost, under the pointer its glyph turns red on a red wash.
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -88,6 +90,8 @@
     isDefault?: boolean;
     /** Removes or resets something: red text on hover (secondary and ghost). */
     warns?: boolean;
+    /** Deletes (a row's tool): quiet at rest, red under the pointer (ghost). */
+    deletes?: boolean;
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
     testid?: string | null;
@@ -116,6 +120,7 @@
     expanded = false,
     isDefault = false,
     warns = false,
+    deletes = false,
     plain = false,
     testid = null,
     onclick,
@@ -150,6 +155,7 @@
   class:external
   class:default={isDefault}
   class:warns
+  class:deletes
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
@@ -357,6 +363,13 @@
   .secondary.warns {
     --btn-fg: var(--danger-strong);
     --btn-fg-hover: var(--danger-strong);
+  }
+
+  /* Deleting (a row's tool): quiet at rest, red on a red wash under the pointer. */
+  .ghost.deletes {
+    --btn-fg-hover: var(--danger-strong);
+    --btn-bg-hover: var(--danger-soft);
+    --btn-bg-active: var(--danger-soft);
   }
 
   .ghost[aria-pressed='true'] {

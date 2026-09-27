@@ -49,6 +49,9 @@
 // - OS window and menu functions stay: Alt+F4 and Cmd+Q/W/M/H/, (Settings), Cmd+Option+H.
 // - no Ctrl/Cmd+wheel zoom and no pinch zoom
 // - no hover flicker while a list scrolls (`data-rests` and `data-still`, see onScroll)
+// - a row that slides under a pointer that did not move is not hovered by it: after a row's
+//   tool took its row away, the next row shows its tools only once the pointer moves
+//   (`hover`, `holdHover`)
 
 import type { Action } from 'svelte/action';
 import { t } from '../i18n/t';
@@ -777,6 +780,8 @@ function selectedCopy(target: EventTarget | null): boolean {
 export interface ContextMenu {
   label: string;
   entries: readonly MenuEntry[];
+  /** Called once the menu has closed (a job row keeps its tools while its menu is open). */
+  onclose?: () => void;
 }
 
 const MENU_HOST = '[data-context-menu]';
@@ -843,13 +848,72 @@ function runDouble(event: MouseEvent): boolean {
   return true;
 }
 
+/** Where the pointer stood when a row's tool took its row away (null: no hold). */
+let heldAt: { x: number; y: number } | null = null;
+
+/**
+ * A row's tool took its row away (the row folds, the next one slides under the pointer):
+ * until the pointer moves, no element counts as hovered by it (`hover`), so the next row
+ * shows no tools under a pointer that did not move.
+ */
+export function holdHover(event: MouseEvent): void {
+  heldAt = { x: event.clientX, y: event.clientY };
+}
+
+/** The pointer moved since the hold (which then ends); the engines send `pointerenter` and
+ *  `pointermove` at the old place when content slides under a pointer that rests. */
+function pointerMoved(event: PointerEvent): boolean {
+  if (heldAt === null) return true;
+  if (event.clientX === heldAt.x && event.clientY === heldAt.y) return false;
+  heldAt = null;
+  return true;
+}
+
+/**
+ * `use:hover={(here) => ...}`: says when the mouse comes onto the element (`here` true) and
+ * when it leaves it again (false); moves between its own children do not count. After
+ * `holdHover` an element the pointer did not move onto waits for the pointer to move. Touch
+ * never hovers.
+ */
+export const hover: Action<HTMLElement, (here: boolean) => void> = (node, callback) => {
+  let current = callback;
+  let here = false;
+  const enter = (event: PointerEvent): void => {
+    if (here || event.pointerType === 'touch' || !pointerMoved(event)) return;
+    here = true;
+    current(true);
+  };
+  const leave = (): void => {
+    if (!here) return;
+    here = false;
+    current(false);
+  };
+  node.addEventListener('pointerenter', enter);
+  node.addEventListener('pointermove', enter, { passive: true });
+  node.addEventListener('pointerleave', leave);
+  return {
+    update(next: (here: boolean) => void) {
+      current = next;
+    },
+    destroy() {
+      node.removeEventListener('pointerenter', enter);
+      node.removeEventListener('pointermove', enter);
+      node.removeEventListener('pointerleave', leave);
+    },
+  };
+};
+
 /** Open the menu of `host` at the pointer, or below the element itself from the keyboard. */
 function openHostMenu(host: Element, at: { x: number; y: number } | null): void {
   const offer = menuHosts.get(host)?.() ?? null;
-  if (offer === null || offer.entries.length === 0) return;
+  if (offer === null || offer.entries.length === 0) {
+    offer?.onclose?.();
+    return;
+  }
   openMenu({
     entries: offer.entries,
     label: offer.label,
+    ...(offer.onclose ? { onclose: offer.onclose } : {}),
     anchor:
       at === null
         ? { kind: 'below', rect: host.getBoundingClientRect(), align: 'start' }

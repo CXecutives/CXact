@@ -12,7 +12,8 @@
   scrolling says so at the end of the list, with a retry. A search looks in the list's place;
   under its hits a button names each other place with hits ("Im Archiv (2)", counted with
   the same filter) and goes there with the search. A click opens a job, a double click opens
-  its ad in the browser, a right click its menu (jobMenu of actions.ts); one coral bar marks
+  its ad in the browser, a right click its menu (jobMenu of actions.ts); under the pointer
+  the row shows the moves of its place as its tools (rowTools, the same table); one coral bar marks
   the open job's row and slides from row to row (RowBar). Back in the Jobs view, the open
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
@@ -45,7 +46,7 @@
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
-  import { disarm, jobMenu, moving, openAd, purge } from './actions';
+  import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
   import { glideIntoView } from '$lib/motion/scroll';
   import RowBar from './RowBar.svelte';
 
@@ -350,19 +351,22 @@
     if (error !== null) jobs.actionError = error;
   }
 
+  /** What the row's menu and its tools do: a move goes at once, deleting for good asks
+   *  first, a failure says so in the list header. */
+  function contextOf(job: JobView): JobMenuContext {
+    return {
+      open: () => select(job),
+      purge: () => {
+        purgeError = null;
+        purging = job;
+      },
+      report,
+    };
+  }
+
   /** The job's menu on a right click (jobMenu of actions.ts, the reader's "…" too). */
   function menuOf(job: JobView): ContextMenu {
-    return {
-      label: t.menu.job,
-      entries: jobMenu(job, {
-        open: () => select(job),
-        purge: () => {
-          purgeError = null;
-          purging = job;
-        },
-        report,
-      }),
-    };
+    return { label: t.menu.job, entries: jobMenu(job, contextOf(job)) };
   }
 
   async function purgeRow(): Promise<void> {
@@ -513,6 +517,7 @@
         onselect={select}
         onopen={(job) => void openAd(job).then(report)}
         menu={() => menuOf(job)}
+        tools={() => rowTools(job, contextOf(job))}
       />
     {/snippet}
     {#snippet group(items: JobView[])}

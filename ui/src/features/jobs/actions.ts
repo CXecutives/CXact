@@ -1,5 +1,6 @@
-// What a job can do where it is, with one name, icon and order in its menu (a right click on
-// its row, later the reader's "…"), from the tables below (ACTIONS, OF_PLACE, jobMenu):
+// What a job can do where it is, with one name, icon and order wherever it shows (the menu of
+// a right click on its row, the reader's "…", the row's tools under the pointer), from the
+// tables below (ACTIONS, OF_PLACE, placeMoves, jobMenu, rowTools):
 //   inbox: archive, delete; archive: unarchive, delete; trash: restore, delete for good (asks
 //   first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
@@ -14,6 +15,7 @@
 // undo that fails says so where it was asked (the list header, `jobs.actionError`).
 
 import type { IconName } from '$components/Icon.svelte';
+import type { RowTool } from '$components/JobRow.svelte';
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
@@ -22,7 +24,7 @@ import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types
 import { staggerLimit } from '$lib/motion/motion';
 import { app } from '$lib/state/app.svelte';
 import { inList, isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
-import type { MenuEntry } from '$lib/state/menu.svelte';
+import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText, run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
@@ -30,12 +32,6 @@ import { copyJobPrompt } from './prompt';
 
 export type MoveId = 'archive' | 'unarchive' | 'trash' | 'restore';
 export type ActionId = MoveId | 'purge';
-
-export interface JobAction {
-  id: ActionId;
-  icon: IconName;
-  label: string;
-}
 
 /** Where a move goes. Wiederherstellen from the Papierkorb puts a job back where it lay (the
  *  backend knows: the archive for one thrown away from there); the page takes the inbox until
@@ -49,13 +45,14 @@ const TARGET: Record<MoveId, Place> = {
 
 /** One icon per meaning: archiving looks like the archive, Dearchivieren like taking out of
  *  it, deleting like the trash, Wiederherstellen from the Papierkorb like taking back;
- *  deleting for good never looks like the trash. */
-const ACTIONS: Record<ActionId, { icon: IconName }> = {
-  archive: { icon: 'archive' },
-  unarchive: { icon: 'unarchive' },
-  trash: { icon: 'trash' },
-  restore: { icon: 'undo' },
-  purge: { icon: 'purge' },
+ *  deleting for good never looks like the trash. `deletes`: the row's tool turns red under
+ *  the pointer (Löschen, Endgültig löschen). */
+const ACTIONS: Record<ActionId, { icon: IconName; deletes: boolean }> = {
+  archive: { icon: 'archive', deletes: false },
+  unarchive: { icon: 'unarchive', deletes: false },
+  trash: { icon: 'trash', deletes: true },
+  restore: { icon: 'undo', deletes: false },
+  purge: { icon: 'purge', deletes: true },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -63,11 +60,6 @@ const OF_PLACE: Record<Place, readonly ActionId[]> = {
   archive: ['unarchive', 'trash'],
   trash: ['restore', 'purge'],
 };
-
-/** The actions of a job in this place, in their one order. */
-export function actionsOf(place: Place): JobAction[] {
-  return OF_PLACE[place].map((id) => ({ id, ...ACTIONS[id], label: t.actions[id] }));
-}
 
 /** Opens a page of the job outside the app; resolves with the error text, or null. */
 async function openTarget(target: OpenTarget): Promise<string | null> {
@@ -85,7 +77,8 @@ export function openAd(job: JobView): Promise<string | null> {
   return openTarget({ kind: 'jobUrl', key: job.key });
 }
 
-/** What the job's menu needs from where it opens (the list's row, the reader's "…"). */
+/** What the job's menu needs from where it opens (the list's row, the reader's "…"; the
+ *  row's tools take the moves of the same context). */
 export interface JobMenuContext {
   /** "Öffnen": the job opens (none where it is open already, the reader). */
   open?: (() => void) | null;
@@ -154,26 +147,50 @@ function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
       run: () => void override(job, include).then(report),
     });
   }
-  for (const action of actionsOf(job.place)) {
-    const purging = action.id === 'purge';
-    change.push({
-      id: action.id,
-      label: action.label,
-      icon: action.icon,
+  return [...change, ...placeMoves(job, context)];
+}
+
+/** The moves of the job's place in their one order (OF_PLACE), as entries of its menu. */
+function placeMoves(job: JobView, context: JobMenuContext): MenuItem[] {
+  const { report } = context;
+  return OF_PLACE[job.place].map((id) => {
+    const purging = id === 'purge';
+    return {
+      id,
+      label: t.actions[id],
+      icon: ACTIONS[id].icon,
       danger: purging,
       // Deleting for good waits for a run (the backend refuses meanwhile).
       disabled: purging && run.active,
       reason: purging ? run.busyText : null,
-      run: purging
-        ? context.purge
-        : () => {
-            const id = action.id as MoveId;
-            if (context.move) context.move(id);
-            else void move([job], id).then(report);
-          },
-    });
-  }
-  return change;
+      run:
+        id === 'purge'
+          ? context.purge
+          : () => {
+              if (context.move) context.move(id);
+              else void move([job], id).then(report);
+            },
+    };
+  });
+}
+
+/**
+ * The row's tools under the pointer: the moves of its place, the same entries in the same
+ * order as its menu (an icon each, its label the tooltip; the ones that delete turn red).
+ */
+export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
+  return placeMoves(job, context).map((entry) => {
+    const id = entry.id as ActionId;
+    return {
+      id,
+      icon: ACTIONS[id].icon,
+      label: entry.label,
+      deletes: ACTIONS[id].deletes,
+      disabled: entry.disabled === true,
+      reason: entry.reason ?? null,
+      run: entry.run,
+    };
+  });
 }
 
 /**
