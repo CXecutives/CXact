@@ -16,8 +16,7 @@
   menu: the pointer moves it as the arrows do. A chip shows its option's name; a value that
   is no option (from a file) stays and shows as it is. Text that matches no option stays in
   the field and says so (`noMatch`); text that matches only chosen ones says nothing.
-  Typed text that is no chip yet is a change of the form around the field (`typedText`), and
-  Ctrl/Cmd+S takes it in first, as leaving the field would.
+  Typed text that is no chip yet is a change of the form around the field (`typedText`).
   The field is as tall as a text field (32 px) with one line of chips. With `oneLine` (the
   other terms of a competence) it stays one line while it has no focus: the chips that fit,
   then a quiet "+n" for the rest (their values in its tooltip); with the focus every chip
@@ -282,7 +281,6 @@
   /** The keys of input.ts; the arrows move the mark in the list of options. */
   const keys: ChipKeyHandlers & { step: (by: -1 | 1) => boolean } = {
     commit,
-    settle,
     removeLast: (): boolean => {
       if (draft !== '' || values.length === 0) return false;
       update(values.slice(0, -1));

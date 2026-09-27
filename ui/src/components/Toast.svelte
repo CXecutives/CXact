@@ -14,12 +14,12 @@
   the text, since CSS would leave the rest of the box blank before the quote), the rest
   of the sentence follows it.
   The check of a success draws itself once as the toast appears. Closable; an undo of what
-  the user just did sits before the close button, its key (Strg+Z, ⌘Z) in its tooltip; a
+  the user just did sits before the close button; a
   toast about something that happened in another view (a fetch that finished) may carry
-  the way to it instead ("Zeigen"). A merged toast ("2 Jobs archiviert.") cross-fades its
-  sentence (100 ms) and starts its line again.
-  A press on a toast never takes the focus (like a notification of the OS: the list keeps
-  its keys); a toast the keyboard reached gives the focus back to where it came from when
+  the way to it instead ("Zeigen"). A merged toast (two rows archived one after the other)
+  cross-fades its sentence (100 ms) and starts its line again.
+  A press on a toast never takes the focus (like a notification of the OS); a toast the
+  keyboard reached gives the focus back to where it came from when
   it goes by its buttons. The stack lies above a bar that sticks to the bottom of the view
   (the Profil's save bar): it measures what lies under its column at the window's bottom
   edge whenever a toast comes or the view changes, and rises by it (--toast-bottom).
@@ -118,7 +118,7 @@
   import { onWindowFocus } from '$lib/ipc/api';
   import { fade, flip, toastIn, toastOut } from '$lib/motion/transitions';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { actionKind, isUndo, TOAST_KINDS, TOAST_LIFE, toasts } from '$lib/state/toasts.svelte';
+  import { actionKind, TOAST_KINDS, TOAST_LIFE, toasts } from '$lib/state/toasts.svelte';
   import { tokenPx } from '$lib/tokens';
   import { tick } from 'svelte';
   import Button from './Button.svelte';
@@ -265,7 +265,6 @@
             variant="ghost"
             size="sm"
             label={action.label}
-            keys={isUndo(action) ? 'undo' : null}
             testid="toast-action"
             onclick={() => act(() => toasts.act(toast.id))}
           />

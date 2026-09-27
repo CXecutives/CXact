@@ -85,30 +85,13 @@ for (const [place, tab] of [
   });
 }
 
-test('the Übersicht shows the best scored new jobs while others still wait for a score', async ({
+test('Einstellungen names the version of the app under the last card, to copy', async ({
   page,
 }) => {
-  // Ten unread jobs of `?scenario=many` still without a score: by match they come first,
-  // and the best new jobs of the Übersicht are only scored ones.
-  const waiting = [0, 3, 6, 9, 12, 15, 18, 21, 24, 27].map((i): [Portal, string] => [
-    'linkedin',
-    String(100000 + i),
-  ]);
-  await changedAtStart(page, waiting, { match: null });
-  await open(page, `${WIN}&scenario=many&view=overview`);
-  const best = page.getByTestId('best').locator('[data-testid^="best-"]');
-  await expect(best).toHaveCount(5);
-  const shown = await best.evaluateAll((rows) =>
-    rows.map((row) => row.getAttribute('data-testid')),
-  );
-  for (const [portal, id] of waiting) expect(shown).not.toContain(`best-${portal}-${id}`);
-});
-
-test('Wartung names the version of the app, to copy', async ({ page }) => {
   await open(page, `${WIN}&view=settings`);
-  const row = page.getByTestId('settings-care').getByTestId('version');
-  await expect(row).toContainText('Version');
-  await expect(row.locator('[data-copy]')).toHaveText('3.0.0');
+  const line = page.getByTestId('version');
+  await expect(line).toHaveText('Version 3.0.0');
+  await expect(line).toHaveAttribute('data-copy', '');
 });
 
 test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focused, and leads back to the job', async ({
@@ -154,41 +137,16 @@ test('the demo never fetches and says why; it keeps to its own folders', async (
   await expect(page.getByTestId('demo-note')).toHaveText(
     'Demo mit Beispieldaten, ohne Postfach und Portale.',
   );
-  for (const id of [
-    'full-mailbox',
-    'mailbox-change',
-    'mailbox-remove',
-    'workspace-change',
-    'reset',
-  ]) {
+  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-disabled', 'true');
   }
-  // What stays in its own folders still works: the text files, the report.
-  await expect(page.getByTestId('txt-rewrite')).not.toHaveAttribute('aria-disabled', 'true');
+  // What stays in its own folders still works: the folder and the log open.
+  await expect(page.getByTestId('folder-open')).not.toHaveAttribute('aria-disabled', 'true');
   // No portal either: the sign-in is off and says why.
   const signIn = page.getByTestId('sign-in-freelance');
   await expect(signIn).toHaveAttribute('aria-disabled', 'true');
   await signIn.hover();
   await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-});
-
-test('the demo fetches no full ads: Details holen is off with its reason, the Übersicht asks nothing', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=demo`);
-  const list = page.getByTestId('job-list');
-  // Two jobs that both lack their full ad.
-  await list.getByTestId('job-row-freelancermap-2805').click();
-  await list.getByTestId('job-row-linkedin-4100200302').click({ modifiers: ['Control'] });
-  const details = page.getByTestId('selection-pane').getByTestId('pane-details');
-  await expect(details).toHaveAttribute('aria-disabled', 'true');
-  await details.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-  await details.click({ force: true });
-  expect(await calls(page, 'start_run')).toEqual([]);
-  await page.getByTestId('nav-overview').click();
-  await expect(page.getByTestId('tile-new')).toBeVisible();
-  await expect(page.getByTestId('issue-details')).toHaveCount(0);
 });
 
 test('the demo starts without a profile: nothing scored, the list by date, Profil offers a file', async ({

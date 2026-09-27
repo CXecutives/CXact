@@ -29,7 +29,6 @@ import type {
   PauseReason,
   Place,
   Portal,
-  PortalHealth,
   LanguageLevel,
   ProfileAvailability,
   ReasonKind,
@@ -41,15 +40,7 @@ import type {
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
-import {
-  NBSP,
-  formatCountdown,
-  formatEuro,
-  formatMoment,
-  formatMoney,
-  formatNumber,
-  formatPercent,
-} from './format';
+import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
 type Params = Record<string, string | number | boolean | null>;
 type Text = string | ((params: Params) => string);
@@ -61,13 +52,6 @@ const n = (value: number): string => formatNumber(value);
 /** German plural for a count. */
 const count = (value: number, one: string, many: string): string =>
   `${n(value)} ${value === 1 ? one : many}`;
-
-/** A macOS key name is a symbol (⌘, ⇧); a click with it held is written with a hyphen
- *  ("⌘-Klick"), a Windows key name with a plus ("Strg+Klick"). */
-const isSymbolKey = (key: string): boolean => /^[⌘⇧⌥⌃]$/u.test(key);
-const clickWith = (key: string): string => (isSymbolKey(key) ? `${key}-Klick` : `${key}+Klick`);
-/** Shift in the same writing as the command key it stands beside. */
-const shiftBeside = (key: string): string => (isSymbolKey(key) ? '⇧' : 'Umschalt');
 
 /** The portals by their web address, everywhere (a sentence never starts with one); the
  *  names come from the portal registry, no catalog translates them. */
@@ -222,15 +206,6 @@ const pause: Record<PauseReason, string> = {
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
 const OPEN_MAIL = 'Alert-Mail öffnen';
 
-/** What a detail state means, the same in a row's badge tooltip and in the reader (the
- *  teaser's says what the glossary word "Vorschau" is). */
-const detailSays = {
-  teaser: 'Ohne Anmeldung zeigt das Portal nur den Anfang der Anzeige.',
-  unfetchable: 'Die Anzeige ließ sich mehrmals nicht holen.',
-  gone: 'Die Anzeige ist nicht mehr online.',
-  onRequest: 'Diese Details holt die App nur auf Anfrage.',
-} as const;
-
 /** Alert mails in which the app found no jobs (the overview's open points and the settings
  *  say it alike, next to the button that opens the mail to look). */
 const emptyMails = (mails: number): string =>
@@ -238,10 +213,6 @@ const emptyMails = (mails: number): string =>
 
 /** A profile file the app cannot read (the list, the overview, the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
-
-/** The run that reads every alert mail (`fullMailbox`): one name in the list, the run card
- *  and the settings. */
-const FULL_MAILBOX = 'Alle Alert-Mails abrufen';
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
@@ -680,23 +651,6 @@ export const de = {
     tip: 'Breite ändern',
     reset: 'Doppelklick setzt zurück',
   },
-  /** The bar that replaces the list's second row while several jobs are selected. */
-  selection: {
-    count: (value: number) => `${n(value)} ausgewählt`,
-    clear: 'Auswahl aufheben',
-    /** The reader while several jobs are chosen. */
-    chosen: (value: number) => `${count(value, 'Job', 'Jobs')} ausgewählt`,
-    /** The key that takes a row in or out, by OS (macOS writes its symbol). */
-    commandKey: { ctrl: 'Strg', cmd: '⌘' } satisfies Record<'ctrl' | 'cmd', string>,
-    hint: (key: string) =>
-      `${clickWith(key)} nimmt einen Job dazu oder heraus, ${clickWith(shiftBeside(key))} einen ganzen Bereich.`,
-    /** Once, after a few single moves: several jobs can go at once. */
-    tip: (key: string) => `Mehrere Jobs auf einmal wählst du mit ${clickWith(key)}.`,
-    /** The pane names the chosen jobs, the first few, then how many more. */
-    more: (value: number) => `+${n(value)}`,
-    /** The pane's and the bar's word for the star. */
-    pin: 'Favorit',
-  },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
@@ -712,21 +666,6 @@ export const de = {
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
-    /** The second header row of the archive and the trash. */
-    count: {
-      inbox: (value: number) => `${count(value, 'Job', 'Jobs')} unter Jobs`,
-      archive: (value: number) => `${count(value, 'Job', 'Jobs')} im Archiv`,
-      trash: (value: number) => `${count(value, 'Job', 'Jobs')} im Papierkorb`,
-    } satisfies Record<Place, (value: number) => string>,
-    /** The same row during a search: what it found there, not how many jobs lie there. */
-    found: {
-      inbox: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ unter Jobs`,
-      archive: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ im Archiv`,
-      trash: (value: number, query: string) =>
-        `${count(value, 'Job', 'Jobs')} zu „${query}“ im Papierkorb`,
-    } satisfies Record<Place, (value: number, query: string) => string>,
     /** Search hits in another place: a button under the results that goes there. */
     hitsIn: {
       inbox: (value: number) => `Im Eingang (${n(value)})`,
@@ -745,42 +684,41 @@ export const de = {
       archive: 'Das Archiv ist leer.',
       trash: 'Der Papierkorb ist leer.',
     } satisfies Record<Place, string>,
-    /** The reader of the archive and the trash while no job is open. */
-    reader: {
-      archive: 'Archivierte Jobs bleiben hier, bis du sie zurückholst.',
-      trash:
-        'Jobs im Papierkorb bleiben hier, bis du sie wiederherstellst oder den Papierkorb leerst.',
-    } satisfies Record<Exclude<Place, 'inbox'>, string>,
-    trashFor: (days: number) =>
-      `Jobs im Papierkorb werden nach ${count(days, 'Tag', 'Tagen')} endgültig gelöscht.`,
   },
-  /** What a job can do where it is: one name and icon on a row, in the reader, in the bar. */
+  /** What a job can do where it is: one name and icon in its menu (a right click on its row,
+   *  the reader's "…") and in the reader. */
   actions: {
+    /** What shows the job. */
+    open: 'Öffnen',
+    mail: OPEN_MAIL,
+    openAd: 'Anzeige öffnen',
+    prompt: 'KI-Prompt kopieren',
+    /** Without a usable profile there is nothing to judge the job by. */
+    promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
+    /** An excluded job counts with its real match anyway, or is excluded again. */
+    include: 'Trotzdem bewerten',
+    exclude: 'Wieder ausschließen',
     archive: 'Archivieren',
-    /** Back into the inbox (the toast says "zurückgeholt"): a verb, not a way back. */
-    toInbox: 'Zurück in den Eingang',
-    trash: 'In den Papierkorb',
+    /** Back into the Eingang from the Archiv: the same word as from the Papierkorb. */
+    toInbox: 'Wiederherstellen',
+    trash: 'Löschen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
-    /** The confirm button of a dialog is the bare verb of its heading. */
-    purgeConfirm: 'Löschen',
+    /** The confirm button of a dialog is the verb of what asked. */
+    purgeConfirm: 'Endgültig löschen',
     purgeHeading: (value: number) =>
       value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
-    /** One job, named. */
-    purgeOne: (name: string) => `„${name}“ endgültig löschen?`,
     purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
-    emptyTrashConfirm: 'Leeren',
     emptyTrashHeading: 'Papierkorb leeren?',
     emptyTrashText: (value: number) =>
       value === 1
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
   },
-  /** The app's own menus (their accessible names and the entries of the job's menu). */
+  /** The app's own menus (their accessible names). */
   menu: {
     job: 'Job',
-    open: 'Öffnen',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -792,39 +730,6 @@ export const de = {
     paste: 'Einfügen',
     delete: 'Löschen',
     selectAll: 'Alles auswählen',
-  },
-  /** Key names of Windows in shortcuts (macOS writes symbols, platform.ts). */
-  keys: {
-    ctrl: 'Strg',
-    shift: 'Umschalt',
-    del: 'Entf',
-    enter: 'Eingabe',
-    home: 'Pos1',
-    end: 'Ende',
-  },
-  /** The card of the keys (Ctrl+/ or Cmd+/): what a key does, in a few words each. */
-  keysHelp: {
-    heading: 'Tastenkürzel',
-    close: 'Schließen',
-    everywhere: 'Überall',
-    list: 'In der Jobliste',
-    /** Ctrl+1 to Ctrl+4: the two keys around the word. */
-    range: (first: string, last: string) => `${first} bis ${last}`,
-    views: 'Bereich wählen',
-    search: 'Suchen',
-    fetch: 'Abrufen',
-    undo: 'Rückgängig',
-    menu: 'Menü öffnen',
-    back: 'Zurück',
-    help: 'Tastenkürzel zeigen',
-    step: 'Voriger oder nächster Job',
-    edge: 'Erster oder letzter Job',
-    extend: 'Mehrere Jobs wählen',
-    archive: 'Archivieren',
-    trash: 'In den Papierkorb',
-    star: 'Favorit',
-    openAd: 'Anzeige öffnen',
-    closeJob: 'Job schließen',
   },
   field: {
     reveal: 'Passwort zeigen',
@@ -872,10 +777,6 @@ export const de = {
     code: reasonCode,
   },
   job: {
-    /** The round checkbox over a row's ring (it takes the row into the choice). */
-    choose: 'Auswählen',
-    /** An excluded job the user counts anyway (its row's quiet badge). */
-    included: 'Einbezogen',
     workMode: {
       remote: 'Remote',
       hybrid: 'Hybrid',
@@ -890,68 +791,55 @@ export const de = {
       gone: 'Nicht mehr online',
       onRequest: 'Details auf Anfrage',
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** What a detail badge means, in its tooltip. */
-    detailHint: {
-      pending: 'Die ganze Anzeige ist noch nicht geholt.',
-      teaser: detailSays.teaser,
-      failed: 'Die ganze Anzeige ließ sich nicht holen.',
-      unfetchable: detailSays.unfetchable,
-      gone: detailSays.gone,
-      onRequest: detailSays.onRequest,
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** The ad's page says it takes no applications any more (badge and its tooltip). */
+    /** The ad's page says it takes no applications any more. */
     closed: 'Keine Bewerbung mehr möglich',
-    closedHint: 'Die Anzeige ist noch lesbar, nimmt aber keine Bewerbungen mehr an.',
     unread: 'Neu',
-    pinned: 'Favorit',
-    /** The date column of a row in the Papierkorb: how long until it empties itself. */
-    trashLeft: (days: number) => `noch ${count(days, 'Tag', 'Tage')}`,
-    trashSoon: 'bald gelöscht',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
   },
   toolbar: {
-    fetch: 'Abrufen',
+    fetch: 'Postfach abrufen',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
-    /** The menu of the sort button (its accessible name), the order's heading in the
-     *  funnel's menu. */
+    /** The menu of the sort button (its accessible name). */
     sortMenu: 'Sortierung',
     /** The order of the list in words (the sort button). */
     sortLabel: {
-      match: 'Nach Passung',
+      match: 'Nach Übereinstimmung',
       newest: 'Nach Datum',
     } satisfies Record<JobSort, string>,
     /** The order without a usable profile: there is no fit to sort by. */
     sortNoProfile: 'Ohne Profil nur nach Datum.',
-    /** The funnel of the inbox (its tooltip and the name of its menu): the order and the
-     *  filter in one menu (lib/state/filter.ts), its groups under small headings. */
+    /** The funnel (its tooltip and the name of its menu): the filter of the list
+     *  (lib/state/filter.ts), its groups under small headings; the chosen parts stand as
+     *  chips under the toolbar in the same words. */
     filter: 'Filter',
-    favouritesOnly: 'Nur Favoriten',
     portalHeading: 'Portal',
-    bandHeading: 'Passung',
+    bandHeading: 'Übereinstimmung',
     allPortals: 'Alle Portale',
     /** The lowest band of the filter (`any`: every job, also one without a score). */
     band: {
-      any: 'Jede Passung',
-      mid: 'Ab mittlerer Passung',
-      high: 'Nur hohe Passung',
+      any: 'Jede Übereinstimmung',
+      mid: 'Ab mittlerer Übereinstimmung',
+      high: 'Nur hohe Übereinstimmung',
     } satisfies Record<'any' | 'mid' | 'high', string>,
-    /** Without a usable profile there is no fit to filter by. */
-    bandNoProfile: 'Ohne Profil gibt es keine Passung.',
+    /** Without a usable profile there is no match to filter by. */
+    bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     filterReset: 'Filter zurücksetzen',
-    /** The quiet line under the toolbar while a filter is on: its choices in the menu's
-     *  words, then the way back. */
-    filterLine: (parts: readonly string[]) => parts.join(' · '),
-    filterLineReset: 'Zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst ein Portal ein.',
   },
   run: {
     never: 'Noch kein Abruf',
-    /** The clipboard refused the history. */
-    historyNotCopied: 'Der Verlauf ließ sich nicht kopieren.',
+    /** The one line under the list header while a fetch goes: what happens now. */
+    line: {
+      mailbox: 'Postfach wird gelesen',
+      ads: (done: number, total: number) => `Anzeigen ${n(done)} von ${n(total)}`,
+      adsStart: 'Anzeigen werden geladen',
+      scoring: 'Jobs werden bewertet',
+      files: 'Dateien werden geschrieben',
+    },
     step: {
       scan: 'Postfach',
       fetch: 'Details',
@@ -963,49 +851,12 @@ export const de = {
       const at = portal === null ? undefined : statusAt[code];
       return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
     },
-    /** After the rolling number of a step counter: "von 7". */
-    ofTotal: (total: number) => `von ${n(total)}`,
-    newPill: (value: number) => `${n(value)} neu`,
-    topPill: (value: number) => `${n(value)} mit hoher Passung`,
-    resumesIn: (ms: number) => `Weiter in ${formatCountdown(ms)}`,
-    /** A pause whose end has come: the portal goes on in a moment. */
-    resumesSoon: 'Geht gleich weiter',
-    /** A portal's line while a run goes, when it has no countdown. */
-    portalRuns: 'Läuft',
-    portalPaused: 'Pausiert',
-    portalSignIn: 'Anmeldung nötig',
-    portalLayout: 'Seiten sehen anders aus',
-    /** A portal's line after a fetch ("linkedin.com 4 neu, 2 doppelt, 3 ohne Details"). */
-    portalNew: (value: number) => `${n(value)} neu`,
-    portalDup: (value: number) => `${n(value)} doppelt`,
-    portalNoDetails: (value: number) => `${n(value)} ohne Details`,
-    portalNothing: 'nichts Neues',
     kind: {
       fetch: 'Abruf',
       details: 'Details holen',
       rescore: 'Neu bewerten',
     } satisfies Record<RunKindName, string>,
-    done: 'Abruf fertig',
-    rescored: 'Neu bewertet',
-    nothingNew: 'Nichts Neues seit dem letzten Abruf.',
-    cancelled: 'Abruf abgebrochen',
     failed: 'Abruf fehlgeschlagen',
-    /** A details run (the reader's "Details holen"): its title, what it did not get. */
-    details: {
-      done: 'Details geholt',
-      none: 'Keine Details geholt',
-      cancelled: 'Details holen abgebrochen',
-      failed: 'Details holen fehlgeschlagen',
-      failedAds: (value: number) =>
-        `${count(value, 'Anzeige ließ', 'Anzeigen ließen')} sich nicht holen.`,
-      goneAds: (value: number) =>
-        `${count(value, 'Anzeige ist', 'Anzeigen sind')} nicht mehr online.`,
-    },
-    /** A rescore the card speaks about (only when something went wrong). */
-    rescore: {
-      cancelled: 'Bewertung abgebrochen',
-      failed: 'Bewertung fehlgeschlagen',
-    },
     rescoring: 'Die Jobs werden gerade neu bewertet.',
     /**
      * A file the export could not write (`export.error.params.target`); the old file stays.
@@ -1022,46 +873,16 @@ export const de = {
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Arbeitsordner ist nicht erreichbar.',
     },
-    skipped: (value: number) => `${count(value, 'Job folgt', 'Jobs folgen')} beim nächsten Abruf.`,
-    filesFailed: (value: number) =>
-      count(value, 'Datei ließ', 'Dateien ließen') + ' sich nicht schreiben.',
-    /** The old program's Excel file, renamed before the app wrote its own (by its name). */
-    excelRenamed: (name: string) => `Die alte Excel-Datei heißt jetzt ${name}.`,
     openOverview: 'Bericht öffnen',
-    history: 'Verlauf',
-    alert: (portal: Portal, postings: number) =>
-      `Alert-Mail von ${portalName[portal]} mit ${count(postings, 'Job', 'Jobs')}`,
-    /** A line of the history when a portal's health changes. */
-    health: (portal: Portal, kind: Exclude<PortalHealth['kind'], 'ok'>): string => {
-      const name = portalName[portal];
-      switch (kind) {
-        case 'paused':
-          return `Pause bei ${name}`;
-        case 'quotaReached':
-          return `Limit bei ${name} erreicht`;
-        case 'layoutSuspect':
-          return `Seiten von ${name} sehen anders aus als erwartet`;
-        case 'loginRequired':
-          return `Anmeldung bei ${name} nötig`;
-      }
-    },
     checkMailbox: 'Postfach prüfen',
   },
   list: {
     label: 'Jobs',
     /** The folding section at the end of every place (its count in brackets where known). */
     excluded: 'Ausgeschlossen',
-    /** A row excluded by a formal requirement the ad makes mandatory (`formalOpen` with its
-     *  `class`), in the short words of the criteria. */
-    formalMissing: {
-      degree: 'Abschluss fehlt',
-      licence: 'Zulassung fehlt',
-    },
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
-    createAlert: (portal: string) => `Alert auf ${portal} anlegen`,
-    readOlder: FULL_MAILBOX,
     emptyAll: 'Nach dem ersten Abruf stehen die Jobs hier.',
     emptyAfterRun: 'Die Alert-Mails enthielten bisher keine Jobs.',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
@@ -1566,9 +1387,6 @@ export const de = {
     folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
     folderFiles: 'Die Dateien liegen im neuen Ordner.',
     folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
-    fullMailboxConfirm: 'Abrufen',
-    fullMailboxHeading: 'Alle Alert-Mails abrufen?',
-    fullMailboxText: 'Das dauert länger und holt mehr Seiten der Portale.',
     logs: 'Protokoll',
     /** The app's version, the quiet line under the last card. */
     version: (value: string) => `Version ${value}`,
@@ -1655,23 +1473,18 @@ export const de = {
     copied: 'Kopiert.',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
     prompt: 'Prompt kopiert.',
-    archivedOne: (name: string) => `„${name}“ archiviert.`,
-    trashedOne: (name: string) => `„${name}“ in den Papierkorb gelegt.`,
-    trashedMany: (value: number) => `${n(value)} Jobs in den Papierkorb gelegt.`,
-    inboxOne: (name: string) => `„${name}“ zurückgeholt.`,
-    inboxMany: (value: number) => `${n(value)} Jobs zurückgeholt.`,
-    restoredMany: (value: number) => `${n(value)} Jobs wiederhergestellt.`,
-    archivedMany: (value: number) => `${n(value)} Jobs archiviert.`,
-    restored: (name: string) => `„${name}“ wiederhergestellt.`,
+    /** A job action: one short word, however many jobs it took, without their titles. */
+    archived: 'Archiviert',
+    trashed: 'Gelöscht',
+    restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */
-    deletedOne: (name: string) => `„${name}“ endgültig gelöscht.`,
-    deletedMany: (value: number) => `${n(value)} Jobs endgültig gelöscht.`,
+    deleted: 'Endgültig gelöscht',
+    included: 'Bewertet',
+    excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert.',
+    /** At the end of a fetch: what it brought (new, not excluded). */
     runDone: (value: number) =>
-      value === 0
-        ? 'Abruf fertig, nichts Neues.'
-        : `Abruf fertig, ${count(value, 'neuer Job', 'neue Jobs')}.`,
-    runDoneFilesOld: 'Abruf fertig, die Dateien sind nicht aktuell.',
+      value === 0 ? 'Keine neuen Jobs' : count(value, 'neuer Job', 'neue Jobs'),
     /** The way from a toast to what it tells of (the finished fetch in the Jobs view). */
     show: 'Zeigen',
   },

@@ -734,9 +734,10 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
   await page.getByTestId('competence-name').first().press('Enter');
   await expect(page.getByTestId('competence-name').nth(1)).toBeFocused();
   expect(await saves(page)).toBe(5);
-  // Ctrl+S (Cmd+S on macOS) stays the form's save from anywhere in it.
+  // The app has no save key of its own: Ctrl+S saves nothing.
   await page.getByTestId('competence-name').nth(1).press('Control+s');
-  await expect.poll(() => saves(page)).toBe(6);
+  await page.waitForTimeout(200);
+  expect(await saves(page)).toBe(5);
 });
 
 test('Enter goes through the rows and never saves; on an empty last row it moves on', async ({
@@ -766,7 +767,7 @@ test('Enter goes through the rows and never saves; on an empty last row it moves
   await expect(languages.nth(2)).toBeFocused();
   expect(await saves(page)).toBe(0);
   await languages.nth(2).fill('Spanisch');
-  await languages.nth(2).press('Control+s');
+  await save(page).click();
   await expect(savedToast(page)).toBeVisible();
   const sent = await lastSave(page);
   expect(sent.after.competences.map((row) => row.name)).toContain('Konzernabschluss');
@@ -1374,7 +1375,7 @@ test('chip field: Enter adds, a pasted list splits, x and Backspace remove, Esc 
   await input.fill('Miro');
   await page.getByTestId('profile-name-field').click();
   await expect(chips(tools).last()).toHaveText('Miro');
-  await input.press('Control+s');
+  await save(page).click();
   await expect(savedToast(page)).toBeVisible();
   expect((await lastSave(page)).after.tools).toEqual([
     'SAP S/4HANA',

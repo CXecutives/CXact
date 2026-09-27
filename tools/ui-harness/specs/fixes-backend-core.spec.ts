@@ -23,11 +23,6 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   // Saved as chosen: no refusal after the switches moved.
   await expect(page.getByTestId('portal-error')).toHaveCount(0);
   expect(await calls(page, 'save_settings')).toHaveLength(3);
-  // Reading the whole mailbox waits for a portal too.
-  const whole = page.getByTestId('full-mailbox');
-  await expect(whole).toHaveAttribute('aria-disabled', 'true');
-  await whole.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Schalte erst ein Portal ein.');
 
   await page.getByTestId('nav-jobs').click();
   const fetch = page.getByTestId('fetch');

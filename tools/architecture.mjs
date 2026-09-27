@@ -45,15 +45,10 @@ const LARGE = {
   'ui/src/features/profile/ProfileEditor.svelte': [1200, 'known large: one file per section'],
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
-  'ui/src/components/JobRow.svelte': [700, 'known large: its facts line apart'],
-  'ui/src/features/jobs/RunCard.svelte': [700, 'known large: the phases apart'],
   'ui/src/components/ChipInput.svelte': [700, 'known large: its editing keys into input.ts'],
   'ui/src/features/first-run/FirstRunView.svelte': [600, 'known large: one file per step'],
   'ui/src/features/profile/ProfileView.svelte': [600, 'known large: paste and save apart'],
   'ui/src/lib/state/profile.svelte.ts': [600, 'known large: the draft apart from the form'],
-  'ui/src/features/jobs/JobsView.svelte': [600, 'known large: the one-column mode apart'],
-  'ui/src/lib/state/run.svelte.ts': [600, 'known large: the history apart from the run'],
-  'ui/src/features/jobs/ListHeader.svelte': [600, 'known large: the filter menu apart'],
 };
 
 /** lib modules that are UI helpers by design and may import a component (none today). */

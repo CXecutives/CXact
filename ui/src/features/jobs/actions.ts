@@ -1,32 +1,32 @@
-// What a job can do where it is, with one name, icon, key and order on a row, in the reader,
-// in its menu and in the selection bar (the star, a flag of its own, comes last where there
-// is one), from the tables below (ACTIONS, OF_PLACE, JOB_MENU):
-//   Eingang: Archivieren, Löschen · Archiv: In den Eingang, Löschen · Papierkorb:
-//   Wiederherstellen, Endgültig löschen (asks first; the caller shows the dialog).
+// What a job can do where it is, with one name, icon and order in its menu (a right click on
+// its row, later the reader's "…"), from the tables below (ACTIONS, OF_PLACE, jobMenu):
+//   inbox: archive, delete; archive: restore, delete; trash: restore, delete for good (asks
+//   first; the caller shows the dialog).
 // A move folds the rows that leave the list (`moving`; a few, more simply go), opens the
 // next job when the open one left (its row in view, with the focus when the focus was on the
-// row that left), and says so in a toast that merges ("2 Jobs archiviert.") with one undo
-// (Ctrl/Cmd+Z too, while the toast is up). The undo brings every job back to where it was,
-// its row too, and opens the job again that was open when it left. A click within GUARD_MS
-// after the list or the pane changed is ignored, so a double click never moves the job that
-// slid under the pointer. The job the app opens by itself counts as read only once it has
-// been looked at (DWELL_MS on screen in the Jobs view, or a click in the reader). A job that
-// is already where it goes is no move. A move, its undo or the star that fails says so in
-// the list header (`jobs.actionError`).
+// row that left), and says so in a short toast ("Archiviert") with Rückgängig; moves of the
+// same kind right after each other merge into it, its one undo takes them all back. The undo
+// brings every job back to where it was, its row too, and opens the job again that was open
+// when it left. A click within GUARD_MS after the list or the pane changed is ignored, so a
+// double click never moves the job that slid under the pointer. The job the app opens by
+// itself counts as read only once it has been looked at (DWELL_MS on screen in the Jobs view,
+// or a click in the reader). A job that is already where it goes is no move. A move or its
+// undo that fails says so where it was asked (the list header, `jobs.actionError`).
 
 import type { IconName } from '$components/Icon.svelte';
 import { SvelteSet } from 'svelte/reactivity';
-import { displayTitle } from '$lib/i18n/format';
 import { t } from '$lib/i18n/t';
-import type { Deleted, JobKey, JobView, Place } from '$lib/ipc/types';
+import { errorText } from '$lib/i18n/texts';
+import { invoke } from '$lib/ipc/api';
+import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
 import { app } from '$lib/state/app.svelte';
-import { inList, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
+import { inList, isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
+import type { MenuEntry } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
-import { exportText } from '$lib/state/run.svelte';
-import { LIST_KEYS, onUndo } from '$lib/input/input';
-import { commandKey } from '$lib/platform';
+import { exportText, run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
+import { copyJobPrompt } from './prompt';
 
 export type MoveId = 'archive' | 'toInbox' | 'trash' | 'restore';
 export type ActionId = MoveId | 'purge';
@@ -34,13 +34,12 @@ export type ActionId = MoveId | 'purge';
 export interface JobAction {
   id: ActionId;
   icon: IconName;
-  /** Its single key in the list (lib/input/input.ts, as keyLabel writes it), if any. */
-  key: string | null;
   label: string;
 }
 
-/** Where a move goes. Wiederherstellen puts a job back where it lay (the backend knows: the
- *  archive for one thrown away from there); the page takes the inbox until it hears back. */
+/** Where a move goes. Wiederherstellen from the Papierkorb puts a job back where it lay (the
+ *  backend knows: the archive for one thrown away from there); the page takes the inbox until
+ *  it hears back. From the Archiv it goes to the inbox. */
 const TARGET: Record<MoveId, Place> = {
   archive: 'archive',
   toInbox: 'inbox',
@@ -48,14 +47,15 @@ const TARGET: Record<MoveId, Place> = {
   restore: 'inbox',
 };
 
-/** One icon per meaning: the place a job goes to (docs/PLAN.md, icons by meaning); deleting
- *  for good never looks like the trash. The key is the list's single key (input.ts). */
-const ACTIONS: Record<ActionId, { icon: IconName; key: string | null }> = {
-  archive: { icon: 'archive', key: LIST_KEYS.archive },
-  toInbox: { icon: 'inbox', key: null },
-  trash: { icon: 'trash', key: LIST_KEYS.trash },
-  restore: { icon: 'undo', key: null },
-  purge: { icon: 'purge', key: null },
+/** One icon per meaning: archiving looks like the archive, deleting like the trash,
+ *  Wiederherstellen (from the Archiv and from the Papierkorb alike) like taking back;
+ *  deleting for good never looks like the trash. */
+const ACTIONS: Record<ActionId, { icon: IconName }> = {
+  archive: { icon: 'archive' },
+  toInbox: { icon: 'undo' },
+  trash: { icon: 'trash' },
+  restore: { icon: 'undo' },
+  purge: { icon: 'purge' },
 };
 
 const OF_PLACE: Record<Place, readonly ActionId[]> = {
@@ -64,45 +64,116 @@ const OF_PLACE: Record<Place, readonly ActionId[]> = {
   trash: ['restore', 'purge'],
 };
 
-/** The actions of a job in this place, in their one order (the star is not one of them). */
+/** The actions of a job in this place, in their one order. */
 export function actionsOf(place: Place): JobAction[] {
   return OF_PLACE[place].map((id) => ({ id, ...ACTIONS[id], label: t.actions[id] }));
 }
 
-/** An entry of the job's menu (its id is the menu's test id `menu-item-<id>`): `moves`
- *  stands for the job's actions where it is. */
-export interface JobMenuItem {
-  id: 'open' | 'open-ad' | 'star' | 'moves' | 'prompt';
-  icon: IconName | null;
-  /** Its single key (as keyLabel writes it), if any. */
-  key: string | null;
-  /** Shown for this job; `many`: the menu acts on several chosen jobs. */
-  shows: (job: JobView, many: boolean) => boolean;
+/** Opens a page of the job outside the app; resolves with the error text, or null. */
+async function openTarget(target: OpenTarget): Promise<string | null> {
+  try {
+    await invoke('open_target', { target });
+    return null;
+  } catch (error) {
+    return errorText(error);
+  }
+}
+
+/** "Anzeige öffnen": the ad in the browser (its menu, a double click on its row). Resolves
+ *  with the error text, or null. */
+export function openAd(job: JobView): Promise<string | null> {
+  return openTarget({ kind: 'jobUrl', key: job.key });
+}
+
+/** What the job's menu needs from where it opens (the list's row, the reader's "…"). */
+export interface JobMenuContext {
+  /** "Öffnen": the job opens (none where it is open already, the reader). */
+  open?: (() => void) | null;
+  /** "Endgültig löschen" asks first: the caller shows its dialog. */
+  purge: () => void;
+  /** Says an action that failed where the menu was opened (null: it went well). */
+  report: (error: string | null) => void;
 }
 
 /**
- * The job's menu (a right click on its row), group by group in its order, a line between the
- * groups: open it and its ad (one job only), the star, the moves of its place, the prompt
- * for an AI chat (one scored job only).
+ * The job's menu, one table for the row's right click and the reader's "…", in two groups
+ * with a line between them: what shows the job (Öffnen, Alert-Mail öffnen, Anzeige öffnen,
+ * KI-Prompt kopieren), then what changes it (an excluded job's "Trotzdem bewerten", or
+ * "Wieder ausschließen" once it counts, then the moves of its place). No entry names a key.
+ * The test id of an entry is `menu-item-<id>`.
  */
-export const JOB_MENU: readonly (readonly JobMenuItem[])[] = [
-  [
-    { id: 'open', icon: 'read', key: LIST_KEYS.open, shows: (_job, many) => !many },
-    { id: 'open-ad', icon: 'external', key: LIST_KEYS.openAd, shows: (_job, many) => !many },
-  ],
-  [{ id: 'star', icon: 'star', key: LIST_KEYS.star, shows: (job) => hasStar(job.place) }],
-  [{ id: 'moves', icon: null, key: null, shows: () => true }],
-  [{ id: 'prompt', icon: 'prompt', key: null, shows: (job, many) => !many && job.match !== null }],
-];
+export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
+  const { report } = context;
+  const show: MenuEntry[] = [];
+  if (context.open) {
+    show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
+  }
+  const noProfile = app.hasProfile ? null : t.actions.promptNoProfile;
+  show.push(
+    {
+      id: 'mail',
+      label: t.actions.mail,
+      icon: 'alertMail',
+      run: () => void openTarget({ kind: 'gmail', key: job.key }).then(report),
+    },
+    {
+      id: 'open-ad',
+      label: t.actions.openAd,
+      icon: 'external',
+      run: () => void openAd(job).then(report),
+    },
+    {
+      id: 'prompt',
+      label: t.actions.prompt,
+      icon: 'prompt',
+      disabled: noProfile !== null,
+      reason: noProfile,
+      run: () => void copyJobPrompt(job.key).then(report),
+    },
+  );
+  const change: MenuEntry[] = [];
+  if (isExcluded(job) || job.overridden) {
+    const include = !job.overridden;
+    change.push({
+      id: include ? 'include' : 'exclude',
+      label: include ? t.actions.include : t.actions.exclude,
+      icon: include ? 'include' : 'excluded',
+      run: () => void override(job, include).then(report),
+    });
+  }
+  for (const action of actionsOf(job.place)) {
+    const purging = action.id === 'purge';
+    change.push({
+      id: action.id,
+      label: action.label,
+      icon: action.icon,
+      danger: purging,
+      // Deleting for good waits for a run (the backend refuses meanwhile).
+      disabled: purging && run.active,
+      reason: purging ? run.busyText : null,
+      run: purging ? context.purge : () => void move([job], action.id as MoveId).then(report),
+    });
+  }
+  return [...show, { kind: 'separator' }, ...change];
+}
 
-/** The favourites went: no place shows the star any more. */
-export const hasStar = (_place: Place): boolean => false;
+/**
+ * "Trotzdem bewerten" (an excluded job counts with its real match) or "Wieder ausschließen":
+ * a short toast with Rückgängig. Resolves with the error text, or null.
+ */
+async function override(job: JobView, include: boolean): Promise<string | null> {
+  const error = await jobs.setOverride(job.key, include);
+  if (error !== null) return error;
+  toasts.show(include ? t.toast.included : t.toast.excluded, 'success', {
+    label: t.common.undo,
+    onclick: () =>
+      void jobs.setOverride(job.key, !include).then((failed) => (jobs.actionError = failed)),
+  });
+  return null;
+}
 
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
-
-// Ctrl/Cmd+Z takes back the newest move while its toast is up.
-onUndo(() => toasts.undoLast());
 
 const GUARD_MS = 500;
 let guardUntil = 0;
@@ -117,26 +188,13 @@ export function guarded(): boolean {
   return performance.now() < guardUntil;
 }
 
-/** A title in a toast: whole (the toast cuts it to its line and shows it in a tooltip); only
- *  an absurdly long one is cut here. */
-const TOAST_TITLE = 120;
-function title(job: JobView): string {
-  const full = job.title ? displayTitle(job.title) : t.job.untitled;
-  return full.length > TOAST_TITLE ? `${full.slice(0, TOAST_TITLE - 1).trimEnd()}…` : full;
-}
-
-function said(action: MoveId, job: JobView): (count: number) => string {
-  switch (action) {
-    case 'archive':
-      return (n) => (n === 1 ? t.toast.archivedOne(title(job)) : t.toast.archivedMany(n));
-    case 'trash':
-      return (n) => (n === 1 ? t.toast.trashedOne(title(job)) : t.toast.trashedMany(n));
-    case 'toInbox':
-      return (n) => (n === 1 ? t.toast.inboxOne(title(job)) : t.toast.inboxMany(n));
-    case 'restore':
-      return (n) => (n === 1 ? t.toast.restored(title(job)) : t.toast.restoredMany(n));
-  }
-}
+/** What a move's toast says: one short word, however many jobs it took (no titles). */
+const SAID: Record<MoveId, () => string> = {
+  archive: () => t.toast.archived,
+  trash: () => t.toast.trashed,
+  toInbox: () => t.toast.restored,
+  restore: () => t.toast.restored,
+};
 
 /** The job to open when `gone` leave the list: the next one below, else the one above; none
  *  when the list did not hold them (a job opened from the day overview). */
@@ -245,38 +303,9 @@ function deletedFor(deleted: Deleted): void {
   jobs.exportNote = exportText(deleted.exportError);
 }
 
-/** Single moves in this session; after the third one a tip says several go at once. */
-let singles = 0;
-const TIP_KEY = 'jobs-tip-choose';
-const TIP_AFTER = 3;
-
-function tipOnce(): void {
-  singles += 1;
-  if (singles !== TIP_AFTER) return;
-  try {
-    if (localStorage.getItem(TIP_KEY) !== null) return;
-    localStorage.setItem(TIP_KEY, '1');
-  } catch {
-    // Without a store the tip would come every session: better not at all.
-    return;
-  }
-  toasts.show(t.selection.tip(t.selection.commandKey[commandKey()]), 'info');
-}
-
-/** Two or more jobs chosen and moved at once: the tip about choosing is known. */
-function tipKnown(): void {
-  try {
-    localStorage.setItem(TIP_KEY, '1');
-  } catch {
-    // Without a store the tip may still come once this session.
-    return;
-  }
-}
-
 /**
- * Moves jobs (the row's, the reader's or the selection's). Resolves with the error text,
- * which the caller shows where the move was asked (the list header for a row or the chosen
- * jobs, the reader for its own).
+ * Moves jobs (the row's or the reader's). Resolves with the error text, which the caller
+ * shows where the move was asked (the list header for a row, the reader for its own).
  */
 export async function move(all: readonly JobView[], action: MoveId): Promise<string | null> {
   const to = TARGET[action];
@@ -333,16 +362,13 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
     void jobs.load(true);
   }
   void jobs.loadOverview();
-  if (list.length === 1) tipOnce();
-  else tipKnown();
   // A toast and its undo only for the jobs that really moved.
   const moved = new Set(result.moved.map(keyOf));
   const undone = back.filter((entry) => moved.has(keyOf(entry.job.key)));
-  const first = undone[0];
-  if (first === undefined) return null;
+  if (undone.length === 0) return null;
   toasts.undoable(
     `move-${action}`,
-    said(action, first.job),
+    SAID[action],
     t.common.undo,
     () => undo(undone, generation, reopen),
     undone.length,
@@ -367,12 +393,7 @@ export async function purge(list: readonly JobView[]): Promise<string | null> {
   arm();
   openNext(list, next, focus, open);
   deletedFor(result);
-  // Like a move: one job by its title, more by their number.
-  const gone = list.filter((job) => result.keys.some((key) => sameKey(key, job.key)));
-  const only = result.count === 1 ? (gone[0] ?? list[0]) : undefined;
-  toasts.show(
-    only === undefined ? t.toast.deletedMany(result.count) : t.toast.deletedOne(title(only)),
-  );
+  toasts.show(t.toast.deleted);
   void jobs.loadOverview();
   return null;
 }
@@ -380,36 +401,4 @@ export async function purge(list: readonly JobView[]): Promise<string | null> {
 /** After the trash was emptied: no undo can reach its jobs any more. */
 export function trashEmptied(deleted: Deleted): void {
   deletedFor(deleted);
-}
-
-/**
- * The actions for chosen jobs: those of their place; chosen from several places (a job that
- * moved meanwhile) only what fits every one of them.
- */
-export function actionsFor(list: readonly JobView[]): JobAction[] {
-  const places = [...new Set(list.map((job) => job.place))];
-  if (places.length === 1 && places[0]) return actionsOf(places[0]);
-  return actionsOf('inbox').filter((action) => action.id === 'trash');
-}
-
-/**
- * The full ad of this job can still be fetched (the reader's "Details holen"): its text is
- * missing and its portal fetches details (a teaser only with the portal's sign-in).
- */
-export function detailsWanted(job: JobView): boolean {
-  const kind = job.detail.kind;
-  if (kind !== 'pending' && kind !== 'onRequest' && kind !== 'failed' && kind !== 'teaser') {
-    return false;
-  }
-  const portal = app.state?.portals.find((state) => state.portal === job.portal);
-  return portal?.enabled === true && (kind !== 'teaser' || portal.loginEnabled);
-}
-
-/** The star of earlier versions: the favourites went, it changes nothing. */
-export function toggleStar(list: readonly JobView[]): void {
-  for (const job of list) {
-    void jobs.pin(job.key, true).then((error) => {
-      if (error !== null) jobs.actionError = error;
-    });
-  }
 }

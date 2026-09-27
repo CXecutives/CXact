@@ -20,6 +20,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
+import { T, rowMenu, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -100,8 +101,6 @@ async function pillOn(page: Page, id: string): Promise<void> {
     .toEqual([0, 0, 0, 0]);
 }
 
-const anyRows = (page: Page) => page.locator('[data-testid^="job-row-"]');
-
 const tooltip = (page: Page) => page.getByRole('tooltip');
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
@@ -120,17 +119,6 @@ async function settings(page: Page, query = WIN): Promise<void> {
 }
 
 /** A colour token as the page computes it (rgb()). */
-async function tokenColour(page: Page, name: string): Promise<string> {
-  return page.evaluate((token) => {
-    const probe = document.createElement('span');
-    probe.style.color = `var(${token})`;
-    document.body.append(probe);
-    const colour = getComputedStyle(probe).color;
-    probe.remove();
-    return colour;
-  }, name);
-}
-
 const SIZES = [
   { width: 480, height: 360 },
   { width: 780, height: 560 },
@@ -642,8 +630,7 @@ test('the focus goes back to the trigger after a menu and a toast', async ({ pag
   await expect(funnel).toBeFocused();
   const search = page.getByTestId('search');
   // A toast's undo reached from the search field gives the focus back to it.
-  await anyRows(page).first().click();
-  await page.keyboard.press('e');
+  await viaMenu(page, 'archive', 'freelancermap-2801');
   const action = page.getByTestId('toast-action');
   await expect(action).toBeVisible();
   await search.focus();
@@ -653,15 +640,11 @@ test('the focus goes back to the trigger after a menu and a toast', async ({ pag
   await expect(search).toBeFocused();
 });
 
-test('a press on a toast takes no focus, and Rückgängig names its key', async ({ page }) => {
+test('a press on a toast takes no focus', async ({ page }) => {
   await open(page, WIN);
-  await anyRows(page).first().click();
-  await page.keyboard.press('e');
+  await viaMenu(page, 'archive', 'freelancermap-2801');
   const action = page.getByTestId('toast-action');
   await expect(action).toBeVisible();
-  await action.hover();
-  await expect(tooltip(page)).toContainText('Rückgängig');
-  await expect(tooltip(page)).toContainText('Strg+Z');
   await action.click();
   const inStack = await page.evaluate(
     () =>
@@ -724,7 +707,7 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   const toast = page.getByTestId('toast');
-  await expect(toast).toContainText('Abruf fertig');
+  await expect(toast.getByTestId('toast-action')).toHaveText('Zeigen');
   const bar = (await page.getByTestId('profile-save-bar').boundingBox())!;
   await expect
     .poll(async () => {
@@ -738,21 +721,6 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await expect(show).toHaveText('Zeigen');
   await show.click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('run-finished')).toBeVisible();
-});
-
-test('a click in the sidebar leaves the list keys working at once, on both OS', async ({
-  page,
-}) => {
-  for (const os of [WIN, MAC]) {
-    await open(page, os);
-    await anyRows(page).first().click();
-    const before = (await calls(page, 'job_detail')).length;
-    await page.getByTestId('nav-jobs').click();
-    await page.keyboard.press('ArrowDown');
-    await expect.poll(async () => (await calls(page, 'job_detail')).length).toBe(before + 1);
-    await expect(anyRows(page).nth(1)).toHaveAttribute('aria-current', 'true');
-  }
 });
 
 test('macOS: Profil and Einstellungen name the view in the toolbar row', async ({ page }) => {
@@ -791,17 +759,6 @@ test('macOS: a dialog leaves the toolbar row free, and the row moves the window'
     document.elementFromPoint(600, 26)?.hasAttribute('data-tauri-drag-region'),
   );
   expect(hit).toBe(true);
-});
-
-test('macOS: the multi-select hints write ⌘-Klick and ⇧-Klick', async ({ page }) => {
-  await open(page, MAC);
-  await anyRows(page).first().click();
-  await anyRows(page)
-    .nth(1)
-    .click({ modifiers: ['Meta'] });
-  const pane = page.getByTestId('selection-pane');
-  await expect(pane).toContainText('⌘-Klick');
-  await expect(pane).toContainText('⇧-Klick');
 });
 
 test('a start whose data cannot load: try again, the log, the data folder', async ({ page }) => {
@@ -960,22 +917,12 @@ test('only what loses something for good warns: the trash does not, delete for g
   page,
 }) => {
   await open(page, WIN);
-  const danger = await tokenColour(page, '--danger-strong');
-  await rows(page).first().click();
-  await page.keyboard.press('Shift+ArrowDown');
-  const trash = page.getByTestId('selection-trash');
-  await expect(trash).toBeVisible();
-  await trash.hover();
-  // The trash can be undone: it looks like every other icon on hover.
-  await expect(trash).not.toHaveCSS('color', danger);
-  // In the trash the bar's "Endgültig löschen" loses the jobs for good: it warns.
-  await trash.click();
+  await rowMenu(page, 'freelancermap-2802');
+  await expect(page.getByTestId('menu-item-trash')).not.toHaveClass(/danger/);
+  await page.getByTestId('menu-item-trash').click();
   await page.getByTestId('place-trash').click();
-  await rows(page).first().click();
-  await page.keyboard.press('Shift+ArrowDown');
-  const purge = page.getByTestId('selection-purge');
-  await purge.hover();
-  await expect(purge).toHaveCSS('color', danger);
+  await rowMenu(page, 'freelancermap-2802');
+  await expect(page.getByTestId('menu-item-purge')).toHaveClass(/danger/);
 });
 
 test('a dialog confirms with the bare verb of its heading', async ({ page }) => {
@@ -986,18 +933,18 @@ test('a dialog confirms with the bare verb of its heading', async ({ page }) => 
   );
   await page.keyboard.press('Escape');
   await page.getByTestId('nav-jobs').click();
-  await row(page, 'freelancermap-2803').hover();
-  await page.getByTestId('trash-freelancermap-2803').click();
+  await settle(page);
+  await viaMenu(page, 'trash', 'freelancermap-2803');
   await page.getByTestId('place-trash').click();
   await page.getByTestId('empty-trash').click();
   await expect(page.getByTestId('dialog-empty-trash').getByTestId('dialog-confirm')).toHaveText(
-    'Leeren',
+    T.actions.emptyTrash,
   );
   await page.keyboard.press('Escape');
-  await rows(page).first().hover();
-  await page.getByTestId('purge-freelancermap-2803').click();
+  await expect(page.getByTestId('dialog-empty-trash')).toHaveCount(0);
+  await viaMenu(page, 'purge', 'freelancermap-2803');
   await expect(page.getByTestId('dialog-purge').getByTestId('dialog-confirm')).toHaveText(
-    'Löschen',
+    T.actions.purgeConfirm,
   );
 });
 
@@ -1053,29 +1000,7 @@ test('Tab passes disabled switches; a disabled button that says why stays a Tab 
   await expect(page.getByRole('tooltip')).toBeVisible();
 });
 
-test('Shift with the arrows, Home and End chooses jobs from the open one', async ({ page }) => {
-  await open(page, WIN);
-  const first = rows(page).first();
-  await first.click();
-  await page.keyboard.press('Shift+ArrowDown');
-  await page.keyboard.press('Shift+ArrowDown');
-  await expect(page.getByTestId('selection-pane')).toContainText('3');
-  await expect(rows(page).and(page.locator('[aria-current="true"]'))).toHaveCount(3);
-  // Back up one: two stay chosen.
-  await page.keyboard.press('Shift+ArrowUp');
-  await expect(rows(page).and(page.locator('[aria-current="true"]'))).toHaveCount(2);
-  // Shift+End: from the open job to the last row.
-  await page.keyboard.press('Shift+End');
-  const all = await rows(page).count();
-  await expect(rows(page).and(page.locator('[aria-current="true"]'))).toHaveCount(all);
-  // Back to one job: Esc clears the choice.
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('selection-pane')).toHaveCount(0);
-});
-
-test('the places above the list choose with left and right; Home and End go to the list', async ({
-  page,
-}) => {
+test('the places above the list choose with left and right', async ({ page }) => {
   await open(page, WIN);
   const tabs = page.getByTestId('places').getByRole('tab');
   await page.getByTestId('place-inbox').focus();
@@ -1084,11 +1009,6 @@ test('the places above the list choose with left and right; Home and End go to t
   await expect(tabs.nth(1)).toBeFocused();
   await page.keyboard.press('ArrowLeft');
   await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-  // Up, down, Home and End belong to the list: End opens its last job.
-  const before = (await calls(page, 'job_detail')).length;
-  await page.keyboard.press('End');
-  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
-  await expect.poll(async () => (await calls(page, 'job_detail')).length).toBeGreaterThan(before);
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {
@@ -1111,9 +1031,7 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   await expect.poll(top).toBe(40);
 });
 
-test('after a click into the reader the arrows scroll it; Space on the open row pages it', async ({
-  page,
-}) => {
+test('after a click into the reader the arrows scroll it', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 600 });
   await open(page, WIN);
   await row(page, 'freelancermap-2801').click();
@@ -1121,12 +1039,6 @@ test('after a click into the reader the arrows scroll it; Space on the open row 
   await expect(title).toBeVisible();
   const stage = page.getByTestId('stage');
   const top = (): Promise<number> => stage.evaluate((node) => node.scrollTop);
-  // Space on the open row pages through the reader; Shift+Space back.
-  await row(page, 'freelancermap-2801').focus();
-  await page.keyboard.press('Space');
-  await expect.poll(top).toBeGreaterThan(100);
-  await page.keyboard.press('Shift+Space');
-  await expect.poll(top).toBe(0);
   const opened = await title.innerText();
   // A click on the ad's text: the arrows scroll the reader, the job stays.
   await title.click();
@@ -1137,10 +1049,6 @@ test('after a click into the reader the arrows scroll it; Space on the open row 
     .poll(() => stage.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))
     .toBeLessThanOrEqual(1);
   await expect(title).toHaveText(opened);
-  // A click in the list gives the arrows back to it.
-  await row(page, 'freelancermap-2801').click();
-  await page.keyboard.press('ArrowDown');
-  await expect(title).not.toHaveText(opened);
 });
 
 test('a chip value copies; a double click still edits it; its x has a tooltip', async ({
@@ -1169,34 +1077,6 @@ test('a chip value copies; a double click still edits it; its x has a tooltip', 
   await text.dblclick();
   await expect(keywords.locator('input')).toHaveValue(value);
   expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
-});
-
-test('a neutral badge stands off the wash of the selected row', async ({ page }) => {
-  await open(page, WIN);
-  const teaser = row(page, 'freelance-900411');
-  await teaser.click();
-  const badge = teaser.locator('.badge.neutral').first();
-  await expect(badge).toBeVisible();
-  const white = await tokenColour(page, '--surface');
-  await expect(badge).toHaveCSS('background-color', white);
-});
-
-test('a cut title in a toast: the closing quote follows the ellipsis', async ({ page }) => {
-  await page.setViewportSize({ width: 480, height: 360 });
-  await open(page, WIN);
-  await row(page, 'freelancermap-2801').hover();
-  await page.getByTestId('archive-freelancermap-2801').click();
-  const name = page.getByTestId('toast-text').locator('.name');
-  await expect(name).toHaveText(/…$/);
-  const gap = await name.evaluate((node) => {
-    const range = document.createRange();
-    range.selectNodeContents(node);
-    return node.getBoundingClientRect().right - range.getBoundingClientRect().right;
-  });
-  expect(gap).toBeLessThanOrEqual(1);
-  // The whole title in the tooltip.
-  await name.hover();
-  await expect(page.getByRole('tooltip')).toContainText('Interim CFO');
 });
 
 test('ghost buttons at the end of a row end on the edge of the switches', async ({ page }) => {
@@ -1239,55 +1119,6 @@ test('one glyph per action: retries load again, the reset keeps its own', async 
     'data-icon',
     'reset',
   );
-  // Jobs has one glyph: in the sidebar, on "Zurückholen" and on its empty list.
-  await page.getByTestId('nav-jobs').click();
-  await page.getByTestId('place-archive').click();
-  await rows(page).first().hover();
-  const back = page.locator('[data-testid^="toInbox-"]').first();
-  await expect(back.locator('[data-icon]')).toHaveAttribute('data-icon', 'inbox');
-});
-
-test('deleting for good names the job like a move; several by their number', async ({ page }) => {
-  await open(page, WIN);
-  for (const key of ['freelancermap-2802', 'freelancermap-2803', 'linkedin-4100200301']) {
-    await row(page, key).hover();
-    await page.getByTestId(`trash-${key}`).click();
-    await expect(row(page, key)).toHaveCount(0);
-    // A click right after the list changed is no click (a double click never hits the next).
-    await page.waitForTimeout(600);
-  }
-  await page.getByTestId('place-trash').click();
-  await row(page, 'freelancermap-2802').hover();
-  await page.getByTestId('purge-freelancermap-2802').click();
-  await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('toast-text').last()).toHaveText(
-    '„Interim Head of Finance“ endgültig gelöscht.',
-  );
-  // A click right after the list changed is no click (a double click never hits the next).
-  await page.waitForTimeout(600);
-  await rows(page).first().click();
-  await page.keyboard.press('Shift+ArrowDown');
-  await page.getByTestId('selection-purge').click();
-  await page.getByTestId('dialog-purge-chosen').getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('toast-text').last()).toHaveText('2 Jobs endgültig gelöscht.');
-});
-
-test('the demo job says the same in its row, its reader and its prompt', async ({ page }) => {
-  await open(page, WIN);
-  const facts = row(page, 'freelancermap-2801').getByTestId('row-facts');
-  await expect(facts).toContainText('ab sofort');
-  await expect(facts).toContainText('1.200/Tag');
-  await row(page, 'freelancermap-2801').click();
-  const reader = page.getByTestId('reader');
-  await expect(reader).toContainText('Start ab sofort');
-  await expect(reader).toContainText('Tagessatz 1.200 €');
-  await expect(reader).not.toContainText('nach Absprache');
-  // The row says the ad's rate; the wish is the reason of its verdict, no profile line.
-  await expect(page.getByTestId('criteria').getByTestId('term-rate')).toContainText('1.200 €/Tag');
-  await expect(page.getByTestId('criteria').getByTestId('term-rate')).not.toContainText('Wunsch');
-  // Every criterion of the profile is stated and met: the table says so row by row.
-  await expect(page.getByTestId('criteria')).toBeVisible();
-  await expect(page.getByTestId('criteria')).not.toContainText('passt nicht');
 });
 
 /* -------------------------------------------------------------------------------- Motion */
@@ -1463,7 +1294,7 @@ test('under reduced motion nothing scales, pops or shakes', async ({ page }) => 
 });
 
 test('hover rests while a list scrolls', async ({ page }) => {
-  await open(page, '?platform=windows');
+  await open(page, '?platform=windows&scenario=many');
   // The window mounts a few rows per frame: scroll once the list can.
   await expect
     .poll(() =>

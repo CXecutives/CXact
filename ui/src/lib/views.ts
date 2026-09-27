@@ -1,6 +1,6 @@
-// The three views of the app, in the sidebar's order: the one table for the sidebar's entries
-// (features/shell/Sidebar.svelte), the order of the navigation (VIEW_IDS) and the keys that
-// choose them (lib/input/keys.ts). Change a view's name, icon or key here.
+// The views of the app, in the sidebar's order: the one table for the sidebar's entries
+// (features/shell/Sidebar.svelte) and the order of the navigation (VIEW_IDS). Change a view's
+// name or icon here.
 
 import type { IconMeaning } from './icons';
 import type { Catalog } from './i18n/de';
@@ -13,12 +13,10 @@ export interface ViewEntry {
   label: keyof Catalog['nav'];
   /** Its icon meaning (lib/icons.ts). */
   icon: IconMeaning;
-  /** The key that chooses it from anywhere (a combo of platform.ts keyLabel). */
-  keys: string;
 }
 
 export const VIEWS: readonly ViewEntry[] = [
-  { id: 'jobs', label: 'jobs', icon: 'jobs', keys: 'mod+1' },
-  { id: 'profile', label: 'profile', icon: 'profile', keys: 'mod+2' },
-  { id: 'settings', label: 'settings', icon: 'settings', keys: 'mod+3' },
+  { id: 'jobs', label: 'jobs', icon: 'jobs' },
+  { id: 'profile', label: 'profile', icon: 'profile' },
+  { id: 'settings', label: 'settings', icon: 'settings' },
 ];
