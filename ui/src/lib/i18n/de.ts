@@ -38,6 +38,7 @@ import type {
   ProfileAvailability,
   ReasonWeight,
   RemoteWish,
+  TermField,
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
@@ -963,8 +964,15 @@ export const de = {
         : count(min, 'Jahr', 'Jahre'),
   },
   reader: {
-    /** A must requirement the profile lacks: the term goes into the profile's keywords. */
-    addToProfile: 'Zum Profil hinzufügen',
+    /** A must requirement the profile lacks: its term goes into the field it belongs to. */
+    addTo: {
+      competence: (term: string) => `${term} zu den Kompetenzen hinzufügen`,
+      tool: (term: string) => `${term} zu den Werkzeugen hinzufügen`,
+      industry: (term: string) => `${term} zu den Branchen hinzufügen`,
+      language: (term: string) => `${term} zu den Sprachen hinzufügen`,
+      certificate: (term: string) => `${term} zu den Zertifikaten hinzufügen`,
+      degree: (term: string) => `${term} zu den Abschlüssen hinzufügen`,
+    } satisfies Record<TermField, (term: string) => string>,
     /** The name of the quiet tick that replaces the "+" once the term is in the profile. */
     added: 'Hinzugefügt',
     addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
@@ -1157,12 +1165,20 @@ export const de = {
     fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
     /** Under the competences: the terms the jobs of the last 30 days ask for most that the
-     *  profile does not name, each with its number of jobs; its "+" adds it as a competence
-     *  (an unsaved change like any other). */
+     *  profile does not name, each with the field it belongs to and its number of jobs;
+     *  "Hinzufügen" puts it into that field (an unsaved change like any other). */
     asked: 'Häufig verlangt',
-    askedAdd: 'Als Kompetenz hinzufügen',
-    /** The accessible name of a term's number. */
+    askedAdd: 'Hinzufügen',
     askedIn: (value: number) => `in ${count(value, 'Job', 'Jobs')}`,
+    /** The field of the profile a term belongs to, quietly beside it. */
+    askedField: {
+      competence: 'Kompetenz',
+      tool: 'Werkzeug',
+      industry: 'Branche',
+      language: 'Sprache',
+      certificate: 'Zertifikat',
+      degree: 'Abschluss',
+    } satisfies Record<TermField, string>,
     section: {
       person: 'Person',
       criteria: 'Bedingungen',

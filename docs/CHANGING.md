@@ -259,10 +259,17 @@ both lists to read.
 
 "Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
 what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
-`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`; what counts as a term (a skill
-of at most five words, `TERM_WORDS`, and at most `MAX_TERMS` per job) is `is_term` and `terms`
-in `core/src/pipeline/local.rs`, stored with each match (a change there raises `INPUTS`, so
-every job is scored again). The stub's `askedTerms` (`tools/ui-harness/stub.ts`) mirrors them.
+`ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`. A requirement's term and the
+field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan", "Branchenerfahrung Energie"
+the industry "Energie") are `core_term` in `core/src/matching/terms.rs`: a lead word, a wish,
+a tool, a certificate or a degree word is one more entry in `core/src/matching/lexicon/terms.rs`
+(add a phrase to the table test there); the words of languages and industries are the
+engine's. It is applied when the terms are read, so a change there needs no scoring again.
+Which open requirements offer a term (and at most `MAX_TERMS` per job) is `open_term` and
+`terms` in `core/src/pipeline/local.rs`, stored with each match (a change there raises
+`INPUTS`, so every job is scored again). The reader's "+" reads the same term and field from
+the reason (`params.term`, `params.field`). The stub's `askedTerms`
+(`tools/ui-harness/stub.ts`) mirrors them.
 
 ## Add a column of the Excel and the CSV file
 

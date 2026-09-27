@@ -463,7 +463,7 @@
       onclear={() => editor.clear('focus')}
       error={listError('competences') ?? listError('focus')}
     />
-    <AskedTerms bind:rows={form.competences} />
+    <AskedTerms />
   {:else if c.kind === 'languages'}
     <LanguageList bind:rows={form.languages} error={listError('languages')} />
   {:else if c.kind === 'countries'}

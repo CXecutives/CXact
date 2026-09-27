@@ -138,20 +138,32 @@ async function look(target: Locator): Promise<string> {
   });
 }
 
-async function pressAndLeave(page: Page, target: Locator): Promise<void> {
+/** Presses the target, leaves it with the button held (to `away`, by default beside it; a
+ *  point off the page is outside the window) and releases there: the look relaxes to the one
+ *  at rest while still held and stays so after the release. */
+async function pressAndLeave(
+  page: Page,
+  target: Locator,
+  away?: { x: number; y: number },
+): Promise<void> {
   const box = (await target.boundingBox())!;
+  const off = away ?? { x: box.x + box.width + 200, y: box.y + box.height + 200 };
   // At rest, with the pointer away.
   await page.mouse.move(box.x + box.width + 200, box.y + box.height + 200);
   await page.waitForTimeout(250);
   const rest = await look(target);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width + 200, box.y + box.height + 200, { steps: 4 });
+  await page.mouse.move(off.x, off.y, { steps: 4 });
   // Its hover and press relax (150 ms) back to the look at rest while the button is still
   // held; polled, so a busy machine that draws the frames late waits for them.
   await expect.poll(() => look(target)).toBe(rest);
   await page.mouse.up();
+  await expect.poll(() => look(target)).toBe(rest);
 }
+
+/** A point outside the window: above its top left corner. */
+const OUTSIDE = { x: -40, y: -40 };
 
 const EN = `${WIN}&lang=en`;
 
@@ -1688,6 +1700,21 @@ test('a held button that the pointer leaves looks at rest and does not fire', as
   const fetch = page.getByTestId('fetch');
   await pressAndLeave(page, fetch);
   expect(await calls(page, 'start_run')).toHaveLength(0);
+});
+
+test('a button held out of the window and released there stays at rest and does nothing', async ({
+  page,
+}) => {
+  await open(page, WIN);
+  await pressAndLeave(page, page.getByTestId('fetch'), OUTSIDE);
+  await pressAndLeave(page, page.getByTestId('nav-settings'), OUTSIDE);
+  await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+  // The window's own buttons alike (in the app the window over the bar reports the same).
+  for (const button of ['minimize', 'maximize', 'close'] as const) {
+    await pressAndLeave(page, page.getByTestId(`window-${button}`), OUTSIDE);
+  }
+  expect(await calls(page, 'start_run')).toHaveLength(0);
+  expect(await calls(page, 'window_button')).toHaveLength(0);
 });
 
 test('a held sidebar entry that the pointer leaves looks at rest', async ({ page }) => {

@@ -735,6 +735,16 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
   after every run (`asked_terms`, the terms a stored match keeps in its note, revision
   inputs 6).
 - [x] "Häufig verlangt": store query, command, stub, the block, specs
+- Terms, not phrases (user 2026-09-27): a requirement's term and the profile field it goes
+  into come from core (`matching::core_term`: lead and wish words go, "Kenntnisse in Anaplan" is
+  the tool "Anaplan", "Branchenerfahrung Energie" the industry "Energie", "Erfahrung mit SAP
+  Analytics Cloud" the tool "SAP Analytics Cloud"; Kompetenz, Werkzeug, Branche, Sprache, and
+  Zertifikat or Abschluss where clear). "Häufig verlangt" counts by the term and names its
+  field; it is a calm list between hairlines (the term, its field, "in 7 Jobs", "Hinzufügen"
+  into that field as an unsaved change). The reader's "+" adds the same term to the same field,
+  saved at once as before (its tooltip names both). Revision inputs 7.
+- [x] Core terms with their field: engine function and tests, `asked_terms`, the list, the
+  reader's "+", stub, specs
 - Decision 2026-09-27: no `job-matching` skill, no TXT files, no `top_matches.json` (supersedes
   "AI stage", the TXT and top-matches lines above and "the text files for the job-matching
   skill stay byte-identical" of the cleanup round). The copied AI prompt is the one way to a

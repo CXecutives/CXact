@@ -1,36 +1,38 @@
-// "Zum Profil hinzufügen": a must requirement the profile lacks goes into the profile's
-// keywords (`keywords[]`), saved at once like a save of the form (the previous file is the
-// backup, every job is scored again), with a toast that takes it back while it is up. The
-// one place the reader and the Übersicht call; a term added here shows
-// as added. (The profile form cannot hold unsaved changes meanwhile: leaving it asks first.)
+// The reader's "+": a must requirement the profile lacks goes into the field of the profile
+// its term belongs to (core names both: "Kenntnisse in Anaplan" is the tool "Anaplan"), saved
+// at once like a save of the form (the previous file is the backup, every job is scored
+// again), with a toast that takes it back while it is up. A term added here shows as added.
+// (The profile form cannot hold unsaved changes meanwhile: leaving it asks first.)
 
 import { SvelteSet } from 'svelte/reactivity';
 import { t } from '$lib/i18n/t';
 import { errorText } from '$lib/i18n/texts';
 import { addToProfile as saveTerm } from '$lib/state/profile.svelte';
+import type { ProfileTerm } from '$lib/state/terms';
 import { toasts } from '$lib/state/toasts.svelte';
 
-const fold = (term: string): string => term.trim().toLocaleLowerCase();
+const fold = ({ term, field }: ProfileTerm): string =>
+  `${field}:${term.trim().toLocaleLowerCase()}`;
 
 /** Terms added in this session (folded), so their button says "Hinzugefügt". */
 const added = new SvelteSet<string>();
 
 /** Whether the term was added in this session. */
-export function isAdded(term: string): boolean {
+export function isAdded(term: ProfileTerm): boolean {
   return added.has(fold(term));
 }
 
-/** Adds a term to the profile's keywords and saves; the toast's undo takes it out again.
+/** Adds a term to its field of the profile and saves; the toast's undo takes it out again.
  *  Resolves to the failure in words (the caller shows it where its button is), else null. */
-export async function addTerm(term: string): Promise<string | null> {
-  const text = term.trim();
-  if (text === '' || isAdded(text)) return null;
-  added.add(fold(text));
+export async function addTerm(term: ProfileTerm): Promise<string | null> {
+  const text = term.term.trim();
+  if (text === '' || isAdded(term)) return null;
+  added.add(fold(term));
   let saved: (() => Promise<void>) | null;
   try {
-    saved = await saveTerm(text);
+    saved = await saveTerm(term);
   } catch (error) {
-    added.delete(fold(text));
+    added.delete(fold(term));
     return errorText(error);
   }
   const undo = saved;
@@ -42,17 +44,10 @@ export async function addTerm(term: string): Promise<string | null> {
       : {
           label: t.common.undo,
           onclick: () => {
-            added.delete(fold(text));
+            added.delete(fold(term));
             undo().catch((error: unknown) => toasts.show(errorText(error), 'info'));
           },
         },
   );
   return null;
-}
-
-/** The same where no error line stands beside the button: a failure is a toast. */
-export function addToProfile(term: string): void {
-  void addTerm(term).then((error) => {
-    if (error !== null) toasts.show(error, 'info');
-  });
 }

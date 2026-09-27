@@ -23,7 +23,7 @@
     is the reason that decided it (the ban where it excludes the job). The contact's e-mail
     is a link: a new mail to it in the default mail program, the job's title its subject.
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
-    each title; a missing must that is a term has a small "+" into the profile
+    each title; a missing must that is a term has a small "+" into its field of the profile
     (addToProfile.ts), a tick once it is there.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
@@ -59,6 +59,7 @@
   import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
   import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
+  import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
   import type { Passage } from './AdText.svelte';
   import ReaderAd from './ReaderAd.svelte';
@@ -260,9 +261,9 @@
     if (purgeError === null) confirmPurge = false;
   }
 
-  /** A missing must into the profile (its term, without the ad's lead words); a failure is a
-   *  toast. */
-  async function add(term: string): Promise<void> {
+  /** A missing must into its field of the profile (its term, without the ad's lead words); a
+   *  failure is a toast. */
+  async function add(term: ProfileTerm): Promise<void> {
     fail(await addTerm(term));
   }
 
@@ -547,7 +548,7 @@
                           size="sm"
                           iconOnly
                           icon="add"
-                          label={t.reader.addToProfile}
+                          label={t.reader.addTo[term.field](term.term)}
                           testid="add-to-profile"
                           onclick={() => void add(term)}
                         />

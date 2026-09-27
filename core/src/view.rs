@@ -5,7 +5,7 @@
 //! prose - notices, states and errors are codes with data; the words live in the UI catalog.
 //! Company and location are cleaned here (the database holds the raw mail values).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use crate::error::ErrorInfo;
 use crate::fetch::policy::{Policy, limits};
 use crate::fetch::{MAX_AGE, PortalHealth, RETRY_AFTER};
-use crate::matching::{self, Assessment, ProfileSummary};
+pub use crate::matching::TermField;
+use crate::matching::{self, Assessment, CoreTerm, ProfileSummary};
 use crate::model::{
     Band, DescStatus, KeyFacts, MatchRecord, MatchStatus, Notice, Place, band, gmail_url,
     is_usable_title,
@@ -649,7 +650,7 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
                 via: local::code_name(&e.via),
                 quote: e.quote.clone(),
             }),
-            params: local::flat_params(&r.params),
+            params: reason_params(r),
             ranges: ranges(r),
         })
         .collect();
@@ -683,6 +684,18 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             })
             .collect(),
     }
+}
+
+/// The params of a reason for the reader; an open requirement the profile could take also
+/// names its term and field (`term`, `field`: `pipeline::local::open_term`), what the
+/// reader's "+" adds.
+fn reason_params(reason: &matching::Reason) -> serde_json::Map<String, serde_json::Value> {
+    let mut params = local::flat_params(&reason.params);
+    if let Some(core) = local::open_term(reason) {
+        params.insert("term".into(), core.term.into());
+        params.insert("field".into(), core.field.name().into());
+    }
+    params
 }
 
 /// The hard-criteria strip: every criterion the profile sets that applies to the job, with
@@ -1480,24 +1493,27 @@ pub const MAX_ASKED: usize = 8;
 /// A term counts as often asked from this many jobs on (one job is no pattern).
 pub const MIN_ASKED: u32 = 2;
 
-/// A term the ads ask for that the profile does not cover, and in how many jobs
-/// ("Häufig verlangt" in the Profil).
+/// A term the ads ask for that the profile does not cover, the field of the profile it
+/// belongs to, and in how many jobs ("Häufig verlangt" in the Profil).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct AskedTerm {
-    /// The ad's words (of the newest job that asks for it).
+    /// The term in the ad's words, without what only says that or how much it is wanted
+    /// ("Anaplan" of "Kenntnisse in Anaplan"; of the newest job that asks for it).
     pub term: String,
+    pub field: TermField,
     pub count: u32,
 }
 
-/// "Häufig verlangt" at `now`: the open terms of the scored jobs of the inbox and the
-/// archive of the last [`ASKED_DAYS`] days (the engine's open must and nice requirements
-/// that are skills and terms, `pipeline::local::terms`), counted once per job however
-/// written (case, punctuation), asked by at least [`MIN_ASKED`] jobs, the most frequent first
-/// (equal counts by their words), at most [`MAX_ASKED`]. A term the profile (`form`) already
-/// names as a competence, a synonym of one, a keyword, a tool or a certificate is none of
-/// them: its jobs may not be scored again yet after a save. One pass over the stored notes.
+/// "Häufig verlangt" at `now`: the terms of the open requirements of the scored jobs of the
+/// inbox and the archive of the last [`ASKED_DAYS`] days (the engine's open must and nice
+/// requirements that are skills and hold a term, `pipeline::local::terms`), each with its
+/// field (`matching::core_term`), counted once per job however written ("Kenntnisse in
+/// Anaplan" and "Anaplan-Erfahrung" are one), asked by at least [`MIN_ASKED`] jobs, the most
+/// frequent first (equal counts by their words), at most [`MAX_ASKED`]. A term the profile
+/// (`form`) already names (`named_terms`) is none of them: its jobs may not be scored again
+/// yet after a save. One pass over the stored notes, each distinct requirement read once.
 pub fn asked_terms(
     store: &Store,
     form: Option<&ProfileForm>,
@@ -1506,52 +1522,78 @@ pub fn asked_terms(
     let since = now
         .checked_sub(jiff::SignedDuration::from_hours(24 * ASKED_DAYS))
         .unwrap_or(Timestamp::UNIX_EPOCH);
-    let known: BTreeSet<String> = form
-        .map(|f| {
-            f.competences
-                .iter()
-                .flat_map(|c| std::iter::once(&c.name).chain(&c.aliases))
-                .chain(&f.keywords)
-                .chain(&f.tools)
-                .chain(&f.certificates)
-                .map(|word| term_key(word))
-                .collect()
-        })
-        .unwrap_or_default();
-    // Per key the words of the newest job (the store's order) and the count.
-    let mut counted: std::collections::BTreeMap<String, (String, u32)> =
-        std::collections::BTreeMap::new();
-    for terms in store.asked_terms(since)? {
+    let known = form.map(named_terms).unwrap_or_default();
+    let mut cores: HashMap<String, Option<CoreTerm>> = HashMap::new();
+    // Per key the term of the newest job (the store's order) and the count.
+    let mut counted: BTreeMap<String, (CoreTerm, u32)> = BTreeMap::new();
+    for labels in store.asked_terms(since)? {
         let mut seen = BTreeSet::new();
-        for term in terms {
-            let key = term_key(&term);
-            if key.is_empty() || known.contains(&key) || !seen.insert(key.clone()) {
+        for label in labels {
+            let core = cores
+                .entry(label)
+                .or_insert_with_key(|l| matching::core_term(l));
+            let Some(core) = core.as_ref() else {
+                continue;
+            };
+            let key = core.key();
+            if known.contains(key) || !seen.insert(key.to_owned()) {
                 continue;
             }
-            counted.entry(key).or_insert((term, 0)).1 += 1;
+            let entry = counted
+                .entry(key.to_owned())
+                .or_insert_with(|| (core.clone(), 0));
+            // An ad that names the field says more than one that names the term alone
+            // ("Branchenerfahrung Handel", "Handel").
+            if entry.0.field == TermField::Competence {
+                entry.0.field = core.field;
+            }
+            entry.1 += 1;
         }
     }
-    // The map is in key order: a stable sort by count keeps it for equal counts.
-    let mut asked: Vec<(String, u32)> = counted
+    let mut asked: Vec<(CoreTerm, u32)> = counted
         .into_values()
         .filter(|(_, count)| *count >= MIN_ASKED)
         .collect();
-    asked.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+    asked.sort_by(|(a, n), (b, m)| {
+        m.cmp(n)
+            .then_with(|| matching::term_key(&a.term).cmp(&matching::term_key(&b.term)))
+    });
     Ok(asked
         .into_iter()
         .take(MAX_ASKED)
-        .map(|(term, count)| AskedTerm { term, count })
+        .map(|(core, count)| AskedTerm {
+            term: core.term,
+            field: core.field,
+            count,
+        })
         .collect())
 }
 
-/// A term for comparing: lower case, its words without punctuation between them
-/// ("Power-BI" and "power bi" are one; `+` and `#` belong to a word, "C++" is no "C#").
-fn term_key(term: &str) -> String {
-    term.to_lowercase()
-        .split(|c: char| !c.is_alphanumeric() && c != '+' && c != '#')
-        .filter(|w| !w.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
+/// What the profile names already, by the keys of its terms: every competence and its
+/// synonyms, keyword, tool, certificate, degree, industry (a wished one too) and language,
+/// by its words and by its term (`Englisch` names `English`, `Energiewirtschaft` names
+/// `Energie`, see `matching::CoreTerm::key`).
+fn named_terms(form: &ProfileForm) -> BTreeSet<String> {
+    let entries = form
+        .competences
+        .iter()
+        .flat_map(|c| std::iter::once(&c.name).chain(&c.aliases))
+        .chain(&form.keywords)
+        .chain(&form.tools)
+        .chain(&form.certificates)
+        .chain(&form.degrees)
+        .chain(&form.industries)
+        .chain(&form.wishes.industries)
+        .chain(form.languages.iter().map(|l| &l.language));
+    let mut known = BTreeSet::new();
+    for entry in entries {
+        known.insert(matching::term_key(entry));
+        if let Some(core) = matching::core_term(entry) {
+            known.insert(core.key().to_owned());
+        }
+    }
+    known.remove("");
+    known
 }
 
 /// Result of "reset everything" after the restart.
@@ -3002,6 +3044,116 @@ Rahmenbedingungen:
                 ("Zollabwicklung", 2),
             ])
         );
+    }
+
+    /// "Häufig verlangt" counts the ads' terms, not their words: "Kenntnisse in Anaplan" and
+    /// "Anaplan-Erfahrung" are one tool, "Branchenerfahrung Energie" and "Energy sector
+    /// experience" one industry; each comes with its field, and what the profile names in any
+    /// field (a synonym of it too) is none of them.
+    #[test]
+    fn the_asked_terms_are_core_terms_with_their_field() {
+        let now: Timestamp = "2026-09-26T10:00:00Z".parse().unwrap();
+        let store = jobs_asking(
+            &[
+                &[
+                    "Kenntnisse in Anaplan",
+                    "Branchenerfahrung Energie",
+                    "Erfahrung mit SAP Analytics Cloud",
+                    "Sehr gute Englischkenntnisse",
+                ],
+                &[
+                    "Anaplan-Erfahrung von Vorteil",
+                    "Energy sector experience",
+                    "SAP Analytics Cloud",
+                    "Fluent English",
+                    "Erfahrung",
+                ],
+                &["Anaplan", "Erfahrung", "Kenntnisse in Jedox"],
+                &["Erfahrung mit Jedox", "Branchenkenntnisse Pharma", "Pharma"],
+            ],
+            now,
+        );
+        let asked = |form: Option<&ProfileForm>| -> Vec<(String, TermField, u32)> {
+            asked_terms(&store, form, now)
+                .unwrap()
+                .into_iter()
+                .map(|a| (a.term, a.field, a.count))
+                .collect()
+        };
+        let list = |items: &[(&str, TermField, u32)]| -> Vec<(String, TermField, u32)> {
+            items
+                .iter()
+                .map(|(t, f, n)| ((*t).to_owned(), *f, *n))
+                .collect()
+        };
+        assert_eq!(
+            asked(None),
+            list(&[
+                ("Anaplan", TermField::Tool, 3),
+                ("Energie", TermField::Industry, 2),
+                ("Englisch", TermField::Language, 2),
+                ("Jedox", TermField::Tool, 2),
+                ("SAP Analytics Cloud", TermField::Tool, 2),
+            ]),
+            "a word that names nothing (Erfahrung) is none; one job is no pattern (Pharma)"
+        );
+        let mut form = ProfileForm::default();
+        form.tools.push("anaplan".into());
+        form.industries.push("Energiewirtschaft".into());
+        form.languages.push(ProfileLanguage {
+            language: "English".into(),
+            level: None,
+            origin: None,
+        });
+        form.competences.push(ProfileCompetence {
+            name: "Planung".into(),
+            years: None,
+            aliases: vec!["Jedox".into()],
+            origin: None,
+        });
+        assert_eq!(
+            asked(Some(&form)),
+            list(&[("SAP Analytics Cloud", TermField::Tool, 2)])
+        );
+    }
+
+    /// The reader's reasons name the term and field of an open requirement the profile could
+    /// take; a met one names none.
+    #[test]
+    fn the_reader_names_the_term_of_an_open_requirement() {
+        let text = "Wir suchen einen Interim CFO (m/w/d).
+
+Anforderungen:
+- Erfahrung im Controlling
+- Kenntnisse in Anaplan
+- Branchenerfahrung Energie";
+        let matcher = crate::pipeline::demo::matcher();
+        let (store, key) = job_with_text(text);
+        let detail = job_detail(&store, &key, Some(&matcher), false, Timestamp::now())
+            .unwrap()
+            .unwrap()
+            .match_
+            .unwrap();
+        let named = |label: &str| {
+            let reason = detail
+                .reasons
+                .iter()
+                .find(|r| r.label == label)
+                .unwrap_or_else(|| panic!("{label}: {:?}", detail.reasons));
+            (
+                reason.params.get("term").cloned(),
+                reason.params.get("field").cloned(),
+            )
+        };
+        assert_eq!(
+            named("Kenntnisse in Anaplan"),
+            (Some("Anaplan".into()), Some("tool".into()))
+        );
+        assert_eq!(
+            named("Branchenerfahrung Energie"),
+            (Some("Energie".into()), Some("industry".into()))
+        );
+        assert_eq!(named("Erfahrung im Controlling"), (None, None));
     }
 
     /// At most eight terms, and only of the last 30 days.

@@ -827,7 +827,14 @@ export const en: Catalog = {
         : count(min, 'year', 'years'),
   },
   reader: {
-    addToProfile: 'Add to profile',
+    addTo: {
+      competence: (term: string) => `Add ${term} to skills`,
+      tool: (term: string) => `Add ${term} to tools`,
+      industry: (term: string) => `Add ${term} to industries`,
+      language: (term: string) => `Add ${term} to languages`,
+      certificate: (term: string) => `Add ${term} to certificates`,
+      degree: (term: string) => `Add ${term} to degrees`,
+    },
     added: 'Added',
     addedToProfile: (term: string) => `“${term}” added to the profile.`,
     details: 'Job details',
@@ -975,8 +982,16 @@ export const en: Catalog = {
     fixFirst: 'Correct the marked value first.',
     empty: 'Still empty',
     asked: 'Often asked',
-    askedAdd: 'Add as a skill',
+    askedAdd: 'Add',
     askedIn: (value: number) => `in ${count(value, 'job', 'jobs')}`,
+    askedField: {
+      competence: 'Skill',
+      tool: 'Tool',
+      industry: 'Industry',
+      language: 'Language',
+      certificate: 'Certificate',
+      degree: 'Degree',
+    },
     section: {
       person: 'Person',
       criteria: 'Conditions',

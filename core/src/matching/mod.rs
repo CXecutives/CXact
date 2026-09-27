@@ -33,6 +33,7 @@ mod score;
 mod sections;
 mod seniority;
 mod signals;
+mod terms;
 mod types;
 mod vocabulary;
 mod wishes;
@@ -47,6 +48,7 @@ use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
 
 pub use layout::{TextLayout, text_layout};
+pub use terms::{CoreTerm, TERM_CHARS, TERM_WORDS, TermField, core_term, is_term, term_key};
 pub use types::*;
 pub use vocabulary::{Vocabulary, vocabulary};
 
