@@ -33,7 +33,14 @@ test('an exclusion by country names the countries in words, in both languages', 
       .locator('[data-testid^="job-row-"]')
       .filter({ hasText: 'Payroll Specialist' })
       .click();
-    await expect(page.getByTestId('exclusion')).toContainText(sentence);
+    // The head says it from the profile's side; the row of the place names the countries.
+    await expect(page.getByTestId('exclusion')).not.toBeEmpty();
+    const verdict = page.getByTestId('term-place').locator('.reason');
+    await verdict.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(250);
+    await verdict.hover();
+    await expect(page.getByRole('tooltip')).toContainText(sentence);
+    await page.mouse.move(0, 0);
   }
 });
 

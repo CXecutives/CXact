@@ -7,10 +7,11 @@ import type { Verdict } from './terms';
 
 /**
  * The sections, top to bottom:
- * - head: title and close, company and place, the portals with the day of the alert mail;
+ * - head: the title and the close "×" (company, place, portal and day are rows of the
+ *   Jobdetails);
  * - match: the ring beside its band, or the ban of an excluded job with why;
  * - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…";
- * - details: "Jobdetails", only for an ad the app has read;
+ * - details: "Jobdetails";
  * - requirements: "Anforderungen", in the groups below;
  * - ad: the note on a text that is not all there, and the ad text.
  */
@@ -37,7 +38,8 @@ export const REQUIREMENT_GROUPS: readonly RequirementGroup[] = [
   { kind: 'check', verdict: 'unknown' },
 ];
 
-/** The reason kind whose icon draws a verdict (the Jobdetails and the groups alike). */
+/** The reason kind whose icon draws a verdict (the Jobdetails and the groups alike; a row
+ *  whose verdict excludes the job draws the ban of a violation instead). */
 export function kindOf(verdict: Exclude<Verdict, 'unset'>): ReasonKind {
   return REQUIREMENT_GROUPS.find((group) => group.verdict === verdict)?.kind ?? 'check';
 }
@@ -48,6 +50,19 @@ export const REQUIREMENT_CODES: readonly string[] = ['requirement', 'term', 'for
 
 /** A term has at most this many words; longer words are a sentence. */
 const TERM_WORDS = 5;
+
+/** The words an ad puts before a term ("Kenntnisse in Anaplan", "Erfahrung mit SAP Analytics
+ *  Cloud", "Branchenerfahrung Energie", "experience with Workday"): the term is what follows.
+ *  External contract - the ad's own German and English wording. */
+const LEAD =
+  /^(?:(?:sehr\s+)?(?:gute|fundierte|solide|erste|tiefe|langjährige)\s+)?(?:kenntnisse|erfahrungen?|know-how|expertise|praxis)\s+(?:in|im|mit|der|von)\s+(?:der\s+|dem\s+|den\s+)?|^branchenerfahrung\s+(?:in\s+(?:der\s+)?)?|^(?:(?:good|solid|strong|deep)\s+)?(?:knowledge|experience|expertise)\s+(?:with|in|of)\s+(?:the\s+)?/iu;
+
+/** The term of a missing must: the ad's words without their lead ("Anaplan"). */
+export function termOf(reason: Reason): string {
+  const words = reason.label.trim();
+  const term = words.replace(LEAD, '').trim();
+  return term === '' ? words : term;
+}
 
 /** A missing must that can go into the profile: a term of the ad (a keyword, a bullet of a
  *  few words), never a whole sentence. */

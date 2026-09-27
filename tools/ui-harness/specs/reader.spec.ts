@@ -1,14 +1,14 @@
-// The reader, one structure top to bottom (ui/src/features/jobs/reader-sections.ts): the head
-// (company and place with their icons, the portals with the day), the ring or the ban of an
-// excluded job, the four actions and their "…" menu per place, the Jobdetails (the order and
-// icons of lib/facts.ts, "/" for what the ad does not say, verdicts as icons whose tooltip is
-// the reason), the Anforderungen (only requirements, a quiet count, "+" for a missing term),
-// the ad as plain text with its one note, and the switch between two jobs. At the end what the
+// The reader, one structure top to bottom (ui/src/features/jobs/reader-sections.ts): the title,
+// the ring or the ban of an excluded job, the four actions and their "…" menu per place, the
+// Jobdetails (the order and icons of lib/facts.ts, "/" for what the ad does not say, quiet
+// notes, verdicts as icons whose tooltip is the reason), the Anforderungen (only requirements,
+// a quiet count, "+" for a missing term), the ad as plain text with its one note and its
+// passages tinted under the pointer, and the switch between two jobs. At the end what the
 // reader's rounds of fixes carried around it (one column, the run card, the focus).
 //
 // The stub's demo profile: a minimum day rate of 1.100 € and a wish of 1.200 €, mostly remote,
-// three to five days a week for at least six months, 15 years of experience, no temporary
-// agency work.
+// three to five days a week for at least six months, jobs that ask 15 years of experience or
+// more, no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
 import { demoScore } from './demo';
@@ -47,6 +47,8 @@ const ROWS = [
   'Laufzeit',
   'Auslastung',
   'Erfahrung',
+  'Bewerbungsfrist',
+  'Kontakt',
   'Portal',
   'Eingegangen',
 ];
@@ -147,22 +149,22 @@ async function slowDetails(page: Page, ms: number): Promise<void> {
 }
 
 test.describe('the head and the match', () => {
-  test('title, company and place with their icons, the portals with the day, no dot', async ({
+  test('the title, then the ring with its band, then the buttons; the rest in Jobdetails', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
-    const company = stage(page).getByTestId('reader-company');
-    const place = stage(page).getByTestId('reader-place');
-    await expect(company).toHaveText('Hanseatic Holding GmbH');
-    await expect(place).toHaveText('Hamburg');
-    await expect(company.locator('.icon svg')).toHaveCount(1);
-    await expect(place.locator('.icon svg')).toHaveCount(1);
-    // The portal's tile with its name and the day of the alert mail; the other portal that
-    // announced it as a tile of its own.
-    const own = stage(page).getByTestId('reader-portal-freelancermap');
-    await expect(own.locator('.tile')).toHaveText('fm');
-    await expect(own).toHaveText('fmfreelancermap.de, 24.09.');
-    await expect(stage(page).getByTestId('reader-portal-linkedin')).toHaveText('inlinkedin.com');
+    // No line of company, place, portal or day under the title: the Jobdetails have them.
+    for (const id of ['reader-where', 'reader-company', 'reader-place', 'reader-source']) {
+      await expect(stage(page).getByTestId(id)).toHaveCount(0);
+    }
+    const top = async (id: string): Promise<number> =>
+      (await stage(page).getByTestId(id).boundingBox())!.y;
+    expect(await top('reader-title')).toBeLessThan(await top('reader-match'));
+    expect(await top('reader-match')).toBeLessThan(await top('reader-actions'));
+    expect(await top('reader-actions')).toBeLessThan(await top('terms'));
+    expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
+    expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
+    expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
@@ -180,7 +182,7 @@ test.describe('the head and the match', () => {
     expect(fills).toEqual(['none', 'none']);
     // The place without the work mode the portal appends to it.
     await openJob(page, 'freelance-900411');
-    await expect(stage(page).getByTestId('reader-place')).toHaveText('München');
+    expect((await cell(page, 'place'))[0]).toBe('München');
   });
 
   test('opening a job fills the ring, its number stands at once', async ({ page }) => {
@@ -488,15 +490,32 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    await expect(stage(page).getByTestId('reader-ban').locator('svg')).toHaveCount(1);
+    const ban = stage(page).getByTestId('reader-ban').locator('svg');
+    await expect(ban).toHaveCount(1);
+    // The ban at the ring's size, where the ring of every other job stands.
+    const size = await page.evaluate(() =>
+      Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ring-md')),
+    );
+    expect(Math.round((await ban.boundingBox())!.width)).toBe(size);
     await expect(stage(page).getByTestId('band')).toHaveText('Ausgeschlossen');
-    // Its first violation, once; no box, no way into the ad.
-    await expect(stage(page).getByTestId('exclusion')).toHaveText('Die Anzeige nennt Zeitarbeit.');
+    // Its first violation, once, from the profile's side; no box, no way into the ad.
+    await expect(stage(page).getByTestId('exclusion')).toHaveText(
+      T.reader.criterion.noAnue.exclusion,
+    );
     await expect(stage(page).getByTestId('exclusion-box')).toHaveCount(0);
     await expect(stage(page).getByTestId('show-in-ad')).toHaveCount(0);
-    // The rows that exclude it are not met.
+    // The rows that exclude it wear the ban, their tooltip says what the ad states.
     expect(await cell(page, 'contract')).toEqual(['Zeitarbeit', 'violated']);
-    expect(await cell(page, 'experience')).toEqual(['3 Jahre', 'violated']);
+    expect(await cell(page, 'experience')).toEqual([
+      `3 Jahre ${T.reader.yearsBelow(15)}`,
+      'violated',
+    ]);
+    for (const key of ['contract', 'experience']) {
+      const verdict = term(page, key).getByTestId('verdict').locator('.reason');
+      await expect(verdict).toHaveAttribute('data-kind', 'violation');
+      await expect(verdict).toHaveAttribute('aria-label', T.score.excluded);
+    }
+    expect(await verdictTip(page, 'contract')).toBe(T.reason.code.anue);
     await expect(why(page)).not.toContainText('Zeitarbeit');
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
     // The same entries in the same order as the row's menu (one table, actions.ts).
@@ -528,10 +547,23 @@ test.describe('an excluded job', () => {
 
   test('an exclusion word says the word', async ({ page }) => {
     await openAt(page, 'freelancermap-2807');
+    // No row judges an exclusion word: the head says the word.
     await expect(stage(page).getByTestId('exclusion')).toHaveText(
-      '„Werkstudent“ steht auf deiner Liste der Ausschlusswörter.',
+      T.reason.code.exclusionWord({ word: 'Werkstudent' }),
     );
-    await expect(why(page)).not.toContainText('Liste der Ausschlusswörter');
+    await expect(why(page)).not.toContainText('Ausschlusswörter');
+  });
+
+  test('a country outside the profile: the head says it from the profile, the row the place', async ({
+    page,
+  }) => {
+    await openAt(page, 'linkedin-4100200305');
+    await expect(stage(page).getByTestId('exclusion')).toHaveText(
+      T.reader.criterion.countries.exclusion,
+    );
+    const tip = await verdictTip(page, 'place');
+    expect(tip).toBe(T.reason.code.country({ allowed: 'DE, AT' }));
+    expect(tip).not.toBe(T.reader.criterion.countries.exclusion);
   });
 });
 
@@ -547,14 +579,20 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
     expect(await cell(page, 'mode')).toEqual(['60 % remote', 'met']);
     expect(await cell(page, 'contract')).toEqual(['Interim', 'met']);
-    expect(await cell(page, 'rate')).toEqual(['1.200 €/Tag', 'met']);
+    // The day rate with how it stands to the profile's minimum of 1.100 €.
+    expect(await cell(page, 'rate')).toEqual([
+      words(`1.200 €/Tag ${T.reader.versusMinimum(9)}`),
+      'met',
+    ]);
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     // The ad says nothing of its workload, and nothing judges it.
     expect(await cell(page, 'workload')).toEqual(['/', '']);
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
-    expect(await cell(page, 'received')).toEqual(['24.09.', '']);
-    // Verdicts are icons (no words), the reason that decided one in its tooltip.
+    // The day of the alert mail in the list row's words.
+    expect(await cell(page, 'received')).toEqual(['vor 2 Stunden', '']);
+    // Verdicts are icons (no words), the reason that decided one in its tooltip; one no
+    // reason decided names itself.
     await expect(terms(page)).not.toContainText('passt');
     expect(await verdictTip(page, 'rate')).toBe(
       'Der Tagessatz von 1.200 € erreicht den Wunsch von 1.200 €.',
@@ -563,16 +601,21 @@ test.describe('Jobdetails', () => {
       'aria-label',
       'Erfüllt',
     );
-    // Only what the ad says: no line of the profile under a value.
-    await expect(terms(page)).not.toContainText('Minimum');
+    for (const key of ['contract', 'start', 'duration']) {
+      expect(await verdictTip(page, key), key).toBe(T.reader.verdict.met);
+    }
   });
 
-  test('the four verdicts: green, amber, red, muted, each with its own icon', async ({ page }) => {
+  test('the verdicts: green, amber, muted, and the ban where a row excludes the job', async ({
+    page,
+  }) => {
     const icon = (page: Page, key: string) =>
       term(page, key).getByTestId('verdict').locator('.reason > .icon');
     const look = async (page: Page, key: string): Promise<[string, string]> => [
       await icon(page, key).evaluate((node) => getComputedStyle(node).color),
-      await icon(page, key).evaluate((node) => node.innerHTML),
+      await icon(page, key).evaluate(
+        (node) => node.querySelector('svg')?.getAttribute('class') ?? '',
+      ),
     ];
     await openAt(page, 'freelancermap-2804');
     const met = await look(page, 'workload');
@@ -583,11 +626,84 @@ test.describe('Jobdetails', () => {
     await openJob(page, 'freelance-900413');
     const partial = await look(page, 'workload');
     expect(partial[0]).toBe(await tokenColour(page, '--warning-strong'));
+    // Met in part: the amber minus in a circle.
+    expect(partial[1]).toContain('lucide-circle-minus');
     await openJob(page, 'freelance-900412');
-    const violated = await look(page, 'contract');
-    expect(violated[0]).toBe(await tokenColour(page, '--danger-strong'));
-    // Four glyphs, one per verdict.
-    expect(new Set([met[1], unknown[1], partial[1], violated[1]]).size).toBe(4);
+    const excludes = await look(page, 'contract');
+    expect(excludes[0]).toBe(await tokenColour(page, '--danger-strong'));
+    expect(excludes[1]).toContain('lucide-ban');
+    // One glyph per verdict.
+    expect(new Set([met[1], unknown[1], partial[1], excludes[1]]).size).toBe(4);
+  });
+
+  test('the verdicts stand right after the widest judged value, in the requirements metrics', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const boxes = await terms(page).evaluate((list) =>
+      [...list.querySelectorAll('li')].map((li) => {
+        const line = li.querySelector('.term-line')!;
+        return {
+          key: li.getAttribute('data-row'),
+          value: line.getBoundingClientRect().right,
+          span: getComputedStyle(line).gridColumnEnd,
+          verdict:
+            li.querySelector('[data-testid="verdict"]')?.getBoundingClientRect().left ?? null,
+        };
+      }),
+    );
+    const judged = boxes.filter((box) => box.verdict !== null);
+    const column = judged[0]!.verdict!;
+    expect(new Set(judged.map((box) => Math.round(box.verdict!))).size).toBe(1);
+    const widest = Math.max(...judged.map((box) => box.value));
+    const gap = await page.evaluate(() =>
+      Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-24')),
+    );
+    expect(Math.round(column - widest)).toBeLessThanOrEqual(gap);
+    // A value without a verdict (the company, the portals) takes the verdict's column too, so
+    // it never pushes the verdicts away.
+    for (const box of boxes) expect(box.span, box.key ?? '').toBe(box.verdict ? 'auto' : '-1');
+    // One metric with the requirements: their text and their icon gap.
+    const [termFont, termGap] = await terms(page)
+      .locator('.term-name')
+      .first()
+      .evaluate((node) => [getComputedStyle(node).fontSize, getComputedStyle(node).columnGap]);
+    const [reasonFont, reasonGap] = await why(page)
+      .locator('.reason')
+      .first()
+      .evaluate((node) => [getComputedStyle(node).fontSize, getComputedStyle(node).columnGap]);
+    expect([termFont, termGap]).toEqual([reasonFont, reasonGap]);
+  });
+
+  test('Bewerbungsfrist and Kontakt: red within a week, each part of the contact copies', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const danger = await tokenColour(page, '--danger-strong');
+    const colour = (key: string) =>
+      term(page, key)
+        .locator('.value')
+        .first()
+        .evaluate((node) => getComputedStyle(node).color);
+    expect(await cell(page, 'deadline')).toEqual(['15.10.', '']);
+    expect(await colour('deadline')).not.toBe(danger);
+    const parts = term(page, 'contact').locator('.value');
+    await expect(parts).toHaveText([
+      'Julia Brandt',
+      'julia.brandt@hanseatic.example',
+      '+49 40 5550 1234',
+    ]);
+    for (const part of await parts.all()) await expect(part).toHaveAttribute('data-copy', '');
+    await expect(term(page, 'contact').getByTestId('verdict')).toHaveCount(0);
+    // Four days ahead: red. An e-mail address alone is the contact.
+    await openJob(page, 'freelancermap-2802');
+    expect(await cell(page, 'deadline')).toEqual(['28.09.', '']);
+    expect(await colour('deadline')).toBe(danger);
+    await expect(term(page, 'contact').locator('.value')).toHaveText(['jobs@gruenwerk.example']);
+    // An ad that names neither.
+    await openJob(page, 'freelancermap-2804');
+    expect(await cell(page, 'deadline')).toEqual(['/', '']);
+    expect(await cell(page, 'contact')).toEqual(['/', '']);
   });
 
   test('one form per fact: a start date, a workload, pay near the wish, the work mode', async ({
@@ -599,10 +715,14 @@ test.describe('Jobdetails', () => {
     expect(await verdictTip(page, 'workload')).toBe(
       'Die Anzeige nennt 2 Tage pro Woche, das Profil sucht mindestens 3 Tage pro Woche.',
     );
-    expect(await cell(page, 'rate')).toEqual(['1.150 €/Tag', 'partial']);
+    // Near the wish, 5 % over the minimum.
+    expect(await cell(page, 'rate')).toEqual([
+      words(`1.150 €/Tag ${T.reader.versusMinimum(5)}`),
+      'partial',
+    ]);
     expect(await cell(page, 'mode')).toEqual(['Vor Ort', 'partial']);
     expect(await cell(page, 'place')).toEqual(['München', 'partial']);
-    // A limit missed is met in part; a rate to be agreed has nothing to judge.
+    // A limit missed is met in part; a rate to be agreed has nothing to judge, nor a note.
     await openJob(page, 'freelancermap-2802');
     expect(await cell(page, 'duration')).toEqual(['3 Monate', 'partial']);
     expect(await verdictTip(page, 'duration')).toBe(
@@ -610,7 +730,9 @@ test.describe('Jobdetails', () => {
     );
     expect(await cell(page, 'rate')).toEqual(['nach Absprache', '']);
     expect(await cell(page, 'workload')).toEqual(['Vollzeit', 'met']);
-    expect(await cell(page, 'mode')).toEqual(['voll remote', 'met']);
+    // One case in the row: "Voll remote" like "Vor Ort" and "Hybrid".
+    expect(await cell(page, 'mode')).toEqual([T.facts.mode.remote, 'met']);
+    expect(T.facts.mode.remote).toBe('Voll remote');
     // A hybrid job without a share: its mode in the one set of words.
     await openJob(page, 'linkedin-4100200302');
     expect((await cell(page, 'mode'))[0]).toBe('Hybrid');
@@ -619,44 +741,66 @@ test.describe('Jobdetails', () => {
     await expect(why(page)).not.toContainText('liegt unter dem Minimum');
   });
 
-  test('Erfahrung and the requirement that names the years never disagree', async ({ page }) => {
-    // The years the ad asks are the profile's target, but the requirement is met in part (its
-    // Controlling only in general): the row says so, with the requirement's reason.
+  test('Erfahrung judges the years, the requirement that names them keeps its skill', async ({
+    page,
+  }) => {
+    // The years the ad asks are the profile's target: the row is met. The requirement is met
+    // in part (its Controlling only in general): it says so among the Anforderungen.
     await openAt(page, 'freelancermap-2801');
-    expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'partial']);
-    expect(await verdictTip(page, 'experience')).toBe(
-      T.reason.evidence('Mindestens 15 Jahre Berufserfahrung im Controlling', 'Controlling', true),
+    expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'met']);
+    expect(await verdictTip(page, 'experience')).toBe(T.reader.verdict.met);
+    await expect(why(page).getByTestId('reasons-partial')).toContainText(
+      'Mindestens 15 Jahre Berufserfahrung im Controlling',
     );
-    await expect(why(page)).not.toContainText('Mindestens 15 Jahre');
-    // Ten years for a senior profile, in a field the profile lacks: not met, once.
+    // Ten years for a profile that looks for 15 or more: met in part, the note says which
+    // way; the requirement's own field the profile lacks stands under "Nicht erfüllt".
     await openJob(page, 'linkedin-4100200304');
-    expect(await cell(page, 'experience')).toEqual(['10 Jahre', 'violated']);
+    expect(await cell(page, 'experience')).toEqual([
+      `10 Jahre ${T.reader.yearsBelow(15)}`,
+      'partial',
+    ]);
     expect(await verdictTip(page, 'experience')).toBe(
-      '„Mindestens 10 Jahre Berufserfahrung im Rechnungswesen“ steht nicht im Profil.',
+      T.reason.code.overqualified({ years: 10, target: 15 }),
     );
-    await expect(why(page)).not.toContainText('Mindestens 10 Jahre');
-    // No requirement that names years stands among the Anforderungen of any job.
-    for (const key of ['freelancermap-2802', 'linkedin-4100200301', 'freelance-900412']) {
-      await openJob(page, key);
-      await expect(why(page)).not.toContainText('Jahre Berufserfahrung');
-    }
+    await expect(why(page).getByTestId('reasons-open')).toContainText(
+      'Mindestens 10 Jahre Berufserfahrung im Rechnungswesen',
+    );
   });
 
-  test('a permanent job: its salary, no end, the contract to check', async ({ page }) => {
+  test('a permanent job: its salary, no end, the contract met', async ({ page }) => {
     await openAt(page, 'linkedin-4100200303');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names[4]).toBe('Gehalt');
     expect(await cell(page, 'rate')).toEqual(['95.000 €/Jahr', '']);
     expect(await cell(page, 'duration')).toEqual(['unbefristet', '']);
-    expect(await cell(page, 'contract')).toEqual(['Festanstellung', 'unknown']);
+    // The ad states the type and the profile takes permanent jobs: met, not "unklar".
+    expect(await cell(page, 'contract')).toEqual(['Festanstellung', 'met']);
     expect(await cell(page, 'experience')).toEqual(['/', '']);
   });
 
-  test('an ad the app never read shows only what it knows', async ({ page }) => {
+  test('an ad the app never read in full shows only what it knows', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
     expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsort', 'Portal', 'Eingegangen']);
     await expect(terms(page)).not.toContainText('/');
+    // A preview: no "/" claims the ad says nothing.
+    await openJob(page, 'freelance-900411');
+    expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual([
+      'Unternehmen',
+      'Ort',
+      'Arbeitsort',
+      'Vertragsart',
+      'Portal',
+      'Eingegangen',
+    ]);
+    await expect(terms(page).locator('.value.missing')).toHaveCount(0);
+  });
+
+  test('a job the engine could not score shows no verdicts', async ({ page }) => {
+    await openAt(page, 'freelancermap-2806');
+    await expect(stage(page).getByTestId('band')).toHaveText(T.score.none);
+    await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
+    await expect(why(page)).toHaveCount(0);
   });
 
   test('without a profile: the values without verdicts, no ring, no requirements', async ({
@@ -687,7 +831,7 @@ test.describe('Anforderungen', () => {
     await openAt(page, 'freelancermap-2801');
     await expect(why(page).locator('h2')).toHaveText('Anforderungen');
     const titles = (await why(page).locator('.sub').allInnerTexts()).map(words);
-    expect(titles).toEqual(['Erfüllt 5', 'Teilweise erfüllt 1', 'Nicht erfüllt 1']);
+    expect(titles).toEqual(['Erfüllt 5', 'Teilweise erfüllt 2', 'Nicht erfüllt 1']);
     // No title, wish or Schwerpunkt, no line of the profile's words.
     for (const said of ['Wunschrolle', 'Schwerpunkt', 'Tagessatz', 'im Profil']) {
       await expect(why(page)).not.toContainText(said);
@@ -735,19 +879,32 @@ test.describe('Anforderungen', () => {
         .getByTestId('add-to-profile'),
     ).toHaveCount(0);
     await add.click();
-    await expect(missing.getByTestId('added')).toHaveText('Hinzugefügt');
+    // A quiet tick takes the place of the "+", no word; the toast says it, with the term
+    // alone (without the ad's "Branchenerfahrung").
+    const added = missing.getByTestId('added');
+    await expect(added).toHaveAttribute('aria-label', T.reader.added);
+    await expect(added.locator('svg')).toHaveCount(1);
+    await expect(added).toHaveText('');
     const toast = page.getByTestId('toast').last();
-    await expect(toast).toContainText('„Branchenerfahrung Energie“ zum Profil hinzugefügt.');
+    await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
     // The term is among the profile's keywords.
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-keywords')).toContainText('Branchenerfahrung Energie');
+    await expect(page.getByTestId('profile-keywords')).toContainText('Energie');
+    await expect(page.getByTestId('profile-keywords')).not.toContainText('Branchenerfahrung');
     // The toast takes it back.
     await page.getByTestId('nav-jobs').click();
     await page.getByTestId('toast').last().getByTestId('toast-action').click();
     await expect(missing.getByTestId('add-to-profile')).toBeVisible();
     await page.getByTestId('nav-profile').click();
-    await expect(page.getByTestId('profile-keywords')).not.toContainText(
-      'Branchenerfahrung Energie',
+    await expect(page.getByTestId('profile-keywords')).not.toContainText('Energie');
+    // The other bullets lose their lead words too.
+    await page.getByTestId('nav-jobs').click();
+    const anaplan = why(page).getByTestId('reasons-open').locator('li', {
+      hasText: 'Kenntnisse in Anaplan',
+    });
+    await anaplan.getByTestId('add-to-profile').click();
+    await expect(page.getByTestId('toast').last()).toContainText(
+      T.reader.addedToProfile('Anaplan'),
     );
     // A requirement the ad words as a sentence cannot go into the profile.
     await page.getByTestId('nav-jobs').click();
@@ -759,50 +916,195 @@ test.describe('Anforderungen', () => {
 });
 
 test.describe('the ad', () => {
-  test('plain text: no marks, nothing to hover or jump to', async ({ page }) => {
+  /** The words of the passages that are tinted now. */
+  const lit = (page: Page): Promise<string[]> =>
+    stage(page)
+      .getByTestId('ad-text')
+      .locator('mark.lit')
+      .evaluateAll((all) => all.map((mark) => mark.textContent ?? ''));
+
+  /** Longer than the reader rests after a scroll before a hover counts again. */
+  const REST = 300;
+
+  /** Whether a node stands whole in the window. */
+  const isInViewport = (target: Locator): Promise<boolean> =>
+    target.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      return box.top >= 0 && box.bottom <= innerHeight;
+    });
+
+  /** Move the pointer onto a node (twice: only a pointer that moves counts). */
+  async function pointAt(page: Page, target: Locator): Promise<void> {
+    // Into view first, and a hover waits until the reader rests after a scroll.
+    if (!(await target.isVisible()) || !(await isInViewport(target))) {
+      await target.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(REST);
+    }
+    const box = (await target.boundingBox())!;
+    await page.mouse.move(box.x + 4, box.y + box.height / 2);
+    await page.mouse.move(box.x + 8, box.y + box.height / 2);
+  }
+
+  test('plain text, its passages untinted until a row or a requirement is hovered', async ({
+    page,
+  }) => {
     await openAt(page, 'freelancermap-2801');
     const text = stage(page).getByTestId('ad-text');
     await expect(text).toContainText('Reporting nach IFRS');
     await expect(text).toHaveAttribute('data-copy', '');
-    await expect(text.locator('mark')).toHaveCount(0);
-    await expect(stage(page).locator('mark, .jump, button.chip, button.reason')).toHaveCount(0);
+    // No underline, no colour, no tooltip, nothing to press.
+    const mark = text.locator('mark').first();
+    expect(
+      await mark.evaluate((node) => [
+        getComputedStyle(node).textDecorationLine,
+        getComputedStyle(node).backgroundColor,
+      ]),
+    ).toEqual(['none', 'rgba(0, 0, 0, 0)']);
+    await expect(stage(page).locator('.jump, button.chip, button.reason')).toHaveCount(0);
     await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
+    expect(await lit(page)).toEqual([]);
+  });
+
+  test('hovering tints the passages, leaving takes them away, a click brings them and flashes', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 700 });
+    await openAt(page, 'freelancermap-2801');
+    const soft = await tokenColour(page, '--info-soft');
+    // A row of the Jobdetails: its passage in the ad takes the soft tint.
+    await pointAt(page, term(page, 'rate'));
+    await expect.poll(() => lit(page)).toEqual(['Tagessatz 1.200 €, Einsatz zu 60 % remote.']);
+    const tinted = stage(page).getByTestId('ad-text').locator('mark.lit');
+    await expect(tinted).toHaveCSS('background-color', soft);
+    // Away from it: gone.
+    await pointAt(page, stage(page).getByTestId('terms').locator('h2'));
+    await expect.poll(() => lit(page)).toEqual([]);
+    // A requirement.
+    await pointAt(page, why(page).locator('li', { hasText: 'Reporting nach IFRS' }));
+    await expect.poll(() => lit(page)).toEqual(['Reporting nach IFRS']);
+    // A click on a row brings its passage into view and flashes it once.
+    const pane = stage(page).getByTestId('ad-text');
+    await term(page, 'experience').click();
+    const flash = pane.locator('mark.flash');
+    await expect(flash).toHaveText('Mindestens 15 Jahre Berufserfahrung im Controlling');
+    await expect(flash).toBeInViewport();
+    await expect(flash).toHaveCount(0);
+    // A row without passages does nothing.
+    await pointAt(page, term(page, 'company'));
+    await page.mouse.down();
+    await page.mouse.up();
+    await expect.poll(() => lit(page)).toEqual([]);
+    await expect(pane.locator('mark.flash')).toHaveCount(0);
+  });
+
+  test('no tint stays after the pointer moved across several rows, nor while it scrolls', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const items = (): Promise<string[]> =>
+      stage(page)
+        .getByTestId('ad-text')
+        .locator('mark.lit')
+        .evaluateAll((all) => all.map((mark) => mark.getAttribute('data-items') ?? ''));
+    for (const key of ['contract', 'rate', 'start', 'duration', 'experience']) {
+      await pointAt(page, term(page, key));
+      // Only the passages of the row under the pointer.
+      await expect
+        .poll(async () => {
+          const now = await items();
+          return now.length > 0 && now.every((item) => item.split(' ').includes(`row:${key}`));
+        }, key)
+        .toBe(true);
+    }
+    await pointAt(page, stage(page).getByTestId('reader-title'));
+    await expect.poll(() => lit(page)).toEqual([]);
+    // The reader scrolls under a still pointer: the row that comes under it takes no tint.
+    await pointAt(page, term(page, 'rate'));
+    await expect.poll(async () => (await lit(page)).length).toBeGreaterThan(0);
+    await page.mouse.wheel(0, 120);
+    await expect.poll(() => lit(page)).toEqual([]);
+    await page.waitForTimeout(400);
+    expect(await lit(page)).toEqual([]);
   });
 
   test('a preview says so once, here, with the way to its sign-in', async ({ page }) => {
     await openAt(page, 'freelance-900411');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText('Nur eine Vorschau');
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.teaser);
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text.split('Vorschau').length - 1).toBe(1);
     await expect(stage(page).getByTestId('preliminary')).toHaveCount(0);
-    await stage(page).getByTestId('set-up-sign-in').click();
+    // The same height as the reader's other buttons.
+    const signIn = stage(page).getByTestId('set-up-sign-in');
+    expect((await signIn.boundingBox())!.height).toBe(
+      (await stage(page).getByTestId('reader-more').boundingBox())!.height,
+    );
+    await signIn.click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
 
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
     const note = stage(page).getByTestId('detail-note');
-    await expect(note).toHaveText('Anzeige fehlt');
+    await expect(note).toHaveText(T.reader.adNote.missing);
     const load = stage(page).getByTestId('load-ad');
     await expect(load).toHaveText('Anzeige laden');
+    const height = (await note.locator('..').boundingBox())!.height;
     await load.click();
     expect(((await calls(page, 'start_run'))[0]?.[1] as { request: unknown }).request).toEqual({
       kind: 'details',
       keys: [{ portal: 'linkedin', id: '4100200302' }],
     });
-    await expect(note).toHaveText('Anzeige wird geladen');
+    // A spinner where the note's icon stood, the line as high as before.
+    await expect(note).toHaveText(T.reader.adNote.loading);
+    await expect(note.locator('.spinner')).toHaveCount(1);
     await expect(load).toHaveCount(0);
-    // An ad that could not be fetched says the same.
+    expect((await note.locator('..').boundingBox())!.height).toBe(height);
+    // Once the ad is there, its note goes.
     await runFinished(page);
+    await expect(stage(page).getByTestId('ad-text')).toBeVisible();
+    await expect(stage(page).getByTestId('detail-note')).toHaveCount(0);
+    // An ad that could not be fetched is not being loaded while nothing loads it.
     await openJob(page, 'freelancermap-2805');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText('Anzeige fehlt');
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.missing);
     await expect(stage(page).getByTestId('load-ad')).toBeVisible();
   });
 
-  test('a closed ad says so in the ad section, nothing in the head', async ({ page }) => {
+  test('what arrives later fades in: the ad, its rows, its requirements', async ({ page }) => {
+    await openAt(page, 'linkedin-4100200302', `${WIN}&tick=400`);
+    // Every frame from the click on: the lowest opacity the requirements showed.
+    await page.evaluate(() => {
+      const seen = { least: 2 };
+      (window as unknown as { __fade: typeof seen }).__fade = seen;
+      const until = performance.now() + 4000;
+      const look = (): void => {
+        const why = document.querySelector<HTMLElement>('[data-testid="why"]');
+        if (why) seen.least = Math.min(seen.least, Number(getComputedStyle(why).opacity));
+        if (performance.now() < until) requestAnimationFrame(look);
+      };
+      requestAnimationFrame(look);
+    });
+    await stage(page).getByTestId('load-ad').click();
+    await expect(why(page)).toBeVisible({ timeout: 5000 });
+    await page.waitForTimeout(300);
+    const seen = await page.evaluate(
+      () => (window as unknown as { __fade: { least: number } }).__fade,
+    );
+    expect(seen.least).toBeLessThan(1);
+  });
+
+  test('a closed ad says so in the ad section as a warning, nothing in the head', async ({
+    page,
+  }) => {
     await openAt(page, 'linkedin-4100200304');
-    await expect(stage(page).getByTestId('detail-note')).toHaveText('Keine Bewerbung mehr möglich');
+    const note = stage(page).getByTestId('detail-note');
+    await expect(note).toHaveText(T.reader.adNote.closed);
+    await expect(note).toHaveClass(/warning/);
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
+  });
+
+  test('every note of the ad is one short sentence', async () => {
+    for (const note of Object.values(T.reader.adNote)) expect(note).toMatch(/^[^.]+\.$/);
+    expect(T.reader.adNote.missing).not.toContain('Anzeige');
   });
 });
 

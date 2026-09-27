@@ -2,11 +2,9 @@
      selects one job, its menu (a right click) archives it. -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
-  import Chip, { CHIP_STATES, type ChipState } from '$components/Chip.svelte';
-  import type { IconName } from '$components/Icon.svelte';
   import JobRow from '$components/JobRow.svelte';
   import ListRow from '$components/ListRow.svelte';
-  import ReasonItem, { REASON_KINDS, REASON_WEIGHTS } from '$components/ReasonItem.svelte';
+  import ReasonItem, { REASON_KINDS } from '$components/ReasonItem.svelte';
   import type { JobView } from '$lib/ipc/types';
   import { flip, rise, rowCollapse } from '$lib/motion/transitions';
   import { toasts } from '$lib/state/toasts.svelte';
@@ -14,13 +12,6 @@
   import { sampleJobs, text } from './gallery';
 
   const t = text.match;
-  const CHIP_ICON: Record<ChipState, IconName> = {
-    met: 'check',
-    unknown: 'unclear',
-    violated: 'excluded',
-    unset: 'unstated',
-    plain: 'document',
-  };
   const now = new Date();
   let jobs = $state(sampleJobs(now));
   /** The selected job (its id). */
@@ -58,20 +49,8 @@
 <Section heading={t.reasons} id="reasons">
   <div class="reasons">
     {#each REASON_KINDS as kind, index (kind)}
-      <ReasonItem
-        {kind}
-        label={t.reasonLabels[kind]}
-        weight={REASON_WEIGHTS[index % REASON_WEIGHTS.length] ?? null}
-      />
+      <ReasonItem {kind} label={t.reasonLabels[kind]} optional={index % 2 === 1} />
       <ReasonItem {kind} label={t.reasonLabels[kind]} hint={t.evidence} iconOnly />
-    {/each}
-    {#each REASON_KINDS as kind (kind)}
-      <ReasonItem {kind} label={t.reasonLabels[kind]} compact />
-    {/each}
-  </div>
-  <div class="chips">
-    {#each CHIP_STATES as state (state)}
-      <Chip {state} label={t.chipLabels[state]} icon={CHIP_ICON[state]} />
     {/each}
   </div>
 </Section>
@@ -111,13 +90,6 @@
 </Section>
 
 <style>
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-6);
-    margin-top: var(--space-16);
-  }
-
   /* One column in the reader's width, like the reader lists them. */
   .reasons {
     display: grid;

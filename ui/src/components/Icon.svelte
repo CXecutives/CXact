@@ -21,17 +21,19 @@
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
+  import CalendarClock from '@lucide/svelte/icons/calendar-clock';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import CircleDashed from '@lucide/svelte/icons/circle-dashed';
+  import CircleMinus from '@lucide/svelte/icons/circle-minus';
   import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
   import CircleStop from '@lucide/svelte/icons/circle-stop';
   import CircleX from '@lucide/svelte/icons/circle-x';
   import ClipboardPaste from '@lucide/svelte/icons/clipboard-paste';
   import Clock from '@lucide/svelte/icons/clock';
-  import Contrast from '@lucide/svelte/icons/contrast';
+  import ContactRound from '@lucide/svelte/icons/contact-round';
   import Copy from '@lucide/svelte/icons/copy';
   import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
@@ -94,17 +96,19 @@
     briefcase: Briefcase,
     'building-2': Building2,
     calendar: Calendar,
+    'calendar-clock': CalendarClock,
     check: Check,
     'chevron-down': ChevronDown,
     'chevron-left': ChevronLeft,
     'circle-check': CircleCheck,
     'circle-dashed': CircleDashed,
+    'circle-minus': CircleMinus,
     'circle-question-mark': CircleQuestionMark,
     'circle-stop': CircleStop,
     'circle-x': CircleX,
     'clipboard-paste': ClipboardPaste,
     clock: Clock,
-    contrast: Contrast,
+    'contact-round': ContactRound,
     copy: Copy,
     'corner-down-left': CornerDownLeft,
     'database-backup': DatabaseBackup,
