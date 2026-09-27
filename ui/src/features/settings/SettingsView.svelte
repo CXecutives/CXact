@@ -18,8 +18,8 @@
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
   result folder and reset are locked with its reason. Opened from a job for one portal
-  ("Anmeldung einrichten") the page glides to that portal's row, focuses its sign-in and
-  offers "Zurück zum Job".
+  ("Anmeldung einrichten") the page glides to that portal's row, focuses its sign-in, lets
+  the row light up once and offers "Zurück zum Job".
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -34,6 +34,7 @@
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
+  import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -216,8 +217,24 @@
           `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
         ) ?? row.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
       target?.focus({ preventScroll: true });
+      flash(row);
     });
   });
+
+  /** The row a job asked for lights up once when the glide ends and settles (like a passage
+   *  of the ad after a jump): `data-flash` on, off, gone. */
+  function flash(row: Element): void {
+    setTimeout(() => {
+      row.setAttribute('data-flash', 'on');
+      setTimeout(
+        () => {
+          row.setAttribute('data-flash', 'off');
+          setTimeout(() => row.removeAttribute('data-flash'), duration('base'));
+        },
+        duration('reveal') || crossfadeDuration(),
+      );
+    }, duration('slow'));
+  }
 </script>
 
 {#snippet row(card: string, item: Row)}
@@ -368,6 +385,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-12);
+  }
+
+  /* The portal row a job asked for ("Anmeldung einrichten"): a soft tint for a moment. */
+  .page :global([data-flash]) {
+    transition: background-color var(--dur-base) var(--ease-standard);
+  }
+
+  .page :global([data-flash='on']) {
+    background-color: var(--info-soft);
+    transition-duration: var(--dur-hover);
   }
 
   /* The heading, and at its end the way back to the job she came from. */

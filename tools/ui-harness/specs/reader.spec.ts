@@ -1191,6 +1191,15 @@ test.describe('the ad', () => {
     );
     await signIn.click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
+    // Einstellungen at the row of freelance.de: in view, its sign-in focused, the row lit up
+    // once in the soft tint, then settled.
+    const portalRow = page.getByTestId('portal-freelance');
+    await expect(portalRow).toBeInViewport();
+    await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
+    await expect(portalRow).toHaveAttribute('data-flash', 'on');
+    await expect(portalRow).toHaveCSS('background-color', await tokenColour(page, '--info-soft'));
+    await expect(portalRow).not.toHaveAttribute('data-flash');
+    await expect(portalRow).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   });
 
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
