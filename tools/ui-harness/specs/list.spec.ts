@@ -244,6 +244,36 @@ test.describe('header', () => {
     await runFinished(page);
   });
 
+  test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
+    await open(page, `${WIN}&tick=15`);
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await page.evaluate(() => (window.__harness.holdAfter = 3));
+    await page.getByTestId('fetch').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    const slot = async (): Promise<number[]> => {
+      const box = (await cancel.boundingBox())!;
+      return [box.x, box.y, box.width, box.height].map(Math.round);
+    };
+    const inbox = await slot();
+    for (const place of ['archive', 'trash'] as const) {
+      await openPlace(page, place);
+      await expect(cancel, place).toBeVisible();
+      expect(await slot(), place).toEqual(inbox);
+    }
+    // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
+    await expect(page.getByTestId('empty-trash')).toHaveCount(0);
+    await cancel.click();
+    await runFinished(page);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await expect(page.getByTestId('empty-trash')).toBeVisible();
+    const end = inbox[0]! + inbox[2]!;
+    expect(Math.abs((await rightOf(page, 'empty-trash')) - end)).toBeLessThanOrEqual(1);
+    await openPlace(page, 'archive');
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
+  });
+
   test('the tabs fit their row at every width', async ({ page }) => {
     const places = page.getByTestId('places');
     const fits = (): Promise<boolean> =>
