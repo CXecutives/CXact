@@ -1042,8 +1042,10 @@ test('after a click into the reader the arrows scroll it', async ({ page }) => {
   const opened = await title.innerText();
   // A click on the ad's text: the arrows scroll the reader, the job stays.
   await title.click();
+  // (WebKit may bring the clicked title into view first: the step counts from there.)
+  const start = await top();
   await page.keyboard.press('ArrowDown');
-  await expect.poll(top).toBe(40);
+  await expect.poll(top).toBe(start + 40);
   await page.keyboard.press('End');
   await expect
     .poll(() => stage.evaluate((node) => node.scrollHeight - node.clientHeight - node.scrollTop))

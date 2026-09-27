@@ -45,6 +45,12 @@
   ];
 
   let connecting = $state(false);
+  /** Opens the form's dialog from its button, which holds the focus meanwhile (WebKit does
+   *  not focus a clicked button), so the dialog gives the focus back to it when it closes. */
+  function openForm(event: MouseEvent): void {
+    if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus();
+    connecting = true;
+  }
   let checking = $state(false);
   let form = $state<MailboxForm | null>(null);
   let confirmRemove = $state(false);
@@ -117,7 +123,7 @@
           disabled={locked !== null}
           disabledReason={locked}
           testid="mailbox-change"
-          onclick={() => (connecting = true)}
+          onclick={openForm}
         />
         <Button
           variant="secondary"
@@ -145,7 +151,7 @@
         disabled={locked !== null}
         disabledReason={locked}
         testid="mailbox-connect"
-        onclick={() => (connecting = true)}
+        onclick={openForm}
       />
     </SettingRow>
   {/if}
