@@ -95,12 +95,14 @@ SMOOTHING = 0.6
 GRID = 16
 PLATE = 0
 PLATE_R = 0.2237 * (1024 - 2 * PLATE)
-FOLDER_X0, FOLDER_X1 = 181, 843
-TAB_Y, BODY_Y0, BODY_Y1 = 226, 300, 778
-SLOPE_X0, SLOPE_X1 = 425, 499
-FOLDER_R = 69
-CHECK_POINTS = [(361, 524), (467, 630), (663, 432)]
-CHECK_W = 83
+# The folder 62 % of the plate wide and the check 67 units (user, 2026-09-27; was 66.7 % and
+# 83): today's shape scaled about its centre, the check's arms with it (45 degrees).
+FOLDER_X0, FOLDER_X1 = 204, 820
+TAB_Y, BODY_Y0, BODY_Y1 = 246, 315, 760
+SLOPE_X0, SLOPE_X1 = 431, 500
+FOLDER_R = 64
+CHECK_POINTS = [(370.5, 523), (469.5, 622), (653.5, 438)]
+CHECK_W = 67
 # macOS: Apple's grid, plate 824 of 1024 (margin 100, fractional at the smaller sizes) with the
 # same corner, 22.37 % of the plate.
 MAC_PLATE = 100
@@ -121,7 +123,7 @@ SHADOW_BLUR = 12
 SIZES = [48, 16, 20, 24, 30, 32, 36, 40, 60, 64, 72, 80, 96, 128, 256]
 # Check width in pixels at the small stages (bolder than the plain scale, which would be
 # 1.1 px at 16).
-MIN_CHECK_W = {16: 2.0, 20: 2.25, 24: 2.5, 30: 2.7, 32: 2.8, 36: 2.9, 40: 3.0}
+MIN_CHECK_W = {16: 1.6, 20: 1.8, 24: 2.0, 30: 2.2, 32: 2.25, 36: 2.35, 40: 2.4}
 # AND mask of the ICO stages: a pixel counts as transparent below half coverage (as icotool's
 # default threshold), so a reader that ignores alpha sees the plate in its right size.
 MASK_ALPHA = 128

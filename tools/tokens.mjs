@@ -1,13 +1,13 @@
 // Mirrors the colours of ui/src/styles/tokens.css into everything that is not the page, so
 // tokens.css stays the one place a colour is written (docs/CHANGING.md, "Change the look"):
 //
-//   core/src/export/palette.rs   the colour tokens of Coast (the `:root` block) that something
+//   core/src/export/palette.rs   the colour tokens of Light (the `:root` block) that something
 //                                besides the page wears (`OUTSIDE`) as Rust constants: the
 //                                Excel file, the window (src-tauri/src/platform.rs) and the
 //                                icon's tests; and the window's colour (--bg) of every other
 //                                palette
-//   tools/palette.json           Coast's colour tokens for tools/icon.py (the app icon)
-//   src-tauri/tauri*.conf.json   the window's backgroundColor (Coast's --bg: no flash before
+//   tools/palette.json           Light's colour tokens for tools/icon.py (the app icon)
+//   src-tauri/tauri*.conf.json   the window's backgroundColor (Light's --bg: no flash before
 //                                the page paints)
 //
 //     node tools/tokens.mjs           writes the files
@@ -34,8 +34,8 @@ const WINDOW = 'bg';
 /** What the window wears in every palette: its background (src-tauri/src/platform.rs; the top
  *  bar is the page's own, --titlebar-*). */
 const WINDOW_TOKENS = ['bg'];
-/** The palette of the `:root` block (the default; `Palette::Coast` in core/src/settings.rs). */
-const BASE_PALETTE = 'coast';
+/** The palette of the `:root` block (the default; `Palette::Light` in core/src/settings.rs). */
+const BASE_PALETTE = 'light';
 /**
  * The colour tokens something besides the page wears, the only ones palette.rs holds: the
  * window (bg), the Excel file (the header row's
@@ -71,8 +71,9 @@ const CONTRAST = [
   { text: ['accent-text'], on: ['surface', 'accent-soft'] },
   {
     text: ['text-on-accent'],
-    on: ['primary', 'primary-hover', 'primary-active', 'danger-strong', 'danger-hover'],
+    on: ['primary', 'primary-hover', 'primary-active'],
   },
+  { text: ['text-on-danger'], on: ['danger-strong', 'danger-hover'] },
   { text: ['text-inverse', 'text-inverse-muted'], on: ['surface-inverse'] },
   { text: ['count-soft-fg'], on: ['count-soft-bg', 'count-soft-hover'] },
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
@@ -88,13 +89,8 @@ const CONTRAST = [
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;
-/** Pairs below AA by a documented decision of the user (docs/PLAN.md): Coast's light coral
- *  primary with its near-white label (about 2.8:1), resting, hovered and pressed. */
-const EXCEPTIONS = new Set([
-  'coast: --text-on-accent on --primary',
-  'coast: --text-on-accent on --primary-hover',
-  'coast: --text-on-accent on --primary-active',
-]);
+/** Pairs below AA by a documented decision of the user (docs/PLAN.md); none today. */
+const EXCEPTIONS = new Set([]);
 
 /* ------------------------------------------------------------------ tokens */
 
@@ -110,7 +106,7 @@ function parse(body) {
 
 const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-/** The declarations of the first `:root` block (Coast), by name without the dashes, in order. */
+/** The declarations of the first `:root` block (Light), by name without the dashes, in order. */
 function declarations(css) {
   const code = withoutComments(css);
   const start = code.indexOf(':root {');
@@ -119,7 +115,7 @@ function declarations(css) {
 }
 
 /**
- * Every palette by name, Coast first: its whole set of declarations (Coast's, with the ones
+ * Every palette by name, Light first: its whole set of declarations (Light's, with the ones
  * of its `:root[data-palette='name']` block laid over them).
  */
 function palettes(css) {
@@ -234,13 +230,13 @@ function array(head, entries) {
 const colourLiteral = (c) =>
   `Colour::new("${c.css}", [${c.rgb.map((b) => `0x${byte(b)}`).join(', ')}])`;
 
-/** The window's colours of the palettes besides Coast: one constant per palette and token,
+/** The window's colours of the palettes besides Light: one constant per palette and token,
  *  and the table of them by palette and token (what core/tests/palette.rs compares). */
 function windowItems(windows) {
   const out = [
     '',
     "// The window's colour in the other palettes (`:root[data-palette='…']`): `--bg`, which the",
-    "// window wears before the page paints (Coast's is above).",
+    "// window wears before the page paints (Light's is above).",
   ];
   const table = [];
   for (const [palette, list] of windows) {
@@ -384,7 +380,7 @@ const tokens = all.get(BASE_PALETTE);
 const list = colours(tokens);
 const background = list.find((c) => c.name === WINDOW);
 if (background === undefined) throw new Error(`${TOKENS}: --${WINDOW} missing`);
-/** The window's tokens of every palette besides Coast. */
+/** The window's tokens of every palette besides Light. */
 const windows = [...all]
   .filter(([name]) => name !== BASE_PALETTE)
   .map(([name, merged]) => {

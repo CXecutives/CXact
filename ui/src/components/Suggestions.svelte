@@ -116,7 +116,7 @@
     overflow-y: auto;
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-control);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
   }
 

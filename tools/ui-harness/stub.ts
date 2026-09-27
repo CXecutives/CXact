@@ -26,6 +26,7 @@
 //
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
+// concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
 // profile-thin · profile-unreadable (a value of every criterion and wish does not read, a key
 // is not read at all) · profile-remote-unread (the demo profile with one value that does not
 // read: the minimum remote share of permanent roles) · reset (the state after
@@ -287,9 +288,8 @@ const NO_INTERNET = params.get('mail') === 'no-internet';
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
-/** The palette as the backend says it (`palette=light|dark`; Coast by default). */
-const PALETTE: Palette =
-  params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'coast';
+/** The palette as the backend says it (`palette=dark`; Light by default). */
+const PALETTE: Palette = params.get('palette') === 'dark' ? 'dark' : 'light';
 
 const NOW = new Date('2026-09-24T09:30:00+02:00').getTime();
 const HOUR = 3_600_000;
@@ -857,6 +857,18 @@ function initial(): void {
       state.profile = null;
       for (const j of jobs) j.match = null;
       break;
+    case 'concept': {
+      // Five jobs for design reviews: high, medium, low, not scored, excluded.
+      const keep = [
+        'freelancermap:2801',
+        'freelance:900411',
+        'freelancermap:2804',
+        'linkedin:4100200302',
+        'freelance:900412',
+      ];
+      jobs = jobs.filter((j) => keep.includes(`${j.key.portal}:${j.key.id}`));
+      break;
+    }
     case 'empty':
       jobs = [];
       state.lastRun = {

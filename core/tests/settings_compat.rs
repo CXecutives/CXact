@@ -165,7 +165,7 @@ fn a_file_of_a_newer_version_loads_without_damage() {
     // above all the file is not taken for a damaged one (that would switch every portal off).
     let expected = Settings {
         language: None,
-        palette: Palette::Coast,
+        palette: Palette::Light,
         fetch_range: FetchRange::SinceLast,
         ..newest()
     };

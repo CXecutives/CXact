@@ -41,20 +41,19 @@ pub struct Settings {
     #[serde(deserialize_with = "known_language")]
     pub language: Option<Language>,
     /// The colours of the page and the window (Einstellungen, Darstellung); the page draws
-    /// the top bar itself. The Excel file and the icon keep Coast. A name of a newer version
-    /// reads as Coast.
+    /// the top bar itself. The Excel file and the icon keep Light. A name this version does
+    /// not know (a newer version's, or the retired "coast") reads as Light.
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
 }
 
-/// The app's colour palettes (`ui/src/styles/tokens.css`): Coast (cream, coral and navy) by
-/// default, GitHub's light and dark Primer colours.
+/// The app's colour palettes (`ui/src/styles/tokens.css`): Light by default and Dark, neutral
+/// with one blue accent.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum Palette {
     #[default]
-    Coast,
     Light,
     Dark,
 }
@@ -64,7 +63,6 @@ impl Palette {
     /// generated window colours (`export::palette::WINDOW_PALETTES`).
     pub fn code(self) -> &'static str {
         match self {
-            Palette::Coast => "coast",
             Palette::Light => "light",
             Palette::Dark => "dark",
         }
@@ -190,7 +188,7 @@ impl Default for Settings {
             export_excel: true,
             export_csv: false,
             language: None,
-            palette: Palette::Coast,
+            palette: Palette::Light,
         }
     }
 }
@@ -335,7 +333,7 @@ fn known_range<'de, D: Deserializer<'de>>(
         .unwrap_or_default())
 }
 
-/// A stored palette; one this version does not know is Coast.
+/// A stored palette; one this version does not know is Light.
 fn known_palette<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Palette, D::Error> {
@@ -560,13 +558,13 @@ mod tests {
         assert_eq!(newer.language, None);
     }
 
-    /// Coast until one is chosen; the choice survives a restart, and a palette of a newer
-    /// version reads as Coast without costing the other settings.
+    /// Light until one is chosen; the choice survives a restart, and a palette of a newer
+    /// version or the retired "coast" reads as Light without costing the other settings.
     #[test]
-    fn the_palette_is_coast_until_chosen() {
+    fn the_palette_is_light_until_chosen() {
         let store = Store::in_memory().unwrap();
         let mut s = Settings::load(&store).unwrap();
-        assert_eq!(s.palette, Palette::Coast);
+        assert_eq!(s.palette, Palette::Light);
         s.palette = Palette::Dark;
         s.save(&store).unwrap();
         assert_eq!(Settings::load(&store).unwrap().palette, Palette::Dark);
@@ -581,11 +579,17 @@ mod tests {
             .kv_set(KEY, r#"{"palette":"sepia","exportCsv":true}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
-        assert_eq!(newer.palette, Palette::Coast);
+        assert_eq!(newer.palette, Palette::Light);
         assert!(newer.export_csv);
+        store
+            .kv_set(KEY, r#"{"palette":"coast","exportCsv":true}"#)
+            .unwrap();
+        let retired = Settings::load(&store).unwrap();
+        assert_eq!(retired.palette, Palette::Light);
+        assert!(retired.export_csv);
         assert_eq!(
-            [Palette::Coast, Palette::Light, Palette::Dark].map(Palette::code),
-            ["coast", "light", "dark"]
+            [Palette::Light, Palette::Dark].map(Palette::code),
+            ["light", "dark"]
         );
     }
 

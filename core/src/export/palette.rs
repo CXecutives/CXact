@@ -9,9 +9,9 @@
 pub use super::colour::Colour;
 
 /// `--bg` (`--p-cream`).
-pub const BG: Colour = Colour::new("hsl(32 50% 94.5%)", [0xF8, 0xF1, 0xEA]);
+pub const BG: Colour = Colour::new("hsl(60 5.9% 96.7%)", [0xF7, 0xF7, 0xF6]);
 /// `--surface-muted` (`--p-muted`).
-pub const SURFACE_MUTED: Colour = Colour::new("hsl(33 40% 95.5%)", [0xF8, 0xF4, 0xEF]);
+pub const SURFACE_MUTED: Colour = Colour::new("hsl(60 3.7% 94.7%)", [0xF2, 0xF2, 0xF1]);
 /// `--score-ring-0` (`--p-score-red`).
 pub const SCORE_RING_0: Colour = Colour::new("hsl(358 75% 59%)", [0xE5, 0x48, 0x4D]);
 /// `--score-ring-1` (`--p-score-red`).
@@ -33,10 +33,10 @@ pub const SCORE_RING_8: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x
 /// `--score-ring-9` (`--p-score-green`).
 pub const SCORE_RING_9: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x5E]);
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
-pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(30 5% 42%)", [0x70, 0x6B, 0x66]);
+pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(90 0.9% 43.1%)", [0x6E, 0x6F, 0x6D]);
 /// `--brand` (`--p-brand`).
-pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
-/// `--brand-glyph` (`--p-white`).
+pub const BRAND: Colour = Colour::new("hsl(240 15.8% 7.5%)", [0x10, 0x10, 0x16]);
+/// `--brand-glyph` (`--p-brand-glyph`).
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 
 /// `--score-ring-0` ... `--score-ring-9` in order.
@@ -73,12 +73,9 @@ pub const TOKENS: [(&str, Colour); 15] = [
 ];
 
 // The window's colour in the other palettes (`:root[data-palette='…']`): `--bg`, which the
-// window wears before the page paints (Coast's is above).
-/// `--bg` of light (`--p-cream`).
-pub const LIGHT_BG: Colour = Colour::new("hsl(210 28.6% 97.3%)", [0xF6, 0xF8, 0xFA]);
+// window wears before the page paints (Light's is above).
 /// `--bg` of dark (`--p-cream`).
-pub const DARK_BG: Colour = Colour::new("hsl(218 80% 2%)", [0x01, 0x04, 0x09]);
+pub const DARK_BG: Colour = Colour::new("hsl(240 3.4% 5.7%)", [0x0E, 0x0E, 0x0F]);
 
 /// The constants above by palette and token.
-pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] =
-    [("light", "bg", LIGHT_BG), ("dark", "bg", DARK_BG)];
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 1] = [("dark", "bg", DARK_BG)];

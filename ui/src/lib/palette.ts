@@ -1,6 +1,6 @@
 // The palette of the page (Einstellungen, Darstellung): `data-palette` on the root element,
-// which ui/src/styles/tokens.css reads (Coast is its :root block, Light and Dark lay their
-// values over it). Components never ask which palette is on. The backend stores the choice
+// which ui/src/styles/tokens.css reads (Light is its :root block, Dark lays its values over
+// it). Components never ask which palette is on. The backend stores the choice
 // and dresses the window (its background and title bar); it sends the palette with every app
 // state. A copy in localStorage lets the first frame after a start wear it already, before
 // the app state arrives (a convenience of this web view only: the backend's is the choice).
@@ -8,7 +8,7 @@
 import type { Palette } from './ipc/types';
 
 const KEY = 'palette';
-const PALETTES: readonly Palette[] = ['coast', 'light', 'dark'];
+const PALETTES: readonly Palette[] = ['light', 'dark'];
 
 /** The page wears `palette` from the next frame on. */
 export function applyPalette(palette: Palette): void {
@@ -21,13 +21,13 @@ export function applyPalette(palette: Palette): void {
   }
 }
 
-/** The palette kept from the last session, Coast without one. */
+/** The palette kept from the last session, Light without one (or with a retired one). */
 function kept(): Palette {
   try {
     const value = localStorage.getItem(KEY);
-    return PALETTES.find((palette) => palette === value) ?? 'coast';
+    return PALETTES.find((palette) => palette === value) ?? 'light';
   } catch {
-    return 'coast';
+    return 'light';
   }
 }
 

@@ -1628,7 +1628,7 @@ pub struct AppState {
     pub export_csv: bool,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
-    /// The colours of the page and the window (Excel and the icon keep Coast).
+    /// The colours of the page and the window (Excel and the icon keep Light).
     pub palette: Palette,
     /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,

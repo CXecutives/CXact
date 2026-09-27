@@ -146,7 +146,7 @@ const palette: ChoiceRow<Palette> = {
   kind: 'choice',
   id: 'palette',
   label: (t) => t.settings.palette,
-  options: ['coast', 'light', 'dark'],
+  options: ['light', 'dark'],
   name: (t, id) => t.settings.paletteName[id],
   value: (state) => state.palette,
   patch: (id) => ({ palette: id }),

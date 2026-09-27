@@ -152,7 +152,7 @@
     overscroll-behavior: contain;
     border: var(--border-width) solid var(--border);
     border-radius: var(--menu-radius);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     box-shadow: var(--sh-menu);
     outline: none;
   }

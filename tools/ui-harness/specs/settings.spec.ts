@@ -569,12 +569,12 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   const look = page.getByTestId('settings-look');
   await expect(look.locator('[data-setting-row]')).toHaveCount(2);
   const root = page.locator('html');
-  await expect(root).toHaveAttribute('data-palette', 'coast');
+  await expect(root).toHaveAttribute('data-palette', 'light');
   const cream = await colour(page, '--bg');
-  // The app's own palette first, by the app's name; then light and dark in words.
+  // Light first (the default), then dark, in words.
   const palette = page.getByTestId('palette');
   const name = T.settings.paletteName;
-  await expect(palette.getByRole('radio')).toHaveText(['CXact', 'Hell', 'Dunkel']);
+  await expect(palette.getByRole('radio')).toHaveText(['Hell', 'Dunkel']);
   // The one height of every choice of the app, as in the Profil form: a field's.
   await expect(palette).toHaveCSS('height', '32px');
   await palette.getByRole('radio', { name: name.dark }).click();
@@ -589,13 +589,13 @@ test('Darstellung: a palette applies at once, is saved and wears the start', asy
   await expect(root).toHaveAttribute('data-palette', 'dark');
   // A save that fails puts the palette back and says why in the card.
   await failNext(page, 'save_settings');
-  await palette.getByRole('radio', { name: name.coast }).click();
+  await palette.getByRole('radio', { name: name.light }).click();
   await expect(page.getByTestId('look-note')).toHaveText('Die Datenbank meldet einen Fehler.');
   await expect(root).toHaveAttribute('data-palette', 'dark');
 });
 
 test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ page }) => {
-  for (const palette of ['coast', 'light', 'dark']) {
+  for (const palette of ['light', 'dark']) {
     await settings(page, `${WIN}&palette=${palette}`);
     const weak = await page.evaluate(() => {
       const rgb = (value: string): number[] =>

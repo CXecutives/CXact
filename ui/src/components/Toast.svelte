@@ -310,7 +310,7 @@
     padding: var(--space-6) var(--space-6) var(--space-6) var(--space-16);
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-lg);
-    background-color: var(--surface);
+    background-color: var(--surface-raised);
     box-shadow: var(--sh-pop);
     color: var(--text);
     font: var(--type-md);

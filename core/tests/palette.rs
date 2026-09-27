@@ -31,14 +31,14 @@ fn tokens_css() -> String {
         .into_owned()
 }
 
-/// The custom properties of the first `:root` block of tokens.css (Coast), in order.
+/// The custom properties of the first `:root` block of tokens.css (Light), in order.
 fn declarations() -> Vec<(String, String)> {
     let css = tokens_css();
     let start = css.find(":root {").expect(":root block") + ":root {".len();
     properties(&css[start..start + css[start..].find('}').expect("end of :root")])
 }
 
-/// The palettes besides Coast by name: Coast's declarations with the ones of their
+/// The palettes besides Light by name: Light's declarations with the ones of their
 /// `:root[data-palette='name']` block laid over them.
 fn palettes() -> Vec<(String, Vec<(String, String)>)> {
     let css = tokens_css();
@@ -115,7 +115,7 @@ fn colour_tokens() -> Vec<Token> {
     colour_tokens_of(&declarations())
 }
 
-/// The colour tokens of a set of declarations (Coast's, or a palette's).
+/// The colour tokens of a set of declarations (Light's, or a palette's).
 fn colour_tokens_of(all: &[(String, String)]) -> Vec<Token> {
     let value = |name: &str| all.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str());
     let direct = Regex::new(r"^hsl\(var\(--(p-[\w-]+)\)\)$").unwrap();
@@ -195,13 +195,13 @@ fn the_rust_palette_is_the_tokens() {
     assert_eq!(ring, steps, "palette.rs {REGEN}");
 }
 
-/// The window's colour of every other palette (Light, Dark): `--bg` of its block, as the
+/// The window's colour of every other palette (Dark): `--bg` of its block, as the
 /// window wears it before the page paints.
 #[test]
 fn the_window_colours_of_each_palette_are_the_tokens() {
     let found = palettes();
     let names: Vec<&str> = found.iter().map(|(name, _)| name.as_str()).collect();
-    assert_eq!(names, ["light", "dark"], "the palettes of tokens.css");
+    assert_eq!(names, ["dark"], "the palettes of tokens.css");
     let mut expected = Vec::new();
     for (palette, all) in &found {
         let tokens = colour_tokens_of(all);

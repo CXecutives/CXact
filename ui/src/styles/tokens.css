@@ -6,11 +6,10 @@
  *   1. Palette  `--p-*`  HSL triplets, referenced ONLY inside this file.
  *   2. Semantic tokens   everything components use (colours are complete `hsl()` values).
  *
- * Three palettes (user, 2026-09-26), chosen in Einstellungen (Darstellung): Coast (named
- * "CXact" there), the `:root` block below and the default; Light and Dark ("Hell",
- * "Dunkel"), one block each further down (`:root[data-palette='light']`, `'dark'`).
+ * Two palettes (user, 2026-09-27), chosen in Einstellungen (Darstellung): Light ("Hell"),
+ * the `:root` block below and the default, and Dark ("Dunkel", `:root[data-palette='dark']`).
  * Components never branch on the palette; the page sets `data-palette` (lib/palette.ts) and
- * the roles follow.
+ * the roles follow. The former CXact palette is kept in docs/palettes/cxact.css.
  *
  * Lint (stylelint + eslint + core/tests/ui_contract.rs) rejects hex, named colours, colour
  * functions, px/rem/em/ms/s units, keyframes and `var(--p-*)` everywhere else.
@@ -21,115 +20,94 @@
  * backgroundColor (src-tauri/tauri*.conf.json). core/tests/palette.rs and `npm run check`
  * fail while one of them is stale.
  *
- * Two brand colours (user, 2026-09-24): coral means act, new and where you are - the one
- * primary per view, switches that are on, the unread dot, and (after the A/B preview) the
- * selection and the active nav in a very light, warm wash; the cxpertise navy carries the
- * data and the quiet structure - the pinned star, tooltips, progress, info, links, focus,
- * the chosen filter, sub-labels. Navy appears as small dense marks and soft washes, never
- * as a large fill; headings stay ink. Green, ochre and grey are the scores.
+ * One accent (user, 2026-09-27): a calm blue for act, new and where you are (the one primary
+ * per view, switches that are on, the unread dot, the tab line, the selected row's edge) and,
+ * one step deeper, for links, focus and chosen filters. Everything else is neutral; the five
+ * ring colours (red to green) are the scores, not an accent.
  */
 
 :root {
   color-scheme: light;
 
   /* ------------------------------------------------------------------ palette */
-  --p-white: 0 0% 100%;
-  /* The cream of cxpertise.de (32 33% 96%, its --background-soft), a little warmer and less
-     grey (user, 2026-09-27: "blass"), and a step deeper so the white sheet, its cards and the
-     sidebar's pill stand clearly on it (white on it 1.12:1, was 1.09:1). */
-  --p-cream: 32 50% 94.5%;
-  --p-ink: 45 7% 17%;
-  /* The cxpertise coral (13 73% 63%, its --primary), richer and warmer: primary fills, the
-     unread dot, active icons and switches that are on (3.4:1 on white, 3.0:1 on the cream,
-     was 2.9 and 2.6); a deeper step on hover and one more when pressed. */
-  --p-coral: 13 78% 57%;
-  /* The app icon's coral (#E67A5C), fixed apart from the design's coral. */
-  --p-brand: 13 73% 63%;
-  --p-coral-variant: 13 72% 51%;
-  --p-coral-press: 13 68% 46%;
-  --p-muted: 33 40% 95.5%;
-  --p-muted-fg: 30 4% 35%;
-  /* Hairlines of cards, dividers and the sidebar's pill: a little clearer on white than
-     Light's (1.48:1), in the cream's hue. */
-  --p-line: 33 22% 82.5%;
-  --p-accent-soft: 18 72% 91%;
-  --p-success: 150 27% 60%;
-  --p-warning: 45 76% 75%;
-  --p-danger: 4 51% 56%;
-  --p-coral-800: 13 66% 40%;
-  /* Very light warm steps for selection (user: "schön leicht und angenehm"): the selected
-     row, its hover, the soft accent wash (the count pill of a chosen segment) and its hover,
-     the ring track on the wash. */
-  --p-coral-25: 22 72% 96.5%;
-  --p-coral-40: 20 78% 94.5%;
-  --p-coral-50: 21 68% 94.5%;
-  --p-coral-70: 21 68% 93%;
-  --p-coral-150: 20 40% 88%;
-  /* The cxpertise navy (212 34% 37%, its --secondary and the colour of its headings), a touch
-     deeper: headings, focus, links, sub-labels, progress and icons (8.1:1 on white, 7.2:1 on
-     the cream); deep navy for dark pills, the tooltip and active labels (white on it
-     11.8:1), and soft washes for chosen filters, info notices and meters. */
-  --p-navy: 212 38% 33%;
-  --p-navy-deep: 212 36% 23%;
-  --p-navy-50: 212 40% 95.5%;
-  --p-navy-100: 212 40% 92.5%;
-  --p-navy-150: 212 36% 89.5%;
-  --p-navy-200: 212 32% 82%;
-  --p-fg-subtle: 30 5% 42%;
-  /* The edge of fields, chip fields and outlined buttons (1.89:1 on white), the edge under
-     the pointer (2.87:1) and a switch that is off, pressed, one step darker again (3.7:1):
-     crisp on the white card like Light's, in the cream's hue. */
-  --p-border-strong: 33 14% 73%;
-  --p-border-input: 33 10% 59%;
-  --p-border-press: 33 10% 51%;
-  /* The warm hover wash: a deep sand of the cream's family, laid thinly over white or cream
-     under the pointer, pressed and as the track of segmented controls (no grey wash). */
-  --p-wash: 26 45% 30%;
-  --p-success-strong: 150 35% 33%;
-  --p-success-soft: 150 27% 94%;
-  --p-warning-strong: 38 70% 34%;
-  --p-warning-soft: 45 76% 93%;
-  --p-danger-strong: 4 55% 45%;
-  --p-danger-soft: 4 51% 95%;
-  /* Hover and press steps of the filled danger button (same hue). */
-  --p-danger-700: 4 55% 41%;
-  --p-danger-750: 4 56% 37%;
-  /* The glyph of the top bar's close button on its red: white in every palette. */
+  /* Light (user, 2026-09-27): neutral like the Claude app with a fifth of GitHub's Primer,
+     one calm blue accent, no orange. The entries keep their role names: coral is the accent
+     (the primary, the tab line, the dot, where you are), navy the links, focus and the quiet
+     blue structure. The window and the sidebar are one step below the content. */
+  --p-white: 60 20% 99%;
+  --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
+  --p-nav-active: 60 4.3% 91.4%; /* the active sidebar entry */
+  --p-cream: 60 5.9% 96.7%;
+  --p-ink: 210 6.2% 6.3%;
+  --p-coral: 214.2 64.8% 47.8%;
+  --p-brand: 240 15.8% 7.5%; /* the icon's plate, #101016 (user, 2026-09-27) */
+  --p-brand-glyph: 0 0% 100%; /* the icon's folder */
+  --p-coral-variant: 214.2 66.1% 42.7%;
+  --p-coral-press: 214.1 68% 38%;
+  --p-muted: 60 3.7% 94.7%;
+  --p-muted-fg: 150 1.2% 32.9%;
+  --p-line: 180 3.3% 88.2%;
+  --p-accent-soft: 214.3 60% 93.1%;
+  --p-success: 137.1 62.9% 32.7%;
+  --p-warning: 43.9 66.1% 50.2%;
+  --p-danger: 355.8 71.8% 47.3%;
+  --p-coral-800: 214.1 68% 38%;
+  --p-coral-25: 217.5 36.4% 95.7%;
+  --p-coral-40: 217.5 36.4% 95.7%;
+  --p-coral-50: 216 48.4% 93.9%;
+  --p-coral-70: 214.3 48.8% 91.6%;
+  --p-coral-150: 214.3 42.4% 87.1%;
+  --p-navy: 214.2 66.1% 42.7%;
+  --p-navy-deep: 214.1 68% 38%;
+  --p-navy-50: 215 54.5% 95.7%;
+  --p-navy-100: 214.3 60% 93.1%;
+  --p-navy-150: 213.5 60.7% 89%;
+  --p-navy-200: 214 63.8% 79.4%;
+  --p-fg-subtle: 90 0.9% 43.1%;
+  --p-border-strong: 180 2.2% 82%;
+  --p-border-input: 150 0.9% 56.5%;
+  --p-border-press: 150 1% 38.8%;
+  --p-wash: 210 6.2% 6.3%;
+  --p-success-strong: 137 66% 30%;
+  --p-success-soft: 133 80% 92%;
+  --p-warning-strong: 40.1 100% 30.2%;
+  --p-warning-soft: 52.8 100% 88.6%;
+  --p-danger-strong: 356.2 70.6% 48%;
+  --p-danger-soft: 5.5 100% 95.7%;
+  --p-danger-700: 350.4 84.3% 34.9%;
+  --p-danger-750: 348.8 89.8% 26.9%;
   --p-titlebar-close-glyph: 0 0% 100%;
-  /* Schließen under the pointer: a clear red of its own (not Windows' #C42B1C, not the
-     muted danger of the notes), the same in every palette. */
   --p-titlebar-close: 358 75% 59%;
   --p-titlebar-close-press: 358 66% 52%;
-  --p-on-accent: 0 0% 98%;
+  --p-on-accent: 0 0% 100%;
   --p-score-high: 150 32% 46%;
-  --p-score-high-text: 152 50% 31%;
-  --p-score-high-soft: 150 27% 93%;
-  /* A mid match is ochre, not coral: coral would read as a warning next to the accent. */
+  --p-score-high-text: 137 66% 30%;
+  --p-score-high-soft: 133 80% 92%;
   --p-score-mid: 38 55% 55%;
-  /* A low arc that still stands apart from its track. */
   --p-score-low: 30 5% 56%;
-  --p-score-low-text: 30 4% 42%;
-  /* The ring colour in five steps of 20 points, red, orange, yellow, lime, green (the red
-     is the close button's). The Excel file takes the same steps (--score-ring-*,
-     core/src/export/scale.rs). */
+  --p-score-low-text: 90 0.9% 43.1%;
   --p-score-red: 358 75% 59%;
   --p-score-orange: 24 87% 56%;
   --p-score-yellow: 40 88% 59%;
   --p-score-lime: 83 44% 51%;
   --p-score-green: 139 44% 44%;
-  --p-scrim: 212 30% 14%;
-  --p-shade-xs: 30 20% 30%;
-  --p-shade-pop: 30 20% 20%;
-  /* The tint of the hover shadow: cool like cxpertise, not brown. */
-  --p-shade-navy: 212 30% 20%;
+  --p-scrim: 210 6.2% 6.3%;
+  --p-shade-xs: 210 6.2% 6.3%;
+  --p-shade-pop: 210 6.2% 6.3%;
+  --p-shade-navy: 210 6.2% 6.3%;
+  /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
+  --p-emphasis: 210 3% 12.9%;
+  --p-tooltip-edge: 210 1.8% 22.4%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
   --surface: hsl(var(--p-white));
+  /* Menus, dialogs, toasts and pickers: a step above the content. */
+  --surface-raised: hsl(var(--p-raised));
   --surface-muted: hsl(var(--p-muted));
   /* Under the pointer and pressed: the warm wash, never grey (every quiet surface). */
-  --surface-hover: hsl(var(--p-wash) / 0.06);
-  --surface-press: hsl(var(--p-wash) / 0.1);
+  --surface-hover: hsl(var(--p-wash) / 0.04);
+  --surface-press: hsl(var(--p-wash) / 0.08);
   /* The selected list row: a very light warm wash; one step deeper under the pointer and one
      more while pressed; grey while the window is inactive (like Mail, Explorer). */
   --surface-selected: hsl(var(--p-coral-25));
@@ -137,13 +115,13 @@
   --surface-selected-press: hsl(var(--p-coral-70));
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
   /* Track of segmented controls: visible on white and on cream alike, warm. */
-  --surface-track: hsl(var(--p-wash) / 0.07);
+  --surface-track: hsl(var(--p-wash) / 0.055);
   --scrim: hsl(var(--p-scrim) / 0.36);
   /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
-  --surface-inverse: hsl(var(--p-navy-deep));
+  --surface-inverse: hsl(var(--p-emphasis));
   /* The tooltip's edge: a faint light hairline around the dark bubble (every design's tooltip
      is dark). */
-  --tooltip-edge: hsl(var(--p-white) / 0.16);
+  --tooltip-edge: hsl(var(--p-tooltip-edge));
 
   /* -------------------------------------------------------------------- text */
   --text: hsl(var(--p-ink));
@@ -156,9 +134,11 @@
      column of fields is ink (--text, 13/500, as in Field): navy text alone over a form reads
      as a link. */
   /* Section headings in the brand's navy (the page's structure reads at a glance). */
-  --text-heading: hsl(var(--p-navy));
-  --text-label: hsl(var(--p-navy));
+  --text-heading: hsl(var(--p-ink));
+  --text-label: hsl(var(--p-ink));
   --text-on-accent: hsl(var(--p-on-accent));
+  /* The label of the filled danger button: white, on the dark the canvas (its red is light). */
+  --text-on-danger: hsl(var(--p-on-accent));
   --text-inverse: hsl(var(--p-white));
   /* The second line of a tooltip (a key, a hint): quieter white on the navy bubble. */
   --text-inverse-muted: hsl(var(--p-white) / 0.72);
@@ -193,7 +173,7 @@
   --unread: hsl(var(--p-coral));
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's wash)
      and the ring track on its wash. */
-  --selection-bar: hsl(var(--p-coral));
+  --selection-bar: hsl(var(--p-coral) / 0.75);
   --ring-track-selected: hsl(var(--p-coral-150));
   /* The ring track on that wash while the window is in the back (the selection greys out):
      translucent ink, as clear on the grey wash as the plain track is on white. */
@@ -201,9 +181,9 @@
   /* The sliding white pill of the active sidebar entry (the sibling of the segmented
      thumb and the tabs' line); its label navy, its icon coral. A nav icon turns coral on
      hover. The chosen segment and tab share the navy label. */
-  --nav-active-bg: hsl(var(--p-white));
-  --nav-active-border: hsl(var(--p-line));
-  --nav-active-fg: hsl(var(--p-navy));
+  --nav-active-bg: hsl(var(--p-nav-active));
+  --nav-active-border: hsl(var(--p-nav-active));
+  --nav-active-fg: hsl(var(--p-ink));
   --nav-active-icon: hsl(var(--p-coral));
   /* The soft accent wash: a light coral surface for what is chosen and small (a selected
      pill or tab, a brand notice), one step deeper under the pointer, its text coral-800
@@ -304,10 +284,12 @@
   /* ------------------------------------------------------------------- brand */
   /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
      and the folder with the check cut out of it. tools/icon.py draws every icon file in
-     these two (through tools/palette.json). Its coral is fixed (#E67A5C, the user's choice for
-     the icon), apart from the design's coral, so the icon never changes with a design. */
+     these two (through tools/palette.json): a near-black plate and a white folder, fixed, so
+     the icon never changes with a design. On the dark the mark gets a faint light edge. */
   --brand: hsl(var(--p-brand));
-  --brand-glyph: hsl(var(--p-white));
+  --brand-glyph: hsl(var(--p-brand-glyph));
+  --brand-edge: hsl(var(--p-ink) / 0);
+  --brand-radius: 22.37%;
 
   /* --------------------------------------------------------------- gradients */
   /* One, and only for the light of a loading placeholder. No decorative gradients. */
@@ -717,124 +699,49 @@
 }
 
 /* ---------------------------------------------------------------- palettes
-   Light and Dark are GitHub's Primer colours (the functional colours of its light and dark
-   theme, the base scale where a step is needed; each value names its Primer colour), clean,
-   without gradients. A palette sets the palette entries under Coast's names, so every role
-   follows, and then the few roles whose part differs from Coast. Primer has one accent:
-   coral (act, new, where you are) and navy (focus, links, progress, filters) both hold its
-   blue here. What is not the page stays on Coast (the Excel file, the app icon:
-   tools/tokens.mjs reads the :root block for them), except the window, which wears --bg of
-   the chosen palette (tools/tokens.mjs writes it per palette into
-   core/src/export/palette.rs; the top bar is the page's own). `node tools/tokens.mjs --check`
-   measures every text on its backgrounds in all three palettes (WCAG AA). */
-
-:root[data-palette='light'] {
-  --p-white: 0 0% 100%; /* bgColor-default */
-  --p-cream: 210 28.6% 97.3%; /* bgColor-muted: the window, the sidebar */
-  --p-ink: 213 13% 14%; /* fgColor-default */
-  --p-coral: 212.4 92.1% 44.5%; /* bgColor-accent-emphasis */
-  --p-coral-variant: 212.4 92.1% 40%; /* one step deeper */
-  --p-coral-press: 213.4 94.4% 35.1%; /* blue-6 */
-  --p-muted: 210 28.6% 97.3%; /* bgColor-muted */
-  --p-muted-fg: 211 11% 39%; /* fgColor-muted */
-  --p-line: 208 19% 85%; /* borderColor-default */
-  --p-accent-soft: 199.4 100% 93.3%; /* bgColor-accent-muted */
-  --p-success: 137.1 62.9% 32.7%; /* bgColor-success-emphasis */
-  --p-warning: 43.9 66.1% 50.2%; /* yellow-3 */
-  --p-danger: 355.8 71.8% 47.3%; /* bgColor-danger-emphasis */
-  --p-coral-800: 213.4 94.4% 35.1%; /* blue-6: text on the blue washes */
-  --p-coral-25: 199.4 100% 93.3%; /* bgColor-accent-muted: the selected row */
-  --p-coral-40: 199.4 100% 93.3%;
-  --p-coral-50: 201 100% 89.5%; /* between blue-0 and blue-1 */
-  --p-coral-70: 203 100% 85.7%; /* blue-1 */
-  --p-coral-150: 203 100% 85.7%;
-  --p-navy: 212.4 92.1% 44.5%; /* fgColor-accent */
-  --p-navy-deep: 213.4 94.4% 35.1%; /* blue-6 */
-  --p-navy-50: 199.4 100% 93.3%; /* bgColor-accent-muted */
-  --p-navy-100: 199.4 100% 93.3%;
-  --p-navy-150: 203 100% 85.7%; /* blue-1 */
-  --p-navy-200: 204 100% 75%; /* blue-2 */
-  --p-fg-subtle: 212 8% 43%; /* fg.muted of Primer 7 */
-  --p-border-strong: 210 20% 82%; /* neutral-7 */
-  --p-border-input: 214 10% 55%; /* borderColor-emphasis */
-  --p-border-press: 211 11% 39%; /* neutral-9 */
-  --p-success-strong: 137 66% 30%; /* fgColor-success */
-  --p-success-soft: 133 80% 92%; /* bgColor-success-muted */
-  --p-warning-strong: 40.1 100% 30.2%; /* fgColor-attention */
-  --p-warning-soft: 52.8 100% 88.6%; /* bgColor-attention-muted */
-  --p-danger-strong: 356.2 70.6% 48%; /* fgColor-danger */
-  --p-danger-soft: 5.5 100% 95.7%; /* bgColor-danger-muted */
-  --p-danger-700: 350.4 84.3% 34.9%; /* red-6 */
-  --p-danger-750: 348.8 89.8% 26.9%; /* red-7 */
-  --p-on-accent: 0 0% 100%; /* fgColor-onEmphasis */
-  --p-score-high-text: 137 66% 30%; /* fgColor-success */
-  --p-score-high-soft: 133 80% 92%; /* bgColor-success-muted */
-  --p-score-low-text: 212 8% 43%;
-  --p-scrim: 213.3 10.8% 16.3%; /* bgColor-emphasis */
-  --p-shade-xs: 213 13% 14%;
-  --p-shade-pop: 213 13% 14%;
-  --p-shade-navy: 213 13% 14%;
-  --p-emphasis: 213.3 10.8% 16.3%; /* bgColor-emphasis: the tooltip, the current step */
-  --p-wash: 213 13% 14%; /* fgColor-default: Primer's hover washes are its ink */
-
-  /* Headings, labels and the active nav entry in the text colour; the tooltip grey; the
-     neutral washes of Primer and the selection bar at 0.75 (Coast's are warm and full). */
-  --surface-hover: hsl(var(--p-wash) / 0.04);
-  --surface-press: hsl(var(--p-wash) / 0.08);
-  --surface-track: hsl(var(--p-wash) / 0.055);
-  --selection-bar: hsl(var(--p-coral) / 0.75);
-  --surface-inverse: hsl(var(--p-emphasis));
-  --text-heading: hsl(var(--p-ink));
-  --text-label: hsl(var(--p-ink));
-  --nav-active-fg: hsl(var(--p-ink));
-
-  /* The top bar: the window's surface, the washes, the danger red (red-6 pressed). */
-  --titlebar-bg: var(--bg);
-  --titlebar-border: var(--border);
-  --titlebar-fg: var(--text);
-  --titlebar-fg-inactive: var(--text-subtle);
-  --titlebar-button-hover: var(--surface-hover);
-  --titlebar-button-press: var(--surface-press);
-  --titlebar-close-hover: hsl(var(--p-titlebar-close));
-  --titlebar-close-press: hsl(var(--p-titlebar-close-press));
-  --titlebar-close-fg: hsl(var(--p-titlebar-close-glyph));
-}
+   Dark sets the palette entries under Light's names, so every role follows, and then the few
+   roles whose part differs on the dark. The Excel file and the app icon take Light (the
+   :root block, read by tools/tokens.mjs); the window wears --bg of the chosen palette
+   (tools/tokens.mjs writes Dark's into core/src/export/palette.rs). `node tools/tokens.mjs
+   --check` measures every text on its backgrounds in both palettes (WCAG AA). */
 
 :root[data-palette='dark'] {
   color-scheme: dark;
 
-  --p-white: 216 28% 7%; /* bgColor-default: the sheet, the cards */
-  --p-cream: 218 80% 2%; /* bgColor-inset: the window, the sidebar */
-  --p-ink: 210 66.7% 96.5%; /* fgColor-default */
+  --p-white: 240 2.4% 8%;
+  --p-raised: 210 3.2% 12.2%;
+  --p-nav-active: 240 1.5% 13.5%;
+  --p-cream: 240 3.4% 5.7%;
+  --p-ink: 60 3.2% 93.9%;
   /* Fills in fgColor-accent with dark text on them (white text on a blue that also reads as
      text on the dark would miss AA one way or the other); lighter steps on hover and press. */
-  --p-coral: 213.7 92.8% 62%; /* fgColor-accent */
-  --p-coral-variant: 212 100% 67.3%; /* blue-3 */
-  --p-coral-press: 208.2 100% 73.7%; /* blue-2 */
-  --p-muted: 214 25% 11%; /* bgColor-muted */
-  --p-muted-fg: 214 8% 60%; /* fgColor-muted */
-  --p-line: 214 12% 27%; /* borderColor-default */
-  --p-accent-soft: 215 51% 15%; /* bgColor-accent-muted on the canvas */
+  --p-coral: 214.5 66.3% 48.8%;
+  --p-coral-variant: 215 66.5% 44.5%;
+  --p-coral-press: 215.1 67.2% 39.4%;
+  --p-muted: 240 1.9% 10.4%;
+  --p-muted-fg: 68.6 4.8% 71.6%;
+  --p-line: 210 4.1% 19.2%;
+  --p-accent-soft: 214.8 39.2% 15.5%;
   --p-success: 132 59% 33%; /* bgColor-success-emphasis */
   --p-warning: 40.6 72.1% 47.8%; /* fgColor-attention */
   --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
-  --p-coral-800: 213.7 92.8% 62%; /* fgColor-accent */
+  --p-coral-800: 212.9 71.3% 65.9%;
   /* bgColor-accent-muted on the canvas (10, 15, 20 and 30 %): the selected row and its steps. */
-  --p-coral-25: 215.2 46% 12.4%;
-  --p-coral-40: 215.2 46% 12.4%;
-  --p-coral-50: 215 51% 15%;
-  --p-coral-70: 215.7 51.6% 17.8%;
-  --p-coral-150: 214.5 55.9% 23.1%;
-  --p-navy: 213.7 92.8% 62%; /* fgColor-accent */
-  --p-navy-deep: 208.2 100% 73.7%; /* blue-2: stronger on the dark */
-  --p-navy-50: 215.2 46% 12.4%;
-  --p-navy-100: 215.7 51.6% 17.8%;
-  --p-navy-150: 214.5 55.9% 23.1%;
-  --p-navy-200: 216.6 84.3% 42.4%; /* blue-6 */
-  --p-fg-subtle: 214 8% 55%; /* between fg.muted of Primer 7 and 8 */
-  --p-border-strong: 215 8% 43%; /* borderColor-emphasis */
-  --p-border-input: 214.7 7.9% 52.7%;
-  --p-border-press: 214 8% 60%; /* neutral-9 */
+  --p-coral-25: 216 30.3% 12.9%;
+  --p-coral-40: 216 30.3% 12.9%;
+  --p-coral-50: 216 32.5% 15.1%;
+  --p-coral-70: 216 34.1% 17.3%;
+  --p-coral-150: 215.5 37.9% 22.7%;
+  --p-navy: 212.9 71.3% 65.9%;
+  --p-navy-deep: 212.8 71.4% 73.9%;
+  --p-navy-50: 216 30.3% 12.9%;
+  --p-navy-100: 216 36.6% 16.1%;
+  --p-navy-150: 216 39.2% 20%;
+  --p-navy-200: 216.2 55.8% 37.3%;
+  --p-fg-subtle: 60 1.1% 55.5%;
+  --p-border-strong: 210 2.6% 29.8%;
+  --p-border-input: 216 2.4% 41%;
+  --p-border-press: 216 2.2% 55.1%;
   --p-success-strong: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
   --p-warning-strong: 40.6 72.1% 47.8%; /* fgColor-attention */
@@ -843,16 +750,15 @@
   --p-danger-soft: 338.6 23.3% 11.8%; /* bgColor-danger-muted on the canvas */
   --p-danger-700: 3.8 100% 72.4%; /* red-3 */
   --p-danger-750: 5.2 100% 79.8%; /* red-2 */
-  --p-on-accent: 216 28% 7%; /* the canvas: text on the light fills */
+  --p-on-accent: 0 0% 100%;
   --p-score-high-text: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-score-high-soft: 156 36% 11%;
-  --p-score-low-text: 214 8% 60%;
-  --p-scrim: 218 80% 2%;
-  --p-shade-xs: 218 80% 2%;
-  --p-shade-pop: 218 80% 2%;
-  --p-shade-navy: 218 80% 2%;
-  --p-emphasis: 214 12% 27%; /* bgColor-emphasis: the tooltip, the current step */
-  --p-wash: 210 66.7% 96.5%; /* fgColor-default: the hover washes are the light text */
+  --p-score-low-text: 75 2% 60%;
+  --p-scrim: 240 9.1% 2.2%;
+  --p-shade-xs: 240 9.1% 2.2%;
+  --p-shade-pop: 240 9.1% 2.2%;
+  --p-shade-navy: 240 9.1% 2.2%;
+  --p-wash: 60 3.2% 93.9%;
 
   /* Washes of the light text instead of the dark ink, a deeper scrim, the tooltip grey with
      the light text, and shadows that still show on the dark: stronger, and floating layers
@@ -869,6 +775,8 @@
   --text-inverse: hsl(var(--p-ink));
   --text-inverse-muted: hsl(var(--p-ink) / 0.72);
   --nav-active-fg: hsl(var(--p-ink));
+  --brand-edge: hsl(var(--p-ink) / 0.16);
+  --text-on-danger: hsl(var(--p-white));
   --ring-track-inactive: hsl(var(--p-ink) / 0.14);
   --selection: hsl(var(--p-navy) / 0.35);
   --scrollbar: hsl(var(--p-ink) / 0.24);

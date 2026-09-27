@@ -64,7 +64,7 @@ exportCsv: boolean,
  */
 language: Language, 
 /**
- * The colours of the page and the window (Excel and the icon keep Coast).
+ * The colours of the page and the window (Excel and the icon keep Light).
  */
 palette: Palette, 
 /**

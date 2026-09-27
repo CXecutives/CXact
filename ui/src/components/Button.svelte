@@ -389,8 +389,8 @@
     --btn-border: var(--danger-strong);
     --btn-border-hover: var(--danger-hover);
     --btn-border-active: var(--danger-active);
-    --btn-fg: var(--text-on-accent);
-    --btn-fg-hover: var(--text-on-accent);
+    --btn-fg: var(--text-on-danger);
+    --btn-fg-hover: var(--text-on-danger);
     --btn-shadow: var(--sh-primary);
   }
 
