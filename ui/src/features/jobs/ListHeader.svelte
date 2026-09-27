@@ -5,11 +5,12 @@
   Eingang "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
   beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
   Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
-  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, the
-  two cross-fade in one cell as wide as the wider, so nothing jumps; the fetch is locked
-  while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
-  "Papierkorb leeren" (outlined, the trash in red, asks first), in the Archiv none. A narrow
-  column puts the action under the tabs.
+  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, in
+  every place (the same cell as wide as the fetch's buttons, so it never moves between the
+  tabs), the two cross-fade, so nothing jumps; the fetch is locked while the app scores the
+  jobs anew, and without a mailbox, saying why. In the Papierkorb "Papierkorb leeren"
+  (outlined, the trash in red, asks first; "Abbrechen" over it while a fetch goes), in the
+  Archiv none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
@@ -152,6 +153,9 @@
 
   /** The Zeitraum's menu is open (its button keeps its hover look). */
   let rangeOpen = $state(false);
+  /** "Postfach abrufen" shows: in the Eingang while no fetch goes (elsewhere it only holds
+   *  the cell's width, so "Abbrechen" stands where it stands in the Eingang). */
+  const fetchShown = $derived(place === 'inbox' && !run.fetching);
   /** The fetch's colour: the view's primary once a fetch can bring jobs. */
   const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
 
@@ -176,6 +180,17 @@
   let emptyError = $state<string | null>(null);
   /** Every job of the trash, whatever the search: emptying it deletes them all. */
   const inTrash = $derived(totals.trash);
+  /** The Papierkorb holds jobs: "Papierkorb leeren" is its action. */
+  const emptiable = $derived(place === 'trash' && inTrash > 0);
+  /** How many the dialog names: counted when it opens, so it never says 0 while it fades. */
+  let emptyCount = $state(0);
+  let placesBox = $state<HTMLElement | null>(null);
+
+  function askEmpty(): void {
+    emptyError = null;
+    emptyCount = inTrash;
+    confirmEmpty = true;
+  }
 
   async function emptyTrash(): Promise<void> {
     emptying = true;
@@ -190,6 +205,10 @@
     trashEmptied(result);
     toasts.show(t.toast.trashEmptied);
     void jobs.loadOverview();
+    // Its button went with the jobs: the focus goes to the Papierkorb's tab, not to the top
+    // of the window.
+    await tick();
+    placesBox?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   }
 </script>
 
@@ -233,7 +252,7 @@
 {/snippet}
 
 <div class="header" class:scrolled data-testid="list-header" data-press-only>
-  <div class="places">
+  <div class="places" bind:this={placesBox}>
     <Tabs
       options={places}
       value={place}
@@ -241,33 +260,33 @@
       testid="places"
       onchange={choosePlace}
     />
-    {#if place === 'inbox'}
-      <!-- Both stand in one cell as wide as the wider; only the one that fits the run shows
-           and takes clicks (a fetch that ends at once simply shows "Postfach abrufen" again). -->
+    {#if place === 'inbox' || run.fetching || emptiable}
+      <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
+           buttons hold its width where they do not show); only the one that fits the place
+           and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
+           list is (a fetch that ends at once simply shows "Postfach abrufen" again). -->
       <span class="action" data-testid="place-action">
-        <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
-          {@render fetchButton(!run.fetching)}
+        <span class="slot" class:shown={fetchShown} inert={!fetchShown}>
+          {@render fetchButton(fetchShown)}
         </span>
+        {#if emptiable}
+          <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
+            <Button
+              variant="secondary"
+              size="field"
+              icon="trash"
+              label={t.actions.emptyTrash}
+              disabled={run.active}
+              disabledReason={run.busyText}
+              warns
+              testid={run.fetching ? null : 'empty-trash'}
+              onclick={askEmpty}
+            />
+          </span>
+        {/if}
         <span class="slot" class:shown={run.fetching} inert={!run.fetching}>
           {@render cancelButton(run.fetching)}
         </span>
-      </span>
-    {:else if place === 'trash' && inTrash > 0}
-      <span class="action" data-testid="place-action">
-        <Button
-          variant="secondary"
-          size="field"
-          icon="trash"
-          label={t.actions.emptyTrash}
-          disabled={run.active}
-          disabledReason={run.busyText}
-          warns
-          testid="empty-trash"
-          onclick={() => {
-            emptyError = null;
-            confirmEmpty = true;
-          }}
-        />
       </span>
     {/if}
   </div>
@@ -337,7 +356,7 @@
   bind:open={confirmEmpty}
   variant="danger"
   heading={t.actions.emptyTrashHeading}
-  text={t.actions.emptyTrashText(inTrash)}
+  text={t.actions.emptyTrashText(emptyCount)}
   confirmLabel={t.actions.emptyTrash}
   busy={emptying}
   error={emptyError}
@@ -404,10 +423,12 @@
     margin-left: auto;
   }
 
-  /* The one out of turn fades away under the other (out of reach at once: inert). */
+  /* The one out of turn fades away under the other (out of reach at once: inert); each ends
+     at the cell's right edge. */
   .slot {
     display: flex;
     grid-area: 1 / 1;
+    justify-content: flex-end;
     opacity: 0;
     transition: opacity var(--dur-fast) var(--ease-standard);
   }

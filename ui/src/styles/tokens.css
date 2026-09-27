@@ -444,9 +444,6 @@
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 44px;
-  /* The chevron part of a split control ("Postfach abrufen" and its Zeitraum): narrower
-     than it is high, like the OS's split buttons. */
-  --split-menu-width: var(--control-sm);
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -523,8 +520,6 @@
   --brand-mark-sm: 24px;
   --brand-mark: 28px;
   --brand-mark-lg: 40px;
-  /* The smallest width of a count tile in a row of tiles (the Übersicht). */
-  --tile-min: 140px;
   --tile-sm: 32px;
   --tile-md: 40px;
   --tile-lg: 56px;

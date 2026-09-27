@@ -683,10 +683,9 @@ export const en: Catalog = {
       trash: 'In the trash',
     } satisfies Record<Place, string>,
     empty: {
-      inbox: 'No jobs.',
       archive: 'The archive is empty.',
       trash: 'The trash is empty.',
-    } satisfies Record<Place, string>,
+    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   actions: {
     open: 'Open',
@@ -702,8 +701,7 @@ export const en: Catalog = {
     restore: 'Restore',
     purge: 'Delete forever',
     purgeConfirm: 'Delete forever',
-    purgeHeading: (value: number) =>
-      value === 1 ? 'Delete the job forever?' : `Delete ${n(value)} jobs forever?`,
+    purgeHeading: 'Delete the job forever?',
     purgeText: 'The job never comes back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
     emptyTrashHeading: 'Empty the trash?',
@@ -861,6 +859,7 @@ export const en: Catalog = {
       onsite: 'On site',
     } satisfies Record<WorkMode, string>,
     unreadOnly: 'New only',
+    lastFetch: 'From the last fetch',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
@@ -881,7 +880,7 @@ export const en: Catalog = {
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The export folder cannot be reached.',
     },
-    checkMailbox: 'Review mailbox',
+    checkMailbox: 'Mailbox settings',
     paused: (portal: string, until: string | null) =>
       until === null
         ? `${portalOf(portal)} paused`

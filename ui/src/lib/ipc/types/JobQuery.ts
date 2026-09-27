@@ -6,12 +6,13 @@ import type { Portal } from "./Portal";
 import type { WorkMode } from "./WorkMode";
 
 /**
- * Which jobs the list shows: the jobs of one place, optionally only the unread ones.
+ * Which jobs the list shows: the jobs of one place, optionally only the new ones.
  */
 export type JobQuery = { place: Place, 
 /**
- * The filter "Nur neue": only the jobs not opened yet. Like the rest of the filter it
- * narrows the list and all its counts.
+ * The filter "Nur neue": only the new jobs, not opened yet and not excluded (what the
+ * row's dot marks, in every place). Like the rest of the filter it narrows the list and
+ * all its counts.
  */
 unread: boolean, 
 /**
@@ -41,6 +42,12 @@ contracts: Array<string>,
  * none. `null` = every job.
  */
 workMode: WorkMode | null, 
+/**
+ * The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
+ * jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
+ * it, not excluded). `null` = every job.
+ */
+run: number | null, 
 /**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */

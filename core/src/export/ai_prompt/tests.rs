@@ -110,6 +110,7 @@ fn view() -> JobView {
         place: Place::Inbox,
         trashed_at: None,
         overridden: false,
+        has_mail: false,
     }
 }
 

@@ -208,6 +208,7 @@ function sample(
     place: 'inbox',
     trashedAt: null,
     overridden: false,
+    hasMail: true,
     ...extra,
   };
 }

@@ -1,8 +1,6 @@
 //! Jobs, alert mails, job details and text files: the types the rest of the app sees and
 //! every query on the `job` and `alert_mail` tables.
 
-use std::fmt::Write as _;
-
 use jiff::{SignedDuration, Timestamp};
 use rusqlite::types::Value;
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
@@ -93,9 +91,13 @@ impl JobRow {
 }
 
 /// The list's filter (the funnel menu) beside the search: one portal, one band, contract
-/// types and one work mode. Like the search it narrows the list and all its counts.
+/// types and one work mode; and the new jobs of one run (the "Zeigen" of a fetch's toast).
+/// Like the search it narrows the list and all its counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
+    /// Only the new jobs a run brought, as [`Store::new_jobs`] counts them: first seen in
+    /// this run, not excluded (`None` = every job).
+    pub run: Option<i64>,
     /// Only this portal's jobs (`None` = every portal).
     pub portal: Option<Portal>,
     /// Only jobs scored in this band (`model::band` of their score); unscored and excluded
@@ -126,6 +128,7 @@ impl ListFilter {
                     .then(|| serde_json::to_string(&self.contracts).unwrap_or_default()),
             ),
             text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
+            self.run.map_or(Value::Null, Value::Integer),
         ]
     }
 }
@@ -204,33 +207,16 @@ fn page_order(query: &PageQuery, p: &str) -> String {
     )
 }
 
-/// The unread count per portal in the statement of [`Store::job_page`]: one column each, in
-/// the order of `Portal::ALL` (the keys are constants of the code, never input), and the
-/// same columns in its final select.
-fn per_portal_columns(new: &str) -> (String, String) {
-    let mut columns = String::new();
-    let mut out = String::new();
-    for (i, portal) in Portal::ALL.iter().enumerate() {
-        let _ = write!(
-            columns,
-            ",\n COALESCE(SUM({new} AND portal = '{}'), 0) AS n_new_{i}",
-            portal.key()
-        );
-        let _ = write!(out, ", counts.n_new_{i}");
-    }
-    (columns, out)
-}
-
 /// How many values [`filter_condition`] binds ([`ListFilter::values`]).
-pub(super) const FILTER_VALUES: usize = 5;
+pub(super) const FILTER_VALUES: usize = 6;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
 /// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score
-/// of the band and the lowest one above it, a JSON array of contract types and the work mode
-/// (each `NULL` for none). Contract type and remote share come from the key facts in the
-/// match note, the work mode without a share from the location.
+/// of the band and the lowest one above it, a JSON array of contract types, the work mode
+/// and the run (each `NULL` for none). Contract type and remote share come from the key facts
+/// in the match note, the work mode without a share from the location.
 pub(super) fn filter_condition(first: usize) -> String {
-    let [portal, from, below, contracts, mode] =
+    let [portal, from, below, contracts, mode, run] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
         "({portal} IS NULL OR portal = {portal})
@@ -238,7 +224,9 @@ pub(super) fn filter_condition(first: usize) -> String {
                                  AND ({below} IS NULL OR match_score < {below})))
          AND ({contracts} IS NULL OR {contract}
                                      IN (SELECT value FROM json_each({contracts})))
-         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))",
+         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))
+         AND ({run} IS NULL OR (first_seen_run = {run}
+                                AND match_status IS NOT 'excluded'))",
         contract = fact("", "contract"),
         job_mode = job_mode(),
     )
@@ -286,12 +274,13 @@ fn job_mode() -> String {
     )
 }
 
-/// One page of the job list: the jobs of one place, optionally only the unread ones. The
-/// counts cover the search and the filter (the unread one too), whatever the place.
+/// One page of the job list: the jobs of one place, optionally only the new ones. The
+/// counts cover the search and the filter (the new ones too), whatever the place.
 #[derive(Debug, Clone, Default)]
 pub struct PageQuery {
     pub place: Place,
-    /// Only unread jobs: like the filter it narrows the list and the counts.
+    /// Only new jobs ([`NEW`]: unread and not excluded): like the filter it narrows the list
+    /// and the counts.
     pub unread: bool,
     /// The jobs without a score first, then the best match; otherwise by date: the alert
     /// mail's, in the trash the day it went there; excluded jobs last either way.
@@ -307,16 +296,19 @@ pub struct PageQuery {
     pub offset: u32,
 }
 
-/// Column of the first per-portal count in the statement of [`Store::job_page`].
-const PER_PORTAL_AT: usize = 9;
+/// A new job, in any place: not opened yet and not excluded (the filter "Nur neue" and the
+/// row's dot mean the same, like a mail app's unread mark).
+const NEW: &str = "(read_at IS NULL AND match_status IS NOT 'excluded')";
 
-/// Counts that belong to a page of the job list: per place, and within the inbox.
+/// Column of the first column of the page in the statement of [`Store::job_page`] (the
+/// counts come before it).
+const PAGE_AT: usize = 6;
+
+/// Counts that belong to a page of the job list: per place, and the excluded ones of each.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PageCounts {
     /// In the inbox.
     pub inbox: u32,
-    /// Unread in the inbox and not excluded.
-    pub unread: u32,
     pub archive: u32,
     pub trash: u32,
     /// Excluded, in the inbox.
@@ -325,12 +317,6 @@ pub struct PageCounts {
     pub excluded_archive: u32,
     /// Excluded, in the trash.
     pub excluded_trash: u32,
-    /// Scored in the high band, in the inbox.
-    pub high: u32,
-    /// Without a full text, in the inbox.
-    pub no_detail: u32,
-    /// `unread` per portal: every portal, in the order of `Portal::ALL`.
-    pub new_by_portal: Vec<(Portal, u32)>,
 }
 
 /// An alert mail without recognised entries.
@@ -500,31 +486,23 @@ impl Store {
         let conn = self.conn();
         let words = search_words(query.search.as_deref());
         let order = |p: &str| page_order(query, p);
-        // The counts of the inbox leave the archive and the trash out. The unread filter
-        // narrows them like the rest of the filter; the unread count leaves the excluded
-        // jobs out. The excluded jobs are counted per place, so the list's section says its
-        // number before every page is there.
-        let shown = INBOX;
-        let new = format!("{INBOX} AND read_at IS NULL AND match_status IS NOT 'excluded'");
+        // The counts of each place, narrowed by the search and the filter ("Nur neue" too).
+        // The excluded jobs are counted per place, so the list's section says its number
+        // before every page is there.
         let facet = place_condition(query.place);
-        let (per_portal, per_portal_out) = per_portal_columns(&new);
         let sql = format!(
             "WITH base AS (
                  SELECT * FROM job WHERE dup_of IS NULL AND {words} AND {filter}
-                                     AND (NOT ?5 OR read_at IS NULL)
+                                     AND (NOT ?4 OR {NEW})
              ), counts AS (
-                 SELECT COALESCE(SUM({shown}), 0) AS n_inbox,
-                        COALESCE(SUM({new}), 0) AS n_unread,
-                        COALESCE(SUM({shown} AND match_status IS 'excluded'), 0) AS n_excluded,
-                        COALESCE(SUM({shown} AND match_status IS 'scored'
-                                     AND match_score >= ?4), 0) AS n_high,
-                        COALESCE(SUM({shown} AND desc_status <> 'ok'), 0) AS n_no_detail,
+                 SELECT COALESCE(SUM({INBOX}), 0) AS n_inbox,
+                        COALESCE(SUM({INBOX} AND match_status IS 'excluded'), 0) AS n_excluded,
                         COALESCE(SUM({archive}), 0) AS n_archive,
                         COALESCE(SUM({trash}), 0) AS n_trash,
                         COALESCE(SUM({archive} AND match_status IS 'excluded'), 0)
                             AS n_excluded_archive,
                         COALESCE(SUM({trash} AND match_status IS 'excluded'), 0)
-                            AS n_excluded_trash{per_portal}
+                            AS n_excluded_trash
                  FROM base
              ), page AS (
                  SELECT {JOB_COLUMNS} FROM base
@@ -532,21 +510,17 @@ impl Store {
                  ORDER BY {}
                  LIMIT ?2 OFFSET ?3
              )
-             SELECT counts.n_inbox, counts.n_unread, counts.n_excluded, counts.n_high,
-                    counts.n_no_detail, counts.n_archive,
-                    counts.n_trash, counts.n_excluded_archive,
-                    counts.n_excluded_trash{per_portal_out}, page.*
+             SELECT counts.n_inbox, counts.n_excluded, counts.n_archive, counts.n_trash,
+                    counts.n_excluded_archive, counts.n_excluded_trash, page.*
              FROM counts LEFT JOIN page
              ORDER BY {}",
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition(6),
+            filter = filter_condition(5),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
-        // The columns of the page follow the counts.
-        let first = PER_PORTAL_AT + Portal::ALL.len();
         let mut stmt = conn.prepare_cached(&sql)?;
         let mut counts = PageCounts::default();
         let mut jobs = Vec::new();
@@ -554,31 +528,22 @@ impl Store {
             words.map_or(Value::Null, Value::Text),
             Value::Integer(i64::from(query.limit)),
             Value::Integer(i64::from(query.offset)),
-            Value::Integer(i64::from(HIGH_FROM)),
             Value::Integer(i64::from(query.unread)),
         ]
         .into_iter()
         .chain(query.filter.values());
         let mut rows = stmt.query(rusqlite::params_from_iter(values))?;
         while let Some(row) = rows.next()? {
-            let mut new_by_portal = Vec::with_capacity(Portal::ALL.len());
-            for (i, portal) in Portal::ALL.into_iter().enumerate() {
-                new_by_portal.push((portal, row.get(PER_PORTAL_AT + i)?));
-            }
             counts = PageCounts {
                 inbox: row.get(0)?,
-                unread: row.get(1)?,
-                excluded: row.get(2)?,
-                high: row.get(3)?,
-                no_detail: row.get(4)?,
-                archive: row.get(5)?,
-                trash: row.get(6)?,
-                excluded_archive: row.get(7)?,
-                excluded_trash: row.get(8)?,
-                new_by_portal,
+                excluded: row.get(1)?,
+                archive: row.get(2)?,
+                trash: row.get(3)?,
+                excluded_archive: row.get(4)?,
+                excluded_trash: row.get(5)?,
             };
-            if row.get::<_, Option<String>>(first)?.is_some() {
-                jobs.push(job_row_at(row, first)??);
+            if row.get::<_, Option<String>>(PAGE_AT)?.is_some() {
+                jobs.push(job_row_at(row, PAGE_AT)??);
             }
         }
         Ok((jobs, counts))

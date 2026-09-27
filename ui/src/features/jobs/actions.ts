@@ -22,13 +22,13 @@ import { errorText } from '$lib/i18n/texts';
 import { invoke } from '$lib/ipc/api';
 import type { Deleted, JobKey, JobView, OpenTarget, Place } from '$lib/ipc/types';
 import { staggerLimit } from '$lib/motion/motion';
-import { app } from '$lib/state/app.svelte';
 import { isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
 import { exportText, run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 import { copyJobPrompt } from './prompt';
+import { SHOWS, showActions, type ShowId } from './shows';
 
 export type MoveId = 'archive' | 'unarchive' | 'trash' | 'restore';
 export type ActionId = MoveId | 'purge';
@@ -95,10 +95,10 @@ export interface JobMenuContext {
 
 /**
  * The job's menu, one table for the row's right click and the reader's "…", in two groups
- * with a line between them: what shows the job (Öffnen, Alert-Mail öffnen, Anzeige öffnen,
- * KI-Prompt kopieren; the reader shows them as its buttons), then what changes it (an
- * excluded job's "Trotzdem bewerten", or "Wieder ausschließen" once it counts, then the
- * moves of its place). No entry names a key. The test id of an entry is `menu-item-<id>`.
+ * with a line between them: what shows the job (Öffnen, then `showActions`: the reader shows
+ * them as its buttons), then what changes it (an excluded job's "Trotzdem bewerten", or
+ * "Wieder ausschließen" once it counts, then the moves of its place). No entry names a key.
+ * The test id of an entry is `menu-item-<id>`.
  */
 export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
@@ -108,29 +108,23 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   if (context.open) {
     show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
   }
-  const noProfile = app.hasProfile ? null : t.actions.promptNoProfile;
-  show.push(
-    {
-      id: 'mail',
-      label: t.actions.mail,
-      icon: 'alertMail',
-      run: () => void openTarget({ kind: 'gmail', key: job.key }).then(report),
-    },
-    {
-      id: 'open-ad',
-      label: t.actions.openAd,
-      icon: 'external',
-      run: () => void openAd(job).then(report),
-    },
-    {
-      id: 'prompt',
-      label: t.actions.prompt,
-      icon: 'prompt',
-      disabled: noProfile !== null,
-      reason: noProfile,
-      run: () => void copyJobPrompt(job.key).then(report),
-    },
-  );
+  const does: Record<ShowId, () => Promise<string | null>> = {
+    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    'open-ad': () => openAd(job),
+    prompt: () => copyJobPrompt(job.key),
+  };
+  const actions = showActions(job);
+  for (const id of SHOWS) {
+    const action = actions[id];
+    show.push({
+      id,
+      label: action.label,
+      icon: action.icon,
+      disabled: action.reason !== null,
+      reason: action.reason,
+      run: () => void does[id]().then(report),
+    });
+  }
   return [...show, { kind: 'separator' }, ...change];
 }
 
@@ -255,7 +249,7 @@ const SAID: Record<MoveId, () => string> = {
 };
 
 /** The job to open when `gone` leave the list: the next one below, else the one above; none
- *  when the list did not hold them (a job opened from the day overview). */
+ *  when the list did not hold them (the open job no longer listed after a search). */
 function nextAfter(gone: readonly JobView[]): JobView | null {
   const rows = jobs.shown;
   const out = new Set(gone.map((job) => keyOf(job.key)));
@@ -433,11 +427,16 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
   return null;
 }
 
-/** Deletes jobs of the trash for good (after the dialog). Resolves with the error text. */
-export async function purge(list: readonly JobView[]): Promise<string | null> {
+/**
+ * Deletes jobs of the trash for good (after the dialog). Resolves with the error text.
+ * `fromRow`: a row's menu or tool asked (its dialog held the focus, the row it would go back
+ * to is gone): the focus goes to the row that takes its place, or to the place's tab when
+ * none is left, never to the top of the window.
+ */
+export async function purge(list: readonly JobView[], fromRow = false): Promise<string | null> {
   if (list.length === 0) return null;
   const next = nextAfter(list);
-  const focus = inRow();
+  const focus = fromRow || inRow();
   const folding = list.length <= staggerLimit() ? list : [];
   for (const job of folding) moving.add(keyOf(job.key));
   const open = jobs.selected;
@@ -446,10 +445,21 @@ export async function purge(list: readonly JobView[]): Promise<string | null> {
   if ('error' in result) return result.error;
   arm();
   openNext(list, next, focus, open);
+  if (focus) focusAfter(next);
   deletedFor(result);
   toasts.show(t.toast.deleted);
   void jobs.loadOverview();
   return null;
+}
+
+/** The keyboard focus after rows left the list: the row that takes their place (the list
+ *  brings it into view), else the tab of the place, whose list is empty now. */
+function focusAfter(next: JobView | null): void {
+  if (next !== null) {
+    jobs.reveal = { key: keyOf(next.key), focus: true };
+    return;
+  }
+  document.querySelector<HTMLElement>(`[data-testid="place-${jobs.place}"]`)?.focus();
 }
 
 /** After the trash was emptied: no undo can reach its jobs any more. */

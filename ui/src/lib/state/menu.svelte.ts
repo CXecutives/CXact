@@ -34,7 +34,7 @@ export interface MenuItem {
   icon?: IconMeaning | null;
   /** A choice of a group (the sort): a check mark before the chosen one (a radio item). */
   checked?: boolean | null;
-  /** A switch of its own (Nur Favoriten): a checkbox item, the check mark while `checked`. */
+  /** A switch of its own (Nur neue): a checkbox item, the check mark while `checked`. */
   toggle?: boolean;
   disabled?: boolean;
   /** Why a disabled entry cannot be chosen (its tooltip). */

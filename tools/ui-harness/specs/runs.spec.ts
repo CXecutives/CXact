@@ -4,7 +4,8 @@
 // reader stay true while a run updates jobs.
 
 import type { Page } from '@playwright/test';
-import type { JobView } from '../../../ui/src/lib/ipc/types';
+import { ICONS } from '../../../ui/src/lib/icons';
+import type { JobView, RunEvent } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
 import { chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
 
@@ -72,7 +73,12 @@ test('a rescore that cannot write the files says so once, with a retry', async (
     'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
   );
   await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-  await problem.getByRole('button', { name: 'Erneut versuchen' }).click();
+  // Its way on is drawn like every note's: a small outlined button with its glyph.
+  const retry = problem.getByTestId('run-retry');
+  await expect(retry).toHaveText(T.common.retry);
+  await expect(retry).toHaveClass(/secondary/);
+  await expect(retry.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.retry}`));
+  await retry.click();
   await runFinished(page);
   const started = await calls(page, 'start_run');
   expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
@@ -101,7 +107,7 @@ test('the end toast counts the run: the new jobs that are not excluded', async (
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
-test('the end toast names the new jobs of the high band; Zeigen lists them, chips to take off', async ({
+test('the end toast names the new jobs of the high band; Zeigen lists exactly those, chips to take off', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15`);
@@ -121,16 +127,27 @@ test('the end toast names the new jobs of the high band; Zeigen lists them, chip
   ]);
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
-  // The Eingang, the jobs not opened yet of the high band: the new high one among them.
-  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('band-high', 'unread-only'));
-  expect(await lastQuery(page)).toMatchObject({ place: 'inbox', unread: true, band: 'high' });
-  const { active } = await stubList(page, { unread: true, band: 'high' });
+  // The Eingang with the new jobs of that fetch in the high band: the one the toast names.
+  await expect(chips(page).getByRole('button')).toHaveText([
+    T.toolbar.lastFetch,
+    ...chipWordsOf('band-high'),
+  ]);
+  const query = (await lastQuery(page))!;
+  expect(query).toMatchObject({ place: 'inbox', unread: false, band: 'high' });
+  expect(query.run).toEqual(expect.any(Number));
+  await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
+  // Each chip takes its part off: without the band the two new jobs the toast counts, not
+  // the excluded one of the fetch.
+  await chip(page, 'band').click();
+  await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.lastFetch]);
+  const { active } = await stubList(page, { run: query.run });
+  expect(active).toHaveLength(2);
   expect(active).toContain('linkedin-4100200399');
   await expect.poll(() => listed(page)).toEqual(active);
-  // Each chip takes its part off.
-  await chip(page, 'band').click();
-  await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
-  await expect.poll(() => listed(page)).toEqual((await stubList(page, { unread: true })).active);
+  // Never kept: the next start lists the Eingang as before.
+  await open(page, `${WIN}&tick=15`);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
+  await expect(page.getByTestId('filter-chips')).toHaveCount(0);
 });
 
 test('from another view Zeigen opens the Eingang without its search, filtered to the new jobs', async ({
@@ -144,7 +161,26 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('search')).toHaveValue('');
-  expect(await lastQuery(page)).toMatchObject({ search: null, unread: true, band: 'high' });
+  const run = (await lastQuery(page))?.run;
+  expect(await lastQuery(page)).toMatchObject({ search: null, unread: false, band: 'high' });
+  expect(run).toEqual(expect.any(Number));
+  // The next fetch takes "Aus dem letzten Abruf" off (it would speak of the one before).
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await expect(chip(page, 'run')).toHaveCount(0);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: 'high' });
+});
+
+test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
+  await open(page, `${WIN}&tick=15`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();
+  await expect(chip(page, 'run')).toHaveText(T.toolbar.lastFetch);
+  await page.getByTestId('filter').click();
+  await page.getByTestId('menu-item-filter-reset').click();
+  await expect(page.getByTestId('filter-chips')).toHaveCount(0);
+  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
 });
 
 test('a portal the fetch paused is said once in the run line, with its ×', async ({ page }) => {
@@ -198,10 +234,11 @@ test('after a restart a failed last fetch says so once in the run line, a new fe
   const problem = page.getByTestId('run-problem');
   await expect(problem).toHaveCount(1);
   await expect(problem).toContainText(T.error.text('mailConnect', {}));
-  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  // "Postfach abrufen" is the way on, no second one in the line.
+  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
   // Nowhere else: the sidebar has no status line.
   await expect(page.getByTestId('sidebar')).not.toContainText(T.error.text('mailConnect', {}));
-  await problem.getByTestId('run-retry').click();
+  await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
   expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
@@ -355,7 +392,42 @@ test('an archived job leaves the list and every count but the archive', async ({
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
 
-test('a fetch without internet says so in the run line and tries again from there', async ({
+test('a mailbox that refused the fetch: its way on opens the mailbox settings, in English too', async ({
+  page,
+}) => {
+  const refused: RunEvent = {
+    type: 'finished',
+    summary: {
+      run: 42,
+      kind: 'fetch',
+      outcome: { kind: 'failed', error: { kind: 'mailAuth', params: {} } },
+      dryRun: false,
+      startedAt: '2026-09-24T07:29:00Z',
+      finishedAt: '2026-09-24T07:30:00Z',
+      scan: null,
+      perPortal: [],
+      newJobs: null,
+      score: null,
+      export: null,
+      emptyAlerts: [],
+    },
+  };
+  // English says it apart from "Check mailbox", the fetch.
+  for (const [query, label] of [
+    [WIN, T.run.checkMailbox],
+    [`${WIN}&lang=en`, 'Mailbox settings'],
+  ] as const) {
+    await open(page, query);
+    await emit(page, { type: 'started', kind: 'fetch' }, refused);
+    const way = page.getByTestId('run-problem').getByTestId('run-retry');
+    await expect(way).toHaveText(label);
+    await expect(page.getByTestId('fetch')).not.toHaveText(label);
+  }
+  await page.getByTestId('run-retry').click();
+  await expect(page.getByTestId('view-settings')).toBeVisible();
+});
+
+test('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({
   page,
 }) => {
   await open(page, `${WIN}&mail=no-internet&tick=15`);
@@ -365,10 +437,10 @@ test('a fetch without internet says so in the run line and tries again from ther
   // Its own words, not the words of a Gmail that does not answer.
   await expect(problem).toContainText(T.error.text('offline', {}));
   await expect(problem).not.toContainText(T.error.text('mailConnect', {}));
-  await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
+  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
   // The next run's end, not the last one's.
   await page.evaluate(() => (window.__harness.done = false));
-  await problem.getByTestId('run-retry').click();
+  await page.getByTestId('fetch').click();
   await runFinished(page);
   const starts = (await calls(page, 'start_run')).map(([, args]) => args);
   expect(starts).toMatchObject([{ request: { kind: 'fetch' } }, { request: { kind: 'fetch' } }]);

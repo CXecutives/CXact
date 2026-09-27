@@ -121,8 +121,8 @@ IMAP read-only).
 
 ### IPC v3 (types from Rust via ts-rs; camelCase; `null` instead of missing; backend never sends prose)
 Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_state` · `start_run(RunRequest{kind: fetch | details{keys} | rescore})` (a fetch reads the range of the setting `fetchRange`) · `cancel_run` ·
-`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, limit, offset}) -> JobPage{jobs, counts{inbox, unread, archive, trash, excluded, excludedArchive, excludedTrash, high, noDetail, newByPortal[{portal, new}] in Portal::ALL order}}`
-(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode) ·
+`list_jobs(JobQuery{place: inbox|archive|trash, unread, sort: match|newest|rate, search?, portal?, band?, contracts[], workMode?, run?, limit, offset}) -> JobPage{jobs, counts{inbox, archive, trash, excluded, excludedArchive, excludedTrash}}`
+(list and counts from ONE query; every number of the page comes from these counts, `limit: 0` = counts only; the filter narrows list and counts: `unread` = the new jobs, not opened and not excluded (the row's dot, in every place), `contracts` are `KeyFacts.contract` codes, empty = all; `workMode` = remote, hybrid or on site by the stated remote share, else the location's work mode; `run` = the new jobs of that fetch, the ones its toast counts) · a list row (`JobView`) says `hasMail` for "Alert-Mail öffnen" in its menu ·
 `job_detail(key)` · `mark_read(key) -> bool` ·
 `move_jobs(to, keys) -> JobKey[]` · `move_back(jobs: MoveBack{key, to, trashedAt}[]) -> JobKey[]` · `restore_jobs(keys) -> JobKey[]` ·
 `set_override(key, include) -> bool` ·
@@ -914,3 +914,19 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   weeks as weeks ("9 Wochen", a 4.33rd of a month each); the tooltip of a permanent job's place names the remote
   share and the minimum where they decide it.
 - [x] Pay and duration as the ad states them (engine 18), the reader's rows and tooltips
+
+## The Jobs list audit (2026-09-27)
+- "Neu" is one thing: not opened and not excluded (`store::NEW`, `filter.ts` `isNew`): "Nur neue", the row's dot
+  and its heavier title, in every place, like a mail app's unread mark.
+- The "Zeigen" of a fetch's toast lists exactly the jobs the toast counts: `JobQuery.run` (the new jobs of that run,
+  none excluded) with the high band where the toast names it, the chip "Aus dem letzten Abruf"; nothing of it is kept,
+  "Filter zurücksetzen", a reload and the next fetch take the run off.
+- The row's menu and the reader's buttons read one table (`features/jobs/shows.ts`; `JobView.hasMail`).
+- [x] New is unread and not excluded; the counts nobody read are gone (`unread`, `high`, `noDetail`, `newByPortal`)
+- [x] Zeigen lists the jobs of its toast
+- [x] Row menu and reader alike: no mail, no ad text, Offline-Anzeige öffnen
+- [x] A failed fetch offers its own fix only; English "Mailbox settings"
+- [x] The trash dialog keeps its count, the focus stays in the list after deleting for good
+- [x] Abbrechen in every place, in the same slot
+- [x] Leftovers (the Übersicht's reveal, split buttons, stale comments and specs); a double click on a row's tool is
+  the tool's

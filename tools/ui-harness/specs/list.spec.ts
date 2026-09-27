@@ -58,6 +58,7 @@ import {
   stubList,
   T,
   tokenColour,
+  unfoldExcluded,
   viaMenu,
   WIN,
 } from './helpers';
@@ -107,13 +108,14 @@ test.describe('header', () => {
     const readOf = async (key: string): Promise<boolean | undefined> =>
       (await stubList(page)).jobs.find((j) => `${j.key.portal}-${j.key.id}` === key)?.unread;
     await expect.poll(() => readOf(newest)).toBe(false);
-    const unread = (await stubList(page)).counts.unread;
+    const fresh = async (): Promise<number> =>
+      (await stubList(page, { unread: true })).counts.inbox;
+    const before = await fresh();
     // The same mails again: every job is known, nothing is added, nothing turns new.
     await page.getByTestId('fetch').click();
     await runFinished(page);
     expect(await listed(page)).toEqual(first);
-    const after = await stubList(page);
-    expect(after.counts.unread).toBe(unread);
+    expect(await fresh()).toBe(before);
     expect(await readOf(newest)).toBe(false);
   });
 
@@ -240,6 +242,36 @@ test.describe('header', () => {
     await expect(chevron).toHaveCount(0);
     await page.getByTestId('cancel-run').click();
     await runFinished(page);
+  });
+
+  test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
+    await open(page, `${WIN}&tick=15`);
+    await viaMenu(page, 'trash', 'freelancermap-2802');
+    await settleMoves(page);
+    await page.evaluate(() => (window.__harness.holdAfter = 3));
+    await page.getByTestId('fetch').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    const slot = async (): Promise<number[]> => {
+      const box = (await cancel.boundingBox())!;
+      return [box.x, box.y, box.width, box.height].map(Math.round);
+    };
+    const inbox = await slot();
+    for (const place of ['archive', 'trash'] as const) {
+      await openPlace(page, place);
+      await expect(cancel, place).toBeVisible();
+      expect(await slot(), place).toEqual(inbox);
+    }
+    // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
+    await expect(page.getByTestId('empty-trash')).toHaveCount(0);
+    await cancel.click();
+    await runFinished(page);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await expect(page.getByTestId('empty-trash')).toBeVisible();
+    const end = inbox[0]! + inbox[2]!;
+    expect(Math.abs((await rightOf(page, 'empty-trash')) - end)).toBeLessThanOrEqual(1);
+    await openPlace(page, 'archive');
+    await expect(page.getByTestId('place-action')).toHaveCount(0);
   });
 
   test('the tabs fit their row at every width', async ({ page }) => {
@@ -718,13 +750,16 @@ test.describe('filter', () => {
     expect(unknown.length).toBeGreaterThan(0);
     for (const key of unknown) expect(workModeOf(jobOf(key))).toBeNull();
     await chip(page, 'workMode').click();
-    // Nur neue: the jobs not opened yet, its counts too.
+    // Nur neue: the jobs not opened yet and not excluded, its counts too.
     await chooseFilter(page, 'unread-only');
     const fresh = await inbox(page, { unread: true });
     expect(fresh.length).toBeGreaterThan(0);
     await expect.poll(() => listed(page)).toEqual(fresh);
     expect(await lastQuery(page)).toMatchObject({ unread: true });
-    for (const key of fresh) expect(jobs.find((job) => keyOf(job) === key)?.unread).toBe(true);
+    for (const key of fresh) {
+      const job = jobs.find((each) => keyOf(each) === key);
+      expect(job?.unread && job.match?.status !== 'excluded', key).toBe(true);
+    }
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
     // Kept like the rest of the filter; the list asks for no deadline and no pay.
     await open(page, WIN);
@@ -979,6 +1014,41 @@ test.describe('one list', () => {
     await page.getByTestId('nav-settings').click();
     await page.getByTestId('nav-jobs').click();
     await expect.poll(() => listed(page)).toEqual(all);
+  });
+
+  test('new is unread and not excluded: the dot in every place, Nur neue lists those rows', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const { jobs } = await stubList(page);
+    const isNew = (job: JobView): boolean => job.unread && !excluded(job);
+    const fresh = jobs.filter(isNew).map(keyOf).sort();
+    /** The keys of the mounted rows that carry the dot (the fold's too). */
+    const dotted = async (): Promise<string[]> =>
+      (
+        await list(page)
+          .locator('[data-testid^="job-row-"]')
+          .evaluateAll((items) =>
+            items
+              .filter((item) => item.closest('.job')?.querySelector('.dot') != null)
+              .map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
+          )
+      ).sort();
+    // An unread excluded job carries none: it is no new one.
+    expect(jobs.some((job) => job.unread && excluded(job))).toBe(true);
+    await unfoldExcluded(page);
+    expect(await dotted()).toEqual(fresh);
+    // "Nur neue" lists exactly the dotted rows, no excluded one behind the fold.
+    await chooseFilter(page, 'unread-only');
+    await expect.poll(async () => (await listed(page)).sort()).toEqual(fresh);
+    await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
+    await chip(page, 'unread').click();
+    // A new job moved to the Archiv keeps its dot there, like a mail app's unread mark.
+    const moved = fresh[0]!;
+    await viaMenu(page, 'archive', moved);
+    await settleMoves(page);
+    await openPlace(page, 'archive');
+    await expect.poll(dotted).toContain(moved);
   });
 
   test('the excluded jobs are one folded section at the end, counted per place; kept open', async ({
@@ -1287,8 +1357,7 @@ test.describe('one list', () => {
   });
 
   test('one primary button in every state of the list, and with a job open', async ({ page }) => {
-    // A split control is one button: its chevron's part wears the colour of its action.
-    const primary = '.btn.primary:not(.joined-end)';
+    const primary = '.btn.primary';
     for (const scenario of ['default', 'empty', 'no-profile', 'offline']) {
       await open(page, `${WIN}&scenario=${scenario}`);
       expect(await visibleCount(page, primary), scenario).toBeLessThanOrEqual(1);
@@ -1615,7 +1684,7 @@ test.describe('moves and undo', () => {
     // Endgültig löschen asks first, with its own verb on the button and no title.
     await viaMenu(page, 'purge', 'freelancermap-2803');
     const dialog = page.getByTestId('dialog-purge');
-    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading(1));
+    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading);
     await dialog.getByRole('button', { name: T.actions.purgeConfirm, exact: true }).click();
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
     await expect(dialog).toHaveCount(0);
@@ -1623,6 +1692,8 @@ test.describe('moves and undo', () => {
     expect((await calls(page, 'purge_jobs')).map(([, args]) => args)).toEqual([
       { keys: [{ portal: 'freelancermap', id: '2803' }] },
     ]);
+    // The last row went: the focus is on the Papierkorb's tab, not on the window.
+    await expect(page.getByTestId('place-trash')).toBeFocused();
     // Papierkorb leeren: two jobs there, a search that finds one: both go, and it says so.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
@@ -1642,6 +1713,45 @@ test.describe('moves and undo', () => {
     await page.getByTestId('search').fill('');
     await expect(page.getByTestId('empty-place-trash')).toBeVisible();
     expect(await calls(page, 'empty_trash')).toHaveLength(1);
+  });
+
+  test('deleting for good hands the focus on; emptying names its count until it is gone', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    for (const key of ['freelancermap-2802', 'freelancermap-2803', 'freelancermap-2804']) {
+      await viaMenu(page, 'trash', key);
+      await settleMoves(page);
+    }
+    await openPlace(page, 'trash');
+    const [first, second] = await listed(page);
+    // Endgültig löschen of a row: after the dialog the focus is on the row below.
+    await viaMenu(page, 'purge', first!);
+    await page
+      .getByTestId('dialog-purge')
+      .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
+      .click();
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(row(page, second!)).toBeFocused();
+    // Papierkorb leeren: the dialog says the two it deletes until it has faded out.
+    await page.getByTestId('empty-trash').click();
+    const dialog = page.getByTestId('dialog-empty-trash');
+    await expect(dialog).toContainText(T.actions.emptyTrashText(2));
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { seen: string[] }).seen = seen;
+      new MutationObserver(() => {
+        const text = document.querySelector('[data-testid="dialog-empty-trash"]')?.textContent;
+        if (text) seen.push(text);
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+    await dialog.getByRole('button', { name: T.actions.emptyTrash, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+    expect(seen.length).toBeGreaterThan(0);
+    for (const text of seen) expect(text).toContain(T.actions.emptyTrashText(2));
+    // Its button went with the jobs: the focus is on the Papierkorb's tab.
+    await expect(page.getByTestId('place-trash')).toBeFocused();
   });
 
   test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {
@@ -1841,7 +1951,7 @@ test.describe('run line', () => {
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  test('failed: one quiet line with Erneut versuchen and its ×; cancelled says nothing', async ({
+  test('failed: one quiet line and its ×, no second way to fetch; cancelled says nothing', async ({
     page,
   }) => {
     await open(page, `${WIN}&mail=offline&tick=15`);
@@ -1850,14 +1960,10 @@ test.describe('run line', () => {
     await runFinished(page);
     const problem = page.getByTestId('run-problem');
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
-    await expect(problem.getByTestId('run-retry')).toHaveText(T.common.retry);
-    // Drawn like every note of the column: the sentence in 14 px ink, the way on a small
-    // outlined button with its glyph, the × at the column's edge.
+    // Drawn like every note of the column: the sentence in 14 px ink, the × at the column's
+    // edge. No "Erneut versuchen" beside a working "Postfach abrufen", which does the same.
     await expect(problem.locator('.text')).toHaveCSS('font-size', '14px');
-    await expect(problem.getByTestId('run-retry')).toHaveClass(/secondary/);
-    await expect(problem.getByTestId('run-retry').locator('svg')).toHaveClass(
-      new RegExp(`lucide-${ICONS.retry}`),
-    );
+    await expect(problem.getByTestId('run-retry')).toHaveCount(0);
     // A fetch that ends at once brings back a working "Postfach abrufen".
     await expect(page.getByTestId('fetch')).toBeEnabled();
     expect(
@@ -1866,7 +1972,7 @@ test.describe('run line', () => {
         .evaluate((node) => node.querySelector('[inert] [data-testid="fetch"]')),
     ).toBeNull();
     expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-range'));
-    await problem.getByTestId('run-retry').click();
+    await page.getByTestId('fetch').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);
     await page.getByTestId('run-close').click();
@@ -2316,9 +2422,9 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
 
 /* ==================================================================== baselines */
 
-test('baseline: jobs with the day overview', async ({ page }) => {
+test('baseline: the jobs', async ({ page }) => {
   await open(page, WIN);
-  await expectShot(page, 'jobs-overview');
+  await expectShot(page, 'jobs-list');
 });
 
 test('baseline: jobs while a run is going', async ({ page }) => {

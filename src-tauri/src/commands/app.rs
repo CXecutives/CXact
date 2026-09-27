@@ -153,6 +153,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            run: None,
         },
     )?
     .counts;

@@ -1473,7 +1473,7 @@ test('a count rolls when it changes on screen, not when it first shows', async (
   await expect(count).toHaveText('13');
 });
 
-test('the pin star pops once when pinned, never when unpinned', async ({ page }) => {
+test("a ghost toggle's star pops once when switched on, never when off", async ({ page }) => {
   await open(page, '?gallery');
   const pin = page.getByTestId('motion-pin');
   await pin.scrollIntoViewIfNeeded();

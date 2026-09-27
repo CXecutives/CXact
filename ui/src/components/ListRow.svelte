@@ -19,6 +19,7 @@
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { doubleClick } from '$lib/input/input';
 
   interface Props {
     selected?: boolean;
@@ -26,8 +27,11 @@
     bar?: boolean;
     /** Greyed out (excluded jobs behind the divider). */
     muted?: boolean;
-    /** The click (its modifiers say whether it extends a selection). */
+    /** The click. */
     onclick?: ((event: MouseEvent) => void) | null;
+    /** A double click on the row itself (a job row opens its ad); one on a control laid
+     *  over the row (its tools) is that control's. */
+    ondouble?: (() => void) | null;
     testid?: string | null;
     leading?: Snippet | null;
     trailing?: Snippet | null;
@@ -39,6 +43,7 @@
     bar = true,
     muted = false,
     onclick = null,
+    ondouble = null,
     testid = null,
     leading = null,
     trailing = null,
@@ -56,6 +61,7 @@
   data-rests=""
   data-testid={testid ?? undefined}
   onclick={(event) => onclick?.(event)}
+  use:doubleClick={ondouble}
 >
   {#if leading}<span class="leading">{@render leading()}</span>{/if}
   <span class="content">{@render children()}</span>

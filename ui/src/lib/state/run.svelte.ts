@@ -12,7 +12,7 @@
 // - `result`: the last finished run the list's run line speaks of when it went wrong (a
 //   fetch or details run, a rescore only when it failed or could not write the files).
 // What a fetch brought is a toast at its end ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in
-// every view; its "Zeigen" opens the Eingang filtered to them. A portal the fetch paused (or
+// every view; its "Zeigen" opens the Eingang filtered to exactly the jobs it counts. A portal the fetch paused (or
 // that reached its limit) is said once in the run line ("freelancermap pausiert bis 14:00",
 // `pausedText`); the other details of a run (each mail, each portal) are in the log, not on
 // screen.
@@ -217,13 +217,15 @@ class RunStore {
     });
   }
 
-  /** The jobs a fetch brought (the "Zeigen" of its toast): the Eingang without a search,
-   *  filtered to the jobs not opened yet, of the high band when the fetch brought some (each
-   *  chip takes its part off again). */
-  showNew(high: boolean): void {
+  /** The jobs a fetch's toast counts (its "Zeigen"): the Eingang without a search, filtered
+   *  to the new jobs of that fetch ("Aus dem letzten Abruf"), to those of the high band when
+   *  the toast names them. Each chip takes its part off again; none of it is kept as the
+   *  user's filter. */
+  showNew(summary: RunSummary): void {
+    const high = (summary.newJobs?.high ?? 0) > 0;
     this.show(() => {
       jobs.setPlace('inbox', true);
-      jobs.setFilter({ ...NO_FILTER, unread: true, band: high ? 'high' : null });
+      jobs.setFilter({ ...NO_FILTER, run: summary.run, band: high ? 'high' : null }, false);
     });
   }
 
@@ -327,7 +329,7 @@ class RunStore {
         const brought = summary.newJobs ?? { count: 0, high: 0 };
         const show =
           brought.count > 0
-            ? { label: t.toast.show, onclick: () => this.showNew(brought.high > 0), undo: false }
+            ? { label: t.toast.show, onclick: () => this.showNew(summary), undo: false }
             : inList
               ? null
               : { label: t.toast.show, onclick: () => this.show(), undo: false };

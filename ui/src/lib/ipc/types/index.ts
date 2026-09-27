@@ -43,7 +43,6 @@ export type { Portal } from "./Portal";
 export type { PortalCount } from "./PortalCount";
 export type { PortalHealth } from "./PortalHealth";
 export type { PortalLogin } from "./PortalLogin";
-export type { PortalNew } from "./PortalNew";
 export type { PortalPatch } from "./PortalPatch";
 export type { PortalState } from "./PortalState";
 export type { PortalSummary } from "./PortalSummary";

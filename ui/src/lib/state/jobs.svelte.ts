@@ -10,24 +10,24 @@
 // - Rows are plain objects (`$state.raw`): a change replaces the row, so only that row
 //   renders again, and no proxy sits between the template and 2000 jobs.
 // - Every number comes from the backend (one truth): the counts of the list (with the
-//   search) and the counts over every job (day overview, new jobs per portal, places).
-//   A change the page makes itself (read, a move) or a run update of a listed row moves
-//   them at once; during a run a counts-only query follows every update (throttled), so
-//   they stay exact for rows the page does not hold.
+//   search and the filter) and the counts over every job (what each place holds, whatever
+//   the search and the filter). A change the page makes itself (read, a move) or a run
+//   update of a listed row moves them at once; during a run a counts-only query follows
+//   every update (throttled), so they stay exact for rows the page does not hold.
 // - During a run the new jobs of the run are inserted at the top (they fade in) and listed
 //   rows update in place (rings fill live); a job further down the list stays where the
 //   next load puts it. The list re-sorts once, when the run finishes, and keeps the
 //   selection.
 // - `mark_read` when the user opens a job (a click, the keyboard); a job the app opens by
-//   itself (the next one after a move) only once it has been looked at (`markSeen`). An
-//   unread job keeps its dot until then; the list itself never changes for it.
+//   itself (the next one after a move) only once it has been looked at (`markSeen`). A new
+//   job keeps its dot until then; the list itself never changes for it.
 // - Like mail: every job is in one place (inbox, archive, trash); "fits anyway" is a flag of
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
 // - Each place is one list in the chosen order, the excluded jobs last. Every place has the
 //   same filter beside the search (the funnel, lib/state/filter.ts: one portal, one band,
-//   one contract type, one work mode, the new jobs; kept like the order). It narrows the list and its counts like the search. The
-//   overview's counts never follow it.
+//   one contract type, one work mode, the new jobs; kept like the order). It narrows the
+//   list and its counts like the search. The counts over every job never follow it.
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
 
@@ -46,7 +46,6 @@ import type {
   RunEvent,
 } from '../ipc/types';
 import { tokenMs } from '../tokens';
-import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
 import {
   isFiltered,
@@ -74,15 +73,11 @@ type Status = 'idle' | 'loading' | 'ready' | 'error';
 
 const ZERO: JobCounts = {
   inbox: 0,
-  unread: 0,
   archive: 0,
   trash: 0,
   excluded: 0,
   excludedArchive: 0,
   excludedTrash: 0,
-  high: 0,
-  noDetail: 0,
-  newByPortal: [],
 };
 
 export function keyOf(key: JobKey): string {
@@ -99,9 +94,9 @@ export const isExcluded = (job: JobView): boolean => job.match?.status === 'excl
 const everyJob = (): boolean => true;
 
 /**
- * What one job adds to the counts (the backend's definitions, store::job_page): the inbox
- * counts only inbox jobs; a job the filter of the counts (`passes`) leaves out adds nothing (a
- * change can take a job out of it or bring it in).
+ * What one job adds to the counts (the backend's definitions, store::job_page): each place
+ * counts its jobs and its excluded ones; a job the filter of the counts (`passes`) leaves out
+ * adds nothing (a change can take a job out of it or bring it in).
  */
 function add(
   counts: JobCounts,
@@ -110,24 +105,15 @@ function add(
   passes: (job: JobView) => boolean = everyJob,
 ): JobCounts {
   if (job === null || !passes(job)) return counts;
-  const shown = job.place === 'inbox' ? sign : 0;
+  const at = (place: Place): number => (job.place === place ? sign : 0);
   const out = isExcluded(job);
-  const isNew = job.unread && !out ? shown : 0;
-  const high = job.match?.status === 'scored' && job.match.score >= HIGH_FROM;
   return {
-    ...counts,
-    inbox: counts.inbox + shown,
-    unread: counts.unread + isNew,
-    archive: counts.archive + (job.place === 'archive' ? sign : 0),
-    trash: counts.trash + (job.place === 'trash' ? sign : 0),
-    excluded: counts.excluded + (out ? shown : 0),
-    excludedArchive: counts.excludedArchive + (out && job.place === 'archive' ? sign : 0),
-    excludedTrash: counts.excludedTrash + (out && job.place === 'trash' ? sign : 0),
-    high: counts.high + (high ? shown : 0),
-    noDetail: counts.noDetail + (job.detail.kind !== 'ok' ? shown : 0),
-    newByPortal: counts.newByPortal.map((line) =>
-      line.portal === job.portal ? { ...line, new: line.new + isNew } : line,
-    ),
+    inbox: counts.inbox + at('inbox'),
+    archive: counts.archive + at('archive'),
+    trash: counts.trash + at('trash'),
+    excluded: counts.excluded + (out ? at('inbox') : 0),
+    excludedArchive: counts.excludedArchive + (out ? at('archive') : 0),
+    excludedTrash: counts.excludedTrash + (out ? at('trash') : 0),
   };
 }
 
@@ -220,9 +206,11 @@ function keptFilter(): ListFilter {
   }
 }
 
+/** Keeps the user's filter; the run of a fetch's "Zeigen" is never kept. */
 function keepFilter(filter: ListFilter): void {
+  const kept = { ...filter, run: null };
   try {
-    if (isFiltered(filter)) localStorage.setItem(FILTER_KEY, JSON.stringify(filter));
+    if (isFiltered(kept)) localStorage.setItem(FILTER_KEY, JSON.stringify(kept));
     else localStorage.removeItem(FILTER_KEY);
   } catch {
     // Without a store the filter lasts for this session only.
@@ -233,9 +221,6 @@ function keepFilter(filter: ListFilter): void {
 class JobsStore {
   /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
-  /** The Übersicht asked to show the excluded jobs: the list opens their section and brings
-   *  it into view once (JobList resets it). */
-  revealExcluded = $state(false);
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter as chosen (kept); `filter` is what applies. */
@@ -268,9 +253,9 @@ class JobsStore {
   /** The next page did not load (the list stays, the end of it offers a retry). */
   pageError = $state<string | null>(null);
   /**
-   * A job action of the list that failed (a move of a row or of the chosen jobs, its undo,
-   * the star): one sentence in the list header until the next action succeeds or another
-   * list comes (place, search, order, filter).
+   * A job action of the list that failed (a move of a row, its undo, "Trotzdem bewerten",
+   * the choice of the Zeitraum): one sentence in the list header until the next action
+   * succeeds or another list comes (place, search, order, filter).
    */
   actionError = $state<string | null>(null);
   /** Jobs were deleted for good, but a result file could not follow (the Excel file is open
@@ -301,7 +286,8 @@ class JobsStore {
   detailSlow = $state(false);
   detailError = $state<string | null>(null);
 
-  /** The counts over every job, without the search (day overview, the places' own counts). */
+  /** The counts over every job, without the search and the filter: what each place holds
+   *  (the Papierkorb's to empty, whether a filter or a search left a place empty). */
   overviewCounts = $state<JobCounts | null>(null);
   overviewStatus = $state<Status>('idle');
 
@@ -350,18 +336,19 @@ class JobsStore {
   }
 
   /**
-   * Another filter (a part of it, or `NO_FILTER` to reset it), kept like the order. The list
-   * loads again from the top; the open job stays open when the filter still lists it (its
-   * row comes into view), else it closes like a job the search no longer finds.
+   * Another filter (a part of it, or `NO_FILTER` to reset it), kept like the order unless
+   * `keep` is false (the "Zeigen" of a fetch's toast: its filter lasts until the user changes
+   * it). The list loads again from the top; the open job stays open when the filter still
+   * lists it (its row comes into view), else it closes like a job the search no longer finds.
    */
-  setFilter(change: Partial<ListFilter>): void {
+  setFilter(change: Partial<ListFilter>, keep = true): void {
     const next = { ...this.filterChoice, ...change };
     const now = this.filterChoice;
     if ((Object.keys(next) as (keyof ListFilter)[]).every((key) => next[key] === now[key])) {
       return;
     }
     this.filterChoice = next;
-    keepFilter(next);
+    if (keep) keepFilter(next);
     this.quiet();
     const open = this.selected;
     const job = open === null ? null : this.held(open);
@@ -475,7 +462,7 @@ class JobsStore {
    *  a folder of a mail app (the "Im Archiv (n)" links keep it). */
   setPlace(place: Place, dropSearch = false): void {
     // Another place: an open job of the one left behind closes, like a mail of another
-    // folder (here, not in the list: the place also changes from the Übersicht).
+    // folder (here, not in the list: the place also changes from a run's toast).
     const selected = this.selected;
     const open =
       this.detail?.job ??
@@ -660,8 +647,8 @@ class JobsStore {
   }
 
   /**
-   * The counts over every job for the day overview and the list header: one counts-only query
-   * (on an error the overview says nothing, not "nothing new").
+   * The counts over every job for the list header and the empty states: one counts-only
+   * query (on an error they stay as they were).
    */
   async loadOverview(): Promise<void> {
     const request = ++this.#overviewRequest;
@@ -956,7 +943,7 @@ class JobsStore {
     const row = this.rows.find((job) => sameKey(job.key, key)) ?? null;
     const shown = this.detail && sameKey(this.detail.job.key, key) ? this.detail.job : null;
     const before = row ?? shown;
-    // A job the page does not hold (a row of the overview, an undo after the row left):
+    // A job the page does not hold (an undo after the row left):
     // the counts still follow, from the backend.
     if (before === null) {
       this.countsSoon();
@@ -980,6 +967,10 @@ class JobsStore {
   }
 
   private onRun(event: RunEvent): void {
+    // Another fetch: "Aus dem letzten Abruf" would speak of the one before.
+    if (event.type === 'started' && event.kind === 'fetch' && this.filterChoice.run !== null) {
+      this.setFilter({ run: null }, false);
+    }
     if (event.type === 'jobUpdated') this.upsert(event.job, event.fresh);
     else if (event.type === 'finished') void this.afterRun();
     else if (event.type === 'progress' && event.step === 'scan' && event.done === 0) {

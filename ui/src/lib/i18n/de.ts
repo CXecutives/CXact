@@ -768,11 +768,11 @@ export const de = {
       archive: 'Im Archiv',
       trash: 'Im Papierkorb',
     } satisfies Record<Place, string>,
+    /** An empty Archiv or Papierkorb (the empty Eingang says what comes, list.empty*). */
     empty: {
-      inbox: 'Keine Jobs.',
       archive: 'Das Archiv ist leer.',
       trash: 'Der Papierkorb ist leer.',
-    } satisfies Record<Place, string>,
+    } satisfies Record<Exclude<Place, 'inbox'>, string>,
   },
   /** What a job can do where it is: one name and icon in its menu (a right click on its row,
    *  the reader's "…") and in the reader. */
@@ -796,8 +796,7 @@ export const de = {
     purge: 'Endgültig löschen',
     /** The confirm button of a dialog is the verb of what asked. */
     purgeConfirm: 'Endgültig löschen',
-    purgeHeading: (value: number) =>
-      value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
+    purgeHeading: 'Job endgültig löschen?',
     /** Deleting for good, one job or the whole Papierkorb: one sentence shape. */
     purgeText: 'Der Job kommt nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
@@ -944,8 +943,8 @@ export const de = {
   },
   toolbar: {
     fetch: 'Postfach abrufen',
-    /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of its chevron
-     *  (its name, its heading and its tooltip). */
+    /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of the icon
+     *  button beside it (its name, its heading and its tooltip). */
     range: 'Zeitraum',
     rangeName: {
       sinceLast: 'Seit dem letzten Abruf',
@@ -991,6 +990,8 @@ export const de = {
     } satisfies Record<WorkMode, string>,
     /** A switch of its own behind a line: the jobs not opened yet. */
     unreadOnly: 'Nur neue',
+    /** The chip of a fetch's "Zeigen": only the new jobs of that fetch. */
+    lastFetch: 'Aus dem letzten Abruf',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
@@ -1019,6 +1020,7 @@ export const de = {
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Exportordner ist nicht erreichbar.',
     },
+    /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
     checkMailbox: 'Postfach prüfen',
     /** A portal the fetch paused or that reached its limit, until when (the portal key and
      *  an ISO moment): once in the run line after the fetch, several in one line. */

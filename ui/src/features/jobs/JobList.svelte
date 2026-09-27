@@ -104,19 +104,6 @@
       return;
     }
   }
-  /** The Übersicht's "Ansehen" of the excluded jobs: the section opens and comes into view
-   *  once its divider is there (the backend lists the excluded jobs last). */
-  let excludedDivider: HTMLElement | undefined = $state();
-  $effect(() => {
-    if (!jobs.revealExcluded || excludedDivider === undefined) return;
-    untrack(() => {
-      jobs.revealExcluded = false;
-      if (!excludedOpen) toggleExcluded();
-      void tick().then(() => {
-        if (excludedDivider !== undefined) glideIntoView(excludedDivider, 'center');
-      });
-    });
-  });
   /** The folded section ends the list: every other row is loaded (the backend lists the
    *  excluded jobs last), so no more pages are fetched until it opens. */
   const foldedEnd = $derived(!excludedOpen && excluded.length > 0);
@@ -208,8 +195,8 @@
     marked !== null && excluded.some((job) => keyOf(job.key) === marked),
   );
 
-  // A job opened from elsewhere (the Übersicht, an undo) whose row is folded away: its
-  // section opens (for now; the kept choice stays).
+  // A job opened from elsewhere (an undo, the job kept open from the last start) whose row
+  // is folded away: its section opens (for now; the kept choice stays).
   let lastMarked: string | null = null;
   $effect(() => {
     const key = marked;
@@ -420,7 +407,7 @@
   async function purgeRow(): Promise<void> {
     if (purging === null) return;
     purgeBusy = true;
-    purgeError = await purge([purging]);
+    purgeError = await purge([purging], true);
     purgeBusy = false;
     if (purgeError === null) purging = null;
   }
@@ -602,15 +589,13 @@
           {@render group(active)}
         </div>
         {#if excluded.length > 0}
-          <div bind:this={excludedDivider}>
-            <ListDivider
-              label={t.list.excluded}
-              count={excludedCount}
-              open={excludedOpen}
-              ontoggle={toggleExcluded}
-              testid="excluded-divider"
-            />
-          </div>
+          <ListDivider
+            label={t.list.excluded}
+            count={excludedCount}
+            open={excludedOpen}
+            ontoggle={toggleExcluded}
+            testid="excluded-divider"
+          />
           {#if excludedOpen}
             <div class="rows" data-testid="excluded-rows" transition:unfold>
               {@render group(excluded)}
@@ -652,7 +637,7 @@
 <Dialog
   open={purging !== null}
   variant="danger"
-  heading={t.actions.purgeHeading(1)}
+  heading={t.actions.purgeHeading}
   text={t.actions.purgeText}
   confirmLabel={t.actions.purgeConfirm}
   busy={purgeBusy}

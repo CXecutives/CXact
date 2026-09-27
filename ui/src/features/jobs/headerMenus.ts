@@ -1,5 +1,5 @@
 // The two menus of the list header (ListHeader.svelte) as the list stands now: the funnel's
-// "Sortieren und filtern" and the "Zeitraum" of the chevron beside "Postfach abrufen". Both
+// "Sortieren und filtern" and the "Zeitraum" of the icon button beside "Postfach abrufen". Both
 // read the tables (lib/state/filter.ts, FETCH_RANGES) and the catalog; the header opens them.
 
 import { t } from '$lib/i18n/t';
