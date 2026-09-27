@@ -562,11 +562,9 @@
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
   --sidebar-width: 196px;
   --rail-width: 64px;
-  /* Room for a usual job title (about 40 characters) on the first line of a toast with an
-     undo; a longer one ends in an ellipsis. */
-  --toast-width: 520px;
-  /* A short toast ("Archiviert" with Rückgängig) is as wide as its words, at least this. */
-  --toast-min: 280px;
+  /* One width for every toast: the longest sentence ("2 neue Jobs, 1 mit hoher
+     Übereinstimmung") with its action and ×. */
+  --toast-width: 440px;
   /* How far the toast stack rises above the bottom edge of the window beside its gap: the
      height of a bar that sticks to the bottom of the view under it (the Profil's save bar;
      components/Toast.svelte measures it and sets this on the stack). */

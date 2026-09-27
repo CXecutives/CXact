@@ -304,9 +304,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-8);
-    width: fit-content;
-    min-width: var(--toast-min);
-    max-width: min(var(--toast-width), calc(100vw - 2 * var(--space-24)));
+    /* Every toast is as wide as the others (user decision 2026-09-27). */
+    width: min(var(--toast-width), calc(100vw - 2 * var(--space-24)));
     overflow: hidden;
     padding: var(--space-6) var(--space-6) var(--space-6) var(--space-16);
     border: var(--border-width) solid var(--border);
