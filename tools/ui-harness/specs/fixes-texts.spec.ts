@@ -22,61 +22,6 @@ test('the English reader counts the must-have requirements, as the German one do
   await expect(page.getByTestId('must')).toHaveText(/^\d+ of \d+ must-haves met/);
 });
 
-test('an excluded row names a missing degree or licence in short words, never a sentence', async ({
-  page,
-}) => {
-  // The excluded section open, as a user who opened it once finds it.
-  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
-  await open(page, WIN);
-  const excluded = page.getByTestId('excluded-rows');
-  // A country outside the profile says what does not fit, like its neighbours.
-  await expect(excluded.getByTestId('job-row-linkedin-4100200305').locator('.foot')).toHaveText(
-    'Einsatzland passt nicht',
-  );
-  const key = { portal: 'freelance', id: '900412' } as const;
-  const row = excluded.getByTestId('job-row-freelance-900412');
-  await expect(row.locator('.foot')).toHaveText('Zeitarbeit');
-  const job = await page.evaluate((k) => window.__harness.job(k), key);
-  // The engine excludes on a degree or licence the ad makes mandatory (`formalOpen`).
-  const exclude = (code: string, params: Record<string, string | boolean>) =>
-    page.evaluate(
-      ([base, note]) => {
-        window.__harness.emit({
-          type: 'jobUpdated',
-          job: { ...base, match: { ...base.match!, note } },
-          fresh: false,
-        });
-      },
-      [job!, { code, params }] as const,
-    );
-  await exclude('formalOpen', { class: 'degree', mandatory: true });
-  await expect(row.locator('.foot')).toHaveText('Abschluss fehlt');
-  await exclude('formalOpen', { class: 'licence', mandatory: true });
-  await expect(row.locator('.foot')).toHaveText('Zulassung fehlt');
-  // A code of a newer core: the plain word, not a raw code and not a cut sentence.
-  await exclude('somethingNew', {});
-  await expect(row.locator('.foot')).toHaveText('Ausgeschlossen');
-});
-
-test('fetching every alert mail has one name: in the list, the settings and the run', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=empty`);
-  await expect(page.getByTestId('read-older')).toContainText('Alle Alert-Mails abrufen');
-  await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('settings-mailbox')).toContainText('Alle Alert-Mails abrufen');
-  // The run card names the run by its kind until the first status comes.
-  await page.evaluate(() => (window.__harness.holdAfter = 1));
-  await page.getByTestId('full-mailbox').click();
-  await page
-    .getByTestId('dialog-full-mailbox')
-    .getByRole('button', { name: 'Abrufen', exact: true })
-    .click();
-  await expect(page.getByTestId('run-running')).toContainText('Alle Alert-Mails abrufen');
-  await page.evaluate(() => (window.__harness.holdAfter = null));
-  await runFinished(page);
-});
-
 test('an empty list during a fetch says the jobs come in as it goes, not at its end', async ({
   page,
 }) => {
@@ -106,16 +51,14 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
   await expect(date('freelancermap-2806')).toHaveText('So 20.09.');
 });
 
-test('an archived job is brought back with a verb, not a way back to Jobs', async ({ page }) => {
+test('an archived job is brought back with the verb of the Papierkorb: Wiederherstellen', async ({
+  page,
+}) => {
   await open(page, WIN);
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';
-  await page.getByTestId('job-list').getByTestId(`job-row-${key}`).hover();
-  // The place it goes to, like the other moves ("In den Papierkorb").
-  await expect(page.getByTestId(`toInbox-${key}`)).toHaveAttribute(
-    'aria-label',
-    'Zurück in den Eingang',
-  );
+  await page.getByTestId('job-list').getByTestId(`job-row-${key}`).click({ button: 'right' });
+  await expect(page.getByTestId('menu-item-toInbox')).toHaveText('Wiederherstellen');
 });
 
 test('an ad that could not be fetched says so with the one verb for details', async ({ page }) => {
@@ -130,36 +73,16 @@ test('an ad that could not be fetched says so with the one verb for details', as
     });
   }, job!);
   const row = page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2805');
-  // "Details holen" is the verb for details: the badge's tooltip and the reader agree.
-  await row.locator('.badge').hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Die Anzeige ließ sich mehrmals nicht holen.');
+  // The row carries no badge; the reader says it.
+  await expect(row.locator('.badge')).toHaveCount(0);
   await row.click();
   await expect(page.getByTestId('detail-note')).toHaveText(
     'Die Anzeige ließ sich mehrmals nicht holen.',
   );
 });
 
-test('the teaser badge says what "Vorschau" is', async ({ page }) => {
-  await open(page, WIN);
-  const badge = page
-    .getByTestId('job-rows')
-    .getByTestId('job-row-freelance-900411')
-    .locator('.badge');
-  await expect(badge).toHaveText('Nur Vorschau');
-  await badge.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(
-    'Ohne Anmeldung zeigt das Portal nur den Anfang der Anzeige.',
-  );
-});
-
-test('English names agency work and the preferred rate one way everywhere', async ({ page }) => {
-  // The excluded section open, as a user who opened it once finds it.
-  await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
+test('English names the preferred rate one way everywhere', async ({ page }) => {
   await open(page, `${WIN}&lang=en`);
-  // Short "Agency work" read like any work through an agency, common for freelancers.
-  await expect(
-    page.getByTestId('excluded-rows').getByTestId('job-row-freelance-900412').locator('.foot'),
-  ).toHaveText('Temporary agency work');
   // The field is "Preferred day rate"; "target" is the word of the target roles. The
   // preference is the reason of the rate's verdict, in its tooltip.
   await page.getByTestId('job-rows').getByTestId('job-row-freelancermap-2801').click();

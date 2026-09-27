@@ -7,7 +7,7 @@
 // never to a raw code.
 
 import { IpcError } from '../ipc/api';
-import type { DetailState, JobView, Notice, PortalHealth, Reason } from '../ipc/types';
+import type { DetailState, Notice, PortalHealth, Reason } from '../ipc/types';
 import {
   textOf,
   type CriterionKey,
@@ -109,17 +109,9 @@ export function noteText(note: Notice | null): string | null {
   return key ? t.reader.criterion[key].exclusion : null;
 }
 
-/** The criterion an exclusion note names (`hardCriterion` with its key, or the reason code). */
-function noteCriterion(note: Notice | null): CriterionKey | null {
-  if (note === null) return null;
-  return note.code === 'hardCriterion'
-    ? criterionKey(note.params.criterion)
-    : criterionKey(note.code);
-}
-
 /** Whether a detail state warns (the ad could not be read, or is gone) or is a quiet fact
- *  (it follows, it is a teaser, it comes on request): one tone for the row's badge, the
- *  reader's note and the run card. */
+ *  (it follows, it is a teaser, it comes on request): one tone for the reader's note and the
+ *  run card. */
 export const DETAIL_WARNS: Record<Exclude<DetailState['kind'], 'ok'>, boolean> = {
   failed: true,
   unfetchable: true,
@@ -128,30 +120,6 @@ export const DETAIL_WARNS: Record<Exclude<DetailState['kind'], 'ok'>, boolean> =
   teaser: false,
   onRequest: false,
 };
-
-/** The reason line of a list row: why it is excluded in short words ("Tagessatz zu
- *  niedrig"), else the best met requirement. */
-export function rowReason(job: JobView): { kind: 'met' | 'violation'; text: string } | null {
-  const match = job.match;
-  if (match === null) return null;
-  if (match.status === 'excluded') return { kind: 'violation', text: exclusionWords(match.note) };
-  const top = match.top[0];
-  return top ? { kind: 'met', text: top } : null;
-}
-
-/**
- * Why a job is excluded in the short words of a row, never a sentence (the reader has
- * those): the criterion, a mandatory degree or licence the profile lacks, else only
- * "Ausgeschlossen" (a code of a newer core).
- */
-function exclusionWords(note: Notice | null): string {
-  const key = noteCriterion(note);
-  if (key) return t.reader.criterion[key].short;
-  if (note?.code === 'formalOpen') {
-    return t.list.formalMissing[note.params.class === 'licence' ? 'licence' : 'degree'];
-  }
-  return t.score.excluded;
-}
 
 export function warningText(notice: Notice): string | null {
   return has(t.profile.warning, notice.code)

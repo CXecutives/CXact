@@ -193,8 +193,8 @@ test('a row whose exclusion changes in place stands with the scored rows', async
 test('deleting the open job for good opens the next one', async ({ page }) => {
   await open(page, WIN);
   for (const key of ['freelancermap-2803', 'linkedin-4100200302']) {
-    await row(page, key).hover();
-    await page.getByTestId(`trash-${key}`).click();
+    await row(page, key).click({ button: 'right' });
+    await page.getByTestId('menu-item-trash').click();
     await page.waitForTimeout(550);
   }
   await page.getByTestId('place-trash').click();
@@ -203,7 +203,9 @@ test('deleting the open job for good opens the next one', async ({ page }) => {
   const other =
     firstKey === 'job-row-freelancermap-2803' ? 'linkedin:4100200302' : 'freelancermap:2803';
   await first.click();
-  await stage(page).getByTestId('reader-purge').click();
+  await expect(stage(page).getByTestId('reader-title')).toBeVisible();
+  await first.click({ button: 'right' });
+  await page.getByTestId('menu-item-purge').click();
   await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
   await expect(list(page).locator(`[data-open][data-key="${other}"]`)).toHaveCount(1);
 });
@@ -269,8 +271,8 @@ test('undoing moves in another order puts the rows back where they stood', async
   const before = await keys();
   for (const [index, id] of before.slice(0, 2).entries()) {
     const key = id.replace('job-row-', '');
-    await row(page, key).hover();
-    await page.getByTestId(`archive-${key}`).click();
+    await row(page, key).click({ button: 'right' });
+    await page.getByTestId('menu-item-archive').click();
     await page.waitForTimeout(550);
     // Later than the 2 s in which moves join one toast.
     await page.clock.setFixedTime(new Date(NOW.getTime() + (index + 1) * 5_000));

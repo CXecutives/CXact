@@ -1,22 +1,21 @@
 <!--
-  A list row: leading, content, trailing, top-aligned (mail style: three lines of content,
-  one row height; a row whose title needs a second line grows by that line), the one inner
-  padding of the columns on the sides. A hairline under each row; a list whose rows reach
-  past its column (for the wash) insets the line with `--row-rule-inset`, so it is as wide
-  as every other hairline there. Hover washes the row (80 ms in, 150 ms out), a press
-  darkens it (60 ms); rows never move or scale. The selected row takes a very light warm
-  wash (one step deeper under the pointer, one more while pressed) and a coral bar on the
-  left, inset by the row's padding, that fades in (150 ms) and out (100 ms); a row created
-  as selected is simply there. A list that marks its open row with one bar of its own,
-  which slides from row to row (the job list), turns the row's bar off (`bar={false}`): it
-  goes at once, as the list's bar takes its place. While the window is inactive the
-  selection turns grey (its ring track too), as in Mail and Explorer. While the list
-  scrolls rows take no hover: a row
-  rests (`data-rests`), and the rows the pointer passes during a scroll carry `data-still`
-  (input.ts) until it is over, so only those rows restyle. A mark on :root or a property that
-  inherits (pointer-events) would restyle every row twice per scroll, a long task with a few
-  hundred rows. Every row is a button and a Tab stop. Under the keyboard focus ring the coral
-  bar steps inside it (navy and coral touch, never blend).
+  A list row: leading, content, trailing, top-aligned (mail style: two lines of content, one
+  row height), the one inner padding of the columns on the sides. A hairline under each row;
+  a list whose rows reach past its column (for the wash) insets the line with
+  `--row-rule-inset`, so it is as wide as every other hairline there. Hover washes the row
+  (80 ms in, 150 ms out), a press darkens it (60 ms); rows never move or scale. The selected
+  row takes a very light warm wash (one step deeper under the pointer, one more while
+  pressed) and a coral bar on the left, inset by the row's padding, that fades in (150 ms)
+  and out (100 ms); a row created as selected is simply there. A list that marks its open
+  row with one bar of its own, which slides from row to row (the job list), turns the row's
+  bar off (`bar={false}`): it goes at once, as the list's bar takes its place. While the
+  window is inactive the selection turns grey, as in Mail and Explorer. While the list
+  scrolls rows take no hover: a row rests (`data-rests`), and the rows the pointer passes
+  during a scroll carry `data-still` (input.ts) until it is over, so only those rows
+  restyle. A mark on :root or a property that inherits (pointer-events) would restyle every
+  row twice per scroll, a long task with a few hundred rows. Every row is a button and a Tab
+  stop. Under the keyboard focus ring the coral bar steps inside it (navy and coral touch,
+  never blend).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
@@ -90,12 +89,9 @@
     transition-duration: var(--dur-instant);
   }
 
+  /* The ring keeps its own track on the warm wash: the open row's ring stays hollow. */
   .selected {
     background-color: var(--surface-selected);
-
-    /* The ring's track and a neutral badge stay visible on the warm wash. */
-    --ring-track: var(--ring-track-selected);
-    --badge-neutral-bg: var(--surface);
   }
 
   .selected:hover:where(:not([data-still])) {
@@ -150,8 +146,6 @@
   /* Like Mail and Explorer: the selection greys out while the window is in the back. */
   :global(:root[data-window='inactive']) .selected {
     background-color: var(--surface-selected-inactive);
-
-    --ring-track: var(--ring-track-inactive);
   }
 
   :global(:root[data-window='inactive']) .selected::before {

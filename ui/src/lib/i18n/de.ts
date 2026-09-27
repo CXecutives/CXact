@@ -713,23 +713,30 @@ export const de = {
       trash:
         'Jobs im Papierkorb bleiben hier, bis du sie wiederherstellst oder den Papierkorb leerst.',
     } satisfies Record<Exclude<Place, 'inbox'>, string>,
-    trashFor: (days: number) =>
-      `Jobs im Papierkorb werden nach ${count(days, 'Tag', 'Tagen')} endgültig gelöscht.`,
   },
-  /** What a job can do where it is: one name and icon on a row, in the reader, in the bar. */
+  /** What a job can do where it is: one name and icon in its menu (a right click on its row,
+   *  the reader's "…") and in the reader. */
   actions: {
+    /** What shows the job. */
+    open: 'Öffnen',
+    mail: OPEN_MAIL,
+    openAd: 'Anzeige öffnen',
+    prompt: 'KI-Prompt kopieren',
+    /** Without a usable profile there is nothing to judge the job by. */
+    promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
+    /** An excluded job counts with its real match anyway, or is excluded again. */
+    include: 'Trotzdem bewerten',
+    exclude: 'Wieder ausschließen',
     archive: 'Archivieren',
-    /** Back into the inbox (the toast says "zurückgeholt"): a verb, not a way back. */
-    toInbox: 'Zurück in den Eingang',
-    trash: 'In den Papierkorb',
+    /** Back into the Eingang from the Archiv: the same word as from the Papierkorb. */
+    toInbox: 'Wiederherstellen',
+    trash: 'Löschen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
-    /** The confirm button of a dialog is the bare verb of its heading. */
-    purgeConfirm: 'Löschen',
+    /** The confirm button of a dialog is the verb of what asked. */
+    purgeConfirm: 'Endgültig löschen',
     purgeHeading: (value: number) =>
       value === 1 ? 'Job endgültig löschen?' : `${n(value)} Jobs endgültig löschen?`,
-    /** One job, named. */
-    purgeOne: (name: string) => `„${name}“ endgültig löschen?`,
     purgeText: 'Endgültig gelöschte Jobs kommen nicht wieder, auch nicht mit alten Alert-Mails.',
     emptyTrash: 'Papierkorb leeren',
     emptyTrashHeading: 'Papierkorb leeren?',
@@ -738,10 +745,9 @@ export const de = {
         ? 'Der Job wird endgültig gelöscht und kommt nicht wieder.'
         : `Die ${n(value)} Jobs werden endgültig gelöscht und kommen nicht wieder.`,
   },
-  /** The app's own menus (their accessible names and the entries of the job's menu). */
+  /** The app's own menus (their accessible names). */
   menu: {
     job: 'Job',
-    open: 'Öffnen',
   },
   /** The native context menu of fields and selected text (the OS's words). */
   edit: {
@@ -802,8 +808,6 @@ export const de = {
     code: reasonCode,
   },
   job: {
-    /** An excluded job the user counts anyway (its row's quiet badge). */
-    included: 'Einbezogen',
     workMode: {
       remote: 'Remote',
       hybrid: 'Hybrid',
@@ -818,22 +822,9 @@ export const de = {
       gone: 'Nicht mehr online',
       onRequest: 'Details auf Anfrage',
     } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** What a detail badge means, in its tooltip. */
-    detailHint: {
-      pending: 'Die ganze Anzeige ist noch nicht geholt.',
-      teaser: detailSays.teaser,
-      failed: 'Die ganze Anzeige ließ sich nicht holen.',
-      unfetchable: detailSays.unfetchable,
-      gone: detailSays.gone,
-      onRequest: detailSays.onRequest,
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** The ad's page says it takes no applications any more (badge and its tooltip). */
+    /** The ad's page says it takes no applications any more. */
     closed: 'Keine Bewerbung mehr möglich',
-    closedHint: 'Die Anzeige ist noch lesbar, nimmt aber keine Bewerbungen mehr an.',
     unread: 'Neu',
-    /** The date column of a row in the Papierkorb: how long until it empties itself. */
-    trashLeft: (days: number) => `noch ${count(days, 'Tag', 'Tage')}`,
-    trashSoon: 'bald gelöscht',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
   },
@@ -974,17 +965,9 @@ export const de = {
     label: 'Jobs',
     /** The folding section at the end of every place (its count in brackets where known). */
     excluded: 'Ausgeschlossen',
-    /** A row excluded by a formal requirement the ad makes mandatory (`formalOpen` with its
-     *  `class`), in the short words of the criteria. */
-    formalMissing: {
-      degree: 'Abschluss fehlt',
-      licence: 'Zulassung fehlt',
-    },
     /** FR-03: while the first fetch runs, the empty list only says what comes (the rows
      *  arrive during the fetch, each once its details are in). */
     emptyWhileRun: 'Die Jobs erscheinen hier nach und nach.',
-    createAlert: (portal: string) => `Alert auf ${portal} anlegen`,
-    readOlder: FULL_MAILBOX,
     emptyAll: 'Nach dem ersten Abruf stehen die Jobs hier.',
     emptyAfterRun: 'Die Alert-Mails enthielten bisher keine Jobs.',
     noHit: (query: string) => `Keine Jobs zu „${query}“.`,
@@ -1796,17 +1779,14 @@ export const de = {
     copied: 'Kopiert.',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
     prompt: 'Prompt kopiert.',
-    archivedOne: (name: string) => `„${name}“ archiviert.`,
-    trashedOne: (name: string) => `„${name}“ in den Papierkorb gelegt.`,
-    trashedMany: (value: number) => `${n(value)} Jobs in den Papierkorb gelegt.`,
-    inboxOne: (name: string) => `„${name}“ zurückgeholt.`,
-    inboxMany: (value: number) => `${n(value)} Jobs zurückgeholt.`,
-    restoredMany: (value: number) => `${n(value)} Jobs wiederhergestellt.`,
-    archivedMany: (value: number) => `${n(value)} Jobs archiviert.`,
-    restored: (name: string) => `„${name}“ wiederhergestellt.`,
+    /** A job action: one short word, however many jobs it took, without their titles. */
+    archived: 'Archiviert',
+    trashed: 'Gelöscht',
+    restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */
-    deletedOne: (name: string) => `„${name}“ endgültig gelöscht.`,
-    deletedMany: (value: number) => `${n(value)} Jobs endgültig gelöscht.`,
+    deleted: 'Endgültig gelöscht',
+    included: 'Bewertet',
+    excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert.',
     runDone: (value: number) =>
       value === 0

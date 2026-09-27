@@ -23,7 +23,7 @@ import {
   settleMoves,
   stage,
   tokenColour,
-  tool,
+  viaMenu,
   WIN,
 } from './helpers';
 
@@ -200,7 +200,7 @@ test.describe('the head and the match', () => {
     await expect(line).toHaveText('Keine Bewerbung mehr möglich');
     expect(await tip(page, line.locator('span'))).toMatch(/^Zuletzt geprüft /);
     // The trash says what the trash says; its own actions stay named, the menu has no trash.
-    await tool(page, 'trash', 'freelancermap-2803');
+    await viaMenu(page, 'trash', 'freelancermap-2803');
     await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'freelancermap-2803');

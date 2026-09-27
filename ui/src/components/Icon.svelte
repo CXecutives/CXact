@@ -18,6 +18,7 @@
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
   import Briefcase from '@lucide/svelte/icons/briefcase';
+  import Building from '@lucide/svelte/icons/building';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
   import Check from '@lucide/svelte/icons/check';
@@ -32,6 +33,7 @@
   import Clock from '@lucide/svelte/icons/clock';
   import Contrast from '@lucide/svelte/icons/contrast';
   import Copy from '@lucide/svelte/icons/copy';
+  import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
@@ -57,7 +59,6 @@
   import LogIn from '@lucide/svelte/icons/log-in';
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
-  import MailOpen from '@lucide/svelte/icons/mail-open';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
   import Pencil from '@lucide/svelte/icons/pencil';
@@ -65,6 +66,7 @@
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
+  import Scale from '@lucide/svelte/icons/scale';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
@@ -87,6 +89,7 @@
     ban: Ban,
     banknote: Banknote,
     briefcase: Briefcase,
+    building: Building,
     'building-2': Building2,
     calendar: Calendar,
     check: Check,
@@ -101,6 +104,7 @@
     clock: Clock,
     contrast: Contrast,
     copy: Copy,
+    'corner-down-left': CornerDownLeft,
     'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
@@ -126,7 +130,6 @@
     'log-in': LogIn,
     'log-out': LogOut,
     mail: Mail,
-    'mail-open': MailOpen,
     'map-pin': MapPin,
     'message-square-text': MessageSquareText,
     pencil: Pencil,
@@ -134,6 +137,7 @@
     'refresh-cw': RefreshCw,
     'rotate-ccw': RotateCcw,
     'rotate-cw': RotateCw,
+    scale: Scale,
     scissors: Scissors,
     search: Search,
     settings: Settings,

@@ -45,7 +45,6 @@ const LARGE = {
   'ui/src/features/profile/ProfileEditor.svelte': [1200, 'known large: one file per section'],
   'ui/src/lib/state/jobs.svelte.ts': [1100, 'known large: query, selection and moves apart'],
   'ui/src/features/jobs/JobList.svelte': [1100, 'known large: the rows apart from the list'],
-  'ui/src/components/JobRow.svelte': [700, 'known large: its facts line apart'],
   'ui/src/features/jobs/RunCard.svelte': [700, 'known large: the phases apart'],
   'ui/src/components/ChipInput.svelte': [700, 'known large: its editing keys into input.ts'],
   'ui/src/features/first-run/FirstRunView.svelte': [600, 'known large: one file per step'],
@@ -69,7 +68,10 @@ const FEATURE_PUBLIC = {
  * Findings accepted for a while, each with the TODO that removes it. The check fails when an
  * entry no longer matches anything, so a fixed finding also drops its entry.
  */
-const TEMPORARY = {};
+const TEMPORARY = {
+  'ui/src/lib/facts.ts: rowFacts':
+    'the list rows show no facts any more (track J1); lib/facts.ts is track J2s, which drops it',
+};
 const temporaryUsed = new Set();
 /** Whether `key` is accepted for now (and remember that its entry is still needed). */
 const temporary = (key) => {

@@ -1,30 +1,27 @@
 <!--
   The job list: one list per place in the chosen order, rows in windows of 60 (a sentinel at
-  the end shows the next window), a new job of a run fades in where it lands (the rows below
-  simply make room). Rows move only for the user's own change and for the re-sort at the end
-  of a run: after the order, another place or a filter the rows on screen glide to their new
-  place (150 ms); rows off screen and new rows are simply there. A search and live updates
-  never move anything. An unopened job carries the coral dot until it is opened. At the end of
-  every place the excluded jobs, grey, in one section "Ausgeschlossen (n)" that is folded by
-  default (the choice is kept; the count where the list knows it; the arrows skip a folded
-  section, and it opens when its job is opened from elsewhere). A page that fails to load
-  while scrolling says so at the end of the list, with a retry. A search looks in the list's
-  place; under its hits a button names each other place with hits ("Im Archiv (2)", counted
-  with the same filter) and goes there with the search. Each row's tools are the job's
-  actions where it is (Archivieren, Löschen; in the Papierkorb Wiederherstellen,
-  Endgültig löschen); a row the user moves out folds away. Its menu (a right click) is the
-  table JOB_MENU of actions.ts. A click opens a job; one coral bar marks the open job's row
-  and slides from row to row (RowBar). Back in the Jobs view, the open job's row is
-  in view again.  in view again. A row move that fails says so in the list header. An empty inbox says where
-  jobs come from (an alert on each portal, older mails; reading the whole mailbox asks first,
-  as in Einstellungen); a filter that leaves nothing says so and takes itself off ("Filter
-  zurücksetzen"). Every empty state has exactly one reason and at most one way out
-  (secondary: the header holds the view's primary). Without a mailbox one slim note at the top
-  says how to connect one; without a usable profile one says that there is no fit without it
-  and leads to the Profil view (the rings stay, empty); a thin profile one calm line that the
-  fit stays rough. A list that fails to load says only that, with a retry (the header hides
-  its counts and tools). Every empty state of the list is one pattern: an icon, one sentence,
-  at most one way out, centred.
+  the end shows the next window), a new job of a run rises in where it lands (the rows below
+  simply make room; the rows already there never flicker). Rows move only for the user's own
+  change and for the re-sort at the end of a run: after the order, another place or a filter
+  the rows on screen glide to their new place (150 ms); rows off screen and new rows are
+  simply there. A search and live updates never move anything. A row the user moves out
+  (archive, delete, restore) folds its height away. An unopened job carries the coral dot
+  until it is opened. At the end of every place the excluded jobs, grey with the ban in the
+  ring's place, in one section "Ausgeschlossen (n)" that is folded by default (the choice is
+  kept; it opens when its job is opened from elsewhere). A page that fails to load while
+  scrolling says so at the end of the list, with a retry. A search looks in the list's place;
+  under its hits a button names each other place with hits ("Im Archiv (2)", counted with
+  the same filter) and goes there with the search. A click opens a job, a double click opens
+  its ad in the browser, a right click its menu (jobMenu of actions.ts); one coral bar marks
+  the open job's row and slides from row to row (RowBar). Back in the Jobs view, the open
+  job's row is in view again. A job action that fails says so in the list header. Every
+  empty state is one pattern at one place: an icon and one short sentence, centred, at most
+  one way out (secondary: the header holds the view's primary). A filter that leaves nothing
+  says so and takes itself off ("Filter zurücksetzen"). Without a mailbox one slim note at
+  the top says how to connect one; without a usable profile one says that there is no match
+  without it and leads to the Profil view (the rings stay, empty); a thin profile one calm
+  line that the match stays rough. A list that fails to load says only that, with a retry
+  (the header hides its tools).
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
@@ -32,16 +29,13 @@
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import JobRow, { type RowTool } from '$components/JobRow.svelte';
+  import JobRow from '$components/JobRow.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
   import Skeleton from '$components/Skeleton.svelte';
   import { nearEnd } from '$lib/actions/nearEnd';
   import { t } from '$lib/i18n/t';
-  import { invoke } from '$lib/ipc/api';
-  import { errorText } from '$lib/i18n/texts';
-  import { displayTitle } from '$lib/i18n/format';
-  import type { JobView, Place, Portal } from '$lib/ipc/types';
+  import type { JobView, Place } from '$lib/ipc/types';
   import { play, staggerLimit } from '$lib/motion/motion';
   import { rowCollapse, rowEnter } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
@@ -51,10 +45,8 @@
   import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
-  import type { MenuEntry } from '$lib/state/menu.svelte';
-  import { actionsOf, disarm, JOB_MENU, type JobMenuItem, move, moving, purge } from './actions';
+  import { disarm, jobMenu, moving, openAd, purge } from './actions';
   import { glideIntoView } from '$lib/motion/scroll';
-  import { copyJobPrompt } from './prompt';
   import RowBar from './RowBar.svelte';
 
   interface Props {
@@ -127,6 +119,10 @@
   // "No jobs in the alert mails" only after a fetch that read the mailbox.
   const lastFetch = $derived(run.summary ?? app.state?.lastRun ?? null);
   const mailRead = $derived(lastFetch?.outcome.kind === 'completed' && lastFetch.scan !== null);
+  /** The one sentence of an empty inbox. */
+  const emptyInbox = $derived(
+    run.active ? t.list.emptyWhileRun : mailRead ? t.list.emptyAfterRun : t.list.emptyAll,
+  );
   const profileMissing = $derived(app.state !== null && !app.hasProfile);
   // No profile: the fit needs one. One that is there but cannot be used is named.
   const profileNote = $derived.by(() => {
@@ -232,17 +228,6 @@
       .map((other) => ({ place: other, count: counts[other] }))
       .filter((hit) => hit.count > 0);
   });
-  const PORTALS = $derived((app.state?.portals ?? []).filter((p) => p.enabled));
-  /** A portal's page that did not open (said under the links). */
-  let portalError = $state<string | null>(null);
-  function openPortal(portal: Portal): void {
-    portalError = null;
-    invoke('open_target', { target: { kind: 'portalHome', portal } }).catch((error: unknown) => {
-      portalError = errorText(error);
-    });
-  }
-  /** "Ältere Mails lesen" asks first, like Einstellungen: it fetches more portal pages. */
-  let confirmOlder = $state(false);
 
   /* --------------------------------------------------------------------- glides */
 
@@ -358,88 +343,24 @@
   let purgeBusy = $state(false);
   let purgeError = $state<string | null>(null);
 
-  /** The row's tools: the job's actions where it is (deleting for good waits for a run: the
-   *  backend refuses meanwhile). */
-  function toolsOf(job: JobView): RowTool[] {
-    return actionsOf(job.place).map((action) => ({
-      id: action.id,
-      icon: action.icon,
-      label: action.label,
-      disabled: action.id === 'purge' && run.active,
-      disabledReason: run.busyText,
-      onclick: () => {
-        if (action.id === 'purge') {
-          purgeError = null;
-          purging = job;
-        } else {
-          void move([job], action.id).then((error) => (jobs.actionError = error));
-        }
-      },
-    }));
+  /** A failed action of a row says so in the list header. */
+  function report(error: string | null): void {
+    if (error !== null) jobs.actionError = error;
   }
 
-  /**
-   * The job's menu on a right click (the table JOB_MENU of actions.ts): open it, its ad, its
-   * moves and the prompt.
-   */
+  /** The job's menu on a right click (jobMenu of actions.ts, the reader's "…" too). */
   function menuOf(job: JobView): ContextMenu {
-    const list = [job];
-    const report = (error: string | null): void => {
-      if (error !== null) jobs.actionError = error;
+    return {
+      label: t.menu.job,
+      entries: jobMenu(job, {
+        open: () => select(job),
+        purge: () => {
+          purgeError = null;
+          purging = job;
+        },
+        report,
+      }),
     };
-    type Own = Exclude<JobMenuItem['id'], 'moves'>;
-    const runs: Record<Own, () => void> = {
-      open: () => select(job),
-      'open-ad': () => {
-        invoke('open_target', { target: { kind: 'jobUrl', key: job.key } }).catch(
-          (error: unknown) => report(errorText(error)),
-        );
-      },
-      prompt: () => void copyJobPrompt(job.key).then(report),
-    };
-    const labels: Record<Own, string> = {
-      open: t.menu.open,
-      'open-ad': t.reader.open,
-      prompt: t.reader.prompt,
-    };
-    const entries: MenuEntry[] = [];
-    for (const group of JOB_MENU) {
-      const items: MenuEntry[] = [];
-      for (const item of group) {
-        if (!item.shows(job)) continue;
-        if (item.id !== 'moves') {
-          items.push({
-            id: item.id,
-            label: labels[item.id],
-            icon: item.icon,
-            run: runs[item.id],
-          });
-          continue;
-        }
-        for (const action of actionsOf(job.place)) {
-          items.push({
-            id: action.id,
-            label: action.label,
-            icon: action.icon,
-            danger: action.id === 'purge',
-            disabled: action.id === 'purge' && run.active,
-            reason: action.id === 'purge' ? run.busyText : null,
-            run: () => {
-              if (action.id === 'purge') {
-                purgeError = null;
-                purging = job;
-              } else {
-                void move(list, action.id).then(report);
-              }
-            },
-          });
-        }
-      }
-      if (items.length === 0) continue;
-      if (entries.length > 0) entries.push({ kind: 'separator' });
-      entries.push(...items);
-    }
-    return { label: t.menu.job, entries };
   }
 
   async function purgeRow(): Promise<void> {
@@ -573,46 +494,9 @@
           text={t.place.empty[place]}
           testid="empty-place-{place}"
         />
-      {:else if run.active || !mailRead}
-        <!-- A fetch that goes, or none yet: only what comes (no setup links). -->
-        <EmptyState
-          icon="jobs"
-          tone="neutral"
-          text={run.active ? t.list.emptyWhileRun : t.list.emptyAll}
-          testid="empty-all"
-        />
       {:else}
-        <div class="sources">
-          <EmptyState icon="jobs" tone="neutral" text={t.list.emptyAfterRun} testid="empty-all" />
-          <div class="sources-actions">
-            {#each PORTALS as portal (portal.portal)}
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="external"
-                external
-                label={t.list.createAlert(t.portal[portal.portal])}
-                testid="alert-{portal.portal}"
-                onclick={() => openPortal(portal.portal)}
-              />
-            {/each}
-            {#if app.hasMailbox}
-              <Button
-                variant="ghost"
-                size="sm"
-                icon="alertMail"
-                label={t.list.readOlder}
-                disabled={run.fetchBlocked !== null}
-                disabledReason={run.fetchBlocked}
-                testid="read-older"
-                onclick={() => (confirmOlder = true)}
-              />
-            {/if}
-          </div>
-          {#if portalError}
-            <Notice tone="danger" variant="inline" text={portalError} testid="portal-error" />
-          {/if}
-        </div>
+        <!-- A fetch that goes, none yet, or one that read no jobs: what comes. -->
+        <EmptyState icon="jobs" tone="neutral" text={emptyInbox} testid="empty-all" />
       {/if}
     </div>
   {:else}
@@ -625,9 +509,8 @@
         selected={open}
         bar={false}
         onselect={select}
-        tools={toolsOf(job)}
+        onopen={(job) => void openAd(job).then(report)}
         menu={() => menuOf(job)}
-        trashDays={app.state?.autoEmptyTrashDays ?? 0}
       />
     {/snippet}
     {#snippet group(items: JobView[])}
@@ -699,21 +582,9 @@
 </div>
 
 <Dialog
-  bind:open={confirmOlder}
-  heading={t.settings.fullMailboxHeading}
-  text={t.settings.fullMailboxText}
-  confirmLabel={t.settings.fullMailboxConfirm}
-  testid="dialog-read-older"
-  onconfirm={() => {
-    confirmOlder = false;
-    void run.start({ kind: 'fullMailbox' });
-  }}
-/>
-
-<Dialog
   open={purging !== null}
   variant="danger"
-  heading={purging ? t.actions.purgeOne(displayTitle(purging.title)) : t.actions.purgeHeading(1)}
+  heading={t.actions.purgeHeading(1)}
   text={t.actions.purgeText}
   confirmLabel={t.actions.purgeConfirm}
   busy={purgeBusy}
@@ -769,23 +640,6 @@
   .stack > .also {
     justify-content: center;
     padding-inline: 0;
-  }
-
-  /* The empty list says where jobs come from, like every empty state (an icon, one
-     sentence), and its ways out are the portals' alerts and the older mails. */
-  .sources {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-12);
-    max-width: var(--list-min);
-  }
-
-  /* The block is centred, its links start on one line (their icons on one axis). */
-  .sources-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
   }
 
   .empty {

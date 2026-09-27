@@ -808,6 +808,41 @@ export const contextMenu: Action<HTMLElement, (() => ContextMenu | null) | null>
   };
 };
 
+const DOUBLE_HOST = '[data-double-click]';
+const doubleHosts = new WeakMap<Element, () => void>();
+
+/**
+ * `use:doubleClick={() => ...}`: a double click with the left button on the element runs it
+ * (a job row opens its ad); null offers none. No listener of its own: the one dblclick
+ * handler below calls it.
+ */
+export const doubleClick: Action<HTMLElement, (() => void) | null> = (node, handler) => {
+  const set = (next: (() => void) | null): void => {
+    if (next === null) {
+      doubleHosts.delete(node);
+      delete node.dataset.doubleClick;
+    } else {
+      doubleHosts.set(node, next);
+      node.dataset.doubleClick = '';
+    }
+  };
+  set(handler);
+  return {
+    update: set,
+    destroy: () => doubleHosts.delete(node),
+  };
+};
+
+/** A left double click on an element that offers one (`doubleClick`); `true` if it ran. */
+function runDouble(event: MouseEvent): boolean {
+  if (event.button !== LEFT) return false;
+  const host = closest(event.target, DOUBLE_HOST);
+  const handler = host === null ? undefined : doubleHosts.get(host);
+  if (handler === undefined) return false;
+  handler();
+  return true;
+}
+
 /** Open the menu of `host` at the pointer, or below the element itself from the keyboard. */
 function openHostMenu(host: Element, at: { x: number; y: number } | null): void {
   const offer = menuHosts.get(host)?.() ?? null;
@@ -1319,7 +1354,9 @@ export function installInput(): void {
   document.addEventListener(
     'dblclick',
     (event) => {
-      if (editChip(event) || !selectable(event.target)) event.preventDefault();
+      if (editChip(event) || runDouble(event) || !selectable(event.target)) {
+        event.preventDefault();
+      }
     },
     capture,
   );

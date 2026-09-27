@@ -4,11 +4,12 @@
   and the star; a click opens the job in Jobs. What fails is said at the block (`onerror`).
 -->
 <script lang="ts">
-  import JobRow, { type RowTool } from '$components/JobRow.svelte';
+  import JobRow from '$components/JobRow.svelte';
+  import { t } from '$lib/i18n/t';
   import type { JobView } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
-  import { actionsOf, move } from '../../jobs/actions';
+  import { jobMenu } from '../../jobs/actions';
   import { openJob } from '../lead';
 
   interface Props {
@@ -20,17 +21,12 @@
 
   let { list, prefix, onerror }: Props = $props();
 
-  function toolsOf(job: JobView): RowTool[] {
-    return actionsOf('inbox').map((action) => ({
-      id: action.id,
-      icon: action.icon,
-      label: action.label,
-      onclick: () => {
-        if (action.id !== 'archive' && action.id !== 'trash') return;
-        onerror(null);
-        void move([job], action.id).then(onerror);
-      },
-    }));
+  /** The job's menu (a right click), like the list's; deleting for good is not offered here. */
+  function menuOf(job: JobView): { label: string; entries: ReturnType<typeof jobMenu> } {
+    return {
+      label: t.menu.job,
+      entries: jobMenu(job, { open: () => openJob(job), purge: () => undefined, report: onerror }),
+    };
   }
 </script>
 
@@ -41,6 +37,6 @@
     pending={jobs.scoring && job.match === null}
     testid="{prefix}-{job.key.portal}-{job.key.id}"
     onselect={openJob}
-    tools={toolsOf(job)}
+    menu={() => menuOf(job)}
   />
 {/each}

@@ -261,10 +261,6 @@ test('the excluded section names its count, every excluded row of the list', asy
 
 test('the portals follow the one order of the app', async ({ page }) => {
   await open(page, `${WIN}&scenario=empty`);
-  const order = await page
-    .locator('[data-testid^="alert-"]')
-    .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
-  expect(order).toEqual(['alert-linkedin', 'alert-freelance', 'alert-freelancermap']);
   await page.getByTestId('nav-settings').click();
   const cards = await page
     .locator('[data-testid^="portal-"]')
@@ -287,7 +283,8 @@ test('an archived job leaves the list and every count but the archive', async ({
   await open(page, WIN);
   const all = (await listed(page)).length;
   await row(page, 'linkedin-4100200301').click();
-  await page.getByTestId('reader-archive').click();
+  await row(page, 'linkedin-4100200301').click({ button: 'right' });
+  await page.getByTestId('menu-item-archive').click();
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
   await expect.poll(async () => (await listed(page)).length).toBe(all - 1);
   expect((await calls(page, 'move_jobs')).map(([, args]) => args)).toEqual([

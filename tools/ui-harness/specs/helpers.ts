@@ -5,6 +5,7 @@
 import './runes';
 import type { Locator, Page } from '@playwright/test';
 import { de } from '../../../ui/src/lib/i18n/de';
+import { ICONS, type IconMeaning } from '../../../ui/src/lib/icons';
 import type { JobCounts, JobQuery, JobView, Portal } from '../../../ui/src/lib/ipc/types';
 import {
   activeFilters,
@@ -71,10 +72,28 @@ export async function openJob(page: Page, key: string): Promise<void> {
   await animationsDone(page);
 }
 
-/** A row's tool (it exists while the pointer is on the row). */
-export async function tool(page: Page, id: string, key: string): Promise<void> {
-  await row(page, key).hover();
-  await page.getByTestId(`${id}-${key}`).click();
+/** Open a row's menu (a right click on it); resolves with the menu. */
+export async function rowMenu(page: Page, key: string): Promise<Locator> {
+  await row(page, key).click({ button: 'right' });
+  const menu = page.getByTestId('menu');
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+/** A job's action through its row's menu (`archive`, `trash`, `restore`, `purge` ...). */
+export async function viaMenu(page: Page, id: string, key: string): Promise<void> {
+  await rowMenu(page, key);
+  await page.getByTestId(`menu-item-${id}`).click();
+}
+
+/** The open menu shows these icons (lib/icons.ts meanings), entry by entry. */
+export async function expectMenuIcons(page: Page, icons: readonly IconMeaning[]): Promise<void> {
+  const classes = await page
+    .getByTestId('menu')
+    .locator('[role^="menuitem"] .lead')
+    .evaluateAll((leads) => leads.map((lead) => [...(lead.querySelector('svg')?.classList ?? [])]));
+  expect(classes).toHaveLength(icons.length);
+  icons.forEach((icon, at) => expect(classes[at], icon).toContain(`lucide-${ICONS[icon]}`));
 }
 
 /** After a move the list ignores clicks for a moment (the row under the pointer changed). */

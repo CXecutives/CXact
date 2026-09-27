@@ -37,19 +37,21 @@ import {
   list,
   listed,
   MAC,
+  expectMenuIcons,
   menuItem,
   mountedKeys,
   openFilter,
   openJob,
   openPlace,
   row,
+  rowMenu,
   rows,
   settleMoves,
   stubList,
   T,
   tabCount,
   tokenColour,
-  tool,
+  viaMenu,
   WIN,
 } from './helpers';
 
@@ -137,7 +139,7 @@ test.describe('header', () => {
     // Papierkorb: "Papierkorb leeren", red, in the action's place.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
-      await tool(page, 'trash', key);
+      await viaMenu(page, 'trash', key);
       await settleMoves(page);
     }
     await openPlace(page, 'trash');
@@ -153,6 +155,7 @@ test.describe('header', () => {
   test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
     page,
   }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
     await open(page, `${WIN}&tick=200`);
     const header = page.getByTestId('list-header');
     const clear = 'rgba(0, 0, 0, 0)';
@@ -524,16 +527,16 @@ test.describe('one list', () => {
     expect((await divider.boundingBox())!.y).toBeGreaterThanOrEqual(last.y + last.height);
     await divider.click();
     await expect(excludedRows(page)).toHaveCount(out.length);
-    await expect(excludedRows(page).first().locator('.foot')).toHaveText(
-      T.reader.criterion.noAnue.short,
-    );
+    // Rows like every other, the ban in the ring's place, no reason.
+    await expect(excludedRows(page).first().getByTestId('row-excluded')).toBeVisible();
+    await expect(excludedRows(page).first().locator('.foot')).toHaveCount(0);
     // Kept: the next start shows it open; an archived job is in no list of the inbox.
     await open(page, WIN);
     await expect(page.getByTestId('excluded-divider')).toHaveAttribute('aria-expanded', 'true');
     await expect(row(page, 'linkedin-4100200306')).toHaveCount(0);
     expect(await listed(page)).toEqual(active);
     // Each place counts its own excluded jobs.
-    await tool(page, 'archive', out[0]!);
+    await viaMenu(page, 'archive', out[0]!);
     await expect(divider).toHaveText(`${T.list.excluded} (${out.length - 1})`);
     await openPlace(page, 'archive');
     await expect(divider).toHaveText(`${T.list.excluded} (1)`);
@@ -639,26 +642,24 @@ test.describe('one list', () => {
     await expect(page.getByTestId('list-skeleton')).toHaveCount(0);
   });
 
-  test('an empty inbox says where jobs come from; reading older mails asks first', async ({
+  test('an empty inbox says what comes: an icon and one sentence, nothing else', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=empty`);
-    await expect(page.getByTestId('empty-all')).toBeVisible();
+    const empty = page.getByTestId('empty-all');
+    await expect(empty).toBeVisible();
+    await expect(empty.locator('svg')).toHaveCount(1);
+    await expect(empty.getByRole('button')).toHaveCount(0);
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
-    await page.getByTestId('alert-linkedin').click();
-    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
-      target: { kind: 'portalHome', portal: 'linkedin' },
-    });
-    await failNext(page, 'open_target');
-    await page.getByTestId('alert-freelance').click();
-    await expect(page.getByTestId('portal-error')).toBeVisible();
-    await page.getByTestId('read-older').click();
-    const dialog = page.getByTestId('dialog-read-older');
-    await expect(dialog).toBeVisible();
-    expect(await calls(page, 'start_run')).toEqual([]);
-    await dialog.getByTestId('dialog-confirm').click();
-    await expect.poll(async () => (await calls(page, 'start_run')).length).toBe(1);
+    for (const gone of ['alert-linkedin', 'read-older']) {
+      await expect(page.getByTestId(gone)).toHaveCount(0);
+    }
+    // The same place in the column as the empty Archiv's.
+    const at = (await empty.boundingBox())!;
+    await openPlace(page, 'archive');
+    const archive = (await page.getByTestId('empty-place-archive').boundingBox())!;
+    expect(Math.abs(archive.y + archive.height / 2 - (at.y + at.height / 2))).toBeLessThan(1);
   });
 
   test('without a profile: newest first, one line leads to the empty profile form', async ({
@@ -730,7 +731,7 @@ test.describe('rows', () => {
     const heights = await list(page)
       .locator('[data-testid^="job-row-"]')
       .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
-    expect([...new Set(heights)]).toEqual([86]);
+    expect([...new Set(heights)]).toEqual([64]);
     const title = row(page, 'linkedin-4100200301').locator('.title');
     const width = (): Promise<number> =>
       title.evaluate((node) => {
@@ -743,51 +744,9 @@ test.describe('rows', () => {
     await openJob(page, 'linkedin-4100200301');
     await expect(title).not.toHaveClass(/unread/);
     expect(Math.abs((await width()) - unread)).toBeLessThan(0.01);
-  });
-
-  test('a row keeps its lines: one cut meta line, a badge that says why, dates that move on', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 1100, height: 800 });
-    await open(page, WIN);
-    const meta = row(page, 'linkedin-4100200303').locator('.meta .parts');
-    expect(
-      await meta.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return [style.whiteSpace, style.textOverflow, style.display];
-      }),
-    ).toEqual(['nowrap', 'ellipsis', 'block']);
-    await row(page, 'freelancermap-2806').getByText(T.score.unscorable).hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Zu wenig Text für eine Bewertung.');
-    // The date stands on the baseline of its title and moves on while the app stays open.
-    const gaps = await list(page).evaluate((node) =>
-      [...node.querySelectorAll('.job')].map((job) => {
-        const baseline = (inside: Element): number => {
-          const probe = document.createElement('span');
-          probe.style.setProperty('display', 'inline-block');
-          probe.style.setProperty('width', '0');
-          probe.style.setProperty('height', '0');
-          inside.prepend(probe);
-          const y = probe.getBoundingClientRect().bottom;
-          probe.remove();
-          return y;
-        };
-        return (
-          baseline(job.querySelector('.title')!) - baseline(job.querySelector('.date .stamp')!)
-        );
-      }),
-    );
-    expect(gaps.length).toBeGreaterThan(5);
-    for (const gap of gaps) expect(Math.abs(gap)).toBeLessThan(0.5);
-    const date = row(page, 'linkedin-4100200301').locator('.date');
-    const before = await date.textContent();
-    await page.clock.setFixedTime(new Date(NOW.getTime() + 5 * 3_600_000));
-    await page.evaluate(() => dispatchEvent(new Event('focus')));
-    await expect(date).not.toHaveText(before ?? '');
-    // Without a profile a row without a badge keeps the one height.
+    // Without a profile the rows keep the one height.
     await open(page, `${WIN}&scenario=no-profile`);
-    const bare = list(page).locator('.job.bare .row').first();
-    expect((await bare.boundingBox())!.height).toBe(86);
+    expect((await rows(page).first().boundingBox())!.height).toBe(64);
   });
 
   test('the open row deepens while pressed, only under the pointer', async ({ page }) => {
@@ -818,33 +777,105 @@ test.describe('rows', () => {
     await page.mouse.move(4, 4);
   });
 
-  test('a row shows its tools under the pointer, without a star', async ({ page }) => {
+  test('the menu of a row in each place: its entries in order, their icons, no keys', async ({
+    page,
+  }) => {
     await open(page, WIN);
-    const key = 'linkedin-4100200301';
-    const job = list(page).locator('.job', { has: page.getByTestId(`job-row-${key}`) });
-    await expect(job.locator('.tools')).toHaveCount(0);
-    await row(page, key).hover();
-    await expect(job.locator('.tools .btn')).toHaveCount(2);
-    expect(
-      await job
-        .locator('.tools .btn')
-        .evaluateAll((items) => items.map((item) => item.getAttribute('aria-label'))),
-    ).toEqual([T.actions.archive, T.actions.trash]);
-    await expect(page.getByTestId(`pin-${key}`)).toHaveCount(0);
-  });
-
-  test('the menu of a row: its entries, no unread', async ({ page }) => {
-    await open(page, WIN);
-    await row(page, 'freelancermap-2802').click({ button: 'right' });
-    const menu = page.getByTestId('menu');
+    const shows = [T.actions.open, T.actions.mail, T.actions.openAd, T.actions.prompt];
+    const showIcons = ['open', 'alertMail', 'external', 'prompt'] as const;
+    // Eingang.
+    let menu = await rowMenu(page, 'freelancermap-2802');
+    await expect(menu).toHaveAttribute('aria-label', T.menu.job);
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
-      T.menu.open,
-      T.reader.open,
+      ...shows,
       T.actions.archive,
       T.actions.trash,
-      T.reader.prompt,
     ]);
+    await expectMenuIcons(page, [...showIcons, 'archive', 'trash']);
+    await expect(menu.getByRole('separator')).toHaveCount(1);
+    await expect(menu.locator('.keys')).toHaveCount(0);
     await expect(menuItem(page, 'unread')).toHaveCount(0);
+    // "Öffnen" opens the job.
+    await menuItem(page, 'open').click();
+    await expect(page.getByTestId('reader-title')).toHaveText(
+      await row(page, 'freelancermap-2802').locator('.title').innerText(),
+    );
+    // Archiv: Wiederherstellen, Löschen.
+    await viaMenu(page, 'archive', 'freelancermap-2802');
+    await settleMoves(page);
+    await openPlace(page, 'archive');
+    menu = await rowMenu(page, 'freelancermap-2802');
+    await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
+      ...shows,
+      T.actions.toInbox,
+      T.actions.trash,
+    ]);
+    expect(T.actions.toInbox).toBe(T.actions.restore);
+    await menuItem(page, 'trash').click();
+    await settleMoves(page);
+    // Papierkorb: Wiederherstellen, Endgültig löschen (red).
+    await openPlace(page, 'trash');
+    menu = await rowMenu(page, 'freelancermap-2802');
+    await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
+      ...shows,
+      T.actions.restore,
+      T.actions.purge,
+    ]);
+    await expectMenuIcons(page, [...showIcons, 'undo', 'purge']);
+    await expect(menuItem(page, 'purge')).toHaveClass(/danger/);
+  });
+
+  test('an excluded job counts anyway from its menu, with an undo, and can be excluded again', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
+    await open(page, WIN);
+    const key = 'linkedin-4100200305';
+    await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    const menu = await rowMenu(page, key);
+    await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
+      T.actions.open,
+      T.actions.mail,
+      T.actions.openAd,
+      T.actions.prompt,
+      T.actions.include,
+      T.actions.archive,
+      T.actions.trash,
+    ]);
+    await menuItem(page, 'include').click();
+    expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
+      key: { portal: 'linkedin', id: '4100200305' },
+      include: true,
+    });
+    // It stands with the scored rows, its ring back; the toast says it with an undo.
+    await expect(page.getByTestId('job-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    await expect(row(page, key).getByTestId('row-excluded')).toHaveCount(0);
+    const toast = page.getByTestId('toast').filter({ hasText: T.toast.included });
+    await expect(toast.getByTestId('toast-action')).toHaveText(T.common.undo);
+    await rowMenu(page, key);
+    await expect(menuItem(page, 'exclude')).toHaveText(T.actions.exclude);
+    await page.keyboard.press('Escape');
+    await toast.getByTestId('toast-action').click();
+    await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible();
+    expect((await calls(page, 'set_override')).at(-1)?.[1]).toMatchObject({ include: false });
+  });
+
+  test('a double click on a row opens its ad in the browser, like Anzeige öffnen', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await row(page, 'linkedin-4100200301').dblclick();
+    await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(1);
+    expect((await calls(page, 'open_target'))[0]?.[1]).toEqual({
+      target: { kind: 'jobUrl', key: { portal: 'linkedin', id: '4100200301' } },
+    });
+    await expect(row(page, 'linkedin-4100200301')).toHaveAttribute('aria-current', 'true');
+    // The menu's entry makes the same call.
+    await viaMenu(page, 'open-ad', 'linkedin-4100200301');
+    await expect.poll(async () => (await calls(page, 'open_target')).length).toBe(2);
+    expect((await calls(page, 'open_target'))[1]?.[1]).toEqual(
+      (await calls(page, 'open_target'))[0]?.[1],
+    );
   });
 
   test('a list ring that waits breathes on its solid track', async ({ page }) => {
@@ -924,33 +955,31 @@ test.describe('search', () => {
 /* ======================================================================== moves */
 
 test.describe('moves and undo', () => {
-  test('archive from the row: toasts merge, one undo, the Archiv sends it back', async ({
+  test('archive from the row: short toasts that merge, one undo, the Archiv restores', async ({
     page,
   }) => {
     await open(page, WIN);
-    // One job: the toast names its whole title.
-    await tool(page, 'trash', 'freelancermap-2805');
-    await expect(page.getByTestId('toast-text').last()).toContainText(
-      T.toast.trashedOne('Projektcontroller Bau'),
-    );
+    // One word, no title.
+    await viaMenu(page, 'trash', 'freelancermap-2805');
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await page.getByTestId('toast-action').click();
     await settleMoves(page);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
-      await tool(page, 'archive', key);
+      await viaMenu(page, 'archive', key);
       await expect(row(page, key)).toHaveCount(0);
       await settleMoves(page);
     }
     await expect(page.getByTestId('toast')).toHaveCount(1);
-    await expect(page.getByTestId('toast')).toContainText(T.toast.archivedMany(2));
+    await expect(page.getByTestId('toast-text')).toHaveText(T.toast.archived);
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
     await expect(row(page, 'freelancermap-2803')).toHaveCount(1);
     await settleMoves(page);
-    await tool(page, 'archive', 'freelancermap-2802');
+    await viaMenu(page, 'archive', 'freelancermap-2802');
     await openPlace(page, 'archive');
-    await tool(page, 'toInbox', 'freelancermap-2802');
+    await viaMenu(page, 'toInbox', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
-    await expect(page.getByTestId('toast').last()).toContainText('zurückgeholt.');
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
     await openPlace(page, 'inbox');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(1);
   });
@@ -958,29 +987,31 @@ test.describe('moves and undo', () => {
   test('the Papierkorb: restore, delete for good and empty it, asking first', async ({ page }) => {
     await open(page, WIN);
     for (const key of ['freelancermap-2802', 'freelancermap-2803']) {
-      await tool(page, 'trash', key);
+      await viaMenu(page, 'trash', key);
       await settleMoves(page);
     }
-    await expect(page.getByTestId('toast').last()).toContainText(T.toast.trashedMany(2));
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.trashed);
     await openPlace(page, 'trash');
     await expect(page.getByTestId('place-reader')).toContainText(T.place.trash);
-    await openJob(page, 'freelancermap-2802');
-    await expect(page.getByTestId('reader-pin')).toHaveCount(0);
-    await page.getByTestId('reader-restore').click();
+    await viaMenu(page, 'restore', 'freelancermap-2802');
     await expect(row(page, 'freelancermap-2802')).toHaveCount(0);
-    await tool(page, 'purge', 'freelancermap-2803');
-    await page
-      .getByTestId('dialog-purge')
-      .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
-      .click();
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.restored);
+    await settleMoves(page);
+    // Endgültig löschen asks first, with its own verb on the button and no title.
+    await viaMenu(page, 'purge', 'freelancermap-2803');
+    const dialog = page.getByTestId('dialog-purge');
+    await expect(dialog.getByRole('heading')).toHaveText(T.actions.purgeHeading(1));
+    await dialog.getByRole('button', { name: T.actions.purgeConfirm, exact: true }).click();
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId('toast-text').last()).toHaveText(T.toast.deleted);
     expect((await calls(page, 'purge_jobs')).map(([, args]) => args)).toEqual([
       { keys: [{ portal: 'freelancermap', id: '2803' }] },
     ]);
     // Papierkorb leeren: two jobs there, a search that finds one: both go, and it says so.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
-      await tool(page, 'trash', key);
+      await viaMenu(page, 'trash', key);
       await settleMoves(page);
     }
     await openPlace(page, 'trash');
@@ -998,46 +1029,29 @@ test.describe('moves and undo', () => {
     expect(await calls(page, 'empty_trash')).toHaveLength(1);
   });
 
-  test('a job in the Papierkorb counts its days down, no star; purging waits for a run', async ({
-    page,
-  }) => {
+  test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {
     await open(page, WIN);
-    await tool(page, 'trash', 'linkedin-4100200303');
+    await viaMenu(page, 'trash', 'linkedin-4100200303');
     await settleMoves(page);
-    await tool(page, 'trash', 'freelancermap-2801');
-    await openPlace(page, 'trash');
-    const left = row(page, 'linkedin-4100200303').getByTestId('trash-left');
-    await expect(left).toHaveText(T.job.trashLeft(30));
-    await page.clock.setFixedTime(new Date(NOW.getTime() + DAY + 60_000));
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(left).toHaveText(T.job.trashLeft(29));
     await page.evaluate(() => (window.__harness.holdAfter = 1));
-    await openPlace(page, 'inbox');
     await page.getByTestId('fetch').click();
     await openPlace(page, 'trash');
-    await row(page, 'linkedin-4100200303').hover();
-    await expect(page.getByTestId('purge-linkedin-4100200303')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await rowMenu(page, 'linkedin-4100200303');
+    await expect(menuItem(page, 'purge')).toHaveAttribute('aria-disabled', 'true');
+    await menuItem(page, 'purge').hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.settings.running);
+    await page.keyboard.press('Escape');
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await runFinished(page);
   });
 
-  test('a double click moves one job; the next job opens and is read once looked at', async ({
+  test('the open job moved away: the next job opens and is read once looked at', async ({
     page,
   }) => {
     await open(page, WIN);
-    await row(page, 'freelancermap-2801').hover();
-    const target = page.getByTestId('archive-freelancermap-2801');
-    const box = (await target.boundingBox())!;
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { delay: 50 });
-    await expect(page.getByTestId('toast').last()).toContainText('archiviert.');
-    expect(await calls(page, 'move_jobs')).toHaveLength(1);
-    await settleMoves(page);
     await openJob(page, 'linkedin-4100200301');
-    await page.getByTestId('reader-archive').click();
+    await viaMenu(page, 'archive', 'linkedin-4100200301');
+    expect(await calls(page, 'move_jobs')).toHaveLength(1);
     await expect(page.getByTestId('reader-title')).toHaveText('SAP S/4HANA Finance Projektleitung');
     const read = async (): Promise<boolean> =>
       (await calls(page, 'mark_read')).some(
@@ -1050,19 +1064,16 @@ test.describe('moves and undo', () => {
 
   test('an undo toast stays longer and takes back the moves merged into it', async ({ page }) => {
     await open(page, WIN);
-    await tool(page, 'archive', 'freelancermap-2803');
+    await viaMenu(page, 'archive', 'freelancermap-2803');
     await settleMoves(page);
-    await tool(page, 'trash', 'freelancermap-2802');
+    await viaMenu(page, 'trash', 'freelancermap-2802');
     await settleMoves(page);
-    await tool(page, 'archive', 'linkedin-4100200302');
-    await expect(page.getByTestId('toast-text').filter({ hasText: '2 Jobs' })).toBeVisible();
+    await viaMenu(page, 'archive', 'linkedin-4100200302');
+    const archived = page.getByTestId('toast').filter({ hasText: T.toast.archived });
+    await expect(archived).toHaveCount(1);
     // Still up after the 4 s of a plain toast.
     await page.waitForTimeout(4500);
-    await page
-      .getByTestId('toast')
-      .filter({ hasText: '2 Jobs' })
-      .getByTestId('toast-action')
-      .click();
+    await archived.getByTestId('toast-action').click();
     await expect(row(page, 'linkedin-4100200302')).toBeVisible();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
     // The trash has a toast of its own: it stays.
@@ -1087,7 +1098,7 @@ test.describe('moves and undo', () => {
     expect(back.jobs.map(({ to }) => to)).toEqual(['inbox']);
     await page.getByTestId('reader-close').click();
     await settleMoves(page);
-    await tool(page, 'archive', 'freelancermap-2803');
+    await viaMenu(page, 'archive', 'freelancermap-2803');
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'freelancermap-2803')).toBeVisible();
     await page.waitForTimeout(300);
@@ -1098,7 +1109,7 @@ test.describe('moves and undo', () => {
     page,
   }) => {
     await open(page, WIN);
-    await tool(page, 'archive', 'freelancermap-2803');
+    await viaMenu(page, 'archive', 'freelancermap-2803');
     await failNext(page, 'move_back');
     await page.getByTestId('toast-action').click();
     const error = page.getByTestId('header-error');
@@ -1107,17 +1118,17 @@ test.describe('moves and undo', () => {
     await expect(error).toHaveCount(0);
     await openPlace(page, 'inbox');
     await failNext(page, 'move_jobs');
-    await tool(page, 'archive', 'linkedin-4100200301');
+    await viaMenu(page, 'archive', 'linkedin-4100200301');
     await expect(error).toHaveText(T.error.text('db', {}));
   });
 
   test('deleting a job for good keeps the undo of another one', async ({ page }) => {
     await open(page, WIN);
-    await tool(page, 'archive', 'freelancermap-2803');
+    await viaMenu(page, 'archive', 'freelancermap-2803');
     await settleMoves(page);
-    await tool(page, 'trash', 'freelancermap-2802');
+    await viaMenu(page, 'trash', 'freelancermap-2802');
     await openPlace(page, 'trash');
-    await tool(page, 'purge', 'freelancermap-2802');
+    await viaMenu(page, 'purge', 'freelancermap-2802');
     await page.getByTestId('dialog-purge').getByTestId('dialog-confirm').click();
     await expect(page.getByTestId('toast-text').filter({ hasText: 'gelöscht' })).toBeVisible();
     await expect(page.getByTestId('toast-action')).toHaveCount(1);
@@ -1388,7 +1399,7 @@ test.describe("the open row's bar", () => {
     await open(page, WIN);
     await row(page, 'freelancermap-2802').click();
     const start = await resting(page);
-    expect(start.height).toBe(86 - 2 * INSET);
+    expect(start.height).toBe(64 - 2 * INSET);
     await startSampling(page);
     await row(page, 'freelancermap-2803').click();
     await page.waitForTimeout(400);
@@ -1492,7 +1503,7 @@ test.describe("the open row's bar", () => {
     await open(page, `${WIN}&scenario=many`);
     await rows(page).nth(3).click();
     const slot = await resting(page);
-    expect(slot.height).toBe(86 - 2 * INSET);
+    expect(slot.height).toBe(64 - 2 * INSET);
     // Small steps, a frame each, then the wheel: further windows of rows are built.
     const built = (): Promise<number> => list(page).locator('.item[data-key]').count();
     const before = await built();
@@ -1513,7 +1524,7 @@ test.describe("the open row's bar", () => {
     for (const sample of scrolled) expect(onRow(sample), JSON.stringify(sample)).toBe(true);
     // A narrower window keeps the row's height; one column and back never slide the bar.
     await page.setViewportSize({ width: 960, height: 900 });
-    expect((await resting(page)).height).toBe(86 - 2 * INSET);
+    expect((await resting(page)).height).toBe(64 - 2 * INSET);
     await page.setViewportSize({ width: 780, height: 900 });
     await expect(page.getByTestId('reader')).toBeVisible();
     await startSampling(page);

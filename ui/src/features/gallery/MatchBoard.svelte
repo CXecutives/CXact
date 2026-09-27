@@ -1,5 +1,5 @@
 <!-- Gallery: reason items and the job list with its entry and FLIP reordering; a click
-     selects one job. -->
+     selects one job, its menu (a right click) archives it. -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import Chip, { CHIP_STATES, type ChipState } from '$components/Chip.svelte';
@@ -105,7 +105,12 @@
             {now}
             selected={chosen === job.key.id}
             onselect={choose}
-            onarchive={archive}
+            menu={() => ({
+              label: t.rows,
+              entries: [
+                { id: 'archive', label: t.archive, icon: 'archive', run: () => archive(job) },
+              ],
+            })}
           />
         </div>
       {/each}
