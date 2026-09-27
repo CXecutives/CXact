@@ -48,11 +48,9 @@ import type {
 import { tokenMs } from '../tokens';
 import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
-import { clock } from './clock.svelte';
 import {
   applicable,
   isFiltered,
-  localDay,
   NO_FILTER,
   parseFilter,
   passesFilter,
@@ -343,15 +341,14 @@ class JobsStore {
     );
   }
 
-  /** What parts of the filter compare a job with: the pay floors of a usable profile and
-   *  today (the page's clock). */
+  /** What the pay floor of the filter compares a job with: the pay floors of a usable
+   *  profile. */
   get context(): FilterContext {
     const form = app.hasProfile ? (app.state?.profile?.form ?? null) : null;
     return {
       minDayRate: form?.criteria.minDayRate ?? null,
       wishDayRate: form?.wishes.dayRate ?? null,
       minSalary: form?.criteria.minSalary ?? null,
-      today: localDay(clock.now),
     };
   }
 

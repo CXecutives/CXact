@@ -851,9 +851,8 @@ export const de = {
       min: 'Ab meinem Mindesttagessatz',
       wish: 'Ab meinem Wunschtagessatz',
     } satisfies Record<'min' | 'wish', string>,
-    /** Switches of their own behind a line: the jobs not opened yet, a deadline close by. */
+    /** A switch of its own behind a line: the jobs not opened yet. */
     unreadOnly: 'Nur neue',
-    deadlineSoon: 'Frist in 7 Tagen',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */

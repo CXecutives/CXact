@@ -389,7 +389,7 @@ test.describe('filter', () => {
     await expect(menuItem(page, 'band-mid')).toHaveText(T.toolbar.band.mid);
     expect(T.toolbar.band.mid).not.toContain(T.toolbar.bandHeading);
     // The choices of a group are radio items, none checked while the group filters nothing;
-    // Nur neue and Frist in 7 Tagen are switches of their own.
+    // Nur neue is a switch of its own. There is no deadline filter.
     for (const id of [
       'portal-linkedin',
       'band-mid',
@@ -400,10 +400,10 @@ test.describe('filter', () => {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
     }
-    for (const id of ['unread-only', 'deadline-soon']) {
-      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemcheckbox');
-      await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
-    }
+    await expect(menuItem(page, 'unread-only')).toHaveAttribute('role', 'menuitemcheckbox');
+    await expect(menuItem(page, 'unread-only')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'deadline-soon')).toHaveCount(0);
+    await expect(menu).not.toContainText('Frist');
     // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
@@ -650,7 +650,7 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
-  test('the work mode, the pay floor, Nur neue and Frist in 7 Tagen narrow the list; each a chip', async ({
+  test('the work mode, the pay floor and Nur neue narrow the list; each a chip', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -690,17 +690,10 @@ test.describe('filter', () => {
     await expect.poll(() => listed(page)).toEqual(fresh);
     expect(await lastQuery(page)).toMatchObject({ unread: true });
     for (const key of fresh) expect(jobs.find((job) => keyOf(job) === key)?.unread).toBe(true);
-    // Frist in 7 Tagen beside it: both chips, in the menu's order.
-    await chooseFilter(page, 'deadline-soon');
-    const soon = await inbox(page, { unread: true, deadlineSoon: true });
-    expect(soon).toEqual(['freelancermap-2802']);
-    await expect.poll(() => listed(page)).toEqual(soon);
-    await expect(chips(page).getByRole('button')).toHaveText(
-      chipWordsOf('unread-only', 'deadline-soon'),
-    );
-    // Kept like the rest of the filter.
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
+    // Kept like the rest of the filter; the list never asks for a deadline.
     await open(page, WIN);
-    expect(await lastQuery(page)).toMatchObject({ unread: true, deadlineSoon: true });
+    expect(await lastQuery(page)).toMatchObject({ unread: true, deadlineSoon: false });
   });
 
   test('a pay floor is offered only while the profile names it', async ({ page }) => {

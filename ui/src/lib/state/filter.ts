@@ -9,9 +9,10 @@
 // choices, none is checked while it filters nothing: a choice is checked while it is on,
 // another one of its group takes over, a second choice turns it off. Portal, Übereinstimmung
 // and Vertragsart stand under a heading, the work mode and the pay floor speak for
-// themselves, "Nur neue" and "Frist in 7 Tagen" are switches of their own (the menu fits
-// under the funnel in the usual window). Some parts compare a job with the profile or the
-// day (`FilterContext`): a pay floor the profile does not name is not offered.
+// themselves, "Nur neue" is a switch of its own (the menu fits under the funnel in the usual
+// window). The pay floor compares a job with the profile (`FilterContext`): one the profile
+// does not name is not offered. There is no deadline filter (user decision 2026-09-27): a
+// deadline close by stands in red in the row (`soonDeadline`).
 //
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
@@ -44,8 +45,6 @@ export interface ListFilter {
   pay: PayChoice | null;
   /** Only the jobs not opened yet ("Nur neue"). */
   unread: true | null;
-  /** Only jobs whose application deadline is today or within the next DEADLINE_DAYS. */
-  deadline: true | null;
 }
 
 export const NO_FILTER: ListFilter = {
@@ -55,21 +54,18 @@ export const NO_FILTER: ListFilter = {
   remote: null,
   pay: null,
   unread: null,
-  deadline: null,
 };
 
-/** What some parts of the filter compare a job with: the profile's pay floors (null: the
- *  profile names none) and today. */
+/** What the pay floor of the filter compares a job with: the profile's pay floors (null: the
+ *  profile names none). */
 export interface FilterContext {
   minDayRate: number | null;
   wishDayRate: number | null;
   minSalary: number | null;
-  /** The local calendar day, as an ISO date (`2026-09-24`). */
-  today: string;
 }
 
-/** How many days ahead "Frist in 7 Tagen" looks (core::view::DEADLINE_DAYS). */
-export const DEADLINE_DAYS = 7;
+/** How many days ahead a deadline counts as close by (core::view::DEADLINE_DAYS). */
+const DEADLINE_DAYS = 7;
 
 /** The local calendar day of `date`, `days` on, as an ISO date (`2026-09-24`). */
 export function localDay(date: Date, days = 0): string {
@@ -79,7 +75,7 @@ export function localDay(date: Date, days = 0): string {
 }
 
 /** The job's application deadline when it is today or within the next DEADLINE_DAYS (an ISO
- *  date), else null: the row names it, the filter lists by it. */
+ *  date), else null: the row names it in red. */
 export function soonDeadline(job: JobView, today: string): string | null {
   const deadline = job.match?.facts.deadline ?? null;
   if (deadline === null || today === '') return null;
@@ -119,7 +115,8 @@ export function toQuery(
     remoteOrHybrid: filter.remote === 'hybrid',
     minDayRate: filter.pay === null ? null : payFloor(filter.pay, context),
     minSalary: filter.pay === null ? null : context.minSalary,
-    deadlineSoon: filter.deadline === true,
+    // The backend still reads it; the list offers no deadline filter.
+    deadlineSoon: false,
   };
 }
 
@@ -261,25 +258,8 @@ const UNREAD: FilterGroup<'unread'> = {
   passes: (job) => job.unread,
 };
 
-const DEADLINE: FilterGroup<'deadline'> = {
-  key: 'deadline',
-  heading: null,
-  entries: () => [{ id: 'deadline-soon', value: true, label: (w) => w.toolbar.deadlineSoon }],
-  needsProfile: null,
-  valid: (value) => value === true,
-  passes: (job, _, context) => soonDeadline(job, context.today) !== null,
-};
-
 /** The groups of the filter in the menu's order (and the chips'). */
-export const FILTER_GROUPS: readonly FilterGroup[] = [
-  PORTAL,
-  BAND,
-  CONTRACT,
-  REMOTE,
-  PAY,
-  UNREAD,
-  DEADLINE,
-];
+export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, CONTRACT, REMOTE, PAY, UNREAD];
 
 /** The entries of a group the menu offers now. */
 export function offeredEntries<K extends keyof ListFilter>(

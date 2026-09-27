@@ -782,3 +782,21 @@ The user clicked through the reworked preview; one more round in four tracks.
 - [ ] Fetch range at the button, the list filters and the sort by rate
 - [ ] Explanation popover, deadline and contact, verdict colours from the rings
 - [ ] Alert health, Mac title row
+
+## Input and reader round 2026-09-27 (decisions of the user, binding)
+- Removing never puts a caret anywhere: a click on an × (a chip, a language row, a competence row, any list row)
+  removes it and drops the focus without a ring; removed by the keyboard (Backspace or Delete in a chip field,
+  Enter or Space on a focused ×) the focus goes to the next × of that list (the previous one after the last),
+  never into a text field (`afterRemove` in `lib/input/input.ts`).
+- Mouse buttons everywhere: controls act on the left button only; a right click opens the app's menu where there
+  is one and does nothing else; a middle click never activates anything; the wheel only scrolls.
+- No hover marking in the reader: hovering a requirement or a Jobdetails row tints nothing in the ad and a click
+  scrolls nothing; the ad keeps its structure and the marks of the list's search.
+- No "Frist in 7 Tagen" filter: the red deadline in the row stays, the list never asks for `deadlineSoon`.
+- Language names follow the UI language (the suggestions and the rows); the profile keeps a known language under
+  its German name, as the engine reads it.
+- [x] "Frist in 7 Tagen" out of the filter
+- [ ] No hover marking in the reader
+- [ ] Language names in the UI language
+- [ ] The focus after removing
+- [ ] Mouse buttons and the wheel, audited

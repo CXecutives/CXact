@@ -746,7 +746,6 @@ export const en: Catalog = {
       wish: 'From my preferred day rate',
     } satisfies Record<'min' | 'wish', string>,
     unreadOnly: 'New only',
-    deadlineSoon: 'Deadline within 7 days',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Switch on a portal first.',
