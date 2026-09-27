@@ -75,10 +75,18 @@ async function rightOf(page: Page, testid: string): Promise<number> {
 
 /* ======================================================================= header */
 
-/** The vertical middle of an element (px from the top of the window). */
-async function middleOf(page: Page, testid: string): Promise<number> {
-  const box = (await page.getByTestId(testid).boundingBox())!;
-  return box.y + box.height / 2;
+/** How far apart the vertical middles of two elements are, measured in the same frame (px). */
+function middlesApart(page: Page, a: string, b: string): Promise<number> {
+  return page.evaluate(
+    ([first, second]) => {
+      const middle = (id: string): number => {
+        const box = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect();
+        return box.top + box.height / 2;
+      };
+      return Math.abs(middle(first) - middle(second));
+    },
+    [a, b] as const,
+  );
 }
 
 test.describe('header', () => {
@@ -119,13 +127,12 @@ test.describe('header', () => {
     await open(page, WIN);
     // Eingang: "Postfach abrufen" at the end of the tabs' row.
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
-    const tabs = await middleOf(page, 'places');
-    expect(Math.abs((await middleOf(page, 'fetch')) - tabs)).toBeLessThanOrEqual(1);
+    // Both measured in one frame, once the header has its final layout.
+    await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
     // The toolbar row: the search and the funnel on one line, left to right; no sort button
     // beside them (the order is the funnel's first group).
-    const line = await middleOf(page, 'search');
-    expect(Math.abs((await middleOf(page, 'filter')) - line)).toBeLessThanOrEqual(1);
+    await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
@@ -1043,11 +1050,12 @@ test.describe('rows', () => {
       .locator('.ring');
     await expect(ring).toHaveClass(/pending/);
     await expect(ring.locator('.center')).toHaveText('–');
-    const look = await ring.evaluate((node) => ({
-      arcs: node.querySelectorAll('circle').length,
-      moving: node.getAnimations({ subtree: true }).length,
-    }));
-    expect(look).toEqual({ arcs: 1, moving: 0 });
+    // One track, no arc; nothing loops (a change of the ring's colours may still be ending
+    // right after the start on a busy machine, so the check waits for it).
+    expect(await ring.evaluate((node) => node.querySelectorAll('circle').length)).toBe(1);
+    await expect
+      .poll(() => ring.evaluate((node) => node.getAnimations({ subtree: true }).length))
+      .toBe(0);
   });
 });
 
