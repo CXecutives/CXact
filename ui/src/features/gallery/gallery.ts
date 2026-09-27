@@ -176,7 +176,7 @@ export const text = {
       violation: 'Arbeitnehmerüberlassung',
       check: 'Start in sechs Wochen',
     },
-    evidence: '„Controlling im Konzern“ passt zu „Konzerncontrolling“ im Profil.',
+    evidence: '„Controlling im Konzern“ stimmt mit „Konzerncontrolling“ im Profil überein.',
     chipLabels: {
       met: '1.100 €/Tag',
       unknown: 'Vermutlich Interim',

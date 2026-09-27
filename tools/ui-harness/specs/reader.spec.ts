@@ -513,7 +513,7 @@ test.describe('Jobdetails', () => {
     await openAt(page, 'freelancermap-2801');
     expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'partial']);
     expect(await verdictTip(page, 'experience')).toBe(
-      '„Mindestens 15 Jahre Berufserfahrung im Controlling“ passt teilweise zu „Controlling“ im Profil.',
+      T.reason.evidence('Mindestens 15 Jahre Berufserfahrung im Controlling', 'Controlling', true),
     );
     await expect(why(page)).not.toContainText('Mindestens 15 Jahre');
     // Ten years for a senior profile, in a field the profile lacks: not met, once.

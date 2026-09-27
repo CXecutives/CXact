@@ -1171,8 +1171,8 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   // the day the job went there.
   const date = (j: JobView): string =>
     query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
-  // store::page_order: the excluded last; by match the jobs without a score first (the list's
-  // "Noch ohne Passung" on top, so every page is complete); a closed ad after the open ones;
+  // store::page_order: the excluded last; by match the jobs without a score first (on top of
+  // the list, so every page is complete); a closed ad after the open ones;
   // then the best score.
   const page = base
     .filter((j) => inQuery(j, query))
@@ -1461,7 +1461,7 @@ function script(kind: RunSummary['kind']): RunEvent[] {
   return events;
 }
 
-/** "Details holen" for jobs: their pages, their scores, no mailbox and no new jobs. */
+/** "Anzeige laden" for jobs: their pages, their scores, no mailbox and no new jobs. */
 function detailsScript(keys: JobKey[]): RunEvent[] {
   const targets = keys.map(find).filter((j): j is JobView => j !== undefined);
   const events: RunEvent[] = [

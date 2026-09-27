@@ -1495,7 +1495,7 @@ test('no profile: one sentence and the three ways in, the CV first', async ({ pa
   await profile(page, '&scenario=no-profile');
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toContainText('Noch kein Profil');
-  await expect(empty).toContainText('Mit einem Profil zeigt jeder Job, wie gut er passt.');
+  await expect(empty).toContainText(T.profile.noneText);
   await expect(empty.getByRole('button')).toHaveText([
     'Aus Lebenslauf anlegen',
     'Profil anlegen',

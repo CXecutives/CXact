@@ -8,10 +8,14 @@
 // "X: Y", no exclamation marks, no text twice. A sentence speaks to the user as "du", and an
 // instruction in a sentence is a du imperative ("Verbinde erst ein Postfach."); a button
 // stays an infinitive ("Postfach verbinden"). A control a sentence names stands in quotes
-// („Details holen“). Glossary (docs/PLAN.md): Job · Portal · Passung · Details · Abrufen ·
-// Profil · Postfach · Alert-Mail · Übersicht · Excel-Datei · Ausgeschlossen · Neu · Zu prüfen ·
-// Favorit (Favoriten) · Archiv · Papierkorb. A profile field has one name: the label of its
-// form field (without the unit) in errors, warnings and the profile.
+// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
+// (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
+// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
+// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Ergebnisordner, Ausgeschlossen, Trotzdem
+// bewerten, Neu, Archiv, Papierkorb, Löschen (into the Papierkorb; there Endgültig löschen),
+// Wiederherstellen, App (the card of the app itself), Aufrufe (what a portal allows a day).
+// "Konditionen" only names the profile's section. A profile field has one name: the label of
+// its form field (without the unit) in errors, warnings and the profile.
 //
 // Every code of the generated types has exactly one text here: the tables are typed as
 // `Record<Code, ...>`, so a new code without a text is a type error.
@@ -19,7 +23,6 @@
 import type {
   BackupKind,
   Band,
-  DetailState,
   ErrorKind,
   FetchRange,
   InvalidInput,
@@ -31,12 +34,8 @@ import type {
   Portal,
   LanguageLevel,
   ProfileAvailability,
-  ReasonKind,
   ReasonWeight,
   RemoteWish,
-  RunKindName,
-  StatusCode,
-  Step,
   WorkMode,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
@@ -70,7 +69,7 @@ const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 
 
 const busy: Record<Busy, string> = {
   fetch: 'Gerade läuft schon ein Abruf.',
-  details: 'Gerade werden schon Details geholt.',
+  details: 'Gerade werden schon Anzeigen geladen.',
   rescore: 'Die Jobs werden gerade neu bewertet.',
   session: 'Gerade läuft eine Anmeldung.',
   files: 'Die App schreibt gerade ihre Dateien.',
@@ -79,7 +78,7 @@ const busy: Record<Busy, string> = {
 
 const closing: Record<Busy, string> = {
   fetch: 'Der Abruf wird beendet, dann schließt die App.',
-  details: 'Das Holen der Details wird beendet, dann schließt die App.',
+  details: 'Das Laden der Anzeigen wird beendet, dann schließt die App.',
   rescore: 'Das Bewerten wird beendet, dann schließt die App.',
   session: 'Die Anmeldung wird beendet, dann schließt die App.',
   files: 'Die App schreibt ihre Dateien fertig, dann schließt sie.',
@@ -97,7 +96,7 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   invalid: 'Die Eingabe passt nicht.',
   busy: (p) => busy[busyOf(p.activity)],
   // By what was looked for (`what`): a file or folder may never have been written (a new
-  // work folder), a job or a mail is gone.
+  // result folder), a job or a mail is gone.
   notFound: (p) =>
     p.what === 'file'
       ? 'Die Datei ist nicht vorhanden.'
@@ -175,24 +174,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   noSignIn: (p) => `Für ${portalOf(p.portal)} gibt es keine Anmeldung.`,
 };
 
-const status: Record<StatusCode, string> = {
-  connectingMail: 'Verbindet mit dem Postfach',
-  searchingMail: 'Sucht Alert-Mails',
-  readingMails: 'Liest Alert-Mails',
-  fetchingDetails: 'Holt Details',
-  signingIn: 'Meldet sich an',
-  waiting: 'Wartet auf das Portal',
-  scoring: 'Bewertet die Jobs',
-  writingFiles: 'Schreibt die Dateien',
-};
-
-/** The status of a run when the backend names the portal it is about. */
-const statusAt: Partial<Record<StatusCode, (portal: string) => string>> = {
-  fetchingDetails: (portal) => `Holt Details von ${portal}`,
-  signingIn: (portal) => `Meldet sich bei ${portal} an`,
-  waiting: (portal) => `Wartet auf ${portal}`,
-};
-
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
   throttled: 'das Portal bremst die Anfragen',
@@ -206,12 +187,12 @@ const pause: Record<PauseReason, string> = {
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
 const OPEN_MAIL = 'Alert-Mail öffnen';
 
-/** Alert mails in which the app found no jobs (the overview's open points and the settings
- *  say it alike, next to the button that opens the mail to look). */
+/** Alert mails in which the app found no jobs (a portal's row in the settings says it, next
+ *  to the button that opens the mail to look). */
 const emptyMails = (mails: number): string =>
   `${mails === 1 ? 'In einer Alert-Mail' : `In ${n(mails)} Alert-Mails`} fand die App keine Jobs.`;
 
-/** A profile file the app cannot read (the list, the overview, the Profil view). */
+/** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
@@ -297,26 +278,28 @@ function dayRateWish(p: Params): string {
   }
 }
 
-/** The remote wish of the profile (`level` of the profile editor). */
+/** The remote wish of the profile (`level` of the profile editor) in the words of the
+ *  profile's choice and the reader's work mode, inside a sentence. */
 const REMOTE_LEVEL: Record<string, string> = {
   full: 'voll remote',
   mostly: 'überwiegend remote',
-  partly: 'teilweise remote',
+  partly: 'hybrid',
   onSite: 'vor Ort',
 };
 
-/** The ad's remote share next to the wish ("zu 60 % remote, gewünscht ist überwiegend remote"). */
+/** The ad's remote share in the words of the reader's work mode, next to the wish ("Der Job
+ *  ist 60 % remote, gewünscht ist überwiegend remote"). */
 function remoteWish(p: Params): string {
   if (p.state === 'unknown') return 'Die Anzeige nennt keinen Remote-Anteil.';
   const level = typeof p.level === 'string' ? REMOTE_LEVEL[p.level] : undefined;
   const wished = level ? `, gewünscht ist ${level}` : '';
   let ad: string;
-  if (p.share === 0) ad = 'Der Job ist ganz vor Ort';
-  else if (p.share === 100) ad = 'Der Job ist ganz remote';
-  else if (typeof p.share === 'number') ad = `Der Job ist zu ${formatPercent(p.share)} remote`;
+  if (p.share === 0) ad = 'Der Job ist vor Ort';
+  else if (p.share === 100) ad = 'Der Job ist voll remote';
+  else if (typeof p.share === 'number') ad = `Der Job ist ${formatPercent(p.share)} remote`;
   else if (typeof p.from === 'number' && typeof p.to === 'number')
-    ad = `Der Job ist zu ${str(p.from)} bis ${formatPercent(p.to)} remote`;
-  else ad = 'Der Job ist teilweise remote';
+    ad = `Der Job ist ${n(num(p.from))} bis ${formatPercent(p.to)} remote`;
+  else ad = 'Der Job ist hybrid';
   return `${ad}${wished}.`;
 }
 
@@ -622,22 +605,15 @@ export const de = {
   common: {
     loading: 'Wird geladen',
     cancel: 'Abbrechen',
-    save: 'Speichern',
     remove: 'Entfernen',
     change: 'Ändern',
     open: 'Öffnen',
-    copy: 'Kopieren',
     hide: 'Ausblenden',
     back: 'Zurück',
     retry: 'Erneut versuchen',
     undo: 'Rückgängig',
     openFolder: 'Ordner öffnen',
     openLog: 'Protokoll öffnen',
-    /** A file shown selected in its folder, named by the file manager of the OS. */
-    showInFolder: {
-      explorer: 'Im Explorer zeigen',
-      finder: 'Im Finder zeigen',
-    } satisfies Record<'explorer' | 'finder', string>,
   },
   portal: portalName,
   chips: {
@@ -672,13 +648,6 @@ export const de = {
       archive: (value: number) => `Im Archiv (${n(value)})`,
       trash: (value: number) => `Im Papierkorb (${n(value)})`,
     } satisfies Record<Place, (value: number) => string>,
-    /** The quiet line under the title of a job that is not in the inbox. */
-    inArchive: 'Im Archiv',
-    inTrash: 'Im Papierkorb',
-    /** The same words as the trash's own sentence (`trashFor`): "endgültig gelöscht". */
-    inTrashLeft: (days: number) =>
-      `Im Papierkorb, wird in ${count(days, 'Tag', 'Tagen')} endgültig gelöscht`,
-    inTrashSoon: 'Im Papierkorb, wird bald endgültig gelöscht',
     empty: {
       inbox: 'Keine Jobs.',
       archive: 'Das Archiv ist leer.',
@@ -741,9 +710,9 @@ export const de = {
      *  number comes formatted from format.ts). */
     value: (band: string, percent: string) => `${band}, ${percent}`,
     excluded: 'Ausgeschlossen',
-    /** Every ring without a score is one state: not scored yet, being scored, not scorable. */
+    /** Every ring without a score is one state and one name: not scored yet, being scored,
+     *  not scorable. */
     none: 'Noch nicht bewertet',
-    unscorable: 'Noch nicht bewertet',
     /** A ring without a usable profile. */
     off: 'Ohne Profil keine Übereinstimmung',
     band: {
@@ -753,14 +722,6 @@ export const de = {
     } satisfies Record<Band, string>,
   },
   reason: {
-    /** The state of a reason, in the words of the groups of the reader's Anforderungen. */
-    kind: {
-      met: 'Erfüllt',
-      partial: 'Teilweise erfüllt',
-      open: 'Nicht erfüllt',
-      violation: 'Ausschlussgrund',
-      check: 'Unklar',
-    } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Pflicht',
       nice: 'Optional',
@@ -771,28 +732,12 @@ export const de = {
      *  words and what the profile says. */
     evidence: (quote: string, profile: string, partial: boolean) =>
       partial
-        ? `„${quote}“ passt teilweise zu „${profile}“ im Profil.`
-        : `„${quote}“ passt zu „${profile}“ im Profil.`,
+        ? `„${quote}“ stimmt teilweise mit „${profile}“ im Profil überein.`
+        : `„${quote}“ stimmt mit „${profile}“ im Profil überein.`,
     missing: (quote: string) => `„${quote}“ steht nicht im Profil.`,
     code: reasonCode,
   },
   job: {
-    workMode: {
-      remote: 'Remote',
-      hybrid: 'Hybrid',
-      onsite: 'Vor Ort',
-    } satisfies Record<WorkMode, string>,
-    /** Badge per DetailState kind (`ok` shows none). */
-    detail: {
-      pending: 'Details folgen',
-      teaser: 'Nur Vorschau',
-      failed: 'Details fehlen',
-      unfetchable: 'Nicht erreichbar',
-      gone: 'Nicht mehr online',
-      onRequest: 'Details auf Anfrage',
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    /** The ad's page says it takes no applications any more. */
-    closed: 'Keine Bewerbung mehr möglich',
     unread: 'Neu',
     alsoOn: (portals: string) => `auch auf ${portals}`,
     untitled: 'Job ohne Titel',
@@ -836,7 +781,6 @@ export const de = {
     needsPortal: 'Schalte erst ein Portal ein.',
   },
   run: {
-    never: 'Noch kein Abruf',
     /** The one line under the list header while a fetch goes: what happens now. */
     line: {
       mailbox: 'Postfach wird gelesen',
@@ -845,23 +789,6 @@ export const de = {
       scoring: 'Jobs werden bewertet',
       files: 'Dateien werden geschrieben',
     },
-    step: {
-      scan: 'Postfach',
-      fetch: 'Details',
-      score: 'Bewertung',
-      export: 'Dateien',
-    } satisfies Record<Step, string>,
-    /** The status, naming the portal where the backend says which one. */
-    statusOf: (code: StatusCode, portal: Portal | null): string => {
-      const at = portal === null ? undefined : statusAt[code];
-      return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
-    },
-    kind: {
-      fetch: 'Abruf',
-      details: 'Details holen',
-      rescore: 'Neu bewerten',
-    } satisfies Record<RunKindName, string>,
-    failed: 'Abruf fehlgeschlagen',
     rescoring: 'Die Jobs werden gerade neu bewertet.',
     /**
      * A file the export could not write (`export.error.params.target`); the old file stays.
@@ -879,7 +806,6 @@ export const de = {
       /** The work folder itself (a drive that is gone): nothing was written. */
       workspace: 'Der Ergebnisordner ist nicht erreichbar.',
     },
-    openOverview: 'Bericht öffnen',
     checkMailbox: 'Postfach prüfen',
   },
   list: {
@@ -900,12 +826,12 @@ export const de = {
     openProfile: 'Profil öffnen',
     noMailbox: 'Ohne Postfach kommen keine neuen Jobs dazu.',
     /** No usable profile: said once, at the top of the list. */
-    noProfile: 'Ohne Profil gibt es keine Passung.',
+    noProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profil ohne Kompetenzen',
-    profileBrokenText: 'Die Jobs zeigen deshalb keine Passung.',
+    profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
     /** A profile the app understands little of: one calm line on top of the list. */
-    thinProfile: 'Wenig Inhalt im Profil, die Passung bleibt grob.',
+    thinProfile: 'Wenig Inhalt im Profil, die Übereinstimmung bleibt grob.',
     connectMailbox: 'Postfach verbinden',
   },
   /** The facts of a job in their one form each (the reader's Jobdetails, the list row; the
@@ -995,19 +921,8 @@ export const de = {
     note,
     open: 'Anzeige öffnen',
     close: 'Schließen',
-    /** The list row's star and moves (their tooltips). */
-    pin: 'Als Favorit markieren',
-    unpin: 'Favorit entfernen',
-    archive: 'Archivieren',
-    restore: 'Wiederherstellen',
-    /** The "…" button and its menu: the moves of the place, and for an excluded job its
-     *  score anyway or back to the exclusion (with their toasts). */
+    /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
-    delete: 'Löschen',
-    override: 'Trotzdem bewerten',
-    exclude: 'Wieder ausschließen',
-    overridden: 'Trotzdem bewertet.',
-    excludedAgain: 'Wieder ausgeschlossen.',
     prompt: 'KI-Prompt kopieren',
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
@@ -1035,8 +950,7 @@ export const de = {
     loadFailed: 'Der Job ließ sich nicht laden.',
   },
   health: {
-    /** A portal problem in one sentence that says whether to act, the same in the run card,
-     *  the day overview and the settings. */
+    /** A portal problem in one sentence that says whether to act (its row in the settings). */
     advice: {
       paused: (reason: PauseReason, iso: string | null) => {
         const why = pause[reason].charAt(0).toUpperCase() + pause[reason].slice(1);
@@ -1056,7 +970,7 @@ export const de = {
     none: 'Noch kein Profil',
     /** The file does not read (edited by hand): the empty state says so. */
     unreadable: PROFILE_UNREADABLE,
-    noneText: 'Mit einem Profil zeigt jeder Job, wie gut er passt.',
+    noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
     /** Another file over the stored profile, and the toast after saving it (Rückgängig). */
@@ -1070,7 +984,8 @@ export const de = {
     updateFromCv: 'Aus Lebenslauf aktualisieren',
     pick: 'Profildatei wählen',
     pickOther: 'Andere Datei wählen',
-    /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Entfernen). */
+    /** The accessible name of the head's menu (Andere Datei wählen, Ordner öffnen, Profil
+     *  löschen). */
     more: 'Weitere Aktionen',
     /** In the head's menu, red; it asks first, and the toast offers Rückgängig. */
     remove: 'Profil löschen',
@@ -1476,7 +1391,6 @@ export const de = {
   },
   toast: {
     rescored: 'Jobs neu bewertet.',
-    copied: 'Kopiert.',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
     prompt: 'Prompt kopiert.',
     /** A job action: one short word, however many jobs it took, without their titles. */

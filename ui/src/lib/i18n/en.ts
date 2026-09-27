@@ -6,18 +6,20 @@
 // text, plain and natural. Buttons are one verb phrase without a period; notes are one short
 // sentence with a period; headings and labels end without a colon; no dash or em dash as a
 // separator, no "X: Y", no exclamation marks. No German except product and portal names and
-// the name of the German language. Glossary: Job · Portal · Match · Details · Fetch ·
-// Profile · Mailbox · Alert email · Overview · Excel file · Excluded · New · To check ·
-// Favourites · Inbox (the place of the active jobs) · Archive · Trash · Skill · Preference.
-// Plain British English: "email", never "mail" for one message; "preferences", never
-// "wishes"; "forever" for endgültig, never "for good"; two main clauses are joined by a
-// conjunction, never by a comma alone; an introductory phrase takes its comma ("Without a
-// profile, …"); apostrophes and quotes are typographic (’ “ ”), a named control stands in
-// quotes (“Fetch details”).
+// the name of the German language. Glossary (de.ts, one word per thing): Job, Portal, Match
+// (High, Medium, Low), Job details, Requirements (Met, Partly met, Not met, Unclear), Profile,
+// Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
+// file, CSV file, Result folder, Excluded, Score anyway, New, Inbox (the place of the active
+// jobs), Archive, Trash, Delete (into the Trash; there Delete forever), Restore, App (the card
+// of the app itself), Calls (what a portal allows a day), Skill, Preference. "Conditions"
+// only names the profile's section. Plain British English: "email", never "mail" for one
+// message; "preferences", never "wishes"; "forever" for endgültig, never "for good"; two main
+// clauses are joined by a conjunction, never by a comma alone; an introductory phrase takes
+// its comma ("Without a profile, …"); apostrophes and quotes are typographic (’ “ ”), a named
+// control stands in quotes (“Load ad”).
 
 import type {
   Band,
-  DetailState,
   ErrorKind,
   InvalidInput,
   JobSort,
@@ -28,12 +30,8 @@ import type {
   Portal,
   LanguageLevel,
   ProfileAvailability,
-  ReasonKind,
   ReasonWeight,
   RemoteWish,
-  RunKindName,
-  StatusCode,
-  Step,
   WorkMode,
 } from '../ipc/types';
 import { textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
@@ -105,7 +103,7 @@ const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 
 
 const busy: Record<Busy, string> = {
   fetch: 'A fetch is running already.',
-  details: 'Details are being fetched already.',
+  details: 'Ads are being loaded already.',
   rescore: 'The jobs are being scored again.',
   session: 'A sign-in is running.',
   files: 'The app is writing its files.',
@@ -114,7 +112,7 @@ const busy: Record<Busy, string> = {
 
 const closing: Record<Busy, string> = {
   fetch: 'The fetch is stopping, and then the app closes.',
-  details: 'Fetching details is stopping, and then the app closes.',
+  details: 'Loading the ads is stopping, and then the app closes.',
   rescore: 'Scoring is stopping, and then the app closes.',
   session: 'The sign-in is stopping, and then the app closes.',
   files: 'The app is finishing its files, and then it closes.',
@@ -206,24 +204,6 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   noSignIn: (p) => `There is no sign-in for ${portalOf(p.portal)}.`,
 };
 
-const status: Record<StatusCode, string> = {
-  connectingMail: 'Connecting to the mailbox',
-  searchingMail: 'Looking for alert emails',
-  readingMails: 'Reading alert emails',
-  fetchingDetails: 'Fetching details',
-  signingIn: 'Signing in',
-  waiting: 'Waiting for the portal',
-  scoring: 'Scoring the jobs',
-  writingFiles: 'Writing the files',
-};
-
-/** The status of a run when the backend names the portal it is about. */
-const statusAt: Partial<Record<StatusCode, (portal: string) => string>> = {
-  fetchingDetails: (portal) => `Fetching details from ${portal}`,
-  signingIn: (portal) => `Signing in to ${portal}`,
-  waiting: (portal) => `Waiting for ${portal}`,
-};
-
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
   throttled: 'the portal is throttling requests',
@@ -237,14 +217,14 @@ const pause: Record<PauseReason, string> = {
 /** Opening the alert email of a job in Gmail, the same words wherever it is offered. */
 const OPEN_MAIL = 'Open alert email';
 
-/** Alert emails in which the app found no jobs (the overview and the settings, next to the
+/** Alert emails in which the app found no jobs (a portal's row in the settings, next to the
  *  button that opens the email). */
 const emptyMails = (mails: number): string =>
   mails === 1
     ? 'The app found no jobs in one alert email.'
     : `The app found no jobs in ${n(mails)} alert emails.`;
 
-/** A profile file the app cannot read (the list, the overview, the Profile view). */
+/** A profile file the app cannot read (the list and the Profile view). */
 const PROFILE_UNREADABLE = 'Profile cannot be read';
 
 const ANUE = 'The ad mentions temporary agency work.';
@@ -326,26 +306,28 @@ function dayRateWish(p: Params): string {
   }
 }
 
-/** The remote preference of the profile (`level` of the profile editor). */
+/** The remote preference of the profile (`level` of the profile editor) in the words of the
+ *  profile's choice and the reader's work mode, inside a sentence. */
 const REMOTE_LEVEL: Record<string, string> = {
   full: 'fully remote',
   mostly: 'mostly remote',
-  partly: 'partly remote',
+  partly: 'hybrid',
   onSite: 'on site',
 };
 
-/** The ad's remote share next to the preference ("60% remote, and you prefer mostly remote"). */
+/** The ad's remote share in the words of the reader's work mode, next to the preference ("The
+ *  job is 60% remote, and you prefer mostly remote"). */
 function remoteWish(p: Params): string {
   if (p.state === 'unknown') return 'The ad names no remote share.';
   const level = typeof p.level === 'string' ? REMOTE_LEVEL[p.level] : undefined;
   const wished = level ? `, and you prefer ${level}` : '';
   let ad: string;
-  if (p.share === 0) ad = 'The job is fully on site';
+  if (p.share === 0) ad = 'The job is on site';
   else if (p.share === 100) ad = 'The job is fully remote';
   else if (typeof p.share === 'number') ad = `The job is ${formatPercent(p.share)} remote`;
   else if (typeof p.from === 'number' && typeof p.to === 'number')
-    ad = `The job is ${str(p.from)} to ${formatPercent(p.to)} remote`;
-  else ad = 'The job is partly remote';
+    ad = `The job is ${n(num(p.from))} to ${formatPercent(p.to)} remote`;
+  else ad = 'The job is hybrid';
   return `${ad}${wished}.`;
 }
 
@@ -614,21 +596,15 @@ export const en: Catalog = {
   common: {
     loading: 'Loading',
     cancel: 'Cancel',
-    save: 'Save',
     remove: 'Remove',
     change: 'Change',
     open: 'Open',
-    copy: 'Copy',
     hide: 'Hide',
     back: 'Back',
     retry: 'Try again',
     undo: 'Undo',
     openFolder: 'Open folder',
     openLog: 'Open log',
-    showInFolder: {
-      explorer: 'Show in Explorer',
-      finder: 'Show in Finder',
-    },
   },
   portal: portalName,
   chips: {
@@ -656,10 +632,6 @@ export const en: Catalog = {
       archive: (value: number) => `In the archive (${n(value)})`,
       trash: (value: number) => `In the trash (${n(value)})`,
     } satisfies Record<Place, (value: number) => string>,
-    inArchive: 'In the archive',
-    inTrash: 'In the trash',
-    inTrashLeft: (days: number) => `In the trash, deleted forever in ${count(days, 'day', 'days')}`,
-    inTrashSoon: 'In the trash, due to be deleted forever',
     empty: {
       inbox: 'No jobs.',
       archive: 'The archive is empty.',
@@ -711,7 +683,6 @@ export const en: Catalog = {
     value: (band: string, percent: string) => `${band}, ${percent}`,
     excluded: 'Excluded',
     none: 'Not scored yet',
-    unscorable: 'Not scored yet',
     off: 'No match without a profile',
     band: {
       high: 'High match',
@@ -720,13 +691,6 @@ export const en: Catalog = {
     } satisfies Record<Band, string>,
   },
   reason: {
-    kind: {
-      met: 'Met',
-      partial: 'Partly met',
-      open: 'Not met',
-      violation: 'Reason to exclude',
-      check: 'Unclear',
-    } satisfies Record<ReasonKind, string>,
     weight: {
       must: 'Must-have',
       nice: 'Optional',
@@ -735,26 +699,12 @@ export const en: Catalog = {
     } satisfies Record<ReasonWeight, string>,
     evidence: (quote: string, profile: string, partial: boolean) =>
       partial
-        ? `“${quote}” partly fits “${profile}” in the profile.`
-        : `“${quote}” fits “${profile}” in the profile.`,
+        ? `“${quote}” partly matches “${profile}” in the profile.`
+        : `“${quote}” matches “${profile}” in the profile.`,
     missing: (quote: string) => `“${quote}” is not in the profile.`,
     code: reasonCode,
   },
   job: {
-    workMode: {
-      remote: 'Remote',
-      hybrid: 'Hybrid',
-      onsite: 'On site',
-    } satisfies Record<WorkMode, string>,
-    detail: {
-      pending: 'Details to come',
-      teaser: 'Preview only',
-      failed: 'Details missing',
-      unfetchable: 'Not fetchable',
-      gone: 'No longer online',
-      onRequest: 'Details on request',
-    } satisfies Record<Exclude<DetailState['kind'], 'ok'>, string>,
-    closed: 'No longer taking applications',
     unread: 'New',
     alsoOn: (portals: string) => `also on ${portals}`,
     untitled: 'Job without a title',
@@ -789,7 +739,6 @@ export const en: Catalog = {
     needsPortal: 'Switch on a portal first.',
   },
   run: {
-    never: 'No fetch yet',
     line: {
       mailbox: 'Reading the mailbox',
       ads: (done: number, total: number) => `Ads ${n(done)} of ${n(total)}`,
@@ -797,22 +746,6 @@ export const en: Catalog = {
       scoring: 'Scoring the jobs',
       files: 'Writing the files',
     },
-    step: {
-      scan: 'Mailbox',
-      fetch: 'Details',
-      score: 'Scoring',
-      export: 'Files',
-    } satisfies Record<Step, string>,
-    statusOf: (code: StatusCode, portal: Portal | null): string => {
-      const at = portal === null ? undefined : statusAt[code];
-      return at !== undefined && portal !== null ? at(portalName[portal]) : status[code];
-    },
-    kind: {
-      fetch: 'Fetch',
-      details: 'Fetch details',
-      rescore: 'Score again',
-    } satisfies Record<RunKindName, string>,
-    failed: 'Fetch failed',
     rescoring: 'The jobs are being scored again.',
     exportFailed: {
       overview: 'The Excel file could not be written and was left unchanged.',
@@ -824,8 +757,7 @@ export const en: Catalog = {
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
       workspace: 'The result folder cannot be reached.',
     },
-    openOverview: 'Open report',
-    checkMailbox: 'Check mailbox',
+    checkMailbox: 'Review mailbox',
   },
   list: {
     label: 'Jobs',
@@ -913,16 +845,7 @@ export const en: Catalog = {
     note,
     open: 'Open ad',
     close: 'Close',
-    pin: 'Mark as favourite',
-    unpin: 'Remove favourite',
-    archive: 'Archive',
-    restore: 'Restore',
     more: 'More actions',
-    delete: 'Delete',
-    override: 'Score anyway',
-    exclude: 'Exclude again',
-    overridden: 'Scored anyway.',
-    excludedAgain: 'Excluded again.',
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
     mail: OPEN_MAIL,
@@ -963,7 +886,7 @@ export const en: Catalog = {
   profile: {
     none: 'No profile yet',
     unreadable: PROFILE_UNREADABLE,
-    noneText: 'With a profile, every job shows how well it fits.',
+    noneText: 'With a profile, every job shows its match.',
     replaces: 'A new profile replaces the file.',
     replacesStored: 'Saving replaces your profile.',
     replaced: 'Profile replaced.',
@@ -1205,7 +1128,7 @@ export const en: Catalog = {
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
     range: 'Period',
     rangeName: {
-      sinceLast: 'Since the last check',
+      sinceLast: 'Since the last fetch',
       days7: '7 days',
       days30: '30 days',
       all: 'All',
@@ -1218,8 +1141,8 @@ export const en: Catalog = {
     folder: 'Result folder',
     excel: 'Excel file',
     csv: 'CSV file',
-    excelMissing: 'The Excel file is created at the next check.',
-    csvMissing: 'The CSV file is created at the next check.',
+    excelMissing: 'The Excel file is created at the next fetch.',
+    csvMissing: 'The CSV file is created at the next fetch.',
     folderMoved: 'The profile and the files are in the new folder.',
     folderFiles: 'The files are in the new folder.',
     folderOwnProfile: 'The app now uses the profile in this folder.',
@@ -1287,7 +1210,6 @@ export const en: Catalog = {
   },
   toast: {
     rescored: 'Jobs scored again.',
-    copied: 'Copied.',
     prompt: 'Prompt copied.',
     archived: 'Archived',
     trashed: 'Deleted',

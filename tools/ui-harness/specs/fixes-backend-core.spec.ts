@@ -4,6 +4,7 @@
 // (the backend refuses it too, never with a failed fetch).
 
 import { calls, expect, open, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -46,9 +47,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
 
 test('a profile that no longer reads leaves no verdicts in the list', async ({ page }) => {
   await open(page, `${WIN}&scenario=profile-broken`);
-  await expect(page.getByTestId('no-profile')).toContainText(
-    'Die Jobs zeigen deshalb keine Passung.',
-  );
+  await expect(page.getByTestId('no-profile')).toContainText(T.list.profileBrokenText);
   await expect(
     page.getByTestId('job-rows').locator('[data-testid^="job-row-"]').first(),
   ).toBeVisible();
