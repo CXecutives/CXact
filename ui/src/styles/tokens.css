@@ -507,6 +507,9 @@
   /* The one inner padding of every content column: list header, list rows, reader, overview,
      and the left edge of the top strip, so their edges line up. */
   --pane-padding: var(--space-16);
+  /* The room under the last section of a page that scrolls (Einstellungen, Profil): the end
+     of the page never sits on the window's edge. */
+  --page-end: 96px;
   /* The first line of every view, one row this high below the pane padding (the height of
      the list's tabs): the sidebar's first entry (36 px, in the rail 40 px), the tabs and the
      first heading of Profil and Einstellungen are centred in it (a heading takes

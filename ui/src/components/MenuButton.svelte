@@ -1,8 +1,9 @@
 <!--
   A button that names the current choice, with a chevron, and opens the app's own menu of the
   choices right below it (the current one checked): the order of the list ("Nach
-  Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; in a toolbar of fields it
-  takes their height and look (`field`). Left click only, like every control; disabled it
+  Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; among fields it is a
+  select (`field`): their height, border and regular text, the choice at the left and the
+  chevron at the right edge, like the OS's own (a column may make it as wide as itself). Left click only, like every control; disabled it
   stays hoverable so the tooltip can say why. While its menu is open the button looks pressed.
   Below the choices, after a line, the menu may hold what can be done with them (`actions`:
   the profile switcher's Neues Profil, Umbenennen ...); a label a user would copy (a
@@ -94,7 +95,7 @@
   }
 </script>
 
-<span class="menu-button" class:copy bind:this={anchor} use:copyable={copy}>
+<span class="menu-button" class:copy class:field bind:this={anchor} use:copyable={copy}>
   <Button
     variant={field ? 'secondary' : 'ghost'}
     size={field ? 'field' : 'sm'}
@@ -116,6 +117,29 @@
     display: inline-flex;
     flex: none;
     max-width: 100%;
+  }
+
+  /* A select among fields: the choice at the left in the fields' weight, the chevron at the
+     right edge, quiet. */
+  .field :global(.btn) {
+    justify-content: flex-start;
+  }
+
+  .field :global(.content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .field :global(.label) {
+    flex: 1;
+    overflow: hidden;
+    font-weight: var(--weight-regular);
+    text-align: start;
+    text-overflow: ellipsis;
+  }
+
+  .field :global(.trailing) {
+    color: var(--text-subtle);
   }
 
   /* A name a user gave (a profile's) may be long: it ends in an ellipsis. */

@@ -376,7 +376,7 @@
     gap: var(--space-32);
     max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     margin: 0 auto;
-    padding: var(--pane-padding) var(--pane-padding) var(--space-48);
+    padding: var(--pane-padding) var(--pane-padding) var(--page-end);
   }
 
   .section {

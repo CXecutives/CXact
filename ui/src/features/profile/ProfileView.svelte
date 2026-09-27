@@ -530,7 +530,7 @@
     max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     min-height: 100%;
     margin: 0 auto;
-    padding: var(--pane-padding) var(--pane-padding) var(--space-48);
+    padding: var(--pane-padding) var(--pane-padding) var(--page-end);
   }
 
   /* The save bar ends the page at the bottom edge. */
