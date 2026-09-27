@@ -1046,16 +1046,21 @@ test.describe('one list', () => {
     await expect(page.getByTestId('list-skeleton')).toHaveCount(0);
   });
 
-  test('an empty inbox says what comes: an icon and one sentence, nothing else', async ({
+  test('an empty inbox says what comes: an icon, one sentence and Postfach abrufen', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=empty`);
     const empty = page.getByTestId('empty-all');
     await expect(empty).toBeVisible();
-    await expect(empty.locator('svg')).toHaveCount(1);
     // The place's own icon, like the empty Archiv and Papierkorb.
-    await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.inbox}`));
-    await expect(empty.getByRole('button')).toHaveCount(0);
+    await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
+      new RegExp(`lucide-${ICONS.inbox}`),
+    );
+    // The way on: a fetch, secondary (the header holds the view's primary).
+    const fetch = empty.getByRole('button', { name: T.toolbar.fetch });
+    await expect(empty.getByRole('button')).toHaveCount(1);
+    await expect(fetch).toHaveClass(/secondary/);
+    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     for (const gone of ['alert-linkedin', 'read-older']) {
@@ -1066,6 +1071,44 @@ test.describe('one list', () => {
     await openPlace(page, 'archive');
     const archive = (await page.getByTestId('empty-place-archive').boundingBox())!;
     expect(Math.abs(archive.y + archive.height / 2 - (at.y + at.height / 2))).toBeLessThan(1);
+    await openPlace(page, 'inbox');
+    await page.getByTestId('empty-all').getByRole('button', { name: T.toolbar.fetch }).click();
+    expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
+      request: { kind: 'fetch' },
+    });
+    // While the fetch goes the list says the jobs come, and offers no second fetch.
+    await expect(page.getByTestId('empty-all')).toContainText(T.list.emptyWhileRun);
+    await expect(page.getByTestId('empty-all').getByRole('button')).toHaveCount(0);
+  });
+
+  test('an empty inbox without a mailbox says so once and leads to the mailbox card', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1360, height: 600 });
+    await open(page, `${WIN}&scenario=empty`);
+    await page.getByTestId('nav-settings').click();
+    await page.getByTestId('mailbox-remove').click();
+    await page
+      .getByTestId('dialog-remove-mailbox')
+      .getByRole('button', { name: T.common.remove })
+      .click();
+    await expect(page.getByTestId('mailbox-connect')).toBeVisible();
+    // Einstellungen scrolled down: the way back opens it at the mailbox card anyway.
+    await page.getByTestId('view-settings').evaluate((view) => {
+      const scroller = [view, ...view.querySelectorAll<HTMLElement>('*')].find(
+        (node) => node.scrollHeight > node.clientHeight + 1,
+      );
+      scroller?.scrollTo({ top: scroller.scrollHeight });
+    });
+    await expect(page.getByTestId('settings-mailbox')).not.toBeInViewport();
+    await page.getByTestId('nav-jobs').click();
+    const empty = page.getByTestId('empty-all');
+    await expect(empty).toContainText(T.list.noMailbox);
+    await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
+    await empty.getByRole('button', { name: T.list.connectMailbox }).click();
+    await expect(page.getByTestId('view-settings')).toBeVisible();
+    await expect(page.getByTestId('settings-mailbox')).toBeInViewport();
+    await expect(page.getByTestId('mailbox-connect')).toBeFocused();
   });
 
   test('without a profile: newest first, one line leads to the empty profile form', async ({

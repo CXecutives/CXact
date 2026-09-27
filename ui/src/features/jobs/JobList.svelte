@@ -18,11 +18,13 @@
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
   one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). Without a mailbox one slim note at
-  the top says how to connect one; without a usable profile one says that there is no match
-  without it and leads to the Profil view (the rings stay, empty); a thin profile one calm
-  line that the match stays rough. A list that fails to load says only that, with a retry
-  (the header hides its tools).
+  says so and takes itself off ("Filter zurücksetzen"). An empty Eingang offers "Postfach
+  abrufen" (while a fetch can start), without a mailbox "Postfach verbinden" instead, which
+  opens Einstellungen at the mailbox card. Without a mailbox one slim note at the top says
+  how to connect one (unless the empty Eingang says it); without a usable profile one says
+  that there is no match without it and leads to the Profil view (the rings stay, empty); a
+  thin profile one calm line that the match stays rough. A list that fails to load says only
+  that, with a retry (the header hides its tools).
 -->
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
@@ -30,6 +32,7 @@
   import EmptyState from '$components/EmptyState.svelte';
   import type { IconName } from '$components/Icon.svelte';
   import Dialog from '$components/Dialog.svelte';
+  import type { EmptyAction } from '$components/EmptyState.svelte';
   import JobRow from '$components/JobRow.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Notice from '$components/Notice.svelte';
@@ -144,6 +147,43 @@
     navigation.go('profile');
   }
   const mailboxMissing = $derived(app.state !== null && !app.hasMailbox);
+
+  /** Einstellungen at the mailbox card, its "Verbinden" focused (the view keeps no other
+   *  scroll place for this way). */
+  function toMailbox(): void {
+    navigation.go('settings', false, () => {
+      void tick().then(() =>
+        requestAnimationFrame(() => {
+          const card = document.querySelector<HTMLElement>('[data-testid="settings-mailbox"]');
+          if (card === null) return;
+          glideIntoView(card, 'nearest');
+          card
+            .querySelector<HTMLElement>('[data-testid="mailbox-connect"]')
+            ?.focus({ preventScroll: true });
+        }),
+      );
+    });
+  }
+
+  /** The way on from an empty Eingang (secondary: the header holds the view's primary):
+   *  without a mailbox to connect one, else to fetch while a fetch can start. */
+  const emptyAction = $derived.by((): EmptyAction | null => {
+    if (mailboxMissing) return { label: t.list.connectMailbox, onclick: toMailbox };
+    if (run.fetchBlocked !== null) return null;
+    return {
+      label: t.toolbar.fetch,
+      icon: 'fetch',
+      onclick: () => void run.start({ kind: 'fetch' }),
+    };
+  });
+  /** The empty Eingang says the list stays empty without a mailbox (not the note too). */
+  const emptyInboxShown = $derived(
+    jobs.place === 'inbox' &&
+      jobs.status === 'ready' &&
+      jobs.visible.length === 0 &&
+      !searching &&
+      !filterEmptied,
+  );
   /** A profile the app understands little of: the fit is rough, said once on top. */
   const profileThin = $derived(app.hasProfile && app.state?.profile?.quality === 'thin');
   // Jobs without a match get one soon while a run goes or a rescore is pending.
@@ -403,13 +443,13 @@
   aria-label={t.list.label}
   aria-busy={jobs.status === 'loading'}
 >
-  {#if mailboxMissing}
+  {#if mailboxMissing && !emptyInboxShown}
     <div class="note">
       <Notice
         tone="info"
         variant="row"
         text={t.list.noMailbox}
-        action={{ label: t.list.connectMailbox, onclick: () => navigation.go('settings') }}
+        action={{ label: t.list.connectMailbox, onclick: toMailbox }}
         testid="no-mailbox"
       />
     </div>
@@ -504,8 +544,14 @@
           testid="empty-place-{place}"
         />
       {:else}
-        <!-- A fetch that goes, none yet, or one that read no jobs: what comes. -->
-        <EmptyState icon="inbox" tone="neutral" text={emptyInbox} testid="empty-all" />
+        <!-- A fetch that goes, none yet, or one that read no jobs: what comes, and the way on. -->
+        <EmptyState
+          icon="inbox"
+          tone="neutral"
+          text={mailboxMissing ? t.list.noMailbox : emptyInbox}
+          secondary={emptyAction}
+          testid="empty-all"
+        />
       {/if}
     </div>
   {:else}
