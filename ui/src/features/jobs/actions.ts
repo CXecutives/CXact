@@ -194,6 +194,28 @@ async function override(job: JobView, include: boolean): Promise<string | null> 
 /** Rows that fold away because the user moved them, until they are gone. */
 export const moving = new SvelteSet<string>();
 
+/** How long after a move the rows it folds are looked at, and again while one still folds. */
+const FOLD_CHECK_MS = 400;
+
+/**
+ * The rows of `keys` leave `moving` once they are gone. A row still on the page that the list
+ * no longer shows is still folding (a busy machine folds late, and the bar waits for it): it
+ * stays until it is gone. A row that never folded (not built, its list built anew) or came
+ * back leaves at once.
+ */
+function foldedAway(keys: readonly string[]): void {
+  if (keys.length === 0) return;
+  setTimeout(() => {
+    const shown = new Set(jobs.shown.map((job) => keyOf(job.key)));
+    const folding = keys.filter(
+      (key) =>
+        !shown.has(key) && document.querySelector(`[data-key="${CSS.escape(key)}"]`) !== null,
+    );
+    for (const key of keys) if (!folding.includes(key)) moving.delete(key);
+    foldedAway(folding);
+  }, FOLD_CHECK_MS);
+}
+
 const GUARD_MS = 500;
 let guardUntil = 0;
 /** How long the next job opened by the app stays on screen before it counts as read. */
@@ -366,9 +388,7 @@ export async function move(all: readonly JobView[], action: MoveId): Promise<str
     to,
     action === 'restore',
   );
-  setTimeout(() => {
-    for (const job of folding) moving.delete(keyOf(job.key));
-  }, 400);
+  foldedAway(folding.map((job) => keyOf(job.key)));
   if ('error' in result) return result.error;
   if (leaving.length > 0) arm();
   openNext(leaving, next, focus, open);
@@ -405,9 +425,7 @@ export async function purge(list: readonly JobView[]): Promise<string | null> {
   for (const job of folding) moving.add(keyOf(job.key));
   const open = jobs.selected;
   const result = await jobs.purge(list.map((job) => job.key));
-  setTimeout(() => {
-    for (const job of folding) moving.delete(keyOf(job.key));
-  }, 400);
+  foldedAway(folding.map((job) => keyOf(job.key)));
   if ('error' in result) return result.error;
   arm();
   openNext(list, next, focus, open);

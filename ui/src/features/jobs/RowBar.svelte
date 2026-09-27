@@ -8,7 +8,8 @@
   when the list is built or comes back, and after a reload, another filter or a search.
   Opening a job while none is open
   fades it in (150 ms), closing fades it out (100 ms). A job that leaves the list (archive,
-  trash) keeps it where its row was until the next job opens there. Inside the keyboard
+  trash) keeps it where its row was until the next job opens there: it waits there while the
+  next row rises into that place, however long the fold takes. Inside the keyboard
   focus ring of its row it steps in, and it greys while the window is inactive, like a
   row's own bar (ListRow). Under reduced motion it never moves.
 -->
@@ -50,6 +51,9 @@
   let motion: { animation: Animation; from: BarBox; to: BarBox } | null = null;
   /** The next placement jumps there: no slide, no fade. */
   let jump = true;
+  /** It stands where its row ends up once the rows folding away above it are gone, ahead of
+   *  the row, which rises in as they fold (the next job after an archive opened there). */
+  let ahead = false;
   /** The props as the last update saw them. */
   let seen: { open: string | null; generation: number } = {
     open: null,
@@ -182,6 +186,7 @@
       const to = settledBox(item, live);
       const from = shown ? current() : null;
       at = open;
+      ahead = to.top !== live.top;
       if (from !== null && changed && !jump && Math.abs(to.top - from.top) < innerHeight) {
         slide(from, to);
       } else {
@@ -195,6 +200,7 @@
     if (inMotion() && motion !== null) {
       // The rows moved while it slides: on to where the row now ends up.
       const to = settledBox(item, live);
+      ahead = to.top !== live.top;
       const from = current();
       if (
         from !== null &&
@@ -205,7 +211,11 @@
       return;
     }
     motion = null;
-    place(live);
+    // Ahead of its row it waits until the row has risen in: on a busy machine the fold ends
+    // well after the slide, and the bar must not drop onto the row on its way.
+    const to = ahead ? settledBox(item, live) : live;
+    ahead = to.top !== live.top;
+    place(to);
     reveal(false);
     jump = false;
   }
