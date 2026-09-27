@@ -29,7 +29,7 @@ Components use roles only; so do the consumers outside the page:
 | Consumer | Roles | Read through |
 |---|---|---|
 | Excel file (`JobAlerts.xlsx`; the CSV file has no colours) | `surface-muted` (header row), `score-excluded` (excluded rows), `score-ring-0` ... `score-ring-9` (score cells) | `palette.rs` (`xlsx.rs`, `scale.rs`) |
-| Window colours of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`); `text` and `text-subtle` are left from the native Windows title bar (gone 2026-09-27: the top bar is the page's, `--titlebar-*`) and can leave `OUTSIDE` | `palette.rs` |
+| Window colour of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`; the top bar is the page's, `--titlebar-*`) | `palette.rs` |
 | Window background, both OS | `bg`: Coast's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
 

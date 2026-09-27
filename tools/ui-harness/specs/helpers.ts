@@ -110,15 +110,6 @@ export async function openPlace(page: Page, place: 'inbox' | 'archive' | 'trash'
   await settle(page);
 }
 
-/** The number on a place's tab (0 when it shows none; "2.001" is 2001). */
-export async function tabCount(
-  page: Page,
-  place: 'inbox' | 'archive' | 'trash' = 'inbox',
-): Promise<number> {
-  const count = page.getByTestId(`place-${place}-count`);
-  return (await count.count()) === 0 ? 0 : Number((await count.innerText()).replace(/\D/g, ''));
-}
-
 /* ------------------------------------------------------------------- filter */
 
 export const funnel = (page: Page): Locator => page.getByTestId('filter');

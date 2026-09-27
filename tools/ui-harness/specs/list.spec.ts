@@ -57,7 +57,6 @@ import {
   stage,
   stubList,
   T,
-  tabCount,
   tokenColour,
   viaMenu,
   WIN,
@@ -118,63 +117,29 @@ test.describe('header', () => {
     expect(await readOf(newest)).toBe(false);
   });
 
-  test('each tab counts the jobs of its place, quietly; the Eingang waits for the run to end', async ({
+  test('the tabs name their place only, no numbers; the chosen one has the line', async ({
     page,
   }) => {
-    await open(page, `${WIN}&tick=60`);
-    const { counts } = await stubList(page);
-    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
-    expect(await tabCount(page, 'archive')).toBe(counts.archive);
-    await expect(page.getByTestId('place-trash-count')).toHaveCount(0);
-    // One round count for every tab: warm on the chosen tab, grey on the others.
-    await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--count-soft-bg'),
-    );
-    await expect(page.getByTestId('place-archive-count')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--count-quiet-bg'),
-    );
-    const radius = (testid: string): Promise<string> =>
-      page.getByTestId(testid).evaluate((node) => getComputedStyle(node).borderRadius);
-    expect(await radius('place-archive-count')).toBe(await radius('place-inbox-count'));
-    // Choosing another place swaps the tones.
-    await openPlace(page, 'archive');
-    await expect(page.getByTestId('place-archive-count')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--count-soft-bg'),
-    );
-    await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
-      'background-color',
-      await tokenColour(page, '--count-quiet-bg'),
-    );
-    await openPlace(page, 'inbox');
+    await open(page, WIN);
+    for (const place of ['inbox', 'archive', 'trash'] as const) {
+      await expect(page.getByTestId(`place-${place}`)).toHaveText(T.place[place]);
+    }
     // 44 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
-    // line under it.
+    // line under it; it slides to another choice.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
     await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
-    const chosen = (await page.getByTestId('place-inbox').boundingBox())!;
-    // The line slides back under it (180 ms).
-    await expect
-      .poll(async () => {
-        const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
-        return [line.x, line.width].map(Math.round);
-      })
-      .toEqual([chosen.x, chosen.width].map(Math.round));
-    // A search or a filter does not change them.
-    await page.getByTestId('search').fill('Interim');
-    await expect(rows(page)).toHaveCount(3);
-    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
-    await page.getByTestId('search').fill('');
-    // A fetch brings new jobs: the Eingang's number moves on once it has ended.
-    const before = await listed(page);
-    await page.getByTestId('fetch').click();
-    await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
-    expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
-    await runFinished(page);
-    const after = (await stubList(page)).counts.inbox;
-    expect(after).toBeGreaterThan(counts.inbox);
-    await expect.poll(() => tabCount(page, 'inbox')).toBe(after);
+    const under = async (place: 'inbox' | 'archive'): Promise<void> => {
+      const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
+      await expect
+        .poll(async () => {
+          const line = (await page.getByTestId('places').locator('.line').boundingBox())!;
+          return [line.x, line.width].map(Math.round);
+        })
+        .toEqual([chosen.x, chosen.width].map(Math.round));
+    };
+    await under('inbox');
+    await openPlace(page, 'archive');
+    await under('archive');
   });
 
   test('one header in the three places: the tabs with the action, the search and the funnel', async ({
@@ -277,9 +242,7 @@ test.describe('header', () => {
     await runFinished(page);
   });
 
-  test('the tabs fit their row at every width: a narrow column drops the numbers, then the icons', async ({
-    page,
-  }) => {
+  test('the tabs fit their row at every width', async ({ page }) => {
     const places = page.getByTestId('places');
     const fits = (): Promise<boolean> =>
       places.evaluate((node) => {
@@ -290,9 +253,7 @@ test.describe('header', () => {
           last.right <= column.right && tabs.every((tab) => tab.scrollWidth <= tab.clientWidth)
         );
       });
-    // A wide window: the numbers and the icons stand beside the labels.
     await open(page, WIN);
-    await expect(page.getByTestId('place-inbox-count')).toBeVisible();
     expect(await fits()).toBe(true);
     for (const width of [1024, 900, 820, 640, 480]) {
       await page.setViewportSize({ width, height: 768 });

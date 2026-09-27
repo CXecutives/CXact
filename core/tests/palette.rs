@@ -163,11 +163,9 @@ fn as_token(name: &str, colour: Colour) -> Token {
 }
 
 /// The colour tokens something besides the page wears (`OUTSIDE` in tools/tokens.mjs): the
-/// window and the Windows title bar, the Excel file (the score ring as a family), the icon.
-const OUTSIDE: [&str; 7] = [
+/// window, the Excel file (the score ring as a family), the icon.
+const OUTSIDE: [&str; 5] = [
     "bg",
-    "text",
-    "text-subtle",
     "surface-muted",
     "score-excluded",
     "brand",
@@ -197,8 +195,8 @@ fn the_rust_palette_is_the_tokens() {
     assert_eq!(ring, steps, "palette.rs {REGEN}");
 }
 
-/// The window's colours of every other palette (Light, Dark): `--bg`, `--text` and
-/// `--text-subtle` of its block, as the window and the Windows title bar wear them.
+/// The window's colour of every other palette (Light, Dark): `--bg` of its block, as the
+/// window wears it before the page paints.
 #[test]
 fn the_window_colours_of_each_palette_are_the_tokens() {
     let found = palettes();
@@ -207,18 +205,16 @@ fn the_window_colours_of_each_palette_are_the_tokens() {
     let mut expected = Vec::new();
     for (palette, all) in &found {
         let tokens = colour_tokens_of(all);
-        for name in ["bg", "text", "text-subtle"] {
-            let token = tokens
-                .iter()
-                .find(|t| t.name == name)
-                .unwrap_or_else(|| panic!("{palette} has no --{name}"));
-            expected.push((
-                palette.clone(),
-                name.to_string(),
-                token.css.clone(),
-                token.rgb,
-            ));
-        }
+        let token = tokens
+            .iter()
+            .find(|t| t.name == "bg")
+            .unwrap_or_else(|| panic!("{palette} has no --bg"));
+        expected.push((
+            palette.clone(),
+            "bg".to_string(),
+            token.css.clone(),
+            token.rgb,
+        ));
     }
     let generated: Vec<(String, String, String, [u8; 3])> = palette::WINDOW_PALETTES
         .iter()

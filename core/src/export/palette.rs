@@ -12,10 +12,6 @@ pub use super::colour::Colour;
 pub const BG: Colour = Colour::new("hsl(32 50% 94.5%)", [0xF8, 0xF1, 0xEA]);
 /// `--surface-muted` (`--p-muted`).
 pub const SURFACE_MUTED: Colour = Colour::new("hsl(33 40% 95.5%)", [0xF8, 0xF4, 0xEF]);
-/// `--text` (`--p-ink`).
-pub const TEXT: Colour = Colour::new("hsl(45 7% 17%)", [0x2E, 0x2D, 0x28]);
-/// `--text-subtle` (`--p-fg-subtle`).
-pub const TEXT_SUBTLE: Colour = Colour::new("hsl(30 5% 42%)", [0x70, 0x6B, 0x66]);
 /// `--score-ring-0` (`--p-score-0`).
 pub const SCORE_RING_0: Colour = Colour::new("hsl(4 62% 58%)", [0xD6, 0x5A, 0x51]);
 /// `--score-ring-1` (`--p-score-1`).
@@ -37,7 +33,7 @@ pub const SCORE_RING_8: Colour = Colour::new("hsl(96 35% 50%)", [0x77, 0xAC, 0x5
 /// `--score-ring-9` (`--p-score-9`).
 pub const SCORE_RING_9: Colour = Colour::new("hsl(140 41% 45%)", [0x44, 0xA2, 0x63]);
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
-pub const SCORE_EXCLUDED: Colour = TEXT_SUBTLE;
+pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(30 5% 42%)", [0x70, 0x6B, 0x66]);
 /// `--brand` (`--p-brand`).
 pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 /// `--brand-glyph` (`--p-white`).
@@ -58,11 +54,9 @@ pub const SCORE_RING: [Colour; 10] = [
 ];
 
 /// Every colour constant above by the name of its token (without the dashes).
-pub const TOKENS: [(&str, Colour); 17] = [
+pub const TOKENS: [(&str, Colour); 15] = [
     ("bg", BG),
     ("surface-muted", SURFACE_MUTED),
-    ("text", TEXT),
-    ("text-subtle", TEXT_SUBTLE),
     ("score-ring-0", SCORE_RING_0),
     ("score-ring-1", SCORE_RING_1),
     ("score-ring-2", SCORE_RING_2),
@@ -78,27 +72,13 @@ pub const TOKENS: [(&str, Colour); 17] = [
     ("brand-glyph", BRAND_GLYPH),
 ];
 
-// The window's colours in the other palettes (`:root[data-palette='…']`): `--bg`, `--text`
-// and `--text-subtle`, which the window and the Windows title bar wear (Coast's are above).
+// The window's colour in the other palettes (`:root[data-palette='…']`): `--bg`, which the
+// window wears before the page paints (Coast's is above).
 /// `--bg` of light (`--p-cream`).
 pub const LIGHT_BG: Colour = Colour::new("hsl(210 28.6% 97.3%)", [0xF6, 0xF8, 0xFA]);
-/// `--text` of light (`--p-ink`).
-pub const LIGHT_TEXT: Colour = Colour::new("hsl(213 13% 14%)", [0x1F, 0x23, 0x28]);
-/// `--text-subtle` of light (`--p-fg-subtle`).
-pub const LIGHT_TEXT_SUBTLE: Colour = Colour::new("hsl(212 8% 43%)", [0x65, 0x6D, 0x76]);
 /// `--bg` of dark (`--p-cream`).
 pub const DARK_BG: Colour = Colour::new("hsl(218 80% 2%)", [0x01, 0x04, 0x09]);
-/// `--text` of dark (`--p-ink`).
-pub const DARK_TEXT: Colour = Colour::new("hsl(210 66.7% 96.5%)", [0xF0, 0xF6, 0xFC]);
-/// `--text-subtle` of dark (`--p-fg-subtle`).
-pub const DARK_TEXT_SUBTLE: Colour = Colour::new("hsl(214 8% 55%)", [0x83, 0x8B, 0x95]);
 
 /// The constants above by palette and token.
-pub const WINDOW_PALETTES: [(&str, &str, Colour); 6] = [
-    ("light", "bg", LIGHT_BG),
-    ("light", "text", LIGHT_TEXT),
-    ("light", "text-subtle", LIGHT_TEXT_SUBTLE),
-    ("dark", "bg", DARK_BG),
-    ("dark", "text", DARK_TEXT),
-    ("dark", "text-subtle", DARK_TEXT_SUBTLE),
-];
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] =
+    [("light", "bg", LIGHT_BG), ("dark", "bg", DARK_BG)];

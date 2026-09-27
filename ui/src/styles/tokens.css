@@ -220,8 +220,6 @@
   --count-soft-bg: var(--accent-wash);
   --count-soft-fg: var(--accent-wash-text);
   --count-soft-hover: var(--accent-wash-hover);
-  --count-quiet-bg: var(--surface-hover);
-  --count-quiet-fg: var(--text-muted);
 
   /* ------------------------------------------ navy: the data and the quiet structure */
   /* An icon that answers the pointer or marks data (a hovered status, a focused search, a

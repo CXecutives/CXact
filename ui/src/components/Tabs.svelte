@@ -2,23 +2,19 @@
   The places of a list as tabs (Eingang, Archiv, Papierkorb): quiet labels of 15 px in a row
   44 px high, the chosen one in ink with a thin line under it that slides to the next choice
   like the sidebar's pill and the segments' thumb (180 ms, emphasized; the first placement and
-  a change of size never slide). A tab may carry how many jobs lie there as a round count
-  after its label (none at 0): warm on the chosen tab, grey on the others, one shape for all.
-  An unchosen tab darkens on hover. Like native tabs the row is one Tab stop and the left and
+  a change of size never slide). A tab is its label only (user decision 2026-09-27: no
+  numbers). An unchosen tab darkens on hover. Like native tabs the row is one Tab stop and the left and
   right arrows choose (lib/input/input.ts).
 -->
 <script lang="ts" module>
   export interface TabOption<Id extends string = string> {
     id: Id;
     label: string;
-    /** A round count after the label (how many lie there); null, absent or 0: none. */
-    count?: number | null;
     testid?: string;
   }
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import Count from './Count.svelte';
   import { cssVars, px } from '$lib/actions/cssVars';
   import { settled } from '$lib/motion/settled.svelte';
 
@@ -80,15 +76,8 @@
       data-testid={option.testid ?? undefined}
       onclick={() => {
         if (!chosen) onchange(option.id);
-      }}
+      }}>{option.label}</button
     >
-      <span>{option.label}</span>
-      {#if option.count}<Count
-          value={option.count}
-          tone={chosen ? 'soft' : 'quiet'}
-          testid={option.testid ? `${option.testid}-count` : null}
-        />{/if}
-    </button>
   {/each}
   {#if line}<span
       class="line"
@@ -114,7 +103,6 @@
     pointer-events: auto;
     display: inline-flex;
     flex: none;
-    gap: var(--space-6);
     align-items: center;
     padding: 0;
     border: none;

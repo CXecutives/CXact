@@ -1,8 +1,7 @@
 <!--
   The header of the list column, the same in the three places. First row: the places as tabs
-  (Eingang, Archiv, Papierkorb, each with how many jobs lie there as a round count; the
-  Eingang's number moves on only once a fetch has ended; another place starts without the
-  search, like a folder of a mail app) and at its right end the place's one action: in the
+  (Eingang, Archiv, Papierkorb, their names only; another place starts without the search,
+  like a folder of a mail app) and at its right end the place's one action: in the
   Eingang "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
   beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
   Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
@@ -10,7 +9,7 @@
   two cross-fade in one cell as wide as the wider, so nothing jumps; the fetch is locked
   while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
   "Papierkorb leeren" (outlined, the trash in red, asks first), in the Archiv none. A narrow
-  column drops the tabs' counts first, a narrower one puts the action under the tabs.
+  column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
@@ -34,7 +33,7 @@
   with the next list or the next action that works.
 -->
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { tick } from 'svelte';
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Notice from '$components/Notice.svelte';
@@ -64,16 +63,10 @@
   /** The jobs of every place, whatever the search and the filter. */
   const totals = $derived(jobs.overviewCounts ?? jobs.counts);
 
-  /** The Eingang's number while a fetch brings new jobs: it moves on once the run is over. */
-  let inbox = $state(untrack(() => totals.inbox));
-  $effect(() => {
-    const now = totals.inbox;
-    if (!run.active) inbox = now;
-  });
   const places = $derived<TabOption<Place>[]>([
-    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox', count: inbox },
-    { id: 'archive', label: t.place.archive, testid: 'place-archive', count: totals.archive },
-    { id: 'trash', label: t.place.trash, testid: 'place-trash', count: totals.trash },
+    { id: 'inbox', label: t.place.inbox, testid: 'place-inbox' },
+    { id: 'archive', label: t.place.archive, testid: 'place-archive' },
+    { id: 'trash', label: t.place.trash, testid: 'place-trash' },
   ]);
 
   /** Another place starts without the search. */
@@ -369,7 +362,7 @@
   }
 
   /* The rows span the header's side padding too. A narrow column puts the action under the
-     tabs (after it dropped their counts, below). */
+     tabs. */
   .places {
     display: flex;
     flex-wrap: wrap;
@@ -427,16 +420,6 @@
   .fetch {
     display: flex;
     gap: var(--space-8);
-  }
-
-  /* The header's column (JobsView .head) narrower than the tabs with their counts and the
-     action side by side: the counts go first (the rows' dots still say what is new), so the
-     row keeps one line at the usual widths; only a narrower column puts the action under the
-     tabs. */
-  @container (width < 500px) {
-    .places :global([role='tab'] > .count) {
-      display: none;
-    }
   }
 
   .unfold {
