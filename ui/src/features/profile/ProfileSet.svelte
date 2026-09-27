@@ -21,7 +21,7 @@
   import { editor } from '$lib/state/profile.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import ProfileRename from './ProfileRename.svelte';
-  import { defaultName, profileName } from './profiles';
+  import { activeName, defaultName, profileName } from './profiles';
 
   type Words = () => string;
 
@@ -39,8 +39,6 @@
   let { onbusy, guard, reload, onnote }: Props = $props();
 
   const current = $derived(app.state?.profiles.find((entry) => entry.active) ?? null);
-  /** The name of the profile active now, as the head shows it (none: no profile left). */
-  const activeName = (): string | null => (current === null ? null : profileName(current));
 
   let confirmRemove = $state(false);
   let removing = $state<ProfileEntry | null>(null);
@@ -89,7 +87,7 @@
       if (source === null) return;
       const name = t.profile.copyName(profileName(source));
       void change(() => invoke('duplicate_profile', { id: source.id, name })).then((done) => {
-        const now = activeName();
+        const now = activeName(app.state?.profiles);
         if (done && now !== null) toasts.show(t.profile.duplicated(now), 'success');
       });
     });
@@ -137,7 +135,7 @@
       await reload();
       showActive();
       if (removed) {
-        const now = activeName();
+        const now = activeName(app.state?.profiles);
         toasts.show(now === null ? t.profile.removed : t.profile.removedNow(now), 'success', {
           label: t.common.undo,
           onclick: () => guard(() => void restore(entry.id)),

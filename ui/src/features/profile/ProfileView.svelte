@@ -42,7 +42,7 @@
   import ProfilePaste from './ProfilePaste.svelte';
   import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
-  import { profileName } from './profiles';
+  import { activeName } from './profiles';
   import { watchSave } from './saveEffect';
   import { valueText } from './sections';
 
@@ -277,19 +277,6 @@
       : null;
   }
 
-  /** A new profile for a fresh draft, active from now on (the draft is saved into it): its
-   *  number. */
-  async function newProfile(): Promise<number | null> {
-    const entries = await invoke('create_profile');
-    return entries.find((entry) => entry.active)?.id ?? null;
-  }
-
-  /** The name of the active profile, as the head shows it. */
-  const activeName = (): string | null => {
-    const entry = app.state?.profiles.find((each) => each.active) ?? null;
-    return entry === null ? null : profileName(entry);
-  };
-
   /** `true` when the profile is saved. Another file saved over the profile replaces it: a
    *  toast offers the old one back. A fresh draft becomes a new profile first, which goes
    *  again when its save fails (the one active before is active again). */
@@ -303,7 +290,8 @@
     let created: number | null = null;
     const effect = watchSave();
     try {
-      if (fresh) created = await newProfile();
+      // The new profile, active from now on: the draft is saved into it.
+      if (fresh) created = (await invoke('create_profile')).find((each) => each.active)?.id ?? null;
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
       // again never puts the old values back.
@@ -312,7 +300,7 @@
       if (form) editor.edit(form);
       else editor.close();
       whenBarGone(() => {
-        const name = activeName();
+        const name = activeName(app.state?.profiles);
         if (fresh && name !== null) {
           effect.stop();
           return savedToast(t.profile.created(name));
@@ -424,13 +412,19 @@
     }
     return local.quality;
   });
+  /** The workload's two days: one field with one message and one "Wert entfernen". */
+  const WORKLOAD_DAYS = new Set(['workloadMinDays', 'workloadMaxDays']);
   /** What "n Werte prüfen" counts: each value of the file that does not read, by the field
-   *  it is said at. */
-  const checkList = $derived(
-    problems.flatMap((problem) =>
-      problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
-    ),
-  );
+   *  it is said at, as many as the form says (the workload once for both days). */
+  const checkList = $derived.by(() => {
+    const fields = problems
+      .flatMap((problem) =>
+        problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
+      )
+      .map((field) => (WORKLOAD_DAYS.has(field) ? 'workload' : field));
+    const workload = fields.indexOf('workload');
+    return fields.filter((field, index) => field !== 'workload' || index === workload);
+  });
 
   /** "n Werte prüfen": the caret to the first of them, in the order of the form. */
   function checkFirst(): void {

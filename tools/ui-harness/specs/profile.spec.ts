@@ -1350,6 +1350,31 @@ test('a value too large is said at once, stays with its error and holds the save
   expect(await saves(page)).toBe(0);
 });
 
+test('a typed 0 is refused where at least 1 counts and holds the save', async ({ page }) => {
+  await profile(page);
+  for (const [id, name] of [
+    ['profile-min-rate', 'minDayRate'],
+    ['profile-wish-rate', 'wishDayRate'],
+    ['profile-min-months', 'minMonths'],
+  ] as const) {
+    const input = page.getByTestId(id);
+    await input.fill('0');
+    await expect(field(page, name), name).toContainText(T.profile.field.atLeast(1));
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(save(page)).toHaveAttribute('aria-disabled', 'true');
+    await input.fill('1');
+    await expect(input).not.toHaveAttribute('aria-invalid', 'true');
+  }
+  // A day of the workload alike; Enter to save gives it the caret.
+  const min = page.getByTestId('profile-workload-min');
+  await min.fill('0');
+  await expect(field(page, 'workload')).toContainText(T.profile.field.atLeast(1));
+  await expect(min).toHaveAttribute('aria-invalid', 'true');
+  await page.getByTestId('profile-title').press('Enter');
+  await expect(min).toBeFocused();
+  expect(await saves(page)).toBe(0);
+});
+
 test('a value the backend refuses is said at its field, which gets the caret', async ({ page }) => {
   await profile(page);
   const rate = page.getByTestId('profile-min-rate');
@@ -2692,7 +2717,8 @@ test('a thin profile marks its empty sections, and they follow the form', async 
 
 test('every value that does not read is said at its field and can be removed', async ({ page }) => {
   await profile(page, '&scenario=profile-unreadable');
-  await expect(check(page)).toHaveText(/\d+ Werte prüfen/);
+  // As many as the form says: one per field, the workload's two days one.
+  await expect(check(page)).toHaveText(T.profile.check(18));
   // A key the app does not read at all is named in the head as the file writes it, with the
   // folder to fix it.
   const warning = page.getByTestId('profile-warning');
@@ -2747,8 +2773,10 @@ test('every value that does not read is said at its field and can be removed', a
   await expect(form).not.toContainText('In der Datei stand „teuer“, das ist keine Zahl.');
   await page.getByTestId('profile-min-months').fill('6');
   await expect(field(page, 'minMonths')).not.toContainText('lang');
-  // The workload's one "Wert entfernen" takes both days.
+  // The workload's one "Wert entfernen" takes both days, and one value to check.
+  const before = Number((await check(page).textContent())!.replace(/\D/g, ''));
   await field(page, 'workload').getByTestId('value-remove').click();
+  await expect(check(page)).toHaveText(T.profile.check(before - 1));
   await expect(page.getByTestId('profile-workload-max')).not.toHaveAttribute(
     'aria-invalid',
     'true',

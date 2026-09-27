@@ -6,7 +6,7 @@
   number is formatted when its field is left. A single choice (Remote-Anteil, Verfügbar ab)
   is cleared by its option "Offen". An empty optional block says "Noch leer" quietly. A value
   of the file the app could not read is said at its field with "Wert entfernen"; a value that
-  is too large, a second day below the first, a day that does not read and a value the
+  is too large, a 0 where at least 1 counts, a second day below the first, a day that does not read and a value the
   backend refused are said there too, stay with their error until they change, and hold the
   save (the field gets the caret when a save is tried). Values that contradict each other say
   so quietly in the hint's place (a wished rate under the minimum, jobs for more years than
@@ -104,14 +104,27 @@
     wishDayRate: NUMBER_CRITERIA.minDayRate.max,
   } as Record<NumberKey, number>;
 
-  /** Values the form knows are wrong before anything is sent: too large, or the second day
-   *  of the workload below the first. Each is said at its field and holds the save. */
+  /** Numbers where 0 is nothing a job could meet (a day rate, a duration, days a week): a
+   *  typed 0 is said and holds the save instead of turning into no value unseen. */
+  const AT_LEAST_ONE: readonly NumberKey[] = [
+    'minDayRate',
+    'wishDayRate',
+    'minMonths',
+    'workloadMinDays',
+    'workloadMaxDays',
+  ];
+
+  /** Values the form knows are wrong before anything is sent: too large, a 0 where at least 1
+   *  counts, or the second day of the workload below the first. Each is said at its field and
+   *  holds the save. */
   const invalid = $derived.by((): { field: string; row: number | null; text: string }[] => {
     const found: { field: string; row: number | null; text: string }[] = [];
     for (const key of Object.keys(MAX) as NumberKey[]) {
       const value = numberOf(form, key);
       if (value !== null && value > MAX[key]) {
         found.push({ field: key, row: null, text: words.atMost(MAX[key]) });
+      } else if (value === 0 && AT_LEAST_ONE.includes(key)) {
+        found.push({ field: key, row: null, text: words.atLeast(1) });
       }
     }
     const { workloadMinDays: min, workloadMaxDays: max } = form.criteria;

@@ -1080,6 +1080,7 @@ export const en: Catalog = {
       roundedWhole: 'Rounded down to a whole number.',
       refused: 'This value does not fit.',
       atMost: (max: number) => `At most ${n(max)}.`,
+      atLeast: (min: number) => `At least ${n(min)}.`,
       unreadableNumber: (value: string) => `The file said “${value}”, which is not a number.`,
       unreadableDate: (value: string) => `The file said “${value}”, which is not a date.`,
       unreadableValue: (value: string) => `The file said “${value}”, which the app cannot read.`,

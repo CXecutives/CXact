@@ -13,3 +13,9 @@ export function defaultName(entry: ProfileEntry): string {
 export function profileName(entry: ProfileEntry): string {
   return entry.name ?? defaultName(entry);
 }
+
+/** The name of the active profile among `entries`, as the title shows it (none: no profile). */
+export function activeName(entries: readonly ProfileEntry[] | undefined): string | null {
+  const entry = entries?.find((each) => each.active) ?? null;
+  return entry === null ? null : profileName(entry);
+}

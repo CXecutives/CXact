@@ -1294,6 +1294,8 @@ export const de = {
       /** A value the backend refused, said at its field: the limit where one is. */
       refused: 'Dieser Wert passt nicht.',
       atMost: (max: number) => `Höchstens ${n(max)}.`,
+      /** A 0 where it would mean nothing (a day rate, a duration, days a week). */
+      atLeast: (min: number) => `Mindestens ${n(min)}.`,
       /** A value in the file that the app could not read, shown at its field. */
       unreadableNumber: (value: string) => `In der Datei stand „${value}“, das ist keine Zahl.`,
       unreadableDate: (value: string) => `In der Datei stand „${value}“, das ist kein Datum.`,
