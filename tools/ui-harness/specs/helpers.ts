@@ -20,7 +20,7 @@ import { animationsDone, calls, expect, settle } from './fixtures';
 
 /** The German catalog (the harness runs in de-DE). */
 export const T = de;
-export { FILTER_GROUPS, SORTS, sortEntryId };
+export { FILTER_GROUPS, NO_FILTER, SORTS, sortEntryId };
 
 export const WIN = '?platform=windows';
 export const MAC = '?platform=macos';

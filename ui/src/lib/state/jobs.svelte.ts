@@ -46,12 +46,16 @@ import type {
 import { tokenMs } from '../tokens';
 import { HIGH_FROM } from '$lib/ipc/types/bands';
 import { app } from './app.svelte';
+import { clock } from './clock.svelte';
 import {
+  applicable,
   isFiltered,
+  localDay,
   NO_FILTER,
   parseFilter,
   passesFilter,
   toQuery,
+  type FilterContext,
   type ListFilter,
 } from './filter';
 import { run } from './run.svelte';
@@ -91,24 +95,21 @@ export function sameKey(a: JobKey | null, b: JobKey | null): boolean {
 
 export const isExcluded = (job: JobView): boolean => job.match?.status === 'excluded';
 
-/** Does a job belong to the list of a place with its filter (the backend's rule,
- *  store::job_page)? */
-export function inList(job: JobView, place: Place, filter: ListFilter): boolean {
-  return job.place === place && passesFilter(job, filter);
-}
+/** Every job passes (the counts over every job). */
+const everyJob = (): boolean => true;
 
 /**
  * What one job adds to the counts (the backend's definitions, store::job_page): the inbox
- * counts only inbox jobs; a job the filter of the counts leaves out adds nothing (a change can
- * take a job out of it or bring it in).
+ * counts only inbox jobs; a job the filter of the counts (`passes`) leaves out adds nothing (a
+ * change can take a job out of it or bring it in).
  */
 function add(
   counts: JobCounts,
   job: JobView | null,
   sign: 1 | -1,
-  filter: ListFilter = NO_FILTER,
+  passes: (job: JobView) => boolean = everyJob,
 ): JobCounts {
-  if (job === null || !passesFilter(job, filter)) return counts;
+  if (job === null || !passes(job)) return counts;
   const shown = job.place === 'inbox' ? sign : 0;
   const out = isExcluded(job);
   const isNew = job.unread && !out ? shown : 0;
@@ -130,14 +131,15 @@ function add(
   };
 }
 
-/** `counts` after `before` became `after` (the same job); `filter`: the one of the counts. */
+/** `counts` after `before` became `after` (the same job); `passes`: the filter of the
+ *  counts. */
 function moved(
   counts: JobCounts,
   before: JobView,
   after: JobView,
-  filter: ListFilter = NO_FILTER,
+  passes: (job: JobView) => boolean = everyJob,
 ): JobCounts {
-  return add(add(counts, before, -1, filter), after, 1, filter);
+  return add(add(counts, before, -1, passes), after, 1, passes);
 }
 
 /** A job a move took away, to bring back (`moveBack`): as it was, where it went, its
@@ -190,7 +192,7 @@ const SORT_KEY = 'jobs-sort';
 function keptSort(): JobSort {
   try {
     const value = localStorage.getItem(SORT_KEY);
-    return value === 'newest' ? 'newest' : 'match';
+    return value === 'newest' || value === 'rate' ? value : 'match';
   } catch {
     return 'match';
   }
@@ -318,20 +320,34 @@ class JobsStore {
 
   /**
    * The filter actually used, the same in every place: without a profile no band (there is
-   * no match to filter by), and only a portal the app knows. Sent with every query of the
-   * list.
+   * no match to filter by), only a portal the app knows and a pay floor the profile names.
+   * Sent with every query of the list.
    */
   get filter(): ListFilter {
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
+    return applicable(
+      {
+        ...chosen,
+        portal:
+          chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
+            ? chosen.portal
+            : null,
+        minBand: app.hasProfile ? chosen.minBand : null,
+      },
+      this.context,
+    );
+  }
+
+  /** What parts of the filter compare a job with: the pay floors of a usable profile and
+   *  today (the page's clock). */
+  get context(): FilterContext {
+    const form = app.hasProfile ? (app.state?.profile?.form ?? null) : null;
     return {
-      portal:
-        chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
-          ? chosen.portal
-          : null,
-      minBand: app.hasProfile ? chosen.minBand : null,
-      contract: chosen.contract,
-      remote: chosen.remote,
+      minDayRate: form?.criteria.minDayRate ?? null,
+      wishDayRate: form?.wishes.dayRate ?? null,
+      minSalary: form?.criteria.minSalary ?? null,
+      today: localDay(clock.now),
     };
   }
 
@@ -340,9 +356,13 @@ class JobsStore {
     return isFiltered(this.filter);
   }
 
-  /** A job belongs to the list: its place and the filter (the backend's rule). */
-  #inList(job: JobView): boolean {
-    return inList(job, this.place, this.filter);
+  /** A job passes the filter (the backend's rule, store::filter_condition). */
+  readonly #passes = (job: JobView): boolean => passesFilter(job, this.filter, this.context);
+
+  /** A job belongs to the list: its place and the filter (the backend's rule,
+   *  store::job_page). */
+  lists(job: JobView): boolean {
+    return job.place === this.place && this.#passes(job);
   }
 
   /**
@@ -362,7 +382,7 @@ class JobsStore {
     const open = this.selected;
     const job = open === null ? null : this.held(open);
     const listed = this.rows.some((row) => sameKey(row.key, open));
-    if (job !== null && !passesFilter(job, this.filter)) this.clearSelection();
+    if (job !== null && !this.#passes(job)) this.clearSelection();
     void this.load().then(() => {
       if (open !== null && listed && sameKey(this.selected, open) && this.status === 'ready') {
         void this.reach(open, false);
@@ -553,7 +573,7 @@ class JobsStore {
       place: this.place,
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
-      ...toQuery(filter),
+      ...toQuery(filter, this.context),
       limit,
       offset,
     };
@@ -639,7 +659,7 @@ class JobsStore {
           place: 'inbox',
           sort: 'newest',
           search: null,
-          ...toQuery(NO_FILTER),
+          ...toQuery(NO_FILTER, this.context),
           limit: 0,
           offset: 0,
         },
@@ -862,7 +882,7 @@ class JobsStore {
       if (!done.has(keyOf(job.key))) continue;
       if (this.rows.some((row) => sameKey(row.key, job.key)) || !same || at < 0) {
         this.patch(job.key, { place: job.place });
-        missing ||= !this.rows.some((row) => sameKey(row.key, job.key)) && this.#inList(job);
+        missing ||= !this.rows.some((row) => sameKey(row.key, job.key)) && this.lists(job);
         continue;
       }
       const gone = { ...job, place: to };
@@ -873,7 +893,7 @@ class JobsStore {
       const place = index(below) >= 0 ? index(below) : after >= 0 ? after + 1 : at;
       rows.splice(Math.min(place, rows.length), 0, job);
       this.rows = rows;
-      this.counts = moved(this.counts, gone, job, this.filter);
+      this.counts = moved(this.counts, gone, job, this.#passes);
       if (this.overviewCounts !== null) this.overviewCounts = moved(this.overviewCounts, gone, job);
       this.recount(gone, job);
       if (this.detail && sameKey(this.detail.job.key, job.key)) {
@@ -900,7 +920,7 @@ class JobsStore {
    *  of the backend's list already). */
   private dropStray(key: JobKey): void {
     const row = this.rows.find((job) => sameKey(job.key, key));
-    if (!row || this.#inList(row)) return;
+    if (!row || this.lists(row)) return;
     this.rows = this.rows.filter((job) => !sameKey(job.key, key));
   }
 
@@ -910,7 +930,7 @@ class JobsStore {
    * backend served the row (every held row it served stands before that offset).
    */
   private recount(before: JobView, after: JobView | null): void {
-    const change = Number(after !== null && this.#inList(after)) - Number(this.#inList(before));
+    const change = Number(after !== null && this.lists(after)) - Number(this.lists(before));
     if (change === 0) return;
     this.total = Math.max(0, this.total + change);
     if (!this.#own.has(keyOf(before.key))) this.#served = Math.max(0, this.#served + change);
@@ -930,7 +950,7 @@ class JobsStore {
     const after = { ...before, ...change };
     // A listed row belongs to the list's counts; every job belongs to the overall ones.
     if (row !== null) {
-      this.counts = moved(this.counts, row, after, this.filter);
+      this.counts = moved(this.counts, row, after, this.#passes);
       this.recount(row, after);
       this.rows = replaced(this.rows, key, () => after);
     } else {
@@ -961,7 +981,7 @@ class JobsStore {
     const index = this.rows.findIndex((row) => sameKey(row.key, job.key));
     if (index >= 0) {
       const before = this.rows[index]!;
-      this.counts = moved(this.counts, before, job, this.filter);
+      this.counts = moved(this.counts, before, job, this.#passes);
       if (this.overviewCounts !== null) {
         this.overviewCounts = moved(this.overviewCounts, before, job);
       }
@@ -970,7 +990,7 @@ class JobsStore {
     } else if (
       (fresh || this.#served >= this.total) &&
       this.search.trim() === '' &&
-      this.#inList(job)
+      this.lists(job)
     ) {
       // An excluded job goes behind the fold, the others on top.
       const at = isExcluded(job) ? this.rows.findIndex(isExcluded) : 0;

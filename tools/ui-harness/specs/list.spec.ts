@@ -42,6 +42,7 @@ import {
   expectMenuIcons,
   menuItem,
   mountedKeys,
+  NO_FILTER,
   openFilter,
   openJob,
   openPlace,
@@ -324,7 +325,7 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, Nur remote, none chosen', async ({
+  test('one menu: Sortierung, Portal, Übereinstimmung, Vertragsart, work mode, pay, two switches, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -346,30 +347,48 @@ test.describe('filter', () => {
       ...table.flatMap((group) => group.entries),
       T.toolbar.filterReset,
     ]);
-    await expect(menu.getByRole('separator')).toHaveCount(table.length);
+    // A line before every group and the way back; switches of their own share theirs.
+    const lone = (group: (typeof table)[number]): boolean =>
+      group.heading === null && group.entries.length === 1;
+    const shared = table.filter((group, at) => at > 0 && lone(group) && lone(table[at - 1]!));
+    await expect(menu.getByRole('separator')).toHaveCount(table.length - shared.length);
     // The band's words stand under their heading without repeating it.
     await expect(menuItem(page, 'band-mid')).toHaveText(T.toolbar.band.mid);
     expect(T.toolbar.band.mid).not.toContain(T.toolbar.bandHeading);
-    // Remote or not is one switch of its own, behind a line, without a heading.
-    await expect(menuItem(page, 'remote-only')).toHaveAttribute('role', 'menuitemcheckbox');
-    await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
+    // The choices of a group are radio items, none checked while the group filters nothing;
+    // Nur neue and Frist in 7 Tagen are switches of their own.
+    for (const id of [
+      'portal-linkedin',
+      'band-mid',
+      'contract-interim',
+      'remote-only',
+      'pay-min',
+    ]) {
+      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
+      await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
+    }
+    for (const id of ['unread-only', 'deadline-soon']) {
+      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemcheckbox');
+      await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
+    }
     // The portals in the UI's order (lib/portals.ts), the same as Einstellungen.
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
       .evaluateAll((all) => all.map((item) => item.getAttribute('data-testid')));
     expect(portals).toEqual([
-      'menu-item-portal-all',
       'menu-item-portal-freelance',
       'menu-item-portal-linkedin',
       'menu-item-portal-freelancermap',
     ]);
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
-    for (const id of ['sort-match', 'portal-all', 'band-any', 'contract-any']) {
-      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
-      await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'true');
-    }
+    await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
+    // The whole menu opens below the funnel in the usual window, nothing to scroll.
+    const funnelBox = (await funnel(page).boundingBox())!;
+    const menuBox = (await menu.boundingBox())!;
+    expect(menuBox.y).toBeGreaterThanOrEqual(funnelBox.y + funnelBox.height);
+    expect(await menu.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');
@@ -388,7 +407,7 @@ test.describe('filter', () => {
     await menuItem(page, 'portal-linkedin').click();
     await expect(menu).toBeVisible();
     await expect(menuItem(page, 'portal-linkedin')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'portal-all')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'portal-freelance')).toHaveAttribute('aria-checked', 'false');
     // Both apply at once, the list follows while the menu is open.
     await expect
       .poll(() => listed(page))
@@ -495,14 +514,17 @@ test.describe('filter', () => {
       filterLabel('contract-freelance'),
       T.toolbar.remoteOnly,
     ]);
-    // Nur remote is a switch: a second choice takes it off again, the menu stays.
+    // A second choice takes a part off again, the menu stays.
     await openFilter(page);
     await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'true');
     await menuItem(page, 'remote-only').click();
     await expect(menuItem(page, 'remote-only')).toHaveAttribute('aria-checked', 'false');
+    await menuItem(page, 'band-mid').click();
+    await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'false');
     await expect(page.getByTestId('menu')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(chip(page, 'remote')).toHaveCount(0);
+    await expect(chip(page, 'minBand')).toHaveCount(0);
   });
 
   test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
@@ -595,6 +617,97 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
+  test('the work mode, the pay floor, Nur neue and Frist in 7 Tagen narrow the list; each a chip', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const form = (await page.evaluate(() => window.__harness.form()))!;
+    const { jobs } = await stubList(page);
+    // Remote or hybrid, then remote only takes its place in the same group.
+    await chooseFilter(page, 'remote-hybrid');
+    const away = await inbox(page, { remoteOrHybrid: true });
+    await expect.poll(() => listed(page)).toEqual(away);
+    expect(await lastQuery(page)).toMatchObject({ remoteOrHybrid: true, remoteOnly: false });
+    await chooseFilter(page, 'remote-only');
+    const remote = await inbox(page, { remoteOnly: true });
+    expect(remote.length).toBeLessThan(away.length);
+    await expect.poll(() => listed(page)).toEqual(remote);
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('remote-only'));
+    await chip(page, 'remote').click();
+    // The pay against the profile's floors: a job without a stated pay never passes.
+    await chooseFilter(page, 'pay-min');
+    const floors = { minDayRate: form.criteria.minDayRate, minSalary: form.criteria.minSalary };
+    expect(await lastQuery(page)).toMatchObject(floors);
+    const paid = await inbox(page, floors);
+    expect(paid.length).toBeGreaterThan(0);
+    await expect.poll(() => listed(page)).toEqual(paid);
+    const unpaid = jobs.filter((job) => (job.match?.facts.rate ?? null) === null).map(keyOf);
+    for (const key of unpaid) expect(paid).not.toContain(key);
+    await chooseFilter(page, 'pay-wish');
+    const wished = await inbox(page, { ...floors, minDayRate: form.wishes.dayRate });
+    expect(await lastQuery(page)).toMatchObject({ minDayRate: form.wishes.dayRate });
+    expect(wished.length).toBeLessThan(paid.length);
+    await expect.poll(() => listed(page)).toEqual(wished);
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('pay-wish'));
+    await chip(page, 'pay').click();
+    // Nur neue: the jobs not opened yet, its counts too.
+    await chooseFilter(page, 'unread-only');
+    const fresh = await inbox(page, { unread: true });
+    expect(fresh.length).toBeGreaterThan(0);
+    await expect.poll(() => listed(page)).toEqual(fresh);
+    expect(await lastQuery(page)).toMatchObject({ unread: true });
+    for (const key of fresh) expect(jobs.find((job) => keyOf(job) === key)?.unread).toBe(true);
+    // Frist in 7 Tagen beside it: both chips, in the menu's order.
+    await chooseFilter(page, 'deadline-soon');
+    const soon = await inbox(page, { unread: true, deadlineSoon: true });
+    expect(soon).toEqual(['freelancermap-2802']);
+    await expect.poll(() => listed(page)).toEqual(soon);
+    await expect(chips(page).getByRole('button')).toHaveText(
+      chipWordsOf('unread-only', 'deadline-soon'),
+    );
+    // Kept like the rest of the filter.
+    await open(page, WIN);
+    expect(await lastQuery(page)).toMatchObject({ unread: true, deadlineSoon: true });
+  });
+
+  test('a pay floor is offered only while the profile names it', async ({ page }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem('jobs-filter', JSON.stringify({ pay: 'min', remote: true })),
+    );
+    await open(page, `${WIN}&scenario=no-minimum`);
+    // The kept floor the profile no longer names is none; a kept "Nur remote" of an earlier
+    // version is the remote choice of the work mode.
+    expect(await lastQuery(page)).toMatchObject({
+      minDayRate: null,
+      minSalary: null,
+      remoteOnly: true,
+    });
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('remote-only'));
+    await openFilter(page);
+    await expect(menuItem(page, 'pay-min')).toHaveCount(0);
+    await expect(menuItem(page, 'pay-wish')).toHaveAttribute('aria-checked', 'false');
+    await page.keyboard.press('Escape');
+  });
+
+  test('Nach Tagessatz: the highest day rate first, the jobs without one last', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseSort(page, 'rate');
+    const byRate = await inbox(page, { sort: 'rate' });
+    await expect.poll(() => listed(page)).toEqual(byRate);
+    expect(await lastQuery(page)).toMatchObject({ sort: 'rate' });
+    const { jobs } = await stubList(page, { sort: 'rate' });
+    const rates = jobs.map((job) => job.match?.facts.rate ?? null);
+    const stated = rates.filter((rate): rate is number => rate !== null);
+    expect(stated.length).toBeGreaterThan(1);
+    expect(rates.slice(0, stated.length)).toEqual([...stated].sort((a, b) => b - a));
+    // Kept for the next start; the order sets no dot.
+    await open(page, WIN);
+    expect(await checkedSort(page)).toBe('rate');
+    await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
+  });
+
   test('the chips unfold under the toolbar and fold away: the list glides, nothing jumps', async ({
     page,
   }) => {
@@ -673,7 +786,7 @@ test.describe('filter', () => {
     }
     await menuItem(page, 'sort-match').hover();
     await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.sortNoProfile);
-    for (const id of ['band-any', 'band-mid', 'band-high']) {
+    for (const id of ['band-mid', 'band-high']) {
       await expect(menuItem(page, id)).toHaveAttribute('aria-disabled', 'true');
     }
     await menuItem(page, 'band-high').hover();
@@ -688,12 +801,10 @@ test.describe('filter', () => {
     await expect
       .poll(() => listed(page))
       .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
-    expect(await kept()).toEqual({
-      portal: 'freelance',
-      minBand: 'high',
-      contract: null,
-      remote: null,
-    });
+    expect(await kept()).toEqual({ ...NO_FILTER, portal: 'freelance', minBand: 'high' });
+    // Without a profile there is no pay floor: the menu offers none.
+    await expect(menuItem(page, 'pay-min')).toHaveCount(0);
+    await expect(menuItem(page, 'pay-wish')).toHaveCount(0);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
   });
 

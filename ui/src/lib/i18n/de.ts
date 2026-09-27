@@ -787,14 +787,12 @@ export const de = {
     chips: 'Filter',
     portalHeading: 'Portal',
     bandHeading: 'Übereinstimmung',
-    allPortals: 'Alle Portale',
-    /** The lowest band of the filter under its heading (`any`: every job, also one without a
-     *  score), and as a chip, where the heading is not beside it. */
+    /** The lowest band of the filter under its heading, and as a chip, where the heading is
+     *  not beside it. */
     band: {
-      any: 'Jede',
       mid: 'Ab mittel',
       high: 'Nur hoch',
-    } satisfies Record<'any' | 'mid' | 'high', string>,
+    } satisfies Record<'mid' | 'high', string>,
     bandChip: {
       mid: 'Ab mittlerer Übereinstimmung',
       high: 'Nur hohe Übereinstimmung',
@@ -802,9 +800,18 @@ export const de = {
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
     contractHeading: 'Vertragsart',
-    anyContract: 'Jede Vertragsart',
-    /** A switch of its own behind a line (remote or not is no place). */
+    /** The work mode: two choices behind a line, their words speak for themselves. */
     remoteOnly: 'Nur remote',
+    remoteOrHybrid: 'Remote oder hybrid',
+    /** The pay against the profile's floors: each only while the profile names its day rate
+     *  (employment is held against the minimum salary). */
+    pay: {
+      min: 'Ab meinem Mindesttagessatz',
+      wish: 'Ab meinem Wunschtagessatz',
+    } satisfies Record<'min' | 'wish', string>,
+    /** Switches of their own behind a line: the jobs not opened yet, a deadline close by. */
+    unreadOnly: 'Nur neue',
+    deadlineSoon: 'Frist in 7 Tagen',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */

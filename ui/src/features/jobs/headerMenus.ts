@@ -5,20 +5,23 @@
 import { t } from '$lib/i18n/t';
 import type { Portal } from '$lib/ipc/types';
 import { app, FETCH_RANGES } from '$lib/state/app.svelte';
-import { FILTER_GROUPS, NO_FILTER, SORTS, sortEntryId } from '$lib/state/filter';
+import { FILTER_GROUPS, NO_FILTER, offeredEntries, SORTS, sortEntryId } from '$lib/state/filter';
 import { jobs } from '$lib/state/jobs.svelte';
 import type { MenuEntry } from '$lib/state/menu.svelte';
 
 /**
  * The entries of the funnel's menu: "Sortierung" first (without a usable profile only by
- * date, saying why), then the table's groups in their order, each under its heading, the
- * chosen entry checked (a switch of its own without a heading, and a second choice turns it
- * off); every choice keeps the menu open. The way back at the end, off while no filter is on
- * (the order does not count): the menu keeps one height, so it never grows past the window.
- * `portals`: the portals the menu offers, in the UI's order.
+ * date, saying why), then the table's groups in their order behind a line, each under its
+ * heading where it has one: the chosen entry checked, a second choice turns it off (the
+ * choices of a group are radio items, a group of one is a switch, and switches follow each
+ * other on one line); a group the menu offers nothing of (no pay floor in the profile) is
+ * left out; every choice keeps the menu open. The way back at the end, off while no filter
+ * is on (the order does not count). `portals`: the portals the menu offers, in the UI's
+ * order.
  */
 export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
   const filter = jobs.filter;
+  const context = jobs.context;
   const noProfile = app.hasProfile ? null : t.toolbar.sortNoProfile;
   const entries: MenuEntry[] = [{ kind: 'heading', label: t.toolbar.sortHeading }];
   for (const sort of SORTS) {
@@ -32,12 +35,16 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
       run: () => jobs.setSort(sort),
     });
   }
+  let switched = false;
   for (const group of FILTER_GROUPS) {
-    entries.push({ kind: 'separator' });
-    const toggle = group.heading === null;
+    const offered = offeredEntries(group, portals, context);
+    if (offered.length === 0) continue;
+    const toggle = offered.length === 1 && group.heading === null;
+    if (!(toggle && switched)) entries.push({ kind: 'separator' });
+    switched = toggle;
     if (group.heading !== null) entries.push({ kind: 'heading', label: group.heading(t) });
     const reason = app.hasProfile ? null : (group.needsProfile?.(t) ?? null);
-    for (const entry of group.entries(portals)) {
+    for (const entry of offered) {
       const on = filter[group.key] === entry.value;
       entries.push({
         id: entry.id,
@@ -47,7 +54,7 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
         disabled: reason !== null,
         reason,
         stays: true,
-        run: () => jobs.setFilter({ [group.key]: toggle && on ? null : entry.value }),
+        run: () => jobs.setFilter({ [group.key]: on ? null : entry.value }),
       });
     }
   }
