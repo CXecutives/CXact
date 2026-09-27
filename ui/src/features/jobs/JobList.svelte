@@ -60,7 +60,13 @@
   }
   let { onresetfilter }: Props = $props();
 
-  const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
+  /** The placeholder rows while the list loads, each title and line a little shorter or
+   *  longer than the one before (percent of its room). */
+  const SKELETON_ROWS = [0, 1, 2, 3, 4, 5].map((index) => ({
+    index,
+    title: 72 - (index % 3) * 14,
+    meta: 48 + (index % 2) * 12,
+  }));
 
   const shown = $derived(jobs.shown);
   const searching = $derived(jobs.search.trim() !== '');
@@ -500,20 +506,23 @@
       />
     </div>
   {:else if jobs.rows.length === 0 && jobs.status !== 'ready'}
-    <!-- Only once the list has taken a while (jobs.slow): then at once, never blank rows. -->
-    {#if jobs.slow}
-      <div class="skeletons" data-testid="list-skeleton">
-        {#each SKELETON_ROWS as index (index)}
-          <div class="skeleton-row">
-            <Skeleton shape="circle" size="sm" />
-            <span class="lines">
-              <span class="line title"><Skeleton width={70} /></span>
-              <span class="line"><Skeleton width={45} /></span>
+    <!-- Placeholder rows in the rows' shape at once (the rows take their place without a
+         jump); they fade in once the list has taken --delay-placeholder (at once when it has
+         already, jobs.slow), so a quick list never shows them. -->
+    <div class="skeletons" data-testid="list-skeleton">
+      {#each SKELETON_ROWS as line (line.index)}
+        <div class="skeleton-row">
+          <Skeleton shape="circle" size="sm" late={!jobs.slow} />
+          <span class="lines">
+            <span class="line title">
+              <span class="grow"><Skeleton width={line.title} late={!jobs.slow} /></span>
+              <span class="stamp"><Skeleton late={!jobs.slow} /></span>
             </span>
-          </div>
-        {/each}
-      </div>
-    {/if}
+            <span class="line"><Skeleton width={line.meta} late={!jobs.slow} /></span>
+          </span>
+        </div>
+      {/each}
+    </div>
   {:else if jobs.visible.length === 0 && jobs.status === 'ready'}
     <div class="empty">
       {#if searching}
@@ -740,7 +749,19 @@
   }
 
   .line.title {
+    gap: var(--space-6);
     height: var(--leading-title);
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* The stamp at the end of the title line (the time of a mail). */
+  .stamp {
+    flex: none;
+    width: calc(var(--control-sm) + var(--space-8));
   }
 
   .sentinel {

@@ -1037,13 +1037,25 @@ test.describe('one list', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  test('loading takes a moment: its placeholder rows show whole, then the list', async ({
+  test('loading takes a moment: placeholder rows shaped like rows, then the rows in their place', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=slow`);
-    await expect(page.getByTestId('list-skeleton')).toBeVisible();
+    const skeleton = page.getByTestId('list-skeleton');
+    await expect(skeleton).toBeVisible();
+    // Each placeholder row: the ring, the title with the stamp at its end, the second line.
+    const first = skeleton.locator('.skeleton-row').first();
+    await expect(first.locator('.skeleton.circle')).toHaveCount(1);
+    await expect(first.locator('.title .skeleton')).toHaveCount(2);
+    await expect(first.locator('.skeleton')).toHaveCount(4);
+    await expect(first.locator('.skeleton').first()).toHaveCSS('opacity', '1');
+    const placeholder = (await first.boundingBox())!;
+    // The rows take the placeholders' place: the same top, the same height.
     await expect(rows(page).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('list-skeleton')).toHaveCount(0);
+    await expect(skeleton).toHaveCount(0);
+    const row = (await rows(page).first().boundingBox())!;
+    expect(Math.abs(row.y - placeholder.y)).toBeLessThan(1);
+    expect(Math.abs(row.height - placeholder.height)).toBeLessThan(1);
   });
 
   test('an empty inbox says what comes: an icon, one sentence and Postfach abrufen', async ({
