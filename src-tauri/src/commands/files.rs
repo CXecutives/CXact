@@ -1,5 +1,6 @@
 //! Result files: open checked targets, and the files that follow the user's marks.
 
+use std::fmt::Write as _;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -151,6 +152,14 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
     let what: std::ffi::OsString = match target {
         OpenTarget::JobUrl { key } => job(&key)??.url.to_string().into(),
         OpenTarget::Gmail { key } => mail(job(&key)??.gmail_id)?,
+        OpenTarget::ContactMail { key } => {
+            let job = job(&key)??;
+            let email = job.match_.and_then(|m| m.facts.contact_email);
+            email
+                .and_then(|to| mailto(&to, &job.title))
+                .ok_or_else(|| not_found("mail"))?
+                .into()
+        }
         OpenTarget::AlertMail { gmail_id } => mail(u64::from_str_radix(&gmail_id, 16).ok())?,
         OpenTarget::PortalHome { portal } => portal.home_url().into(),
         OpenTarget::AppPasswordPage => APP_PASSWORD_URL.into(),
@@ -196,6 +205,35 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
     })
 }
 
+/// A new mail to an address the engine read from an ad, the job's title as its subject:
+/// `None` for anything that is not a plain address (nothing of the ad reaches the link but
+/// the address and the encoded subject).
+fn mailto(to: &str, subject: &str) -> Option<String> {
+    let (local, domain) = to.split_once('@')?;
+    let plain = |part: &str, extra: &[char]| {
+        !part.is_empty()
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || extra.contains(&c))
+    };
+    if !plain(local, &['.', '_', '%', '+', '-']) || !plain(domain, &['.', '-']) {
+        return None;
+    }
+    let mut encoded = String::new();
+    for byte in subject.trim().bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+            encoded.push(char::from(byte));
+        } else {
+            let _ = write!(encoded, "%{byte:02X}");
+        }
+    }
+    Some(if encoded.is_empty() {
+        format!("mailto:{to}")
+    } else {
+        format!("mailto:{to}?subject={encoded}")
+    })
+}
+
 /// Shows a checked file selected in its folder (Explorer, Finder).
 fn show_in_folder(path: &std::path::Path) -> CmdResult<()> {
     crate::platform::show_in_folder(path).map_err(|e| {
@@ -207,6 +245,35 @@ fn show_in_folder(path: &std::path::Path) -> CmdResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A contact's mail: the address as it is, the subject encoded; nothing but a plain
+    /// address makes a link.
+    #[test]
+    fn a_contact_mail_carries_the_title_as_its_subject() {
+        assert_eq!(
+            mailto("julia.brandt@hanseatic.example", "Interim CFO (m/w/d) & Co").as_deref(),
+            Some(
+                "mailto:julia.brandt@hanseatic.example?subject=Interim%20CFO%20%28m%2Fw%2Fd%29%20%26%20Co"
+            )
+        );
+        assert_eq!(
+            mailto("a@b.example", "Für Ü").as_deref(),
+            Some("mailto:a@b.example?subject=F%C3%BCr%20%C3%9C")
+        );
+        assert_eq!(
+            mailto("a@b.example", " ").as_deref(),
+            Some("mailto:a@b.example")
+        );
+        for bad in [
+            "a@b.example?bcc=c@d.example",
+            "a b@c.example",
+            "@c.example",
+            "a@",
+            "a",
+        ] {
+            assert_eq!(mailto(bad, "x"), None, "{bad}");
+        }
+    }
 
     /// The files follow the latest mark once: the wait of a mark and the flush when the app
     /// ends never write twice for the same mark, and a new mark writes again.

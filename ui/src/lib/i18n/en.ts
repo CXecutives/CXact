@@ -605,6 +605,7 @@ export const en: Catalog = {
     mail: OPEN_MAIL,
     openAd: 'Open ad',
     prompt: 'Copy AI prompt',
+    copyText: 'Copy as text',
     promptNoProfile: 'Without a profile, there is nothing to assess.',
     include: 'Score anyway',
     exclude: 'Exclude again',
@@ -651,6 +652,40 @@ export const en: Catalog = {
       mid: 'Medium match',
       low: 'Low match',
     } satisfies Record<Band, string>,
+    why: 'Why this number?',
+    factor: {
+      musts: (met: number, partial: number, total: number) => {
+        const line = `${n(met)} of ${count(total, 'must-have', 'must-haves')} met`;
+        return partial > 0 ? `${line}, ${n(partial)} in part` : line;
+      },
+      nice: (met: number, total: number) =>
+        `${n(met)} of ${count(total, 'optional requirement', 'optional requirements')} met`,
+      focus: (hit: number, total: number) => {
+        if (total === 1) return hit > 0 ? 'Your focus area matched' : 'Your focus area missed';
+        return hit > 0
+          ? `${n(hit)} of ${n(total)} focus areas matched`
+          : 'None of your focus areas matched';
+      },
+      role: (role: string, full: boolean) =>
+        full ? `Fits the target role ${role}` : `Close to the target role ${role}`,
+      noRole: 'No target role in the title',
+      wishesUp: 'Your preferences fit, so a little more',
+      wishesDown: 'Your preferences hardly fit, so a little less',
+      evidence: {
+        low: 'Little text, so scored with caution',
+        teaser: 'Only a preview, so scored with caution',
+      },
+      permanent: 'Permanent role, so a little less',
+      cap: (why: string, max: number) => `${why}, so at most ${n(max)}`,
+      capWhy: {
+        formal: 'Formal requirement open',
+        severalOpen: 'Several must-haves open',
+        offField: 'No skill must-have met',
+        titleOpen: 'Core of the role open',
+        noItems: 'No clear requirements',
+        junior: 'Junior role',
+      },
+    },
   },
   reason: {
     weight: {
@@ -834,10 +869,14 @@ export const en: Catalog = {
     criterion: criteria,
     note,
     open: 'Open ad',
+    openOffline: 'Open offline ad',
+    offline: 'no longer online',
+    offlineSince: (day: string) => `no longer online since ${day}`,
     close: 'Close',
     more: 'More actions',
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The prompt could not be copied.',
+    textNotCopied: 'The text could not be copied.',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
     setUpSignIn: 'Set up sign-in',
@@ -1200,6 +1239,7 @@ export const en: Catalog = {
   toast: {
     rescored: 'Jobs scored again',
     prompt: 'Prompt copied',
+    copied: 'Copied',
     archived: 'Archived',
     unarchived: 'Unarchived',
     trashed: 'Deleted',

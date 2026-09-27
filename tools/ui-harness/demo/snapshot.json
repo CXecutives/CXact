@@ -896,11 +896,15 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a6"
       },
+      "layout": {
+        "headings": [],
+        "bullets": []
+      },
       "match": {
         "score": 62,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1167,6 +1171,41 @@
             },
             "ranges": []
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 1,
+              "partial": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -5
+            }
+          },
+          {
+            "code": "evidence",
+            "params": {
+              "evidence": "teaser"
+            }
+          }
         ]
       }
     },
@@ -1231,11 +1270,57 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7aa"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 101,
+            "end": 114
+          },
+          {
+            "start": 232,
+            "end": 242
+          },
+          {
+            "start": 385,
+            "end": 391
+          }
+        ],
+        "bullets": [
+          {
+            "start": 115,
+            "end": 117
+          },
+          {
+            "start": 146,
+            "end": 148
+          },
+          {
+            "start": 185,
+            "end": 187
+          },
+          {
+            "start": 243,
+            "end": 245
+          },
+          {
+            "start": 300,
+            "end": 302
+          },
+          {
+            "start": 328,
+            "end": 330
+          },
+          {
+            "start": 348,
+            "end": 350
+          }
+        ]
+      },
       "match": {
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -1593,6 +1678,42 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 2,
+              "partial": 0,
+              "total": 4
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -2
+            }
+          },
+          {
+            "code": "cap",
+            "params": {
+              "cap": "severalOpen",
+              "max": 40
+            }
+          }
         ]
       }
     },
@@ -1661,11 +1782,61 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7af"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 139,
+            "end": 152
+          },
+          {
+            "start": 234,
+            "end": 244
+          },
+          {
+            "start": 340,
+            "end": 353
+          },
+          {
+            "start": 389,
+            "end": 395
+          }
+        ],
+        "bullets": [
+          {
+            "start": 153,
+            "end": 155
+          },
+          {
+            "start": 191,
+            "end": 193
+          },
+          {
+            "start": 245,
+            "end": 247
+          },
+          {
+            "start": 254,
+            "end": 256
+          },
+          {
+            "start": 290,
+            "end": 292
+          },
+          {
+            "start": 318,
+            "end": 320
+          },
+          {
+            "start": 354,
+            "end": 356
+          }
+        ]
+      },
       "match": {
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2066,6 +2237,42 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 0,
+              "partial": 0,
+              "total": 4
+            }
+          },
+          {
+            "code": "nice",
+            "params": {
+              "met": 0,
+              "total": 1
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -5
+            }
+          }
         ]
       }
     },
@@ -2130,11 +2337,73 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a3"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 196,
+            "end": 209
+          },
+          {
+            "start": 343,
+            "end": 353
+          },
+          {
+            "start": 533,
+            "end": 546
+          },
+          {
+            "start": 610,
+            "end": 616
+          }
+        ],
+        "bullets": [
+          {
+            "start": 210,
+            "end": 212
+          },
+          {
+            "start": 251,
+            "end": 253
+          },
+          {
+            "start": 282,
+            "end": 284
+          },
+          {
+            "start": 354,
+            "end": 356
+          },
+          {
+            "start": 407,
+            "end": 409
+          },
+          {
+            "start": 443,
+            "end": 445
+          },
+          {
+            "start": 465,
+            "end": 467
+          },
+          {
+            "start": 499,
+            "end": 501
+          },
+          {
+            "start": 547,
+            "end": 549
+          },
+          {
+            "start": 575,
+            "end": 577
+          }
+        ]
+      },
       "match": {
         "score": 89,
         "status": "scored",
         "band": "high",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -2669,6 +2938,43 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 4,
+              "partial": 2,
+              "total": 6
+            }
+          },
+          {
+            "code": "nice",
+            "params": {
+              "met": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "full",
+              "role": "Interim CFO"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": 8
+            }
+          }
         ]
       }
     },
@@ -2740,11 +3046,81 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a7"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 226,
+            "end": 239
+          },
+          {
+            "start": 359,
+            "end": 369
+          },
+          {
+            "start": 606,
+            "end": 619
+          },
+          {
+            "start": 683,
+            "end": 689
+          }
+        ],
+        "bullets": [
+          {
+            "start": 240,
+            "end": 242
+          },
+          {
+            "start": 281,
+            "end": 283
+          },
+          {
+            "start": 312,
+            "end": 314
+          },
+          {
+            "start": 370,
+            "end": 372
+          },
+          {
+            "start": 423,
+            "end": 425
+          },
+          {
+            "start": 461,
+            "end": 463
+          },
+          {
+            "start": 483,
+            "end": 485
+          },
+          {
+            "start": 517,
+            "end": 519
+          },
+          {
+            "start": 545,
+            "end": 547
+          },
+          {
+            "start": 581,
+            "end": 583
+          },
+          {
+            "start": 620,
+            "end": 622
+          },
+          {
+            "start": 648,
+            "end": 650
+          }
+        ]
+      },
       "match": {
         "score": 58,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -3315,6 +3691,42 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 3,
+              "partial": 1,
+              "total": 7
+            }
+          },
+          {
+            "code": "nice",
+            "params": {
+              "met": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": 5
+            }
+          }
         ]
       }
     },
@@ -3376,11 +3788,69 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a8"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 161,
+            "end": 174
+          },
+          {
+            "start": 294,
+            "end": 304
+          },
+          {
+            "start": 427,
+            "end": 440
+          },
+          {
+            "start": 504,
+            "end": 510
+          }
+        ],
+        "bullets": [
+          {
+            "start": 175,
+            "end": 177
+          },
+          {
+            "start": 216,
+            "end": 218
+          },
+          {
+            "start": 247,
+            "end": 249
+          },
+          {
+            "start": 305,
+            "end": 307
+          },
+          {
+            "start": 340,
+            "end": 342
+          },
+          {
+            "start": 362,
+            "end": 364
+          },
+          {
+            "start": 390,
+            "end": 392
+          },
+          {
+            "start": 441,
+            "end": 443
+          },
+          {
+            "start": 469,
+            "end": 471
+          }
+        ]
+      },
       "match": {
         "score": 40,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -3798,6 +4268,42 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 1,
+              "partial": 1,
+              "total": 4
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -5
+            }
+          },
+          {
+            "code": "cap",
+            "params": {
+              "cap": "severalOpen",
+              "max": 40
+            }
+          }
         ]
       }
     },
@@ -3860,11 +4366,20 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7ac"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 325,
+            "end": 331
+          }
+        ],
+        "bullets": []
+      },
       "match": {
         "score": 29,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4148,6 +4663,41 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 0,
+              "partial": 0,
+              "total": 1
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -2
+            }
+          },
+          {
+            "code": "evidence",
+            "params": {
+              "evidence": "low"
+            }
+          }
         ]
       }
     },
@@ -4208,11 +4758,15 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b0"
       },
+      "layout": {
+        "headings": [],
+        "bullets": []
+      },
       "match": {
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4338,7 +4892,8 @@
             },
             "ranges": []
           }
-        ]
+        ],
+        "factors": []
       }
     },
     "freelancermap:2806": {
@@ -4396,11 +4951,15 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b3"
       },
+      "layout": {
+        "headings": [],
+        "bullets": []
+      },
       "match": {
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4526,7 +5085,8 @@
             },
             "ranges": []
           }
-        ]
+        ],
+        "factors": []
       }
     },
     "freelancermap:2807": {
@@ -4591,11 +5151,45 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b2"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 98,
+            "end": 111
+          },
+          {
+            "start": 191,
+            "end": 201
+          },
+          {
+            "start": 269,
+            "end": 275
+          }
+        ],
+        "bullets": [
+          {
+            "start": 112,
+            "end": 114
+          },
+          {
+            "start": 156,
+            "end": 158
+          },
+          {
+            "start": 202,
+            "end": 204
+          },
+          {
+            "start": 235,
+            "end": 237
+          }
+        ]
+      },
       "match": {
         "score": 40,
         "status": "excluded",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -4922,6 +5516,42 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 2,
+              "partial": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "permanent",
+            "params": {
+              "percent": 90
+            }
+          },
+          {
+            "code": "cap",
+            "params": {
+              "cap": "junior",
+              "max": 40
+            }
+          }
         ]
       }
     },
@@ -4982,11 +5612,77 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a5"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 214,
+            "end": 227
+          },
+          {
+            "start": 367,
+            "end": 377
+          },
+          {
+            "start": 579,
+            "end": 592
+          },
+          {
+            "start": 656,
+            "end": 662
+          }
+        ],
+        "bullets": [
+          {
+            "start": 228,
+            "end": 230
+          },
+          {
+            "start": 269,
+            "end": 271
+          },
+          {
+            "start": 300,
+            "end": 302
+          },
+          {
+            "start": 378,
+            "end": 380
+          },
+          {
+            "start": 431,
+            "end": 433
+          },
+          {
+            "start": 461,
+            "end": 463
+          },
+          {
+            "start": 483,
+            "end": 485
+          },
+          {
+            "start": 517,
+            "end": 519
+          },
+          {
+            "start": 550,
+            "end": 552
+          },
+          {
+            "start": 593,
+            "end": 595
+          },
+          {
+            "start": 621,
+            "end": 623
+          }
+        ]
+      },
       "match": {
         "score": 87,
         "status": "scored",
         "band": "high",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5561,6 +6257,42 @@
             },
             "ranges": []
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 5,
+              "partial": 1,
+              "total": 7
+            }
+          },
+          {
+            "code": "nice",
+            "params": {
+              "met": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": 8
+            }
+          }
         ]
       }
     },
@@ -5620,11 +6352,15 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a9"
       },
+      "layout": {
+        "headings": [],
+        "bullets": []
+      },
       "match": {
         "score": 0,
         "status": "unscorable",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -5750,7 +6486,8 @@
             },
             "ranges": []
           }
-        ]
+        ],
+        "factors": []
       }
     },
     "linkedin:4100200303": {
@@ -5816,11 +6553,69 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7ab"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 197,
+            "end": 210
+          },
+          {
+            "start": 343,
+            "end": 353
+          },
+          {
+            "start": 452,
+            "end": 465
+          },
+          {
+            "start": 529,
+            "end": 535
+          }
+        ],
+        "bullets": [
+          {
+            "start": 211,
+            "end": 213
+          },
+          {
+            "start": 253,
+            "end": 255
+          },
+          {
+            "start": 299,
+            "end": 301
+          },
+          {
+            "start": 354,
+            "end": 356
+          },
+          {
+            "start": 377,
+            "end": 379
+          },
+          {
+            "start": 399,
+            "end": 401
+          },
+          {
+            "start": 423,
+            "end": 425
+          },
+          {
+            "start": 466,
+            "end": 468
+          },
+          {
+            "start": 494,
+            "end": 496
+          }
+        ]
+      },
       "match": {
         "score": 40,
         "status": "scored",
         "band": "mid",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6166,6 +6961,42 @@
             },
             "ranges": []
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 1,
+              "partial": 0,
+              "total": 4
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 1,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "permanent",
+            "params": {
+              "percent": 90
+            }
+          },
+          {
+            "code": "cap",
+            "params": {
+              "cap": "severalOpen",
+              "max": 40
+            }
+          }
         ]
       }
     },
@@ -6230,11 +7061,65 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7ae"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 126,
+            "end": 139
+          },
+          {
+            "start": 259,
+            "end": 269
+          },
+          {
+            "start": 404,
+            "end": 417
+          },
+          {
+            "start": 453,
+            "end": 459
+          }
+        ],
+        "bullets": [
+          {
+            "start": 140,
+            "end": 142
+          },
+          {
+            "start": 181,
+            "end": 183
+          },
+          {
+            "start": 212,
+            "end": 214
+          },
+          {
+            "start": 270,
+            "end": 272
+          },
+          {
+            "start": 326,
+            "end": 328
+          },
+          {
+            "start": 353,
+            "end": 355
+          },
+          {
+            "start": 375,
+            "end": 377
+          },
+          {
+            "start": 418,
+            "end": 420
+          }
+        ]
+      },
       "match": {
         "score": 35,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6567,6 +7452,41 @@
             },
             "ranges": []
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 2,
+              "partial": 0,
+              "total": 4
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -3
+            }
+          },
+          {
+            "code": "permanent",
+            "params": {
+              "percent": 90
+            }
+          }
         ]
       }
     },
@@ -6633,11 +7553,57 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b1"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 155,
+            "end": 168
+          },
+          {
+            "start": 279,
+            "end": 289
+          },
+          {
+            "start": 399,
+            "end": 412
+          },
+          {
+            "start": 448,
+            "end": 454
+          }
+        ],
+        "bullets": [
+          {
+            "start": 169,
+            "end": 171
+          },
+          {
+            "start": 228,
+            "end": 230
+          },
+          {
+            "start": 290,
+            "end": 292
+          },
+          {
+            "start": 325,
+            "end": 327
+          },
+          {
+            "start": 347,
+            "end": 349
+          },
+          {
+            "start": 413,
+            "end": 415
+          }
+        ]
+      },
       "match": {
         "score": 23,
         "status": "excluded",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -6923,6 +7889,41 @@
             },
             "ranges": []
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 1,
+              "partial": 0,
+              "total": 3
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -2
+            }
+          },
+          {
+            "code": "permanent",
+            "params": {
+              "percent": 90
+            }
+          }
         ]
       }
     },
@@ -6986,11 +7987,61 @@
         "subject": "Neue Jobs für Ihr Profil",
         "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7ad"
       },
+      "layout": {
+        "headings": [
+          {
+            "start": 174,
+            "end": 187
+          },
+          {
+            "start": 277,
+            "end": 287
+          },
+          {
+            "start": 419,
+            "end": 432
+          },
+          {
+            "start": 468,
+            "end": 474
+          }
+        ],
+        "bullets": [
+          {
+            "start": 188,
+            "end": 190
+          },
+          {
+            "start": 233,
+            "end": 235
+          },
+          {
+            "start": 288,
+            "end": 290
+          },
+          {
+            "start": 330,
+            "end": 332
+          },
+          {
+            "start": 358,
+            "end": 360
+          },
+          {
+            "start": 394,
+            "end": 396
+          },
+          {
+            "start": 433,
+            "end": 435
+          }
+        ]
+      },
       "match": {
         "score": 10,
         "status": "scored",
         "band": "low",
-        "rev": "e16.6:837804f6c0c129e1",
+        "rev": "e17.6:dc5302b7b013de1c",
         "at": "2026-09-24T06:30:00Z",
         "summary": {
           "code": "summary",
@@ -7285,6 +8336,41 @@
               }
             ]
           }
+        ],
+        "factors": [
+          {
+            "code": "musts",
+            "params": {
+              "met": 0,
+              "partial": 0,
+              "total": 4
+            }
+          },
+          {
+            "code": "focus",
+            "params": {
+              "hit": 0,
+              "total": 2
+            }
+          },
+          {
+            "code": "targetRole",
+            "params": {
+              "fit": "none"
+            }
+          },
+          {
+            "code": "wishes",
+            "params": {
+              "points": -2
+            }
+          },
+          {
+            "code": "permanent",
+            "params": {
+              "percent": 90
+            }
+          }
         ]
       }
     }
@@ -7478,11 +8564,45 @@
           "subject": "Neue Jobs für Ihr Profil",
           "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b6"
         },
+        "layout": {
+          "headings": [
+            {
+              "start": 108,
+              "end": 121
+            },
+            {
+              "start": 193,
+              "end": 203
+            },
+            {
+              "start": 280,
+              "end": 286
+            }
+          ],
+          "bullets": [
+            {
+              "start": 122,
+              "end": 124
+            },
+            {
+              "start": 161,
+              "end": 163
+            },
+            {
+              "start": 204,
+              "end": 206
+            },
+            {
+              "start": 259,
+              "end": 261
+            }
+          ]
+        },
         "match": {
           "score": 39,
           "status": "excluded",
           "band": "low",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e17.6:dc5302b7b013de1c",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -7743,6 +8863,35 @@
               },
               "ranges": []
             }
+          ],
+          "factors": [
+            {
+              "code": "musts",
+              "params": {
+                "met": 1,
+                "partial": 0,
+                "total": 2
+              }
+            },
+            {
+              "code": "focus",
+              "params": {
+                "hit": 0,
+                "total": 2
+              }
+            },
+            {
+              "code": "targetRole",
+              "params": {
+                "fit": "none"
+              }
+            },
+            {
+              "code": "wishes",
+              "params": {
+                "points": -2
+              }
+            }
           ]
         }
       }
@@ -7864,11 +9013,49 @@
           "subject": "Neue Jobs für Ihr Profil",
           "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b0"
         },
+        "layout": {
+          "headings": [
+            {
+              "start": 165,
+              "end": 178
+            },
+            {
+              "start": 276,
+              "end": 286
+            },
+            {
+              "start": 386,
+              "end": 392
+            }
+          ],
+          "bullets": [
+            {
+              "start": 179,
+              "end": 181
+            },
+            {
+              "start": 225,
+              "end": 227
+            },
+            {
+              "start": 287,
+              "end": 289
+            },
+            {
+              "start": 319,
+              "end": 321
+            },
+            {
+              "start": 349,
+              "end": 351
+            }
+          ]
+        },
         "match": {
           "score": 23,
           "status": "excluded",
           "band": "low",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e17.6:dc5302b7b013de1c",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8267,6 +9454,35 @@
                 }
               ]
             }
+          ],
+          "factors": [
+            {
+              "code": "musts",
+              "params": {
+                "met": 0,
+                "partial": 1,
+                "total": 4
+              }
+            },
+            {
+              "code": "focus",
+              "params": {
+                "hit": 1,
+                "total": 2
+              }
+            },
+            {
+              "code": "targetRole",
+              "params": {
+                "fit": "none"
+              }
+            },
+            {
+              "code": "wishes",
+              "params": {
+                "points": -5
+              }
+            }
           ]
         }
       }
@@ -8380,11 +9596,61 @@
           "subject": "Neue Jobs für Ihr Profil",
           "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b5"
         },
+        "layout": {
+          "headings": [
+            {
+              "start": 172,
+              "end": 185
+            },
+            {
+              "start": 271,
+              "end": 281
+            },
+            {
+              "start": 453,
+              "end": 459
+            }
+          ],
+          "bullets": [
+            {
+              "start": 186,
+              "end": 188
+            },
+            {
+              "start": 239,
+              "end": 241
+            },
+            {
+              "start": 282,
+              "end": 284
+            },
+            {
+              "start": 308,
+              "end": 310
+            },
+            {
+              "start": 333,
+              "end": 335
+            },
+            {
+              "start": 355,
+              "end": 357
+            },
+            {
+              "start": 389,
+              "end": 391
+            },
+            {
+              "start": 416,
+              "end": 418
+            }
+          ]
+        },
         "match": {
           "score": 40,
           "status": "scored",
           "band": "mid",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e17.6:dc5302b7b013de1c",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -8801,6 +10067,42 @@
                 }
               ]
             }
+          ],
+          "factors": [
+            {
+              "code": "musts",
+              "params": {
+                "met": 2,
+                "partial": 1,
+                "total": 6
+              }
+            },
+            {
+              "code": "focus",
+              "params": {
+                "hit": 1,
+                "total": 2
+              }
+            },
+            {
+              "code": "targetRole",
+              "params": {
+                "fit": "none"
+              }
+            },
+            {
+              "code": "wishes",
+              "params": {
+                "points": 2
+              }
+            },
+            {
+              "code": "cap",
+              "params": {
+                "cap": "severalOpen",
+                "max": 40
+              }
+            }
           ]
         }
       }
@@ -8916,11 +10218,61 @@
           "subject": "Neue Jobs für Ihr Profil",
           "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7a9"
         },
+        "layout": {
+          "headings": [
+            {
+              "start": 175,
+              "end": 188
+            },
+            {
+              "start": 358,
+              "end": 368
+            },
+            {
+              "start": 472,
+              "end": 485
+            },
+            {
+              "start": 521,
+              "end": 527
+            }
+          ],
+          "bullets": [
+            {
+              "start": 189,
+              "end": 191
+            },
+            {
+              "start": 238,
+              "end": 240
+            },
+            {
+              "start": 312,
+              "end": 314
+            },
+            {
+              "start": 369,
+              "end": 371
+            },
+            {
+              "start": 414,
+              "end": 416
+            },
+            {
+              "start": 442,
+              "end": 444
+            },
+            {
+              "start": 486,
+              "end": 488
+            }
+          ]
+        },
         "match": {
           "score": 58,
           "status": "scored",
           "band": "mid",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e17.6:dc5302b7b013de1c",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -9307,6 +10659,42 @@
                 }
               ]
             }
+          ],
+          "factors": [
+            {
+              "code": "musts",
+              "params": {
+                "met": 2,
+                "partial": 0,
+                "total": 3
+              }
+            },
+            {
+              "code": "nice",
+              "params": {
+                "met": 0,
+                "total": 1
+              }
+            },
+            {
+              "code": "focus",
+              "params": {
+                "hit": 1,
+                "total": 2
+              }
+            },
+            {
+              "code": "targetRole",
+              "params": {
+                "fit": "none"
+              }
+            },
+            {
+              "code": "wishes",
+              "params": {
+                "points": -2
+              }
+            }
           ]
         }
       }
@@ -9414,11 +10802,69 @@
           "subject": "Neue Jobs für Ihr Profil",
           "gmailUrl": "https://mail.google.com/mail/u/0/#all/18c2f0a9d1e4b7b4"
         },
+        "layout": {
+          "headings": [
+            {
+              "start": 155,
+              "end": 168
+            },
+            {
+              "start": 297,
+              "end": 307
+            },
+            {
+              "start": 466,
+              "end": 479
+            },
+            {
+              "start": 505,
+              "end": 511
+            }
+          ],
+          "bullets": [
+            {
+              "start": 169,
+              "end": 171
+            },
+            {
+              "start": 220,
+              "end": 222
+            },
+            {
+              "start": 251,
+              "end": 253
+            },
+            {
+              "start": 308,
+              "end": 310
+            },
+            {
+              "start": 342,
+              "end": 344
+            },
+            {
+              "start": 379,
+              "end": 381
+            },
+            {
+              "start": 407,
+              "end": 409
+            },
+            {
+              "start": 429,
+              "end": 431
+            },
+            {
+              "start": 480,
+              "end": 482
+            }
+          ]
+        },
         "match": {
           "score": 97,
           "status": "scored",
           "band": "high",
-          "rev": "e16.6:837804f6c0c129e1",
+          "rev": "e17.6:dc5302b7b013de1c",
           "at": "2026-09-24T07:30:00Z",
           "summary": {
             "code": "summary",
@@ -9857,6 +11303,43 @@
                   "end": 563
                 }
               ]
+            }
+          ],
+          "factors": [
+            {
+              "code": "musts",
+              "params": {
+                "met": 3,
+                "partial": 2,
+                "total": 5
+              }
+            },
+            {
+              "code": "nice",
+              "params": {
+                "met": 1,
+                "total": 1
+              }
+            },
+            {
+              "code": "focus",
+              "params": {
+                "hit": 0,
+                "total": 2
+              }
+            },
+            {
+              "code": "targetRole",
+              "params": {
+                "fit": "full",
+                "role": "Interim CFO"
+              }
+            },
+            {
+              "code": "wishes",
+              "params": {
+                "points": 6
+              }
             }
           ]
         }

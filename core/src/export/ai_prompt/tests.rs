@@ -331,6 +331,7 @@ fn assessment() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 700,
+        factors: Vec::new(),
     }
 }
 
@@ -841,6 +842,7 @@ fn an_excluded_job_says_why() {
             ..KeyFacts::default()
         },
         rank: 900,
+        factors: Vec::new(),
     };
     let mut job = view();
     let de = ai_prompt(
@@ -1039,6 +1041,7 @@ fn every_reason() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 1,
+        factors: Vec::new(),
     }
 }
 

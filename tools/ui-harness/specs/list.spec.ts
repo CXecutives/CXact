@@ -1325,8 +1325,14 @@ test.describe('rows', () => {
     page,
   }) => {
     await open(page, WIN);
-    const shows = [T.actions.open, T.actions.mail, T.actions.openAd, T.actions.prompt];
-    const showIcons = ['open', 'alertMail', 'external', 'prompt'] as const;
+    const shows = [
+      T.actions.open,
+      T.actions.mail,
+      T.actions.openAd,
+      T.actions.prompt,
+      T.actions.copyText,
+    ];
+    const showIcons = ['open', 'alertMail', 'external', 'prompt', 'copy'] as const;
     // Eingang.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
@@ -1390,6 +1396,7 @@ test.describe('rows', () => {
       T.actions.mail,
       T.actions.openAd,
       T.actions.prompt,
+      T.actions.copyText,
       T.actions.include,
       T.actions.archive,
       T.actions.trash,

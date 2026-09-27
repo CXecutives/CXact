@@ -36,6 +36,8 @@ export interface TermRow {
   value: string;
   /** A value of several parts, each copied on its own (the contact: name, e-mail, phone). */
   parts: readonly string[] | null;
+  /** The part that is an e-mail address (the contact's): a new mail to it. */
+  mail: string | null;
   /** The ad does not state it. */
   missing: boolean;
   /** A quiet word after the value: estimated, assumed, how it stands to the profile. */
@@ -89,11 +91,18 @@ interface Context {
   /** A passage of the text shown states the value (else a number is the engine's estimate). */
   stated: boolean;
   now: Date;
+  offline: Offline | null;
+}
+
+/** The ad is gone or takes no applications; since when, if the app knows (an ISO moment). */
+export interface Offline {
+  since: string | null;
 }
 
 interface Value {
   value: string | null;
   parts?: readonly string[];
+  mail?: string | null;
   note?: string | null;
   urgent?: boolean;
   /** False: the row takes no verdict (the duration of a permanent job). */
@@ -280,7 +289,9 @@ const TERMS: Record<TermKey, Term> = {
       const parts = [facts?.contactName, facts?.contactEmail, facts?.contactPhone].flatMap(
         (part) => text(part) ?? [],
       );
-      return parts.length === 0 ? { value: null } : { value: parts.join(', '), parts };
+      return parts.length === 0
+        ? { value: null }
+        : { value: parts.join(', '), parts, mail: text(facts?.contactEmail) };
     },
   },
   industry: {
@@ -290,13 +301,19 @@ const TERMS: Record<TermKey, Term> = {
     shows: ({ code }) => code('industryWish') !== undefined,
     read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
   },
+  // The portals, and quietly after them an ad that is no longer online (once, here).
   portal: {
     ...NONE,
-    read: ({ job }) => ({
-      value: [job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)]
-        .map((portal) => t.portal[portal])
-        .join(', '),
-    }),
+    read: ({ job, offline, now }) => {
+      const since = offline?.since ? formatDay(offline.since, now) : '';
+      return {
+        value: [job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)]
+          .map((portal) => t.portal[portal])
+          .join(', '),
+        note:
+          offline === null ? null : since === '' ? t.reader.offline : t.reader.offlineSince(since),
+      };
+    },
   },
   // The day of the alert mail in the list row's words ("gestern", "Do 24.09.").
   received: {
@@ -353,6 +370,8 @@ export interface TermInput {
   textLength: number;
   /** The page's clock (a deadline near, the day of the alert mail in words). */
   now: Date;
+  /** The ad is no longer online (null: it is, or the app does not know otherwise). */
+  offline?: Offline | null;
 }
 
 /** The rows of the table for one job, in the facts table's order. */
@@ -393,6 +412,7 @@ function build(
     claimed,
     stated: ranges.length > 0,
     now: input.now,
+    offline: input.offline ?? null,
   };
   if (term.shows && !term.shows(ctx)) return null;
   const read = term.read(ctx);
@@ -431,6 +451,7 @@ function build(
     icon: termIcon(key, input.job),
     value: read.value ?? t.reader.missing,
     parts: missing ? null : (read.parts ?? null),
+    mail: missing ? null : (read.mail ?? null),
     missing,
     note: missing ? null : (read.note ?? null),
     urgent: !missing && read.urgent === true,

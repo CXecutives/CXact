@@ -30,8 +30,9 @@ use sha2::Digest as _;
 /// with `ENGINE_VERSION` and the before/after table in `docs/MATCHING.md`. Version 11 (the
 /// excluded permanent employment, a key no corpus profile sets) changed only the version
 /// line: with `engine 10` in front the rows still give the version-10 value
-/// `6e4d9945276f410c`.
-const GOLDEN_DIGEST: &str = "501e5e88adf66bd7";
+/// `6e4d9945276f410c`. Version 17 (the deadline and the contact, no score moved) changed only
+/// the version line too: with `engine 16` in front the rows give `501e5e88adf66bd7`.
+const GOLDEN_DIGEST: &str = "f3a422ce3fb324c9";
 
 /// SHA-256 (16 hex) over the results of the four profiles without the version-4 keys
 /// (`schwerpunkte`, `wunschrollen`, the wishes in `einsatzpraeferenzen`; the IT profile's

@@ -5,14 +5,25 @@
 // are handled in input.ts, which closes the menu through `closeMenu`.
 
 import type { IconMeaning } from '$lib/icons';
+import type { ReasonKind } from '$lib/ipc/types';
 
-/** One entry of a menu: an action, a thin line between groups, or a group's small heading
- *  (muted, never active: the arrows and the type-ahead pass over it). */
-export type MenuEntry = MenuItem | { kind: 'separator' } | MenuHeading;
+/** One entry of a menu: an action, a thin line between groups, a group's small heading
+ *  (muted, never active: the arrows and the type-ahead pass over it), or a line that only
+ *  tells (a popover of such lines is no menu: the reader's "Warum diese Zahl?"). */
+export type MenuEntry = MenuItem | { kind: 'separator' } | MenuHeading | MenuLine;
 
 export interface MenuHeading {
   kind: 'heading';
   label: string;
+}
+
+/** A line of words after the icon of its verdict (components/ReasonItem); never active. */
+export interface MenuLine {
+  kind: 'line';
+  /** Stable id (test ids `menu-line-<id>`). */
+  id: string;
+  label: string;
+  verdict: ReasonKind;
 }
 
 export interface MenuItem {
@@ -65,7 +76,11 @@ export const menuState: MenuState = $state({ open: null, active: -1 });
 let nextId = 1;
 
 export const isItem = (entry: MenuEntry): entry is MenuItem =>
-  entry.kind !== 'separator' && entry.kind !== 'heading';
+  entry.kind !== 'separator' && entry.kind !== 'heading' && entry.kind !== 'line';
+
+/** A popover that only tells (its every entry a line): a dialog, not a menu. */
+export const tellsOnly = (entries: readonly MenuEntry[]): boolean =>
+  entries.length > 0 && entries.every((entry) => entry.kind === 'line');
 
 /** Open a menu (a menu already open closes first, without giving its focus back). */
 export function openMenu(spec: MenuSpec): void {

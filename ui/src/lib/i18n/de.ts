@@ -674,6 +674,8 @@ export const de = {
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
     prompt: 'KI-Prompt kopieren',
+    /** The job as plain lines (title, company, place, pay, start, duration, link). */
+    copyText: 'Als Text kopieren',
     /** Without a usable profile there is nothing to judge the job by. */
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
@@ -734,6 +736,44 @@ export const de = {
       mid: 'Mittlere Übereinstimmung',
       low: 'Geringe Übereinstimmung',
     } satisfies Record<Band, string>,
+    /** The reader's ring opens what moved its score: its tooltip and the popover's name. */
+    why: 'Warum diese Zahl?',
+    /** The lines of that popover (MatchDetail.factors), one short line each. */
+    factor: {
+      musts: (met: number, partial: number, total: number) => {
+        const line = `${n(met)} von ${count(total, 'Pflichtanforderung', 'Pflichtanforderungen')} erfüllt`;
+        return partial > 0 ? `${line}, ${n(partial)} teilweise` : line;
+      },
+      nice: (met: number, total: number) =>
+        `${n(met)} von ${n(total)} ${total === 1 ? 'optionalen Anforderung' : 'optionalen Anforderungen'} erfüllt`,
+      focus: (hit: number, total: number) => {
+        if (total === 1)
+          return hit > 0 ? 'Deinen Schwerpunkt getroffen' : 'Deinen Schwerpunkt verfehlt';
+        return hit > 0
+          ? `${n(hit)} von ${n(total)} Schwerpunkten getroffen`
+          : 'Keinen deiner Schwerpunkte getroffen';
+      },
+      role: (role: string, full: boolean) =>
+        full ? `Passt zur Wunschrolle ${role}` : `Nah an der Wunschrolle ${role}`,
+      noRole: 'Keine Wunschrolle im Titel',
+      wishesUp: 'Deine Wünsche passen, deshalb etwas mehr',
+      wishesDown: 'Deine Wünsche passen kaum, deshalb etwas weniger',
+      evidence: {
+        low: 'Wenig Text, deshalb vorsichtig bewertet',
+        teaser: 'Nur eine Vorschau, deshalb vorsichtig bewertet',
+      },
+      permanent: 'Festanstellung, deshalb etwas weniger',
+      /** A cap held the score down: why, and the highest score it allows. */
+      cap: (why: string, max: number) => `${why}, deshalb höchstens ${n(max)}`,
+      capWhy: {
+        formal: 'Formale Pflicht offen',
+        severalOpen: 'Mehrere Pflichtanforderungen offen',
+        offField: 'Keine fachliche Pflichtanforderung erfüllt',
+        titleOpen: 'Kern der Rolle offen',
+        noItems: 'Keine klaren Anforderungen',
+        junior: 'Einstiegsrolle',
+      },
+    },
   },
   reason: {
     weight: {
@@ -978,12 +1018,20 @@ export const de = {
     criterion: criteria,
     note,
     open: 'Anzeige öffnen',
+    /** "Anzeige öffnen" of an ad that is gone or takes no applications (the portal's page
+     *  still opens). */
+    openOffline: 'Offline-Anzeige öffnen',
+    /** Quiet after the portal in the Jobdetails: the ad is gone or closed, since when if the
+     *  app knows. */
+    offline: 'nicht mehr online',
+    offlineSince: (day: string) => `nicht mehr online seit ${day}`,
     close: 'Schließen',
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
     prompt: 'KI-Prompt kopieren',
-    /** The clipboard refused the prompt. */
+    /** The clipboard refused the prompt, or the job as text. */
     promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
+    textNotCopied: 'Der Text ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
     setUpSignIn: 'Anmeldung einrichten',
@@ -1456,6 +1504,8 @@ export const de = {
     rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
     prompt: 'Prompt kopiert',
+    /** A job as text on the clipboard. */
+    copied: 'Kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Dearchiviert',

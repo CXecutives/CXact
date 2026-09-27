@@ -9,6 +9,7 @@ use serde_json::{Map, Value, json};
 use super::ad_facts::{self, AdFacts, Stated, currency_code, start_code};
 use super::contract::ContractKind;
 use super::engine::{EngineProfile, Evaluation};
+use super::factors;
 use super::facts::{Availability, HardCriteria, Start};
 use super::job::{Class, Stage};
 use super::limits;
@@ -187,6 +188,7 @@ pub(crate) fn assessment(
     } else if evaluation.evidence != EvidenceLevel::Full {
         b.reason(ReasonKind::Check, Weight::Info, ReasonCode::LowEvidence);
     }
+    let factors = factors::factors(profile, evaluation, &summary);
     Assessment {
         verdict: evaluation.verdict,
         score: evaluation.score,
@@ -196,6 +198,7 @@ pub(crate) fn assessment(
         criteria,
         facts: evaluation.facts.key_facts(),
         rank: evaluation.rank,
+        factors,
     }
 }
 

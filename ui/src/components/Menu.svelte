@@ -6,6 +6,9 @@
   itself (the wheel over it scrolls only the menu). Rows are 30 px with the text of a field
   and a fixed icon column (the check of a choice or a switch sits there too); no entry names
   a key. A group may carry a small muted heading, which the keys pass over.
+  A popover whose entries are all lines only tells (the reader's "Warum diese Zahl?"): a
+  dialog of lines, each the icon of its verdict and its words (ReasonItem), wrapping where
+  they are long; nothing in it is chosen, Esc, Tab and a press outside close it.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row, a left click chooses it.
 -->
@@ -13,10 +16,17 @@
   import { px, setVars } from '$lib/actions/cssVars';
   import { tooltip } from '$lib/actions/tooltip';
   import { menuIn, menuOut } from '$lib/motion/transitions';
-  import { chooseEntry, isItem, menuState, type MenuAnchor } from '$lib/state/menu.svelte';
+  import {
+    chooseEntry,
+    isItem,
+    menuState,
+    tellsOnly,
+    type MenuAnchor,
+  } from '$lib/state/menu.svelte';
   import { tokenPx } from '$lib/tokens';
   import type { Action } from 'svelte/action';
   import Icon from './Icon.svelte';
+  import ReasonItem from './ReasonItem.svelte';
 
   /** The menu opened above its anchor (it drops in upwards then). */
   let up = $state(false);
@@ -48,7 +58,7 @@
     y = Math.max(edge, y);
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
     // The menu takes the keys (the entries are no tab stops; the active one is announced).
-    node.querySelector<HTMLElement>('[role="menu"]')?.focus({ preventScroll: true });
+    node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
   };
 
   const itemId = (menu: number, index: number): string => `menu-${menu}-${index}`;
@@ -56,14 +66,18 @@
 
 {#if menuState.open}
   {@const open = menuState.open}
+  {@const telling = tellsOnly(open.entries)}
   {#key open.id}
     <div class="layer" data-menu-layer use:place={open.anchor}>
       <div
         class="menu"
-        role="menu"
+        class:telling
+        role={telling ? 'dialog' : 'menu'}
         tabindex="-1"
         aria-label={open.label}
-        aria-activedescendant={menuState.active >= 0 ? itemId(open.id, menuState.active) : null}
+        aria-activedescendant={!telling && menuState.active >= 0
+          ? itemId(open.id, menuState.active)
+          : null}
         data-testid="menu"
         in:menuIn={{ up }}
         out:menuOut
@@ -104,6 +118,10 @@
           {:else if entry.kind === 'heading'}
             <div class="heading" role="presentation" data-testid="menu-heading">
               {entry.label}
+            </div>
+          {:else if entry.kind === 'line'}
+            <div class="line" data-testid="menu-line-{entry.id}">
+              <ReasonItem kind={entry.verdict} label={entry.label} />
             </div>
           {:else}
             <div class="separator" role="separator"></div>
@@ -212,6 +230,17 @@
     padding: 0 var(--menu-inset) var(--space-4);
     color: var(--text-muted);
     font: var(--type-xs);
+  }
+
+  /* A line that only tells: the verdict's icon, then its words, which wrap. */
+  .line {
+    display: flex;
+    flex: none;
+    padding: var(--space-6) var(--menu-inset);
+  }
+
+  .telling {
+    padding-block: var(--space-6);
   }
 
   .separator {

@@ -134,6 +134,47 @@ pub(crate) struct Evaluation {
     /// The score in per-mille before the caps and the rounding: orders jobs with the same
     /// score (two jobs capped at 40 are not equally good).
     pub rank: u16,
+    /// The cap that held the score down, with the highest score it allows (none when the
+    /// rounded score stays at or below every cap).
+    pub capped: Option<(CapKind, u8)>,
+}
+
+/// Why a score is capped (the rubric's caps, a text without requirements, a junior role).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CapKind {
+    /// An open formal must (a degree of another field, a licence).
+    Formal,
+    /// Several musts open (at least two and at least half).
+    SeveralOpen,
+    /// No skill must met at all: outside the field.
+    OffField,
+    /// An open must on the topic of the title (the core of the role).
+    TitleOpen,
+    /// A text without any requirement, judged from its title.
+    NoItems,
+    /// A junior or entry-level role for a senior profile.
+    Junior,
+}
+
+impl CapKind {
+    /// The code the interface reads (`Factor` params).
+    pub(crate) fn code(self) -> &'static str {
+        match self {
+            CapKind::Formal => "formal",
+            CapKind::SeveralOpen => "severalOpen",
+            CapKind::OffField => "offField",
+            CapKind::TitleOpen => "titleOpen",
+            CapKind::NoItems => "noItems",
+            CapKind::Junior => "junior",
+        }
+    }
+}
+
+/// A cap with its kind; the lower of two, the first of two alike.
+type Cap = (u8, CapKind);
+
+fn lower(a: Cap, b: Cap) -> Cap {
+    if b.0 < a.0 { b } else { a }
 }
 
 fn weight(item: &Item) -> u64 {
@@ -199,7 +240,7 @@ fn cap(
     vocab: &Vocab,
     formal_cap: bool,
     title_fit: u64,
-) -> Option<u8> {
+) -> Option<Cap> {
     let musts: Vec<&Scored> = items
         .iter()
         .filter(|s| s.item.kind == ReqKind::Must && matches!(s.weight, W_MUST | W_TERM))
@@ -244,15 +285,15 @@ fn cap(
                     .any(|a| !atoms::is_generic(a) && title_atoms.iter().any(|t| related(a, t)))
         });
     [
-        formal_cap.then_some(FORMAL_CAP),
-        several_open.then_some(SEVERAL_OPEN_CAP),
-        off_field.then_some(OFF_FIELD_CAP),
-        off_field_single.then_some(OFF_FIELD_SINGLE_CAP),
-        core_open.then_some(TITLE_OPEN_CAP),
+        formal_cap.then_some((FORMAL_CAP, CapKind::Formal)),
+        several_open.then_some((SEVERAL_OPEN_CAP, CapKind::SeveralOpen)),
+        off_field.then_some((OFF_FIELD_CAP, CapKind::OffField)),
+        off_field_single.then_some((OFF_FIELD_SINGLE_CAP, CapKind::OffField)),
+        core_open.then_some((TITLE_OPEN_CAP, CapKind::TitleOpen)),
     ]
     .into_iter()
     .flatten()
-    .min()
+    .reduce(lower)
 }
 
 /// `P` with the must weight and the number of nice-to-haves. A requirement met in full
@@ -481,17 +522,17 @@ fn all_caps(
     raw_title: &str,
     formal_cap: bool,
     no_items: bool,
-) -> Option<u8> {
+) -> Option<Cap> {
     let vocab = &profile.skills.vocab;
     let title_fit = relevance::title_fit(&profile.query, title, vocab);
     cap(items, title, vocab, formal_cap, title_fit)
         .into_iter()
-        .chain(no_items.then_some(NO_ITEMS_CAP))
+        .chain(no_items.then_some((NO_ITEMS_CAP, CapKind::NoItems)))
         .chain(
             (junior_for_senior(profile, raw_title) || entry_level_for_senior(profile, items))
-                .then_some(JUNIOR_CAP),
+                .then_some((JUNIOR_CAP, CapKind::Junior)),
         )
-        .min()
+        .reduce(lower)
 }
 
 /// A junior role (`Junior`, `Werkstudent`, `Trainee`, `Berufseinstieg` in the title) for a
@@ -559,15 +600,22 @@ fn relevance_of(
         .min(1000)
 }
 
-/// The score (rounded, capped, at least the floor; 0 when unscorable) and the rank (the
-/// per-mille score before caps and rounding).
-fn final_score(adjusted: u64, cap: Option<u8>, unscorable: bool) -> (u8, u16) {
+/// The score (rounded, capped, at least the floor; 0 when unscorable), the rank (the
+/// per-mille score before caps and rounding) and the cap that held the score down.
+fn final_score(
+    adjusted: u64,
+    cap: Option<Cap>,
+    unscorable: bool,
+) -> (u8, u16, Option<(CapKind, u8)>) {
     if unscorable {
-        return (0, 0);
+        return (0, 0, None);
     }
     let rounded = u8::try_from(div_round_half_even(adjusted, 10).min(100)).unwrap_or(100);
-    let score = cap.map_or(rounded, |c| rounded.min(c)).max(SCORE_FLOOR);
-    (score, u16::try_from(adjusted).unwrap_or(1000))
+    let score = cap
+        .map_or(rounded, |(c, _)| rounded.min(c))
+        .max(SCORE_FLOOR);
+    let capped = cap.filter(|&(c, _)| c < rounded).map(|(c, kind)| (kind, c));
+    (score, u16::try_from(adjusted).unwrap_or(1000), capped)
 }
 
 /// The limits of an engagement (checks) and the exclusion words (they exclude where they
@@ -679,7 +727,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         (role, wishes)
     };
     let adjusted = adjust(shrunk, role.as_ref(), &wishes, &items);
-    let (score, rank) = final_score(adjusted, cap, unscorable);
+    let (score, rank, capped) = final_score(adjusted, cap, unscorable);
     let verdict = if decided {
         Verdict::Excluded
     } else if unscorable {
@@ -699,6 +747,7 @@ pub(crate) fn evaluate(profile: &EngineProfile, job: &JobInput<'_>) -> Evaluatio
         wishes,
         facts: ad_facts,
         rank,
+        capped,
     }
 }
 

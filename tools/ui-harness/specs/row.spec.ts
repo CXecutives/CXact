@@ -167,7 +167,7 @@ async function menuMoves(page: Page, key: string): Promise<string[]> {
     .locator('[data-testid^="menu-item-"]')
     .evaluateAll((all) => all.map((item) => (item.getAttribute('data-testid') ?? '').slice(10)));
   await page.keyboard.press('Escape');
-  const shows = ['open', 'mail', 'open-ad', 'prompt', 'include', 'exclude'];
+  const shows = ['open', 'mail', 'open-ad', 'prompt', 'copy-text', 'include', 'exclude'];
   return ids.filter((id) => !shows.includes(id));
 }
 

@@ -101,10 +101,22 @@ test('the reasons: one glyph and one colour per state, the badge only for an opt
     );
   expect(looks.map(([kind]) => kind)).toEqual(['met', 'partial', 'open', 'violation', 'check']);
   expect(new Set(looks.map(([, glyph]) => glyph)).size).toBe(5);
-  // Met in part is the amber minus in a circle; to check is muted.
+  // The colours of the rings: met the top step, met in part (the amber minus in a circle)
+  // the middle one, not met and excluded the lowest; to check is muted.
   expect(looks[1]![1]).toContain('lucide-circle-minus');
-  expect(looks[1]![2]).toBe(await tokenColour(page, '--warning-strong'));
+  const verdicts = ['--verdict-met', '--verdict-partial', '--verdict-unmet', '--verdict-unmet'];
+  for (const [index, token] of verdicts.entries()) {
+    expect(looks[index]![2], token).toBe(await tokenColour(page, token));
+  }
   expect(looks[4]![2]).toBe(await tokenColour(page, '--text-muted'));
+  // The verdict tokens are the rings' steps.
+  for (const [token, ring] of [
+    ['--verdict-met', '--score-ring-9'],
+    ['--verdict-partial', '--score-ring-5'],
+    ['--verdict-unmet', '--score-ring-0'],
+  ] as const) {
+    expect(await tokenColour(page, token), token).toBe(await tokenColour(page, ring));
+  }
   // No compact rows, no chips, no badge but "Optional".
   await expect(section.locator('.compact, .chip')).toHaveCount(0);
   expect(new Set(await section.locator('.badge').allInnerTexts())).toEqual(new Set(['Optional']));

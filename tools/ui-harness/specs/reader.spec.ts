@@ -11,7 +11,7 @@
 // more, no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
-import { demoScore } from './demo';
+import { DEMO, demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
@@ -225,6 +225,109 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
   });
 
+  test('"Warum diese Zahl?": the ring opens what moved the score, Esc or a press outside closes it', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const ring = stage(page).getByTestId('reader-ring');
+    const popover = page.getByTestId('menu');
+    // A button named by its match; its tooltip says what it opens.
+    await expect(ring).toHaveAttribute('aria-haspopup', 'dialog');
+    await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    expect(await tip(page, ring)).toBe(T.score.why);
+    await ring.click();
+    await expect(popover).toHaveAttribute('role', 'dialog');
+    await expect(popover).toHaveAccessibleName(T.score.why);
+    await expect(ring).toHaveAttribute('aria-expanded', 'true');
+    // The engine's lines in their order, each with the icon of its verdict: here the musts,
+    // the optional ones, the Schwerpunkte, the target role and the wishes.
+    const factors = DEMO.details['freelancermap:2801']!.match!.factors;
+    const lines = popover.locator('[data-testid^="menu-line-"]');
+    expect(
+      await lines.evaluateAll((all) => all.map((line) => line.getAttribute('data-testid'))),
+    ).toEqual(factors.map((factor) => `menu-line-${factor.code}`));
+    expect(factors.length).toBeGreaterThanOrEqual(3);
+    expect(factors.length).toBeLessThanOrEqual(5);
+    const musts = factors[0]!.params;
+    await expect(lines.first()).toHaveText(
+      T.score.factor.musts(Number(musts.met), Number(musts.partial), Number(musts.total)),
+    );
+    await expect(popover.getByTestId('menu-line-targetRole')).toHaveText(
+      T.score.factor.role('Interim CFO', true),
+    );
+    const icon = (id: string) => popover.getByTestId(`menu-line-${id}`).locator('.reason > .icon');
+    await expect(icon('targetRole')).toHaveCSS('color', await tokenColour(page, '--verdict-met'));
+    // Nothing in it is chosen; Esc closes it.
+    await expect(popover.locator('[role^="menuitem"]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    // From the keyboard: Enter opens it, Esc gives the focus back to the ring.
+    await ring.focus();
+    await page.keyboard.press('Enter');
+    await expect(popover).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(popover).toHaveCount(0);
+    await expect(ring).toBeFocused();
+    // A press outside closes it.
+    await page.keyboard.press('Enter');
+    await expect(popover).toBeVisible();
+    await page.mouse.click(5, 5);
+    await expect(popover).toHaveCount(0);
+  });
+
+  test('a cap and a permanent role say why the number stays low; no number, no button', async ({
+    page,
+  }) => {
+    const line = (id: string) => page.getByTestId('menu').getByTestId(`menu-line-${id}`);
+    // Several musts open: the cap is the last line, in the colour of a verdict not met.
+    await openAt(page, 'freelancermap-2803');
+    await stage(page).getByTestId('reader-ring').click();
+    const cap = DEMO.details['freelancermap:2803']!.match!.factors.at(-1)!;
+    expect(cap.code).toBe('cap');
+    await expect(line('cap')).toHaveText(
+      T.score.factor.cap(T.score.factor.capWhy.severalOpen, Number(cap.params.max)),
+    );
+    await expect(line('cap').locator('.reason > .icon')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--verdict-unmet'),
+    );
+    await page.keyboard.press('Escape');
+    // A permanent role.
+    await openJob(page, 'linkedin-4100200303');
+    await stage(page).getByTestId('reader-ring').click();
+    await expect(line('permanent')).toHaveText(T.score.factor.permanent);
+    await page.keyboard.press('Escape');
+    // A ring without a number is no button.
+    await openJob(page, 'freelancermap-2806');
+    const ring = stage(page).getByTestId('reader-ring');
+    await expect(ring).toHaveAttribute('role', 'img');
+    await expect(ring).not.toHaveAttribute('aria-haspopup');
+  });
+
+  test('every line of "Warum diese Zahl?" is short, without colons or a full stop', async () => {
+    const f = T.score.factor;
+    const all = [
+      f.musts(4, 2, 6),
+      f.musts(1, 0, 1),
+      f.nice(1, 2),
+      f.focus(0, 3),
+      f.focus(2, 3),
+      f.focus(1, 1),
+      f.role('Interim CFO', true),
+      f.role('Interim CFO', false),
+      f.noRole,
+      f.wishesUp,
+      f.wishesDown,
+      ...Object.values(f.evidence),
+      f.permanent,
+      ...Object.values(f.capWhy).map((why) => f.cap(why, 40)),
+    ];
+    for (const words of all) expect(words, words).toMatch(/^[^:.!]+$/);
+    expect(f.musts(4, 2, 6)).toBe('4 von 6 Pflichtanforderungen erfüllt, 2 teilweise');
+    expect(f.cap(f.capWhy.formal, 40)).toBe('Formale Pflicht offen, deshalb höchstens 40');
+  });
+
   test('the close "×" stands at the same place at every width, no way back besides', async ({
     page,
   }) => {
@@ -272,8 +375,8 @@ test.describe('the actions', () => {
     expect(looks[0]).toMatch(/^true /);
     // The "…" menu of the inbox, without keys.
     const menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['archive', 'trash']);
-    expect(menu.labels).toEqual(['Archivieren', 'Löschen']);
+    expect(menu.ids).toEqual(['copy-text', 'archive', 'trash']);
+    expect(menu.labels).toEqual([T.actions.copyText, 'Archivieren', 'Löschen']);
     await expect(page.getByTestId('menu').locator('.keys')).toHaveCount(0);
     await page.keyboard.press('Escape');
     // The alert mail and the ad open outside.
@@ -288,7 +391,7 @@ test.describe('the actions', () => {
     // From the keyboard: the first entry is active at once, the focus comes back after it.
     await actions.getByTestId('reader-more').focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
+    await expect(page.getByTestId('menu-item-copy-text')).toHaveClass(/active/);
     await page.keyboard.press('Escape');
     await expect(actions.getByTestId('reader-more')).toBeFocused();
     // Löschen: the job goes to the trash, the next one opens.
@@ -341,15 +444,15 @@ test.describe('the actions', () => {
     await openPlace(page, 'archive');
     await openJob(page, 'linkedin-4100200306');
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['unarchive', 'trash']);
-    expect(menu.labels).toEqual(['Dearchivieren', 'Löschen']);
+    expect(menu.ids).toEqual(['copy-text', 'unarchive', 'trash']);
+    expect(menu.labels).toEqual([T.actions.copyText, 'Dearchivieren', 'Löschen']);
     await choose(page, 'trash');
     await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'linkedin-4100200306');
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['restore', 'purge']);
-    expect(menu.labels).toEqual(['Wiederherstellen', 'Endgültig löschen']);
+    expect(menu.ids).toEqual(['copy-text', 'restore', 'purge']);
+    expect(menu.labels).toEqual([T.actions.copyText, 'Wiederherstellen', 'Endgültig löschen']);
     await choose(page, 'purge');
     const dialog = page.getByTestId('dialog-purge');
     await expect(dialog).toBeVisible();
@@ -377,14 +480,14 @@ test.describe('the actions', () => {
     for (const { place, key, moves } of places) {
       await openPlace(page, place);
       await openJob(page, key);
-      expect(await more(page), place).toEqual([...moves]);
+      expect(await more(page), place).toEqual(['copy-text', ...moves]);
       expect(await toolsOf(page, key), place).toEqual([...moves]);
     }
     // An excluded job: "Trotzdem bewerten" before the moves of its place.
     await openPlace(page, 'inbox');
     const { excluded } = await stubList(page);
     await openJob(page, excluded[0]!);
-    expect(await more(page)).toEqual(['include', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['copy-text', 'include', 'archive', 'trash']);
   });
 
   test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
@@ -407,12 +510,12 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['archive', 'trash']);
+    expect(await more(page)).toEqual(['copy-text', 'archive', 'trash']);
     // Rückgängig brings it back and opens it again: the Eingang's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['archive', 'trash']);
+    expect(await more(page)).toEqual(['copy-text', 'archive', 'trash']);
     // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
     await open(page, WIN);
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
@@ -430,7 +533,7 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['restore', 'purge']);
+    expect(await more(page)).toEqual(['copy-text', 'restore', 'purge']);
   });
 
   test('copying the prompt says so in a toast, a refusing clipboard too', async ({
@@ -459,6 +562,41 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-error')).toHaveCount(0);
   });
 
+  test('"Als Text kopieren": the job in plain lines with its link, from "…" and the row', async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const copied: string[] = [];
+      (window as unknown as { __copied: string[] }).__copied = copied;
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: (text: string) => Promise.resolve(void copied.push(text)) },
+      });
+    });
+    const copied = (): Promise<string[]> =>
+      page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+    await openAt(page, 'freelancermap-2801');
+    await moreMenu(page);
+    await choose(page, 'copy-text');
+    await expect(page.getByTestId('toast').last()).toContainText(T.toast.copied);
+    const url = DEMO.details['freelancermap:2801']!.url;
+    expect((await copied()).at(-1)!.split('\n')).toEqual([
+      'Interim CFO für Familienunternehmen',
+      'Hanseatic Holding GmbH',
+      'Hamburg',
+      T.facts.pay(1200, 'day', null),
+      'ab sofort',
+      '6 Monate',
+      url,
+    ]);
+    // From the row's menu of another job: its own lines, what its ad does not say left out.
+    await viaMenu(page, 'copy-text', 'freelance-900411');
+    await expect.poll(async () => (await copied()).length).toBe(2);
+    const lines = (await copied()).at(-1)!.split('\n');
+    expect(lines[0]).toBe('SAP S/4HANA Finance Projektleitung');
+    expect(lines.at(-1)).toBe(DEMO.details['freelance:900411']!.url);
+    expect(lines).not.toContain('');
+  });
+
   test('closing a job from the reader hands the focus to its row', async ({ page }) => {
     await open(page, WIN);
     await row(page, 'freelancermap-2801').click();
@@ -477,6 +615,7 @@ test.describe('the actions', () => {
     await page.waitForTimeout(550);
     await page.getByTestId('reader-more').focus();
     await page.keyboard.press('Enter');
+    await page.keyboard.press('ArrowDown');
     await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
@@ -520,8 +659,8 @@ test.describe('an excluded job', () => {
     // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
     // The same entries in the same order as the row's menu (one table, actions.ts).
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['include', 'archive', 'trash']);
-    expect(menu.labels[0]).toBe(T.actions.include);
+    expect(menu.ids).toEqual(['copy-text', 'include', 'archive', 'trash']);
+    expect(menu.labels[1]).toBe(T.actions.include);
     await choose(page, 'include');
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
       key: { portal: 'freelance', id: '900412' },
@@ -533,8 +672,8 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('reader-ring')).toBeVisible();
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['exclude', 'archive', 'trash']);
-    expect(menu.labels[0]).toBe(T.actions.exclude);
+    expect(menu.ids).toEqual(['copy-text', 'exclude', 'archive', 'trash']);
+    expect(menu.labels[1]).toBe(T.actions.exclude);
     await page.keyboard.press('Escape');
     // The toast takes it back.
     await toast.getByTestId('toast-action').click();
@@ -590,7 +729,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'workload')).toEqual(['/', '']);
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // The day of the alert mail in the list row's words.
-    expect(await cell(page, 'received')).toEqual(['vor 2 Stunden', '']);
+    expect(await cell(page, 'received')).toEqual(['07:30', '']);
     // Verdicts are icons (no words), the reason that decided one in its tooltip; one no
     // reason decided names itself.
     await expect(terms(page)).not.toContainText('passt');
@@ -606,7 +745,7 @@ test.describe('Jobdetails', () => {
     }
   });
 
-  test('the verdicts: green, amber, muted, and the ban where a row excludes the job', async ({
+  test('the verdicts in the colours of the rings, muted, the ban where a row excludes the job', async ({
     page,
   }) => {
     const icon = (page: Page, key: string) =>
@@ -621,16 +760,16 @@ test.describe('Jobdetails', () => {
     const met = await look(page, 'workload');
     const unknown = await look(page, 'start');
     expect(await cell(page, 'start')).toEqual(['nach Absprache', 'unknown']);
-    expect(met[0]).toBe(await tokenColour(page, '--success-strong'));
+    expect(met[0]).toBe(await tokenColour(page, '--verdict-met'));
     expect(unknown[0]).toBe(await tokenColour(page, '--text-muted'));
     await openJob(page, 'freelance-900413');
     const partial = await look(page, 'workload');
-    expect(partial[0]).toBe(await tokenColour(page, '--warning-strong'));
+    expect(partial[0]).toBe(await tokenColour(page, '--verdict-partial'));
     // Met in part: the amber minus in a circle.
     expect(partial[1]).toContain('lucide-circle-minus');
     await openJob(page, 'freelance-900412');
     const excludes = await look(page, 'contract');
-    expect(excludes[0]).toBe(await tokenColour(page, '--danger-strong'));
+    expect(excludes[0]).toBe(await tokenColour(page, '--verdict-unmet'));
     expect(excludes[1]).toContain('lucide-ban');
     // One glyph per verdict.
     expect(new Set([met[1], unknown[1], partial[1], excludes[1]]).size).toBe(4);
@@ -675,7 +814,7 @@ test.describe('Jobdetails', () => {
     expect([termFont, termGap]).toEqual([reasonFont, reasonGap]);
   });
 
-  test('Bewerbungsfrist and Kontakt: red within a week, each part of the contact copies', async ({
+  test('Bewerbungsfrist and Kontakt: red within a week, the e-mail writes a mail, the rest copies', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
@@ -687,19 +826,34 @@ test.describe('Jobdetails', () => {
         .evaluate((node) => getComputedStyle(node).color);
     expect(await cell(page, 'deadline')).toEqual(['15.10.', '']);
     expect(await colour('deadline')).not.toBe(danger);
-    const parts = term(page, 'contact').locator('.value');
-    await expect(parts).toHaveText([
+    // Name, e-mail and phone one under the other; the name and the phone copy.
+    await expect(term(page, 'contact').locator('.parts > *')).toHaveText([
       'Julia Brandt',
       'julia.brandt@hanseatic.example',
       '+49 40 5550 1234',
     ]);
+    const parts = term(page, 'contact').locator('.value');
+    await expect(parts).toHaveText(['Julia Brandt', '+49 40 5550 1234']);
     for (const part of await parts.all()) await expect(part).toHaveAttribute('data-copy', '');
     await expect(term(page, 'contact').getByTestId('verdict')).toHaveCount(0);
+    // The e-mail is a link: a new mail to it in the mail program, one line high.
+    const mail = term(page, 'contact').getByTestId('contact-mail');
+    await expect(mail).toHaveClass(/link/);
+    await mail.click();
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
+    });
+    const [name, phone] = await parts.evaluateAll((all) =>
+      all.map((node) => node.getBoundingClientRect()),
+    );
+    expect(Math.abs(phone!.top - name!.top - 2 * name!.height)).toBeLessThanOrEqual(1);
     // Four days ahead: red. An e-mail address alone is the contact.
     await openJob(page, 'freelancermap-2802');
     expect(await cell(page, 'deadline')).toEqual(['28.09.', '']);
     expect(await colour('deadline')).toBe(danger);
-    await expect(term(page, 'contact').locator('.value')).toHaveText(['jobs@gruenwerk.example']);
+    await expect(term(page, 'contact').getByTestId('contact-mail')).toHaveText(
+      'jobs@gruenwerk.example',
+    );
     // An ad that names neither.
     await openJob(page, 'freelancermap-2804');
     expect(await cell(page, 'deadline')).toEqual(['/', '']);
@@ -788,7 +942,7 @@ test.describe('Jobdetails', () => {
     expect(await terms(page).locator('.term-name').allInnerTexts()).toEqual([
       'Unternehmen',
       'Ort',
-      'Arbeitsort',
+      'Arbeitsmodell',
       'Vertragsart',
       'Portal',
       'Eingegangen',
@@ -838,9 +992,9 @@ test.describe('Anforderungen', () => {
     }
     // The icons of the verdicts; a group's heading is not said again under the pointer.
     for (const [kind, token] of [
-      ['met', '--success-strong'],
-      ['partial', '--warning-strong'],
-      ['open', '--danger-strong'],
+      ['met', '--verdict-met'],
+      ['partial', '--verdict-partial'],
+      ['open', '--verdict-unmet'],
     ] as const) {
       const icon = why(page).getByTestId(`reasons-${kind}`).locator('.reason > .icon').first();
       expect(await icon.evaluate((node) => getComputedStyle(node).color)).toBe(
@@ -1027,6 +1181,54 @@ test.describe('the ad', () => {
     expect(await lit(page)).toEqual([]);
   });
 
+  test('the ad in its structure: headings, lists without their glyphs, paragraphs', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const text = stage(page).getByTestId('ad-text');
+    const headings = text.getByTestId('ad-heading');
+    await expect(headings).toHaveText(['Ihre Aufgaben', 'Ihr Profil', 'Wünschenswert', 'Rahmen']);
+    // Small and bold: the text's size, a heavier weight.
+    const [weight, size] = await headings
+      .first()
+      .evaluate((node) => [getComputedStyle(node).fontWeight, getComputedStyle(node).fontSize]);
+    expect(Number(weight)).toBeGreaterThanOrEqual(600);
+    expect(size).toBe(await text.evaluate((node) => getComputedStyle(node).fontSize));
+    // The bullets are an indented list; the ad's glyphs are gone.
+    const items = text.getByTestId('ad-item');
+    await expect(items).toHaveCount(10);
+    await expect(items.first()).toHaveText('Führung eines Teams von sechs Personen');
+    expect(await items.first().evaluate((node) => getComputedStyle(node).display)).toBe(
+      'list-item',
+    );
+    const indent = async (target: Locator): Promise<number> => (await target.boundingBox())!.x;
+    expect(await indent(items.first())).toBeGreaterThan(await indent(headings.first()));
+    expect(await text.innerText()).not.toContain('•');
+    // A line with a date is no heading, whatever its first word.
+    await expect(text.locator('p').last()).toContainText('Bewerbungsfrist 15.10.2026');
+    // One text to copy, its passages where they were.
+    await expect(text).toHaveAttribute('data-copy', '');
+    await expect(text.locator('mark[data-items]').first()).toBeAttached();
+  });
+
+  test('the words of the list search stand marked in the ad while the search is on', async ({
+    page,
+  }) => {
+    await openAt(page, 'freelancermap-2801');
+    const search = page.getByTestId('search');
+    // Words the job is found by: each in the ad, case aside.
+    await search.fill('interim cfo');
+    await expect(rows(page)).toHaveCount(1);
+    const hits = stage(page).getByTestId('ad-text').locator('mark.hit');
+    await expect(hits).toHaveText(['Interim', 'CFO', 'Interim', 'Interim']);
+    await expect(hits.first()).toHaveCSS(
+      'background-color',
+      await tokenColour(page, '--mark-search'),
+    );
+    await search.fill('');
+    await expect(hits).toHaveCount(0);
+  });
+
   test('a preview says so once, here, with the way to its sign-in', async ({ page }) => {
     await openAt(page, 'freelance-900411');
     await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.teaser);
@@ -1040,6 +1242,15 @@ test.describe('the ad', () => {
     );
     await signIn.click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
+    // Einstellungen at the row of freelance.de: in view, its sign-in focused, the row lit up
+    // once in the soft tint, then settled.
+    const portalRow = page.getByTestId('portal-freelance');
+    await expect(portalRow).toBeInViewport();
+    await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
+    await expect(portalRow).toHaveAttribute('data-flash', 'on');
+    await expect(portalRow).toHaveCSS('background-color', await tokenColour(page, '--info-soft'));
+    await expect(portalRow).not.toHaveAttribute('data-flash');
+    await expect(portalRow).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   });
 
   test('a missing ad: "Anzeige laden" loads it, meanwhile it is being loaded', async ({ page }) => {
@@ -1102,10 +1313,57 @@ test.describe('the ad', () => {
     await expect(stage(page).locator('.head')).not.toContainText('Bewerbung');
   });
 
+  test('an ad no longer online: its button says so and still opens it, the Jobdetails once', async ({
+    page,
+  }) => {
+    // Closed: since the day the app read the closed page.
+    await openAt(page, 'linkedin-4100200304');
+    const openAd = stage(page).getByTestId('open-ad');
+    await expect(openAd).toHaveText(T.reader.openOffline);
+    await openAd.click();
+    expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
+      target: { kind: 'jobUrl', key: { portal: 'linkedin', id: '4100200304' } },
+    });
+    const note = term(page, 'portal').locator('.term-note');
+    await expect(note).toHaveText(new RegExp(`^${T.reader.offlineSince('\\d\\d\\.\\d\\d\\.')}$`));
+    await expect(terms(page).getByText(T.reader.offline, { exact: false })).toHaveCount(1);
+    // Gone, the day unknown.
+    await page.evaluate(() => window.__harness.gone({ portal: 'linkedin', id: '4100200302' }));
+    await openJob(page, 'linkedin-4100200302');
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.openOffline);
+    await expect(term(page, 'portal').locator('.term-note')).toHaveText(T.reader.offline);
+    await expect(stage(page).getByTestId('detail-note')).toHaveText(T.reader.adNote.gone);
+    // An ad that is online says nothing of it.
+    await openJob(page, 'freelancermap-2801');
+    await expect(stage(page).getByTestId('open-ad')).toHaveText(T.reader.open);
+    await expect(term(page, 'portal').locator('.term-note')).toHaveCount(0);
+  });
+
   test('every note of the ad is one short sentence', async () => {
     for (const note of Object.values(T.reader.adNote)) expect(note).toMatch(/^[^.]+\.$/);
     expect(T.reader.adNote.missing).not.toContain('Anzeige');
   });
+});
+
+test('while a job loads, the reader stands in its shape as placeholders', async ({ page }) => {
+  await open(page, WIN);
+  await settle(page);
+  await slowDetails(page, 1500);
+  await row(page, 'freelancermap-2801').click();
+  const skeleton = stage(page).getByTestId('reader-skeleton');
+  await expect(skeleton).toBeVisible();
+  // The title, the ring, the actions, rows of the Jobdetails and lines of the ad.
+  await expect(skeleton.getByTestId('skeleton-title')).toBeVisible();
+  await expect(skeleton.locator('.skeleton.circle')).toHaveCount(1);
+  expect(await skeleton.getByTestId('skeleton-row').count()).toBeGreaterThanOrEqual(4);
+  expect(await skeleton.getByTestId('skeleton-line').count()).toBeGreaterThanOrEqual(4);
+  const placeholder = (await skeleton.getByTestId('skeleton-title').boundingBox())!;
+  // The job takes its place: its title starts where the placeholder's did.
+  await expect(stage(page).getByTestId('reader-title')).toBeVisible({ timeout: 5000 });
+  await expect(stage(page).getByTestId('reader-skeleton')).toHaveCount(0);
+  const title = (await stage(page).getByTestId('reader-title').boundingBox())!;
+  expect(Math.abs(placeholder.x - title.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(placeholder.y - title.y)).toBeLessThanOrEqual(8);
 });
 
 test('switching jobs fades the old one out before the new one comes in', async ({ page }) => {

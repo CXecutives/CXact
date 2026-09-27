@@ -26,7 +26,6 @@
   import Splitter, { cappedLimits, splitLimits } from '$components/Splitter.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import EmptyState from '$components/EmptyState.svelte';
-  import Skeleton from '$components/Skeleton.svelte';
   import { t } from '$lib/i18n/t';
   import { duration } from '$lib/motion/motion';
   import { fade, rise, viewOut } from '$lib/motion/transitions';
@@ -40,6 +39,7 @@
   import { RAIL_BELOW, viewport } from '$lib/state/viewport.svelte';
   import JobList from './JobList.svelte';
   import Reader from './Reader.svelte';
+  import ReaderSkeleton from './ReaderSkeleton.svelte';
   import ListHeader from './ListHeader.svelte';
 
   const OVERVIEW = 'overview';
@@ -262,12 +262,7 @@
                   testid="reader-error"
                 />
               {:else if stage.what === WAITING}
-                <div class="skeleton" data-testid="reader-skeleton">
-                  <Skeleton width={80} />
-                  <Skeleton width={55} />
-                  <Skeleton shape="circle" size="md" />
-                  <Skeleton shape="block" />
-                </div>
+                <ReaderSkeleton />
               {:else if jobs.detail}
                 <Reader detail={jobs.detail} onclose={close} />
               {/if}
@@ -384,12 +379,6 @@
     display: flex;
     justify-content: center;
     padding-top: var(--space-48);
-  }
-
-  .skeleton {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-16);
   }
 
   @media (width < 900px) {
