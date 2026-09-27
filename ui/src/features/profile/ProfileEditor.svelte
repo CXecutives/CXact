@@ -37,6 +37,7 @@
   import { primaryFirst } from '$lib/platform';
   import { editor, type FieldError, type FieldProblem } from '$lib/state/profile.svelte';
   import { tick, untrack } from 'svelte';
+  import AskedTerms from './AskedTerms.svelte';
   import AvailableField from './AvailableField.svelte';
   import CompetenceList from './CompetenceList.svelte';
   import CountriesField from './CountriesField.svelte';
@@ -457,6 +458,7 @@
       onclear={() => editor.clear('focus')}
       error={listError('competences') ?? listError('focus')}
     />
+    <AskedTerms bind:rows={form.competences} />
   {:else if c.kind === 'languages'}
     <LanguageList bind:rows={form.languages} error={listError('languages')} />
   {:else if c.kind === 'countries'}

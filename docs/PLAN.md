@@ -721,3 +721,14 @@ three tracks: backend, job list and reader, the rest of the UI) makes the app mi
 - [x] Row tools, Dearchivieren, the company glyph
 - [x] One filter control
 - [x] The reader's "…" per place (a job that just moved away offers no moves while the next one loads)
+
+## Profile round 2026-09-27
+- "Häufig verlangt" under the competences of the Profil: the terms the scored jobs of the
+  Eingang and the Archiv of the last 30 days ask for that the profile does not name (the
+  engine's open must and nice requirements that are skills of at most five words, the rule
+  of the reader's "+"), from two jobs on, the most frequent first, at most eight, each a quiet
+  tag with its number of jobs and a "+" that adds it as a competence of the form (an unsaved
+  change like any other); the block shows only with a term and asks again after a save and
+  after every run (`asked_terms`, the terms a stored match keeps in its note, revision
+  inputs 6).
+- [x] "Häufig verlangt": store query, command, stub, the block, specs

@@ -1030,6 +1030,13 @@ export const de = {
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
+    /** Under the competences: the terms the jobs of the last 30 days ask for most that the
+     *  profile does not name, each with its number of jobs; its "+" adds it as a competence
+     *  (an unsaved change like any other). */
+    asked: 'Häufig verlangt',
+    askedAdd: 'Als Kompetenz hinzufügen',
+    /** The accessible name of a term's number. */
+    askedIn: (value: number) => `in ${count(value, 'Job', 'Jobs')}`,
     section: {
       person: 'Person',
       criteria: 'Konditionen',

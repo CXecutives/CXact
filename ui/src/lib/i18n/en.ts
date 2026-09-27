@@ -930,6 +930,9 @@ export const en: Catalog = {
     saveFirst: 'Save or discard first.',
     fixFirst: 'Correct the marked value first.',
     empty: 'Still empty',
+    asked: 'Often asked',
+    askedAdd: 'Add as a skill',
+    askedIn: (value: number) => `in ${count(value, 'job', 'jobs')}`,
     section: {
       person: 'Person',
       criteria: 'Conditions',
