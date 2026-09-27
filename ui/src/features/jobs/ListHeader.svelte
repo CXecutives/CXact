@@ -176,6 +176,15 @@
   let emptyError = $state<string | null>(null);
   /** Every job of the trash, whatever the search: emptying it deletes them all. */
   const inTrash = $derived(totals.trash);
+  /** How many the dialog names: counted when it opens, so it never says 0 while it fades. */
+  let emptyCount = $state(0);
+  let placesBox = $state<HTMLElement | null>(null);
+
+  function askEmpty(): void {
+    emptyError = null;
+    emptyCount = inTrash;
+    confirmEmpty = true;
+  }
 
   async function emptyTrash(): Promise<void> {
     emptying = true;
@@ -190,6 +199,10 @@
     trashEmptied(result);
     toasts.show(t.toast.trashEmptied);
     void jobs.loadOverview();
+    // Its button went with the jobs: the focus goes to the Papierkorb's tab, not to the top
+    // of the window.
+    await tick();
+    placesBox?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
   }
 </script>
 
@@ -233,7 +246,7 @@
 {/snippet}
 
 <div class="header" class:scrolled data-testid="list-header" data-press-only>
-  <div class="places">
+  <div class="places" bind:this={placesBox}>
     <Tabs
       options={places}
       value={place}
@@ -263,10 +276,7 @@
           disabledReason={run.busyText}
           warns
           testid="empty-trash"
-          onclick={() => {
-            emptyError = null;
-            confirmEmpty = true;
-          }}
+          onclick={askEmpty}
         />
       </span>
     {/if}
@@ -337,7 +347,7 @@
   bind:open={confirmEmpty}
   variant="danger"
   heading={t.actions.emptyTrashHeading}
-  text={t.actions.emptyTrashText(inTrash)}
+  text={t.actions.emptyTrashText(emptyCount)}
   confirmLabel={t.actions.emptyTrash}
   busy={emptying}
   error={emptyError}

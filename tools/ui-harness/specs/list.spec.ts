@@ -1663,6 +1663,8 @@ test.describe('moves and undo', () => {
     expect((await calls(page, 'purge_jobs')).map(([, args]) => args)).toEqual([
       { keys: [{ portal: 'freelancermap', id: '2803' }] },
     ]);
+    // The last row went: the focus is on the Papierkorb's tab, not on the window.
+    await expect(page.getByTestId('place-trash')).toBeFocused();
     // Papierkorb leeren: two jobs there, a search that finds one: both go, and it says so.
     await openPlace(page, 'inbox');
     for (const key of ['freelancermap-2802', 'freelancermap-2804']) {
@@ -1682,6 +1684,45 @@ test.describe('moves and undo', () => {
     await page.getByTestId('search').fill('');
     await expect(page.getByTestId('empty-place-trash')).toBeVisible();
     expect(await calls(page, 'empty_trash')).toHaveLength(1);
+  });
+
+  test('deleting for good hands the focus on; emptying names its count until it is gone', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    for (const key of ['freelancermap-2802', 'freelancermap-2803', 'freelancermap-2804']) {
+      await viaMenu(page, 'trash', key);
+      await settleMoves(page);
+    }
+    await openPlace(page, 'trash');
+    const [first, second] = await listed(page);
+    // Endgültig löschen of a row: after the dialog the focus is on the row below.
+    await viaMenu(page, 'purge', first!);
+    await page
+      .getByTestId('dialog-purge')
+      .getByRole('button', { name: T.actions.purgeConfirm, exact: true })
+      .click();
+    await expect(row(page, first!)).toHaveCount(0);
+    await expect(row(page, second!)).toBeFocused();
+    // Papierkorb leeren: the dialog says the two it deletes until it has faded out.
+    await page.getByTestId('empty-trash').click();
+    const dialog = page.getByTestId('dialog-empty-trash');
+    await expect(dialog).toContainText(T.actions.emptyTrashText(2));
+    await page.evaluate(() => {
+      const seen: string[] = [];
+      (window as unknown as { seen: string[] }).seen = seen;
+      new MutationObserver(() => {
+        const text = document.querySelector('[data-testid="dialog-empty-trash"]')?.textContent;
+        if (text) seen.push(text);
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+    await dialog.getByRole('button', { name: T.actions.emptyTrash, exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    const seen = await page.evaluate(() => (window as unknown as { seen: string[] }).seen);
+    expect(seen.length).toBeGreaterThan(0);
+    for (const text of seen) expect(text).toContain(T.actions.emptyTrashText(2));
+    // Its button went with the jobs: the focus is on the Papierkorb's tab.
+    await expect(page.getByTestId('place-trash')).toBeFocused();
   });
 
   test('deleting for good waits for a run: its menu entry says why', async ({ page }) => {

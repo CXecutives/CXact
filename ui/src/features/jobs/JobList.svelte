@@ -420,7 +420,7 @@
   async function purgeRow(): Promise<void> {
     if (purging === null) return;
     purgeBusy = true;
-    purgeError = await purge([purging]);
+    purgeError = await purge([purging], true);
     purgeBusy = false;
     if (purgeError === null) purging = null;
   }

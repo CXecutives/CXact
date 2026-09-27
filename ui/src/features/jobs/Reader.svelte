@@ -66,17 +66,8 @@
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import {
-    guarded,
-    jobMenu,
-    move,
-    override,
-    purge,
-    seen,
-    showActions,
-    type MoveId,
-    type ShowAction,
-  } from './actions';
+  import { guarded, jobMenu, move, override, purge, seen, type MoveId } from './actions';
+  import { showActions, type ShowAction } from './shows';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
