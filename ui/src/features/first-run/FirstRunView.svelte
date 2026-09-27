@@ -19,8 +19,8 @@
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. Step 2 happens in the Profil view: "Aus Lebenslauf anlegen" opens its steps
-  with an AI at once, "Profil anlegen" the empty form (the same button as on the Profil
+  found none. Step 2 happens in the Profil view: "Aus Lebenslauf erstellen" opens its steps
+  with an AI at once, "Neues Profil" the empty form (the same button as on the Profil
   view's empty state); after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
   alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
@@ -264,7 +264,7 @@
           variant="secondary"
           size="field"
           icon="add"
-          label={t.profile.create}
+          label={t.profile.newProfile}
           testid="first-profile-form"
           onclick={openProfile}
         />

@@ -42,6 +42,7 @@
   import ProfilePaste from './ProfilePaste.svelte';
   import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
+  import { profileName } from './profiles';
   import { watchSave } from './saveEffect';
   import { valueText } from './sections';
 
@@ -203,12 +204,14 @@
     return loaded !== null;
   }
 
-  async function pick(): Promise<void> {
+  /** A chosen file into the form for review; `fresh` (the menu's Aus Datei laden): saved as
+   *  a new profile beside the others. */
+  async function pick(fresh = false): Promise<void> {
     busy = 'pick';
     note = null;
     try {
       const draft = await invoke('pick_profile');
-      if (draft !== null) editor.take(draft, 'file');
+      if (draft !== null) editor.take(draft, 'file', fresh);
     } catch (error) {
       note = () => errorText(error);
     } finally {
@@ -233,9 +236,10 @@
     editor.pasting = true;
   }
 
-  /** A new form: the caret goes into its first field. */
-  async function create(): Promise<void> {
-    editor.create();
+  /** A new form: the caret goes into its first field; `fresh` (the menu's Neues Profil): saved
+   *  as a new profile beside the others. */
+  async function create(fresh = false): Promise<void> {
+    editor.create(fresh);
     await caretTo('profile-name-field');
   }
 
@@ -273,16 +277,33 @@
       : null;
   }
 
+  /** A new profile for a fresh draft, active from now on (the draft is saved into it): its
+   *  number. */
+  async function newProfile(): Promise<number | null> {
+    const entries = await invoke('create_profile');
+    return entries.find((entry) => entry.active)?.id ?? null;
+  }
+
+  /** The name of the active profile, as the head shows it. */
+  const activeName = (): string | null => {
+    const entry = app.state?.profiles.find((each) => each.active) ?? null;
+    return entry === null ? null : profileName(entry);
+  };
+
   /** `true` when the profile is saved. Another file saved over the profile replaces it: a
-   *  toast offers the old one back. */
+   *  toast offers the old one back. A fresh draft becomes a new profile first, which goes
+   *  again when its save fails (the one active before is active again). */
   async function save(): Promise<boolean> {
     busy = 'save';
     saveNote = null;
     fieldError = null;
     refusedValue = null;
     const replaced = replacing;
+    const fresh = editor.fresh;
+    let created: number | null = null;
     const effect = watchSave();
     try {
+      if (fresh) created = await newProfile();
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
       // again never puts the old values back.
@@ -291,6 +312,11 @@
       if (form) editor.edit(form);
       else editor.close();
       whenBarGone(() => {
+        const name = activeName();
+        if (fresh && name !== null) {
+          effect.stop();
+          return savedToast(t.profile.created(name));
+        }
         if (!replaced) return void effect.said().then(savedToast);
         effect.stop();
         toasts.show(t.profile.replaced, 'success', {
@@ -301,6 +327,10 @@
       return true;
     } catch (error) {
       effect.stop();
+      if (created !== null) {
+        await invoke('delete_profile', { id: created }).catch(() => undefined);
+        await reload();
+      }
       const at = refused(error);
       if (at === null) {
         saveNote = () => errorText(error);
@@ -426,8 +456,9 @@
     'focusTrimmed',
   ]);
   const headWarnings = $derived(warnings.filter((w) => HEAD.has(w.code) || !ELSEWHERE.has(w.code)));
-  /** Another file over the stored profile: saving replaces it. */
-  const replacing = $derived(editor.origin === 'file' && profile !== null);
+  /** Another file over the stored profile: saving replaces it (a fresh one is a new
+   *  profile). */
+  const replacing = $derived(editor.origin === 'file' && profile !== null && !editor.fresh);
 </script>
 
 <div class="page" class:editing={editor.origin !== null} data-testid="profile">
@@ -475,6 +506,7 @@
     origin={editor.origin}
     {profile}
     {profiles}
+    fresh={editor.fresh}
     {updatable}
     checks={editor.origin === null ? 0 : checkList.length}
     warnings={editor.origin === null ? [] : headWarnings}
@@ -484,10 +516,10 @@
     {switching}
     note={editor.origin === null ? null : (note?.() ?? null)}
     onswitch={(id) => set?.switchTo(id)}
-    onnew={() => set?.create()}
+    onnew={() => guard(() => void create(true))}
     onduplicate={() => set?.duplicate()}
     onrename={() => set?.askRename()}
-    onload={() => set?.load()}
+    onload={() => guard(() => void pick(true))}
     onremove={() => set?.askRemove()}
     onfromcv={fromCv}
     onopenfolder={openFolder}

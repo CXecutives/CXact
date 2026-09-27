@@ -147,7 +147,7 @@ test('no alert mail in 30 days says to set up an alert first', async ({ page }) 
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 
-test('step 2 opens the CV steps, "Profil anlegen" the empty form', async ({ page }) => {
+test('step 2 opens the CV steps, "Neues Profil" the empty form', async ({ page }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   const step = page.getByTestId('step-profile');
   await expect(step.getByTestId('first-profile')).toHaveText(T.profile.fromCv);
@@ -160,7 +160,7 @@ test('step 2 opens the CV steps, "Profil anlegen" the empty form', async ({ page
   // The empty form is the second way, named as the Profil view names it.
   // The same button as on the Profil view's empty state: outlined, 32 px, with its glyph.
   const create = page.getByTestId('first-profile-form');
-  await expect(create).toHaveText(T.profile.create);
+  await expect(create).toHaveText(T.profile.newProfile);
   await expect(create).toHaveClass(/secondary/);
   await expect(create).toHaveCSS('height', '32px');
   await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');

@@ -1921,12 +1921,13 @@ test('no profile: one sentence and the three ways in, the CV first', async ({ pa
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toContainText('Noch kein Profil');
   await expect(empty).toContainText(T.profile.noneText);
+  // The same words as the menu of the profiles.
   await expect(empty.getByRole('button')).toHaveText([
-    'Aus Lebenslauf anlegen',
-    'Profil anlegen',
-    'Profildatei wählen',
+    'Aus Lebenslauf erstellen',
+    T.profile.newProfile,
+    T.profile.load,
   ]);
-  await expect(empty.locator('.btn.primary')).toHaveText('Aus Lebenslauf anlegen');
+  await expect(empty.locator('.btn.primary')).toHaveText('Aus Lebenslauf erstellen');
 });
 
 test('a new form starts with one row each; the other ways stay at hand', async ({ page }) => {
@@ -2122,7 +2123,7 @@ test('a file over a profile that does not read replaces it; Rückgängig brings 
   expect((await calls(page, 'restore_profile')).at(-1)![1]).toEqual({ id: null });
 });
 
-test('"Profil löschen" asks naming the profile; the next one is active, Rückgängig brings it back', async ({
+test('"Profil löschen" asks naming the profile; the toast names the active one, Rückgängig brings it back', async ({
   page,
 }) => {
   await profile(page);
@@ -2135,18 +2136,18 @@ test('"Profil löschen" asks naming the profile; the next one is active, Rückg�
     await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.profile.removeConfirm);
     return dialog;
   };
-  const undo = (): Locator =>
-    page
-      .getByTestId('toast')
-      .filter({ hasText: T.profile.removed })
-      .getByRole('button', { name: T.common.undo });
+  const removed = (): Locator =>
+    page.getByTestId('toast').filter({ hasText: T.profile.removedNow(OTHERS[0]!) });
+  const undo = (): Locator => removed().getByRole('button', { name: T.common.undo });
   // Cancel keeps the profile.
   await (await ask()).getByTestId('dialog-cancel').click();
   expect(await calls(page, 'delete_profile')).toHaveLength(0);
   await (await ask()).getByTestId('dialog-confirm').click();
   expect((await calls(page, 'delete_profile')).at(-1)![1]).toEqual({ id: 1 });
-  // The next profile is active and in the form.
+  // Without one active before it, the next profile is active and in the form; the toast
+  // names it.
   await expect(heading(page)).toHaveText(OTHERS[0]!);
+  await expect(removed()).toBeVisible();
   await expect(page.getByTestId('profile-name-field')).toHaveValue(
     DEMO.profiles[0]!.profile.form!.name,
   );
@@ -2177,6 +2178,23 @@ test('the last profile deleted leaves the ways in', async ({ page }) => {
   }
   await expect(page.getByTestId('profile-empty')).toContainText(T.profile.none);
   await expect(switcher(page)).toHaveCount(0);
+});
+
+test('a deleted profile gives the place back to the one active before it', async ({ page }) => {
+  await profile(page);
+  const role = DEMO.profile.form!.title;
+  // From the first to the third: deleting the third goes back to the first, not the second.
+  await switcher(page).click();
+  await page.getByTestId('menu-item-profile-3').click();
+  await expect(heading(page)).toHaveText(OTHERS[1]!);
+  await switcher(page).click();
+  await page.getByTestId('menu-item-remove').click();
+  await page.getByTestId('dialog-remove-profile').getByTestId('dialog-confirm').click();
+  await expect(heading(page)).toHaveText(role);
+  await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.removedNow(role) }),
+  ).toBeVisible();
 });
 
 // ------------------------------------------------------------------ several profiles
@@ -2218,12 +2236,15 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await profile(page);
   const role = DEMO.profile.form!.title;
   const copy = T.profile.copyName(role);
-  // A copy of the active profile, named as a copy, active now.
+  // A copy of the active profile, named as a copy, active now; the toast names it.
   await switcher(page).click();
   await page.getByTestId('menu-item-duplicate').click();
   await expect(heading(page)).toHaveText(copy);
   expect((await calls(page, 'duplicate_profile')).at(-1)![1]).toEqual({ id: 1, name: copy });
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Beispiel');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.duplicated(copy) }),
+  ).toBeVisible();
   // Umbenennen asks in a small dialog with the name selected; Enter renames.
   await switcher(page).click();
   await page.getByTestId('menu-item-rename').click();
@@ -2242,23 +2263,77 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   expect((await calls(page, 'rename_profile')).at(-1)![1]).toEqual({ id: 4, name: 'Finanzen Süd' });
   // The name is text a user would copy, and only Umbenennen changes it.
   await expect(heading(page)).toHaveAttribute('data-copy', '');
-  // A new profile is empty and named by its number; the caret goes into its first field.
+  // Neues Profil is an empty draft: the title says so, the caret goes into its first field,
+  // nothing is written. Verwerfen goes back to the active profile as it was.
+  const names = page.getByTestId('profile-name-field');
   await switcher(page).click();
   await page.getByTestId('menu-item-new').click();
-  await expect(heading(page)).toHaveText(T.profile.numbered(5));
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('');
-  await expect(page.getByTestId('profile-name-field')).toBeFocused();
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(names).toHaveValue('');
+  await expect(names).toBeFocused();
+  await expect(page.getByTestId('profile-from-cv')).toHaveText(T.profile.fromCv);
+  await names.fill('Erika Neu');
+  await discard(page).click();
+  await expect(heading(page)).toHaveText('Finanzen Süd');
+  await expect(names).toHaveValue('Erika Beispiel');
+  expect(await calls(page, 'create_profile')).toHaveLength(0);
   await switcher(page).click();
   await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
     role,
     ...OTHERS,
     'Finanzen Süd',
-    T.profile.numbered(5),
   ]);
-  // Aus Datei laden takes the file as a new profile, active now.
+  // Saved, it becomes a new profile beside the others, active now, named by its role; the
+  // toast names it.
+  await page.getByTestId('menu-item-new').click();
+  await names.fill('Erika Neu');
+  await page.getByTestId('profile-title').fill('Interim CFO');
+  await save(page).click();
+  await expect(heading(page)).toHaveText('Interim CFO');
+  expect(await calls(page, 'create_profile')).toHaveLength(1);
+  expect((await lastSave(page)).after.name).toBe('Erika Neu');
+  await expect(
+    page.getByTestId('toast').filter({ hasText: T.profile.created('Interim CFO') }),
+  ).toBeVisible();
+  await switcher(page).click();
+  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+    role,
+    ...OTHERS,
+    'Finanzen Süd',
+    'Interim CFO',
+  ]);
+  // Aus Datei laden puts the file into the form for review, as a new profile (it replaces
+  // nothing); Speichern adds it.
   await page.getByTestId('menu-item-load').click();
-  await expect(heading(page)).toHaveText(DEMO.profiles[2]!.profile.form!.title);
-  expect(await calls(page, 'load_profile')).toHaveLength(1);
+  await expect(names).toHaveValue('Jonas Muster');
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
+  expect(await calls(page, 'load_profile')).toHaveLength(0);
+  await save(page).click();
+  await expect(heading(page)).toHaveText(T.profile.numbered(6));
+  expect(await calls(page, 'create_profile')).toHaveLength(2);
+  await expect(names).toHaveValue('Jonas Muster');
+});
+
+test('a new profile whose save fails is not left behind', async ({ page }) => {
+  await profile(page);
+  await switcher(page).click();
+  await page.getByTestId('menu-item-new').click();
+  await page.getByTestId('profile-name-field').fill('Erika Neu');
+  await failNext(page, 'save_profile');
+  await save(page).click();
+  await expect(page.getByTestId('profile-save-error')).toBeVisible();
+  // The profile made for it goes again; the one active before is active, the draft stays.
+  expect(await calls(page, 'delete_profile')).toHaveLength(1);
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(page.getByTestId('profile-name-field')).toHaveValue('Erika Neu');
+  await discard(page).click();
+  await expect(heading(page)).toHaveText(DEMO.profile.form!.title);
+  await switcher(page).click();
+  await expect(page.getByTestId('menu').getByRole('menuitemradio')).toHaveText([
+    DEMO.profile.form!.title,
+    ...OTHERS,
+  ]);
 });
 
 test('another profile with unsaved changes asks first', async ({ page }) => {
@@ -2317,7 +2392,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
     await expect(page.getByTestId(id)).toBeVisible();
   }
   await page.keyboard.press('Escape');
-  // Untouched, Esc goes back to the three ways in, and "Profil anlegen" takes the focus.
+  // Untouched, Esc goes back to the three ways in, and "Neues Profil" takes the focus.
   await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-name-field').focus();
   await page.keyboard.press('Escape');

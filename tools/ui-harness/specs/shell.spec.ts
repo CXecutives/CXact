@@ -1609,7 +1609,7 @@ test('empty screens are never dead: an icon, one sentence, one way on, centred',
   await page.getByTestId('nav-profile').click();
   const empty = page.getByTestId('profile-empty');
   await expect(empty).toBeVisible();
-  // The next step is the one primary on screen: "Profil anlegen" ("Abrufen" lives in the
+  // The next step is the one primary on screen: "Aus Lebenslauf erstellen" ("Abrufen" lives in the
   // list of the Jobs view), with the two other ways in next to it.
   await expect(empty.locator('.btn.primary')).toHaveCount(1);
   await expect(page.getByTestId('fetch')).toHaveCount(0);

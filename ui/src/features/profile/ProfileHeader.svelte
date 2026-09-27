@@ -2,7 +2,7 @@
   The head of the Profil view, its title block on the first row of the window
   (`data-first-row`): the active profile's name as the page's title (26/600 in the heading
   colour, text a user would copy, an ellipsis when long; "Neues Profil" while the form holds
-  the first one), right after it a quiet chevron (a small ghost icon button) whose menu lists
+  a new one), right after it a quiet chevron (a small ghost icon button) whose menu lists
   every profile (a check at the active one) and what can be done with them (Neues Profil,
   Profil duplizieren, Umbenennen, Aus Datei laden, Ordner öffnen and "Profil löschen" in red,
   which asks first naming the profile); then a status only when there is one ("n Werte
@@ -36,6 +36,8 @@
     profile: ProfileInfo | null;
     /** Every profile of the work folder (none: no switcher). */
     profiles: readonly ProfileEntry[];
+    /** The form holds a new profile that saving adds beside the others. */
+    fresh: boolean;
     /** The stored profile holds something a CV would update (else the button creates). */
     updatable: boolean;
     /** How many values are still to check. */
@@ -66,6 +68,7 @@
     origin,
     profile,
     profiles,
+    fresh,
     updatable,
     checks,
     warnings,
@@ -86,7 +89,9 @@
   }: Props = $props();
 
   /** A new form for a stored file that does not read: saving replaces that file. */
-  const replacesBroken = $derived(origin === 'new' && (profile?.parseError ?? null) !== null);
+  const replacesBroken = $derived(
+    origin === 'new' && !fresh && (profile?.parseError ?? null) !== null,
+  );
   const notes = $derived(
     warnings.flatMap((notice) => {
       const text = warningText(notice);
@@ -98,9 +103,13 @@
 
   // ---------------------------------------------------------------- the title and its menu
   const active = $derived(profiles.find((entry) => entry.active) ?? null);
-  /** A draft without any profile yet is a new one. */
+  /** A fresh draft, and a draft without any profile yet, is a new one. */
   const heading = $derived(
-    active !== null ? profileName(active) : origin !== null ? t.profile.newProfile : null,
+    fresh || (active === null && origin !== null)
+      ? t.profile.newProfile
+      : active === null
+        ? null
+        : profileName(active),
   );
 
   /** What can be done with the profiles; another profile asks first while the form holds
