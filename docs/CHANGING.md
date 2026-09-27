@@ -127,7 +127,8 @@ ask which palette is on.
 
 The app has no shortcuts of its own (`no_app_shortcuts` in `core/tests/ui_contract.rs`): only
 what every program does stays, the OS's editing keys of fields, Tab, Enter and Esc, the arrows
-in menus and the context menu key. `ui/src/lib/input/input.ts` applies them; what differs
+in menus and suggestion lists, the arrows, Home, End, PageUp and PageDown in the calendar's
+days (`gridKeys`) and the context menu key. `ui/src/lib/input/input.ts` applies them; what differs
 between Windows and macOS is `keyConventions()` in `ui/src/lib/platform.ts`. No tooltip and no
 menu names a key.
 
@@ -246,6 +247,15 @@ one entry there (a new section also needs its heading and sentence in `profile.s
 `profile.sectionHint`); a quiet hint where values contradict each other is the field's
 `advice`, a field that waits for another its `off`.
 
+While typing, the competence, its synonyms, the tools and the search terms suggest the
+engine's skills, both industry fields its industries (`suggest` of a chips entry in
+`sections.ts`; `components/Suggestions.svelte`). The words are the lexicon's keys as a person
+writes them (`core/src/matching/vocabulary.rs`: `UMLAUTS`, `SPELLED`, `ACRONYMS`, and
+`HIDDEN` for a key that is no term to write); a new key of the lexicon shows by itself, and
+`cargo test -p jobalert-core vocabulary` rewrites the harness's copy
+(`tools/ui-harness/demo/vocabulary.json`, commit it). `vocabulary_report` (ignored) prints
+both lists to read.
+
 "Häufig verlangt" under the competences (`ui/src/features/profile/AskedTerms.svelte`) shows
 what `asked_terms` answers. Its window, its most terms and the jobs a term needs are
 `ASKED_DAYS`, `MAX_ASKED` and `MIN_ASKED` in `core/src/view.rs`; what counts as a term (a skill
@@ -288,6 +298,11 @@ text.
 - A portal's caps: `limits()` of its adapter in `core/src/portal/` (the pause between two
   pages, requests per hour and per day). The hour rolls, the day counts from local midnight
   (`core/src/fetch/policy.rs`, `time::day_start`); the settings show the day's requests.
+- The week after which a portal's row says it sent no alert mail: `QUIET_DAYS` in
+  `ui/src/features/settings/PortalRow.svelte` (counted to the last completed fetch, from
+  `PortalState.lastAlert`).
+- How long the toast of a profile save waits for the rescore to say what it changed:
+  `--dur-toast` (`ui/src/features/profile/saveEffect.ts`).
 - The profile's limits: the `MAX_...` constants in `core/src/profile/form.rs` (the backend
   refuses above them; `profile.ts` carries them to the stub and the editor).
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
@@ -337,7 +352,9 @@ and profiles: an external contract, never translated):
 1. **A term or synonym**: one `(phrase, concept)` pair in the pack of its field, or in
    `CORE_CONCEPTS` when every field uses it. A false friend gets a concept of its own. The
    pack's unit tests get a paraphrase that meets it and a false friend that does not.
-2. **A pack**: a file in `domains/` and one line in `DOMAINS`.
+2. **A pack**: a file in `domains/` and one line in `DOMAINS`. Its keys become suggestions
+   of the Profil (`matching/vocabulary.rs`); read them in `vocabulary_report` and hide or
+   spell there what a person would not write so.
 3. Run `cargo test -p jobalert-core` (the pack tests and the gates of the corpus and the
    held-out sets, whose floors stand in `core/tests/matching_heldout.rs`; a floor is never
    lowered to let a change pass), then both reports:
