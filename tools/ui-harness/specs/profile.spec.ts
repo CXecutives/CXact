@@ -16,6 +16,7 @@ import { MAC, T, WIN, failNext } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
+  read.delete(page);
   await open(page, query.startsWith('?') ? query : `${WIN}${query}`);
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('profile')).toBeVisible();
@@ -87,8 +88,16 @@ async function marked(page: Page): Promise<string[]> {
     );
 }
 
+/** How many saves of the page a test has read (the next read waits for a newer one). */
+const read = new WeakMap<Page, number>();
+
+/** The save the last action sent, once it has reached the stub (a save starts a moment
+ *  after its click). */
 async function lastSave(page: Page): Promise<ProfileSave> {
+  const before = read.get(page) ?? 0;
+  await expect.poll(() => saves(page)).toBeGreaterThan(before);
   const all = await calls(page, 'save_profile');
+  read.set(page, all.length);
   return (all.at(-1)![1] as { save: ProfileSave }).save;
 }
 
@@ -1241,8 +1250,8 @@ test('the countries: the arrows and the pointer move the one mark, Enter takes i
   await expect(all.first()).toHaveAttribute('aria-selected', 'true');
   const third = all.nth(2);
   const name = (await third.textContent())!.trim();
-  const box = (await third.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // Once it stands still (the save bar that came with the first change may move the view).
+  await third.hover();
   // The option under the pointer is the one mark, no second wash stays on the first.
   await expect(third).toHaveAttribute('aria-selected', 'true');
   await expect(options(page).locator('[aria-selected="true"]')).toHaveCount(1);
