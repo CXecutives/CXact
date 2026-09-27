@@ -1324,6 +1324,8 @@ interface Sample {
   moves: string[];
   row: { top: number; height: number } | null;
   key: string | null;
+  /** How far the list is scrolled. */
+  scroll: number;
 }
 
 declare global {
@@ -1362,6 +1364,7 @@ async function startSampling(page: Page): Promise<void> {
         }),
         row: item ? { top: item.top - frame.top, height: item.height } : null,
         key: open?.dataset['key'] ?? null,
+        scroll: document.querySelector('[data-testid="list-scroll"]')?.scrollTop ?? 0,
       });
     };
     const next = (): void => {
@@ -1541,7 +1544,10 @@ test.describe("the open row's bar", () => {
     await page.getByTestId('list-scroll').evaluate((scroller) => (scroller.scrollTop = 0));
     await page.waitForTimeout(300);
     const scrolled = await stopSampling(page);
-    expect(scrolled.length).toBeGreaterThan(40);
+    // Seen all along the way: the places the list stood at, not a count of frames (WebKit
+    // samples every other frame or less, and a busy machine draws fewer in the waits). The
+    // 40 steps alone pass 40 places.
+    expect(new Set(scrolled.map((sample) => sample.scroll)).size).toBeGreaterThan(10);
     for (const sample of scrolled) expect(onRow(sample), JSON.stringify(sample)).toBe(true);
     // A narrower window keeps the row's height; one column and back never slide the bar.
     await page.setViewportSize({ width: 960, height: 900 });
