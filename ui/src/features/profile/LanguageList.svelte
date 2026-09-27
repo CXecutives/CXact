@@ -5,13 +5,17 @@
   level, so every row lines up), then "Sprache hinzufügen". The x of a row needs no tooltip.
   The language
   field suggests common languages like the countries field (found by their German and
-  English names, taken in the app's language); any other language can be typed. Enter moves
+  English names, taken in the app's language); any other language can be typed. A common
+  language shows in the app's language (Englisch, English) and the profile keeps it under its
+  German name, as the engine reads it (core matching::lexicon LANGUAGES); while the field has
+  the focus it shows what was typed. Enter moves
   through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
   saves. A value the backend refused marks its row.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import MenuButton from '$components/MenuButton.svelte';
+  import { folded } from '$components/Suggestions.svelte';
   import TextField from '$components/TextField.svelte';
   import { de } from '$lib/i18n/de';
   import { en } from '$lib/i18n/en';
@@ -43,14 +47,49 @@
   let list = $state<HTMLElement | null>(null);
 
   type LanguageCode = keyof typeof de.profile.languageName;
+  const CODES = Object.keys(de.profile.languageName) as LanguageCode[];
   /** Common languages, named in the app's language and found by both names. */
   const LANGUAGES = $derived(
-    (Object.keys(de.profile.languageName) as LanguageCode[]).map((code) => ({
+    CODES.map((code) => ({
       id: code,
       label: t.profile.languageName[code],
       terms: [de.profile.languageName[code], en.profile.languageName[code]],
     })),
   );
+
+  /** The common language a name stands for (German or English, any case, with or without
+   *  accents), else null. */
+  function codeOf(name: string): LanguageCode | null {
+    const key = folded(name);
+    if (key === '') return null;
+    return (
+      CODES.find(
+        (code) =>
+          folded(de.profile.languageName[code]) === key ||
+          folded(en.profile.languageName[code]) === key,
+      ) ?? null
+    );
+  }
+
+  /** A row's language as the field shows it: a common one in the app's language. */
+  function shown(language: string): string {
+    const code = codeOf(language);
+    return code === null ? language : t.profile.languageName[code];
+  }
+
+  /** A typed language as the profile keeps it: a common one by its German name. */
+  function kept(typed: string): string {
+    const code = codeOf(typed);
+    return code === null ? typed : de.profile.languageName[code];
+  }
+
+  /** What was typed into the focused language field (it shows as typed until it is left). */
+  let typing = $state.raw<{ row: ProfileLanguage; text: string } | null>(null);
+
+  function type(row: ProfileLanguage, text: string): void {
+    typing = { row, text };
+    row.language = kept(text);
+  }
 
   const refused = $derived.by((): ProfileLanguage | null => {
     if (error === null || error.row === null) return null;
@@ -92,15 +131,16 @@
 <div class="list" bind:this={list} data-testid="languages" data-field="languages">
   {#each rows as row (row)}
     <div class="row" data-row data-testid="language-row" use:formKeys={{ save: () => enter(row) }}>
-      <span class="name">
+      <span class="name" onfocusout={() => (typing = null)}>
         <TextField
-          bind:value={row.language}
+          value={typing?.row === row ? typing.text : shown(row.language)}
           label={words.language}
           options={LANGUAGES}
           placeholder={rows.length === 1 ? words.languagePlaceholder : null}
           invalid={row === refused}
           describedby={row === refused ? `${id}-error` : null}
           testid="language-name"
+          oninput={(text) => type(row, text)}
         />
       </span>
       <span class="level">
@@ -120,7 +160,7 @@
           iconOnly
           icon="close"
           plain
-          label={words.removeLanguage(row.language.trim())}
+          label={words.removeLanguage(shown(row.language).trim())}
           testid="language-remove"
           onclick={(event) => removeByButton(row, event)}
         />

@@ -1709,6 +1709,46 @@ test('the language field suggests common languages in both names', async ({ page
   await expect(name).toHaveValue('Klingonisch');
 });
 
+test('language names follow the UI language; the profile keeps them in German', async ({
+  page,
+}) => {
+  const values = (): Promise<string[]> =>
+    page
+      .getByTestId('language-name')
+      .evaluateAll((all) => all.map((input) => (input as HTMLInputElement).value));
+  for (const [query, shown, english, spanish] of [
+    ['', ['Deutsch', 'Englisch'], 'Englisch', 'Spanisch'],
+    ['&lang=en', ['German', 'English'], 'English', 'Spanish'],
+  ] as const) {
+    await profile(page, query);
+    // The demo profile keeps "Deutsch" and "Englisch": the rows name them in the UI's words.
+    expect(await values()).toEqual(shown);
+    await page.getByTestId('language-add').click();
+    const name = page.getByTestId('language-name').last();
+    const suggestions = page.getByTestId('language-name-options').last();
+    // Typing towards a language suggests it in the UI's words, found by either name.
+    await name.fill('Englis');
+    await expect(suggestions.getByRole('option')).toHaveText([english]);
+    await name.fill('Spani');
+    await expect(suggestions.getByRole('option')).toHaveText([spanish]);
+    await name.press('Enter');
+    await expect(name).toHaveValue(spanish);
+    // A name in the other language stays as typed while the field has the focus, then shows
+    // in the UI's words.
+    await name.fill(spanish === 'Spanisch' ? 'spanish' : 'spanisch');
+    await expect(name).toHaveValue(spanish === 'Spanisch' ? 'spanish' : 'spanisch');
+    await page.keyboard.press('Tab');
+    await expect(name).toHaveValue(spanish);
+    await save(page).click();
+    const sent = await lastSave(page);
+    expect(sent.after.languages.map((row) => row.language)).toEqual([
+      'Deutsch',
+      'Englisch',
+      'Spanisch',
+    ]);
+  }
+});
+
 // ------------------------------------------------------------------ the ways in
 
 test('no profile: one sentence and the three ways in, the CV first', async ({ page }) => {

@@ -797,6 +797,6 @@ The user clicked through the reworked preview; one more round in four tracks.
   its German name, as the engine reads it.
 - [x] "Frist in 7 Tagen" out of the filter
 - [x] No hover marking in the reader
-- [ ] Language names in the UI language
+- [x] Language names in the UI language
 - [ ] The focus after removing
 - [ ] Mouse buttons and the wheel, audited
