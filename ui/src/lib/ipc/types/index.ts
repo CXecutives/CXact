@@ -51,6 +51,7 @@ export type { ProfileAvailability } from "./ProfileAvailability";
 export type { ProfileCompetence } from "./ProfileCompetence";
 export type { ProfileCriteria } from "./ProfileCriteria";
 export type { ProfileDraft } from "./ProfileDraft";
+export type { ProfileEntry } from "./ProfileEntry";
 export type { ProfileForm } from "./ProfileForm";
 export type { ProfileInfo } from "./ProfileInfo";
 export type { ProfileLanguage } from "./ProfileLanguage";

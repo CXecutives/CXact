@@ -155,7 +155,7 @@ test('step 2 opens the CV steps, "Profil anlegen" the empty form', async ({ page
   const paste = page.getByTestId('profile-paste');
   await expect(paste).toBeVisible();
   await expect(paste.getByRole('heading', { level: 2 })).toHaveText(T.profile.fromCv);
-  await page.getByTestId('paste-cancel').click();
+  await paste.getByTestId('dialog-cancel').click();
   await page.getByTestId('nav-jobs').click();
   // The empty form is the second way, named as the Profil view names it.
   // The same button as on the Profil view's empty state: outlined, 32 px, with its glyph.
@@ -212,6 +212,8 @@ test('after the first fetch the list opens on its inbox', async ({ page }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   await page.getByTestId('first-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
+  // The CV steps are a dialog over the view: it closes first.
+  await page.getByTestId('profile-paste').getByTestId('dialog-cancel').click();
   await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.getByTestId('first-fetch').click();

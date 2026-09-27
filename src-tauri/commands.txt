@@ -22,8 +22,14 @@ pick_profile      {}                                                            
 parse_profile     { text: string; update: boolean }                                  -> ProfileDraft
 profile_prompt    { update: boolean }                                                -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
-remove_profile    {}                                                                 -> boolean
-restore_profile   {}                                                                 -> boolean
+list_profiles     {}                                                                 -> ProfileEntry[]
+switch_profile    { id: number }                                                     -> ProfileEntry[]
+create_profile    {}                                                                 -> ProfileEntry[]
+duplicate_profile { id: number; name: string | null }                                -> ProfileEntry[]
+rename_profile    { id: number; name: string }                                       -> ProfileEntry[]
+delete_profile    { id: number }                                                     -> boolean
+restore_profile   { id: number | null }                                              -> boolean
+load_profile      {}                                                                 -> ProfileEntry[] | null
 asked_terms       {}                                                                 -> AskedTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null

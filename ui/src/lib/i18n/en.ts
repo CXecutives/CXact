@@ -35,7 +35,14 @@ import type {
   RemoteWish,
   WorkMode,
 } from '../ipc/types';
-import { PROFILE_KEY_FIELD, textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
+import {
+  PROFILE_KEY_FIELD,
+  textOf,
+  type AnswerAdds,
+  type Catalog,
+  type ContractKind,
+  type TermVerdict,
+} from './de';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import { NBSP, formatEuro, formatMoment, formatMoney, formatNumber, formatPercent } from './format';
 
@@ -934,10 +941,17 @@ export const en: Catalog = {
     fromCv: 'Create from CV',
     updateFromCv: 'Update from CV',
     pick: 'Choose profile file',
-    pickOther: 'Choose another file',
-    more: 'More actions',
+    profiles: 'Profiles',
+    numbered: (value: number) => `Profile ${n(value)}`,
+    newProfile: 'New profile',
+    duplicate: 'Duplicate profile',
+    copyName: (name: string) => `${name} copy`,
+    rename: 'Rename',
+    renameHeading: 'Rename profile',
+    load: 'Load from file',
+    switched: 'Profile switched, jobs scored again',
     remove: 'Delete profile',
-    removeHeading: 'Delete profile?',
+    removeHeading: (name: string) => `Delete “${name}”?`,
     removeConfirm: 'Delete',
     removed: 'Profile deleted.',
     saved: 'Profile saved.',
@@ -1152,15 +1166,32 @@ export const en: Catalog = {
     },
     paste: {
       privacy: 'The CV goes to the AI you use.',
-      copied: 'The prompt is copied.',
+      copy: 'Copy prompt',
+      copied: 'Copied',
       copyFailed: 'The prompt could not be copied.',
-      copy: 'Copy AI prompt',
-      copyAgain: 'Copy again',
-      step: 'Paste it into an AI chat and attach your CV.',
       preview: 'Show prompt',
-      answer: 'The AI’s answer',
+      step: 'Paste it into the AI chat and attach your CV',
+      answer: 'Paste the AI’s answer',
+      fromClipboard: 'Paste from clipboard',
       take: 'Apply',
       takeEmpty: 'Paste the AI’s answer first.',
+      summary: (adds: AnswerAdds, update: boolean): string => {
+        const parts = (
+          [
+            [adds.competences, 'skill', 'skills'],
+            [adds.tools, 'tool', 'tools'],
+            [adds.certificates, 'certificate', 'certificates'],
+            [adds.languages, 'language', 'languages'],
+            [adds.industries, 'industry', 'industries'],
+            [adds.degrees, 'degree', 'degrees'],
+            [adds.other, 'other detail', 'other details'],
+          ] as const
+        )
+          .filter(([value]) => value > 0)
+          .map(([value, one, many]) => count(value, one, many));
+        if (parts.length === 0) return 'The answer adds nothing.';
+        return `${update ? 'Adds' : 'The profile gets'} ${joined(parts)}.`;
+      },
     },
   },
   settings: {

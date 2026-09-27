@@ -43,6 +43,12 @@
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
+// Several profiles, one active (core's profile::set): with a profile the work folder holds
+// the scenario's profile (1, active) and two invented test profiles (2 SAP FI/CO, 3 Cloud
+// Architect, tools/test-profiles/); "Aus Datei laden" (`load_profile`) takes a third one. A
+// switch scores the jobs with the new active profile at once: the list rows take the
+// engine's matches of that profile from the snapshot (`DEMO.profiles`); the reader keeps the
+// demo profile's reasons under the new score (the snapshot has one profile's readers).
 // `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
 // a competence with more than 70 years (with its row), more than five days a week, a second
 // day below the first and a minimum duration above 120 months, like core's validation; a
@@ -79,6 +85,7 @@ import type {
   Place,
   PortalState,
   ProfileDraft,
+  ProfileEntry,
   ProfileForm,
   ProfileInfo,
   ProfileUnderstanding,
@@ -92,6 +99,7 @@ import type {
 import { BAND_FROM, HIGH_FROM } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 import {
+  EMPTY_FORM,
   MAX_FOCUS,
   MAX_ITEMS,
   MAX_TEXT,
@@ -811,9 +819,27 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 
 let jobs: JobView[] = [];
 let state: AppState;
-/** Core's one backup of the profile: the previous one of every save, the one a
- *  `remove_profile` took; `restore_profile` swaps it with the profile. */
+/** Core's one backup of the active profile: the previous one of every save;
+ *  `restore_profile` without a number swaps it with the profile. */
 let backupProfile: ProfileInfo | null = null;
+
+/** A profile of the work folder (core's profile::set): its number, the name the user gave
+ *  it, what the app shows of it while another one is active (the active one is
+ *  `state.profile`) and the engine's matches of the demo's jobs with it (`portal:id`; null:
+ *  the demo profile's). */
+interface StubProfile {
+  id: number;
+  name: string | null;
+  info: ProfileInfo | null;
+  matches: Record<string, Match | null> | null;
+}
+let profiles: StubProfile[] = [];
+let activeId: number | null = null;
+/** Deleted profiles by number (their backup), for the undo. */
+const deletedProfiles = new Map<number, StubProfile>();
+/** The number of the other profiles of the demo (`DEMO.profiles`) the work folder starts
+ *  with; the next one is the file "Aus Datei laden" chooses. */
+const FOLDER_PROFILES = 2;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
 let backups: Backup[] = [];
 
@@ -866,6 +892,7 @@ function initial(): void {
       checkedAt: null,
     },
     profile: PROFILE,
+    profiles: [],
     // Every portal counts its calls (the backend sends the numbers of each): 100 a day.
     portals: [
       portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 100 } }),
@@ -1059,6 +1086,21 @@ function initial(): void {
       break;
   }
   for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
+  deletedProfiles.clear();
+  activeId = state.profile === null ? null : 1;
+  profiles =
+    state.profile === null
+      ? []
+      : [
+          { id: 1, name: null, info: null, matches: null },
+          // The dry run lists its sample profile only.
+          ...(state.dryRun ? [] : DEMO.profiles.slice(0, FOLDER_PROFILES)).map((other, index) => ({
+            id: index + 2,
+            name: null,
+            info: structuredClone(other.profile),
+            matches: other.matches,
+          })),
+        ];
   refresh();
 }
 
@@ -1844,6 +1886,96 @@ function cancelRun(): void {
   }, TICK);
 }
 
+/* ----------------------------------------------------------------- profiles */
+
+/** The role a profile goes by without a name of its own (core's profile::role). */
+function roleOf(info: ProfileInfo | null): string | null {
+  const form = info?.form ?? null;
+  if (form === null) return null;
+  return form.title.trim() || form.roles.map((role) => role.trim()).find((r) => r !== '') || null;
+}
+
+/** The switcher's list (core's view::profile_entries). */
+function profileEntries(): ProfileEntry[] {
+  return profiles.map((p) => ({
+    id: p.id,
+    name: p.name,
+    role: roleOf(p.id === activeId ? state.profile : p.info),
+    active: p.id === activeId,
+  }));
+}
+
+/** The number a new profile takes: after the highest of the folder, a deleted one's too. */
+function nextProfileId(): number {
+  return Math.max(0, ...profiles.map((p) => p.id), ...deletedProfiles.keys()) + 1;
+}
+
+/** One line, trimmed, at most 80 characters; empty: none (core's set_name). */
+function profileName(name: string | null): string | null {
+  const clean = (name ?? '').split(/\s+/).filter(Boolean).join(' ').slice(0, 80).trimEnd();
+  return clean === '' ? null : clean;
+}
+
+/** A new empty profile (`{}`) as the app shows it: nothing in it, so nothing scores. */
+function emptyProfile(id: number): ProfileInfo {
+  const form = structuredClone(EMPTY_FORM);
+  return {
+    ...structuredClone(PROFILE),
+    fileName: `beraterprofil-${id}.json`,
+    bytes: 2,
+    savedAt: at(0),
+    quality: 'empty',
+    understood: understoodOf(form, [{ code: 'noCompetences', params: {} }]),
+    scoredAt: null,
+    pending: 0,
+    parseError: null,
+    form,
+  };
+}
+
+/**
+ * The engine's match of a job with the active profile (the stub never scores itself): the
+ * demo profile's, another profile's from its own matches in the snapshot (by the demo job it
+ * stands for); a job the snapshot scored for the demo profile only (the scripted fetch's)
+ * keeps that one. Without a usable profile no job has a match; a job counted anyway stays
+ * counted.
+ */
+function matchWithActive(j: JobView): Match | null {
+  const info = state.profile;
+  if (info === null || info.form === null || info.quality === 'empty') return null;
+  const own = profiles.find((p) => p.id === activeId)?.matches ?? null;
+  const key = sourceOf(j.key);
+  const found = own !== null && key in own ? structuredClone(own[key] ?? null) : demoMatch(j);
+  if (found === null || !j.overridden) return found;
+  overridden.set(markKey(j.key), found);
+  return { ...found, status: 'scored', note: { code: 'userOverride', params: {} } };
+}
+
+/** Another profile becomes the active one (none: no profile left): every job is scored with
+ *  it at once, like the rescore the backend starts. */
+function activate(target: StubProfile | null): void {
+  const from = profiles.find((p) => p.id === activeId);
+  if (from !== undefined) from.info = state.profile;
+  activeId = target?.id ?? null;
+  state.profile = target === null ? null : structuredClone(target.info);
+  backupProfile = null;
+  for (const j of jobs) j.match = matchWithActive(j);
+  refresh();
+}
+
+/** A new profile of `info`, active from now on. */
+function addProfile(info: ProfileInfo, name: string | null, matches: StubProfile['matches']): void {
+  const added: StubProfile = { id: nextProfileId(), name, info, matches };
+  profiles.push(added);
+  activate(added);
+}
+
+const profileOf = (id: number): StubProfile => {
+  const found = profiles.find((p) => p.id === id);
+  if (found === undefined) throw fail('notFound', { what: 'profile' });
+  return found;
+};
+
 /* ----------------------------------------------------------------- handlers */
 
 type Args<K extends keyof Commands> = Omit<Commands[K]['args'], 'channel'>;
@@ -1867,6 +1999,7 @@ const handlers: Handlers = {
       throw fail('db');
     }
     if (sender !== null) attachPage(sender);
+    state.profiles = profileEntries();
     return structuredClone(state);
   },
   start_run: ({ request }) => {
@@ -1957,6 +2090,11 @@ const handlers: Handlers = {
     }
     const count = form.competences.length + form.tools.length + form.keywords.length;
     const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
+    // Without any profile the save makes the first one of the folder.
+    if (activeId === null) {
+      activeId = nextProfileId();
+      profiles.push({ id: activeId, name: null, info: null, matches: null });
+    }
     if (state.profile !== null) backupProfile = state.profile;
     state.profile = {
       ...PROFILE,
@@ -1998,18 +2136,63 @@ const handlers: Handlers = {
     }
     return structuredClone(state.profile);
   },
-  remove_profile: () => {
-    // Like core: the profile becomes the backup, which `restore_profile` brings back.
-    if (state.profile === null) return false;
-    backupProfile = state.profile;
-    state.profile = null;
+  list_profiles: () => profileEntries(),
+  switch_profile: ({ id }) => {
+    const target = profileOf(id);
+    if (id !== activeId) activate(target);
+    return profileEntries();
+  },
+  create_profile: () => {
+    const id = nextProfileId();
+    addProfile(emptyProfile(id), null, null);
+    return profileEntries();
+  },
+  // Like core: the file byte for byte, so its matches too.
+  duplicate_profile: ({ id, name }) => {
+    const source = profileOf(id);
+    const info = id === activeId ? state.profile : source.info;
+    addProfile(structuredClone(info!), profileName(name), source.matches);
+    return profileEntries();
+  },
+  rename_profile: ({ id, name }) => {
+    profileOf(id).name = profileName(name);
+    return profileEntries();
+  },
+  // Like core: the file becomes its backup; the next profile in order is active (else the
+  // one before), the last one leaves none.
+  delete_profile: ({ id }) => {
+    const index = profiles.findIndex((p) => p.id === id);
+    if (index < 0) return false;
+    const [gone] = profiles.splice(index, 1);
+    if (id === activeId) {
+      gone!.info = state.profile;
+      activeId = null;
+      activate(profiles[index] ?? profiles[index - 1] ?? null);
+    }
+    deletedProfiles.set(id, gone!);
     return true;
   },
-  restore_profile: () => {
-    // Like core: the backup becomes the profile, a profile that is there the backup.
-    if (backupProfile === null) return false;
-    [state.profile, backupProfile] = [backupProfile, state.profile];
+  // Like core: a number brings a deleted profile back (active again); none swaps the active
+  // profile with its backup (the undo of another file saved over it).
+  restore_profile: ({ id }) => {
+    if (id === null) {
+      if (backupProfile === null) return false;
+      [state.profile, backupProfile] = [backupProfile, state.profile];
+      return true;
+    }
+    const back = deletedProfiles.get(id);
+    if (back === undefined) return false;
+    deletedProfiles.delete(id);
+    profiles.push(back);
+    profiles.sort((a, b) => a.id - b.id);
+    activate(back);
     return true;
+  },
+  // The file the stub chooses: the next test profile of the snapshot.
+  load_profile: () => {
+    const file = DEMO.profiles[FOLDER_PROFILES]!;
+    addProfile(structuredClone(file.profile), null, file.matches);
+    return profileEntries();
   },
   asked_terms: () => askedTerms(),
   vocabulary: () => structuredClone(VOCABULARY),
@@ -2132,6 +2315,7 @@ const handlers: Handlers = {
     }
     if (patch.language !== null) state.language = patch.language;
     if (patch.palette !== null) state.palette = patch.palette;
+    state.profiles = profileEntries();
     return structuredClone(state);
   },
   reset_all: () => null,
@@ -2287,8 +2471,13 @@ function checking(): Promise<void> {
 /** Commands that refuse in the dry run (`ensure_real` in src-tauri): they write outside it. */
 const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'pick_profile',
-  'remove_profile',
+  'switch_profile',
+  'create_profile',
+  'duplicate_profile',
+  'rename_profile',
+  'delete_profile',
   'restore_profile',
+  'load_profile',
   'save_profile_template',
   'save_mailbox',
   'remove_mailbox',
