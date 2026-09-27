@@ -11,8 +11,8 @@ job's full posting page politely: every portal can be switched off individually,
 has its own request limits and pauses. Scores every job locally against a consultant
 profile with an explainable, integer-only rule engine. Nothing is sent to the cloud.
 Writes an Excel workbook (`JobAlerts.xlsx`) and, if you want, a CSV file (`JobAlerts.csv`,
-`;`-separated, UTF-8) with the same columns into the result folder (Einstellungen, Export:
-each file has its switch). Jobs live in three places like mail (Jobs, Archiv, Papierkorb);
+`;`-separated, UTF-8) with the same columns into the export folder (`Documents\CXact` unless
+you choose another; Einstellungen > Export, where each file has its switch). Jobs live in three places like mail (Jobs, Archiv, Papierkorb);
 nothing moves or empties itself. For a deeper look at one job the reader copies a prompt for
 any AI chat, and the Profil names the terms the recent jobs ask for most that the profile
 lacks ("Häufig verlangt").
@@ -34,8 +34,8 @@ workflow's artifacts.
 
 Connect the Gmail mailbox with an app password, then create the profile in the **Profil**
 view (as a form, from a CV with the help of an AI, or from an existing file), then press
-**Postfach abrufen**. Which alert mails it reads is the range in Einstellungen, Postfach:
-since the last check (the default), the last 7 or 30 days, or all alert mails. The app
+**Postfach abrufen**. Which alert mails it reads is the **Zeitraum** menu beside that button:
+since the last fetch (the default), the last 7 or 30 days, or all alert mails. The app
 starts in German; Einstellungen > Sprache switches it to English at once (the button is then
 Check mailbox).
 
@@ -101,7 +101,7 @@ the OS keychain (Windows Credential Manager / macOS Keychain).
 Portal notes: LinkedIn postings are fetched through its public guest view without a
 LinkedIn account, which sits in a grey zone under LinkedIn's terms of use. freelancermap
 postings are fetched through its public project pages. freelance.de shows guests only a
-teaser; signing in (Einstellungen, Portale, Mit Anmeldung) is off by default, because
+teaser; signing in ("Anmelden" at freelance.de in Einstellungen > Portale) is off by default, because
 freelance.de's crawling policy does not clearly permit signed-in scraping. Every portal can be
 switched off; a portal that is on always loads the ads of its alert mails (there is no mode
 that keeps only the mails). All portals are fetched conservatively: at most 100 pages a day

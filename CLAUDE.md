@@ -63,7 +63,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
 - `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
-- Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the report, Excel,
+- Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the Excel,
   window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
   every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with

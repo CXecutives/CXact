@@ -76,7 +76,7 @@ Commit them together with tokens.css.
 
 ## Add or change a palette
 
-The app has three palettes (Einstellungen > Darstellung > Farben): Coast is the `:root` block
+The app has three palettes (Einstellungen > Darstellung > Design): Coast is the `:root` block
 of `ui/src/styles/tokens.css` and the default; Light and Dark are one block each,
 `:root[data-palette='light']` and `:root[data-palette='dark']`, laid over it. Components never
 ask which palette is on.
@@ -106,21 +106,28 @@ ask which palette is on.
 ## Add or change a setting or a first-run step
 
 - Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order (Postfach, Portale, Export, Darstellung, App), each with its rows. A setting is
+  their order (Postfach, Portale, Export, Darstellung, Daten), each with its rows. A setting is
   one row there: its kind (switch, choice, a row of buttons, a value), its texts from the
   catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in
   `core/tests/settings_compat.rs`.
-- The range of "Postfach abrufen" is the choice `fetchRange` of the Postfach card (since the
-  last fetch, 7 days, 30 days, all alert mails; the words in `settings.rangeName`); core turns
-  it into the first day to read (`scan_since` in `core/src/mail/scan.rs`). Another range is a
-  variant of `FetchRange` (`core/src/settings.rs`), its arm in `scan_since` and its word.
+- The range of "Postfach abrufen" is the "Zeitraum" menu beside that button
+  (`fetchRange`: since the last fetch, 7 days, 30 days, all alert mails; the menu in
+  `ui/src/features/jobs/headerMenus.ts`, the words in `toolbar.rangeName`, saved through
+  `app.setFetchRange`); core turns it into the first day to read (`scan_since` in
+  `core/src/mail/scan.rs`). Another range is a variant of `FetchRange`
+  (`core/src/settings.rs`), its arm in `scan_since` and its word.
 - The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
-  `exportCsv` off by default); the export writes a file only while its switch is on, and its
-  "Öffnen" waits until the file exists (`excelExists`, `csvExists`). The app writes no other
-  files (no text files, no `top_matches.json` since 2026-09-27).
+  `exportCsv` off by default); the export writes a file only while its switch is on.
+  Switched off, its "Öffnen" waits and says to switch it on (`settings.excelOff`,
+  `settings.csvOff`); switched on, the file is written a moment later (`save_settings`) and
+  written fresh before it opens. The app writes no other files (no text files, no
+  `top_matches.json` since 2026-09-27).
+- The export folder of a new install is `Documents\CXact` (`default_workspace` in
+  `core/src/settings.rs`); the `Job-Alert-Monitor` folder of an earlier version stays in use
+  while it holds the app's files. "Öffnen" makes a missing folder first.
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 
@@ -315,30 +322,18 @@ text.
   refuses above them; `profile.ts` carries them to the stub and the editor).
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
-  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`,
-  `IMPORT_KEPT`); Einstellungen > Daten lists and restores them (`list_backups`,
-  `restore_backup`).
+  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
+  Einstellungen > Daten lists and restores them (`list_backups`, `restore_backup`), and so
+  does a start whose data cannot load ("Sicherung wiederherstellen", `App.svelte`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
   `core/src/mail/scan.rs`) stand in the catalog texts by hand.
 
-## Change the data file (export and import)
+## Data export and import (removed)
 
-"Alle Daten exportieren" and "Daten importieren" (Einstellungen > Daten, `export_data`,
-`import_data`) write and read one JSON file; its layout, its checks and what it leaves out are
-documented once, at the top of `core/src/store/bundle.rs`.
-
-- A field an older app may skip (serde ignores unknown fields): add it, `VERSION` stays.
-  A change an older app would read wrongly: raise `VERSION`; older apps then refuse the file
-  as newer (`newerSchema`, `what: dataFile`).
-- A new key of the database's key/value table that belongs to the computer rather than to
-  the data (a place, a path, a moment of this machine): add it to `local_keys` and
-  `drop_local_keys`; the export leaves it out and the import keeps the one here.
-- A secret never goes into the database (the app password lives in the keychain only), so
-  the file never holds one; `the_file_holds_no_secret_and_nothing_of_the_computer` checks it.
-- A new database layout needs nothing here: the import brings the file's database to the
-  current schema like a restore does (`backup::stage_file`).
-- The stub answers both commands (`?data=cancel|foreign|damaged|newer`); settings.spec
-  covers the rows and the dialog.
+"Alle Daten exportieren" and "Daten importieren" were removed on 2026-09-27 (docs/PLAN.md,
+"No data export or import": the user keeps one computer; the backup restore stays). There is
+no data file, `bundle.rs`, `export_data` or `import_data` any more; the copies of the
+database above are the only way back to an earlier state.
 
 ## The preview's demo data
 
@@ -394,15 +389,13 @@ and profiles: an external contract, never translated):
 
 ## Release a version
 
-1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer and Einstellungen >
-   App read it) and in `package.json`; the lock files follow (`cargo check`,
+1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer, the macOS About
+   window and the log read it) and in `package.json`; the lock files follow (`cargo check`,
    `npm install --package-lock-only`). The harness stub keeps its own demo version.
 2. **Data of the old version**: a new field of `Settings` came with its file of the new
    version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
    of the schema chain (`core/src/store/schema.rs`, with its `schema_vN.sql` fixture). The
-   store copies the database to `backups/` before it migrates. A data file the old version
-   exported still imports (the chain migrates its database); a new layout of the data file
-   itself raises its `VERSION` ("Change the data file" above).
+   store copies the database to `backups/` before it migrates.
 3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
    and the full harness in both engines once.
 4. **Build**: `npx tauri build` writes
@@ -416,8 +409,8 @@ and profiles: an external contract, never translated):
    install of the old name Job-Alert-Monitor silently (`src-tauri/windows/hooks.nsh`,
    `core/tests/installer_hooks.rs`). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
-6. **Check**: the new version under App, the jobs and the profile still there, a fetch
-   runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+6. **Check**: the new version in the installed apps of Windows (on macOS in the About
+   window), the jobs and the profile still there, a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
 
 ## Where a new rule goes
 

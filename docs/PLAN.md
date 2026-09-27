@@ -131,7 +131,7 @@ Commands (the one list is `src-tauri/commands.txt`; as of 2026-09-27): `app_stat
 `parse_profile(text, update) -> ProfileDraft` · `profile_prompt(update)` · `save_profile(ProfileSave{before, after, source?, clear[]}) -> ProfileInfo` ·
 `remove_profile` · `restore_profile` · `set_unsaved(on)` · `close_window` · `answer_close(close)` (the question while a fetch runs) · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
 `pick_workspace` · `open_target({jobUrl|gmail|alertMail{gmailId}|portalHome|appPasswordPage|twoStepPage|dataDir|workspace|profileDir|excel|csv|excelInFolder|excelBackupInFolder{name}|txtDir|logDir})` (a Gmail link names the mailbox's account; `excel` and `csv` are not found while switched off and are written fresh before they open; `excelInFolder` shows the Excel file selected in Explorer or the Finder, the work folder before there is one) ·
-`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `export_data` · `import_data` (the data file, `store/bundle.rs`) · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
+`save_settings(SettingsPatch)` · `reset_all` · `list_backups` · `restore_backup(id)` · `export_data` · `import_data` (the data file, `store/bundle.rs`; both removed 2026-09-27, see the list below) · `report_ui_error` (truncated, <= 10/min) · `clipboard_text` (the Paste entry of the app's own field menu).
 Rust triggers `rescore` itself (after pick/remove profile, at start, after an engine update, if pending > 0; pending = 0
 
 `list_profiles` · `switch_profile(id)` · `create_profile` · `duplicate_profile(id, name?)` · `rename_profile(id, name)` · `delete_profile(id)` · `restore_profile(id?)` · `load_profile` (each but `delete_profile` and `restore_profile` answers `ProfileEntry[]`; `AppState.profiles` lists them too) · `set_unsaved(on)` · `close_window` · `save_mailbox` · `remove_mailbox` · `portal_login` · `portal_logout` ·
@@ -228,7 +228,9 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   marks as current, and leave the place of the list as it is. Closing while the app is busy names what it waits
   for (a fetch, the details, a rescore, a sign-in, the files; `closing {activity}`), and so does the busy error
   (`Busy {activity}`).
-- Sidebar (final round, user decisions 2026-09-25): under Jobs (the inbox) its two other places, Archiv and Papierkorb,
+- Sidebar (final round, user decisions 2026-09-25; superseded: the places are the tabs above the list since the
+  list header of 2026-09-26, and the sub-entries, the arrow and `--turn-quarter` were removed from SideNav on
+  2026-09-27; the sidebar holds Jobs, Profil and Einstellungen): under Jobs (the inbox) its two other places, Archiv and Papierkorb,
   as quieter sub-entries (13 px, indented, a `role="group"` of their own) that the one sliding pill steps over. An
   arrow at the end of the Jobs row (`places-toggle`, a button of its own, never inside the nav button;
   no `nav-` test id, the smoke probe counts five), hides and shows them: chevron down, a quarter turn to the right while
@@ -257,7 +259,8 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   the sheet, at most 720 px (ring 56 counting up, band word, n of m must, the "Rahmen" chips for contract type and hard
   criteria plus the ad's rate and start where no criterion covers them, reasons met/partial/open/check/violations;
   hover lights the passage, click scrolls to it) · day overview when nothing is selected (Neu und passend with the
-  comparison prompt, Offene Punkte, Dateien; no counts; the blocks stand in the DOM as on screen).
+  comparison prompt, Offene Punkte, Dateien; no counts; the blocks stand in the DOM as on screen; superseded: the
+  Übersicht is gone, with nothing selected the reader shows the place's empty state).
   One list per place in the chosen order (no segments, no sections but the folded "Ausgeschlossen (n)" at the
   end); an unopened job keeps its dot until it is opened. The keys count rows in the order the list draws them.
   Wave 1 (2026-09-25): a placeholder waits once (the list or the job that takes
@@ -273,7 +276,9 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   with the three ways in.
 - Einstellungen: Postfach · Automatisch (archive and empty the trash after 30 days) · Portale (switches with one
   sentence each, health, pages used today, the meter only from 80 % or while paused) · Dateien · Darstellung (Farben,
-  Sprache) · Tastenkürzel · Wartung · Alles zurücksetzen (a card of its own, last). One list: the cards, their rows
+  Sprache) · Tastenkürzel · Wartung · Alles zurücksetzen (a card of its own, last). Superseded (2026-09-27): the
+  cards are Postfach · Portale · Export (Exportordner, Excel-Datei, CSV-Datei) · Darstellung (Design, Sprache) ·
+  Daten (Sicherung, Protokoll, Alle Daten); Automatisch, Tastenkürzel, Wartung and Dateien are gone. One list: the cards, their rows
   and buttons are data (`features/settings/cards.ts`), the view only renders it. First run: full page with three
   real, self-ticking steps, also one list (`features/first-run/steps.ts`).
 - All states per screen (first use, no profile, empty, loading, run, nothing new, no search hit, errors, offline,
@@ -296,7 +301,8 @@ cache, profile dir, marker, then verifies `signedIn=false`.
   ListRow, MenuButton (opens the OS menu), Meter, Notice, ReasonItem, ScoreRing, Segmented, SelectionBar, SettingRow,
   SideNav, Skeleton, Spinner, Splitter, StatTile, StatusLine, TextArea, TextField, Toast, Toggle, Tooltip,
   WindowButtons (the Windows caption buttons of the top bar, 2026-09-27)). Not: select, checkbox, radio, a page-drawn
-  context menu.
+  context menu. Superseded (2026-09-27): Chip, SelectionBar, StatTile and StatusLine are gone; the design system is
+  the 37 files of `ui/src/components/` (Calendar, ListDivider, Menu, RadioList, Suggestions and Tabs came since).
 - Motion: only transform/opacity (colour on hover); shadows/glow on `::after` via opacity; whole-pixel end values;
   <= 10 staggered, <= 10 rings animating, FLIP <= 100 rows else cross-fade; reduced motion via `motion.ts`.
   Since "cxpertise navy": hover-in `--dur-hover` 80 ms on the :hover rule, hover-out 150 ms on the base rule, press
@@ -562,7 +568,8 @@ The whole round is one plan (Parts A to L, kept by the integrator); the boxes be
 as the parts land on `main`.
 - Name: the app is shown as **CXact** (read "exact", like cxpertise and CXecutives). Only the
   visible name changes: identifier `de.cxecutives.job-alert-monitor`, binary, data and work
-  folders (`Documents\Job-Alert-Monitor`) and keychain service stay (the TXT contract stayed too; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The
+  folders (`Documents\Job-Alert-Monitor`; superseded 2026-09-27: a new install exports into `Documents\CXact`, an
+  existing `Job-Alert-Monitor` folder with the app's files stays in use, nothing moves) and keychain service stay (the TXT contract stayed too; superseded 2026-09-27, round two: the job-matching skill, its text files and `top_matches.json` are gone). The
   NSIS installer speaks German and English and first removes an install named
   Job-Alert-Monitor silently (its data stays).
 - Icon: one flat coral, no gradient; on Windows the plate fills the square (48 of 48 px, like
@@ -854,3 +861,19 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   update only fills gaps); an answer that does not read says why under the field. "Übernehmen" fills the form for
   review as before; nothing copies by itself any more.
 - [x] The CV dialog, its summary (`features/profile/answer.ts`), specs
+
+## Einstellungen, Erste Schritte and shell audit 2026-09-27 (decisions binding)
+- A file row's "Öffnen" waits only while its switch is off ("Schalte die Excel-Datei ein.", "Schalte die CSV-Datei
+  ein."); switched on it opens, written fresh first. Turning the CSV file on writes it like the Excel file.
+- The reset dialog names what `core/src/reset.rs` deletes: "die Sicherungen" and "die Profile" too.
+- A run's lock reason is the busy text of its kind (a details run: the ads are loading).
+- The demo shows what is true: no mailbox ("Kein Postfach", "Verbinden" locked), no calls or meters of a portal.
+- A start whose data cannot load offers "Sicherung wiederherstellen" beside the retry, the log and the folder.
+- The close question during a fetch is "Trotzdem schließen?" over "Der Abruf läuft noch." (supersedes the one
+  line above).
+- The export folder of a new install is `Documents\CXact`; an old `Job-Alert-Monitor` folder with the app's files
+  stays in use. "Öffnen" of a missing export folder makes it first.
+- [x] Export rows, reset list, busy texts, demo, failed start, close question, small texts ("Gmail-Adresse"
+  with a non-breaking hyphen, toast and note periods, "Restore Down")
+- [x] Export folder default and its "Öffnen"; stale docs (CHANGING, PLAN, README, CLAUDE.md, settings.rs,
+  tokens.mjs); the sidebar's sub-entries, fold arrow and waiting entries removed with their tokens
