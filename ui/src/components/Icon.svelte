@@ -74,6 +74,7 @@
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
+  import Settings2 from '@lucide/svelte/icons/settings-2';
   import Shield from '@lucide/svelte/icons/shield';
   import Star from '@lucide/svelte/icons/star';
   import TextSelect from '@lucide/svelte/icons/text-select';
@@ -148,6 +149,7 @@
     scissors: Scissors,
     search: Search,
     settings: Settings,
+    'settings-2': Settings2,
     shield: Shield,
     star: Star,
     'text-select': TextSelect,

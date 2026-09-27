@@ -1907,7 +1907,10 @@ fn coral_only_in_its_roles() {
             &["components/ListRow.svelte", "features/jobs/RowBar.svelte"],
         ),
         ("var(--ring-track-selected", &["components/ListRow.svelte"]),
-        ("var(--nav-active-icon", &["components/SideNav.svelte"]),
+        (
+            "var(--nav-active-icon",
+            &["components/SideNav.svelte", "components/Tabs.svelte"],
+        ),
         // New: the soft count and the coral tone of a badge, a tile and a stat.
         (
             "var(--accent",

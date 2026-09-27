@@ -101,13 +101,35 @@ test.describe('header', () => {
     expect(await tabCount(page, 'inbox')).toBe(counts.inbox);
     expect(await tabCount(page, 'archive')).toBe(counts.archive);
     await expect(page.getByTestId('place-trash-count')).toHaveCount(0);
+    // The chosen tab's number is a warm round count, the others' plain like their label.
     await expect(page.getByTestId('place-inbox-count')).toHaveCSS(
       'color',
-      await tokenColour(page, '--text-subtle'),
+      await tokenColour(page, '--count-soft-fg'),
     );
-    // 44 px high, 15 px labels (one step above the sidebar's entries).
+    await expect(page.getByTestId('place-archive-count')).toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
+    );
+    // 44 px high, 15 px labels (one step above the sidebar's entries), each with its icon;
+    // the chosen one on the sidebar's white pill with its icon in the accent.
     expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(44);
     await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '15px');
+    for (const place of ['inbox', 'archive', 'trash'] as const) {
+      await expect(page.getByTestId(`place-${place}`).locator('svg')).toHaveClass(
+        new RegExp(`lucide-${ICONS[place]}`),
+      );
+    }
+    const pill = page.getByTestId('places').locator('.pill');
+    await expect(pill).toHaveCSS('background-color', await tokenColour(page, '--nav-active-bg'));
+    const chosen = (await page.getByTestId('place-inbox').boundingBox())!;
+    const under = (await pill.boundingBox())!;
+    expect([under.x, under.width].map(Math.round)).toEqual(
+      [chosen.x, chosen.width].map(Math.round),
+    );
+    await expect(page.getByTestId('place-inbox').locator('.icon')).toHaveCSS(
+      'color',
+      await tokenColour(page, '--nav-active-icon'),
+    );
     // A search or a filter does not change them.
     await page.getByTestId('search').fill('Interim');
     await expect(rows(page)).toHaveCount(3);
@@ -124,19 +146,23 @@ test.describe('header', () => {
     await expect.poll(() => tabCount(page, 'inbox')).toBe(after);
   });
 
-  test('one header in the three places: the tabs with the action, the search and the funnel', async ({
+  test('one header in the three places: the tabs, then the search, the funnel and the action', async ({
     page,
   }) => {
     await open(page, WIN);
-    // Eingang: "Postfach abrufen" at the end of the tabs' row.
+    // The toolbar row under the tabs: the search, the funnel and in the Eingang "Postfach
+    // abrufen" with the Zeitraum's button at its end, on one line, left to right; no sort
+    // button (the order is the funnel's first group).
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
-    // Both measured in one frame, once the header has its final layout.
-    await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
-    expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
-    // The toolbar row: the search and the funnel on one line, left to right; no sort button
-    // beside them (the order is the funnel's first group).
+    // Measured in one frame, once the header has its final layout.
     await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
+    await expect.poll(() => middlesApart(page, 'search', 'fetch')).toBeLessThanOrEqual(1);
+    expect((await page.getByTestId('places').boundingBox())!.y).toBeLessThan(
+      (await page.getByTestId('search').boundingBox())!.y,
+    );
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
+    expect(await rightOf(page, 'filter')).toBeLessThan(await rightOf(page, 'fetch'));
+    const end = await rightOf(page, 'fetch-range');
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
     expect(T.toolbar.filter).toBe('Sortieren und filtern');
@@ -164,27 +190,29 @@ test.describe('header', () => {
     await expect(empty).toHaveClass(/warns/);
     await expect(empty).toHaveCSS('color', await tokenColour(page, '--danger-strong'));
     await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
-    expect(await rightOf(page, 'empty-trash')).toBe(await rightOf(page, 'filter'));
+    expect(await rightOf(page, 'empty-trash')).toBe(end);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);
     // No second row, no count line.
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('Postfach abrufen is one split control: its chevron chooses the Zeitraum', async ({
+  test('Postfach abrufen has the Zeitraum beside it: an outlined icon button with its menu', async ({
     page,
   }) => {
     await open(page, WIN);
     const fetch = page.getByTestId('fetch');
     const chevron = page.getByTestId('fetch-range');
-    // One control: the same row and height, the chevron's part right against the action,
-    // both the view's primary.
+    // Beside the action: the same row and height, 8 px apart; the fetch is the view's
+    // primary, the Zeitraum an outlined square with its icon.
     const main = (await fetch.boundingBox())!;
     const part = (await chevron.boundingBox())!;
     expect(part.y).toBe(main.y);
     expect(part.height).toBe(main.height);
-    expect(Math.abs(part.x - (main.x + main.width))).toBeLessThanOrEqual(1);
+    expect(part.width).toBe(part.height);
+    expect(Math.round(part.x - (main.x + main.width))).toBe(8);
     await expect(fetch).toHaveClass(/primary/);
-    await expect(chevron).toHaveClass(/primary/);
+    await expect(chevron).toHaveClass(/secondary/);
+    await expect(chevron.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
     await expect(chevron).toHaveAttribute('aria-label', T.toolbar.range);
     await expect(chevron).toHaveAttribute('aria-haspopup', 'menu');
     // Its menu: "Zeitraum" and the four ranges, the current one checked.
@@ -219,28 +247,28 @@ test.describe('header', () => {
     await runFinished(page);
   });
 
-  test('the tabs row keeps one line: a narrow column drops the numbers of the tabs first', async ({
+  test('the tabs fit their row at every width: a narrow column drops the numbers, then the icons', async ({
     page,
   }) => {
     const places = page.getByTestId('places');
-    const oneLine = async (): Promise<void> => {
-      const row = (await page.getByTestId('list-header').locator('.places').boundingBox())!;
-      expect(Math.round(row.height)).toBe(Math.round((await places.boundingBox())!.height));
-    };
-    // A wide window: the numbers stand beside the labels.
+    const fits = (): Promise<boolean> =>
+      places.evaluate((node) => {
+        const tabs = [...node.querySelectorAll('[role="tab"]')];
+        const last = tabs.at(-1)!.getBoundingClientRect();
+        const column = node.closest('[data-testid="list-header"]')!.getBoundingClientRect();
+        return (
+          last.right <= column.right && tabs.every((tab) => tab.scrollWidth <= tab.clientWidth)
+        );
+      });
+    // A wide window: the numbers and the icons stand beside the labels.
     await open(page, WIN);
     await expect(page.getByTestId('place-inbox-count')).toBeVisible();
-    await oneLine();
-    // 1024 px (the list at its first width): the numbers go, the row stays one line, in the
-    // Eingang and in the Papierkorb alike.
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await expect(page.getByTestId('place-inbox-count')).toBeHidden();
-    await oneLine();
-    await viaMenu(page, 'trash', 'freelancermap-2802');
-    await settleMoves(page);
-    await openPlace(page, 'trash');
-    await expect(page.getByTestId('empty-trash')).toBeVisible();
-    await oneLine();
+    expect(await fits()).toBe(true);
+    for (const width of [1024, 900, 820, 640, 480]) {
+      await page.setViewportSize({ width, height: 768 });
+      await expect.poll(fits).toBe(true);
+      await expect(page.getByTestId('place-inbox')).toContainText(T.place.inbox);
+    }
   });
 
   test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
@@ -1823,7 +1851,14 @@ test.describe('run line', () => {
     await expect(problem.getByTestId('run-retry').locator('svg')).toHaveClass(
       new RegExp(`lucide-${ICONS.retry}`),
     );
-    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'filter'));
+    // A fetch that ends at once brings back a working "Postfach abrufen".
+    await expect(page.getByTestId('fetch')).toBeEnabled();
+    expect(
+      await page
+        .getByTestId('place-action')
+        .evaluate((node) => node.querySelector('[inert] [data-testid="fetch"]')),
+    ).toBeNull();
+    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-range'));
     await problem.getByTestId('run-retry').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);

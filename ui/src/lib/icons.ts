@@ -43,6 +43,8 @@ export const ICONS = {
   // Runs.
   /** Get the new alert mails (Postfach abrufen). */
   fetch: 'refresh-cw',
+  /** The Zeitraum of "Postfach abrufen", the button beside it. */
+  range: 'settings-2',
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',
   /** Stop a run. */
