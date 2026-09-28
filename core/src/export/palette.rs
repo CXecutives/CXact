@@ -35,7 +35,7 @@ pub const SCORE_RING_9: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
 pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(30 4% 41%)", [0x6D, 0x69, 0x64]);
 /// `--brand` (`--p-brand`).
-pub const BRAND: Colour = Colour::new("hsl(240 15.8% 7.5%)", [0x10, 0x10, 0x16]);
+pub const BRAND: Colour = Colour::new("hsl(13 73% 63%)", [0xE6, 0x7A, 0x5C]);
 /// `--brand-glyph` (`--p-brand-glyph`).
 pub const BRAND_GLYPH: Colour = Colour::new("hsl(0 0% 100%)", [0xFF, 0xFF, 0xFF]);
 

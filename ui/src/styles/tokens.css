@@ -39,7 +39,7 @@
   --p-cream: 36 30% 95.5%;
   --p-ink: 30 8% 13%;
   --p-coral: 13 68% 55%;
-  --p-brand: 240 15.8% 7.5%; /* the icon's plate, #101016 (user, 2026-09-27) */
+  --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
   --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
   --p-coral-variant: 13 62% 49%;
@@ -286,7 +286,7 @@
   /* ------------------------------------------------------------------- brand */
   /* The app icon, which is also the brand mark in the page (assets/app-icon.svg): its plate
      and the folder with the check cut out of it. tools/icon.py draws every icon file in
-     these two (through tools/palette.json): a near-black plate and a white folder, fixed, so
+     these two (through tools/palette.json): the CXact orange plate and a white folder, fixed, so
      the icon never changes with a design. On the dark the mark gets a faint light edge. */
   --brand: hsl(var(--p-brand));
   --brand-glyph: hsl(var(--p-brand-glyph));

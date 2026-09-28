@@ -1,4 +1,4 @@
-<!-- The app's own icon (dark plate, white folder, check mark): first run, empty states. -->
+<!-- The app's own icon (orange plate, white folder, check mark): first run, empty states. -->
 <script lang="ts">
   import icon from '../assets/app-icon.svg';
 
