@@ -628,10 +628,10 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
 }) => {
   await open(page, WIN);
   await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-  expect(await sidebarWidth(page)).toBe(206);
+  expect(await sidebarWidth(page)).toBe(196);
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
-  expect(await sidebarWidth(page)).toBe(206);
+  expect(await sidebarWidth(page)).toBe(196);
   const toggle = page.getByTestId('toggle-sidebar');
   await toggle.click();
   await page.mouse.move(700, 400);
@@ -644,12 +644,12 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
       .evaluate((node) => node.clientWidth),
   ).toBe(0);
   await toggle.click();
-  await expect.poll(() => sidebarWidth(page)).toBe(206);
+  await expect.poll(() => sidebarWidth(page)).toBe(196);
   // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
   await expect(page.getByTestId('sidebar')).toHaveCount(0);
   await page.setViewportSize({ width: 1360, height: 900 });
-  await expect.poll(() => sidebarWidth(page)).toBe(206);
+  await expect.poll(() => sidebarWidth(page)).toBe(196);
 });
 
 test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
@@ -781,7 +781,7 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await page.setViewportSize({ width: 1100, height: 560 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
-  await view('settings').evaluate((node) => (node.scrollTop = 420));
+  await view('settings').evaluate((node) => (node.scrollTop = 300));
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
   await expect(page.getByTestId('profile-form')).toBeVisible();
@@ -790,7 +790,7 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await viewsSettled(page);
   await page.getByTestId('nav-settings').click();
   await viewsSettled(page);
-  await expect.poll(() => view('settings').evaluate((node) => node.scrollTop)).toBe(420);
+  await expect.poll(() => view('settings').evaluate((node) => node.scrollTop)).toBe(300);
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
@@ -1614,7 +1614,7 @@ for (const [width, fold] of [
       return;
     }
     const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(206);
+    expect(sidebar?.width).toBe(196);
     const label = page.getByTestId('nav-profile');
     if (fold) {
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));
@@ -1763,7 +1763,8 @@ test('a held sidebar entry that the pointer leaves looks at rest', async ({ page
 // the app in English. Words, numbers and dates follow; the baselines stay German, two
 // English ones show the reader and the settings.
 
-test('Sprache switches the whole app to English and back at once', async ({ page }) => {
+// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
+test.skip('Sprache switches the whole app to English and back at once', async ({ page }) => {
   await settings(page);
   const choice = page.getByTestId('language');
   await expect(choice.getByRole('radio', { name: 'Deutsch' })).toHaveAttribute(
@@ -1821,7 +1822,8 @@ test('Sprache switches the whole app to English and back at once', async ({ page
   await expect(page.getByTestId('list-header')).toContainText(await text(page, 'toolbar.fetch'));
 });
 
-test('the app starts in the language the backend says', async ({ page }) => {
+// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
+test.skip('the app starts in the language the backend says', async ({ page }) => {
   await open(page, EN);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(page.getByTestId('nav-jobs')).toContainText('Jobs');

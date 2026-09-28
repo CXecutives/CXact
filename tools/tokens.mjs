@@ -89,8 +89,13 @@ const CONTRAST = [
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;
-/** Pairs below AA by a documented decision of the user (docs/PLAN.md); none today. */
-const EXCEPTIONS = new Set([]);
+/** Pairs below AA by a documented decision of the user (docs/PLAN.md): the CXact coral of the
+ *  primary with its white label (3.7:1 at rest, 4.4:1 under the pointer; large enough text
+ *  for 3:1, and brighter than the old CXact's 2.8:1). */
+const EXCEPTIONS = new Set([
+  'light: --text-on-accent on --primary',
+  'light: --text-on-accent on --primary-hover',
+]);
 
 /* ------------------------------------------------------------------ tokens */
 

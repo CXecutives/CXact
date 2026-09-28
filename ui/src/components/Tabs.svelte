@@ -1,9 +1,8 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb): an icon and a quiet label of
-  15 px in a row 44 px high (user decision 2026-09-27, no numbers). The chosen one in ink, its
-  icon and the line under it in the accent like the sidebar's chosen entry; the line slides
-  to the next choice like the sidebar's pill and the segments' thumb (180 ms, emphasized; the
-  first placement and a change of size never slide). An unchosen tab darkens on hover. Like
+  The places of a list as tabs (Eingang, Archiv, Papierkorb), drawn like a segmented control
+  (user decision 2026-09-28): the labels on one track, the chosen one on a white thumb that
+  slides to the next choice like the sidebar's pill (180 ms, emphasized; the first placement
+  and a change of size never slide), no numbers. An unchosen tab darkens on hover. Like
   native tabs the row is one Tab stop and the left and right arrows choose
   (lib/input/input.ts).
 -->
@@ -96,25 +95,28 @@
 </div>
 
 <style>
-  /* Only the tabs take the pointer: between them the row around does. */
+  /* The track, like the segmented control's. */
   .tabs {
     position: relative;
-    display: flex;
+    display: inline-flex;
     align-items: stretch;
-    gap: var(--space-12);
+    align-self: center;
     min-width: 0;
-    height: var(--tabs-height);
-    pointer-events: none;
+    height: var(--control-field);
+    padding: var(--space-2);
+    border-radius: var(--radius-control);
+    background-color: var(--surface-track);
+    isolation: isolate;
   }
 
   .tab {
-    pointer-events: auto;
     display: inline-flex;
     flex: none;
     gap: var(--space-4);
     align-items: center;
-    padding: 0;
+    padding: 0 var(--space-12);
     border: none;
+    border-radius: var(--radius-sm);
     background: none;
     color: var(--text-muted);
     font: var(--type-place);
@@ -129,11 +131,7 @@
   }
 
   .tab[aria-selected='true'] {
-    color: var(--nav-active-fg);
-  }
-
-  .tab[aria-selected='true'] > :global(.icon) {
-    color: var(--nav-active-icon);
+    color: var(--text);
   }
 
   .tab:focus-visible {
@@ -142,15 +140,17 @@
     outline: none;
   }
 
-  /* The line under the chosen tab: only the move animates (a width is layout). */
+  /* The white thumb under the chosen tab: only the move animates (a width is layout). */
   .line {
     position: absolute;
-    bottom: 0;
+    z-index: var(--z-below);
+    top: var(--space-2);
+    bottom: var(--space-2);
     left: 0;
     width: var(--line-width);
-    height: var(--tabs-line);
-    border-radius: var(--radius-full);
-    background-color: var(--nav-active-icon);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface);
+    box-shadow: var(--sh-thumb);
     transform: translateX(var(--line-x));
     transition: transform var(--dur-slow) var(--ease-emphasized);
   }

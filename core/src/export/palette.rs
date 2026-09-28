@@ -9,9 +9,9 @@
 pub use super::colour::Colour;
 
 /// `--bg` (`--p-cream`).
-pub const BG: Colour = Colour::new("hsl(60 6.7% 97.1%)", [0xF8, 0xF8, 0xF7]);
+pub const BG: Colour = Colour::new("hsl(36 30% 95.5%)", [0xF7, 0xF4, 0xF0]);
 /// `--surface-muted` (`--p-muted`).
-pub const SURFACE_MUTED: Colour = Colour::new("hsl(60 4.3% 95.5%)", [0xF4, 0xF4, 0xF3]);
+pub const SURFACE_MUTED: Colour = Colour::new("hsl(36 25% 96%)", [0xF7, 0xF5, 0xF2]);
 /// `--score-ring-0` (`--p-score-red`).
 pub const SCORE_RING_0: Colour = Colour::new("hsl(358 75% 59%)", [0xE5, 0x48, 0x4D]);
 /// `--score-ring-1` (`--p-score-red`).
@@ -33,7 +33,7 @@ pub const SCORE_RING_8: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x
 /// `--score-ring-9` (`--p-score-green`).
 pub const SCORE_RING_9: Colour = Colour::new("hsl(139 44% 44%)", [0x3F, 0xA2, 0x5E]);
 /// `--score-excluded` (`--text-subtle`, `--p-fg-subtle`).
-pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(60 1.4% 40.6%)", [0x69, 0x69, 0x66]);
+pub const SCORE_EXCLUDED: Colour = Colour::new("hsl(30 4% 41%)", [0x6D, 0x69, 0x64]);
 /// `--brand` (`--p-brand`).
 pub const BRAND: Colour = Colour::new("hsl(240 15.8% 7.5%)", [0x10, 0x10, 0x16]);
 /// `--brand-glyph` (`--p-brand-glyph`).

@@ -111,14 +111,12 @@ test('the cards in their order, the first heading on the first row, the version 
     'settings-mailbox',
     'settings-portals',
     'settings-export',
-    'settings-look',
     'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
     T.settings.mailbox,
     T.settings.portals,
     T.settings.export,
-    T.settings.look,
     T.settings.data,
   ]);
   // Every heading stands 12 px above its card, the first one too.
@@ -132,7 +130,7 @@ test('the cards in their order, the first heading on the first row, the version 
         return Math.round(card.top - heading.bottom);
       }),
     );
-  expect(gaps).toEqual([12, 12, 12, 12, 12]);
+  expect(gaps).toEqual([12, 12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
@@ -157,7 +155,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   page,
 }) => {
   await settings(page);
-  // Every button with words in a row of a card: the one outlined kind, 26 px.
+  // Every button with words in a row of a card: the one outlined kind, 25 px.
   const kinds = await page
     .getByTestId('settings')
     .locator('.card button.btn:not(.icon-only)')
@@ -178,7 +176,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'csv-open',
     'reset',
   ]);
-  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 26)).toEqual([]);
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 25)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
@@ -209,7 +207,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
         ),
       ),
     );
-  expect(ends.length).toBeGreaterThan(8);
+  expect(ends.length).toBeGreaterThan(6);
   expect(new Set(ends).size).toBe(1);
   // The portals' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
@@ -217,7 +215,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     page.getByTestId('portal-freelance').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
-  // Every button of the page is at most 29 px high.
+  // Every button of the page is at most 28 px high.
   const heights = await page
     .getByTestId('settings')
     .locator('button:not([role="switch"]):not([role="radio"])')
@@ -231,9 +229,9 @@ test('narrow, a row puts its control under the label only where the two do not f
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
   // Label and control side by side, one line, like the wider rows.
-  for (const id of ['excel', 'row-palette', 'row-language', 'reset-all']) {
+  for (const id of ['excel', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
-    expect(Math.round(box.height), id).toBe(55);
+    expect(Math.round(box.height), id).toBe(54);
   }
   // At the smallest window the path of the export folder keeps its room: the buttons stand
   // beside it or go under it, never over it.
@@ -548,7 +546,7 @@ test('export: the export folder with its path, Excel and CSV with their switches
   // A file that does not open says so in its card; the note unfolds, so the cards below
   // glide down instead of jumping.
   await failNext(page, 'open_target');
-  const tops = await topsAfterClick(page, 'folder-open', 'settings-look');
+  const tops = await topsAfterClick(page, 'folder-open', 'settings-data');
   await expect(page.getByTestId('export-note')).toHaveText('Die Datenbank meldet einen Fehler.');
   expect(glided(tops), tops.join(' ')).toBe(true);
 });
@@ -567,7 +565,10 @@ test('export: another export folder takes the profile along; its own profile is 
 
 /* ------------------------------------------------------------- Darstellung */
 
-test('Darstellung: a palette applies at once, is saved and wears the start', async ({ page }) => {
+// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
+test.skip('Darstellung: a palette applies at once, is saved and wears the start', async ({
+  page,
+}) => {
   await settings(page);
   const look = page.getByTestId('settings-look');
   await expect(look.locator('[data-setting-row]')).toHaveCount(2);
@@ -646,7 +647,10 @@ test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ p
   }
 });
 
-test('Darstellung: the language switches everything at once; notes follow it', async ({ page }) => {
+// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
+test.skip('Darstellung: the language switches everything at once; notes follow it', async ({
+  page,
+}) => {
   await settings(page);
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();

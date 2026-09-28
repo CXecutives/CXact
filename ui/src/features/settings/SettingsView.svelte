@@ -312,7 +312,7 @@
       <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
-    {#each CARDS as card, index (card.id)}
+    {#each CARDS.filter((card) => !card.hidden) as card, index (card.id)}
       {@const feedback = notes[card.id] ?? null}
       <section class="section" data-testid="settings-{card.id}">
         <div class="title" data-first-row={index === 0 ? '' : undefined}>

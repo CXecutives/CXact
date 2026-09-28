@@ -30,45 +30,44 @@
   color-scheme: light;
 
   /* ------------------------------------------------------------------ palette */
-  /* Light (user, 2026-09-27): neutral like the Claude app with a fifth of GitHub's Primer,
-     one calm blue accent, no orange. The entries keep their role names: coral is the accent
-     (the primary, the tab line, the dot, where you are), navy the links, focus and the quiet
-     blue structure. The window and the sidebar are one step below the content. */
+  /* CXact, calmed (user, 2026-09-28): a paler cream for the window and the sidebar, white
+     content, a softer coral that acts (the primary, the dot, where you are, switches that are
+     on) and the cxpertise navy for links, focus, progress and the tooltip; headings in ink. */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  --p-nav-active: 60 4.3% 91%; /* the active sidebar entry, #E4E4E2 */
-  --p-cream: 60 6.7% 97.1%;
-  --p-ink: 120 2.3% 8.4%;
-  --p-coral: 215.9 68.5% 49.8%;
+  --p-nav-active: 34 20% 89.5%; /* the active sidebar entry, #E4E4E2 */
+  --p-cream: 36 30% 95.5%;
+  --p-ink: 30 8% 13%;
+  --p-coral: 13 68% 55%;
   --p-brand: 240 15.8% 7.5%; /* the icon's plate, #101016 (user, 2026-09-27) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
   --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
-  --p-coral-variant: 216.2 68.3% 43.3%;
-  --p-coral-press: 216 69.2% 38.2%;
-  --p-muted: 60 4.3% 95.5%;
-  --p-muted-fg: 90 1.6% 25.1%;
-  --p-line: 60 3.8% 89.8%;
-  --p-accent-soft: 180 7.7% 92.4%;
+  --p-coral-variant: 13 62% 49%;
+  --p-coral-press: 13 58% 44%;
+  --p-muted: 36 25% 96%;
+  --p-muted-fg: 30 5% 33%;
+  --p-line: 34 16% 87%;
+  --p-accent-soft: 18 55% 93%;
   --p-success: 137.1 62.9% 32.7%;
   --p-warning: 43.9 66.1% 50.2%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-800: 214 70.8% 37.6%;
-  --p-coral-25: 180 9.7% 93.9%;
-  --p-coral-40: 180 9.7% 93.9%;
-  --p-coral-50: 190 14.3% 91.8%;
-  --p-coral-70: 187.5 14.3% 89%;
-  --p-coral-150: 195 13.6% 82.7%;
-  --p-navy: 215.2 69.2% 44.5%;
-  --p-navy-deep: 214 70.8% 37.6%;
-  --p-navy-50: 180 9.7% 93.9%;
-  --p-navy-100: 190 13% 91%;
-  --p-navy-150: 180 10.1% 86.5%;
-  --p-navy-200: 196 13% 77.5%;
-  --p-fg-subtle: 60 1.4% 40.6%;
-  --p-border-strong: 45 4.7% 83.1%;
-  --p-border-input: 60 1.7% 54.9%;
-  --p-border-press: 60 1% 37.6%;
-  --p-wash: 120 2.3% 8.4%;
+  --p-coral-800: 13 60% 36%;
+  --p-coral-25: 24 55% 96.8%;
+  --p-coral-40: 22 55% 95.5%;
+  --p-coral-50: 22 50% 94.5%;
+  --p-coral-70: 22 48% 93%;
+  --p-coral-150: 20 30% 88%;
+  --p-navy: 212 36% 34%;
+  --p-navy-deep: 212 34% 24%;
+  --p-navy-50: 212 36% 96%;
+  --p-navy-100: 212 36% 93%;
+  --p-navy-150: 212 32% 90%;
+  --p-navy-200: 212 28% 83%;
+  --p-fg-subtle: 30 4% 41%;
+  --p-border-strong: 34 12% 76%;
+  --p-border-input: 34 8% 60%;
+  --p-border-press: 34 8% 50%;
+  --p-wash: 28 30% 24%;
   --p-success-strong: 137 66% 30%;
   --p-success-soft: 133 80% 92%;
   --p-warning-strong: 40.1 100% 30.2%;
@@ -86,19 +85,19 @@
   --p-score-high-soft: 133 80% 92%;
   --p-score-mid: 38 55% 55%;
   --p-score-low: 30 5% 56%;
-  --p-score-low-text: 60 1.4% 40.6%;
+  --p-score-low-text: 30 4% 41%;
   --p-score-red: 358 75% 59%;
   --p-score-orange: 24 87% 56%;
   --p-score-yellow: 40 88% 59%;
   --p-score-lime: 83 44% 51%;
   --p-score-green: 139 44% 44%;
-  --p-scrim: 120 2.3% 8.4%;
-  --p-shade-xs: 120 2.3% 8.4%;
-  --p-shade-pop: 120 2.3% 8.4%;
-  --p-shade-navy: 120 2.3% 8.4%;
+  --p-scrim: 212 30% 14%;
+  --p-shade-xs: 30 15% 25%;
+  --p-shade-pop: 30 15% 18%;
+  --p-shade-navy: 212 30% 20%;
   /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 60 1.6% 12.4%;
-  --p-tooltip-edge: 60 0.9% 21.4%;
+  --p-emphasis: 212 34% 22%;
+  --p-tooltip-edge: 212 20% 38%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
@@ -175,7 +174,7 @@
   --unread: hsl(var(--p-coral));
   /* Where you are: the 3 px bar of the selected row (in full coral: 3.1:1 on the row's wash)
      and the ring track on its wash. */
-  --selection-bar: hsl(var(--p-coral) / 0.75);
+  --selection-bar: hsl(var(--p-coral) / 0.85);
   --ring-track-selected: hsl(var(--p-coral-150));
   /* The ring track on that wash while the window is in the back (the selection greys out):
      translucent ink, as clear on the grey wash as the plain track is on white. */
@@ -392,22 +391,22 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  --control-sm: 26px;
+  --control-sm: 25px;
   /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
      Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
      calm, like the OS's own settings (user, 2026-09-25). */
-  --control-field: 29px;
-  --control-md: 31px;
-  --control-lg: 35px;
+  --control-field: 28px;
+  --control-md: 30px;
+  --control-lg: 33px;
   --icon-xs: 12px;
-  --icon-sm: 16px;
-  --icon-md: 20px;
+  --icon-sm: 15px;
+  --icon-md: 18px;
   --icon-lg: 24px;
   /* One line width for every line icon, whatever its size (user, 2026-09-27): screen pixels
      (the strokes do not scale with the icon). */
-  --icon-stroke: 1.35;
+  --icon-stroke: 1.15;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
-  --row-height: 60px;
+  --row-height: 58px;
   /* The gutter of the unread dot, left of the ring. */
   --dot-gutter: 12px;
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
@@ -437,7 +436,7 @@
   --titlebar-tools-inset: 6px;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
-  --tabs-min: 39px;
+  --tabs-min: 36px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -490,7 +489,7 @@
   --ghost-inset: calc(var(--space-12) + var(--border-width));
   /* The one inner padding of every content column: list header, list rows, reader, overview,
      and the left edge of the top strip, so their edges line up. */
-  --pane-padding: 14px;
+  --pane-padding: 13px;
   /* The room under the last section of a page that scrolls (Einstellungen, Profil): the end
      of the page never sits on the window's edge. */
   --page-end: 96px;
@@ -501,9 +500,9 @@
   --first-row: var(--control-lg);
   /* The sides of the reader column (a document, a little more air than the list). */
   --reader-padding: var(--space-24);
-  --ring-sm: 34px;
+  --ring-sm: 32px;
   --ring-sm-stroke: 4px;
-  --ring-md: 48px;
+  --ring-md: 46px;
   --ring-md-stroke: 5px;
   --ring-lg: 96px;
   --ring-lg-stroke: 8px;
@@ -554,7 +553,7 @@
   /* The level of a language in the Profil form: its longest word (Muttersprache) fits. */
   --level-width: 140px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
-  --sidebar-width: 206px;
+  --sidebar-width: 196px;
   /* The sidebar's handle keeps it between these. */
   --sidebar-min: 180px;
   --sidebar-max: 320px;
@@ -580,9 +579,9 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/34, 36/48 and 36/96. */
-  --ring-sm-scale: 1.059;
-  --ring-md-scale: 0.75;
+     scaled into viewBox units: 36/32, 36/46 and 36/96. */
+  --ring-sm-scale: 1.125;
+  --ring-md-scale: 0.783;
   --ring-lg-scale: 0.375;
 
   /* -------------------------------------------------------------- typography */
@@ -595,34 +594,34 @@
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 11px;
   --leading-2xs: 14px;
-  --font-xs: 11px;
-  --leading-xs: 15px;
-  --font-sm: 11.5px;
-  --leading-sm: 16px;
+  --font-xs: 10.5px;
+  --leading-xs: 14px;
+  --font-sm: 11px;
+  --leading-sm: 15px;
   /* The text in fields. */
-  --font-field: 13px;
-  --leading-field: 18px;
+  --font-field: 12.5px;
+  --leading-field: 17px;
   /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
-  --font-md: 13px;
-  --leading-md: 18px;
+  --font-md: 12.5px;
+  --leading-md: 17px;
   /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
-  --font-title: 14px;
-  --leading-title: 18px;
+  --font-title: 13.5px;
+  --leading-title: 17px;
   /* The sidebar entries (14/20, weight 500). */
-  --font-tab: 13px;
-  --leading-tab: 18px;
+  --font-tab: 12.5px;
+  --leading-tab: 17px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 13.5px;
-  --leading-place: 18px;
+  --font-place: 13px;
+  --leading-place: 17px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
-  --font-body: 13px;
-  --leading-body: 20px;
-  --font-lg: 15px;
-  --leading-lg: 20px;
-  --font-xl: 17px;
-  --leading-xl: 24px;
-  --font-2xl: 20px;
-  --leading-2xl: 26px;
+  --font-body: 12.5px;
+  --leading-body: 19px;
+  --font-lg: 14.5px;
+  --leading-lg: 19px;
+  --font-xl: 16px;
+  --leading-xl: 22px;
+  --font-2xl: 19px;
+  --leading-2xl: 24px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);

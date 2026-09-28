@@ -173,7 +173,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
     ['first-profile-file', 'pickFile'],
     ['first-profile-prompt', 'prompt'],
   ] as const) {
-    await expect(step.getByTestId(id)).toHaveCSS('height', '29px');
+    await expect(step.getByTestId(id)).toHaveCSS('height', '28px');
     await expect(step.getByTestId(id).locator('[data-icon]')).toHaveAttribute('data-icon', icon);
   }
   // The prompt goes to the clipboard and a toast says so; the page stays.
@@ -218,11 +218,6 @@ test('every view opens; the sidebar is the same as always, Jobs leads back', asy
   await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  // The language can be chosen before anything is set up.
-  await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByTestId('nav-settings')).toContainText('Settings');
-  await page.getByTestId('language').getByRole('radio', { name: 'Deutsch' }).click();
-  await expect(page.getByTestId('nav-settings')).toContainText('Einstellungen');
   await page.getByTestId('nav-profile').click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
   await page.getByTestId('nav-jobs').click();
