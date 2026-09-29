@@ -236,12 +236,25 @@ test.describe('header', () => {
     await expect(menuItem(page, 'range-days30')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'false');
     await page.keyboard.press('Escape');
-    // The fetch itself still starts from the main part.
+    // The fetch itself still starts from the main part. "Abbrechen" takes its slot at its
+    // width (the wider of the two sets it) and the Zeitraum stays beside it, off: nothing
+    // moves.
     await fetch.click();
-    await expect(page.getByTestId('cancel-run')).toBeVisible();
-    await expect(chevron).toHaveCount(0);
-    await page.getByTestId('cancel-run').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    const stop = (await cancel.boundingBox())!;
+    expect([stop.x, stop.y, stop.width, stop.height]).toEqual([
+      main.x,
+      main.y,
+      main.width,
+      main.height,
+    ]);
+    await expect(chevron).toBeVisible();
+    await expect(chevron).toBeDisabled();
+    expect((await chevron.boundingBox())!).toEqual(part);
+    await cancel.click();
     await runFinished(page);
+    await expect(chevron).toBeEnabled();
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -257,10 +270,13 @@ test.describe('header', () => {
       return [box.x, box.y, box.width, box.height].map(Math.round);
     };
     const inbox = await slot();
+    const end = await rightOf(page, 'place-action');
     for (const place of ['archive', 'trash'] as const) {
       await openPlace(page, place);
       await expect(cancel, place).toBeVisible();
       expect(await slot(), place).toEqual(inbox);
+      // The Zeitraum is the Eingang's: elsewhere it only holds its room.
+      await expect(page.getByTestId('fetch-range'), place).toHaveCount(0);
     }
     // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
     await expect(page.getByTestId('empty-trash')).toHaveCount(0);
@@ -268,7 +284,6 @@ test.describe('header', () => {
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await expect(page.getByTestId('empty-trash')).toBeVisible();
-    const end = inbox[0]! + inbox[2]!;
     expect(Math.abs((await rightOf(page, 'empty-trash')) - end)).toBeLessThanOrEqual(1);
     await openPlace(page, 'archive');
     await expect(page.getByTestId('place-action')).toHaveCount(0);
@@ -626,10 +641,49 @@ test.describe('filter', () => {
     await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     const after = (await menu.boundingBox())!;
     expect(after).toEqual(before);
-    // Its last entry stands inside the window, within reach.
-    const reset = (await menuItem(page, 'filter-reset').boundingBox())!;
-    expect(reset.y + reset.height).toBeLessThanOrEqual(768);
+    // Its last entry is within reach: the menu below the funnel scrolls inside itself.
+    const reset = menuItem(page, 'filter-reset');
+    await reset.scrollIntoViewIfNeeded();
+    await expect(reset).toBeInViewport();
+    expect((await menu.boundingBox())!).toEqual(before);
     await page.keyboard.press('Escape');
+  });
+
+  test('the menu never covers the funnel or the title bar; where it does not fit it scrolls', async ({
+    page,
+  }) => {
+    for (const [width, height] of [
+      [1360, 820],
+      [1000, 700],
+      [480, 360],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await open(page, WIN);
+      const menu = await openFilter(page);
+      const button = (await funnel(page).boundingBox())!;
+      const bar = (await page.getByTestId('title-bar').boundingBox())!;
+      const size = `${width}x${height}`;
+      // Settled (it drops in): below the funnel or above it, under the bar, in the window.
+      await expect
+        .poll(async () => {
+          const box = (await menu.boundingBox())!;
+          return (
+            (box.y >= button.y + button.height || box.y + box.height <= button.y) &&
+            box.y >= bar.y + bar.height &&
+            box.y + box.height <= height
+          );
+        }, size)
+        .toBe(true);
+      // Its last entry is within reach: the menu scrolls inside itself.
+      const reset = menuItem(page, 'filter-reset');
+      await reset.scrollIntoViewIfNeeded();
+      await expect(reset, size).toBeInViewport();
+      // A second click on the funnel reaches the funnel and closes the menu (a choice would
+      // keep it open).
+      await funnel(page).click();
+      await expect(page.getByTestId('menu'), size).toHaveCount(0);
+      await expect(funnel(page), size).toHaveAttribute('aria-expanded', 'false');
+    }
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
@@ -964,10 +1018,14 @@ test.describe('one list', () => {
     await open(page, WIN);
     const { active: all, jobs } = await stubList(page);
     await expect.poll(() => listed(page)).toEqual(all);
-    // By match the jobs still without a score stand on top (each page is then complete).
-    const unscored = jobs.filter((job) => job.match === null).map(keyOf);
-    expect(unscored.length).toBeGreaterThan(0);
-    expect(all.slice(0, unscored.length)).toEqual(unscored);
+    // By match every job whose ring shows no number stands on top, in one place (each page is
+    // then complete): the ones not scored yet and the unscorable ones together.
+    const unscored = jobs
+      .filter((job) => job.match?.status !== 'scored' && !excluded(job))
+      .map(keyOf);
+    expect(jobs.some((job) => job.match === null)).toBe(true);
+    expect(jobs.some((job) => job.match?.status === 'unscorable')).toBe(true);
+    expect(all.slice(0, unscored.length).sort()).toEqual([...unscored].sort());
     for (const id of [
       'facet',
       'caught-up',
@@ -1069,6 +1127,13 @@ test.describe('one list', () => {
     expect((await divider.boundingBox())!.y).toBeGreaterThanOrEqual(last.y + last.height);
     await divider.click();
     await expect(excludedRows(page)).toHaveCount(out.length);
+    // Newest first, as by date: their rings show the ban, not the fit they keep.
+    expect(out).toEqual((await stubList(page, { sort: 'newest' })).excluded);
+    expect(
+      await excludedRows(page).evaluateAll((items) =>
+        items.map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
+      ),
+    ).toEqual(out);
     // Rows like every other, the ban in the ring's place, no reason.
     await expect(excludedRows(page).first().getByTestId('row-excluded')).toBeVisible();
     await expect(excludedRows(page).first().locator('.foot')).toHaveCount(0);
@@ -1246,7 +1311,7 @@ test.describe('one list', () => {
     expect(Math.abs(row.height - placeholder.height)).toBeLessThan(1);
   });
 
-  test('an empty inbox says what comes: an icon, one sentence and Postfach abrufen', async ({
+  test('an empty inbox says what comes: an icon and one sentence, the header fetches', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=empty`);
@@ -1256,11 +1321,9 @@ test.describe('one list', () => {
     await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
       new RegExp(`lucide-${ICONS.inbox}`),
     );
-    // The way on: a fetch, secondary (the header holds the view's primary).
-    const fetch = empty.getByRole('button', { name: T.toolbar.fetch });
-    await expect(empty.getByRole('button')).toHaveCount(1);
-    await expect(fetch).toHaveClass(/secondary/);
-    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
+    // No second "Postfach abrufen": the header's stands right above it.
+    await expect(empty.getByRole('button')).toHaveCount(0);
+    await expect(page.getByTestId('fetch')).toBeVisible();
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     for (const gone of ['alert-linkedin', 'read-older']) {
@@ -1272,7 +1335,7 @@ test.describe('one list', () => {
     const archive = (await page.getByTestId('empty-place-archive').boundingBox())!;
     expect(Math.abs(archive.y + archive.height / 2 - (at.y + at.height / 2))).toBeLessThan(1);
     await openPlace(page, 'inbox');
-    await page.getByTestId('empty-all').getByRole('button', { name: T.toolbar.fetch }).click();
+    await page.getByTestId('fetch').click();
     expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
       request: { kind: 'fetch' },
     });

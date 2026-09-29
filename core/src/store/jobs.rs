@@ -176,8 +176,9 @@ fn day_rate(p: &str) -> String {
 }
 
 /// The order of a page of the list (`p`: the prefix of its columns). Excluded jobs always
-/// come last; "match" puts the jobs still without a score first (the list's section "Noch
-/// ohne Passung" on top, so every page it loads is complete), then the best score first;
+/// come last; "match" puts every job whose ring shows no number first (not scored yet and
+/// not scorable, newest first: the list's "Noch ohne Passung" on top, so every page it loads
+/// is complete), then the best score first, the excluded ones newest first;
 /// "rate" the highest day rate first ([`day_rate`]), the jobs without one last; "newest" the
 /// latest first sighting. The trash lists the latest trashed first.
 fn page_order(query: &PageQuery, p: &str) -> String {
@@ -188,10 +189,16 @@ fn page_order(query: &PageQuery, p: &str) -> String {
         format!("COALESCE({p}mail_date, {p}first_seen_at)")
     };
     let (pending, by_match) = if query.by_match {
-        // Equal scores follow the score before the caps (`rank` in the note).
+        // Only a scored job's ring shows its number: the ones without (not scored yet, not
+        // scorable) stand together on top, the excluded ones (their ring shows the ban) by
+        // date like those. Equal scores follow the score before the caps (`rank` in the note).
+        let scored = format!("{p}match_status IS 'scored'");
         (
-            format!("({p}match_score IS NOT NULL), "),
-            format!("{p}match_score DESC, json_extract({p}match_note, '$.rank') DESC, "),
+            format!("({scored}), "),
+            format!(
+                "(CASE WHEN {scored} THEN {p}match_score END) DESC, \
+                 (CASE WHEN {scored} THEN json_extract({p}match_note, '$.rank') END) DESC, "
+            ),
         )
     } else if query.by_rate {
         let rate = day_rate(p);
@@ -2291,5 +2298,76 @@ mod tests {
         assert_eq!(titles(false), ["P", "H", "L", "Q", "C", "X"]);
         // A page of two by match holds the two without a score, whole.
         assert!(page(true, 2).iter().all(|job| job.match_.is_none()));
+    }
+
+    /// By match every job whose ring shows no number stands in one place, on top: the ones
+    /// not scored yet and the unscorable ones together, newest first, whatever score an
+    /// unscorable one keeps; the excluded ones at the end, newest first too (their ring shows
+    /// the ban, not the fit they keep).
+    #[test]
+    fn by_match_the_jobs_without_a_number_stand_together_and_the_excluded_by_date() {
+        use crate::model::MatchStatus::{Excluded, Scored, Unscorable};
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        // From the newest mail (A) to the oldest (V).
+        let titles = ["A", "B", "U", "E", "N", "S", "V"];
+        let mut keys = Vec::new();
+        for (hours, title) in (1..).zip(titles) {
+            let job = posting(
+                &format!("https://www.linkedin.com/jobs/view/42000000{hours:02}/"),
+                title,
+                "",
+                "",
+            );
+            let mail = MailRef {
+                subject: "x",
+                date: Some(now() - SignedDuration::from_hours(hours)),
+                gmail_id: None,
+            };
+            store.upsert_posting(run, &job, mail, now()).unwrap();
+            keys.push(job.key);
+        }
+        let record = |status, score, rank| MatchRecord {
+            status,
+            score,
+            note: None,
+            must_met: 0,
+            must_total: 0,
+            top: Vec::new(),
+            facts: crate::model::KeyFacts::default(),
+            rank,
+        };
+        // N waits for its score; U and V are not scorable (V with a score left over).
+        store
+            .save_matches(
+                &[
+                    (keys[0].clone(), record(Excluded, 20, 200)),
+                    (keys[1].clone(), record(Scored, 70, 700)),
+                    (keys[2].clone(), record(Unscorable, 0, 0)),
+                    (keys[3].clone(), record(Excluded, 90, 900)),
+                    (keys[5].clone(), record(Scored, 40, 400)),
+                    (keys[6].clone(), record(Unscorable, 55, 550)),
+                ],
+                "r",
+                now(),
+            )
+            .unwrap();
+        let page = |limit| {
+            let query = PageQuery {
+                by_match: true,
+                limit,
+                ..PageQuery::default()
+            };
+            store
+                .job_page(&query)
+                .unwrap()
+                .0
+                .into_iter()
+                .map(|job| job.title)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(page(50), ["U", "N", "V", "B", "S", "A", "E"]);
+        // A page of three holds the three without a number, whole.
+        assert_eq!(page(3), ["U", "N", "V"]);
     }
 }

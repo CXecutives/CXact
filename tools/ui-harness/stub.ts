@@ -1215,9 +1215,12 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
   // the trash the day the job went there.
   const date = (j: JobView): string =>
     query.place === 'trash' ? (trashedAt.get(markKey(j.key)) ?? '') : (j.mailDate ?? j.firstSeenAt);
-  // store::page_order: the excluded last; by match the jobs without a score first (on top of
-  // the list, so every page is complete); a closed ad after the open ones;
-  // then the best score.
+  // store::page_order: the excluded last; by match every job whose ring shows no number
+  // first (not scored yet and not scorable together, on top of the list, so every page is
+  // complete); a closed ad after the open ones; then the best score, the ones without a
+  // number and the excluded ones by date.
+  const scoreOf = (j: JobView): number | null =>
+    j.match?.status === 'scored' ? j.match.score : null;
   const page = base
     .filter((j) => inQuery(j, query))
     .sort((a, b) => {
@@ -1225,13 +1228,13 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
       if (ex !== 0) return ex;
       const byMatch = query.sort === 'match';
       if (byMatch) {
-        const pending = Number(b.match === null) - Number(a.match === null);
+        const pending = Number(scoreOf(a) !== null) - Number(scoreOf(b) !== null);
         if (pending !== 0) return pending;
       }
       const closed = Number(a.closed) - Number(b.closed);
       if (closed !== 0) return closed;
       if (byMatch) {
-        const d = (b.match?.score ?? 0) - (a.match?.score ?? 0);
+        const d = (scoreOf(b) ?? 0) - (scoreOf(a) ?? 0);
         if (d !== 0) return d;
       }
       // By rate the highest day rate first, the jobs without one last.

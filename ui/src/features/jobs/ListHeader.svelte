@@ -5,12 +5,13 @@
   Eingang "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
   beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
   Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
-  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, in
-  every place (the same cell as wide as the fetch's buttons, so it never moves between the
-  tabs), the two cross-fade, so nothing jumps; the fetch is locked while the app scores the
-  jobs anew, and without a mailbox, saying why. In the Papierkorb "Papierkorb leeren"
-  (outlined, the trash in red, asks first; "Abbrechen" over it while a fetch goes), in the
-  Archiv none. A narrow column puts the action under the tabs.
+  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, as
+  wide as "Postfach abrufen" (the wider of the two sets it), the Zeitraum's button stays
+  beside it, off; in the other places "Abbrechen" stands where it stands in the Eingang, so
+  it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
+  while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
+  "Papierkorb leeren" (outlined, the trash in red, asks first; "Abbrechen" over it while a
+  fetch goes), in the Archiv none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
   The funnel "Sortieren und filtern" (an icon button, a coral dot while a filter is on; the order
@@ -156,6 +157,9 @@
   /** "Postfach abrufen" shows: in the Eingang while no fetch goes (elsewhere it only holds
    *  the cell's width, so "Abbrechen" stands where it stands in the Eingang). */
   const fetchShown = $derived(place === 'inbox' && !run.fetching);
+  /** The fetch's buttons show: in the Eingang, and "Abbrechen" in every place while a fetch
+   *  goes. */
+  const fetchGroup = $derived(place === 'inbox' || run.fetching);
   /** The fetch's colour: the view's primary once a fetch can bring jobs. */
   const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
 
@@ -212,43 +216,55 @@
   }
 </script>
 
-{#snippet fetchButton(live: boolean)}
+{#snippet fetchButtons(inbox: boolean)}
+  <!-- "Postfach abrufen" and "Abbrechen" share one slot as wide as the wider of the two, so
+       nothing moves when a fetch starts; the Zeitraum's button stays beside them, off while
+       the fetch goes. Outside the Eingang only "Abbrechen" shows (while a fetch goes), where
+       it stands in the Eingang: the Zeitraum's button holds its room there. -->
   <span class="fetch">
-    <Button
-      size="field"
-      variant={fetchVariant}
-      icon="fetch"
-      label={t.toolbar.fetch}
-      disabled={run.fetchBlocked !== null}
-      disabledReason={run.fetchBlocked}
-      testid={live ? 'fetch' : null}
-      onclick={() => void run.start({ kind: 'fetch' })}
-    />
-    <Button
-      size="field"
-      variant="secondary"
-      iconOnly
-      icon="range"
-      label={t.toolbar.range}
-      menu
-      expanded={live && rangeOpen}
-      testid={live ? 'fetch-range' : null}
-      onclick={openRange}
-    />
+    <span class="run">
+      <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
+        <Button
+          size="field"
+          variant={fetchVariant}
+          icon="fetch"
+          label={t.toolbar.fetch}
+          disabled={run.fetchBlocked !== null}
+          disabledReason={run.fetchBlocked}
+          wide
+          testid={fetchShown ? 'fetch' : null}
+          onclick={() => void run.start({ kind: 'fetch' })}
+        />
+      </span>
+      <span class="swap" class:shown={run.fetching} inert={!run.fetching}>
+        <Button
+          size="field"
+          variant="secondary"
+          icon="cancel"
+          label={t.toolbar.cancel}
+          loading={run.fetching && run.cancelling}
+          wide
+          testid={run.fetching ? 'cancel-run' : null}
+          onclick={() => void run.cancel()}
+        />
+      </span>
+    </span>
+    <span class="swap" class:shown={inbox} inert={!inbox}>
+      <Button
+        size="field"
+        variant="secondary"
+        iconOnly
+        icon="range"
+        label={t.toolbar.range}
+        menu
+        expanded={inbox && rangeOpen}
+        disabled={run.fetching}
+        disabledReason={run.busyText}
+        testid={inbox ? 'fetch-range' : null}
+        onclick={openRange}
+      />
+    </span>
   </span>
-{/snippet}
-
-{#snippet cancelButton(live: boolean)}
-  <Button
-    size="field"
-    variant="secondary"
-    icon="cancel"
-    label={t.toolbar.cancel}
-    loading={live && run.cancelling}
-    wide
-    testid={live ? 'cancel-run' : null}
-    onclick={() => void run.cancel()}
-  />
 {/snippet}
 
 <div class="header" class:scrolled data-testid="list-header" data-press-only>
@@ -266,8 +282,8 @@
            and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
            list is (a fetch that ends at once simply shows "Postfach abrufen" again). -->
       <span class="action" data-testid="place-action">
-        <span class="slot" class:shown={fetchShown} inert={!fetchShown}>
-          {@render fetchButton(fetchShown)}
+        <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
+          {@render fetchButtons(place === 'inbox')}
         </span>
         {#if emptiable}
           <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
@@ -284,9 +300,6 @@
             />
           </span>
         {/if}
-        <span class="slot" class:shown={run.fetching} inert={!run.fetching}>
-          {@render cancelButton(run.fetching)}
-        </span>
       </span>
     {/if}
   </div>
@@ -416,7 +429,7 @@
     flex: none;
   }
 
-  /* Both buttons of the Eingang in one cell: the slot is as wide as the wider one. */
+  /* The fetch's buttons and "Papierkorb leeren" in one cell: as wide as the wider. */
   .action {
     display: grid;
     flex: none;
@@ -437,10 +450,30 @@
     opacity: 1;
   }
 
-  /* "Postfach abrufen" and the Zeitraum's button beside it. */
+  /* "Postfach abrufen" (or "Abbrechen") and the Zeitraum's button beside it. */
   .fetch {
     display: flex;
     gap: var(--space-8);
+  }
+
+  /* "Postfach abrufen" and "Abbrechen" in one cell, both as wide as the wider. */
+  .run {
+    display: grid;
+  }
+
+  .run > .swap {
+    grid-area: 1 / 1;
+  }
+
+  /* The one out of turn fades away under the other (out of reach at once: inert). */
+  .swap {
+    display: flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-standard);
+  }
+
+  .swap.shown {
+    opacity: 1;
   }
 
   .unfold {
