@@ -47,7 +47,8 @@ export type SwitchKey = 'remoteOutside' | 'noAnue' | 'noPermanent';
 
 /** A field of the form. `hint` is its quiet line; `advice` a quiet line in its place while
  *  the values of the form say something about it; `off` holds a field back (with its
- *  advice as the reason) while it has nothing to do. */
+ *  advice as the reason) while it has nothing to do; `hidden` keeps it out of the form
+ *  until the values it depends on are there. */
 export type Control =
   | { kind: 'text'; key: 'name' | 'title'; label: Word; placeholder: Word; testid: string }
   | {
@@ -59,6 +60,7 @@ export type Control =
       unit?: Unit;
       advice?: (form: ProfileForm) => Word | null;
       off?: (form: ProfileForm) => boolean;
+      hidden?: (form: ProfileForm) => boolean;
       testid: string;
     }
   | {
@@ -314,13 +316,14 @@ export const SECTIONS: readonly Section[] = [
           testid: 'profile-min-salary',
         },
         {
-          // The share counts only outside the places: without them it waits.
+          // The share counts only outside the places: it comes with them (user, 2026-09-29).
+          // A share stored without places stays in view and says what it waits for.
           kind: 'number',
           key: 'permanentRemoteMin',
           label: 'remoteMin',
           hint: 'remoteMinHint',
           advice: (form) => (form.criteria.permanentPlaces.length === 0 ? 'placesFirst' : null),
-          off: (form) =>
+          hidden: (form) =>
             form.criteria.permanentPlaces.length === 0 && form.criteria.permanentRemoteMin === null,
           testid: 'profile-remote-min',
         },

@@ -177,6 +177,12 @@
     return first ? unreadText(first) : null;
   }
 
+  /** A field that waits for the values it depends on (`hidden`) stays while it says
+   *  something: a value of the file that did not read, a limit, a refused save. */
+  function waits(c: Extract<Control, { kind: 'number' }>): boolean {
+    return (c.hidden?.(form) ?? false) && errorOf(c.key) === null;
+  }
+
   type Remove = { label: string; testid: string; onclick: () => void };
   function removeOf(field: string): Remove | null {
     if (fieldError?.field === field || invalidOf(field) !== null) return null;
@@ -421,11 +427,11 @@
         />
       </Field>
     </div>
-  {:else if c.kind === 'number'}
+  {:else if c.kind === 'number' && !waits(c)}
     {@const unit = unitOf(c)}
     {@const error = errorOf(c.key)}
     {@const advice = c.advice?.(form) ?? null}
-    <div data-field={c.key}>
+    <div data-field={c.key} transition:fade>
       <Field
         label={words[c.label]}
         for="{id}-{c.key}"

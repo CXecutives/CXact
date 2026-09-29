@@ -1516,7 +1516,7 @@ test('excluding permanent roles folds their block away and back', async ({ page 
   expect(Math.round(permanent!.y - (criteria!.y + criteria!.height))).toBe(32);
 });
 
-test('Festanstellung: places first, the remote share waits for them; excluded, the block goes', async ({
+test('Festanstellung: places first, the remote share comes with them; excluded, the block goes', async ({
   page,
 }) => {
   await profile(page, '&scenario=profile-remote-unread');
@@ -1534,10 +1534,9 @@ test('Festanstellung: places first, the remote share waits for them; excluded, t
   await expect(block).toHaveCount(0);
   await expect(page.getByTestId('profile-min-salary')).toHaveCount(0);
   await page.getByTestId('profile-no-permanent').click();
-  // Without places the empty share waits and says for what.
+  // Without places there is no empty share; it comes with the first place.
   const share = page.getByTestId('profile-remote-min');
-  await expect(share).toBeDisabled();
-  await expect(field(page, 'permanentRemoteMin')).toContainText(T.profile.field.placesFirst);
+  await expect(share).toHaveCount(0);
   const places = page.getByTestId('profile-places').locator('input');
   await places.fill('Hamburg');
   await places.press('Enter');
@@ -2589,8 +2588,12 @@ test('every value that does not read is said at its field and can be removed', a
     'aria-invalid',
     'true',
   );
-  // The others go with "Wert entfernen"; then nothing is left to check.
-  while ((await removes.count()) > 0) await removes.first().click();
+  // The others go with "Wert entfernen" (the remote share of Festanstellung without places
+  // fades away with its value); then nothing is left to check.
+  for (let left = await removes.count(); left > 0; left -= 1) {
+    await removes.first().click();
+    await expect(removes).toHaveCount(left - 1);
+  }
   await expect(check(page)).toHaveCount(0);
   await save(page).click();
   const sent = await lastSave(page);
