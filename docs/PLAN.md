@@ -1016,7 +1016,7 @@ handle sits between list and reader".
   never touches real data. It starts with an empty Eingang and the filled sample profile; every "Postfach
   abrufen" runs like a real fetch (progress, details, the real engine) and brings 5 to 15 new jobs out of the
   invented ads of all held-out sets (about 500); once all are there a fetch finds no new jobs.
-- [ ] Demo fetch in batches, the "CXact Demo" bundle, a note in docs/CHANGING.md
+- [x] Demo fetch in batches (its made-up portals at a quick pace), the "CXact Demo" bundle, a note in docs/CHANGING.md
 
 ## Final UI pass (user decisions 2026-09-29)
 
@@ -1029,5 +1029,9 @@ handle sits between list and reader".
 - What went wrong in a run is one toast with its way on (no note under the list header).
 - The Jobdetails' Erfahrung says what its requirement says among the Anforderungen.
 - [x] Palettes, language, bar glyphs, toasts, Erfahrung
-- [ ] The job prompt in line with the engine, the words of both catalogs, the demo app, the full harness in both
-  engines, the push and CI, the release and demo setups (the user starts them)
+- Second round (user, 2026-09-30): size A (controls 25 / 28 / 30 / 33, text 13, weights 430 / 500 / 580, icons 15
+  and 19 at 1.6), the bar's glyphs square with arrows as wide as them, a darker Dark, CXact lively (the site's
+  saturated navy, a richer coral, a warmer cream), Papierkorb leeren outlined red and as wide as Postfach abrufen.
+- [x] The job prompt in line with the engine, the words of both catalogs, the demo app, size A, the full harness in
+  both engines, the smoke probe
+- [ ] The push and CI, the release and demo setups (the user starts them)
