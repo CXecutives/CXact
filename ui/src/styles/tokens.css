@@ -35,7 +35,7 @@
      on) and the cxpertise navy for links, focus, progress and the tooltip; headings in ink. */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  --p-nav-active: 34 20% 89.5%; /* the active sidebar entry, #E4E4E2 */
+  --p-nav-active: 34 20% 89.5%; /* the grey pill the sidebar had before the white one */
   --p-cream: 36 30% 95.5%;
   --p-ink: 30 8% 13%;
   --p-coral: 13 68% 55%;
@@ -179,14 +179,13 @@
   /* The ring track on that wash while the window is in the back (the selection greys out):
      translucent ink, as clear on the grey wash as the plain track is on white. */
   --ring-track-inactive: hsl(var(--p-ink) / 0.1);
-  /* The sliding white pill of the active sidebar entry (the sibling of the segmented
-     thumb and the tabs' line); its label navy, its icon coral. A nav icon turns coral on
-     hover. The chosen segment and tab share the navy label. */
-  --nav-active-bg: hsl(var(--p-nav-active));
-  /* An idle entry under the pointer: far fainter than the active one, pressed a step more. */
-  --nav-hover: hsl(var(--p-wash) / 0.03);
-  --nav-press: hsl(var(--p-wash) / 0.06);
-  --nav-active-border: hsl(var(--p-nav-active));
+  /* The sliding white pill of the active sidebar entry with a hairline, like the thumb of
+     the tabs above the list (user, 2026-09-29); its label ink, its icon coral. */
+  --nav-active-bg: hsl(var(--p-white));
+  /* An idle entry under the pointer: the quiet wash of the tabs, pressed a step more. */
+  --nav-hover: var(--quiet-hover);
+  --nav-press: var(--quiet-press);
+  --nav-active-border: hsl(var(--p-line));
   --nav-active-fg: hsl(var(--p-ink));
   --nav-active-icon: hsl(var(--p-coral));
   /* The soft accent wash: a light coral surface for what is chosen and small (a selected
@@ -810,6 +809,8 @@
   --text-label: hsl(var(--p-ink));
   --text-inverse: hsl(var(--p-ink));
   --text-inverse-muted: hsl(var(--p-ink) / 0.72);
+  --nav-active-bg: hsl(var(--p-nav-active));
+  --nav-active-border: hsl(var(--p-nav-active));
   --nav-active-fg: hsl(var(--p-ink));
   --brand-edge: hsl(var(--p-ink) / 0.16);
   --nav-hover: hsl(var(--p-wash) / 0.045);
