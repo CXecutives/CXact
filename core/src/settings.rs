@@ -41,19 +41,21 @@ pub struct Settings {
     #[serde(deserialize_with = "known_language")]
     pub language: Option<Language>,
     /// The colours of the page and the window (Einstellungen, Darstellung); the page draws
-    /// the top bar itself. The Excel file and the icon keep Light. A name this version does
-    /// not know (a newer version's, or the retired "coast") reads as Light.
+    /// the top bar itself. The Excel file and the icon keep CXact. A name this version does
+    /// not know (a newer version's) reads as CXact, and so does the earlier name "coast".
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
 }
 
-/// The app's colour palettes (`ui/src/styles/tokens.css`): Light by default and Dark, neutral
-/// with one blue accent.
+/// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
+/// cream, coral and navy), and Light and Dark, neutral with blue details.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum Palette {
     #[default]
+    #[serde(alias = "coast")]
+    Cxact,
     Light,
     Dark,
 }
@@ -63,6 +65,7 @@ impl Palette {
     /// generated window colours (`export::palette::WINDOW_PALETTES`).
     pub fn code(self) -> &'static str {
         match self {
+            Palette::Cxact => "cxact",
             Palette::Light => "light",
             Palette::Dark => "dark",
         }
@@ -188,7 +191,7 @@ impl Default for Settings {
             export_excel: true,
             export_csv: false,
             language: None,
-            palette: Palette::Light,
+            palette: Palette::Cxact,
         }
     }
 }
@@ -333,7 +336,7 @@ fn known_range<'de, D: Deserializer<'de>>(
         .unwrap_or_default())
 }
 
-/// A stored palette; one this version does not know is Light.
+/// A stored palette; one this version does not know is CXact.
 fn known_palette<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Palette, D::Error> {
@@ -558,13 +561,13 @@ mod tests {
         assert_eq!(newer.language, None);
     }
 
-    /// Light until one is chosen; the choice survives a restart, and a palette of a newer
-    /// version or the retired "coast" reads as Light without costing the other settings.
+    /// CXact until one is chosen; the choice survives a restart, a palette of a newer version
+    /// reads as CXact without costing the other settings, and so does its earlier name.
     #[test]
-    fn the_palette_is_light_until_chosen() {
+    fn the_palette_is_cxact_until_chosen() {
         let store = Store::in_memory().unwrap();
         let mut s = Settings::load(&store).unwrap();
-        assert_eq!(s.palette, Palette::Light);
+        assert_eq!(s.palette, Palette::Cxact);
         s.palette = Palette::Dark;
         s.save(&store).unwrap();
         assert_eq!(Settings::load(&store).unwrap().palette, Palette::Dark);
@@ -579,17 +582,17 @@ mod tests {
             .kv_set(KEY, r#"{"palette":"sepia","exportCsv":true}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
-        assert_eq!(newer.palette, Palette::Light);
+        assert_eq!(newer.palette, Palette::Cxact);
         assert!(newer.export_csv);
         store
             .kv_set(KEY, r#"{"palette":"coast","exportCsv":true}"#)
             .unwrap();
-        let retired = Settings::load(&store).unwrap();
-        assert_eq!(retired.palette, Palette::Light);
-        assert!(retired.export_csv);
+        let earlier = Settings::load(&store).unwrap();
+        assert_eq!(earlier.palette, Palette::Cxact);
+        assert!(earlier.export_csv);
         assert_eq!(
-            [Palette::Light, Palette::Dark].map(Palette::code),
-            ["light", "dark"]
+            [Palette::Cxact, Palette::Light, Palette::Dark].map(Palette::code),
+            ["cxact", "light", "dark"]
         );
     }
 

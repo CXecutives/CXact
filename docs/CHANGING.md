@@ -86,8 +86,8 @@ laid over it. Components never ask which palette is on. The retired CXact palett
    `--p-coral` the fills and what is new, `--p-navy` focus, links and progress, ...), so every
    role follows, and then only the roles whose part differs from Light (in Dark the washes of
    the light text, the scrim, the shadows, the text on the tooltip and on the fills). A value
-   of Light is a change of `:root` and reaches the Excel file and the icon too;
-   Dark reaches only the page and the window.
+   of CXact is a change of `:root` and reaches the Excel file and the icon too;
+   Light and Dark reach only the page and the window.
 2. **Add one** (say `sepia`): a block `:root[data-palette='sepia'] { ... }`, then the name in
    `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
    (`src-tauri/src/platform.rs`), in `PALETTES` (`ui/src/lib/palette.ts`), in the options of

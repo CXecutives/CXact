@@ -129,7 +129,7 @@ export interface CardSpec {
   heading: Text;
   block?: 'mailbox' | 'portals';
   rows: readonly Row[];
-  /** Kept but not shown for now (Darstellung, user 2026-09-28: German and one palette). */
+  /** Kept but not shown for now (a card that may come back). */
   hidden?: boolean;
 }
 
@@ -148,7 +148,7 @@ const palette: ChoiceRow<Palette> = {
   kind: 'choice',
   id: 'palette',
   label: (t) => t.settings.palette,
-  options: ['light', 'dark'],
+  options: ['cxact', 'light', 'dark'],
   name: (t, id) => t.settings.paletteName[id],
   value: (state) => state.palette,
   patch: (id) => ({ palette: id }),
@@ -206,7 +206,7 @@ export const CARDS: readonly CardSpec[] = [
       },
     ],
   },
-  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language], hidden: true },
+  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language] },
   {
     id: 'data',
     heading: (t) => t.settings.data,

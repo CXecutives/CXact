@@ -1538,8 +1538,9 @@ export const de = {
     /** The demo (`--demo`): its own data from sample ads, no fetch. */
     demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
     palette: 'Design',
-    /** The palettes (tokens.css): light (the default) and dark. */
+    /** The palettes (tokens.css): CXact (the default), light and dark. */
     paletteName: {
+      cxact: 'CXact',
       light: 'Hell',
       dark: 'Dunkel',
     } satisfies Record<Palette, string>,

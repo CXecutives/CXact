@@ -66,7 +66,7 @@
 // of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail,
 // `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
-// comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette.
+// comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette (CXact by default).
 // Dates are fixed so screenshots stay stable (the tests also fix the clock). The portals
 // come in the order of the backend (`Portal::ALL`).
 
@@ -291,8 +291,9 @@ const NO_INTERNET = params.get('mail') === 'no-internet';
 const MAIL_UNCOUNTED = params.get('mail') === 'uncounted';
 /** The app's language as the backend says it (`lang=en`; German by default). */
 const LANGUAGE: Language = params.get('lang') === 'en' ? 'en' : 'de';
-/** The palette as the backend says it (`palette=dark`; Light by default). */
-const PALETTE: Palette = params.get('palette') === 'dark' ? 'dark' : 'light';
+/** The palette as the backend says it (`palette=light|dark`; CXact by default). */
+const PALETTE: Palette =
+  params.get('palette') === 'dark' ? 'dark' : params.get('palette') === 'light' ? 'light' : 'cxact';
 
 const NOW = new Date('2026-09-24T09:30:00+02:00').getTime();
 const HOUR = 3_600_000;

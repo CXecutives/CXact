@@ -73,9 +73,12 @@ pub const TOKENS: [(&str, Colour); 15] = [
 ];
 
 // The window's colour in the other palettes (`:root[data-palette='…']`): `--bg`, which the
-// window wears before the page paints (Light's is above).
+// window wears before the page paints (CXact's is above).
+/// `--bg` of light (`--p-cream`).
+pub const LIGHT_BG: Colour = Colour::new("hsl(60 9% 96.2%)", [0xF6, 0xF6, 0xF4]);
 /// `--bg` of dark (`--p-cream`).
-pub const DARK_BG: Colour = Colour::new("hsl(180 3.2% 6.1%)", [0x0F, 0x10, 0x10]);
+pub const DARK_BG: Colour = Colour::new("hsl(60 2% 8.8%)", [0x17, 0x17, 0x16]);
 
 /// The constants above by palette and token.
-pub const WINDOW_PALETTES: [(&str, &str, Colour); 1] = [("dark", "bg", DARK_BG)];
+pub const WINDOW_PALETTES: [(&str, &str, Colour); 2] =
+    [("light", "bg", LIGHT_BG), ("dark", "bg", DARK_BG)];

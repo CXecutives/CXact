@@ -111,12 +111,14 @@ test('the cards in their order, the first heading on the first row, the version 
     'settings-mailbox',
     'settings-portals',
     'settings-export',
+    'settings-look',
     'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
     T.settings.mailbox,
     T.settings.portals,
     T.settings.export,
+    T.settings.look,
     T.settings.data,
   ]);
   // Every heading stands 12 px above its card, the first one too.
@@ -130,7 +132,7 @@ test('the cards in their order, the first heading on the first row, the version 
         return Math.round(card.top - heading.bottom);
       }),
     );
-  expect(gaps).toEqual([12, 12, 12, 12]);
+  expect(gaps).toEqual([12, 12, 12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
@@ -620,22 +622,19 @@ test('export: another export folder takes the profile along; its own profile is 
 
 /* ------------------------------------------------------------- Darstellung */
 
-// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
-test.skip('Darstellung: a palette applies at once, is saved and wears the start', async ({
-  page,
-}) => {
+test('Darstellung: a palette applies at once, is saved and wears the start', async ({ page }) => {
   await settings(page);
   const look = page.getByTestId('settings-look');
   await expect(look.locator('[data-setting-row]')).toHaveCount(2);
   const root = page.locator('html');
-  await expect(root).toHaveAttribute('data-palette', 'light');
+  await expect(root).toHaveAttribute('data-palette', 'cxact');
   const cream = await colour(page, '--bg');
-  // Light first (the default), then dark, in words.
+  // CXact first (the default), then light and dark, in words.
   const palette = page.getByTestId('palette');
   const name = T.settings.paletteName;
-  await expect(palette.getByRole('radio')).toHaveText(['Hell', 'Dunkel']);
+  await expect(palette.getByRole('radio')).toHaveText(['CXact', 'Hell', 'Dunkel']);
   // The one height of every choice of the app, as in the Profil form: a field's.
-  await expect(palette).toHaveCSS('height', '29px');
+  await expect(palette).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   await palette.getByRole('radio', { name: name.dark }).click();
   await expect(root).toHaveAttribute('data-palette', 'dark');
   await expect(page.locator('body')).not.toHaveCSS('background-color', cream);
@@ -654,7 +653,7 @@ test.skip('Darstellung: a palette applies at once, is saved and wears the start'
 });
 
 test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ page }) => {
-  for (const palette of ['light', 'dark']) {
+  for (const palette of ['cxact', 'light', 'dark']) {
     await settings(page, `${WIN}&palette=${palette}`);
     const weak = await page.evaluate(() => {
       const rgb = (value: string): number[] =>
@@ -702,10 +701,7 @@ test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ p
   }
 });
 
-// Darstellung is hidden for now (user 2026-09-28): this comes back with it.
-test.skip('Darstellung: the language switches everything at once; notes follow it', async ({
-  page,
-}) => {
+test('Darstellung: the language switches everything at once; notes follow it', async ({ page }) => {
   await settings(page);
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();

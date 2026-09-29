@@ -48,8 +48,11 @@ pub struct WindowColours {
 /// The window's colours in a palette.
 pub const fn window_colours(chosen: Palette) -> WindowColours {
     match chosen {
-        Palette::Light => WindowColours {
+        Palette::Cxact => WindowColours {
             background: palette::BG.rgb,
+        },
+        Palette::Light => WindowColours {
+            background: palette::LIGHT_BG.rgb,
         },
         Palette::Dark => WindowColours {
             background: palette::DARK_BG.rgb,

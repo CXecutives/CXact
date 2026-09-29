@@ -155,8 +155,9 @@
     background-color: var(--quiet-press);
   }
 
+  /* Chosen like a segment and the sidebar's entry (navy in CXact). */
   .tab[aria-selected='true'] {
-    color: var(--text);
+    color: var(--nav-active-fg);
   }
 
   .tab:focus-visible {

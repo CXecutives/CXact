@@ -369,8 +369,8 @@ test('the form in its order; Bedingungen, Festanstellung and Wünsche say what t
   // No "So liest die App dein Profil".
   await expect(page.getByTestId('section-understood')).toHaveCount(0);
   await expect(page.getByTestId('profile-form')).not.toContainText('So liest die App');
-  // The languages are a qualification (Erfahrung und Qualifikation); Verfügbar ab is a row
-  // of Bedingungen.
+  // The languages are a qualification (the experience section); the start date is a row
+  // of the conditions.
   await expect(page.getByTestId('section-experience').getByTestId('languages')).toHaveCount(1);
   await expect(page.getByTestId('section-criteria').getByTestId('profile-available')).toBeVisible();
 });

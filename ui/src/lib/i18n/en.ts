@@ -1259,6 +1259,7 @@ export const en: Catalog = {
     demo: 'Demo with sample data, without the mailbox or the portals.',
     palette: 'Theme',
     paletteName: {
+      cxact: 'CXact',
       light: 'Light',
       dark: 'Dark',
     } satisfies Record<Palette, string>,
