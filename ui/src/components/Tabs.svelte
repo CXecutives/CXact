@@ -83,6 +83,7 @@
       }}
     >
       {#if option.icon}<Icon name={option.icon} size="sm" />{/if}
+      <span class="pill" aria-hidden="true"></span>
       {option.label}
     </button>
   {/each}
@@ -110,6 +111,7 @@
   }
 
   .tab {
+    position: relative;
     display: inline-flex;
     flex: none;
     gap: var(--space-4);
@@ -128,6 +130,29 @@
   .tab[aria-selected='false']:hover {
     color: var(--text);
     transition-duration: var(--dur-hover);
+  }
+
+  /* The hover wash of an unchosen tab, exactly the segmented control's (one control, one
+     behaviour): the tab's own box, darker while pressed. */
+  .pill {
+    position: absolute;
+    z-index: var(--z-below);
+    inset: 0;
+    border-radius: inherit;
+    background-color: var(--quiet-hover);
+    opacity: 0;
+    transition:
+      opacity var(--dur-fast) var(--ease-standard),
+      background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .tab[aria-selected='false']:hover .pill {
+    opacity: 1;
+    transition-duration: var(--dur-hover);
+  }
+
+  :global(:where(:root:not([data-aux-press]))) .tab[aria-selected='false']:active:hover .pill {
+    background-color: var(--quiet-press);
   }
 
   .tab[aria-selected='true'] {

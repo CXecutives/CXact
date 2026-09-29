@@ -253,6 +253,27 @@ export async function failNext(page: Page, command: string): Promise<void> {
 }
 
 /** A colour token as the engine computes it. */
+/** A length of tokens.css in px as the page resolves it (sizes change; tests follow them). */
+export async function tokenPx(page: Page, token: string): Promise<number> {
+  return page.evaluate((name) => {
+    const probe = document.createElement('div');
+    probe.style.setProperty('position', 'absolute');
+    probe.style.setProperty('width', `var(${name})`);
+    document.body.append(probe);
+    const px = probe.getBoundingClientRect().width;
+    probe.remove();
+    return px;
+  }, token);
+}
+
+/** The raw value of a token of tokens.css (a weight, a number). */
+export async function tokenValue(page: Page, token: string): Promise<string> {
+  return page.evaluate(
+    (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
+    token,
+  );
+}
+
 export async function tokenColour(page: Page, token: string): Promise<string> {
   return page.evaluate((name) => {
     const probe = document.createElement('span');

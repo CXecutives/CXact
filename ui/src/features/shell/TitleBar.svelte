@@ -166,7 +166,8 @@
     pointer-events: none;
   }
 
-  /* The buttons lie in the zones the Windows caption leaves to the page. */
+  /* The buttons lie in the zones the Windows caption leaves to the page; they are the bar's
+     own size, with larger, stronger glyphs than the content's. */
   .tools {
     position: relative;
     display: flex;
@@ -174,6 +175,15 @@
     align-items: center;
     gap: var(--space-2);
     height: 100%;
+    --icon-stroke: var(--titlebar-icon-stroke);
+  }
+
+  .tools :global(.btn.sm) {
+    --btn-height: var(--titlebar-tool);
+  }
+
+  .tools :global(.icon.sm) {
+    --icon-size: var(--titlebar-icon);
   }
 
   .start {

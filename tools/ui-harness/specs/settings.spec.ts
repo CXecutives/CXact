@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import { T, failNext } from './helpers';
+import { failNext, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -176,7 +176,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'csv-open',
     'reset',
   ]);
-  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 26)).toEqual([]);
+  const small = await tokenPx(page, '--control-sm');
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== small)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
@@ -231,7 +232,9 @@ test('narrow, a row puts its control under the label only where the two do not f
   // Label and control side by side, one line, like the wider rows.
   for (const id of ['excel', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
-    expect(Math.round(box.height), id).toBe(55);
+    expect(Math.round(box.height), id).toBe(
+      (await tokenPx(page, '--control-md')) + 2 * (await tokenPx(page, '--space-12')),
+    );
   }
   // At the smallest window the path of the export folder keeps its room: the buttons stand
   // beside it or go under it, never over it.

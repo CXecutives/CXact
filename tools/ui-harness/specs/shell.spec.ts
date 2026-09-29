@@ -21,7 +21,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
-import { T, failNext, rowMenu, tokenColour, viaMenu } from './helpers';
+import { failNext, rowMenu, T, tokenColour, tokenPx, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -626,10 +626,10 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
 }) => {
   await open(page, WIN);
   await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-  expect(await sidebarWidth(page)).toBe(200);
+  expect(await sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
-  expect(await sidebarWidth(page)).toBe(200);
+  expect(await sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
   const toggle = page.getByTestId('toggle-sidebar');
   await toggle.click();
   await page.mouse.move(700, 400);
@@ -642,12 +642,12 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
       .evaluate((node) => node.clientWidth),
   ).toBe(0);
   await toggle.click();
-  await expect.poll(() => sidebarWidth(page)).toBe(200);
+  await expect.poll(() => sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
   // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
   await expect(page.getByTestId('sidebar')).toHaveCount(0);
   await page.setViewportSize({ width: 1360, height: 900 });
-  await expect.poll(() => sidebarWidth(page)).toBe(200);
+  await expect.poll(() => sidebarWidth(page)).toBe(await tokenPx(page, '--sidebar-width'));
 });
 
 test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
@@ -1642,7 +1642,7 @@ for (const [width, fold] of [
       return;
     }
     const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(200);
+    expect(sidebar?.width).toBe(await tokenPx(page, '--sidebar-width'));
     const label = page.getByTestId('nav-profile');
     if (fold) {
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));

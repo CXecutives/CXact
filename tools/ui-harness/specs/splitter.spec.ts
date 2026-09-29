@@ -7,6 +7,7 @@
 
 import type { Page } from '@playwright/test';
 import { expect, open, settle, test } from './fixtures';
+import { tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -40,15 +41,29 @@ async function drag(page: Page, dx: number): Promise<void> {
   await page.mouse.up();
 }
 
-for (const [width, expected] of [
-  // content = window - sidebar (200) - hairline: 899, 1159, 1719
-  [1100, { width: 459, min: 320, max: 459 }],
-  [1360, { width: 520, min: 320, max: 695 }],
-  [1920, { width: 600, min: 320, max: 1031 }],
-] as const) {
+/** The limits of the list at a window `width`, from the tokens like Splitter's splitLimits:
+ *  the content beside the sidebar and its hairline; the list keeps --list-min, the reader
+ *  --reader-min, the list takes at most 60 %, first 40 % between --list-first-min and -max. */
+async function limitsAt(page: Page, width: number): Promise<Handle> {
+  const token = (name: string): Promise<number> => tokenPx(page, name);
+  const content = width - (await token('--sidebar-width')) - 1;
+  const min = await token('--list-min');
+  const max = Math.max(
+    min,
+    Math.min(content - (await token('--reader-min')), Math.round(content * 0.6)),
+  );
+  const first = Math.min(
+    Math.max(Math.round(content * 0.4), await token('--list-first-min')),
+    await token('--list-first-max'),
+  );
+  return { width: Math.max(min, Math.min(max, first)), min, max };
+}
+
+for (const width of [1100, 1360, 1920]) {
   test(`the list's first width and limits at ${width} px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
     await open(page, WIN);
+    const expected = await limitsAt(page, width);
     expect(await handle(page)).toEqual(expected);
     await drag(page, 2000);
     await expect.poll(async () => (await handle(page)).width).toBe(expected.max);
@@ -59,18 +74,19 @@ for (const [width, expected] of [
 
 test('the limits follow the window; a kept width waits for its room', async ({ page }) => {
   await open(page, WIN);
+  const [at1360, at1100] = [await limitsAt(page, 1360), await limitsAt(page, 1100)];
   await drag(page, 2000);
-  await expect.poll(async () => (await handle(page)).width).toBe(695);
+  await expect.poll(async () => (await handle(page)).width).toBe(at1360.max);
   // A wider window gives the list more room; dragged to its end there.
   await page.setViewportSize({ width: 1920, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(695);
+  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(at1360.max);
   await drag(page, 2000);
   const wide = (await handle(page)).max;
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   // Narrower: shown at the limit, the choice stays and comes back.
   await page.setViewportSize({ width: 1100, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBe(459);
-  expect((await handle(page)).width).toBe(459);
+  await expect.poll(async () => (await handle(page)).max).toBe(at1100.max);
+  expect((await handle(page)).width).toBe(at1100.max);
   await page.setViewportSize({ width: 1920, height: 800 });
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   await page.reload();
@@ -80,7 +96,8 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
 test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '900'));
   await open(page, WIN);
-  expect(await handle(page)).toEqual({ width: 695, min: 320, max: 695 });
+  const at1360 = await limitsAt(page, 1360);
+  expect(await handle(page)).toEqual({ width: at1360.max, min: at1360.min, max: at1360.max });
   await page.setViewportSize({ width: 1920, height: 900 });
   await expect.poll(async () => (await handle(page)).width).toBe(900);
 });
