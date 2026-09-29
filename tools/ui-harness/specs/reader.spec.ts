@@ -441,18 +441,34 @@ test.describe('the actions', () => {
               }),
             ).size,
         );
+    // Which of Alert-Mail, Anzeige and the prompt show only their icon.
+    const bare = () =>
+      stage(page)
+        .getByTestId('reader-actions')
+        .evaluate((node) =>
+          ['reader-mail', 'open-ad', 'reader-prompt'].map((id) =>
+            node.querySelector(`[data-testid="${id}"]`)?.classList.contains('icon-only'),
+          ),
+        );
     for (const size of [
       { width: 1360, height: 900 },
+      { width: 1000, height: 800 },
       { width: 900, height: 800 },
       { width: 480, height: 360 },
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
       await expect.poll(lines).toBe(1);
+      // They give up their words from the last: the prompt first, Alert-Mail last.
+      const flags = await bare();
+      const first = flags.indexOf(true);
+      expect(first === -1 || flags.slice(first).every(Boolean), `${size.width}`).toBe(true);
+      if (size.width === 1360) expect(flags).toEqual([false, false, false]);
+      if (size.width === 1000) expect(flags).toEqual([false, false, true]);
     }
-    const mail = stage(page).getByTestId('reader-mail');
-    await expect(mail).toHaveClass(/icon-only/);
-    expect(await tooltipOf(page, mail)).toEqual(['Alert-Mail öffnen', '']);
+    const prompt = stage(page).getByTestId('reader-prompt');
+    await expect(prompt).toHaveClass(/icon-only/);
+    expect(await tooltipOf(page, prompt)).toEqual([T.actions.prompt, '']);
   });
 
   test('the "…" menu of the archive and of the trash, deleting for good asks first', async ({

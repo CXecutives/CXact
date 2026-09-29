@@ -270,12 +270,13 @@
   }
 
   /** The action row stays one line: where the labels do not fit, the buttons turn into icons
-   *  one after the other, the least used first (Alert-Mail öffnen, then Anzeige öffnen, then
-   *  the prompt; their tooltips name them). Tried again whenever the row's width changes
-   *  (before the frame is painted). */
+   *  one after the other, from the last: the longest and least used first (the prompt, then
+   *  Anzeige öffnen, then Alert-Mail öffnen; their tooltips name them). Tried again whenever
+   *  the row's width changes (before the frame is painted). */
   let actions = $state<HTMLElement | null>(null);
-  /** How many of the three buttons show only their icon, from the first. */
+  /** How many of the three buttons show only their icon, from the last. */
   let iconsOnly = $state(0);
+  const SHOWS = 3;
 
   /** The last button starts above the bottom of the first. */
   function oneLine(row: HTMLElement): boolean {
@@ -291,7 +292,7 @@
   let fitting = 0;
   async function fit(row: HTMLElement): Promise<void> {
     const attempt = ++fitting;
-    for (const icons of [0, 1, 2, 3]) {
+    for (let icons = 0; icons <= SHOWS; icons += 1) {
       if (attempt !== fitting) return;
       iconsOnly = icons;
       await tick();
@@ -402,7 +403,7 @@
       size="field"
       icon={action.icon}
       label={action.label}
-      iconOnly={index < iconsOnly}
+      iconOnly={index >= SHOWS - iconsOnly}
       disabled={action.reason !== null}
       disabledReason={action.reason}
       {testid}
