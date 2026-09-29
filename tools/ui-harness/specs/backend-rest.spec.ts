@@ -2,12 +2,13 @@
 // (the section says its number in Archiv and Papierkorb before every page is there), the
 // best new jobs of the Übersicht while others wait for a score (by match those come first),
 // the app's version in Wartung, Einstellungen opened at one portal from a job ("Anmeldung
-// einrichten", with the way back) and the demo start, which has no profile, never fetches
-// and says that it is the demo.
+// einrichten", with the way back) and the demo start, which begins with an empty Eingang and
+// the sample profile, fetches from its made-up mailbox and says that it is the demo.
 
 import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
-import { animationsDone, calls, expect, open, test } from './fixtures';
+import { DEMO } from './demo';
+import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -121,16 +122,29 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
 });
 
-test('the demo never fetches and says why; it keeps to its own folders', async ({ page }) => {
+test('the demo starts with an empty Eingang and the sample profile and fetches like the app', async ({
+  page,
+}) => {
   await open(page, `${WIN}&scenario=demo`);
+  await expect(page.getByTestId('empty-all')).toBeVisible();
+  await expect(page.getByTestId('job-list').getByTestId('no-profile')).toHaveCount(0);
   const fetch = page.getByTestId('fetch');
-  await expect(fetch).toHaveAttribute('aria-disabled', 'true');
-  await fetch.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-  await page.mouse.move(0, 0);
-  await page.keyboard.press('F5');
-  await page.waitForTimeout(200);
-  expect(await calls(page, 'start_run')).toEqual([]);
+  await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+  await fetch.click();
+  expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
+    request: { kind: 'fetch' },
+  });
+  await runFinished(page);
+  // The fetch's jobs arrive in the Eingang; Profil holds the sample profile.
+  const first = DEMO.announced[0]!.key;
+  const row = page.getByTestId('job-list').getByTestId(`job-row-${first.portal}-${first.id}`);
+  await expect(row).toBeVisible();
+  await page.getByTestId('nav-profile').click();
+  await expect(page.getByTestId('profile-empty')).toHaveCount(0);
+});
+
+test('the demo keeps to its own folders and says why', async ({ page }) => {
+  await open(page, `${WIN}&scenario=demo`);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('demo-note')).toHaveText(
     'Demo mit Beispieldaten, ohne Postfach und Portale.',
@@ -146,18 +160,6 @@ test('the demo never fetches and says why; it keeps to its own folders', async (
   await expect(signIn).toHaveAttribute('aria-disabled', 'true');
   await signIn.hover();
   await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');
-});
-
-test('the demo starts without a profile: nothing scored, the list by date, Profil offers a file', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=demo`);
-  await expect(page.getByTestId('job-list').getByTestId('no-profile')).toBeVisible();
-  const listed = await calls(page, 'list_jobs');
-  expect(listed.at(-1)?.[1]).toMatchObject({ query: { sort: 'newest' } });
-  await page.getByTestId('nav-profile').click();
-  await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('profile-pick')).toBeVisible();
 });
 
 test('the sidebar says it is the demo (the top bar shows no title)', async ({ page }) => {

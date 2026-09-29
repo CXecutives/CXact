@@ -39,13 +39,13 @@ const MAX_UI_SOURCE_CHARS: usize = 200;
 
 /// The mailbox as the interface shows it. The dry run and the demo never touch the vault
 /// but show a mailbox: otherwise the app would ask for one, and what they should
-/// demonstrate could not be seen. `example.org` is reserved for examples and cannot be a
-/// real mailbox.
+/// demonstrate could not be seen. `example.org` and `example.com` are reserved for examples
+/// and cannot be a real mailbox.
 pub(super) fn mailbox(state: &AppState) -> Mailbox {
     let (user, error) = if state.dry_run {
         (Some("probelauf@example.org".to_string()), None)
     } else if state.demo {
-        (Some("demo@example.org".to_string()), None)
+        (Some(demo::DEMO_ADDRESS.to_string()), None)
     } else {
         state.gmail_user()
     };
@@ -168,13 +168,15 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         version: env!("CARGO_PKG_VERSION").to_owned(),
         dry_run: state.dry_run,
         demo: state.demo,
-        // The dry run is a demo with a mailbox and a sample profile: it starts in the app itself,
-        // never on the first-run page (the smoke probe on a fresh CI machine relies on it). The
-        // first-run page stays until a fetch has read the mailbox, also after a failed one.
+        // The dry run and the demo come with a mailbox and a sample profile: they start in the
+        // app itself, never on the first-run page (the smoke probe on a fresh CI machine relies
+        // on it; the demo starts with an empty Eingang). The first-run page stays until a fetch
+        // has read the mailbox, also after a failed one.
         first_run: !state.dry_run
+            && !state.demo
             && !pipeline::has_completed_fetch(&state.store)
             && counts.inbox + counts.archive + counts.trash == 0,
-        setup_done: state.dry_run || pipeline::has_completed_fetch(&state.store),
+        setup_done: state.dry_run || state.demo || pipeline::has_completed_fetch(&state.store),
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),

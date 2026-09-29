@@ -124,9 +124,13 @@ pub struct AppState {
     pub data_dir: PathBuf,
     pub default_workspace: PathBuf,
     pub dry_run: bool,
-    /// The demo (`--demo`): `data_dir` and `default_workspace` are its own folders inside
-    /// the app's data folder; it reads no mailbox, asks no portal and never touches the vault.
+    /// The demo (`--demo`, the `CXact Demo` build): `data_dir` and `default_workspace` are its
+    /// own folders inside the app's data folder; its mailbox and portals are made up
+    /// (`demo_ads`), it never touches a real mailbox, a portal or the vault.
     pub demo: bool,
+    /// The ads the demo's mailbox brings fetch by fetch (`pipeline::demo::DemoFeed`); `None`
+    /// outside the demo.
+    pub demo_ads: Option<Arc<jobalert_core::pipeline::demo::DemoAds>>,
     pub user_agent: String,
     /// The app's language until the user chooses one (`Language::DEFAULT`, German).
     pub system_language: Language,
@@ -396,8 +400,9 @@ impl AppState {
         Ok(())
     }
 
-    /// The demo reads no mailbox, asks no portal, never touches the vault and keeps to its
-    /// own folders: what would do so refuses with `Demo`.
+    /// The demo never touches a real mailbox, a portal or the vault and keeps to its own
+    /// folders: what would do so (connecting a mailbox, a sign-in, another work folder, a
+    /// reset, a restore) refuses with `Demo`.
     fn ensure_not_demo(&self) -> CmdResult<()> {
         if self.demo {
             return Err(ErrorInfo::new(ErrorKind::Demo));

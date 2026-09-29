@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CXact Demo",
+  "mainBinaryName": "cxact-demo",
+  "identifier": "de.cxecutives.job-alert-monitor.demo",
+  "bundle": {
+    "windows": {
+      "nsis": {
+        "installerHooks": null
+      }
+    },
+    "resources": {
+      "../core/tests/fixtures/matching/heldout1/jobs.json": "demo/heldout1/jobs.json",
+      "../core/tests/fixtures/matching/heldout1/*.txt": "demo/heldout1/",
+      "../core/tests/fixtures/matching/heldout2/jobs.json": "demo/heldout2/jobs.json",
+      "../core/tests/fixtures/matching/heldout2/*.txt": "demo/heldout2/",
+      "../core/tests/fixtures/matching/heldout3/jobs.json": "demo/heldout3/jobs.json",
+      "../core/tests/fixtures/matching/heldout3/*.txt": "demo/heldout3/",
+      "../core/tests/fixtures/matching/heldout4/jobs.json": "demo/heldout4/jobs.json",
+      "../core/tests/fixtures/matching/heldout4/*.txt": "demo/heldout4/",
+      "../core/tests/fixtures/matching/heldout5/jobs.json": "demo/heldout5/jobs.json",
+      "../core/tests/fixtures/matching/heldout5/*.txt": "demo/heldout5/",
+      "../core/tests/fixtures/matching/heldout6/jobs.json": "demo/heldout6/jobs.json",
+      "../core/tests/fixtures/matching/heldout6/*.txt": "demo/heldout6/",
+      "../core/tests/fixtures/matching/heldout7/jobs.json": "demo/heldout7/jobs.json",
+      "../core/tests/fixtures/matching/heldout7/*.txt": "demo/heldout7/",
+      "../core/tests/fixtures/matching/heldout8/jobs.json": "demo/heldout8/jobs.json",
+      "../core/tests/fixtures/matching/heldout8/*.txt": "demo/heldout8/",
+      "../core/tests/fixtures/matching/heldout9/jobs.json": "demo/heldout9/jobs.json",
+      "../core/tests/fixtures/matching/heldout9/*.txt": "demo/heldout9/"
+    }
+  }
+}
