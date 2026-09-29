@@ -1296,7 +1296,7 @@ test.describe('one list', () => {
     expect(Math.abs(row.height - placeholder.height)).toBeLessThan(1);
   });
 
-  test('an empty inbox says what comes: an icon, one sentence and Postfach abrufen', async ({
+  test('an empty inbox says what comes: an icon and one sentence, the header fetches', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=empty`);
@@ -1306,11 +1306,9 @@ test.describe('one list', () => {
     await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
       new RegExp(`lucide-${ICONS.inbox}`),
     );
-    // The way on: a fetch, secondary (the header holds the view's primary).
-    const fetch = empty.getByRole('button', { name: T.toolbar.fetch });
-    await expect(empty.getByRole('button')).toHaveCount(1);
-    await expect(fetch).toHaveClass(/secondary/);
-    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
+    // No second "Postfach abrufen": the header's stands right above it.
+    await expect(empty.getByRole('button')).toHaveCount(0);
+    await expect(page.getByTestId('fetch')).toBeVisible();
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
     for (const gone of ['alert-linkedin', 'read-older']) {
@@ -1322,7 +1320,7 @@ test.describe('one list', () => {
     const archive = (await page.getByTestId('empty-place-archive').boundingBox())!;
     expect(Math.abs(archive.y + archive.height / 2 - (at.y + at.height / 2))).toBeLessThan(1);
     await openPlace(page, 'inbox');
-    await page.getByTestId('empty-all').getByRole('button', { name: T.toolbar.fetch }).click();
+    await page.getByTestId('fetch').click();
     expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
       request: { kind: 'fetch' },
     });

@@ -160,10 +160,15 @@
     });
   }
 
+  /** The header offers "Postfach abrufen" (ListHeader: in the Eingang while no fetch goes). */
+  const headerFetches = $derived(jobs.place === 'inbox' && !run.fetching);
   /** The way on from an empty Eingang (secondary: the header holds the view's primary):
    *  without a mailbox to connect one, else to fetch while a fetch can start. */
   const emptyAction = $derived.by((): EmptyAction | null => {
     if (mailboxMissing) return { label: t.list.connectMailbox, onclick: toMailbox };
+    // Hidden (UI sweep 2026-09-29): the header offers "Postfach abrufen" right above it in the
+    // Eingang, the same action twice; the path stays for a header without it.
+    if (headerFetches) return null;
     if (run.fetchBlocked !== null) return null;
     return {
       label: t.toolbar.fetch,
