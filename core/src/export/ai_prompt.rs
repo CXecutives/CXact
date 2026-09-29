@@ -9,10 +9,11 @@
 //! 3. the ad: its key facts (each one the app did not find is said to be missing), its text
 //!    status (full, teaser, very short, none) and its text,
 //! 4. the app's own assessment, marked as a machine pre-assessment to check, not to copy:
-//!    score and band or the exclusion, every hard criterion with the profile's threshold and
-//!    the ad's own words, the requirements met, partly met and open with the profile entry
-//!    behind them, the points to check, Schwerpunkte, target role and wishes,
-//! 5. the method (the rules for requirements and the five frame rows),
+//!    score and band or the exclusion with what moved the score (the reader's "why this
+//!    number", the cap with its maximum), every hard criterion with the profile's threshold
+//!    and the ad's own words, the requirements met, partly met and open with the profile
+//!    entry behind them, the points to check, Schwerpunkte, target role and wishes,
+//! 5. the method (the rules for requirements and for the hard criteria),
 //! 6. the one scoring rubric of the app (`ai_rubric.de.md`),
 //! 7. a fixed answer format for a consultant who decides whether to apply.
 //!
@@ -35,8 +36,8 @@ use serde_json::{Map, Value};
 
 use crate::error::Result;
 use crate::matching::{
-    Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, Reason, ReasonCode,
-    ReasonKind, Verdict, Via, Weight,
+    Assessment, CriterionInfo, CriterionKey, CriterionState, CriterionStatus, FactorCode, Reason,
+    ReasonCode, ReasonKind, Verdict, Via, Weight,
 };
 use crate::model::{Band, band};
 use crate::pipeline::LocalMatcher;
@@ -275,6 +276,9 @@ trait Wording: Sync {
     fn unscorable(&self) -> &'static str;
     fn musts(&self, met: u16, partial: u16, open: u16, total: u16) -> String;
     fn nices(&self, met: u16, total: u16) -> String;
+    /// A line of what moved the score (`Assessment::factors`); `None` for the musts and the
+    /// optional requirements (their counts are said already).
+    fn factor(&self, code: FactorCode, params: &Map<String, Value>) -> Option<String>;
     /// The criterion with the profile's threshold (`profile`: the params the engine read).
     fn criterion(&self, key: CriterionKey, profile: &Map<String, Value>) -> String;
     fn criterion_status(&self, status: CriterionStatus) -> &'static str;
@@ -697,7 +701,8 @@ fn pre_assessment(w: &dyn Wording, item: PromptJob<'_>, consultant: &Consultant<
 }
 
 /// The result: the score and band, or the exclusion with each reason (and the user's "fits
-/// anyway"), or no score; then the counts of musts and nice-to-haves.
+/// anyway"), or no score; then the counts of musts and nice-to-haves and what else moved the
+/// score, as the reader's "why this number" shows it.
 fn result_lines(w: &dyn Wording, item: PromptJob<'_>, assessment: &Assessment) -> String {
     let t = w.words();
     let text = item.text.unwrap_or_default();
@@ -740,6 +745,19 @@ fn result_lines(w: &dyn Wording, item: PromptJob<'_>, assessment: &Assessment) -
     if counts.nice_total > 0 {
         lines.push(format!("- {}", w.nices(counts.nice_met, counts.nice_total)));
     }
+    // A target role the title meets is said with the wishes below.
+    let role_said = assessment
+        .reasons
+        .iter()
+        .any(|r| r.code == ReasonCode::TargetRole);
+    lines.extend(
+        assessment
+            .factors
+            .iter()
+            .filter(|f| !(f.code == FactorCode::TargetRole && role_said))
+            .filter_map(|f| w.factor(f.code, &f.params))
+            .map(|said| format!("- {said}")),
+    );
     lines.join("\n")
 }
 
@@ -908,6 +926,12 @@ fn text_param<'a>(params: &'a Map<String, Value>, key: &str) -> Option<&'a str> 
 
 fn flag(params: &Map<String, Value>, key: &str) -> bool {
     params.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
+/// The profile rules out fully remote work outside its countries: only a `false`
+/// `remote_ausserhalb_erlaubt` does, a missing key allows it (as the engine reads it).
+fn remote_outside_ruled_out(params: &Map<String, Value>) -> bool {
+    params.get("remoteOutsideAllowed").and_then(Value::as_bool) == Some(false)
 }
 
 /// A list param as texts (`["DE", "AT"]` or `"DE, AT"`).

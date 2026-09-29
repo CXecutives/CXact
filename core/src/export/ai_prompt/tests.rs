@@ -7,7 +7,9 @@ use jiff::Timestamp;
 use serde_json::{Map, Value, json};
 
 use super::*;
-use crate::matching::{Evidence, EvidenceLevel, Highlight, KeyFacts, Summary, compile_profile};
+use crate::matching::{
+    Evidence, EvidenceLevel, Factor, Highlight, KeyFacts, Summary, compile_profile,
+};
 use crate::model::{Place, Posting};
 use crate::portal::{JobKey, Portal, job_link};
 use crate::store::MailRef;
@@ -303,7 +305,16 @@ fn reasons() -> (Built, u16) {
     (b, gap)
 }
 
-/// The app's assessment of [`AD`] for [`profile`] (the reasons of [`reasons`]).
+/// A factor of what moved a score.
+fn factor(code: FactorCode, params: Value) -> Factor {
+    Factor {
+        code,
+        params: object(params),
+    }
+}
+
+/// The app's assessment of [`AD`] for [`profile`] (the reasons of [`reasons`], and what
+/// moved the score: the counts, the Schwerpunkt, the target role and the wishes).
 fn assessment() -> Assessment {
     let (b, gap) = reasons();
     Assessment {
@@ -332,7 +343,19 @@ fn assessment() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 700,
-        factors: Vec::new(),
+        factors: vec![
+            factor(
+                FactorCode::Musts,
+                json!({ "met": 3, "partial": 0, "total": 4 }),
+            ),
+            factor(FactorCode::Nice, json!({ "met": 0, "total": 1 })),
+            factor(FactorCode::Focus, json!({ "hit": 1, "total": 1 })),
+            factor(
+                FactorCode::TargetRole,
+                json!({ "role": "Interim CFO", "fit": "full" }),
+            ),
+            factor(FactorCode::Wishes, json!({ "points": 3 })),
+        ],
     }
 }
 
@@ -511,9 +534,12 @@ fn the_pre_assessment_says_what_the_app_found() {
         "- Ergebnis: 68 von 100 Punkten der App, mittlere Übereinstimmung (ab 80 hoch, ab 40 mittel)",
         "- Muss-Anforderungen: 3 von 4 erfüllt, 1 offen",
         "- Kann-Anforderungen: 0 von 1 erfüllt",
+        // What moved the score, as the reader's "why this number" shows it.
+        "- Schwerpunkte: 1 von 1 getroffen",
+        "- Wünsche: heben die Punktzahl um 3 von 100 Punkten",
         // Every criterion the profile sets, with its threshold and the ad's words.
         "- Tagessatz mindestens 1.100 €: erfüllt, 1.250 € pro Tag („Tagessatz bis 1.250 €“)",
-        "- Einsatzland DE, AT: erfüllt, Ort Hamburg",
+        "- Einsatzland DE, AT oder voll remote: erfüllt, Ort Hamburg",
         "- Keine Arbeitnehmerüberlassung: erfüllt, Vertragsart Interim („Freiberuflich“)",
         "- Verfügbar ab 01.12.2026: zu prüfen. Der Start liegt 30 Tage vor meiner Verfügbarkeit. „ab 01.11.2026“",
         // The requirements with the profile entry, its years and the Schwerpunkt.
@@ -538,9 +564,47 @@ fn the_pre_assessment_says_what_the_app_found() {
     ] {
         assert!(de.contains(part), "{part} missing:\n{de}");
     }
-    // A check a criterion carries is said once, there.
+    // A check a criterion carries is said once, there, and a target role met with the wishes.
     assert_eq!(de.matches("30 Tage vor meiner Verfügbarkeit").count(), 1);
     assert!(!de.contains("**Zu prüfen**"), "no other point to check");
+    assert!(!de.contains("- Wunschrolle:"), "the target role once");
+}
+
+/// What moved the score stands under the result as the reader shows it: the text's evidence,
+/// the permanent role, the cap with its maximum and a title without a target role.
+#[test]
+fn what_moved_the_score_is_said_with_the_cap() {
+    let view = view();
+    let mut a = assessment();
+    a.reasons.retain(|r| r.code != ReasonCode::TargetRole);
+    a.factors = vec![
+        factor(FactorCode::TargetRole, json!({ "fit": "none" })),
+        factor(FactorCode::Wishes, json!({ "points": -1 })),
+        factor(FactorCode::Evidence, json!({ "evidence": "teaser" })),
+        factor(FactorCode::Permanent, json!({ "percent": 90 })),
+        factor(FactorCode::Cap, json!({ "cap": "titleOpen", "max": 60 })),
+    ];
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    let result = de.split("**Harte Kriterien**").next().unwrap();
+    for part in [
+        "- Wunschrolle: keine im Titel",
+        "- Wünsche: senken die Punktzahl um 1 von 100 Punkten",
+        "- Text: nur der Anriss, die Punktzahl rückt zur Mitte",
+        "- Festanstellung: zählt mit 90 % der fachlichen Passung",
+        "- Obergrenze: Muss-Anforderung zum Kern der Rolle offen, höchstens 60 von 100 Punkten",
+    ] {
+        assert!(result.contains(part), "{part}:\n{result}");
+    }
+    let en = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::En);
+    for part in [
+        "- Target role: none in the title",
+        "- Preferences: lower the score by 1 of 100 points",
+        "- Text: only the teaser, the score leans to the middle",
+        "- Permanent role: counts at 90% of its fit",
+        "- Cap: a must-have on the core of the role open, at most 60 of 100 points",
+    ] {
+        assert!(en.contains(part), "{part}:\n{en}");
+    }
 }
 
 // ------------------------------------------------------------------------- the profile
@@ -594,6 +658,59 @@ fn the_glossary_names_only_the_keys_the_profile_holds() {
         !bare.contains(de_words().glossary_intro),
         "no glossary without keys"
     );
+    // The limits, the exclusion words and the keywords, under their real keys.
+    let mut full = profile();
+    full["harte_kriterien"]["auslastung_min_tage"] = json!(3);
+    full["harte_kriterien"]["auslastung_max_tage"] = json!(5);
+    full["harte_kriterien"]["min_laufzeit_monate"] = json!(6);
+    full["harte_kriterien"]["ausschlusswoerter"] = json!(["Werkstudent"]);
+    full["keywords"] = json!(["IFRS 16"]);
+    for language in [Language::De, Language::En] {
+        let prompt = ai_prompt(&full, item(&view, Some(AD), None), language);
+        for key in [
+            "auslastung_min_tage",
+            "auslastung_max_tage",
+            "min_laufzeit_monate",
+            "ausschlusswoerter",
+            "keywords",
+        ] {
+            assert!(prompt.contains(&format!("- `{key}`: ")), "{key}");
+        }
+    }
+}
+
+/// The method and the answer say what the engine does: the workload and the duration are
+/// checks, never exclusions, and fully remote work abroad fits unless the profile rules it
+/// out (a missing `remote_ausserhalb_erlaubt` allows it, only `false` excludes).
+#[test]
+fn limits_are_checks_and_remote_work_abroad_fits_unless_ruled_out() {
+    let view = view();
+    let a = assessment();
+    let de = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::De);
+    for part in [
+        "`min_laufzeit_monate` sind teilweise, nie ein Ausschluss",
+        "bei einer voll remote Stelle nur, wenn `remote_ausserhalb_erlaubt` auf `false` steht",
+        "verletzt ist nur, was nach der Bewertungsregel ausschließt",
+    ] {
+        assert!(de.contains(part), "{part}");
+    }
+    let en = ai_prompt(&profile(), item(&view, Some(AD), Some(&a)), Language::En);
+    for part in [
+        "`min_laufzeit_monate` are partly met, never an exclusion",
+        "for a fully remote role only when `remote_ausserhalb_erlaubt` is `false`",
+        "violated is only what excludes under the scoring rule",
+    ] {
+        assert!(en.contains(part), "{part}");
+    }
+    let mut strict = profile();
+    strict["harte_kriterien"]["remote_ausserhalb_erlaubt"] = json!(false);
+    let de = ai_prompt(&strict, item(&view, Some(AD), Some(&a)), Language::De);
+    assert!(
+        de.contains("- Einsatzland DE, AT: erfüllt, Ort Hamburg"),
+        "{de}"
+    );
+    let en = ai_prompt(&strict, item(&view, Some(AD), Some(&a)), Language::En);
+    assert!(en.contains("- Country of work DE, AT: met"), "{en}");
 }
 
 #[test]
@@ -956,6 +1073,41 @@ fn every_code() -> Vec<ReasonCode> {
     all
 }
 
+/// Every factor code once, so a new one cannot go unsaid (the match is exhaustive), with a
+/// cap code the words must hide.
+fn every_factor() -> Vec<Factor> {
+    use FactorCode as F;
+    let all = [
+        F::Musts,
+        F::Nice,
+        F::Focus,
+        F::TargetRole,
+        F::Wishes,
+        F::Evidence,
+        F::Permanent,
+        F::Cap,
+    ];
+    for code in &all {
+        match code {
+            F::Musts
+            | F::Nice
+            | F::Focus
+            | F::TargetRole
+            | F::Wishes
+            | F::Evidence
+            | F::Permanent
+            | F::Cap => {}
+        }
+    }
+    let params = json!({
+        "met": 1, "partial": 0, "total": 2, "hit": 0, "role": "Interim CFO", "fit": "half",
+        "points": 2, "evidence": "low", "percent": 90, "cap": "severalOpen", "max": 40
+    });
+    all.iter()
+        .map(|code| factor(*code, params.clone()))
+        .collect()
+}
+
 /// An excluded job with every engine code and every criterion in every state.
 fn every_reason() -> Assessment {
     let params = json!({
@@ -1032,7 +1184,7 @@ fn every_reason() -> Assessment {
             ..KeyFacts::default()
         },
         rank: 1,
-        factors: Vec::new(),
+        factors: every_factor(),
     }
 }
 
