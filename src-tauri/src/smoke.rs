@@ -101,6 +101,16 @@ const INIT: &str = r#"(() => {
     }
     return test();
   };
+  // A view by its sidebar entry; a folded sidebar (a window below 1100 px, like the CI
+  // screen) floats out first, and a choice folds it again.
+  const go = async (tab) => {
+    if (!q('nav-' + tab)) {
+      q('toggle-sidebar')?.click();
+      await until(() => q('nav-' + tab) !== null, 2000);
+    }
+    q('nav-' + tab)?.click();
+  };
+  window.__smokeGo = (tab) => void go(tab);
   const fetchButton = () => q('fetch') || q('first-fetch');
   const ready = () => fetchButton() !== null && fetchButton().getAttribute('aria-disabled') !== 'true';
 
@@ -127,7 +137,7 @@ const INIT: &str = r#"(() => {
       const out = { ok: true };
       for (const tab of ['profile', 'settings', 'jobs']) {
         start();
-        q('nav-' + tab).click();
+        await go(tab);
         await wait(600);
         out[tab] = stop();
         out.ok = out.ok && q('view-' + tab) !== null;
@@ -191,9 +201,12 @@ const INIT: &str = r#"(() => {
 const PROBE: &str = r#"(() => { try {
     const q = (id) => document.querySelector(`[data-testid="${id}"]`);
     const shown = (el) => !!el && el.getBoundingClientRect().width > 0;
+    // A window below 1100 px folds the sidebar (the CI screen): its button floats it out.
+    const sidebar = shown(q('sidebar')) || shown(q('sidebar-floating'));
+    if (!sidebar && shown(q('shell'))) q('toggle-sidebar')?.click();
     return JSON.stringify({
       // The sidebar's entries come with the app state (nothing is guessed before it).
-      ready: shown(q('shell')) && shown(q('sidebar')) && q('nav-jobs') !== null,
+      ready: shown(q('shell')) && sidebar && q('nav-jobs') !== null,
       // The top bar on both OS; the caption buttons only where the page draws them.
       bar: q('title-bar')?.getBoundingClientRect().height ?? 0,
       buttons: document.querySelectorAll('[data-testid="window-buttons"] button').length,
@@ -334,7 +347,7 @@ fn show_next_tab<R: Runtime>(window: &WebviewWindow<R>) {
     let Some(tab) = TABS.get(TAB.load(Ordering::SeqCst)) else {
         if flag("--smoke-run") {
             // The run starts in the Jobs view, where the list shows its rows and rings.
-            let back = "document.querySelector('[data-testid=\"nav-jobs\"]').click()";
+            let back = "window.__smokeGo('jobs')";
             if let Err(error) = window.eval(back) {
                 println!("SMOKE eval failed: {error}");
                 window.app_handle().exit(1);
@@ -347,7 +360,7 @@ fn show_next_tab<R: Runtime>(window: &WebviewWindow<R>) {
         }
         return;
     };
-    let click = format!("document.querySelector('[data-testid=\"nav-{tab}\"]').click()");
+    let click = format!("window.__smokeGo('{tab}')");
     if let Err(error) = window.eval(click) {
         println!("SMOKE eval failed: {error}");
         window.app_handle().exit(1);
