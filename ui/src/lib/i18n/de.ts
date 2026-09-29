@@ -932,7 +932,7 @@ export const de = {
     /** The one line under the list header while a fetch goes: what happens now. */
     line: {
       mailbox: 'Postfach wird gelesen',
-      ads: (done: number, total: number) => `Anzeigen ${n(done)} von ${n(total)}`,
+      ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
       files: 'Dateien werden geschrieben',
@@ -1042,7 +1042,7 @@ export const de = {
     } satisfies Record<TermField, (term: string) => string>,
     /** The name of the quiet tick that replaces the "+" once the term is in the profile. */
     added: 'Hinzugefügt',
-    addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt.`,
+    addedToProfile: (term: string) => `„${term}“ zum Profil hinzugefügt`,
     /** The table of the job's facts (features/jobs/terms.ts, in the order of lib/facts.ts). */
     details: 'Jobdetails',
     term: {
@@ -1102,7 +1102,7 @@ export const de = {
     more: 'Weitere Aktionen',
     prompt: 'KI-Prompt kopieren',
     /** The clipboard refused the prompt. */
-    promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
+    promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
     noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
     setUpSignIn: 'Anmeldung einrichten',
@@ -1191,7 +1191,7 @@ export const de = {
     /** The same toast when another profile is active now (the one active before). */
     removedNow: (name: string) => `Profil gelöscht, aktiv ist jetzt „${name}“.`,
     /** The toast of a save (during the setup with the way on). */
-    saved: 'Profil gespeichert.',
+    saved: 'Profil gespeichert',
     /** The same toast with what the rescore of the save changed in the Eingang: the jobs
      *  now (or no longer) in the high band and the ones now (or no longer) excluded, only
      *  what changed. */
@@ -1205,9 +1205,7 @@ export const de = {
         excluded > 0 ? `${out(excluded)} ausgeschlossen` : null,
         excluded < 0 ? `${out(excluded)} nicht mehr ausgeschlossen` : null,
       ].filter((part) => part !== null);
-      return parts.length === 0
-        ? 'Profil gespeichert.'
-        : `Profil gespeichert, ${parts.join(', ')}.`;
+      return parts.length === 0 ? 'Profil gespeichert' : `Profil gespeichert, ${parts.join(', ')}`;
     },
     unnamed: 'Profil ohne Namen',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
@@ -1226,7 +1224,7 @@ export const de = {
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
     empty: 'Noch leer',
-    optional: 'optional',
+    optional: 'Optional',
     /** Under the competences: the terms the jobs of the last 30 days ask for most that the
      *  profile does not name, each with the field it belongs to and its number of jobs;
      *  "Hinzufügen" puts it into that field (an unsaved change like any other). */

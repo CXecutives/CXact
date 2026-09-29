@@ -38,7 +38,7 @@
   import Clock from '@lucide/svelte/icons/clock';
   import ContactRound from '@lucide/svelte/icons/contact-round';
   import Copy from '@lucide/svelte/icons/copy';
-  import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
+  import CirclePlus from '@lucide/svelte/icons/circle-plus';
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
@@ -54,7 +54,7 @@
   import FolderOpen from '@lucide/svelte/icons/folder-open';
   import Funnel from '@lucide/svelte/icons/funnel';
   import Globe from '@lucide/svelte/icons/globe';
-  import Handshake from '@lucide/svelte/icons/handshake';
+  import FilePenLine from '@lucide/svelte/icons/file-pen-line';
   import History from '@lucide/svelte/icons/history';
   import Hourglass from '@lucide/svelte/icons/hourglass';
   import House from '@lucide/svelte/icons/house';
@@ -71,7 +71,7 @@
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
-  import Scale from '@lucide/svelte/icons/scale';
+  import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
@@ -114,7 +114,7 @@
     clock: Clock,
     'contact-round': ContactRound,
     copy: Copy,
-    'corner-down-left': CornerDownLeft,
+    'circle-plus': CirclePlus,
     'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
@@ -130,7 +130,7 @@
     'folder-open': FolderOpen,
     funnel: Funnel,
     globe: Globe,
-    handshake: Handshake,
+    'file-pen-line': FilePenLine,
     history: History,
     hourglass: Hourglass,
     house: House,
@@ -147,7 +147,7 @@
     plus: Plus,
     'refresh-cw': RefreshCw,
     'rotate-cw': RotateCw,
-    scale: Scale,
+    'panel-right-open': PanelRightOpen,
     scissors: Scissors,
     search: Search,
     settings: Settings,

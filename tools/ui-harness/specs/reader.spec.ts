@@ -557,7 +557,7 @@ test.describe('the actions', () => {
     await openAt(page, 'freelancermap-2801');
     await stage(page).getByTestId('reader-prompt').click();
     await expect(page.getByTestId('toast').last()).toContainText(
-      'Der Prompt ließ sich nicht kopieren.',
+      'Der KI-Prompt ließ sich nicht kopieren.',
     );
     await expect(stage(page).getByTestId('reader-error')).toHaveCount(0);
   });

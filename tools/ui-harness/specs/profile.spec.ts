@@ -780,13 +780,13 @@ test('the toast of a save says what the rescore changed, only the parts that did
   expect(counts.excluded).toBeGreaterThan(0);
   const said = T.profile.savedEffect(high, counts.excluded);
   expect(said).toBe(
-    `Profil gespeichert, ${high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen.`,
+    `Profil gespeichert, ${high} Jobs jetzt mit hoher Übereinstimmung, ${counts.excluded} ausgeschlossen`,
   );
   await expect(savedToast(page).getByTestId('toast-text')).toHaveText(said);
   // Only what changed, fewer as well as more; alone the excluded ones name the jobs.
-  expect(T.profile.savedEffect(0, 1)).toBe('Profil gespeichert, 1 Job ausgeschlossen.');
+  expect(T.profile.savedEffect(0, 1)).toBe('Profil gespeichert, 1 Job ausgeschlossen');
   expect(T.profile.savedEffect(-2, -1)).toBe(
-    'Profil gespeichert, 2 Jobs nicht mehr mit hoher Übereinstimmung, 1 nicht mehr ausgeschlossen.',
+    'Profil gespeichert, 2 Jobs nicht mehr mit hoher Übereinstimmung, 1 nicht mehr ausgeschlossen',
   );
   expect(T.profile.savedEffect(0, 0)).toBe(T.profile.saved);
 });

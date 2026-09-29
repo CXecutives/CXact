@@ -85,7 +85,9 @@ test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await expect.poll(async () => (await handle(page)).width).toBe(900);
 });
 
-test('the handle says what it does; a double click sets the first width back', async ({ page }) => {
+test('the handle shows its grip, no tooltip; a double click sets the first width back', async ({
+  page,
+}) => {
   await open(page, WIN);
   const hit = page.getByTestId('list-splitter').locator('.hit');
   const box = (await hit.boundingBox())!;
@@ -94,14 +96,9 @@ test('the handle says what it does; a double click sets the first width back', a
   await expect(hit.locator('.line')).toHaveCount(0);
   expect((await hit.locator('.grip').boundingBox())!.height).toBe(44);
   await expect(hit.locator('.grip')).toHaveCSS('opacity', '1');
-  const tip = page.getByRole('tooltip');
-  await expect(tip).toContainText('Breite ändern');
-  await expect(tip.locator('.hint')).toHaveText('Doppelklick setzt zurück');
-  // Beside the grip in the middle of the handle.
-  const grip = (await hit.locator('.grip').boundingBox())!;
-  const bubble = (await tip.locator('div').boundingBox())!;
-  expect(bubble.x).toBeGreaterThan(grip.x + grip.width);
-  expect(Math.abs(bubble.y + bubble.height / 2 - (grip.y + grip.height / 2))).toBeLessThan(2);
+  // No tooltip (hidden for now, user 2026-09-29): the cursor says it.
+  await page.waitForTimeout(700);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
   await expect(hit).toHaveCSS('cursor', 'col-resize');
 
   await drag(page, -100);

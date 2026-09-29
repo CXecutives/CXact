@@ -811,7 +811,7 @@ export const en: Catalog = {
   run: {
     line: {
       mailbox: 'Reading the mailbox',
-      ads: (done: number, total: number) => `Ads ${n(done)} of ${n(total)}`,
+      ads: (done: number, total: number) => `${n(done)} of ${n(total)} ads loaded`,
       adsStart: 'Loading the ads',
       scoring: 'Scoring the jobs',
       files: 'Writing the files',
@@ -888,7 +888,7 @@ export const en: Catalog = {
       degree: (term: string) => `Add ${term} to degrees`,
     },
     added: 'Added',
-    addedToProfile: (term: string) => `“${term}” added to the profile.`,
+    addedToProfile: (term: string) => `“${term}” added to the profile`,
     details: 'Job details',
     term: {
       company: 'Company',
@@ -933,7 +933,7 @@ export const en: Catalog = {
     close: 'Close',
     more: 'More actions',
     prompt: 'Copy AI prompt',
-    promptNotCopied: 'The prompt could not be copied.',
+    promptNotCopied: 'The AI prompt could not be copied.',
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
     setUpSignIn: 'Set up sign-in',
@@ -995,7 +995,7 @@ export const en: Catalog = {
     removeConfirm: 'Delete',
     removed: 'Profile deleted.',
     removedNow: (name: string) => `Profile deleted, “${name}” is active now.`,
-    saved: 'Profile saved.',
+    saved: 'Profile saved',
     savedEffect: (high: number, excluded: number) => {
       const jobs = (value: number): string => count(Math.abs(value), 'job', 'jobs');
       const out = (value: number): string => (high === 0 ? jobs(value) : n(Math.abs(value)));
@@ -1005,7 +1005,7 @@ export const en: Catalog = {
         excluded > 0 ? `${out(excluded)} excluded` : null,
         excluded < 0 ? `${out(excluded)} no longer excluded` : null,
       ].filter((part) => part !== null);
-      return parts.length === 0 ? 'Profile saved.' : `Profile saved, ${parts.join(', ')}.`;
+      return parts.length === 0 ? 'Profile saved' : `Profile saved, ${parts.join(', ')}`;
     },
     unnamed: 'Profile without a name',
     rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being scored again.`,
@@ -1019,7 +1019,7 @@ export const en: Catalog = {
     saveFirst: 'Save or discard first.',
     fixFirst: 'Correct the marked value first.',
     empty: 'Still empty',
-    optional: 'optional',
+    optional: 'Optional',
     asked: 'Often asked for',
     askedAdd: 'Add',
     askedIn: (value: number) => `in ${count(value, 'job', 'jobs')}`,

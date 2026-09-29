@@ -90,6 +90,10 @@
     testid = null,
   }: Props = $props();
 
+  /** Its tooltip is hidden for now (user, 2026-09-29: tooltips only where needed; the
+   *  col-resize cursor says it). */
+  const SAYS_WHAT = false;
+
   const clamp = (value: number): number => Math.round(Math.max(min, Math.min(max, value)));
 
   function stored(): number | null {
@@ -187,7 +191,9 @@
     class="hit"
     tabindex="-1"
     aria-hidden="true"
-    use:tooltip={{ text: t.splitter.tip, hint: t.splitter.reset, placement: 'right' }}
+    use:tooltip={SAYS_WHAT
+      ? { text: t.splitter.tip, hint: t.splitter.reset, placement: 'right' }
+      : null}
     onpointerdown={start}
     onpointermove={move}
     onpointerup={end}

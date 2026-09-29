@@ -26,8 +26,8 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
-  /** Open a job (its menu's first entry). */
-  open: 'corner-down-left',
+  /** Open a job in the job view (its menu's first entry). */
+  open: 'panel-right-open',
   /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
   external: 'external-link',
   /** An alert mail: open it, read the older ones. */
@@ -109,7 +109,7 @@ export const ICONS = {
   /** Excluded by a hard criterion. */
   excluded: 'ban',
   /** An excluded job counts with its real match anyway ("Trotzdem bewerten"). */
-  include: 'scale',
+  include: 'circle-plus',
   /** Met in part. */
   partial: 'circle-minus',
   /** The ad does not say. */
@@ -119,7 +119,7 @@ export const ICONS = {
   privacy: 'shield',
 
   // The facts of a job (lib/facts.ts).
-  contract: 'handshake',
+  contract: 'file-pen-line',
   money: 'euro',
   /** Pay in another currency. */
   otherMoney: 'banknote',

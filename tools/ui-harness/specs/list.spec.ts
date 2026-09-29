@@ -1898,14 +1898,14 @@ test.describe('run line', () => {
       .poll(
         async () => {
           said.add((await page.getByTestId('run-text').textContent()) ?? '');
-          return [...said].some((text) => /^Anzeigen \d+ von \d+$/.test(text));
+          return [...said].some((text) => /^\d+ von \d+ Anzeigen geladen$/.test(text));
         },
         { intervals: [20], timeout: 10_000 },
       )
       .toBe(true);
     // The count moves on in place: the same words, only the number changes (no blink).
     const text = page.getByTestId('run-text');
-    const count = /^Anzeigen \d+ von \d+$/;
+    const count = /^\d+ von \d+ Anzeigen geladen$/;
     const now = async (): Promise<string> => (await text.textContent()) ?? '';
     await expect.poll(now, { intervals: [10], timeout: 10_000 }).toMatch(count);
     await text.evaluate((node) => ((node as HTMLElement).dataset['kept'] = 'yes'));
@@ -1919,7 +1919,7 @@ test.describe('run line', () => {
       T.run.line.files,
     ]);
     for (const text of said) {
-      expect(words.has(text) || /^Anzeigen \d+ von \d+$/.test(text), text).toBe(true);
+      expect(words.has(text) || /^\d+ von \d+ Anzeigen geladen$/.test(text), text).toBe(true);
     }
     await expect.poll(async () => (await listed(page)).length).toBeGreaterThan(before.length);
     await expect(list(page).locator('[data-kept="yes"]')).toHaveCount(1);
