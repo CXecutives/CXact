@@ -2527,6 +2527,15 @@ test('every value that does not read is said at its field and can be removed', a
   // folder to fix it.
   const warning = page.getByTestId('profile-warning');
   await expect(warning).toContainText('Die App liest „tagessatz_max“ in den Bedingungen nicht.');
+  // Its button is centred on the sentence's first line.
+  const [line, button] = await warning.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node.querySelector('.text')!);
+    const first = range.getClientRects()[0]!;
+    const box = node.querySelector('button')!.getBoundingClientRect();
+    return [(first.top + first.bottom) / 2, (box.top + box.bottom) / 2];
+  });
+  expect(Math.abs(line! - button!)).toBeLessThanOrEqual(1);
   await warning.getByRole('button', { name: 'Ordner öffnen' }).click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },

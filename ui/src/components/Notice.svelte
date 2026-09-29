@@ -3,7 +3,8 @@
   sentence in the tone), banner (tinted box) or row (a calm line inside a card: the icon in
   the tone, the text in ink), with at most one action, a small secondary button with the
   glyph the same action has everywhere else, and an optional × at the end that hides the
-  note (a problem that waits for the next run). Info is navy. A notice that appears in
+  note (a problem that waits for the next run); inline, the button is centred on the
+  sentence's first line. Info is navy. A notice that appears in
   a view already on screen rises 2 px and fades in (150 ms) and fades out (100 ms); one that
   comes with its view is simply there.
 -->
@@ -53,6 +54,7 @@
 
 <div
   class="notice {tone} {variant}"
+  class:acts={action !== null || dismiss !== null}
   role={tone === 'danger' || tone === 'warning' ? 'alert' : 'status'}
   data-testid={testid ?? undefined}
   in:rise={{ distance: 'sm' }}
@@ -129,6 +131,13 @@
   .banner .icon,
   .row .icon {
     padding-top: 0;
+  }
+
+  /* Inline with a button, the sentence's first line is centred on it (as a field's message
+     on its way on): the icon and the sentence come down by half the difference. */
+  .inline.acts > .icon,
+  .inline.acts > .copy {
+    margin-top: calc((var(--control-sm) - var(--leading-sm)) / 2);
   }
 
   .copy {
