@@ -976,6 +976,21 @@ test('the back button closes the reader where it stands alone in one column', as
   await expect(rows(page).first()).toBeVisible();
 });
 
+test('after a click a lone Shift, Ctrl or Alt shows no focus ring; Tab does', async ({ page }) => {
+  await open(page, WIN);
+  const row = page.locator('[data-testid^="job-row-"]').first();
+  await row.click();
+  const ring = (): Promise<string> =>
+    page.evaluate(() => getComputedStyle(document.activeElement as HTMLElement).boxShadow);
+  for (const key of ['Shift', 'Control', 'Alt']) {
+    await page.keyboard.press(key);
+    expect(await ring(), key).not.toContain('inset');
+  }
+  // A key that moves the focus: the ring is the keyboard's again.
+  await page.keyboard.press('Tab');
+  await expect.poll(ring).not.toBe('none');
+});
+
 test('letters type inside the search field and act on no job', async ({ page }) => {
   await open(page, WIN);
   await rows(page).first().click();

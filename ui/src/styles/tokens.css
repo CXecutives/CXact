@@ -321,6 +321,9 @@
      its edge in navy (--border-focus) and nothing around it: never two rings. */
   --focus-ring: 0 0 0 var(--focus-width) hsl(var(--p-navy));
   --focus-ring-inset: inset 0 0 0 var(--focus-width) hsl(var(--p-navy));
+  /* After a press of the pointer no ring until a key that moves or acts (lib/input/input.ts:
+     a lone Shift, Ctrl, Alt or Windows key is none). */
+  --focus-ring-off: 0 0 0 0 transparent;
   --border-focus: hsl(var(--p-navy));
 
   /* ------------------------------------------- one answer per surface kind */
@@ -724,6 +727,11 @@
    :root block, read by tools/tokens.mjs); the window wears --bg of the chosen palette
    (tools/tokens.mjs writes Dark's into core/src/export/palette.rs). `node tools/tokens.mjs
    --check` measures every text on its backgrounds in both palettes (WCAG AA). */
+
+:root[data-pointer] {
+  --focus-ring: var(--focus-ring-off);
+  --focus-ring-inset: var(--focus-ring-off);
+}
 
 :root[data-palette='dark'] {
   color-scheme: dark;

@@ -1392,6 +1392,20 @@ function auxPress(on: boolean): void {
   else if (root.dataset.auxPress !== undefined) delete root.dataset.auxPress;
 }
 
+/**
+ * The focus ring belongs to the keyboard. The engines show `:focus-visible` again on any key
+ * after a press of the pointer, a lone Shift, Ctrl, Alt or the Windows key too; so after a
+ * press :root carries `data-pointer` (tokens.css draws no ring meanwhile) until a key that
+ * moves or acts comes (Tab, the arrows, Enter, a letter).
+ */
+const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'CapsLock', 'Fn']);
+
+function pointerFocus(on: boolean): void {
+  const root = document.documentElement;
+  if (on) root.dataset.pointer = '';
+  else if (root.dataset.pointer !== undefined) delete root.dataset.pointer;
+}
+
 /** Buttons other than the left one (the `buttons` bit mask without bit 0). */
 const otherButtonsDown = (event: MouseEvent): boolean => (event.buttons & ~1) !== 0;
 
@@ -1519,6 +1533,14 @@ export function installInput(): void {
   );
   document.addEventListener('pointercancel', () => auxPress(false), capture);
   document.addEventListener('keydown', () => (autoscroll = false), capture);
+  document.addEventListener('pointerdown', () => pointerFocus(true), capture);
+  document.addEventListener(
+    'keydown',
+    (event) => {
+      if (!MODIFIERS.has(event.key)) pointerFocus(false);
+    },
+    capture,
+  );
   window.addEventListener('blur', () => (autoscroll = false));
   document.addEventListener(
     'auxclick',
