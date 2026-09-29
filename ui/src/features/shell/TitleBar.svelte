@@ -4,8 +4,9 @@
   colour as far as the docked sidebar reaches, with a fine seam at its edge; the rest wears
   the view's. With the sidebar folded the bar is one colour. At the left the sidebar's button,
   Zurück and Vor (macOS: right of the traffic lights); at the right the job view's button,
-  beside the job list only (one column shows a job in its place; hiding the job view closes
-  its job), before the caption buttons
+  always there, dimmed where there is nothing to show or hide (hiding the job view closes its
+  job; in one column it closes the job that stands in place of the list), before the caption
+  buttons
   on Windows (WindowButtons). The empty bar moves the window, a double click maximizes it
   (Windows: the window of the OS over the bar answers like a native caption and leaves the
   buttons' zones, --titlebar-tools-start and --titlebar-tools-end, to the page;
@@ -27,13 +28,19 @@
   import { tokenPx } from '$lib/tokens';
 
   const drawn = drawsWindowButtons();
-  /** The job view's button: beside the job list only. */
-  const readerButton = $derived(
-    navigation.current === 'jobs' && !shell.firstRun && !viewport.narrow,
+  /** The job view's button stands in every view, like the bar's other buttons (user,
+   *  2026-09-29): dimmed where there is no job view to show or hide (Profil, Einstellungen,
+   *  the setup page, one column without a job). */
+  const readerIdle = $derived(
+    navigation.current !== 'jobs' || shell.firstRun || (viewport.narrow && jobs.selected === null),
   );
-  /** The job view's button: hidden, the job view closes its job too (the list shows none
-   *  chosen); shown again, it asks for one. */
+  /** Hidden, the job view closes its job too (the list shows none chosen); shown again, it
+   *  asks for one. In one column it closes the job that stands in place of the list. */
   function toggleReader(): void {
+    if (viewport.narrow) {
+      jobs.clearSelection();
+      return;
+    }
     if (shell.readerOpen) jobs.clearSelection();
     shell.setReader(!shell.readerOpen);
   }
@@ -99,19 +106,18 @@
     />
   </span>
   <span class="fill" data-tauri-drag-region></span>
-  {#if readerButton}
-    <span class="tools end" data-tauri-drag-region>
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        icon="readerPane"
-        label={shell.readerOpen ? t.nav.readerHide : t.nav.readerShow}
-        testid="toggle-reader"
-        onclick={toggleReader}
-      />
-    </span>
-  {/if}
+  <span class="tools end" data-tauri-drag-region>
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      icon="readerPane"
+      label={shell.readerOpen && !viewport.narrow ? t.nav.readerHide : t.nav.readerShow}
+      disabled={readerIdle}
+      testid="toggle-reader"
+      onclick={toggleReader}
+    />
+  </span>
   {#if drawn}
     <WindowButtons />
   {/if}

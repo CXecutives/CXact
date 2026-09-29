@@ -336,14 +336,19 @@ test.describe('the head and the match', () => {
     await close.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(page.locator('[data-open]')).toHaveCount(0);
-    // One column: no button for the job view; the × and Zurück lead back to the list.
+    // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
+    // button, which closes the job there too, and is dimmed without one.
     await page.setViewportSize({ width: 683, height: 700 });
     await openAt(page, 'freelancermap-2801');
-    await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
+    await expect(page.getByTestId('toggle-reader')).toBeEnabled();
     await stage(page).getByTestId('reader-close').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
+    await expect(page.getByTestId('toggle-reader')).toBeDisabled();
     await row(page, 'freelancermap-2801').click();
     await page.getByTestId('history-back').click();
+    await expect(row(page, 'freelancermap-2801')).toBeVisible();
+    await row(page, 'freelancermap-2801').click();
+    await page.getByTestId('toggle-reader').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
   });
 });
