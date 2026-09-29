@@ -167,7 +167,7 @@
   }
 
   /* The buttons lie in the zones the Windows caption leaves to the page; they are the bar's
-     own size, with larger, stronger glyphs than the content's. */
+     own size, their glyphs in the caption buttons' thin line. */
   .tools {
     position: relative;
     display: flex;

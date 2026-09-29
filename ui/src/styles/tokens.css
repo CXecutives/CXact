@@ -436,11 +436,12 @@
   --titlebar-tools-end: 34px;
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
-  /* The bar's own buttons, a little larger and stronger than the content's (like the Claude
-     app's): 28 px (three with their gaps fill --titlebar-tools-start), 18 px glyphs. */
+  /* The bar's own buttons: 28 px (three with their gaps fill --titlebar-tools-start), their
+     16 px glyphs drawn with the caption buttons' thin line (user, 2026-09-29), so the whole
+     bar reads as one. */
   --titlebar-tool: 28px;
-  --titlebar-icon: 18px;
-  --titlebar-icon-stroke: 1.6;
+  --titlebar-icon: 16px;
+  --titlebar-icon-stroke: var(--titlebar-glyph-stroke);
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 39px;

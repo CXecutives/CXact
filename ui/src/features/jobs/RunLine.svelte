@@ -12,7 +12,7 @@
   "Postfach abrufen") and a × that hides it until the next run. A fetch that went well but paused a portal on its way (or found it at its limit)
   says so once in the same place, quietly ("freelancermap pausiert bis 14:00", with its ×).
   The line unfolds and folds away (lib/motion unfold), so the list below glides; its rows
-  never flicker.
+  never flicker. The notes are hidden for now (`NOTES`, user 2026-09-29).
 -->
 <script lang="ts">
   import Meter from '$components/Meter.svelte';
@@ -89,6 +89,10 @@
 
   /** The portals the last fetch of this session paused, when nothing went wrong. */
   const paused = $derived(run.result === null ? null : pausedText(run.result));
+
+  /** What went wrong or paused stays out of the header for now (user, 2026-09-29: no notes
+   *  there); the notes are kept should they come back. */
+  const NOTES = false;
 </script>
 
 {#if run.fetching}
@@ -101,7 +105,7 @@
       </span>
     </div>
   </div>
-{:else if problem !== null && run.panel === 'open'}
+{:else if NOTES && problem !== null && run.panel === 'open'}
   <div class="unfold" transition:unfold>
     <div class="line">
       <Notice
@@ -121,7 +125,7 @@
       />
     </div>
   </div>
-{:else if paused !== null && run.panel === 'open'}
+{:else if NOTES && paused !== null && run.panel === 'open'}
   <div class="unfold" transition:unfold>
     <div class="line">
       <Notice

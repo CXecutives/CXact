@@ -63,7 +63,8 @@ test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
 });
 
-test('a rescore that cannot write the files says so once, with a retry', async ({ page }) => {
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a rescore that cannot write the files says so once, with a retry', async ({ page }) => {
   await open(page, `${WIN}&tick=15&export=locked`);
   await page.evaluate(() => window.__harness.appRun('rescore'));
   await runFinished(page);
@@ -84,7 +85,8 @@ test('a rescore that cannot write the files says so once, with a retry', async (
   expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
 });
 
-test('a fetch that cannot write the Excel file: the toast counts, the line says why', async ({
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a fetch that cannot write the Excel file: the toast counts, the line says why', async ({
   page,
 }) => {
   await open(page, `${WIN}&tick=15&export=locked`);
@@ -183,7 +185,10 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
 });
 
-test('a portal the fetch paused is said once in the run line, with its ×', async ({ page }) => {
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a portal the fetch paused is said once in the run line, with its ×', async ({
+  page,
+}) => {
   await open(page, `${WIN}&tick=15`);
   await expect(page.getByTestId('run-paused')).toHaveCount(0);
   await page.getByTestId('fetch').click();
@@ -227,7 +232,8 @@ test('a failed first fetch does not claim the alert mails were empty', async ({ 
   await expect(page.getByText('enthielten bisher keine Jobs')).toHaveCount(0);
 });
 
-test('after a restart a failed last fetch says so once in the run line, a new fetch clears it', async ({
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('after a restart a failed last fetch says so once in the run line, a new fetch clears it', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=last-failed&tick=15`);
@@ -250,7 +256,8 @@ test('after a restart a failed last fetch says so once in the run line, a new fe
   await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
-test('a start that fails keeps the last result and says why', async ({ page }) => {
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a start that fails keeps the last result and says why', async ({ page }) => {
   await open(page, `${WIN}&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
@@ -393,7 +400,8 @@ test('an archived job leaves the list and every count but the archive', async ({
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
 
-test('a mailbox that refused the fetch: its way on opens the mailbox settings, in English too', async ({
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a mailbox that refused the fetch: its way on opens the mailbox settings, in English too', async ({
   page,
 }) => {
   const refused: RunEvent = {
@@ -428,7 +436,8 @@ test('a mailbox that refused the fetch: its way on opens the mailbox settings, i
   await expect(page.getByTestId('view-settings')).toBeVisible();
 });
 
-test('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({
   page,
 }) => {
   await open(page, `${WIN}&mail=no-internet&tick=15`);
@@ -446,4 +455,19 @@ test('a fetch without internet says so in the run line; Postfach abrufen tries a
   const starts = (await calls(page, 'start_run')).map(([, args]) => args);
   expect(starts).toMatchObject([{ request: { kind: 'fetch' } }, { request: { kind: 'fetch' } }]);
   await expect(page.getByTestId('run-problem')).toContainText(T.error.text('offline', {}));
+});
+
+test('for now a failed fetch, a paused portal and unwritten files leave no note', async ({
+  page,
+}) => {
+  for (const query of ['&mail=offline', '&export=locked', '&scenario=last-failed']) {
+    await open(page, `${WIN}&tick=15${query}`);
+    if (query !== '&scenario=last-failed') {
+      await page.getByTestId('fetch').click();
+      await runFinished(page);
+    }
+    await expect(page.getByTestId('run-problem'), query).toHaveCount(0);
+    await expect(page.getByTestId('run-paused'), query).toHaveCount(0);
+    await expect(page.getByTestId('fetch'), query).toBeEnabled();
+  }
 });

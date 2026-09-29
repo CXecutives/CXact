@@ -209,9 +209,12 @@
           `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
         ) ?? row.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
       target?.focus({ preventScroll: true });
-      flash(row);
+      if (FLASH) flash(row);
     });
   });
+
+  /** The row lighting up is off for now (user, 2026-09-29: nothing marked in Einstellungen). */
+  const FLASH = false;
 
   /** The row a job asked for lights up once when the glide ends and settles (like a passage
    *  of the ad after a jump): `data-flash` on, off, gone. */

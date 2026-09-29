@@ -154,6 +154,11 @@
     clearTimeout(resting);
     resting = setTimeout(() => openWhy(anchor, true), popoverDelay());
   }
+  /** A click opens it at once (the rest that was waiting is over). */
+  function clickRing(event: MouseEvent): void {
+    clearTimeout(resting);
+    openWhy(event.currentTarget, false);
+  }
   function leaveRing(): void {
     clearTimeout(resting);
     leaveHover();
@@ -406,7 +411,7 @@
           {ring}
           size="md"
           animate={keyOf(job.key)}
-          onclick={why.length > 0 ? (event) => openWhy(event.currentTarget, false) : null}
+          onclick={why.length > 0 ? clickRing : null}
           onpointerenter={why.length > 0 ? enterRing : null}
           onpointerleave={why.length > 0 ? leaveRing : null}
           expanded={whyOpen}

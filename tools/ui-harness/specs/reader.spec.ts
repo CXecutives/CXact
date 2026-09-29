@@ -1292,13 +1292,12 @@ test.describe('the ad', () => {
     );
     await signIn.click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
-    // Einstellungen at the row of freelance.de: in view, its sign-in focused, the row lit up
-    // once in the soft tint, then settled.
+    // Einstellungen at the row of freelance.de: in view, its sign-in focused; nothing lights
+    // up (user, 2026-09-29).
     const portalRow = page.getByTestId('portal-freelance');
     await expect(portalRow).toBeInViewport();
     await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
-    await expect(portalRow).toHaveAttribute('data-flash', 'on');
-    await expect(portalRow).toHaveCSS('background-color', await tokenColour(page, '--info-soft'));
+    await page.waitForTimeout(800);
     await expect(portalRow).not.toHaveAttribute('data-flash');
     await expect(portalRow).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   });
@@ -1482,7 +1481,10 @@ test.describe('around the reader', () => {
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 
-  test('a locked Excel file is written again without reading the mailbox', async ({ page }) => {
+  // The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+  test.skip('a locked Excel file is written again without reading the mailbox', async ({
+    page,
+  }) => {
     await open(page, `${WIN}&tick=15&export=locked`);
     await page.getByTestId('fetch').click();
     await runFinished(page);
@@ -1505,9 +1507,10 @@ test.describe('around the reader', () => {
     const toast = page.getByTestId('toast');
     await expect(toast.getByTestId('toast-text')).toHaveText(/./);
     await expect(toast).not.toHaveClass(/success/);
-    // The run line has the way; the toast leads there.
+    // The toast leads to the list (its note is hidden for now, RunLine NOTES).
     await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     await toast.getByTestId('toast-action').click();
-    await expect(page.getByTestId('run-problem')).toContainText(T.run.exportFailed.overviewLocked);
+    await expect(page.getByTestId('view-jobs')).toBeVisible();
+    await expect(page.getByTestId('run-problem')).toHaveCount(0);
   });
 });

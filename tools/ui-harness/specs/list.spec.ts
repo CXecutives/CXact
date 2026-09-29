@@ -2039,7 +2039,8 @@ test.describe('run line', () => {
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  test('failed: one quiet line and its ×, no second way to fetch; cancelled says nothing', async ({
+  // The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+  test.skip('failed: one quiet line and its ×, no second way to fetch; cancelled says nothing', async ({
     page,
   }) => {
     await open(page, `${WIN}&mail=offline&tick=15`);

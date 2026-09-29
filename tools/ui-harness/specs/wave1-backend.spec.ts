@@ -41,7 +41,8 @@ async function finish(page: Page, files: Partial<ExportSummary>): Promise<void> 
   }, finished(files));
 }
 
-test('an unreachable export folder is said as such in the run line, with a retry', async ({
+// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
+test.skip('an unreachable export folder is said as such in the run line, with a retry', async ({
   page,
 }) => {
   await open(page, WIN);
