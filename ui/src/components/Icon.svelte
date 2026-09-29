@@ -1,6 +1,7 @@
 <!--
   The only importer of @lucide/svelte. It draws an icon by its meaning: lib/icons.ts maps
-  each meaning to one Lucide glyph, and this file imports exactly those glyphs (one import
+  each meaning to one Lucide glyph (the top bar's four to glyphs of the app's own, Bar*.svelte
+  in this folder), and this file imports exactly those glyphs (one import
   per glyph keeps the bundle small; a glyph without its import is a type error). Size from
   the tokens, colour inherited from the text. Each glyph is drawn once by its Lucide
   component; every Icon shows a copy of that drawing. A Lucide component per icon (props,
@@ -11,10 +12,13 @@
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
+  import BarBack from './BarBack.svelte';
+  import BarForward from './BarForward.svelte';
+  import BarReader from './BarReader.svelte';
+  import BarSidebar from './BarSidebar.svelte';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
-  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
@@ -64,8 +68,6 @@
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import MessageSquareText from '@lucide/svelte/icons/message-square-text';
-  import PanelLeft from '@lucide/svelte/icons/panel-left';
-  import PanelRight from '@lucide/svelte/icons/panel-right';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -85,11 +87,14 @@
   import X from '@lucide/svelte/icons/x';
 
   /** The Lucide component of each glyph of lib/icons.ts (exactly those). */
-  const GLYPHS = {
+  const GLYPHS: Record<Glyph, Component<Record<string, unknown>>> = {
+    'bar-back': BarBack,
+    'bar-forward': BarForward,
+    'bar-reader': BarReader,
+    'bar-sidebar': BarSidebar,
     archive: Archive,
     'archive-restore': ArchiveRestore,
     'arrow-down': ArrowDown,
-    'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
@@ -139,8 +144,6 @@
     mail: Mail,
     'map-pin': MapPin,
     'message-square-text': MessageSquareText,
-    'panel-left': PanelLeft,
-    'panel-right': PanelRight,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,
@@ -158,7 +161,7 @@
     'undo-2': Undo2,
     'user-round': UserRound,
     x: X,
-  } satisfies Record<Glyph, Component<Record<string, unknown>>>;
+  };
 
   /** What an icon says (lib/icons.ts): the name every component and view passes. */
   export type IconName = IconMeaning;

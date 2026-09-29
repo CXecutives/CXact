@@ -86,13 +86,15 @@ export const ICONS = {
   forward: 'chevron-right',
   /** Opens the calendar beside a day field. */
   pickDay: 'calendar-days',
-  /** The way on: Weiter after a step, Vor in the top bar. */
+  /** The way on: Weiter after a step. */
   next: 'arrow-right',
-  /** Zurück in the top bar: back through the views, places and jobs seen. */
-  historyBack: 'arrow-left',
+  /** Zurück and Vor in the top bar: through the views, places and jobs seen (the bar's own
+   *  glyphs, like its sidebar and job view buttons). */
+  historyForward: 'bar-forward',
+  historyBack: 'bar-back',
   /** The top bar: the sidebar shown or hidden, the job view shown or hidden. */
-  sidebar: 'panel-left',
-  readerPane: 'panel-right',
+  sidebar: 'bar-sidebar',
+  readerPane: 'bar-reader',
   search: 'search',
   filter: 'funnel',
   signIn: 'log-in',

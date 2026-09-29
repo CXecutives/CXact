@@ -103,7 +103,7 @@
       variant="ghost"
       size="sm"
       iconOnly
-      icon="next"
+      icon="historyForward"
       label={t.nav.forward}
       disabled={!history.canForward}
       testid="history-forward"
