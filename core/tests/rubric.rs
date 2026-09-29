@@ -1,10 +1,11 @@
 //! The scoring rubric of the AI prompts: the German file `core/src/export/ai_rubric.de.md`
-//! covers the bands 1 to 10 and stops wishes below the app's high band; the English rubric of
-//! the English prompts (`ai_rubric.en.md`) has the same sections, bands and caps.
+//! covers the bands 1 to 10, maps them onto the app's points and bands and stops wishes below
+//! the app's high band; the English rubric of the English prompts (`ai_rubric.en.md`) has the
+//! same sections, bands and caps.
 
 use std::path::{Path, PathBuf};
 
-use jobalert_core::model::HIGH_FROM;
+use jobalert_core::model::{HIGH_FROM, MID_FROM};
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -73,6 +74,13 @@ fn the_bands_cover_one_to_ten() {
         rubric.contains(&format!("auf {high} oder mehr")),
         "high band {high}"
     );
+    // The score times 10 is the app's points: the same bands.
+    let mid = u32::from(MID_FROM) / 10;
+    let flat = rubric.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flat.contains(&format!("ab {high} hohe, ab {mid} mittlere")),
+        "bands {high} and {mid}"
+    );
 }
 
 const RUBRIC_EN: &str = "core/src/export/ai_rubric.en.md";
@@ -137,16 +145,27 @@ fn the_english_rubric_says_the_same() {
         english.contains(&format!("to {high} or more")),
         "high band {high}"
     );
+    let mid = u32::from(MID_FROM) / 10;
+    let flat = english.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        flat.contains(&format!("a high match from {high}, medium from {mid}")),
+        "bands {high} and {mid}"
+    );
     for key in [
         "min_tagessatz",
         "laender",
         "min_jahresgehalt",
-        "zielprofil_min_jahre",
+        "ausschlusswoerter",
         "schwerpunkte",
         "wunschrollen",
         "tagessatz_wunsch",
         "einsatzpraeferenzen",
     ] {
         assert!(german.contains(key) && english.contains(key), "{key}");
+    }
+    // The engine reads the years an ad asks for against `berufserfahrung_jahre` only
+    // (engine 18): the retired key is no rule of either rubric.
+    for rubric in [&german, &english] {
+        assert!(!rubric.contains("zielprofil"), "a retired key");
     }
 }
