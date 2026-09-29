@@ -1003,10 +1003,14 @@ test.describe('one list', () => {
     await open(page, WIN);
     const { active: all, jobs } = await stubList(page);
     await expect.poll(() => listed(page)).toEqual(all);
-    // By match the jobs still without a score stand on top (each page is then complete).
-    const unscored = jobs.filter((job) => job.match === null).map(keyOf);
-    expect(unscored.length).toBeGreaterThan(0);
-    expect(all.slice(0, unscored.length)).toEqual(unscored);
+    // By match every job whose ring shows no number stands on top, in one place (each page is
+    // then complete): the ones not scored yet and the unscorable ones together.
+    const unscored = jobs
+      .filter((job) => job.match?.status !== 'scored' && !excluded(job))
+      .map(keyOf);
+    expect(jobs.some((job) => job.match === null)).toBe(true);
+    expect(jobs.some((job) => job.match?.status === 'unscorable')).toBe(true);
+    expect(all.slice(0, unscored.length).sort()).toEqual([...unscored].sort());
     for (const id of [
       'facet',
       'caught-up',
@@ -1108,6 +1112,13 @@ test.describe('one list', () => {
     expect((await divider.boundingBox())!.y).toBeGreaterThanOrEqual(last.y + last.height);
     await divider.click();
     await expect(excludedRows(page)).toHaveCount(out.length);
+    // Newest first, as by date: their rings show the ban, not the fit they keep.
+    expect(out).toEqual((await stubList(page, { sort: 'newest' })).excluded);
+    expect(
+      await excludedRows(page).evaluateAll((items) =>
+        items.map((item) => (item.getAttribute('data-testid') ?? '').replace('job-row-', '')),
+      ),
+    ).toEqual(out);
     // Rows like every other, the ban in the ring's place, no reason.
     await expect(excludedRows(page).first().getByTestId('row-excluded')).toBeVisible();
     await expect(excludedRows(page).first().locator('.foot')).toHaveCount(0);
