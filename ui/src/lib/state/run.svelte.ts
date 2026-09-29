@@ -40,6 +40,10 @@ import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
 
+/** What went wrong in a run is a toast, once (user, 2026-09-29), not a note in the run line
+ *  (RunLine keeps its notes for when they come back). */
+export const LINE_NOTES = false;
+
 export interface Progress {
   done: number;
   total: number;
@@ -180,6 +184,7 @@ class RunStore {
       }
       this.panel = 'open';
       this.#startFailure = { error };
+      if (!LINE_NOTES) toasts.show(errorText(error), 'warning');
       if (error instanceof IpcError && error.kind === 'busy') void app.load();
       return false;
     } finally {
@@ -296,6 +301,30 @@ class RunStore {
     if (live) for (const listener of this.#listeners) listener(event);
   }
 
+  /** What went wrong in a finished run, once as a toast: a failure with its own way on (where
+   *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again), files
+   *  that could not be written with "Erneut versuchen". */
+  private tellTrouble(summary: RunSummary): void {
+    if (summary.outcome.kind === 'failed') {
+      const error = summary.outcome.error;
+      const fix = failureAction(summary, error, openLog);
+      toasts.show(
+        t.error.text(error.kind, error.params),
+        'warning',
+        fix === null ? null : { label: fix.label, onclick: fix.onclick, undo: false },
+      );
+      return;
+    }
+    const files = exportText(exportError(summary));
+    if (files !== null) {
+      toasts.show(files, 'warning', {
+        label: t.common.retry,
+        onclick: () => this.rewriteFiles(),
+        undo: false,
+      });
+    }
+  }
+
   private finish(summary: RunSummary, live: boolean): void {
     const kind = summary.kind;
     this.active = false;
@@ -320,6 +349,7 @@ class RunStore {
       this.result = summary;
     }
     if (!live) return;
+    if (!LINE_NOTES) this.tellTrouble(summary);
     // What a fetch brought, in every view: "5 neue Jobs, 2 mit hoher Übereinstimmung" and the
     // way to them (without new jobs outside the list the way to it). A rescore speaks where it
     // was started (Einstellungen), not as a fetch.
@@ -376,6 +406,13 @@ export function failureAction(
       if (summary !== null && isFetch(summary.kind) && app.hasMailbox) return null;
       return { label: t.common.retry, icon: 'retry', onclick: () => run.retry(summary) };
   }
+}
+
+/** The log folder, from a toast of a failure (its own failure is a toast too). */
+function openLog(): void {
+  invoke('open_target', { target: { kind: 'logDir' } }).catch((failure: unknown) =>
+    toasts.show(errorText(failure), 'warning'),
+  );
 }
 
 /** The portals a completed fetch stopped for a while (paused, or at their limit) in one line

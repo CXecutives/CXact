@@ -189,9 +189,10 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
-    await expect(empty).toHaveClass(/secondary/);
-    await expect(empty).toHaveClass(/warns/);
-    await expect(empty).toHaveCSS('color', await tokenColour(page, '--danger-strong'));
+    // Filled red with white words, shaped like "Postfach abrufen".
+    await expect(empty).toHaveClass(/danger/);
+    await expect(empty).toHaveClass(/wide/);
+    await expect(empty).toHaveCSS('color', await tokenColour(page, '--text-on-danger'));
     await expect(empty.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.trash}`));
     expect(await rightOf(page, 'empty-trash')).toBe(end);
     expect((await page.getByTestId('search').boundingBox())!.y).toBe(top);

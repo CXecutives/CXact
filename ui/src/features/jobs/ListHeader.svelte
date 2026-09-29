@@ -10,7 +10,8 @@
   beside it, off; in the other places "Abbrechen" stands where it stands in the Eingang, so
   it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
   while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
-  "Papierkorb leeren" (outlined, the trash in red, asks first; "Abbrechen" over it while a
+  "Papierkorb leeren" (filled red with white words, shaped like "Postfach abrufen" without
+  the Zeitraum beside it; asks first; "Abbrechen" over it while a
   fetch goes), in the Archiv none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
@@ -288,13 +289,13 @@
         {#if emptiable}
           <span class="slot" class:shown={!run.fetching} inert={run.fetching}>
             <Button
-              variant="secondary"
+              variant="danger"
               size="field"
               icon="trash"
               label={t.actions.emptyTrash}
               disabled={run.active}
               disabledReason={run.busyText}
-              warns
+              wide
               testid={run.fetching ? null : 'empty-trash'}
               onclick={askEmpty}
             />

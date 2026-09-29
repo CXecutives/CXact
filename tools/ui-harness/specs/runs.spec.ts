@@ -457,17 +457,33 @@ test.skip('a fetch without internet says so in the run line; Postfach abrufen tr
   await expect(page.getByTestId('run-problem')).toContainText(T.error.text('offline', {}));
 });
 
-test('for now a failed fetch, a paused portal and unwritten files leave no note', async ({
+test('what went wrong is a toast once, not a note: a failed fetch, files not written', async ({
   page,
 }) => {
-  for (const query of ['&mail=offline', '&export=locked', '&scenario=last-failed']) {
-    await open(page, `${WIN}&tick=15${query}`);
-    if (query !== '&scenario=last-failed') {
-      await page.getByTestId('fetch').click();
-      await runFinished(page);
-    }
-    await expect(page.getByTestId('run-problem'), query).toHaveCount(0);
-    await expect(page.getByTestId('run-paused'), query).toHaveCount(0);
-    await expect(page.getByTestId('fetch'), query).toBeEnabled();
-  }
+  const toast = page.getByTestId('toast');
+  // A fetch without Gmail: the failure's words, no second way to fetch beside "Postfach
+  // abrufen".
+  await open(page, `${WIN}&tick=15&mail=offline`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  await expect(toast.getByTestId('toast-text')).toHaveText('Gmail ist nicht erreichbar.');
+  await expect(toast.getByTestId('toast-action')).toHaveCount(0);
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
+  await expect(page.getByTestId('fetch')).toBeEnabled();
+  // Files that could not be written: the count, then why, with "Erneut versuchen", which
+  // writes them again without reading the mailbox.
+  await open(page, `${WIN}&tick=15&export=locked`);
+  await page.getByTestId('fetch').click();
+  await runFinished(page);
+  const locked = toast.filter({ hasText: T.run.exportFailed.overviewLocked });
+  await expect(locked).toHaveCount(1);
+  await locked.getByTestId('toast-action').click();
+  await runFinished(page);
+  const started = await calls(page, 'start_run');
+  expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
+  // A paused portal and a failed last fetch after a restart say nothing.
+  await open(page, `${WIN}&scenario=last-failed`);
+  await expect(page.getByTestId('run-problem')).toHaveCount(0);
+  await expect(page.getByTestId('run-paused')).toHaveCount(0);
 });

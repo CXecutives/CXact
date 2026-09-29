@@ -38,7 +38,6 @@
   import Clock from '@lucide/svelte/icons/clock';
   import ContactRound from '@lucide/svelte/icons/contact-round';
   import Copy from '@lucide/svelte/icons/copy';
-  import CirclePlus from '@lucide/svelte/icons/circle-plus';
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
@@ -71,7 +70,7 @@
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
-  import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
+  import Scale from '@lucide/svelte/icons/scale';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
@@ -114,7 +113,6 @@
     clock: Clock,
     'contact-round': ContactRound,
     copy: Copy,
-    'circle-plus': CirclePlus,
     'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
@@ -147,10 +145,10 @@
     plus: Plus,
     'refresh-cw': RefreshCw,
     'rotate-cw': RotateCw,
-    'panel-right-open': PanelRightOpen,
     scissors: Scissors,
     search: Search,
     settings: Settings,
+    scale: Scale,
     'sliders-horizontal': SlidersHorizontal,
     shield: Shield,
     star: Star,

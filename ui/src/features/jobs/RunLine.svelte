@@ -26,6 +26,7 @@
     exportError,
     exportText,
     failureAction,
+    LINE_NOTES,
     pausedText,
     run,
     type FailureAction,
@@ -90,9 +91,9 @@
   /** The portals the last fetch of this session paused, when nothing went wrong. */
   const paused = $derived(run.result === null ? null : pausedText(run.result));
 
-  /** What went wrong or paused stays out of the header for now (user, 2026-09-29: no notes
-   *  there); the notes are kept should they come back. */
-  const NOTES = false;
+  /** What went wrong is a toast for now (LINE_NOTES, user 2026-09-29); the notes are kept
+   *  should they come back. */
+  const NOTES = LINE_NOTES;
 </script>
 
 {#if run.fetching}

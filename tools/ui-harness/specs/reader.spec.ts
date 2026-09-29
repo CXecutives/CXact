@@ -1504,10 +1504,16 @@ test.describe('around the reader', () => {
     await page.getByTestId('fetch').click();
     await page.getByTestId('nav-settings').click();
     await runFinished(page);
-    const toast = page.getByTestId('toast');
+    // The count, and why the files stayed as they were (with its retry).
+    const toast = page
+      .getByTestId('toast')
+      .filter({ hasNotText: T.run.exportFailed.overviewLocked });
     await expect(toast.getByTestId('toast-text')).toHaveText(/./);
     await expect(toast).not.toHaveClass(/success/);
-    // The toast leads to the list (its note is hidden for now, RunLine NOTES).
+    await expect(
+      page.getByTestId('toast').filter({ hasText: T.run.exportFailed.overviewLocked }),
+    ).toHaveCount(1);
+    // The count's toast leads to the list.
     await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     await toast.getByTestId('toast-action').click();
     await expect(page.getByTestId('view-jobs')).toBeVisible();
