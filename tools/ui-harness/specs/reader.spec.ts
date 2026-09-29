@@ -254,6 +254,16 @@ test.describe('the head and the match', () => {
     );
     const icon = (id: string) => popover.getByTestId(`menu-line-${id}`).locator('.reason > .icon');
     await expect(icon('targetRole')).toHaveCSS('color', await tokenColour(page, '--verdict-met'));
+    // Wide enough that every line stays one line (no word on a line of its own).
+    const heights = await lines
+      .locator('.label')
+      .evaluateAll((all) =>
+        all.map(
+          (label) =>
+            label.getBoundingClientRect().height / parseFloat(getComputedStyle(label).lineHeight),
+        ),
+      );
+    for (const height of heights) expect(Math.round(height)).toBe(1);
     // Nothing in it is chosen; Esc closes it.
     await expect(popover.locator('[role^="menuitem"]')).toHaveCount(0);
     await page.keyboard.press('Escape');
