@@ -26,7 +26,7 @@
     is a link: a new mail to it in the default mail program, the job's title its subject.
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
     each title; a missing must that is a term has a small "+" into its field of the profile
-    (addToProfile.ts), a tick once it is there.
+    (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
     einrichten" where they help, and the ad's text in its structure: its headings, its lists,
@@ -517,6 +517,8 @@
             </h3>
             <ul class="reasons" data-testid="reasons-{group.kind}">
               {#each group.items as reason (reason.id)}
+                {@const term = addable(reason) ? termOf(reason) : null}
+                {@const added = term !== null && isAdded(term)}
                 <li
                   class="reason-line"
                   data-weight={reason.weight}
@@ -524,37 +526,28 @@
                   in:fade
                 >
                   <!-- The group's heading says the verdict; no tooltip on its icon (user decision
-                       2026-09-27, the Jobdetails keep theirs). -->
+                       2026-09-27, the Jobdetails keep theirs). A missing must that went into the
+                       profile trades its cross for a quiet check until the next score (the toast
+                       says so in words). -->
                   <ReasonItem
                     kind={reason.kind}
                     optional={reason.weight === 'nice'}
                     label={reasonText(reason)}
+                    settled={added ? t.reader.added : null}
                     testid="reason"
                   />
-                  <!-- A missing must that is a term: its way into the profile, then a quiet
-                       tick that it is there (the toast says so in words). -->
-                  {#if addable(reason)}
-                    {@const term = termOf(reason)}
+                  <!-- A missing must that is a term: its way into the profile. -->
+                  {#if term !== null && !added}
                     <span class="reason-action">
-                      {#if isAdded(term)}
-                        <span
-                          class="added"
-                          role="img"
-                          aria-label={t.reader.added}
-                          data-testid="added"
-                          in:fade><Icon name="check" size="sm" /></span
-                        >
-                      {:else}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          iconOnly
-                          icon="add"
-                          label={t.reader.addTo[term.field](term.term)}
-                          testid="add-to-profile"
-                          onclick={() => void add(term)}
-                        />
-                      {/if}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon="add"
+                        label={t.reader.addTo[term.field](term.term)}
+                        testid="add-to-profile"
+                        onclick={() => void add(term)}
+                      />
                     </span>
                   {/if}
                 </li>
@@ -862,16 +855,6 @@
     display: inline-flex;
     flex: none;
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
-  }
-
-  /* The quiet tick in the place of the "+", centred where the "+" was. */
-  .added {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--control-sm);
-    height: var(--control-sm);
-    color: var(--text-subtle);
   }
 
   .quiet {

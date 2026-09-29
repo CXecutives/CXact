@@ -1114,12 +1114,15 @@ test.describe('Anforderungen', () => {
         .getByTestId('add-to-profile'),
     ).toHaveCount(0);
     await add.click();
-    // A quiet tick takes the place of the "+", no word; the toast says it, with the term
-    // alone (without the ad's "Branchenerfahrung").
-    const added = missing.getByTestId('added');
+    // A quiet check takes the place of the red cross and the "+" goes, no word: one icon on
+    // the row. The toast says it, with the term alone (without the ad's "Branchenerfahrung").
+    const added = missing.getByTestId('reason-settled');
     await expect(added).toHaveAttribute('aria-label', T.reader.added);
     await expect(added.locator('svg')).toHaveCount(1);
     await expect(added).toHaveText('');
+    await expect(missing.getByTestId('add-to-profile')).toHaveCount(0);
+    await expect(missing.locator('svg')).toHaveCount(1);
+    await expect(added).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     const toast = page.getByTestId('toast').last();
     await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
     // The term is among the profile's industries, saved; not among its keywords.
