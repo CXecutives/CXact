@@ -1,9 +1,10 @@
 <!--
   The menu layer: mounted once (App, Gallery), fed by lib/state/menu.svelte.ts. One menu at a
   time, drawn by the app on both OS instead of the OS's own popup (a native popup could hang
-  the window). It opens at the pointer (a right click) or below its button, flips at the
-  window's edges and never leaves the window: a menu taller than the window scrolls inside
-  itself (the wheel over it scrolls only the menu). Rows are 30 px with the text of a field
+  the window). It opens at the pointer (a right click) or below its button, above it where
+  only there is room, and never covers its button, the title bar or the window's edge: a
+  menu taller than the room takes the roomier side and scrolls inside itself (the wheel over
+  it scrolls only the menu). Rows are 30 px with the text of a field
   and a fixed icon column (the check of a choice or a switch sits there too); no entry names
   a key. A group may carry a small muted heading, which the keys pass over.
   A popover whose entries are all lines only tells (the reader's "Warum diese Zahl?"): a
@@ -31,31 +32,42 @@
   /** The menu opened above its anchor (it drops in upwards then). */
   let up = $state(false);
 
-  /** Whole-pixel position inside the window, flipped where there is no room. */
+  /**
+   * Whole-pixel position inside the window, below its anchor or, where only there is room,
+   * above it. It never covers its anchor (a second click on a menu button reaches the
+   * button) nor the title bar: a menu taller than both sides takes the roomier one and
+   * scrolls inside it.
+   */
   const place: Action<HTMLElement, MenuAnchor> = (node, anchor) => {
     const edge = tokenPx('--viewport-gap');
     const gap = tokenPx('--menu-gap');
     const width = document.documentElement.clientWidth;
-    const height = document.documentElement.clientHeight;
-    setVars(node, { 'menu-height': px(height - 2 * edge) });
+    const top = tokenPx('--titlebar-height') + edge;
+    const bottom = document.documentElement.clientHeight - edge;
+    // The anchor's span: a point, or the button with the gap around it.
+    const [above, below] =
+      anchor.kind === 'point'
+        ? [anchor.y, anchor.y]
+        : [anchor.rect.top - gap, anchor.rect.bottom + gap];
+    setVars(node, { 'menu-height': px(bottom - top) });
     const w = node.offsetWidth;
-    const h = node.offsetHeight;
+    let h = node.offsetHeight;
+    const roomBelow = bottom - below;
+    const roomAbove = above - top;
+    up = h > roomBelow && (h <= roomAbove || roomAbove > roomBelow);
+    const room = up ? roomAbove : roomBelow;
+    if (h > room) {
+      setVars(node, { 'menu-height': px(Math.max(0, room)) });
+      h = node.offsetHeight;
+    }
     let x: number;
-    let y: number;
     if (anchor.kind === 'point') {
       x = anchor.x + w <= width - edge ? anchor.x : anchor.x - w;
-      const below = anchor.y + h <= height - edge;
-      up = !below && anchor.y - h >= edge;
-      y = below ? anchor.y : up ? anchor.y - h : height - edge - h;
     } else {
-      const r = anchor.rect;
-      x = anchor.align === 'end' ? r.right - w : r.left;
-      const below = r.bottom + gap + h <= height - edge;
-      up = !below && r.top - gap - h >= edge;
-      y = below ? r.bottom + gap : up ? r.top - gap - h : height - edge - h;
+      x = anchor.align === 'end' ? anchor.rect.right - w : anchor.rect.left;
     }
     x = Math.max(edge, Math.min(x, width - edge - w));
-    y = Math.max(edge, y);
+    const y = up ? above - h : below;
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
     // The menu takes the keys (the entries are no tab stops; the active one is announced).
     node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });

@@ -626,10 +626,49 @@ test.describe('filter', () => {
     await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     const after = (await menu.boundingBox())!;
     expect(after).toEqual(before);
-    // Its last entry stands inside the window, within reach.
-    const reset = (await menuItem(page, 'filter-reset').boundingBox())!;
-    expect(reset.y + reset.height).toBeLessThanOrEqual(768);
+    // Its last entry is within reach: the menu below the funnel scrolls inside itself.
+    const reset = menuItem(page, 'filter-reset');
+    await reset.scrollIntoViewIfNeeded();
+    await expect(reset).toBeInViewport();
+    expect((await menu.boundingBox())!).toEqual(before);
     await page.keyboard.press('Escape');
+  });
+
+  test('the menu never covers the funnel or the title bar; where it does not fit it scrolls', async ({
+    page,
+  }) => {
+    for (const [width, height] of [
+      [1360, 820],
+      [1000, 700],
+      [480, 360],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await open(page, WIN);
+      const menu = await openFilter(page);
+      const button = (await funnel(page).boundingBox())!;
+      const bar = (await page.getByTestId('title-bar').boundingBox())!;
+      const size = `${width}x${height}`;
+      // Settled (it drops in): below the funnel or above it, under the bar, in the window.
+      await expect
+        .poll(async () => {
+          const box = (await menu.boundingBox())!;
+          return (
+            (box.y >= button.y + button.height || box.y + box.height <= button.y) &&
+            box.y >= bar.y + bar.height &&
+            box.y + box.height <= height
+          );
+        }, size)
+        .toBe(true);
+      // Its last entry is within reach: the menu scrolls inside itself.
+      const reset = menuItem(page, 'filter-reset');
+      await reset.scrollIntoViewIfNeeded();
+      await expect(reset, size).toBeInViewport();
+      // A second click on the funnel reaches the funnel and closes the menu (a choice would
+      // keep it open).
+      await funnel(page).click();
+      await expect(page.getByTestId('menu'), size).toHaveCount(0);
+      await expect(funnel(page), size).toHaveAttribute('aria-expanded', 'false');
+    }
   });
 
   test('the keys pass over the headings: arrows, Home, End and the type-ahead', async ({
