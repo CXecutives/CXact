@@ -2554,8 +2554,18 @@ test('every value that does not read is said at its field and can be removed', a
   );
   await expect(page.getByTestId('profile-workload-min')).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByTestId('profile-workload-max')).toHaveAttribute('aria-invalid', 'true');
-  // "Wert entfernen" ends the message line of a half-width field as of a full-width one.
-  for (const name of ['minDayRate', 'regions']) {
+  // "Wert entfernen" ends the message line at the end of the field's width everywhere: a
+  // full-width field, an entry of a list, a choice narrower than its field (Remote-Anteil),
+  // a day, and the half-width fields.
+  for (const name of [
+    'minDayRate',
+    'regions',
+    'roles',
+    'remote',
+    'available',
+    'workload',
+    'minMonths',
+  ]) {
     const scope = field(page, name);
     const action = (await scope.getByTestId('value-remove').boundingBox())!;
     const message = (await scope.locator('[role="alert"]').boundingBox())!;

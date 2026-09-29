@@ -1,10 +1,12 @@
 <!--
   A value of the profile file the app could not read, said where its field is: what the file
-  had, in the danger tone of a field's error, and "Wert entfernen" as the way on at the end of
-  the line (the link of a field's help line). Removing it takes effect when the profile is
-  saved (or, for one entry of a list, removes the entry at once). It goes like any removed
-  item (input.ts removeBy): in a list of notes (`data-removes`) the keyboard's focus moves on
-  to the next one.
+  had, in the danger tone of a field's error, and "Wert entfernen" as the way on. It is laid
+  out as a field's help line with its way on (Field): as wide as the field (also under a
+  control narrower than that, a choice), the message shrinks and wraps and the link ends its
+  first line, so "Wert entfernen" stands at the end of the field's width at every field.
+  Removing it takes effect when the profile is saved (or, for one entry of a list, removes the
+  entry at once). It goes like any removed item (input.ts removeBy): in a list of notes
+  (`data-removes`) the keyboard's focus moves on to the next one.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -40,20 +42,24 @@
 </div>
 
 <style>
+  /* As a field's help line with its way on (Field .acts): the full width of the field, the
+     message shrinks and the link ends its first line. */
   .note {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4) var(--space-12);
+    align-self: stretch;
+    align-items: flex-start;
+    gap: var(--space-12);
     min-height: var(--control-sm);
   }
 
   /* The icon sits on the first line when the text wraps (as a field's error). */
   .text {
     display: flex;
+    flex: 1 1 auto;
     align-items: flex-start;
     gap: var(--space-6);
+    min-width: 0;
+    padding-block: calc((var(--control-sm) - var(--leading-sm)) / 2);
     color: var(--danger-strong);
     font: var(--type-sm);
   }
@@ -65,5 +71,7 @@
 
   .action {
     display: inline-flex;
+    flex: none;
+    margin-left: auto;
   }
 </style>
