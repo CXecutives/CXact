@@ -1,6 +1,6 @@
 <!--
   The job view's glyph of the top bar, drawn for the app (user, 2026-09-29: quieter than Lucide's, like the
-  Claude app's bar): 16 units, a square frame, round ends and corners, in the bar's 1.5 px line
+  Claude app's bar): 16 units, a square frame with tight corners, arrows as wide as it, in the bar's 1.5 px line
   (--titlebar-icon-stroke). Icon.svelte draws it like a Lucide glyph.
 -->
 <script lang="ts">
@@ -20,6 +20,6 @@
   class="glyph-bar-reader"
   {...props}
 >
-  <rect x="2" y="2" width="12" height="12" rx="2.5" />
-  <path d="M9.5 2v12" />
+  <rect x="2" y="2" width="12" height="12" rx="1.5" />
+  <path d="M9.75 2v12" />
 </svg>

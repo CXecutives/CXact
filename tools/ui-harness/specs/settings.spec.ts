@@ -773,12 +773,12 @@ test('the dry run and the demo keep to their own data and say so', async ({ page
   expect(await reason(page, 'mailbox-remove')).toBe('Im Probelauf geht das nicht.');
   await settings(page, `${WIN}&scenario=demo`);
   await expect(page.getByTestId('demo-note')).toBeVisible();
-  for (const id of ['mailbox-connect', 'folder-change', 'reset']) {
+  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
     expect(await reason(page, id), id).toBe('In der Demo geht das nicht.');
   }
-  // What the note says is what the page shows: no mailbox, no calls of a portal.
-  await expect(page.getByTestId('mailbox')).toContainText(T.settings.notConnected);
-  await expect(page.getByTestId('settings-mailbox')).not.toContainText(T.settings.connected);
+  // Its made-up mailbox, connected; no calls of a portal (its portals are made up too).
+  await expect(page.getByTestId('mailbox')).toContainText('demo@example.com');
+  await expect(page.getByTestId('settings-mailbox')).toContainText(T.settings.connected);
   await expect(page.locator('[data-testid^="quota-"]')).toHaveCount(0);
 });
 

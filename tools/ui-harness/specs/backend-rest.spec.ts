@@ -9,6 +9,7 @@ import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
+import { T } from './helpers';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -146,11 +147,9 @@ test('the demo starts with an empty Eingang and the sample profile and fetches l
 test('the demo keeps to its own folders and says why', async ({ page }) => {
   await open(page, `${WIN}&scenario=demo`);
   await page.getByTestId('nav-settings').click();
-  await expect(page.getByTestId('demo-note')).toHaveText(
-    'Demo mit Beispieldaten, ohne Postfach und Portale.',
-  );
-  // No mailbox in the demo (its note says so): "Verbinden" waits like the folder and the reset.
-  for (const id of ['mailbox-connect', 'folder-change', 'reset']) {
+  await expect(page.getByTestId('demo-note')).toHaveText(T.settings.demo);
+  // Its made-up mailbox stays as it is: Ändern and Entfernen wait like the folder and the reset.
+  for (const id of ['mailbox-change', 'mailbox-remove', 'folder-change', 'reset']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-disabled', 'true');
   }
   // What stays in its own folders still works: the folder and the log open.

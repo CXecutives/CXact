@@ -1260,7 +1260,7 @@ export const en: Catalog = {
     resetPartly: (value: number) =>
       `The app has been reset, but ${count(value, 'item', 'items')} could not be deleted.`,
     dryRun: 'Dry run, so no data is changed.',
-    demo: 'Demo with sample data, no mailbox or portals.',
+    demo: 'Demo with made-up sample data.',
     palette: 'Theme',
     paletteName: {
       cxact: 'CXact',

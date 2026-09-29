@@ -1535,8 +1535,8 @@ export const de = {
     resetPartly: (value: number) =>
       `Die App ist zurückgesetzt, ${count(value, 'Element ließ', 'Elemente ließen')} sich nicht löschen.`,
     dryRun: 'Probelauf, es werden keine Daten verändert.',
-    /** The demo (`--demo`): its own data from sample ads, no fetch. */
-    demo: 'Demo mit Beispieldaten, ohne Postfach und Portale.',
+    /** The demo: its own data from invented ads, every fetch brings more. */
+    demo: 'Demo mit erfundenen Beispieldaten.',
     palette: 'Design',
     /** The palettes (tokens.css): CXact (the default), light and dark. */
     paletteName: {

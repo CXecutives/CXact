@@ -295,6 +295,7 @@ pub(super) fn launch(
             DemoBackends,
             store,
             policy,
+            false,
             request,
             ctx,
             cancel,
@@ -303,7 +304,7 @@ pub(super) fn launch(
     } else if let Some(ads) = &state.demo_ads {
         // The demo: its mailbox brings the next bundled ads, its portals their pages.
         let feed = DemoFeed::new(Arc::clone(ads), Arc::clone(&store), state.matcher());
-        tauri::async_runtime::spawn(drive(feed, store, policy, request, ctx, cancel, emit))
+        tauri::async_runtime::spawn(drive(feed, store, policy, true, request, ctx, cancel, emit))
     } else {
         let backends = AppBackends {
             credentials,
@@ -315,7 +316,9 @@ pub(super) fn launch(
             local: state.matcher(),
             store: Arc::clone(&store),
         };
-        tauri::async_runtime::spawn(drive(backends, store, policy, request, ctx, cancel, emit))
+        tauri::async_runtime::spawn(drive(
+            backends, store, policy, false, request, ctx, cancel, emit,
+        ))
     };
     // Supervisor: a panic too ends with exactly one `Finished`, and the slot becomes free.
     // It only clears the slot for its own run - a new one could already be running.
@@ -341,19 +344,23 @@ pub(super) fn launch(
 }
 
 /// A run with dummies or real fetch routes. `policy`: path of `policy.json` (`None` in the
-/// dry run - then in memory only).
+/// dry run and the demo - then in memory only); `quick`: the demo's short pace.
+#[allow(clippy::too_many_arguments)]
 async fn drive<B: Backends>(
     mut backends: B,
     store: Arc<Store>,
     policy: Option<PathBuf>,
+    quick: bool,
     request: RunRequest,
     ctx: RunContext,
     cancel: CancellationToken,
     emit: impl FnMut(RunEvent),
 ) {
-    let policy = Mutex::new(policy.map_or_else(Policy::in_memory, |path| {
-        Policy::load(&path, Timestamp::now())
-    }));
+    let policy = Mutex::new(match policy {
+        Some(path) => Policy::load(&path, Timestamp::now()),
+        None if quick => Policy::quick(),
+        None => Policy::in_memory(),
+    });
     pipeline::run(
         &mut backends,
         &store,

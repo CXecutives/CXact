@@ -1603,8 +1603,9 @@ pub struct AppState {
     /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
     pub version: String,
     pub dry_run: bool,
-    /// The demo (`--demo`): a data folder of its own made from bundled ads; it never
-    /// fetches (`Demo` refuses the mailbox, the portals and the vault).
+    /// The demo (`--demo`, or the CXact Demo build): a data folder of its own; every fetch
+    /// brings the next bundled ads from a made-up mailbox (`Demo` refuses a real mailbox,
+    /// the sign-ins and the vault).
     pub demo: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,

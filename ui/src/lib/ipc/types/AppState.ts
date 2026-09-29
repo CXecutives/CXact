@@ -22,8 +22,9 @@ export type AppState = { platform: Platform,
  */
 version: string, dryRun: boolean, 
 /**
- * The demo (`--demo`): a data folder of its own made from bundled ads; it never
- * fetches (`Demo` refuses the mailbox, the portals and the vault).
+ * The demo (`--demo`, or the CXact Demo build): a data folder of its own; every fetch
+ * brings the next bundled ads from a made-up mailbox (`Demo` refuses a real mailbox,
+ * the sign-ins and the vault).
  */
 demo: boolean, 
 /**
