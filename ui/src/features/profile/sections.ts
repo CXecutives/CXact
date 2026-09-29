@@ -252,6 +252,8 @@ export const SECTIONS: readonly Section[] = [
         suggest: 'industries',
         testid: 'profile-industries',
       },
+      // The languages are a qualification too (user, 2026-09-29): here, not a card of their own.
+      { kind: 'languages' },
     ],
   },
   {
@@ -325,7 +327,6 @@ export const SECTIONS: readonly Section[] = [
       ),
     ],
   },
-  { id: 'languages', optional: true, lines: [{ kind: 'languages' }] },
 ];
 
 // ------------------------------------------------------------------ the values of the form

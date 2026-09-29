@@ -57,7 +57,6 @@ const SECTIONS = [
   'section-experience',
   'section-criteria',
   'section-permanent',
-  'section-languages',
 ];
 
 /** The toast that answers a save (with what its rescore changed, when it did). */
@@ -162,37 +161,6 @@ async function dangling(scope: Locator): Promise<string[]> {
     }
     return missing;
   });
-}
-
-/** The top of `watched` in every frame for `ms` after a click on `clicked` (both test ids),
- *  both in the page, so no frame is missed. */
-function topsAfterClick(page: Page, clicked: string, watched: string, ms = 320): Promise<number[]> {
-  return page.evaluate(
-    ([clicked, watched, ms]) =>
-      new Promise<number[]>((resolve) => {
-        const target = document.querySelector(`[data-testid="${watched}"]`)!;
-        const tops = [Math.round(target.getBoundingClientRect().top)];
-        document.querySelector<HTMLElement>(`[data-testid="${clicked}"]`)!.click();
-        const start = performance.now();
-        const frame = (): void => {
-          tops.push(Math.round(target.getBoundingClientRect().top));
-          if (performance.now() - start < ms) requestAnimationFrame(frame);
-          else resolve(tops);
-        };
-        requestAnimationFrame(frame);
-      }),
-    [clicked, watched, ms] as const,
-  );
-}
-
-/** It moved by more than a little, and not in one frame: a step stood between. */
-function glided(tops: number[]): boolean {
-  const first = tops[0]!;
-  const last = tops.at(-1)!;
-  return (
-    Math.abs(last - first) > 20 &&
-    tops.some((top) => Math.abs(top - first) > 2 && Math.abs(top - last) > 2)
-  );
 }
 
 // ------------------------------------------------------------------ the head
@@ -312,12 +280,12 @@ test('the page ends with room under the last section; the save bar never covers 
   await page.setViewportSize({ width: 1100, height: 560 });
   await profile(page);
   const view = page.getByTestId('view-profile');
-  const last = page.getByTestId('section-languages');
+  const last = page.getByTestId('section-permanent');
   /** At the end of the page: the room under the last section, and above the bar. */
   const end = async (): Promise<{ window: number; bar: number | null }> => {
     await view.evaluate((node) => node.scrollTo({ top: node.scrollHeight, behavior: 'instant' }));
     return view.evaluate((node) => {
-      const section = node.querySelector('[data-testid="section-languages"]')!;
+      const section = node.querySelector('[data-testid="section-permanent"]')!;
       const bottom = section.getBoundingClientRect().bottom;
       const bar = node.querySelector('[data-testid="profile-save-bar"]');
       return {
@@ -372,7 +340,6 @@ test('the form in its order; Bedingungen, Festanstellung and Wünsche say what t
     'person',
     'competences',
     'experience',
-    'languages',
     'criteria',
     'permanent',
     'wishes',
@@ -402,8 +369,9 @@ test('the form in its order; Bedingungen, Festanstellung and Wünsche say what t
   // No "So liest die App dein Profil".
   await expect(page.getByTestId('section-understood')).toHaveCount(0);
   await expect(page.getByTestId('profile-form')).not.toContainText('So liest die App');
-  // The languages have a block of their own; Verfügbar ab is a row of Bedingungen.
-  await expect(page.getByTestId('section-languages').getByTestId('languages')).toHaveCount(1);
+  // The languages are a qualification (Erfahrung und Qualifikation); Verfügbar ab is a row
+  // of Bedingungen.
+  await expect(page.getByTestId('section-experience').getByTestId('languages')).toHaveCount(1);
   await expect(page.getByTestId('section-criteria').getByTestId('profile-available')).toBeVisible();
 });
 
@@ -1534,24 +1502,18 @@ test('the remote switch excludes, sits under the countries and needs one', async
   expect(await tooltipOf(page, toggle)).toBe('Wähle erst die Einsatzländer.');
 });
 
-test('excluding permanent roles folds their block away and back: the sections below glide', async ({
-  page,
-}) => {
+test('excluding permanent roles folds their block away and back', async ({ page }) => {
   await profile(page);
-  const away = await topsAfterClick(page, 'profile-no-permanent', 'section-languages');
+  await page.getByTestId('profile-no-permanent').click();
   await expect(page.getByTestId('section-permanent')).toHaveCount(0);
-  expect(away.at(-1)!).toBeLessThan(away[0]!);
-  expect(glided(away), away.join(' ')).toBe(true);
-  const back = await topsAfterClick(page, 'profile-no-permanent', 'section-languages');
+  await page.getByTestId('profile-no-permanent').click();
   await expect(page.getByTestId('section-permanent')).toBeVisible();
-  expect(back.at(-1)!).toBeGreaterThan(back[0]!);
-  expect(glided(back), back.join(' ')).toBe(true);
-  // Back in its place: 32 above it as above every section.
-  const [permanent, languages] = await Promise.all([
+  // Back in its place, the last section: 32 above it as above every section.
+  const [criteria, permanent] = await Promise.all([
+    page.getByTestId('section-criteria').boundingBox(),
     page.getByTestId('section-permanent').boundingBox(),
-    page.getByTestId('section-languages').boundingBox(),
   ]);
-  expect(Math.round(languages!.y - (permanent!.y + permanent!.height))).toBe(32);
+  expect(Math.round(permanent!.y - (criteria!.y + criteria!.height))).toBe(32);
 });
 
 test('Festanstellung: places first, the remote share waits for them; excluded, the block goes', async ({
