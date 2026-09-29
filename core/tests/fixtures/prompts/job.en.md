@@ -8,7 +8,7 @@ Below are my profile, the ad and the app's pre-assessment, then how to work, the
 
 As JSON, without name and contact details. The keys belong to my app's profile format and are German:
 
-- `harte_kriterien`: hard criteria (exclusions); each threshold applies only when it is set
+- `harte_kriterien`: hard criteria, thresholds for exclusions and checks; each applies only when it is set
 - `min_tagessatz`: lowest day rate in euros
 - `laender`: allowed countries of work as country codes
 - `ausgeschlossene_vertragsarten`: `anue` excludes temporary agency work (German Arbeitnehmerüberlassung), `festanstellung` a permanent role
@@ -114,15 +114,17 @@ Rahmen
 
 # The app's pre-assessment
 
-A machine word match between the ad and the profile, not a verdict. Check every point instead of adopting it.
+A machine word match between the ad and the profile, not a verdict. Below the result stands what moved the score. Check every point instead of adopting it.
 
 - Result: 68 of the app's 100 points, medium match (high from 80, medium from 40)
 - Must-haves: 3 of 4 met, 1 open
 - Nice-to-haves: 0 of 1 met
+- Focus areas: 1 of 1 met
+- Preferences: raise the score by 3 of 100 points
 
 **Hard criteria**
 - Day rate at least €1,100: met, €1,250 per day ("Tagessatz bis 1.250 €")
-- Country of work DE, AT: met, location Hamburg
+- Country of work DE, AT or fully remote: met, location Hamburg
 - No temporary agency work: met, contract type interim ("Freiberuflich")
 - Available from 1 December 2026: to check. The start is 30 days before my availability. "ab 01.11.2026"
 
@@ -147,13 +149,14 @@ A machine word match between the ad and the profile, not a verdict. Check every 
 2. Invent nothing. Back every statement about the ad with a verbatim quote from it, at most about 15 words, in its language. About me, only what the profile says counts; name the entry, with years where the profile gives them. What the ad or the profile does not say is unclear or not stated, never an assumption. Call an estimate, such as a usual market day rate, an estimate.
 3. Take every requirement of the ad as a row of its own, including those that follow from the tasks (leadership, travel, language level). A catch-all phrase such as "suitable skills" replaces no row.
 4. Weight: must (required), nice (ideally, an advantage, desirable, a plus, nice to have; in German ads idealerweise, von Vorteil, wünschenswert) or formal (the field of a degree, a licence, a certificate that cannot be earned quickly). Tools and programming languages are must or nice, never formal. A formal requirement the ad makes mandatory (mandatory, in German zwingend or unabdingbar) that the profile does not meet excludes the job.
-5. Status: met when the profile proves it (skill with years, tool, degree, certificate, position); partly when it proves only a more general entry or fewer years; missing when it holds nothing on it; unclear when the ad is too vague. An either-or requirement is met when one branch is met; lists with e.g. (German z. B.) are alternatives. English terms for German skills, German terms for English ones and the terms under `auch` count like the skill itself. A German Diplom (Univ.) meets a master's degree, a Diplom (FH) or a bachelor's is partly met against a master's, and "comparable" (German vergleichbar) accepts any field.
-6. Check the hard criteria with the thresholds from the profile; a key the profile does not set switches its rule off.
-   - Contract type: interim or project for a day rate, freelance, a contract for work, contract, or questions about availability or workload; permanent for an annual salary, benefits, an open-ended contract or a question about a work permit. A staffing agency that gives no contract type is unclear and carries the risk of temporary agency work.
+5. Status: met when the profile proves it (skill with years, tool, degree, certificate, position); partly when it proves only a more general entry or fewer years; missing when it holds nothing on it; unclear when the ad is too vague. An either-or requirement is met when one branch is met; lists with e.g. (German z. B.) are alternatives. English and German terms for the same skill and the terms under `auch` count like the skill itself. A German Diplom (Univ.) meets a master's degree, a Diplom (FH) or a bachelor's is partly met against a master's, and "comparable" (German vergleichbar) accepts any field.
+6. Check the hard criteria with the thresholds from the profile. The scoring rule says which of them exclude.
+   - Contract type: interim or project for a day rate, freelance, a contract for work, contract, or questions about availability or workload; permanent when the ad states it (permanent, open-ended, annual salary). Benefits or a question about a work permit only suggest a permanent role, and then every rule of a permanent role is a point to check.
    - Pay: a day rate against `min_tagessatz`, never against `tagessatz_wunsch`. A range counts by its upper end, an hourly rate times 8, another currency is partly met. An annual salary (upper end) counts only for a stated permanent role, against `min_jahresgehalt`.
    - Seniority against `berufserfahrung_jahre`, never an exclusion: years asked up to it are met, from four fifths of it partly, below that missing. Years in a topic ("3 years of S/4HANA") count against the years of that skill where the profile names them. A clearly more junior role (a closed range up to half my years, a junior title, an internship, a working student, trainee or entry-level role) is partly met: I am overqualified then. Without `berufserfahrung_jahre` no verdict.
    - Availability: a start before `verfuegbar_ab` is partly met, never an exclusion.
-   - Location: for an interim or project role only information. A country outside `laender` excludes unless the role is fully remote and `remote_ausserhalb_erlaubt` is set. For a permanent role a place in `festanstellung_orte` fits, and outside them a stated remote share of at least `festanstellung_remote_min` percent; otherwise the place excludes a stated permanent role. Hybrid, flexible or single days of remote work prove no remote share.
+   - Workload and duration: more days a week than `auslastung_max_tage`, fewer than `auslastung_min_tage` or a duration below `min_laufzeit_monate` are partly met, never an exclusion.
+   - Location: a country outside `laender` excludes, for a fully remote role only when `remote_ausserhalb_erlaubt` is `false`. For a permanent role a place in `festanstellung_orte` fits, and outside them a stated remote share of at least `festanstellung_remote_min` percent; otherwise the place excludes a stated permanent role. Hybrid, flexible or single days of remote work prove no remote share.
 7. The app's pre-assessment is a word match. It misses synonyms, either-or branches and evidence in the career positions, and it sometimes takes filler phrases for requirements. Confirm, correct or complete each of its points and say where and why you differ. What it leaves to check, decide with a quote or leave unclear.
 8. The score follows the scoring rule below, with its caps.
 
@@ -246,7 +249,7 @@ One row per requirement, must before nice. Requirement in three to eight words; 
 | Criterion | Profile | Ad | Result |
 |---|---|---|---|
 
-Contract type, pay, seniority, availability and location, plus every other exclusion criterion of the profile. Result met, partly, violated or not stated.
+Contract type, pay, seniority, availability and location, plus every other criterion the profile sets, such as workload, duration or exclusion words. Result met, partly, violated or not stated; violated is only what excludes under the scoring rule.
 
 ## Risks and red flags
 Only what the ad or the profile gives, such as a risk of temporary agency work, an unclear contract type, missing pay, a thin text, overqualification or a contradiction in the ad. If there are none, write "none visible".
