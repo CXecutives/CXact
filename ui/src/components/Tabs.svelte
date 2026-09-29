@@ -175,7 +175,7 @@
     left: 0;
     width: var(--line-width);
     border-radius: var(--radius-sm);
-    background-color: var(--surface);
+    background-color: var(--thumb);
     box-shadow: var(--sh-thumb);
     transform: translateX(var(--line-x));
     transition: transform var(--dur-slow) var(--ease-emphasized);

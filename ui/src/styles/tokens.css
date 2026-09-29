@@ -120,6 +120,8 @@
   --surface-selected-inactive: hsl(var(--p-ink) / 0.06);
   /* Track of segmented controls: visible on white and on cream alike, warm. */
   --surface-track: hsl(var(--p-wash) / 0.055);
+  /* The chosen segment or tab on its track: the surface, raised by its shadow. */
+  --thumb: var(--surface);
   --scrim: hsl(var(--p-scrim) / 0.36);
   /* The tooltip bubble: the brand's dark pill, softer than near-black ink. */
   --surface-inverse: hsl(var(--p-emphasis));
@@ -801,39 +803,39 @@
   --p-tooltip-edge: 210 2% 22%;
   --p-emphasis: 210 3% 13%;
 
-  --p-white: 60 1% 11.5%;
-  --p-raised: 60 1% 15%;
-  --p-nav-active: 60 1% 16.5%;
-  --p-cream: 60 2% 8.8%;
-  --p-ink: 60 5% 92%;
+  --p-white: 60 1% 9%;
+  --p-raised: 60 1% 12.5%;
+  --p-nav-active: 60 1% 14%;
+  --p-cream: 60 2% 6.5%;
+  --p-ink: 60 4% 91%;
   /* What acts is white with dark words (the Claude app's dark primary), a shade darker under
      the pointer and pressed; the details blue. */
-  --p-coral: 60 5% 92%;
+  --p-coral: 60 4% 91%;
   --p-coral-variant: 60 4% 84%;
   --p-coral-press: 60 3% 76%;
-  --p-muted: 60 1% 13%;
-  --p-muted-fg: 60 2% 66%;
-  --p-line: 60 1% 20%;
-  --p-accent-soft: 60 1% 17%;
+  --p-muted: 60 1% 10.5%;
+  --p-muted-fg: 60 2% 64%;
+  --p-line: 60 1% 17.5%;
+  --p-accent-soft: 60 1% 14.5%;
   --p-success: 132 59% 33%; /* bgColor-success-emphasis */
   --p-warning: 40.6 72.1% 47.8%; /* fgColor-attention */
   --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
   --p-coral-800: 60 5% 92%;
   /* The selected row and its steps: neutral washes of the light text. */
-  --p-coral-25: 60 1% 15.5%;
-  --p-coral-40: 60 1% 16%;
-  --p-coral-50: 60 1% 18%;
-  --p-coral-70: 60 1% 20%;
-  --p-coral-150: 60 1% 26%;
+  --p-coral-25: 60 1% 12.5%;
+  --p-coral-40: 60 1% 13%;
+  --p-coral-50: 60 1% 15%;
+  --p-coral-70: 60 1% 17%;
+  --p-coral-150: 60 1% 23%;
   --p-navy: 217 88% 70%;
   --p-navy-deep: 217 90% 79%;
-  --p-navy-50: 217 30% 15%;
-  --p-navy-100: 217 28% 18%;
-  --p-navy-150: 217 25% 22%;
-  --p-navy-200: 217 25% 32%;
+  --p-navy-50: 217 30% 12%;
+  --p-navy-100: 217 28% 15%;
+  --p-navy-150: 217 25% 19%;
+  --p-navy-200: 217 25% 29%;
   --p-fg-subtle: 60 2% 58%;
-  --p-border-strong: 60 1% 27%;
-  --p-border-input: 60 1% 38%;
+  --p-border-strong: 60 1% 24%;
+  --p-border-input: 60 1% 35%;
   --p-border-press: 60 2% 52%;
   --p-success-strong: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
@@ -851,7 +853,7 @@
   --p-shade-xs: 0 0% 2%;
   --p-shade-pop: 0 0% 2%;
   --p-shade-navy: 0 0% 2%;
-  --p-wash: 60 5% 92%;
+  --p-wash: 60 4% 91%;
 
   /* Washes of the light text instead of the dark ink, a deeper scrim, the tooltip grey with
      the light text, and shadows that still show on the dark: stronger, and floating layers
@@ -860,6 +862,8 @@
   --surface-press: hsl(var(--p-wash) / 0.1);
   --surface-selected-inactive: hsl(var(--p-ink) / 0.08);
   --surface-track: hsl(var(--p-wash) / 0.08);
+  /* On the dark the chosen segment is lighter than its track, not a hole in it. */
+  --thumb: hsl(var(--p-coral-150));
   --selection-bar: hsl(var(--p-navy) / 0.75);
   --unread: hsl(var(--p-navy));
   --border-accent: hsl(var(--p-ink) / 0.14);

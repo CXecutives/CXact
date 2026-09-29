@@ -150,7 +150,7 @@
     left: 0;
     width: var(--thumb-width);
     border-radius: var(--radius-sm);
-    background-color: var(--surface);
+    background-color: var(--thumb);
     box-shadow: var(--sh-thumb);
     transform: translateX(var(--thumb-x));
     /* Only the move animates (a width is layout); the width takes the option's at once. */

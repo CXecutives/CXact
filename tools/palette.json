@@ -8,6 +8,7 @@
     "surface-selected":       { "css": "hsl(24 55% 96.8%)", "rgb": [251, 246, 242] },
     "surface-selected-hover": { "css": "hsl(22 50% 94.5%)", "rgb": [248, 239, 234] },
     "surface-selected-press": { "css": "hsl(22 48% 93%)", "rgb": [246, 235, 229] },
+    "thumb":                  { "css": "hsl(0 0% 100%)", "rgb": [255, 255, 255] },
     "surface-inverse":        { "css": "hsl(212 34% 22%)", "rgb": [37, 55, 75] },
     "tooltip-edge":           { "css": "hsl(212 20% 38%)", "rgb": [78, 96, 116] },
     "text":                   { "css": "hsl(30 8% 13%)", "rgb": [36, 33, 30] },

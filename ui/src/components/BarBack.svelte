@@ -1,6 +1,6 @@
 <!--
   Zurück of the top bar, drawn for the app (user, 2026-09-29: quieter than Lucide's, like the
-  Claude app's bar): 16 units, round ends and corners, in the bar's 1.5 px line
+  Claude app's bar): 16 units, a square frame, round ends and corners, in the bar's 1.5 px line
   (--titlebar-icon-stroke). Icon.svelte draws it like a Lucide glyph.
 -->
 <script lang="ts">
@@ -20,6 +20,6 @@
   class="glyph-bar-back"
   {...props}
 >
-  <path d="M13 8H3" />
-  <path d="M7 4L3 8l4 4" />
+  <path d="M12.5 8h-9" />
+  <path d="M7.5 4l-4 4 4 4" />
 </svg>
