@@ -190,8 +190,8 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
-  throttled: 'das Portal bremst die Anfragen',
-  blocked: 'das Portal blockiert die Anfragen',
+  throttled: 'das Portal bremst die Aufrufe',
+  blocked: 'das Portal blockiert die Aufrufe',
   layoutChanged: 'die Seiten sehen anders aus als erwartet',
   stateUnreadable: 'der Stand des Portals ist nicht lesbar',
   network: 'das Portal ist nicht erreichbar',
@@ -725,7 +725,7 @@ export const de = {
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
-    tabs: 'Orte',
+    tabs: 'Ablage',
     inbox: 'Eingang',
     archive: 'Archiv',
     trash: 'Papierkorb',

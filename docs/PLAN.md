@@ -534,18 +534,43 @@ For each of Jobs, Reader, Day overview, Profil, Einstellungen, First run, dialog
 - [x] Windows and macOS screenshots side by side: only the documented differences
 
 ## Glossary (UI)
-Since 2026-09-27 (the table of the cleanup round below wins over older words): Job · Portal · Übereinstimmung (Hohe,
-Mittlere, Geringe Übereinstimmung) · Jobdetails (the reader's table) · Anzeige (laden, wird geladen, fehlt; Nur eine
-Vorschau) · Postfach abrufen, Abruf, Zeitraum · Profil · Postfach · Alert-Mail · Ausgeschlossen (Trotzdem bewerten, Wieder
-ausschließen) · Neu (= unread) · Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar · Pflichtanforderungen · Archiv
-(Dearchivieren) · Papierkorb (Löschen, Endgültig löschen, Wiederherstellen) · Excel-Datei · CSV-Datei · Ergebnisordner · Aufrufe · App ·
-Jobs (the place of the active jobs; `inbox` in code). Checked for the UI catalog (`ui_contract.rs`) and the Rust texts:
-exports, startup dialog, window titles, file dialogs, macOS menu (`rust_texts.rs`).
-English (`en.ts`, the English exports and prompts): Job · Portal · Match · Job details · Load ad · Check mailbox · Profile ·
-Mailbox · Alert email · Excel file · Excluded · Score anyway · New · Jobs (the place; `inbox` in code) · Archive (Unarchive) ·
-Trash · Delete · Restore · Result folder · Skill (Kompetenz) · Preference (Wunsch) · Location (Ort); plain British English, not
-German word for word (usability round 2: "email", never "mail"; no comma splices; "Minimum day rate (€)"; countries in
-words); product and portal names stay.
+Since 2026-09-27, one word per thing in both languages (vocabulary round 2026-09-29; this list wins over older
+words in this plan). Checked for the UI catalogs (`ui_contract.rs`) and the Rust texts: exports, startup dialog,
+window titles, file dialogs, macOS menu (`rust_texts.rs`). English (`en.ts`, the English exports and prompts) is plain
+British English as a well made desktop app writes it, not German word for word: "email", never "mail"; no comma
+splices; countries in words; product and portal names stay. German → English:
+- Job → Job; Jobs (the sidebar's entry) → Jobs; Jobansicht → Job view; Seitenleiste → Sidebar
+- Eingang → Inbox (the place of the active jobs, `inbox` in code); Neu (= unread) → New
+- Archiv → Archive; In den Eingang (back from the Archiv) → Move to inbox
+- Papierkorb → Trash; Löschen → Delete; Endgültig löschen → Delete forever; Wiederherstellen → Restore
+- Ablage (the tabs Eingang, Archiv, Papierkorb; the Excel column) → Folders (the Excel column says Place)
+- Übereinstimmung (Hohe, Mittlere, Geringe) → Match (High, Medium, Low)
+- bewerten, neu bewerten → score, rescore
+- Ausgeschlossen → Excluded; Trotzdem bewerten → Score anyway; Wieder ausschließen → Exclude again
+- Anforderungen → Requirements; Pflicht, Pflichtanforderung → Must-have; Optional → Optional
+- Ausschluss, Ausschlusskriterium → Exclusion, exclusion criterion; Hinweis → Note
+- Erfüllt, Teilweise erfüllt, Nicht erfüllt, Unklar → Met, Partly met, Not met, Unclear
+- Jobdetails (the reader's table) → Job details
+- Anzeige (laden, öffnen; Nur eine Vorschau) → Ad (Load ad, Open ad; Only a preview)
+- Postfach → Mailbox; Postfach abrufen (the button) → Check mailbox; Abruf → Fetch; Zeitraum → Time range
+- Alert-Mail → Alert email; Alert → Alert
+- Profil → Profile; Bedingungen → Conditions; Wünsche → Preferences
+- Kompetenz → Skill; Schwerpunkt → Focus area; Werkzeuge und Methoden → Tools and methods
+- Wunschrolle, Wunschtagessatz, Wunschregion, Wunschbranche → Preferred role, day rate, region, industry
+- Tagessatz → Day rate; Mindesttagessatz → Minimum day rate; Stundensatz → Hourly rate; Gehalt → Salary
+- Festanstellung → Permanent job (as a contract type Permanent); Zeitarbeit → Temporary agency work
+- Vertragsart → Contract type; Interim, Freiberuflich → Interim, Freelance
+- Ort, Einsatzort → Location; Orte für Festanstellung → Locations for permanent jobs; Einsatzländer → Countries
+- Arbeitsmodell (Remote, Hybrid, Vor Ort) → Work model (Remote, Hybrid, On site); Remote-Anteil → Remote share
+- Auslastung → Workload; Laufzeit → Duration; Mindestlaufzeit → Minimum duration
+- Ausschlusswörter → Exclusion words; Häufig verlangt → Often asked for
+- KI-Prompt → AI prompt
+- Einstellungen → Settings; Darstellung → Appearance; Design (CXact, Hell, Dunkel) → Theme (CXact, Light, Dark)
+- Sprache → Language; Daten (the card) → Data; Sicherung → Backup
+- Exportordner → Export folder; Excel-Datei → Excel file; CSV-Datei → CSV file
+- Aufrufe (what a portal allows a day, and what it slows down) → Requests
+- Anmeldung, Anmelden, Abmelden → Sign-in, Sign in, Sign out
+- Probelauf → Dry run; Demo → Demo
 
 
 ## Budget and models

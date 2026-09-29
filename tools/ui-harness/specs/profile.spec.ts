@@ -1305,7 +1305,7 @@ test('the day exists only for "Ab Datum", gets the caret and is judged when left
     .click();
   await page.getByTestId('profile-date').fill('31/02/2026');
   await page.getByTestId('profile-name-field').focus();
-  await expect(error).toHaveText('This day does not exist.');
+  await expect(error).toHaveText('This date does not exist.');
 });
 
 test('a value too large is said at once, stays with its error and holds the save', async ({
