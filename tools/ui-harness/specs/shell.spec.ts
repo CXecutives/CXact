@@ -908,7 +908,37 @@ test('the failed start keeps the top bar', async ({ page }) => {
       y: 0,
       height: contentTop(osOf(os)),
     });
+    // No job view there: its button is dimmed.
+    await expect(page.getByTestId('toggle-reader')).toBeDisabled();
   }
+});
+
+test('the job view button is dimmed without a tooltip where there is no job view', async ({
+  page,
+}) => {
+  const toggle = page.getByTestId('toggle-reader');
+  const quiet = async (): Promise<void> => {
+    await expect(toggle).toBeDisabled();
+    await expect(toggle).toHaveAccessibleName(/.+/);
+    await toggle.hover();
+    await page.waitForTimeout(700);
+    await expect(tooltip(page)).toHaveCount(0);
+    await page.mouse.move(0, 0);
+  };
+  await open(page, `${WIN}&scenario=load-failed`);
+  await expect(page.getByTestId('view-error')).toBeVisible();
+  await quiet();
+  await open(page, WIN);
+  for (const view of ['profile', 'settings']) {
+    await page.getByTestId(`nav-${view}`).click();
+    await expect(page.getByTestId(`view-${view}`)).toBeVisible();
+    await quiet();
+  }
+  // In Jobs it names what it does.
+  await page.getByTestId('nav-jobs').click();
+  await expect(toggle).toBeEnabled();
+  await toggle.hover();
+  await expect(tooltip(page)).toHaveText(await text(page, 'nav.readerHide'));
 });
 /* ------------------------------ Lists, panes, the run status, closing, shared components */
 

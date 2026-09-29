@@ -469,7 +469,9 @@
   --menu-inset: var(--space-8);
   --menu-icon: 20px;
   --menu-min: 200px;
-  --menu-max: 320px;
+  /* Wide enough for every line of the reader's "Warum diese Zahl?" on one line (the longest,
+     a cap with its reason, is about 400 px): no word stands alone on a line of its own. */
+  --menu-max: 448px;
   --menu-radius: var(--radius-md);
   --menu-row-radius: var(--radius-xs);
   --grip-width: 4px;

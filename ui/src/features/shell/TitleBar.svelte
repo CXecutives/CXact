@@ -20,6 +20,7 @@
   import { cssVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
   import { drawsWindowButtons } from '$lib/platform';
+  import { app } from '$lib/state/app.svelte';
   import { history } from '$lib/state/history.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
@@ -30,9 +31,13 @@
   const drawn = drawsWindowButtons();
   /** The job view's button stands in every view, like the bar's other buttons (user,
    *  2026-09-29): dimmed where there is no job view to show or hide (Profil, Einstellungen,
-   *  the setup page, one column without a job). */
+   *  the setup page, a start whose data did not load, one column without a job), and then
+   *  without a tooltip: it names no action it cannot do (its accessible name stays). */
   const readerIdle = $derived(
-    navigation.current !== 'jobs' || shell.firstRun || (viewport.narrow && jobs.selected === null),
+    app.state === null ||
+      navigation.current !== 'jobs' ||
+      shell.firstRun ||
+      (viewport.narrow && jobs.selected === null),
   );
   /** Hidden, the job view closes its job too (the list shows none chosen); shown again, it
    *  asks for one. In one column it closes the job that stands in place of the list. */
@@ -114,6 +119,7 @@
       icon="readerPane"
       label={shell.readerOpen && !viewport.narrow ? t.nav.readerHide : t.nav.readerShow}
       disabled={readerIdle}
+      plain={readerIdle}
       testid="toggle-reader"
       onclick={toggleReader}
     />

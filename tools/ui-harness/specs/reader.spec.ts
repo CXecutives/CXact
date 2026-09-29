@@ -254,6 +254,16 @@ test.describe('the head and the match', () => {
     );
     const icon = (id: string) => popover.getByTestId(`menu-line-${id}`).locator('.reason > .icon');
     await expect(icon('targetRole')).toHaveCSS('color', await tokenColour(page, '--verdict-met'));
+    // Wide enough that every line stays one line (no word on a line of its own).
+    const heights = await lines
+      .locator('.label')
+      .evaluateAll((all) =>
+        all.map(
+          (label) =>
+            label.getBoundingClientRect().height / parseFloat(getComputedStyle(label).lineHeight),
+        ),
+      );
+    for (const height of heights) expect(Math.round(height)).toBe(1);
     // Nothing in it is chosen; Esc closes it.
     await expect(popover.locator('[role^="menuitem"]')).toHaveCount(0);
     await page.keyboard.press('Escape');
@@ -336,6 +346,14 @@ test.describe('the head and the match', () => {
     await close.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(page.locator('[data-open]')).toHaveCount(0);
+    // Its empty state stands in the middle of the job view, like every other empty state.
+    const middle = async (id: string): Promise<number> => {
+      const box = (await page.getByTestId(id).boundingBox())!;
+      return box.y + box.height / 2;
+    };
+    expect(
+      Math.abs((await middle('place-reader')) - (await middle('reader-pane'))),
+    ).toBeLessThanOrEqual(2);
     // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
     // button, which closes the job there too, and is dimmed without one.
     await page.setViewportSize({ width: 683, height: 700 });
@@ -423,18 +441,34 @@ test.describe('the actions', () => {
               }),
             ).size,
         );
+    // Which of Alert-Mail, Anzeige and the prompt show only their icon.
+    const bare = () =>
+      stage(page)
+        .getByTestId('reader-actions')
+        .evaluate((node) =>
+          ['reader-mail', 'open-ad', 'reader-prompt'].map((id) =>
+            node.querySelector(`[data-testid="${id}"]`)?.classList.contains('icon-only'),
+          ),
+        );
     for (const size of [
       { width: 1360, height: 900 },
+      { width: 1000, height: 800 },
       { width: 900, height: 800 },
       { width: 480, height: 360 },
     ]) {
       await page.setViewportSize(size);
       await openAt(page, 'freelancermap-2801');
       await expect.poll(lines).toBe(1);
+      // They give up their words from the last: the prompt first, Alert-Mail last.
+      const flags = await bare();
+      const first = flags.indexOf(true);
+      expect(first === -1 || flags.slice(first).every(Boolean), `${size.width}`).toBe(true);
+      if (size.width === 1360) expect(flags).toEqual([false, false, false]);
+      if (size.width === 1000) expect(flags).toEqual([false, false, true]);
     }
-    const mail = stage(page).getByTestId('reader-mail');
-    await expect(mail).toHaveClass(/icon-only/);
-    expect(await tooltipOf(page, mail)).toEqual(['Alert-Mail öffnen', '']);
+    const prompt = stage(page).getByTestId('reader-prompt');
+    await expect(prompt).toHaveClass(/icon-only/);
+    expect(await tooltipOf(page, prompt)).toEqual([T.actions.prompt, '']);
   });
 
   test('the "…" menu of the archive and of the trash, deleting for good asks first', async ({
@@ -763,6 +797,16 @@ test.describe('Jobdetails', () => {
     expect(new Set(judged.map((box) => Math.round(box.verdict!))).size).toBe(1);
     expect(new Set(boxes.map((box) => Math.round(box.start))).size).toBe(1);
     expect(Math.round(judged[0]!.verdict!)).toBeLessThan(Math.round(boxes[0]!.start));
+    // A job without a score keeps the verdicts' column: its values start at the same place.
+    const starts = (): Promise<number[]> =>
+      terms(page)
+        .locator('.term-line')
+        .evaluateAll((all) => all.map((node) => Math.round(node.getBoundingClientRect().left)));
+    const scored = await starts();
+    await openJob(page, 'freelancermap-2806');
+    await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
+    expect(new Set(await starts())).toEqual(new Set([scored[0]]));
+    await openJob(page, 'freelancermap-2801');
     // One metric with the requirements: their text and their icon gap.
     const [termFont, termGap] = await terms(page)
       .locator('.term-name')
@@ -800,6 +844,9 @@ test.describe('Jobdetails', () => {
     // The e-mail is a link: a new mail to it in the mail program, one line high.
     const mail = term(page, 'contact').getByTestId('contact-mail');
     await expect(mail).toHaveClass(/link/);
+    // In the type of the name and the phone around it.
+    const size = (node: Element) => getComputedStyle(node).fontSize;
+    expect(await mail.evaluate(size)).toBe(await parts.first().evaluate(size));
     await mail.click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },
@@ -1067,12 +1114,15 @@ test.describe('Anforderungen', () => {
         .getByTestId('add-to-profile'),
     ).toHaveCount(0);
     await add.click();
-    // A quiet tick takes the place of the "+", no word; the toast says it, with the term
-    // alone (without the ad's "Branchenerfahrung").
-    const added = missing.getByTestId('added');
+    // A quiet check takes the place of the red cross and the "+" goes, no word: one icon on
+    // the row. The toast says it, with the term alone (without the ad's "Branchenerfahrung").
+    const added = missing.getByTestId('reason-settled');
     await expect(added).toHaveAttribute('aria-label', T.reader.added);
     await expect(added.locator('svg')).toHaveCount(1);
     await expect(added).toHaveText('');
+    await expect(missing.getByTestId('add-to-profile')).toHaveCount(0);
+    await expect(missing.locator('svg')).toHaveCount(1);
+    await expect(added).toHaveCSS('color', await tokenColour(page, '--text-subtle'));
     const toast = page.getByTestId('toast').last();
     await expect(toast).toContainText(T.reader.addedToProfile('Energie'));
     // The term is among the profile's industries, saved; not among its keywords.

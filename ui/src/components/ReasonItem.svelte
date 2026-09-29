@@ -6,6 +6,8 @@
   words, and the badge "Optional" for an optional one.
   iconOnly (a verdict of the reader's Jobdetails): the icon alone, named by `label`, with the
   reason that decided it in its tooltip (`hint`).
+  settled (a missing term the user just added to the profile): a quiet check in place of its
+  icon, named by these words, until the next score judges it anew.
 -->
 <script lang="ts" module>
   import type { ReasonKind } from '$lib/ipc/types';
@@ -31,6 +33,7 @@
 <script lang="ts">
   import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
+  import { fade } from '$lib/motion/transitions';
   import Badge from './Badge.svelte';
   import Icon from './Icon.svelte';
 
@@ -43,6 +46,8 @@
     hint?: string | null;
     /** The icon alone, named by the label. */
     iconOnly?: boolean;
+    /** Taken care of (added to the profile): a quiet check in place of the icon, named so. */
+    settled?: string | null;
     testid?: string | null;
   }
 
@@ -52,6 +57,7 @@
     optional = false,
     hint = null,
     iconOnly = false,
+    settled = null,
     testid = null,
   }: Props = $props();
 </script>
@@ -67,7 +73,17 @@
   >
 {:else}
   <span class="reason {kind}" data-kind={kind} data-testid={testid ?? undefined} use:tooltip={hint}>
-    <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
+    {#if settled}
+      <span
+        class="icon settled"
+        role="img"
+        aria-label={settled}
+        data-testid="reason-settled"
+        in:fade><Icon name="success" size="sm" /></span
+      >
+    {:else}
+      <span class="icon"><Icon name={ICON[kind]} size="sm" /></span>
+    {/if}
     <span class="label">{label}</span>
     {#if optional}<Badge label={t.reason.weight.nice} tone="neutral" />{/if}
   </span>
@@ -119,5 +135,10 @@
 
   .check {
     --reason-color: var(--text-muted);
+  }
+
+  /* Taken care of: quiet, whatever the verdict was. */
+  .icon.settled {
+    color: var(--text-subtle);
   }
 </style>

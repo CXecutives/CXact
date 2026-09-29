@@ -26,7 +26,7 @@
     is a link: a new mail to it in the default mail program, the job's title its subject.
   - requirements: "Anforderungen" in the groups of reader-sections.ts, a quiet count after
     each title; a missing must that is a term has a small "+" into its field of the profile
-    (addToProfile.ts), a tick once it is there.
+    (addToProfile.ts); once it is there, a quiet check stands in place of its cross.
   - ad: the note on a text that is not all there (a preview, an ad still to come or being
     loaded, one the app cannot reach, gone or closed) with "Anzeige laden" or "Anmeldung
     einrichten" where they help, and the ad's text in its structure: its headings, its lists,
@@ -270,12 +270,13 @@
   }
 
   /** The action row stays one line: where the labels do not fit, the buttons turn into icons
-   *  one after the other, the least used first (Alert-Mail öffnen, then Anzeige öffnen, then
-   *  the prompt; their tooltips name them). Tried again whenever the row's width changes
-   *  (before the frame is painted). */
+   *  one after the other, from the last: the longest and least used first (the prompt, then
+   *  Anzeige öffnen, then Alert-Mail öffnen; their tooltips name them). Tried again whenever
+   *  the row's width changes (before the frame is painted). */
   let actions = $state<HTMLElement | null>(null);
-  /** How many of the three buttons show only their icon, from the first. */
+  /** How many of the three buttons show only their icon, from the last. */
   let iconsOnly = $state(0);
+  const SHOWS = 3;
 
   /** The last button starts above the bottom of the first. */
   function oneLine(row: HTMLElement): boolean {
@@ -291,7 +292,7 @@
   let fitting = 0;
   async function fit(row: HTMLElement): Promise<void> {
     const attempt = ++fitting;
-    for (const icons of [0, 1, 2, 3]) {
+    for (let icons = 0; icons <= SHOWS; icons += 1) {
       if (attempt !== fitting) return;
       iconsOnly = icons;
       await tick();
@@ -402,7 +403,7 @@
       size="field"
       icon={action.icon}
       label={action.label}
-      iconOnly={index < iconsOnly}
+      iconOnly={index >= SHOWS - iconsOnly}
       disabled={action.reason !== null}
       disabledReason={action.reason}
       {testid}
@@ -448,7 +449,7 @@
   <section class="block" data-testid="terms">
     <h2 class="section">{t.reader.details}</h2>
     <!-- Name, the ad's value and whether it fits as an icon (the reason in its tooltip). -->
-    <ul class="terms" class:judged aria-label={t.reader.details} data-testid="criteria">
+    <ul class="terms" class:bare={!withRing} aria-label={t.reader.details} data-testid="criteria">
       {#each rows as row (row.key)}
         <li
           class="term"
@@ -459,7 +460,8 @@
         >
           <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
           <!-- The verdict in its own column between the name and the value (the names are the
-               same for every job, so it never moves); a row without one leaves it empty. -->
+               same for every job, so it never moves); a row or a job without one leaves it
+               empty. -->
           {#if judged && row.verdict}
             <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
               <ReasonItem
@@ -515,6 +517,8 @@
             </h3>
             <ul class="reasons" data-testid="reasons-{group.kind}">
               {#each group.items as reason (reason.id)}
+                {@const term = addable(reason) ? termOf(reason) : null}
+                {@const added = term !== null && isAdded(term)}
                 <li
                   class="reason-line"
                   data-weight={reason.weight}
@@ -522,37 +526,28 @@
                   in:fade
                 >
                   <!-- The group's heading says the verdict; no tooltip on its icon (user decision
-                       2026-09-27, the Jobdetails keep theirs). -->
+                       2026-09-27, the Jobdetails keep theirs). A missing must that went into the
+                       profile trades its cross for a quiet check until the next score (the toast
+                       says so in words). -->
                   <ReasonItem
                     kind={reason.kind}
                     optional={reason.weight === 'nice'}
                     label={reasonText(reason)}
+                    settled={added ? t.reader.added : null}
                     testid="reason"
                   />
-                  <!-- A missing must that is a term: its way into the profile, then a quiet
-                       tick that it is there (the toast says so in words). -->
-                  {#if addable(reason)}
-                    {@const term = termOf(reason)}
+                  <!-- A missing must that is a term: its way into the profile. -->
+                  {#if term !== null && !added}
                     <span class="reason-action">
-                      {#if isAdded(term)}
-                        <span
-                          class="added"
-                          role="img"
-                          aria-label={t.reader.added}
-                          data-testid="added"
-                          in:fade><Icon name="check" size="sm" /></span
-                        >
-                      {:else}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          iconOnly
-                          icon="add"
-                          label={t.reader.addTo[term.field](term.term)}
-                          testid="add-to-profile"
-                          onclick={() => void add(term)}
-                        />
-                      {/if}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        iconOnly
+                        icon="add"
+                        label={t.reader.addTo[term.field](term.term)}
+                        testid="add-to-profile"
+                        onclick={() => void add(term)}
+                      />
                     </span>
                   {/if}
                 </li>
@@ -715,33 +710,23 @@
     font: var(--type-lg);
   }
 
-  /* The Jobdetails: name, verdict and value in three columns that line up row by row (two
-     without a match: nothing to judge); the verdicts stand in one column after the names,
-     which every job shares, so they never move. Each row is one box on the columns of the
-     list. The same metrics as the requirements below: their text, their icon gap. */
+  /* The Jobdetails: name, verdict and value in three columns that line up row by row; the
+     verdicts stand in one column after the names, which every job shares, so they never
+     move. A job without a score keeps the verdicts' column empty, so the values start at the
+     same place for every job (two columns only without a profile, where no job is judged).
+     Each row is one box on the columns of the list. The same metrics as the requirements
+     below: their text, their icon gap. */
   .terms {
     display: grid;
-    grid-template-columns: max-content minmax(0, max-content);
-    gap: var(--space-8) var(--space-24);
+    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
+    gap: var(--space-8) var(--space-16);
     font: var(--type-md);
     text-align: start;
   }
 
-  .terms.judged {
-    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
-    column-gap: var(--space-16);
-  }
-
-  .terms.judged .term-name {
-    grid-column: 1;
-  }
-
-  .terms.judged .verdict {
-    grid-column: 2;
-  }
-
-  .terms.judged .term-line {
-    grid-column: 3;
+  .terms.bare {
+    grid-template-columns: max-content minmax(0, max-content);
+    column-gap: var(--space-24);
   }
 
   .term {
@@ -759,6 +744,7 @@
 
   .term-name {
     display: inline-flex;
+    grid-column: 1;
     align-items: center;
     gap: var(--space-8);
     color: var(--text-muted);
@@ -771,10 +757,15 @@
 
   .term-line {
     display: flex;
+    grid-column: 3;
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  .bare .term-line {
+    grid-column: 2;
   }
 
   .value {
@@ -801,14 +792,19 @@
   }
 
   /* The e-mail as a link keeps its hit area but not its height: the line stays a line of
-     text. */
+     text, in the type of the name and the phone around it. */
   .mail {
     display: inline-flex;
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
   }
 
+  .mail :global(.btn.link) {
+    --btn-type: var(--type-md);
+  }
+
   .verdict {
     display: inline-flex;
+    grid-column: 2;
     min-width: var(--icon-sm);
   }
 
@@ -859,16 +855,6 @@
     display: inline-flex;
     flex: none;
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
-  }
-
-  /* The quiet tick in the place of the "+", centred where the "+" was. */
-  .added {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--control-sm);
-    height: var(--control-sm);
-    color: var(--text-subtle);
   }
 
   .quiet {
