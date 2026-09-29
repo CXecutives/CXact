@@ -992,3 +992,17 @@ handle sits between list and reader".
   abrufen" runs like a real fetch (progress, details, the real engine) and brings 5 to 15 new jobs out of the
   invented ads of all held-out sets (about 500); once all are there a fetch finds no new jobs.
 - [ ] Demo fetch in batches, the "CXact Demo" bundle, a note in docs/CHANGING.md
+
+## Final UI pass (user decisions 2026-09-29)
+
+- Three palettes in Einstellungen > Darstellung with the language again: CXact (the default: cream, coral that
+  acts, the cxpertise navy back for headings, what is chosen, links, focus and switches), Light (black on white
+  like the Claude app, blue only for details) and Dark (white on black, blue details). A stored "coast" or an
+  unknown name reads as CXact.
+- The top bar's glyphs are the app's own (Bar*.svelte): 16 px in a 1.5 px line with round ends like the Claude
+  app's bar. Öffnen takes chevron-left, Trotzdem bewerten the scale. Papierkorb leeren is filled red.
+- What went wrong in a run is one toast with its way on (no note under the list header).
+- The Jobdetails' Erfahrung says what its requirement says among the Anforderungen.
+- [x] Palettes, language, bar glyphs, toasts, Erfahrung
+- [ ] The job prompt in line with the engine, the words of both catalogs, the demo app, the full harness in both
+  engines, the push and CI, the release and demo setups (the user starts them)
