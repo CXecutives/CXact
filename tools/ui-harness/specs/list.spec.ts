@@ -236,12 +236,25 @@ test.describe('header', () => {
     await expect(menuItem(page, 'range-days30')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'false');
     await page.keyboard.press('Escape');
-    // The fetch itself still starts from the main part.
+    // The fetch itself still starts from the main part. "Abbrechen" takes its slot at its
+    // width (the wider of the two sets it) and the Zeitraum stays beside it, off: nothing
+    // moves.
     await fetch.click();
-    await expect(page.getByTestId('cancel-run')).toBeVisible();
-    await expect(chevron).toHaveCount(0);
-    await page.getByTestId('cancel-run').click();
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    const stop = (await cancel.boundingBox())!;
+    expect([stop.x, stop.y, stop.width, stop.height]).toEqual([
+      main.x,
+      main.y,
+      main.width,
+      main.height,
+    ]);
+    await expect(chevron).toBeVisible();
+    await expect(chevron).toBeDisabled();
+    expect((await chevron.boundingBox())!).toEqual(part);
+    await cancel.click();
     await runFinished(page);
+    await expect(chevron).toBeEnabled();
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -257,10 +270,13 @@ test.describe('header', () => {
       return [box.x, box.y, box.width, box.height].map(Math.round);
     };
     const inbox = await slot();
+    const end = await rightOf(page, 'place-action');
     for (const place of ['archive', 'trash'] as const) {
       await openPlace(page, place);
       await expect(cancel, place).toBeVisible();
       expect(await slot(), place).toEqual(inbox);
+      // The Zeitraum is the Eingang's: elsewhere it only holds its room.
+      await expect(page.getByTestId('fetch-range'), place).toHaveCount(0);
     }
     // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
     await expect(page.getByTestId('empty-trash')).toHaveCount(0);
@@ -268,7 +284,6 @@ test.describe('header', () => {
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await expect(page.getByTestId('empty-trash')).toBeVisible();
-    const end = inbox[0]! + inbox[2]!;
     expect(Math.abs((await rightOf(page, 'empty-trash')) - end)).toBeLessThanOrEqual(1);
     await openPlace(page, 'archive');
     await expect(page.getByTestId('place-action')).toHaveCount(0);
