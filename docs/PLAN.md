@@ -977,3 +977,18 @@ handle sits between list and reader".
   verdict in one fixed column between the name and the value (it never moves), no tooltips on verdicts anywhere,
   the sentences that only they showed are gone (criterion `met`, `reason.why`, `reader.payMet`).
 - [x] Type t2, one icon stroke, white knob, one-blue meters, the verdict column, no verdict tooltips
+- Fourth pass (user, 2026-09-29): the CXact palette back in `:root`; a normal size (controls 27 / 30 / 32 / 35,
+  text 12 / 13.5, place 14, rows 61, icons 16 and 20 at 1.4); the top bar's glyphs 16 px in the caption buttons'
+  1 px line; the tabs wash like the segments; the chosen sidebar entry a white pill with a hairline like the tabs'
+  thumb; "Warum diese Zahl?" opens on hover, its lines green, yellow, red, the note last; the Profil's languages in
+  Erfahrung und Qualifikation, the remote share of Festanstellung only with places, "Häufig verlangt" under each
+  field; the run's notes under the list header and the lit portal row in Einstellungen hidden (code kept).
+- [x] Fourth pass
+
+## The demo app (user decision 2026-09-29; built at the end of the UI phase)
+
+- An own setup "CXact Demo" (one .exe to send): it always starts as the demo on a data folder of its own and
+  never touches real data. It starts with an empty Eingang and the filled sample profile; every "Postfach
+  abrufen" runs like a real fetch (progress, details, the real engine) and brings 5 to 15 new jobs out of the
+  invented ads of all held-out sets (about 500); once all are there a fetch finds no new jobs.
+- [ ] Demo fetch in batches, the "CXact Demo" bundle, a note in docs/CHANGING.md
