@@ -16,9 +16,10 @@ use jobalert_core::fetch::Fetchers;
 use jobalert_core::fetch::http::HttpFetcher;
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::mail::imap::{Credentials, Gmail, MailError};
+use jobalert_core::pipeline::demo::{DemoBackends, DemoFeed};
 use jobalert_core::pipeline::{
     self, Backends, Matcher, Outcome, RunContext, RunEvent, RunKindName, RunRequest, RunSnapshot,
-    RunSummary, demo::DemoBackends,
+    RunSummary,
 };
 use jobalert_core::portal::{FetchPath, Portal};
 use jobalert_core::secrets::Vault;
@@ -180,21 +181,18 @@ impl Backends for AppBackends {
 /// Settings and Gmail access of a run. Only the mailbox step needs Gmail: fetching job
 /// details also works when the vault entry is unreadable right now. A mailbox run needs a
 /// portal to read: with every portal switched off it is refused here ("at least one portal
-/// must be active"), never started only to be stored as a failed fetch.
+/// must be active"), never started only to be stored as a failed fetch. The dry run and the
+/// demo never read the vault: their mailboxes are made up.
 fn run_context(
     state: &AppState,
     request: &RunRequest,
 ) -> CmdResult<(RunContext, Option<Credentials>)> {
-    // The demo scores its jobs again but never fetches: no mailbox, no portal.
-    if state.demo && request.kind.name() != RunKindName::Rescore {
-        return Err(ErrorInfo::new(ErrorKind::Demo));
-    }
     let settings = state.settings()?;
     let scans = request.kind.name().reads_mail();
     if scans && settings.enabled_portals().is_empty() {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
-    let credentials = if state.dry_run || !scans {
+    let credentials = if state.dry_run || state.demo || !scans {
         None
     } else {
         Vault::app().load_gmail()?
@@ -289,7 +287,8 @@ pub(super) fn launch(
 
     let store = state.store.clone();
     let dry_run = state.dry_run;
-    let policy = (!dry_run).then(|| state.policy_path());
+    // The dry run and the demo ask no portal: their safety state lives in memory.
+    let policy = (!dry_run && !state.demo).then(|| state.policy_path());
     let started = Timestamp::now();
     let work = if dry_run {
         tauri::async_runtime::spawn(drive(
@@ -301,6 +300,10 @@ pub(super) fn launch(
             cancel,
             emit,
         ))
+    } else if let Some(ads) = &state.demo_ads {
+        // The demo: its mailbox brings the next bundled ads, its portals their pages.
+        let feed = DemoFeed::new(Arc::clone(ads), Arc::clone(&store), state.matcher());
+        tauri::async_runtime::spawn(drive(feed, store, policy, request, ctx, cancel, emit))
     } else {
         let backends = AppBackends {
             credentials,

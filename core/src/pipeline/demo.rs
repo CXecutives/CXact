@@ -3,13 +3,17 @@
 //! state then only live in memory. The sample mails and ads are German like real ones; the
 //! jobs are scored by the real engine against the invented sample profile of the matching
 //! corpus, so the list shows real rings (high, mid, low, excluded and one without details).
+//!
+//! The demo (the `CXact Demo` app, the `--demo` start) keeps a data folder of its own, made
+//! anew at every start with an empty inbox and the sample profile; its mailbox and portals
+//! ([`feed`]) bring the invented ads of the held-out sets in batches, fetch by fetch.
 
-use std::collections::BTreeMap;
+mod feed;
+
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
-use jiff::Timestamp;
 use jiff::civil::Date;
 use serde::Deserialize;
 use serde_json::Value;
@@ -19,9 +23,9 @@ use super::{Backends, LocalMatcher, Matcher};
 use crate::fetch::{Cause, PageFetcher, PageOutcome};
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::{RawHead, RawMail, head_part};
-use crate::model::{AlertMail, Posting};
 use crate::portal::{Facts, FetchPath, JobLink, Portal};
 use crate::store::Store;
+pub use feed::{DemoAds, DemoFeed};
 
 /// The profile of the dry run: the invented interim finance profile of the matching corpus.
 pub const PROFILE_JSON: &str = include_str!("../../tests/fixtures/matching/sample_profile.json");
@@ -239,9 +243,10 @@ Rahmenbedingungen:
 
 /// How the app starts, by its arguments: with its own data, as the dry run (`--dry-run`:
 /// database and safety state in memory, the fakes above instead of mailbox and portals, no
-/// files) or as the demo (`--demo`: a data folder of its own made anew from bundled ads by
-/// [`create_demo_data`], no mailbox, no portal). The dry run wins when both are given: it
-/// touches nothing at all. Only the exact flags count.
+/// files) or as the demo (`--demo`: a data folder of its own made anew by
+/// [`create_demo_data`], a made-up mailbox and portals that bring the bundled ads, [`feed`]).
+/// The dry run wins when both are given: it touches nothing at all. Only the exact flags
+/// count.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StartMode {
     Normal,
@@ -272,17 +277,55 @@ impl StartMode {
             StartMode::Normal
         }
     }
+
+    /// The start of the app with this identifier (its Tauri config): the demo build
+    /// ([`is_demo_build`], the `CXact Demo` setup) always starts as the demo, unless the dry
+    /// run is asked for; any other build as its arguments say ([`StartMode::of`]).
+    pub fn of_app<I>(args: I, identifier: &str) -> StartMode
+    where
+        I: IntoIterator,
+        I::Item: AsRef<str>,
+    {
+        match StartMode::of(args) {
+            StartMode::Normal if is_demo_build(identifier) => StartMode::Demo,
+            mode => mode,
+        }
+    }
 }
+
+/// The end of the identifier of the demo build (`src-tauri/tauri.demo.conf.json`).
+pub const DEMO_BUILD_SUFFIX: &str = ".demo";
+
+/// Is this the identifier of the demo build? Its own identifier gives the demo its own data
+/// folder and its own single-instance lock, beside an installed CXact.
+pub fn is_demo_build(identifier: &str) -> bool {
+    identifier.ends_with(DEMO_BUILD_SUFFIX)
+}
+
+/// The mailbox the demo shows and its alert mails are addressed to: invented, on a domain
+/// reserved for examples (no real account, never the keychain).
+pub const DEMO_ADDRESS: &str = "demo@example.com";
 
 /// The folder of the demo data inside the app's data folder (the `--demo` start): its own
 /// database, its own work folder, never the real ones.
 pub const DEMO_DIR: &str = "demo";
 /// The demo's work folder inside [`DEMO_DIR`].
 pub const DEMO_WORKSPACE: &str = "workspace";
-/// The ad folders the app bundles for the demo, inside its resources (`bundle.resources` in
-/// `src-tauri/tauri.conf.json`): the invented ads of the held-out sets 8 and 9 of the
-/// matching fixtures, each with its `jobs.json`.
-pub const DEMO_SOURCES: [&str; 2] = ["demo/heldout8", "demo/heldout9"];
+/// The ad folders the demo reads, inside the app's resources: the invented ads of the nine
+/// held-out sets of the matching fixtures, each with its `jobs.json`. The demo build bundles
+/// all of them (`bundle.resources` in `src-tauri/tauri.demo.conf.json`), the app itself sets
+/// 8 and 9 (`src-tauri/tauri.conf.json`); a folder that is not there is left out.
+pub const DEMO_SOURCES: [&str; 9] = [
+    "demo/heldout1",
+    "demo/heldout2",
+    "demo/heldout3",
+    "demo/heldout4",
+    "demo/heldout5",
+    "demo/heldout6",
+    "demo/heldout7",
+    "demo/heldout8",
+    "demo/heldout9",
+];
 
 /// The demo's ad folders in the app's resource folder `resources` (joined part by part: a
 /// verbatim Windows path takes no `/`).
@@ -297,7 +340,7 @@ pub fn demo_sources(resources: &Path) -> Vec<PathBuf> {
 }
 
 /// A demo data folder made by [`create_demo_data`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct DemoData {
     /// `<data>/demo`.
     pub dir: PathBuf,
@@ -305,8 +348,8 @@ pub struct DemoData {
     pub database: PathBuf,
     /// Its work folder, stored in its settings (the profile lies in `profil/`).
     pub workspace: PathBuf,
-    /// The jobs it holds.
-    pub jobs: usize,
+    /// The ads its mailbox brings, batch by batch ([`DemoFeed`]).
+    pub ads: DemoAds,
 }
 
 /// One job of a fixture folder's `jobs.json` (the format of the held-out sets).
@@ -318,28 +361,23 @@ struct FixtureJob {
     title: String,
     company: String,
     location: String,
-    mail_date: Option<Timestamp>,
-    first_seen_at: Timestamp,
     desc_status: String,
     facts: Option<Value>,
 }
 
-/// Makes a fresh demo data folder `<data_dir>/demo` from ad fixture folders (each with a
-/// `jobs.json` and one text file per job in the text contract format, like
-/// `core/tests/fixtures/matching/heldout8`): a new database with every job in the inbox,
-/// its text (full or teaser) and the facts its page stated, the alert mails dated so the
-/// newest came two hours before `now` (the ads keep their spacing), those older than three
-/// days read, and a finished fetch on record (setup done; the last day's jobs are new since
-/// it). Its settings name its own work folder, emptied first (a profile, the Excel file and
-/// the text files of an earlier demo go); `profile` (a profile JSON) is copied there.
-/// The real database, the real work folder, a mailbox and every portal stay untouched: the
-/// function reads the fixtures and writes below `<data_dir>/demo` only, anew on every call.
+/// Makes a fresh demo data folder `<data_dir>/demo`: a new database without any job (an
+/// empty inbox, no fetch yet) whose settings name its own work folder, emptied first (a
+/// profile, the Excel and CSV files of an earlier demo go); `profile` (a profile's JSON) is
+/// written there as its profile. Reads the ads of the fixture folders (`sources`,
+/// [`DemoAds::load`]) that its mailbox brings fetch by fetch. The real database, the real
+/// work folder, a mailbox and every portal stay untouched: the function reads the fixtures
+/// and writes below `<data_dir>/demo` only, anew on every call.
 pub fn create_demo_data(
     data_dir: &Path,
     sources: &[PathBuf],
-    profile: Option<&Path>,
-    now: Timestamp,
+    profile: Option<&str>,
 ) -> crate::Result<DemoData> {
+    let ads = DemoAds::load(sources)?;
     let dir = data_dir.join(DEMO_DIR);
     std::fs::create_dir_all(&dir).map_err(|e| crate::Error::io(&dir, e))?;
     let database = dir.join(crate::DB_FILE);
@@ -366,19 +404,7 @@ pub fn create_demo_data(
             .join(crate::profile::PROFILE_DIR)
             .join(crate::profile::PROFILE_FILE);
         crate::export::ensure_dir(target.parent().unwrap_or(&workspace))?;
-        std::fs::copy(profile, &target).map_err(|e| crate::Error::io(profile, e))?;
-    }
-    let mut jobs = Vec::new();
-    for source in sources {
-        let list = source.join("jobs.json");
-        let json = std::fs::read_to_string(&list).map_err(|e| crate::Error::io(&list, e))?;
-        let fixtures: Vec<FixtureJob> = serde_json::from_str(&json)
-            .map_err(|e| crate::Error::Corrupt(format!("{}: {e}", list.display())))?;
-        for job in fixtures {
-            let file = source.join(format!("{}.txt", job.file));
-            let text = std::fs::read_to_string(&file).map_err(|e| crate::Error::io(&file, e))?;
-            jobs.push((job, ad_body(&text).to_owned()));
-        }
+        std::fs::write(&target, profile).map_err(|e| crate::Error::io(&target, e))?;
     }
     let store = Store::open(&database)?;
     let settings = crate::settings::Settings {
@@ -386,106 +412,13 @@ pub fn create_demo_data(
         ..crate::settings::Settings::default()
     };
     settings.save(&store)?;
-    let count = fill_demo(&store, jobs, now)?;
     Ok(DemoData {
         dir,
         database,
         workspace,
-        jobs: count,
+        ads,
     })
 }
-
-/// The jobs into the demo database as alert mails (one per portal and day) of two runs: the
-/// days before the last and the last day, which the finished fetch brought.
-fn fill_demo(
-    store: &Store,
-    mut jobs: Vec<(FixtureJob, String)>,
-    now: Timestamp,
-) -> crate::Result<usize> {
-    let date = |job: &FixtureJob| job.mail_date.unwrap_or(job.first_seen_at);
-    let Some(newest) = jobs.iter().map(|(job, _)| date(job)).max() else {
-        return Ok(0);
-    };
-    let shift = now
-        .saturating_sub(jiff::SignedDuration::from_hours(2))
-        .unwrap_or(now)
-        .duration_since(newest);
-    let moved = |at: Timestamp| at.checked_add(shift).unwrap_or(at);
-    jobs.sort_by_key(|(job, _)| date(job));
-    let last_day = moved(newest)
-        .saturating_sub(jiff::SignedDuration::from_hours(24))
-        .unwrap_or(now);
-    let read_before = now
-        .saturating_sub(jiff::SignedDuration::from_hours(72))
-        .unwrap_or(now);
-    let (older, recent) = (store.begin_run()?, store.begin_run()?);
-    let mut stored = 0;
-    let mut groups: BTreeMap<(i64, Portal, jiff::civil::Date), Vec<(FixtureJob, String)>> =
-        BTreeMap::new();
-    for (job, text) in jobs {
-        let Some(link) = crate::portal::job_link(&job.url) else {
-            log::warn!("demo: no job link in {}", job.file);
-            continue;
-        };
-        let at = moved(date(&job));
-        let run = if at >= last_day { recent } else { older };
-        groups
-            .entry((run, link.key.portal, crate::time::local_date(at)))
-            .or_default()
-            .push((job, text));
-    }
-    for ((run, portal, day), group) in groups {
-        let at = group
-            .iter()
-            .map(|(job, _)| moved(date(job)))
-            .max()
-            .unwrap_or(now);
-        let postings: Vec<Posting> = group
-            .iter()
-            .filter_map(|(job, _)| {
-                let link = crate::portal::job_link(&job.url)?;
-                Some(Posting::new(
-                    link.key,
-                    link.url,
-                    &job.title,
-                    &job.company,
-                    &job.location,
-                ))
-            })
-            .collect();
-        let alert = AlertMail {
-            key: format!("demo:{}:{day}", portal.key()),
-            portal,
-            subject: DEMO_SUBJECT.to_owned(),
-            sender: portal.label().to_owned(),
-            date: Some(at),
-            gmail_id: None,
-            postings,
-        };
-        store.record_alert(run, &alert, at)?;
-        for ((job, text), posting) in group.iter().zip(&alert.postings) {
-            let key = &posting.key;
-            if job.desc_status == "teaser" {
-                store.record_teaser(key, text, at)?;
-            } else {
-                store.record_text(key, text, false, false, at)?;
-            }
-            let facts = job.facts.as_ref().and_then(page_facts);
-            store.record_parse(key, portal.adapter().parser_version(), facts.as_ref())?;
-            if at < read_before {
-                store.mark_read(key, at)?;
-            }
-            stored += 1;
-        }
-    }
-    // A finished fetch on record: setup is done, and the last day's jobs are its new ones.
-    store.kv_set("last_scan_run", &recent.to_string())?;
-    store.kv_set("last_fetch_at", &crate::time::to_db(now).to_string())?;
-    Ok(stored)
-}
-
-/// Subject of the demo's alert mails (a mail's own words, German like the portals').
-const DEMO_SUBJECT: &str = "Neue Jobs für dich";
 
 /// The ad text of a file in the text contract format: what follows its head (the lines up to
 /// the first empty one).
@@ -551,32 +484,33 @@ mod tests {
     use crate::matching::{self, JobInput, TextKind, Verdict};
     use crate::model::{Band, band};
 
-    /// The demo data folder: a fresh database of its own below `<data>/demo` with every job
-    /// of the fixtures in the inbox, its text and page facts, plausible dates up to two hours
-    /// ago (the older ones read), a finished fetch on record and its own work folder with the
-    /// profile; the real database beside it stays as it was, and a second call starts anew.
+    /// Fixture folders of the matching sets, by name.
+    fn fixtures(sets: &[&str]) -> Vec<PathBuf> {
+        sets.iter()
+            .map(|set| {
+                Path::new(env!("CARGO_MANIFEST_DIR"))
+                    .join("tests/fixtures/matching")
+                    .join(set)
+            })
+            .collect()
+    }
+
+    /// The demo data folder: a fresh database of its own below `<data>/demo` without any job
+    /// and without a fetch (an empty inbox), its own work folder with the sample profile, and
+    /// the ads its mailbox brings; the real database beside it stays as it was, and a second
+    /// call starts anew.
     #[test]
-    fn the_demo_data_stand_apart_and_look_real() {
+    fn the_demo_data_stand_apart_and_start_empty() {
         let data = tempfile::tempdir().unwrap();
         let real = data.path().join(crate::DB_FILE);
         let store = Store::open(&real).unwrap();
         store.kv_set("mine", "1").unwrap();
         drop(store);
         let before = std::fs::read(&real).unwrap();
-        let fixtures =
-            Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/matching/heldout8");
-        let profile = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/matching/sample_profile.json");
-        let now: Timestamp = "2026-10-01T09:00:00Z".parse().unwrap();
-        let demo = create_demo_data(
-            data.path(),
-            std::slice::from_ref(&fixtures),
-            Some(&profile),
-            now,
-        )
-        .unwrap();
+        let sources = fixtures(&["heldout8"]);
+        let demo = create_demo_data(data.path(), &sources, Some(PROFILE_JSON)).unwrap();
         assert_eq!(demo.dir, data.path().join(DEMO_DIR));
-        assert_eq!(demo.jobs, 64, "every job of the set");
+        assert_eq!(demo.ads.len(), 64, "every ad of the set");
         assert_eq!(
             std::fs::read(&real).unwrap(),
             before,
@@ -589,69 +523,26 @@ mod tests {
             settings.workspace.as_deref(),
             Some(demo.workspace.as_path())
         );
-        assert!(
-            demo.workspace
-                .join("profil")
-                .join("beraterprofil.json")
-                .is_file()
-        );
-        let jobs = store.jobs(&crate::store::JobFilter::default()).unwrap();
-        assert_eq!(jobs.len(), 64);
-        let oldest = now - jiff::SignedDuration::from_hours(24 * 10);
-        for job in &jobs {
-            assert_eq!(job.place(), crate::model::Place::Inbox);
-            let at = job.mail_date.unwrap();
-            assert!(at <= now && at > oldest, "{at}");
-            assert!(
-                store.description(&job.key).unwrap().is_some(),
-                "{}",
-                job.key
-            );
-        }
-        let teasers = jobs
-            .iter()
-            .filter(|j| j.desc_status == crate::model::DescStatus::Teaser)
-            .count();
-        assert_eq!(teasers, 16);
-        assert!(jobs.iter().any(|j| j.facts.is_some()), "page facts");
-        assert!(
-            jobs.iter().any(|j| j.read_at.is_some()) && jobs.iter().any(|j| j.read_at.is_none())
-        );
-        assert!(super::super::has_completed_fetch(&store));
-        let last = super::super::last_scan_run(&store).unwrap();
-        assert!(
-            jobs.iter().any(|j| j.first_seen_run == last),
-            "new since the last fetch"
-        );
-        assert!(jobs.iter().any(|j| j.first_seen_run != last));
-        assert!(
-            store.last_alerts().unwrap().len() >= 2,
-            "alert mails per portal"
-        );
+        let profile = demo.workspace.join("profil").join("beraterprofil.json");
+        assert_eq!(std::fs::read_to_string(&profile).unwrap(), PROFILE_JSON);
+        assert_eq!(store.job_count().unwrap(), 0, "an empty inbox");
+        assert!(!super::super::has_completed_fetch(&store));
+        std::fs::write(demo.workspace.join("JobAlerts.csv"), "old").unwrap();
         drop(store);
-        // Anew on every call: the profile of the last demo goes too (none by default).
-        let again = create_demo_data(data.path(), &[fixtures], None, now).unwrap();
-        assert_eq!(again.jobs, 64);
-        let store = Store::open(&again.database).unwrap();
-        assert_eq!(store.job_count().unwrap(), 64);
+        // Anew on every call: the files and the profile of the last demo go (none asked for).
+        let again = create_demo_data(data.path(), &sources, None).unwrap();
         assert!(!again.workspace.join("profil").exists());
+        assert!(!again.workspace.join("JobAlerts.csv").exists());
     }
 
     /// The demo never is the real data: its folder, database and work folder lie inside
-    /// `<data>/demo`, none of them is the data folder or its database.
+    /// `<data>/demo`, none of them is the data folder or its database. A set that is not
+    /// bundled is left out.
     #[test]
     fn the_demo_is_never_the_real_data_folder() {
         let data = tempfile::tempdir().unwrap();
-        let sources: Vec<PathBuf> = ["heldout8", "heldout9"]
-            .iter()
-            .map(|set| {
-                Path::new(env!("CARGO_MANIFEST_DIR"))
-                    .join("tests/fixtures/matching")
-                    .join(set)
-            })
-            .collect();
-        let now: Timestamp = "2026-10-01T09:00:00Z".parse().unwrap();
-        let demo = create_demo_data(data.path(), &sources, None, now).unwrap();
+        let sources = fixtures(&["heldout8", "heldout9", "not-bundled"]);
+        let demo = create_demo_data(data.path(), &sources, None).unwrap();
         let real = data.path().join(crate::DB_FILE);
         for path in [&demo.dir, &demo.database, &demo.workspace] {
             assert_ne!(path.as_path(), data.path());
@@ -659,10 +550,15 @@ mod tests {
             assert!(path.starts_with(data.path().join(DEMO_DIR)), "{path:?}");
         }
         assert!(!real.exists(), "no real database made");
-        assert_eq!(demo.jobs, 64 + 96, "both sets the app bundles");
+        assert_eq!(
+            demo.ads.len(),
+            159,
+            "both sets the app bundles (one job in both)"
+        );
     }
 
-    /// Only the exact flags choose the start; the dry run wins over the demo.
+    /// Only the exact flags choose the start; the dry run wins over the demo. The demo build
+    /// starts as the demo whatever else is asked, except for the dry run.
     #[test]
     fn the_arguments_choose_the_start() {
         let none: [&str; 0] = [];
@@ -675,47 +571,66 @@ mod tests {
             StartMode::of(["demo", "--demo=1", "--DEMO", "-demo"]),
             StartMode::Normal
         );
+        let app = "de.cxecutives.job-alert-monitor";
+        let demo = "de.cxecutives.job-alert-monitor.demo";
+        assert_eq!(StartMode::of_app(none, app), StartMode::Normal);
+        assert_eq!(StartMode::of_app(["--demo"], app), StartMode::Demo);
+        assert_eq!(StartMode::of_app(none, demo), StartMode::Demo);
+        assert_eq!(StartMode::of_app(["--devtools"], demo), StartMode::Demo);
+        assert_eq!(StartMode::of_app(["--dry-run"], demo), StartMode::DryRun);
+        assert_eq!(
+            StartMode::of_app(none, "de.cxecutives.job-alert-monitor.demonstration"),
+            StartMode::Normal
+        );
     }
 
-    /// The ads the demo reads are the ones the app bundles: every folder of [`DEMO_SOURCES`]
-    /// is a target of `bundle.resources` in tauri.conf.json, its `jobs.json` and its texts
-    /// from the matching fixtures of the same name.
+    /// A Tauri config file of the app.
+    fn config(name: &str) -> Value {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../src-tauri")
+            .join(name);
+        serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap()
+    }
+
+    /// Does `config` bundle the ads of the demo folder `dir` (its `jobs.json` and its texts,
+    /// from the matching fixtures of the same name)?
+    fn bundles(config: &Value, dir: &str) -> bool {
+        let set = dir.rsplit('/').next().unwrap();
+        let from = format!("../core/tests/fixtures/matching/{set}");
+        let resources = &config["bundle"]["resources"];
+        resources[format!("{from}/jobs.json")] == *format!("{dir}/jobs.json")
+            && resources[format!("{from}/*.txt")] == *format!("{dir}/")
+    }
+
+    /// The demo build (`npx tauri build --config src-tauri/tauri.demo.conf.json`) is the setup
+    /// "CXact Demo": an identifier of its own that marks it as the demo build (its own data
+    /// folder), a program file of its own (its setup never closes a running CXact) and no
+    /// installer hook (it never removes another install); it bundles every folder of
+    /// [`DEMO_SOURCES`]. The app itself is no demo build and keeps sets 8 and 9 for `--demo`.
     #[test]
-    fn the_bundle_carries_the_demo_ads() {
-        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-        let config: Value = serde_json::from_str(
-            &std::fs::read_to_string(root.join("src-tauri/tauri.conf.json")).unwrap(),
-        )
-        .unwrap();
-        let resources = config["bundle"]["resources"].as_object().unwrap();
+    fn the_demo_build_carries_every_set() {
+        let (app, demo) = (config("tauri.conf.json"), config("tauri.demo.conf.json"));
+        let identifier = demo["identifier"].as_str().unwrap();
+        assert!(is_demo_build(identifier), "{identifier}");
+        assert!(!is_demo_build(app["identifier"].as_str().unwrap()));
+        assert_eq!(demo["productName"], "CXact Demo");
+        assert!(demo["mainBinaryName"].is_string());
+        assert_ne!(demo["mainBinaryName"], "job-alert-monitor");
+        let nsis = demo["bundle"]["windows"]["nsis"].as_object().unwrap();
+        assert_eq!(nsis.get("installerHooks"), Some(&Value::Null));
         for dir in DEMO_SOURCES {
+            assert!(bundles(&demo, dir), "{dir}");
             let set = dir.rsplit('/').next().unwrap();
-            let from = format!("../core/tests/fixtures/matching/{set}");
-            assert_eq!(
-                resources.get(&format!("{from}/jobs.json")),
-                Some(&Value::from(format!("{dir}/jobs.json"))),
-                "{dir}"
-            );
-            assert_eq!(
-                resources.get(&format!("{from}/*.txt")),
-                Some(&Value::from(format!("{dir}/"))),
-                "{dir}"
-            );
-            assert!(
-                root.join("src-tauri")
-                    .join(&from)
-                    .join("jobs.json")
-                    .is_file()
-            );
+            assert!(fixtures(&[set])[0].join("jobs.json").is_file(), "{set}");
+        }
+        for dir in ["demo/heldout8", "demo/heldout9"] {
+            assert!(bundles(&app, dir), "{dir}");
         }
         let resources = Path::new("C:/App/resources");
-        assert_eq!(
-            demo_sources(resources),
-            [
-                resources.join("demo").join("heldout8"),
-                resources.join("demo").join("heldout9"),
-            ]
-        );
+        let sources = demo_sources(resources);
+        assert_eq!(sources.len(), DEMO_SOURCES.len());
+        assert_eq!(sources[0], resources.join("demo").join("heldout1"));
+        assert_eq!(sources[8], resources.join("demo").join("heldout9"));
     }
 
     #[test]

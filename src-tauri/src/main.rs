@@ -94,10 +94,12 @@ fn texts() -> &'static Texts {
 static EXIT_CODE: AtomicI32 = AtomicI32::new(0);
 
 fn main() {
+    let context = tauri::generate_context!();
     // Dry run: database and vault state in memory only, fakes instead of mailbox and
-    // portals, no files. Demo: a data folder of its own made anew from bundled ads, no
-    // mailbox, no portal.
-    let mode = StartMode::of(std::env::args().skip(1));
+    // portals, no files. Demo: a data folder of its own made anew, a made-up mailbox and
+    // portals that bring the bundled ads fetch by fetch; the demo build ("CXact Demo", its
+    // identifier ends in `.demo`) always starts so.
+    let mode = StartMode::of_app(std::env::args().skip(1), &context.config().identifier);
     let builder = tauri::Builder::default()
         // Must be the first plugin: a second start only brings the existing window to the
         // front.
@@ -117,7 +119,7 @@ fn main() {
             Ok(())
         });
     let app = platform::app(builder)
-        .build(tauri::generate_context!())
+        .build(context)
         .unwrap_or_else(|error| fail(&Failure::window(&error)));
     app.run_return(|app, event| match event {
         tauri::RunEvent::ExitRequested {
@@ -229,16 +231,16 @@ fn install_log(data_dir: &Path) {
     }));
 }
 
-/// The database of a start and the work folder it falls back to: the real database, one in
-/// memory (dry run) or the demo's, made anew in `<data>/demo` from the ads the app bundles,
-/// without a profile (one of tools/test-profiles is chosen in Profil), with its own work
-/// folder there.
+/// The database of a start, the work folder it falls back to and, in the demo, the ads its
+/// mailbox brings: the real database, one in memory (dry run) or the demo's, made anew in
+/// `<data>/demo` with an empty inbox and its own work folder there with the sample profile,
+/// its ads read from the ones the app bundles.
 fn open_store(
     app: &tauri::App,
     mode: StartMode,
     app_data: &Path,
     data_dir: &Path,
-) -> Result<(Store, PathBuf), Failure> {
+) -> Result<(Store, PathBuf, Option<Arc<demo::DemoAds>>), Failure> {
     let database = data_dir.join(jobalert_core::DB_FILE);
     let opened = match mode {
         StartMode::Normal => Store::open(&database),
@@ -251,14 +253,13 @@ fn open_store(
             let fresh = demo::create_demo_data(
                 app_data,
                 &demo::demo_sources(&resources),
-                None,
-                jiff::Timestamp::now(),
+                Some(demo::PROFILE_JSON),
             )
             .map_err(|e| Failure::other(format!("demo: {e}")))?;
-            log::info!("demo: {} jobs", fresh.jobs);
+            log::info!("demo: {} ads", fresh.ads.len());
             let store =
                 Store::open(&fresh.database).map_err(|e| Failure::database(&fresh.database, &e))?;
-            return Ok((store, fresh.workspace));
+            return Ok((store, fresh.workspace, Some(Arc::new(fresh.ads))));
         }
     };
     // `Documents\CXact`, or the folder of an earlier version that holds the app's files.
@@ -270,6 +271,7 @@ fn open_store(
     Ok((
         opened.map_err(|e| Failure::database(&database, &e))?,
         workspace,
+        None,
     ))
 }
 
@@ -296,7 +298,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     let reset_report = (mode == StartMode::Normal)
         .then(|| jobalert_core::reset::perform_pending(&data_dir, &Vault::app()))
         .flatten();
-    let (store, default_workspace) = open_store(app, mode, &app_data, &data_dir)?;
+    let (store, default_workspace, demo_ads) = open_store(app, mode, &app_data, &data_dir)?;
     let store = Arc::new(store);
     // The sessions' storage outside the data folder (macOS data stores) goes too.
     if reset_report.is_some() {
@@ -308,6 +310,7 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         data_dir,
         dry_run,
         demo: mode == StartMode::Demo,
+        demo_ads,
         user_agent: platform::USER_AGENT.to_owned(),
         system_language: jobalert_core::settings::Language::DEFAULT,
         reset_report: Mutex::new(reset_report),

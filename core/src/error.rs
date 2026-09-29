@@ -111,8 +111,9 @@ pub enum ErrorKind {
     NotFound,
     /// Not available in the dry run.
     DryRun,
-    /// Not available in the demo (`--demo`): it reads no mailbox, asks no portal and keeps
-    /// to its own data folder.
+    /// Not available in the demo (`--demo`, the `CXact Demo` build): its mailbox and portals
+    /// are made up, it never touches a real mailbox, a portal or the vault and keeps to its
+    /// own data folder.
     Demo,
     MailMissing,
     MailConnect,
