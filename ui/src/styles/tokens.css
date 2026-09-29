@@ -32,43 +32,43 @@
   color-scheme: light;
 
   /* ------------------------------------------------------------------ palette */
-  /* CXact (user, 2026-09-29: the cxpertise navy back): a pale cream for the window and the
-     sidebar, white content, a soft coral that acts (the primary, the unread dot) and the
-     navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
+  /* CXact (user, 2026-09-30: lively, "A"): a warm cream for the window and the sidebar,
+     white content, a rich coral that acts (the primary, the unread dot) and the saturated
+     cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
      switches that are on, progress and the tooltip. */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   --p-nav-active: 34 20% 89.5%; /* the grey pill the sidebar had before the white one */
-  --p-cream: 36 30% 95.5%;
+  --p-cream: 34 50% 94.5%;
   --p-ink: 30 8% 13%;
-  --p-coral: 13 68% 55%;
+  --p-coral: 12 76% 57%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
   --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
-  --p-coral-variant: 13 62% 49%;
-  --p-coral-press: 13 58% 44%;
-  --p-muted: 36 25% 96%;
+  --p-coral-variant: 12 70% 51%;
+  --p-coral-press: 12 66% 46%;
+  --p-muted: 34 40% 96%;
   --p-muted-fg: 30 5% 33%;
-  --p-line: 34 16% 87%;
-  --p-accent-soft: 18 55% 93%;
+  --p-line: 32 25% 87%;
+  --p-accent-soft: 16 70% 93%;
   --p-success: 137.1 62.9% 32.7%;
   --p-warning: 43.9 66.1% 50.2%;
   --p-danger: 355.8 71.8% 47.3%;
-  --p-coral-800: 13 60% 36%;
-  --p-coral-25: 24 55% 96.8%;
-  --p-coral-40: 22 55% 95.5%;
-  --p-coral-50: 22 50% 94.5%;
-  --p-coral-70: 22 48% 93%;
-  --p-coral-150: 20 30% 88%;
-  --p-navy: 212 36% 34%;
-  --p-navy-deep: 212 34% 24%;
-  --p-navy-hover: 212 35% 29%; /* a switch that is on, under the pointer */
-  --p-navy-50: 212 36% 96%;
-  --p-navy-100: 212 36% 93%;
-  --p-navy-150: 212 32% 90%;
-  --p-navy-200: 212 28% 83%;
+  --p-coral-800: 12 68% 36%;
+  --p-coral-25: 16 80% 96%;
+  --p-coral-40: 18 75% 95%;
+  --p-coral-50: 18 70% 93.5%;
+  --p-coral-70: 18 65% 92%;
+  --p-coral-150: 16 45% 86%;
+  --p-navy: 216 50% 33%;
+  --p-navy-deep: 216 52% 24%;
+  --p-navy-hover: 216 51% 28.5%; /* a switch that is on, under the pointer */
+  --p-navy-50: 216 60% 96.5%;
+  --p-navy-100: 216 55% 93%;
+  --p-navy-150: 216 48% 89.5%;
+  --p-navy-200: 216 40% 82%;
   --p-fg-subtle: 30 4% 41%;
-  --p-border-strong: 34 12% 76%;
+  --p-border-strong: 32 18% 76%;
   --p-border-input: 34 8% 60%;
   --p-border-press: 34 8% 50%;
   --p-wash: 28 30% 24%;
@@ -98,10 +98,10 @@
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
-  --p-shade-navy: 212 30% 20%;
+  --p-shade-navy: 216 40% 20%;
   /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 212 34% 22%;
-  --p-tooltip-edge: 212 20% 38%;
+  --p-emphasis: 216 45% 20%;
+  --p-tooltip-edge: 216 28% 36%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
