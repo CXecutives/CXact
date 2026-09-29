@@ -317,7 +317,7 @@ function sampleJobs(): JobView[] {
 }
 
 /** The scenario `many`: four demo jobs in turn under new ids (100000 on), their titles
- *  numbered: one the engine could not score (100000 sorts far down), a high, a mid and an
+ *  numbered: one the engine could not score (on top with the others without a number), a high, a mid and an
  *  excluded one (every fourth from the fourth); the portals in turn, every third one unread,
  *  a quarter of an hour apart. */
 const MANY = ['freelancermap:2806', 'freelancermap:2801', 'freelancermap:2802', 'freelance:900412'];

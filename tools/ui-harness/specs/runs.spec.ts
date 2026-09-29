@@ -293,8 +293,9 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await expect(rows(page).first()).toBeVisible();
   const first = await rows(page).first().getAttribute('data-testid');
   const newBefore = (await stubList(page)).counts.inbox;
-  // Job 100000 scores 0 and sorts far beyond the first page of 500.
-  const far = await jobOf(page, 'linkedin', '100000');
+  // Job 101998, the oldest of the mid scores, sorts far beyond the first page of 500 (the jobs
+  // without a number stand on top).
+  const far = await jobOf(page, 'linkedin', '101998');
   await emit(page, {
     type: 'jobUpdated',
     job: { ...far, match: { ...far.match!, score: 35, band: 'low' } },
@@ -303,7 +304,7 @@ test('a run update of a job beyond the loaded page is no new row', async ({ page
   await page.waitForTimeout(600);
   await settle(page);
   await expect(rows(page).first()).toHaveAttribute('data-testid', first!);
-  await expect(page.getByTestId('job-row-linkedin-100000')).toHaveCount(0);
+  await expect(page.getByTestId('job-row-linkedin-101998')).toHaveCount(0);
   expect((await stubList(page)).counts.inbox).toBe(newBefore);
 
   // A job new in the run comes in at the top, and the counts follow the backend.
