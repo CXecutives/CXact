@@ -797,6 +797,16 @@ test.describe('Jobdetails', () => {
     expect(new Set(judged.map((box) => Math.round(box.verdict!))).size).toBe(1);
     expect(new Set(boxes.map((box) => Math.round(box.start))).size).toBe(1);
     expect(Math.round(judged[0]!.verdict!)).toBeLessThan(Math.round(boxes[0]!.start));
+    // A job without a score keeps the verdicts' column: its values start at the same place.
+    const starts = (): Promise<number[]> =>
+      terms(page)
+        .locator('.term-line')
+        .evaluateAll((all) => all.map((node) => Math.round(node.getBoundingClientRect().left)));
+    const scored = await starts();
+    await openJob(page, 'freelancermap-2806');
+    await expect(terms(page).getByTestId('verdict')).toHaveCount(0);
+    expect(new Set(await starts())).toEqual(new Set([scored[0]]));
+    await openJob(page, 'freelancermap-2801');
     // One metric with the requirements: their text and their icon gap.
     const [termFont, termGap] = await terms(page)
       .locator('.term-name')
@@ -834,6 +844,9 @@ test.describe('Jobdetails', () => {
     // The e-mail is a link: a new mail to it in the mail program, one line high.
     const mail = term(page, 'contact').getByTestId('contact-mail');
     await expect(mail).toHaveClass(/link/);
+    // In the type of the name and the phone around it.
+    const size = (node: Element) => getComputedStyle(node).fontSize;
+    expect(await mail.evaluate(size)).toBe(await parts.first().evaluate(size));
     await mail.click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'contactMail', key: { portal: 'freelancermap', id: '2801' } },

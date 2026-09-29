@@ -449,7 +449,7 @@
   <section class="block" data-testid="terms">
     <h2 class="section">{t.reader.details}</h2>
     <!-- Name, the ad's value and whether it fits as an icon (the reason in its tooltip). -->
-    <ul class="terms" class:judged aria-label={t.reader.details} data-testid="criteria">
+    <ul class="terms" class:bare={!withRing} aria-label={t.reader.details} data-testid="criteria">
       {#each rows as row (row.key)}
         <li
           class="term"
@@ -460,7 +460,8 @@
         >
           <span class="term-name"><Icon name={row.icon} size="sm" />{row.name}</span>
           <!-- The verdict in its own column between the name and the value (the names are the
-               same for every job, so it never moves); a row without one leaves it empty. -->
+               same for every job, so it never moves); a row or a job without one leaves it
+               empty. -->
           {#if judged && row.verdict}
             <span class="verdict" data-testid="verdict" data-verdict={row.verdict}>
               <ReasonItem
@@ -716,33 +717,23 @@
     font: var(--type-lg);
   }
 
-  /* The Jobdetails: name, verdict and value in three columns that line up row by row (two
-     without a match: nothing to judge); the verdicts stand in one column after the names,
-     which every job shares, so they never move. Each row is one box on the columns of the
-     list. The same metrics as the requirements below: their text, their icon gap. */
+  /* The Jobdetails: name, verdict and value in three columns that line up row by row; the
+     verdicts stand in one column after the names, which every job shares, so they never
+     move. A job without a score keeps the verdicts' column empty, so the values start at the
+     same place for every job (two columns only without a profile, where no job is judged).
+     Each row is one box on the columns of the list. The same metrics as the requirements
+     below: their text, their icon gap. */
   .terms {
     display: grid;
-    grid-template-columns: max-content minmax(0, max-content);
-    gap: var(--space-8) var(--space-24);
+    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
+    gap: var(--space-8) var(--space-16);
     font: var(--type-md);
     text-align: start;
   }
 
-  .terms.judged {
-    grid-template-columns: max-content var(--icon-sm) minmax(0, max-content);
-    column-gap: var(--space-16);
-  }
-
-  .terms.judged .term-name {
-    grid-column: 1;
-  }
-
-  .terms.judged .verdict {
-    grid-column: 2;
-  }
-
-  .terms.judged .term-line {
-    grid-column: 3;
+  .terms.bare {
+    grid-template-columns: max-content minmax(0, max-content);
+    column-gap: var(--space-24);
   }
 
   .term {
@@ -760,6 +751,7 @@
 
   .term-name {
     display: inline-flex;
+    grid-column: 1;
     align-items: center;
     gap: var(--space-8);
     color: var(--text-muted);
@@ -772,10 +764,15 @@
 
   .term-line {
     display: flex;
+    grid-column: 3;
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  .bare .term-line {
+    grid-column: 2;
   }
 
   .value {
@@ -802,14 +799,19 @@
   }
 
   /* The e-mail as a link keeps its hit area but not its height: the line stays a line of
-     text. */
+     text, in the type of the name and the phone around it. */
   .mail {
     display: inline-flex;
     margin-block: calc((var(--leading-md) - var(--control-sm)) / 2);
   }
 
+  .mail :global(.btn.link) {
+    --btn-type: var(--type-md);
+  }
+
   .verdict {
     display: inline-flex;
+    grid-column: 2;
     min-width: var(--icon-sm);
   }
 
