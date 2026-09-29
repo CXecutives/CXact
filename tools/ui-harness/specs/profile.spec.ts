@@ -1831,6 +1831,21 @@ test('sentences keep their commas; a double click takes a chip back to edit it',
   await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'Power BI', 'LucaNet Financial']);
 });
 
+test('a long competence reads whole: its column is wider than the synonyms', async ({ page }) => {
+  await profile(page);
+  const row = page.getByTestId('competence-row').nth(2);
+  const name = row.getByTestId('competence-name');
+  await expect(name).toHaveValue('Konzernrechnungslegung nach IFRS');
+  expect(
+    await name.evaluate((input: HTMLInputElement) => input.scrollWidth <= input.clientWidth),
+  ).toBe(true);
+  const [own, aliases] = await Promise.all([
+    name.boundingBox(),
+    row.getByTestId('competence-aliases').boundingBox(),
+  ]);
+  expect(own!.width).toBeGreaterThan(aliases!.width);
+});
+
 test('the synonyms keep one line, "+n" names the rest, also narrow', async ({ page }) => {
   await profile(page);
   const aliases = page.getByTestId('competence-aliases').nth(1);
