@@ -2667,13 +2667,14 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
 // ------------------------------------------------------------------ the block "Häufig verlangt"
 
 const asked = (page: Page): Locator => page.getByTestId('asked');
+/** The terms of the rows "Häufig verlangt", in their order. */
 const askedWords = (page: Page): Promise<string[]> =>
-  page.getByTestId('asked-words').allTextContents();
-/** The row of a term. */
+  page
+    .getByTestId('asked-term')
+    .evaluateAll((all) => all.map((term) => term.getAttribute('data-term') ?? ''));
+/** The button of a term. */
 const askedRow = (page: Page, term: string): Locator =>
-  page.getByTestId('asked-term').filter({
-    has: page.getByTestId('asked-words').getByText(term, { exact: true }),
-  });
+  page.locator(`[data-testid="asked-term"][data-term="${term}"]`);
 
 /** The demo jobs whose reader names `term` as the term of an open requirement (core's
  *  `params.term`: "Anaplan" of "Kenntnisse in Anaplan"). */
@@ -2682,50 +2683,56 @@ const askingJobs = (term: string): number =>
     detail.match?.reasons.some((reason) => reason.kind === 'open' && reason.params.term === term),
   ).length;
 
-test('"Häufig verlangt" under the competences: a calm list of the terms the jobs ask for, each with its field', async ({
+test('"Häufig verlangt" under its field: the terms the jobs ask for, each where it goes', async ({
   page,
 }) => {
   await profile(page);
-  const block = asked(page);
-  await expect(block).toBeVisible();
-  await expect(page.getByTestId('section-competences').getByTestId('asked')).toHaveCount(1);
+  // One question for all the fields.
+  await expect(asked(page).first()).toBeVisible();
+  expect(await calls(page, 'asked_terms')).toHaveLength(1);
+  // Under the tools, above the next field, like its hint.
+  const tools = page.locator('[data-field="tools"]');
+  const block = tools.getByTestId('asked');
+  await expect(block).toHaveAttribute('data-for', 'tool');
   await expect(block).toContainText(T.profile.asked);
-  // Under the competence list, above the next field of the section.
-  const list = await page.getByTestId('competences').boundingBox();
-  const own = await block.boundingBox();
-  const strengths = await page.getByTestId('profile-strengths').boundingBox();
-  expect(own!.y).toBeGreaterThanOrEqual(list!.y + list!.height);
-  expect(strengths!.y).toBeGreaterThanOrEqual(own!.y + own!.height);
+  const field = (await tools.getByTestId('profile-tools').boundingBox())!;
+  const own = (await block.boundingBox())!;
+  const next = (await page.getByTestId('profile-industries').boundingBox())!;
+  expect(own.y).toBeGreaterThanOrEqual(field.y + field.height);
+  expect(next.y).toBeGreaterThan(own.y + own.height);
   // The terms, not the ads' phrases: "Kenntnisse in Anaplan" is the tool "Anaplan",
   // "Branchenerfahrung Energie" the industry "Energie", "Erfahrung mit SAP Analytics Cloud"
-  // the tool "SAP Analytics Cloud".
+  // the tool "SAP Analytics Cloud"; each under its own field, once.
   const words = await askedWords(page);
   expect(words.length).toBeGreaterThan(0);
   expect(words.length).toBeLessThanOrEqual(8);
+  expect(new Set(words).size).toBe(words.length);
   for (const lead of ['Kenntnisse', 'Erfahrung', 'Branchenerfahrung']) {
     expect(words.join(' ')).not.toContain(lead);
   }
-  for (const [term, field] of [
-    ['Energie', 'industry'],
-    ['SAP Analytics Cloud', 'tool'],
-    ['Anaplan', 'tool'],
+  for (const [term, kind, key] of [
+    ['Energie', 'industry', 'industries'],
+    ['SAP Analytics Cloud', 'tool', 'tools'],
+    ['Anaplan', 'tool', 'tools'],
   ] as const) {
     const row = askedRow(page, term);
     await expect(row).toHaveCount(1);
-    await expect(row.getByTestId('asked-field')).toHaveText(T.profile.askedField[field]);
-    // Counted over the demo jobs that ask for it (of the Eingang and the Archiv, recent).
-    const said = await row.getByTestId('asked-count').textContent();
-    const count = Number(/\d+/.exec(said ?? '')?.[0]);
-    expect(said).toBe(T.profile.askedIn(count));
+    await expect(page.locator(`[data-field="${key}"] [data-for="${kind}"]`)).toContainText(term);
+    // Its button: the term, and quietly how many demo jobs ask for it (of the Eingang and
+    // the Archiv, recent).
+    const add = row.getByTestId('asked-add');
+    await expect(add).toHaveAccessibleName(new RegExp(`^${term}`));
+    const count = Number(await add.locator('.count').textContent());
     expect(count).toBeGreaterThanOrEqual(2);
     expect(count).toBeLessThanOrEqual(askingJobs(term));
   }
-  // The most asked first, each by two jobs at least; none the profile names.
-  const counts = await page
-    .getByTestId('asked-count')
-    .evaluateAll((all) => all.map((each) => Number(/\d+/.exec(each.textContent ?? '')?.[0])));
-  expect(counts).toEqual([...counts].sort((a, b) => b - a));
-  expect(counts.every((count) => count >= 2)).toBe(true);
+  // The most asked first in every row; none the profile names.
+  for (const row of await asked(page).all()) {
+    const counts = await row
+      .locator('.count')
+      .evaluateAll((all) => all.map((each) => Number(each.textContent)));
+    expect(counts).toEqual([...counts].sort((x, y) => y - x));
+  }
   const stored = (await page.evaluate(() => window.__harness.form()))!;
   const names = [
     ...stored.competences.flatMap((c) => [c.name, ...c.aliases]),
@@ -2734,21 +2741,6 @@ test('"Häufig verlangt" under the competences: a calm list of the terms the job
     ...stored.keywords,
   ].map((name) => name.toLowerCase());
   for (const term of words) expect(names).not.toContain(term.toLowerCase());
-  // A row per term between hairlines, no pill: no wash behind it, one outlined button with
-  // its word at the right, the term to copy.
-  const row = page.getByTestId('asked-term').first();
-  const look = await row.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return { wash: style.backgroundColor, line: style.borderBottomWidth };
-  });
-  expect(look.wash).toBe('rgba(0, 0, 0, 0)');
-  if (words.length > 1) expect(look.line).not.toBe('0px');
-  const add = row.getByTestId('asked-add');
-  await expect(add).toHaveText(T.profile.askedAdd);
-  const [rowBox, addBox] = [await row.boundingBox(), await add.boundingBox()];
-  expect(addBox!.x + addBox!.width).toBeGreaterThan(rowBox!.x + rowBox!.width - 2);
-  await expect(row.getByTestId('asked-words')).toHaveAttribute('data-copy', '');
-  expect(await calls(page, 'asked_terms')).not.toHaveLength(0);
 });
 
 test('"Hinzufügen" puts the term into its field, an unsaved change like any other', async ({
@@ -2785,12 +2777,16 @@ test('"Hinzufügen" puts the term into its field, an unsaved change like any oth
   expect(await askedWords(page)).not.toContain('Energie');
 });
 
-test('the block goes with its last term; a focused "Hinzufügen" hands the focus on', async ({
+test('a row goes with its last term; a focused term hands the focus on, then to its field', async ({
   page,
 }) => {
   await profile(page);
-  const words = await askedWords(page);
-  const add = page.getByTestId('asked-add');
+  const block = page.locator('[data-field="tools"]').getByTestId('asked');
+  const words = await block
+    .getByTestId('asked-term')
+    .evaluateAll((all) => all.map((term) => term.getAttribute('data-term') ?? ''));
+  expect(words.length).toBeGreaterThan(1);
+  const add = block.getByTestId('asked-add');
   for (let left = words.length; left > 1; left -= 1) {
     await add.first().focus();
     await page.keyboard.press('Enter');
@@ -2799,31 +2795,25 @@ test('the block goes with its last term; a focused "Hinzufügen" hands the focus
   }
   await add.first().focus();
   await page.keyboard.press('Enter');
-  await expect(asked(page)).toHaveCount(0);
-  await expect(page.getByTestId('competence-add')).toBeFocused();
-  // Every term is in the form now, in a field of its own.
-  const named = [
-    ...(await chips(page.getByTestId('profile-tools')).allTextContents()),
-    ...(await chips(page.getByTestId('profile-industries')).allTextContents()),
-    ...(await page
-      .getByTestId('competence-name')
-      .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))),
-  ];
+  await expect(block).toHaveCount(0);
+  await expect(page.getByTestId('profile-tools').locator('input')).toBeFocused();
+  // Every term of the row is a tool now.
+  const named = await chips(page.getByTestId('profile-tools')).allTextContents();
   for (const term of words) expect(named).toContain(term);
   await expect(bar(page)).toBeVisible();
 });
 
-test('the block asks again after a fetch', async ({ page }) => {
+test('the rows ask again after a fetch', async ({ page }) => {
   await profile(page);
-  await expect(asked(page)).toBeVisible();
+  await expect(asked(page).first()).toBeVisible();
   const before = (await calls(page, 'asked_terms')).length;
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(before);
-  await expect(asked(page)).toBeVisible();
+  await expect(asked(page).first()).toBeVisible();
 });
 
-test('without an answer the block stays away', async ({ page }) => {
+test('without an answer the rows stay away', async ({ page }) => {
   read.delete(page);
   await open(page, WIN);
   await failNext(page, 'asked_terms');

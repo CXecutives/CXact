@@ -15,7 +15,7 @@
 // be filled in, an empty field is simply not judged.
 
 import type { Catalog } from '$lib/i18n/de';
-import type { ProfileForm, UnreadableField } from '$lib/ipc/types';
+import type { ProfileForm, TermField, UnreadableField } from '$lib/ipc/types';
 import {
   NUMBER_CRITERIA,
   WORD_CRITERIA,
@@ -73,6 +73,8 @@ export type Control =
       lines?: true;
       /** The engine's words it suggests while typing (vocabulary.svelte.ts). */
       suggest?: 'skills' | 'industries';
+      /** The terms of this field the jobs ask for, under it ("Häufig verlangt"). */
+      asked?: TermField;
       testid: string;
     }
   | {
@@ -228,6 +230,7 @@ export const SECTIONS: readonly Section[] = [
         label: 'degrees',
         placeholder: 'degreesPlaceholder',
         lines: true,
+        asked: 'degree',
         testid: 'profile-degrees',
       },
       {
@@ -236,6 +239,7 @@ export const SECTIONS: readonly Section[] = [
         label: 'certificates',
         placeholder: 'certificatesPlaceholder',
         lines: true,
+        asked: 'certificate',
         testid: 'profile-certificates',
       },
       {
@@ -244,6 +248,7 @@ export const SECTIONS: readonly Section[] = [
         label: 'tools',
         placeholder: 'toolsPlaceholder',
         suggest: 'skills',
+        asked: 'tool',
         testid: 'profile-tools',
       },
       {
@@ -252,6 +257,7 @@ export const SECTIONS: readonly Section[] = [
         label: 'industries',
         placeholder: 'industriesPlaceholder',
         suggest: 'industries',
+        asked: 'industry',
         testid: 'profile-industries',
       },
       // The languages are a qualification too (user, 2026-09-29): here, not a card of their own.

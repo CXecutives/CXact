@@ -473,6 +473,7 @@
       {#each notesOf(c.key, true) as unread (unread.text)}
         <ValueNote text={unread.text} testid="{kebab(c.key)}-unread" onremove={unread.onremove} />
       {/each}
+      {#if c.asked}<AskedTerms field={c.asked} home={c.testid} />{/if}
     </div>
   {:else if c.kind === 'competences'}
     <CompetenceList
@@ -483,9 +484,10 @@
       onclear={() => editor.clear('focus')}
       error={listError('competences') ?? listError('focus')}
     />
-    <AskedTerms />
+    <AskedTerms field="competence" home="competence-add" />
   {:else if c.kind === 'languages'}
     <LanguageList bind:rows={form.languages} error={listError('languages')} />
+    <AskedTerms field="language" home="language-add" />
   {:else if c.kind === 'countries'}
     <CountriesField
       id="{id}-countries"
