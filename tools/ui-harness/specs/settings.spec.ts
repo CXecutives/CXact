@@ -519,7 +519,7 @@ test('portals: a pause or an empty alert mail is one quiet line; the meter stays
   await settings(page, `${WIN}&scenario=paused`);
   const pause = page.getByTestId('health-linkedin');
   await expect(pause).toHaveText(
-    'Das Portal bremst die Anfragen, der Abruf macht ab 11:05 von selbst weiter.',
+    'Das Portal bremst die Aufrufe, der Abruf macht ab 11:05 von selbst weiter.',
   );
   await expect(pause).toHaveClass(/info/);
   const mails = page.getByTestId('health-freelance');
@@ -709,7 +709,7 @@ test('Darstellung: the language switches everything at once; notes follow it', a
   await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
   await expect(page.getByTestId('settings-export')).toContainText('Export folder');
   await expect(page.getByTestId('export-note')).toHaveText('The database reports an error.');
-  await expect(page.getByTestId('portal-freelance')).toContainText('Today 11 of 100 calls');
+  await expect(page.getByTestId('portal-freelance')).toContainText('11 of 100 requests today');
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
 });
 

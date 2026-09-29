@@ -6,17 +6,20 @@
 // text, plain and natural. Buttons are one verb phrase without a period; notes are one short
 // sentence with a period; headings and labels end without a colon; no dash or em dash as a
 // separator, no "X: Y", no exclamation marks. No German except product and portal names and
-// the name of the German language. Glossary (de.ts, one word per thing): Job, Portal, Match
-// (High, Medium, Low), Job details, Requirements (Met, Partly met, Not met, Unclear), Profile,
-// Mailbox, Alert email, Check mailbox (the button; what it does is a fetch), Load ad, Excel
-// file, CSV file, Export folder, Excluded, Score anyway, New, Inbox (the place of the active
-// jobs), Archive (Move to inbox: back from there), Trash, Delete (into the Trash; there Delete
-// forever and Restore), Data (the card of the app's data), Calls (what a portal allows a day),
-// Skill, Preference. "Conditions" only names the profile's section. Plain British English:
-// "email", never "mail" for one message; "preferences", never "wishes"; "forever" for
-// endgültig, never "for good"; two main clauses are joined by a conjunction, never by a
-// comma alone; an introductory phrase takes its comma ("Without a profile, …"); apostrophes
-// and quotes are typographic (’ “ ”), a named control stands in quotes (“Load ad”).
+// the name of the German language. Glossary (docs/PLAN.md "Glossary (UI)", one word per
+// thing): Job, Portal, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
+// Not met, Unclear), Must-have, Optional, Exclusion, Profile, Mailbox, Alert email, Check
+// mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Export folder,
+// Excluded, Score anyway, Rescore, New, Inbox (the place of the active jobs), Archive (Move to
+// inbox: back from there), Trash, Delete (into the Trash; there Delete forever and Restore),
+// Folders (the three places), Data (the card of the app's data), Requests (what a portal
+// allows a day), Skill, Focus area, Preferred role, Permanent job, Day rate, Job view,
+// Sidebar, Appearance, Theme. "Conditions" only names the profile's section. Plain British
+// English: "email", never "mail" for one message; "preferences" and "preferred", never
+// "wishes"; "forever" for endgültig, never "for good"; two main clauses are joined by a
+// conjunction, never by a comma alone; an introductory phrase takes its comma ("Without a
+// profile, …"); apostrophes and quotes are typographic (’ “ ”), a named control stands in
+// quotes (“Load ad”).
 
 import type {
   Band,
@@ -103,21 +106,21 @@ const BUSY: readonly Busy[] = ['details', 'rescore', 'session', 'files', 'mailbo
 const busyOf = (value: unknown): Busy => BUSY.find((name) => name === value) ?? 'fetch';
 
 const busy: Record<Busy, string> = {
-  fetch: 'A fetch is running already.',
-  details: 'Ads are being loaded already.',
-  rescore: 'The jobs are being scored again.',
-  session: 'A sign-in is running.',
+  fetch: 'A fetch is already running.',
+  details: 'Ads are already loading.',
+  rescore: 'The jobs are being rescored.',
+  session: 'A sign-in is in progress.',
   files: 'The app is writing its files.',
-  mailbox: 'The mailbox is being checked.',
+  mailbox: 'The mailbox connection is being tested.',
 };
 
 const closing: Record<Busy, string> = {
-  fetch: 'The fetch is stopping, and then the app closes.',
-  details: 'Loading the ads is stopping, and then the app closes.',
-  rescore: 'Scoring is stopping, and then the app closes.',
-  session: 'The sign-in is stopping, and then the app closes.',
-  files: 'The app is finishing its files, and then it closes.',
-  mailbox: 'The mailbox check is stopping, and then the app closes.',
+  fetch: 'The app closes once the fetch has stopped.',
+  details: 'The app closes once the ads have stopped loading.',
+  rescore: 'The app closes once rescoring has stopped.',
+  session: 'The app closes once the sign-in has stopped.',
+  files: 'The app closes once its files are written.',
+  mailbox: 'The app closes once the connection test has stopped.',
 };
 
 const errors: Record<ErrorKind | 'unknown', Text> = {
@@ -137,8 +140,8 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
         : p.what === 'backup'
           ? 'The backup no longer exists.'
           : 'This no longer exists.',
-  dryRun: 'This does not work in the dry run.',
-  demo: 'This does not work in the demo.',
+  dryRun: 'This is not available in the dry run.',
+  demo: 'This is not available in the demo.',
   mailMissing: 'No mailbox is connected.',
   mailConnect: 'Gmail cannot be reached.',
   mailAuth: 'Gmail rejected the address or the app password.',
@@ -147,12 +150,12 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   mailNotGmail: 'This is not a Gmail mailbox.',
   mailServer: 'Gmail reports an error.',
   mailCancelled: 'Cancelled.',
-  offline: 'No connection to the internet.',
+  offline: 'No internet connection.',
   secretStore: 'The system’s password store cannot be reached.',
   secretCorrupt: 'The stored app password cannot be read.',
   portalUnavailable: (p) => `No connection to ${portalOf(p.portal)}.`,
   portalPaused: (p) => `${portalOf(p.portal)} is paused right now.`,
-  portalQuota: (p) => `The limit for ${portalOf(p.portal)} is reached.`,
+  portalQuota: (p) => `The limit for ${portalOf(p.portal)} has been reached.`,
   internal: INTERNAL,
   unknown: INTERNAL,
 };
@@ -199,7 +202,7 @@ const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'At least one portal must be active.',
   profileNotUtf8: 'The file is not a text file.',
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
-  profileNotObject: 'The file contains no profile.',
+  profileNotObject: 'The file does not contain a profile.',
   profileValue: (p) => `The value of “${fieldName(p.field)}” is not valid.`,
   mailAddress: 'The address is incomplete.',
   appPassword: 'An app password has 16 letters.',
@@ -210,10 +213,10 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 const pause: Record<PauseReason, string> = {
   throttled: 'the portal is throttling requests',
   blocked: 'the portal is blocking requests',
-  layoutChanged: 'the pages look different than expected',
+  layoutChanged: 'the pages do not look as expected',
   stateUnreadable: 'the state of the portal cannot be read',
   network: 'the portal cannot be reached',
-  challenged: 'the portal is asking for a verification',
+  challenged: 'the portal is asking for verification',
 };
 
 /** Opening the alert email of a job in Gmail, the same words wherever it is offered. */
@@ -230,7 +233,7 @@ const emptyMails = (mails: number): string =>
 const PROFILE_UNREADABLE = 'Profile cannot be read';
 
 const ANUE = 'The ad mentions temporary agency work.';
-const LOW_TEXT = 'The ad names few clear requirements.';
+const LOW_TEXT = 'The ad lists few clear requirements.';
 const SHORT_TEXT = 'The ad is very short.';
 const WORKLOAD = 'The workload does not fit the profile.';
 const DURATION = 'The duration is below the minimum in the profile.';
@@ -303,7 +306,7 @@ function workloadCheck(p: Params): string {
   }
   return min === null
     ? WORKLOAD
-    : `The ad says ${ad}, but the profile looks for at least ${weekDays(min, false)}.`;
+    : `The ad says ${ad}, but the profile asks for at least ${weekDays(min, false)}.`;
 }
 
 /** Contract type of an ad (`contractType` params `type`, `inferred`). */
@@ -332,7 +335,7 @@ function rateSubject(p: Params): string {
       ? `${n(p.from)} to ${formatEuro(to)}`
       : formatEuro(to);
   if (p.hourly === true && typeof p.amount === 'number') {
-    return `The hourly rate of ${range(p.amount)} makes ${formatEuro(p.rate)} a day and`;
+    return `The hourly rate of ${range(p.amount)} comes to ${formatEuro(p.rate)} a day and`;
   }
   return `The day rate of ${range(p.rate)}`;
 }
@@ -350,7 +353,7 @@ function dayRateWish(p: Params): string {
     default:
       return p.currency
         ? `The day rate is given in ${str(p.currency)}.`
-        : 'The ad names no day rate.';
+        : 'The ad does not state a day rate.';
   }
 }
 
@@ -366,7 +369,7 @@ const REMOTE_LEVEL: Record<string, string> = {
 /** The ad's remote share in the words of the reader's work mode, next to the preference ("The
  *  job is 60% remote, and you prefer mostly remote"). */
 function remoteWish(p: Params): string {
-  if (p.state === 'unknown') return 'The ad names no remote share.';
+  if (p.state === 'unknown') return 'The ad does not state a remote share.';
   const level = typeof p.level === 'string' ? REMOTE_LEVEL[p.level] : undefined;
   const wished = level ? `, and you prefer ${level}` : '';
   let ad: string;
@@ -401,7 +404,7 @@ function industryWish(p: Params): string {
     case 'missed':
       return `${str(p.industry)} is not one of your preferred industries.`;
     default:
-      return 'The ad names no industry.';
+      return 'The ad does not state an industry.';
   }
 }
 
@@ -415,7 +418,7 @@ const reasonCode = {
   anue: ANUE,
   anueRisk: 'A staffing agency gives no contract details, so temporary agency work is possible.',
   dayRate: (p) => `${rateSubject(p)} is below ${formatEuro(p.min)}.`,
-  availability: 'The availability does not fit.',
+  availability: 'Your availability does not fit.',
   country: (p) =>
     p.allowed
       ? `The location is outside ${countryNames(p.allowed)}.`
@@ -441,7 +444,7 @@ const reasonCode = {
     if (typeof p.remoteMin !== 'number') return `${place}.`;
     return typeof p.remote === 'number'
       ? `${place}, and ${formatPercent(p.remote)} remote is below your minimum of ${formatPercent(p.remoteMin)}.`
-      : `${place}, and the ad does not name ${formatPercent(p.remoteMin)} remote.`;
+      : `${place}, and the ad does not offer ${formatPercent(p.remoteMin)} remote.`;
   },
   permanentRegionUnclear: (p) =>
     p.location
@@ -464,34 +467,35 @@ const reasonCode = {
     const bonus = typeof p.bonus === 'number' ? ` plus a ${formatPercent(p.bonus)} bonus` : '';
     return `The annual salary ${amount}${bonus} is below ${formatEuro(p.min)}.`;
   },
-  salaryUnknown: 'The ad names no salary.',
-  seniorityUnclear: 'Whether the job fits your years of experience is unclear.',
+  salaryUnknown: 'The ad does not state a salary.',
+  seniorityUnclear: 'It is unclear whether the job fits your years of experience.',
   overqualified: (p) => {
     const have = typeof p.have === 'number' ? count(p.have, 'year', 'years') : null;
-    const tail = have === null ? 'you are overqualified' : `with ${have} you are overqualified`;
+    const tail =
+      have === null ? 'so you are overqualified' : `so with ${have} you are overqualified`;
     return typeof p.years === 'number'
       ? `The job asks for ${yearsWords(p.years, typeof p.max === 'number' ? p.max : null)} of experience, ${tail}.`
       : `The job is a junior role, ${tail}.`;
   },
   contractType: (p) => contractName(p),
   formalOpen: (p) => {
-    if (p.class === undefined || p.class === null) return 'The profile names no degree.';
+    if (p.class === undefined || p.class === null) return 'The profile lists no degree.';
     const what =
       p.class === 'licence'
-        ? 'a licence the profile does not name'
-        : 'a degree the profile does not name';
+        ? 'a licence that is not in the profile'
+        : 'a degree that is not in the profile';
     return p.mandatory ? `The ad requires ${what}.` : `The ad prefers ${what}.`;
   },
   lowEvidence: LOW_TEXT,
   shortText: SHORT_TEXT,
   focus: (p) =>
     num(p.met) > 0 || p.inTitle === true
-      ? `The focus area ${str(p.focus)} is asked for.`
-      : `The ad mentions the focus area ${str(p.focus)}.`,
+      ? `The ad asks for your focus area ${str(p.focus)}.`
+      : `The ad touches on your focus area ${str(p.focus)}.`,
   targetRole: (p) =>
     p.fit === 'half'
-      ? `The title comes close to the target role ${str(p.role)}.`
-      : `The title fits the target role ${str(p.role)}.`,
+      ? `The title comes close to your preferred role ${str(p.role)}.`
+      : `The title matches your preferred role ${str(p.role)}.`,
   dayRateWish,
   remoteWish,
   regionWish,
@@ -524,7 +528,7 @@ const criteria = {
   countries: {
     label: 'Countries',
     short: 'Outside your countries',
-    exclusion: 'The place of work is not in your countries.',
+    exclusion: 'The location is not in your countries.',
   },
   noAnue: {
     label: 'Temporary agency work',
@@ -549,7 +553,7 @@ const criteria = {
   permanentRegion: {
     label: 'Locations',
     short: 'Location does not fit',
-    exclusion: 'The place is not among your locations for permanent jobs.',
+    exclusion: 'The job is not in one of your locations for permanent jobs.',
   },
   workload: {
     label: 'Workload',
@@ -564,7 +568,7 @@ const criteria = {
   exclusionWords: {
     label: 'Exclusion words',
     short: 'Exclusion word',
-    exclusion: 'The ad names one of your exclusion words.',
+    exclusion: 'The ad contains one of your exclusion words.',
   },
 } satisfies Catalog['reader']['criterion'];
 
@@ -589,8 +593,8 @@ const rawKeys = (value: unknown): string[] =>
 
 /** Profile warnings of the engine (`ProfileWarningCode`, core/src/matching/types.rs). */
 const warning = {
-  noCompetences: 'The profile names no skills.',
-  fewCompetences: 'The profile names only a few skills.',
+  noCompetences: 'The profile has no skills.',
+  fewCompetences: 'The profile has only a few skills.',
   noCriteria: 'The profile sets no conditions.',
   availabilityNotUnderstood: '“Available from” cannot be read.',
   ignoredKeys: (p) => `The app does not read ${joined(rawKeys(p.keys))} in the conditions.`,
@@ -642,20 +646,20 @@ export const en: Catalog = {
     more: (value: number) => `+${n(value)}`,
   },
   splitter: {
-    label: 'Width of the list',
+    label: 'List width',
     tip: 'Resize',
     reset: 'Double-click to reset',
   },
   place: {
-    tabs: 'Locations',
+    tabs: 'Folders',
     inbox: 'Inbox',
     archive: 'Archive',
     trash: 'Trash',
-    pickJob: 'Choose a job from the list.',
+    pickJob: 'Select a job in the list.',
     search: {
-      inbox: 'Search the inbox',
-      archive: 'Search the archive',
-      trash: 'Search the trash',
+      inbox: 'Search inbox',
+      archive: 'Search archive',
+      trash: 'Search trash',
     } satisfies Record<Place, string>,
     hitsIn: {
       inbox: 'In the inbox',
@@ -671,8 +675,8 @@ export const en: Catalog = {
     open: 'Open',
     mail: OPEN_MAIL,
     openAd: 'Open ad',
-    prompt: 'Copy AI prompt for rating',
-    promptNoProfile: 'Without a profile, there is nothing to assess.',
+    prompt: 'Copy AI scoring prompt',
+    promptNoProfile: 'Without a profile, there is nothing to score against.',
     include: 'Score anyway',
     exclude: 'Exclude again',
     archive: 'Archive',
@@ -681,14 +685,14 @@ export const en: Catalog = {
     restore: 'Restore',
     purge: 'Delete forever',
     purgeConfirm: 'Delete forever',
-    purgeHeading: 'Delete the job forever?',
-    purgeText: 'The job never comes back, not even from old alert emails.',
+    purgeHeading: 'Delete this job forever?',
+    purgeText: 'The job will not come back, not even from old alert emails.',
     emptyTrash: 'Empty trash',
     emptyTrashHeading: 'Empty the trash?',
     emptyTrashText: (value: number) =>
       value === 1
-        ? 'The job never comes back, not even from old alert emails.'
-        : `The ${n(value)} jobs never come back, not even from old alert emails.`,
+        ? 'The job will not come back, not even from old alert emails.'
+        : `The ${n(value)} jobs will not come back, not even from old alert emails.`,
   },
   menu: {
     job: 'Job',
@@ -717,11 +721,11 @@ export const en: Catalog = {
       mid: 'Medium match',
       low: 'Low match',
     } satisfies Record<Band, string>,
-    why: 'Why this number?',
+    why: 'Why this score?',
     factor: {
       musts: (met: number, partial: number, total: number) => {
         const line = `${n(met)} of ${count(total, 'must-have', 'must-haves')} met`;
-        return partial > 0 ? `${line}, ${n(partial)} in part` : line;
+        return partial > 0 ? `${line}, ${n(partial)} partly` : line;
       },
       nice: (met: number, total: number) =>
         `${n(met)} of ${count(total, 'optional requirement', 'optional requirements')} met`,
@@ -732,21 +736,21 @@ export const en: Catalog = {
           : 'None of your focus areas matched';
       },
       role: (role: string, full: boolean) =>
-        full ? `Fits the target role ${role}` : `Close to the target role ${role}`,
-      noRole: 'No target role in the title',
+        full ? `Fits your preferred role ${role}` : `Close to your preferred role ${role}`,
+      noRole: 'No preferred role in the title',
       wishesUp: 'Your preferences fit, so a little more',
       wishesDown: 'Your preferences hardly fit, so a little less',
       evidence: {
         low: 'Little text, so scored with caution',
         teaser: 'Only a preview, so scored with caution',
       },
-      permanent: 'Permanent role, so a little less',
+      permanent: 'Permanent job, so a little less',
       cap: (why: string, max: number) => `${why}, so at most ${n(max)}`,
       capWhy: {
-        formal: 'Formal requirement open',
-        severalOpen: 'Several must-haves open',
+        formal: 'Formal requirement missing',
+        severalOpen: 'Several must-haves missing',
         offField: 'No skill must-have met',
-        titleOpen: 'Core of the role open',
+        titleOpen: 'Core of the role missing',
         noItems: 'No clear requirements',
         junior: 'Junior role',
       },
@@ -764,20 +768,20 @@ export const en: Catalog = {
   job: {
     unread: 'New',
     alsoOn: (portals: string) => `also on ${portals}`,
-    untitled: 'Job without a title',
+    untitled: 'Untitled job',
     closed: 'Closed',
   },
   toolbar: {
     fetch: 'Check mailbox',
-    range: 'Period',
+    range: 'Time range',
     rangeName: {
-      sinceLast: 'Since the last fetch',
+      sinceLast: 'Since last fetch',
       days7: 'Last 7 days',
       days30: 'Last 30 days',
       all: 'All alert emails',
     } satisfies Record<FetchRange, string>,
     cancel: 'Cancel',
-    progress: 'Progress of the fetch',
+    progress: 'Fetch progress',
     sortHeading: 'Sort',
     sortLabel: {
       match: 'By match',
@@ -795,7 +799,7 @@ export const en: Catalog = {
       low: 'Low',
     } satisfies Record<Band, string>,
     bandNoProfile: 'Without a profile, there is no match.',
-    contractHeading: 'Contract',
+    contractHeading: 'Contract type',
     workHeading: 'Work model',
     work: {
       remote: 'Remote',
@@ -803,18 +807,18 @@ export const en: Catalog = {
       onsite: 'On site',
     } satisfies Record<WorkMode, string>,
     unreadOnly: 'New only',
-    lastFetch: 'From the last fetch',
+    lastFetch: 'From last fetch',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
-    needsPortal: 'Switch on a portal first.',
+    needsPortal: 'Turn on a portal first.',
   },
   run: {
     line: {
       mailbox: 'Reading the mailbox',
       ads: (done: number, total: number) => `${n(done)} of ${n(total)} ads loaded`,
-      adsStart: 'Loading the ads',
-      scoring: 'Scoring the jobs',
-      files: 'Writing the files',
+      adsStart: 'Loading ads',
+      scoring: 'Scoring jobs',
+      files: 'Writing files',
     },
     exportFailed: {
       overview: 'The Excel file could not be written and was left unchanged.',
@@ -833,11 +837,11 @@ export const en: Catalog = {
   list: {
     label: 'Jobs',
     excluded: 'Excluded',
-    emptyWhileRun: 'The jobs show up here as the fetch goes on.',
-    emptyAll: 'After the first fetch, the jobs show up here.',
-    emptyAfterRun: 'The alert emails have had no jobs so far.',
-    noHit: (query: string) => `No jobs for “${query}”.`,
-    noFilterHit: 'No job fits the filter.',
+    emptyWhileRun: 'Jobs appear here as they come in.',
+    emptyAll: 'Jobs appear here after the first fetch.',
+    emptyAfterRun: 'No jobs in the alert emails so far.',
+    noHit: (query: string) => `No jobs match “${query}”.`,
+    noFilterHit: 'No jobs match the filter.',
     loadFailed: 'The job list could not be loaded.',
     pageFailed: 'More jobs could not be loaded.',
     createProfile: 'Create profile',
@@ -846,8 +850,8 @@ export const en: Catalog = {
     noProfile: 'No match without a profile.',
     profileUnreadable: PROFILE_UNREADABLE,
     profileEmpty: 'Profile without skills',
-    profileBrokenText: 'That is why the jobs show no match.',
-    thinProfile: 'Little in the profile, so the match stays rough.',
+    profileBrokenText: 'So the jobs show no match.',
+    thinProfile: 'The profile is sparse, so the match is only rough.',
     connectMailbox: 'Connect mailbox',
   },
   facts: {
@@ -937,11 +941,11 @@ export const en: Catalog = {
     mail: OPEN_MAIL,
     noMail: 'There is no alert email for this job.',
     setUpSignIn: 'Set up sign-in',
-    promptNoProfile: 'Without a profile, there is nothing to assess.',
-    promptNoText: 'The text of the ad is still missing.',
+    promptNoProfile: 'Without a profile, there is nothing to score against.',
+    promptNoText: 'The ad text is still missing.',
     fetchDetails: 'Load ad',
     why: 'Requirements',
-    noReasons: 'The ad names no clear requirements.',
+    noReasons: 'The ad lists no clear requirements.',
     ad: 'Ad',
     adNote: {
       teaser: 'Only a preview.',
@@ -959,13 +963,13 @@ export const en: Catalog = {
       paused: (reason: PauseReason, iso: string | null) => {
         const why = pause[reason].charAt(0).toUpperCase() + pause[reason].slice(1);
         return iso
-          ? `${why}, so fetching resumes by itself at ${formatMoment(iso)}.`
-          : `${why}, so the next fetch tries again by itself.`;
+          ? `${why}, so fetching resumes automatically at ${formatMoment(iso)}.`
+          : `${why}, so the next fetch tries again automatically.`;
       },
       quota: (iso: string) =>
-        `The limit is reached, so fetching resumes by itself at ${formatMoment(iso)}.`,
+        `The limit has been reached, so fetching resumes automatically at ${formatMoment(iso)}.`,
       emptyMails,
-      pages: 'The pages of the portal look different, so the next fetch tries again by itself.',
+      pages: 'The portal’s pages look different, so the next fetch tries again automatically.',
       login: 'The sign-in has expired, so sign in again.',
     },
   },
@@ -976,7 +980,7 @@ export const en: Catalog = {
     replaces: 'A new profile replaces the file.',
     replacesStored: 'Saving replaces your profile.',
     replaced: 'Profile replaced.',
-    restoreFailed: 'The previous profile could not be brought back.',
+    restoreFailed: 'The previous profile could not be restored.',
     profiles: 'Profiles',
     numbered: (value: number) => `Profile ${n(value)}`,
     newProfile: 'New profile',
@@ -985,16 +989,16 @@ export const en: Catalog = {
     rename: 'Rename',
     renameHeading: 'Rename profile',
     load: 'Load from file',
-    prompt: 'Copy AI prompt for a profile',
+    prompt: 'Copy AI profile prompt',
     promptNotCopied: 'The AI prompt could not be copied.',
-    switched: 'Profile switched, jobs are being scored again.',
-    created: (name: string) => `Profile created, “${name}” is active now.`,
-    duplicated: (name: string) => `Copy created, “${name}” is active now.`,
+    switched: 'Profile switched, so the jobs are being rescored.',
+    created: (name: string) => `Profile created, and “${name}” is active now.`,
+    duplicated: (name: string) => `Copy created, and “${name}” is active now.`,
     remove: 'Delete profile',
     removeHeading: (name: string) => `Delete “${name}”?`,
     removeConfirm: 'Delete',
     removed: 'Profile deleted.',
-    removedNow: (name: string) => `Profile deleted, “${name}” is active now.`,
+    removedNow: (name: string) => `Profile deleted, and “${name}” is active now.`,
     saved: 'Profile saved',
     savedEffect: (high: number, excluded: number) => {
       const jobs = (value: number): string => count(Math.abs(value), 'job', 'jobs');
@@ -1007,17 +1011,17 @@ export const en: Catalog = {
       ].filter((part) => part !== null);
       return parts.length === 0 ? 'Profile saved' : `Profile saved, ${parts.join(', ')}`;
     },
-    unnamed: 'Profile without a name',
-    rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being scored again.`,
+    unnamed: 'Unnamed profile',
+    rescoring: (value: number) => `${count(value, 'job is', 'jobs are')} being rescored.`,
     check: (value: number) => count(value, 'value to check', 'values to check'),
-    next: 'Go to the first fetch',
-    nextMailbox: 'Go to the mailbox',
+    next: 'Continue to the first fetch',
+    nextMailbox: 'Continue to the mailbox',
     warning,
     save: 'Save',
     discard: 'Discard',
     leaveHeading: 'Save changes?',
-    saveFirst: 'Save or discard first.',
-    fixFirst: 'Correct the marked value first.',
+    saveFirst: 'Save or discard your changes first.',
+    fixFirst: 'Fix the marked value first.',
     empty: 'Still empty',
     optional: 'Optional',
     asked: 'Often asked for',
@@ -1032,7 +1036,7 @@ export const en: Catalog = {
       degree: 'Degree',
     },
     section: {
-      person: 'Person',
+      person: 'About you',
       criteria: 'Conditions',
       competences: 'Skills',
       experience: 'Experience and qualifications',
@@ -1050,7 +1054,7 @@ export const en: Catalog = {
       namePlaceholder: 'First and last name',
       title: 'Role',
       titlePlaceholder: 'e.g. Interim manager',
-      roles: 'Target roles',
+      roles: 'Preferred roles',
       rolesPlaceholder: 'e.g. Interim CFO',
       competence: 'Skill',
       competencePlaceholder: 'e.g. Project management',
@@ -1062,9 +1066,9 @@ export const en: Catalog = {
       unstar: 'Remove focus area',
       starEmpty: 'Enter a skill first.',
       focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
-      focusHint: 'Marked skills count twice, at most five.',
+      focusHint: 'Marked skills count double, up to five.',
       focusFull: 'At most five focus areas.',
-      focusTrimmed: 'The first five focus areas are taken.',
+      focusTrimmed: 'Only the first five focus areas were kept.',
       strengths: 'Key strengths',
       strengthsPlaceholder: 'e.g. Leading teams through change',
       keywords: 'Keywords',
@@ -1091,11 +1095,11 @@ export const en: Catalog = {
       wishIndustries: 'Preferred industries',
       wishIndustriesPlaceholder: 'e.g. Energy',
       minDayRate: 'Minimum day rate',
-      countries: 'Work countries',
-      countriesPlaceholder: 'Search for a country',
+      countries: 'Countries',
+      countriesPlaceholder: 'Search countries',
       countryNone: 'No country by this name.',
       remoteOutside: 'Exclude remote jobs abroad',
-      remoteOutsideOff: 'Choose the countries first.',
+      remoteOutsideOff: 'Choose countries first.',
       noAnue: 'Exclude temporary agency work',
       noPermanent: 'Exclude permanent jobs',
       available: 'Available from',
@@ -1112,23 +1116,23 @@ export const en: Catalog = {
       date: 'Date',
       datePlaceholder: '1 Nov 2026',
       dateInvalid: 'Enter the date as 1 Nov 2026.',
-      dateImpossible: 'This day does not exist.',
+      dateImpossible: 'This date does not exist.',
       minSalary: 'Minimum annual salary',
       places: 'Locations for permanent jobs',
       placesPlaceholder: 'e.g. Munich',
       remoteMin: 'Minimum remote share',
-      remoteMinHint: 'Applies outside these locations.',
+      remoteMinHint: 'Applies to jobs outside these locations.',
       placesFirst: 'Add locations first.',
       rounded: 'Rounded down to whole euros.',
       roundedWhole: 'Rounded down to a whole number.',
-      refused: 'This value does not fit.',
+      refused: 'This value is not valid.',
       atMost: (max: number) => `At most ${n(max)}.`,
       atLeast: (min: number) => `At least ${n(min)}.`,
       unreadableNumber: (value: string) => `The file said “${value}”, which is not a number.`,
       unreadableDate: (value: string) => `The file said “${value}”, which is not a date.`,
       unreadableValue: (value: string) => `The file said “${value}”, which the app cannot read.`,
-      unreadableFocus: (value: string) => `“${value}” is not one of the skills.`,
-      unreadableRole: (value: string) => `“${value}” names no field.`,
+      unreadableFocus: (value: string) => `“${value}” is not one of your skills.`,
+      unreadableRole: (value: string) => `“${value}” does not name a field of work.`,
       removeValue: 'Remove value',
     },
     unit: {
@@ -1195,12 +1199,12 @@ export const en: Catalog = {
     export: 'Export',
     look: 'Appearance',
     data: 'Data',
-    backToJob: 'Back to the job',
+    backToJob: 'Back to job',
     connected: 'Connected',
     notConnected: 'No mailbox',
     /** The last fetch could not reach Gmail, or Gmail refused the password. */
-    unreachable: 'Not reachable',
-    refused: 'Refused',
+    unreachable: 'Unreachable',
+    refused: 'Rejected',
     mailRefused: 'Gmail rejected the address or app password, so enter them again with “Change”.',
     address: 'Gmail address',
     password: 'App password',
@@ -1213,23 +1217,23 @@ export const en: Catalog = {
     changeHeading: 'Change mailbox',
     removeMailbox: 'Remove mailbox?',
     removeMailboxText: 'The app password will be deleted, but your jobs stay.',
-    quota: (used: number, cap: number) => `Today ${n(used)} of ${n(cap)} calls`,
+    quota: (used: number, cap: number) => `${n(used)} of ${n(cap)} requests today`,
     signIn: 'Sign in',
     signOut: 'Sign out',
     openPortal: 'Open in browser',
     signInWaiting: 'The sign-in window is open.',
-    alertQuiet: (days: number) => `No alert email for ${n(days)} days.`,
+    alertQuiet: (days: number) => `No alert email in ${n(days)} days.`,
     checkAlert: 'Check alert',
     folder: 'Export folder',
     excel: 'Excel file',
     csv: 'CSV file',
     excelOff: 'Turn on the Excel file.',
     csvOff: 'Turn on the CSV file.',
-    folderMoved: 'The profile and the files are in the new folder.',
-    folderFiles: 'The files are in the new folder.',
+    folderMoved: 'The profile and files are now in the new folder.',
+    folderFiles: 'The files are now in the new folder.',
     folderOwnProfile: 'The app now uses the profile in this folder.',
     backup: 'Backup',
-    backupHeading: 'Restore a backup',
+    backupHeading: 'Restore backup',
     backupAction: 'Restore',
     backupNone: 'There is no backup yet.',
     backupKind: {
@@ -1249,14 +1253,14 @@ export const en: Catalog = {
       'the backups',
       'the profiles',
       'the app password',
-      'the sign-ins at the portals',
+      'the portal sign-ins',
       'the app’s files in the export folder',
     ],
-    resetDone: 'The app is reset.',
+    resetDone: 'The app has been reset.',
     resetPartly: (value: number) =>
-      `The app is reset, but ${count(value, 'item', 'items')} could not be deleted.`,
+      `The app has been reset, but ${count(value, 'item', 'items')} could not be deleted.`,
     dryRun: 'Dry run, so no data is changed.',
-    demo: 'Demo with sample data, without the mailbox or the portals.',
+    demo: 'Demo with sample data, no mailbox or portals.',
     palette: 'Theme',
     paletteName: {
       cxact: 'CXact',
@@ -1270,17 +1274,17 @@ export const en: Catalog = {
     } satisfies Record<Language, string>,
   },
   firstRun: {
-    steps: 'First steps',
+    steps: 'Getting started',
     mailbox: 'Mailbox',
     mailboxText: (portals: readonly Portal[]) =>
       `The alert emails from ${joined(portals.map((p) => portalName[p]))} must go to this Gmail${NBSP}address.`,
-    mailboxDone: 'The alert emails of the portals must go to this address.',
+    mailboxDone: 'The portals’ alert emails must go to this address.',
     openSettings: 'Open settings',
     alertMails: (value: number) => count(value, 'alert email', 'alert emails'),
     createAlert: 'Create alert',
     noAlerts: 'No alert email arrived in the last 30 days, so create an alert first.',
     profile: 'Profile',
-    profileEmpty: 'Without skills, nothing is scored.',
+    profileEmpty: 'Without skills, nothing can be scored.',
     fetch: 'First fetch',
   },
   shell: {
@@ -1313,7 +1317,7 @@ export const en: Catalog = {
     day: (day: number, month: string, year: number) => `${day} ${month} ${year}`,
   },
   toast: {
-    rescored: 'Jobs scored again',
+    rescored: 'Jobs rescored',
     prompt: 'AI prompt copied',
     archived: 'Archived',
     unarchived: 'Moved to inbox',
