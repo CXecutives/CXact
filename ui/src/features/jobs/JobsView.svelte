@@ -233,7 +233,7 @@
       <section class="right" data-testid="reader-pane" bind:this={right}>
         {#key stage.turn}
           <div class="stage" data-testid="stage" in:enter={stage.what !== NO_JOB} out:leave>
-            <div class="column">
+            <div class="column" class:idle={stage.what === NO_JOB}>
               {#if stage.what === NO_JOB}
                 <!-- No job open: the one empty state of every place (its icon, one sentence);
                    beside an empty list, which says it all, nothing. -->
@@ -407,11 +407,18 @@
     margin-left: calc(-1 * (var(--ghost-inset) + var(--space-6)));
   }
 
-  /* The reader with nothing open: centred across the pane, near its top. */
+  /* The reader with nothing open: the column fills the pane, and its empty state stands in
+     the middle, like every other empty state (the list's). */
+  .column.idle {
+    min-height: 100%;
+    padding-bottom: var(--pane-padding);
+  }
+
   .place-reader {
     display: flex;
+    flex: 1;
+    align-items: center;
     justify-content: center;
-    padding-top: var(--space-48);
   }
 
   @media (width < 900px) {

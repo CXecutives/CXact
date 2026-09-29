@@ -336,6 +336,14 @@ test.describe('the head and the match', () => {
     await close.click();
     await expect(page.getByTestId('place-reader')).toBeVisible();
     await expect(page.locator('[data-open]')).toHaveCount(0);
+    // Its empty state stands in the middle of the job view, like every other empty state.
+    const middle = async (id: string): Promise<number> => {
+      const box = (await page.getByTestId(id).boundingBox())!;
+      return box.y + box.height / 2;
+    };
+    expect(
+      Math.abs((await middle('place-reader')) - (await middle('reader-pane'))),
+    ).toBeLessThanOrEqual(2);
     // One column: the × and Zurück lead back to the list; the top bar keeps the job view's
     // button, which closes the job there too, and is dimmed without one.
     await page.setViewportSize({ width: 683, height: 700 });
