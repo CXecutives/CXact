@@ -173,7 +173,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
     ['first-profile-file', 'pickFile'],
     ['first-profile-prompt', 'prompt'],
   ] as const) {
-    await expect(step.getByTestId(id)).toHaveCSS('height', '28px');
+    await expect(step.getByTestId(id)).toHaveCSS('height', '29px');
     await expect(step.getByTestId(id).locator('[data-icon]')).toHaveAttribute('data-icon', icon);
   }
   // The prompt goes to the clipboard and a toast says so; the page stays.

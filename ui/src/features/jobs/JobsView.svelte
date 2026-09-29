@@ -276,7 +276,7 @@
                 {:else if stage.what === WAITING}
                   <ReaderSkeleton />
                 {:else if jobs.detail}
-                  <Reader detail={jobs.detail} />
+                  <Reader detail={jobs.detail} onclose={close} />
                 {/if}
               {/if}
             </div>

@@ -57,18 +57,7 @@
   // The mouse's back button goes back like Zurück in the top bar.
   $effect(() => onBack(() => history.back()));
 
-  /** How long the floating sidebar waits for the pointer to come back, in ms. */
-  const PEEK_LEAVE = 300;
-  /** The folded sidebar floats out while the pointer is on the window's left edge or on it,
-   *  and folds again a moment after the pointer left them (unless its button floated it out:
-   *  then its button, or a choice in it, folds it). */
-  let unpeek: ReturnType<typeof setTimeout> | null = null;
-  function peek(here: boolean): void {
-    if (unpeek !== null) clearTimeout(unpeek);
-    unpeek = null;
-    if (here) shell.peek = true;
-    else if (!shell.pinned) unpeek = setTimeout(() => (shell.peek = false), PEEK_LEAVE);
-  }
+  // A docked sidebar never floats as well.
   $effect(() => {
     if (shell.docked) shell.peek = false;
   });
@@ -119,25 +108,11 @@
           testid="sidebar-splitter"
         /></span
       >
-    {:else}
-      <span
-        class="edge"
-        role="presentation"
-        data-testid="sidebar-edge"
-        onpointerenter={() => peek(true)}
-        onpointerleave={() => peek(false)}
-      ></span>
-      {#if shell.peek}
-        <div
-          class="peek"
-          role="presentation"
-          onpointerenter={() => peek(true)}
-          onpointerleave={() => peek(false)}
-          transition:fade
-        >
-          <Sidebar floating onchoose={() => shell.fold()} />
-        </div>
-      {/if}
+    {:else if shell.peek}
+      <!-- A narrow window: the sidebar's button floats it over the view. -->
+      <div class="peek" transition:fade>
+        <Sidebar floating onchoose={() => shell.fold()} />
+      </div>
     {/if}
     <main class="views" class:docked={shell.docked}>
       {#if app.error !== null && app.state === null}
@@ -306,17 +281,8 @@
     flex: none;
   }
 
-  /* The folded sidebar: a strip at the window's left edge floats it out, and it floats over
-     the view, a little in from the edges, like the Claude app's. */
-  .edge {
-    position: absolute;
-    z-index: var(--z-sticky);
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: var(--peek-edge);
-  }
-
+  /* The sidebar of a narrow window, floated out by its button over the view, a little in
+     from the edges. */
   .peek {
     position: absolute;
     z-index: var(--z-overlay);

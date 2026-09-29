@@ -391,22 +391,22 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  --control-sm: 25px;
+  --control-sm: 26px;
   /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
      Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
      calm, like the OS's own settings (user, 2026-09-25). */
-  --control-field: 28px;
-  --control-md: 30px;
-  --control-lg: 33px;
+  --control-field: 29px;
+  --control-md: 31px;
+  --control-lg: 34px;
   --icon-xs: 12px;
-  --icon-sm: 15px;
-  --icon-md: 18px;
+  --icon-sm: 16px;
+  --icon-md: 20px;
   --icon-lg: 24px;
   /* One line width for every line icon, whatever its size (user, 2026-09-27): screen pixels
      (the strokes do not scale with the icon). */
-  --icon-stroke: 1.15;
+  --icon-stroke: 1.25;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
-  --row-height: 58px;
+  --row-height: 60px;
   /* The gutter of the unread dot, left of the ring. */
   --dot-gutter: 12px;
   /* The window's top bar, the same on both OS like the Claude app's (user, 2026-09-27): one
@@ -436,7 +436,7 @@
   --titlebar-tools-inset: 6px;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
-  --tabs-min: 36px;
+  --tabs-min: 38px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -489,7 +489,7 @@
   --ghost-inset: calc(var(--space-12) + var(--border-width));
   /* The one inner padding of every content column: list header, list rows, reader, overview,
      and the left edge of the top strip, so their edges line up. */
-  --pane-padding: 13px;
+  --pane-padding: 14px;
   /* The room under the last section of a page that scrolls (Einstellungen, Profil): the end
      of the page never sits on the window's edge. */
   --page-end: 96px;
@@ -500,9 +500,9 @@
   --first-row: var(--control-lg);
   /* The sides of the reader column (a document, a little more air than the list). */
   --reader-padding: var(--space-24);
-  --ring-sm: 32px;
+  --ring-sm: 34px;
   --ring-sm-stroke: 4px;
-  --ring-md: 46px;
+  --ring-md: 48px;
   --ring-md-stroke: 5px;
   --ring-lg: 96px;
   --ring-lg-stroke: 8px;
@@ -553,14 +553,12 @@
   /* The level of a language in the Profil form: its longest word (Muttersprache) fits. */
   --level-width: 140px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
-  --sidebar-width: 196px;
+  --sidebar-width: 200px;
   /* The sidebar's handle keeps it between these. */
   --sidebar-min: 180px;
   --sidebar-max: 320px;
-  /* The folded sidebar floats this far in from the window's edges; the strip at the left
-     edge that floats it out. */
+  /* The sidebar of a narrow window floats this far in from the window's edges. */
   --peek-inset: 6px;
-  --peek-edge: 6px;
   /* The fade under the top bar where a view scrolls beneath it. */
   --fade-height: 20px;
   --rail-width: 64px;
@@ -579,9 +577,9 @@
   /* Dash length and start offset of a drawn check (the Lucide check path is under 24). */
   --draw-length: 24;
   /* Score ring: r = 15.9155 in a 36-unit viewBox (circumference 100). Stroke widths are
-     scaled into viewBox units: 36/32, 36/46 and 36/96. */
-  --ring-sm-scale: 1.125;
-  --ring-md-scale: 0.783;
+     scaled into viewBox units: 36/34, 36/48 and 36/96. */
+  --ring-sm-scale: 1.059;
+  --ring-md-scale: 0.75;
   --ring-lg-scale: 0.375;
 
   /* -------------------------------------------------------------- typography */
@@ -594,34 +592,34 @@
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 11px;
   --leading-2xs: 14px;
-  --font-xs: 10.5px;
-  --leading-xs: 14px;
-  --font-sm: 11px;
-  --leading-sm: 15px;
+  --font-xs: 11px;
+  --leading-xs: 15px;
+  --font-sm: 11.5px;
+  --leading-sm: 16px;
   /* The text in fields. */
-  --font-field: 12.5px;
-  --leading-field: 17px;
+  --font-field: 13px;
+  --leading-field: 18px;
   /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
-  --font-md: 12.5px;
-  --leading-md: 17px;
+  --font-md: 13px;
+  --leading-md: 18px;
   /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
-  --font-title: 13.5px;
-  --leading-title: 17px;
+  --font-title: 14px;
+  --leading-title: 18px;
   /* The sidebar entries (14/20, weight 500). */
-  --font-tab: 12.5px;
-  --leading-tab: 17px;
+  --font-tab: 13px;
+  --leading-tab: 18px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 13px;
-  --leading-place: 17px;
+  --font-place: 13.5px;
+  --leading-place: 18px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
-  --font-body: 12.5px;
-  --leading-body: 19px;
-  --font-lg: 14.5px;
-  --leading-lg: 19px;
-  --font-xl: 16px;
-  --leading-xl: 22px;
-  --font-2xl: 19px;
-  --leading-2xl: 24px;
+  --font-body: 13px;
+  --leading-body: 20px;
+  --font-lg: 15px;
+  --leading-lg: 20px;
+  --font-xl: 17px;
+  --leading-xl: 24px;
+  --font-2xl: 20px;
+  --leading-2xl: 26px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);

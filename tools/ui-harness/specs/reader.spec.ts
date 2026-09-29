@@ -325,21 +325,24 @@ test.describe('the head and the match', () => {
     expect(f.cap(f.capWhy.formal, 40)).toBe('Formale Pflicht offen, deshalb höchstens 40');
   });
 
-  test('no "×" in the job view: the top bar hides it, in one column Zurück leads back', async ({
+  test('the "×" closes the job at every width; in one column it and Zurück lead back', async ({
     page,
   }) => {
-    for (const size of [
-      { width: 1360, height: 900 },
-      { width: 683, height: 700 },
-    ]) {
-      await page.setViewportSize(size);
-      await openAt(page, 'freelancermap-2801');
-      await expect(stage(page).getByTestId('reader-title')).toBeVisible();
-      await expect(stage(page).getByTestId('reader-close')).toHaveCount(0);
-      await expect(page.getByTestId('back')).toHaveCount(0);
-    }
-    // One column: no button for the job view, Zurück leads back to the list.
+    // Wide: the job view stays and asks for a job (user, 2026-09-29).
+    await openAt(page, 'freelancermap-2801');
+    const close = stage(page).getByTestId('reader-close');
+    await expect(close).toBeVisible();
+    await expect(close).toHaveAccessibleName('Schließen');
+    await close.click();
+    await expect(page.getByTestId('place-reader')).toBeVisible();
+    await expect(page.locator('[data-open]')).toHaveCount(0);
+    // One column: no button for the job view; the × and Zurück lead back to the list.
+    await page.setViewportSize({ width: 683, height: 700 });
+    await openAt(page, 'freelancermap-2801');
     await expect(page.getByTestId('toggle-reader')).toHaveCount(0);
+    await stage(page).getByTestId('reader-close').click();
+    await expect(row(page, 'freelancermap-2801')).toBeVisible();
+    await row(page, 'freelancermap-2801').click();
     await page.getByTestId('history-back').click();
     await expect(row(page, 'freelancermap-2801')).toBeVisible();
   });

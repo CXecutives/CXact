@@ -128,8 +128,8 @@ test.describe('header', () => {
     }
     // 39 px high, 15 px labels (one step above the sidebar's entries), the chosen one with the
     // line under it; it slides to another choice.
-    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(28);
-    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '13px');
+    expect(Math.round((await page.getByTestId('places').boundingBox())!.height)).toBe(29);
+    await expect(page.getByTestId('place-archive')).toHaveCSS('font-size', '13.5px');
     const under = async (place: 'inbox' | 'archive'): Promise<void> => {
       const chosen = (await page.getByTestId(`place-${place}`).boundingBox())!;
       await expect
@@ -1381,7 +1381,7 @@ test.describe('rows', () => {
     const heights = await list(page)
       .locator('[data-testid^="job-row-"]')
       .evaluateAll((items) => items.map((item) => item.getBoundingClientRect().height));
-    expect([...new Set(heights)]).toEqual([58]);
+    expect([...new Set(heights)]).toEqual([60]);
     const title = row(page, 'linkedin-4100200301').locator('.title');
     const width = (): Promise<number> =>
       title.evaluate((node) => {
@@ -1396,7 +1396,7 @@ test.describe('rows', () => {
     expect(Math.abs((await width()) - unread)).toBeLessThan(0.01);
     // Without a profile the rows keep the one height.
     await open(page, `${WIN}&scenario=no-profile`);
-    expect((await rows(page).first().boundingBox())!.height).toBe(58);
+    expect((await rows(page).first().boundingBox())!.height).toBe(60);
   });
 
   test('the open row deepens while pressed, only under the pointer', async ({ page }) => {
@@ -1601,7 +1601,7 @@ test.describe('search', () => {
     expect(Math.abs(a.x + a.width / 2 - (b.x + b.width / 2))).toBeLessThan(2);
     // The one way on under an empty state: a field button, as far below the sentence as the
     // empty state's own (16 px).
-    expect(Math.round(b.height)).toBe(28);
+    expect(Math.round(b.height)).toBe(29);
     const sentence = (await page.getByTestId('empty-search').locator('.text').boundingBox())!;
     expect(Math.round(b.y - (sentence.y + sentence.height))).toBe(16);
     // The reader beside a search without hits has nothing to choose from: it says nothing.
@@ -1965,7 +1965,7 @@ test.describe('run line', () => {
     await expect(problem).toContainText('Gmail ist nicht erreichbar.');
     // Drawn like every note of the column: the sentence in 14 px ink, the × at the column's
     // edge. No "Erneut versuchen" beside a working "Postfach abrufen", which does the same.
-    await expect(problem.locator('.text')).toHaveCSS('font-size', '12.5px');
+    await expect(problem.locator('.text')).toHaveCSS('font-size', '13px');
     await expect(problem.getByTestId('run-retry')).toHaveCount(0);
     // A fetch that ends at once brings back a working "Postfach abrufen".
     await expect(page.getByTestId('fetch')).toBeEnabled();
@@ -2134,7 +2134,7 @@ test.describe("the open row's bar", () => {
     await open(page, WIN);
     await row(page, 'freelancermap-2802').click();
     const start = await resting(page);
-    expect(start.height).toBe(58 - 2 * INSET);
+    expect(start.height).toBe(60 - 2 * INSET);
     await startSampling(page);
     await row(page, 'freelancermap-2803').click();
     await page.waitForTimeout(400);
@@ -2238,7 +2238,7 @@ test.describe("the open row's bar", () => {
     await open(page, `${WIN}&scenario=many`);
     await rows(page).nth(3).click();
     const slot = await resting(page);
-    expect(slot.height).toBe(58 - 2 * INSET);
+    expect(slot.height).toBe(60 - 2 * INSET);
     // Small steps, a frame each, then the wheel: further windows of rows are built.
     const built = (): Promise<number> => list(page).locator('.item[data-key]').count();
     const before = await built();
@@ -2262,7 +2262,7 @@ test.describe("the open row's bar", () => {
     for (const sample of scrolled) expect(onRow(sample), JSON.stringify(sample)).toBe(true);
     // A narrower window keeps the row's height; one column and back never slide the bar.
     await page.setViewportSize({ width: 960, height: 900 });
-    expect((await resting(page)).height).toBe(58 - 2 * INSET);
+    expect((await resting(page)).height).toBe(60 - 2 * INSET);
     await page.setViewportSize({ width: 780, height: 900 });
     await expect(page.getByTestId('reader')).toBeVisible();
     await startSampling(page);

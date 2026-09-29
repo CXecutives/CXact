@@ -582,20 +582,18 @@ test('before the first fetch Jobs is the setup page; every entry works as always
 });
 
 for (const os of [WIN, MAC]) {
-  test(`below 1100 px the sidebar folds away and floats out from the left edge or its button ${os}`, async ({
+  test(`below 1100 px the sidebar folds away; its button floats it out, nothing on hover ${os}`, async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1000, height: 700 });
     await open(page, os);
     await expect(page.getByTestId('sidebar')).toHaveCount(0);
     const floating = page.getByTestId('sidebar-floating');
-    // The pointer on the window's left edge floats it out; away from it, it folds again.
-    const edge = (await page.getByTestId('sidebar-edge').boundingBox())!;
-    await page.mouse.move(edge.x + 1, edge.y + edge.height / 2);
-    await expect(floating).toBeVisible();
-    await page.mouse.move(700, 400);
+    // The pointer on the window's left edge does nothing (user, 2026-09-29).
+    await page.mouse.move(1, 400);
+    await page.waitForTimeout(300);
     await expect(floating).toHaveCount(0);
-    // Its button floats it out too; a choice there folds it again.
+    // Its button floats it out; a choice there folds it again.
     await page.getByTestId('toggle-sidebar').click();
     await expect(floating).toBeVisible();
     await floating.getByTestId('nav-profile').click();
@@ -628,10 +626,10 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
 }) => {
   await open(page, WIN);
   await expect(page.getByTestId('sidebar-edge')).toHaveCount(0);
-  expect(await sidebarWidth(page)).toBe(196);
+  expect(await sidebarWidth(page)).toBe(200);
   await page.keyboard.press('Control+b');
   await page.keyboard.press('Meta+b');
-  expect(await sidebarWidth(page)).toBe(196);
+  expect(await sidebarWidth(page)).toBe(200);
   const toggle = page.getByTestId('toggle-sidebar');
   await toggle.click();
   await page.mouse.move(700, 400);
@@ -644,12 +642,12 @@ test('its button folds and docks the sidebar; the bar follows; Ctrl+B and Cmd+B 
       .evaluate((node) => node.clientWidth),
   ).toBe(0);
   await toggle.click();
-  await expect.poll(() => sidebarWidth(page)).toBe(196);
+  await expect.poll(() => sidebarWidth(page)).toBe(200);
   // A narrow window folds it by itself; a wide one brings it back.
   await page.setViewportSize({ width: 1000, height: 700 });
   await expect(page.getByTestId('sidebar')).toHaveCount(0);
   await page.setViewportSize({ width: 1360, height: 900 });
-  await expect.poll(() => sidebarWidth(page)).toBe(196);
+  await expect.poll(() => sidebarWidth(page)).toBe(200);
 });
 
 test('an unsaved profile keeps the view until the question is answered', async ({ page }) => {
@@ -1610,11 +1608,11 @@ for (const [width, fold] of [
     await open(page, '?platform=windows');
     if (fold) {
       await expect(page.getByTestId('sidebar')).toHaveCount(0);
-      await expect(page.getByTestId('sidebar-edge')).toHaveCount(1);
+      await expect(page.getByTestId('toggle-sidebar')).toBeVisible();
       return;
     }
     const sidebar = await page.getByTestId('sidebar').boundingBox();
-    expect(sidebar?.width).toBe(196);
+    expect(sidebar?.width).toBe(200);
     const label = page.getByTestId('nav-profile');
     if (fold) {
       await expect(label).toHaveAttribute('aria-label', await text(page, 'nav.profile'));

@@ -2,10 +2,9 @@
 // instead of the Jobs view. A mailbox removed later does not bring it back: the jobs stay
 // in view, "Postfach abrufen" waits for a mailbox and the list says how to connect one.
 // And the frame around the views, like the Claude app's: the sidebar docked or folded away
-// (then it floats over the view while the pointer is on its button, on the window's left
-// edge or on it), and the job view beside the list shown or hidden. Both choices are kept
-// per user (in this web view: a store that cannot be read or written keeps them for the
-// session).
+// by its button (a narrow window folds it by itself; its button then floats it over the
+// view), and the job view beside the list shown or hidden. Both choices are kept per user
+// (in this web view: a store that cannot be read or written keeps them for the session).
 
 import { app } from './app.svelte';
 import { run } from './run.svelte';
@@ -38,10 +37,8 @@ class Shell {
 
   /** The user wants the sidebar beside the view (a narrow window folds it anyway). */
   #sidebar = $state(kept(SIDEBAR));
-  /** The folded sidebar floats over the view. */
+  /** The sidebar of a narrow window floats over the view. */
   peek = $state(false);
-  /** Its button floated it out: it stays until the button or a choice folds it. */
-  pinned = $state(false);
   /** The sidebar's width in px (its handle keeps the user's). */
   sidebarWidth = $state<number | undefined>(undefined);
   /** The user wants the job view beside the list (one column shows a job in its place). */
@@ -59,8 +56,7 @@ class Shell {
    *  folds it again. */
   toggleSidebar(): void {
     if (viewport.fold) {
-      if (this.peek) this.fold();
-      else this.peek = this.pinned = true;
+      this.peek = !this.peek;
       return;
     }
     this.#sidebar = !this.#sidebar;
@@ -71,7 +67,6 @@ class Shell {
   /** The floating sidebar folds away. */
   fold(): void {
     this.peek = false;
-    this.pinned = false;
   }
 
   get readerOpen(): boolean {

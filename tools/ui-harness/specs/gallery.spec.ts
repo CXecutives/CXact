@@ -232,7 +232,7 @@ test('the hairline under a row spans it, or insets where the list reaches past i
       });
   expect(await rule()).toEqual({ left: '0px', right: '0px', height: '1px' });
   await list.evaluate((node) => node.style.setProperty('--row-rule-inset', 'var(--pane-padding)'));
-  expect(await rule()).toEqual({ left: '13px', right: '13px', height: '1px' });
+  expect(await rule()).toEqual({ left: '14px', right: '14px', height: '1px' });
 });
 
 test('job rows: no tools, provisional ring, no dot on excluded', async ({ page }) => {
@@ -283,8 +283,8 @@ test('a long row title stays one line, every row one height, the rest is a toolt
     (node) => node.clientHeight / parseFloat(getComputedStyle(node).lineHeight),
   );
   expect(Math.round(lines)).toBe(1);
-  expect((await short.boundingBox())!.height).toBe(58);
-  expect((await long.boundingBox())!.height).toBe(58);
+  expect((await short.boundingBox())!.height).toBe(60);
+  expect((await long.boundingBox())!.height).toBe(60);
   // Cut off on its one line: the full title shows in a tooltip.
   await title.hover();
   await expect(page.getByRole('tooltip')).toContainText('vierzehn Ländern');

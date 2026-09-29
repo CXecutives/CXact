@@ -41,10 +41,10 @@ async function drag(page: Page, dx: number): Promise<void> {
 }
 
 for (const [width, expected] of [
-  // content = window - sidebar (196) - hairline: 903, 1163, 1723
-  [1100, { width: 463, min: 320, max: 463 }],
-  [1360, { width: 520, min: 320, max: 698 }],
-  [1920, { width: 600, min: 320, max: 1034 }],
+  // content = window - sidebar (200) - hairline: 899, 1159, 1719
+  [1100, { width: 459, min: 320, max: 459 }],
+  [1360, { width: 520, min: 320, max: 695 }],
+  [1920, { width: 600, min: 320, max: 1031 }],
 ] as const) {
   test(`the list's first width and limits at ${width} px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 800 });
@@ -60,17 +60,17 @@ for (const [width, expected] of [
 test('the limits follow the window; a kept width waits for its room', async ({ page }) => {
   await open(page, WIN);
   await drag(page, 2000);
-  await expect.poll(async () => (await handle(page)).width).toBe(698);
+  await expect.poll(async () => (await handle(page)).width).toBe(695);
   // A wider window gives the list more room; dragged to its end there.
   await page.setViewportSize({ width: 1920, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(698);
+  await expect.poll(async () => (await handle(page)).max).toBeGreaterThan(695);
   await drag(page, 2000);
   const wide = (await handle(page)).max;
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   // Narrower: shown at the limit, the choice stays and comes back.
   await page.setViewportSize({ width: 1100, height: 800 });
-  await expect.poll(async () => (await handle(page)).max).toBe(463);
-  expect((await handle(page)).width).toBe(463);
+  await expect.poll(async () => (await handle(page)).max).toBe(459);
+  expect((await handle(page)).width).toBe(459);
   await page.setViewportSize({ width: 1920, height: 800 });
   await expect.poll(async () => (await handle(page)).width).toBe(wide);
   await page.reload();
@@ -80,7 +80,7 @@ test('the limits follow the window; a kept width waits for its room', async ({ p
 test('a kept width that is too wide shows at the limit', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('jobs-list-width', '900'));
   await open(page, WIN);
-  expect(await handle(page)).toEqual({ width: 698, min: 320, max: 698 });
+  expect(await handle(page)).toEqual({ width: 695, min: 320, max: 695 });
   await page.setViewportSize({ width: 1920, height: 900 });
   await expect.poll(async () => (await handle(page)).width).toBe(900);
 });

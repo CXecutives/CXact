@@ -155,7 +155,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   page,
 }) => {
   await settings(page);
-  // Every button with words in a row of a card: the one outlined kind, 25 px.
+  // Every button with words in a row of a card: the one outlined kind, 26 px.
   const kinds = await page
     .getByTestId('settings')
     .locator('.card button.btn:not(.icon-only)')
@@ -176,7 +176,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'csv-open',
     'reset',
   ]);
-  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 25)).toEqual([]);
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== 26)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');
@@ -215,7 +215,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
     page.getByTestId('portal-freelance').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
-  // Every button of the page is at most 28 px high.
+  // Every button of the page is at most 29 px high.
   const heights = await page
     .getByTestId('settings')
     .locator('button:not([role="switch"]):not([role="radio"])')
@@ -231,7 +231,7 @@ test('narrow, a row puts its control under the label only where the two do not f
   // Label and control side by side, one line, like the wider rows.
   for (const id of ['excel', 'reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
-    expect(Math.round(box.height), id).toBe(54);
+    expect(Math.round(box.height), id).toBe(55);
   }
   // At the smallest window the path of the export folder keeps its room: the buttons stand
   // beside it or go under it, never over it.
