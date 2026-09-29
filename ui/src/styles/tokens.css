@@ -400,20 +400,20 @@
   --space-64: 64px;
 
   /* ------------------------------------------------------------------- sizes */
-  --control-sm: 27px;
+  --control-sm: 25px;
   /* Every text field, chip field and choice of a few (Segmented, in Einstellungen and in the
      Profil form alike), and the buttons of their row (the list's Abrufen beside the search):
      calm, like the OS's own settings (user, 2026-09-25). */
-  --control-field: 30px;
-  --control-md: 32px;
-  --control-lg: 35px;
+  --control-field: 28px;
+  --control-md: 30px;
+  --control-lg: 33px;
   --icon-xs: 12px;
-  --icon-sm: 16px;
-  --icon-md: 20px;
+  --icon-sm: 15px;
+  --icon-md: 19px;
   --icon-lg: 24px;
   /* One line width for every line icon, whatever its size (user, 2026-09-27): screen pixels
      (the strokes do not scale with the icon). */
-  --icon-stroke: 1.4;
+  --icon-stroke: 1.6;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
   --row-height: 61px;
   /* The gutter of the unread dot, left of the ring. */
@@ -444,14 +444,14 @@
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
   /* The bar's own buttons: 28 px (three with their gaps fill --titlebar-tools-start), their
-     16 px glyphs of the app's own (Bar*.svelte) in a 1.5 px line like the Claude app's bar
+     16 px glyphs of the app's own (glyphs/Bar*.svelte) in a 1.5 px line like the Claude app's bar
      (user, 2026-09-29). */
   --titlebar-tool: 28px;
   --titlebar-icon: 16px;
   --titlebar-icon-stroke: 1.5;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
-  --tabs-min: 39px;
+  --tabs-min: 37px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
   --tabs-line: 2px;
   /* The top of the list column's header: the pane padding less what the tabs' row is higher
@@ -602,41 +602,42 @@
   /* -------------------------------------------------------------- typography */
   --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --weight-regular: 400;
-  --weight-medium: 450;
-  --weight-semibold: 520;
+  --weight-regular: 430;
+  --weight-medium: 500;
+  --weight-semibold: 580;
   --numeric: tabular-nums;
   /* Only the second line of a tooltip (a key or a hint under its title). */
   --font-2xs: 11px;
   --leading-2xs: 14px;
   --font-xs: 11px;
   --leading-xs: 15px;
-  --font-sm: 12px;
+  --font-sm: 11.5px;
   --leading-sm: 16px;
   /* The text in fields. */
-  --font-field: 13.5px;
-  --leading-field: 19px;
-  /* The text of the app: 14 px like a native desktop app (user decision A, 2026-09-26). */
-  --font-md: 13.5px;
-  --leading-md: 19px;
-  /* List titles keep 15 px, on a tighter 20 px line, so two lines stay one block. */
-  --font-title: 14.5px;
+  --font-field: 13px;
+  --leading-field: 18px;
+  /* The text of the app: 13 px, a notch smaller and stronger than before (user, size A,
+     2026-09-30: everything smaller, the type not too small and not thin). */
+  --font-md: 13px;
+  --leading-md: 18px;
+  /* List titles 14 px on a tight 19 px line, so two lines stay one block. */
+  --font-title: 14px;
   --leading-title: 19px;
   /* The sidebar entries (14/20, weight 500). */
-  --font-tab: 13.5px;
-  --leading-tab: 19px;
+  --font-tab: 13px;
+  --leading-tab: 18px;
   /* The place tabs above the list: one step above the sidebar entries (15/20, weight 500). */
-  --font-place: 14px;
+  --font-place: 13.5px;
   --leading-place: 19px;
   /* Running text (the ad, a dialog's sentence): 14 px on a roomier line. */
-  --font-body: 13.5px;
-  --leading-body: 21px;
-  --font-lg: 15.5px;
+  --font-body: 13px;
+  --leading-body: 20px;
+  --font-lg: 15px;
   --leading-lg: 21px;
-  --font-xl: 18px;
-  --leading-xl: 25px;
-  --font-2xl: 21px;
-  --leading-2xl: 27px;
+  --font-xl: 17px;
+  --leading-xl: 24px;
+  --font-2xl: 20px;
+  --leading-2xl: 28px;
   --font-display: 34px;
   --leading-display: 40px;
   --type-2xs: var(--weight-regular) var(--font-2xs) / var(--leading-2xs) var(--font-sans);
