@@ -5,7 +5,7 @@
 
 import type { TermVerdict as Verdict } from '$lib/i18n/de';
 import type { Reason } from '$lib/ipc/types';
-import { isRequirement, type Judgement } from './verdicts';
+import { isRequirement, reasonVerdict, type Judgement } from './verdicts';
 
 const num = (value: unknown): number | null => (typeof value === 'number' ? value : null);
 
@@ -25,14 +25,19 @@ const YEARS_VERDICT: Record<string, Exclude<Verdict, 'unset'>> = {
   open: 'violated',
 };
 
-/** How the years of a requirement stand to the profile's (`yearsFit`, `have`), whatever its
- *  skill: general experience against the profile's years, years in a topic against that
- *  competence's own. None where nothing judges them (no years in the profile, a topic the
- *  profile does not name). */
+/** How the years of a requirement stand to the profile's (`yearsFit`, `have`): general
+ *  experience against the profile's years, years in a topic against that competence's own.
+ *  Years in a topic also stand among the Anforderungen with the requirement's own verdict:
+ *  the row says the same (one requirement, one verdict; user, 2026-09-29), the worse of the
+ *  two. None where nothing judges the years (no years in the profile, a topic the profile
+ *  does not name). */
 export function yearsJudgement(reason: Reason | undefined): Judgement[] {
   const fit = reason?.params.yearsFit;
   const verdict = typeof fit === 'string' ? YEARS_VERDICT[fit] : undefined;
   const have = num(reason?.params.have);
   if (reason === undefined || verdict === undefined || have === null) return [];
-  return [{ verdict, excludes: false }];
+  const own = generalYears(reason) ? null : reasonVerdict(reason);
+  const judged: Judgement[] = [{ verdict, excludes: false }];
+  if (own !== null && own !== 'unknown') judged.push({ verdict: own, excludes: false });
+  return judged;
 }

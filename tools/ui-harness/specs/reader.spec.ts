@@ -914,13 +914,11 @@ test.describe('Jobdetails', () => {
     await expect(why(page)).not.toContainText('liegt unter dem Minimum');
   });
 
-  test('Erfahrung judges the years against the profile, the requirement keeps its skill', async ({
-    page,
-  }) => {
-    // 15 years of Controlling against the profile's 18: the row is met, its tooltip says so.
-    // The requirement is met in part for its skill: it says so among the Anforderungen.
+  test('Erfahrung says what its requirement says among the Anforderungen', async ({ page }) => {
+    // 15 years of Controlling against the profile's 18, the requirement met in part for its
+    // skill: the row and the Anforderungen say the same.
     await openAt(page, 'freelancermap-2801');
-    expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'met']);
+    expect(await cell(page, 'experience')).toEqual(['15 Jahre', 'partial']);
     await expect(why(page).getByTestId('reasons-partial')).toContainText(
       'Mindestens 15 Jahre Berufserfahrung im Controlling',
     );
