@@ -370,7 +370,7 @@
   {#if withRing}
     <div class="match" data-testid="reader-match">
       {#if excluded}
-        <span class="ban" data-testid="reader-ban"><Icon name="excluded" size="lg" /></span>
+        <ScoreRing ring={{ status: 'off' }} size="md" ban testid="reader-ban" />
         <div class="lines">
           <p class="band" data-testid="band">{t.score.excluded}</p>
           <p class="why-line" data-testid="exclusion">{exclusion}</p>
@@ -652,23 +652,6 @@
     .match {
       gap: var(--space-12);
     }
-  }
-
-  .ban {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: var(--ring-md);
-    height: var(--ring-md);
-    color: var(--score-excluded);
-  }
-
-  /* The ban at the ring's size: its circle stands where the ring's would, its stroke about
-     as strong. */
-  .match .ban :global(.icon) {
-    width: var(--ring-md);
-    height: var(--ring-md);
   }
 
   .lines {

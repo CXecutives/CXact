@@ -789,17 +789,19 @@ class JobsStore {
     } catch (error) {
       return errorText(error);
     }
-    try {
-      const detail = await invoke('job_detail', { key });
+    // The reader follows at once; a detail that does not come is brought by the list below.
+    const detail = await invoke('job_detail', { key }).catch(() => null);
+    if (detail !== null) {
       this.patch(key, detail.job);
       if (sameKey(this.selected, key)) {
         this.#detailRequest++;
         this.detail = detail;
         this.detailStatus = 'ready';
       }
-    } catch {
-      void this.load(true);
     }
+    // The job now counts (or no longer): the list takes it in its order, the filters and
+    // counts follow.
+    void this.load(true);
     return null;
   }
 

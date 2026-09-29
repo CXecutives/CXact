@@ -600,9 +600,9 @@ test.describe('an excluded job', () => {
   }) => {
     await openAt(page, 'freelance-900412');
     await expect(stage(page).getByTestId('reader-ring')).toHaveCount(0);
-    const ban = stage(page).getByTestId('reader-ban').locator('svg');
-    await expect(ban).toHaveCount(1);
-    // The ban at the ring's size, where the ring of every other job stands.
+    // The list's ban at the ring's size: the empty ring, the ban in its middle.
+    const ban = stage(page).getByTestId('reader-ban');
+    await expect(ban.locator('.ban svg')).toHaveCount(1);
     const size = await page.evaluate(() =>
       Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ring-md')),
     );
@@ -648,9 +648,9 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-include')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-mail')).toBeFocused();
+    // No "Wieder ausschließen" (hidden for now, user 2026-09-29): the moves of its place only.
     menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['exclude', 'archive', 'trash']);
-    expect(menu.labels[0]).toBe(T.actions.exclude);
+    expect(menu.ids).toEqual(['archive', 'trash']);
     await page.keyboard.press('Escape');
     // The toast takes it back.
     await toast.getByTestId('toast-action').click();

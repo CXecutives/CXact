@@ -229,7 +229,7 @@
   </svg>
   <span class="center">
     {#if ban}
-      <span class="ban"><Icon name="excluded" size="sm" /></span>
+      <span class="ban"><Icon name="excluded" size={size === 'md' ? 'md' : 'sm'} /></span>
     {:else if valued}
       {Math.round(number.current)}
     {:else}

@@ -1483,7 +1483,7 @@ test.describe('rows', () => {
     await expect(menuItem(page, 'restore')).not.toHaveClass(/danger/);
   });
 
-  test('an excluded job counts anyway from its menu, with an undo, and can be excluded again', async ({
+  test('an excluded job counts anyway from its menu, with an undo; no way to exclude it again', async ({
     page,
   }) => {
     await page.addInitScript(() => localStorage.setItem('jobs-excluded-open', '1'));
@@ -1510,8 +1510,10 @@ test.describe('rows', () => {
     await expect(row(page, key).getByTestId('row-excluded')).toHaveCount(0);
     const toast = page.getByTestId('toast').filter({ hasText: T.toast.included });
     await expect(toast.getByTestId('toast-action')).toHaveText(T.common.undo);
+    // "Wieder ausschließen" is hidden for now (user, 2026-09-29): the undo is the way back.
     await rowMenu(page, key);
-    await expect(menuItem(page, 'exclude')).toHaveText(T.actions.exclude);
+    await expect(menuItem(page, 'include')).toHaveCount(0);
+    await expect(page.getByTestId('menu-item-exclude')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await toast.getByTestId('toast-action').click();
     await expect(page.getByTestId('excluded-rows').getByTestId(`job-row-${key}`)).toBeVisible();

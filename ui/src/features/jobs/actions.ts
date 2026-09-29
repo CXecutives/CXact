@@ -132,13 +132,14 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
 function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const change: MenuEntry[] = [];
-  if (isExcluded(job) || job.overridden) {
-    const include = !job.overridden;
+  // "Wieder ausschließen" is hidden for now (user, 2026-09-29): a job counted anyway stays
+  // so; `override(job, false)` and its words stay for when it comes back.
+  if (isExcluded(job) && !job.overridden) {
     change.push({
-      id: include ? 'include' : 'exclude',
-      label: include ? t.actions.include : t.actions.exclude,
-      icon: include ? 'include' : 'excluded',
-      run: () => void override(job, include).then(report),
+      id: 'include',
+      label: t.actions.include,
+      icon: 'include',
+      run: () => void override(job, true).then(report),
     });
   }
   return [...change, ...placeMoves(job, context)];
