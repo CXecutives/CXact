@@ -32,7 +32,8 @@ kostet bei Interim und Projekten nichts.
 ## Vertragsart und ANÜ
 
 - Die Vertragsart zählt so, wie das Profil sucht: Interim und Projekte (Tagessatz, freiberuflich,
-  Werkvertrag, Contract) und Festanstellungen sind gleichwertig, solange das Profil keine ausschließt.
+  Werkvertrag, Contract) zählen voll, eine Festanstellung etwa ein Zehntel weniger (die App rechnet
+  sie mit 90 %), solange das Profil keine ausschließt.
 - Zeigen Wunschrollen und Konditionen des Profils klar nur eine Art, kostet eine andere Art etwa einen Punkt.
 - Eine unklare Vertragsart ist ein Punkt zum Prüfen, nie ein Ausschluss, auch wenn das Profil
   Festanstellungen ausschließt.

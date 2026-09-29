@@ -32,8 +32,8 @@ or project role.
 ## Contract type and temporary agency work
 
 - The contract type counts the way the profile searches: interim and project work (day rate,
-  freelance, contract for work, contract) and permanent roles weigh the same unless the profile
-  excludes one.
+  freelance, contract for work, contract) count in full, a permanent role about a tenth less (the
+  app scores it at 90 %), unless the profile excludes one.
 - If the profile's wished roles and terms clearly seek one kind only, another kind costs about one
   point.
 - An unclear contract type is a point to check, never an exclusion, even if the profile excludes
