@@ -3,7 +3,8 @@
   ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, then "Anmelden" or
   "Abmelden" where the portal offers a sign-in, the portal in the browser (in one column in
   every row) and its switch (the name names the switch but, like every text next to a switch,
-  does not switch it). The meter turns ochre near the limit and while the portal rests. A
+  does not switch it). Every meter has one width; at the smallest window the sign-in goes to
+  a line of its own at the row's end so it does not narrow its row's meter. The meter turns ochre near the limit and while the portal rests. A
   problem of the portal is one quiet line under the meter (whether the user has to act, the
   time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
   jobs); it unfolds and folds away, so the rows below glide. A portal that is on and sent no
@@ -216,36 +217,36 @@
       </div>
     {/if}
   </div>
+  {#if loginShown}
+    <span class="login" transition:fade>
+      {#if signedIn}
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="signOut"
+          label={t.settings.signOut}
+          loading={busy}
+          disabled={loginLocked !== null}
+          disabledReason={loginLocked}
+          testid="sign-out-{portal.portal}"
+          onclick={() => void session(false)}
+        />
+      {:else}
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="signIn"
+          label={t.settings.signIn}
+          loading={busy}
+          disabled={loginLocked !== null}
+          disabledReason={loginLocked}
+          testid="sign-in-{portal.portal}"
+          onclick={() => void session(true)}
+        />
+      {/if}
+    </span>
+  {/if}
   <div class="tools">
-    {#if loginShown}
-      <span class="login" transition:fade>
-        {#if signedIn}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="signOut"
-            label={t.settings.signOut}
-            loading={busy}
-            disabled={loginLocked !== null}
-            disabledReason={loginLocked}
-            testid="sign-out-{portal.portal}"
-            onclick={() => void session(false)}
-          />
-        {:else}
-          <Button
-            variant="secondary"
-            size="sm"
-            icon="signIn"
-            label={t.settings.signIn}
-            loading={busy}
-            disabled={loginLocked !== null}
-            disabledReason={loginLocked}
-            testid="sign-in-{portal.portal}"
-            onclick={() => void session(true)}
-          />
-        {/if}
-      </span>
-    {/if}
     <Button
       variant="ghost"
       size="sm"
@@ -269,8 +270,9 @@
   /* A row of the card, edge to edge like a SettingRow: its divider and its inset. */
   .row {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
-    gap: var(--space-12);
+    gap: var(--space-8) var(--space-12);
     margin-inline: calc(-1 * var(--row-inset));
     padding: var(--space-16) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
@@ -316,7 +318,9 @@
     padding-top: var(--space-6);
   }
 
-  /* 12 apart, like the buttons and the switch of every other row of the page. */
+  /* 12 apart, like the buttons and the switch of every other row of the page, centred on
+     the tile. */
+  .login,
   .tools {
     display: flex;
     flex: none;
@@ -325,7 +329,14 @@
     min-height: var(--tile-md);
   }
 
-  .login {
-    display: inline-flex;
+  /* Narrow (the smallest window) the sign-in goes to a line of its own at the row's end, as
+     the buttons of a setting row do, so its calls keep the meter of every other row. */
+  @container (width < 520px) {
+    .login {
+      order: 1;
+      flex-basis: 100%;
+      justify-content: flex-end;
+      min-height: 0;
+    }
   }
 </style>

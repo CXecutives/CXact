@@ -1831,6 +1831,21 @@ test('sentences keep their commas; a double click takes a chip back to edit it',
   await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'Power BI', 'LucaNet Financial']);
 });
 
+test('a long competence reads whole: its column is wider than the synonyms', async ({ page }) => {
+  await profile(page);
+  const row = page.getByTestId('competence-row').nth(2);
+  const name = row.getByTestId('competence-name');
+  await expect(name).toHaveValue('Konzernrechnungslegung nach IFRS');
+  expect(
+    await name.evaluate((input: HTMLInputElement) => input.scrollWidth <= input.clientWidth),
+  ).toBe(true);
+  const [own, aliases] = await Promise.all([
+    name.boundingBox(),
+    row.getByTestId('competence-aliases').boundingBox(),
+  ]);
+  expect(own!.width).toBeGreaterThan(aliases!.width);
+});
+
 test('the synonyms keep one line, "+n" names the rest, also narrow', async ({ page }) => {
   await profile(page);
   const aliases = page.getByTestId('competence-aliases').nth(1);
@@ -2527,6 +2542,15 @@ test('every value that does not read is said at its field and can be removed', a
   // folder to fix it.
   const warning = page.getByTestId('profile-warning');
   await expect(warning).toContainText('Die App liest „tagessatz_max“ in den Bedingungen nicht.');
+  // Its button is centred on the sentence's first line.
+  const [line, button] = await warning.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node.querySelector('.text')!);
+    const first = range.getClientRects()[0]!;
+    const box = node.querySelector('button')!.getBoundingClientRect();
+    return [(first.top + first.bottom) / 2, (box.top + box.bottom) / 2];
+  });
+  expect(Math.abs(line! - button!)).toBeLessThanOrEqual(1);
   await warning.getByRole('button', { name: 'Ordner öffnen' }).click();
   expect((await calls(page, 'open_target')).at(-1)![1]).toEqual({
     target: { kind: 'profileDir' },
@@ -2554,8 +2578,18 @@ test('every value that does not read is said at its field and can be removed', a
   );
   await expect(page.getByTestId('profile-workload-min')).toHaveAttribute('aria-invalid', 'true');
   await expect(page.getByTestId('profile-workload-max')).toHaveAttribute('aria-invalid', 'true');
-  // "Wert entfernen" ends the message line of a half-width field as of a full-width one.
-  for (const name of ['minDayRate', 'regions']) {
+  // "Wert entfernen" ends the message line at the end of the field's width everywhere: a
+  // full-width field, an entry of a list, a choice narrower than its field (Remote-Anteil),
+  // a day, and the half-width fields.
+  for (const name of [
+    'minDayRate',
+    'regions',
+    'roles',
+    'remote',
+    'available',
+    'workload',
+    'minMonths',
+  ]) {
     const scope = field(page, name);
     const action = (await scope.getByTestId('value-remove').boundingBox())!;
     const message = (await scope.locator('[role="alert"]').boundingBox())!;

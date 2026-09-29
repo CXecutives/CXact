@@ -1,6 +1,7 @@
 <!-- One setting: label and one-sentence hint on the left, badges and the control right. A
-     hint that is a value to copy (a path) selects like text (`copy`), and so does a label
-     that is such a value (`copyLabel`, the address of the mailbox).
+     hint that is a value to copy (a path) selects like text (`copy`; it breaks only after a
+     separator), and so does a label that is such a value (`copyLabel`, the address of the
+     mailbox).
      The row runs edge to edge in its container and pads its content by the container's
      --row-inset, so its divider and its text share the container's grid.
      With `for` (the id of its switch) the row works like a row of the system settings of
@@ -43,6 +44,10 @@
   }: Props = $props();
 
   describe(() => (control !== null && hint ? `${control}-hint` : null));
+
+  /** A path in its parts, each with the separator it ends on ("/" or "\"): it breaks only
+   *  there, never at a hyphen or a space of a folder's name. */
+  const parts = (path: string): string[] => path.match(/[^/\\]*[/\\]|[^/\\]+$/g) ?? [path];
 </script>
 
 <div
@@ -70,7 +75,9 @@
         id={control !== null ? `${control}-hint` : undefined}
         data-copy={copy ? '' : undefined}
       >
-        {hint}
+        {#if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr />{/if}<span
+              class="part">{part}</span
+            >{/each}{:else}{hint}{/if}
       </p>{/if}
   </div>
   <div class="control">{@render children()}</div>
@@ -127,6 +134,13 @@
 
   .path {
     overflow-wrap: anywhere;
+  }
+
+  /* A part of a path is kept whole and moves to the next line as one; only a part wider than
+     the whole line breaks inside. */
+  .part {
+    display: inline-block;
+    max-width: 100%;
   }
 
   .control {

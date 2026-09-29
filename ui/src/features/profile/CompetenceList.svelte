@@ -251,14 +251,15 @@
     container-type: inline-size;
   }
 
-  /* target | competence | years | synonyms | remove: the synonyms take more room than the
-     name, which is one short term. */
+  /* target | competence | years | synonyms | remove: the competence takes more room than
+     its synonyms, whose one line says "+n" for those that do not fit, so a long name
+     ("Konzernrechnungslegung nach IFRS") reads whole. */
   .head,
   .row {
     display: grid;
     grid-template-columns:
-      var(--control-sm) minmax(0, 4fr) calc(var(--space-64) + var(--space-8))
-      minmax(0, 5fr) var(--control-sm);
+      var(--control-sm) minmax(0, 5fr) calc(var(--space-64) + var(--space-8))
+      minmax(0, 4fr) var(--control-sm);
     align-items: start;
     gap: var(--space-8);
   }
