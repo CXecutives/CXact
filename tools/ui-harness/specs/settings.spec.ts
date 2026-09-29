@@ -246,6 +246,53 @@ test('narrow, a row puts its control under the label only where the two do not f
   expect(under || beside).toBe(true);
 });
 
+test('narrow, every meter keeps one width and the path breaks only at a separator', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 480, height: 800 });
+  await settings(page);
+  const widths = await page
+    .getByTestId('portals')
+    .getByRole('progressbar')
+    .evaluateAll((meters) =>
+      meters.map((meter) => Math.round(meter.getBoundingClientRect().width)),
+    );
+  expect(widths).toHaveLength(3);
+  expect(new Set(widths).size).toBe(1);
+  // The sign-in goes to a line of its own under the calls.
+  const [signIn, quota] = await Promise.all([
+    page.getByTestId('sign-in-freelance').boundingBox(),
+    page.getByTestId('quota-freelance').boundingBox(),
+  ]);
+  expect(signIn!.y).toBeGreaterThanOrEqual(quota!.y + quota!.height);
+  // The path wraps after a "/", never at the hyphen of "Job-Alerts"; it copies whole.
+  const path = page.getByTestId('folder').locator('[data-copy]');
+  const ends = await path.evaluate((node) => {
+    const chars: { char: string; top: number }[] = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    for (let text = walker.nextNode() as Text | null; text; text = walker.nextNode() as Text) {
+      for (let index = 0; index < text.data.length; index += 1) {
+        const range = document.createRange();
+        range.setStart(text, index);
+        range.setEnd(text, index + 1);
+        const box = range.getBoundingClientRect();
+        if (box.width > 0) chars.push({ char: text.data[index]!, top: Math.round(box.top) });
+      }
+    }
+    return chars.filter((each, index) => (chars[index + 1]?.top ?? each.top) > each.top + 2);
+  });
+  expect(ends.length).toBeGreaterThan(0);
+  for (const end of ends) expect(end.char).toMatch(/[/\\]/);
+  const copied = await path.evaluate((node) => {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(range);
+    return getSelection()!.toString().trim();
+  });
+  expect(copied).toBe('C:/Users/demo/Documents/Job-Alerts');
+});
+
 /* ---------------------------------------------------------------- Postfach */
 
 test('mailbox: the address, no word about the vault, no whole-mailbox row', async ({ page }) => {
@@ -377,12 +424,17 @@ test('portals: one card, freelance.de, LinkedIn, freelancermap, each with its ca
   ).toHaveCount(1);
   await expect(page.getByTestId('settings-portals')).not.toContainText('Details');
   await expect(page.getByTestId('settings-portals')).not.toContainText('Seiten');
-  // Its tools 12 apart, like the buttons and the switch of every other row.
+  // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
     .getByTestId('portal-freelance')
     .locator('.tools')
     .evaluate((node) => getComputedStyle(node).columnGap);
   expect(gap).toBe('12px');
+  const [signIn, external] = await Promise.all([
+    page.getByTestId('sign-in-freelance').boundingBox(),
+    page.getByTestId('open-portal-freelance').boundingBox(),
+  ]);
+  expect(Math.round(external!.x - (signIn!.x + signIn!.width))).toBe(12);
   await page.getByTestId('open-portal-linkedin').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
 });
