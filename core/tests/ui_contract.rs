@@ -516,7 +516,11 @@ fn input_listeners_only_in_input_ts() {
 #[test]
 fn every_component_is_in_the_gallery() {
     let all = scanned(MIN_FILES);
-    let components: Vec<&Source> = all.iter().filter(|s| s.under("components/")).collect();
+    // The glyph drawings (components/glyphs/, drawn by Icon) show in the gallery's icons.
+    let components: Vec<&Source> = all
+        .iter()
+        .filter(|s| s.under("components/") && !s.under("components/glyphs/"))
+        .collect();
     assert!(
         components.len() >= MIN_COMPONENTS,
         "only {} components scanned",
@@ -933,14 +937,14 @@ fn the_top_bar_measures_the_same_everywhere() {
 }
 
 /// The window wears the colour of the chosen palette before the page paints (platform.rs):
-/// `--bg`, the colour of the top bar and the sidebar, which is also Light's `backgroundColor`
+/// `--bg`, the colour of the top bar and the sidebar, which is also CXact's `backgroundColor`
 /// in the configuration (the start before the choice is read). platform.rs names the token of
 /// every palette and writes no colour of its own; the generated palette follows tokens.css
 /// (core/tests/palette.rs).
 #[test]
 fn the_window_colour_is_the_token() {
     let platform = std::fs::read_to_string(repo("src-tauri/src/platform.rs")).expect("platform.rs");
-    for (palette, prefix) in [("Light", ""), ("Dark", "DARK_")] {
+    for (palette, prefix) in [("Cxact", ""), ("Light", "LIGHT_"), ("Dark", "DARK_")] {
         let arm = format!(
             "Palette::{palette} => WindowColours {{\n            \
              background: palette::{prefix}BG.rgb,\n        }}"

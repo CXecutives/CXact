@@ -106,7 +106,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   if (context.changesOnly === true) return change;
   const show: MenuEntry[] = [];
   if (context.open) {
-    show.push({ id: 'open', label: t.actions.open, icon: 'open', run: context.open });
+    show.push({ id: 'open', label: t.actions.open, icon: 'back', run: context.open });
   }
   const does: Record<ShowId, () => Promise<string | null>> = {
     mail: () => openTarget({ kind: 'gmail', key: job.key }),

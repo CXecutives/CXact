@@ -195,13 +195,13 @@ fn the_rust_palette_is_the_tokens() {
     assert_eq!(ring, steps, "palette.rs {REGEN}");
 }
 
-/// The window's colour of every other palette (Dark): `--bg` of its block, as the
+/// The window's colour of every other palette (Light, Dark): `--bg` of its block, as the
 /// window wears it before the page paints.
 #[test]
 fn the_window_colours_of_each_palette_are_the_tokens() {
     let found = palettes();
     let names: Vec<&str> = found.iter().map(|(name, _)| name.as_str()).collect();
-    assert_eq!(names, ["dark"], "the palettes of tokens.css");
+    assert_eq!(names, ["light", "dark"], "the palettes of tokens.css");
     let mut expected = Vec::new();
     for (palette, all) in &found {
         let tokens = colour_tokens_of(all);

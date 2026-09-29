@@ -1,7 +1,7 @@
 <!--
   The only importer of @lucide/svelte. It draws an icon by its meaning: lib/icons.ts maps
-  each meaning to one Lucide glyph (the top bar's four to glyphs of the app's own, Bar*.svelte
-  in this folder), and this file imports exactly those glyphs (one import
+  each meaning to one Lucide glyph (the top bar's four to glyphs of the app's own,
+  glyphs/Bar*.svelte), and this file imports exactly those glyphs (one import
   per glyph keeps the bundle small; a glyph without its import is a type error). Size from
   the tokens, colour inherited from the text. Each glyph is drawn once by its Lucide
   component; every Icon shows a copy of that drawing. A Lucide component per icon (props,
@@ -12,10 +12,10 @@
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
-  import BarBack from './BarBack.svelte';
-  import BarForward from './BarForward.svelte';
-  import BarReader from './BarReader.svelte';
-  import BarSidebar from './BarSidebar.svelte';
+  import BarBack from './glyphs/BarBack.svelte';
+  import BarForward from './glyphs/BarForward.svelte';
+  import BarReader from './glyphs/BarReader.svelte';
+  import BarSidebar from './glyphs/BarSidebar.svelte';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
