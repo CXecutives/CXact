@@ -678,6 +678,9 @@
   /* At most this many list rows animate at the same time; the others are simply there. */
   --stagger-max: 10;
   --delay-tooltip: 400ms;
+  /* A popover that opens on hover (the reader's ring) waits this long, and stays this long
+     after the pointer left it or its anchor (it crosses the gap between them). */
+  --delay-popover: 120ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
   --delay-placeholder: 300ms;

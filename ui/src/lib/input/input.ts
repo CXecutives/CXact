@@ -1198,6 +1198,11 @@ function dispatchMenuKey(event: KeyboardEvent): void {
  *  menu of what it lands on. */
 function pressOutsideMenu(event: MouseEvent): boolean {
   if (menuState.open === null || closest(event.target, MENU_LAYER) !== null) return false;
+  // A press on the anchor of a popover opened by hover keeps it (the pointer rests there).
+  const anchor = menuState.open.hover;
+  if (anchor !== undefined && event.target instanceof Node && anchor.contains(event.target)) {
+    return false;
+  }
   closeMenu();
   if (event.button === LEFT) {
     event.preventDefault();

@@ -817,7 +817,7 @@ export const de = {
       mid: 'Mittlere Übereinstimmung',
       low: 'Geringe Übereinstimmung',
     } satisfies Record<Band, string>,
-    /** The reader's ring opens what moved its score: its tooltip and the popover's name. */
+    /** The reader's ring opens what moved its score (on hover): the popover's name. */
     why: 'Warum diese Zahl?',
     /** The lines of that popover (MatchDetail.factors), one short line each. */
     factor: {

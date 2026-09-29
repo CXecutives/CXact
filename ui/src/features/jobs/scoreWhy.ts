@@ -1,5 +1,7 @@
 // "Warum diese Zahl?": what moved a job's score (MatchDetail.factors, the engine's codes and
-// params, at most five in reading order) as the lines of the popover the reader's ring opens.
+// params, at most five) as the lines of the popover the reader's ring opens. Green, then
+// yellow, then red, a note on the text last (user, 2026-09-29): what fits, what fits in part,
+// what holds the score down (a cap ends it as the conclusion); each colour in reading order.
 // Each line has the icon and the colour of its verdict: what lifts the score is met, what
 // costs a little is met in part, what holds it down is not met, a text with little to judge
 // by is unclear (muted). A code the catalog does not know shows no line.
@@ -58,10 +60,15 @@ function said(code: string, p: Notice['params']): [string, ReasonKind] | null {
   }
 }
 
-/** The popover's lines of a match's factors. */
+/** The place of a verdict's colour among the lines. */
+const RANK: Record<ReasonKind, number> = { met: 0, partial: 1, open: 2, violation: 2, check: 3 };
+
+/** The popover's lines of a match's factors (a stable sort keeps the reading order). */
 export function whyLines(factors: readonly Notice[]): MenuLine[] {
-  return factors.flatMap(({ code, params }) => {
-    const line = said(code, params);
-    return line === null ? [] : [{ kind: 'line', id: code, label: line[0], verdict: line[1] }];
-  });
+  return factors
+    .flatMap(({ code, params }): MenuLine[] => {
+      const line = said(code, params);
+      return line === null ? [] : [{ kind: 'line', id: code, label: line[0], verdict: line[1] }];
+    })
+    .sort((a, b) => RANK[a.verdict] - RANK[b.verdict]);
 }

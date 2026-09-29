@@ -80,6 +80,9 @@
     onclick?: ((event: MouseEvent) => void) | null;
     /** What the button opens (its tooltip). */
     why?: string | null;
+    /** The pointer on the button and off it (the reader's ring opens its popover on hover). */
+    onpointerenter?: ((event: PointerEvent) => void) | null;
+    onpointerleave?: ((event: PointerEvent) => void) | null;
     /** Its popover is open. */
     expanded?: boolean;
     /** An excluded job in the list: the empty track with the ban in the middle, no number
@@ -94,6 +97,8 @@
     animate = null,
     onclick = null,
     why = null,
+    onpointerenter = null,
+    onpointerleave = null,
     expanded = false,
     ban = false,
     testid = null,
@@ -198,6 +203,8 @@
     data-testid={testid ?? undefined}
     use:tooltip={why}
     {onclick}
+    {onpointerenter}
+    {onpointerleave}
   >
     {@render face()}
   </button>

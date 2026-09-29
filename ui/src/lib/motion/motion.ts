@@ -22,6 +22,7 @@ interface Values {
   enterScale: number;
   popScale: number;
   tooltipDelay: number;
+  popoverDelay: number;
 }
 
 const DURATIONS: readonly Duration[] = [
@@ -100,6 +101,7 @@ function read(): Values {
     enterScale: tokenNumber('--scale-enter'),
     popScale: tokenNumber('--scale-pop'),
     tooltipDelay: tokenMs('--delay-tooltip'),
+    popoverDelay: tokenMs('--delay-popover'),
   };
 }
 
@@ -170,6 +172,10 @@ export function staggerLimit(): number {
 
 export function tooltipDelay(): number {
   return current().tooltipDelay;
+}
+
+export function popoverDelay(): number {
+  return current().popoverDelay;
 }
 
 export interface PlayOptions {

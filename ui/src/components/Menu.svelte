@@ -9,7 +9,8 @@
   a key. A group may carry a small muted heading, which the keys pass over.
   A popover whose entries are all lines only tells (the reader's "Warum diese Zahl?"): a
   dialog of lines, each the icon of its verdict and its words (ReasonItem), wrapping where
-  they are long; nothing in it is chosen, Esc, Tab and a press outside close it.
+  they are long; nothing in it is chosen, Esc, Tab and a press outside close it. Opened by
+  hover it takes no focus and closes when the pointer leaves it and its anchor.
   The keys, a press outside, the window's blur, resizing and scrolling are handled in
   lib/input/input.ts; hover marks a row, a left click chooses it.
 -->
@@ -20,7 +21,9 @@
   import {
     chooseEntry,
     isItem,
+    leaveHover,
     menuState,
+    stayHover,
     tellsOnly,
     type MenuAnchor,
   } from '$lib/state/menu.svelte';
@@ -69,8 +72,11 @@
     x = Math.max(edge, Math.min(x, width - edge - w));
     const y = up ? above - h : below;
     setVars(node, { 'menu-x': px(x), 'menu-y': px(y) });
-    // The menu takes the keys (the entries are no tab stops; the active one is announced).
-    node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
+    // The menu takes the keys (the entries are no tab stops; the active one is announced);
+    // a popover opened by hover leaves the focus where it is.
+    if (menuState.open?.hover === undefined) {
+      node.querySelector<HTMLElement>('.menu')?.focus({ preventScroll: true });
+    }
   };
 
   const itemId = (menu: number, index: number): string => `menu-${menu}-${index}`;
@@ -93,7 +99,11 @@
         data-testid="menu"
         in:menuIn={{ up }}
         out:menuOut
-        onpointerleave={() => (menuState.active = -1)}
+        onpointerenter={stayHover}
+        onpointerleave={() => {
+          menuState.active = -1;
+          leaveHover();
+        }}
       >
         {#each open.entries as entry, index (index)}
           {#if isItem(entry)}

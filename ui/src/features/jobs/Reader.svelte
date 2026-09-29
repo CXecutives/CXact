@@ -4,8 +4,10 @@
   - head: the title (without gender tags) and the close "×" (the same at every width).
   - match: the ring (56, hollow; opening a job fills its arc once, the number stands at once)
     beside its band; every ring without a score says "Noch nicht bewertet". A ring with a
-    number is a button: "Warum diese Zahl?" opens below it, a popover of what moved the score
-    (scoreWhy.ts, in the menu layer: Esc, Tab and a press outside close it). An excluded job
+    number is a button: "Warum diese Zahl?" opens below it as soon as the pointer rests on it
+    (user, 2026-09-29; no tooltip before it) or on a click, a popover of what moved the score
+    (scoreWhy.ts, in the menu layer: leaving it and the ring, Esc, Tab and a press outside
+    close it). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
   - actions: Alert-Mail öffnen, Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
@@ -45,7 +47,7 @@
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
   import Icon from '$components/Icon.svelte';
@@ -56,11 +58,18 @@
   import { criterionKey, errorText, noteText, reasonText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { JobDetail, OpenTarget, Reason } from '$lib/ipc/types';
+  import { popoverDelay } from '$lib/motion/motion';
   import { fade, flip } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
-  import { menuState, openMenu, type MenuEntry } from '$lib/state/menu.svelte';
+  import {
+    leaveHover,
+    menuState,
+    openMenu,
+    stayHover,
+    type MenuEntry,
+  } from '$lib/state/menu.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
   import ReaderAd from './ReaderAd.svelte';
@@ -122,9 +131,9 @@
   const why = $derived(judged && band !== null ? whyLines(match?.factors ?? []) : []);
   let whyOpen = $state(false);
 
-  /** The ring's popover, right below it (a second click closes it: the press outside does). */
-  function openWhy(event: MouseEvent): void {
-    const anchor = event.currentTarget;
+  /** The ring's popover, right below it: opened by a click (the keys, a touch; a second
+   *  click closes it, the press outside does) or by the pointer resting on the ring. */
+  function openWhy(anchor: EventTarget | null, hover: boolean): void {
     if (!(anchor instanceof HTMLElement) || menuState.open !== null) return;
     whyOpen = true;
     openMenu({
@@ -132,8 +141,24 @@
       anchor: { kind: 'below', rect: anchor.getBoundingClientRect(), align: 'start' },
       entries: why,
       onclose: () => (whyOpen = false),
+      ...(hover ? { hover: anchor } : {}),
     });
   }
+
+  /** The mouse on the ring opens its popover after --delay-popover; leaving closes it. */
+  let resting: ReturnType<typeof setTimeout> | undefined;
+  function enterRing(event: PointerEvent): void {
+    stayHover();
+    if (event.pointerType !== 'mouse' || whyOpen) return;
+    const anchor = event.currentTarget;
+    clearTimeout(resting);
+    resting = setTimeout(() => openWhy(anchor, true), popoverDelay());
+  }
+  function leaveRing(): void {
+    clearTimeout(resting);
+    leaveHover();
+  }
+  onDestroy(() => clearTimeout(resting));
 
   const detailKind = $derived(job.detail.kind);
   /** The ad is gone or takes no applications: "Anzeige öffnen" says so (the portal's page
@@ -381,8 +406,9 @@
           {ring}
           size="md"
           animate={keyOf(job.key)}
-          onclick={why.length > 0 ? openWhy : null}
-          why={t.score.why}
+          onclick={why.length > 0 ? (event) => openWhy(event.currentTarget, false) : null}
+          onpointerenter={why.length > 0 ? enterRing : null}
+          onpointerleave={why.length > 0 ? leaveRing : null}
           expanded={whyOpen}
           testid="reader-ring"
         />

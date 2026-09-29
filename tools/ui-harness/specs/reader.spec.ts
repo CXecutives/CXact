@@ -222,31 +222,51 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
   });
 
-  test('"Warum diese Zahl?": the ring opens what moved the score, Esc or a press outside closes it', async ({
+  test('"Warum diese Zahl?": the ring opens what moved the score on hover or a click', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
     const ring = stage(page).getByTestId('reader-ring');
     const popover = page.getByTestId('menu');
-    // A button named by its match; its tooltip says what it opens.
+    // A button named by its match, without a tooltip: the mouse resting on it opens the
+    // popover and leaves the focus where it is; it stays on the way into the popover, a
+    // press on the ring keeps it, leaving both closes it.
     await expect(ring).toHaveAttribute('aria-haspopup', 'dialog');
     await expect(ring).toHaveAttribute('aria-expanded', 'false');
-    expect(await tip(page, ring)).toBe(T.score.why);
+    await ring.hover();
+    await expect(popover).toBeVisible();
+    await expect(ring).not.toBeFocused();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    const box = (await popover.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
+    await page.waitForTimeout(300);
+    await expect(popover).toBeVisible();
+    await ring.click();
+    await expect(popover).toBeVisible();
+    await page.mouse.move(5, 5);
+    await expect(popover).toHaveCount(0);
+    await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    // A click opens it too (the keys, a touch).
     await ring.click();
     await expect(popover).toHaveAttribute('role', 'dialog');
     await expect(popover).toHaveAccessibleName(T.score.why);
     await expect(ring).toHaveAttribute('aria-expanded', 'true');
-    // The engine's lines in their order, each with the icon of its verdict: here the musts,
-    // the optional ones, the Schwerpunkte, the target role and the wishes.
+    // The engine's lines green, then yellow, then red, each colour in reading order: here
+    // the target role and the wishes, the musts and the optional ones, the Schwerpunkte.
     const factors = DEMO.details['freelancermap:2801']!.match!.factors;
     const lines = popover.locator('[data-testid^="menu-line-"]');
     expect(
       await lines.evaluateAll((all) => all.map((line) => line.getAttribute('data-testid'))),
-    ).toEqual(factors.map((factor) => `menu-line-${factor.code}`));
-    expect(factors.length).toBeGreaterThanOrEqual(3);
-    expect(factors.length).toBeLessThanOrEqual(5);
+    ).toEqual(['targetRole', 'wishes', 'musts', 'nice', 'focus'].map((id) => `menu-line-${id}`));
+    expect(factors.map((factor) => factor.code).sort()).toEqual([
+      'focus',
+      'musts',
+      'nice',
+      'targetRole',
+      'wishes',
+    ]);
     const musts = factors[0]!.params;
-    await expect(lines.first()).toHaveText(
+    await expect(popover.getByTestId('menu-line-musts')).toHaveText(
       T.score.factor.musts(Number(musts.met), Number(musts.partial), Number(musts.total)),
     );
     await expect(popover.getByTestId('menu-line-targetRole')).toHaveText(

@@ -1437,9 +1437,9 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   }
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  // The reader's ring ("Warum diese Zahl?") and its "…".
+  // The reader's "…" (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
-  for (const id of ['reader-ring', 'reader-more']) {
+  for (const id of ['reader-more']) {
     await page.getByTestId(id).click({ button: 'right' });
     await page.waitForTimeout(100);
     await expect(menuOpen(page), id).toHaveCount(0);
@@ -1447,7 +1447,7 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   }
 });
 
-test('a middle click activates nothing: tabs, a menu button, the funnel, a row tool, the ring', async ({
+test('a middle click activates nothing: tabs, a menu button, the funnel, a row tool, the "…"', async ({
   page,
 }) => {
   await open(page, WIN);
@@ -1465,9 +1465,9 @@ test('a middle click activates nothing: tabs, a menu button, the funnel, a row t
   await endAutoscroll(page);
   expect(await calls(page, 'move_jobs')).toHaveLength(0);
   await expect(page.getByTestId('reader')).toHaveCount(0);
-  // The reader's ring and its "…".
+  // The reader's "…" (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
-  for (const id of ['reader-ring', 'reader-more']) {
+  for (const id of ['reader-more']) {
     await page.getByTestId(id).click({ button: 'middle' });
     await endAutoscroll(page);
     await expect(menuOpen(page), id).toHaveCount(0);
