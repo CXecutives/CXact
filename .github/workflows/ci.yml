@@ -461,6 +461,12 @@ jobs:
         if: hashFiles('package.json') != ''
         run: npx playwright install --with-deps ${{ matrix.browser }}
 
+      # Hundreds of test pages open and close their connections faster than Windows frees the
+      # ports: with the default range the runner ran out (net::ERR_NO_BUFFER_SPACE).
+      - name: Widen the ports for local connections
+        if: hashFiles('package.json') != ''
+        run: netsh int ipv4 set dynamicport tcp start=10000 num=55535
+
       # A flaky test is fixed or removed the same day, never retried to green (CLAUDE.md): the
       # one retry only tells a flaky test (passes on its retry) from a broken one (fails
       # twice) in the report, and --fail-on-flaky-tests keeps the run red for both.

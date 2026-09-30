@@ -64,8 +64,8 @@ export const PAGE = 120;
 const MAX_PAGE = 500;
 export const WINDOW = 60;
 /** Rows mounted per frame while a window fills (small: every frame stays well below 50 ms
- *  on a slow machine, the window still fills within a few frames). */
-const CHUNK = 6;
+ *  on a slow machine, also a shared CI runner; the window still fills within a few frames). */
+const CHUNK = 4;
 /** At most one counts query per this many ms while a run updates jobs. */
 const COUNTS_EVERY = 400;
 
