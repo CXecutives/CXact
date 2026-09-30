@@ -1,5 +1,7 @@
-<!-- A soft tinted tile holding an icon or a portal monogram (in / fd / fm). Data sources
-     (portals, the profile file) take the navy tone. -->
+<!-- A soft tinted tile holding an icon, a portal monogram (in / fd / fm) or a portal's own
+     mark (`logo`, an image of the app: a full square the tile's corners round, with a
+     hairline so a light mark keeps its edge). Data sources (portals, the profile file) take
+     the navy tone. -->
 <script lang="ts" module>
   export type TileTone = 'coral' | 'navy' | 'success' | 'warning' | 'danger' | 'neutral';
   export type TileSize = 'sm' | 'md' | 'lg';
@@ -21,15 +23,24 @@
     size?: TileSize;
     icon?: IconName | null;
     monogram?: string | null;
+    logo?: string | null;
   }
 
-  let { tone = 'neutral', size = 'md', icon = null, monogram = null }: Props = $props();
+  let {
+    tone = 'neutral',
+    size = 'md',
+    icon = null,
+    monogram = null,
+    logo = null,
+  }: Props = $props();
 
   const ICON_SIZE: Record<TileSize, IconSize> = { sm: 'sm', md: 'md', lg: 'lg' };
 </script>
 
-<span class="tile {tone} {size}" aria-hidden="true">
-  {#if icon}
+<span class="tile {tone} {size}" class:mark={logo !== null} aria-hidden="true">
+  {#if logo}
+    <img class="logo" src={logo} alt="" draggable="false" />
+  {:else if icon}
     <Icon name={icon} size={ICON_SIZE[size]} />
   {:else if monogram}
     <span class="monogram">{monogram}</span>
@@ -47,6 +58,26 @@
     border-radius: var(--tile-radius);
     background-color: var(--tile-bg);
     color: var(--tile-fg);
+  }
+
+  /* A portal's own mark fills the tile; a hairline over it keeps a white one apart. */
+  .mark {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .mark::after {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 var(--border-width) var(--border);
+    content: '';
+    pointer-events: none;
+  }
+
+  .logo {
+    width: 100%;
+    height: 100%;
   }
 
   .monogram {
