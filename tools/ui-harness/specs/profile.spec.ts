@@ -1508,12 +1508,16 @@ test('excluding permanent roles folds their block away and back', async ({ page 
   await expect(page.getByTestId('section-permanent')).toHaveCount(0);
   await page.getByTestId('profile-no-permanent').click();
   await expect(page.getByTestId('section-permanent')).toBeVisible();
-  // Back in its place, the last section: 32 above it as above every section.
-  const [criteria, permanent] = await Promise.all([
-    page.getByTestId('section-criteria').boundingBox(),
-    page.getByTestId('section-permanent').boundingBox(),
-  ]);
-  expect(Math.round(permanent!.y - (criteria!.y + criteria!.height))).toBe(32);
+  // Back in its place, the last section: 32 above it as above every section, once it has
+  // unfolded.
+  const gap = async (): Promise<number> => {
+    const [criteria, permanent] = await Promise.all([
+      page.getByTestId('section-criteria').boundingBox(),
+      page.getByTestId('section-permanent').boundingBox(),
+    ]);
+    return Math.round(permanent!.y - (criteria!.y + criteria!.height));
+  };
+  await expect.poll(gap).toBe(32);
 });
 
 test('Festanstellung: places first, the remote share comes with them; excluded, the block goes', async ({

@@ -741,17 +741,19 @@
   --opacity-press: 0.7;
 }
 
-/* ---------------------------------------------------------------- palettes
-   Dark sets the palette entries under Light's names, so every role follows, and then the few
-   roles whose part differs on the dark. The Excel file and the app icon take Light (the
-   :root block, read by tools/tokens.mjs); the window wears --bg of the chosen palette
-   (tools/tokens.mjs writes Dark's into core/src/export/palette.rs). `node tools/tokens.mjs
-   --check` measures every text on its backgrounds in both palettes (WCAG AA). */
-
-:root[data-pointer] {
+/* No focus ring on what a pointer press focused until a key that moves or acts (lib/input/
+   input.ts marks it `data-pointer-focus`; only that element, never :root). */
+[data-pointer-focus] {
   --focus-ring: var(--focus-ring-off);
   --focus-ring-inset: var(--focus-ring-off);
 }
+
+/* ---------------------------------------------------------------- palettes
+   Light and Dark set the palette entries under CXact's names, so every role follows, and
+   then the few roles whose part differs. The Excel file and the app icon take CXact (the
+   :root block, read by tools/tokens.mjs); the window wears --bg of the chosen palette
+   (tools/tokens.mjs writes the others into core/src/export/palette.rs). `node tools/tokens.mjs
+   --check` measures every text on its backgrounds in every palette (WCAG AA). */
 
 :root[data-palette='light'] {
   color-scheme: light;

@@ -1409,16 +1409,25 @@ function auxPress(on: boolean): void {
 
 /**
  * The focus ring belongs to the keyboard. The engines show `:focus-visible` again on any key
- * after a press of the pointer, a lone Shift, Ctrl, Alt or the Windows key too; so after a
- * press :root carries `data-pointer` (tokens.css draws no ring meanwhile) until a key that
- * moves or acts comes (Tab, the arrows, Enter, a letter).
+ * after a press of the pointer, a lone Shift, Ctrl, Alt or the Windows key too; so the
+ * element a press focused carries `data-pointer-focus` (tokens.css draws no ring on it) until
+ * a key that moves or acts comes (Tab, the arrows, Enter, a letter) or the focus leaves it.
+ * Only that element is marked: a mark on :root restyled the whole page on every press (a
+ * 60 ms task beside 2000 jobs).
  */
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'AltGraph', 'Meta', 'OS', 'CapsLock', 'Fn']);
 
+let pointerFocused: Element | null = null;
+
 function pointerFocus(on: boolean): void {
-  const root = document.documentElement;
-  if (on) root.dataset.pointer = '';
-  else if (root.dataset.pointer !== undefined) delete root.dataset.pointer;
+  if (pointerFocused !== null && (!on || pointerFocused !== document.activeElement)) {
+    pointerFocused.removeAttribute('data-pointer-focus');
+    pointerFocused = null;
+  }
+  const focused = document.activeElement;
+  if (!on || focused === null || focused === document.body || focused === pointerFocused) return;
+  focused.setAttribute('data-pointer-focus', '');
+  pointerFocused = focused;
 }
 
 /** Buttons other than the left one (the `buttons` bit mask without bit 0). */
@@ -1548,7 +1557,19 @@ export function installInput(): void {
   );
   document.addEventListener('pointercancel', () => auxPress(false), capture);
   document.addEventListener('keydown', () => (autoscroll = false), capture);
-  document.addEventListener('pointerdown', () => pointerFocus(true), capture);
+  // After the press: the element it focused (the engine moves the focus after the listeners).
+  document.addEventListener(
+    'pointerdown',
+    () => void setTimeout(() => pointerFocus(true)),
+    capture,
+  );
+  document.addEventListener(
+    'focusout',
+    (event) => {
+      if (event.target === pointerFocused) pointerFocus(false);
+    },
+    capture,
+  );
   document.addEventListener(
     'keydown',
     (event) => {

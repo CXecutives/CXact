@@ -66,6 +66,10 @@ export default defineConfig(({ mode }) => {
       // Fonts and images stay files: `font-src 'self'` does not allow data: URLs.
       assetsInlineLimit: 0,
       reportCompressedSize: false,
+      // The harness serves one script, no shared chunks: each of its hundreds of test pages
+      // then loads a handful of files, which keeps a Windows runner's sockets from running
+      // out (net::ERR_NO_BUFFER_SPACE left a chunk unloaded and the page half built).
+      ...(harness ? { rolldownOptions: { output: { codeSplitting: false } } } : {}),
     },
     server: { port: 5173, strictPort: true },
     preview: {

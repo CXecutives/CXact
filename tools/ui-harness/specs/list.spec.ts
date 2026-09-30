@@ -1317,12 +1317,27 @@ test.describe('one list', () => {
     const skeleton = page.getByTestId('list-skeleton');
     await expect(skeleton).toBeVisible();
     // Each placeholder row: the ring, the title with the stamp at its end, the second line.
-    const first = skeleton.locator('.skeleton-row').first();
-    await expect(first.locator('.skeleton.circle')).toHaveCount(1);
-    await expect(first.locator('.title .skeleton')).toHaveCount(2);
-    await expect(first.locator('.skeleton')).toHaveCount(4);
-    await expect(first.locator('.skeleton').first()).toHaveCSS('opacity', '1');
-    const placeholder = (await first.boundingBox())!;
+    // Read at once in the page: the placeholders stand only until the rows come (a slow
+    // machine would otherwise ask after they went).
+    const shape = await skeleton.evaluate(async (node) => {
+      // Past its fade in (a few frames), still before the rows.
+      const bar = (): Element | null => node.querySelector('.skeleton');
+      for (let frame = 0; frame < 30 && getComputedStyle(bar()!).opacity !== '1'; frame += 1) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+      const first = node.querySelector('.skeleton-row')!;
+      const box = first.getBoundingClientRect();
+      return {
+        circles: first.querySelectorAll('.skeleton.circle').length,
+        title: first.querySelectorAll('.title .skeleton').length,
+        all: first.querySelectorAll('.skeleton').length,
+        opacity: getComputedStyle(first.querySelector('.skeleton')!).opacity,
+        y: box.y,
+        height: box.height,
+      };
+    });
+    expect(shape).toMatchObject({ circles: 1, title: 2, all: 4, opacity: '1' });
+    const placeholder = { y: shape.y, height: shape.height };
     // The rows take the placeholders' place: the same top, the same height.
     await expect(rows(page).first()).toBeVisible({ timeout: 5000 });
     await expect(skeleton).toHaveCount(0);
