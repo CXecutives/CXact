@@ -1351,8 +1351,9 @@ fn the_catalog_has_no_ai_punctuation() {
                 let text = words(literal);
                 let text = text.as_str();
                 strings += 1;
+                // A lone dash is no separator: it stands for a value the ad does not state.
                 for dash in [" - ", " – ", "–", "—"] {
-                    if text.contains(dash) {
+                    if text.trim() != "–" && text.contains(dash) {
                         problems.push(format!("{name}:{n}: dash as a separator in \"{text}\""));
                     }
                 }

@@ -22,7 +22,7 @@
     reader's buttons hands the focus to the same button of the next job. Every result and every
     failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
-    table (lib/facts.ts): the ad's value ("/" where it says nothing; for an ad the app never
+    table (lib/facts.ts): the ad's value ("–" where it says nothing; for an ad the app never
     read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
     is the reason that decided it (the ban where it excludes the job). The contact's e-mail
     is a link: a new mail to it in the default mail program, the job's title its subject.
@@ -170,7 +170,7 @@
    *  still opens), and the Jobdetails once, since the day the app read the closed page. */
   const offline = $derived(detailKind === 'gone' || job.closed);
   /** The rows of the Jobdetails (terms.ts); for an ad the app never read in full (none, or a
-   *  preview) only what it knows (what the ad says is not known yet, no "/" claims it says
+   *  preview) only what it knows (what the ad says is not known yet, no "–" claims it says
    *  nothing). */
   const rows = $derived(
     termRows({

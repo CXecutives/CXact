@@ -752,7 +752,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'start')).toEqual(['ab sofort', 'met']);
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     // The ad says nothing of its workload, and nothing judges it.
-    expect(await cell(page, 'workload')).toEqual(['/', '']);
+    expect(await cell(page, 'workload')).toEqual([T.reader.missing, '']);
     expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
     // The day of the alert mail in the list row's words.
     expect(await cell(page, 'received')).toEqual(['07:30', '']);
@@ -884,8 +884,8 @@ test.describe('Jobdetails', () => {
     );
     // An ad that names neither.
     await openJob(page, 'freelancermap-2804');
-    expect(await cell(page, 'deadline')).toEqual(['/', '']);
-    expect(await cell(page, 'contact')).toEqual(['/', '']);
+    expect(await cell(page, 'deadline')).toEqual([T.reader.missing, '']);
+    expect(await cell(page, 'contact')).toEqual([T.reader.missing, '']);
   });
 
   test('one form per fact: a start date, a workload, pay near the wish, the work mode', async ({
@@ -1031,7 +1031,7 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'duration')).toEqual(['unbefristet', '']);
     // The ad states the type and the profile takes permanent jobs: met, not "unklar".
     expect(await cell(page, 'contract')).toEqual(['Festanstellung', 'met']);
-    expect(await cell(page, 'experience')).toEqual(['/', '']);
+    expect(await cell(page, 'experience')).toEqual([T.reader.missing, '']);
   });
 
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {

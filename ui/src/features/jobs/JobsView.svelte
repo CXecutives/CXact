@@ -42,6 +42,8 @@
   const NO_JOB = 'none';
   const ERROR = 'error';
   const WAITING = 'waiting';
+  /** A job is chosen and on its way: the empty state goes at once, the pane stays blank. */
+  const OPENING = 'opening';
 
   // The list loads as soon as the app state is there (also after the first run page).
   $effect(() => {
@@ -52,7 +54,8 @@
    * What the right pane shows, as the key of its stage: a failed load of the selected job,
    * the loaded job (a job key never equals one of the words), a placeholder once loading
    * takes a while, else the place's empty state. While a job loads quickly the pane keeps
-   * what it showed last.
+   * the job it showed last; the empty state goes at once (user, 2026-09-30: no "Wähle einen
+   * Job" beside a chosen one).
    */
   let shown = NO_JOB;
   /** Counts the changes: a stage that comes back while the old one still fades is new. */
@@ -63,6 +66,7 @@
     if (selected && jobs.detailStatus === 'error') next = ERROR;
     else if (jobs.detail !== null) next = keyOf(jobs.detail.job.key);
     else if (selected && jobs.detailSlow) next = WAITING;
+    else if (selected && shown === NO_JOB) next = OPENING;
     else if (!selected) next = NO_JOB;
     if (next !== shown) {
       shown = next;
@@ -275,6 +279,8 @@
                   />
                 {:else if stage.what === WAITING}
                   <ReaderSkeleton />
+                {:else if stage.what === OPENING}
+                  <!-- Blank until the chosen job is there. -->
                 {:else if jobs.detail}
                   <Reader detail={jobs.detail} onclose={close} />
                 {/if}

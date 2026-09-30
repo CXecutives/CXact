@@ -1,7 +1,7 @@
 // The reader's "Jobdetails": what each row reads (TERMS). One entry per row of the facts table
 // (lib/facts.ts, its order and icons): the engine's reason codes and the profile's criteria it
 // stands for, when it shows, and how it reads the ad's value. A row says only what the ad says
-// (its facts, else the value the engine read into a criterion; "/" where it says nothing), and
+// (its facts, else the value the engine read into a criterion; "–" where it says nothing), and
 // a verdict when there is a match to judge by: the worst of its criteria and reasons. The row
 // shows the value and the verdict only (user, 2026-09-28: no tooltip on it).
 //
@@ -34,7 +34,7 @@ export interface TermRow {
   name: string;
   /** The icon of its fact (lib/facts.ts). */
   icon: IconName;
-  /** The ad's value in words ("1.200 €/Tag"), or "/". */
+  /** The ad's value in words ("1.200 €/Tag"), or "–". */
   value: string;
   /** A value of several parts, each copied on its own (the contact: name, e-mail, phone). */
   parts: readonly string[] | null;

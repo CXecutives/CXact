@@ -912,7 +912,7 @@ export const en: Catalog = {
     },
     salaryName: 'Salary',
     hourlyName: 'Hourly rate',
-    missing: '/',
+    missing: '–',
     contractKind: {
       interim: 'Interim',
       freelance: 'Freelance',

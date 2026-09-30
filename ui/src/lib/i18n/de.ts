@@ -1065,8 +1065,8 @@ export const de = {
     salaryName: 'Gehalt',
     /** The pay row of an hourly rate. */
     hourlyName: 'Stundensatz',
-    /** A value the ad does not state. */
-    missing: '/',
+    /** A value the ad does not state (the usual dash, user 2026-09-30). */
+    missing: '–',
     /** The contract type in the row "Vertragsart". */
     contractKind: {
       interim: 'Interim',

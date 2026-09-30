@@ -73,7 +73,7 @@ const CONTRAST = [
     text: ['text-on-accent'],
     on: ['primary', 'primary-hover', 'primary-active'],
   },
-  { text: ['text-on-danger'], on: ['danger-strong', 'danger-hover'] },
+  { text: ['text-on-danger'], on: ['danger-fill', 'danger-fill-hover', 'danger-fill-active'] },
   { text: ['text-inverse', 'text-inverse-muted'], on: ['surface-inverse'] },
   { text: ['count-soft-fg'], on: ['count-soft-bg', 'count-soft-hover'] },
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },

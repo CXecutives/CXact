@@ -383,12 +383,12 @@
   }
 
   .danger {
-    --btn-bg: var(--danger-strong);
-    --btn-bg-hover: var(--danger-hover);
-    --btn-bg-active: var(--danger-active);
-    --btn-border: var(--danger-strong);
-    --btn-border-hover: var(--danger-hover);
-    --btn-border-active: var(--danger-active);
+    --btn-bg: var(--danger-fill);
+    --btn-bg-hover: var(--danger-fill-hover);
+    --btn-bg-active: var(--danger-fill-active);
+    --btn-border: var(--danger-fill);
+    --btn-border-hover: var(--danger-fill-hover);
+    --btn-border-active: var(--danger-fill-active);
     --btn-fg: var(--text-on-danger);
     --btn-fg-hover: var(--text-on-danger);
     --btn-shadow: var(--sh-primary);

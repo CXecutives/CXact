@@ -35,7 +35,8 @@
   /* CXact (user, 2026-09-30: lively, "A"): a warm cream for the window and the sidebar,
      white content, a rich coral that acts (the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
-     switches that are on, progress and the tooltip. */
+     progress and the tooltip. What is on, new or here (a switch, the unread dot, the open
+     job's edge, the chosen entry's icon) is coral like what acts. */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
   --p-nav-active: 34 20% 89.5%; /* the grey pill the sidebar had before the white one */
@@ -172,9 +173,9 @@
   --toggle-off: hsl(var(--p-border-strong));
   --toggle-off-hover: hsl(var(--p-border-input));
   --toggle-off-press: hsl(var(--p-border-press));
-  --toggle-on: hsl(var(--p-navy));
-  --toggle-on-hover: hsl(var(--p-navy-hover));
-  --toggle-on-press: hsl(var(--p-navy-deep));
+  --toggle-on: hsl(var(--p-coral));
+  --toggle-on-hover: hsl(var(--p-coral-variant));
+  --toggle-on-press: hsl(var(--p-coral-press));
   --toggle-knob: hsl(var(--p-knob));
   /* The unread dot of a list row and of the nav rail. */
   --unread: hsl(var(--p-coral));
@@ -244,6 +245,10 @@
   --danger-soft: hsl(var(--p-danger-soft));
   --danger-hover: hsl(var(--p-danger-700));
   --danger-active: hsl(var(--p-danger-750));
+  /* The filled red button (Löschen in a dialog) and its white words. */
+  --danger-fill: var(--danger-strong);
+  --danger-fill-hover: var(--danger-hover);
+  --danger-fill-active: var(--danger-active);
   /* The words of a search in the list's titles: a soft yellow under the ink, translucent, so
      it reads on a plain, a hovered and a selected row alike. */
   --mark: hsl(var(--p-warning) / 0.4);
@@ -792,7 +797,10 @@
 
   --text-heading: hsl(var(--p-ink));
   --nav-active-fg: hsl(var(--p-ink));
-  --nav-active-icon: hsl(var(--p-ink));
+  --nav-active-icon: hsl(var(--p-navy));
+  --toggle-on: hsl(var(--p-navy));
+  --toggle-on-hover: hsl(var(--p-navy-hover));
+  --toggle-on-press: hsl(var(--p-navy-deep));
   --unread: hsl(var(--p-navy));
   --selection-bar: hsl(var(--p-navy) / 0.85);
   --border-accent: hsl(var(--p-ink) / 0.12);
@@ -800,6 +808,9 @@
 
 :root[data-palette='dark'] {
   color-scheme: dark;
+  --p-danger-fill: 0 64% 50%;
+  --p-danger-fill-hover: 0 66% 45%;
+  --p-danger-fill-press: 0 68% 40%;
   --p-switch: 217 72% 54%;
   --p-tooltip-edge: 210 2% 22%;
   --p-emphasis: 210 3% 13%;
@@ -883,7 +894,12 @@
   --brand-edge: hsl(var(--p-ink) / 0.16);
   --nav-hover: hsl(var(--p-wash) / 0.045);
   --nav-press: hsl(var(--p-wash) / 0.08);
-  --text-on-danger: hsl(var(--p-white));
+  /* The filled red button: a deeper red with white words (the red text stays light). */
+  --danger-fill: hsl(var(--p-danger-fill));
+  --danger-fill-hover: hsl(var(--p-danger-fill-hover));
+  --danger-fill-active: hsl(var(--p-danger-fill-press));
+  --text-on-danger: hsl(var(--p-knob));
+  --nav-active-icon: hsl(var(--p-navy));
   --ring-track-inactive: hsl(var(--p-ink) / 0.14);
   --selection: hsl(var(--p-navy) / 0.35);
   --scrollbar: hsl(var(--p-ink) / 0.24);
