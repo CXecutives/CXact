@@ -733,11 +733,12 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
 test('a disabled button that says why stays a Tab stop; its reason shows on focus', async ({
   page,
 }) => {
-  await open(page, `${WIN}&view=settings`);
-  await page.getByTestId('toggle-exportExcel').focus();
-  await page.keyboard.press('Tab');
-  await expect(page.getByTestId('csv-open')).toBeFocused();
-  await expect(tooltip(page)).toHaveText(await text(page, 'settings.csvOff'));
+  // While a run holds the mailbox, Ändern waits and says why.
+  await open(page, `${WIN}&view=settings&scenario=running`);
+  await page.getByTestId('mailbox-change').focus();
+  await expect(page.getByTestId('mailbox-change')).toBeFocused();
+  await expect(page.getByTestId('mailbox-change')).toHaveAttribute('aria-disabled', 'true');
+  await expect(tooltip(page)).toHaveText(T.error.text('busy', { activity: 'fetch' }));
 });
 
 test('the focus goes back to the trigger after a menu and a toast', async ({ page }) => {
@@ -776,7 +777,7 @@ test('a press on a toast takes no focus', async ({ page }) => {
 });
 
 test('Profil and Einstellungen keep their scroll place per view', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  await page.setViewportSize({ width: 1100, height: 400 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
   await view('settings').evaluate((node) => (node.scrollTop = 300));
@@ -1062,11 +1063,12 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
     await page.mouse.up();
     return [rest, hover, pressed];
   };
-  // One switch off (the CSV file), one on (the Excel file).
-  await expect(page.getByTestId('toggle-exportCsv')).toHaveAttribute('aria-checked', 'false');
-  for (const id of ['toggle-exportCsv', 'toggle-exportExcel']) {
+  // A portal's switch on, then (the press switched it) off.
+  const id = 'toggle-enabled-linkedin';
+  for (const state of ['true', 'false']) {
+    await expect(page.getByTestId(id)).toHaveAttribute('aria-checked', state);
     const [rest, hover, pressed] = await steps(id);
-    expect(new Set([rest, hover, pressed]).size, `${id}: ${rest} ${hover} ${pressed}`).toBe(3);
+    expect(new Set([rest, hover, pressed]).size, `${state}: ${rest} ${hover} ${pressed}`).toBe(3);
   }
 });
 
@@ -1246,11 +1248,11 @@ test('the places above the list choose with left and right', async ({ page }) =>
 });
 
 test('with the focus nowhere the arrows, Home and End scroll Einstellungen', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 600 });
+  await page.setViewportSize({ width: 1100, height: 400 });
   await settings(page);
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  await page.getByTestId('settings-export').locator('h2').click();
+  await page.getByTestId('settings-data').locator('h2').click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
   await expect
@@ -1322,7 +1324,7 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
   await settings(page);
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
-  const toggle = await edge(page.getByTestId('toggle-exportExcel'));
+  const toggle = await edge(page.getByTestId('toggle-enabled-linkedin'));
   for (const id of ['folder-open', 'reset']) {
     const button = await edge(page.getByTestId(id));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
@@ -1335,8 +1337,7 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const labelId = await page.getByTestId('toggle-exportExcel').getAttribute('aria-labelledby');
-  const label = (await page.locator(`[id="${labelId}"]`).boundingBox())!.x;
+  const label = (await page.getByTestId('reset-all').locator('.label').first().boundingBox())!.x;
   expect(icon).toBe(label);
   const same = async (notice: Locator): Promise<boolean> =>
     notice.evaluate((node) => {

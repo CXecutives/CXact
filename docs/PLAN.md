@@ -567,7 +567,7 @@ splices; countries in words; product and portal names stay. German → English:
 - KI-Prompt → AI prompt
 - Einstellungen → Settings; Darstellung → Appearance; Design (CXact, Hell, Dunkel) → Theme (CXact, Light, Dark)
 - Sprache → Language; Daten (the card) → Data; Sicherung → Backup
-- Exportordner → Export folder; Excel-Datei → Excel file; CSV-Datei → CSV file
+- Arbeitsordner → Work folder (the profiles, the overviews while written); Excel-Datei → Excel file; CSV-Datei → CSV file
 - Aufrufe (what a portal allows a day, and what it slows down) → Requests
 - Anmeldung, Anmelden, Abmelden → Sign-in, Sign in, Sign out
 - Probelauf → Dry run; Demo → Demo

@@ -1531,8 +1531,8 @@ test.describe('rows', () => {
     page,
   }) => {
     await open(page, WIN);
-    const shows = [T.actions.open, T.actions.mail, T.actions.openAd, T.actions.prompt];
-    const showIcons = ['back', 'alertMail', 'external', 'prompt'] as const;
+    const shows = [T.actions.open, T.actions.openAd, T.actions.mail, T.actions.prompt];
+    const showIcons = ['open', 'external', 'alertMail', 'prompt'] as const;
     // Eingang.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
@@ -1593,8 +1593,8 @@ test.describe('rows', () => {
     const menu = await rowMenu(page, key);
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
       T.actions.open,
-      T.actions.mail,
       T.actions.openAd,
+      T.actions.mail,
       T.actions.prompt,
       T.actions.include,
       T.actions.archive,

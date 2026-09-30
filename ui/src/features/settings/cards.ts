@@ -166,20 +166,30 @@ const language: ChoiceRow<Language> = {
   set: (state, id) => void (state.language = id),
 };
 
+/** Cards hidden for now (user, 2026-09-30), their code kept; the backend holds their
+ *  choices at the defaults (core settings::LOOK_SHOWN and EXPORT_SHOWN): Darstellung (the
+ *  app is CXact and German) and the Excel and CSV switches (no file is written). */
+const LOOK_SHOWN = false;
+const EXPORT_SHOWN = false;
+
+/** The work folder (the profiles, and the overviews while they are written). */
+const folder: ActionsRow = {
+  kind: 'actions',
+  id: 'folder',
+  label: (t) => t.settings.folder,
+  path: (state) => state.settings.workspace,
+  actions: ['folderChange', 'folderOpen'],
+};
+
 export const CARDS: readonly CardSpec[] = [
   { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
   { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
   {
     id: 'export',
     heading: (t) => t.settings.export,
+    hidden: !EXPORT_SHOWN,
     rows: [
-      {
-        kind: 'actions',
-        id: 'folder',
-        label: (t) => t.settings.folder,
-        path: (state) => state.settings.workspace,
-        actions: ['folderChange', 'folderOpen'],
-      },
+      ...(EXPORT_SHOWN ? [folder] : []),
       {
         kind: 'actions',
         id: 'excel',
@@ -206,13 +216,15 @@ export const CARDS: readonly CardSpec[] = [
       },
     ],
   },
-  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language] },
+  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language], hidden: !LOOK_SHOWN },
   {
     id: 'data',
     heading: (t) => t.settings.data,
     rows: [
       // The one action that deletes for good; what it deletes is said in its dialog (user
       // decision 2026-09-27: no Sicherung and no Protokoll rows here).
+      // The work folder stands here while the export is hidden.
+      ...(EXPORT_SHOWN ? [] : [folder]),
       { kind: 'actions', id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
   },

@@ -26,6 +26,8 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
+  /** Open a job in the job view (its menu's first entry; user, 2026-09-30). */
+  open: 'corner-down-left',
   /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
   external: 'external-link',
   /** An alert mail: open it, read the older ones. */
@@ -78,8 +80,7 @@ export const ICONS = {
   more: 'ellipsis',
   /** Fold open or shut (a disclosure, a divider, a menu button). */
   expand: 'chevron-down',
-  /** Back (Zurück); in the calendar the month before; Öffnen in a job's menu (user,
-   *  2026-09-29: the job view opens beside the list). */
+  /** Back (Zurück); in the calendar the month before. */
   back: 'chevron-left',
   /** In the calendar the month after. */
   forward: 'chevron-right',

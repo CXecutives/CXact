@@ -362,6 +362,13 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     let window = builder.build().map_err(Failure::window)?;
     let maximized = geometry::restore(&window, &store);
     platform::apply(&window).map_err(Failure::window)?;
+    // Cards hidden for now keep their defaults (the palette, the language, the export).
+    if let Ok(mut settings) = jobalert_core::settings::Settings::load(&store)
+        && settings.fit_hidden()
+        && let Err(e) = settings.save(&store)
+    {
+        log::warn!("hidden settings not reset: {e}");
+    }
     // The chosen palette before the window shows (the page reads it from the app state).
     let palette = jobalert_core::settings::Settings::load(&store)
         .map(|settings| settings.palette)

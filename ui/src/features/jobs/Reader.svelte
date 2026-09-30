@@ -10,14 +10,15 @@
     close it). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
-  - actions: Alert-Mail öffnen, Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
-    or closed: the portal's page still opens), KI-Prompt kopieren and "…", all alike. The
+  - actions: Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
+    or closed: the portal's page still opens), Alert-Mail öffnen, KI-Prompt kopieren and "…", all
+    alike. The
     "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
     shows it too, its tools the moves): "Wieder ausschließen" for a job scored by hand, then
     the moves of the place (Eingang Archivieren, Löschen; Archiv In den Eingang, Löschen;
     Papierkorb Wiederherstellen, Endgültig löschen). An excluded job has one button,
     "Trotzdem bewerten" (the one thing to do with it), and "…" holds the whole job menu
-    without it (Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren, then the moves). A job that just
+    without it (Anzeige öffnen, Alert-Mail öffnen, KI-Prompt kopieren, then the moves). A job that just
     moved away offers none while the next one loads. Moving the job away from one of the
     reader's buttons hands the focus to the same button of the next job. Every result and every
     failure is a toast.
@@ -126,6 +127,12 @@
   });
   const band = $derived(
     ring.status === 'scored' || ring.status === 'provisional' ? ring.band : null,
+  );
+  /** The ring's colour step (ScoreRing's decile), which the band's words take too. */
+  const step = $derived(
+    band !== null && 'score' in ring
+      ? `d${Math.min(9, Math.floor(Math.max(0, ring.score) / 10))}`
+      : '',
   );
   /** "Warum diese Zahl?": what moved the score (scoreWhy.ts), for a ring with a number. */
   const why = $derived(judged && band !== null ? whyLines(match?.factors ?? []) : []);
@@ -417,7 +424,7 @@
           expanded={whyOpen}
           testid="reader-ring"
         />
-        <p class="band {band ?? 'none'}" data-testid="band">
+        <p class="band {band ?? 'none'} {step}" data-testid="band">
           {band ? t.score.band[band] : t.score.none}
         </p>
       {/if}
@@ -441,8 +448,8 @@
       {onclick}
     />
   {/snippet}
-  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }), 0)}
-  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }), 1)}
+  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }), 0)}
+  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }), 1)}
   {@render show(shows.prompt, 'reader-prompt', () => void copyJobPrompt(job.key).then(fail), 2)}
 {/snippet}
 
@@ -693,16 +700,45 @@
     font-weight: var(--weight-medium);
   }
 
-  .band.high {
-    color: var(--score-high-text);
+  /* The band in the colour of its ring (the decile of the score), a shade deeper to read. */
+  .band.d0 {
+    color: var(--score-text-0);
   }
 
-  .band.mid {
-    color: var(--score-mid-text);
+  .band.d1 {
+    color: var(--score-text-1);
   }
 
-  .band.low {
-    color: var(--score-low-text);
+  .band.d2 {
+    color: var(--score-text-2);
+  }
+
+  .band.d3 {
+    color: var(--score-text-3);
+  }
+
+  .band.d4 {
+    color: var(--score-text-4);
+  }
+
+  .band.d5 {
+    color: var(--score-text-5);
+  }
+
+  .band.d6 {
+    color: var(--score-text-6);
+  }
+
+  .band.d7 {
+    color: var(--score-text-7);
+  }
+
+  .band.d8 {
+    color: var(--score-text-8);
+  }
+
+  .band.d9 {
+    color: var(--score-text-9);
   }
 
   /* Not scored (yet, or at all): muted, not the colour of a low score. */

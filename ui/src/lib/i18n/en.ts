@@ -9,7 +9,7 @@
 // the name of the German language. Glossary (docs/PLAN.md "Glossary (UI)", one word per
 // thing): Job, Portal, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
 // Not met, Unclear), Must-have, Optional, Exclusion, Profile, Mailbox, Alert email, Check
-// mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Export folder,
+// mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Work folder,
 // Excluded, Score anyway, Rescore, New, Inbox (the place of the active jobs), Archive (Move to
 // inbox: back from there), Trash, Delete (into the Trash; there Delete forever and Restore),
 // Folders (the three places), Data (the card of the app's data), Requests (what a portal
@@ -826,7 +826,7 @@ export const en: Catalog = {
       csv: 'The CSV file could not be written and was left unchanged.',
       csvLocked: 'The CSV file is open in another program and was left unchanged.',
       backup: 'The old Excel file could not be backed up, so the new one was not written.',
-      workspace: 'The export folder cannot be reached.',
+      workspace: 'The work folder cannot be reached.',
     },
     checkMailbox: 'Mailbox settings',
     paused: (portal: string, until: string | null) =>
@@ -1224,7 +1224,7 @@ export const en: Catalog = {
     signInWaiting: 'The sign-in window is open.',
     alertQuiet: (days: number) => `No alert email in ${n(days)} days.`,
     checkAlert: 'Check alert',
-    folder: 'Export folder',
+    folder: 'Work folder',
     excel: 'Excel file',
     csv: 'CSV file',
     excelOff: 'Turn on the Excel file.',
@@ -1254,7 +1254,7 @@ export const en: Catalog = {
       'the profiles',
       'the app password',
       'the portal sign-ins',
-      'the app’s files in the export folder',
+      'the app’s files in the work folder',
     ],
     resetDone: 'The app has been reset.',
     resetPartly: (value: number) =>

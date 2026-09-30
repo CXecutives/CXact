@@ -411,7 +411,7 @@ test.describe('the actions', () => {
     const buttons = actions.locator('.btn');
     expect(
       await buttons.evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
-    ).toEqual(['reader-mail', 'open-ad', 'reader-prompt', 'reader-more']);
+    ).toEqual(['open-ad', 'reader-mail', 'reader-prompt', 'reader-more']);
     await expect(actions.getByTestId('reader-mail')).toHaveText('Alert-Mail öffnen');
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
@@ -477,7 +477,7 @@ test.describe('the actions', () => {
       stage(page)
         .getByTestId('reader-actions')
         .evaluate((node) =>
-          ['reader-mail', 'open-ad', 'reader-prompt'].map((id) =>
+          ['open-ad', 'reader-mail', 'reader-prompt'].map((id) =>
             node.querySelector(`[data-testid="${id}"]`)?.classList.contains('icon-only'),
           ),
         );
@@ -552,7 +552,7 @@ test.describe('the actions', () => {
     await openPlace(page, 'inbox');
     const { excluded } = await stubList(page);
     await openJob(page, excluded[0]!);
-    expect(await more(page)).toEqual(['mail', 'open-ad', 'prompt', 'archive', 'trash']);
+    expect(await more(page)).toEqual(['open-ad', 'mail', 'prompt', 'archive', 'trash']);
   });
 
   test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
@@ -697,7 +697,7 @@ test.describe('an excluded job', () => {
       await expect(stage(page).getByTestId(gone)).toHaveCount(0);
     }
     let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['mail', 'open-ad', 'prompt', 'archive', 'trash']);
+    expect(menu.ids).toEqual(['open-ad', 'mail', 'prompt', 'archive', 'trash']);
     await page.keyboard.press('Escape');
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();
@@ -712,7 +712,7 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('reader-ring')).toBeVisible();
     await expect(stage(page).getByTestId('reader-ban')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-include')).toHaveCount(0);
-    await expect(stage(page).getByTestId('reader-mail')).toBeFocused();
+    await expect(stage(page).getByTestId('open-ad')).toBeFocused();
     // No "Wieder ausschließen" (hidden for now, user 2026-09-29): the moves of its place only.
     menu = await moreMenu(page);
     expect(menu.ids).toEqual(['archive', 'trash']);

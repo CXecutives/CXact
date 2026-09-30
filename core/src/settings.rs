@@ -47,6 +47,11 @@ pub struct Settings {
     pub palette: Palette,
 }
 
+/// Einstellungen shows Darstellung (the palette and the language); hidden for now.
+pub const LOOK_SHOWN: bool = false;
+/// Einstellungen shows the Excel and CSV switches; hidden for now, and no file is written.
+pub const EXPORT_SHOWN: bool = false;
+
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
 /// cream, coral and navy), and Light and Dark, neutral with blue details.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -230,6 +235,23 @@ impl Settings {
         }
     }
 
+    /// The settings while cards of Einstellungen are hidden (user, 2026-09-30): without
+    /// Darstellung the app is CXact and German ([`LOOK_SHOWN`]), without Export it writes no
+    /// Excel or CSV file ([`EXPORT_SHOWN`]). A hidden choice goes back to that; `true` when
+    /// something changed (the start saves it). The fields and their code stay.
+    pub fn fit_hidden(&mut self) -> bool {
+        let before = self.clone();
+        if !LOOK_SHOWN {
+            self.palette = Palette::default();
+            self.language = None;
+        }
+        if !EXPORT_SHOWN {
+            self.export_excel = false;
+            self.export_csv = false;
+        }
+        *self != before
+    }
+
     pub fn save(&self, store: &Store) -> Result<()> {
         let json = serde_json::to_string(&self.clone().normalized()).expect("serialisable");
         store.kv_set(KEY, &json)
@@ -380,6 +402,28 @@ fn portals_any_form<'de, D: Deserializer<'de>>(
 
 #[cfg(test)]
 mod tests {
+    /// Hidden cards keep their defaults: CXact, German, no overview file; the rest stays.
+    #[test]
+    fn hidden_cards_keep_their_defaults() {
+        let mut s = Settings {
+            palette: Palette::Dark,
+            language: Some(Language::En),
+            export_excel: true,
+            export_csv: true,
+            fetch_range: FetchRange::Days7,
+            ..Settings::default()
+        };
+        assert_eq!(s.fit_hidden(), !LOOK_SHOWN || !EXPORT_SHOWN);
+        if !LOOK_SHOWN {
+            assert_eq!((s.palette, s.language), (Palette::Cxact, None));
+        }
+        if !EXPORT_SHOWN {
+            assert_eq!((s.export_excel, s.export_csv), (false, false));
+        }
+        assert_eq!(s.fetch_range, FetchRange::Days7);
+        assert!(!s.fit_hidden(), "a second fit changes nothing");
+    }
+
     use super::*;
 
     /// A new install exports into `Documents\CXact`; the `Job-Alert-Monitor` folder of an

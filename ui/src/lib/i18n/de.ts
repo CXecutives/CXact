@@ -11,7 +11,7 @@
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
-// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Exportordner, Ausgeschlossen, Trotzdem
+// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Archiv (In den Eingang: back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
 // data: its backups, its log, the reset), Aufrufe (what a portal allows a day).
@@ -949,7 +949,7 @@ export const de = {
       csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
       backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
       /** The work folder itself (a drive that is gone): nothing was written. */
-      workspace: 'Der Exportordner ist nicht erreichbar.',
+      workspace: 'Der Arbeitsordner ist nicht erreichbar.',
     },
     /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
     checkMailbox: 'Postfach prüfen',
@@ -1489,7 +1489,7 @@ export const de = {
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
     checkAlert: 'Alert prüfen',
-    folder: 'Exportordner',
+    folder: 'Arbeitsordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',
     /** Why "Öffnen" of a file waits while its switch is off (the app writes none then). */
@@ -1528,7 +1528,7 @@ export const de = {
       'die Profile',
       'das App-Passwort',
       'die Anmeldungen bei den Portalen',
-      'die Dateien der App im Exportordner',
+      'die Dateien der App im Arbeitsordner',
     ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
     /** What stayed can be a file, a folder, the app password or a sign-in: "Element". */

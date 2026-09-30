@@ -1557,12 +1557,26 @@ export function installInput(): void {
   );
   document.addEventListener('pointercancel', () => auxPress(false), capture);
   document.addEventListener('keydown', () => (autoscroll = false), capture);
-  // After the press: the element it focused (the engine moves the focus after the listeners).
+  // What a press focused: marked as the focus moves (focusin), or at the press's end for an
+  // element that had the focus already.
+  let pressing = false;
+  document.addEventListener('pointerdown', () => (pressing = true), capture);
   document.addEventListener(
-    'pointerdown',
-    () => void setTimeout(() => pointerFocus(true)),
+    'focusin',
+    () => {
+      if (pressing) pointerFocus(true);
+    },
     capture,
   );
+  document.addEventListener(
+    'pointerup',
+    () => {
+      if (pressing) pointerFocus(true);
+      pressing = false;
+    },
+    capture,
+  );
+  document.addEventListener('pointercancel', () => (pressing = false), capture);
   document.addEventListener(
     'focusout',
     (event) => {

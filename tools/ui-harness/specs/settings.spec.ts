@@ -110,15 +110,11 @@ test('the cards in their order, the first heading on the first row, the version 
   expect(await ids(page, 'settings', ':scope > section')).toEqual([
     'settings-mailbox',
     'settings-portals',
-    'settings-export',
-    'settings-look',
     'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
     T.settings.mailbox,
     T.settings.portals,
-    T.settings.export,
-    T.settings.look,
     T.settings.data,
   ]);
   // Every heading stands 12 px above its card, the first one too.
@@ -132,7 +128,7 @@ test('the cards in their order, the first heading on the first row, the version 
         return Math.round(card.top - heading.bottom);
       }),
     );
-  expect(gaps).toEqual([12, 12, 12, 12, 12]);
+  expect(gaps).toEqual([12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
@@ -174,8 +170,6 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'sign-in-freelance',
     'folder-change',
     'folder-open',
-    'excel-open',
-    'csv-open',
     'reset',
   ]);
   const small = await tokenPx(page, '--control-sm');
@@ -210,7 +204,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
         ),
       ),
     );
-  expect(ends.length).toBeGreaterThan(6);
+  // The mailbox, three portals, the work folder and the reset.
+  expect(ends.length).toBeGreaterThanOrEqual(6);
   expect(new Set(ends).size).toBe(1);
   // The portals' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
@@ -232,13 +227,13 @@ test('narrow, a row puts its control under the label only where the two do not f
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
   // Label and control side by side, one line, like the wider rows.
-  for (const id of ['excel', 'reset-all']) {
+  for (const id of ['reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(Math.round(box.height), id).toBe(
       (await tokenPx(page, '--control-md')) + 2 * (await tokenPx(page, '--space-12')),
     );
   }
-  // At the smallest window the path of the export folder keeps its room: the buttons stand
+  // At the smallest window the path of the work folder keeps its room: the buttons stand
   // beside it or go under it, never over it.
   await page.setViewportSize({ width: 480, height: 800 });
   const folder = page.getByTestId('folder');
@@ -568,7 +563,8 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
 
 /* ------------------------------------------------------------------ Export */
 
-test('export: the export folder with its path, Excel and CSV with their switches', async ({
+// The export is hidden for now (cards.ts EXPORT_SHOWN, user 2026-09-30); kept for its return.
+test.skip('export: the export folder with its path, Excel and CSV with their switches', async ({
   page,
 }) => {
   await settings(page);
@@ -608,12 +604,10 @@ test('export: the export folder with its path, Excel and CSV with their switches
   expect(glided(tops), tops.join(' ')).toBe(true);
 });
 
-test('export: another export folder takes the profile along; its own profile is said', async ({
-  page,
-}) => {
+test('another work folder takes the profile along; its own profile is said', async ({ page }) => {
   await settings(page, `${WIN}&folder=other`);
   await page.getByTestId('folder-change').click();
-  await expect(page.getByTestId('settings-export')).toContainText('C:/Users/demo/Documents/Jobs');
+  await expect(page.getByTestId('settings-data')).toContainText('C:/Users/demo/Documents/Jobs');
   await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderMoved));
   await settings(page, `${WIN}&folder=own`);
   await page.getByTestId('folder-change').click();
@@ -622,7 +616,10 @@ test('export: another export folder takes the profile along; its own profile is 
 
 /* ------------------------------------------------------------- Darstellung */
 
-test('Darstellung: a palette applies at once, is saved and wears the start', async ({ page }) => {
+// Darstellung is hidden for now (cards.ts LOOK_SHOWN, user 2026-09-30); kept for its return.
+test.skip('Darstellung: a palette applies at once, is saved and wears the start', async ({
+  page,
+}) => {
   await settings(page);
   const look = page.getByTestId('settings-look');
   await expect(look.locator('[data-setting-row]')).toHaveCount(2);
@@ -701,7 +698,10 @@ test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ p
   }
 });
 
-test('Darstellung: the language switches everything at once; notes follow it', async ({ page }) => {
+// Darstellung is hidden for now (cards.ts LOOK_SHOWN, user 2026-09-30); kept for its return.
+test.skip('Darstellung: the language switches everything at once; notes follow it', async ({
+  page,
+}) => {
   await settings(page);
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();
@@ -720,12 +720,13 @@ test('Daten: only Alle Daten zurücksetzen; no Sicherung, no Protokoll, no data 
 }) => {
   await settings(page);
   const data = page.getByTestId('settings-data');
-  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['reset-all']);
+  // The work folder stands here while the export is hidden.
+  expect(await ids(page, 'settings-data', '[data-setting-row]')).toEqual(['folder', 'reset-all']);
   await expect(page.getByTestId('reset')).toHaveText(T.settings.resetAction);
   for (const gone of ['backup-restore', 'logs-open']) {
     await expect(page.getByTestId(gone)).toHaveCount(0);
   }
-  await expect(data.locator('[data-copy]')).toHaveCount(0);
+  await expect(data.locator('[data-copy]')).toHaveCount(1);
   await expect(data).not.toContainText('Excel');
 });
 
@@ -784,9 +785,7 @@ test('the dry run and the demo keep to their own data and say so', async ({ page
 
 test('macOS shows Mac paths', async ({ page }) => {
   await settings(page, MAC);
-  await expect(page.getByTestId('settings-export')).toContainText(
-    '/Users/demo/Documents/Job-Alerts',
-  );
+  await expect(page.getByTestId('settings-data')).toContainText('/Users/demo/Documents/Job-Alerts');
   await expect(page.getByTestId('settings')).not.toContainText('C:/');
 });
 

@@ -1029,7 +1029,8 @@ test('nothing drags but the handle and the drag regions; a double click selects 
 });
 
 test('the page keys glide in one short tween; under reduced motion they jump', async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  // Low enough that Einstellungen (without Export and Darstellung) scrolls more than a page.
+  await page.setViewportSize({ width: 1100, height: 400 });
   // Reduced motion: at once.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=settings`);

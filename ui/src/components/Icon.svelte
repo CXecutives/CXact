@@ -32,6 +32,7 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import CircleDashed from '@lucide/svelte/icons/circle-dashed';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
@@ -108,6 +109,7 @@
     'chevron-down': ChevronDown,
     'chevron-left': ChevronLeft,
     'chevron-right': ChevronRight,
+    'corner-down-left': CornerDownLeft,
     'circle-check': CircleCheck,
     'circle-dashed': CircleDashed,
     'circle-minus': CircleMinus,

@@ -96,6 +96,12 @@
   --p-score-yellow: 40 88% 59%;
   --p-score-lime: 83 44% 51%;
   --p-score-green: 139 44% 44%;
+  /* The words beside a ring in its colour, deep enough to read (the band in the job view). */
+  --p-score-red-text: 358 68% 42%;
+  --p-score-orange-text: 22 85% 36%;
+  --p-score-yellow-text: 38 92% 29%;
+  --p-score-lime-text: 83 58% 28%;
+  --p-score-green-text: 139 55% 29%;
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
@@ -273,6 +279,16 @@
   --score-ring-7: hsl(var(--p-score-lime));
   --score-ring-8: hsl(var(--p-score-green));
   --score-ring-9: hsl(var(--p-score-green));
+  --score-text-0: hsl(var(--p-score-red-text));
+  --score-text-1: hsl(var(--p-score-red-text));
+  --score-text-2: hsl(var(--p-score-orange-text));
+  --score-text-3: hsl(var(--p-score-orange-text));
+  --score-text-4: hsl(var(--p-score-yellow-text));
+  --score-text-5: hsl(var(--p-score-yellow-text));
+  --score-text-6: hsl(var(--p-score-lime-text));
+  --score-text-7: hsl(var(--p-score-lime-text));
+  --score-text-8: hsl(var(--p-score-green-text));
+  --score-text-9: hsl(var(--p-score-green-text));
   --score-digits: hsl(var(--p-ink));
   --score-high-ring: hsl(var(--p-score-high));
   --score-high-text: hsl(var(--p-score-high-text));
@@ -810,6 +826,11 @@
 
 :root[data-palette='dark'] {
   color-scheme: dark;
+  --p-score-red-text: 358 85% 70%;
+  --p-score-orange-text: 24 90% 64%;
+  --p-score-yellow-text: 40 90% 60%;
+  --p-score-lime-text: 83 55% 58%;
+  --p-score-green-text: 139 50% 56%;
   --p-danger-fill: 0 64% 50%;
   --p-danger-fill-hover: 0 66% 45%;
   --p-danger-fill-press: 0 68% 40%;

@@ -19,8 +19,9 @@ export interface ShowAction {
   reason: string | null;
 }
 
-/** Their one order, in the menu and among the reader's buttons. */
-export const SHOWS: readonly ShowId[] = ['mail', 'open-ad', 'prompt'];
+/** Their one order, in the menu and among the reader's buttons: the ad first, then its alert
+ *  mail (user, 2026-09-30), then the prompt. */
+export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
 
 /**
  * Alert-Mail öffnen, off without an alert mail; Anzeige öffnen, which says Offline-Anzeige
