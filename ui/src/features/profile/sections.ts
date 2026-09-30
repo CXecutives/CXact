@@ -9,13 +9,15 @@
 //
 // Every section has its heading under its id in the catalog (`t.profile.section`) and the
 // testid `section-{id}`; the ones whose effect is easy to get wrong say it in one sentence
-// (`t.profile.sectionHint`). Order (user decision 2026-09-27): what carries the match first
-// (the wished roles, the competences, the experience, the conditions), the rest after it and
-// marked optional (the person, the rules of permanent roles, the languages): nothing has to
-// be filled in, an empty field is simply not judged.
+// (`t.profile.sectionHint`). The sections stand on four tabs (user decision 2026-10-01):
+// Suche (the roles and what she looks for, a limit beside its wish), Können, Erfahrung and
+// Ausschlüsse; the first section of a tab goes without a heading (the tab is its name). The
+// person (name and role) stands under the title. Nothing has to be filled in, an empty field
+// is simply not judged.
 
 import type { Catalog } from '$lib/i18n/de';
 import type { ProfileForm, TermField, UnreadableField } from '$lib/ipc/types';
+import type { ProfileTab } from '$lib/state/profile.svelte';
 import {
   NUMBER_CRITERIA,
   WORD_CRITERIA,
@@ -50,7 +52,6 @@ export type SwitchKey = 'remoteOutside' | 'noAnue' | 'noPermanent';
  *  advice as the reason) while it has nothing to do; `hidden` keeps it out of the form
  *  until the values it depends on are there. */
 export type Control =
-  | { kind: 'text'; key: 'name' | 'title'; label: Word; placeholder: Word; testid: string }
   | {
       kind: 'number';
       key: NumberKey;
@@ -100,11 +101,11 @@ export type Line =
   | { kind: 'pair'; fields: readonly [Control, Control] }
   | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] };
 
-export type SectionId =
-  'person' | 'competences' | 'experience' | 'languages' | 'criteria' | 'permanent' | 'wishes';
+export type SectionId = 'competences' | 'experience' | 'criteria' | 'permanent' | 'wishes';
 
 export interface Section {
   id: SectionId;
+  tab: ProfileTab;
   /** The one block the profile needs: its "Noch leer" is amber. */
   required?: true;
   /** Only refines the match: the heading says "optional". */
@@ -119,29 +120,10 @@ const pair = (a: Control, b: Control): Line => ({ kind: 'pair', fields: [a, b] }
 
 export const SECTIONS: readonly Section[] = [
   {
-    id: 'person',
-    optional: true,
-    lines: [
-      pair(
-        {
-          kind: 'text',
-          key: 'name',
-          label: 'name',
-          placeholder: 'namePlaceholder',
-          testid: 'profile-name-field',
-        },
-        {
-          kind: 'text',
-          key: 'title',
-          label: 'title',
-          placeholder: 'titlePlaceholder',
-          testid: 'profile-title',
-        },
-      ),
-    ],
-  },
-  {
+    // What she looks for: the wishes (they exclude nothing) with the limits that belong to
+    // them beside them (the minimum rate, the countries, the day she is free).
     id: 'wishes',
+    tab: 'search',
     lines: [
       {
         kind: 'chips',
@@ -150,20 +132,53 @@ export const SECTIONS: readonly Section[] = [
         placeholder: 'rolesPlaceholder',
         testid: 'profile-roles',
       },
+      pair(
+        {
+          kind: 'number',
+          key: 'wishDayRate',
+          label: 'wishRate',
+          unit: 'euro',
+          advice: (form) =>
+            form.wishes.dayRate !== null &&
+            form.criteria.minDayRate !== null &&
+            form.wishes.dayRate < form.criteria.minDayRate
+              ? 'belowMinRate'
+              : null,
+          testid: 'profile-wish-rate',
+        },
+        {
+          kind: 'number',
+          key: 'minDayRate',
+          label: 'minDayRate',
+          hint: 'minRateHint',
+          testid: 'profile-min-rate',
+        },
+      ),
+      pair(
+        {
+          kind: 'chips',
+          key: 'regions',
+          label: 'regions',
+          placeholder: 'regionsPlaceholder',
+          testid: 'profile-regions',
+        },
+        { kind: 'countries' },
+      ),
       {
-        kind: 'number',
-        key: 'wishDayRate',
-        label: 'wishRate',
-        unit: 'euro',
-        advice: (form) =>
-          form.wishes.dayRate !== null &&
-          form.criteria.minDayRate !== null &&
-          form.wishes.dayRate < form.criteria.minDayRate
-            ? 'belowMinRate'
-            : null,
-        testid: 'profile-wish-rate',
+        kind: 'switches',
+        fields: [
+          // On excludes: the file's "allowed" is the switch turned off.
+          {
+            kind: 'switch',
+            key: 'remoteOutside',
+            label: 'remoteOutside',
+            off: (form) => (form.criteria.countries.length === 0 ? 'remoteOutsideOff' : null),
+            testid: 'profile-remote-outside',
+          },
+        ],
       },
       { kind: 'remote' },
+      { kind: 'available' },
       // The days a week and the duration are checked, never an exclusion (engine 16).
       pair(
         { kind: 'workload' },
@@ -176,13 +191,6 @@ export const SECTIONS: readonly Section[] = [
       ),
       {
         kind: 'chips',
-        key: 'regions',
-        label: 'regions',
-        placeholder: 'regionsPlaceholder',
-        testid: 'profile-regions',
-      },
-      {
-        kind: 'chips',
         key: 'wishIndustries',
         label: 'wishIndustries',
         placeholder: 'wishIndustriesPlaceholder',
@@ -193,16 +201,18 @@ export const SECTIONS: readonly Section[] = [
   },
   {
     id: 'competences',
+    tab: 'skills',
     required: true,
     lines: [
       { kind: 'competences' },
       {
         kind: 'chips',
-        key: 'strengths',
-        label: 'strengths',
-        placeholder: 'strengthsPlaceholder',
-        lines: true,
-        testid: 'profile-strengths',
+        key: 'tools',
+        label: 'tools',
+        placeholder: 'toolsPlaceholder',
+        suggest: 'skills',
+        asked: 'tool',
+        testid: 'profile-tools',
       },
       {
         kind: 'chips',
@@ -212,10 +222,19 @@ export const SECTIONS: readonly Section[] = [
         suggest: 'skills',
         testid: 'profile-keywords',
       },
+      {
+        kind: 'chips',
+        key: 'strengths',
+        label: 'strengths',
+        placeholder: 'strengthsPlaceholder',
+        lines: true,
+        testid: 'profile-strengths',
+      },
     ],
   },
   {
     id: 'experience',
+    tab: 'experience',
     lines: [
       {
         kind: 'number',
@@ -224,6 +243,17 @@ export const SECTIONS: readonly Section[] = [
         unit: 'years',
         testid: 'profile-years',
       },
+      {
+        kind: 'chips',
+        key: 'industries',
+        label: 'industries',
+        placeholder: 'industriesPlaceholder',
+        suggest: 'industries',
+        asked: 'industry',
+        testid: 'profile-industries',
+      },
+      // The languages are a qualification too (user, 2026-09-29).
+      { kind: 'languages' },
       {
         kind: 'chips',
         key: 'degrees',
@@ -242,35 +272,13 @@ export const SECTIONS: readonly Section[] = [
         asked: 'certificate',
         testid: 'profile-certificates',
       },
-      {
-        kind: 'chips',
-        key: 'tools',
-        label: 'tools',
-        placeholder: 'toolsPlaceholder',
-        suggest: 'skills',
-        asked: 'tool',
-        testid: 'profile-tools',
-      },
-      {
-        kind: 'chips',
-        key: 'industries',
-        label: 'industries',
-        placeholder: 'industriesPlaceholder',
-        suggest: 'industries',
-        asked: 'industry',
-        testid: 'profile-industries',
-      },
-      // The languages are a qualification too (user, 2026-09-29): here, not a card of their own.
-      { kind: 'languages' },
     ],
   },
   {
-    // What excludes a job: the day rate floor, from when she is free, the words that
-    // exclude, the countries and the switches.
+    // What excludes a job besides the limits of the search: the words and the contracts.
     id: 'criteria',
+    tab: 'exclusions',
     lines: [
-      { kind: 'number', key: 'minDayRate', label: 'minDayRate', testid: 'profile-min-rate' },
-      { kind: 'available' },
       {
         kind: 'chips',
         key: 'exclusionWords',
@@ -278,18 +286,9 @@ export const SECTIONS: readonly Section[] = [
         placeholder: 'exclusionWordsPlaceholder',
         testid: 'profile-exclusion-words',
       },
-      { kind: 'countries' },
       {
         kind: 'switches',
         fields: [
-          // On excludes: the file's "allowed" is the switch turned off.
-          {
-            kind: 'switch',
-            key: 'remoteOutside',
-            label: 'remoteOutside',
-            off: (form) => (form.criteria.countries.length === 0 ? 'remoteOutsideOff' : null),
-            testid: 'profile-remote-outside',
-          },
           { kind: 'switch', key: 'noAnue', label: 'noAnue', testid: 'profile-no-anue' },
           {
             kind: 'switch',
@@ -304,6 +303,7 @@ export const SECTIONS: readonly Section[] = [
   {
     // The rules of permanent roles: they wait while those are excluded.
     id: 'permanent',
+    tab: 'exclusions',
     optional: true,
     hidden: (form) => form.criteria.noPermanent,
     lines: [
@@ -337,6 +337,12 @@ export const SECTIONS: readonly Section[] = [
     ],
   },
 ];
+
+/** The tab a field of the form is on (for the caret of a value to put right), or null. */
+export function tabOf(field: string): ProfileTab | null {
+  const section = SECTIONS.find((each) => controlsOf(each.lines).flatMap(fieldsOf).includes(field));
+  return section?.tab ?? null;
+}
 
 // ------------------------------------------------------------------ the values of the form
 
@@ -416,7 +422,6 @@ export const switchField = (key: SwitchKey): UnreadableField =>
 /** The fields a value that does not read (or a refused one) can name for a control. */
 export function fieldsOf(control: Control): string[] {
   switch (control.kind) {
-    case 'text':
     case 'number':
     case 'chips':
       return [control.key];
@@ -444,8 +449,6 @@ const noRows = (rows: readonly { name?: string; language?: string }[]): boolean 
 export function blank(form: ProfileForm, control: Control): boolean {
   const c = form.criteria;
   switch (control.kind) {
-    case 'text':
-      return form[control.key].trim() === '';
     case 'number':
       return numberOf(form, control.key) === null;
     case 'chips':

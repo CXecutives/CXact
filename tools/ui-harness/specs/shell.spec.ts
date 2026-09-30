@@ -21,7 +21,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
-import { failNext, rowMenu, T, tokenColour, tokenPx, viaMenu } from './helpers';
+import { failNext, rowMenu, showTab, T, tokenColour, tokenPx, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -1294,7 +1294,7 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const keywords = page.getByTestId('profile-keywords');
+  const keywords = await showTab(page, page.getByTestId('profile-keywords'));
   const chip = keywords.locator('[data-chip]').first();
   const text = chip.locator('.text');
   await text.scrollIntoViewIfNeeded();

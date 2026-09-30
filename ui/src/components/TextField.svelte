@@ -48,6 +48,9 @@
     testid?: string | null;
     /** A small control inside the field at its right end (a calendar's button). */
     trailing?: Snippet | null;
+    /** Reads like text until pointed at or edited (the Profil's name and role under its
+     *  title). */
+    quiet?: boolean;
     oninput?: (value: string) => void;
   }
 
@@ -64,6 +67,7 @@
     suggestions = undefined,
     testid = null,
     trailing = null,
+    quiet = false,
     oninput,
   }: Props = $props();
 
@@ -177,6 +181,7 @@
   class:invalid
   class:disabled
   class:trailed={trailing !== null}
+  class:quiet
   use:formKeys={keys}
 >
   {#if kind === 'search'}
@@ -305,6 +310,30 @@
   .field:focus-within {
     border-color: var(--border-focus);
     transition-duration: var(--dur-fast);
+  }
+
+  /* Quiet: no edge and no fill at rest, the edge on hover, the field's look while edited. */
+  .quiet {
+    border-color: transparent;
+    background-color: transparent;
+  }
+
+  .quiet:hover {
+    border-color: var(--border-strong);
+  }
+
+  .quiet:focus-within {
+    border-color: var(--border-focus);
+    background-color: var(--surface);
+  }
+
+  .quiet .input {
+    padding: 0 var(--space-8);
+    color: var(--text-muted);
+  }
+
+  .quiet:focus-within .input {
+    color: var(--text);
   }
 
   .invalid,

@@ -4,7 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, runFinished, test, visibleCount } from './fixtures';
-import { failNext, T, tokenPx } from './helpers';
+import { failNext, showTab, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -191,7 +191,7 @@ test('step 2 offers the ways of the Profil view: the empty form, a file, the pro
   await page.getByTestId('profile-discard').click();
   await page.getByTestId('nav-jobs').click();
   await create.click();
-  await page.getByTestId('competence-name').fill('Controlling');
+  await (await showTab(page, page.getByTestId('competence-name'))).fill('Controlling');
   await page.getByTestId('profile-save').click();
   // Saved during the setup: the toast leads on to the first fetch.
   const toast = page.getByTestId('toast').filter({ hasText: T.profile.saved });

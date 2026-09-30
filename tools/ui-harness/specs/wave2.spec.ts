@@ -3,6 +3,7 @@
 
 import type { Page } from '@playwright/test';
 import { expect, nav, NOW, open, runFinished, test } from './fixtures';
+import { showTab } from './helpers';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -53,7 +54,7 @@ test('a value over its limit keeps the waiting permanent rules open; Speichern w
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const field = page.getByTestId('profile-remote-min');
+  const field = await showTab(page, page.getByTestId('profile-remote-min'));
   await field.fill('150');
   await page.getByTestId('profile-no-permanent').click();
   // The block stays with the marked field and its limit, so it can be put right.
@@ -66,7 +67,7 @@ test('a value over its limit keeps the waiting permanent rules open; Speichern w
   await expect(save).not.toHaveAttribute('aria-disabled', 'true');
   // Put right, it stays until the form is saved or discarded (nothing vanishes while typing).
   await expect(page.getByTestId('section-permanent')).toBeVisible();
-  await page.getByTestId('profile-min-rate').fill('200000');
+  await (await showTab(page, page.getByTestId('profile-min-rate'))).fill('200000');
   const rate = page.locator('[data-field="minDayRate"]');
   // Under its own label the limit does not name the field again.
   await expect(rate).toContainText('Höchstens 100.000.');
@@ -77,7 +78,7 @@ test('a value over its limit keeps the waiting permanent rules open; Speichern w
 test('a decimal number is cut to a whole one, never joined', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const years = page.getByTestId('profile-years');
+  const years = await showTab(page, page.getByTestId('profile-years'));
   await years.fill('7,5');
   await expect(page.getByTestId('profile-years-rounded')).toHaveCount(0);
   await page.getByTestId('profile-name-field').focus();
@@ -85,10 +86,12 @@ test('a decimal number is cut to a whole one, never joined', async ({ page }) =>
   await expect(page.getByTestId('profile-years-rounded')).toHaveText(
     'Auf eine ganze Zahl abgerundet.',
   );
-  await page.getByTestId('competence-years').first().fill('2.5');
+  await (await showTab(page, page.getByTestId('competence-years'))).first().fill('2.5');
   await page.getByTestId('profile-save').click();
-  const all = await page.evaluate(() => window.__harness.calls);
-  const sent = all.filter(([name]) => name === 'save_profile').at(-1)![1] as {
+  const saves = async (): Promise<unknown[][]> =>
+    (await page.evaluate(() => window.__harness.calls)).filter(([name]) => name === 'save_profile');
+  await expect.poll(async () => (await saves()).length).toBe(1);
+  const sent = (await saves()).at(-1)![1] as {
     save: { after: { years: number; competences: { years: number | null }[] } };
   };
   expect(sent.save.after.years).toBe(7);
@@ -101,7 +104,7 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const save = page.getByTestId('profile-save');
-  const tools = page.getByTestId('profile-tools').locator('input');
+  const tools = (await showTab(page, page.getByTestId('profile-tools'))).locator('input');
   await tools.fill('Miro');
   // Typed, not yet a chip: Speichern waits no more, and the backend knows it is unsaved.
   await expect(save).not.toHaveAttribute('aria-disabled', 'true');
@@ -119,7 +122,7 @@ test('text typed into a chip field is a change: Speichern takes it, closing asks
   await expect(tools).toHaveValue('');
 
   // Closing the window with typed text asks first.
-  await page.getByTestId('profile-regions').locator('input').fill('Berlin');
+  await (await showTab(page, page.getByTestId('profile-regions'))).locator('input').fill('Berlin');
   // The form has taken the typed text as a change (as the user sees it), and the backend
   // knows it (the page's `set_unsaved`), before the window closes.
   await expect(save).toBeEnabled();
@@ -201,7 +204,7 @@ test('a new form puts the caret where the work starts', async ({ page }) => {
   await page.getByTestId('nav-profile').click();
   const empty = page.getByTestId('profile-empty');
   await empty.getByRole('button', { name: 'Neues Profil' }).click();
-  await expect(page.getByTestId('profile-name-field')).toBeFocused();
+  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
 });
 
 test('typing a country that is chosen already says nothing and Enter clears it', async ({
@@ -222,8 +225,8 @@ test('at 480 px the countries field keeps the width of the other fields', async 
   await open(page, WIN);
   await nav(page, 'nav-profile');
   const field = await page.getByTestId('profile-countries').boundingBox();
-  const tools = await page.getByTestId('profile-tools').boundingBox();
-  expect(Math.abs(field!.width - tools!.width)).toBeLessThan(2);
+  const roles = await page.getByTestId('profile-roles').boundingBox();
+  expect(Math.abs(field!.width - roles!.width)).toBeLessThan(2);
   await expect(page.getByTestId('profile-dach')).toHaveCount(0);
 });
 
@@ -283,7 +286,7 @@ test('with the focus nowhere the arrows, Home and End scroll Profil too', async 
   await page.getByTestId('nav-profile').click();
   const view = page.getByTestId('view-profile');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  await page.getByTestId('section-person').locator('h2').first().click();
+  await page.getByTestId('profile-heading').click();
   await page.keyboard.press('ArrowDown');
   await expect.poll(top).toBe(40);
   await page.keyboard.press('End');

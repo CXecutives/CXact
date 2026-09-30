@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { NOW, calls, expect, open, settle, test } from './fixtures';
-import { tokenColour } from './helpers';
+import { showTab, tokenColour } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -1481,9 +1481,9 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   const view = page.getByTestId('view-profile');
-  /** Ends the autoscroll with a press on the Profil's plain heading. */
+  /** Ends the autoscroll with a press on the Profil's plain title. */
   const end = async (): Promise<void> => {
-    await view.locator('h2').first().click();
+    await view.getByTestId('profile-heading').click();
   };
   // A choice (a radio group): the chosen option stays chosen.
   const group = page.getByTestId('profile-remote');
@@ -1493,7 +1493,7 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   expect(await group.locator('[aria-checked="true"]').allTextContents()).toEqual(chosen);
   // A chip's x while text is typed in its field: the chip stays, the typed text stays typed
   // and keeps the caret (the focus the press moved comes back unseen).
-  const tools = page.getByTestId('profile-tools');
+  const tools = await showTab(page, page.getByTestId('profile-tools'));
   const input = tools.locator('input');
   const before = await tools.locator('.chip .text').allTextContents();
   await input.fill('Visio');
@@ -1517,11 +1517,15 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   await expect(menuOpen(page)).toHaveCount(0);
   await end();
   // A language's level (a menu button) opens no menu.
-  await page.getByTestId('language-level').first().click({ button: 'middle' });
+  await (
+    await showTab(page, page.getByTestId('language-level'))
+  )
+    .first()
+    .click({ button: 'middle' });
   await end();
   await expect(menuOpen(page)).toHaveCount(0);
   // Verfügbar ab: the calendar's button opens nothing, its days take nothing.
-  const available = page.getByTestId('profile-available');
+  const available = await showTab(page, page.getByTestId('profile-available'));
   await available.getByRole('radio').last().click();
   const calendar = page.getByTestId('profile-date-calendar');
   await calendar.click({ button: 'middle' });
@@ -1542,14 +1546,15 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
 test('the wheel over a date field, the calendar, a level and the filter menu changes nothing', async ({
   page,
 }) => {
-  await page.setViewportSize({ width: 1100, height: 560 });
+  // Low enough that the tab Suche scrolls.
+  await page.setViewportSize({ width: 1100, height: 420 });
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   const available = page.getByTestId('profile-available');
   await available.getByRole('radio').last().click();
   const date = page.getByTestId('profile-date');
   await date.fill('01.11.2026');
-  await page.getByTestId('view-profile').locator('h2').first().click();
+  await page.getByTestId('view-profile').getByTestId('profile-heading').click();
   expect(await wheelOver(page, date, 'view-profile')).not.toBe(0);
   await expect(date).toHaveValue('01.11.2026');
   // Over the calendar the page scrolls; its month stays.
@@ -1557,13 +1562,17 @@ test('the wheel over a date field, the calendar, a level and the filter menu cha
   const popover = page.getByTestId('profile-date-calendar-popover');
   await expect(popover).toBeVisible();
   const month = await popover.textContent();
-  expect(await wheelOver(page, popover, 'view-profile', 120)).not.toBe(0);
+  // The tab Suche ends under the day, so the wheel goes up.
+  expect(await wheelOver(page, popover, 'view-profile', -120)).not.toBe(0);
   await expect(popover).toBeVisible();
   expect(await popover.textContent()).toBe(month);
   await expect(date).toHaveValue('01.11.2026');
   await page.keyboard.press('Escape');
-  // A language's level (a menu button); the languages end the page, so the wheel goes up.
-  const level = page.getByTestId('language-level').first();
+  // A language's level (a menu button) on the tab Erfahrung, from its end the wheel goes up.
+  const level = (await showTab(page, page.getByTestId('language-level'))).first();
+  await page
+    .getByTestId('view-profile')
+    .evaluate((node) => node.scrollTo({ top: node.scrollHeight, behavior: 'instant' }));
   const shown = await level.textContent();
   expect(await wheelOver(page, level, 'view-profile', -120)).not.toBe(0);
   await expect(level).toHaveText(shown ?? '');

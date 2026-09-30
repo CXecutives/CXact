@@ -17,8 +17,10 @@
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
+  import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, warningText } from '$lib/i18n/texts';
+  import { formKeys } from '$lib/input/input';
   import { IpcError, invoke, onCloseRequested } from '$lib/ipc/api';
   import type { Notice } from '$lib/ipc/types';
   import { crossfadeDuration, duration } from '$lib/motion/motion';
@@ -192,22 +194,25 @@
     );
   }
 
-  /** A new form: the caret goes into its first field; `fresh` (the menu's Neues Profil): saved
-   *  as a new profile beside the others. */
+  /** A new form on its first tab: the caret goes into the wished roles; `fresh` (the menu's
+   *  Neues Profil): saved as a new profile beside the others. */
   async function create(fresh = false): Promise<void> {
     editor.create(fresh);
-    await caretTo('profile-name-field');
+    await caretTo('profile-roles');
   }
 
-  /** The caret into a field that has just appeared. */
+  /** The caret into a field that has just appeared (the input of a chip field). */
   async function caretTo(testid: string): Promise<void> {
     await tick();
-    document.querySelector<HTMLElement>(`[data-testid="${testid}"]`)?.focus();
+    const node = document.querySelector<HTMLElement>(`[data-testid="${testid}"]`);
+    const target = node?.matches('input, textarea, button') ? node : node?.querySelector('input');
+    target?.focus();
   }
 
   let panel = $state<{
     ready: () => boolean;
     focusField: (field: string) => Promise<boolean>;
+    submit: () => void;
   } | null>(null);
 
   /** A value out of range: the field (and row) it names, and the limit where one is. */
@@ -465,7 +470,33 @@
     onremove={() => set?.askRemove()}
     onopenfolder={openFolder}
     oncheck={checkFirst}
+    person={editor.origin === null ? null : person}
   />
+{/snippet}
+
+{#snippet person()}
+  <!-- Enter saves here as in every field of the form; Esc leaves an untouched new one. -->
+  <div
+    class="person"
+    use:formKeys={editor.origin === 'new' && !editor.dirty
+      ? { save: () => panel?.submit(), cancel: discard }
+      : { save: () => panel?.submit() }}
+  >
+    <TextField
+      bind:value={editor.after.name}
+      label={t.profile.field.name}
+      placeholder={t.profile.field.name}
+      quiet
+      testid="profile-name-field"
+    />
+    <TextField
+      bind:value={editor.after.title}
+      label={t.profile.field.title}
+      placeholder={t.profile.field.title}
+      quiet
+      testid="profile-title"
+    />
+  </div>
 {/snippet}
 
 <ProfileSet
@@ -505,6 +536,11 @@
      otherwise the room under the last section stays (--page-end). */
   .page:has(> :global([data-save-bar])) {
     padding-bottom: 0;
+  }
+
+  /* The two quiet fields share the grid of the head's line under the title. */
+  .person {
+    display: contents;
   }
 
   /* The empty state sits at about 38 % of the height (spacers 38 : 62), not dead centre. */

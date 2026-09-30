@@ -2,7 +2,9 @@
   The places of a list as tabs (Eingang, Archiv, Papierkorb), drawn like a segmented control
   (user decision 2026-09-28): the labels on one track, the chosen one on a white thumb that
   slides to the next choice like the sidebar's pill (180 ms, emphasized; the first placement
-  and a change of size never slide), no numbers. An unchosen tab darkens on hover. Like
+  and a change of size never slide), no numbers. A tab may carry a small dot after its label
+  (`mark`): red where a value in it is to be put right, amber where it waits for its first
+  value (the Profil's tabs). An unchosen tab darkens on hover. Like
   native tabs the row is one Tab stop and the left and right arrows choose
   (lib/input/input.ts).
 -->
@@ -13,6 +15,7 @@
     id: Id;
     label: string;
     icon?: IconName | null;
+    mark?: 'danger' | 'warning' | null;
     testid?: string;
   }
 </script>
@@ -85,6 +88,7 @@
       {#if option.icon}<Icon name={option.icon} size="sm" />{/if}
       <span class="pill" aria-hidden="true"></span>
       {option.label}
+      {#if option.mark}<span class="mark {option.mark}" aria-hidden="true"></span>{/if}
     </button>
   {/each}
   {#if line}<span
@@ -163,6 +167,20 @@
 
   :global(:root[data-window='inactive']) .tab[aria-selected='true'] {
     color: var(--text);
+  }
+
+  .mark {
+    width: var(--dot-unread);
+    height: var(--dot-unread);
+    border-radius: 50%;
+  }
+
+  .mark.danger {
+    background-color: var(--danger-strong);
+  }
+
+  .mark.warning {
+    background-color: var(--warning-strong);
   }
 
   .tab:focus-visible {

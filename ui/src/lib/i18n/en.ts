@@ -1035,8 +1035,14 @@ export const en: Catalog = {
       certificate: 'Certificate',
       degree: 'Degree',
     },
+    tabs: 'Parts of the profile',
+    tab: {
+      search: 'Search',
+      skills: 'Skills',
+      experience: 'Experience',
+      exclusions: 'Exclusions',
+    },
     section: {
-      person: 'About you',
       criteria: 'Conditions',
       competences: 'Skills',
       experience: 'Experience and qualifications',
@@ -1047,13 +1053,10 @@ export const en: Catalog = {
     sectionHint: {
       criteria: 'A job that does not fit here is excluded.',
       permanent: 'A permanent job that does not fit here is excluded.',
-      wishes: 'Preferences never exclude a job.',
     },
     field: {
       name: 'Name',
-      namePlaceholder: 'First and last name',
       title: 'Role',
-      titlePlaceholder: 'e.g. Interim manager',
       roles: 'Preferred roles',
       rolesPlaceholder: 'e.g. Interim CFO',
       competence: 'Skill',
@@ -1095,6 +1098,7 @@ export const en: Catalog = {
       wishIndustries: 'Preferred industries',
       wishIndustriesPlaceholder: 'e.g. Energy',
       minDayRate: 'Minimum day rate',
+      minRateHint: 'A job below it is excluded.',
       countries: 'Countries',
       countriesPlaceholder: 'Search countries',
       countryNone: 'No country by this name.',

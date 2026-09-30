@@ -1,7 +1,10 @@
 <!--
-  The profile as a form: the sections of `sections.ts` in their order, each field as the
-  table describes it. Only Bedingungen, Festanstellung and Wünsche say in one sentence what
-  they do (the rest is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
+  The profile as a form on four tabs (Suche, Können, Erfahrung, Ausschlüsse; user decision
+  2026-10-01): the sections of `sections.ts` in their order, each field as the table describes
+  it, one tab shown at a time (every tab stays mounted, so what was typed stays). A tab with a
+  value to put right carries a red dot, the tab of the one block the profile needs an amber
+  one while a thin or new profile leaves it empty; the caret of a marked value opens its tab.
+  Only Ausschlüsse and Festanstellung say in one sentence what they do (the rest is plain). Every field of a block is 32 px high, the choices too (one Segmented each), every
   control label 13/500, and every number field has one width with its unit beside it; a
   number is formatted when its field is left. A single choice (Remote-Anteil, Verfügbar ab)
   is cleared by its option "Offen". An empty optional block says "Noch leer" quietly. A value
@@ -28,7 +31,7 @@
   import Notice from '$components/Notice.svelte';
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
-  import TextField from '$components/TextField.svelte';
+  import Tabs, { type TabOption } from '$components/Tabs.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { formKeys } from '$lib/input/input';
@@ -36,7 +39,14 @@
   import { MAX_YEARS, NUMBER_CRITERIA } from '$lib/ipc/types/profile';
   import { fade, rise, unfold } from '$lib/motion/transitions';
   import { primaryFirst } from '$lib/platform';
-  import { editor, type FieldError, type FieldProblem } from '$lib/state/profile.svelte';
+  import {
+    PROFILE_TABS,
+    editor,
+    profileTab,
+    type FieldError,
+    type FieldProblem,
+    type ProfileTab,
+  } from '$lib/state/profile.svelte';
   import { tick, untrack } from 'svelte';
   import AskedTerms from './AskedTerms.svelte';
   import AvailableField from './AvailableField.svelte';
@@ -55,6 +65,7 @@
     setList,
     setNumber,
     switchField,
+    tabOf,
     unitOf,
     type Control,
     type Line,
@@ -282,6 +293,30 @@
   const shown = (section: Section): boolean =>
     !(section.hidden?.(form) ?? false) || kept.includes(section.id) || unreadIn(fieldsIn(section));
 
+  /** A tab's dot: red while a value in it is to be put right, amber while the one block
+   *  the profile needs is empty in a thin or new profile. */
+  function markOf(tab: ProfileTab): 'danger' | 'warning' | null {
+    const sections = SECTIONS.filter((section) => section.tab === tab);
+    const fields = sections.flatMap(fieldsIn);
+    const wrong = fields.some(
+      (field) =>
+        errorOf(field) !== null ||
+        listError(field) !== null ||
+        problemsOf(field).length > 0 ||
+        (field === 'available' && editor.judged && editor.dateInvalid),
+    );
+    if (wrong) return 'danger';
+    return sections.some((section) => section.required && emptySection(section)) ? 'warning' : null;
+  }
+  const tabs = $derived<TabOption<ProfileTab>[]>(
+    PROFILE_TABS.map((tab) => ({
+      id: tab,
+      label: t.profile.tab[tab],
+      mark: markOf(tab),
+      testid: `profile-tab-${tab}`,
+    })),
+  );
+
   const actionFirst = primaryFirst();
   let root = $state<HTMLElement | null>(null);
 
@@ -289,7 +324,10 @@
   export function ready(): boolean {
     editor.judged = true;
     if (editor.dateInvalid) {
-      document.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus();
+      profileTab.value = tabOf('available') ?? profileTab.value;
+      void tick().then(() =>
+        document.querySelector<HTMLInputElement>('[data-testid="profile-date"]')?.focus(),
+      );
       return false;
     }
     const wrong = invalid[0] ?? null;
@@ -300,6 +338,8 @@
   /** The caret into the field a refused value belongs to (its marked control first), in
    *  the middle of the view; `false` when the field is not on the page. */
   export async function focusField(field: string): Promise<boolean> {
+    const tab = tabOf(field === 'focus' ? 'competences' : field);
+    if (tab !== null) profileTab.value = tab;
     await tick();
     const scope = root?.querySelector<HTMLElement>(`[data-field="${field}"]`);
     const target =
@@ -330,6 +370,11 @@
     if (ready()) onsave();
   }
 
+  /** Enter in a field of the form outside it (the name and role under the title). */
+  export function submit(): void {
+    save();
+  }
+
   /** A new form nothing was typed into: Esc goes back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
 
@@ -343,25 +388,44 @@
   onfocusin={keepClear}
   data-testid="profile-form"
 >
-  {#each SECTIONS as section (section.id)}
-    {#if shown(section)}
-      <div class="section" transition:unfold>
-        <div class="space">
-          <ProfileSection
-            heading={t.profile.section[section.id]}
-            hint={t.profile.sectionHint[section.id] ?? null}
-            empty={emptySection(section)}
-            required={section.required ?? false}
-            optional={section.optional ?? false}
-            testid="section-{section.id}"
-          >
-            {#each section.lines as line, index (index)}
-              {@render lineOf(line)}
-            {/each}
-          </ProfileSection>
-        </div>
-      </div>
-    {/if}
+  <div class="tabbar">
+    <Tabs
+      options={tabs}
+      value={profileTab.value}
+      label={t.profile.tabs}
+      testid="profile-tabs"
+      onchange={(tab) => (profileTab.value = tab)}
+    />
+  </div>
+  {#each PROFILE_TABS as tab (tab)}
+    <div
+      class="panel"
+      class:gone={tab !== profileTab.value}
+      role="tabpanel"
+      aria-label={t.profile.tab[tab]}
+      data-testid="profile-panel-{tab}"
+    >
+      {#each SECTIONS.filter((section) => section.tab === tab) as section, index (section.id)}
+        {#if shown(section)}
+          <div class="section" transition:unfold>
+            <div class="space">
+              <ProfileSection
+                heading={index === 0 ? null : t.profile.section[section.id]}
+                hint={t.profile.sectionHint[section.id] ?? null}
+                empty={index > 0 && emptySection(section)}
+                required={section.required ?? false}
+                optional={section.optional ?? false}
+                testid="section-{section.id}"
+              >
+                {#each section.lines as line, index (index)}
+                  {@render lineOf(line)}
+                {/each}
+              </ProfileSection>
+            </div>
+          </div>
+        {/if}
+      {/each}
+    </div>
   {/each}
 </div>
 
@@ -415,19 +479,7 @@
 {/snippet}
 
 {#snippet control(c: Control)}
-  {#if c.kind === 'text'}
-    <div data-field={c.key}>
-      <Field label={words[c.label]} for="{id}-{c.key}" error={errorOf(c.key)}>
-        <TextField
-          id="{id}-{c.key}"
-          bind:value={form[c.key]}
-          placeholder={words[c.placeholder]}
-          invalid={fieldError?.field === c.key}
-          testid={c.testid}
-        />
-      </Field>
-    </div>
-  {:else if c.kind === 'number' && !waits(c)}
+  {#if c.kind === 'number' && !waits(c)}
     {@const unit = unitOf(c)}
     {@const error = errorOf(c.key)}
     {@const advice = c.advice?.(form) ?? null}
@@ -578,9 +630,20 @@
   }
 
   .section,
-  .space {
+  .space,
+  .panel {
     display: flex;
     flex-direction: column;
+  }
+
+  /* The tabs on their own line at the left, 24 above the first card. */
+  .tabbar {
+    display: flex;
+    margin-bottom: var(--space-24);
+  }
+
+  .panel.gone {
+    display: none;
   }
 
   .section + .section > .space {
@@ -637,7 +700,8 @@
   }
 
   /* The save bar stays in view at the bottom of the scrolling view while there is a
-     change. */
+     change; under a short tab it still stands at the bottom (the page is at least as high
+     as the view), so a note that appears above never moves it under the pointer. */
   .bar {
     position: sticky;
     z-index: var(--z-sticky);
@@ -647,7 +711,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-12);
-    margin-top: var(--space-24);
+    margin-top: auto;
     padding: var(--space-12) 0;
     border-top: var(--border-width) solid var(--border);
     background-color: var(--surface);

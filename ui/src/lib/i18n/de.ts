@@ -1240,8 +1240,15 @@ export const de = {
       certificate: 'Zertifikat',
       degree: 'Abschluss',
     } satisfies Record<TermField, string>,
+    /** The tabs of the Profil, one shown at a time, and their accessible name. */
+    tabs: 'Bereiche des Profils',
+    tab: {
+      search: 'Suche',
+      skills: 'Können',
+      experience: 'Erfahrung',
+      exclusions: 'Ausschlüsse',
+    },
     section: {
-      person: 'Person',
       criteria: 'Bedingungen',
       competences: 'Kompetenzen',
       experience: 'Erfahrung und Qualifikation',
@@ -1253,13 +1260,10 @@ export const de = {
     sectionHint: {
       criteria: 'Was hier nicht passt, schließt einen Job aus.',
       permanent: 'Was hier nicht passt, schließt eine Festanstellung aus.',
-      wishes: 'Wünsche schließen nichts aus.',
     } as Partial<Record<string, string>>,
     field: {
       name: 'Name',
-      namePlaceholder: 'Vor- und Nachname',
       title: 'Rolle',
-      titlePlaceholder: 'z. B. Interim Manager',
       roles: 'Wunschrollen',
       rolesPlaceholder: 'z. B. Interim CFO',
       competence: 'Kompetenz',
@@ -1305,6 +1309,8 @@ export const de = {
       wishIndustries: 'Wunschbranchen',
       wishIndustriesPlaceholder: 'z. B. Energie',
       minDayRate: 'Mindesttagessatz',
+      /** Under the minimum beside the wished rate: the one of the two that excludes. */
+      minRateHint: 'Darunter fällt ein Job raus.',
       countries: 'Einsatzländer',
       countriesPlaceholder: 'Land suchen',
       /** Typed text that names no country the app knows. */

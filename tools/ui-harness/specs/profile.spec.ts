@@ -14,7 +14,7 @@ import type { Locator, Page } from '@playwright/test';
 import type { ProfileSave } from '../../../ui/src/lib/ipc/types';
 import { DEMO, demoScore } from './demo';
 import { calls, expect, expectShot, open, runFinished, settle, test } from './fixtures';
-import { failNext, MAC, row, T, tokenPx, tokenValue, WIN } from './helpers';
+import { failNext, MAC, row, showTab as show, T, tokenPx, tokenValue, WIN } from './helpers';
 
 /** The Profil view: `query` after the Windows platform (`&scenario=…`), or a whole query. */
 async function profile(page: Page, query = ''): Promise<void> {
@@ -49,9 +49,8 @@ const heading = (page: Page): Locator => page.getByTestId('profile-heading');
 const OTHERS = DEMO.profiles.slice(0, 2).map((other) => other.profile.form!.title);
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
 
-/** The sections of the form, in order. */
+/** The sections of the form, in order (on the tabs Suche, Können, Erfahrung, Ausschlüsse). */
 const SECTIONS = [
-  'section-person',
   'section-wishes',
   'section-competences',
   'section-experience',
@@ -132,15 +131,18 @@ async function boxes(
   selector: string,
 ): Promise<{ height: number; size: string; weight: string; text: string }[]> {
   return scope.locator(selector).evaluateAll((nodes) =>
-    nodes.map((node) => {
-      const style = getComputedStyle(node);
-      return {
-        height: Math.round(node.getBoundingClientRect().height),
-        size: style.fontSize,
-        weight: style.fontWeight,
-        text: (node.textContent ?? '').trim().slice(0, 40),
-      };
-    }),
+    // Only what is shown (the Profil shows one tab at a time).
+    nodes
+      .filter((node) => node.getClientRects().length > 0)
+      .map((node) => {
+        const style = getComputedStyle(node);
+        return {
+          height: Math.round(node.getBoundingClientRect().height),
+          size: style.fontSize,
+          weight: style.fontWeight,
+          text: (node.textContent ?? '').trim().slice(0, 40),
+        };
+      }),
   );
 }
 
@@ -267,7 +269,7 @@ test('a long name ends in an ellipsis; the chevron keeps the line of the title',
 
 test("the head starts on the edge of the sections; the title is the page's", async ({ page }) => {
   await profile(page);
-  const section = (await page.getByTestId('section-person').boundingBox())!;
+  const section = (await page.getByTestId('section-wishes').boundingBox())!;
   const left = (await heading(page).boundingBox())!;
   expect(Math.round(left.x)).toBe(Math.round(section.x));
   // The title is the page's: 26 px in the heading colour, like the reader's job title.
@@ -294,7 +296,7 @@ test('the page ends with room under the last section; the save bar never covers 
       };
     });
   };
-  await expect(last).toBeVisible();
+  await show(page, last);
   // The end of the page never sits on the window's edge (--page-end).
   expect(await end()).toEqual({ window: 96, bar: null });
   // With a change, the last section still scrolls fully above the save bar, with room.
@@ -303,12 +305,16 @@ test('the page ends with room under the last section; the save bar never covers 
   await expect.poll(async () => (await end()).bar).toBeGreaterThanOrEqual(32);
 });
 
-test('the head and the first section keep the rhythm of all sections', async ({ page }) => {
+test('the head, the tabs and the first card keep their rhythm', async ({ page }) => {
   await profile(page);
-  const head = (await page.getByTestId('profile-head').boundingBox())!;
-  const person = (await page.getByTestId('section-person').boundingBox())!;
-  const next = (await page.getByTestId('section-wishes').boundingBox())!;
-  expect(person.y - (head.y + head.height)).toBe(next.y - (person.y + person.height));
+  const box = async (id: string): Promise<{ y: number; height: number }> =>
+    (await page.getByTestId(id).boundingBox())!;
+  const head = await box('profile-head');
+  const tabs = await box('profile-tabs');
+  const first = await box('section-wishes');
+  // 32 under the head like every block of the page, the first card 24 under the tabs.
+  expect(Math.round(tabs.y - (head.y + head.height))).toBe(32);
+  expect(Math.round(first.y - (tabs.y + tabs.height))).toBe(24);
 });
 
 test('"n Werte prüfen" goes to the first value that does not read, in the order of the form', async ({
@@ -328,7 +334,7 @@ test('"n Werte prüfen" goes to the first value that does not read, in the order
 
 // ------------------------------------------------------------------ the form as the table
 
-test('the form in its order; Bedingungen, Festanstellung and Wünsche say what they do', async ({
+test('the form on four tabs, one at a time; Ausschlüsse and Festanstellung say what they do', async ({
   page,
 }) => {
   await profile(page);
@@ -336,43 +342,37 @@ test('the form in its order; Bedingungen, Festanstellung and Wünsche say what t
     .locator('[data-testid="profile-form"] section[data-testid^="section-"]')
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
   expect(order).toEqual(SECTIONS);
-  for (const id of [
-    'person',
-    'competences',
-    'experience',
-    'criteria',
-    'permanent',
-    'wishes',
-  ] as const) {
-    const section = page.getByTestId(`section-${id}`);
-    await expect(section.getByRole('heading', { level: 2 })).toHaveText(T.profile.section[id]);
-    const hint = T.profile.sectionHint[id];
-    if (hint === undefined) {
-      await expect(section.locator(':scope > .hint')).toHaveCount(0);
-      continue;
-    }
-    await expect(section.locator(':scope > .hint')).toHaveText(hint);
-    const gap = await section.evaluate((node) => {
-      const text = node.querySelector(':scope > .hint')!.getBoundingClientRect();
-      const heading = node.querySelector('h2')!.parentElement!.getBoundingClientRect();
-      return Math.round(text.top - heading.bottom);
-    });
-    expect(gap, id).toBe(4);
+  const tabs = page.getByTestId('profile-tabs').getByRole('tab');
+  await expect(tabs).toHaveText(Object.values(T.profile.tab));
+  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+  // One tab shows: Suche first, the others wait.
+  await expect(page.getByTestId('section-wishes')).toBeVisible();
+  await expect(page.getByTestId('section-competences')).toBeHidden();
+  // The first section of a tab goes without a heading (the tab names it); Festanstellung
+  // after Bedingungen keeps its own, with its sentence 4 px under it.
+  for (const id of ['wishes', 'competences', 'experience', 'criteria'] as const) {
+    await expect(page.getByTestId(`section-${id}`).locator('h2')).toHaveCount(0);
   }
-  // Festanstellung is a section like the others, its heading like theirs.
-  const heading = (id: string): Promise<string> =>
-    page
-      .getByTestId(`section-${id}`)
-      .locator('h2')
-      .evaluate((node) => getComputedStyle(node).font);
-  expect(await heading('permanent')).toBe(await heading('criteria'));
+  await show(page, page.getByTestId('section-criteria'));
+  const criteria = page.getByTestId('section-criteria');
+  await expect(criteria.locator(':scope > .hint')).toHaveText(T.profile.sectionHint.criteria!);
+  const permanent = page.getByTestId('section-permanent');
+  await expect(permanent.getByRole('heading', { level: 2 })).toHaveText(
+    T.profile.section.permanent,
+  );
+  await expect(permanent.locator(':scope > .hint')).toHaveText(T.profile.sectionHint.permanent!);
+  const gap = await permanent.evaluate((node) => {
+    const text = node.querySelector(':scope > .hint')!.getBoundingClientRect();
+    const heading = node.querySelector('h2')!.parentElement!.getBoundingClientRect();
+    return Math.round(text.top - heading.bottom);
+  });
+  expect(gap).toBe(4);
   // No "So liest die App dein Profil".
   await expect(page.getByTestId('section-understood')).toHaveCount(0);
   await expect(page.getByTestId('profile-form')).not.toContainText('So liest die App');
-  // The languages are a qualification (the experience section); the start date is a row
-  // of the conditions.
+  // The languages are a qualification (Erfahrung); the start date stands with the search.
   await expect(page.getByTestId('section-experience').getByTestId('languages')).toHaveCount(1);
-  await expect(page.getByTestId('section-criteria').getByTestId('profile-available')).toBeVisible();
+  await expect(page.getByTestId('section-wishes').getByTestId('profile-available')).toHaveCount(1);
 });
 
 test('the stored profile fills every field', async ({ page }) => {
@@ -412,13 +412,13 @@ test('the stored profile fills every field', async ({ page }) => {
     'Werkstudent',
     'Praktikum',
   ]);
-  // The days a week and the duration are wishes (checked, never an exclusion), before the
-  // Bedingungen; Verfügbar ab, the words and the countries in the Bedingungen.
+  // On the tab Suche: the roles, the rates, the regions beside the countries, the start,
+  // then the days a week and the duration (checked, never an exclusion).
   const y = async (id: string): Promise<number> => (await page.getByTestId(id).boundingBox())!.y;
-  expect(await y('profile-workload-min')).toBeGreaterThan(await y('profile-roles'));
-  expect(await y('profile-available')).toBeGreaterThan(await y('profile-workload-min'));
-  expect(await y('profile-exclusion-words')).toBeGreaterThan(await y('profile-available'));
-  expect(await y('profile-countries')).toBeGreaterThan(await y('profile-exclusion-words'));
+  expect(await y('profile-min-rate')).toBe(await y('profile-wish-rate'));
+  expect(await y('profile-countries')).toBeGreaterThan(await y('profile-roles'));
+  expect(await y('profile-available')).toBeGreaterThan(await y('profile-countries'));
+  expect(await y('profile-workload-min')).toBeGreaterThan(await y('profile-available'));
   expect(await y('profile-workload-max')).toBe(await y('profile-workload-min'));
   // The demo reads cleanly: its remote share of permanent roles is a number, nothing to check.
   await expect(page.getByTestId('profile-remote-min')).toHaveValue('60');
@@ -447,7 +447,7 @@ test('one name per field: the labels, the few hints, units and neutral examples'
     'Mindestjahresgehalt',
     'Mindest-Remote-Anteil',
     T.profile.sectionHint.criteria!,
-    T.profile.sectionHint.wishes!,
+    T.profile.field.minRateHint,
     T.profile.field.focusHint,
   ]) {
     await expect(form).toContainText(text);
@@ -486,11 +486,12 @@ test('one name per field: the labels, the few hints, units and neutral examples'
   }
   await expect(form).not.toContainText('(€)');
   // The column heads say it themselves: no tooltip on them.
-  const head = page.getByTestId('competences').locator('.head');
+  const head = (await show(page, page.getByTestId('competences'))).locator('.head');
   await head.getByText('Synonyme').hover();
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   // The workload's two days are named for a screen reader, the unit beside the second.
+  await page.getByTestId('profile-tab-search').click();
   await expect(page.getByTestId('profile-workload-min')).toHaveAccessibleName('Auslastung von');
   await expect(page.getByTestId('profile-workload-max')).toHaveAccessibleName('Auslastung bis');
   await expect(page.getByTestId('profile-workload')).toContainText('Tage pro Woche');
@@ -515,8 +516,8 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   const placeholder = (id: string, input = false): Locator =>
     input ? page.getByTestId(id).locator('input') : page.getByTestId(id);
   const expected: [string, boolean, string][] = [
-    ['profile-name-field', false, 'Vor- und Nachname'],
-    ['profile-title', false, 'z. B. Interim Manager'],
+    ['profile-name-field', false, 'Name'],
+    ['profile-title', false, 'Rolle'],
     ['competence-name', false, 'z. B. Projektleitung'],
     ['profile-keywords', true, 'z. B. Transformation'],
     ['profile-tools', true, 'z. B. Scrum'],
@@ -531,6 +532,7 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   }
   // No field repeats the name of its column.
   const aliases = page.getByTestId('competence-aliases').first().locator('input');
+  await show(page, aliases);
   await expect(aliases).not.toHaveAttribute('placeholder', /./);
   // Narrow, the synonyms stand under the competence without their column head: their field
   // names itself.
@@ -540,10 +542,8 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   await expect(aliases).not.toHaveAttribute('placeholder', /./);
   await profile(page, '&scenario=no-profile&lang=en');
   await page.getByTestId('profile-create').click();
-  await expect(page.getByTestId('profile-name-field')).toHaveAttribute(
-    'placeholder',
-    'First and last name',
-  );
+  await expect(page.getByTestId('profile-name-field')).toHaveAttribute('placeholder', 'Name');
+  await expect(page.getByTestId('profile-title')).toHaveAttribute('placeholder', 'Role');
 });
 
 test('fields, chip fields and choices one height (as in Einstellungen), labels small and medium', async ({
@@ -556,27 +556,38 @@ test('fields, chip fields and choices one height (as in Einstellungen), labels s
     .click();
   await page.getByTestId('profile-title').fill('Interim CFO');
   const form = page.getByTestId('profile-form');
-  const fields = await boxes(form, '.field.text');
+  /** What a selector finds on every tab, each shown in turn. */
+  const everywhere = async (selector: string): Promise<Awaited<ReturnType<typeof boxes>>> => {
+    const found: Awaited<ReturnType<typeof boxes>> = [];
+    for (const tab of Object.keys(T.profile.tab)) {
+      await page.getByTestId(`profile-tab-${tab}`).click();
+      await expect(page.getByTestId(`profile-panel-${tab}`)).toBeVisible();
+      found.push(...(await boxes(form, selector)));
+    }
+    await page.getByTestId('profile-tab-search').click();
+    return found;
+  };
+  const fields = await everywhere('.field.text');
   expect(fields.length).toBeGreaterThan(8);
   for (const box of fields)
     expect(box.height, box.text).toBe(await tokenPx(page, '--control-field'));
   // Chip fields of one line (every one of the demo profile), the synonyms included.
-  const entries = await boxes(form, '.chip-input > .field.entry');
+  const entries = await everywhere('.chip-input > .field.entry');
   expect(entries.length).toBeGreaterThan(8);
   for (const entry of entries)
     expect(entry.height, entry.text).toBe(await tokenPx(page, '--control-field'));
   // One choice component for every choice: the segments, as high as a field like every
   // choice of the app (Einstellungen too), with the 11.5 px text of a small button.
-  const groups = await boxes(form, '[role="radiogroup"]');
+  const groups = await everywhere('[role="radiogroup"]');
   expect(groups.length).toBe(2);
   for (const group of groups)
     expect(group.height, group.text).toBe(await tokenPx(page, '--control-field'));
-  const choices = await boxes(form, '[role="radiogroup"] [role="radio"]');
+  const choices = await everywhere('[role="radiogroup"] [role="radio"]');
   for (const choice of choices)
     expect(choice.size, choice.text).toBe(`${await tokenPx(page, '--font-sm')}px`);
   await expect(form.locator('.segmented')).toHaveCount(2);
   // Every control label of a field and a choice (the switches are rows like in Einstellungen).
-  const labels = [...(await boxes(form, 'label')), ...(await boxes(form, '.block > .label'))];
+  const labels = [...(await everywhere('label')), ...(await everywhere('.block > .label'))];
   expect(labels.length).toBeGreaterThan(15);
   for (const label of labels) {
     expect(label.size, label.text).toBe(`${await tokenPx(page, '--font-sm')}px`);
@@ -603,19 +614,19 @@ test('fields, chip fields and choices one height (as in Einstellungen), labels s
   expect(middle(day)).toBe(middle(choice));
   expect(button!.x + button!.width).toBeLessThan(day!.x + day!.width);
   expect(button!.x).toBeGreaterThan(day!.x + day!.width / 2);
-  const widths = await Promise.all(
-    [
-      'profile-years',
-      'profile-wish-rate',
-      'profile-min-rate',
-      'profile-min-salary',
-      'profile-remote-min',
-      'profile-min-months',
-      'profile-date',
-    ].map(async (id) =>
-      Math.round((await page.getByTestId(id).locator('xpath=..').boundingBox())!.width),
-    ),
-  );
+  const widths: number[] = [];
+  for (const id of [
+    'profile-wish-rate',
+    'profile-min-rate',
+    'profile-min-months',
+    'profile-date',
+    'profile-years',
+    'profile-min-salary',
+    'profile-remote-min',
+  ]) {
+    const number = await show(page, page.getByTestId(id));
+    widths.push(Math.round((await number.locator('xpath=..').boundingBox())!.width));
+  }
   expect(new Set(widths).size, widths.join(' ')).toBe(1);
 });
 
@@ -677,9 +688,10 @@ test('edit and discard: the form goes back to what is stored, the bar leaves', a
 test('edit and save: both forms go to the backend, the change is confirmed', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-min-rate').fill('1.250');
-  const keywords = page.getByTestId('profile-keywords').locator('input');
+  const keywords = (await show(page, page.getByTestId('profile-keywords'))).locator('input');
   await keywords.fill('Bilanzierung');
   await keywords.press('Enter');
+  await page.getByTestId('profile-tab-search').click();
   await page
     .getByTestId('profile-available')
     .getByRole('radio', { name: 'Datum', exact: true })
@@ -689,7 +701,7 @@ test('edit and save: both forms go to the backend, the change is confirmed', asy
   await page.getByTestId('profile-workload-min').fill('2');
   await page.getByTestId('profile-workload-max').fill('');
   await page.getByTestId('profile-min-months').fill('12');
-  const words = page.getByTestId('profile-exclusion-words');
+  const words = await show(page, page.getByTestId('profile-exclusion-words'));
   await words.getByRole('button', { name: 'Praktikum entfernen' }).click();
   await words.locator('input').fill('Trainee');
   await words.locator('input').press('Enter');
@@ -744,7 +756,7 @@ test('the toast of a save says what the rescore changed, only the parts that did
   await expect(savedToast(page).getByTestId('toast-text')).toHaveText(T.profile.saved);
   // A first profile scores the jobs of the Eingang: the ones now high and the excluded ones.
   await create(page);
-  await page.getByTestId('competence-name').fill('Controlling');
+  await (await show(page, page.getByTestId('competence-name'))).fill('Controlling');
   await save(page).click();
   // Once the save reached the stub, the jobs carry their scores.
   await lastSave(page);
@@ -788,6 +800,7 @@ test('a focused field is never hidden under the save bar', async ({ page }) => {
   await profile(page);
   await page.getByTestId('profile-title').fill('Interim CFO');
   const saveBar = bar(page);
+  await show(page, page.getByTestId('competence-add'));
   for (const id of ['competence-add', 'profile-strengths', 'profile-keywords']) {
     const target =
       id === 'competence-add' ? page.getByTestId(id) : page.getByTestId(id).locator('input');
@@ -889,12 +902,14 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
   ];
   for (const [id, value] of cases) {
     const before = await saves(page);
+    if (id === 'profile-years') await show(page, page.getByTestId(id));
     await page.getByTestId(id).fill(value);
     await page.getByTestId(id).press('Enter');
     await expect.poll(() => saves(page), id).toBe(before + 1);
     await expect(bar(page)).toHaveCount(0);
   }
   // The day: Enter saves once it reads, and judges it when it does not.
+  await page.getByTestId('profile-tab-search').click();
   await page
     .getByTestId('profile-available')
     .getByRole('radio', { name: 'Datum', exact: true })
@@ -908,7 +923,7 @@ test('Enter in a field saves the form; lists and chips keep their Enter', async 
   await date.press('Enter');
   await expect.poll(() => saves(page)).toBe(5);
   // A chip field adds what was typed; a row goes to the next row.
-  const tools = page.getByTestId('profile-tools').locator('input');
+  const tools = (await show(page, page.getByTestId('profile-tools'))).locator('input');
   await tools.fill('Miro');
   await tools.press('Enter');
   await expect(chips(page.getByTestId('profile-tools')).last()).toHaveText('Miro');
@@ -925,7 +940,7 @@ test('Enter goes through the rows and never saves; on an empty last row it moves
   page,
 }) => {
   await profile(page);
-  const names = page.getByTestId('competence-name');
+  const names = await show(page, page.getByTestId('competence-name'));
   await names.nth(0).press('Enter');
   await expect(names.nth(1)).toBeFocused();
   // On the last row: Enter adds a row and puts the caret into it.
@@ -940,9 +955,9 @@ test('Enter goes through the rows and never saves; on an empty last row it moves
   // On an empty last row: the row goes and the caret moves on to the next field.
   await names.nth(7).press('Enter');
   await expect(names).toHaveCount(7);
-  await expect(page.getByTestId('profile-strengths').locator('input')).toBeFocused();
+  await expect(page.getByTestId('profile-tools').locator('input')).toBeFocused();
   // Languages behave the same.
-  const languages = page.getByTestId('language-name');
+  const languages = await show(page, page.getByTestId('language-name'));
   await languages.nth(1).press('Enter');
   await expect(languages).toHaveCount(3);
   await expect(languages.nth(2)).toBeFocused();
@@ -997,7 +1012,7 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   );
   // The level of a language: a menu of the levels, no "Offen" (without one the engine
   // assumes B2, so a row without one shows B2).
-  const row = page.getByTestId('language-row').first();
+  const row = (await show(page, page.getByTestId('language-row'))).first();
   const level = row.getByTestId('language-level');
   await expect(level).toHaveAttribute('aria-haspopup', 'menu');
   // Name, the level, the x: three stops.
@@ -1043,7 +1058,7 @@ test('removing a row: a click drops the focus, the keyboard goes on to the next 
   page,
 }) => {
   await create(page);
-  const names = page.getByTestId('competence-name');
+  const names = await show(page, page.getByTestId('competence-name'));
   const remove = page.getByTestId('competence-remove');
   for (const [at, name] of ['Controlling', 'Treasury', 'Reporting', 'Tax'].entries()) {
     if (at > 0) await page.getByTestId('competence-add').click();
@@ -1067,7 +1082,7 @@ test('removing a row: a click drops the focus, the keyboard goes on to the next 
   await expect(names).toHaveCount(0);
   await expect(page.getByTestId('competence-add')).toBeFocused();
   // The languages alike.
-  const languages = page.getByTestId('language-name');
+  const languages = await show(page, page.getByTestId('language-name'));
   await languages.first().fill('Englisch');
   await page.getByTestId('language-add').click();
   await languages.nth(1).fill('Deutsch');
@@ -1084,7 +1099,7 @@ test('removing a chip: a click ends the caret, Backspace and Delete go on to the
   page,
 }) => {
   await profile(page);
-  const tools = page.getByTestId('profile-tools');
+  const tools = await show(page, page.getByTestId('profile-tools'));
   const input = tools.locator('input');
   const x = (name: string): Locator => tools.getByRole('button', { name: T.chips.remove(name) });
   await expect(chips(tools)).toHaveText(['SAP S/4HANA', 'LucaNet', 'Power BI']);
@@ -1126,7 +1141,7 @@ test('removing a chip: a click ends the caret, Backspace and Delete go on to the
 
 test('the one-line synonyms stay open while the keyboard removes their chips', async ({ page }) => {
   await profile(page);
-  const aliases = page.getByTestId('competence-aliases').nth(1);
+  const aliases = (await show(page, page.getByTestId('competence-aliases'))).nth(1);
   const input = aliases.locator('input');
   await input.fill('Konzerncontrolling, Management Reporting, Unternehmensplanung, Forecasting');
   await input.press('Enter');
@@ -1327,7 +1342,7 @@ test('a value too large is said at once, stays with its error and holds the save
   await rate.fill('1200');
   await expect(rate).not.toHaveAttribute('aria-invalid', 'true');
   // A competence: its row is marked (counted without the empty rows).
-  await page.getByTestId('competence-add').click();
+  await (await show(page, page.getByTestId('competence-add'))).click();
   await page.getByTestId('competence-years').nth(3).fill('80');
   await expect(page.getByTestId('competence-error')).toHaveText('Höchstens 70.');
   const names = page.getByTestId('competence-name');
@@ -1452,28 +1467,39 @@ test('switches: only the switch switches, its text names and describes it; each 
   page,
 }) => {
   await profile(page);
-  const criteria = page.getByTestId('section-criteria');
   const cases = [
-    { id: 'profile-remote-outside', label: 'Remote-Jobs im Ausland ausschließen', hint: null },
-    { id: 'profile-no-anue', label: 'Zeitarbeit ausschließen', hint: null },
-    { id: 'profile-no-permanent', label: 'Festanstellung ausschließen', hint: null },
+    {
+      section: 'wishes',
+      id: 'profile-remote-outside',
+      label: 'Remote-Jobs im Ausland ausschließen',
+    },
+    { section: 'criteria', id: 'profile-no-anue', label: 'Zeitarbeit ausschließen' },
+    { section: 'criteria', id: 'profile-no-permanent', label: 'Festanstellung ausschließen' },
   ];
   // Every row but the last has its hairline; the list has one above and one below.
-  const lines = await criteria
-    .locator('[data-setting-row]')
-    .evaluateAll((rows) => rows.map((row) => getComputedStyle(row).borderBottomWidth));
-  expect(lines).toEqual(['1px', '1px', '0px']);
-  for (const { id, label } of cases) {
+  const lines = (id: string): Promise<string[]> =>
+    page
+      .getByTestId(`section-${id}`)
+      .locator('[data-setting-row]')
+      .evaluateAll((rows) => rows.map((row) => getComputedStyle(row).borderBottomWidth));
+  expect(await lines('wishes')).toEqual(['0px']);
+  expect(await lines('criteria')).toEqual(['1px', '0px']);
+  for (const { section, id, label } of cases) {
+    const scope = await show(page, page.getByTestId(`section-${section}`));
     const toggle = page.getByTestId(id);
     const before = await toggle.getAttribute('aria-checked');
-    await criteria.getByText(label, { exact: true }).click();
+    await scope.getByText(label, { exact: true }).click();
     await expect(toggle, `${id} from its text`).toHaveAttribute('aria-checked', before!);
     await expect(toggle).toHaveAccessibleName(label);
     await toggle.click();
     await expect(toggle, `${id} itself`).not.toHaveAttribute('aria-checked', before!);
   }
   // No text of the form is a label of a switch.
-  const ids = await criteria.getByRole('switch').evaluateAll((nodes) => nodes.map((n) => n.id));
+  const ids = await page
+    .getByTestId('profile-form')
+    .getByRole('switch', { includeHidden: true })
+    .evaluateAll((nodes) => nodes.map((n) => n.id));
+  expect(ids).toHaveLength(3);
   for (const id of ids) await expect(page.locator(`label[for="${id}"]`)).toHaveCount(0);
 });
 
@@ -1484,7 +1510,7 @@ test('the remote switch excludes, sits under the countries and needs one', async
     (await node.boundingBox())!;
   const list = await box(countries(page));
   expect((await box(toggle)).y).toBeGreaterThan(list.y + list.height);
-  expect((await box(toggle)).y).toBeLessThan((await box(page.getByTestId('profile-no-anue'))).y);
+  expect((await box(toggle)).y).toBeLessThan((await box(page.getByTestId('profile-remote'))).y);
   await expect(field(page, 'remoteOutside')).not.toContainText('Ausgeschaltet');
   // The file allows them: the switch that excludes is off; on, the save says "not allowed".
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
@@ -1504,7 +1530,7 @@ test('the remote switch excludes, sits under the countries and needs one', async
 
 test('excluding permanent roles folds their block away and back', async ({ page }) => {
   await profile(page);
-  await page.getByTestId('profile-no-permanent').click();
+  await (await show(page, page.getByTestId('profile-no-permanent'))).click();
   await expect(page.getByTestId('section-permanent')).toHaveCount(0);
   await page.getByTestId('profile-no-permanent').click();
   await expect(page.getByTestId('section-permanent')).toBeVisible();
@@ -1524,7 +1550,7 @@ test('Festanstellung: places first, the remote share comes with them; excluded, 
   page,
 }) => {
   await profile(page, '&scenario=profile-remote-unread');
-  const block = page.getByTestId('section-permanent');
+  const block = await show(page, page.getByTestId('section-permanent'));
   const y = async (id: string): Promise<number> => (await page.getByTestId(id).boundingBox())!.y;
   expect(await y('profile-places')).toBeLessThan(await y('profile-min-salary'));
   expect(await y('profile-min-salary')).toBe(await y('profile-remote-min'));
@@ -1678,6 +1704,7 @@ test('at most five Schwerpunkte: the star says what a click does, a sixth waits'
   page,
 }) => {
   await profile(page);
+  await show(page, page.getByTestId('competence-star'));
   const stars = page.getByTestId('competence-star');
   // The star, a glyph made to be filled: outlined, filled while marked.
   await expect(stars.nth(1).locator('[data-icon]')).toHaveAttribute('data-icon', 'star');
@@ -1730,6 +1757,7 @@ test('chip field: Enter adds, a pasted list splits, x and Backspace remove, Esc 
   page,
 }) => {
   await profile(page);
+  await show(page, page.getByTestId('profile-tools'));
   const tools = page.getByTestId('profile-tools');
   const input = tools.locator('input');
   await input.fill('Excel');
@@ -1772,6 +1800,7 @@ test('sentences keep their commas; a double click takes a chip back to edit it',
   page,
 }) => {
   await profile(page);
+  await show(page, page.getByTestId('profile-strengths'));
   const strengths = page.getByTestId('profile-strengths');
   const input = strengths.locator('input');
   await input.fill('Verbindet Zahlen, Menschen und Wandel');
@@ -1786,14 +1815,14 @@ test('sentences keep their commas; a double click takes a chip back to edit it',
   await expect(chips(strengths)).toHaveCount(4);
   await expect(chips(strengths).nth(2)).toHaveText('Führt Teams, auch remote');
   // Degrees and certificates keep their commas too.
-  const degrees = page.getByTestId('profile-degrees').locator('input');
+  const degrees = (await show(page, page.getByTestId('profile-degrees'))).locator('input');
   await degrees.fill('Master of Science, Wirtschaftsinformatik');
   await degrees.press('Enter');
   await expect(chips(page.getByTestId('profile-degrees')).last()).toHaveText(
     'Master of Science, Wirtschaftsinformatik',
   );
   // A double click on a chip puts its text back into the field, the rest stays.
-  const tools = page.getByTestId('profile-tools');
+  const tools = await show(page, page.getByTestId('profile-tools'));
   await chips(tools).nth(1).dblclick();
   await expect(tools.locator('input')).toBeFocused();
   await expect(tools.locator('input')).toHaveValue('LucaNet');
@@ -1805,6 +1834,7 @@ test('sentences keep their commas; a double click takes a chip back to edit it',
 
 test('a long competence reads whole: its column is wider than the synonyms', async ({ page }) => {
   await profile(page);
+  await show(page, page.getByTestId('competence-row'));
   const row = page.getByTestId('competence-row').nth(2);
   const name = row.getByTestId('competence-name');
   await expect(name).toHaveValue('Konzernrechnungslegung nach IFRS');
@@ -1820,13 +1850,14 @@ test('a long competence reads whole: its column is wider than the synonyms', asy
 
 test('the synonyms keep one line, "+n" names the rest, also narrow', async ({ page }) => {
   await profile(page);
+  await show(page, page.getByTestId('competence-aliases'));
   const aliases = page.getByTestId('competence-aliases').nth(1);
   const input = aliases.locator('input');
   await input.fill('Konzerncontrolling, Management Reporting, Unternehmensplanung, Forecasting');
   await input.press('Enter');
   // With the focus every chip shows (to remove or edit one).
   await expect(aliases.locator('.chip:not(.more):not(.spare)')).toHaveCount(6);
-  await page.getByTestId('section-competences').getByRole('heading').click();
+  await heading(page).click();
   await expect(aliases).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   const more = aliases.getByTestId('competence-aliases-more');
   await expect(more).toHaveText(/^\+\d$/);
@@ -1845,6 +1876,7 @@ test('the language rows line up: the level like a select, one width; the x needs
 }) => {
   await profile(page);
   // Their columns are named over the rows like the competences'.
+  await show(page, page.getByTestId('languages'));
   const heads = page.getByTestId('languages').locator('.head > span');
   await expect(heads).toHaveText([T.profile.field.language, T.profile.field.level, '']);
   const [head, first] = await Promise.all([
@@ -1887,13 +1919,14 @@ test('the language rows line up: the level like a select, one width; the x needs
   await remove.hover();
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
-  await page.getByTestId('competence-remove').first().hover();
+  await (await show(page, page.getByTestId('competence-remove'))).first().hover();
   await page.waitForTimeout(700);
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });
 
 test('the language field suggests common languages in both names', async ({ page }) => {
   await profile(page);
+  await show(page, page.getByTestId('language-add'));
   await page.getByTestId('language-add').click();
   const name = page.getByTestId('language-name').last();
   await name.fill('fran');
@@ -1924,7 +1957,7 @@ test('language names follow the UI language; the profile keeps them in German', 
     await profile(page, query);
     // The demo profile keeps "Deutsch" and "Englisch": the rows name them in the UI's words.
     expect(await values()).toEqual(shown);
-    await page.getByTestId('language-add').click();
+    await (await show(page, page.getByTestId('language-add'))).click();
     const name = page.getByTestId('language-name').last();
     const suggestions = page.getByTestId('language-name-options').last();
     // Typing towards a language suggests it in the UI's words, found by either name.
@@ -1969,10 +2002,12 @@ test('no profile: one sentence and the three ways in, Neues Profil first', async
 
 test('a new form starts with one row each', async ({ page }) => {
   await create(page);
-  await expect(page.getByTestId('profile-name-field')).toBeFocused();
+  // It opens on Suche with the caret in the wished roles.
+  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
   // Nothing typed yet: nothing to save.
   await expect(bar(page)).toHaveCount(0);
   // One empty row each: the table and the star show at once.
+  await show(page, page.getByTestId('competence-name'));
   await expect(page.getByTestId('competence-name')).toHaveCount(1);
   await expect(page.getByTestId('language-name')).toHaveCount(1);
   for (const id of ['competence-add', 'language-add']) {
@@ -1996,6 +2031,7 @@ test('a competence suggests the words of the engine; nothing replaces what was t
   page,
 }) => {
   await create(page);
+  await show(page, page.getByTestId('competence-name'));
   const name = page.getByTestId('competence-name');
   const list = page.getByTestId('competence-name-suggestions');
   const items = list.getByRole('option');
@@ -2044,6 +2080,7 @@ test('synonyms, tools and industries suggest their words as chips; typed text st
   page,
 }) => {
   await create(page);
+  await show(page, page.getByTestId('competence-name'));
   await page.getByTestId('competence-name').fill('Controlling');
   // A synonym: a click takes the term as a chip.
   const aliases = page.getByTestId('competence-aliases');
@@ -2067,7 +2104,7 @@ test('synonyms, tools and industries suggest their words as chips; typed text st
   await tools.locator('input').press('Enter');
   await expect(chips(tools)).toHaveText(['SAP S/4HANA']);
   // The industries suggest industries, not skills.
-  const industries = page.getByTestId('profile-industries');
+  const industries = await show(page, page.getByTestId('profile-industries'));
   await industries.locator('input').fill('Maschin');
   const industryList = page.getByTestId('profile-industries-suggestions');
   await expect(industryList.getByRole('option')).toContainText(['Maschinenbau']);
@@ -2090,17 +2127,18 @@ test('create and save: an empty row is not saved; the level comes from its menu'
   await create(page);
   await page.getByTestId('profile-name-field').fill('Erika Beispiel');
   await expect(bar(page)).toBeVisible();
-  // The one block the profile needs says it is still empty, in amber.
-  const competences = page.getByTestId('section-competences');
-  await expect(competences.locator('.badge')).toHaveText(T.profile.empty);
-  await expect(competences.locator('.badge')).toHaveClass(/warning/);
+  // The tab of the one block the profile needs carries an amber dot while it is empty.
+  const skills = page.getByTestId('profile-tab-skills');
+  await expect(skills.locator('.mark.warning')).toHaveCount(1);
+  await expect(page.getByTestId('profile-tabs').locator('.mark')).toHaveCount(1);
+  await show(page, page.getByTestId('section-competences'));
   await page.getByTestId('competence-name').fill('Controlling');
   await page.getByTestId('competence-years').fill('18');
-  await expect(competences.locator('.badge')).toHaveCount(0);
+  await expect(skills.locator('.mark')).toHaveCount(0);
   // An added row takes the caret; an empty one is not saved.
   await page.getByTestId('competence-add').click();
   await expect(page.getByTestId('competence-name').last()).toBeFocused();
-  await page.getByTestId('language-name').last().fill('Englisch');
+  await (await show(page, page.getByTestId('language-name'))).last().fill('Englisch');
   await page.getByTestId('language-row').last().getByTestId('language-level').click();
   await page.getByTestId('menu-item-c1').click();
   await save(page).click();
@@ -2305,7 +2343,7 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await page.getByTestId('menu-item-new').click();
   await expect(heading(page)).toHaveText(T.profile.newProfile);
   await expect(names).toHaveValue('');
-  await expect(names).toBeFocused();
+  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
   await names.fill('Erika Neu');
   await discard(page).click();
   await expect(heading(page)).toHaveText('Finanzen Süd');
@@ -2433,7 +2471,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await expect(page.getByTestId('profile-empty')).toBeVisible();
   await expect(page.getByTestId('profile-create')).toBeFocused();
   await page.getByTestId('profile-create').click();
-  await expect(page.getByTestId('profile-name-field')).toBeFocused();
+  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
   await page.getByTestId('profile-name-field').fill('Erika');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-form')).toBeVisible();
@@ -2492,19 +2530,19 @@ test('a clipboard that refuses the prompt says so in a toast', async ({ page }) 
 
 // ------------------------------------------------------------------ values that do not read
 
-test('a thin profile marks its empty sections, and they follow the form', async ({ page }) => {
+test('a thin profile: no badge in the head, a tab says what it needs, a titled block its emptiness', async ({
+  page,
+}) => {
   await profile(page, '&scenario=profile-thin');
-  // No quality badge in the head: the empty sections say it.
+  // No quality badge in the head and no sentence about it.
   await expect(page.getByTestId('profile-quality')).toHaveCount(0);
   await expect(page.getByText('Das Profil nennt nur wenige Kompetenzen.')).toHaveCount(0);
-  const experience = page.getByTestId('section-experience');
-  await expect(experience).toContainText('Noch leer');
-  // An empty optional block says so quietly (neutral, not amber).
-  await expect(experience.locator('.badge')).toHaveClass(/neutral/);
-  await expect(page.getByTestId('section-competences')).not.toContainText('Noch leer');
-  // Filled while typing, the section is no longer empty.
-  await page.getByTestId('profile-years').fill('12');
-  await expect(experience).not.toContainText('Noch leer');
+  // The first block of a tab has no heading and no "Noch leer" (the tab names it); the
+  // thin profile names competences, so no tab waits for its first value.
+  for (const id of ['wishes', 'competences', 'experience', 'criteria']) {
+    await expect(page.getByTestId(`section-${id}`)).not.toContainText(T.profile.empty);
+  }
+  await expect(page.getByTestId('profile-tabs').locator('.mark')).toHaveCount(0);
 });
 
 test('every value that does not read is said at its field and can be removed', async ({ page }) => {
@@ -2575,9 +2613,9 @@ test('every value that does not read is said at its field and can be removed', a
   const removes = form.getByTestId('value-remove');
   await expect(removes).toHaveCount(17);
   // A Schwerpunkt and a target role that do not count go from their list at once.
-  await page.getByTestId('focus-unread').getByTestId('value-remove').click();
+  await (await show(page, page.getByTestId('focus-unread'))).getByTestId('value-remove').click();
   await expect.poll(() => marked(page)).toEqual(['Controlling']);
-  await page.getByTestId('roles-unread').getByTestId('value-remove').click();
+  await (await show(page, page.getByTestId('roles-unread'))).getByTestId('value-remove').click();
   await expect(chips(page.getByTestId('profile-roles'))).toHaveText(['Interim CFO']);
   // A new value fixes a field as well.
   await page.getByTestId('profile-min-rate').fill('1000');
@@ -2595,7 +2633,7 @@ test('every value that does not read is said at its field and can be removed', a
   // The others go with "Wert entfernen" (the remote share of Festanstellung without places
   // fades away with its value); then nothing is left to check.
   for (let left = await removes.count(); left > 0; left -= 1) {
-    await removes.first().click();
+    await (await show(page, removes.first())).click();
     await expect(removes).toHaveCount(left - 1);
   }
   await expect(check(page)).toHaveCount(0);
@@ -2647,6 +2685,7 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
   // Without a mailbox: back to the setup page, no fetch that must fail.
   await open(page, `${WIN}&scenario=first-run`);
   await page.getByTestId('first-profile').click();
+  await show(page, page.getByTestId('competence-name'));
   await page.getByTestId('competence-name').fill('Controlling');
   await save(page).click();
   const next = savedToast(page).getByTestId('toast-action');
@@ -2657,7 +2696,7 @@ test('during setup the toast of the first save leads to the mailbox, or to the f
   // With a mailbox: the first fetch starts once.
   await open(page, `${WIN}&scenario=mailbox-only`);
   await page.getByTestId('first-profile').click();
-  await page.getByTestId('competence-name').fill('Controlling');
+  await (await show(page, page.getByTestId('competence-name'))).fill('Controlling');
   await save(page).click();
   await expect(next).toHaveText(T.profile.next);
   await next.click();
@@ -2692,7 +2731,7 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
 }) => {
   await profile(page);
   // One question for all the fields.
-  await expect(asked(page).first()).toBeVisible();
+  await show(page, asked(page).first());
   expect(await calls(page, 'asked_terms')).toHaveLength(1);
   // Under the tools, above the next field, like its hint.
   const tools = page.locator('[data-field="tools"]');
@@ -2701,7 +2740,7 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
   await expect(block).toContainText(T.profile.asked);
   const field = (await tools.getByTestId('profile-tools').boundingBox())!;
   const own = (await block.boundingBox())!;
-  const next = (await page.getByTestId('profile-industries').boundingBox())!;
+  const next = (await page.getByTestId('profile-keywords').boundingBox())!;
   expect(own.y).toBeGreaterThanOrEqual(field.y + field.height);
   expect(next.y).toBeGreaterThan(own.y + own.height);
   // The terms, not the ads' phrases: "Kenntnisse in Anaplan" is the tool "Anaplan",
@@ -2721,6 +2760,7 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
   ] as const) {
     const row = askedRow(page, term);
     await expect(row).toHaveCount(1);
+    await show(page, row);
     await expect(page.locator(`[data-field="${key}"] [data-for="${kind}"]`)).toContainText(term);
     // Its button: the term, and quietly how many demo jobs ask for it (of the Eingang and
     // the Archiv, recent).
@@ -2751,6 +2791,7 @@ test('"Hinzufügen" puts the term into its field, an unsaved change like any oth
   page,
 }) => {
   await profile(page);
+  await show(page, page.getByTestId('profile-tools'));
   const tools = chips(page.getByTestId('profile-tools'));
   const industries = chips(page.getByTestId('profile-industries'));
   await expect(bar(page)).toHaveCount(0);
@@ -2765,9 +2806,9 @@ test('"Hinzufügen" puts the term into its field, an unsaved change like any oth
   await expect(tools).not.toContainText(['Anaplan']);
   await expect(askedRow(page, 'Anaplan')).toHaveCount(1);
   // An industry goes to the industries; saved, both go to the backend in their fields.
-  await askedRow(page, 'Energie').getByTestId('asked-add').click();
+  await (await show(page, askedRow(page, 'Energie'))).getByTestId('asked-add').click();
   await expect(industries.last()).toHaveText('Energie');
-  await askedRow(page, 'Anaplan').getByTestId('asked-add').click();
+  await (await show(page, askedRow(page, 'Anaplan'))).getByTestId('asked-add').click();
   const before = (await calls(page, 'asked_terms')).length;
   await save(page).click();
   await expect(savedToast(page)).toBeVisible();
@@ -2785,7 +2826,7 @@ test('a row goes with its last term; a focused term hands the focus on, then to 
   page,
 }) => {
   await profile(page);
-  const block = page.locator('[data-field="tools"]').getByTestId('asked');
+  const block = await show(page, page.locator('[data-field="tools"]').getByTestId('asked'));
   const words = await block
     .getByTestId('asked-term')
     .evaluateAll((all) => all.map((term) => term.getAttribute('data-term') ?? ''));
@@ -2809,12 +2850,12 @@ test('a row goes with its last term; a focused term hands the focus on, then to 
 
 test('the rows ask again after a fetch', async ({ page }) => {
   await profile(page);
-  await expect(asked(page).first()).toBeVisible();
+  await show(page, asked(page).first());
   const before = (await calls(page, 'asked_terms')).length;
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   await expect.poll(async () => (await calls(page, 'asked_terms')).length).toBeGreaterThan(before);
-  await expect(asked(page).first()).toBeVisible();
+  await show(page, asked(page).first());
 });
 
 test('without an answer the rows stay away', async ({ page }) => {

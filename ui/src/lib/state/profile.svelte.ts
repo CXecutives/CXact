@@ -412,6 +412,7 @@ class ProfileEditor {
     this.source = NEW_SOURCE;
     this.quality = null;
     this.understood = null;
+    profileTab.value = PROFILE_TABS[0];
   }
 
   /** A chosen file, to review before it is saved; `fresh`: saved beside the other
@@ -422,6 +423,7 @@ class ProfileEditor {
     this.source = draft.source;
     this.quality = draft.quality;
     this.understood = draft.understood;
+    profileTab.value = PROFILE_TABS[0];
   }
 
   /** Nothing in the editor (the empty state shows). */
@@ -464,6 +466,15 @@ class ProfileEditor {
 }
 
 export const editor = new ProfileEditor();
+
+/** The tabs of the Profil in their order (user decision 2026-10-01): what she looks for,
+ *  what she can, her experience, what excludes a job. */
+export const PROFILE_TABS = ['search', 'skills', 'experience', 'exclusions'] as const;
+export type ProfileTab = (typeof PROFILE_TABS)[number];
+
+/** The tab the Profil shows, a place for Zurück and Vor; a new or loaded profile starts at
+ *  the first. */
+export const profileTab = $state<{ value: ProfileTab }>({ value: PROFILE_TABS[0] });
 
 /** The saves of the profile, one after the other: each starts once the one before is written
  *  and the state is loaded again (DS-3), so two quick saves never write over each other. */
