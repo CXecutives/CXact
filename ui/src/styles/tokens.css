@@ -32,15 +32,15 @@
   color-scheme: light;
 
   /* ------------------------------------------------------------------ palette */
-  /* CXact (user, 2026-09-30: lively, "A"): a warm cream for the window and the sidebar,
+  /* CXact (user, 2026-09-30: lively, a warm white window): a warm white for the window and the sidebar,
      white content, a rich coral that acts (the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
      progress and the tooltip. What is on, new or here (a switch, the unread dot, the open
      job's edge, the chosen entry's icon) is coral like what acts. */
   --p-white: 0 0% 100%;
   --p-raised: 0 0% 100%; /* menus, dialogs, toasts */
-  --p-nav-active: 34 20% 89.5%; /* the grey pill the sidebar had before the white one */
-  --p-cream: 34 50% 94.5%;
+  --p-nav-active: 32 24% 98.6%; /* the chosen sidebar entry: a warm white, softer than white */
+  --p-cream: 30 22% 96.5%;
   --p-ink: 30 8% 13%;
   --p-coral: 12 76% 57%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
@@ -48,18 +48,18 @@
   --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
   --p-coral-variant: 12 70% 51%;
   --p-coral-press: 12 66% 46%;
-  --p-muted: 34 40% 96%;
+  --p-muted: 30 20% 97%;
   --p-muted-fg: 30 5% 33%;
-  --p-line: 32 25% 87%;
+  --p-line: 30 14% 88%;
   --p-accent-soft: 16 70% 93%;
   --p-success: 137.1 62.9% 32.7%;
   --p-warning: 43.9 66.1% 50.2%;
   --p-danger: 355.8 71.8% 47.3%;
   --p-coral-800: 12 68% 36%;
-  --p-coral-25: 16 80% 96%;
+  --p-coral-25: 16 65% 97%;
   --p-coral-40: 18 75% 95%;
-  --p-coral-50: 18 70% 93.5%;
-  --p-coral-70: 18 65% 92%;
+  --p-coral-50: 16 60% 95.5%;
+  --p-coral-70: 16 55% 94%;
   --p-coral-150: 16 45% 86%;
   --p-navy: 216 50% 33%;
   --p-navy-deep: 216 52% 24%;
@@ -69,7 +69,7 @@
   --p-navy-150: 216 48% 89.5%;
   --p-navy-200: 216 40% 82%;
   --p-fg-subtle: 30 4% 41%;
-  --p-border-strong: 32 18% 76%;
+  --p-border-strong: 30 12% 77%;
   --p-border-input: 34 8% 60%;
   --p-border-press: 34 8% 50%;
   --p-wash: 28 30% 24%;
@@ -186,14 +186,14 @@
   /* The ring track on that wash while the window is in the back (the selection greys out):
      translucent ink, as clear on the grey wash as the plain track is on white. */
   --ring-track-inactive: hsl(var(--p-ink) / 0.1);
-  /* The sliding white pill of the active sidebar entry with a hairline, like the thumb of
-     the tabs above the list (user, 2026-09-29); its label navy (like a chosen tab or
-     segment), its icon coral. */
-  --nav-active-bg: hsl(var(--p-white));
+  /* The sliding pill of the active sidebar entry: in CXact a warm white without an edge on
+     the warm window (user, 2026-09-30); its label navy (like a chosen tab or segment), its
+     icon coral. Light keeps a white pill with a hairline. */
+  --nav-active-bg: hsl(var(--p-nav-active));
   /* An idle entry under the pointer: the quiet wash of the tabs, pressed a step more. */
   --nav-hover: var(--quiet-hover);
   --nav-press: var(--quiet-press);
-  --nav-active-border: hsl(var(--p-line));
+  --nav-active-border: hsl(var(--p-nav-active));
   --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
   /* The soft accent wash: a light coral surface for what is chosen and small (a selected
@@ -798,6 +798,8 @@
   --text-heading: hsl(var(--p-ink));
   --nav-active-fg: hsl(var(--p-ink));
   --nav-active-icon: hsl(var(--p-navy));
+  --nav-active-bg: hsl(var(--p-white));
+  --nav-active-border: hsl(var(--p-line));
   --toggle-on: hsl(var(--p-navy));
   --toggle-on-hover: hsl(var(--p-navy-hover));
   --toggle-on-press: hsl(var(--p-navy-deep));

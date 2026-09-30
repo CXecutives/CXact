@@ -9,9 +9,9 @@
 pub use super::colour::Colour;
 
 /// `--bg` (`--p-cream`).
-pub const BG: Colour = Colour::new("hsl(34 50% 94.5%)", [0xF8, 0xF2, 0xEA]);
+pub const BG: Colour = Colour::new("hsl(30 22% 96.5%)", [0xF8, 0xF6, 0xF4]);
 /// `--surface-muted` (`--p-muted`).
-pub const SURFACE_MUTED: Colour = Colour::new("hsl(34 40% 96%)", [0xF9, 0xF5, 0xF1]);
+pub const SURFACE_MUTED: Colour = Colour::new("hsl(30 20% 97%)", [0xF9, 0xF7, 0xF6]);
 /// `--score-ring-0` (`--p-score-red`).
 pub const SCORE_RING_0: Colour = Colour::new("hsl(358 75% 59%)", [0xE5, 0x48, 0x4D]);
 /// `--score-ring-1` (`--p-score-red`).
