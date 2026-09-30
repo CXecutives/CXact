@@ -700,7 +700,8 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The band in the colour of its ring (the decile of the score), a shade deeper to read. */
+  /* The band in exactly the colour of its ring (the decile of the score; user, 2026-09-30:
+     not measured against AA, like the ring itself). */
   .band.d0 {
     color: var(--score-text-0);
   }

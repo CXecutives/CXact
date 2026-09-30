@@ -83,10 +83,6 @@ const CONTRAST = [
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info', 'info-strong'], on: ['surface', 'info-soft'] },
   { text: ['score-high-text'], on: ['surface', 'score-high-surface'] },
-  {
-    text: Array.from({ length: 10 }, (_, step) => `score-text-${step}`),
-    on: ['surface'],
-  },
   { text: ['score-mid-text'], on: ['surface', 'score-mid-surface'] },
   { text: ['score-low-text'], on: ['surface', 'score-low-surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
