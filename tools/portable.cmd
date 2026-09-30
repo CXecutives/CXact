@@ -7,8 +7,15 @@ setlocal
 cd /d "%~dp0.."
 call npx tauri build --no-bundle || exit /b 1
 if not exist target\portable mkdir target\portable
-copy /y target\release\job-alert-monitor.exe "target\portable\CXact.exe" >nul || exit /b 1
+call :place target\release\job-alert-monitor.exe "target\portable\CXact.exe" || exit /b 1
 call npx tauri build --no-bundle --config src-tauri\tauri.demo.conf.json --features embedded-demo || exit /b 1
-copy /y target\release\cxact-demo.exe "target\portable\CXact Demo.exe" >nul || exit /b 1
+call :place target\release\cxact-demo.exe "target\portable\CXact Demo.exe" || exit /b 1
 echo target\portable\CXact.exe
 echo target\portable\CXact Demo.exe
+exit /b 0
+
+rem Copies %1 to %2 and checks the copy: an exe that is still open keeps the old file.
+:place
+copy /y %1 %2 >nul
+fc /b %1 %2 >nul || (echo %~2 is still open: close it and run this again. & exit /b 1)
+exit /b 0
