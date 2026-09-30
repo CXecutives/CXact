@@ -420,11 +420,15 @@ and profiles: an external contract, never translated):
 "CXact Demo" is a setup of its own to send to others (docs/PLAN.md, "The demo app"). It always
 starts as the demo, on a data folder of its own made anew at every start: an empty Eingang and
 the sample profile (`core/tests/fixtures/matching/sample_profile.json`). Every "Postfach
-abrufen" is the real fetch (the run's events, the scan, the pages at the real pace, the engine,
-the Excel file in the demo's work folder) against a made-up mailbox and portals
+abrufen" is the real fetch (the run's events, the scan, the pages at a quick pace, the engine) against a made-up mailbox and portals
 (`core/src/pipeline/demo/feed.rs`) and brings 5 to 15 new jobs out of the invented ads of the
 nine held-out sets, until all are in. It never touches a real mailbox, a portal or the keychain.
 
+- **One exe each, no setup** (user, 2026-09-30): `tools/portable.cmd` writes
+  `target/portable/CXact.exe` and `target/portable/CXact Demo.exe` (`tauri build --no-bundle`;
+  the demo with the cargo feature `embedded-demo`, whose `src-tauri/build.rs` builds the ads of
+  all nine held-out sets into the exe, read by `DemoAds::load_from`). Both carry their
+  licences (`THIRD-PARTY.txt`, built in); WebView2 comes with Windows 10 and 11.
 - **Build**: `npx tauri build --config src-tauri/tauri.demo.conf.json` writes
   `target/release/bundle/nsis/CXact Demo_<version>_x64-setup.exe`. The overlay gives the
   product name, an identifier of its own that ends in `.demo` (its own data folder; the app

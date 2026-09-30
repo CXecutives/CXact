@@ -377,7 +377,15 @@ pub fn create_demo_data(
     sources: &[PathBuf],
     profile: Option<&str>,
 ) -> crate::Result<DemoData> {
-    let ads = DemoAds::load(sources)?;
+    create_demo_data_with(data_dir, DemoAds::load(sources)?, profile)
+}
+
+/// [`create_demo_data`] with ads already read (the ones built into the CXact Demo exe).
+pub fn create_demo_data_with(
+    data_dir: &Path,
+    ads: DemoAds,
+    profile: Option<&str>,
+) -> crate::Result<DemoData> {
     let dir = data_dir.join(DEMO_DIR);
     std::fs::create_dir_all(&dir).map_err(|e| crate::Error::io(&dir, e))?;
     let database = dir.join(crate::DB_FILE);

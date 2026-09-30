@@ -231,6 +231,39 @@ fn install_log(data_dir: &Path) {
     }));
 }
 
+/// The licences of the parts the app is built from, inside the exe too: the exe alone (without
+/// the setup that lays THIRD-PARTY.txt beside it) still carries them.
+#[used]
+static THIRD_PARTY: &str = include_str!("../resources/THIRD-PARTY.txt");
+
+/// The files of the held-out sets built into the exe (feature `embedded-demo`; empty without).
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/demo_ads.rs"));
+}
+
+/// The ads the demo draws from: built into the exe (the CXact Demo as one file), else the sets
+/// in the app's resources.
+fn demo_ads(app: &tauri::App) -> jobalert_core::Result<demo::DemoAds> {
+    if !embedded::DEMO_FILES.is_empty() {
+        let mut sets: Vec<&str> = embedded::DEMO_FILES
+            .iter()
+            .map(|(set, _, _)| *set)
+            .collect();
+        sets.dedup();
+        return demo::DemoAds::load_from(&sets, |set, file| {
+            embedded::DEMO_FILES
+                .iter()
+                .find(|(s, f, _)| *s == set && *f == file)
+                .map(|(_, _, text)| (*text).to_owned())
+        });
+    }
+    let resources = app
+        .path()
+        .resource_dir()
+        .map_err(|e| jobalert_core::Error::Corrupt(format!("resources: {e}")))?;
+    demo::DemoAds::load(&demo::demo_sources(&resources))
+}
+
 /// The database of a start, the work folder it falls back to and, in the demo, the ads its
 /// mailbox brings: the real database, one in memory (dry run) or the demo's, made anew in
 /// `<data>/demo` with an empty inbox and its own work folder there with the sample profile,
@@ -246,16 +279,9 @@ fn open_store(
         StartMode::Normal => Store::open(&database),
         StartMode::DryRun => Store::in_memory(),
         StartMode::Demo => {
-            let resources = app
-                .path()
-                .resource_dir()
-                .map_err(|e| Failure::other(format!("resources: {e}")))?;
-            let fresh = demo::create_demo_data(
-                app_data,
-                &demo::demo_sources(&resources),
-                Some(demo::PROFILE_JSON),
-            )
-            .map_err(|e| Failure::other(format!("demo: {e}")))?;
+            let ads = demo_ads(app).map_err(|e| Failure::other(format!("demo: {e}")))?;
+            let fresh = demo::create_demo_data_with(app_data, ads, Some(demo::PROFILE_JSON))
+                .map_err(|e| Failure::other(format!("demo: {e}")))?;
             log::info!("demo: {} ads", fresh.ads.len());
             let store =
                 Store::open(&fresh.database).map_err(|e| Failure::database(&fresh.database, &e))?;

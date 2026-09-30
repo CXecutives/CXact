@@ -6,6 +6,7 @@ const COMMANDS: &str = "commands.txt";
 const CAPABILITY: &str = "capabilities/main.json";
 
 fn main() {
+    embed_demo_ads();
     // Without these lines Cargo would not notice a new icon.ico or interface: the build
     // script would not run again and the finished exe would keep the old icon.
     println!("cargo:rerun-if-changed=icons/icon.ico");
@@ -69,4 +70,55 @@ fn write_capability(names: &[String]) {
     if std::fs::read_to_string(CAPABILITY).ok().as_deref() != Some(json.as_str()) {
         std::fs::write(CAPABILITY, json).expect("capabilities/main.json");
     }
+}
+
+/// With the feature `embedded-demo` (the CXact Demo as one exe) the ads of every held-out set
+/// are built in: `OUT_DIR/demo_ads.rs` lists each file as (set, file, text); without it the
+/// list is empty and the demo reads the sets from the app's resources.
+fn embed_demo_ads() {
+    let out = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("OUT_DIR"));
+    let mut code = String::from(
+        "pub static DEMO_FILES: &[(&str, &str, &str)] = &[
+",
+    );
+    if std::env::var_os("CARGO_FEATURE_EMBEDDED_DEMO").is_some() {
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR");
+        let root = std::path::Path::new(&manifest).join("../core/tests/fixtures/matching");
+        for set in (1..=9).map(|n| format!("heldout{n}")) {
+            let dir = root.join(&set);
+            println!("cargo:rerun-if-changed={}", dir.display());
+            let mut files: Vec<std::path::PathBuf> = std::fs::read_dir(&dir)
+                .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+                .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+                .filter(|path| {
+                    let name = path
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or_default();
+                    let text = path
+                        .extension()
+                        .is_some_and(|ext| ext.eq_ignore_ascii_case("txt"));
+                    name == "jobs.json" || text
+                })
+                .collect();
+            files.sort();
+            for path in files {
+                let name = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_default();
+                writeln!(
+                    code,
+                    "    ({set:?}, {name:?}, include_str!({:?})),",
+                    path.display()
+                )
+                .expect("write");
+            }
+        }
+    }
+    code.push_str(
+        "];
+",
+    );
+    std::fs::write(out.join("demo_ads.rs"), code).expect("demo_ads.rs");
 }

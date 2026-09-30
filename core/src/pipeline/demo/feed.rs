@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::ops::RangeInclusive;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -78,17 +78,28 @@ impl DemoAds {
     /// folders hold comes once. The order mixes the sets and the portals, the same at every
     /// start.
     pub fn load(sources: &[PathBuf]) -> crate::Result<DemoAds> {
+        let sets: Vec<String> = sources.iter().map(|s| s.display().to_string()).collect();
+        let names: Vec<&str> = sets.iter().map(String::as_str).collect();
+        DemoAds::load_from(&names, |set, file| {
+            std::fs::read_to_string(Path::new(set).join(file)).ok()
+        })
+    }
+
+    /// Reads the ad sets through `read(set, file)`: the folders of [`DemoAds::load`], or the
+    /// files built into the CXact Demo exe (one file to send, no resources beside it).
+    pub fn load_from(
+        sets: &[&str],
+        read: impl Fn(&str, &str) -> Option<String>,
+    ) -> crate::Result<DemoAds> {
         let mut ads = Vec::new();
         let mut seen = HashSet::new();
-        for source in sources {
-            let list = source.join("jobs.json");
-            if !list.is_file() {
-                log::warn!("demo: no ads in {}", source.display());
+        for &set in sets {
+            let Some(json) = read(set, "jobs.json") else {
+                log::warn!("demo: no ads in {set}");
                 continue;
-            }
-            let json = std::fs::read_to_string(&list).map_err(|e| crate::Error::io(&list, e))?;
+            };
             let jobs: Vec<FixtureJob> = serde_json::from_str(&json)
-                .map_err(|e| crate::Error::Corrupt(format!("{}: {e}", list.display())))?;
+                .map_err(|e| crate::Error::Corrupt(format!("{set}/jobs.json: {e}")))?;
             for job in jobs {
                 let Some(link) = crate::portal::job_link(&job.url) else {
                     log::warn!("demo: no job link in {}", job.file);
@@ -97,9 +108,9 @@ impl DemoAds {
                 if !seen.insert(link.key.clone()) {
                     continue;
                 }
-                let file = source.join(format!("{}.txt", job.file));
-                let text =
-                    std::fs::read_to_string(&file).map_err(|e| crate::Error::io(&file, e))?;
+                let file = format!("{}.txt", job.file);
+                let text = read(set, &file)
+                    .ok_or_else(|| crate::Error::Corrupt(format!("{set}/{file}: not there")))?;
                 ads.push(DemoAd {
                     key: link.key,
                     url: job.url,

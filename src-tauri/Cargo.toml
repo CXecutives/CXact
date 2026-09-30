@@ -16,6 +16,10 @@ name = "job-alert-monitor"
 path = "src/main.rs"
 test = false
 
+[features]
+# The demo's ads built into the exe (the CXact Demo as one file: tools/portable.cmd).
+embedded-demo = []
+
 [build-dependencies]
 tauri-build = { version = "2.6", features = [] }
 
