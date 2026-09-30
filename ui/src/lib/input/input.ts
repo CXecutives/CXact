@@ -636,7 +636,17 @@ function onFocusIn(event: FocusEvent): void {
 
 function onKeyDown(event: KeyboardEvent): void {
   keyboardFocus = true;
-  if (menuState.open !== null) {
+  // A popover opened by hover (the reader's ring) takes no keys: Esc closes it, any other
+  // key closes it and goes on to the page (the list's arrows, a copy); a lone modifier
+  // leaves it open.
+  if (menuState.open?.hover !== undefined && !MODIFIERS.has(event.key)) {
+    closeMenu(false);
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      return;
+    }
+  }
+  if (menuState.open !== null && menuState.open.hover === undefined) {
     dispatchMenuKey(event);
     return;
   }

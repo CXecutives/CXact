@@ -75,7 +75,8 @@
     isolation: isolate;
   }
 
-  /* The one white pill behind the active entry. */
+  /* The one pill behind the active entry: a surface without an edge, lifted by the shadow
+     of every chosen thumb (the tabs, the segments). */
   .indicator {
     position: absolute;
     z-index: var(--z-below);
@@ -83,10 +84,9 @@
     right: 0;
     left: 0;
     height: var(--control-md);
-    border: var(--border-width) solid var(--nav-active-border);
     border-radius: var(--radius-md);
     background-color: var(--nav-active-bg);
-    box-shadow: var(--sh-xs);
+    box-shadow: var(--sh-thumb);
     transform: translateY(calc(var(--index) * var(--nav-step)));
     will-change: transform;
   }

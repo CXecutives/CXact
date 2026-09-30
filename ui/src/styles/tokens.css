@@ -186,14 +186,13 @@
   /* The ring track on that wash while the window is in the back (the selection greys out):
      translucent ink, as clear on the grey wash as the plain track is on white. */
   --ring-track-inactive: hsl(var(--p-ink) / 0.1);
-  /* The sliding pill of the active sidebar entry: in CXact a warm white without an edge on
-     the warm window (user, 2026-09-30); its label navy (like a chosen tab or segment), its
-     icon coral. Light keeps a white pill with a hairline. */
+  /* The sliding pill of the active sidebar entry: a surface a step above the sidebar, lifted
+     by the thumbs' shadow and without an edge in every palette, like a chosen tab or segment
+     (user, 2026-09-30); in CXact a warm white, its label navy and its icon coral. */
   --nav-active-bg: hsl(var(--p-nav-active));
   /* An idle entry under the pointer: the quiet wash of the tabs, pressed a step more. */
   --nav-hover: var(--quiet-hover);
   --nav-press: var(--quiet-press);
-  --nav-active-border: hsl(var(--p-nav-active));
   --nav-active-fg: hsl(var(--p-navy));
   --nav-active-icon: hsl(var(--p-coral));
   /* The soft accent wash: a light coral surface for what is chosen and small (a selected
@@ -799,7 +798,6 @@
   --nav-active-fg: hsl(var(--p-ink));
   --nav-active-icon: hsl(var(--p-navy));
   --nav-active-bg: hsl(var(--p-white));
-  --nav-active-border: hsl(var(--p-line));
   --toggle-on: hsl(var(--p-navy));
   --toggle-on-hover: hsl(var(--p-navy-hover));
   --toggle-on-press: hsl(var(--p-navy-deep));
@@ -891,7 +889,6 @@
   --text-inverse: hsl(var(--p-ink));
   --text-inverse-muted: hsl(var(--p-ink) / 0.72);
   --nav-active-bg: hsl(var(--p-nav-active));
-  --nav-active-border: hsl(var(--p-line));
   --nav-active-fg: hsl(var(--p-ink));
   --brand-edge: hsl(var(--p-ink) / 0.16);
   --nav-hover: hsl(var(--p-wash) / 0.045);

@@ -246,6 +246,17 @@ test.describe('the head and the match', () => {
     await page.mouse.move(5, 5);
     await expect(popover).toHaveCount(0);
     await expect(ring).toHaveAttribute('aria-expanded', 'false');
+    // Opened by hover it takes no keys: a lone modifier leaves it, another key closes it and
+    // goes on to the page (the list's arrows, a copy), Esc closes it.
+    for (const key of ['ArrowDown', 'Escape']) {
+      await ring.hover();
+      await expect(popover).toBeVisible();
+      await page.keyboard.press('Control');
+      await expect(popover).toBeVisible();
+      await page.keyboard.press(key);
+      await expect(popover).toHaveCount(0);
+      await page.mouse.move(5, 5);
+    }
     // A click opens it too (the keys, a touch).
     await ring.click();
     await expect(popover).toHaveAttribute('role', 'dialog');

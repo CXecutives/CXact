@@ -41,7 +41,6 @@
     "unread":                 { "css": "hsl(12 76% 57%)", "rgb": [229, 95, 62] },
     "ring-track-selected":    { "css": "hsl(16 45% 86%)", "rgb": [235, 212, 203] },
     "nav-active-bg":          { "css": "hsl(32 24% 98.6%)", "rgb": [252, 251, 251] },
-    "nav-active-border":      { "css": "hsl(32 24% 98.6%)", "rgb": [252, 251, 251] },
     "nav-active-fg":          { "css": "hsl(216 50% 33%)", "rgb": [42, 76, 126] },
     "nav-active-icon":        { "css": "hsl(12 76% 57%)", "rgb": [229, 95, 62] },
     "accent-wash":            { "css": "hsl(18 75% 95%)", "rgb": [252, 238, 233] },

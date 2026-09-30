@@ -155,9 +155,14 @@
     background-color: var(--quiet-press);
   }
 
-  /* Chosen like a segment and the sidebar's entry (navy in CXact). */
+  /* Chosen like a segment and the sidebar's entry (navy in CXact); ink while the window is
+     in the back, like them. */
   .tab[aria-selected='true'] {
     color: var(--nav-active-fg);
+  }
+
+  :global(:root[data-window='inactive']) .tab[aria-selected='true'] {
+    color: var(--text);
   }
 
   .tab:focus-visible {
