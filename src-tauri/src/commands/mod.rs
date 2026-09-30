@@ -51,6 +51,7 @@ pub fn invoke_handler() -> impl Fn(tauri::ipc::Invoke) -> bool + Send + Sync + '
         jobs::empty_trash,
         jobs::ai_prompt,
         profile::pick_profile,
+        profile::read_profile_text,
         profile::profile_prompt,
         profile::save_profile,
         profile::list_profiles,

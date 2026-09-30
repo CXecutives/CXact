@@ -1,19 +1,18 @@
-// The ways to a new profile besides the empty form, the same wherever they are offered (the
-// Profil view's empty state and the menu of its title, the first-run page): "Aus Datei laden"
-// puts a chosen profile file into the form for review, and "KI-Prompt für Profilanfertigung
-// kopieren" puts the prompt on the clipboard that has any AI write such a file from a CV
-// (core's profile/prompt.rs). Nothing is sent anywhere.
+// The ways to a new profile besides the empty form, the same wherever "Neues Profil" is
+// offered (its dialog, from the Profil view's empty state, the menu of its title and the
+// first-run page): "Aus Datei laden" puts a chosen profile file into the form for review;
+// "Aus dem Lebenslauf" copies the prompt that has any AI write the profile from a CV (core's
+// profile/prompt.rs) and takes the AI's answer back from the clipboard. Nothing is sent
+// anywhere and nothing is stored before "Speichern".
 
-import { t } from '$lib/i18n/t';
-import { errorText } from '$lib/i18n/texts';
 import { invoke } from '$lib/ipc/api';
+import type { ProfileDraft } from '$lib/ipc/types';
 import { editor } from '$lib/state/profile.svelte';
-import { toasts } from '$lib/state/toasts.svelte';
 
 /**
- * "Aus Datei laden": the chosen file in the form for review (nothing is stored before
- * "Speichern"); `false` when the dialog was cancelled. `fresh`: saved as a new profile beside
- * the others. Throws what the file or the dialog refused.
+ * "Aus Datei laden": the chosen file in the form for review; `false` when the dialog was
+ * cancelled. `fresh`: saved as a new profile beside the others. Throws what the file or the
+ * dialog refused.
  */
 export async function pickProfile(fresh = false): Promise<boolean> {
   const draft = await invoke('pick_profile');
@@ -22,21 +21,25 @@ export async function pickProfile(fresh = false): Promise<boolean> {
   return true;
 }
 
-/** "KI-Prompt für Profilanfertigung kopieren": the prompt on the clipboard, confirmed by a
- *  toast like the job's prompt; a failure is said in a toast too, the page stays as it is. */
-export async function copyProfilePrompt(): Promise<void> {
-  let prompt: string;
-  try {
-    prompt = await invoke('profile_prompt');
-  } catch (error) {
-    toasts.show(errorText(error), 'warning');
-    return;
-  }
+/** "Prompt kopieren": the prompt on the clipboard; `false` when the clipboard refused it.
+ *  Throws what the backend refused. */
+export async function copyProfilePrompt(): Promise<boolean> {
+  const prompt = await invoke('profile_prompt');
   try {
     await navigator.clipboard.writeText(prompt);
+    return true;
   } catch {
-    toasts.show(t.profile.promptNotCopied, 'warning');
-    return;
+    return false;
   }
-  toasts.show(t.toast.prompt);
+}
+
+/** The text on the clipboard, or null where the platform refuses it (or holds none). */
+export async function clipboardText(): Promise<string | null> {
+  const text = await invoke('clipboard_text').catch(() => null);
+  return text === null || text.trim() === '' ? null : text;
+}
+
+/** An AI's answer as a draft of the form, or null when it holds no profile. */
+export function readAnswer(text: string): Promise<ProfileDraft | null> {
+  return invoke('read_profile_text', { text });
 }

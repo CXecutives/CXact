@@ -1,11 +1,8 @@
 <!--
   No profile yet (or one that no longer reads): one sentence what the profile is for and
-  the three ways in, side by side as siblings (32 px like every main action), the same words
-  as in the menu of the profiles: "Neues Profil" (the primary, an empty form), "Aus Datei
-  laden" (an existing JSON file, also the one an AI wrote) and "KI-Prompt für
-  Profilanfertigung kopieren" (the prompt that has any AI write that file from a CV; a toast
-  says it is copied). A file that no longer reads also offers its folder, to fix it by hand.
-  Sits at about 38 % of the height.
+  "Neues Profil" (the primary, 32 px like every main action), which opens the dialog of the
+  three ways, the same as in the menu of the profiles. A file that no longer reads also
+  offers its folder, to fix it by hand. Sits at about 38 % of the height.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -16,13 +13,12 @@
   interface Props {
     heading: string;
     text: string;
+    /** A chosen file is being read (the button waits). */
     picking: boolean;
     /** The stored file no longer reads: its folder is at hand. */
     unreadable?: boolean;
     note: string | null;
     oncreate: () => void;
-    onpick: () => void;
-    onprompt: () => void;
     onopenfolder?: () => void;
   }
 
@@ -33,8 +29,6 @@
     unreadable = false,
     note,
     oncreate,
-    onpick,
-    onprompt,
     onopenfolder,
   }: Props = $props();
 </script>
@@ -47,25 +41,9 @@
       size="field"
       icon="add"
       label={t.profile.newProfile}
+      loading={picking}
       testid="profile-create"
       onclick={oncreate}
-    />
-    <Button
-      variant="secondary"
-      size="field"
-      icon="pickFile"
-      label={t.profile.load}
-      loading={picking}
-      testid="profile-pick"
-      onclick={onpick}
-    />
-    <Button
-      variant="secondary"
-      size="field"
-      icon="prompt"
-      label={t.profile.prompt}
-      testid="profile-prompt"
-      onclick={onprompt}
     />
   </div>
   {#if unreadable && onopenfolder}

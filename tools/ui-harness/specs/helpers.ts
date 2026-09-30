@@ -295,3 +295,14 @@ export async function showTab(page: Page, target: Locator): Promise<Locator> {
   await expect(target.first()).toBeVisible();
   return target;
 }
+
+/** In the open dialog "Neues Profil": chooses a way and goes on with it (from the CV the
+ *  answer comes from the clipboard). */
+export async function chooseWay(page: Page, way: 'cv' | 'empty' | 'file'): Promise<void> {
+  const dialog = page.getByTestId('dialog-new-profile');
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId('new-profile-ways').locator(`[data-id="${way}"]`).click();
+  await dialog.getByTestId('dialog-confirm').click();
+  // Gone, its way out too (a leaving dialog still takes the keys).
+  await expect(dialog).toHaveCount(0);
+}

@@ -1162,20 +1162,33 @@ export const de = {
      *  the menu. */
     profiles: 'Profile',
     numbered: (value: number) => `Profil ${n(value)}`,
-    /** In the menu of the profiles and in the empty state alike: a new form, stored on
-     *  "Speichern" (the title says it while the form holds it). */
+    /** In the menu of the profiles, in the empty state and on the first-run page alike: the
+     *  dialog of the three ways to a new profile, stored on "Speichern" (the title says it
+     *  while the form holds it). */
     newProfile: 'Neues Profil',
-    duplicate: 'Profil duplizieren',
+    ways: 'Wege zu einem neuen Profil',
+    way: { cv: 'Aus dem Lebenslauf', empty: 'Leer anfangen', file: 'Aus Datei laden' },
+    /** The quiet word after the recommended way. */
+    wayNote: 'mit einer KI',
+    /** The two steps of the way from the CV, one sentence each. */
+    cvPrompt: 'Kopiere den Prompt und gib ihn einer KI zusammen mit deinem Lebenslauf.',
+    cvAnswer: 'Kopiere danach die Antwort der KI.',
+    copyPrompt: 'Prompt kopieren',
+    /** The button of the prompt for a moment after the copy (the toasts wait behind the
+     *  dialog). */
+    copied: 'Kopiert',
+    /** The dialog's button of each way. */
+    pasteAnswer: 'Antwort einfügen',
+    startEmpty: 'Anlegen',
+    pickFile: 'Datei wählen',
+    /** Where the platform refuses the clipboard: the answer pasted into a field. */
+    answerField: 'Antwort der KI',
+    noAnswer: 'In der Antwort steht kein Profil. Kopiere die ganze Antwort der KI.',
+    duplicate: 'Duplizieren',
     /** The name a copy starts with (Umbenennen changes it). */
     copyName: (name: string) => `${name} Kopie`,
     rename: 'Umbenennen',
-    renameHeading: 'Profil umbenennen',
-    /** In the menu, in the empty state and on the first-run page alike: a file into the form
-     *  for review (also the one an AI wrote with the prompt below). */
-    load: 'Aus Datei laden',
-    /** In the same places: the prompt that has any AI write a profile file from a CV. */
-    prompt: 'KI-Prompt für Profilanfertigung kopieren',
-    /** The toast of the copy (a participle, like the job's prompt), and why it failed. */
+    /** Why the copy of the prompt failed. */
     promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
     /** After another profile became the active one (its rescore runs in the background). */
     switched: 'Profil gewechselt, Jobs werden neu bewertet.',
@@ -1184,7 +1197,7 @@ export const de = {
     duplicated: (name: string) => `Kopie angelegt, aktiv ist jetzt „${name}“.`,
     /** In the switcher's menu, red; it asks first, naming the profile, and the toast offers
      *  Rückgängig. */
-    remove: 'Profil löschen',
+    remove: 'Löschen',
     removeHeading: (name: string) => `„${name}“ löschen?`,
     removeConfirm: 'Löschen',
     removed: 'Profil gelöscht.',

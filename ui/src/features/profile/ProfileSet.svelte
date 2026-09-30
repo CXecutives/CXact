@@ -1,15 +1,15 @@
 <!--
   The profiles of the work folder behind the menu of the Profil view's title (core's
   profile::set): a switch (answered by a toast, "Profil gewechselt, Jobs werden neu
-  bewertet."; the rescore runs in the background) and Profil duplizieren (named as a copy,
-  the toast names it as the active one), each the active profile from then on, so with
-  unsaved changes they ask first (the view's "Änderungen speichern?", `guard`). Neues Profil
-  and Aus Datei laden are drafts of the view: nothing is written before "Speichern".
-  "Umbenennen" asks for the name in a small dialog; emptied, the profile goes by its role or
-  number again. "Profil löschen" asks first naming the profile, then a toast names the
-  profile active now (the one active before, core) and offers "Rückgängig" for a moment (the
-  last one leaves the ways in); an undo that fails says so. Draws only its two dialogs; the
-  view calls its functions (`bind:this`).
+  bewertet."; the rescore runs in the background) and Duplizieren (named as a copy, the
+  toast names it as the active one), each the active profile from then on, so with unsaved
+  changes they ask first (the view's "Änderungen speichern?", `guard`). A new profile is a
+  draft of the view: nothing is written before "Speichern". Umbenennen happens in the title
+  (the head's field, `renameTo`); emptied, the profile goes by its role or number again.
+  "Löschen" asks first naming the profile, then a toast names the profile active now (the one
+  active before, core) and offers "Rückgängig" for a moment (the last one leaves the ways in);
+  an undo that fails says so. Draws only its dialog; the view calls its functions
+  (`bind:this`).
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
@@ -20,7 +20,6 @@
   import { app } from '$lib/state/app.svelte';
   import { editor } from '$lib/state/profile.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
-  import ProfileRename from './ProfileRename.svelte';
   import { activeName, defaultName, profileName } from './profiles';
 
   type Words = () => string;
@@ -43,10 +42,6 @@
   let confirmRemove = $state(false);
   let removing = $state<ProfileEntry | null>(null);
   let removeBusy = $state(false);
-  let renaming = $state(false);
-  let renameText = $state('');
-  let renameBusy = $state(false);
-  let renameError = $state<Words | null>(null);
 
   /** The active profile in the form (after it changed), or the ways in without one. */
   function showActive(): void {
@@ -93,29 +88,22 @@
     });
   }
 
-  export function askRename(): void {
-    if (current === null) return;
-    renameText = profileName(current);
-    renameError = null;
-    renaming = true;
-  }
-
-  /** The name as typed; the default name left as it stands keeps following the role. */
-  async function rename(): Promise<void> {
+  /** The name typed in the title; the default name left as it stands keeps following the
+   *  role. `true` once renamed (a failure is said under the head). */
+  export async function renameTo(text: string): Promise<boolean> {
     const entry = current;
-    if (entry === null) return;
-    const typed = renameText.trim();
+    if (entry === null) return false;
+    const typed = text.trim();
     const name = entry.name === null && typed === defaultName(entry) ? '' : typed;
-    renameBusy = true;
-    renameError = null;
+    if (name === (entry.name ?? '')) return true;
+    onnote(null);
     try {
       await invoke('rename_profile', { id: entry.id, name });
       await app.load();
-      renaming = false;
+      return true;
     } catch (error) {
-      renameError = () => errorText(error);
-    } finally {
-      renameBusy = false;
+      onnote(() => errorText(error));
+      return false;
     }
   }
 
@@ -171,7 +159,7 @@
   }
 </script>
 
-<!-- The headings say it all: the dialogs do not repeat them. -->
+<!-- The heading says it all: the dialog does not repeat it. -->
 <Dialog
   bind:open={confirmRemove}
   variant="danger"
@@ -181,16 +169,3 @@
   testid="dialog-remove-profile"
   onconfirm={() => void remove()}
 />
-<Dialog
-  bind:open={renaming}
-  heading={t.profile.renameHeading}
-  confirmLabel={t.profile.rename}
-  busy={renameBusy}
-  error={renameError?.() ?? null}
-  testid="dialog-rename-profile"
-  onconfirm={() => void rename()}
->
-  {#if current !== null}
-    <ProfileRename bind:value={renameText} placeholder={defaultName(current)} />
-  {/if}
-</Dialog>

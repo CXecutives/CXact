@@ -1,8 +1,8 @@
-//! The prompt a user hands to an AI together with a CV ("KI-Prompt für Profilanfertigung
-//! kopieren" in the Profil view and on the first-run page): the AI answers with a profile in
-//! exactly the JSON the editor reads, as the file `beraterprofil.json`, which the user loads
-//! with "Aus Datei laden" ([`super::read_file`]; [`super::answer`] reads it also as the answer
-//! saved as it came). Like the app's other prompts it addresses the assistant as "du" without
+//! The prompt a user hands to an AI together with a CV ("Prompt kopieren" in the dialog
+//! "Neues Profil"): the AI answers with a profile in exactly the JSON the editor reads, alone
+//! in one code block, which the user copies back with "Antwort einfügen"
+//! ([`super::draft_from_answer`]; [`super::answer`] finds it in the whole answer too, and a
+//! file saved from it loads with "Aus Datei laden"). Like the app's other prompts it addresses the assistant as "du" without
 //! naming a product, in the app's language; the JSON keys and the fixed values stay German in
 //! both (they are the profile format).
 //!
@@ -144,7 +144,7 @@ Die Felder unter einsatzpraeferenzen und harte_kriterien füllst du aus meiner A
 - ausschlusswoerter sind Wörter, die eine Anzeige für mich ausschließen, etwa Werkstudent oder Praktikum.";
 
 const ANSWER: &str = "Die Antwort
-Gib mir das fertige Profil als Datei zum Herunterladen mit dem Namen beraterprofil.json. Kannst du keine Dateien erstellen, antworte mit dem JSON allein in einem einzigen Codeblock, den ich als beraterprofil.json speichere. Schreib danach in einem Satz, dass ich die Datei in der App unter Profil mit „Aus Datei laden“ lade, und sonst nichts. Das JSON behält jeden Schlüssel des Aufbaus unten, seine Schreibweise und die Reihenfolge. Ein Objekt in einer Liste zeigt den Aufbau eines Eintrags; wiederhole es für jeden Eintrag. Zahlen stehen ohne Anführungszeichen und ohne Einheit. Das JSON muss gültig sein, mit geraden doppelten Anführungszeichen, ohne Kommentare und ohne Komma vor einer schließenden Klammer.";
+Antworte mit dem fertigen Profil als JSON allein in einem einzigen Codeblock. Schreib danach in einem Satz, dass ich die Antwort kopiere und in der App unter Profil mit „Neues Profil“ und „Antwort einfügen“ übernehme, und sonst nichts. Das JSON behält jeden Schlüssel des Aufbaus unten, seine Schreibweise und die Reihenfolge. Ein Objekt in einer Liste zeigt den Aufbau eines Eintrags; wiederhole es für jeden Eintrag. Zahlen stehen ohne Anführungszeichen und ohne Einheit. Das JSON muss gültig sein, mit geraden doppelten Anführungszeichen, ohne Kommentare und ohne Komma vor einer schließenden Klammer.";
 
 const CHECK: &str = "Prüfe vor dem Antworten";
 const CHECKS: [&str; 6] = [
@@ -153,7 +153,7 @@ const CHECKS: [&str; 6] = [
     "Steht jeder Schwerpunkt genau so in kernkompetenzen, und nennt jede Wunschrolle ein Fachgebiet?",
     "Stammen alle Jahre aus den Daten des Lebenslaufs?",
     "Stammen Wünsche und Ausschlusskriterien aus meiner Antwort oder ausdrücklich aus dem Lebenslauf, und sind sie sonst leer?",
-    "Ist das JSON gültig, hat es genau die Schlüssel des Aufbaus, und steht es in der Datei beraterprofil.json oder allein in einem einzigen Codeblock?",
+    "Ist das JSON gültig, hat es genau die Schlüssel des Aufbaus, und steht es allein in einem einzigen Codeblock?",
 ];
 
 const STRUCTURE: &str = "Der Aufbau";
@@ -237,7 +237,7 @@ Fill the fields under einsatzpraeferenzen and harte_kriterien from my answer to 
 - ausschlusswoerter are words that rule an ad out for me, such as Werkstudent or Praktikum.";
 
     pub(super) const ANSWER: &str = "The answer
-Give me the finished profile as a file to download named beraterprofil.json. If you cannot create files, answer with the JSON alone in one single code block, which I save as beraterprofil.json. Then say in one sentence that I load the file in the app under Profile with “Load from file”, and nothing else. The JSON keeps every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
+Answer with the finished profile as JSON alone in one single code block. Then say in one sentence that I copy the answer and take it over in the app under Profile with “New profile” and “Paste answer”, and nothing else. The JSON keeps every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
 
     pub(super) const CHECK: &str = "Check before you answer";
     pub(super) const CHECKS: [&str; 6] = [
@@ -246,7 +246,7 @@ Give me the finished profile as a file to download named beraterprofil.json. If 
         "Is every focus area written exactly as in kernkompetenzen, and does every target role name a field?",
         "Do all years come from the dates in the CV?",
         "Do preferences and exclusion criteria come from my answer or explicitly from the CV, and are they empty otherwise?",
-        "Is the JSON valid, does it have exactly the keys of the structure, and is it in the file beraterprofil.json or alone in one single code block?",
+        "Is the JSON valid, does it have exactly the keys of the structure, and is it alone in one single code block?",
     ];
 
     pub(super) const STRUCTURE: &str = "The structure";
@@ -542,7 +542,7 @@ mod tests {
         );
     }
 
-    /// The file the AI writes loads with "Aus Datei laden": what it leaves as in the skeleton
+    /// The answer of the AI reads like a chosen file: what it leaves as in the skeleton
     /// is dropped (the unfilled skeleton is an empty profile, a partly filled one leaves no
     /// empty criterion the app cannot read), and the filled skeleton comes back as it is, also
     /// inside a code block with a sentence after it.
@@ -565,7 +565,7 @@ mod tests {
         );
         for text in [
             FILLED.to_owned(),
-            format!("```json\n{FILLED}\n```\nLade die Datei unter Profil mit „Aus Datei laden“."),
+            format!("```json\n{FILLED}\n```\nÜbernimm die Antwort mit „Antwort einfügen“."),
         ] {
             assert_eq!(super::super::draft_from_text(&text).unwrap().source, FILLED);
         }
@@ -659,9 +659,8 @@ mod tests {
         assert!(german.contains("in einer einzigen kurzen Nachricht"));
         assert!(german.contains("Ich kann jede Frage überspringen"));
         assert!(german.contains("Heute ist der 25. September 2026."));
-        assert!(german.contains("Datei zum Herunterladen mit dem Namen beraterprofil.json"));
-        assert!(german.contains("in einem einzigen Codeblock"));
-        assert!(german.contains("unter Profil mit „Aus Datei laden“"));
+        assert!(german.contains("als JSON allein in einem einzigen Codeblock"));
+        assert!(german.contains("unter Profil mit „Neues Profil“ und „Antwort einfügen“"));
         assert!(german.ends_with(&format!("Der Aufbau\n```json\n{}\n```\n", skeleton())));
         let english = text(Language::En, day());
         assert!(english.starts_with(
@@ -671,9 +670,8 @@ mod tests {
         assert!(english.contains("in one single short message"));
         assert!(english.contains("I may skip any question"));
         assert!(english.contains("Today is 25 September 2026."));
-        assert!(english.contains("file to download named beraterprofil.json"));
-        assert!(english.contains("in one single code block"));
-        assert!(english.contains("under Profile with “Load from file”"));
+        assert!(english.contains("as JSON alone in one single code block"));
+        assert!(english.contains("under Profile with “New profile” and “Paste answer”"));
         assert!(english.ends_with(&format!("The structure\n```json\n{}\n```\n", skeleton())));
         let march = Date::new(2027, 3, 1).unwrap();
         assert!(text(Language::De, march).contains("Heute ist der 1. März 2027."));
@@ -688,11 +686,19 @@ mod tests {
         let catalogs = [
             (
                 include_str!("../../../ui/src/lib/i18n/de.ts"),
-                ["profile: 'Profil'", "load: 'Aus Datei laden'"],
+                [
+                    "profile: 'Profil'",
+                    "newProfile: 'Neues Profil'",
+                    "pasteAnswer: 'Antwort einfügen'",
+                ],
             ),
             (
                 include_str!("../../../ui/src/lib/i18n/en.ts"),
-                ["profile: 'Profile'", "load: 'Load from file'"],
+                [
+                    "profile: 'Profile'",
+                    "newProfile: 'New profile'",
+                    "pasteAnswer: 'Paste answer'",
+                ],
             ),
         ];
         for (catalog, names) in catalogs {

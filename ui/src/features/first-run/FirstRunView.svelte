@@ -19,11 +19,9 @@
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. Step 2 happens in the Profil view, with the same three ways as its empty
-  state: "Neues Profil" opens the empty form, "Aus Datei laden" a chosen file (also the one
-  an AI wrote) for review, and "KI-Prompt für Profilanfertigung kopieren" copies the prompt
-  that has any AI write that file from a CV (a toast says so, the page stays); after the
-  first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
+  found none. Step 2 happens in the Profil view: "Neues Profil" opens the same dialog of the
+  three ways as there (from the CV with an AI, the empty form, a file), each going on in the
+  Profil view for review; after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
   alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
   Every main action is 32 px.
@@ -52,7 +50,8 @@
   import { failureAction, isFetch, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
-  import { copyProfilePrompt, pickProfile } from '../shared/profileWays';
+  import NewProfileDialog from '../shared/NewProfileDialog.svelte';
+  import { pickProfile } from '../shared/profileWays';
   import { STEPS, type StepId } from './steps';
 
   /** Done, per step, as the page shows it now. */
@@ -110,6 +109,9 @@
     if (profile === null && editor.origin === null) editor.create();
     navigation.go('profile');
   }
+
+  /** The dialog of the three ways to a new profile (the same as in the Profil view). */
+  let ways = $state(false);
 
   /** A chosen file opens in the Profil view for review (a failure is said in the step). */
   let picking = $state(false);
@@ -268,25 +270,9 @@
           size="field"
           icon="add"
           label={t.profile.newProfile}
-          testid="first-profile"
-          onclick={openProfile}
-        />
-        <Button
-          variant="secondary"
-          size="field"
-          icon="pickFile"
-          label={t.profile.load}
           loading={picking}
-          testid="first-profile-file"
-          onclick={() => void pick()}
-        />
-        <Button
-          variant="secondary"
-          size="field"
-          icon="prompt"
-          label={t.profile.prompt}
-          testid="first-profile-prompt"
-          onclick={() => void copyProfilePrompt()}
+          testid="first-profile"
+          onclick={() => (ways = true)}
         />
       {/if}
     </div>
@@ -380,6 +366,16 @@
     </Card>
   </div>
 </div>
+
+<NewProfileDialog
+  bind:open={ways}
+  onempty={openProfile}
+  onfile={pick}
+  onanswer={(draft) => {
+    editor.take(draft);
+    navigation.go('profile');
+  }}
+/>
 
 <style>
   /* The one inner padding of every content column, so the card lines up with the Profil and

@@ -41,7 +41,8 @@
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
-  import { copyProfilePrompt, pickProfile } from '../shared/profileWays';
+  import NewProfileDialog from '../shared/NewProfileDialog.svelte';
+  import { pickProfile } from '../shared/profileWays';
   import { activeName } from './profiles';
   import { watchSave } from './saveEffect';
   import { valueText } from './sections';
@@ -194,6 +195,15 @@
     );
   }
 
+  /** The dialog of the three ways to a new profile; `fresh` (from the menu): saved as a new
+   *  profile beside the others. */
+  let ways = $state(false);
+  let waysFresh = false;
+  function openWays(fresh: boolean): void {
+    waysFresh = fresh;
+    ways = true;
+  }
+
   /** A new form on its first tab: the caret goes into the wished roles; `fresh` (the menu's
    *  Neues Profil): saved as a new profile beside the others. */
   async function create(fresh = false): Promise<void> {
@@ -213,6 +223,7 @@
     ready: () => boolean;
     focusField: (field: string) => Promise<boolean>;
     submit: () => void;
+    escape: () => void;
   } | null>(null);
 
   /** A value out of range: the field (and row) it names, and the limit where one is. */
@@ -425,9 +436,7 @@
           picking={busy === 'pick'}
           unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
           note={note?.() ?? null}
-          oncreate={() => void create()}
-          onpick={() => void pick()}
-          onprompt={() => void copyProfilePrompt()}
+          oncreate={() => openWays(false)}
           onopenfolder={openFolder}
         />
       </div>
@@ -462,11 +471,9 @@
     {switching}
     note={editor.origin === null ? null : (note?.() ?? null)}
     onswitch={(id) => set?.switchTo(id)}
-    onnew={() => guard(() => void create(true))}
+    onnew={() => guard(() => openWays(true))}
     onduplicate={() => set?.duplicate()}
-    onrename={() => set?.askRename()}
-    onload={() => guard(() => void pick(true))}
-    onprompt={() => void copyProfilePrompt()}
+    onrename={(name) => set?.renameTo(name) ?? Promise.resolve(false)}
     onremove={() => set?.askRemove()}
     onopenfolder={openFolder}
     oncheck={checkFirst}
@@ -476,12 +483,7 @@
 
 {#snippet person()}
   <!-- Enter saves here as in every field of the form; Esc leaves an untouched new one. -->
-  <div
-    class="person"
-    use:formKeys={editor.origin === 'new' && !editor.dirty
-      ? { save: () => panel?.submit(), cancel: discard }
-      : { save: () => panel?.submit() }}
-  >
+  <div class="person" use:formKeys={{ save: () => panel?.submit(), cancel: () => panel?.escape() }}>
     <TextField
       bind:value={editor.after.name}
       label={t.profile.field.name}
@@ -498,6 +500,13 @@
     />
   </div>
 {/snippet}
+
+<NewProfileDialog
+  bind:open={ways}
+  onempty={() => void create(waysFresh)}
+  onfile={() => pick(waysFresh)}
+  onanswer={(draft) => editor.take(draft, waysFresh)}
+/>
 
 <ProfileSet
   bind:this={set}

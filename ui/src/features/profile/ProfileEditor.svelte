@@ -375,6 +375,11 @@
     save();
   }
 
+  /** Esc there: an untouched new form goes back to the ways in, as inside it. */
+  export function escape(): void {
+    if (untouched) ondiscard();
+  }
+
   /** A new form nothing was typed into: Esc goes back to the ways in. */
   const untouched = $derived(editor.origin === 'new' && !editor.dirty);
 

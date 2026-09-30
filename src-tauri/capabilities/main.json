@@ -20,6 +20,7 @@
     "allow-empty-trash",
     "allow-ai-prompt",
     "allow-pick-profile",
+    "allow-read-profile-text",
     "allow-profile-prompt",
     "allow-save-profile",
     "allow-list-profiles",

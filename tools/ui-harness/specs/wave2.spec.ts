@@ -3,7 +3,7 @@
 
 import type { Page } from '@playwright/test';
 import { expect, nav, NOW, open, runFinished, test } from './fixtures';
-import { showTab } from './helpers';
+import { chooseWay, showTab } from './helpers';
 
 const WIN = '?platform=windows';
 const list = (page: Page) => page.getByTestId('job-list');
@@ -204,6 +204,7 @@ test('a new form puts the caret where the work starts', async ({ page }) => {
   await page.getByTestId('nav-profile').click();
   const empty = page.getByTestId('profile-empty');
   await empty.getByRole('button', { name: 'Neues Profil' }).click();
+  await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
 });
 
