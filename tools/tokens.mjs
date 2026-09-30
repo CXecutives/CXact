@@ -89,9 +89,9 @@ const CONTRAST = [
 ];
 /** WCAG AA for body text. */
 const AA = 4.5;
-/** Pairs below AA by a documented decision of the user (docs/PLAN.md): the CXact coral of the
- *  primary with its white label (3.7:1 at rest, 4.4:1 under the pointer; large enough text
- *  for 3:1, and brighter than the old CXact's 2.8:1). */
+/** Pairs below AA by a documented decision of the user (docs/PLAN.md): the CXact primary in
+ *  the cxpertise orange of the icon and cxpertise.de (--p-brand, user 2026-09-30) with its white
+ *  label, as the site sets it (2.9:1 at rest, 3.6:1 under the pointer; pressed it is AA). */
 const EXCEPTIONS = new Set([
   'cxact: --text-on-accent on --primary',
   'cxact: --text-on-accent on --primary-hover',

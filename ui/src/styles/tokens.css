@@ -33,7 +33,8 @@
 
   /* ------------------------------------------------------------------ palette */
   /* CXact (user, 2026-09-30: lively, a warm white window): a warm white for the window and the sidebar,
-     white content, a rich coral that acts (the primary, the unread dot) and the saturated
+     white content, the cxpertise orange that acts (#E67A5C like the icon and cxpertise.de, its
+     hover the site's variant; the primary, the unread dot) and the saturated
      cxpertise navy for headings, what is chosen (the sidebar entry, a tab, a segment), links, focus,
      progress and the tooltip. What is on, new or here (a switch, the unread dot, the open
      job's edge, the chosen entry's icon) is coral like what acts. */
@@ -42,12 +43,12 @@
   --p-nav-active: 32 24% 98.6%; /* the chosen sidebar entry: a warm white, softer than white */
   --p-cream: 30 22% 96.5%;
   --p-ink: 30 8% 13%;
-  --p-coral: 12 76% 57%;
+  --p-coral: 13 73% 63%;
   --p-brand: 13 73% 63%; /* the icon's plate, the CXact orange #E67A5C (user, 2026-09-28) */
   --p-brand-glyph: 0 0% 100%; /* the icon's folder */
   --p-knob: 0 0% 100%; /* the knob of a switch: white in both designs, like Claude's */
-  --p-coral-variant: 12 70% 51%;
-  --p-coral-press: 12 66% 46%;
+  --p-coral-variant: 13 64% 56%;
+  --p-coral-press: 13 64% 46%;
   --p-muted: 30 20% 97%;
   --p-muted-fg: 30 5% 33%;
   --p-line: 30 14% 88%;
