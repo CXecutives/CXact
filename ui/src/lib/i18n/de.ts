@@ -12,7 +12,8 @@
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs abrufen (the button: the mails and the
 // sources' search; what it does is the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
-// bewerten, Neu, Archiv (In den Eingang: back from there), Papierkorb, Löschen (into the
+// bewerten, Neu, Aktuell (the place of the active jobs, user 2026-10-01), Archiv (Zurückholen:
+// back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
 // data: its backups, its log, the reset), Aufrufe (what a portal allows a day).
 // "Bedingungen" only names the profile's section. A profile field has one name: the label of
@@ -180,6 +181,7 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'Mindestens eine Quelle muss aktiv sein.',
+  noSearchTerms: 'Für die Suche braucht CXact ein Profil.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
@@ -724,25 +726,25 @@ export const de = {
   place: {
     /** The tabs above the job list (their accessible name, and each place). */
     tabs: 'Ablage',
-    inbox: 'Eingang',
+    inbox: 'Aktuell',
     archive: 'Archiv',
     trash: 'Papierkorb',
     /** The reader beside the inbox while no job is open. */
     pickJob: 'Wähle einen Job aus der Liste.',
     /** The field's placeholder names what it searches. */
     search: {
-      inbox: 'Eingang durchsuchen',
+      inbox: 'Aktuelle Jobs durchsuchen',
       archive: 'Archiv durchsuchen',
       trash: 'Papierkorb durchsuchen',
     } satisfies Record<Place, string>,
     /** Search hits in another place: a button under the results that goes there (its count
      *  after it, quiet like the tabs'). */
     hitsIn: {
-      inbox: 'Im Eingang',
+      inbox: 'Aktuelle Jobs',
       archive: 'Im Archiv',
       trash: 'Im Papierkorb',
     } satisfies Record<Place, string>,
-    /** An empty Archiv or Papierkorb (the empty Eingang says what comes, list.empty*). */
+    /** An empty Archiv or Papierkorb (an empty Aktuell says what comes, list.empty*). */
     empty: {
       archive: 'Das Archiv ist leer.',
       trash: 'Der Papierkorb ist leer.',
@@ -761,9 +763,8 @@ export const de = {
     /** An excluded job counts with its real match anyway, or is excluded again. */
     include: 'Trotzdem bewerten',
     archive: 'Archivieren',
-    /** Back into the Eingang from the Archiv (the user's word; Wiederherstellen is the
-     *  Papierkorb's). */
-    unarchive: 'In den Eingang',
+    /** Back into Aktuell from the Archiv (Wiederherstellen is the Papierkorb's). */
+    unarchive: 'Zurückholen',
     trash: 'Löschen',
     restore: 'Wiederherstellen',
     purge: 'Endgültig löschen',
@@ -928,6 +929,8 @@ export const de = {
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst eine Quelle ein.',
+    /** The search has nothing to search for without a profile. */
+    needsProfile: 'Für die Suche braucht CXact ein Profil.',
   },
   run: {
     /** The one line under the list header while a fetch goes: what happens now. */
@@ -1204,7 +1207,7 @@ export const de = {
     removedNow: (name: string) => `Profil gelöscht, aktiv ist jetzt „${name}“.`,
     /** The toast of a save (during the setup with the way on). */
     saved: 'Profil gespeichert',
-    /** The same toast with what the rescore of the save changed in the Eingang: the jobs
+    /** The same toast with what the rescore of the save changed in Aktuell: the jobs
      *  now (or no longer) in the high band and the ones now (or no longer) excluded, only
      *  what changed. */
     savedEffect: (high: number, excluded: number) => {
@@ -1648,7 +1651,7 @@ export const de = {
     prompt: 'KI-Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
-    unarchived: 'In den Eingang verschoben',
+    unarchived: 'Zurückgeholt',
     trashed: 'Gelöscht',
     restored: 'Wiederhergestellt',
     /** Only a deletion for good says "endgültig". */

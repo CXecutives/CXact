@@ -791,7 +791,7 @@ test('the toast of a save says what the rescore changed, only the parts that did
   await page.getByTestId('profile-title').fill('Interim CFO');
   await save(page).click();
   await expect(savedToast(page).getByTestId('toast-text')).toHaveText(T.profile.saved);
-  // A first profile scores the jobs of the Eingang: the ones now high and the excluded ones.
+  // A first profile scores the jobs of Aktuell: the ones now high and the excluded ones.
   await create(page);
   await (await show(page, page.getByTestId('competence-name'))).fill('Controlling');
   await save(page).click();
@@ -2871,7 +2871,7 @@ test('"Häufig verlangt" under its field: the terms the jobs ask for, each where
     await expect(row).toHaveCount(1);
     await show(page, row);
     await expect(page.locator(`[data-field="${key}"] [data-for="${kind}"]`)).toContainText(term);
-    // Its button: the term, and quietly how many demo jobs ask for it (of the Eingang and
+    // Its button: the term, and quietly how many demo jobs ask for it (of Aktuell and
     // the Archiv, recent).
     const add = row.getByTestId('asked-add');
     await expect(add).toHaveAccessibleName(new RegExp(`^${term}`));

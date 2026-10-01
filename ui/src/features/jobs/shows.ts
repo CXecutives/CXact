@@ -53,7 +53,7 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
     prompt: {
       id: 'prompt',
       label: t.actions.prompt,
-      icon: 'prompt',
+      icon: 'copy',
       reason: !app.hasProfile ? t.actions.promptNoProfile : text ? null : t.reader.promptNoText,
       hidden: false,
     },

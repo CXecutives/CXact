@@ -68,12 +68,10 @@
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
-  import MessageSquareText from '@lucide/svelte/icons/message-square-text';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
-  import Scale from '@lucide/svelte/icons/scale';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
@@ -145,7 +143,6 @@
     'log-out': LogOut,
     mail: Mail,
     'map-pin': MapPin,
-    'message-square-text': MessageSquareText,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,
@@ -153,7 +150,6 @@
     scissors: Scissors,
     search: Search,
     settings: Settings,
-    scale: Scale,
     'sliders-horizontal': SlidersHorizontal,
     shield: Shield,
     star: Star,

@@ -14,7 +14,7 @@ async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
 
-test('three steps that tick themselves; the fetch searches before a mailbox', async ({ page }) => {
+test('three steps that tick themselves; the first search waits for a profile', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   const first = page.getByTestId('first-run');
   await expect(first).toBeVisible();
@@ -50,8 +50,12 @@ test('three steps that tick themselves; the fetch searches before a mailbox', as
   await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
     T.firstRun.mailboxText(ALERT_PORTALS),
   );
-  // Without a mailbox the first fetch searches the sources (Hays and freelancermap are on).
-  await expect(page.getByTestId('first-fetch')).not.toHaveAttribute('aria-disabled', 'true');
+  // The first fetch searches the sources, with the profile's terms: without one it waits and
+  // says why (it never falls back to the mailbox).
+  await expect(page.getByTestId('first-fetch')).toHaveAttribute('aria-disabled', 'true');
+  await page.getByTestId('first-fetch').hover();
+  await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsProfile);
+  await page.mouse.move(0, 0);
 
   await page.getByTestId('mailbox-user').fill('alerts.demo');
   await page.getByTestId('mailbox-password').fill('abcdabcdabcdabcd');
@@ -66,7 +70,7 @@ test('three steps that tick themselves; the fetch searches before a mailbox', as
   await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
   await expect(page.getByTestId('step-mailbox').locator('.marker')).toHaveClass(/drawn/);
   await expect(page.getByTestId('first-profile')).toBeFocused();
-  await expect(page.getByTestId('first-fetch')).not.toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByTestId('first-fetch')).toHaveAttribute('aria-disabled', 'true');
   // The address is text to copy; per portal what "Verbinden" found, or its page to set up an
   // alert where it found none, in the UI's order.
   await expect(page.getByTestId('step-mailbox').locator('.done-text')).toHaveAttribute(
@@ -211,7 +215,8 @@ test('every view opens; the sidebar is the same as always, Jobs leads back', asy
 });
 
 test('after the first fetch the list opens on its inbox', async ({ page }) => {
-  await open(page, `${WIN}&scenario=mailbox-only`);
+  // An empty profile has nothing to search for: the first fetch reads the mailbox.
+  await open(page, `${WIN}&scenario=mailbox-only&way=mail`);
   await page.getByTestId('first-profile').click();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('view-profile')).toBeVisible();

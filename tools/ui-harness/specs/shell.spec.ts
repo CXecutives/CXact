@@ -671,7 +671,10 @@ test('an unsaved profile keeps the view until the question is answered', async (
   await dialog.getByRole('button', { name: 'Verwerfen' }).click();
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Eingang durchsuchen');
+  await expect(page.getByTestId('search')).toHaveAttribute(
+    'placeholder',
+    'Aktuelle Jobs durchsuchen',
+  );
 });
 
 test('a click on the tab that is open reloads nothing, like Jobs', async ({ page }) => {
@@ -689,7 +692,10 @@ test('a click on the tab that is open reloads nothing, like Jobs', async ({ page
   await settle(page);
   expect(await loads('archive')).toBe(archive);
   await page.getByTestId('place-inbox').click();
-  await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Eingang durchsuchen');
+  await expect(page.getByTestId('search')).toHaveAttribute(
+    'placeholder',
+    'Aktuelle Jobs durchsuchen',
+  );
   await settle(page);
   const all = await loads();
   await page.getByTestId('nav-jobs').click();

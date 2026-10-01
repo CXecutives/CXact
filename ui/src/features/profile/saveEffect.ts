@@ -1,5 +1,5 @@
 // What a save of the profile changed, said in its toast: the save starts a rescore
-// (scoring::profile_changed in the backend), whose summary counts the jobs of the Eingang in
+// (scoring::profile_changed in the backend), whose summary counts the jobs of Aktuell in
 // the high band and the excluded ones before and after it (`ScoreDelta`). Watched from the
 // moment of the save, so only the rescore the save started counts (one that was going
 // already ends first and is not it); the toast waits for it at most a toast's life, else it

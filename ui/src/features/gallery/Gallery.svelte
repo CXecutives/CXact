@@ -36,6 +36,8 @@
     testid: `gnav-${index}`,
   }));
   let activeTab = $state('0');
+  /** How many toasts the gallery showed (each says its number). */
+  let toastCount = 0;
   const noop = (): void => undefined;
 
   /** The sidebar full and as the rail (below 1100 px). */
@@ -139,7 +141,7 @@
     <div class="bar">
       <Button
         label={text.navigation.toast}
-        onclick={() => toasts.show(text.navigation.toastText)}
+        onclick={() => toasts.show(text.navigation.toastText((toastCount += 1)))}
       />
     </div>
     <!-- The caption buttons of the Windows top bar (maximize shows the restore glyph while

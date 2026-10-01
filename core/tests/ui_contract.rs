@@ -1129,7 +1129,8 @@ fn the_catalog_keeps_the_glossary() {
             // The work folder holds the profiles (and the overviews while they are written).
             ("Exportordner", "Arbeitsordner"),
             ("Ergebnisordner", "Arbeitsordner"),
-            ("Dearchivieren", "In den Eingang"),
+            ("Dearchivieren", "Zurückholen"),
+            ("Eingang", "Aktuell"),
             ("Farben", "Design"),
             ("Wartung", "App"),
             ("Favorit", "nothing (favourites are gone)"),

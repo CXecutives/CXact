@@ -41,7 +41,7 @@
 // the ad's rate and start as plain facts)
 // · dry-run (the demo: a Probelauf mailbox, every command that writes outside the database
 // refuses with `dryRun` like `ensure_real`)
-// · demo (the demo start, `CXact Demo` or `--demo`: an empty Eingang, the sample profile and
+// · demo (the demo start, `CXact Demo` or `--demo`: an empty Aktuell, the sample profile and
 // a made-up mailbox whose fetch brings the scripted fetch's jobs; connecting a mailbox, a
 // sign-in, another work folder, the reset and a restore refuse with `demo` like
 // `ensure_not_demo`)
@@ -62,7 +62,7 @@
 // a competence with more than 70 years (with its row), more than five days a week, a second
 // day below the first and a minimum duration above 120 months, like core's validation; a
 // saved profile starts the rescore like core (with jobs, while no run goes), whose summary
-// says what the save changed in the Eingang (`ScoreDelta`).
+// says what the save changed in Aktuell (`ScoreDelta`).
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
@@ -940,7 +940,7 @@ function initial(): void {
       state.portals[1]!.signedIn = true;
       break;
     case 'demo':
-      // Like `create_demo_data`: an empty Eingang, no fetch yet, the sample profile; the
+      // Like `create_demo_data`: an empty Aktuell, no fetch yet, the sample profile; the
       // made-up mailbox brings jobs with every fetch.
       state.demo = true;
       jobs = [];
@@ -1074,7 +1074,7 @@ function countsOf(list: JobView[]): JobCounts {
   return c;
 }
 
-/** The excluded jobs of the Eingang and those scored in the high band (a rescore's
+/** The excluded jobs of Aktuell and those scored in the high band (a rescore's
  *  `ScoreDelta`). */
 function bandsOf(list: JobView[]): { excluded: number; high: number } {
   const inbox = list.filter((j) => j.place === 'inbox');
@@ -1273,7 +1273,7 @@ function listJobs(query: JobQuery): { jobs: JobView[]; counts: JobCounts } {
 /** "Häufig verlangt" like core (`view::asked_terms`, `pipeline::local::terms`): the terms
  *  and fields the engine's readers name for the open must and nice requirements that are
  *  skills (`params.term`, `params.field`, core `pipeline::local::open_term`) of the scored
- *  jobs of the Eingang and the Archiv of the last 30 days, once per job however written,
+ *  jobs of Aktuell and the Archiv of the last 30 days, once per job however written,
  *  asked by two jobs at least, the most frequent first (equal counts by their words), at most
  *  eight; what the stored profile names in any field is none of them. */
 function askedTerms(): AskedTerm[] {
@@ -1714,6 +1714,17 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   if (mail && state.mailbox.user === null && kind !== 'rescore' && kind !== 'details') {
     throw fail('mailMissing');
   }
+  // The search never falls back to the mailbox (run_context): a source of it switched on and
+  // a profile to search with, or it does not start.
+  if (isFetch(kind) && !mail && !state.dryRun) {
+    if (!state.portals.some((p) => p.enabled && p.way === 'search')) {
+      throw fail('invalid', { reason: 'noPortal' });
+    }
+    const profile = state.profile;
+    if (profile === null || profile.parseError !== null || profile.quality === 'empty') {
+      throw fail('invalid', { reason: 'noSearchTerms' });
+    }
+  }
   running = true;
   runningKind = kind;
   runSender = sender?.hold() ?? null;
@@ -2080,7 +2091,7 @@ const handlers: Handlers = {
     }
     refresh();
     // Like core (scoring::profile_changed): the jobs are scored again, and the rescore says
-    // what changed in the Eingang (`ScoreDelta`); no run without jobs, none while one goes.
+    // what changed in Aktuell (`ScoreDelta`); no run without jobs, none while one goes.
     const bandsAfter = bandsOf(jobs);
     rescoreDelta = {
       excludedBefore: bandsBefore.excluded,

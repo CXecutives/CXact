@@ -2,7 +2,7 @@
 // (the section says its number in Archiv and Papierkorb before every page is there), the
 // best new jobs of the Übersicht while others wait for a score (by match those come first),
 // the app's version in Wartung, Einstellungen opened at one portal from a job ("Anmeldung
-// einrichten", with the way back) and the demo start, which begins with an empty Eingang and
+// einrichten", with the way back) and the demo start, which begins with an empty Aktuell and
 // the sample profile, fetches from its made-up mailbox and says that it is the demo.
 
 import type { Page } from '@playwright/test';
@@ -123,7 +123,7 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
   await expect(page.getByTestId('sign-in-freelance')).not.toBeFocused();
 });
 
-test('the demo starts with an empty Eingang and the sample profile and fetches like the app', async ({
+test('the demo starts with an empty Aktuell and the sample profile and fetches like the app', async ({
   page,
 }) => {
   await open(page, `${WIN}&way=mail&scenario=demo`);
@@ -136,7 +136,7 @@ test('the demo starts with an empty Eingang and the sample profile and fetches l
     request: { kind: 'fetch' },
   });
   await runFinished(page);
-  // The fetch's jobs arrive in the Eingang; Profil holds the sample profile.
+  // The fetch's jobs arrive in Aktuell; Profil holds the sample profile.
   const first = DEMO.announced[0]!.key;
   const row = page.getByTestId('job-list').getByTestId(`job-row-${first.portal}-${first.id}`);
   await expect(row).toBeVisible();

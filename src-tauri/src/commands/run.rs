@@ -224,6 +224,16 @@ fn run_context(
             .map(|form| profile::deep_search_terms(&form))
             .unwrap_or_default()
     };
+    // The search never falls back to the mailbox: with no source of it switched on or nothing
+    // to search for (no profile yet) the fetch does not start, and says why.
+    if scans && !state.dry_run && searches {
+        if search_portals.is_empty() {
+            return Err(ErrorInfo::from(&InvalidInput::NoPortal));
+        }
+        if search_terms.is_empty() {
+            return Err(ErrorInfo::from(&InvalidInput::NoSearchTerms));
+        }
+    }
     let ctx = RunContext {
         workspace,
         dry_run: state.dry_run,

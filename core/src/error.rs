@@ -67,6 +67,10 @@ pub enum Error {
 pub enum InvalidInput {
     #[error("no portal is enabled")]
     NoPortal,
+    /// The search has nothing to search for: no profile, or one without roles, focus or
+    /// search terms.
+    #[error("nothing to search for")]
+    NoSearchTerms,
     #[error("the profile is not UTF-8 text")]
     ProfileNotUtf8,
     #[error("the profile is not valid JSON (line {line}, column {column})")]

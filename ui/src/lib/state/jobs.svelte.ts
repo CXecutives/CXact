@@ -219,7 +219,7 @@ function keepFilter(filter: ListFilter): void {
 }
 
 class JobsStore {
-  /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
+  /** The place the list shows (the tabs Aktuell, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');

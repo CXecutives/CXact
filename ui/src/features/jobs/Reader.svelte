@@ -2,7 +2,7 @@
   The reader, unboxed on the sheet (max 720 px). Its sections and their order are data
   (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
   - head: the title (without gender tags), then the moves of the place as quiet icons like
-    the row's tools (Eingang Archivieren, Löschen; Archiv In den Eingang, Löschen; Papierkorb
+    the row's tools (Aktuell Archivieren, Löschen; Archiv Zurückholen, Löschen; Papierkorb
     Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
     every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
     offers none while the next one loads.
@@ -300,7 +300,7 @@
    *  until the next job has loaded, its moves off meanwhile (they would be the new place's). */
   const inPlace = $derived(job.place === jobs.place);
   /** The moves of the job's place beside the close button, as icons without a frame like it
-   *  (user decision 2026-10-01: Archivieren and Löschen in the Eingang, the place's own
+   *  (user decision 2026-10-01: Archivieren and Löschen in Aktuell, the place's own
    *  elsewhere), from the one table of the job's moves (the row's tools show the same). A
    *  move hands the focus on. */
   const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
@@ -455,7 +455,7 @@
       <Button
         variant="secondary"
         size="field"
-        icon="include"
+        icon="add"
         label={t.actions.include}
         testid="reader-include"
         onclick={(event) => void include(event)}

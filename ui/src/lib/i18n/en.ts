@@ -10,8 +10,8 @@
 // thing): Job, Source, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
 // Not met, Unclear), Must-have, Optional, Exclusion, Profile, Mailbox, Alert email, Check
 // mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Work folder,
-// Excluded, Score anyway, Rescore, New, Inbox (the place of the active jobs), Archive (Move to
-// inbox: back from there), Trash, Delete (into the Trash; there Delete forever and Restore),
+// Excluded, Score anyway, Rescore, New, Current (the place of the active jobs), Archive (Move
+// back: back from there), Trash, Delete (into the Trash; there Delete forever and Restore),
 // Folders (the three places), Data (the card of the app's data), Requests (what a portal
 // allows a day), Skill, Focus area, Preferred role, Permanent job, Day rate, Job view,
 // Sidebar, Appearance, Theme. "Conditions" only names the profile's section. Plain British
@@ -201,6 +201,7 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'At least one source must be active.',
+  noSearchTerms: 'The search needs a profile.',
   profileNotUtf8: 'The file is not a text file.',
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
   profileNotObject: 'The file does not contain a profile.',
@@ -651,17 +652,17 @@ export const en: Catalog = {
   },
   place: {
     tabs: 'Folders',
-    inbox: 'Inbox',
+    inbox: 'Current',
     archive: 'Archive',
     trash: 'Trash',
     pickJob: 'Select a job in the list.',
     search: {
-      inbox: 'Search inbox',
+      inbox: 'Search current jobs',
       archive: 'Search archive',
       trash: 'Search trash',
     } satisfies Record<Place, string>,
     hitsIn: {
-      inbox: 'In the inbox',
+      inbox: 'Current jobs',
       archive: 'In the archive',
       trash: 'In the trash',
     } satisfies Record<Place, string>,
@@ -678,7 +679,7 @@ export const en: Catalog = {
     promptNoProfile: 'Without a profile, there is nothing to score against.',
     include: 'Score anyway',
     archive: 'Archive',
-    unarchive: 'Move to inbox',
+    unarchive: 'Move back',
     trash: 'Delete',
     restore: 'Restore',
     purge: 'Delete forever',
@@ -812,6 +813,7 @@ export const en: Catalog = {
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Turn on a source first.',
+    needsProfile: 'The search needs a profile.',
   },
   run: {
     line: {
@@ -1345,7 +1347,7 @@ export const en: Catalog = {
     rescored: 'Jobs rescored',
     prompt: 'AI prompt copied',
     archived: 'Archived',
-    unarchived: 'Moved to inbox',
+    unarchived: 'Moved back',
     trashed: 'Deleted',
     restored: 'Restored',
     deleted: 'Deleted forever',

@@ -75,7 +75,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   ]);
   const toast = page.getByTestId('toast').filter({ hasText: DONE });
   await toast.getByTestId('toast-action').click();
-  // The Eingang with the new jobs of that fetch in the high band: the one the toast names.
+  // Aktuell with the new jobs of that fetch in the high band: the one the toast names.
   await expect(chips(page).getByRole('button')).toHaveText([
     T.toolbar.lastFetch,
     ...chipWordsOf('band-high'),
@@ -92,13 +92,13 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   expect(active).toHaveLength(2);
   expect(active).toContain('linkedin-4100200399');
   await expect.poll(() => listed(page)).toEqual(active);
-  // Never kept: the next start lists the Eingang as before.
+  // Never kept: the next start lists Aktuell as before.
   await open(page, `${WIN}&tick=15`);
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
 });
 
-test('from another view Zeigen opens the Eingang without its search, filtered to the new jobs', async ({
+test('from another view Zeigen opens Aktuell without its search, filtered to the new jobs', async ({
   page,
 }) => {
   await open(page, `${WIN}&way=mail&tick=15`);

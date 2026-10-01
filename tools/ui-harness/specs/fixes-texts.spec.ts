@@ -29,7 +29,7 @@ test('a job of last week shows its weekday and date, not "vor 4 Tagen"', async (
   await expect(date('freelancermap-2806')).toHaveText('So 20.09.');
 });
 
-test('an archived job goes back to the Eingang with In den Eingang', async ({ page }) => {
+test('an archived job goes back to Aktuell with Zurückholen', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('place-archive').click();
   const key = 'linkedin-4100200306';

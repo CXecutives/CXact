@@ -10,7 +10,9 @@
 // plain one never pushes an undo out, and a new one never pushes itself out). A toast waits
 // while the pointer is on it, and every toast waits while the window is in the back or a
 // modal dialog is open (`hold`): its time only runs while the user can act on it. Results of
-// the same kind in quick succession merge into one toast with one undo (`undoable`). An
+// the same kind in quick succession merge into one toast with one undo (`undoable`); a toast
+// that says what one already up says (a fetch refused twice) takes its place and starts its
+// time again, never a second one. An
 // undo names the jobs it concerns: when they are deleted for good, it goes
 // (`forget`). An undo that fails keeps its toast: it turns into a warning with the reason
 // and offers to try again.
@@ -130,6 +132,21 @@ class Toasts {
     action: ToastAction | null = null,
     keys: readonly string[] = [],
   ): number {
+    const same = this.items.find(
+      (item) =>
+        item.text === text &&
+        item.kind === kind &&
+        !isUndo(item.action) &&
+        !isUndo(action) &&
+        keys.length === 0,
+    );
+    if (same !== undefined) {
+      this.items = this.items.map((item) =>
+        item.id === same.id ? { ...item, action, round: item.round + 1 } : item,
+      );
+      this.#restart(same.id, action);
+      return same.id;
+    }
     const id = this.#next++;
     this.items = [...this.items, { id, text, kind, action, round: 0 }];
     // Too many: the oldest without an action goes, never the new one, so a tip never takes
@@ -224,13 +241,16 @@ class Toasts {
       item.id === id ? { ...item, text: text(merged.count), round: item.round + 1 } : item,
     );
     // The toast stays its full time from the last result.
+    this.#restart(id, this.items.find((each) => each.id === id)?.action ?? null);
+  }
+
+  /** The toast's full time again, from now. */
+  #restart(id: number, action: ToastAction | null): void {
     const entry = this.#timers.get(id);
-    if (entry) {
-      this.#stop(id);
-      const item = this.items.find((each) => each.id === id);
-      entry.left = lifetime(item?.action ?? null);
-      this.#start(id);
-    }
+    if (!entry) return;
+    this.#stop(id);
+    entry.left = lifetime(action);
+    this.#start(id);
   }
 
   dismiss(id: number): void {

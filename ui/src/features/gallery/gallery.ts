@@ -78,7 +78,8 @@ export const text = {
   navigation: {
     tabs: ['Jobs', 'Profil', 'Einstellungen'],
     toast: 'Toast zeigen',
-    toastText: 'Gespeichert.',
+    /** Each toast its own words (a toast that says what one up says takes its place). */
+    toastText: (n: number) => `Toast ${n}`,
     status: 'Abgerufen 08:30',
     running: 'Holt Details',
   },

@@ -18,7 +18,7 @@
      the place are cut at the line's end, the pay never.
   No portal, no facts, no badges: the reader has them. Under the pointer (and while the
   row's menu is open) the row's tools, the moves of its place (actions.ts rowTools:
-  Archivieren and Löschen, In den Eingang and Löschen, Wiederherstellen and Endgültig
+  Archivieren and Löschen, Zurückholen and Löschen, Wiederherstellen and Endgültig
   löschen), fade in as icons over the date, which fades out: they stand in a fixed slot at
   the end of the title line that is always as wide as they are, so nothing moves and the
   title keeps its room. Each names itself in its tooltip; the ones that delete are red.

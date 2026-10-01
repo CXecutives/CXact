@@ -3,7 +3,7 @@
 // the chips under the list header, the store's query and the harness all read it: another
 // group is one entry of FILTER_GROUPS (and its field in ListFilter, which `toQuery` hands to
 // the JobQuery), another word one in the catalog. The filter is the same in every
-// place (Eingang, Archiv, Papierkorb) and kept per user like the order. The order of the list
+// place (Aktuell, Archiv, Papierkorb) and kept per user like the order. The order of the list
 // (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
 // sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists every value of
 // its dimension or is not there at all (user decision 2026-09-27): Quelle and Übereinstimmung

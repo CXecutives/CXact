@@ -427,7 +427,7 @@ test.describe('the actions', () => {
     );
     expect(new Set(looks).size).toBe(1);
     expect(looks[0]).toMatch(/^true /);
-    // The moves of the Eingang beside the x, quiet like it (no frame, user 2026-10-01), in
+    // The moves of Aktuell beside the x, quiet like it (no frame, user 2026-10-01), in
     // one row and one size with it; no "…" menu.
     const tools = await headTools(page);
     expect(tools.ids).toEqual(['archive', 'trash']);
@@ -572,7 +572,7 @@ test.describe('the actions', () => {
     test.setTimeout(60_000);
     await open(page, WIN);
     const best = 'Interim CFO für Familienunternehmen';
-    // Löschen of the open job in the Eingang: while the next one loads the reader shows the
+    // Löschen of the open job in Aktuell: while the next one loads the reader shows the
     // job that went to the Papierkorb, and its moves are off (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
     await settleMoves(page);
@@ -581,12 +581,12 @@ test.describe('the actions', () => {
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await movesOff(page);
-    // The next job of the Eingang: the Eingang's moves.
+    // The next job of Aktuell: Aktuell's moves.
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
     expect(await moves(page)).toEqual(['archive', 'trash']);
-    // Rückgängig brings it back and opens it again: the Eingang's moves again.
+    // Rückgängig brings it back and opens it again: Aktuell's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await settleMoves(page);

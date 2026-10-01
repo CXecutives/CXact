@@ -14,7 +14,7 @@ export const ICONS = {
   // The places of a job and the moves between them: the place's icon is also the move there.
   inbox: 'inbox',
   archive: 'archive',
-  /** In den Eingang: out of the archive, back into the inbox. */
+  /** Zurückholen: out of the archive, back into the inbox. */
   unarchive: 'archive-restore',
   /** Delete (Löschen), delete for good, empty the trash, remove the mailbox: one glyph, in
    *  red wherever it deletes. */
@@ -32,8 +32,6 @@ export const ICONS = {
   external: 'external-link',
   /** An alert mail: open it, read the older ones. */
   alertMail: 'mail',
-  /** Copy a prompt for an AI chat (the job, the comparison, the CV). */
-  prompt: 'message-square-text',
   /** Load the whole ad (Anzeige laden). */
   details: 'download',
   /** A reason that leads to its passage in the ad. */
@@ -68,6 +66,7 @@ export const ICONS = {
   edit: 'pencil',
   /** Close, clear or take out (a toast, the reader, a search, a term). */
   close: 'x',
+  /** Copy: a text, a prompt for an AI chat (the job, the CV; user 2026-10-01). */
   copy: 'copy',
   cut: 'scissors',
   /** Paste (a field; the CV's answer). */
@@ -110,8 +109,6 @@ export const ICONS = {
   warning: 'triangle-alert',
   /** Excluded by a hard criterion. */
   excluded: 'ban',
-  /** An excluded job counts with its real match anyway ("Trotzdem bewerten"). */
-  include: 'scale',
   /** Met in part. */
   partial: 'circle-minus',
   /** The ad does not say. */

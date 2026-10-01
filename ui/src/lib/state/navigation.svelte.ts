@@ -1,7 +1,7 @@
 // Which of the three views is shown. No router: the app has exactly these. It starts in Jobs;
 // before the first fetch Jobs shows the setup page. The native menu may ask for a view too (macOS: Cmd+, opens the settings). A view with unsaved
 // work (the Profil editor) holds a guard: it may keep the switch and ask first, then switch
-// itself; what was to happen with the switch waits for it. The places of the jobs (Eingang,
+// itself; what was to happen with the switch waits for it. The places of the jobs (Aktuell,
 // Archiv, Papierkorb) are tabs of the Jobs view, not views (lib/state/jobs.svelte.ts).
 
 import { onNavigate } from '../ipc/api';

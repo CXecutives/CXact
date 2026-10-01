@@ -1,5 +1,5 @@
 <!--
-  The places of a list as tabs (Eingang, Archiv, Papierkorb), drawn like a segmented control
+  The places of a list as tabs (Aktuell, Archiv, Papierkorb), drawn like a segmented control
   (user decision 2026-09-28): the labels on one track, the chosen one on a white thumb that
   slides to the next choice like the sidebar's pill (180 ms, emphasized; the first placement
   and a change of size never slide), no numbers. A tab may carry a small dot after its label

@@ -1,13 +1,13 @@
 <!--
   The header of the list column, the same in the three places. First row: the places as tabs
-  (Eingang, Archiv, Papierkorb, their names only; another place starts without the search,
+  (Aktuell, Archiv, Papierkorb, their names only; another place starts without the search,
   like a folder of a mail app) and at its right end the place's one action: in the
-  Eingang "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
+  Aktuell "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
   beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
   Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
   lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, as
   wide as "Postfach abrufen" (the wider of the two sets it), the Zeitraum's button stays
-  beside it, off; in the other places "Abbrechen" stands where it stands in the Eingang, so
+  beside it, off; in the other places "Abbrechen" stands where it stands in Aktuell, so
   it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
   while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
   "Papierkorb leeren" (outlined with the red of every button that deletes, as large as
@@ -25,7 +25,7 @@
   groups in one go, the check marks move with each choice) and closes on a press outside,
   Esc or the funnel; "Filter zurücksetzen" closes it. Without a usable profile the order and
   the bands are off, saying why. A place that holds nothing has nothing to search, order or
-  filter: the row stays, empty; while a fetch fills the Eingang its tools stand already (no
+  filter: the row stays, empty; while a fetch fills Aktuell its tools stand already (no
   empty band above the run line, nothing moves when the first jobs come). While a filter is
   on, its parts
   stand as small chips under the row, each with its × (the row unfolds and folds away, the
@@ -79,7 +79,7 @@
   }
 
   /** The search and the funnel: while the place holds jobs (or a search or a filter is on,
-   *  to be taken off, or a fetch fills the Eingang); a list that did not load has nothing to
+   *  to be taken off, or a fetch fills Aktuell); a list that did not load has nothing to
    *  order. */
   const tools = $derived(
     jobs.status !== 'error' &&
@@ -157,10 +157,10 @@
 
   /** The menu of what a fetch reads is open (its button keeps its hover look). */
   let wayOpen = $state(false);
-  /** "Jobs abrufen" shows: in the Eingang while no fetch goes (elsewhere it only holds
-   *  the cell's width, so "Abbrechen" stands where it stands in the Eingang). */
+  /** "Jobs abrufen" shows: in Aktuell while no fetch goes (elsewhere it only holds
+   *  the cell's width, so "Abbrechen" stands where it stands in Aktuell). */
   const fetchShown = $derived(place === 'inbox' && !run.fetching);
-  /** The fetch's buttons show: in the Eingang, and "Abbrechen" in every place while a fetch
+  /** The fetch's buttons show: in Aktuell, and "Abbrechen" in every place while a fetch
    *  goes. */
   const fetchGroup = $derived(place === 'inbox' || run.fetching);
   /** The fetch's colour: the view's primary once a fetch can bring jobs. */
@@ -224,7 +224,7 @@
 
 {#snippet fetchButtons(inbox: boolean)}
   <!-- The fetch and "Abbrechen" share one slot (the wider sets it): nothing moves; the menu's
-       button beside them is off while a fetch goes and holds its room outside the Eingang. -->
+       button beside them is off while a fetch goes and holds its room outside Aktuell. -->
   <span class="fetch">
     <span class="run">
       <span class="swap" class:shown={fetchShown} inert={!fetchShown}>

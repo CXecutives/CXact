@@ -1127,3 +1127,16 @@ handle sits between list and reader".
   - [x] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `commands/auto.rs`, `pipeline::auto_due`); the
     app fetches only by hand
   - [ ] The Excel and CSV export (`EXPORT_SHOWN`, the export step; the AI prompt stays)
+- Round 7 (user decisions 2026-10-01, night):
+  - [x] "Jobs suchen" without a profile searched nothing and fell back to the mailbox ("Es ist kein Postfach
+    verbunden"): the search way never reads the mailbox; without search terms the fetch waits and says why
+    (`noSearchTerms`); a toast that says the same as one shown replaces it
+  - [x] Icons: "Trotzdem bewerten" the plus (user: the plain one), "KI-Prompt kopieren" the copy glyph (as
+    "Prompt kopieren")
+  - [x] The first tab "Eingang" is "Aktuell" (back from the Archiv: "Zurückholen")
+  - [ ] Einstellungen by the fetch's two ways: Suche, then Postfach (the connection, then the sources of its
+    alert mails), then Daten; no Zeitraum (every fetch reads the mails since the last one, the first one 30
+    days)
+  - [ ] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and
+    Antwort einfügen in place, Leer anfangen, Aus Datei laden); "Profil anlegen" in Jobs and "Neues Profil"
+    in the menu lead there

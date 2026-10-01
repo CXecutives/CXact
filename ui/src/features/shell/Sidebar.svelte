@@ -2,7 +2,7 @@
   The calm sidebar on the window's colour below the top bar: no surface of its own, the
   view's sheet is the divider. It starts with the views: Jobs, Profil, Einstellungen, each
   with its icon and no count, the first on the first line of every view. The places of the
-  jobs (Eingang, Archiv, Papierkorb) are tabs above the list. Before the first fetch the
+  jobs (Aktuell, Archiv, Papierkorb) are tabs above the list. Before the first fetch the
   setup page stands for Jobs; every entry can be chosen, as always. In the demo a quiet line
   "Demo" stands at the foot. A press here never takes the focus (the list keeps its keys).
   Like the Claude app's (user, 2026-09-27) it is docked beside the view (its width is the

@@ -10,7 +10,7 @@
 //   `app.state.lastRun` ("the last fetch"), so `run.summary ?? app.state.lastRun` is the last
 //   fetch wherever it is read (sidebar, failed-fetch retry, empty list).
 // What a fetch brought is a toast at its end ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in
-// every view; its "Zeigen" opens the Eingang filtered to exactly the jobs it counts. What went
+// every view; its "Zeigen" opens Aktuell filtered to exactly the jobs it counts. What went
 // wrong is a toast too, once, with its way on; the other details of a run (each mail, each
 // portal) are in the log, not on screen.
 
@@ -110,12 +110,16 @@ class RunStore {
   }
 
   /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" the search,
-   *  "Postfach abrufen" the mailbox), in the order she would fix it: a run holds the app, no
-   *  mailbox for the mails, no source of that way switched on; null when it can (the demo
-   *  fetches from its made-up mailbox). The backend refuses the same. */
+   *  "Postfach abrufen" the mailbox), in the order it is fixed: a run holds the app; for the
+   *  search no source of it switched on or no profile to search with; for the mails no
+   *  mailbox or no source of alert mails switched on; null when it can (the demo fetches from
+   *  its made-up mailbox). The backend refuses the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
-    if (app.fetchWay === 'search') return app.searches ? null : t.toolbar.needsPortal;
+    if (app.fetchWay === 'search') {
+      if (!app.searches) return t.toolbar.needsPortal;
+      return app.hasProfile ? null : t.toolbar.needsProfile;
+    }
     if (!app.hasMailbox) return t.toolbar.needsMailbox;
     return app.alerts ? null : t.toolbar.needsPortal;
   }
@@ -186,7 +190,7 @@ class RunStore {
     });
   }
 
-  /** The jobs a fetch's toast counts (its "Zeigen"): the Eingang without a search, filtered
+  /** The jobs a fetch's toast counts (its "Zeigen"): Aktuell without a search, filtered
    *  to the new jobs of that fetch ("Aus dem letzten Abruf"), to those of the high band when
    *  the toast names them. Each chip takes its part off again; none of it is kept as the
    *  user's filter. */

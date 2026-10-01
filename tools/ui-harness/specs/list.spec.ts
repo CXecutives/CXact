@@ -1,4 +1,4 @@
-// The list area of the Jobs view (the approved design of 2026-09-26): the tabs Eingang (with
+// The list area of the Jobs view (the approved design of 2026-09-26): the tabs Aktuell (with
 // its unopened jobs), Archiv, Papierkorb; one toolbar row (the search, the funnel, Abrufen);
 // the funnel's menu (the order, then the filter table) and the chips of an active filter; one list
 // per place in the chosen order with the excluded jobs folded at its end; the empty states;
@@ -154,7 +154,7 @@ test.describe('header', () => {
     page,
   }) => {
     await open(page, WIN);
-    // Eingang: the fetch with its menu's button at the end of the tabs' row.
+    // Aktuell: the fetch with its menu's button at the end of the tabs' row.
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.searchNow);
     // Measured in one frame, once the header has its final layout.
     await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
@@ -171,7 +171,7 @@ test.describe('header', () => {
     expect(T.toolbar.filter).toBe('Sortieren und filtern');
     // Each place's search names its place.
     await expect(page.getByTestId('search')).toHaveAttribute('placeholder', T.place.search.inbox);
-    expect(T.place.search.inbox).toBe('Eingang durchsuchen');
+    expect(T.place.search.inbox).toBe('Aktuelle Jobs durchsuchen');
     const top = (await page.getByTestId('search').boundingBox())!.y;
     // Archiv: the same row, no action.
     await openPlace(page, 'archive');
@@ -386,7 +386,7 @@ test.describe('header', () => {
     await page.getByTestId('nav-settings').click();
     await page.getByTestId('nav-jobs').click();
     await expect(search).toHaveValue('Kreditoren');
-    // The Eingang tab: the inbox as a whole, like a folder of a mail app.
+    // Aktuell tab: the inbox as a whole, like a folder of a mail app.
     await openPlace(page, 'inbox');
     await expect(search).toHaveValue('');
     expect((await lastQuery(page))?.search).toBeNull();
@@ -415,7 +415,7 @@ test.describe('header', () => {
     expect((await page.getByTestId('list-scroll').boundingBox())!.y).toBe(top);
   });
 
-  test('a fetch into an empty Eingang leaves no empty band: the search row stands above the run line', async ({
+  test('a fetch into an empty Aktuell leaves no empty band: the search row stands above the run line', async ({
     page,
   }) => {
     for (const platform of [WIN, MAC]) {
@@ -610,7 +610,7 @@ test.describe('filter', () => {
     await expect.poll(() => listed(page)).toEqual(await inbox(page, { sort: 'newest' }));
   });
 
-  test('the same control in the Eingang, the Archiv and the Papierkorb, kept for every list', async ({
+  test('the same control in Aktuell, the Archiv and the Papierkorb, kept for every list', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1517,6 +1517,31 @@ test.describe('one list', () => {
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
 
+  test('without a profile Jobs suchen waits and says why; the mailbox needs none', async ({
+    page,
+  }) => {
+    await open(page, `${WIN}&scenario=no-profile`);
+    // The search never falls back to the mailbox: it has nothing to search for.
+    const fetch = page.getByTestId('fetch');
+    await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+    await fetch.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsProfile);
+    await page.mouse.move(0, 0);
+    await page.getByTestId('fetch-ways').click();
+    await menuItem(page, 'way-mail').click();
+    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    expect(await calls(page, 'start_run')).toHaveLength(0);
+  });
+
+  test('a fetch refused again says so in the one toast that is up', async ({ page }) => {
+    await open(page, WIN);
+    for (const round of [1, 2, 3]) {
+      await failNext(page, 'start_run');
+      await page.getByTestId('fetch').click();
+      await expect(page.getByTestId('toast'), `round ${round}`).toHaveCount(1);
+    }
+  });
+
   test('one primary button in every state of the list, and with a job open', async ({ page }) => {
     const primary = '.btn.primary';
     for (const scenario of ['default', 'empty', 'no-profile', 'offline']) {
@@ -1593,8 +1618,8 @@ test.describe('rows', () => {
   }) => {
     await open(page, WIN);
     const shows = [T.actions.open, T.actions.openAd, T.actions.mail, T.actions.prompt];
-    const showIcons = ['open', 'external', 'alertMail', 'prompt'] as const;
-    // Eingang.
+    const showIcons = ['open', 'external', 'alertMail', 'copy'] as const;
+    // Aktuell.
     let menu = await rowMenu(page, 'freelancermap-2802');
     await expect(menu).toHaveAttribute('aria-label', T.menu.job);
     await expect(menu.getByRole('menuitem').locator('.label')).toHaveText([
@@ -1804,9 +1829,7 @@ test.describe('search', () => {
 /* ======================================================================== moves */
 
 test.describe('moves and undo', () => {
-  test('archive from the row: short toasts that merge, one undo, In den Eingang', async ({
-    page,
-  }) => {
+  test('archive from the row: short toasts that merge, one undo, Zurückholen', async ({ page }) => {
     await open(page, WIN);
     // One word, no title.
     await viaMenu(page, 'trash', 'freelancermap-2805');

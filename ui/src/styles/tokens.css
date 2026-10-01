@@ -466,7 +466,7 @@
   --titlebar-tool: 28px;
   --titlebar-icon: 14px;
   --titlebar-icon-stroke: 1.25;
-  /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
+  /* The places above the list (Aktuell, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 37px;
   --tabs-height: max(var(--tabs-min), var(--list-toolbar));
