@@ -1309,12 +1309,13 @@ test.describe('one list', () => {
       await page.waitForFunction(() => (window as unknown as { __left: number }).__left <= 0);
       return page.evaluate(() => (window as unknown as { __glides: number }).__glides);
     };
+    // Counted before the click: a quick run may land its first jobs before the run line shows.
+    const before = await rows(page).count();
     await page.getByTestId('fetch').click();
     await expect(page.getByTestId('run-line')).toBeVisible();
-    const before = await rows(page).count();
     await watch(600, '[data-testid="cancel-run"]');
     expect(await glides()).toBe(0);
-    expect(await rows(page).count()).toBeGreaterThan(before);
+    await expect.poll(() => rows(page).count()).toBeGreaterThan(before);
     await runFinished(page);
     await motionSettled(page);
     await watch(20);
