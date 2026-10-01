@@ -258,14 +258,10 @@ class JobsStore {
    * succeeds or another list comes (place, search, order, filter).
    */
   actionError = $state<string | null>(null);
-  /** Jobs were deleted for good, but a result file could not follow (the Excel file is open
-   *  elsewhere): said in the list header like `actionError`. */
-  exportNote = $state<string | null>(null);
 
   /** Another list or view: what the header said about the last action goes. */
   quiet(): void {
     this.actionError = null;
-    this.exportNote = null;
   }
   window = $state(WINDOW);
   /** Rows mounted so far (grows towards `window` chunk by chunk). */

@@ -230,7 +230,6 @@ fn run_events_serialise_as_the_types_say() {
         "perPortal",
         "newJobs",
         "score",
-        "export",
         "emptyAlerts",
     ] {
         assert!(

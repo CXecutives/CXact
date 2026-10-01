@@ -4,20 +4,4 @@ export type SettingsView = {
 /**
  * Effective workspace (chosen or default).
  */
-workspace: string, workspaceIsDefault: boolean, 
-/**
- * The Excel file of the overview, where it is or will be written.
- */
-excelPath: string, 
-/**
- * The Excel file is there to open: written (`exportExcel` on) and on disk.
- */
-excelExists: boolean, 
-/**
- * The CSV file of the overview, where it is or will be written (next to the Excel file).
- */
-csvPath: string, 
-/**
- * The CSV file is there to open: written (`exportCsv` on) and on disk.
- */
-csvExists: boolean, };
+workspace: string, workspaceIsDefault: boolean, };

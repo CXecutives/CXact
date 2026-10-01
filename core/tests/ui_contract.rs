@@ -1627,7 +1627,13 @@ fn buttons_have_one_height() {
     let all = scanned(MIN_FILES);
     let button = source(&all, "components/Button.svelte");
     let mut problems = Vec::new();
-    for gone in ["ButtonSize", "size?:", "--control-md", "--control-lg", "--type-md"] {
+    for gone in [
+        "ButtonSize",
+        "size?:",
+        "--control-md",
+        "--control-lg",
+        "--type-md",
+    ] {
         if button.code.contains(gone) {
             problems.push(format!("Button.svelte: {gone} (buttons have one height)"));
         }

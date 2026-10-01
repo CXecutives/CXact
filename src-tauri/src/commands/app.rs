@@ -16,7 +16,6 @@ use std::time::{Duration, Instant};
 
 use jiff::Timestamp;
 use jobalert_core::error::{ErrorInfo, ErrorKind};
-use jobalert_core::export::{self, RESULT_DIR};
 use jobalert_core::fetch::policy::Policy;
 use jobalert_core::model::Place;
 use jobalert_core::pipeline::{self, Matcher as _, RunEvent, demo};
@@ -156,7 +155,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
     )?
     .counts;
     let last_run = pipeline::last_run(&state.store)?;
-    let result_dir = workspace.join(RESULT_DIR);
     let running = match &*lock(&state.activity) {
         Activity::Run(run) => Some(run.snapshot()),
         _ => None,
@@ -178,10 +176,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
-            excel_path: export::overview_path(&result_dir),
-            excel_exists: settings.export_excel && export::overview_path(&result_dir).is_file(),
-            csv_path: export::csv_path(&result_dir),
-            csv_exists: settings.export_csv && export::csv_path(&result_dir).is_file(),
             workspace: workspace.clone(),
         },
         mailbox: mailbox(state),
@@ -191,8 +185,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             Vec::new()
         }),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
-        export_excel: settings.export_excel,
-        export_csv: settings.export_csv,
         fetch_mail: settings.fetch_mail,
         fetch_search: settings.fetch_search,
         language: settings.language_or(state.system_language),
@@ -268,40 +260,27 @@ fn daily_backup(app: &AppHandle) {
     });
 }
 
-/// Saves portal switches, the fetch range, which files the export writes, the language and
-/// the palette. The workspace only changes through the dialog. Another language, or the Excel
-/// or the CSV file switched on, writes the files a moment later (like a mark); another palette
-/// dresses the window at once.
+/// Saves the portal switches, the fetch's way, the language and the palette. The workspace
+/// only changes through the dialog. Another palette dresses the window at once.
 #[tauri::command]
 pub async fn save_settings(
-    app: AppHandle,
     window: WebviewWindow,
     state: State<'_, AppState>,
     patch: SettingsPatch,
 ) -> CmdResult<view::AppState> {
     let mut settings = state.settings()?;
-    let (language, excel, csv) = (
-        settings.language_or(state.system_language),
-        settings.export_excel,
-        settings.export_csv,
-    );
     patch.apply(&mut settings);
     settings.save(&state.store)?;
     if patch.palette.is_some() {
         crate::platform::dress(&window, settings.palette);
-    }
-    let switched_on = (settings.export_excel && !excel) || (settings.export_csv && !csv);
-    if settings.language_or(state.system_language) != language || switched_on {
-        super::files::marked(&app);
     }
     build_state(&state)
 }
 
 /// Folder dialog for the workspace; `None` if cancelled. The work moves along (user decision
 /// 2026-09-26): a folder without a profile gets a copy of the old folder's `profil/`, one
-/// with a profile of its own keeps it and the app uses it from now on; the Excel and the CSV
-/// file are written in the new folder at once. The app is held meanwhile, like a file
-/// command.
+/// with a profile of its own keeps it and the app uses it from now on. The app is held
+/// meanwhile, like a file command.
 #[tauri::command]
 pub async fn pick_workspace(
     app: AppHandle,
@@ -322,8 +301,8 @@ pub async fn pick_workspace(
         return Ok(None);
     };
     let folder = folder.path().to_path_buf();
-    // Writable? Better a clear error now than later at the export. The dry run never
-    // writes anything outside its in-memory database.
+    // Writable? Better a clear error now than later at a save of the profile. The dry run
+    // never writes anything outside its in-memory database.
     if !state.dry_run {
         let probe = folder.join(".job-alert-monitor-write-test");
         std::fs::write(&probe, b"")
@@ -340,11 +319,8 @@ pub async fn pick_workspace(
     let mut settings = state.settings()?;
     settings.workspace = Some(folder.clone());
     settings.save(&state.store)?;
-    if !state.dry_run {
-        write_files(&state, &folder, settings.language_or(state.system_language));
-    }
     // The profile lives in the workspace: another folder can mean another profile (its
-    // rescore starts once the files are written and the app is free).
+    // rescore starts once the app is free).
     if state.matcher().map(|m| m.rev().to_owned()) != before {
         scoring::profile_changed(&app, &state);
     }
@@ -378,21 +354,6 @@ fn take_profile(old: &Path, new: &Path) -> CmdResult<WorkspaceProfile> {
     Ok(WorkspaceProfile::Copied)
 }
 
-/// The overviews in the (new) work folder, now; a file that cannot be written says so in the
-/// log and is written by the next fetch.
-fn write_files(state: &AppState, workspace: &Path, language: jobalert_core::settings::Language) {
-    let now = Timestamp::now();
-    let overviews = pipeline::refresh_overviews(&state.store, workspace, now, language);
-    log::info!(
-        "files written in the new work folder: overviews {}",
-        if overviews.error.is_none() {
-            "written"
-        } else {
-            "not written"
-        }
-    );
-}
-
 /// "Reset everything": leave the order, then restart - deleting happens at the start.
 #[tauri::command]
 pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<()> {
@@ -421,8 +382,8 @@ pub async fn list_backups(state: State<'_, AppState>) -> CmdResult<Vec<Backup>> 
 /// is copied first and that copy returned: restoring it is the undo. The app is held
 /// meanwhile like a file command (no run, sign-in or file command writes the database), and
 /// neither the dry run nor the demo restores. Afterwards the scores follow the profile (a
-/// rescore when the copy's are of another profile or engine) and the files follow the jobs;
-/// the page loads everything again.
+/// rescore when the copy's are of another profile or engine); the page loads everything
+/// again.
 #[tauri::command]
 pub async fn restore_backup(
     app: AppHandle,
@@ -439,7 +400,6 @@ pub async fn restore_backup(
     );
     drop(files);
     scoring::rescore_if_pending(&app, &state);
-    super::files::marked(&app);
     Ok(before)
 }
 

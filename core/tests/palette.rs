@@ -1,6 +1,6 @@
 //! `ui/src/styles/tokens.css` is the one place a colour of the app is written. What is not the
 //! page reads it through files `tools/tokens.mjs` generates: `core/src/export/palette.rs` (the
-//! Excel file, the window and its title bar, the icon's tests), `tools/palette.json` (the app
+//! window and its title bar, the icon's tests), `tools/palette.json` (the app
 //! icon) and the window's `backgroundColor` in `src-tauri/tauri*.conf.json`. These tests read
 //! tokens.css on their own (their own parser, their own conversion to RGB) and fail while a
 //! generated file is stale (`npm run regen` writes them anew) or a colour is written anywhere
@@ -163,18 +163,11 @@ fn as_token(name: &str, colour: Colour) -> Token {
 }
 
 /// The colour tokens something besides the page wears (`OUTSIDE` in tools/tokens.mjs): the
-/// window, the Excel file (the score ring as a family), the icon.
-const OUTSIDE: [&str; 5] = [
-    "bg",
-    "surface-muted",
-    "score-excluded",
-    "brand",
-    "brand-glyph",
-];
+/// window and the icon.
+const OUTSIDE: [&str; 3] = ["bg", "brand", "brand-glyph"];
 
 /// palette.rs holds the colour tokens something besides the page wears, in the order of
-/// tokens.css, as tokens.css says them - no colour only the page (or the report of earlier
-/// versions) wore; the score ring as one table too.
+/// tokens.css, as tokens.css says them - no colour only the page wears.
 #[test]
 fn the_rust_palette_is_the_tokens() {
     let generated: Vec<Token> = palette::TOKENS
@@ -183,16 +176,9 @@ fn the_rust_palette_is_the_tokens() {
         .collect();
     let outside: Vec<Token> = colour_tokens()
         .into_iter()
-        .filter(|t| OUTSIDE.contains(&t.name.as_str()) || t.name.starts_with("score-ring-"))
+        .filter(|t| OUTSIDE.contains(&t.name.as_str()))
         .collect();
     assert_eq!(generated, outside, "palette.rs {REGEN}");
-    let steps: Vec<Token> = (0..10).map(|n| token(&format!("score-ring-{n}"))).collect();
-    let ring: Vec<Token> = palette::SCORE_RING
-        .iter()
-        .enumerate()
-        .map(|(n, colour)| as_token(&format!("score-ring-{n}"), *colour))
-        .collect();
-    assert_eq!(ring, steps, "palette.rs {REGEN}");
 }
 
 /// The window's colour of every other palette (Light, Dark): `--bg` of its block, as the

@@ -3,4 +3,4 @@
 /**
  * Stable error codes for the interface (it reacts to these, never to a text).
  */
-export type ErrorKind = "db" | "fileLocked" | "io" | "xlsx" | "corrupt" | "newerSchema" | "invalid" | "busy" | "notFound" | "dryRun" | "demo" | "mailMissing" | "mailConnect" | "mailAuth" | "mailTimeout" | "mailLost" | "mailNotGmail" | "mailServer" | "mailCancelled" | "offline" | "secretStore" | "secretCorrupt" | "portalUnavailable" | "portalPaused" | "portalQuota" | "internal";
+export type ErrorKind = "db" | "fileLocked" | "io" | "corrupt" | "newerSchema" | "invalid" | "busy" | "notFound" | "dryRun" | "demo" | "mailMissing" | "mailConnect" | "mailAuth" | "mailTimeout" | "mailLost" | "mailNotGmail" | "mailServer" | "mailCancelled" | "offline" | "secretStore" | "secretCorrupt" | "portalUnavailable" | "portalPaused" | "portalQuota" | "internal";

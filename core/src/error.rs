@@ -29,9 +29,6 @@ pub enum Error {
         source: std::io::Error,
     },
 
-    #[error("cannot create the Excel file: {0}")]
-    Xlsx(#[from] rust_xlsxwriter::XlsxError),
-
     #[error("stored data is corrupt: {0}")]
     Corrupt(String),
 
@@ -106,7 +103,6 @@ pub enum ErrorKind {
     Db,
     FileLocked,
     Io,
-    Xlsx,
     Corrupt,
     NewerSchema,
     Invalid,
@@ -220,7 +216,6 @@ impl Error {
             Error::Db(_) => ErrorKind::Db,
             Error::FileLocked(_) => ErrorKind::FileLocked,
             Error::Io { .. } => ErrorKind::Io,
-            Error::Xlsx(_) => ErrorKind::Xlsx,
             Error::Corrupt(_) | Error::BackupCorrupt { .. } => ErrorKind::Corrupt,
             Error::NewerSchema(_) => ErrorKind::NewerSchema,
             Error::BackupMissing(_) => ErrorKind::NotFound,
@@ -272,7 +267,7 @@ impl From<&Error> for ErrorInfo {
             }
             Error::Invalid(input) => ErrorInfo::from(input),
             Error::FetchUnavailable { portal, .. } => info.with("portal", portal.key()),
-            Error::Db(_) | Error::Xlsx(_) | Error::Corrupt(_) => info,
+            Error::Db(_) | Error::Corrupt(_) => info,
         }
     }
 }

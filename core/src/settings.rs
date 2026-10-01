@@ -14,16 +14,12 @@ pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
+/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `exportExcel`, `exportCsv`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
 /// silently - serde only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "independent switches of the stored settings, each its own key"
-)]
 pub struct Settings {
-    /// Workspace (the Exportordner); `None` = default ([`default_workspace`]:
+    /// Workspace (the Arbeitsordner, the profiles'); `None` = default ([`default_workspace`]:
     /// `Documents\CXact`, or the `Documents\Job-Alert-Monitor` of an earlier version). Only
     /// changeable through the folder dialog - never a path sent by the frontend.
     pub workspace: Option<PathBuf>,
@@ -31,11 +27,7 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// The Excel file (`JobAlerts.xlsx`) is written with every export.
-    pub export_excel: bool,
-    /// The CSV file is written with every export.
-    pub export_csv: bool,
-    /// Language of the interface and of the exported Excel file and prompts (Einstellungen,
+    /// Language of the interface and of the prompts (Einstellungen,
     /// Darstellung); `None` = German, until the user chooses English ([`Language::DEFAULT`],
     /// [`Settings::language_or`]). A code of a newer version reads as `None`.
     #[serde(deserialize_with = "known_language")]
@@ -54,8 +46,6 @@ pub struct Settings {
 
 /// Einstellungen shows Darstellung (the palette and the language); hidden for now.
 pub const LOOK_SHOWN: bool = false;
-/// Einstellungen shows the Excel and CSV switches; hidden for now, and no file is written.
-pub const EXPORT_SHOWN: bool = false;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
 /// cream, coral and navy), and Light and Dark, neutral with blue details.
@@ -183,8 +173,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            export_excel: true,
-            export_csv: false,
             language: None,
             palette: Palette::Cxact,
             fetch_mail: true,
@@ -227,19 +215,14 @@ impl Settings {
         }
     }
 
-    /// The settings while cards of Einstellungen are hidden (user, 2026-09-30): without
-    /// Darstellung the app is CXact and German ([`LOOK_SHOWN`]), without Export it writes no
-    /// Excel or CSV file ([`EXPORT_SHOWN`]). A hidden choice goes back to that; `true` when
-    /// something changed (the start saves it). The fields and their code stay.
+    /// The settings while Darstellung is hidden (user, 2026-09-30): the app is CXact and
+    /// German ([`LOOK_SHOWN`]). A hidden choice goes back to that; `true` when something
+    /// changed (the start saves it). The fields and their code stay.
     pub fn fit_hidden(&mut self) -> bool {
         let before = self.clone();
         if !LOOK_SHOWN {
             self.palette = Palette::default();
             self.language = None;
-        }
-        if !EXPORT_SHOWN {
-            self.export_excel = false;
-            self.export_csv = false;
         }
         *self != before
     }
@@ -397,17 +380,12 @@ mod tests {
         let mut s = Settings {
             palette: Palette::Dark,
             language: Some(Language::En),
-            export_excel: true,
-            export_csv: true,
             fetch_mail: false,
             ..Settings::default()
         };
-        assert_eq!(s.fit_hidden(), !LOOK_SHOWN || !EXPORT_SHOWN);
+        assert_eq!(s.fit_hidden(), !LOOK_SHOWN);
         if !LOOK_SHOWN {
             assert_eq!((s.palette, s.language), (Palette::Cxact, None));
-        }
-        if !EXPORT_SHOWN {
-            assert_eq!((s.export_excel, s.export_csv), (false, false));
         }
         assert!(!s.fetch_mail);
         assert!(!s.fit_hidden(), "a second fit changes nothing");
@@ -481,7 +459,6 @@ mod tests {
             },
         );
         s.fetch_mail = false;
-        s.export_excel = false;
         s.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
         assert_eq!(
@@ -492,7 +469,7 @@ mod tests {
                 login_enabled: false,
             }
         );
-        assert_eq!((back.fetch_mail, back.export_excel), (false, false));
+        assert!(!back.fetch_mail);
         assert_eq!(
             back.enabled_portals(),
             [
@@ -515,10 +492,7 @@ mod tests {
         assert!(partial.portal(Portal::FreelanceDe).login_enabled);
         assert!(partial.portal(Portal::FreelanceDe).enabled);
         assert!(partial.portal(Portal::LinkedIn).enabled);
-        assert_eq!(
-            (partial.fetch_mail, partial.export_excel, partial.export_csv),
-            (true, true, false)
-        );
+        assert!(partial.fetch_mail && partial.fetch_search);
     }
 
     /// Broken JSON gives the defaults for convenience, but never switches a portal on:
@@ -539,7 +513,7 @@ mod tests {
         let back = Settings::load(&store).unwrap();
         assert!(back.fetch_portals().is_empty());
         assert!(back.enabled_portals().is_empty());
-        assert!(back.export_excel, "the rest: defaults");
+        assert!(back.fetch_search, "the rest: defaults");
         let shared = std::sync::Arc::new(store);
         shared.kv_set(KEY, "{kaputt").unwrap();
         let paths = crate::pipeline::stored_paths(shared);
@@ -609,10 +583,10 @@ mod tests {
         );
         // A language of a newer version: the settings stay, the language follows the OS.
         store
-            .kv_set(KEY, r#"{"language":"fr","exportCsv":true}"#)
+            .kv_set(KEY, r#"{"language":"fr","fetchMail":false}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
-        assert!(newer.export_csv);
+        assert!(!newer.fetch_mail);
         assert_eq!(newer.language, None);
     }
 
@@ -634,17 +608,17 @@ mod tests {
                 .contains(r#""palette":"dark""#)
         );
         store
-            .kv_set(KEY, r#"{"palette":"sepia","exportCsv":true}"#)
+            .kv_set(KEY, r#"{"palette":"sepia","fetchMail":false}"#)
             .unwrap();
         let newer = Settings::load(&store).unwrap();
         assert_eq!(newer.palette, Palette::Cxact);
-        assert!(newer.export_csv);
+        assert!(!newer.fetch_mail);
         store
-            .kv_set(KEY, r#"{"palette":"coast","exportCsv":true}"#)
+            .kv_set(KEY, r#"{"palette":"coast","fetchMail":false}"#)
             .unwrap();
         let earlier = Settings::load(&store).unwrap();
         assert_eq!(earlier.palette, Palette::Cxact);
-        assert!(earlier.export_csv);
+        assert!(!earlier.fetch_mail);
         assert_eq!(
             [Palette::Cxact, Palette::Light, Palette::Dark].map(Palette::code),
             ["cxact", "light", "dark"]

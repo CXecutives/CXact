@@ -6,8 +6,8 @@ of each decision and the checks that hold them: `docs/ARCHITECTURE.md`.
 ## Change the look
 
 Every colour of the app is written in one file, `ui/src/styles/tokens.css`. Everything else
-derives from it: the page (the window's top bar and its buttons included), the Excel file, the
-app icon and the window background. No other file may hold a colour
+derives from it: the page (the window's top bar and its buttons included), the app icon and
+the window background. No other file may hold a colour
 (`core/tests/palette.rs`, `no_colour_is_written_twice`); the UI lint rejects colours outside
 tokens.css as well.
 
@@ -28,7 +28,6 @@ Components use roles only; so do the consumers outside the page:
 
 | Consumer | Roles | Read through |
 |---|---|---|
-| Excel file (`JobAlerts.xlsx`; the CSV file has no colours) | `surface-muted` (header row), `score-excluded` (excluded rows), `score-ring-0` ... `score-ring-9` (score cells) | `palette.rs` (`xlsx.rs`, `scale.rs`) |
 | Window colour of every palette (`WINDOW_PALETTES`) | `bg` of each palette (the window wears it, `window_colours` in `src-tauri/src/platform.rs`; the top bar is the page's, `--titlebar-*`) | `palette.rs` |
 | Window background, both OS | `bg`: Light's before the settings are read, then the chosen palette's | `backgroundColor` in `src-tauri/tauri.conf.json` and `tauri.macos.conf.json`; `platform::dress` |
 | App icon (Windows, macOS 14 and 15, macOS 26, the brand mark in the page) | `brand` (the plate), `brand-glyph` (the folder with the check) | `tools/palette.json` (`tools/icon.py`) |
@@ -43,7 +42,7 @@ It runs `node tools/tokens.mjs`, then `python tools/icon.py` (Python with Pillow
 30 s). It rewrites, never edit these by hand:
 
 - `core/src/export/palette.rs`: the colour roles of the table above as Rust constants (the
-  Excel file, the window, the icon's tests)
+  window, the icon's tests)
 - `tools/palette.json`: every colour role for the icon generator
 - `backgroundColor` in `src-tauri/tauri.conf.json` and `src-tauri/tauri.macos.conf.json`
 - `src-tauri/icons/icon.ico`, `icon.icns`, `icon.png`, `src-tauri/icons/CXact.icon/` and
@@ -59,12 +58,12 @@ Commit them together with tokens.css.
   `--brand`, the window names its role. CI runs these with `cargo test`.
 - Contrast: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to the
   address) measures the text roles against white and the cream. Body text keeps 4.5:1.
-- Look at the page (`tools/ui-preview.cmd`), a new Excel file (write it from the app) and, after `npx tauri build` and installing, the top bar, the window before the page
+- Look at the page (`tools/ui-preview.cmd`) and, after `npx tauri build` and installing, the top bar, the window before the page
   paints, and the icon in the taskbar, the Dock and Finder.
 
 ### What does not follow the palette
 
-- The Excel file and the app icon keep Light whatever palette is chosen in Einstellungen
+- The app icon keeps Light whatever palette is chosen in Einstellungen
   (Light and Dark reach only the page and the window).
 - The macOS traffic lights and the window's frame (shadow, edge): the system's. The top bar and
   the Windows caption buttons are the page's and follow the palette (`--titlebar-*`).
@@ -86,7 +85,7 @@ laid over it. Components never ask which palette is on. The retired CXact palett
    `--p-coral` the fills and what is new, `--p-navy` focus, links and progress, ...), so every
    role follows, and then only the roles whose part differs from Light (in Dark the washes of
    the light text, the scrim, the shadows, the text on the tooltip and on the fills). A value
-   of CXact is a change of `:root` and reaches the Excel file and the icon too;
+   of CXact is a change of `:root` and reaches the icon too;
    Light and Dark reach only the page and the window.
 2. **Add one** (say `sepia`): a block `:root[data-palette='sepia'] { ... }`, then the name in
    `Palette` (`core/src/settings.rs`, with `code()`), in `window_colours`
@@ -116,12 +115,8 @@ laid over it. Components never ask which palette is on. The retired CXact palett
 - The alert mails a fetch reads: since the last fetch (a day of overlap), the first one the
   last 30 days (`Scope::New`, `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`); there is no
   choice of it (user decision 2026-10-01).
-- The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
-  `exportCsv` off by default); the export writes a file only while its switch is on.
-  Switched off, its "Öffnen" waits and says to switch it on (`settings.excelOff`,
-  `settings.csvOff`); switched on, the file is written a moment later (`save_settings`) and
-  written fresh before it opens. The app writes no other files (no text files, no
-  `top_matches.json` since 2026-09-27).
+- The app writes no files of jobs (no Excel or CSV file since 2026-10-01, no text files or
+  `top_matches.json` since 2026-09-27); its work folder holds the profiles.
 - The export folder of a new install is `Documents\CXact` (`default_workspace` in
   `core/src/settings.rs`); the `Job-Alert-Monitor` folder of an earlier version stays in use
   while it holds the app's files. "Öffnen" makes a missing folder first.
@@ -280,19 +275,6 @@ Which open requirements offer a term (and at most `MAX_TERMS` per job) is `open_
 the reason (`params.term`, `params.field`). The stub's `askedTerms`
 (`tools/ui-harness/stub.ts`) mirrors them.
 
-## Add a column of the Excel and the CSV file
-
-One row of `COLUMNS` in `core/src/export/columns.rs`: a key, the German and the English
-header, the width in Excel and the function that gives its value for a job (`Row` holds the
-job, the words of the language, the Gmail account and the moment of writing). The value says
-what it is (`Value`: text, a score, a day rate, months, a day, a moment, a link): `xlsx.rs`
-gives it its cell and format, `csv.rs` prints it (numbers bare, days and moments as text in
-the language's form, links as their address, text defused and quoted where needed); a new
-kind of value is a variant there and the compiler names both places. Words a value holds live
-in `core/src/export/texts.rs` in both languages. The header tests, the autofilter and the CSV
-header row follow the table; `core/tests/rust_texts.rs` checks the headers like every export
-text.
-
 ## Add a portal
 
 1. An adapter in `core/src/portal/<name>.rs` (`PortalAdapter`: key, label, monogram, file
@@ -332,7 +314,7 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
 - The match bands: `HIGH_FROM` and `MID_FROM` in `core/src/model.rs`. The store, the
   prompts and (through `bands.ts`) the UI, the gallery and the stub follow.
 - The defaults of the settings: `Settings::default()` in `core/src/settings.rs` (the search
-  as the fetch's way, the Excel file on, the CSV file off);
+  as the fetch's way);
   the stub's `initial()` mirrors them.
 - A portal's caps: `limits()` of its adapter in `core/src/portal/` (the pause between two
   pages, requests per hour and per day). The hour rolls, the day counts from local midnight

@@ -27,8 +27,6 @@
           : t.run.line.searchStart;
       case 'score':
         return t.run.line.scoring;
-      case 'export':
-        return t.run.line.files;
       default:
         return t.run.line.mailbox;
     }

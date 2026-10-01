@@ -10,8 +10,8 @@ Each layer uses only the ones below it.
 - **`core/`** (`jobalert-core`): everything the app knows and does, without UI and without
   prose. `mail/` reads the alert mails, `portal/` knows the portals (one registry), `fetch/`
   fetches pages through the policy, `matching/` is the pure integer engine, `store/` the
-  SQLite database (a chain of schema steps), `pipeline/` runs scan, fetch, score and export,
-  `export/` writes Excel, CSV and the prompts, `view.rs` shapes what the UI sees.
+  SQLite database (a chain of schema steps), `pipeline/` runs scan or search, fetch and score,
+  `export/` writes the AI prompts, `view.rs` shapes what the UI sees.
 - **`src-tauri/`**: the shell. Thin commands in `src/commands/`, each one line in
   `commands.txt`; they call core and return its view types. Per-OS code only in
   `src/platform.rs` (`smoke.rs` is the debug-only probe).
@@ -36,7 +36,7 @@ A decision is written once; everything else reads it or is generated from it.
 
 | Decision | Source | Read by |
 |---|---|---|
-| Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (Excel, window, icon) |
+| Colours, sizes, times, palettes | `ui/src/styles/tokens.css` | components, `npm run regen` (window, icon) |
 | Facts of a job, their order and icons | `ui/src/lib/facts.ts` | list row, reader |
 | Order and filter of the list | `ui/src/lib/state/filter.ts`; in the backend `filter_condition` in `core/src/store/jobs.rs` (portal, band, contract types, remote) | funnel menu, filter chips, reset, harness |
 | The job's menu (what shows it, what changes it, the moves per place) | `jobMenu` in `ui/src/features/jobs/actions.ts` | a row's right click, the reader's "…" (its second group) |
@@ -50,13 +50,12 @@ A decision is written once; everything else reads it or is generated from it.
 | Texts | `ui/src/lib/i18n/de.ts` (`en.ts` mirrors it) | every text the UI shows |
 | Commands | `src-tauri/commands.txt` | `generate_handler!`, capabilities, `commands.ts`, the stub |
 | Profile criteria | `CRITERIA` in `core/src/profile/form.rs` | form, engine, `profile.ts` |
-| Columns of the Excel and the CSV file | `COLUMNS` in `core/src/export/columns.rs` (each column gives a value) | the Excel file (`xlsx.rs` formats), the CSV file (`csv.rs` prints) |
 | Match bands | `HIGH_FROM`, `MID_FROM` in `core/src/model.rs` | store, prompts, `bands.ts` |
 | What a term is and the profile field it goes into ("Kenntnisse in Anaplan" is the tool "Anaplan": at most five words, lead and wish words stripped) | `core_term` in `core/src/matching/terms.rs` (its words in `lexicon/terms.rs`); which open requirements offer one: `open_term` in `core/src/pipeline/local.rs` | the terms a stored match keeps, "Häufig verlangt" (`view::asked_terms`), the reader's "+" (`params.term`, `params.field` of a reason; `addable` in `reader-sections.ts` only reads them) |
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
-| Defaults of the settings (`fetchMail`, `fetchSearch`, `exportExcel`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
+| Defaults of the settings (`fetchMail`, `fetchSearch`, `language`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
 
@@ -76,10 +75,9 @@ mail, store, engine, view, UI:
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the
-   store keeps the assessment. `export/` writes the files at the end of a run (the Excel and
-   the CSV file as their switches say; the marks rewrite them a moment later). The text files
-   and `top_matches.json` of earlier versions are no longer written; deleting a job for good
-   and "reset everything" still remove the ones the app wrote.
+   store keeps the assessment. The app writes no files of jobs (no Excel or CSV file since
+   2026-10-01, no text files or `top_matches.json` since 2026-09-27); deleting a job for good
+   and "reset everything" still remove the ones earlier versions wrote.
 4. `view.rs` shapes the view types (`AppState`, `JobView`, `JobPage`, ...); commands
    return them, runs report `RunEvent`s over a channel (each under 8 KB).
 5. The UI calls `invoke(name, args)` of `api.ts`, typed by `commands.ts`; a store of

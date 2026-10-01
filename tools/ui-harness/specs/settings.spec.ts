@@ -1,7 +1,6 @@
-// Einstellungen against the stub: the cards in their order (Postfach, Suche, Alert-Mails,
-// Export, Darstellung, Daten), their rows flush on one edge, the mailbox and its dialog, the
-// sources with their calls, the export switches, the palettes and the language, the backups, the
-// reset and the version.
+// Einstellungen against the stub: the cards in their order (Suche, Postfach, Darstellung,
+// Daten), their rows flush on one edge, the mailbox and its dialog, the sources with their
+// calls, the palettes and the language, the work folder, the backups and the reset.
 
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
@@ -35,8 +34,6 @@ async function saved(page: Page): Promise<SettingsPatch[]> {
 /** A whole patch from what changes (the rest unchanged, as the page sends it). */
 const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  exportExcel: null,
-  exportCsv: null,
   fetchMail: null,
   fetchSearch: null,
   language: null,
@@ -69,37 +66,6 @@ function ids(page: Page, testid: string, selector: string): Promise<(string | nu
     .getByTestId(testid)
     .locator(selector)
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
-}
-
-/** The top of `watched` in every frame for `ms` after a click on `clicked` (both test ids),
- *  both in the page, so no frame is missed. */
-function topsAfterClick(page: Page, clicked: string, watched: string, ms = 320): Promise<number[]> {
-  return page.evaluate(
-    ([clicked, watched, ms]) =>
-      new Promise<number[]>((resolve) => {
-        const target = document.querySelector(`[data-testid="${watched}"]`)!;
-        const tops = [Math.round(target.getBoundingClientRect().top)];
-        document.querySelector<HTMLElement>(`[data-testid="${clicked}"]`)!.click();
-        const start = performance.now();
-        const frame = (): void => {
-          tops.push(Math.round(target.getBoundingClientRect().top));
-          if (performance.now() - start < ms) requestAnimationFrame(frame);
-          else resolve(tops);
-        };
-        requestAnimationFrame(frame);
-      }),
-    [clicked, watched, ms] as const,
-  );
-}
-
-/** It moved by more than a little, and not in one frame: a step stood between. */
-function glided(tops: number[]): boolean {
-  const first = tops[0]!;
-  const last = tops.at(-1)!;
-  return (
-    Math.abs(last - first) > 20 &&
-    tops.some((top) => Math.abs(top - first) > 2 && Math.abs(top - last) > 2)
-  );
 }
 
 /* ---------------------------------------------------------------- the page */
@@ -593,8 +559,7 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
 
 /* ------------------------------------------------------------------ Export */
 
-// The export is hidden for now (cards.ts EXPORT_SHOWN, user 2026-09-30); kept for its return.
-test.skip('export: the export folder with its path, Excel and CSV with their switches', async ({
+test('the work folder in Daten: its path, Ändern and Öffnen; a folder that does not open says so', async ({
   page,
 }) => {
   await settings(page);
@@ -602,36 +567,12 @@ test.skip('export: the export folder with its path, Excel and CSV with their swi
   await expect(folder).toContainText(T.settings.folder);
   await expect(folder.locator('[data-copy]')).toHaveText('C:/Users/demo/Documents/Job-Alerts');
   await expect(folder.getByRole('button')).toHaveText([T.common.change, T.common.open]);
-  await expect(page.getByTestId('settings-export')).not.toContainText('Arbeitsordner');
-  for (const [id, kind] of [
-    ['folder-open', 'workspace'],
-    ['excel-open', 'excel'],
-  ] as const) {
-    await page.getByTestId(id).click();
-    expect(await lastOpened(page), id).toEqual({ target: { kind } });
-  }
-  const excel = page.getByTestId('toggle-exportExcel');
-  const csv = page.getByTestId('toggle-exportCsv');
-  await expect(excel).toHaveAttribute('aria-checked', 'true');
-  await expect(excel).toHaveAccessibleName(T.settings.excel);
-  await expect(csv).toHaveAttribute('aria-checked', 'false');
-  // CSV is off: its file waits and says why; switched on it opens.
-  expect(await reason(page, 'csv-open')).toBe(T.settings.csvOff);
-  await csv.click();
-  await expect(csv).toHaveAttribute('aria-checked', 'true');
-  await page.getByTestId('csv-open').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'csv' } });
-  // Excel off: no file is written, so it waits too.
-  await excel.click();
-  await expect(excel).toHaveAttribute('aria-checked', 'false');
-  expect(await reason(page, 'excel-open')).toBe(T.settings.excelOff);
-  expect(await saved(page)).toEqual([patch({ exportCsv: true }), patch({ exportExcel: false })]);
-  // A file that does not open says so in its card; the note unfolds, so the cards below
-  // glide down instead of jumping.
+  await page.getByTestId('folder-open').click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'workspace' } });
+  // A folder that does not open says so at the end of its card.
   await failNext(page, 'open_target');
-  const tops = await topsAfterClick(page, 'folder-open', 'settings-data');
-  await expect(page.getByTestId('export-note')).toHaveText('Die Datenbank meldet einen Fehler.');
-  expect(glided(tops), tops.join(' ')).toBe(true);
+  await page.getByTestId('folder-open').click();
+  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
 });
 
 test('another work folder takes the profile along; its own profile is said', async ({ page }) => {
@@ -735,10 +676,10 @@ test.skip('Darstellung: the language switches everything at once; notes follow i
   await settings(page);
   await failNext(page, 'open_target');
   await page.getByTestId('folder-open').click();
-  await expect(page.getByTestId('export-note')).toHaveText('Die Datenbank meldet einen Fehler.');
+  await expect(page.getByTestId('data-note')).toHaveText('Die Datenbank meldet einen Fehler.');
   await page.getByTestId('language').getByRole('radio', { name: 'English' }).click();
-  await expect(page.getByTestId('settings-export')).toContainText('Export folder');
-  await expect(page.getByTestId('export-note')).toHaveText('The database reports an error.');
+  await expect(page.getByTestId('settings-data')).toContainText('Work folder');
+  await expect(page.getByTestId('data-note')).toHaveText('The database reports an error.');
   await expect(page.getByTestId('portal-freelance')).toContainText('11 of 100 requests today');
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
 });

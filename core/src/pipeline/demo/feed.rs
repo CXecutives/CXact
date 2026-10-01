@@ -577,7 +577,6 @@ mod tests {
     use tokio::time::Instant;
 
     use super::*;
-    use crate::export::{RESULT_DIR, XLSX_NAME};
     use crate::fetch::policy::Policy;
     use crate::mail::{MailKind, classify_mail};
     use crate::model::DescStatus;
@@ -783,7 +782,6 @@ mod tests {
         }
         let matcher = super::super::matcher();
         assert_eq!(store.match_pending(matcher.rev()).unwrap(), 0, "all scored");
-        assert!(dir.path().join(RESULT_DIR).join(XLSX_NAME).is_file());
     }
 
     /// A fetch that reads no mails ("Alert-Mails" off) still hands out the batch: the search

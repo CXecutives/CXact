@@ -30,7 +30,6 @@ use jobalert_core::settings::{Language, Settings};
 use jobalert_core::store::Store;
 use tokio_util::sync::CancellationToken;
 
-pub use files::{Refresh, flush_marks};
 pub use run::RunHandle;
 pub use scoring::Scoring;
 
@@ -143,8 +142,6 @@ pub struct AppState {
     pub activity: Mutex<Activity>,
     /// The compiled profile and the rescore runs the app starts itself.
     pub scoring: Scoring,
-    /// The small files that follow the user's marks without a run.
-    pub refresh: Refresh,
     /// What the last "Verbinden" found in the mailbox (this session only; never the password):
     /// `None` also when it signed in but did not count.
     pub mailbox_check: Mutex<Option<jobalert_core::view::MailboxCheck>>,

@@ -350,12 +350,6 @@
         <Notice tone="danger" variant="inline" text={jobs.actionError} testid="header-error" />
       </div>
     </div>
-  {:else if jobs.exportNote}
-    <div class="unfold" transition:unfold>
-      <div class="note">
-        <Notice tone="warning" variant="inline" text={jobs.exportNote} testid="header-export" />
-      </div>
-    </div>
   {/if}
 </div>
 

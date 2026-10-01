@@ -20,8 +20,8 @@ use crate::fetch::PortalHealth;
 use crate::fetch::policy::PauseReason;
 use crate::model::{Band, KeyFacts, MatchStatus, Notice, Place};
 use crate::pipeline::{
-    ExportSummary, NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest,
-    RunSnapshot, RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
+    NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest, RunSnapshot,
+    RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
 use crate::portal::{JobKey, Portal, Way};
 use crate::settings::{Language, Palette};
@@ -241,7 +241,6 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<ScoreDelta>();
     f.add::<ScoreSummary>();
     f.add::<NewJobs>();
-    f.add::<ExportSummary>();
     f.add::<RunSummary>();
     f.add::<RunSnapshot>();
     let missing: Vec<&String> = f

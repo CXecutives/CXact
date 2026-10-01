@@ -52,7 +52,6 @@
   import Eye from '@lucide/svelte/icons/eye';
   import EyeOff from '@lucide/svelte/icons/eye-off';
   import Factory from '@lucide/svelte/icons/factory';
-  import FileSpreadsheet from '@lucide/svelte/icons/file-spreadsheet';
   import FileText from '@lucide/svelte/icons/file-text';
   import FileUp from '@lucide/svelte/icons/file-up';
   import FolderOpen from '@lucide/svelte/icons/folder-open';
@@ -127,7 +126,6 @@
     eye: Eye,
     'eye-off': EyeOff,
     factory: Factory,
-    'file-spreadsheet': FileSpreadsheet,
     'file-text': FileText,
     'file-up': FileUp,
     'folder-open': FolderOpen,

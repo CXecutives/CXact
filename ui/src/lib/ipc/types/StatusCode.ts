@@ -3,4 +3,4 @@
 /**
  * What is happening right now.
  */
-export type StatusCode = "connectingMail" | "searchingMail" | "readingMails" | "searching" | "fetchingDetails" | "signingIn" | "waiting" | "scoring" | "writingFiles";
+export type StatusCode = "connectingMail" | "searchingMail" | "readingMails" | "searching" | "fetchingDetails" | "signingIn" | "waiting" | "scoring";

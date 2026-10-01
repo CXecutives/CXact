@@ -1,5 +1,5 @@
-// Einstellungen as data: the cards in their order (Suche, Postfach, Export, Darstellung,
-// Daten; by the fetch's two ways, user decision 2026-10-01), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// Einstellungen as data: the cards in their order (Suche, Postfach, Darstellung, Daten; by
+// the fetch's two ways, user decision 2026-10-01), each with its heading and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`), so they follow the language.
@@ -58,20 +58,6 @@ export const ACTIONS = {
     label: (t) => t.common.open,
     icon: 'folder',
     open: { kind: 'workspace' },
-  },
-  // A file opens while its switch is on: the backend writes it fresh before it opens (also
-  // the first time); switched off the app writes none, and the row says how to get it.
-  excelOpen: {
-    label: (t) => t.common.open,
-    icon: 'excel',
-    open: { kind: 'excel' },
-    locked: ({ state, t }) => (state.exportExcel ? null : t.settings.excelOff),
-  },
-  csvOpen: {
-    label: (t) => t.common.open,
-    icon: 'document',
-    open: { kind: 'csv' },
-    locked: ({ state, t }) => (state.exportCsv ? null : t.settings.csvOff),
   },
   // Deletes everything for good: the glyph of every deletion for good (removing the mailbox,
   // deleting a job for good).
@@ -142,8 +128,6 @@ export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : '
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  exportExcel: null,
-  exportCsv: null,
   fetchMail: null,
   fetchSearch: null,
   language: null,
@@ -173,13 +157,11 @@ const language: ChoiceRow<Language> = {
   set: (state, id) => void (state.language = id),
 };
 
-/** Cards hidden for now (user, 2026-09-30), their code kept; the backend holds their
- *  choices at the defaults (core settings::LOOK_SHOWN and EXPORT_SHOWN): Darstellung (the
- *  app is CXact and German) and the Excel and CSV switches (no file is written). */
+/** Darstellung is hidden for now (user, 2026-09-30), its code kept; the backend holds its
+ *  choices at the defaults (core settings::LOOK_SHOWN: the app is CXact and German). */
 const LOOK_SHOWN = false;
-const EXPORT_SHOWN = false;
 
-/** The work folder (the profiles, and the overviews while they are written). */
+/** The work folder (the profiles). */
 const folder: ActionsRow = {
   kind: 'actions',
   id: 'folder',
@@ -191,38 +173,6 @@ const folder: ActionsRow = {
 export const CARDS: readonly CardSpec[] = [
   { id: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
   { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
-  {
-    id: 'export',
-    heading: (t) => t.settings.export,
-    hidden: !EXPORT_SHOWN,
-    rows: [
-      ...(EXPORT_SHOWN ? [folder] : []),
-      {
-        kind: 'actions',
-        id: 'excel',
-        label: (t) => t.settings.excel,
-        actions: ['excelOpen'],
-        toggle: {
-          id: 'exportExcel',
-          on: (state) => state.exportExcel,
-          patch: (on) => ({ exportExcel: on }),
-          set: (state, on) => void (state.exportExcel = on),
-        },
-      },
-      {
-        kind: 'actions',
-        id: 'csv',
-        label: (t) => t.settings.csv,
-        actions: ['csvOpen'],
-        toggle: {
-          id: 'exportCsv',
-          on: (state) => state.exportCsv,
-          patch: (on) => ({ exportCsv: on }),
-          set: (state, on) => void (state.exportCsv = on),
-        },
-      },
-    ],
-  },
   { id: 'look', heading: (t) => t.settings.look, rows: [palette, language], hidden: !LOOK_SHOWN },
   {
     id: 'data',
@@ -230,8 +180,7 @@ export const CARDS: readonly CardSpec[] = [
     rows: [
       // The one action that deletes for good; what it deletes is said in its dialog (user
       // decision 2026-09-27: no Sicherung and no Protokoll rows here).
-      // The work folder stands here while the export is hidden.
-      ...(EXPORT_SHOWN ? [] : [folder]),
+      folder,
       { kind: 'actions', id: 'reset-all', label: (t) => t.settings.reset, actions: ['reset'] },
     ],
   },

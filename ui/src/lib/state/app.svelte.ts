@@ -20,8 +20,6 @@ export type FetchWay = (typeof FETCH_WAYS)[number];
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  exportExcel: null,
-  exportCsv: null,
   fetchMail: null,
   fetchSearch: null,
   language: null,

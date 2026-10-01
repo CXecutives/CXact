@@ -173,13 +173,6 @@ class RunStore {
     void this.start(same ?? (kind === 'details' ? { kind: 'fetch' } : { kind }));
   }
 
-  /** Write the files again that a run could not write (an Excel file open elsewhere): a
-   *  rescore, which reads no mail and asks no portal, scores what is due and writes every
-   *  file. */
-  rewriteFiles(): void {
-    void this.start({ kind: 'rescore' });
-  }
-
   /** The Jobs view with its run line, from anywhere (the sidebar's status, the "Zeigen" of a
    *  toast), then `then`; an unsaved Profil may keep the view and ask first. */
   show(then?: () => void): void {
@@ -265,8 +258,7 @@ class RunStore {
   }
 
   /** What went wrong in a finished run, once as a toast: a failure with its own way on (where
-   *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again), files
-   *  that could not be written with "Erneut versuchen". */
+   *  the fix is, the log, or "Erneut versuchen" where nothing else starts it again). */
   private tellTrouble(summary: RunSummary): void {
     if (summary.outcome.kind === 'failed') {
       const error = summary.outcome.error;
@@ -276,15 +268,6 @@ class RunStore {
         'warning',
         fix === null ? null : { label: fix.label, onclick: fix.onclick, undo: false },
       );
-      return;
-    }
-    const files = exportText(exportError(summary));
-    if (files !== null) {
-      toasts.show(files, 'warning', {
-        label: t.common.retry,
-        onclick: () => this.rewriteFiles(),
-        undo: false,
-      });
     }
   }
 
@@ -311,9 +294,7 @@ class RunStore {
             : inList
               ? null
               : { label: t.toast.show, onclick: () => this.show(), undo: false };
-        // Files that could not be written make it no success: a toast says why.
-        const kind = exportError(summary) === null ? 'success' : 'info';
-        toasts.show(t.toast.runDone(brought.count, brought.high), kind, show);
+        toasts.show(t.toast.runDone(brought.count, brought.high), 'success', show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
         toasts.show(t.toast.rescored);
       }
@@ -361,28 +342,6 @@ function openLog(): void {
   invoke('open_target', { target: { kind: 'logDir' } }).catch((failure: unknown) =>
     toasts.show(errorText(failure), 'warning'),
   );
-}
-
-/** The export error of a finished run, if its files could not all be written. */
-export function exportError(summary: RunSummary): ErrorInfo | null {
-  return summary.export?.error ?? null;
-}
-
-/** Why a result file stayed as it was, by what could not be written (`params.target`, the
- *  Excel file where it names none): one sentence for a toast. */
-export function exportText(error: ErrorInfo | null): string | null {
-  if (error === null) return null;
-  const texts = t.run.exportFailed;
-  switch (error.params['target']) {
-    case 'csv':
-      return error.kind === 'fileLocked' ? texts.csvLocked : texts.csv;
-    case 'backup':
-      return texts.backup;
-    case 'workspace':
-      return texts.workspace;
-    default:
-      return error.kind === 'fileLocked' ? texts.overviewLocked : texts.overview;
-  }
 }
 
 export const run = new RunStore();

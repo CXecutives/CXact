@@ -9,7 +9,7 @@
 // the name of the German language. Glossary (docs/PLAN.md "Glossary (UI)", one word per
 // thing): Job, Source, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
 // Not met, Unclear), Must-have, Optional, Exclusion, Profile, Mailbox, Alert email, Check
-// mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Work folder,
+// mailbox (the button; what it does is a fetch), Load ad, Work folder,
 // Excluded, Score anyway, Rescore, New, Current (the place of the active jobs), Archive (Move
 // back: back from there), Trash, Delete (into the Trash; there Delete forever and Restore),
 // Folders (the three places), Data (the card of the app's data), Requests (what a portal
@@ -126,7 +126,6 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   db: 'The database reports an error.',
   fileLocked: 'A file is open in another program right now.',
   io: 'A file could not be read or written.',
-  xlsx: 'The Excel file could not be written.',
   corrupt: (p) => (p.what === 'backup' ? 'The backup is damaged.' : 'The app’s data is damaged.'),
   newerSchema: 'The data comes from a newer version of the app.',
   invalid: 'The input is not valid.',
@@ -822,15 +821,6 @@ export const en: Catalog = {
       ads: (done: number, total: number) => `${n(done)} of ${n(total)} ads loaded`,
       adsStart: 'Loading ads',
       scoring: 'Scoring jobs',
-      files: 'Writing files',
-    },
-    exportFailed: {
-      overview: 'The Excel file could not be written and was left unchanged.',
-      overviewLocked: 'The Excel file is open in another program and was left unchanged.',
-      csv: 'The CSV file could not be written and was left unchanged.',
-      csvLocked: 'The CSV file is open in another program and was left unchanged.',
-      backup: 'The old Excel file could not be backed up, so the new one was not written.',
-      workspace: 'The work folder cannot be reached.',
     },
     checkMailbox: 'Mailbox settings',
   },
@@ -1208,7 +1198,6 @@ export const en: Catalog = {
   settings: {
     mailbox: 'Mailbox',
     search: 'Search',
-    export: 'Export',
     look: 'Appearance',
     data: 'Data',
     backToJob: 'Back to job',
@@ -1238,12 +1227,8 @@ export const en: Catalog = {
     checkAlert: 'Check alert',
     setUpAlert: 'Set up alert',
     folder: 'Work folder',
-    excel: 'Excel file',
-    csv: 'CSV file',
-    excelOff: 'Turn on the Excel file.',
-    csvOff: 'Turn on the CSV file.',
-    folderMoved: 'The profile and files are now in the new folder.',
-    folderFiles: 'The files are now in the new folder.',
+    folderMoved: 'The profile is now in the new folder.',
+    folderFiles: 'The new work folder is set.',
     folderOwnProfile: 'The app now uses the profile in this folder.',
     backup: 'Backup',
     backupHeading: 'Restore backup',

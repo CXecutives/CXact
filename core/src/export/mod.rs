@@ -1,19 +1,14 @@
-//! Generated files in the workspace: `JobAlerts.xlsx` and `JobAlerts.csv` (the jobs of the
-//! inbox and the archive, each with its own switch), generated from the database and written
-//! atomically - an open Excel file or a crash never leaves half a file behind. Earlier versions
-//! also wrote one text file per job and `top_matches.json` for an external matching skill; the
-//! app writes neither any more, and only the cleanup (deleting jobs for good, "reset
-//! everything") still knows them.
+//! The AI prompts, the generated colours of the window and the icon, writing the app's own
+//! files atomically (a crash never leaves half a file behind), and the files of jobs earlier
+//! versions wrote into the work folder: `JobAlerts.xlsx` and `JobAlerts.csv` (until
+//! 2026-10-01), the HTML report, one text file per job and `top_matches.json`. The app writes
+//! none of them any more; only the cleanup (deleting jobs for good, "reset everything") still
+//! knows them.
 
 mod ai_prompt;
 mod colour;
-mod columns;
-mod csv;
 pub mod palette;
 pub mod personal;
-pub mod scale;
-pub mod texts;
-mod xlsx;
 
 use std::collections::HashSet;
 use std::io::Write;
@@ -22,19 +17,13 @@ use std::path::{Path, PathBuf};
 use crate::error::{Error, Result};
 
 pub use ai_prompt::{MAX_AD_CHARS, MAX_PROFILE_CHARS, PromptJob, PromptSource, ai_prompt};
-pub use csv::write_csv;
-pub use texts::{Texts, details_label};
-pub use xlsx::{InfoValue, write_xlsx};
 
 /// File and folder names below are a contract with the user's workspace (and the files of
-/// earlier versions) - do not translate.
-pub const XLSX_NAME: &str = "JobAlerts.xlsx";
-/// Name part of an Excel file of the old program the app renamed before its first write
-/// (`JobAlerts.alt-20260925-093000.xlsx`, next to its own).
-pub const XLSX_BACKUP_PREFIX: &str = "JobAlerts.alt-";
-/// The CSV overview next to the Excel file (setting `exportCsv`; an earlier version wrote one
-/// under the same name). "Reset everything" takes it along.
-pub const CSV_NAME: &str = "JobAlerts.csv";
+/// earlier versions) - do not translate. The Excel file earlier versions wrote; only kept so
+/// that "reset everything" takes it along.
+pub(crate) const XLSX_NAME: &str = "JobAlerts.xlsx";
+/// The CSV file earlier versions wrote next to it; "reset everything" takes it along.
+const CSV_NAME: &str = "JobAlerts.csv";
 /// The HTML report of earlier versions; only kept so that "reset everything" takes it along.
 const LEGACY_HTML_NAME: &str = "JobAlerts.html";
 /// The list of the best matches earlier versions wrote for an external matching skill; only
@@ -51,19 +40,9 @@ pub const RESULT_DIR: &str = "auswertung";
 const TMP_PREFIX: &str = ".jam-";
 const TMP_SUFFIX: &str = ".tmp";
 
-/// Path of the overview file in the result folder.
-pub fn overview_path(result_dir: &Path) -> PathBuf {
-    result_dir.join(XLSX_NAME)
-}
-
-/// Path of the CSV overview in the result folder.
-pub fn csv_path(result_dir: &Path) -> PathBuf {
-    result_dir.join(CSV_NAME)
-}
-
 /// Writes `bytes` atomically to `path`: first into a temporary file in the same folder, then
-/// rename. If the target is locked (e.g. open in Excel), it stays unchanged and the error is
-/// `FileLocked`.
+/// rename. If the target is locked (open in another program), it stays unchanged and the
+/// error is `FileLocked`.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let long = long_path(path);
     let path = long.as_path();
@@ -106,9 +85,9 @@ fn long_path(path: &Path) -> PathBuf {
     }
 }
 
-/// The app's files in the result folder that exist right now: the overviews, what earlier
-/// versions wrote (the HTML report, `top_matches.json`, the known text files, plain file
-/// names only), leftover temporary files and remains of an earlier reset. The list for
+/// The app's files in the result folder that exist right now: what earlier versions wrote
+/// (the Excel and the CSV file, the HTML report, `top_matches.json`, the known text files,
+/// plain file names only), leftover temporary files and remains of an earlier reset. The list for
 /// resetting - foreign files (reports of other tools, consultant profiles ...) are never
 /// included. One directory listing per folder instead of one query per file (network drive,
 /// thousands of old text files).
@@ -184,17 +163,6 @@ pub fn clear_txt_files(result_dir: &Path, txt_names: &[String]) -> (usize, Vec<S
     // The subfolder only disappears if that made it empty.
     let _ = std::fs::remove_dir(result_dir.join(TXT_DIR));
     (removed, failed)
-}
-
-/// The name of an Excel file the app renamed ([`XLSX_BACKUP_PREFIX`]): a plain file name in
-/// the result folder, never a path.
-pub fn is_xlsx_backup(name: &str) -> bool {
-    name.starts_with(XLSX_BACKUP_PREFIX)
-        && !name.contains(['/', '\\', ':'])
-        && !name.contains("..")
-        && Path::new(name)
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("xlsx"))
 }
 
 /// Only a file name, no path - protects "clear" against manipulated entries.

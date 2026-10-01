@@ -25,7 +25,7 @@ import { staggerLimit } from '$lib/motion/motion';
 import { isExcluded, jobs, keyOf, sameKey, type Unmove } from '$lib/state/jobs.svelte';
 import type { MenuEntry, MenuItem } from '$lib/state/menu.svelte';
 import { navigation } from '$lib/state/navigation.svelte';
-import { exportText, run } from '$lib/state/run.svelte';
+import { run } from '$lib/state/run.svelte';
 import { toasts } from '$lib/state/toasts.svelte';
 import { copyJobPrompt } from './prompt';
 import { SHOWS, showActions, type ShowId } from './shows';
@@ -350,11 +350,9 @@ async function undo(
   }
 }
 
-/** Jobs deleted for good: their undo toasts can do nothing any more (the others stay), and
- *  a result file that could not follow says so in the list header. */
+/** Jobs deleted for good: their undo toasts can do nothing any more (the others stay). */
 function deletedFor(deleted: Deleted): void {
   toasts.forget(new Set(deleted.keys.map(keyOf)));
-  jobs.exportNote = exportText(deleted.exportError);
 }
 
 /**

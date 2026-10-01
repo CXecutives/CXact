@@ -60,9 +60,9 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `docs/ARCHITECTURE.md`: layers, one source per decision, data flow, errors, state, generated files and the guardrails.
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
   `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` profile form, JSON merge
-  with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan → fetch → score →
-  export) · `export/` xlsx, csv, AI prompts (and the cleanup of the text files and `top_matches.json` earlier
-  versions wrote) · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
+  with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan or search → fetch →
+  score) · `export/` AI prompts, the generated colours of the window and the icon (and the cleanup of the files
+  earlier versions wrote) · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start, `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
   `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
   (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).
@@ -73,7 +73,7 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - `cargo fmt --all --check` · `cargo clippy --workspace --all-targets -- -D warnings` · `cargo test --workspace`
 - `npm ci` · `npm run check` (svelte-check, eslint, stylelint, prettier, tokens, `tools/architecture.mjs`) · `npm run harness` · `npm run build`
 - `npx tauri build` (release bundles) · debug smoke: `target/debug/job-alert-monitor --dry-run --smoke --smoke-run`
-- Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the Excel,
+- Colours: only `ui/src/styles/tokens.css` writes one; after a change `npm run regen` rewrites the
   window and icon colours (`core/tests/palette.rs` fails while they are stale; `docs/CHANGING.md`).
 - The user reviews the UI themselves: keep `tools/ui-preview.cmd` working (the UI with the stub's demo data in the browser,
   every screen and button clickable without mails). It serves the copy in `.preview/`: refresh it with

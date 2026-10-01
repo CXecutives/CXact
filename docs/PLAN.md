@@ -1126,7 +1126,9 @@ handle sits between list and reader".
     the unused `AppState.sources`, the error `noFetchWay`, the reader's "Ausschließen"
   - [x] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `commands/auto.rs`, `pipeline::auto_due`); the
     app fetches only by hand
-  - [ ] The Excel and CSV export (`EXPORT_SHOWN`, the export step; the AI prompt stays)
+  - [x] The Excel and CSV export (`EXPORT_SHOWN`, the export step and its status, the info sheet and the
+    facts it kept, the files following the marks, the Excel colours of the palette, `rust_xlsxwriter`; the AI
+    prompt stays, and so does the cleanup of the files earlier versions wrote)
 - Round 7 (user decisions 2026-10-01, night):
   - [x] "Jobs suchen" without a profile searched nothing and fell back to the mailbox ("Es ist kein Postfach
     verbunden"): the search way never reads the mailbox; without search terms the fetch waits and says why

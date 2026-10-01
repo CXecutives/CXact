@@ -20,7 +20,7 @@ use jobalert_core::store::Store;
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-6.json";
+const NEWEST: &str = "3.0.0-7.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -69,8 +69,6 @@ fn newest() -> Settings {
             (Portal::AmadeusFire, switches(false, false)),
             (Portal::Fratch, switches(false, false)),
         ]),
-        export_excel: false,
-        export_csv: true,
         language: Some(Language::En),
         palette: Palette::Dark,
         fetch_mail: false,
@@ -219,14 +217,16 @@ fn the_file_before_the_new_sources_loads_with_them_on() {
     assert_eq!(round_trip(&loaded).0, loaded);
 }
 
-/// The files with the automatic fetch and the fetch range (taken out 2026-10-01: only by hand,
-/// every fetch reads the mails since the last one): their fields go, everything else as it
-/// was.
+/// The files with the automatic fetch, the fetch range and the Excel and CSV switches (taken
+/// out 2026-10-01: only by hand, every fetch reads the mails since the last one, no files):
+/// their fields go, everything else as it was.
 #[test]
 fn the_files_with_the_automatic_fetch_and_the_range_load_without_them() {
     let loaded = load(&fixture("3.0.0-4.json"));
     assert_eq!(loaded, newest());
-    assert_eq!(round_trip(&load(&fixture("3.0.0-5.json"))).0, newest());
+    for earlier in ["3.0.0-5.json", "3.0.0-6.json"] {
+        assert_eq!(round_trip(&load(&fixture(earlier))).0, newest());
+    }
     let (back, saved) = round_trip(&loaded);
     assert_eq!(back, loaded);
     assert_eq!(

@@ -12,7 +12,7 @@ the source information of the MPL-2.0.
 The font Inter is licensed under the SIL Open Font License 1.1; its text is
 at the end of this file.
 
-Rust crates: 395
+Rust crates: 390
 npm packages: 23
 
 ---------------------------------------------------------------------------
@@ -65,8 +65,6 @@ brotli 8.0.4 - BSD-3-Clause AND MIT  [7] [16]
     Copyright (c) 2009, 2010, 2013-2016 by the Brotli Authors.
 brotli-decompressor 5.0.3 - BSD-3-Clause/MIT  [7]
     Copyright (c) 2016 Dropbox, Inc.
-bumpalo 3.20.3 - MIT OR Apache-2.0  [9] [3]
-    Copyright (c) 2019 Nick Fitzgerald
 byteorder 1.5.0 - Unlicense OR MIT  [4] [5] [6]
     Copyright (c) 2015 Andrew Gallant
 bytes 1.12.1 - MIT  [3]
@@ -466,8 +464,6 @@ ring 0.17.14 - Apache-2.0 AND ISC  [52] [53] [54]
     Copyright 2015-2025 Brian Smith.
 rusqlite 0.40.2 - MIT  [38]
     Copyright (c) 2014 The rusqlite developers
-rust_xlsxwriter 0.99.1 - MIT OR Apache-2.0  [24] [11]
-    Copyright 2022-2026 John McNamara <jmcnamara@cpan.org>
 rustc_version 0.4.1 - MIT OR Apache-2.0  [9] [3]
     Copyright (c) 2016 The Rust Project Developers
 rustc-hash 2.1.3 - Apache-2.0 OR MIT  [8] [3]
@@ -642,7 +638,6 @@ tray-icon 0.24.2 - MIT OR Apache-2.0  [9] [11] [64]
 try-lock 0.2.5 - MIT  [38]
     Copyright (c) 2018-2023 Sean McArthur
     Copyright (c) 2016 Alex Crichton
-typed-path 0.12.3 - MIT OR Apache-2.0  [8] [3]
 typeid 1.0.3 - MIT OR Apache-2.0  [8] [3]
 typenum 1.20.1 - MIT OR Apache-2.0  [9] [12]
     Copyright 2014 Paho Lurie-Gregg
@@ -738,12 +733,8 @@ zerovec 0.11.8 - Unicode-3.0  [41]
     Copyright © 2020-2024 Unicode, Inc.
 zerovec-derive 0.11.6 - Unicode-3.0  [41]
     Copyright © 2020-2024 Unicode, Inc.
-zip 8.6.0 - MIT  [12]
-    Copyright (c) 2014 Mathijs van de Nes
 zlib-rs 0.6.8 - Zlib  [70]
 zmij 1.0.23 - MIT  [3]
-zopfli 0.8.3 - Apache-2.0  [24]
-    Copyright 2011 Google Inc.
 
 ---------------------------------------------------------------------------
 npm packages (user interface)

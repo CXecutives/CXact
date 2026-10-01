@@ -50,9 +50,8 @@ export const ICONS = {
   lastRun: 'history',
 
   // Files and folders.
-  /** A document the app writes or reads: the profile file, the CSV file. */
+  /** A document the app reads: the profile file. */
   document: 'file-text',
-  excel: 'file-spreadsheet',
   /** Show a file or folder in Explorer or Finder. */
   folder: 'folder-open',
   /** Choose a file (the profile). */

@@ -9,14 +9,6 @@ import type { PortalPatch } from "./PortalPatch";
  */
 export type SettingsPatch = { portals: Array<PortalPatch>, 
 /**
- * Write the Excel file with every export.
- */
-exportExcel: boolean | null, 
-/**
- * Write the CSV file with every export.
- */
-exportCsv: boolean | null, 
-/**
  * "Jobs abrufen" reads the alert mails.
  */
 fetchMail: boolean | null, 

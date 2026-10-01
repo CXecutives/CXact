@@ -1034,14 +1034,6 @@ pub struct SettingsView {
     /// Effective workspace (chosen or default).
     pub workspace: PathBuf,
     pub workspace_is_default: bool,
-    /// The Excel file of the overview, where it is or will be written.
-    pub excel_path: PathBuf,
-    /// The Excel file is there to open: written (`exportExcel` on) and on disk.
-    pub excel_exists: bool,
-    /// The CSV file of the overview, where it is or will be written (next to the Excel file).
-    pub csv_path: PathBuf,
-    /// The CSV file is there to open: written (`exportCsv` on) and on disk.
-    pub csv_exists: bool,
 }
 
 /// Another work folder (`pick_workspace`): the folder, and what became of the profile there.
@@ -1073,12 +1065,6 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// Write the Excel file with every export.
-    #[serde(default)]
-    pub export_excel: Option<bool>,
-    /// Write the CSV file with every export.
-    #[serde(default)]
-    pub export_csv: Option<bool>,
     /// "Jobs abrufen" reads the alert mails.
     #[serde(default)]
     pub fetch_mail: Option<bool>,
@@ -1110,12 +1096,6 @@ impl SettingsPatch {
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
-        }
-        if let Some(on) = self.export_excel {
-            settings.export_excel = on;
-        }
-        if let Some(on) = self.export_csv {
-            settings.export_csv = on;
         }
         if let Some(on) = self.fetch_mail {
             settings.fetch_mail = on;
@@ -1639,10 +1619,6 @@ pub struct AppState {
     /// Every profile of the work folder, the active one marked (empty without one).
     pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
-    /// The Excel file is written with every export.
-    pub export_excel: bool,
-    /// The CSV file is written with every export.
-    pub export_csv: bool,
     /// "Jobs abrufen" reads the alert mails (the menu beside the button).
     pub fetch_mail: bool,
     /// "Jobs abrufen" searches the sources (the menu beside the button).
@@ -1704,17 +1680,6 @@ pub enum OpenTarget {
     Workspace,
     /// The folder of the profile file in the workspace (`profil`).
     ProfileDir,
-    Excel,
-    /// The CSV file (`exportCsv`); not found while none is written.
-    Csv,
-    /// The Excel file shown selected in its folder (Explorer, Finder); the workspace while
-    /// there is none yet.
-    ExcelInFolder,
-    /// The old program's Excel file the app renamed before its first write
-    /// (`ExportSummary::backup`), by its name in the result folder, shown selected there.
-    ExcelBackupInFolder {
-        name: String,
-    },
     LogDir,
 }
 
@@ -1741,9 +1706,6 @@ pub struct Deleted {
     /// The keys of every row that went, duplicates included: the page drops them from lists,
     /// the reader and pending undos.
     pub keys: Vec<JobKey>,
-    /// The Excel file could not be written again (e.g. open in Excel); `params.target` names
-    /// what failed. The jobs are deleted anyway.
-    pub export_error: Option<ErrorInfo>,
 }
 
 #[cfg(test)]

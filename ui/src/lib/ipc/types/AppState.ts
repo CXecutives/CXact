@@ -48,14 +48,6 @@ profile: ProfileInfo | null,
  */
 profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
 /**
- * The Excel file is written with every export.
- */
-exportExcel: boolean, 
-/**
- * The CSV file is written with every export.
- */
-exportCsv: boolean, 
-/**
  * "Jobs abrufen" reads the alert mails (the menu beside the button).
  */
 fetchMail: boolean, 

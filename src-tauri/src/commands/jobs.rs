@@ -9,7 +9,7 @@ use jobalert_core::profile;
 use jobalert_core::view::{self, Deleted, JobDetail, JobPage, JobQuery, MoveBack};
 use tauri::{AppHandle, State};
 
-use super::{AppState, CmdResult, files, not_found};
+use super::{AppState, CmdResult, not_found};
 
 /// One page of the list with its counts (one store query).
 #[tauri::command]
@@ -35,13 +35,9 @@ pub async fn job_detail(state: State<'_, AppState>, key: JobKey) -> CmdResult<Jo
 }
 
 /// Marks a job as read - only on a real click in the list; `false` = it was read already.
-/// The Excel and the CSV file follow.
 #[tauri::command]
-pub async fn mark_read(app: AppHandle, state: State<'_, AppState>, key: JobKey) -> CmdResult<bool> {
+pub async fn mark_read(state: State<'_, AppState>, key: JobKey) -> CmdResult<bool> {
     let changed = state.store.mark_read(&key, Timestamp::now())?;
-    if changed {
-        files::marked(&app);
-    }
     Ok(changed)
 }
 
@@ -49,49 +45,31 @@ pub async fn mark_read(app: AppHandle, state: State<'_, AppState>, key: JobKey) 
 /// (the page toasts and undoes only those).
 #[tauri::command]
 pub async fn move_jobs(
-    app: AppHandle,
     state: State<'_, AppState>,
     keys: Vec<JobKey>,
     to: Place,
 ) -> CmdResult<Vec<JobKey>> {
     let moved = state.store.move_jobs(&keys, to, Timestamp::now())?;
-    if !moved.is_empty() {
-        files::marked(&app);
-    }
     Ok(moved)
 }
 
 /// "Wiederherstellen": takes jobs out of the trash, back to where they lay (the archive for
 /// a job thrown away from there, the inbox otherwise); returns the keys that really left it.
 #[tauri::command]
-pub async fn restore_jobs(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    keys: Vec<JobKey>,
-) -> CmdResult<Vec<JobKey>> {
+pub async fn restore_jobs(state: State<'_, AppState>, keys: Vec<JobKey>) -> CmdResult<Vec<JobKey>> {
     let restored = state.store.restore_jobs(&keys, Timestamp::now())?;
-    if !restored.is_empty() {
-        files::marked(&app);
-    }
     Ok(restored)
 }
 
 /// Takes moves back (the undo of a toast): each job returns to the place it came from as it
 /// was there, into the trash with its earlier date; returns the keys that really moved.
 #[tauri::command]
-pub async fn move_back(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    jobs: Vec<MoveBack>,
-) -> CmdResult<Vec<JobKey>> {
+pub async fn move_back(state: State<'_, AppState>, jobs: Vec<MoveBack>) -> CmdResult<Vec<JobKey>> {
     let back: Vec<_> = jobs
         .into_iter()
         .map(|job| (job.key, job.to, job.trashed_at))
         .collect();
     let moved = state.store.move_back(&back, Timestamp::now())?;
-    if !moved.is_empty() {
-        files::marked(&app);
-    }
     Ok(moved)
 }
 
@@ -100,7 +78,6 @@ pub async fn move_back(
 /// catch-up does it); `false` = nothing changed.
 #[tauri::command]
 pub async fn set_override(
-    app: AppHandle,
     state: State<'_, AppState>,
     key: JobKey,
     include: bool,
@@ -115,9 +92,6 @@ pub async fn set_override(
             true,
             Timestamp::now(),
         )?;
-    }
-    if changed {
-        files::marked(&app);
     }
     Ok(changed)
 }
@@ -157,7 +131,7 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
         &state.store,
         workspace.as_deref(),
         &keys,
-        (Timestamp::now(), state.language()?),
+        Timestamp::now(),
     )?)
 }
 

@@ -11,7 +11,7 @@
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Quelle, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs abrufen (the button: the mails and the
-// sources' search; what it does is the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
+// sources' search; what it does is the Abruf), Anzeige laden, Arbeitsordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Aktuell (the place of the active jobs, user 2026-10-01), Archiv (Zurückholen:
 // back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
@@ -100,7 +100,6 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
   db: 'Die Datenbank meldet einen Fehler.',
   fileLocked: 'Eine Datei ist gerade in einem anderen Programm geöffnet.',
   io: 'Eine Datei ließ sich nicht lesen oder schreiben.',
-  xlsx: 'Die Excel-Datei ließ sich nicht schreiben.',
   corrupt: (p) =>
     p.what === 'backup' ? 'Die Sicherung ist beschädigt.' : 'Die Daten der App sind beschädigt.',
   newerSchema: 'Die Daten stammen von einer neueren Version der App.',
@@ -941,21 +940,6 @@ export const de = {
       ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
-      files: 'Dateien werden geschrieben',
-    },
-    /**
-     * A file the export could not write (`export.error.params.target`); the old file stays.
-     * `overviewLocked`: the Excel file is open in another program.
-     */
-    exportFailed: {
-      overview: 'Die Excel-Datei ließ sich nicht schreiben und blieb unverändert.',
-      overviewLocked:
-        'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-      csv: 'Die CSV-Datei ließ sich nicht schreiben und blieb unverändert.',
-      csvLocked: 'Die CSV-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-      backup: 'Die alte Excel-Datei ließ sich nicht sichern, die neue wurde nicht geschrieben.',
-      /** The work folder itself (a drive that is gone): nothing was written. */
-      workspace: 'Der Arbeitsordner ist nicht erreichbar.',
     },
     /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
     checkMailbox: 'Postfach prüfen',
@@ -1472,7 +1456,6 @@ export const de = {
     mailbox: 'Postfach',
     /** The card of the sources the app searches itself. */
     search: 'Suche',
-    export: 'Export',
     /** The card of how the app looks and speaks: its colours and its language. */
     look: 'Darstellung',
     /** The card of the app's data: its backups, its log, the reset. */
@@ -1512,15 +1495,9 @@ export const de = {
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
     folder: 'Arbeitsordner',
-    excel: 'Excel-Datei',
-    csv: 'CSV-Datei',
-    /** Why "Öffnen" of a file waits while its switch is off (the app writes none then). */
-    excelOff: 'Schalte die Excel-Datei ein.',
-    csvOff: 'Schalte die CSV-Datei ein.',
-    /** Another result folder: the profile came along (or the folder has its own), the files
-     *  are written there at once. */
-    folderMoved: 'Profil und Dateien liegen im neuen Ordner.',
-    folderFiles: 'Die Dateien liegen im neuen Ordner.',
+    /** Another work folder: the profile came along, or the folder has its own, or none. */
+    folderMoved: 'Das Profil liegt im neuen Ordner.',
+    folderFiles: 'Der neue Arbeitsordner ist gewählt.',
     folderOwnProfile: 'Die App nutzt das Profil aus diesem Ordner.',
     /** The row of the database's copies, and its dialog. */
     backup: 'Sicherung',

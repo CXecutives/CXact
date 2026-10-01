@@ -1796,7 +1796,7 @@ test.skip('Sprache switches the whole app to English and back at once', async ({
   await expect(page.getByTestId('nav-settings')).toContainText('Settings');
   await expect(page.getByTestId('nav-profile')).toContainText('Profile');
   await expect(page.getByTestId('settings-look')).toContainText('Appearance');
-  await expect(page.getByTestId('settings-export')).toContainText('Export folder');
+  await expect(page.getByTestId('settings-data')).toContainText('Work folder');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await expect(choice.getByRole('radio', { name: 'English' })).toHaveAttribute(
     'aria-checked',

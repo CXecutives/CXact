@@ -1502,24 +1502,4 @@ test.describe('around the reader', () => {
     await expect(page.getByTestId('empty-place-trash')).toHaveText(T.place.empty.trash);
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
-
-  test('files that could not be written are no green success elsewhere', async ({ page }) => {
-    await open(page, `${WIN}&tick=15&export=locked`);
-    await page.getByTestId('fetch').click();
-    await page.getByTestId('nav-settings').click();
-    await runFinished(page);
-    // The count, and why the files stayed as they were (with its retry).
-    const toast = page
-      .getByTestId('toast')
-      .filter({ hasNotText: T.run.exportFailed.overviewLocked });
-    await expect(toast.getByTestId('toast-text')).toHaveText(/./);
-    await expect(toast).not.toHaveClass(/success/);
-    await expect(
-      page.getByTestId('toast').filter({ hasText: T.run.exportFailed.overviewLocked }),
-    ).toHaveCount(1);
-    // The count's toast leads to the list.
-    await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
-    await toast.getByTestId('toast-action').click();
-    await expect(page.getByTestId('view-jobs')).toBeVisible();
-  });
 });

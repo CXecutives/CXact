@@ -2103,7 +2103,6 @@ test.describe('run line', () => {
       T.run.line.search(T.portal.freelancermap),
       T.run.line.adsStart,
       T.run.line.scoring,
-      T.run.line.files,
     ]);
     for (const text of said) {
       expect(words.has(text) || /^\d+ von \d+ Anzeigen geladen$/.test(text), text).toBe(true);

@@ -1,5 +1,5 @@
 //! The texts on the Rust side follow the rules of the interface's catalogs (CLAUDE.md,
-//! glossary in docs/PLAN.md): the export texts (Excel), the startup dialog,
+//! glossary in docs/PLAN.md): the startup dialog,
 //! the sign-in window title, the file dialogs and the macOS menu. Each block starts at a line
 //! naming "User-facing text, German" (or "User-facing text, English") and ends at "end of
 //! user-facing text"; every string literal in it is checked, the German ones against the
@@ -14,20 +14,16 @@
 use std::path::Path;
 
 /// The files with German text blocks, and how many strings each has at least.
-const FILES: [(&str, usize); 6] = [
-    ("core/src/export/texts.rs", 25),
-    ("core/src/export/columns.rs", 20),
+const FILES: [(&str, usize); 4] = [
     ("src-tauri/src/main.rs", 12),
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/platform.rs", 15),
     ("src-tauri/src/commands/mod.rs", 3),
 ];
 
-/// The files with English text blocks (the words the exports and windows show in the
-/// English app), and how many strings each has at least.
-const FILES_EN: [(&str, usize); 5] = [
-    ("core/src/export/texts.rs", 25),
-    ("core/src/export/columns.rs", 20),
+/// The files with English text blocks (the words the windows show in the English app), and
+/// how many strings each has at least.
+const FILES_EN: [(&str, usize); 3] = [
     ("src-tauri/src/session.rs", 1),
     ("src-tauri/src/commands/mod.rs", 3),
     ("src-tauri/src/platform.rs", 15),

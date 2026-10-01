@@ -66,8 +66,7 @@
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
-// `?tick=ms` sets the pace of a scripted run (default 40); `?export=locked` lets the export
-// of a run find the Excel file open; `?mail=offline` lets every fetch fail to reach Gmail,
+// `?tick=ms` sets the pace of a scripted run (default 40); `?mail=offline` lets every fetch fail to reach Gmail,
 // `?mail=no-internet` find no network at all (`offline`: "Keine Verbindung zum Internet");
 // `?folder=other` lets `pick_workspace` choose another folder without a profile (the profile
 // comes along), `?folder=own` one with its own; `?palette=light|dark` starts in that palette (CXact by default).
@@ -289,7 +288,6 @@ const TICK = Number(params.get('tick') ?? 40);
 /** `?way=mail`: the fetch reads the mailbox (the menu's "Postfach"); else it searches. */
 const MAIL_WAY = params.get('way') === 'mail';
 const DELAY = scenario === 'slow' ? 900 : 0;
-const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 /** `mail=no-internet`: every fetch finds no network at all (`offline`, not `mailConnect`). */
 const NO_INTERNET = params.get('mail') === 'no-internet';
@@ -725,12 +723,6 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
     // Seven new, one of them excluded; two of the others fit well.
     newJobs: { count: 6, high: 2 },
     score: demoScoring(),
-    export: {
-      overviewXlsx: 'C:/Users/demo/Jobs/Uebersicht.xlsx',
-      overviewCsv: null,
-      backup: null,
-      error: null,
-    },
     emptyAlerts: [
       {
         portal: 'freelance',
@@ -807,11 +799,6 @@ function initial(): void {
     settings: {
       workspace: `${HOME}/Documents/Job-Alerts`,
       workspaceIsDefault: true,
-      excelPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.xlsx`,
-      excelExists: true,
-      csvPath: `${HOME}/Documents/Job-Alerts/auswertung/JobAlerts.csv`,
-      // `exportCsv` is off: the app writes none.
-      csvExists: false,
     },
     mailbox: {
       user: 'alerts.demo@gmail.com',
@@ -837,8 +824,6 @@ function initial(): void {
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
     setupDone: true,
-    exportExcel: true,
-    exportCsv: false,
     fetchMail: MAIL_WAY,
     fetchSearch: !MAIL_WAY,
     language: LANGUAGE,
@@ -857,11 +842,6 @@ function initial(): void {
       state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
       state.profile = null;
       state.lastRun = null;
-      state.settings.excelExists = false;
-      break;
-    case 'no-files':
-      // A connected mailbox, but nothing written to the workspace yet.
-      state.settings.excelExists = false;
       break;
     case 'mailbox-only':
       jobs = [];
@@ -931,7 +911,6 @@ function initial(): void {
       state.mailbox = { user: null, vault: VAULT, error: null, check: null, checkedAt: null };
       state.profile = null;
       state.lastRun = null;
-      state.settings.excelExists = false;
       state.resetReport = { removed: 12, failed: params.get('reset') === 'clean' ? 0 : 1 };
       break;
     case 'session-left':
@@ -951,7 +930,6 @@ function initial(): void {
         checkedAt: null,
       };
       state.lastRun = null;
-      state.settings.excelExists = false;
       break;
     case 'dry-run':
       state.dryRun = true;
@@ -1186,7 +1164,7 @@ function purgeJobs(keys: JobKey[]): Deleted {
   jobs = jobs.filter((j) => !doomed.has(markKey(j.key)));
   for (const key of doomed) tombstones.add(key);
   refresh();
-  return { count: gone.length, keys: gone, exportError: null };
+  return { count: gone.length, keys: gone };
 }
 
 const fold = (text: string): string =>
@@ -1488,20 +1466,6 @@ function arrived(fresh: readonly JobView[]): JobView[] {
   return fresh.map((j) => structuredClone(DEMO.fetched[markKey(j.key)]!.job));
 }
 
-/** What the export of a run reports (`?export=locked`: the Excel file is open elsewhere). */
-function exported(): RunSummary['export'] {
-  const written = lastRun().export!;
-  if (!EXPORT_LOCKED) return written;
-  return {
-    ...written,
-    overviewXlsx: null,
-    error: {
-      kind: 'fileLocked',
-      params: { path: 'C:/Users/demo/Jobs/JobAlerts.xlsx', target: 'overview' },
-    },
-  };
-}
-
 /** The number of the last run (the demo's last fetch is 41), and the run each job the
  *  scripted fetches brought was first seen in (store `first_seen_run`). */
 let lastRunNumber = 41;
@@ -1602,8 +1566,6 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
     });
     events.push({ type: 'progress', step: 'score', portal: null, done: i + 1, total });
   });
-  events.push({ type: 'status', code: 'writingFiles', portal: null, until: null });
-  events.push({ type: 'progress', step: 'export', portal: null, done: 1, total: 1 });
   events.push({
     type: 'finished',
     summary: {
@@ -1642,7 +1604,6 @@ function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
           ? done.filter((j) => j.match?.status === 'scored' && j.match.band === 'high').length
           : 0,
       },
-      export: exported(),
       emptyAlerts: [],
     },
   });
@@ -1671,7 +1632,6 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
       total: targets.length,
     });
   });
-  events.push({ type: 'status', code: 'writingFiles', portal: null, until: null });
   events.push({
     type: 'finished',
     summary: {
@@ -1692,7 +1652,6 @@ function detailsScript(keys: JobKey[]): RunEvent[] {
         skipped: 0,
         stopped: null,
       })),
-      export: exported(),
       emptyAlerts: [],
     },
   });
@@ -1782,7 +1741,6 @@ function rescoreScript(): RunEvent[] {
         newJobs: null,
         perPortal: [],
         emptyAlerts: [],
-        export: exported(),
       },
     },
   ];
@@ -2237,23 +2195,11 @@ const handlers: Handlers = {
       ...state.settings,
       workspace: folder,
       workspaceIsDefault: false,
-      excelPath: `${folder}/auswertung/JobAlerts.xlsx`,
-      excelExists: state.exportExcel && state.lastRun !== null,
-      csvPath: `${folder}/auswertung/JobAlerts.csv`,
-      csvExists: state.exportCsv && state.lastRun !== null,
     };
     const profile = kind === 'own' ? 'own' : state.profile === null ? 'none' : 'copied';
     return { folder, profile };
   },
-  // Like `overview` (commands/files.rs): a result file switched off is not found (the app
-  // writes none); one switched on is written fresh before it opens, also the first time.
   open_target: ({ target }) => {
-    if (target.kind === 'excel' && !state.exportExcel) {
-      throw fail('notFound', { what: 'file', path: state.settings.excelPath });
-    }
-    if (target.kind === 'csv' && !state.exportCsv) {
-      throw fail('notFound', { what: 'file', path: state.settings.csvPath });
-    }
     // A new mail only to the contact an ad names (commands/files.rs).
     if (target.kind === 'contactMail' && !find(target.key)?.match?.facts.contactEmail) {
       throw fail('notFound', { what: 'mail' });
@@ -2273,16 +2219,6 @@ const handlers: Handlers = {
     }
     if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
       state.fetchSearch = patch.fetchSearch;
-    }
-    if (patch.exportCsv !== null) {
-      // Like the Excel file below.
-      state.exportCsv = patch.exportCsv;
-      state.settings.csvExists = patch.exportCsv && state.lastRun !== null;
-    }
-    if (patch.exportExcel !== null) {
-      // Switched on, the file follows a moment later (like a mark); off, none is there.
-      state.exportExcel = patch.exportExcel;
-      state.settings.excelExists = patch.exportExcel && state.lastRun !== null;
     }
     if (patch.language !== null) state.language = patch.language;
     if (patch.palette !== null) state.palette = patch.palette;

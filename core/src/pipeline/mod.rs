@@ -21,11 +21,10 @@ use std::sync::{Arc, Mutex};
 
 use jiff::Timestamp;
 use serde::{Deserialize, Serialize};
-use sha2::Digest as _;
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{ErrorInfo, InvalidInput};
-use crate::export::{self, InfoValue, RESULT_DIR, Texts, texts, write_xlsx};
+use crate::export::{self, RESULT_DIR};
 use crate::fetch::policy::Policy;
 use crate::fetch::search::{SearchCounts, SearchEvent, search_all};
 use crate::fetch::{
@@ -36,7 +35,7 @@ use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{FetchPath, JobKey, Portal};
 use crate::settings::Language;
-use crate::store::{JobRow, Store};
+use crate::store::Store;
 use crate::text::truncate_chars;
 use crate::time;
 use crate::view::{Deleted, EmptyAlert, JobView, MAX_SUBJECT_CHARS};
@@ -186,7 +185,6 @@ pub enum Step {
     Search,
     Fetch,
     Score,
-    Export,
 }
 
 /// What is happening right now.
@@ -204,7 +202,6 @@ pub enum StatusCode {
     /// Gap before the next request of a portal (`until` for a countdown).
     Waiting,
     Scoring,
-    WritingFiles,
 }
 
 /// Events to the interface. Each stays small (< 8 KB; bigger messages bypass the ACL of the
@@ -366,23 +363,6 @@ pub struct NewJobs {
     pub high: usize,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub struct ExportSummary {
-    /// Written Excel overview (if written in this run).
-    pub overview_xlsx: Option<PathBuf>,
-    /// Written CSV overview (if written in this run; `exportCsv`). Summaries of earlier
-    /// versions have none.
-    #[serde(default)]
-    #[cfg_attr(test, ts(optional = nullable))]
-    pub overview_csv: Option<PathBuf>,
-    /// A foreign overview at the same path was backed up here.
-    pub backup: Option<PathBuf>,
-    /// The first error (closest to the cause); `params.target` names what failed.
-    pub error: Option<ErrorInfo>,
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
@@ -399,7 +379,6 @@ pub struct RunSummary {
     #[serde(default)]
     pub new_jobs: Option<NewJobs>,
     pub score: Option<ScoreSummary>,
-    pub export: Option<ExportSummary>,
     /// Alert mails of this run without recognised jobs (at most [`MAX_EMPTY_ALERTS`]).
     pub empty_alerts: Vec<EmptyAlert>,
     /// Counters of the fetch step (tests and log only).
@@ -423,7 +402,6 @@ impl RunSummary {
             per_portal: Vec::new(),
             new_jobs: None,
             score: None,
-            export: None,
             empty_alerts: Vec::new(),
             fetch: None,
             search: None,
@@ -450,19 +428,7 @@ impl RunSummary {
                 error.params.clear();
                 continue;
             }
-            let Some(export) = summary.export.as_mut() else {
-                break;
-            };
-            if let Some(error) = export.error.as_mut()
-                && !error.params.is_empty()
-            {
-                error.params.clear();
-            } else if export.backup.take().is_none()
-                && export.overview_csv.take().is_none()
-                && export.overview_xlsx.take().is_none()
-            {
-                break;
-            }
+            break;
         }
         RunEvent::Finished {
             summary: Box::new(summary),
@@ -485,13 +451,6 @@ pub struct RunSnapshot {
 pub const LAST_RUN: &str = "last_run_summary";
 /// Number of the last run with a mailbox scan.
 const LAST_SCAN_RUN: &str = "last_scan_run";
-/// State of the overview per path (key = prefix + path).
-pub(crate) const EXPORT_STAMP: &str = "export:";
-/// The numbers of the last successful mailbox scan for the sheet "Info" ([`ScanFacts`]).
-const LAST_SCAN_FACTS: &str = "last_scan_facts";
-/// Info sheet rows (German words) of the last successful mailbox scan, as earlier versions
-/// stored them; read only while no scan stored its facts.
-const LAST_SCAN_INFO: &str = "last_scan_info";
 /// So many empty alert mails a summary carries (the event must stay small).
 pub const MAX_EMPTY_ALERTS: usize = 10;
 /// Largest `Finished` event in bytes of JSON: Tauri channel messages above 8 KB bypass the
@@ -499,19 +458,6 @@ pub const MAX_EMPTY_ALERTS: usize = 10;
 pub const MAX_EVENT_BYTES: usize = 7 * 1024;
 /// Start of the last successful mailbox scan (Unix seconds).
 const LAST_FETCH_AT: &str = "last_fetch_at";
-/// The portals' health at the end of the last run, for the Info sheet ([`HealthRow`]).
-const LAST_HEALTH: &str = "last_portal_health";
-/// Label of the mail address row that earlier versions stored - do not translate.
-const LEGACY_ACCOUNT_LABEL: &str = "Gmail-Konto";
-/// Info sheet labels and values earlier versions stored with the last mailbox scan, and
-/// today's words for them (until the next scan stores its own) - do not translate.
-const LEGACY_INFO: [(&str, &str); 5] = [
-    ("Umfang des letzten Laufs", texts::INFO_SCOPE),
-    ("Neu (letzter Lauf)", texts::INFO_NEW),
-    ("Schon bekannt (letzter Lauf)", texts::INFO_KNOWN),
-    ("Doppelt in mehreren Mails (letzter Lauf)", texts::INFO_DUP),
-    ("Neu seit letztem Lauf", texts::SCOPE_NEW),
-];
 
 /// What a run kind does.
 struct Plan<'a> {
@@ -586,7 +532,6 @@ pub async fn run<B: Backends>(
     let plan = Plan::of(&request.kind, ctx);
     let mut postings: BTreeMap<Portal, usize> = BTreeMap::new();
     // The scan of this run succeeded: its facts are the Info sheet's.
-    let mut scanned_ok = false;
 
     if let Some(scope) = plan.scan {
         let before_scan = last_scan_run(store).unwrap_or(0);
@@ -614,9 +559,7 @@ pub async fn run<B: Backends>(
             .await;
             summary.outcome = match result {
                 Ok(()) => {
-                    remember_scan(store, scope, &scanned, started_at);
-                    remember_account(store, ctx.mailbox.as_deref());
-                    scanned_ok = true;
+                    remember_scan(store, started_at);
                     Outcome::Completed
                 }
                 Err(ScanError::Mail(MailError::Cancelled)) => Outcome::Cancelled,
@@ -724,32 +667,12 @@ pub async fn run<B: Backends>(
 
     if summary.scan.is_some() || summary.search.is_some() {
         match store.new_jobs(run) {
-            Ok((count, high)) => {
-                summary.new_jobs = Some(NewJobs { count, high });
-                if scanned_ok {
-                    remember_new_jobs(store, count);
-                }
-            }
+            Ok((count, high)) => summary.new_jobs = Some(NewJobs { count, high }),
             Err(e) => log::warn!("run {run}: new jobs not counted: {e}"),
         }
     }
-    remember_health(store, policy, ctx, clock());
 
     summary.finished_at = clock();
-    if !ctx.dry_run {
-        emit(status(StatusCode::WritingFiles, None, None));
-        let info = info_rows(store, summary.finished_at, Texts::of(ctx.language));
-        let exported = export_all(
-            store,
-            &ctx.workspace,
-            &info,
-            run,
-            summary.finished_at,
-            ctx.language,
-        );
-        log_export(run, &exported);
-        summary.export = Some(exported);
-    }
     // "The last fetch" of the page: a rescore or a details run never replaces it.
     if !ctx.dry_run
         && summary.kind.reads_mail()
@@ -1141,117 +1064,14 @@ fn per_portal(
         .collect()
 }
 
-/// What failed in an export step (`params.target` of the error).
-#[derive(Clone, Copy)]
-enum Target {
-    /// The work folder itself (a network drive or stick that is gone): nothing is written.
-    Workspace,
-    /// The Excel overview (writing it or reading its export stamp).
-    Overview,
-    /// Backing up a foreign Excel overview.
-    Backup,
-    /// The CSV overview (writing it, backing up a foreign one or reading its export stamp).
-    Csv,
-}
-
-impl Target {
-    const fn code(self) -> &'static str {
-        match self {
-            Target::Workspace => "workspace",
-            Target::Overview => "overview",
-            Target::Backup => "backup",
-            Target::Csv => "csv",
-        }
-    }
-
-    /// The base name of what failed when the error itself names no file (an error of the
-    /// Excel writer, of the database behind a stamp).
-    const fn file_name(self) -> Option<&'static str> {
-        match self {
-            Target::Overview | Target::Backup => Some(export::XLSX_NAME),
-            Target::Csv => Some(export::CSV_NAME),
-            Target::Workspace => None,
-        }
-    }
-}
-
-/// The overviews (in `language`): the Excel file with `exportExcel` on, the CSV file with
-/// `exportCsv` on. An overview is only regenerated if something changed - data, run (Excel
-/// only: its sheet "Info" names it), folder, language, the Gmail account of the links - or it
-/// is missing; a file open elsewhere is then not disturbed needlessly. Old text files of jobs
-/// deleted for good that stayed earlier get another try ([`Store::txt_leftovers`]).
-pub fn export_all(
-    store: &Store,
-    workspace: &Path,
-    info: &[(String, InfoValue)],
-    run: i64,
-    now: Timestamp,
-    language: Language,
-) -> ExportSummary {
-    let result_dir = workspace.join(RESULT_DIR);
-    let mut summary = ExportSummary::default();
-    if !reachable(workspace, &mut summary) {
-        return summary;
-    }
-    retry_txt_leftovers(store, &result_dir);
-    write_overviews(store, &result_dir, info, (run, language), now, &mut summary);
-    summary
-}
-
-/// Which overviews are written: the Excel file (`exportExcel`) and the CSV file
-/// (`exportCsv`); unreadable settings keep the defaults, Excel on and CSV off.
-fn overview_switches(store: &Store) -> (bool, bool) {
-    crate::settings::Settings::load(store).map_or((true, false), |settings| {
-        (settings.export_excel, settings.export_csv)
-    })
-}
-
-/// The overviews written anew when the user's marks (a move, "score anyway", a delete)
-/// changed them since they were last written - the stamp of the last write says so - and
-/// when a file is missing: call it after marks and right before "open Excel" or "open CSV".
-/// A run writes them by itself. A file open in Excel stays as it is: the summary's error is
-/// `fileLocked` with `target` (`overview` for the Excel file, `csv` for the CSV file), `path`
-/// and `name` (`JobAlerts.xlsx`, `JobAlerts.csv`); `overviewXlsx` and `overviewCsv` name the
-/// files written. A file switched off is not written.
-pub fn refresh_overviews(
-    store: &Store,
-    workspace: &Path,
-    now: Timestamp,
-    language: Language,
-) -> ExportSummary {
-    let result_dir = workspace.join(RESULT_DIR);
-    let mut summary = ExportSummary::default();
-    if overview_switches(store) == (false, false) || !reachable(workspace, &mut summary) {
-        return summary;
-    }
-    // The run of the last write stays: marks alone change no run number.
-    let run = store
-        .kv_get(&stamp_key(&export::overview_path(&result_dir)))
-        .ok()
-        .flatten()
-        .and_then(|stamp| serde_json::from_str::<serde_json::Value>(&stamp).ok())
-        .and_then(|stamp| stamp["run"].as_i64())
-        .unwrap_or_else(|| last_scan_run(store).unwrap_or(0));
-    let info = info_rows(store, now, Texts::of(language));
-    write_overviews(
-        store,
-        &result_dir,
-        &info,
-        (run, language),
-        now,
-        &mut summary,
-    );
-    summary
-}
-
 /// Deletes jobs for good (see [`Store::delete_jobs`]): the text files earlier versions wrote
-/// for them go and the overview is written again without them (in `language`). Without a
+/// for them go (and those that stayed at an earlier delete get another try). Without a
 /// workspace (the dry run) nothing on disk changes.
 pub fn delete_jobs(
     store: &Store,
     workspace: Option<&Path>,
     keys: &[JobKey],
-    (now, language): (Timestamp, Language),
+    now: Timestamp,
 ) -> crate::Result<Deleted> {
     // Only the trash is deleted for good.
     let keys = store.in_trash(keys)?;
@@ -1259,25 +1079,21 @@ pub fn delete_jobs(
     // The jobs as the list showed them: a duplicate that stood behind a row goes with it
     // (its key is among `gone` for the page), but the user deleted that row once.
     let rows = keys.iter().filter(|key| gone.contains(key)).count();
-    let mut deleted = Deleted {
+    let deleted = Deleted {
         count: u32::try_from(rows).unwrap_or(u32::MAX),
         keys: gone,
-        export_error: None,
     };
     let Some(workspace) = workspace.filter(|_| !deleted.keys.is_empty()) else {
         return Ok(deleted);
     };
+    retry_txt_leftovers(store, &workspace.join(RESULT_DIR));
     remove_deleted_txt(store, workspace, &names);
-    let info = info_rows(store, now, Texts::of(language));
-    let run = last_scan_run(store).unwrap_or(0);
-    let exported = export_all(store, workspace, &info, run, now, language);
-    deleted.export_error = exported.error;
     Ok(deleted)
 }
 
 /// Removes the text files earlier versions wrote for jobs now deleted for good. A file that
 /// stays (open in another program, or the work folder on a drive that is gone) is remembered,
-/// since its job's row is gone, so the next export or a reset removes it
+/// since its job's row is gone, so the next delete or a reset removes it
 /// ([`Store::txt_leftovers`]); the user needs no word about it.
 fn remove_deleted_txt(store: &Store, workspace: &Path, names: &[String]) {
     let failed = if workspace.is_dir() {
@@ -1321,310 +1137,10 @@ fn retry_txt_leftovers(store: &Store, result_dir: &Path) {
     }
 }
 
-/// Is the work folder there? A deleted local folder is simply made again; one on a drive
-/// that is gone (a network share, a stick) is one clear error naming the work folder - not
-/// a text folder and an Excel file that each could not be written - and the
-/// export is skipped: the files follow once the folder is back.
-fn reachable(workspace: &Path, summary: &mut ExportSummary) -> bool {
-    match export::ensure_dir(workspace) {
-        Ok(()) => true,
-        Err(e) => {
-            note_error(summary, &e, Target::Workspace);
-            false
-        }
-    }
-}
-
-/// The first error stays: it is closest to the cause (the folder is unreachable); later
-/// consequential errors only go to the log. Only one is reported anyway. It says what
-/// failed (`target`) and the base name of the file or folder (`name`).
-fn note_error(summary: &mut ExportSummary, error: &crate::Error, target: Target) {
-    if summary.error.is_some() {
-        log::warn!("export: another error ({}): {error}", target.code());
-    } else {
-        log::warn!("export: {}: {error}", target.code());
-        summary.error = Some(export_error(error, target));
-    }
-}
-
-/// An export error for the page: its code with `target` and `name`.
-fn export_error(error: &crate::Error, target: Target) -> ErrorInfo {
-    let info = ErrorInfo::from(error).with("target", target.code());
-    match target.file_name() {
-        Some(name) => info.with_name_of(Path::new(name)),
-        None => info,
-    }
-}
-
-/// Writes the overviews that are switched on (the Excel file, the CSV file), each one only
-/// if it is missing or something changed since the last time at its path. Both list the
-/// inbox and the archive, best match first, no duplicate row (the original's row stands for
-/// it) and nothing of the trash; the jobs are read once for both.
-fn write_overviews(
-    store: &Store,
-    result_dir: &Path,
-    info: &[(String, InfoValue)],
-    (run, language): (i64, Language),
-    now: Timestamp,
-    summary: &mut ExportSummary,
-) {
-    let (excel, csv) = overview_switches(store);
-    let account = gmail_account(store);
-    let rev = store.data_rev().unwrap_or(-1);
-    // The account of the Gmail links (only a digest of it) changes their target.
-    let digest = account
-        .as_deref()
-        .map(|a| crate::portal::hex12(&sha2::Sha256::digest(a)));
-    let mut jobs: Option<Vec<JobRow>> = None;
-    if excel {
-        // The run number belongs to the sheet "Info" and changes the file on every run.
-        let stamp = serde_json::json!({
-            "rev": rev, "run": run, "language": language, "account": digest,
-        });
-        let path = export::overview_path(result_dir);
-        if write_overview(
-            store,
-            &path,
-            &stamp,
-            Target::Overview,
-            now,
-            summary,
-            &mut jobs,
-            |jobs| write_xlsx(&path, jobs, info, language, account.as_deref()),
-        ) {
-            summary.overview_xlsx = Some(path);
-        }
-    }
-    if csv {
-        // The CSV file has no sheet "Info": a run alone does not change it (an open file is
-        // not disturbed on every run).
-        let stamp = serde_json::json!({
-            "rev": rev, "language": language, "account": digest,
-        });
-        let path = export::csv_path(result_dir);
-        if write_overview(
-            store,
-            &path,
-            &stamp,
-            Target::Csv,
-            now,
-            summary,
-            &mut jobs,
-            |jobs| export::write_csv(&path, jobs, language, account.as_deref()),
-        ) {
-            summary.overview_csv = Some(path);
-        }
-    }
-}
-
-/// Writes one overview with `write` if it is missing or its `stamp` changed since the last
-/// time at this path; `true` when it was written. The state is remembered per path: what the
-/// app wrote there stays its own - also after switching the folder and back. `jobs` are the
-/// rows of the overviews, read at the first write.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "one step of the export with its summary, its jobs and its writer"
-)]
-fn write_overview(
-    store: &Store,
-    path: &Path,
-    stamp: &serde_json::Value,
-    target: Target,
-    now: Timestamp,
-    summary: &mut ExportSummary,
-    jobs: &mut Option<Vec<JobRow>>,
-    write: impl FnOnce(&[JobRow]) -> crate::Result<()>,
-) -> bool {
-    let stamp = stamp.to_string();
-    let key = stamp_key(path);
-    // Without a readable state the ownership of the file is unknown - then it is neither
-    // backed up nor replaced. A database error must not back up the app's own overview.
-    let last = match store.kv_get(&key) {
-        Ok(last) => last,
-        Err(e) => {
-            note_error(summary, &e, target);
-            return false;
-        }
-    };
-    if path.exists() && last.as_deref() == Some(stamp.as_str()) {
-        return false;
-    }
-    // An overview that does not come from this app (e.g. from the old program in the same
-    // folder) is backed up before the first write - never replaced silently. The name is
-    // part of the user's workspace - do not translate - and says the local time, like the
-    // text files' names. The page names a backed-up Excel file; a CSV file only the log.
-    if path.exists() && last.is_none() {
-        let backup = path.with_file_name(format!(
-            "{}{}.{}",
-            export::XLSX_BACKUP_PREFIX,
-            time::local(now).strftime("%Y%m%d-%H%M%S"),
-            path.extension().and_then(|e| e.to_str()).unwrap_or("xlsx")
-        ));
-        if let Err(e) = std::fs::rename(path, &backup) {
-            let failed = match target {
-                Target::Overview => Target::Backup,
-                other => other,
-            };
-            note_error(summary, &crate::Error::io(path, e), failed);
-            return false;
-        }
-        log::info!("a foreign overview was backed up before the first write");
-        if matches!(target, Target::Overview) {
-            summary.backup = Some(backup);
-        }
-    }
-    if jobs.is_none() {
-        match store.sheet_jobs() {
-            Ok(rows) => *jobs = Some(rows),
-            Err(e) => {
-                note_error(summary, &e, target);
-                return false;
-            }
-        }
-    }
-    match write(jobs.as_deref().unwrap_or_default()) {
-        Ok(()) => {
-            if let Err(e) = store.kv_set(&key, &stamp) {
-                log::warn!("export stamp not stored: {e}");
-            }
-            true
-        }
-        Err(e) => {
-            note_error(summary, &e, target);
-            false
-        }
-    }
-}
-
-/// The key of the export stamp of an overview file (per path).
-fn stamp_key(path: &Path) -> String {
-    format!("{EXPORT_STAMP}{}", path.display())
-}
-
-/// The Gmail address whose alert mails the files link to: the account of the last successful
-/// mailbox scan.
-fn gmail_account(store: &Store) -> Option<String> {
-    store
-        .kv_get(crate::store::GMAIL_ACCOUNT)
-        .ok()
-        .flatten()
-        .filter(|a| !a.trim().is_empty())
-}
-
-/// After a successful mailbox scan: the account it read is the one the files link to.
-fn remember_account(store: &Store, mailbox: Option<&str>) {
-    if let Some(account) = mailbox.map(str::trim).filter(|a| !a.is_empty())
-        && let Err(e) = store.kv_set(crate::store::GMAIL_ACCOUNT, account)
-    {
-        log::warn!("account of the links not stored: {e}");
-    }
-}
-
-/// The health of every portal at the end of a run, for the Info sheet: switched on or off
-/// and what the safety state says (a pause or a cap with its end, a sign-in needed, alert
-/// mails without jobs of the last mailbox scan).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct HealthRow {
-    portal: Portal,
-    enabled: bool,
-    health: PortalHealth,
-}
-
-/// Remembers the health of every portal at the end of a run (the Info sheet's rows).
-fn remember_health(store: &Store, policy: &Mutex<Policy>, ctx: &RunContext, now: Timestamp) {
-    let empty = store
-        .zero_posting_mails(last_scan_run(store).unwrap_or(0))
-        .unwrap_or_default();
-    let rows: Vec<HealthRow> = {
-        let policy = crate::sync::lock(policy);
-        Portal::ALL
-            .into_iter()
-            .map(|portal| {
-                let mails = empty.iter().filter(|m| m.portal == portal).count();
-                let login = ctx.sign_in.contains(&portal);
-                HealthRow {
-                    portal,
-                    enabled: ctx.portals.contains(&portal),
-                    health: PortalHealth::of(&policy, portal, now, login, mails),
-                }
-            })
-            .collect()
-    };
-    let saved = serde_json::to_string(&rows)
-        .map_err(|e| e.to_string())
-        .and_then(|json| store.kv_set(LAST_HEALTH, &json).map_err(|e| e.to_string()));
-    if let Err(e) = saved {
-        log::warn!("portal health for the Info sheet not stored: {e}");
-    }
-}
-
-/// The numbers of a successful mailbox scan for the sheet "Info", without words: the sheet
-/// says them in the language of the export.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-struct ScanFacts {
-    /// Start of the scan (Unix seconds).
-    at: i64,
-    scope: Scope,
-    /// Listings in the alert mails, by what the scan knew of them.
-    new: usize,
-    known: usize,
-    dup: usize,
-    /// The new jobs of the run, as its card counts them ([`NewJobs`]: a job several portals
-    /// announce once, excluded ones left out); `None` in the facts of earlier versions.
-    #[serde(default)]
-    jobs: Option<usize>,
-}
-
-/// Remembers the numbers of a successful mailbox scan for the sheet "Info" - only then: a
-/// failed scan does not overwrite the last good state. The mail address stays out of the
-/// file - it may be passed on.
-fn remember_scan(store: &Store, scope: Scope, scan: &ScanSummary, at: Timestamp) {
-    let facts = ScanFacts {
-        at: time::to_db(at),
-        scope,
-        new: scan.new,
-        known: scan.known_before,
-        dup: scan.dup_in_run,
-        jobs: None,
-    };
-    save_facts(store, &facts);
+/// After a successful mailbox scan: when it started (a failed scan does not overwrite it).
+fn remember_scan(store: &Store, at: Timestamp) {
     if let Err(e) = store.kv_set(LAST_FETCH_AT, &time::to_db(at).to_string()) {
         log::warn!("time of the mailbox scan not stored: {e}");
-    }
-}
-
-/// The run card's number of new jobs goes with the facts of the scan that just succeeded:
-/// the Info sheet says the same number as the card.
-fn remember_new_jobs(store: &Store, count: usize) {
-    if let Some(facts) = scan_facts(store) {
-        save_facts(
-            store,
-            &ScanFacts {
-                jobs: Some(count),
-                ..facts
-            },
-        );
-    }
-}
-
-fn scan_facts(store: &Store) -> Option<ScanFacts> {
-    store
-        .kv_get(LAST_SCAN_FACTS)
-        .ok()
-        .flatten()
-        .and_then(|json| serde_json::from_str(&json).ok())
-}
-
-fn save_facts(store: &Store, facts: &ScanFacts) {
-    let saved = serde_json::to_string(facts)
-        .map_err(|e| e.to_string())
-        .and_then(|json| {
-            store
-                .kv_set(LAST_SCAN_FACTS, &json)
-                .map_err(|e| e.to_string())
-        });
-    if let Err(e) = saved {
-        log::warn!("mailbox scan details not stored: {e}");
     }
 }
 
@@ -1644,119 +1160,6 @@ pub fn last_fetch_at(store: &Store) -> Option<Timestamp> {
         .flatten()
         .and_then(|v| v.parse().ok())
         .and_then(time::from_db)
-}
-
-/// Sheet "Info" of the Excel file (last mailbox fetch, when the file was written, counters,
-/// program, the portals' health at the last fetch). The numbers come from the last
-/// successful mailbox scan - after pure detail runs too; "new" is the run card's number of
-/// new jobs. Any run, a delete for good and a mark write the file (`written`: that moment), so
-/// it says when, not the time of a fetch: that is the first row's. The job count is the
-/// sheet's rows. Numbers and moments are real cells.
-fn info_rows(store: &Store, written: Timestamp, words: &Texts) -> Vec<(String, InfoValue)> {
-    let count = |n: usize| InfoValue::Number(u64::try_from(n).unwrap_or(u64::MAX));
-    let mut rows = match scan_facts(store) {
-        Some(facts) => {
-            let scope = match facts.scope {
-                Scope::New => words.scope_new.to_owned(),
-                Scope::Days(days) => words.scope_days(days),
-                Scope::All => words.scope_all.to_owned(),
-            };
-            let mut rows = Vec::new();
-            if let Some(at) = time::from_db(facts.at) {
-                rows.push((words.info_last_scan.to_owned(), InfoValue::Moment(at)));
-            }
-            rows.extend([
-                (words.info_scope.to_owned(), InfoValue::Text(scope)),
-                (
-                    words.info_new.to_owned(),
-                    count(facts.jobs.unwrap_or(facts.new)),
-                ),
-                (words.info_known.to_owned(), count(facts.known)),
-                (words.info_dup.to_owned(), count(facts.dup)),
-            ]);
-            rows
-        }
-        None => legacy_info_rows(store, words)
-            .into_iter()
-            .map(|(label, value)| {
-                let value = value
-                    .parse::<u64>()
-                    .map_or(InfoValue::Text(value), InfoValue::Number);
-                (label, value)
-            })
-            .collect(),
-    };
-    // "Erstellt am" / "Created on".
-    rows.push((words.created.into(), InfoValue::Moment(written)));
-    rows.push((
-        words.info_jobs_total.into(),
-        InfoValue::Number(store.sheet_count().unwrap_or(0)),
-    ));
-    rows.push((
-        words.info_program.into(),
-        InfoValue::Text(texts::PROGRAM_NAME.into()),
-    ));
-    let health: Vec<HealthRow> = store
-        .kv_get(LAST_HEALTH)
-        .ok()
-        .flatten()
-        .and_then(|json| serde_json::from_str(&json).ok())
-        .unwrap_or_default();
-    for row in health {
-        rows.push((
-            words.info_portal(row.portal.label()),
-            InfoValue::Text(words.health(row.enabled, &row.health)),
-        ));
-    }
-    rows
-}
-
-/// The rows an earlier version stored with the last mailbox scan (German words), in the
-/// words of `words` until the next scan stores its facts.
-fn legacy_info_rows(store: &Store, words: &Texts) -> Vec<(String, String)> {
-    let mut rows: Vec<(String, String)> = store
-        .kv_get(LAST_SCAN_INFO)
-        .ok()
-        .flatten()
-        .and_then(|json| serde_json::from_str(&json).ok())
-        .unwrap_or_default();
-    // Earlier versions stored the mail address among the rows; it stays out now.
-    rows.retain(|(label, _)| label != LEGACY_ACCOUNT_LABEL);
-    // ... and their own words, read in today's until the next scan stores its facts.
-    let today = |text: &mut String| {
-        if let Some((_, new)) = LEGACY_INFO.iter().find(|(old, _)| old == text) {
-            *text = (*new).to_owned();
-        }
-        if let Some(word) = words.from_german(text) {
-            *text = word.to_owned();
-        }
-    };
-    for (label, value) in &mut rows {
-        today(label);
-        today(value);
-    }
-    rows
-}
-
-fn log_export(run: i64, exported: &ExportSummary) {
-    log::info!(
-        "run {run}: export{}{}{}",
-        if exported.overview_xlsx.is_some() {
-            ", overview written"
-        } else {
-            ""
-        },
-        if exported.overview_csv.is_some() {
-            ", CSV written"
-        } else {
-            ""
-        },
-        if exported.backup.is_some() {
-            ", a foreign overview was backed up"
-        } else {
-            ""
-        }
-    );
 }
 
 #[cfg(test)]

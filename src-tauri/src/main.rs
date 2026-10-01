@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use commands::{Activity, AppState, CloseGuard, GmailUser, Refresh, Scoring};
+use commands::{Activity, AppState, CloseGuard, GmailUser, Scoring};
 use jobalert_core::error::ErrorKind;
 use jobalert_core::pipeline::demo::{self, StartMode};
 use jobalert_core::secrets::Vault;
@@ -346,7 +346,6 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
         mailbox_epoch: AtomicU64::new(0),
         activity: Mutex::new(Activity::Idle),
         scoring: Scoring::default(),
-        refresh: Refresh::default(),
         close_guard: CloseGuard::default(),
     });
     // The web view version goes to the log only: the UI does not need it, and for debugging
@@ -607,6 +606,5 @@ mod lifecycle {
                 std::thread::sleep(STEP);
             }
         }
-        crate::commands::flush_marks(&state);
     }
 }

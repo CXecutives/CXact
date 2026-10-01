@@ -1492,42 +1492,6 @@ pub fn platform() -> jobalert_core::view::Platform {
     }
 }
 
-/// Shows a file selected in its folder, the way the OS does: Explorer with `/select` on
-/// Windows, the Finder with `open -R` on macOS (elsewhere the folder opens).
-pub fn show_in_folder(path: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt as _;
-        // The Explorer of the system folder, never one found elsewhere on the PATH. It reads
-        // its command line itself: the path in quotes right after the comma. Its exit code
-        // says nothing (1 also when it worked), so it is not waited for.
-        let explorer = std::env::var_os("SystemRoot").map_or_else(
-            || std::path::PathBuf::from("explorer.exe"),
-            |root| std::path::PathBuf::from(root).join("explorer.exe"),
-        );
-        std::process::Command::new(explorer)
-            .raw_arg(format!("/select,\"{}\"", path.display()))
-            .spawn()
-            .map(drop)
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let mut finder = std::process::Command::new("/usr/bin/open")
-            .arg("-R")
-            .arg(path)
-            .spawn()?;
-        // `open` hands over to the Finder and ends at once; it is reaped off this thread.
-        std::thread::spawn(move || {
-            let _ = finder.wait();
-        });
-        Ok(())
-    }
-    #[cfg(not(any(windows, target_os = "macos")))]
-    {
-        open::that_detached(path.parent().unwrap_or(path))
-    }
-}
-
 /// Where the mailbox password lives on this operating system.
 pub fn vault_kind() -> jobalert_core::view::VaultKind {
     if cfg!(target_os = "macos") {

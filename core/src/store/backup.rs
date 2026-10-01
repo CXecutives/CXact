@@ -241,26 +241,20 @@ fn before_restore(conn: &Connection, db: &Path, now: Timestamp) -> Result<Backup
 }
 
 /// What stays as it is now through a restore, written into the staged copy: the settings
-/// (the app's choices, not the jobs; the work folder and with it the profile stay), the
-/// export stamps (which files in the work folder the app wrote: none of them is taken for a
-/// stranger's and set aside) and a change counter above both databases' (the files are
-/// written anew from the restored jobs).
+/// (the app's choices, not the jobs; the work folder and with it the profile stay) and a
+/// change counter above both databases'.
 fn keep_app_state(live: &Connection, staged: &Connection) -> Result<()> {
     let settings = crate::settings::KEY;
-    let stamps = format!("{}%", crate::pipeline::EXPORT_STAMP);
     let kept: Vec<(String, String)> = live
-        .prepare("SELECT key, value FROM kv WHERE key = ?1 OR key LIKE ?2")?
-        .query_map(params![settings, stamps], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .prepare("SELECT key, value FROM kv WHERE key = ?1")?
+        .query_map(params![settings], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
     let rev = kv_get_i64(live, "data_rev")?
         .unwrap_or(0)
         .max(kv_get_i64(staged, "data_rev")?.unwrap_or(0))
         + 1;
     let tx = staged.unchecked_transaction()?;
-    tx.execute(
-        "DELETE FROM kv WHERE key = ?1 OR key LIKE ?2",
-        params![settings, stamps],
-    )?;
+    tx.execute("DELETE FROM kv WHERE key = ?1", params![settings])?;
     for (key, value) in &kept {
         kv_set(&tx, key, value)?;
     }
