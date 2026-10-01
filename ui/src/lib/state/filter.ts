@@ -8,11 +8,11 @@
 // sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists every value of
 // its dimension or is not there at all (user decision 2026-09-27): Quelle and Übereinstimmung
 // (Hoch, Mittel, Gering) take several choices at once, any of them lets a job through;
-// Eingegangen (Heute, Letzte 7 Tage, Letzte 30 Tage) one (user decision 2026-10-01). None is
-// checked while a group filters nothing; a second click turns a choice off, and in
-// Eingegangen another one takes over. Vertragsart, Arbeitsmodell and "Nur neue" are hidden
-// (user decision 2026-10-01, HIDDEN_GROUPS: their code stays). There is no deadline and no
-// pay filter: the reader's Jobdetails name the deadline, the order by Tagessatz stays.
+// Gefunden (Heute, Letzte 7 Tage, Letzte 30 Tage) one (user decision 2026-10-01). None is
+// checked while a group filters nothing; a second click turns a choice off, and in Gefunden
+// another one takes over. There is no contract, work mode, deadline or pay filter (user
+// decision 2026-10-01: only what is used); the reader's Jobdetails name them, the order by
+// Tagessatz stays.
 // Beside the groups the "Zeigen" of a fetch's toast narrows the list to the new jobs of that
 // fetch (`run`, the chip "Aus dem letzten Abruf"): no entry of the menu, never kept, gone
 // with "Filter zurücksetzen" and the next fetch.
@@ -20,19 +20,12 @@
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
 import type { Catalog } from '../i18n/de';
-import type { Band, JobQuery, JobSort, JobView, Portal, WorkMode } from '../ipc/types';
-
-/** The contract types the filter offers (KeyFacts.contract). */
-export const CONTRACTS = ['interim', 'freelance', 'permanent', 'anue'] as const;
-export type ContractCode = (typeof CONTRACTS)[number];
+import type { Band, JobQuery, JobSort, JobView, Portal } from '../ipc/types';
 
 /** The bands the filter offers, the highest first. */
 export const BANDS: readonly Band[] = ['high', 'mid', 'low'];
 
-/** The work modes the filter offers. */
-export const WORK_MODES: readonly WorkMode[] = ['remote', 'hybrid', 'onsite'];
-
-/** The days "Eingegangen" offers: today, the last 7 and the last 30 (today among them). */
+/** The days "Gefunden" offers: today, the last 7 and the last 30 (today among them). */
 export const RECEIVED = ['today', 'days7', 'days30'] as const;
 export type Received = (typeof RECEIVED)[number];
 
@@ -43,13 +36,6 @@ export interface ListFilter {
   portals: Portal[];
   /** Only jobs scored in these bands (unscored and excluded jobs never pass). */
   bands: Band[];
-  /** Only jobs of this contract type (hidden). */
-  contract: ContractCode | null;
-  /** Only jobs of this work mode (`workModeOf`; a job of no known mode never passes;
-   *  hidden). */
-  workMode: WorkMode | null;
-  /** Only the new jobs ("Nur neue", `isNew`; hidden). */
-  unread: true | null;
   /** Only the jobs that came on these days (`receivedSince`). */
   received: Received | null;
   /** Only the new jobs of this fetch (`RunSummary.run`), the ones its toast counts: the
@@ -61,29 +47,15 @@ export interface ListFilter {
 export const NO_FILTER: ListFilter = {
   portals: [],
   bands: [],
-  contract: null,
-  workMode: null,
-  unread: null,
   received: null,
   run: null,
 };
 
-/** A new job, in any place: not opened yet and not excluded. "Nur neue" lists these, the
- *  row's dot marks them (like a mail app's unread mark); the backend's store::NEW. */
+/** A new job, in any place: not opened yet and not excluded; the row's dot marks it (like a
+ *  mail app's unread mark). */
 export const isNew = (job: JobView): boolean => job.unread && job.match?.status !== 'excluded';
 
-/** The work mode of a job as its Jobdetails name it (core's store::filter_condition): the
- *  remote share the ad states first (all of it remote, none of it on site, anything between
- *  hybrid), the location's work mode only without one; null when neither says. */
-export function workModeOf(job: JobView): WorkMode | null {
-  const facts = job.match?.facts ?? null;
-  const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;
-  const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
-  if (from === null || to === null) return job.workMode;
-  return from >= 100 ? 'remote' : to <= 0 ? 'onsite' : 'hybrid';
-}
-
-/** The first second of the days a choice of "Eingegangen" lets through, in the user's time
+/** The first second of the days a choice of "Gefunden" lets through, in the user's time
  *  zone: the start of today, of the day 6 or 29 days before it (Unix seconds). */
 export function receivedSince(received: Received, now: Date): number {
   const back = received === 'today' ? 0 : received === 'days7' ? 6 : 29;
@@ -95,17 +67,14 @@ export function receivedSince(received: Received, now: Date): number {
  *  sighting (Unix seconds). */
 const cameAt = (job: JobView): number => Date.parse(job.mailDate ?? job.firstSeenAt) / 1000;
 
-/** The filter's part of a JobQuery (`now` for the days of "Eingegangen"). */
+/** The filter's part of a JobQuery (`now` for the days of "Gefunden"). */
 export function toQuery(
   filter: ListFilter,
   now = new Date(),
-): Omit<JobQuery, 'place' | 'sort' | 'search' | 'limit' | 'offset' | 'origin'> {
+): Omit<JobQuery, 'place' | 'sort' | 'search' | 'limit' | 'offset'> {
   return {
-    unread: filter.unread === true,
     portals: filter.portals,
     bands: filter.bands,
-    contracts: filter.contract === null ? [] : [filter.contract],
-    workMode: filter.workMode,
     run: filter.run,
     receivedSince: filter.received === null ? null : receivedSince(filter.received, now),
   };
@@ -217,46 +186,6 @@ const BAND: FilterGroup = {
     job.match !== null && job.match.status === 'scored' && job.match.band === band,
 };
 
-const CONTRACT: FilterGroup = {
-  key: 'contract',
-  multi: false,
-  heading: (w) => w.toolbar.contractHeading,
-  entries: () =>
-    CONTRACTS.map((contract) => ({
-      id: `contract-${contract}`,
-      value: contract,
-      label: (w) => w.reader.contractKind[contract],
-    })),
-  needsProfile: null,
-  valid: (value) => CONTRACTS.includes(value as ContractCode),
-  passes: (job, contract: ContractCode) => job.match?.facts.contract === contract,
-};
-
-const WORK_MODE: FilterGroup = {
-  key: 'workMode',
-  multi: false,
-  heading: (w) => w.toolbar.workHeading,
-  entries: () =>
-    WORK_MODES.map((mode) => ({
-      id: `mode-${mode}`,
-      value: mode,
-      label: (w) => w.toolbar.work[mode],
-    })),
-  needsProfile: null,
-  valid: (value) => WORK_MODES.includes(value as WorkMode),
-  passes: (job, mode: WorkMode) => workModeOf(job) === mode,
-};
-
-const UNREAD: FilterGroup = {
-  key: 'unread',
-  multi: false,
-  heading: null,
-  entries: () => [{ id: 'unread-only', value: true, label: (w) => w.toolbar.unreadOnly }],
-  needsProfile: null,
-  valid: (value) => value === true,
-  passes: isNew,
-};
-
 const RECEIVED_GROUP: FilterGroup = {
   key: 'received',
   multi: false,
@@ -275,11 +204,6 @@ const RECEIVED_GROUP: FilterGroup = {
 
 /** The groups of the filter in the menu's order (and the chips'). */
 export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, RECEIVED_GROUP];
-
-/** Groups hidden for now (user decision 2026-10-01: Vertragsart, Arbeitsmodell and "Nur
- *  neue" out of the funnel), their code kept: no menu sets them, a kept one is dropped, and
- *  a job passes them while they are empty. */
-const HIDDEN_GROUPS: readonly FilterGroup[] = [CONTRACT, WORK_MODE, UNREAD];
 
 /** Some part of the filter is chosen (the run of a fetch's "Zeigen" too). */
 export function isFiltered(filter: ListFilter): boolean {
@@ -332,15 +256,15 @@ export function activeFilters(
  *  list decides the rest. */
 export function passesFilter(job: JobView, filter: ListFilter): boolean {
   if (filter.run !== null && job.match?.status === 'excluded') return false;
-  return [...FILTER_GROUPS, ...HIDDEN_GROUPS].every((group) => {
+  return FILTER_GROUPS.every((group) => {
     const chosen = chosenOf(filter, group);
     return chosen.length === 0 || chosen.some((value) => group.passes(job, value as never));
   });
 }
 
 /** A kept filter (localStorage): each part a group can hold, none for anything else (the
- *  parts of an earlier version, one portal or one band, a lowest band, "Nur remote", a pay
- *  floor, a hidden group, are none; a run is never kept). */
+ *  parts of an earlier version, one portal or one band, a lowest band, a contract type, a
+ *  work mode, "Nur neue", a pay floor, are none; a run is never kept). */
 export function parseFilter(kept: unknown): ListFilter {
   const parts = typeof kept === 'object' && kept !== null ? (kept as Record<string, unknown>) : {};
   const filter: Record<string, unknown> = { ...NO_FILTER };

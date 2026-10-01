@@ -144,16 +144,12 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         &state.store,
         &JobQuery {
             place: Place::Inbox,
-            unread: false,
             sort: JobSort::Newest,
             search: None,
             limit: 0,
             offset: 0,
             portals: Vec::new(),
             bands: Vec::new(),
-            contracts: Vec::new(),
-            work_mode: None,
-            origin: None,
             received_since: None,
             run: None,
         },
@@ -195,10 +191,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             Vec::new()
         }),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
-        sources: state.store.sources().unwrap_or_else(|e| {
-            log::warn!("the sources of the jobs could not be read: {e}");
-            Vec::new()
-        }),
         fetch_range: settings.fetch_range,
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,

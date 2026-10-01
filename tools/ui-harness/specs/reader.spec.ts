@@ -1500,24 +1500,6 @@ test.describe('around the reader', () => {
     await expect(page.getByTestId('place-reader')).toHaveCount(0);
   });
 
-  // The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-  test.skip('a locked Excel file is written again without reading the mailbox', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&tick=15&export=locked`);
-    await page.getByTestId('fetch').click();
-    await runFinished(page);
-    const note = page.getByTestId('run-problem');
-    await expect(note).toContainText(T.run.exportFailed.overviewLocked);
-    await note.getByTestId('run-retry').click();
-    await runFinished(page);
-    const started = await calls(page, 'start_run');
-    expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
-    // Still locked: the line says it once more, once.
-    await expect(page.getByTestId('run-problem')).toHaveCount(1);
-    await expect(page.getByTestId('run-problem')).toContainText(T.run.exportFailed.overviewLocked);
-  });
-
   test('files that could not be written are no green success elsewhere', async ({ page }) => {
     await open(page, `${WIN}&tick=15&export=locked`);
     await page.getByTestId('fetch').click();
@@ -1536,6 +1518,5 @@ test.describe('around the reader', () => {
     await expect(toast.getByTestId('toast-action')).toHaveText(T.toast.show);
     await toast.getByTestId('toast-action').click();
     await expect(page.getByTestId('view-jobs')).toBeVisible();
-    await expect(page.getByTestId('run-problem')).toHaveCount(0);
   });
 });

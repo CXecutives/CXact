@@ -10,7 +10,7 @@
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
 import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
-import { RECEIVED, WORK_MODES, workModeOf } from '../../../ui/src/lib/state/filter';
+import { RECEIVED } from '../../../ui/src/lib/state/filter';
 import {
   animationsDone,
   calls,
@@ -110,7 +110,7 @@ test.describe('header', () => {
       (await stubList(page)).jobs.find((j) => `${j.key.portal}-${j.key.id}` === key)?.unread;
     await expect.poll(() => readOf(newest)).toBe(false);
     const fresh = async (): Promise<number> =>
-      (await stubList(page, { unread: true })).counts.inbox;
+      (await stubList(page)).jobs.filter((j) => j.unread && j.match?.status !== 'excluded').length;
     const before = await fresh();
     // The same mails again: every job is known, nothing is added, nothing turns new.
     await page.getByTestId('fetch').click();
@@ -463,54 +463,7 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  // Hidden for now (user decision 2026-10-01: one list, the menu beside the fetch chooses
-  // what it reads); the sidebar's ways keep their code (Sidebar.svelte WAYS_SHOWN).
-  test.skip('in the sidebar Suche and Alert-Mails list the jobs of their way; the chevron folds them', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const search = page.getByTestId('nav-jobs-search');
-    const mail = page.getByTestId('nav-jobs-mail');
-    await expect(search).toHaveText(T.nav.search);
-    await expect(mail).toHaveText(T.nav.mail);
-    // Suche: the jobs the search found (freelancermap's in the demo, its alert mails brought
-    // them too); a job of both ways stands in both.
-    await search.click();
-    await expect(search).toHaveAttribute('aria-current', 'page');
-    await expect.poll(async () => (await lastQuery(page))?.origin).toBe('search');
-    const searched = await stubList(page, { origin: 'search' });
-    expect(searched.active.length).toBeGreaterThan(0);
-    expect(searched.active.every((key) => key.startsWith('freelancermap-'))).toBe(true);
-    await mail.click();
-    await expect.poll(async () => (await lastQuery(page))?.origin).toBe('mail');
-    const mailed = await stubList(page, { origin: 'mail' });
-    expect(mailed.active).toEqual(expect.arrayContaining(searched.active));
-    // Jobs: every job again.
-    await page.getByTestId('nav-jobs').click();
-    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-    await expect.poll(async () => (await lastQuery(page))?.origin).toBeNull();
-    // Only the chevron folds (the entry itself is chosen like any); folding while a way is
-    // shown shows every job.
-    await search.click();
-    const fold = page.getByTestId('nav-jobs-fold');
-    await expect(fold).toHaveAttribute('aria-expanded', 'true');
-    await expect(fold).toHaveAttribute('aria-label', T.nav.ways);
-    await fold.click();
-    await expect(fold).toHaveAttribute('aria-expanded', 'false');
-    await expect(search).toHaveCount(0);
-    await expect(mail).toHaveCount(0);
-    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-    await expect.poll(async () => (await lastQuery(page))?.origin).toBeNull();
-    // Kept: folded after a reload too.
-    await page.reload();
-    await expect(page.getByTestId('nav-jobs-fold')).toHaveAttribute('aria-expanded', 'false');
-    await page.getByTestId('nav-jobs-fold').click();
-    await expect(search).toBeVisible();
-  });
-
-  test('one menu: Sortierung, Quelle, Übereinstimmung, Eingegangen, none chosen', async ({
-    page,
-  }) => {
+  test('one menu: Sortierung, Quelle, Übereinstimmung, Gefunden, none chosen', async ({ page }) => {
     await open(page, WIN);
     const menu = await openFilter(page);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'true');
@@ -544,9 +497,9 @@ test.describe('filter', () => {
     for (const received of RECEIVED) {
       await expect(menuItem(page, `received-${received}`)).toHaveText(T.toolbar.received[received]);
     }
-    // Quelle and Übereinstimmung take several choices (check items), Eingegangen one (radio
-    // items); none checked while a group filters nothing. Vertragsart, Arbeitsmodell and Nur
-    // neue are hidden (user decision 2026-10-01); there is no deadline and no pay filter.
+    // Quelle and Übereinstimmung take several choices (check items), Gefunden one (radio
+    // items); none checked while a group filters nothing. There is no contract, work mode,
+    // deadline or pay filter and no "Nur neue" (user decision 2026-10-01).
     for (const id of ['portal-linkedin', 'band-mid']) {
       await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemcheckbox');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
@@ -885,7 +838,7 @@ test.describe('filter', () => {
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
-  test('Eingegangen: the jobs of today, of the last 7 or 30 days, one choice at a time', async ({
+  test('Gefunden: the jobs of today, of the last 7 or 30 days, one choice at a time', async ({
     page,
   }) => {
     // The demo's day (its alert mails came on 23 and 24 September).
@@ -924,28 +877,7 @@ test.describe('filter', () => {
     await expect.poll(sinceOf).toBeNull();
   });
 
-  // Hidden for now (user decision 2026-10-01: Arbeitsmodell and Nur neue out of the funnel);
-  // the groups' code stays (lib/state/filter.ts HIDDEN_GROUPS).
-  test.skip('the work mode and Nur neue narrow the list; each a chip', async ({ page }) => {
-    await open(page, WIN);
-    const { jobs, active: all } = await stubList(page);
-    const jobOf = (key: string): JobView => jobs.find((job) => keyOf(job) === key)!;
-    const moded: string[] = [];
-    for (const mode of WORK_MODES) {
-      await chooseFilter(page, `mode-${mode}`);
-      const listedMode = await inbox(page, { workMode: mode });
-      expect(listedMode.length).toBeGreaterThan(0);
-      await expect.poll(() => listed(page)).toEqual(listedMode);
-      for (const key of listedMode) expect(workModeOf(jobOf(key))).toBe(mode);
-      moded.push(...listedMode);
-    }
-    const unknown = all.filter((key) => !moded.includes(key));
-    for (const key of unknown) expect(workModeOf(jobOf(key))).toBeNull();
-    await chooseFilter(page, 'unread-only');
-    await expect.poll(() => listed(page)).toEqual(await inbox(page, { unread: true }));
-  });
-
-  test('a filter kept by an earlier version: its single choices and hidden groups are none', async ({
+  test('a filter kept by an earlier version: its single choices and the groups gone are none', async ({
     page,
   }) => {
     await page.addInitScript(() =>
@@ -964,15 +896,12 @@ test.describe('filter', () => {
       ),
     );
     await open(page, WIN);
-    // One portal and one band of an earlier version, a hidden group and an unknown source
+    // One portal and one band of an earlier version, the groups gone and an unknown source
     // are none; the sources it can hold stay.
-    expect(await lastQuery(page)).toMatchObject({
-      portals: ['freelance'],
-      bands: [],
-      workMode: null,
-      unread: false,
-      contracts: [],
-    });
+    const query = (await lastQuery(page))!;
+    expect(query).toMatchObject({ portals: ['freelance'], bands: [] });
+    for (const gone of ['workMode', 'unread', 'contracts', 'origin'])
+      expect(query).not.toHaveProperty(gone);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
     await expect.poll(() => listed(page)).toEqual(await inbox(page, { portals: ['freelance'] }));
     await openFilter(page);
@@ -1188,8 +1117,6 @@ test.describe('one list', () => {
         .map(keyOf)
         .sort(),
     );
-    // The query of the inbox never asks for the unread ones only.
-    expect(await lastQuery(page)).toMatchObject({ unread: false });
   });
 
   test('opening a job reads it once, on a real click; the row stays, its dot goes', async ({
@@ -2192,45 +2119,6 @@ test.describe('run line', () => {
     await expect(page.getByTestId('cancel-run')).toBeVisible();
   });
 
-  // The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-  test.skip('failed: one quiet line and its ×, no second way to fetch; cancelled says nothing', async ({
-    page,
-  }) => {
-    await open(page, `${WIN}&mail=offline&tick=15`);
-    await expect(page.getByTestId('run-problem')).toHaveCount(0);
-    await page.getByTestId('fetch').click();
-    await runFinished(page);
-    const problem = page.getByTestId('run-problem');
-    await expect(problem).toContainText('Gmail ist nicht erreichbar.');
-    // Drawn like every note of the column: the sentence in 14 px ink, the × at the column's
-    // edge. No "Erneut versuchen" beside a working "Postfach abrufen", which does the same.
-    await expect(problem.locator('.text')).toHaveCSS(
-      'font-size',
-      `${await tokenPx(page, '--font-md')}px`,
-    );
-    await expect(problem.getByTestId('run-retry')).toHaveCount(0);
-    // A fetch that ends at once brings back a working "Postfach abrufen".
-    await expect(page.getByTestId('fetch')).toBeEnabled();
-    expect(
-      await page
-        .getByTestId('place-action')
-        .evaluate((node) => node.querySelector('[inert] [data-testid="fetch"]')),
-    ).toBeNull();
-    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-ways'));
-    await page.getByTestId('fetch').click();
-    expect(await calls(page, 'start_run')).toHaveLength(2);
-    await runFinished(page);
-    await page.getByTestId('run-close').click();
-    await expect(problem).toHaveCount(0);
-    await open(page, `${WIN}&tick=200`);
-    await page.getByTestId('fetch').click();
-    await page.getByTestId('cancel-run').click();
-    await runFinished(page);
-    await expect(page.getByTestId('run-line')).toHaveCount(0);
-    await expect(page.getByTestId('run-problem')).toHaveCount(0);
-    await expect(page.getByTestId('toast')).toHaveCount(0);
-  });
-
   test('two runs in a row end idle; a rescore is no fetch', async ({ page }) => {
     await open(page, `${WIN}&tick=15`);
     for (const round of [1, 2]) {
@@ -2246,7 +2134,6 @@ test.describe('run line', () => {
     await runFinished(page);
     await page.getByTestId('nav-jobs').click();
     await expect(page.getByTestId('run-line')).toHaveCount(0);
-    await expect(page.getByTestId('run-problem')).toHaveCount(0);
     expect(await calls(page, 'start_run')).toHaveLength(0);
   });
 

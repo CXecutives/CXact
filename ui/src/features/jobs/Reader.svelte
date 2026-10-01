@@ -67,7 +67,15 @@
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import { guarded, move, override, purge, rowTools, seen, type MoveId } from './actions';
+  import {
+    guarded,
+    include as includeJob,
+    move,
+    purge,
+    rowTools,
+    seen,
+    type MoveId,
+  } from './actions';
   import { SHOWS, showActions, type ShowId } from './shows';
   import {
     READER_SECTIONS,
@@ -281,7 +289,7 @@
    *  pressed from the keyboard hands the focus to the first of them. */
   async function include(event: MouseEvent): Promise<void> {
     const fromKeyboard = event.detail === 0;
-    const error = await override(job, true);
+    const error = await includeJob(job);
     fail(error);
     if (error !== null || !fromKeyboard) return;
     await tick();

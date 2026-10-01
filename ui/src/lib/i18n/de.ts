@@ -180,7 +180,6 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'Mindestens eine Quelle muss aktiv sein.',
-  noFetchWay: 'Schalte erst Alert-Mails oder Suche ein.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
@@ -677,11 +676,6 @@ export const de = {
   nav: {
     label: 'Bereiche',
     jobs: 'Jobs',
-    /** The ways under Jobs: the jobs the search found, those of the alert mails; the
-     *  chevron's name that shows or folds them. */
-    search: 'Suche',
-    mail: 'Alert-Mails',
-    ways: 'Suche und Alert-Mails',
     profile: 'Profil',
     settings: 'Einstellungen',
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
@@ -725,9 +719,6 @@ export const de = {
   },
   splitter: {
     label: 'Breite der Liste',
-    /** The tooltip of the handle, and its second line. */
-    tip: 'Breite ändern',
-    reset: 'Doppelklick setzt zurück',
   },
   /** Where a job is, like a mail: the inbox ("Jobs" in the sidebar), the archive, the trash. */
   place: {
@@ -769,7 +760,6 @@ export const de = {
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
     include: 'Trotzdem bewerten',
-    exclude: 'Wieder ausschließen',
     archive: 'Archivieren',
     /** Back into the Eingang from the Archiv (the user's word; Wiederherstellen is the
      *  Papierkorb's). */
@@ -918,16 +908,7 @@ export const de = {
     } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
-    contractHeading: 'Vertragsart',
-    /** The work mode as the Jobdetails name it, under its heading and as chips. */
-    workHeading: 'Arbeitsmodell',
-    work: {
-      remote: 'Remote',
-      hybrid: 'Hybrid',
-      onsite: 'Vor Ort',
-    } satisfies Record<WorkMode, string>,
     /** A switch of its own behind a line: the jobs not opened yet (hidden for now). */
-    unreadOnly: 'Nur neue',
     /** The days a job was found on (the alert mail's date, else its first sighting), and the
      *  chips of the choices. */
     receivedHeading: 'Gefunden',
@@ -976,12 +957,6 @@ export const de = {
     },
     /** A failed fetch's way to the mailbox's settings (English: never the fetch's words). */
     checkMailbox: 'Postfach prüfen',
-    /** A portal the fetch paused or that reached its limit, until when (the portal key and
-     *  an ISO moment): once in the run line after the fetch, several in one line. */
-    paused: (portal: string, until: string | null) =>
-      until === null
-        ? `${portalOf(portal)} pausiert`
-        : `${portalOf(portal)} pausiert bis ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -1082,7 +1057,6 @@ export const de = {
       contact: 'Kontakt',
       industry: 'Branche',
       portal: 'Gefunden',
-      received: 'Eingegangen',
     },
     /** The pay row of a permanent job or temporary agency work (an annual salary). */
     salaryName: 'Gehalt',
@@ -1130,7 +1104,6 @@ export const de = {
     /** The clipboard refused the prompt. */
     promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
-    noMail: 'Zu diesem Job gibt es keine Alert-Mail.',
     setUpSignIn: 'Anmeldung einrichten',
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     promptNoText: 'Der Text der Anzeige fehlt noch.',
@@ -1684,7 +1657,6 @@ export const de = {
     /** Only a deletion for good says "endgültig". */
     deleted: 'Endgültig gelöscht',
     included: 'Trotzdem bewertet',
-    excluded: 'Ausgeschlossen',
     trashEmptied: 'Papierkorb geleert',
     /** At the end of a fetch: what it brought (new, not excluded), and how many of them are
      *  in the high band. */

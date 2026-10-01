@@ -67,8 +67,6 @@ pub enum Error {
 pub enum InvalidInput {
     #[error("no portal is enabled")]
     NoPortal,
-    #[error("neither the alert mails nor the search is switched on")]
-    NoFetchWay,
     #[error("the profile is not UTF-8 text")]
     ProfileNotUtf8,
     #[error("the profile is not valid JSON (line {line}, column {column})")]

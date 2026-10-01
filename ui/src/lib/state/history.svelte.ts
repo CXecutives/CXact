@@ -5,7 +5,7 @@
 // In one column a job without a step before it goes back to the list.
 
 import { tick, untrack } from 'svelte';
-import type { JobKey, Origin, Place } from '../ipc/types';
+import type { JobKey, Place } from '../ipc/types';
 import { jobs, sameKey } from './jobs.svelte';
 import { navigation, type ViewId } from './navigation.svelte';
 import { profileTab, type ProfileTab } from './profile.svelte';
@@ -14,7 +14,6 @@ import { shell } from './shell.svelte';
 interface Step {
   view: ViewId;
   place: Place;
-  area: Origin | null;
   job: JobKey | null;
   tab: ProfileTab;
 }
@@ -23,13 +22,7 @@ interface Step {
 const KEPT = 100;
 
 function same(a: Step, b: Step): boolean {
-  return (
-    a.view === b.view &&
-    a.place === b.place &&
-    a.area === b.area &&
-    sameKey(a.job, b.job) &&
-    a.tab === b.tab
-  );
+  return a.view === b.view && a.place === b.place && sameKey(a.job, b.job) && a.tab === b.tab;
 }
 
 class History {
@@ -53,7 +46,6 @@ class History {
         const step: Step = {
           view: navigation.current,
           place: jobs.place,
-          area: jobs.area,
           job: jobs.selected,
           tab: profileTab.value,
         };
@@ -91,7 +83,6 @@ class History {
       this.#showing = true;
       this.#at = to;
       if (step.place !== jobs.place) jobs.setPlace(step.place);
-      if (step.area !== jobs.area) jobs.setArea(step.area);
       profileTab.value = step.tab;
       if (step.job === null) jobs.clearSelection();
       else if (!sameKey(jobs.selected, step.job)) jobs.openKey(step.job);

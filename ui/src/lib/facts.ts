@@ -31,7 +31,6 @@ export const TERM_ROWS = [
   { key: 'contact', icon: 'contact' },
   { key: 'industry', icon: 'industry' },
   { key: 'portal', icon: 'portal' },
-  { key: 'received', icon: 'alertMail' },
 ] as const satisfies readonly { key: TermKey; icon: IconMeaning }[];
 
 const factsOf = (job: JobView): KeyFacts | null => job.match?.facts ?? null;

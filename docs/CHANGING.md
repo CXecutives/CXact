@@ -143,9 +143,9 @@ menu names a key.
 ## Change the job list: its filter, its order, the job's menu
 
 - **The filter**: `FILTER_GROUPS` in `ui/src/lib/state/filter.ts`, the groups in their order
-  (Quelle, Übereinstimmung, Eingegangen; Vertragsart, Arbeitsmodell and Nur neue hidden in
-  `HIDDEN_GROUPS`), each with its choices, its words and what lets a job through, and whether
-  it takes several choices at once (`multi`). The funnel's menu, the chips under the header, the query and the harness
+  (Quelle, Übereinstimmung, Gefunden), each with its choices, its words and what lets a job
+  through, and whether it takes several choices at once (`multi`). The funnel's menu, the
+  chips under the header, the query and the harness
   read it; the filter is the same in every place. Another group is one entry there, its field
   in `ListFilter` (`toQuery` hands it to the `JobQuery`), its words in the catalog, and in the
   backend its field of `JobQuery` (`view.rs`) and its condition in `filter_condition`

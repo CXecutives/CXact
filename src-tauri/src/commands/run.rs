@@ -25,7 +25,6 @@ use jobalert_core::portal::{FetchPath, Portal, Way};
 use jobalert_core::profile;
 use jobalert_core::secrets::Vault;
 use jobalert_core::store::Store;
-use jobalert_core::view::Origin;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 use tokio_util::sync::CancellationToken;
@@ -196,13 +195,8 @@ fn run_context(
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
     // What the menu beside the fetch chose (user decision 2026-10-01): the search or the
-    // mailbox, never both; `only` (the sidebar's ways, hidden for now) picks one itself. The
-    // dry run has no search: its made-up mails stand in for either.
-    let mail = match request.only {
-        Some(Origin::Mail) => true,
-        Some(Origin::Search) => false,
-        None => settings.fetches_mail(),
-    };
+    // mailbox, never both. The dry run has no search: its made-up mails stand in for either.
+    let mail = settings.fetches_mail();
     let reads_mail = mail || state.dry_run;
     let searches = !mail;
     let credentials = if state.dry_run || state.demo || !scans || !reads_mail {

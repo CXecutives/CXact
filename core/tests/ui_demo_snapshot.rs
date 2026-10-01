@@ -264,14 +264,10 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
     for place in [Place::Inbox, Place::Archive, Place::Trash] {
         let query = JobQuery {
             place,
-            unread: false,
             sort: JobSort::Newest,
             search: None,
             portals: Vec::new(),
             bands: Vec::new(),
-            contracts: Vec::new(),
-            work_mode: None,
-            origin: None,
             received_since: None,
             run: None,
             limit: view::MAX_PAGE,

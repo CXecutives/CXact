@@ -19,7 +19,7 @@ use crate::model::{
 use crate::portal::{Facts, JobKey, Portal};
 use crate::text::{one_line, page_location, split_company_location, truncate_chars};
 use crate::time::{from_db, to_db};
-use crate::view::{Origin, WorkMode};
+use crate::view::Origin;
 
 /// Maximum length of a stored failure reason (in characters).
 const MAX_ERROR_CHARS: usize = 200;
@@ -94,10 +94,9 @@ impl JobRow {
     }
 }
 
-/// The list's filter (the funnel menu) beside the search: portals, bands, contract types,
-/// one work mode, one origin and the day the jobs came from; and the new jobs of one run
-/// (the "Zeigen" of a fetch's toast). Like the search it narrows the list and all its
-/// counts.
+/// The list's filter (the funnel menu) beside the search: portals, bands and the day the
+/// jobs came from; and the new jobs of one run (the "Zeigen" of a fetch's toast). Like the
+/// search it narrows the list and all its counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
     /// Only the new jobs a run brought, as [`Store::new_jobs`] counts them: first seen in
@@ -108,16 +107,6 @@ pub struct ListFilter {
     /// Only jobs scored in these bands (`model::band` of their score); unscored and excluded
     /// jobs pass only while it is empty.
     pub bands: Vec<Band>,
-    /// Only jobs of these contract types (the codes of `KeyFacts.contract`); empty = every
-    /// job, those without a contract type too.
-    pub contracts: Vec<String>,
-    /// Only jobs of this work mode as the job details say it: the remote share of the key
-    /// facts first (all of it remote, none of it on site, anything between hybrid), the
-    /// location's work mode (`view::work_mode`) only where they state none. A job whose mode
-    /// is unknown passes none.
-    pub work_mode: Option<WorkMode>,
-    /// Only jobs an alert mail named, or only those the search found (`None` = every job).
-    pub origin: Option<Origin>,
     /// Only jobs that came at or after this moment, in Unix seconds: the alert mail's date,
     /// else the first sighting (`None` = every job).
     pub received_since: Option<i64>,
@@ -134,10 +123,7 @@ impl ListFilter {
         [
             list(self.portals.iter().map(|portal| portal.key()).collect()),
             list(self.bands.iter().map(|band| band_key(*band)).collect()),
-            list(self.contracts.iter().map(String::as_str).collect()),
-            text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
             self.run.map_or(Value::Null, Value::Integer),
-            text(self.origin.map(|origin| origin_key(origin).to_owned())),
             self.received_since.map_or(Value::Null, Value::Integer),
         ]
     }
@@ -149,23 +135,6 @@ const fn band_key(band: Band) -> &'static str {
         Band::High => "high",
         Band::Mid => "mid",
         Band::Low => "low",
-    }
-}
-
-/// A work mode as [`filter_condition`] names it in SQL (constants of the code, never input).
-const fn mode_key(mode: WorkMode) -> &'static str {
-    match mode {
-        WorkMode::Remote => "remote",
-        WorkMode::Hybrid => "hybrid",
-        WorkMode::Onsite => "onsite",
-    }
-}
-
-/// An origin as [`filter_condition`] names it in SQL (constants of the code, never input).
-const fn origin_key(origin: Origin) -> &'static str {
-    match origin {
-        Origin::Mail => "mail",
-        Origin::Search => "search",
     }
 }
 
@@ -232,18 +201,15 @@ fn page_order(query: &PageQuery, p: &str) -> String {
 }
 
 /// How many values [`filter_condition`] binds ([`ListFilter::values`]).
-pub(super) const FILTER_VALUES: usize = 7;
+pub(super) const FILTER_VALUES: usize = 4;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
-/// `?{first}` on in the order of [`ListFilter::values`]: JSON arrays of portal keys, of
-/// bands and of contract types, the work mode, the run, the origin and the first second of
-/// the days it came from (each `NULL` for none). The band of a score as `model::band` draws
-/// it; contract type and remote share come from the key facts in the match note, the work
-/// mode without a share from the location; the origin from the times an alert mail named
-/// the job (`mailed_at`) and the search found it (`searched_at`); the day it came as "Nach
-/// Datum" orders the jobs (the alert mail's date, else the first sighting).
+/// `?{first}` on in the order of [`ListFilter::values`]: JSON arrays of portal keys and of
+/// bands, the run and the first second of the days it came from (each `NULL` for none). The
+/// band of a score as `model::band` draws it; the day it came as "Nach Datum" orders the
+/// jobs (the alert mail's date, else the first sighting).
 pub(super) fn filter_condition(first: usize) -> String {
-    let [portals, bands, contracts, mode, run, origin, since] =
+    let [portals, bands, run, since] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
         "({portals} IS NULL OR portal IN (SELECT value FROM json_each({portals})))
@@ -252,69 +218,17 @@ pub(super) fn filter_condition(first: usize) -> String {
                                             WHEN match_score >= {MID_FROM} THEN 'mid'
                                             ELSE 'low' END)
                                       IN (SELECT value FROM json_each({bands}))))
-         AND ({contracts} IS NULL OR {contract}
-                                     IN (SELECT value FROM json_each({contracts})))
-         AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))
          AND ({run} IS NULL OR (first_seen_run = {run}
                                 AND match_status IS NOT 'excluded'))
-         AND ({origin} IS NULL OR ({origin} = 'mail' AND mailed_at IS NOT NULL)
-                               OR ({origin} = 'search' AND searched_at IS NOT NULL))
-         AND ({since} IS NULL OR COALESCE(mail_date, first_seen_at) >= {since})",
-        contract = fact("", "contract"),
-        job_mode = job_mode(),
+         AND ({since} IS NULL OR COALESCE(mail_date, first_seen_at) >= {since})"
     )
 }
 
-/// SQL for the work mode of a job as the job details say it (`remote`, `hybrid`, `onsite`,
-/// `NULL` for unknown): the remote share the ad states first - all of it remote, none of it
-/// on site, anything between hybrid - else the location's, like `view::work_mode`: a hybrid
-/// word, or a remote and an on-site word together, hybrid; else a remote word remote, an
-/// on-site word on site. Each word whole, in any case.
-fn job_mode() -> String {
-    use crate::view::{HYBRID_WORDS, ONSITE_WORDS, REMOTE_WORDS};
-    // A word between two characters that are no word characters (the location padded with
-    // spaces, so its start and end count too). The words are constants of the code.
-    let any = |words: &[&str]| {
-        let each: Vec<String> = words
-            .iter()
-            .map(|word| {
-                format!("(' ' || lower(location) || ' ') GLOB '*[^a-z0-9_]{word}[^a-z0-9_]*'")
-            })
-            .collect();
-        format!("({})", each.join(" OR "))
-    };
-    let (remote, hybrid, onsite) = (any(&REMOTE_WORDS), any(&HYBRID_WORDS), any(&ONSITE_WORDS));
-    // The share from and to (one of them stands for both where the ad states only one).
-    let from = format!(
-        "COALESCE({}, {})",
-        fact("", "remoteFrom"),
-        fact("", "remoteTo")
-    );
-    let to = format!(
-        "COALESCE({}, {})",
-        fact("", "remoteTo"),
-        fact("", "remoteFrom")
-    );
-    format!(
-        "(CASE WHEN {from} IS NOT NULL THEN
-                   CASE WHEN {from} >= 100 THEN '{r}' WHEN {to} <= 0 THEN '{o}' ELSE '{h}' END
-               WHEN {hybrid} OR ({remote} AND {onsite}) THEN '{h}'
-               WHEN {remote} THEN '{r}'
-               WHEN {onsite} THEN '{o}' END)",
-        r = mode_key(WorkMode::Remote),
-        h = mode_key(WorkMode::Hybrid),
-        o = mode_key(WorkMode::Onsite),
-    )
-}
-
-/// One page of the job list: the jobs of one place, optionally only the new ones. The
-/// counts cover the search and the filter (the new ones too), whatever the place.
+/// One page of the job list: the jobs of one place. The counts cover the search and the
+/// filter, whatever the place.
 #[derive(Debug, Clone, Default)]
 pub struct PageQuery {
     pub place: Place,
-    /// Only new jobs ([`NEW`]: unread and not excluded): like the filter it narrows the list
-    /// and the counts.
-    pub unread: bool,
     /// The jobs without a score first, then the best match; otherwise by date: the alert
     /// mail's, in the trash the day it went there; excluded jobs last either way.
     pub by_match: bool,
@@ -328,10 +242,6 @@ pub struct PageQuery {
     pub limit: u32,
     pub offset: u32,
 }
-
-/// A new job, in any place: not opened yet and not excluded (the filter "Nur neue" and the
-/// row's dot mean the same, like a mail app's unread mark).
-const NEW: &str = "(read_at IS NULL AND match_status IS NOT 'excluded')";
 
 /// Column of the first column of the page in the statement of [`Store::job_page`] (the
 /// counts come before it).
@@ -441,19 +351,6 @@ impl Store {
                 })
                 .collect()
         })
-    }
-
-    /// The sources at least one job came from, in the order of `Portal::ALL`.
-    pub fn sources(&self) -> Result<Vec<Portal>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached("SELECT DISTINCT portal FROM job")?;
-        let keys = stmt
-            .query_map([], |row| row.get::<_, String>(0))?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        Ok(Portal::ALL
-            .into_iter()
-            .filter(|portal| keys.iter().any(|key| key == portal.key()))
-            .collect())
     }
 
     /// Jobs the app's own search found (user decision 2026-10-01): rows like an alert mail's,
@@ -566,14 +463,13 @@ impl Store {
         let conn = self.conn();
         let words = search_words(query.search.as_deref());
         let order = |p: &str| page_order(query, p);
-        // The counts of each place, narrowed by the search and the filter ("Nur neue" too).
+        // The counts of each place, narrowed by the search and the filter.
         // The excluded jobs are counted per place, so the list's section says its number
         // before every page is there.
         let facet = place_condition(query.place);
         let sql = format!(
             "WITH base AS (
                  SELECT * FROM job WHERE dup_of IS NULL AND {words} AND {filter}
-                                     AND (NOT ?4 OR {NEW})
              ), counts AS (
                  SELECT COALESCE(SUM({INBOX}), 0) AS n_inbox,
                         COALESCE(SUM({INBOX} AND match_status IS 'excluded'), 0) AS n_excluded,
@@ -597,7 +493,7 @@ impl Store {
             order(""),
             order("page."),
             words = matches_words("?1"),
-            filter = filter_condition(5),
+            filter = filter_condition(4),
             archive = place_condition(Place::Archive),
             trash = place_condition(Place::Trash),
         );
@@ -608,7 +504,6 @@ impl Store {
             words.map_or(Value::Null, Value::Text),
             Value::Integer(i64::from(query.limit)),
             Value::Integer(i64::from(query.offset)),
-            Value::Integer(i64::from(query.unread)),
         ]
         .into_iter()
         .chain(query.filter.values());

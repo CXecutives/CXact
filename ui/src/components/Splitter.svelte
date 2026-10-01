@@ -11,9 +11,8 @@
   keeps the first width), and a kept width that does not fit is shown at the limit and comes
   back once there is room again. The col-resize cursor and, on hover or while dragging, a
   calm grip in the middle (like the Claude app's: no line along the border) show that it
-  moves; after the usual delay
-  the tooltip says so ("Breite ändern") over what a double click does. No keyboard: the
-  columns are not a document to navigate.
+  moves; no tooltip (tooltips only where needed, user 2026-09-29). No keyboard: the columns
+  are not a document to navigate.
 -->
 <script lang="ts" module>
   import { tokenPx } from '$lib/tokens';
@@ -63,7 +62,6 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { tooltip } from '$lib/actions/tooltip';
   import { t } from '$lib/i18n/t';
 
   interface Props {
@@ -89,10 +87,6 @@
     label,
     testid = null,
   }: Props = $props();
-
-  /** Its tooltip is hidden for now (user, 2026-09-29: tooltips only where needed; the
-   *  col-resize cursor says it). */
-  const SAYS_WHAT = false;
 
   const clamp = (value: number): number => Math.round(Math.max(min, Math.min(max, value)));
 
@@ -191,9 +185,6 @@
     class="hit"
     tabindex="-1"
     aria-hidden="true"
-    use:tooltip={SAYS_WHAT
-      ? { text: t.splitter.tip, hint: t.splitter.reset, placement: 'right' }
-      : null}
     onpointerdown={start}
     onpointermove={move}
     onpointerup={end}

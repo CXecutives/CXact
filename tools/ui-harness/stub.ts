@@ -105,7 +105,6 @@ import type {
   RunSummary,
   ScoreDelta,
   TermField,
-  WorkMode,
 } from '../../ui/src/lib/ipc/types';
 import { bandOf } from '../../ui/src/lib/ipc/types/bands';
 import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
@@ -837,7 +836,6 @@ function initial(): void {
       portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
-    sources: [],
     setupDone: true,
     fetchRange: 'sinceLast',
     exportExcel: true,
@@ -918,10 +916,6 @@ function initial(): void {
       };
       break;
     case 'offline':
-      state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
-      break;
-    case 'last-failed':
-      // The last fetch before this start failed; Gmail answers again now.
       state.lastRun = lastRun({ kind: 'failed', error: { kind: 'mailConnect', params: {} } });
       break;
     case 'paused':
@@ -1092,9 +1086,6 @@ function bandsOf(list: JobView[]): { excluded: number; high: number } {
   };
 }
 
-/** A new job (store::NEW): not opened yet and not excluded, in any place. */
-const isNewJob = (j: JobView): boolean => j.unread && j.match?.status !== 'excluded';
-
 /* ------------------------------------------------------------------- marks */
 
 /** When a job went to the trash and from where (the archive keeps its time there), deleted
@@ -1123,23 +1114,9 @@ function dayRate(j: JobView): number | null {
   return facts.hourly === true ? facts.rate * 8 : facts.rate;
 }
 
-/** The work mode as store::filter_condition reads it: the remote share the ad states first
- *  (all of it remote, none of it on site, anything between hybrid), the location's work mode
- *  only without one; null when neither says. */
-function workModeOf(j: JobView): WorkMode | null {
-  const facts = j.match?.facts ?? null;
-  const from = facts?.remoteFrom ?? facts?.remoteTo ?? null;
-  const to = facts?.remoteTo ?? facts?.remoteFrom ?? null;
-  if (from === null || to === null) return j.workMode;
-  return from >= 100 ? 'remote' : to <= 0 ? 'onsite' : 'hybrid';
-}
-
-/** The funnel's filter (store::ListFilter): new ones only, one portal, the band of scored jobs
- *  (unscored and excluded ones never pass), the contract types the engine read (none of them
- *  passes only without the filter) and the work mode as the job details say it (a job of no
- *  known mode never passes). */
+/** The funnel's filter (store::ListFilter): the portals, the bands of scored jobs (unscored
+ *  and excluded ones never pass), the day it came and the new jobs of one run. */
 function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
-  if (query.unread === true && !isNewJob(j)) return false;
   // The new jobs of one run: first seen in it, none excluded (store::new_jobs).
   if (query.run !== null && query.run !== undefined) {
     if (seenIn.get(markKey(j.key)) !== query.run || j.match?.status === 'excluded') return false;
@@ -1149,16 +1126,6 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   // The day it came (store::filter_condition): the alert mail's date, else its first sighting.
   if (query.receivedSince !== null && query.receivedSince !== undefined) {
     if (Date.parse(j.mailDate ?? j.firstSeenAt) / 1000 < query.receivedSince) return false;
-  }
-  const facts = j.match?.facts ?? null;
-  const contracts = query.contracts ?? [];
-  if (contracts.length > 0 && !contracts.includes(facts?.contract ?? '')) return false;
-  if (query.workMode !== null && query.workMode !== undefined) {
-    if (workModeOf(j) !== query.workMode) return false;
-  }
-  // How it came (store::filter_condition): an alert mail named it, the search found it.
-  if (query.origin !== null && query.origin !== undefined && !j.origins.includes(query.origin)) {
-    return false;
   }
   const bands = query.bands ?? [];
   if (bands.length === 0) return true;
@@ -1742,19 +1709,9 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
   }
-  // The fetch of one way (the sidebar's Suche, Alert-Mails): run_context refuses the same.
-  const only = request.only ?? null;
-  if (
-    isFetch(kind) &&
-    only === 'search' &&
-    !state.portals.some((p) => p.enabled && p.way === 'search')
-  ) {
-    throw fail('invalid', { reason: 'noPortal' });
-  }
-  if (isFetch(kind) && only === 'mail' && state.mailbox.user === null) throw fail('mailMissing');
   // The search or the mailbox, never both (run_context): the mailbox only while its switch
   // alone is on; the mailbox's fetch needs one.
-  const mail = only === 'mail' || (only === null && state.fetchMail && !state.fetchSearch);
+  const mail = state.fetchMail && !state.fetchSearch;
   if (mail && state.mailbox.user === null && kind !== 'rescore' && kind !== 'details') {
     throw fail('mailMissing');
   }
@@ -1998,8 +1955,6 @@ const handlers: Handlers = {
     }
     if (sender !== null) attachPage(sender);
     state.profiles = profileEntries();
-    // The sources at least one job came from (core's Store::sources).
-    state.sources = PORTALS.filter((portal) => jobs.some((job) => job.key.portal === portal));
     return structuredClone(state);
   },
   start_run: ({ request }) => {
@@ -2438,14 +2393,10 @@ const harness: Harness = {
     return structuredClone(
       listJobs({
         place: 'inbox',
-        unread: false,
         sort: 'match',
         search: null,
         portals: [],
         bands: [],
-        contracts: [],
-        workMode: null,
-        origin: null,
         run: null,
         receivedSince: null,
         limit: 500,

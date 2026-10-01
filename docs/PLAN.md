@@ -1079,8 +1079,7 @@ handle sits between list and reader".
   The funnel's menu may scroll now where the window is low (eight sources with jobs)
 - Round 5 (user decisions 2026-10-01, later the same day; they supersede the menu and the filter above):
   - [x] One list: the sidebar shows only "Jobs" (the ways "Suche" and "Alert-Mails" under it with a chevron
-    were built and are hidden again the same day, `Sidebar.svelte` `WAYS_SHOWN`, `JobQuery.origin` and
-    `RunRequest.only` stay)
+    were built and taken out again the same day)
   - [x] "Abruf einstellen" beside the fetch again: "Suche" or "Postfach", never both (user, "nur Postfach
     oder Suche"; the search by default, it needs no mailbox; `Settings::fetches_mail`: the mailbox only
     while its switch alone is on). The button says what it does: "Jobs suchen" or "Postfach abrufen" (the
@@ -1089,7 +1088,7 @@ handle sits between list and reader".
   - [x] The funnel: Sortierung, Quelle and Übereinstimmung (several choices each, any of them passes:
     `JobQuery.portals`, `bands`), Eingegangen (Heute, Letzte 7 Tage, Letzte 30 Tage: `receivedSince`, the
     start of the day in the user's time zone; the alert mail's date, else the first sighting). Vertragsart,
-    Arbeitsmodell and "Nur neue" are hidden (`HIDDEN_GROUPS`, their code stays)
+    Arbeitsmodell and "Nur neue" are gone (see Lean below)
   - [x] Profil: Name and Rolle as fields with a frame and a label under the title; the tab "Suche" is
     "Wünsche"; Suchbegriffe the app proposes are dashed chips, "Vorschlag aus Wunschrollen und Schwerpunkten";
     Verfügbar ab only "Sofort" and "Datum" (the engine scores "Offen" like "Sofort"), the calendar's button
@@ -1118,3 +1117,12 @@ handle sits between list and reader".
     providers without a public list (Atreus, Bridge IMP, Butterfly Manager, UNITEDINTERIM, ...)
   - [x] Jobdetails: no row "Eingegangen"; the moment stands in "Gefunden" (and the filter "Eingegangen" is
     "Gefunden"); "Alert-Mail öffnen" only for a job an alert mail brought (button and menu)
+- Lean (user 2026-10-01: "lean, clean, modern", nothing the app does not use; this ends "hide, don't
+  delete" of 2026-09-29): what the UI hides goes, code, texts and tests with it. English and the palettes
+  stay for now (user).
+  - [x] Small things: the sidebar's ways (`WAYS_SHOWN`, `JobQuery.origin`, `RunRequest.only`), the filter
+    groups Vertragsart, Arbeitsmodell and "Nur neue" (`HIDDEN_GROUPS`, `JobQuery.contracts`, `work_mode`,
+    `unread`), the run line's notes (`LINE_NOTES`: what went wrong is a toast), the splitter's tooltip,
+    the unused `AppState.sources`, the error `noFetchWay`, the reader's "Ausschließen"
+  - [ ] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `src-tauri/src/auto.rs`)
+  - [ ] The Excel and CSV export (`EXPORT_SHOWN`, the export step; the AI prompt stays)

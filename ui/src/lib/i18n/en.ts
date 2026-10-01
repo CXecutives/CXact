@@ -201,7 +201,6 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'At least one source must be active.',
-  noFetchWay: 'Turn on alert emails or the search first.',
   profileNotUtf8: 'The file is not a text file.',
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
   profileNotObject: 'The file does not contain a profile.',
@@ -612,9 +611,6 @@ export const en: Catalog = {
   nav: {
     label: 'Sections',
     jobs: 'Jobs',
-    search: 'Search',
-    mail: 'Alert emails',
-    ways: 'Search and alert emails',
     profile: 'Profile',
     settings: 'Settings',
     demo: 'Demo',
@@ -652,8 +648,6 @@ export const en: Catalog = {
   },
   splitter: {
     label: 'List width',
-    tip: 'Resize',
-    reset: 'Double-click to reset',
   },
   place: {
     tabs: 'Folders',
@@ -683,7 +677,6 @@ export const en: Catalog = {
     prompt: 'Copy AI prompt',
     promptNoProfile: 'Without a profile, there is nothing to score against.',
     include: 'Score anyway',
-    exclude: 'Exclude again',
     archive: 'Archive',
     unarchive: 'Move to inbox',
     trash: 'Delete',
@@ -804,14 +797,6 @@ export const en: Catalog = {
       low: 'Low',
     } satisfies Record<Band, string>,
     bandNoProfile: 'Without a profile, there is no match.',
-    contractHeading: 'Contract type',
-    workHeading: 'Work model',
-    work: {
-      remote: 'Remote',
-      hybrid: 'Hybrid',
-      onsite: 'On site',
-    } satisfies Record<WorkMode, string>,
-    unreadOnly: 'New only',
     receivedHeading: 'Found',
     received: {
       today: 'Today',
@@ -847,10 +832,6 @@ export const en: Catalog = {
       workspace: 'The work folder cannot be reached.',
     },
     checkMailbox: 'Mailbox settings',
-    paused: (portal: string, until: string | null) =>
-      until === null
-        ? `${portalOf(portal)} paused`
-        : `${portalOf(portal)} paused until ${formatMoment(until)}`,
   },
   list: {
     label: 'Jobs',
@@ -926,7 +907,6 @@ export const en: Catalog = {
       contact: 'Contact',
       industry: 'Industry',
       portal: 'Found',
-      received: 'Received',
     },
     salaryName: 'Salary',
     hourlyName: 'Hourly rate',
@@ -959,7 +939,6 @@ export const en: Catalog = {
     prompt: 'Copy AI prompt',
     promptNotCopied: 'The AI prompt could not be copied.',
     mail: OPEN_MAIL,
-    noMail: 'There is no alert email for this job.',
     setUpSignIn: 'Set up sign-in',
     promptNoProfile: 'Without a profile, there is nothing to score against.',
     promptNoText: 'The ad text is still missing.',
@@ -1373,7 +1352,6 @@ export const en: Catalog = {
     restored: 'Restored',
     deleted: 'Deleted forever',
     included: 'Scored anyway',
-    excluded: 'Excluded',
     trashEmptied: 'Trash emptied',
     runDone: (value: number, high = 0) =>
       value === 0

@@ -133,14 +133,14 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
 function changesOf(job: JobView, context: JobMenuContext): MenuEntry[] {
   const { report } = context;
   const change: MenuEntry[] = [];
-  // "Wieder ausschließen" is hidden for now (user, 2026-09-29): a job counted anyway stays
-  // so; `override(job, false)` and its words stay for when it comes back.
+  // A job counted anyway stays so (user, 2026-09-29: no way to exclude it again); the toast's
+  // undo takes it back.
   if (isExcluded(job) && !job.overridden) {
     change.push({
       id: 'include',
       label: t.actions.include,
       icon: 'include',
-      run: () => void override(job, true).then(report),
+      run: () => void include(job).then(report),
     });
   }
   return [...change, ...placeMoves(job, context)];
@@ -190,16 +190,16 @@ export function rowTools(job: JobView, context: JobMenuContext): RowTool[] {
 }
 
 /**
- * "Trotzdem bewerten" (an excluded job counts with its real match) or "Wieder ausschließen":
- * a short toast with Rückgängig. Resolves with the error text, or null.
+ * "Trotzdem bewerten": an excluded job counts with its real match; a short toast with
+ * Rückgängig. Resolves with the error text, or null.
  */
-export async function override(job: JobView, include: boolean): Promise<string | null> {
-  const error = await jobs.setOverride(job.key, include);
+export async function include(job: JobView): Promise<string | null> {
+  const error = await jobs.setOverride(job.key, true);
   if (error !== null) return error;
-  toasts.show(include ? t.toast.included : t.toast.excluded, 'success', {
+  toasts.show(t.toast.included, 'success', {
     label: t.common.undo,
     onclick: () =>
-      void jobs.setOverride(job.key, !include).then((failed) => (jobs.actionError = failed)),
+      void jobs.setOverride(job.key, false).then((failed) => (jobs.actionError = failed)),
   });
   return null;
 }

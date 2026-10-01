@@ -6,16 +6,13 @@
 //
 // Three things are kept apart:
 // - the run in progress (`active`, `kind`, its step, progress and status), of any kind;
-// - `summary`: the last finished fetch of this session (fetch or whole mailbox). It means the
-//   same as `app.state.lastRun` ("the last fetch"), so `run.summary ?? app.state.lastRun` is
-//   the last fetch wherever it is read (sidebar, failed-fetch retry, empty list);
-// - `result`: the last finished run the list's run line speaks of when it went wrong (a
-//   fetch or details run, a rescore only when it failed or could not write the files).
+// - `summary`: the last finished fetch of this session. It means the same as
+//   `app.state.lastRun` ("the last fetch"), so `run.summary ?? app.state.lastRun` is the last
+//   fetch wherever it is read (sidebar, failed-fetch retry, empty list).
 // What a fetch brought is a toast at its end ("5 neue Jobs, 2 mit hoher Übereinstimmung"), in
-// every view; its "Zeigen" opens the Eingang filtered to exactly the jobs it counts. A portal the fetch paused (or
-// that reached its limit) is said once in the run line ("freelancermap pausiert bis 14:00",
-// `pausedText`); the other details of a run (each mail, each portal) are in the log, not on
-// screen.
+// every view; its "Zeigen" opens the Eingang filtered to exactly the jobs it counts. What went
+// wrong is a toast too, once, with its way on; the other details of a run (each mail, each
+// portal) are in the log, not on screen.
 
 import type { IconMeaning } from '$lib/icons';
 import { t } from '../i18n/t';
@@ -40,10 +37,6 @@ import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
 
-/** What went wrong in a run is a toast, once (user, 2026-09-29), not a note in the run line
- *  (RunLine keeps its notes for when they come back). */
-export const LINE_NOTES = false;
-
 export interface Progress {
   done: number;
   total: number;
@@ -61,16 +54,11 @@ class RunStore {
   loginNeeded = $state<Portal | null>(null);
   /** The last finished fetch of this session (see above). */
   summary = $state<RunSummary | null>(null);
-  /** The finished run the run line speaks of when it went wrong (a fetch or details run, a
-   *  rescore in trouble). */
-  result = $state<RunSummary | null>(null);
   /** An error of `start_run` itself (busy, no mailbox ...); said in the current language. */
   #startFailure = $state.raw<{ error: unknown } | null>(null);
   /** `start_run` is on its way: nothing is known yet (the first-run page stays until then). */
   starting = $state(false);
   cancelling = $state(false);
-  /** What went wrong in the last run shows under the list header until its × hides it. */
-  panel = $state<'open' | 'hidden'>('hidden');
 
   #listeners = new Set<(event: RunEvent) => void>();
   #installed = false;
@@ -80,8 +68,6 @@ class RunStore {
   #epoch = 0;
   /** A `started` came through the channel: the page follows the runs live. */
   #followed = false;
-  /** The rescore going now writes the files again that the last run could not write. */
-  #rewriting = false;
 
   /** Subscribe once to the run channel (App.svelte). */
   install(): void {
@@ -99,16 +85,10 @@ class RunStore {
   /**
    * The run in progress at the first load (a start of the app, a reload of the page). A run
    * whose `started` already came through the channel is followed live; its snapshot could be
-   * older than what arrived since (even its end). Without one, a last fetch that failed
-   * (`last`, before a restart) is said once in the run line, with its way on, until its ×
-   * hides it or the next run begins.
+   * older than what arrived since (even its end).
    */
-  attach(snapshot: RunSnapshot | null, last: RunSummary | null = null): void {
-    if (this.#followed || this.active) return;
-    if (snapshot === null) {
-      if (last !== null && last.outcome.kind === 'failed') this.panel = 'open';
-      return;
-    }
+  attach(snapshot: RunSnapshot | null): void {
+    if (this.#followed || this.active || snapshot === null) return;
     this.begin(snapshot.kind);
     for (const event of snapshot.replay) this.handle(event, false);
   }
@@ -156,17 +136,11 @@ class RunStore {
     this.status = null;
     this.loginNeeded = null;
     this.cancelling = false;
-    // A rescore keeps what the line said about the last fetch.
-    if (kind === 'rescore') return;
-    this.result = null;
-    this.#startFailure = null;
-    this.panel = 'open';
+    if (kind !== 'rescore') this.#startFailure = null;
   }
 
   async start(request: RunRequest): Promise<boolean> {
     if (this.active) return false;
-    // Nothing is lost when the start fails: the line says what it said before.
-    const before = { result: this.result, panel: this.panel };
     this.#request = request;
     this.starting = true;
     this.begin(request.kind);
@@ -178,11 +152,9 @@ class RunStore {
       if (this.#epoch === epoch) {
         this.active = false;
         this.kind = null;
-        this.result = before.result;
       }
-      this.panel = 'open';
       this.#startFailure = { error };
-      if (!LINE_NOTES) toasts.show(errorText(error), 'warning');
+      toasts.show(errorText(error), 'warning');
       if (error instanceof IpcError && error.kind === 'busy') void app.load();
       return false;
     } finally {
@@ -197,23 +169,17 @@ class RunStore {
     void this.start(same ?? (kind === 'details' ? { kind: 'fetch' } : { kind }));
   }
 
-  /**
-   * Write the files again that a run could not write (an Excel file open elsewhere): a
-   * rescore, which reads no mail and asks no portal, scores what is due and writes every
-   * file. When it succeeds the last run counts its files as written.
-   */
+  /** Write the files again that a run could not write (an Excel file open elsewhere): a
+   *  rescore, which reads no mail and asks no portal, scores what is due and writes every
+   *  file. */
   rewriteFiles(): void {
-    this.#rewriting = true;
-    void this.start({ kind: 'rescore' }).then((started) => {
-      if (!started) this.#rewriting = false;
-    });
+    void this.start({ kind: 'rescore' });
   }
 
   /** The Jobs view with its run line, from anywhere (the sidebar's status, the "Zeigen" of a
    *  toast), then `then`; an unsaved Profil may keep the view and ask first. */
   show(then?: () => void): void {
     navigation.go('jobs', false, () => {
-      this.panel = 'open';
       // In one column an open job hides the list and its run line: back to the list.
       if (viewport.narrow) jobs.clearSelection();
       then?.();
@@ -230,12 +196,6 @@ class RunStore {
       jobs.setPlace('inbox', true);
       jobs.setFilter({ ...NO_FILTER, run: summary.run, bands: high ? ['high'] : [] }, false);
     });
-  }
-
-  /** Hide what the run line says after a run (and the note of a failed start with it). */
-  hide(): void {
-    this.panel = 'hidden';
-    this.#startFailure = null;
   }
 
   async cancel(): Promise<void> {
@@ -331,24 +291,9 @@ class RunStore {
     this.cancelling = false;
     this.status = null;
     this.loginNeeded = null;
-    const rewrote = this.#rewriting && kind === 'rescore';
-    this.#rewriting = false;
-    if (rewrote && this.result !== null && summary.outcome.kind !== 'failed') {
-      // The files written again: the last run counts them as they are now.
-      this.result = { ...this.result, export: summary.export };
-    } else if (kind === 'rescore') {
-      // Quiet unless something needs attention: then the run line says it.
-      const trouble = summary.outcome.kind === 'failed' || exportError(summary) !== null;
-      if (trouble) {
-        this.result = summary;
-        if (live) this.panel = 'open';
-      }
-    } else {
-      if (isFetch(kind)) this.summary = summary;
-      this.result = summary;
-    }
+    if (isFetch(kind)) this.summary = summary;
     if (!live) return;
-    if (!LINE_NOTES) this.tellTrouble(summary);
+    this.tellTrouble(summary);
     // What a fetch brought, in every view: "5 neue Jobs, 2 mit hoher Übereinstimmung" and the
     // way to them (without new jobs outside the list the way to it). A rescore speaks where it
     // was started (Einstellungen), not as a fetch.
@@ -362,7 +307,7 @@ class RunStore {
             : inList
               ? null
               : { label: t.toast.show, onclick: () => this.show(), undo: false };
-        // Files that could not be written make it no success: the run line says why.
+        // Files that could not be written make it no success: a toast says why.
         const kind = exportError(summary) === null ? 'success' : 'info';
         toasts.show(t.toast.runDone(brought.count, brought.high), kind, show);
       } else if (kind === 'rescore' && navigation.current === 'settings') {
@@ -381,7 +326,7 @@ export interface FailureAction {
 }
 
 /**
- * The one fitting action for a failed run, wherever it is said (the run line, the first-run
+ * The one fitting action for a failed run, wherever it is said (its toast, the first-run
  * page): the mailbox settings for a mailbox problem, the log for an internal error, else a
  * retry. A failed fetch gets none while "Postfach abrufen" is there to do the same (with a
  * mailbox), and no retry is offered while another run goes (it could not start).
@@ -414,26 +359,13 @@ function openLog(): void {
   );
 }
 
-/** The portals a completed fetch stopped for a while (paused, or at their limit) in one line
- *  ("freelancermap pausiert bis 14:00"), or null. */
-export function pausedText(summary: RunSummary): string | null {
-  if (summary.outcome.kind !== 'completed' || !isFetch(summary.kind)) return null;
-  const parts = summary.perPortal.flatMap(({ portal, stopped }) =>
-    stopped?.kind === 'paused' || stopped?.kind === 'quotaReached'
-      ? [t.run.paused(portal, stopped.until)]
-      : [],
-  );
-  return parts.length === 0 ? null : parts.join(', ');
-}
-
 /** The export error of a finished run, if its files could not all be written. */
 export function exportError(summary: RunSummary): ErrorInfo | null {
   return summary.export?.error ?? null;
 }
 
 /** Why a result file stayed as it was, by what could not be written (`params.target`, the
- *  Excel file where it names none): one sentence for the run line and for a delete for good
- *  in the list. */
+ *  Excel file where it names none): one sentence for a toast. */
 export function exportText(error: ErrorInfo | null): string | null {
   if (error === null) return null;
   const texts = t.run.exportFailed;

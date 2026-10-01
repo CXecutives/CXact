@@ -42,7 +42,6 @@ import type {
   JobQuery,
   JobSort,
   JobView,
-  Origin,
   Place,
   RunEvent,
 } from '../ipc/types';
@@ -222,9 +221,6 @@ function keepFilter(filter: ListFilter): void {
 class JobsStore {
   /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
-  /** The way of the jobs the list shows (the sidebar: Jobs, its Suche and Alert-Mails);
-   *  null, every job. */
-  area = $state<Origin | null>(null);
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter as chosen (kept); `filter` is what applies. */
@@ -479,21 +475,6 @@ class JobsStore {
     void this.load();
   }
 
-  /** Another way of the jobs (the sidebar's Suche, Alert-Mails, or every job): an open job
-   *  that does not belong to it closes, like a mail of another mailbox. */
-  setArea(area: Origin | null): void {
-    if (area === this.area) return;
-    const selected = this.selected;
-    const open =
-      this.detail?.job ??
-      (selected ? this.rows.find((row) => sameKey(row.key, selected)) : undefined) ??
-      null;
-    if (open !== null && area !== null && !open.origins.includes(area)) this.clearSelection();
-    this.area = area;
-    this.quiet();
-    void this.load();
-  }
-
   setSort(sort: JobSort): void {
     this.sortChoice = sort;
     keepSort(sort);
@@ -588,7 +569,6 @@ class JobsStore {
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
       ...toQuery(filter),
-      origin: this.area,
       limit,
       offset,
     };
@@ -675,7 +655,6 @@ class JobsStore {
           sort: 'newest',
           search: null,
           ...toQuery(NO_FILTER),
-          origin: null,
           limit: 0,
           offset: 0,
         },

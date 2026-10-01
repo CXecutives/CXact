@@ -5,7 +5,6 @@ import type { Language } from "./Language";
 import type { Mailbox } from "./Mailbox";
 import type { Palette } from "./Palette";
 import type { Platform } from "./Platform";
-import type { Portal } from "./Portal";
 import type { PortalState } from "./PortalState";
 import type { ProfileEntry } from "./ProfileEntry";
 import type { ProfileInfo } from "./ProfileInfo";
@@ -49,11 +48,6 @@ profile: ProfileInfo | null,
  * Every profile of the work folder, the active one marked (empty without one).
  */
 profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
-/**
- * The sources at least one job of the app came from (the funnel offers these, so ten
- * sources do not crowd it).
- */
-sources: Array<Portal>, 
 /**
  * Which alert mails "Postfach abrufen" reads.
  */

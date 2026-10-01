@@ -38,7 +38,6 @@ pub(super) fn start(app: &AppHandle) {
             }
             let request = RunRequest {
                 kind: RunKind::Fetch,
-                only: None,
             };
             match super::run::launch(&app, &state, request, state.scoring.page()) {
                 Ok(()) => log::info!("automatic fetch started"),

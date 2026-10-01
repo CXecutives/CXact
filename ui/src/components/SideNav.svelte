@@ -3,10 +3,7 @@
   are new).
   The active entry sits on one white pill that slides to it (180 ms, emphasized; the
   sibling of the segmented thumb), its label ink and its icon in the accent. An idle entry
-  takes a much fainter wash on hover and keeps its icon, so the two never look alike. An
-  entry with entries under it (Jobs and its ways) has a small chevron at its right end inside
-  its row: only the chevron opens or folds them (user, 2026-10-01), the entry itself is
-  chosen like any; the entries under it stand indented. Collapsed (icon rail) the labels move into tooltips
+  takes a much fainter wash on hover and keeps its icon, so the two never look alike. Collapsed (icon rail) the labels move into tooltips
   right of the icons (never over the next entry); with its label in view an entry has no
   tooltip. While the window is inactive the active label turns ink.
 -->
@@ -18,10 +15,6 @@
     label: string;
     icon: IconName;
     testid?: string;
-    /** Under an entry that folds (indented). */
-    nested?: boolean;
-    /** Entries under it: the chevron at its right end shows or folds them. */
-    fold?: { open: boolean; label: string; ontoggle: () => void };
   }
 </script>
 
@@ -54,39 +47,22 @@
     <span class="indicator" class:none={index < 0} aria-hidden="true"></span>
   {/key}
   {#each items as item (item.id)}
-    <span class="row">
-      <button
-        type="button"
-        class="item"
-        class:nested={item.nested && !collapsed}
-        class:folds={item.fold !== undefined && !collapsed}
-        aria-current={item.id === active ? 'page' : undefined}
-        aria-label={collapsed ? item.label : undefined}
-        data-testid={item.testid}
-        use:tooltip={collapsed ? { text: item.label, placement: 'right' } : null}
-        onclick={() => onselect(item.id)}
-      >
-        <span class="glyph">
-          <Icon name={item.icon} size="md" />
-        </span>
-        {#if !collapsed}
-          <span class="label" in:fade>{item.label}</span>
-        {/if}
-      </button>
-      {#if item.fold && !collapsed}
-        <button
-          type="button"
-          class="fold"
-          class:open={item.fold.open}
-          aria-expanded={item.fold.open}
-          aria-label={item.fold.label}
-          data-testid={item.testid ? `${item.testid}-fold` : undefined}
-          onclick={item.fold.ontoggle}
-        >
-          <Icon name="expand" size="sm" />
-        </button>
+    <button
+      type="button"
+      class="item"
+      aria-current={item.id === active ? 'page' : undefined}
+      aria-label={collapsed ? item.label : undefined}
+      data-testid={item.testid}
+      use:tooltip={collapsed ? { text: item.label, placement: 'right' } : null}
+      onclick={() => onselect(item.id)}
+    >
+      <span class="glyph">
+        <Icon name={item.icon} size="md" />
+      </span>
+      {#if !collapsed}
+        <span class="label" in:fade>{item.label}</span>
       {/if}
-    </span>
+    </button>
   {/each}
 </nav>
 
@@ -177,65 +153,6 @@
     width: var(--control-lg);
     height: var(--control-lg);
     padding: 0;
-  }
-
-  /* A row holds its entry and, where entries hang under it, the chevron at its right end. */
-  .row {
-    position: relative;
-    display: flex;
-  }
-
-  .row > .item {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* The entries under a folding one, indented by a glyph and its gap. */
-  .item.nested {
-    padding-left: calc(var(--space-12) + var(--space-20));
-  }
-
-  /* Room for the chevron, so a long label never runs under it. */
-  .item.folds {
-    padding-right: calc(var(--space-12) + var(--control-sm));
-  }
-
-  /* Only the chevron opens and folds: small, quiet, a wash of its own on hover (never the
-     row's). Folded it points right. */
-  .fold {
-    position: absolute;
-    top: 50%;
-    right: var(--space-4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--control-sm);
-    height: var(--control-sm);
-    border-radius: var(--radius-sm);
-    color: var(--text-subtle);
-    transform: translateY(-50%);
-    transition:
-      background-color var(--dur-base) var(--ease-standard),
-      color var(--dur-base) var(--ease-standard);
-  }
-
-  .fold:hover {
-    background-color: var(--nav-hover);
-    color: var(--text);
-    transition-duration: var(--dur-hover);
-  }
-
-  .fold :global(svg) {
-    transform: rotate(-90deg);
-    transition: transform var(--dur-base) var(--ease-standard);
-  }
-
-  .fold.open :global(svg) {
-    transform: none;
-  }
-
-  .fold:focus-visible {
-    box-shadow: var(--focus-ring);
   }
 
   .glyph {

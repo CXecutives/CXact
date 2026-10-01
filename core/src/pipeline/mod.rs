@@ -51,11 +51,6 @@ pub struct RunRequest {
     #[serde(flatten)]
     #[cfg_attr(test, ts(flatten))]
     pub kind: RunKind,
-    /// A fetch of one way only (user decision 2026-10-01: the button fetches what is shown):
-    /// the search ("Jetzt suchen") or the alert mails ("Postfach abrufen"); `None`, every way.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(test, ts(optional))]
-    pub only: Option<crate::view::Origin>,
 }
 
 /// The kinds of run.

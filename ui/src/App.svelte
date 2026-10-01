@@ -48,7 +48,7 @@
   jobs.install();
   navigation.install();
   history.install();
-  void app.load().then((state) => run.attach(state?.running ?? null, state?.lastRun ?? null));
+  void app.load().then((state) => run.attach(state?.running ?? null));
 
   const firstRun = $derived(shell.firstRun);
   /** Closing while the app is busy: what the window waits for (null: not closing). */

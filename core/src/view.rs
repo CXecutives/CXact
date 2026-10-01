@@ -842,16 +842,12 @@ pub enum JobSort {
     Rate,
 }
 
-/// Which jobs the list shows: the jobs of one place, optionally only the new ones.
+/// Which jobs the list shows: the jobs of one place, narrowed by the search and the filter.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct JobQuery {
     pub place: Place,
-    /// The filter "Nur neue": only the new jobs, not opened yet and not excluded (what the
-    /// row's dot marks, in every place). Like the rest of the filter it narrows the list and
-    /// all its counts.
-    pub unread: bool,
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
     pub search: Option<String>,
@@ -863,27 +859,12 @@ pub struct JobQuery {
     /// excluded jobs pass only while it is empty.
     #[serde(default)]
     pub bands: Vec<Band>,
-    /// The filter: only jobs of these contract types, as the engine read them
-    /// (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
-    /// those without a contract type too.
-    #[serde(default)]
-    pub contracts: Vec<String>,
-    /// The filter: only jobs of this work mode, as the job details say it - the remote share
-    /// the ad states first (100 % remote, 0 % on site, anything between hybrid), the
-    /// location's work mode only where it states none; a job whose mode is unknown passes
-    /// none. `null` = every job.
-    #[serde(default)]
-    pub work_mode: Option<WorkMode>,
-    /// The filter "Herkunft": only jobs an alert mail named, or only those the search found.
-    /// `null` = every job.
-    #[serde(default)]
-    pub origin: Option<Origin>,
     /// The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
     /// jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
     /// it, not excluded). `null` = every job.
     #[serde(default)]
     pub run: Option<i64>,
-    /// The filter "Eingegangen": only jobs that came at or after this moment (Unix seconds;
+    /// The filter "Gefunden": only jobs that came at or after this moment (Unix seconds;
     /// the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
     /// them). The page names the start of today, of the last 7 or of the last 30 days in
     /// the user's time zone. `null` = every job.
@@ -895,15 +876,11 @@ pub struct JobQuery {
 }
 
 impl JobQuery {
-    /// The filter of the query: portals, bands, contract types, work mode, origin, run and
-    /// the day it came from.
+    /// The filter of the query: portals, bands, run and the day it came from.
     pub fn filter(&self) -> ListFilter {
         ListFilter {
             portals: self.portals.clone(),
             bands: self.bands.clone(),
-            contracts: self.contracts.clone(),
-            work_mode: self.work_mode,
-            origin: self.origin,
             run: self.run,
             received_since: self.received_since,
         }
@@ -944,7 +921,6 @@ pub struct JobPage {
 pub fn job_page(store: &Store, query: &JobQuery) -> crate::Result<JobPage> {
     let (rows, counts) = store.job_page(&PageQuery {
         place: query.place,
-        unread: query.unread,
         by_match: query.sort == JobSort::Match,
         by_rate: query.sort == JobSort::Rate,
         search: query.search.clone(),
@@ -1675,9 +1651,6 @@ pub struct AppState {
     /// Every profile of the work folder, the active one marked (empty without one).
     pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
-    /// The sources at least one job of the app came from (the funnel offers these, so ten
-    /// sources do not crowd it).
-    pub sources: Vec<Portal>,
     /// Which alert mails "Postfach abrufen" reads.
     pub fetch_range: FetchRange,
     /// The Excel file is written with every export.
@@ -2036,17 +2009,13 @@ mod tests {
         page.jobs.iter().map(|j| j.title.as_str()).collect()
     }
 
-    fn query(place: Place, unread: bool, sort: JobSort, limit: u32, offset: u32) -> JobQuery {
+    fn query(place: Place, sort: JobSort, limit: u32, offset: u32) -> JobQuery {
         JobQuery {
             place,
-            unread,
             sort,
             search: None,
             portals: Vec::new(),
             bands: Vec::new(),
-            contracts: Vec::new(),
-            work_mode: None,
-            origin: None,
             received_since: None,
             run: None,
             limit,
@@ -2058,7 +2027,7 @@ mod tests {
     /// only the jobs scored in one band (unscored and excluded ones only without it). A query
     /// without the fields, or with the fields of an earlier version, reads as none.
     #[test]
-    fn the_origin_says_how_a_job_came_and_filters_by_it() {
+    fn the_origins_say_how_a_job_came() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         let now = Timestamp::now();
@@ -2079,10 +2048,8 @@ mod tests {
         store
             .record_found(run, &[posting(&both), posting(&found)], now)
             .unwrap();
-        let page = |origin| {
-            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
-            q.origin = origin;
-            let page = job_page(&store, &q).unwrap();
+        let page = || {
+            let page = job_page(&store, &query(Place::Inbox, JobSort::Newest, 50, 0)).unwrap();
             let mut keys: Vec<(String, Vec<Origin>)> = page
                 .jobs
                 .iter()
@@ -2092,17 +2059,11 @@ mod tests {
             keys
         };
         assert_eq!(
-            page(None),
+            page(),
             [
                 ("hays".to_owned(), vec![Origin::Search]),
                 ("linkedin".to_owned(), vec![Origin::Mail, Origin::Search])
             ]
-        );
-        assert_eq!(page(Some(Origin::Mail)).len(), 1);
-        assert_eq!(
-            page(Some(Origin::Search)).len(),
-            2,
-            "a job of both counts for both"
         );
     }
 
@@ -2129,7 +2090,7 @@ mod tests {
             )
             .unwrap();
         let page = |portal: Option<Portal>, band: Option<Band>| {
-            let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+            let mut q = query(Place::Inbox, JobSort::Match, 50, 0);
             q.portals = portal.into_iter().collect();
             q.bands = band.into_iter().collect();
             job_page(&store, &q).unwrap()
@@ -2160,7 +2121,7 @@ mod tests {
         );
         assert!(titles(&page(Some(Portal::LinkedIn), Some(Band::Low))).is_empty());
         // Several portals and several bands: any of them, the bands need not touch.
-        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        let mut q = query(Place::Inbox, JobSort::Match, 50, 0);
         q.portals = vec![Portal::LinkedIn, Portal::Freelancermap];
         assert_eq!(
             titles(&job_page(&store, &q).unwrap()),
@@ -2172,7 +2133,7 @@ mod tests {
         assert_eq!((both.counts.inbox, both.counts.excluded), (2, 0));
         // Eingegangen: only the jobs that came from that moment on (no mail date here: the
         // first sighting; B, C and D came minutes after A and E).
-        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        let mut q = query(Place::Inbox, JobSort::Match, 50, 0);
         q.received_since = Some(crate::time::to_db(
             Timestamp::now() + jiff::SignedDuration::from_secs(90),
         ));
@@ -2206,9 +2167,6 @@ mod tests {
             ListFilter {
                 portals: vec![Portal::FreelanceDe, Portal::Hays],
                 bands: vec![Band::High, Band::Low],
-                contracts: vec!["interim".into(), "anue".into()],
-                work_mode: Some(WorkMode::Onsite),
-                origin: None,
                 run: Some(7),
                 received_since: Some(1_790_000_000),
             }
@@ -2249,7 +2207,7 @@ mod tests {
             )
             .unwrap();
         let page = |band: Option<Band>| {
-            let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+            let mut q = query(Place::Inbox, JobSort::Match, 50, 0);
             q.run = Some(run);
             q.bands = band.into_iter().collect();
             job_page(&store, &q).unwrap()
@@ -2269,120 +2227,12 @@ mod tests {
         assert_eq!(best.jobs.len(), high);
     }
 
-    /// The contract types and the work mode narrow the list and every count like the others:
-    /// contract types as the engine read them (a job without one passes only without the
-    /// filter); the work mode as the job details say it - the share the ad states first (100 %
-    /// remote, 0 % on site, anything between hybrid), else the work mode of the location,
-    /// read in SQL exactly as `work_mode` reads it. A job of no known mode passes none.
-    #[test]
-    fn contract_types_and_work_mode_narrow_list_and_counts() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        // Title, location, contract type, remote share; `None` in the last two: no key fact.
-        let jobs: [(&str, &str, Option<&str>, Option<u8>); 13] = [
-            ("A", "Berlin (Remote)", Some("interim"), None),
-            ("B", "Köln", Some("freelance"), Some(100)),
-            ("C", "Remote", Some("permanent"), Some(60)),
-            ("D", "Hamburg (Hybrid)", Some("anue"), None),
-            ("E", "Homeoffice", None, None),
-            ("F", "Remote oder vor Ort", None, None),
-            ("G", "Remotely-Str. 5, München", Some("interim"), None),
-            ("H", "Vor Ort", Some("interim"), Some(0)),
-            ("I", "home office, Frankfurt", Some("anue"), None),
-            ("J", "REMOTE_ONLY", None, None),
-            ("K", "", None, None),
-            ("L", "ON-SITE Stuttgart", None, None),
-            ("M", "Berlin (Remote)", None, Some(0)),
-        ];
-        let mut matches = Vec::new();
-        let mut keys = Vec::new();
-        for (i, (title, location, contract, share)) in jobs.iter().enumerate() {
-            let link = job_link(&format!(
-                "https://www.freelancermap.de/nproj/{}.html",
-                12_300 + i
-            ))
-            .unwrap();
-            keys.push(link.key.clone());
-            let posting = Posting::new(link.key.clone(), link.url, title, "", location);
-            let mail = MailRef {
-                subject: "x",
-                date: None,
-                gmail_id: None,
-            };
-            store
-                .upsert_posting(run, &posting, mail, Timestamp::now())
-                .unwrap();
-            // "E" stays unscored: only its location speaks.
-            if *title != "E" {
-                let mut m = record(MatchStatus::Scored, 50);
-                m.facts.contract = contract.map(str::to_owned);
-                m.facts.remote_from = *share;
-                m.facts.remote_to = *share;
-                matches.push((link.key, m));
-            }
-        }
-        store.save_matches(&matches, "r", Timestamp::now()).unwrap();
-        let page = |contracts: &[&str], mode| {
-            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
-            q.contracts = contracts.iter().map(|c| (*c).to_owned()).collect();
-            q.work_mode = mode;
-            let page = job_page(&store, &q).unwrap();
-            assert_eq!(
-                page.counts.inbox as usize,
-                page.jobs.len(),
-                "the counts follow"
-            );
-            let mut titles: Vec<String> = page.jobs.iter().map(|j| j.title.clone()).collect();
-            titles.sort();
-            titles
-        };
-        assert_eq!(page(&[], None).len(), jobs.len());
-        assert_eq!(page(&["interim", "anue"], None), ["A", "D", "G", "H", "I"]);
-        assert_eq!(page(&["freelance"], None), ["B"]);
-        let remote = page(&[], Some(WorkMode::Remote));
-        assert_eq!(remote, ["A", "B", "E", "I"]);
-        let hybrid = page(&[], Some(WorkMode::Hybrid));
-        assert_eq!(hybrid, ["C", "D", "F"]);
-        let onsite = page(&[], Some(WorkMode::Onsite));
-        assert_eq!(onsite, ["H", "L", "M"], "the share before the location");
-        // The same as the job details: the share first, else the stored location's work mode.
-        let of_share = |share: u8| match share {
-            100.. => WorkMode::Remote,
-            0 => WorkMode::Onsite,
-            _ => WorkMode::Hybrid,
-        };
-        for (mode, listed) in [
-            (WorkMode::Remote, &remote),
-            (WorkMode::Hybrid, &hybrid),
-            (WorkMode::Onsite, &onsite),
-        ] {
-            let expected: Vec<&str> = jobs
-                .iter()
-                .zip(&keys)
-                .filter(|((.., share), key)| {
-                    let location = store.job(key).unwrap().unwrap().location;
-                    share.map_or(work_mode(&location), |share| Some(of_share(share))) == Some(mode)
-                })
-                .map(|((title, ..), _)| *title)
-                .collect();
-            assert_eq!(listed, &expected);
-        }
-        // A job whose mode is unknown passes none of the three.
-        let known: Vec<&String> = remote.iter().chain(&hybrid).chain(&onsite).collect();
-        assert_eq!(known.len(), jobs.len() - 3);
-        for unknown in ["G", "J", "K"] {
-            assert!(!known.iter().any(|title| *title == unknown), "{unknown}");
-        }
-        assert_eq!(page(&["interim"], Some(WorkMode::Remote)), ["A"]);
-        assert_eq!(page(&["interim"], Some(WorkMode::Onsite)), ["H"]);
-    }
-
     /// A range of remote shares is a work mode like one share (from 100 % remote, to 0 % on
     /// site, else hybrid), and the list orders by day rate: the highest first (in euros, an
     /// hourly one times 8), equal ones by date, the rest last; the unread filter narrows it
     /// and its counts like the rest of the filter.
     #[test]
-    fn work_mode_ranges_the_rate_order_and_unread() {
+    fn the_rate_order_puts_the_highest_day_rate_first() {
         let store = Store::in_memory().unwrap();
         let run = store.begin_run().unwrap();
         let facts = |contract: &str, rate: Option<u32>| KeyFacts {
@@ -2458,34 +2308,10 @@ mod tests {
             }
         }
         store.save_matches(&matches, "r", Timestamp::now()).unwrap();
-        let page = |mode| {
-            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
-            q.work_mode = Some(mode);
-            let page = job_page(&store, &q).unwrap();
-            assert_eq!(
-                page.counts.inbox as usize,
-                page.jobs.len(),
-                "the counts follow"
-            );
-            let mut titles: Vec<String> = page.jobs.into_iter().map(|j| j.title).collect();
-            titles.sort();
-            titles
-        };
-        // The stated share before the location: D is on site, E remote.
-        assert_eq!(page(WorkMode::Hybrid), ["B", "C", "H"]);
-        assert_eq!(page(WorkMode::Remote), ["A", "E", "F"]);
-        assert_eq!(page(WorkMode::Onsite), ["D"]);
         // By rate: the equal rates of A and B by date (B is newer), then C, then the rest by
         // date, the newest first.
-        let mut q = query(Place::Inbox, false, JobSort::Rate, 50, 0);
-        let by_rate = job_page(&store, &q).unwrap();
+        let by_rate = job_page(&store, &query(Place::Inbox, JobSort::Rate, 50, 0)).unwrap();
         assert_eq!(titles(&by_rate), ["B", "A", "C", "H", "G", "F", "E", "D"]);
-        // The unread filter narrows the list and the counts too.
-        store.mark_read(&keys[0], Timestamp::now()).unwrap();
-        q.unread = true;
-        let unread = job_page(&store, &q).unwrap();
-        assert_eq!(titles(&unread), ["B", "C", "H", "G", "F", "E", "D"]);
-        assert_eq!(unread.counts.inbox, 7);
     }
 
     /// A page with every filter on takes moments at 2,000 jobs, not seconds.
@@ -2501,34 +2327,26 @@ mod tests {
                 4_100_000_000 + i
             ))
             .unwrap();
-            let location = if i % 2 == 0 {
-                "Remote"
-            } else {
-                "Köln (Hybrid)"
-            };
-            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", location);
+            let posting = Posting::new(link.key.clone(), link.url, "Rolle", "Firma", "Köln");
             let mail = MailRef {
                 subject: "x",
                 date: Some(now - jiff::SignedDuration::from_hours(i % 60 * 24)),
                 gmail_id: None,
             };
             store.upsert_posting(run, &posting, mail, now).unwrap();
-            let mut m = record(MatchStatus::Scored, 70);
-            m.facts.contract = Some(if i % 3 == 0 { "interim" } else { "permanent" }.into());
-            matches.push((link.key, m));
+            let band_score = if i % 3 == 0 { 70 } else { 20 };
+            matches.push((link.key, record(MatchStatus::Scored, band_score)));
         }
         store.save_matches(&matches, "r", now).unwrap();
-        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
-        q.contracts = vec!["interim".into()];
-        q.work_mode = Some(WorkMode::Remote);
+        let mut q = query(Place::Inbox, JobSort::Match, 50, 0);
+        q.portals = vec![Portal::LinkedIn];
         q.bands = vec![Band::Mid];
+        q.received_since = Some((now - jiff::SignedDuration::from_hours(29 * 24 + 12)).as_second());
         let started = std::time::Instant::now();
         let page = job_page(&store, &q).unwrap();
         let took = started.elapsed();
-        assert_eq!(
-            page.counts.inbox, 334,
-            "every sixth job: interim and remote"
-        );
+        // Every third job is in the band, half of them came in the last 30 days.
+        assert_eq!(page.counts.inbox, 337);
         assert_eq!(page.jobs.len(), 50);
         assert!(took < std::time::Duration::from_millis(500), "{took:?}");
     }
@@ -2544,43 +2362,27 @@ mod tests {
             excluded_archive: 0,
             excluded_trash: 0,
         };
-        let page = |unread, sort, limit, offset| {
-            job_page(&store, &query(Place::Inbox, unread, sort, limit, offset)).unwrap()
+        let page = |sort, limit, offset| {
+            job_page(&store, &query(Place::Inbox, sort, limit, offset)).unwrap()
         };
-        // "Nur neue" lists the new jobs, unread and not excluded, the unscored one first:
-        // neither the read job A nor the unread but excluded C is new. Like the filter it
-        // narrows the counts.
-        let new = page(true, JobSort::Match, 50, 0);
-        assert_eq!(titles(&new), ["D", "B"]);
-        assert_eq!(
-            &new.counts,
-            &JobCounts {
-                inbox: 2,
-                excluded: 0,
-                ..expected.clone()
-            }
-        );
-        assert!(new.jobs[0].unread && new.jobs[0].match_.is_none());
-        assert!(new.jobs[1].unread && new.jobs[1].match_.is_some());
-        assert_eq!(titles(&page(true, JobSort::Newest, 50, 0)), ["D", "B"]);
-        assert_eq!(
-            titles(&page(false, JobSort::Match, 50, 0)),
-            ["D", "B", "A", "C"]
-        );
-        let newest = page(false, JobSort::Newest, 50, 0);
+        // The unscored one first; the read job A and the unread but excluded C stand too.
+        let all = page(JobSort::Match, 50, 0);
+        assert_eq!(titles(&all), ["D", "B", "A", "C"]);
+        assert!(all.jobs[0].unread && all.jobs[0].match_.is_none());
+        let newest = page(JobSort::Newest, 50, 0);
         assert_eq!(titles(&newest), ["D", "B", "A", "C"]);
         assert!(!newest.jobs[2].unread);
         // Past the end or counts only: no rows, the same counts.
-        let past = page(false, JobSort::Match, 50, 10);
+        let past = page(JobSort::Match, 50, 10);
         assert!(past.jobs.is_empty());
         assert_eq!(&past.counts, &expected);
-        let counts_only = page(false, JobSort::Match, 0, 0);
+        let counts_only = page(JobSort::Match, 0, 0);
         assert_eq!(
             (counts_only.jobs.len(), &counts_only.counts),
             (0, &expected)
         );
         // The search narrows list and counts alike.
-        let mut search = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        let mut search = query(Place::Inbox, JobSort::Match, 50, 0);
         search.search = Some("volltext".into());
         let found = job_page(&store, &search).unwrap();
         assert_eq!((found.jobs.len(), found.counts.inbox), (1, 1));
@@ -2601,7 +2403,7 @@ mod tests {
         // C (excluded) archived, D (unscored, unread) in the trash later.
         store.move_jobs(&[key(3)], Place::Archive, at).unwrap();
         store.move_jobs(&[key(4)], Place::Trash, later).unwrap();
-        let page = |place| job_page(&store, &query(place, false, JobSort::Match, 50, 0)).unwrap();
+        let page = |place| job_page(&store, &query(place, JobSort::Match, 50, 0)).unwrap();
         let inbox = page(Place::Inbox);
         assert_eq!(titles(&inbox), ["B", "A"]);
         let counts = &inbox.counts;
@@ -2622,49 +2424,6 @@ mod tests {
         let trash = page(Place::Trash);
         assert_eq!(titles(&trash), ["D"]);
         assert_eq!(trash.counts, inbox.counts, "the counts ignore the place");
-        let new_in = |place| {
-            let page = job_page(&store, &query(place, true, JobSort::Match, 50, 0)).unwrap();
-            titles(&page)
-                .into_iter()
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        };
-        assert_eq!(
-            new_in(Place::Trash),
-            ["D"],
-            "the unread filter works in every place"
-        );
-        assert!(
-            new_in(Place::Archive).is_empty(),
-            "an excluded job is no new one, in any place"
-        );
-        // Every place lists exactly as many jobs as its count says.
-        assert_eq!(u32::try_from(inbox.jobs.len()).unwrap(), counts.inbox);
-        assert_eq!(u32::try_from(archive.jobs.len()).unwrap(), counts.archive);
-        assert_eq!(u32::try_from(trash.jobs.len()).unwrap(), counts.trash);
-        // By date the latest trashed first.
-        store.move_jobs(&[key(1)], Place::Trash, at).unwrap();
-        let after = job_page(&store, &query(Place::Trash, false, JobSort::Newest, 50, 0)).unwrap();
-        assert_eq!(titles(&after), ["D", "A"]);
-        assert_eq!(
-            titles(&page(Place::Trash)),
-            ["D", "A"],
-            "by match the one without a score first"
-        );
-        assert_eq!(after.counts.trash, 2);
-        let json = serde_json::to_value(&after.jobs[1]).unwrap();
-        assert_eq!(json["place"], "trash");
-        // In the trash, the excluded one counts there.
-        store.move_jobs(&[key(3)], Place::Trash, later).unwrap();
-        let counts = page(Place::Trash).counts;
-        assert_eq!(
-            (
-                counts.excluded,
-                counts.excluded_archive,
-                counts.excluded_trash
-            ),
-            (0, 0, 1)
-        );
     }
 
     #[test]

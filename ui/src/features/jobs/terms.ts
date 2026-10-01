@@ -15,7 +15,7 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/facts';
-import { formatDay, formatMoment, formatStamp } from '$lib/i18n/format';
+import { formatDay, formatMoment } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
 import { criterionKey } from '$lib/i18n/texts';
@@ -303,14 +303,6 @@ const TERMS: Record<TermKey, Term> = {
           offline === null ? null : since === '' ? t.reader.offline : t.reader.offlineSince(since),
       };
     },
-  },
-  // The day of the alert mail in the list row's words ("gestern", "Do 24.09.").
-  // Hidden (user, 2026-10-01: "Eingegangen" says nothing for a job the search found): the
-  // day stands in the row "Gefunden".
-  received: {
-    ...NONE,
-    shows: () => false,
-    read: ({ job, now }) => ({ value: text(formatStamp(job.mailDate ?? job.firstSeenAt, now)) }),
   },
 };
 

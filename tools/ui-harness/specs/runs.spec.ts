@@ -1,12 +1,10 @@
 // Runs and their numbers against the stub: every run shows as its kind (also the ones the
-// app starts by itself), the end toast says what a fetch brought and leads to it, the run
-// line what a run could not write and which portal it paused (once), and the list and the
-// reader stay true while a run updates jobs.
+// app starts by itself), the end toast says what a fetch brought and leads to it, and the
+// list and the reader stay true while a run updates jobs.
 
 import type { Page } from '@playwright/test';
-import { ICONS } from '../../../ui/src/lib/icons';
-import type { JobView, RunEvent } from '../../../ui/src/lib/ipc/types';
-import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
+import type { JobView } from '../../../ui/src/lib/ipc/types';
+import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import { ALL_PORTALS, chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
 
 const WIN = '?platform=windows';
@@ -45,7 +43,6 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
   // Afterwards nothing speaks of it, and Postfach abrufen is back.
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   expect(await calls(page, 'start_run')).toHaveLength(1);
 });
@@ -63,50 +60,12 @@ test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
 });
 
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a rescore that cannot write the files says so once, with a retry', async ({ page }) => {
-  await open(page, `${WIN}&tick=15&export=locked`);
-  await page.evaluate(() => window.__harness.appRun('rescore'));
-  await runFinished(page);
-  const problem = page.getByTestId('run-problem');
-  await expect(problem).toHaveCount(1);
-  await expect(problem).toContainText(
-    'Die Excel-Datei ist in einem anderen Programm geöffnet und blieb unverändert.',
-  );
-  await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-  // Its way on is drawn like every note's: a small outlined button with its glyph.
-  const retry = problem.getByTestId('run-retry');
-  await expect(retry).toHaveText(T.common.retry);
-  await expect(retry).toHaveClass(/secondary/);
-  await expect(retry.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.retry}`));
-  await retry.click();
-  await runFinished(page);
-  const started = await calls(page, 'start_run');
-  expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
-});
-
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a fetch that cannot write the Excel file: the toast counts, the line says why', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&tick=15&export=locked`);
-  await page.getByTestId('fetch').click();
-  await page.getByTestId('nav-settings').click();
-  await runFinished(page);
-  const toast = page.getByTestId('toast').filter({ hasText: DONE });
-  await toast.getByTestId('toast-action').click();
-  await expect(page.getByTestId('view-jobs')).toBeVisible();
-  await expect(page.getByTestId('run-problem')).toHaveCount(1);
-  await expect(page.getByText('blieb unverändert')).toHaveCount(1);
-});
-
 test('the end toast counts the run: the new jobs that are not excluded', async ({ page }) => {
   await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // Three new jobs came in, one of them excluded: two new.
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
 });
 
 test('the end toast names the new jobs of the high band; Zeigen lists exactly those, chips to take off', async ({
@@ -135,7 +94,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
     ...chipWordsOf('band-high'),
   ]);
   const query = (await lastQuery(page))!;
-  expect(query).toMatchObject({ place: 'inbox', unread: false, bands: ['high'] });
+  expect(query).toMatchObject({ place: 'inbox', bands: ['high'] });
   expect(query.run).toEqual(expect.any(Number));
   await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
   // Each chip takes its part off: without the band the two new jobs the toast counts, not
@@ -164,7 +123,7 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('search')).toHaveValue('');
   const run = (await lastQuery(page))?.run;
-  expect(await lastQuery(page)).toMatchObject({ search: null, unread: false, bands: ['high'] });
+  expect(await lastQuery(page)).toMatchObject({ search: null, bands: ['high'] });
   expect(run).toEqual(expect.any(Number));
   // The next fetch takes "Aus dem letzten Abruf" off (it would speak of the one before).
   await page.getByTestId('fetch').click();
@@ -183,28 +142,6 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   await page.getByTestId('menu-item-filter-reset').click();
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
   expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
-});
-
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a portal the fetch paused is said once in the run line, with its ×', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&tick=15`);
-  await expect(page.getByTestId('run-paused')).toHaveCount(0);
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  // freelance.de rests a quarter of an hour after the fixed clock.
-  const paused = page.getByTestId('run-paused');
-  await expect(paused).toHaveText(
-    await text(page, 'run.paused', 'freelance', '2026-09-24T07:45:00.000Z'),
-  );
-  await expect(paused).toHaveText('freelance.de pausiert bis 09:45');
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
-  // Its × hides it; the next start of the app does not say it again.
-  await paused.getByTestId('run-close').click();
-  await expect(paused).toHaveCount(0);
-  await open(page, `${WIN}&tick=15`);
-  await expect(page.getByTestId('run-paused')).toHaveCount(0);
 });
 
 test('a details run shows its line and brings no fetch toast', async ({ page }) => {
@@ -230,46 +167,6 @@ test('a failed first fetch does not claim the alert mails were empty', async ({ 
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await expect(page.getByTestId('first-fetch-failed')).toContainText('Gmail ist nicht erreichbar.');
   await expect(page.getByText('enthielten bisher keine Jobs')).toHaveCount(0);
-});
-
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('after a restart a failed last fetch says so once in the run line, a new fetch clears it', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&scenario=last-failed&tick=15`);
-  const problem = page.getByTestId('run-problem');
-  await expect(problem).toHaveCount(1);
-  await expect(problem).toContainText(T.error.text('mailConnect', {}));
-  // "Postfach abrufen" is the way on, no second one in the line.
-  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
-  // Nowhere else: the sidebar has no status line.
-  await expect(page.getByTestId('sidebar')).not.toContainText(T.error.text('mailConnect', {}));
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
-  expect((await calls(page, 'start_run')).at(-1)?.[1]).toMatchObject({
-    request: { kind: 'fetch' },
-  });
-  // Its × hides it until the next run.
-  await open(page, `${WIN}&scenario=last-failed`);
-  await page.getByTestId('run-close').click();
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
-});
-
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a start that fails keeps the last result and says why', async ({ page }) => {
-  await open(page, `${WIN}&tick=15`);
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  // A run the page has not heard of yet holds the slot: start_run answers "busy".
-  await page.evaluate(() => {
-    window.__harness.holdAfter = 0;
-    window.__harness.appRun('rescore');
-  });
-  await page.getByTestId('fetch').click();
-  await expect(page.getByTestId('run-problem')).toHaveText('Gerade läuft schon ein Abruf.');
-  await page.evaluate(() => (window.__harness.holdAfter = null));
-  await runFinished(page);
 });
 
 test('the reader stays with the selected job while a run updates the one before', async ({
@@ -398,63 +295,6 @@ test('an archived job leaves the list and every count but the archive', async ({
   await expect(row(page, 'linkedin-4100200301')).toHaveCount(1);
 });
 
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a mailbox that refused the fetch: its way on opens the mailbox settings, in English too', async ({
-  page,
-}) => {
-  const refused: RunEvent = {
-    type: 'finished',
-    summary: {
-      run: 42,
-      kind: 'fetch',
-      outcome: { kind: 'failed', error: { kind: 'mailAuth', params: {} } },
-      dryRun: false,
-      startedAt: '2026-09-24T07:29:00Z',
-      finishedAt: '2026-09-24T07:30:00Z',
-      scan: null,
-      perPortal: [],
-      newJobs: null,
-      score: null,
-      export: null,
-      emptyAlerts: [],
-    },
-  };
-  // English says it apart from "Check mailbox", the fetch.
-  for (const [query, label] of [
-    [WIN, T.run.checkMailbox],
-    [`${WIN}&lang=en`, 'Mailbox settings'],
-  ] as const) {
-    await open(page, query);
-    await emit(page, { type: 'started', kind: 'fetch' }, refused);
-    const way = page.getByTestId('run-problem').getByTestId('run-retry');
-    await expect(way).toHaveText(label);
-    await expect(page.getByTestId('fetch')).not.toHaveText(label);
-  }
-  await page.getByTestId('run-retry').click();
-  await expect(page.getByTestId('view-settings')).toBeVisible();
-});
-
-// The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.
-test.skip('a fetch without internet says so in the run line; Postfach abrufen tries again', async ({
-  page,
-}) => {
-  await open(page, `${WIN}&mail=no-internet&tick=15`);
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  const problem = page.getByTestId('run-problem');
-  // Its own words, not the words of a Gmail that does not answer.
-  await expect(problem).toContainText(T.error.text('offline', {}));
-  await expect(problem).not.toContainText(T.error.text('mailConnect', {}));
-  await expect(problem.getByTestId('run-retry')).toHaveCount(0);
-  // The next run's end, not the last one's.
-  await page.evaluate(() => (window.__harness.done = false));
-  await page.getByTestId('fetch').click();
-  await runFinished(page);
-  const starts = (await calls(page, 'start_run')).map(([, args]) => args);
-  expect(starts).toMatchObject([{ request: { kind: 'fetch' } }, { request: { kind: 'fetch' } }]);
-  await expect(page.getByTestId('run-problem')).toContainText(T.error.text('offline', {}));
-});
-
 test('what went wrong is a toast once, not a note: a failed fetch, files not written', async ({
   page,
 }) => {
@@ -466,7 +306,6 @@ test('what went wrong is a toast once, not a note: a failed fetch, files not wri
   await runFinished(page);
   await expect(toast.getByTestId('toast-text')).toHaveText('Gmail ist nicht erreichbar.');
   await expect(toast.getByTestId('toast-action')).toHaveCount(0);
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
   await expect(page.getByTestId('fetch')).toBeEnabled();
   // Files that could not be written: the count, then why, with "Erneut versuchen", which
   // writes them again without reading the mailbox.
@@ -479,9 +318,4 @@ test('what went wrong is a toast once, not a note: a failed fetch, files not wri
   await runFinished(page);
   const started = await calls(page, 'start_run');
   expect((started.at(-1)?.[1] as { request: unknown }).request).toEqual({ kind: 'rescore' });
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
-  // A paused portal and a failed last fetch after a restart say nothing.
-  await open(page, `${WIN}&scenario=last-failed`);
-  await expect(page.getByTestId('run-problem')).toHaveCount(0);
-  await expect(page.getByTestId('run-paused')).toHaveCount(0);
 });
