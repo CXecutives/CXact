@@ -4,6 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, test, text } from './fixtures';
+import { expectMailboxState, showTab } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -11,7 +12,7 @@ async function changeMailbox(page: Page, query = WIN): Promise<void> {
   await open(page, query);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  await page.getByTestId('mailbox-change').click();
+  await (await showTab(page, page.getByTestId('mailbox-change'))).click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
 }
 
@@ -47,21 +48,21 @@ test('CRED-1: cancel and Esc stop a check in progress, quietly', async ({ page }
   await page.evaluate(() => (window.__harness.holdMailbox = false));
 });
 
-test('CRED-3: signed in but not counted is connected, and its badge is the answer', async ({
+test('CRED-3: signed in but not counted is connected, and its state is the answer', async ({
   page,
 }) => {
   await changeMailbox(page, `${WIN}&mail=uncounted`);
   await dialog(page).getByTestId('dialog-confirm').click();
   await expect(dialog(page)).toBeHidden();
   const connected = await text(page, 'settings.connected');
-  await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
-  // Einstellungen shows no count: the badge says it all, no toast repeats it.
+  await expectMailboxState(page, connected, 'success');
+  // Einstellungen shows no count: the state says it all, no toast repeats it.
   await expect(page.getByTestId('toast')).toHaveCount(0);
   // With the count there, the same.
   await changeMailbox(page);
   await dialog(page).getByTestId('dialog-confirm').click();
   await expect(dialog(page)).toBeHidden();
-  await expect(page.getByTestId('settings-mailbox')).toContainText(connected);
+  await expectMailboxState(page, connected, 'success');
   await expect(page.getByTestId('toast')).toHaveCount(0);
 });
 

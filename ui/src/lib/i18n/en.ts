@@ -769,7 +769,6 @@ export const en: Catalog = {
     closed: 'Closed',
   },
   toolbar: {
-    fetch: 'Fetch jobs',
     searchNow: 'Search jobs',
     fetchMailbox: 'Check mailbox',
     fetchSettings: 'Fetch settings',
@@ -1203,6 +1202,7 @@ export const en: Catalog = {
     },
   },
   settings: {
+    tabs: 'Settings sections',
     mailbox: 'Mailbox',
     search: 'Search',
     look: 'Appearance',

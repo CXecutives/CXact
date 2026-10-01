@@ -307,15 +307,32 @@ export async function tokenColour(page: Page, token: string): Promise<string> {
   }, token);
 }
 
-/** Opens the tab of the Profil that holds `target` (one tab shows at a time); the target. */
+/** Opens the tab of the Profil or of Einstellungen that holds `target` (one tab shows at a
+ *  time); the target. */
 export async function showTab(page: Page, target: Locator): Promise<Locator> {
   const panel = await target
     .first()
     .evaluate((node) => node.closest('[role="tabpanel"]')?.getAttribute('data-testid') ?? '');
-  const id = panel.replace('profile-panel-', '');
-  if (id !== '') await page.getByTestId(`profile-tab-${id}`).click();
+  // `profile-panel-skills` is shown by `profile-tab-skills`, `settings-panel-data` by
+  // `settings-tab-data`.
+  if (panel !== '') await page.getByTestId(panel.replace('-panel-', '-tab-')).click();
   await expect(target.first()).toBeVisible();
   return target;
+}
+
+/** The mailbox's row in Einstellungen says its state under the address, after a dot of its
+ *  colour (Verbunden green, a failure red; no badge). */
+export async function expectMailboxState(
+  page: Page,
+  words: string,
+  tone: 'success' | 'danger',
+): Promise<void> {
+  const hint = page.getByTestId('mailbox').locator('.hint');
+  await expect(hint).toHaveText(words);
+  await expect(hint.locator('.dot')).toHaveCSS(
+    'background-color',
+    await tokenColour(page, `--${tone}`),
+  );
 }
 
 /** On the start page of a new profile: the button of a way (the empty form, a file). */

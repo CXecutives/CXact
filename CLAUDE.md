@@ -16,9 +16,9 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
 - Everything in the repo is English (code, comments, docs, logs, errors, tests, CI, commits). Exceptions are the
   modules marked `external contract - do not translate` (folder names, profile JSON keys, German mail
   patterns, matching lexicon, the German AI prompts) and the German UI catalog `ui/src/lib/i18n/de.ts` (source; `en.ts` mirrors it with the same type). `core/tests/language.rs` enforces it.
-- UI: two palettes (Light, the default, and Dark: neutral like the Claude app, one blue accent, no orange; the
-  retired CXact palette is kept in `docs/palettes/cxact.css`), defined only in
-  `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
+- UI: the CXact palette, the default and for now the only one shown (cxpertise.de's cream, the coral #E67A5C
+  of the icon and a richer cxpertise navy; Light and Dark wait in the same file behind the hidden
+  Darstellung), defined only in `ui/src/styles/tokens.css`; components never branch on the palette. It must feel like a native app with one top bar
   like the Claude app's (user 2026-09-27): the page draws it on both OS (`features/shell/TitleBar.svelte`, 36 px on
   Windows, 44 px on macOS, no line under it, no icon, no name; its left part in the sidebar's colour with a seam at
   the sidebar's edge, the rest in the view's; at the left the sidebar's button, Zurück and Vor (macOS right of the

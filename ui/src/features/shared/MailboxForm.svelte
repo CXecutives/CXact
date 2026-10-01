@@ -35,8 +35,15 @@
     dialog?: boolean;
     /** A check is on its way (the dialog's button turns meanwhile). */
     busy?: boolean;
+    /** Its Verbinden is a secondary button (an optional step of the first run). */
+    quiet?: boolean;
   }
-  let { autofocus = false, dialog = false, busy = $bindable(false) }: Props = $props();
+  let {
+    autofocus = false,
+    dialog = false,
+    busy = $bindable(false),
+    quiet = false,
+  }: Props = $props();
 
   const id = $props.id();
   let user = $state(app.state?.mailbox.user ?? '');
@@ -178,7 +185,7 @@
     {@render body()}
     <div class="actions">
       <Button
-        variant="primary"
+        variant={quiet ? 'secondary' : 'primary'}
         icon="signIn"
         label={t.settings.connect}
         loading={busy}

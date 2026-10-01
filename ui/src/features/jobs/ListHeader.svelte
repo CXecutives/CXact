@@ -50,10 +50,10 @@
   import { activeFilters, dropFrom, NO_FILTER, type ActiveFilter } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
-  import { run } from '$lib/state/run.svelte';
+  import { fetchLook, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
-  import { fetchLook, funnelEntries, wayEntries } from './headerMenus';
+  import { funnelEntries, wayEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
   import TrashAction from './TrashAction.svelte';
 

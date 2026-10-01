@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { NOW, calls, expect, open, settle, test } from './fixtures';
-import { showTab, tokenColour } from './helpers';
+import { showTab, T, tokenColour } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -451,7 +451,7 @@ test('controls react to the left button only', async ({ page }) => {
   await expect(page.getByTestId('reader')).toHaveCount(0);
   expect(await focused()).toBeNull();
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-enabled-freelance');
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-freelance'));
   await toggle.click({ button: 'right' });
   await toggle.click({ button: 'middle' });
   await page.waitForTimeout(300);
@@ -460,8 +460,9 @@ test('controls react to the left button only', async ({ page }) => {
   const calls = await page.evaluate(() => window.__harness.calls.map(([name]) => name));
   expect(calls).not.toContain('save_settings');
   // Over a scroll area the middle click started the autoscroll of the engine (Windows
-  // behaviour): the next click only ends it. Then the left button works.
-  await page.getByTestId('settings-mailbox').getByRole('heading').click();
+  // behaviour): the next click (on the source's name, which switches nothing) only ends it.
+  // Then the left button works.
+  await page.getByTestId('portal-freelance').getByText(T.portal.freelance).click();
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-checked', 'false');
 });
@@ -519,7 +520,7 @@ test('Tab from a field goes on through the controls, Enter and Space press them'
   await page.getByTestId('nav-settings').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('view-settings')).toBeVisible();
-  const toggle = page.getByTestId('toggle-enabled-freelance');
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-freelance'));
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Space');
@@ -834,7 +835,8 @@ test('native cursor: the arrow on controls, the text cursor on copyable text', a
 test('the wheel over a switch changes nothing and scrolls the page', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 560 });
   await open(page, `${WIN}&view=settings`);
-  const toggle = page.getByTestId('toggle-enabled-freelance');
+  // The first source's switch on Suche, the tab that scrolls at this height.
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-hays'));
   const before = await toggle.getAttribute('aria-checked');
   expect(await wheelOver(page, toggle, 'view-settings')).toBeGreaterThan(0);
   await expect(toggle).toHaveAttribute('aria-checked', before ?? 'false');
@@ -882,25 +884,34 @@ test('over an open menu only the menu scrolls; the list behind stays and the men
 
 test('behind a modal dialog nothing scrolls', async ({ page }) => {
   await page.setViewportSize({ width: 1100, height: 560 });
-  await open(page, `${WIN}&view=settings`);
-  await page.getByTestId('reset').click();
-  const dialog = page.getByTestId('dialog-reset');
+  // The Profil: the tabs of Einstellungen that have a dialog do not scroll at all.
+  await open(page, `${WIN}&view=profile`);
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await page.getByTestId('profile-switcher').click();
+  await page.getByTestId('menu-item-remove').click();
+  const dialog = page.getByTestId('dialog-remove-profile');
   await expect(dialog).toBeVisible();
   await settle(page);
-  const before = await scrollTop(page, 'view-settings');
+  // The view behind could go either way from here.
+  const before = await page
+    .getByTestId('view-profile')
+    .evaluate((node) => (node.scrollTop = Math.min(100, node.scrollHeight - node.clientHeight)));
+  expect(before).toBeGreaterThan(0);
   // Over the scrim, away from the card.
   await page.mouse.move(300, 60);
   await page.mouse.wheel(0, -400);
+  await page.mouse.wheel(0, 400);
   await page.waitForTimeout(300);
-  expect(await scrollTop(page, 'view-settings')).toBe(before);
+  expect(await scrollTop(page, 'view-profile')).toBe(before);
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
 });
 
 test('a right click where nothing offers a menu does nothing', async ({ page }) => {
   await open(page, `${WIN}&view=settings`);
-  const heading = page.locator('[data-testid="view-settings"] h2').first();
-  await heading.click({ button: 'right' });
+  // A source's name on Suche: plain text, no field, nothing to copy.
+  const name = page.getByTestId('portal-hays').getByText(T.portal.hays);
+  await name.click({ button: 'right' });
   await page.waitForTimeout(150);
   await expect(page.getByTestId('menu')).toHaveCount(0);
   expect(await page.evaluate(() => getSelection()?.toString() ?? '')).toBe('');
@@ -1029,21 +1040,26 @@ test('nothing drags but the handle and the drag regions; a double click selects 
 });
 
 test('the page keys glide in one short tween; under reduced motion they jump', async ({ page }) => {
-  // Low enough that Einstellungen (without Export and Darstellung) scrolls more than a page.
+  // Low enough that Suche, the tab Einstellungen opens on, scrolls far (less than a page:
+  // PageDown goes to its end).
   await page.setViewportSize({ width: 1100, height: 400 });
+  const room = (): Promise<number> =>
+    page.getByTestId('view-settings').evaluate((node) => node.scrollHeight - node.clientHeight);
+  const name = (): Locator => page.getByTestId('portal-hays').getByText(T.portal.hays);
   // Reduced motion: at once.
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await open(page, `${WIN}&view=settings`);
   // A click on plain text: the focus is nowhere, the keys scroll the pane clicked last.
-  await page.locator('[data-testid="view-settings"] h2').first().click();
+  await name().click();
   await page.keyboard.press('PageDown');
-  expect(await scrollTop(page, 'view-settings')).toBeGreaterThan(300);
+  expect(await room()).toBeGreaterThan(200);
+  expect(await scrollTop(page, 'view-settings')).toBe(await room());
   // Otherwise one tween, seen on the page's own clock: it stands still from the key on and
   // goes a frame (16 ms) at a time. A busy machine drew no frame within the 180 ms, and a read
   // after the key came when the glide was over.
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await open(page, `${WIN}&view=settings`);
-  await page.locator('[data-testid="view-settings"] h2').first().click();
+  await name().click();
   await page.clock.install({ time: NOW });
   await page.clock.pauseAt(new Date(NOW.getTime() + 1000));
   const tops = [await scrollTop(page, 'view-settings')];
@@ -1054,7 +1070,7 @@ test('the page keys glide in one short tween; under reduced motion they jump', a
     tops.push(await scrollTop(page, 'view-settings'));
   }
   const end = tops.at(-1)!;
-  expect(end).toBeGreaterThan(300);
+  expect(end).toBe(await room());
   // Still until the next frame, then further in every frame of --dur-slow (frames 1 to 8 lie
   // well within its 180 ms, wherever the first frame falls), and at the end once it is over
   // (frame 13 on).
@@ -1115,7 +1131,7 @@ test('the right and the middle button never press a control', async ({ page }) =
 test('a switch held with the right button looks at rest and keeps its state', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-enabled-freelance');
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-freelance'));
   await expect(toggle).toBeVisible();
   const before = await toggle.getAttribute('aria-checked');
   for (const button of ['right', 'middle'] as const) {
@@ -1191,7 +1207,7 @@ test('a press on the top bar (a drag region) ends the focus of a field', async (
 test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
-  const toggle = page.getByTestId('toggle-enabled-freelance');
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-freelance'));
   const before = await toggle.getAttribute('aria-checked');
   await toggle.focus();
   await page.keyboard.press('Enter');

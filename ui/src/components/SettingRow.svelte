@@ -9,7 +9,9 @@
      switch and the hint describes it (`{for}-label`, and `{for}-hint` while there is a hint,
      read by Toggle), but neither is a click target, and the row never reacts to the pointer.
      With `form` (a row among the fields of a form) the label has the 13/500 of a form's
-     control labels. A row without a label leads with its hint. -->
+     control labels. A row without a label leads with its hint. A row may lead with a tile
+     (`lead`, the mailbox's, 12 from its text) and say a state with a dot before its hint
+     (`dot`: Verbunden green, a failure red). -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
@@ -17,8 +19,12 @@
   interface Props {
     label?: string | null;
     hint?: string | null;
-    /** Badges next to the label (e.g. Verbunden). */
+    /** Badges next to the label. */
     badges?: Snippet | null;
+    /** A tile before the text (the mailbox's). */
+    lead?: Snippet | null;
+    /** A dot before the hint that says a state (connected, or a failure). */
+    dot?: 'success' | 'danger' | null;
     /** The hint is a value a user would copy (a folder path). */
     copy?: boolean;
     /** The label is a value a user would copy (the address of the mailbox). */
@@ -35,6 +41,8 @@
     label = null,
     hint = null,
     badges = null,
+    lead = null,
+    dot = null,
     copy = false,
     copyLabel = false,
     for: control = null,
@@ -56,6 +64,7 @@
   data-toggle-row={control !== null ? '' : undefined}
   data-testid={testid ?? undefined}
 >
+  {#if lead}<span class="lead">{@render lead()}</span>{/if}
   <div class="text">
     {#if label !== null || badges}
       <span class="title">
@@ -72,9 +81,11 @@
     {#if hint}<p
         class="hint"
         class:path={copy}
+        class:status={dot !== null}
         id={control !== null ? `${control}-hint` : undefined}
         data-copy={copy ? '' : undefined}
       >
+        {#if dot}<span class="dot {dot}" aria-hidden="true"></span>{/if}
         {#if copy}{#each parts(hint) as part, index (index)}{#if index > 0}<wbr />{/if}<span
               class="part">{part}</span
             >{/each}{:else}{hint}{/if}
@@ -130,6 +141,34 @@
   .hint {
     color: var(--text-muted);
     font: var(--type-sm);
+  }
+
+  /* The tile stands 12 from the text (the row's other parts keep its 24). */
+  .lead {
+    display: inline-flex;
+    flex: none;
+    margin-inline-end: calc(var(--space-12) - var(--space-24));
+  }
+
+  .hint.status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+  }
+
+  .dot {
+    flex: none;
+    width: var(--dot-unread);
+    height: var(--dot-unread);
+    border-radius: var(--radius-full);
+  }
+
+  .dot.success {
+    background-color: var(--success);
+  }
+
+  .dot.danger {
+    background-color: var(--danger);
   }
 
   .path {

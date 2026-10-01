@@ -59,13 +59,15 @@
   --p-coral-50: 16 60% 95.5%;
   --p-coral-70: 16 55% 94%;
   --p-coral-150: 16 45% 86%;
-  --p-navy: 216 50% 33%;
-  --p-navy-deep: 216 52% 24%;
-  --p-navy-hover: 216 51% 28.5%; /* a switch that is on, under the pointer */
-  --p-navy-50: 216 60% 96.5%;
-  --p-navy-100: 216 55% 93%;
-  --p-navy-150: 216 48% 89.5%;
-  --p-navy-200: 216 40% 82%;
+  /* The navy of cxpertise.de (#3E5C7E) a step richer, so it reads beside the coral (user,
+     2026-10-01). */
+  --p-navy: 212 50% 36%;
+  --p-navy-deep: 213 54% 27%;
+  --p-navy-hover: 212 52% 31%; /* a switch that is on, under the pointer */
+  --p-navy-50: 212 50% 96.5%;
+  --p-navy-100: 212 48% 93%;
+  --p-navy-150: 212 42% 89%;
+  --p-navy-200: 212 36% 81%;
   --p-fg-subtle: 30 4% 41%;
   --p-border-strong: 30 12% 77%;
   --p-border-input: 34 8% 60%;
@@ -90,10 +92,10 @@
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
-  --p-shade-navy: 216 40% 20%;
+  --p-shade-navy: 213 40% 20%;
   /* The tooltip, the same in both palettes (like Claude's): a dark bubble with a light edge. */
-  --p-emphasis: 216 45% 20%;
-  --p-tooltip-edge: 216 28% 36%;
+  --p-emphasis: 213 40% 20%;
+  --p-tooltip-edge: 213 25% 36%;
 
   /* ---------------------------------------------------------------- surfaces */
   --bg: hsl(var(--p-cream));
@@ -131,8 +133,9 @@
      chips, 13 before the values of the clean line) and links. A label of a field or of a
      column of fields is ink (--text, 13/500, as in Field): navy text alone over a form reads
      as a link. */
-  /* Section headings in the brand's navy (the page's structure reads at a glance). */
-  --text-heading: hsl(var(--p-navy-deep));
+  /* Headings in the brand's navy itself, not a near-black one (the page's structure reads at
+     a glance; user, 2026-10-01). */
+  --text-heading: hsl(var(--p-navy));
   --text-label: hsl(var(--p-ink));
   --text-on-accent: hsl(var(--p-on-accent));
   /* The label of the filled danger button: white, on the dark the canvas (its red is light). */

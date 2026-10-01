@@ -1,23 +1,24 @@
 <!--
-  The Postfach card of Einstellungen: the connected address with its badge, "Ändern" and
-  "Entfernen" (the same kind of button; Entfernen is red at rest and asks first), without a
-  mailbox the row "Kein Postfach" with "Verbinden". Ändern and Verbinden open the form in a
-  dialog named after the button ("Postfach ändern", "Postfach verbinden") whose button is
-  "Verbinden". Its notes follow the address; then the card's rows (`children`: the sources of
-  the alert mails and the card's note).
-  The badge is the answer to a saved mailbox ("Verbunden", no note, no toast). It says "Nicht
-  erreichbar" or "Abgelehnt" only for a mail error of a fetch that finished after Gmail last
-  accepted the mailbox (`mailbox.checkedAt`), with a sentence at the end of the card where it
-  adds the next step; a sentence unfolds, so the cards below glide. A run, the dry run and
+  The account card of the Postfach tab: the mail tile, the connected address with its state
+  under it, "Ändern" and "Entfernen" (the same kind of button; Entfernen is red at rest and
+  asks first), without a mailbox the row "Kein Postfach" with "Verbinden". Ändern and
+  Verbinden open the form in a dialog named after the button ("Postfach ändern", "Postfach
+  verbinden") whose button is "Verbinden". The sources of its alert mails are a card of their
+  own below it (SettingsView).
+  The state is the answer to a saved mailbox ("Verbunden" after a green dot, no note, no
+  toast). It says "Nicht erreichbar" or "Abgelehnt" after a red one only for a mail error of
+  a fetch that finished after Gmail last accepted the mailbox (`mailbox.checkedAt`), with a
+  sentence at the end of the card where it adds the next step; a sentence unfolds, so the
+  card below glides. A run, the dry run and
   the demo lock the mailbox with their reason. The demo shows its made-up mailbox
   (demo@example.com), connected, which brings new jobs with every fetch. A
   dialog whose action fails stays open and says why inside; its button tries again.
 -->
 <script lang="ts">
-  import Badge from '$components/Badge.svelte';
   import Button from '$components/Button.svelte';
   import Card from '$components/Card.svelte';
   import Dialog from '$components/Dialog.svelte';
+  import IconTile from '$components/IconTile.svelte';
   import Notice from '$components/Notice.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import { t } from '$lib/i18n/t';
@@ -26,18 +27,15 @@
   import type { AppState } from '$lib/ipc/types';
   import { unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
-  import type { Snippet } from 'svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
 
   interface Props {
     cfg: AppState;
     /** Why the mailbox cannot change now (the demo, the dry run, a run), or null. */
     locked: string | null;
-    /** The card's note (a failure of a command of the card). */
-    children: Snippet;
     testid?: string | null;
   }
-  let { cfg, locked, children, testid = null }: Props = $props();
+  let { cfg, locked, testid = null }: Props = $props();
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -105,20 +103,22 @@
   }
 </script>
 
+{#snippet tile()}<IconTile tone="navy" icon="alertMail" size="sm" />{/snippet}
+
 <Card padding="rows" {testid}>
   {#if cfg.mailbox.user}
-    <SettingRow label={cfg.mailbox.user} copyLabel testid="mailbox">
-      {#snippet badges()}
-        {#if mailFailure}
-          <Badge
-            label={mailFailure.kind === 'mailAuth' ? t.settings.refused : t.settings.unreachable}
-            tone="danger"
-            icon="warning"
-          />
-        {:else}
-          <Badge label={t.settings.connected} tone="success" icon="check" />
-        {/if}
-      {/snippet}
+    <SettingRow
+      label={cfg.mailbox.user}
+      copyLabel
+      lead={tile}
+      hint={mailFailure === null
+        ? t.settings.connected
+        : mailFailure.kind === 'mailAuth'
+          ? t.settings.refused
+          : t.settings.unreachable}
+      dot={mailFailure === null ? 'success' : 'danger'}
+      testid="mailbox"
+    >
       <div class="buttons">
         <Button
           variant="secondary"
@@ -145,7 +145,7 @@
       </div>
     </SettingRow>
   {:else}
-    <SettingRow label={t.settings.notConnected} testid="mailbox">
+    <SettingRow label={t.settings.notConnected} lead={tile} testid="mailbox">
       <Button
         variant="secondary"
         icon="signIn"
@@ -179,7 +179,6 @@
       </div>
     </div>
   {/if}
-  {@render children()}
 </Card>
 
 <Dialog

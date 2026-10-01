@@ -14,16 +14,28 @@ async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
 
-test('three steps that tick themselves; the first search waits for a profile', async ({ page }) => {
+test('three steps that tick themselves, the profile first; the first search waits for it', async ({
+  page,
+}) => {
   await open(page, `${WIN}&scenario=first-run`);
   const first = page.getByTestId('first-run');
   await expect(first).toBeVisible();
   // No sentence introduces the page: the mark, the name and the steps.
   await expect(first.locator('header')).toHaveText(T.app.name);
   await expect(first).not.toContainText('Alles bleibt auf diesem Rechner');
+  // The profile first (the search needs it), then the mailbox, which only the alert mails
+  // need: it says so and pulls no caret; its Verbinden is no primary. The setup stands for
+  // Jobs in the sidebar.
+  const steps = await first
+    .locator('[data-testid^="step-"]')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
+  expect(steps).toEqual(['step-profile', 'step-mailbox', 'step-fetch']);
+  await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
   expect(await visibleCount(page, '.btn.primary')).toBe(1);
-  // The caret waits in the first field; the setup stands for Jobs in the sidebar.
-  await expect(page.getByTestId('mailbox-user')).toBeFocused();
+  await expect(page.getByTestId('first-profile')).toHaveClass(/primary/);
+  await expect(page.getByTestId('first-mailbox-optional')).toHaveText(T.profile.optional);
+  await expect(page.getByTestId('mailbox-save')).not.toHaveClass(/primary/);
+  await expect(page.getByTestId('mailbox-user')).not.toBeFocused();
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
   // The two Google pages in the order she needs them, no sentence about app passwords.
   const form = page.getByTestId('mailbox-form');
@@ -50,8 +62,9 @@ test('three steps that tick themselves; the first search waits for a profile', a
   await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
     T.firstRun.mailboxText(ALERT_PORTALS),
   );
-  // The first fetch searches the sources, with the profile's terms: without one it waits and
-  // says why (it never falls back to the mailbox).
+  // The first fetch searches the sources, with the profile's terms, in the words of the list's
+  // button: without a profile it waits and says why (it never falls back to the mailbox).
+  await expect(page.getByTestId('first-fetch')).toHaveText(T.toolbar.searchNow);
   await expect(page.getByTestId('first-fetch')).toHaveAttribute('aria-disabled', 'true');
   await page.getByTestId('first-fetch').hover();
   await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsProfile);
@@ -65,8 +78,8 @@ test('three steps that tick themselves; the first search waits for a profile', a
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
   await expect(page.getByTestId('step-mailbox')).toHaveAttribute('data-done', 'true');
-  // The stepper moves on: the profile is the current step, the ticked check draws, the focus
-  // waits on the next step's action.
+  // The profile stays the current step, the ticked check draws, the focus waits on the
+  // profile's action.
   await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
   await expect(page.getByTestId('step-mailbox').locator('.marker')).toHaveClass(/drawn/);
   await expect(page.getByTestId('first-profile')).toBeFocused();
@@ -115,7 +128,7 @@ test('a step done before the page opened is simply there', async ({ page }) => {
 test('step 1 names the portals that are on; none on leads to Einstellungen', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   await page.getByTestId('nav-settings').click();
-  await page.getByTestId('toggle-enabled-linkedin').click();
+  await (await showTab(page, page.getByTestId('toggle-enabled-linkedin'))).click();
   await page.getByTestId('nav-jobs').click();
   const step = page.getByTestId('step-mailbox');
   await expect(step.getByTestId('first-mailbox-hint')).toHaveText(
@@ -126,7 +139,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await expect(page.getByTestId('first-no-portal')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
   for (const portal of PORTALS.filter((portal) => portal !== 'linkedin')) {
-    await page.getByTestId(`toggle-enabled-${portal}`).click();
+    await (await showTab(page, page.getByTestId(`toggle-enabled-${portal}`))).click();
   }
   await page.getByTestId('nav-jobs').click();
   // The words of the locked fetch, not a sentence of its own.
@@ -141,8 +154,10 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   );
 });
 
-test('no alert mail in 30 days says to set up an alert first', async ({ page }) => {
-  await open(page, `${WIN}&scenario=first-run&alerts=none`);
+test('no alert mail in 30 days says to set up an alert first, for the mailbox', async ({
+  page,
+}) => {
+  await open(page, `${WIN}&scenario=first-run&alerts=none&way=mail`);
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
@@ -152,7 +167,9 @@ test('no alert mail in 30 days says to set up an alert first', async ({ page }) 
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 
-test('step 2 offers "Neues Profil" with the dialog of the Profil view', async ({ page }) => {
+test('the profile step offers "Neues Profil", the start page of the Profil view', async ({
+  page,
+}) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   const step = page.getByTestId('step-profile');
   // The same button as on the Profil view's empty state: 29 px with its glyph, the primary.
@@ -254,21 +271,17 @@ test('the three steps are in view at 1280 x 720 on both systems', async ({ page 
   }
 });
 
-test('it opens at its top, the caret waiting in the address', async ({ page }) => {
+test('it opens at its top, no caret pulled into the optional mailbox', async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 360 });
   for (const query of [`${WIN}&scenario=reset&lang=en`, `${MAC}&scenario=first-run`]) {
     await open(page, query);
-    const user = page.getByTestId('mailbox-user');
-    await expect(user).toBeFocused();
-    // WebKit scrolled to a field focused too early a moment later: wait for that moment.
-    await page.waitForTimeout(200);
+    await expect(page.getByTestId('first-profile')).toBeVisible();
+    await expect(page.getByTestId('mailbox-user')).not.toBeFocused();
     const top = await page
       .getByTestId('first-run')
       .evaluate((node) => node.closest('.view')?.scrollTop ?? -1);
     expect(top).toBe(0);
-    await page.keyboard.type('alerts');
-    await expect(user).toHaveValue('alerts');
-    await expect(user).toBeInViewport();
+    await expect(page.getByTestId('first-profile')).toBeInViewport();
   }
 });
 

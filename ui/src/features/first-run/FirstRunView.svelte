@@ -1,10 +1,11 @@
 <!--
   First run (full page) on the white sheet, in the column of every view: the app mark beside
-  its name and the steps of steps.ts that tick themselves: connect the mailbox, a usable
-  profile (made in the Profil view, whose editor also takes a file), fetch. No
-  sentence introduces them: each step is its name and the controls it needs. The next open
-  step carries the one primary button; the fetch stays locked with its reason until a mailbox
-  is connected. After "Alles zurücksetzen" the app starts here again: a clean reset says so
+  its name and the steps of steps.ts that tick themselves: a usable profile (made in the
+  Profil view, whose editor also takes a file), the mailbox (optional, for the alert mails),
+  fetch. No sentence introduces them: each step is its name and the controls it needs. The
+  next open step that is not optional carries the one primary button; the fetch stays locked
+  with its reason while it cannot run (run.fetchBlocked) and says the words of its way
+  ("Jobs suchen", "Postfach abrufen"). After "Alles zurücksetzen" the app starts here again: a clean reset says so
   once in a toast, one that left something stands as a warning above the steps with the way
   to the log. Compact enough that all three steps are in view at 1280 x 720 on both OS; the
   sidebar works as always, with Jobs current while this page stands for it.
@@ -15,13 +16,15 @@
   open: the marker cross-fades to its check, which draws itself, the line fills downwards,
   the next marker turns dark and the done text rises in. Nothing plays when the page appears.
 
-  Step 1 names the sources of alert mails that are on, in the UI's order, since their mails must go
+  The mailbox step says "Optional" after its name and names the sources of alert mails that
+  are on, in the UI's order, since their mails must go
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. Step 2 happens in the Profil view: "Neues Profil" opens its start page with the
-  three ways (from the CV with an AI, the empty form, a file), each going on there for review; after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
-  alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
+  found none. The profile step happens in the Profil view: "Neues Profil" opens its start page with the
+  three ways (the empty form, a file, the prompt for an AI), each going on there for review;
+  after the first save the Profil view's toast offers the way on. The fetch says only what is
+  wrong: for the mailbox no alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
   Every main action is 32 px.
 -->
@@ -45,7 +48,8 @@
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { failureAction, isFetch, run } from '$lib/state/run.svelte';
+  import { settingsTab } from '$lib/state/settings.svelte';
+  import { failureAction, fetchLook, isFetch, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
   import { STEPS, type StepId } from './steps';
@@ -54,8 +58,9 @@
   const done = $derived(
     Object.fromEntries(STEPS.map((step) => [step.id, step.done()])) as Record<StepId, boolean>,
   );
-  /** The step whose action is the primary one: the first that is not done. */
-  const current = $derived(STEPS.find((step) => !done[step.id])?.id ?? null);
+  /** The step whose action is the primary one: the first that is neither done nor optional. */
+  const current = $derived(STEPS.find((step) => !done[step.id] && !step.optional)?.id ?? null);
+  const fetchWords = $derived(fetchLook());
 
   const profile = $derived(app.state?.profile ?? null);
   /** Why an existing profile does not count yet (null: there is none, or it is fine). */
@@ -87,18 +92,16 @@
   /** Steps ticked while this page is open: only their check draws (never at mount). */
   let ticked = $state<Partial<Record<StepId, boolean>>>({});
   let before = untrack(() => ({ ...done }));
-  /** Where each step's actions are: a step's form that had the focus goes, the next one's
-   *  first button takes it. */
+  /** Where each step's actions are: a step's form that had the focus goes, the first button
+   *  of the step that is current now takes it (an optional one is skipped). */
   const actions: Partial<Record<StepId, HTMLElement>> = {};
   $effect(() => {
     const now = { ...done };
-    for (const [index, step] of STEPS.entries()) {
-      if (!now[step.id] || before[step.id]) continue;
-      ticked[step.id] = true;
-      const next = STEPS[index + 1];
-      if (next !== undefined && document.activeElement === document.body) {
-        queueMicrotask(() => actions[next.id]?.querySelector('button')?.focus());
-      }
+    const ticks = STEPS.filter((step) => now[step.id] && !before[step.id]);
+    for (const step of ticks) ticked[step.id] = true;
+    const next = STEPS.find((step) => !now[step.id] && !step.optional);
+    if (ticks.length > 0 && next !== undefined && document.activeElement === document.body) {
+      queueMicrotask(() => actions[next.id]?.querySelector('button')?.focus());
     }
     before = now;
   });
@@ -197,14 +200,18 @@
     {/if}
   {:else}
     <div class="head">
-      <h2 class="name">{t.firstRun.mailbox}</h2>
+      <h2 class="name">
+        {t.firstRun.mailbox}<span class="optional" data-testid="first-mailbox-optional"
+          >{t.profile.optional}</span
+        >
+      </h2>
       {#if portals.length > 0}
         <p class="hint" data-testid="first-mailbox-hint">
           {t.firstRun.mailboxText(portals.map((p) => p.portal))}
         </p>
       {/if}
     </div>
-    <MailboxForm autofocus />
+    <MailboxForm quiet />
   {/if}
   {#if !app.hasPortal}
     <!-- Every source is off: nothing would be read (the words of the locked fetch). -->
@@ -215,7 +222,10 @@
         icon="settings"
         label={t.firstRun.openSettings}
         testid="first-open-settings"
-        onclick={() => navigation.go('settings')}
+        onclick={() => {
+          settingsTab.value = app.fetchWay === 'mail' ? 'mailbox' : 'search';
+          navigation.go('settings');
+        }}
       />
     </div>
   {/if}
@@ -258,15 +268,15 @@
 {#snippet fetch()}
   <div class="head">
     <h2 class="name">{t.firstRun.fetch}</h2>
-    {#if noAlerts}
+    {#if noAlerts && app.fetchWay === 'mail'}
       {@render problem(t.firstRun.noAlerts, 'first-no-alerts')}
     {/if}
   </div>
   <div class="actions" bind:this={actions.fetch}>
     <Button
       variant={current === 'fetch' ? 'primary' : 'secondary'}
-      icon="fetch"
-      label={t.toolbar.fetch}
+      icon={fetchWords.icon}
+      label={fetchWords.label}
       disabled={run.fetchBlocked !== null}
       disabledReason={run.fetchBlocked}
       testid="first-fetch"
@@ -490,6 +500,13 @@
   .name {
     color: var(--text-heading);
     font: var(--type-lg);
+  }
+
+  /* A step that is not needed says so after its name, quietly (like a Profil section). */
+  .optional {
+    margin-inline-start: var(--space-8);
+    color: var(--text-subtle);
+    font: var(--type-sm);
   }
 
   .hint,

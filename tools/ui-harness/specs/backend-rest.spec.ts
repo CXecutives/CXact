@@ -9,7 +9,7 @@ import type { Page } from '@playwright/test';
 import type { JobView, Place, Portal } from '../../../ui/src/lib/ipc/types';
 import { DEMO } from './demo';
 import { animationsDone, calls, expect, open, runFinished, test } from './fixtures';
-import { T } from './helpers';
+import { showTab, T } from './helpers';
 
 const WIN = '?platform=windows';
 // The open job's stage (the one on its way out has dropped its test id).
@@ -155,7 +155,7 @@ test('the demo keeps to its own folders and says why', async ({ page }) => {
   // What stays in its own folders still works: the folder and the log open.
   await expect(page.getByTestId('folder-open')).not.toHaveAttribute('aria-disabled', 'true');
   // No portal either: the sign-in is off and says why.
-  const signIn = page.getByTestId('sign-in-freelance');
+  const signIn = await showTab(page, page.getByTestId('sign-in-freelance'));
   await expect(signIn).toHaveAttribute('aria-disabled', 'true');
   await signIn.hover();
   await expect(page.getByRole('tooltip')).toHaveText('In der Demo geht das nicht.');

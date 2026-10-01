@@ -1,14 +1,27 @@
-// Einstellungen against the stub: the cards in their order (Suche, Postfach, Darstellung,
-// Daten), their rows flush on one edge, the mailbox and its dialog, the sources with their
-// calls, the palettes and the language, the work folder, the backups and the reset.
+// Einstellungen against the stub: the tabs in their order (Suche, Postfach, Daten) and the
+// cards of each, their rows flush on one edge, the mailbox and its dialog, the sources with
+// their calls, the palettes and the language, the work folder, the backups and the reset.
 
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { ICONS } from '../../../ui/src/lib/icons';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import { ALERT_PORTALS, ALL_PORTALS, failNext, SEARCHED, T, tokenPx } from './helpers';
+import {
+  ALERT_PORTALS,
+  expectMailboxState,
+  failNext,
+  SEARCHED,
+  showTab,
+  T,
+  tokenPx,
+} from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
+
+/** The tabs of Einstellungen in their order (lib/state/settings.svelte.ts). */
+const TABS = ['search', 'mailbox', 'data'] as const;
+type Tab = (typeof TABS)[number];
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -17,6 +30,24 @@ async function settings(page: Page, query = WIN): Promise<void> {
   await nav(page, 'nav-settings');
   await expect(page.getByTestId('settings')).toBeVisible();
   await settle(page);
+}
+
+/** Shows a tab of Einstellungen; its panel (one shows at a time). */
+async function showSettingsTab(page: Page, tab: Tab): Promise<Locator> {
+  await page.getByTestId(`settings-tab-${tab}`).click();
+  const panel = page.getByTestId(`settings-panel-${tab}`);
+  await expect(panel).toBeVisible();
+  return panel;
+}
+
+/** What `read` finds in each tab's panel, the tabs shown one after the other. */
+async function eachTab<Item>(
+  page: Page,
+  read: (panel: Locator) => Promise<Item[]>,
+): Promise<Item[]> {
+  const all: Item[] = [];
+  for (const tab of TABS) all.push(...(await read(await showSettingsTab(page, tab))));
+  return all;
 }
 
 /** The target of the last open_target. */
@@ -52,9 +83,9 @@ async function colour(page: Page, token: string): Promise<string> {
   }, token);
 }
 
-/** The tooltip of a locked button. */
+/** The tooltip of a locked button (its tab shown first). */
 async function reason(page: Page, testid: string): Promise<string | null> {
-  const button = page.getByTestId(testid);
+  const button = await showTab(page, page.getByTestId(testid));
   await expect(button).toHaveAttribute('aria-disabled', 'true');
   await button.hover();
   return page.getByRole('tooltip').textContent();
@@ -68,54 +99,71 @@ function ids(page: Page, testid: string, selector: string): Promise<(string | nu
     .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-testid')));
 }
 
+const middle = (box: { y: number; height: number } | null): number =>
+  box === null ? -1 : box.y + box.height / 2;
+
 /* ---------------------------------------------------------------- the page */
 
-test('the cards in their order, the first heading on the first row, the version below', async ({
+test('the tabs in their order, the tab bar on the first row, each tab with its cards', async ({
   page,
 }) => {
   await settings(page);
   // By the fetch's two ways (user decision 2026-10-01): Suche, then Postfach with the
-  // sources of its alert mails; no Zeitraum.
-  expect(await ids(page, 'settings', ':scope > section')).toEqual([
-    'settings-search',
-    'settings-mailbox',
-    'settings-data',
-  ]);
-  await expect(page.getByTestId('settings').locator('h2')).toHaveText([
-    T.settings.search,
-    T.settings.mailbox,
-    T.settings.data,
-  ]);
+  // sources of its alert mails, then Daten; like the Profil's, the first one shows.
+  const tabs = page.getByTestId('settings-tabs').getByRole('tab');
+  await expect(tabs).toHaveText([T.settings.search, T.settings.mailbox, T.settings.data]);
+  await expect(tabs.first()).toHaveAttribute('aria-selected', 'true');
+  // No headings above the cards: the tab names them, each section is named for a screen
+  // reader. No Zeitraum.
+  await expect(page.getByTestId('settings').locator('h2')).toHaveCount(0);
   await expect(page.getByTestId('settings')).not.toContainText('Zeitraum');
-  // Every heading stands 12 px above its card, the first one too.
-  const gaps = await page
-    .getByTestId('settings')
-    .locator(':scope > section')
-    .evaluateAll((sections) =>
-      sections.map((section) => {
-        const heading = section.querySelector('h2')!.getBoundingClientRect();
-        const card = section.querySelector('.card')!.getBoundingClientRect();
-        return Math.round(card.top - heading.bottom);
-      }),
-    );
-  expect(gaps).toEqual([12, 12, 12]);
-  // Nothing here asks for a primary; what went is gone.
-  expect(await visibleCount(page, '.btn.primary')).toBe(0);
+  // Each tab its cards (by the rows they hold), the first 24 under the tab bar; one panel
+  // shows at a time, and nothing asks for a primary.
+  const cards: Record<Tab, string[][]> = {
+    search: [SEARCHED.map((portal) => `portal-${portal}`)],
+    mailbox: [['mailbox'], ALERT_PORTALS.map((portal) => `portal-${portal}`)],
+    data: [['folder', 'reset-all']],
+  };
+  const bar = page.getByTestId('settings').locator('[data-first-row]');
+  for (const tab of TABS) {
+    const panel = await showSettingsTab(page, tab);
+    await expect(tabs.nth(TABS.indexOf(tab))).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('tabpanel')).toHaveCount(1);
+    await expect(panel).toHaveAccessibleName(T.settings[tab]);
+    const section = panel.locator(':scope > section');
+    await expect(section).toHaveAttribute('data-testid', `settings-${tab}`);
+    await expect(section).toHaveAccessibleName(T.settings[tab]);
+    const rows = await section
+      .locator('.card')
+      .evaluateAll((nodes) =>
+        nodes.map((card) =>
+          [...card.querySelectorAll('[data-setting-row]')].map(
+            (row) => row.getAttribute('data-testid') ?? '',
+          ),
+        ),
+      );
+    expect(rows, tab).toEqual(cards[tab]);
+    const [above, first] = await Promise.all([
+      bar.boundingBox(),
+      section.locator('.card').first().boundingBox(),
+    ]);
+    expect(Math.round(first!.y - (above!.y + above!.height)), tab).toBe(24);
+    expect(await visibleCount(page, '.btn.primary'), tab).toBe(0);
+  }
+  // What went is gone.
   for (const gone of ['Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
     await expect(page.getByTestId('settings')).not.toContainText(gone);
   }
   // No version line (user decision 2026-09-27).
   await expect(page.getByTestId('version')).toHaveCount(0);
-  // "Suche" stands on the first row, as the sidebar's first entry (macOS too).
+  // The tab bar stands on the first row, its tabs centred on the sidebar's first entry
+  // (macOS too).
   for (const query of [WIN, MAC]) {
     await settings(page, query);
-    const row = page.getByTestId('settings-search').locator('[data-first-row]');
-    await expect(row).toContainText(T.settings.search);
-    const middle = (box: { y: number; height: number } | null): number =>
-      box === null ? -1 : box.y + box.height / 2;
-    expect(middle(await row.boundingBox())).toBe(
-      middle(await page.getByTestId('nav-jobs').boundingBox()),
-    );
+    await expect(bar.getByTestId('settings-tabs')).toBeVisible();
+    const line = middle(await page.getByTestId('nav-jobs').boundingBox());
+    expect(middle(await bar.boundingBox()), query).toBe(line);
+    expect(middle(await page.getByTestId('settings-tabs').boundingBox()), query).toBe(line);
   }
 });
 
@@ -123,17 +171,17 @@ test('button styles: every text button of a row is outlined, what deletes for go
   page,
 }) => {
   await settings(page);
-  // Every button with words in a row of a card: the one outlined kind, 28 px like all.
-  const kinds = await page
-    .getByTestId('settings')
-    .locator('.card button.btn:not(.icon-only)')
-    .evaluateAll((nodes) =>
+  // Every button with words in a row of a card, tab by tab: the one outlined kind, 28 px
+  // like all.
+  const kinds = await eachTab(page, (panel) =>
+    panel.locator('.card button.btn:not(.icon-only)').evaluateAll((nodes) =>
       nodes.map((node) => ({
         id: node.getAttribute('data-testid'),
         secondary: node.classList.contains('secondary'),
         height: Math.round(node.getBoundingClientRect().height),
       })),
-    );
+    ),
+  );
   expect(kinds.map((kind) => kind.id)).toEqual([
     'mailbox-change',
     'mailbox-remove',
@@ -155,41 +203,45 @@ test('button styles: every text button of a row is outlined, what deletes for go
     ['mailbox-change', false],
     ['folder-open', false],
   ] as const) {
-    const button = page.getByTestId(id);
+    const button = await showTab(page, page.getByTestId(id));
     if (warns) {
       await expect(button, id).toHaveCSS('color', danger);
       await expect(button.locator('[data-icon]'), id).toHaveAttribute('data-icon', 'trash');
     } else await expect(button, id).not.toHaveCSS('color', danger);
   }
-  // Every row ends on the same edge: its last button, switch or choice.
-  const ends = await page
-    .getByTestId('settings')
-    .locator('[data-setting-row]')
-    .evaluateAll((rows) =>
-      rows.map((row) =>
-        Math.round(
-          Math.max(
-            ...[...row.querySelectorAll('button, [role="radiogroup"]')].map(
-              (node) => node.getBoundingClientRect().right,
+  // Every row of every tab ends on the same edge: its last button, switch or choice.
+  const ends = await eachTab(page, (panel) =>
+    panel
+      .locator('[data-setting-row]')
+      .evaluateAll((rows) =>
+        rows.map((row) =>
+          Math.round(
+            Math.max(
+              ...[...row.querySelectorAll('button, [role="radiogroup"]')].map(
+                (node) => node.getBoundingClientRect().right,
+              ),
             ),
           ),
         ),
       ),
-    );
-  // The mailbox, three portals, the work folder and the reset.
-  expect(ends.length).toBeGreaterThanOrEqual(6);
+  );
+  // The sources, the mailbox, the work folder and the reset.
+  expect(ends).toHaveLength(SEARCHED.length + 1 + ALERT_PORTALS.length + 2);
   expect(new Set(ends).size).toBe(1);
   // The sources' rows sit edge to edge like every other row: no inset above the first.
+  await showSettingsTab(page, 'search');
   const [card, first] = await Promise.all([
     page.getByTestId('portals-search').boundingBox(),
     page.getByTestId('portal-hays').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
-  // Every button of the page is at most 29 px high.
-  const heights = await page
-    .getByTestId('settings')
-    .locator('button:not([role="switch"]):not([role="radio"])')
-    .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height)));
+  // Every button of every tab is at most 32 px high.
+  const heights = await eachTab(page, (panel) =>
+    panel
+      .locator('button:not([role="switch"]):not([role="radio"])')
+      .evaluateAll((nodes) => nodes.map((node) => Math.round(node.getBoundingClientRect().height))),
+  );
+  expect(heights.length).toBeGreaterThan(0);
   expect(heights.filter((height) => height > 32)).toEqual([]);
 });
 
@@ -198,6 +250,7 @@ test('narrow, a row puts its control under the label only where the two do not f
 }) => {
   await page.setViewportSize({ width: 560, height: 800 });
   await settings(page);
+  await showTab(page, page.getByTestId('reset-all'));
   // Label and control side by side, one line, like the wider rows.
   for (const id of ['reset-all']) {
     const box = (await page.getByTestId(id).boundingBox())!;
@@ -218,27 +271,20 @@ test('narrow, a row puts its control under the label only where the two do not f
   expect(under || beside).toBe(true);
 });
 
-test('narrow, every meter keeps one width and the path breaks only at a separator', async ({
+test('narrow, the sign-in goes under the calls and the path breaks only at a separator', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 480, height: 800 });
   await settings(page);
-  const widths = await page
-    .locator('[data-testid^="portals-"]')
-    .getByRole('progressbar')
-    .evaluateAll((meters) =>
-      meters.map((meter) => Math.round(meter.getBoundingClientRect().width)),
-    );
-  expect(widths).toHaveLength(ALL_PORTALS.length);
-  expect(new Set(widths).size).toBe(1);
   // The sign-in goes to a line of its own under the calls.
+  await showTab(page, page.getByTestId('sign-in-freelance'));
   const [signIn, quota] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
     page.getByTestId('quota-freelance').boundingBox(),
   ]);
   expect(signIn!.y).toBeGreaterThanOrEqual(quota!.y + quota!.height);
   // The path wraps after a "/", never at the hyphen of "Job-Alerts"; it copies whole.
-  const path = page.getByTestId('folder').locator('[data-copy]');
+  const path = await showTab(page, page.getByTestId('folder').locator('[data-copy]'));
   const ends = await path.evaluate((node) => {
     const chars: { char: string; top: number }[] = [];
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
@@ -269,11 +315,18 @@ test('narrow, every meter keeps one width and the path breaks only at a separato
 
 test('mailbox: the address, no word about the vault, no whole-mailbox row', async ({ page }) => {
   await settings(page);
-  const mailbox = page.getByTestId('settings-mailbox');
+  const mailbox = await showTab(page, page.getByTestId('settings-mailbox'));
+  // The mail tile, the address and under it its state after a green dot (no badge).
+  const glyph = await page
+    .getByTestId('mailbox')
+    .locator('.lead svg')
+    .evaluate((node) => [...node.classList]);
+  expect(glyph).toContain(`lucide-${ICONS.alertMail}`);
   await expect(page.getByTestId('mailbox').locator('[data-copy]')).toHaveText(
     'alerts.demo@gmail.com',
   );
-  await expect(mailbox.locator('.badge')).toHaveText(T.settings.connected);
+  await expectMailboxState(page, T.settings.connected, 'success');
+  await expect(mailbox.locator('.badge')).toHaveCount(0);
   await expect(mailbox).not.toContainText('Anmeldeinformationsverwaltung');
   await expect(mailbox).not.toContainText('Alle Alert-Mails');
   await expect(page.getByTestId('mailbox-form')).toHaveCount(0);
@@ -283,7 +336,7 @@ test('mailbox: Ändern opens the form in a dialog; Verbinden saves, Esc gives th
   page,
 }) => {
   await settings(page);
-  const change = page.getByTestId('mailbox-change');
+  const change = await showTab(page, page.getByTestId('mailbox-change'));
   await change.focus();
   await page.keyboard.press('Enter');
   // The dialog follows the verb of its button.
@@ -311,21 +364,19 @@ test('mailbox: Ändern opens the form in a dialog; Verbinden saves, Esc gives th
   expect(await calls(page, 'save_mailbox')).toHaveLength(1);
 });
 
-test('mailbox: a saved change is answered by its badge; a mail error before it is past', async ({
+test('mailbox: a saved change is answered by its state; a mail error before it is past', async ({
   page,
 }) => {
   await settings(page, `${WIN}&scenario=offline`);
-  const mailbox = page.getByTestId('settings-mailbox');
-  const badge = mailbox.locator('.badge');
-  // The last fetch could not reach Gmail: one red badge, said once.
-  await expect(badge).toHaveText(T.settings.unreachable);
-  await expect(badge).toHaveClass(/danger/);
+  const mailbox = await showTab(page, page.getByTestId('settings-mailbox'));
+  // The last fetch could not reach Gmail: said once, after a red dot.
+  await expectMailboxState(page, T.settings.unreachable, 'danger');
   await expect(page.getByTestId('mailbox-failure')).toHaveCount(0);
-  // A new sign-in: Gmail accepted it, the badge says so, no note and no toast.
+  // A new sign-in: Gmail accepted it, the state says so, no note and no toast.
   await page.getByTestId('mailbox-change').click();
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
-  await expect(badge).toHaveText(T.settings.connected);
+  await expectMailboxState(page, T.settings.connected, 'success');
   await expect(page.getByTestId('toast')).toHaveCount(0);
   await expect(mailbox.locator('.notice')).toHaveCount(0);
 });
@@ -334,6 +385,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   page,
 }) => {
   await settings(page);
+  await showTab(page, page.getByTestId('mailbox-remove'));
   await page.getByTestId('mailbox-remove').click();
   const dialog = page.getByTestId('dialog-remove-mailbox');
   await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.common.remove);
@@ -353,9 +405,7 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('dialog-mailbox').getByTestId('dialog-confirm').click();
-  await expect(page.getByTestId('settings-mailbox').locator('.badge')).toHaveText(
-    T.settings.connected,
-  );
+  await expectMailboxState(page, T.settings.connected, 'success');
 });
 
 test('Postfach: the connection first, then the sources of its alert mails', async ({ page }) => {
@@ -378,8 +428,12 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
   expect(await ids(page, 'portals-mailbox', '[data-testid^="portal-"]')).toEqual(
     ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
-  await expect(page.getByTestId('settings-search').locator('.card')).toHaveCount(1);
-  await expect(page.getByTestId('settings-mailbox').locator('.card')).toHaveCount(1);
+  // Suche one card; Postfach the card of its account, under it the one of its sources.
+  expect(await ids(page, 'settings-search', '.card')).toEqual(['portals-search']);
+  expect(await ids(page, 'settings-mailbox', '.card')).toEqual([
+    'mailbox-account',
+    'portals-mailbox',
+  ]);
   for (const [portal, used, cap] of [
     ['freelance', 11, 100],
     ['linkedin', 23, 100],
@@ -392,13 +446,10 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
     ['interimx', 0, 1500],
     ['fratch', 0, 1500],
   ] as const) {
-    const quota = page.getByTestId(`quota-${portal}`);
-    await expect(quota).toContainText(T.settings.quota(used, cap));
-    await expect(quota.getByRole('progressbar')).toHaveAttribute(
-      'aria-valuenow',
-      String(Math.round((used * 100) / cap)),
-    );
-    const row = page.getByTestId(`portal-${portal}`);
+    // The calls of today in one quiet line, no meter.
+    const row = await showTab(page, page.getByTestId(`portal-${portal}`));
+    await expect(page.getByTestId(`quota-${portal}`)).toHaveText(T.settings.quota(used, cap));
+    await expect(row.getByRole('progressbar')).toHaveCount(0);
     await expect(row.getByTestId(`open-portal-${portal}`)).toBeVisible();
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
   }
@@ -418,7 +469,7 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
     T.settings.setUpAlert,
     T.settings.setUpAlert,
   ]);
-  await page.getByTestId('setup-freelance').click();
+  await (await showTab(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
   // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
@@ -437,7 +488,7 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
 
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
   await settings(page);
-  const toggle = page.getByTestId('toggle-enabled-linkedin');
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-linkedin'));
   await page.getByTestId('portal-linkedin').getByText(T.portal.linkedin).click();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await toggle.click();
@@ -464,6 +515,7 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
     );
   expect(dangling).toEqual([]);
   // A save that fails puts the switch back and says why in the row.
+  await showTab(page, page.getByTestId('toggle-enabled-freelancermap'));
   await failNext(page, 'save_settings');
   await page.getByTestId('toggle-enabled-freelancermap').click();
   await expect(page.getByTestId('portal-freelancermap').getByTestId('portal-error')).toHaveText(
@@ -477,7 +529,7 @@ test('portals: the switches save at once; only the switch switches', async ({ pa
 
 test('portals: freelance.de signs in and out', async ({ page }) => {
   await settings(page);
-  await page.getByTestId('sign-in-freelance').click();
+  await (await showTab(page, page.getByTestId('sign-in-freelance'))).click();
   await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   await page.getByTestId('sign-out-freelance').click();
   await expect(page.getByTestId('sign-in-freelance')).toBeVisible();
@@ -492,23 +544,21 @@ test('portals: a stored sign-in the fetch does not use looks like none until it 
 }) => {
   await settings(page, `${WIN}&scenario=session-left`);
   // Anmelden only lets the fetch use the stored sign-in: no sign-in window.
-  await page.getByTestId('sign-in-freelance').click();
+  await (await showTab(page, page.getByTestId('sign-in-freelance'))).click();
   await expect(page.getByTestId('sign-out-freelance')).toBeVisible();
   expect(await calls(page, 'portal_login')).toHaveLength(0);
   expect((await saved(page)).at(-1)?.portals[0]?.loginEnabled).toBe(true);
   await settings(page, `${WIN}&scenario=session-left`);
   // With the portal off the stored sign-in shows, so it can be removed.
-  await page.getByTestId('toggle-enabled-freelance').click();
+  await (await showTab(page, page.getByTestId('toggle-enabled-freelance'))).click();
   await page.getByTestId('sign-out-freelance').click();
   await expect(page.getByTestId('sign-out-freelance')).toHaveCount(0);
   expect(await calls(page, 'portal_logout')).toHaveLength(1);
 });
 
-test('portals: a pause or an empty alert mail is one quiet line; the meter stays one blue', async ({
-  page,
-}) => {
+test('portals: a pause or an empty alert mail is one quiet line', async ({ page }) => {
   await settings(page, `${WIN}&scenario=paused`);
-  const pause = page.getByTestId('health-linkedin');
+  const pause = await showTab(page, page.getByTestId('health-linkedin'));
   await expect(pause).toHaveText(
     'Die Quelle bremst die Aufrufe, der Abruf macht ab 11:05 von selbst weiter.',
   );
@@ -520,16 +570,6 @@ test('portals: a pause or an empty alert mail is one quiet line; the meter stays
   expect(await lastOpened(page)).toEqual({
     target: { kind: 'alertMail', gmailId: '18c2f0a9d1e4b7a3' },
   });
-  // Near the day's limit and while a portal rests the meter keeps its one blue.
-  const blue = await colour(page, '--meter-fill');
-  const fill = (portal: string): Promise<string> =>
-    page
-      .getByTestId(`quota-${portal}`)
-      .locator('.fill')
-      .evaluate((node) => getComputedStyle(node).backgroundColor);
-  for (const portal of ['freelancermap', 'linkedin', 'freelance']) {
-    expect(await fill(portal), portal).toBe(blue);
-  }
   // A portal that is off says no problem of its own.
   await page.getByTestId('toggle-enabled-linkedin').click();
   await expect(page.getByTestId('health-linkedin')).toHaveCount(0);
@@ -543,7 +583,7 @@ test('portals: a week without an alert mail is one quiet line with Alert prüfen
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(0);
   // freelance.de sent its last one nine days before the last fetch.
   await settings(page, `${WIN}&scenario=quiet-alert`);
-  const quiet = page.getByTestId('alert-quiet-freelance');
+  const quiet = await showTab(page, page.getByTestId('alert-quiet-freelance'));
   await expect(quiet.locator('.text')).toHaveText(T.settings.alertQuiet(9));
   await expect(quiet).toHaveClass(/warning/);
   await expect(page.locator('[data-testid^="alert-quiet-"]')).toHaveCount(1);
@@ -563,7 +603,7 @@ test('the work folder in Daten: its path, Ändern and Öffnen; a folder that doe
   page,
 }) => {
   await settings(page);
-  const folder = page.getByTestId('folder');
+  const folder = await showTab(page, page.getByTestId('folder'));
   await expect(folder).toContainText(T.settings.folder);
   await expect(folder.locator('[data-copy]')).toHaveText('C:/Users/demo/Documents/Job-Alerts');
   await expect(folder.getByRole('button')).toHaveText([T.common.change, T.common.open]);
@@ -577,11 +617,11 @@ test('the work folder in Daten: its path, Ändern and Öffnen; a folder that doe
 
 test('another work folder takes the profile along; its own profile is said', async ({ page }) => {
   await settings(page, `${WIN}&folder=other`);
-  await page.getByTestId('folder-change').click();
+  await (await showTab(page, page.getByTestId('folder-change'))).click();
   await expect(page.getByTestId('settings-data')).toContainText('C:/Users/demo/Documents/Jobs');
   await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderMoved));
   await settings(page, `${WIN}&folder=own`);
-  await page.getByTestId('folder-change').click();
+  await (await showTab(page, page.getByTestId('folder-change'))).click();
   await expect(page.getByTestId('toast')).toHaveText(new RegExp(T.settings.folderOwnProfile));
 });
 
@@ -703,7 +743,7 @@ test('Daten: only Alle Daten zurücksetzen; no Sicherung, no Protokoll, no data 
 
 test('reset: the danger dialog lists what goes; a failure stays in it', async ({ page }) => {
   await settings(page);
-  await page.getByTestId('reset').click();
+  await (await showTab(page, page.getByTestId('reset'))).click();
   const dialog = page.getByTestId('dialog-reset');
   await expect(dialog.getByRole('button', { name: T.common.cancel })).toBeFocused();
   await expect(dialog.getByRole('heading')).toHaveText(T.settings.resetHeading);
@@ -728,7 +768,7 @@ test('a run holds the mailbox, the folder and the sign-in, with its reason', asy
   }
   // A rescore says its own reason; the sign-out waits too.
   await settings(page);
-  await page.getByTestId('sign-in-freelance').click();
+  await (await showTab(page, page.getByTestId('sign-in-freelance'))).click();
   await page.evaluate(() => {
     window.__harness.holdAfter = 2;
     window.__harness.appRun('rescore');

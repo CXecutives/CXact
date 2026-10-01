@@ -21,7 +21,7 @@ import {
   viewsSettled,
 } from './fixtures';
 import { demoScore } from './demo';
-import { failNext, rowMenu, showTab, T, tokenColour, tokenPx, viaMenu } from './helpers';
+import { failNext, rowMenu, SEARCHED, showTab, T, tokenColour, tokenPx, viaMenu } from './helpers';
 
 /** The score of the best job, the first row of the list (freelancermap-2801). */
 const BEST = String(demoScore('freelancermap-2801'));
@@ -87,6 +87,14 @@ const sidebarWidth = async (page: Page): Promise<number> =>
   Math.round((await page.getByTestId('sidebar').boundingBox())!.width);
 
 const tooltip = (page: Page) => page.getByRole('tooltip');
+
+/** Einstellungen on Postfach, chosen with the arrows like a keyboard user would (a click
+ *  would make the next focus() a pointer's, which shows no tooltip). */
+async function mailboxTabByKeys(page: Page): Promise<void> {
+  await page.getByTestId('settings-tab-search').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByTestId('settings-panel-mailbox')).toBeVisible();
+}
 
 const middle = (box: { y: number; height: number } | null): number => box!.y + box!.height / 2;
 
@@ -494,7 +502,7 @@ test('per-OS convention: the order of dialog buttons', async ({ page }) => {
   const order = async (os: string): Promise<string[]> => {
     await open(page, `?platform=${os}`);
     await page.getByTestId('nav-settings').click();
-    await page.getByTestId('mailbox-remove').click();
+    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
     const dialog = page.getByTestId('dialog-remove-mailbox');
     await expect(dialog).toBeVisible();
     return dialog.getByRole('button').allInnerTexts();
@@ -737,6 +745,7 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
 }) => {
   await open(page, `${WIN}&view=settings`);
   const words = await text(page, 'settings.openPortal');
+  await mailboxTabByKeys(page);
   const first = page.getByTestId('open-portal-freelance');
   await first.focus();
   // Not at once: after the same delay as hovering (checked right away, not after a fixed
@@ -763,6 +772,7 @@ test('a disabled button that says why stays a Tab stop; its reason shows on focu
 }) => {
   // While a run holds the mailbox, Ändern waits and says why.
   await open(page, `${WIN}&view=settings&scenario=running`);
+  await mailboxTabByKeys(page);
   await page.getByTestId('mailbox-change').focus();
   await expect(page.getByTestId('mailbox-change')).toBeFocused();
   await expect(page.getByTestId('mailbox-change')).toHaveAttribute('aria-disabled', 'true');
@@ -808,7 +818,8 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await page.setViewportSize({ width: 1100, height: 400 });
   await open(page, `${WIN}&view=settings`);
   const view = (id: string) => page.getByTestId(`view-${id}`);
-  await view('settings').evaluate((node) => (node.scrollTop = 300));
+  // Suche, the tab it opens on, scrolls that far at this height.
+  await view('settings').evaluate((node) => (node.scrollTop = 200));
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
   await expect(page.getByTestId('profile-form')).toBeVisible();
@@ -817,7 +828,7 @@ test('Profil and Einstellungen keep their scroll place per view', async ({ page 
   await viewsSettled(page);
   await page.getByTestId('nav-settings').click();
   await viewsSettled(page);
-  await expect.poll(() => view('settings').evaluate((node) => node.scrollTop)).toBe(300);
+  await expect.poll(() => view('settings').evaluate((node) => node.scrollTop)).toBe(200);
   await page.getByTestId('nav-profile').click();
   await viewsSettled(page);
   await expect.poll(() => view('profile').evaluate((node) => node.scrollTop)).toBe(260);
@@ -877,7 +888,7 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
 for (const os of [WIN, MAC]) {
   test(`a dialog leaves the top bar free, and the bar moves the window ${os}`, async ({ page }) => {
     await open(page, `${os}&view=settings`);
-    await page.getByTestId('reset').click();
+    await (await showTab(page, page.getByTestId('reset'))).click();
     await expect(page.getByTestId('dialog-reset')).toBeVisible();
     await settle(page);
     const scrim = (await page.getByTestId('dialog-scrim').boundingBox())!;
@@ -1039,8 +1050,9 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
         ? null
         : (node.getAttribute('data-testid') ?? node.tagName);
     });
+  // Einstellungen from the last control of Suche, the tab that scrolls, upward.
   await settings(page, MAC);
-  await page.getByTestId('reset').focus();
+  await page.getByTestId(`toggle-enabled-${SEARCHED.at(-1)!}`).focus();
   const cut: string[] = [];
   for (let stop = 0; stop < 16; stop += 1) {
     await page.keyboard.press('Shift+Tab');
@@ -1095,6 +1107,7 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
   };
   // A portal's switch on, then (the press switched it) off.
   const id = 'toggle-enabled-linkedin';
+  await showTab(page, page.getByTestId(id));
   for (const state of ['true', 'false']) {
     await expect(page.getByTestId(id)).toHaveAttribute('aria-checked', state);
     const [rest, hover, pressed] = await steps(id);
@@ -1117,7 +1130,7 @@ test('deleting is one look: Löschen and Endgültig löschen are red, the other 
 
 test('a dialog confirms with the bare verb of its heading', async ({ page }) => {
   await settings(page);
-  await page.getByTestId('mailbox-remove').click();
+  await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
   await expect(page.getByTestId('dialog-remove-mailbox').getByTestId('dialog-confirm')).toHaveText(
     'Entfernen',
   );
@@ -1240,23 +1253,28 @@ test('Tab passes disabled switches; a disabled button that says why stays a Tab 
   page,
 }) => {
   await settings(page, `${WIN}&scenario=dry-run`);
-  await page.getByTestId('nav-settings').focus();
   const landed: { id: string; role: string | null; tag: string }[] = [];
-  for (let stop = 0; stop < 40; stop += 1) {
-    await page.keyboard.press('Tab');
-    const disabled = await page.evaluate(() => {
-      const node = document.activeElement;
-      return node?.getAttribute('aria-disabled') === 'true'
-        ? {
-            id: node.getAttribute('data-testid') ?? node.tagName,
-            role: node.getAttribute('role'),
-            tag: node.tagName,
-          }
-        : null;
-    });
-    if (disabled !== null) landed.push(disabled);
+  // Through every tab of the page (one shows at a time).
+  for (const tab of ['search', 'mailbox', 'data']) {
+    await page.getByTestId(`settings-tab-${tab}`).click();
+    await page.getByTestId('nav-settings').focus();
+    for (let stop = 0; stop < 40; stop += 1) {
+      await page.keyboard.press('Tab');
+      const disabled = await page.evaluate(() => {
+        const node = document.activeElement;
+        return node?.getAttribute('aria-disabled') === 'true'
+          ? {
+              id: node.getAttribute('data-testid') ?? node.tagName,
+              role: node.getAttribute('role'),
+              tag: node.tagName,
+            }
+          : null;
+      });
+      if (disabled !== null) landed.push(disabled);
+    }
   }
   // Only buttons with a reason (the dry run says why), never a switch.
+  expect(landed.map((item) => item.id)).toContain('mailbox-change');
   expect(landed.map((item) => item.id)).toContain('reset');
   expect(landed.filter((item) => item.role === 'switch' || item.tag !== 'BUTTON')).toEqual([]);
   // The reason shows on keyboard focus, and still on hover.
@@ -1282,7 +1300,8 @@ test('with the focus nowhere the arrows, Home and End scroll Einstellungen', asy
   await settings(page);
   const view = page.getByTestId('view-settings');
   const top = (): Promise<number> => view.evaluate((node) => node.scrollTop);
-  await page.getByTestId('settings-data').locator('h2').click();
+  // A click on a text that takes no focus (a source's name on Suche, the tab it opens on).
+  await page.getByTestId('portal-hays').getByText(T.portal.hays).click();
   await page.keyboard.press('End');
   // Once the glide has ended (a key during it would add to where it is going).
   await expect
@@ -1354,9 +1373,10 @@ test('the buttons at the end of a row end on the edge of the switches', async ({
   await settings(page);
   const edge = async (locator: Locator): Promise<number> =>
     locator.evaluate((node) => node.getBoundingClientRect().right);
-  const toggle = await edge(page.getByTestId('toggle-enabled-linkedin'));
+  // Each on its own tab (one shows at a time, all of one width).
+  const toggle = await edge(await showTab(page, page.getByTestId('toggle-enabled-linkedin')));
   for (const id of ['folder-open', 'reset']) {
-    const button = await edge(page.getByTestId(id));
+    const button = await edge(await showTab(page, page.getByTestId(id)));
     expect(Math.abs(button - toggle), id).toBeLessThanOrEqual(0.5);
   }
 });
@@ -1367,7 +1387,8 @@ test('a notice banner shares the inset of the cards and draws no line of its own
   await settings(page, `${WIN}&scenario=dry-run`);
   const banner = page.locator('.notice.banner').first();
   const icon = (await banner.locator(':scope > .icon').boundingBox())!.x;
-  const label = (await page.getByTestId('reset-all').locator('.label').first().boundingBox())!.x;
+  const reset = await showTab(page, page.getByTestId('reset-all'));
+  const label = (await reset.locator('.label').first().boundingBox())!.x;
   expect(icon).toBe(label);
   const same = async (notice: Locator): Promise<boolean> =>
     notice.evaluate((node) => {
@@ -1836,7 +1857,9 @@ test.skip('Sprache switches the whole app to English and back at once', async ({
 
   // The Jobs view in English: the list header and the reader follow.
   await readFirst(page);
-  await expect(page.getByTestId('list-header')).toContainText(await text(page, 'toolbar.fetch'));
+  await expect(page.getByTestId('list-header')).toContainText(
+    await text(page, 'toolbar.searchNow'),
+  );
   await expect(page.getByTestId('reader-ring')).toHaveAttribute(
     'aria-label',
     new RegExp(`${BEST}%`),
@@ -1855,7 +1878,9 @@ test.skip('Sprache switches the whole app to English and back at once', async ({
     'aria-label',
     new RegExp(`${BEST}\\s%`),
   );
-  await expect(page.getByTestId('list-header')).toContainText(await text(page, 'toolbar.fetch'));
+  await expect(page.getByTestId('list-header')).toContainText(
+    await text(page, 'toolbar.searchNow'),
+  );
 });
 
 // Darstellung is hidden for now (user 2026-09-28): this comes back with it.

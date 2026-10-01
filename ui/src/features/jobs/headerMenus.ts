@@ -96,11 +96,3 @@ export function wayEntries(): MenuEntry[] {
       }),
   }));
 }
-
-/** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs suchen"
- *  the search, "Postfach abrufen" the mailbox (the glyph of every fetch, not the mail's). */
-export function fetchLook(): { label: string; icon: 'fetch' | 'search' } {
-  return app.fetchWay === 'search'
-    ? { label: t.toolbar.searchNow, icon: 'search' }
-    : { label: t.toolbar.fetchMailbox, icon: 'fetch' };
-}

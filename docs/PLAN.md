@@ -1164,5 +1164,9 @@ handle sits between list and reader".
     equally strong
   - [x] Profil: the Wünsche in groups with a heading (Rollen und Suche, Tagessatz, Ort, Zeit, Branchen); a
     language's level opens from a button beside its field, like the calendar
-  - [ ] Einstellungen on tabs like the Profil (Suche, Postfach, Daten): the Postfach's account as a card of its
+  - [x] Einstellungen on tabs like the Profil (Suche, Postfach, Daten): the Postfach's account as a card of its
     own with its tile, under it the card of its alert sources; compact rows, no quota bars
+  - [x] The navy of cxpertise.de (#3E5C7E) a step richer (212 50% 36%), and every heading in it instead of a
+    near-black navy, so the palette does not look pale beside the coral (the icon keeps #E67A5C)
+  - [x] Erste Schritte: the profile first (the search needs it), the mailbox optional (only the alert mails
+    need it, its Verbinden secondary), the first fetch in the words of its way (Jobs suchen, Postfach abrufen)

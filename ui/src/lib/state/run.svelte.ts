@@ -33,6 +33,7 @@ import { app } from './app.svelte';
 import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
+import { settingsTab } from './settings.svelte';
 import { shell } from './shell.svelte';
 import { toasts } from './toasts.svelte';
 import { viewport } from './viewport.svelte';
@@ -327,7 +328,13 @@ export function failureAction(
     case 'mailNotGmail':
     case 'secretCorrupt':
     case 'secretStore':
-      return { label: t.run.checkMailbox, onclick: () => navigation.go('settings') };
+      return {
+        label: t.run.checkMailbox,
+        onclick: () => {
+          settingsTab.value = 'mailbox';
+          navigation.go('settings');
+        },
+      };
     case 'internal':
       return { label: t.common.openLog, icon: 'folder', onclick: openLog };
     default:
@@ -345,3 +352,12 @@ function openLog(): void {
 }
 
 export const run = new RunStore();
+
+/** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs suchen"
+ *  the search, "Postfach abrufen" the mailbox (the glyph of every fetch, not the mail's); the
+ *  list's button, its empty states and the first run's step say the same. */
+export function fetchLook(): { label: string; icon: 'fetch' | 'search' } {
+  return app.fetchWay === 'search'
+    ? { label: t.toolbar.searchNow, icon: 'search' }
+    : { label: t.toolbar.fetchMailbox, icon: 'fetch' };
+}

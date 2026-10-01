@@ -1,5 +1,6 @@
 // Einstellungen as data: the cards in their order (Suche, Postfach, Darstellung, Daten; by
-// the fetch's two ways, user decision 2026-10-01), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// the fetch's two ways, user decision 2026-10-01), each on its tab (Suche, Postfach, Daten,
+// like the Profil's) with its name and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`), so they follow the language.
@@ -13,6 +14,7 @@
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
 import type { AppState, Language, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
+import type { SettingsTab } from '$lib/state/settings.svelte';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -111,9 +113,10 @@ export interface ActionsRow {
 export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
 
 /** A card: its rows, and for the two ways of the fetch a block of their own: Suche its
- *  sources, Postfach the connection and under it the sources of its alert mails. */
+ *  sources, Postfach the card of its account and under it the sources of its alert mails. */
 export interface CardSpec {
   id: string;
+  tab: SettingsTab;
   heading: Text;
   block?: Sources;
   rows: readonly Row[];
@@ -171,11 +174,18 @@ const folder: ActionsRow = {
 };
 
 export const CARDS: readonly CardSpec[] = [
-  { id: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
-  { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
-  { id: 'look', heading: (t) => t.settings.look, rows: [palette, language], hidden: !LOOK_SHOWN },
+  { id: 'search', tab: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
+  { id: 'mailbox', tab: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
+  {
+    id: 'look',
+    tab: 'data',
+    heading: (t) => t.settings.look,
+    rows: [palette, language],
+    hidden: !LOOK_SHOWN,
+  },
   {
     id: 'data',
+    tab: 'data',
     heading: (t) => t.settings.data,
     rows: [
       // The one action that deletes for good; what it deletes is said in its dialog (user

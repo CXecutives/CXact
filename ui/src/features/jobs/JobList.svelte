@@ -46,11 +46,11 @@
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { run } from '$lib/state/run.svelte';
+  import { fetchLook, run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
-  import { fetchLook } from './headerMenus';
   import { glideIntoView } from '$lib/motion/scroll';
+  import { settingsTab } from '$lib/state/settings.svelte';
   import RowBar from './RowBar.svelte';
 
   interface Props {
@@ -148,6 +148,7 @@
   /** Einstellungen at the mailbox card, its "Verbinden" focused (the view keeps no other
    *  scroll place for this way). */
   function toMailbox(): void {
+    settingsTab.value = 'mailbox';
     navigation.go('settings', false, () => {
       void tick().then(() =>
         requestAnimationFrame(() => {

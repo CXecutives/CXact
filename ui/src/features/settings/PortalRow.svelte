@@ -1,12 +1,12 @@
 <!--
-  One source in the card Suche or Alert-Mails, the same row for each: its tile and name, the
-  calls of today ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, for a
-  source of alert mails "Alert anlegen" (its page in the browser), then "Anmelden" or
-  "Abmelden" where the portal offers a sign-in, the portal in the browser (in one column in
-  every row) and its switch (the name names the switch but, like every text next to a switch,
-  does not switch it). Every meter has one width; at the smallest window the sign-in goes to
-  a line of its own at the row's end so it does not narrow its row's meter. The meter turns ochre near the limit and while the portal rests. A
-  problem of the portal is one quiet line under the meter (whether the user has to act, the
+  One source in the card Suche or of the Postfach's alert mails, the same compact row for
+  each (user, 2026-10-01): its tile and name, under it the calls of today in one quiet line
+  ("Heute 23 von 100 Aufrufen", counted from midnight), for a source of alert mails "Alert
+  anlegen" (its page in the browser), then "Anmelden" or "Abmelden" where the portal offers a
+  sign-in, the portal in the browser (in one column in every row) and its switch (the name
+  names the switch but, like every text next to a switch, does not switch it); at the
+  smallest window the sign-in goes to a line of its own at the row's end. A
+  problem of the portal is one quiet line under the calls (whether the user has to act, the
   time and the reason where it has them, "Alert-Mail öffnen" when alert mails came without
   jobs); it unfolds and folds away, so the rows below glide. A portal that is on and sent no
   alert mail for a week before the last fetch says so in one quiet line ("Seit 9 Tagen keine
@@ -22,7 +22,6 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import IconTile from '$components/IconTile.svelte';
-  import Meter from '$components/Meter.svelte';
   import Notice from '$components/Notice.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
@@ -80,13 +79,11 @@
     if (Date.parse(fetch.finishedAt) - last < QUIET_DAYS * DAY_MS) return null;
     return Math.floor((Date.now() - last) / DAY_MS);
   });
-  /** The calls of today and their share of the day's limit; none in the demo, which asks no
-   *  portal (its note says so). */
+  /** The calls of today; none in the demo, which asks no portal (its note says so). */
   const quota = $derived.by(() => {
     const q = portal.quota;
     if (q === null || app.state?.demo) return null;
-    const share = q.usedDay / Math.max(q.capDay, 1);
-    return { share, text: t.settings.quota(q.usedDay, q.capDay) };
+    return t.settings.quota(q.usedDay, q.capDay);
   });
   /** A sign-in is stored (in the session window's profile). */
   const stored = $derived(portal.signedIn === true);
@@ -167,14 +164,11 @@
 <!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
      keeps the card's inset for other content off it). -->
 <div class="row" data-setting-row data-testid="portal-{portal.portal}">
-  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="md" />
+  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="sm" />
   <div class="text">
     <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
     {#if quota}
-      <div class="quota" data-testid="quota-{portal.portal}">
-        <span>{quota.text}</span>
-        <Meter value={quota.share} size="sm" label={quota.text} />
-      </div>
+      <span class="quota" data-testid="quota-{portal.portal}">{quota}</span>
     {/if}
     {#if health && portal.enabled}
       <div class="fold" transition:unfold>
@@ -287,7 +281,7 @@
     align-items: flex-start;
     gap: var(--space-8) var(--space-12);
     margin-inline: calc(-1 * var(--row-inset));
-    padding: var(--space-16) var(--row-inset);
+    padding: var(--space-12) var(--row-inset);
     border-bottom: var(--border-width) solid var(--border);
   }
 
@@ -295,12 +289,16 @@
     border-bottom: 0;
   }
 
-  /* Name, calls and lines 6 apart; a line brings its 6 along, so it folds in one piece. */
+  /* Name and calls 2 apart like a setting row's label and hint, centred on the tile; a line
+     brings its 6 along, so it folds in one piece. */
   .text {
     display: flex;
     flex: 1;
     flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
     min-width: 0;
+    min-height: var(--tile-sm);
   }
 
   .name {
@@ -309,13 +307,7 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The calls of today and, under them, their meter (as wide as a form's field). */
   .quota {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    max-width: var(--stat-min);
-    margin-top: var(--space-6);
     color: var(--text-muted);
     font: var(--type-sm);
     font-variant-numeric: var(--numeric);
@@ -339,7 +331,7 @@
     flex: none;
     align-items: center;
     gap: var(--space-12);
-    min-height: var(--tile-md);
+    min-height: var(--tile-sm);
   }
 
   /* The sign-in fades in and out on its own, next to "Alert anlegen". */
@@ -348,8 +340,7 @@
   }
 
   /* Narrow (the smallest window) "Alert anlegen" and the sign-in go to a line of their own at
-     the row's end, as the buttons of a setting row do, so its calls keep the meter of every
-     other row. */
+     the row's end, as the buttons of a setting row do. */
   @container (width < 520px) {
     .login {
       order: 1;

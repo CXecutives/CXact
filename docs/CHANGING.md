@@ -75,10 +75,10 @@ Commit them together with tokens.css.
 
 ## Add or change a palette
 
-The app has two palettes (Einstellungen > Darstellung > Design): Light is the `:root` block of
-`ui/src/styles/tokens.css` and the default; Dark is one block, `:root[data-palette='dark']`,
-laid over it. Components never ask which palette is on. The retired CXact palette is kept in
-`docs/palettes/cxact.css` (nothing reads it).
+The app has three palettes in `ui/src/styles/tokens.css`: CXact is the `:root` block and the
+default (for now the only one shown; Einstellungen > Darstellung is hidden), Light and Dark are
+one block each, `:root[data-palette='light']` and `:root[data-palette='dark']`, laid over it.
+Components never ask which palette is on.
 
 1. **Change one**: edit its block. It sets the palette entries under Light's names (`--p-cream`
    is the window and the sidebar, `--p-white` the sheet and the cards, `--p-ink` the text,

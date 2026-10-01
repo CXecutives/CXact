@@ -30,7 +30,7 @@ export const ICONS = {
   open: 'corner-down-left',
   /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
   external: 'external-link',
-  /** An alert mail: open it, read the older ones. */
+  /** Mail: an alert mail (open it, read the older ones) and the mailbox they come to. */
   alertMail: 'mail',
   /** Load the whole ad (Anzeige laden). */
   details: 'download',

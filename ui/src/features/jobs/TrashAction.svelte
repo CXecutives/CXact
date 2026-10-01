@@ -6,7 +6,7 @@
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
-  import { fetchLook } from './headerMenus';
+  import { fetchLook } from '$lib/state/run.svelte';
 
   interface Props {
     disabled: boolean;

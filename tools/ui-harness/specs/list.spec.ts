@@ -52,6 +52,7 @@ import {
   rowMenu,
   rows,
   settleMoves,
+  showTab,
   sortEntryId,
   SORTS,
   stage,
@@ -1426,30 +1427,23 @@ test.describe('one list', () => {
     await page.setViewportSize({ width: 1360, height: 600 });
     await open(page, `${WIN}&way=mail&scenario=empty`);
     await page.getByTestId('nav-settings').click();
-    await page.getByTestId('mailbox-remove').click();
+    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
     await page
       .getByTestId('dialog-remove-mailbox')
       .getByRole('button', { name: T.common.remove })
       .click();
     await expect(page.getByTestId('mailbox-connect')).toBeVisible();
-    // Einstellungen at its top, the mailbox card below Suche out of sight: the way back opens
-    // it at the mailbox card anyway. Scrolled until it stays up (the closing dialog hands its
-    // focus back to the card meanwhile).
-    await expect(async () => {
-      await page.getByTestId('view-settings').evaluate((view) => {
-        const scroller = [view, ...view.querySelectorAll<HTMLElement>('*')].find(
-          (node) => node.scrollHeight > node.clientHeight + 1,
-        );
-        scroller?.scrollTo({ top: 0 });
-      });
-      await expect(page.getByTestId('settings-mailbox')).not.toBeInViewport({ timeout: 300 });
-    }).toPass();
+    // Einstellungen left on Suche, the mailbox card out of sight: the way back opens it at
+    // the mailbox card anyway.
+    await page.getByTestId('settings-tab-search').click();
+    await expect(page.getByTestId('settings-mailbox')).toBeHidden();
     await page.getByTestId('nav-jobs').click();
     const empty = page.getByTestId('empty-all');
     await expect(empty).toContainText(T.list.noMailbox);
     await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
     await empty.getByRole('button', { name: T.list.connectMailbox }).click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
+    await expect(page.getByTestId('settings-tab-mailbox')).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByTestId('settings-mailbox')).toBeInViewport();
     await expect(page.getByTestId('mailbox-connect')).toBeFocused();
   });
@@ -1489,7 +1483,7 @@ test.describe('one list', () => {
   }) => {
     await open(page, WIN);
     await page.getByTestId('nav-settings').click();
-    await page.getByTestId('mailbox-remove').click();
+    await (await showTab(page, page.getByTestId('mailbox-remove'))).click();
     await page
       .getByTestId('dialog-remove-mailbox')
       .getByRole('button', { name: 'Entfernen' })

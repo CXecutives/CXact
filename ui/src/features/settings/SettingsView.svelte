@@ -1,7 +1,8 @@
 <!--
-  Einstellungen (centred 720): the cards of cards.ts in their order (Suche, Postfach, Export,
-  Darstellung, Daten), each a heading 12 px above a card of setting rows (Suche its sources,
-  Postfach the connection and under it the sources of its alert mails). Every text button of a row is the same outlined button, and every row ends on
+  Einstellungen (centred 720): the tabs Suche, Postfach and Daten like the Profil's (user,
+  2026-10-01), each with its cards of cards.ts (Suche its sources, Postfach the card of its
+  account and under it the card of the sources of its alert mails, Daten the work folder and
+  the reset). Every text button of a row is the same outlined button, and every row ends on
   the card's inner edge (its buttons, switch or choice flush with the rows above and
   below). This file only renders the list and runs its commands; what a row is, says and does
   is one entry in cards.ts.
@@ -17,8 +18,8 @@
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
   export folder and reset are locked with its reason. Opened from a job for one source
-  ("Anmeldung einrichten") the page glides to that source's row, focuses its sign-in, lets
-  the row light up once and offers "Zurück zum Job" at the heading of its card.
+  ("Anmeldung einrichten") the page shows that source's tab, glides to its row, focuses its
+  sign-in and offers "Zurück zum Job" beside the tabs.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -28,12 +29,12 @@
   import Segmented from '$components/Segmented.svelte';
   import SettingRow from '$components/SettingRow.svelte';
   import Skeleton from '$components/Skeleton.svelte';
+  import Tabs, { type TabOption } from '$components/Tabs.svelte';
   import Toggle from '$components/Toggle.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText } from '$lib/i18n/texts';
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, SettingsPatch } from '$lib/ipc/types';
-  import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
@@ -41,6 +42,7 @@
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
+  import { SETTINGS_TABS, settingsTab, type SettingsTab } from '$lib/state/settings.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { tick } from 'svelte';
   import {
@@ -73,6 +75,13 @@
   const mailboxLocked = $derived(lock === null ? null : ACTIONS.folderChange.locked(lock));
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
   const sourcesIn = (card: Sources) => portals.filter((p) => sourcesOf(p.way) === card);
+  const tabs = $derived<TabOption<SettingsTab>[]>(
+    SETTINGS_TABS.map((tab) => ({
+      id: tab,
+      label: t.settings[tab],
+      testid: `settings-tab-${tab}`,
+    })),
+  );
   let busy = $state<CommandId | null>(null);
   /** The note at the end of each card, by card id. */
   let notes = $state<Record<string, Feedback | null>>({});
@@ -185,8 +194,6 @@
    */
   let root = $state<HTMLElement | null>(null);
   let fromJob = $state(false);
-  /** The card of the source the job asked for (its link back stands at its heading). */
-  let fromCard = $state<Sources | null>(null);
   const backToJob = $derived(fromJob && jobs.selected !== null);
 
   /** Back to the job: the way is spent (a quick return may find this page still fading out,
@@ -204,7 +211,7 @@
     if (portal === null || root === null || cfg === null) return;
     navigation.focusPortal = null;
     fromJob = jobs.selected !== null;
-    fromCard = sourcesOf(cfg.portals.find((p) => p.portal === portal)?.way ?? 'alert');
+    settingsTab.value = sourcesOf(cfg.portals.find((p) => p.portal === portal)?.way ?? 'alert');
     const scope = root;
     void tick().then(() => {
       const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
@@ -215,27 +222,8 @@
           `[data-testid="sign-in-${portal}"], [data-testid="sign-out-${portal}"]`,
         ) ?? row.querySelector<HTMLElement>(`#switch-enabled-${portal}`);
       target?.focus({ preventScroll: true });
-      if (FLASH) flash(row);
     });
   });
-
-  /** The row lighting up is off for now (user, 2026-09-29: nothing marked in Einstellungen). */
-  const FLASH = false;
-
-  /** The row a job asked for lights up once when the glide ends and settles (like a passage
-   *  of the ad after a jump): `data-flash` on, off, gone. */
-  function flash(row: Element): void {
-    setTimeout(() => {
-      row.setAttribute('data-flash', 'on');
-      setTimeout(
-        () => {
-          row.setAttribute('data-flash', 'off');
-          setTimeout(() => row.removeAttribute('data-flash'), duration('base'));
-        },
-        duration('reveal') || crossfadeDuration(),
-      );
-    }, duration('slow'));
-  }
 </script>
 
 {#snippet row(card: string, item: Row)}
@@ -320,36 +308,51 @@
       <Notice tone="info" text={t.settings.demo} testid="demo-note" />
     {/if}
 
-    {#each CARDS.filter((card) => !card.hidden) as card, index (card.id)}
-      {@const feedback = notes[card.id] ?? null}
-      <section class="section" data-testid="settings-{card.id}">
-        <div class="title" data-first-row={index === 0 ? '' : undefined}>
-          <h2 class="heading">{card.heading(t, cfg)}</h2>
-          {#if card.block !== undefined && card.block === fromCard && backToJob}
-            <Button
-              variant="link"
-              label={t.settings.backToJob}
-              testid="back-to-job"
-              onclick={goBackToJob}
-            />
-          {/if}
-        </div>
-        {#if card.block === 'mailbox'}
-          <MailboxCard {cfg} locked={mailboxLocked} testid="portals-mailbox">
-            {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-            {#each sourcesIn('mailbox') as portal (portal.portal)}<PortalRow {portal} />{/each}
-            {#if feedback}{@render noteOf(card.id, feedback)}{/if}
-          </MailboxCard>
-        {:else}
-          <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
-            {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
-            {#if card.block}
-              {#each sourcesIn(card.block) as portal (portal.portal)}<PortalRow {portal} />{/each}
+    <div class="tabbar" data-first-row>
+      <Tabs
+        options={tabs}
+        value={settingsTab.value}
+        label={t.settings.tabs}
+        testid="settings-tabs"
+        onchange={(tab) => (settingsTab.value = tab)}
+      />
+      {#if backToJob}
+        <Button
+          variant="link"
+          label={t.settings.backToJob}
+          testid="back-to-job"
+          onclick={goBackToJob}
+        />
+      {/if}
+    </div>
+    {#each SETTINGS_TABS as tab (tab)}
+      <div
+        class="panel"
+        class:gone={tab !== settingsTab.value}
+        role="tabpanel"
+        aria-label={t.settings[tab]}
+        data-testid="settings-panel-{tab}"
+      >
+        {#each CARDS.filter((card) => !card.hidden && card.tab === tab) as card (card.id)}
+          {@const feedback = notes[card.id] ?? null}
+          <section
+            class="section"
+            aria-label={card.heading(t, cfg)}
+            data-testid="settings-{card.id}"
+          >
+            {#if card.block === 'mailbox'}
+              <MailboxCard {cfg} locked={mailboxLocked} testid="mailbox-account" />
             {/if}
-            {#if feedback}{@render noteOf(card.id, feedback)}{/if}
-          </Card>
-        {/if}
-      </section>
+            <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
+              {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+              {#if card.block}
+                {#each sourcesIn(card.block) as portal (portal.portal)}<PortalRow {portal} />{/each}
+              {/if}
+              {#if feedback}{@render noteOf(card.id, feedback)}{/if}
+            </Card>
+          </section>
+        {/each}
+      </div>
     {/each}
   {/if}
 </div>
@@ -372,7 +375,7 @@
     container-type: inline-size;
     display: flex;
     flex-direction: column;
-    gap: var(--space-32);
+    gap: var(--space-24);
     max-width: calc(var(--reader-width) + 2 * var(--pane-padding));
     margin: 0 auto;
     padding: var(--pane-padding) var(--pane-padding) var(--page-end);
@@ -384,33 +387,22 @@
     gap: var(--space-12);
   }
 
-  /* The portal row a job asked for ("Anmeldung einrichten"): a soft tint for a moment. */
-  .page :global([data-flash]) {
-    transition: background-color var(--dur-base) var(--ease-standard);
-  }
-
-  .page :global([data-flash='on']) {
-    background-color: var(--info-soft);
-    transition-duration: var(--dur-hover);
-  }
-
-  /* The heading, and at its end the way back to the job she came from. */
-  .title {
+  /* The tabs on the first row of the window (base.css), at their end the way back to the
+     job she came from; 24 above the first card, like the Profil's. */
+  .tabbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-12);
   }
 
-  /* The first heading is centred on the first row of the window (base.css); it takes back
-     what that row adds below its line, so every heading stands 12 px above its card. */
-  .title[data-first-row] {
-    margin-bottom: calc((var(--leading-lg) - var(--first-row)) / 2);
+  .panel {
+    display: flex;
+    flex-direction: column;
   }
 
-  .heading {
-    color: var(--text-heading);
-    font: var(--type-lg);
+  .panel.gone {
+    display: none;
   }
 
   /* The buttons of a row end on its trailing edge, 12 apart, one size (28, outlined); a

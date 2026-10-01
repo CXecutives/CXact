@@ -869,7 +869,6 @@ export const de = {
     closed: 'Beendet',
   },
   toolbar: {
-    fetch: 'Jobs abrufen',
     /** The fetch when its menu chose only the search, only the mailbox. */
     searchNow: 'Jobs suchen',
     fetchMailbox: 'Postfach abrufen',
@@ -1461,6 +1460,8 @@ export const de = {
     },
   },
   settings: {
+    /** The name of the tabs (Suche, Postfach, Daten) for a screen reader. */
+    tabs: 'Bereiche der Einstellungen',
     mailbox: 'Postfach',
     /** The card of the sources the app searches itself. */
     search: 'Suche',
