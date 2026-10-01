@@ -1100,3 +1100,14 @@ handle sits between list and reader".
     kopieren"; the row "Gefunden" names the way and the source ("Suche bei hays.de", "Alert-Mail von
     linkedin.com", "auch auf ...")
   - [x] The top bar's glyphs in a 1.25 px line (1.5 was too heavy); the job view's button keeps its place
+- Round 6 (user decisions 2026-10-01, evening):
+  - [x] The fetch reads the mailbox or searches, never both ("nur Postfach oder Suche"; the search by default)
+  - [x] The funnel's Quelle lists every source switched on; the note "Ohne Postfach ..." only for the mailbox
+  - [x] The app icon has the shapes of the icon workshop (the workshop now shows the built icon beside it)
+  - [x] Deep search ("tief und viel", "alles hoch"): up to 24 terms (`profile::deep_search_terms`), each
+    term paged while new jobs come (up to 10 pages; Hays, freelancermap, Michael Page, GULP), the sources
+    side by side, a cut-short paging resumed at the next fetch within 7 days, caps 300 an hour and 1,500
+    a day per search source at 2.5 to 5 s (never below robots.txt's Crawl-delay), the fetch order by a
+    title pre-score that knows the target roles. GULP's first page was never read (its pages count from
+    0): fixed
+  - [ ] More sources for interim and finance: researched, candidates shown before anything is built

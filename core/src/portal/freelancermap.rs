@@ -49,11 +49,7 @@ impl PortalAdapter for Freelancermap {
         &["freelancermap"]
     }
     fn limits(&self) -> Limits {
-        Limits {
-            pace_ms: 3_000..=5_000,
-            per_hour: 40,
-            per_day: 100,
-        }
+        super::search_limits()
     }
     /// Signed in, freelancermap shows the same text as to a guest (measured).
     fn access(&self) -> Access {
@@ -159,6 +155,14 @@ impl PortalAdapter for Freelancermap {
                 Some(url)
             })
             .collect()
+    }
+
+    /// Its pages as its own links count them: `pagenr=2`, `3`, ... beside the query.
+    fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
+        let mut url = first.clone();
+        url.query_pairs_mut()
+            .append_pair("pagenr", &page.to_string());
+        Some(url)
     }
 
     /// The hits are in the page's data island (`ProjectSearch`): each with its number, so a
@@ -617,6 +621,18 @@ pub(crate) mod tests {
 
     pub(crate) fn page(id: u64, description: &str, archived: bool) -> String {
         html_of(&island(id, description, archived))
+    }
+
+    /// `pagenr` counts its pages, as its own links do (measured 2026-10-01).
+    #[test]
+    fn the_search_pages_like_its_links() {
+        let first = Freelancermap
+            .search_urls(&["Controlling".to_owned()])
+            .remove(0);
+        assert_eq!(
+            Freelancermap.search_page_url(&first, 3).unwrap().as_str(),
+            "https://www.freelancermap.de/projekte?query=Controlling&pagenr=3"
+        );
     }
 
     #[test]

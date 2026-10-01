@@ -227,7 +227,7 @@ fn run_context(
         Vec::new()
     } else {
         profile::stored_form(&workspace)
-            .map(|form| form.search_terms)
+            .map(|form| profile::deep_search_terms(&form))
             .unwrap_or_default()
     };
     let ctx = RunContext {

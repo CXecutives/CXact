@@ -126,7 +126,9 @@ async fn a_fetch_without_a_mailbox_searches_and_reads_the_hits() {
     assert_eq!(summary.outcome, Outcome::Completed);
     assert!(summary.scan.is_none());
     let found = &summary.search.as_ref().unwrap()[&Portal::Hays];
-    assert_eq!((found.pages, found.hits, found.new), (1, 1, 1));
+    // Its first page brought a new job, so its second was asked too (the demo's source shows
+    // the same job there, known by then: no third).
+    assert_eq!((found.pages, found.hits, found.new), (2, 2, 1));
     assert_eq!(summary.new_jobs.map(|n| n.count), Some(1));
     let key = JobKey {
         portal: Portal::Hays,

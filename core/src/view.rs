@@ -2672,7 +2672,8 @@ mod tests {
         let now = Timestamp::now();
         let mut policy = Policy::in_memory();
         policy.pause(Portal::LinkedIn, PauseKind::Blocked, "HTTP 999", now);
-        for _ in 0..40 {
+        let hourly = crate::fetch::policy::limits(Portal::Freelancermap).per_hour;
+        for _ in 0..hourly {
             policy.record_access(Portal::Freelancermap, now);
         }
         let mut settings = Settings::default();
@@ -2700,7 +2701,7 @@ mod tests {
         assert_eq!((li.login, li.signed_in), (PortalLogin::None, None));
         let fm = of(Portal::Freelancermap);
         assert!(matches!(fm.health, PortalHealth::QuotaReached { .. }));
-        assert_eq!(fm.quota.unwrap().used_hour, 40);
+        assert_eq!(fm.quota.unwrap().used_hour, hourly);
         let fl = of(Portal::FreelanceDe);
         assert_eq!(fl.login, PortalLogin::Optional);
         assert_eq!(

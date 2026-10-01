@@ -53,11 +53,7 @@ impl PortalAdapter for Hays {
         &["hays.de"]
     }
     fn limits(&self) -> Limits {
-        Limits {
-            pace_ms: 4_000..=8_000,
-            per_hour: 30,
-            per_day: 100,
-        }
+        super::search_limits()
     }
     fn access(&self) -> Access {
         Access::Guest
@@ -148,6 +144,24 @@ impl PortalAdapter for Hays {
                 Some(url)
             })
             .collect()
+    }
+
+    /// Its further pages as its own links name them (measured 2026-10-01): the contracting
+    /// jobs, page `n` in the path, the term in the query.
+    fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
+        let term = first
+            .query_pairs()
+            .find(|(name, _)| name == "q")
+            .map(|(_, value)| value.into_owned())?;
+        let mut url = Url::parse(&format!(
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/{page}"
+        ))
+        .ok()?;
+        url.query_pairs_mut()
+            .append_pair("q", &term)
+            .append_pair("e", "false")
+            .append_pair("ij", "false");
+        Some(url)
     }
 
     fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
@@ -297,6 +311,16 @@ mod tests {
       <div class="h-job-detail__content"><h3>Aufgaben</h3><ul><li>Leitung des SAP-Streams Plan to Maintain im Rahmen eines internationalen SAP-Transformationsprogramms</li></ul>
       <h3>Profil</h3><ul><li>Mehrjährige Erfahrung als SAP Stream Lead im Bereich SAP PM/EAM</li></ul></div>
     </body></html>"#;
+
+    /// Its further pages as its own links name them (measured 2026-10-01).
+    #[test]
+    fn the_search_pages_like_its_links() {
+        let first = Hays.search_urls(&["Interim CFO".to_owned()]).remove(0);
+        assert_eq!(
+            Hays.search_page_url(&first, 2).unwrap().as_str(),
+            "https://www.hays.de/jobsuche/stellenangebote-jobs/j/Contracting/3/p/2?q=Interim+CFO&e=false&ij=false"
+        );
+    }
 
     #[test]
     fn the_search_lists_its_hits() {

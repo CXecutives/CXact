@@ -1308,7 +1308,7 @@ export const de = {
       /** What the search of the sources looks for (the roles and Schwerpunkte until changed). */
       searchTerms: 'Suchbegriffe',
       searchTermsPlaceholder: 'z. B. SAP FI/CO',
-      searchTermsHint: 'Damit sucht CXact nach passenden Projekten.',
+      searchTermsHint: 'CXact sucht damit und mit verwandten Begriffen aus deinem Profil.',
       /** The terms are the app's proposal: none stored yet. */
       searchTermsProposed: 'Vorschlag aus Wunschrollen und Schwerpunkten.',
       competence: 'Kompetenz',

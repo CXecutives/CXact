@@ -479,9 +479,11 @@ pub fn assess(
 }
 
 /// Cheap relevance of a job from its title (per-mille), to order fetches before any text
-/// is known. The location is not used yet.
+/// is known: the title against the profile's field and its target roles (`Interim CFO`,
+/// `Head of Finance`), as the engine reads a title. The location is not used yet.
 pub fn prescore(profile: &CompiledProfile, title: &str, location: &str) -> u16 {
     let _ = location;
-    let fit = relevance::title_fit(&profile.engine.query, title, &profile.engine.skills.vocab);
+    let engine = &profile.engine;
+    let fit = relevance::title_fit(&engine.title_query, title, &engine.skills.vocab);
     u16::try_from(fit.min(1000)).unwrap_or(1000)
 }

@@ -60,11 +60,7 @@ impl PortalAdapter for Gulp {
         &["gulp"]
     }
     fn limits(&self) -> Limits {
-        Limits {
-            pace_ms: 4_000..=8_000,
-            per_hour: 30,
-            per_day: 100,
-        }
+        super::search_limits()
     }
     fn access(&self) -> Access {
         Access::Guest
@@ -93,16 +89,31 @@ impl PortalAdapter for Gulp {
             .collect()
     }
 
-    /// The query as the page sends it: the term, the newest first, in German.
+    /// Its further pages: the page's index (from 0) beside the term, sent in the body.
+    fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
+        let mut url = first.clone();
+        url.query_pairs_mut()
+            .append_pair("page", &page.checked_sub(1)?.to_string());
+        Some(url)
+    }
+
+    /// The query as the page sends it: the term, the newest first, in German; the page's
+    /// index counts from 0 (measured 2026-10-01: `1` is the second page, so the first one
+    /// was never read before).
     fn search_body(&self, url: &Url) -> Option<String> {
         let term = url
             .query_pairs()
             .find(|(name, _)| name == "query")
             .map(|(_, value)| value.into_owned())?;
+        let page: u32 = url
+            .query_pairs()
+            .find(|(name, _)| name == "page")
+            .and_then(|(_, value)| value.parse().ok())
+            .unwrap_or(0);
         Some(
             serde_json::json!({
                 "query": term,
-                "page": 1,
+                "page": page,
                 "limit": SEARCH_HITS,
                 "order": "DATE_DESC",
                 "countries": [],
@@ -433,6 +444,14 @@ mod tests {
         let body: Value = serde_json::from_str(&Gulp.search_body(&urls[0]).unwrap()).unwrap();
         assert_eq!(body["query"], "SAP FI/CO");
         assert_eq!(body["order"], "DATE_DESC");
+        // The first page is page 0 (1 was the second: its newest projects were never read).
+        assert_eq!(body["page"], 0);
+        let second = Gulp.search_page_url(&urls[0], 2).unwrap();
+        let body: Value = serde_json::from_str(&Gulp.search_body(&second).unwrap()).unwrap();
+        assert_eq!(
+            (body["query"].as_str(), body["page"].as_u64()),
+            (Some("SAP FI/CO"), Some(1))
+        );
         let page = r#"{"totalCount":2,"projects":[
           {"id":"C01329404","type":"AGENCY","title":"SAP S/4HANA O2C Consultant (m/w/d)","location":"Hamburg","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404"},
           {"id":"6abd43a340b5a3a29f35d9c0","type":"TALENT_FINDER","title":"Azure Architekt","location":"Remote","companyName":"SOLCOM GmbH","url":null}]}"#;

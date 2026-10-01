@@ -54,11 +54,7 @@ impl PortalAdapter for InterimX {
         &["interim-x"]
     }
     fn limits(&self) -> Limits {
-        Limits {
-            pace_ms: 4_000..=8_000,
-            per_hour: 30,
-            per_day: 100,
-        }
+        super::search_limits()
     }
     fn access(&self) -> Access {
         Access::Guest

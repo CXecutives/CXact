@@ -205,6 +205,14 @@ pub trait PortalAdapter: Send + Sync {
     fn way(&self) -> Way {
         Way::Alert
     }
+    /// Page `page` (2, 3, ...) of the search that `first` (one of [`Self::search_urls`])
+    /// starts, as the source pages its results; `None` where it shows every hit on one page
+    /// (SOLCOM's list, interim-x's projects). Only requested while the pages before brought
+    /// new jobs (the deep search, `fetch::search`).
+    fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
+        let _ = (first, page);
+        None
+    }
     /// The pages of the source's own search for the profile's terms (none: no search).
     fn search_urls(&self, terms: &[String]) -> Vec<Url> {
         let _ = terms;
@@ -578,6 +586,18 @@ pub(crate) fn hex12(bytes: &[u8]) -> String {
             let _ = write!(s, "{b:02x}");
             s
         })
+}
+
+/// Pace and caps of a source the app searches itself (user decision 2026-10-01: the deep
+/// search, "alles hoch"): a short gap between two requests like a reader paging through
+/// results (never below the robots.txt's Crawl-delay), and caps high enough for every term
+/// and its pages in one fetch. A 429, 403 or a check still pauses the source.
+pub(crate) fn search_limits() -> Limits {
+    Limits {
+        pace_ms: 2_500..=5_000,
+        per_hour: 300,
+        per_day: 1_500,
+    }
 }
 
 /// A search term as the keyword of a search address: lower case, words joined by hyphens.

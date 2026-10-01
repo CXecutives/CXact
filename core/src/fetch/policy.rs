@@ -456,8 +456,16 @@ impl Policy {
         } else {
             limits(portal).pace_ms
         };
-        let pace =
-            SignedDuration::from_millis(i64::try_from(fastrand::u64(range)).unwrap_or(i64::MAX));
+        // A Crawl-delay of the source's robots.txt is the least gap (not in quick mode).
+        let delay = (!self.quick)
+            .then(|| self.portals.get(&portal))
+            .flatten()
+            .and_then(|state| state.robots.as_ref())
+            .and_then(|robots| robots.crawl_delay)
+            .map_or(0, |seconds| seconds.saturating_mul(1000));
+        let pace = SignedDuration::from_millis(
+            i64::try_from(fastrand::u64(range).max(delay)).unwrap_or(i64::MAX),
+        );
         let wait = last
             .saturating_add(pace)
             .unwrap_or(Timestamp::MAX)
@@ -605,15 +613,23 @@ mod tests {
             .timestamp()
     }
 
-    /// Every portal: 100 requests a day; the hourly caps and paces stay each portal's own.
+    /// The alert sources: 100 requests a day, their own hourly caps and paces. The sources the
+    /// app searches itself: the deep search's (user decision 2026-10-01).
     #[test]
-    fn a_hundred_requests_a_day_each() {
-        for portal in [Portal::LinkedIn, Portal::FreelanceDe, Portal::Freelancermap] {
+    fn the_caps_of_the_alert_sources_and_of_the_search() {
+        for portal in [Portal::LinkedIn, Portal::FreelanceDe] {
             assert_eq!(limits(portal).per_day, 100, "{portal:?}");
         }
         assert_eq!(limits(Portal::LinkedIn).per_hour, 30);
         assert_eq!(limits(Portal::FreelanceDe).per_hour, 20);
-        assert_eq!(limits(Portal::Freelancermap).per_hour, 40);
+        for portal in Portal::ALL
+            .into_iter()
+            .filter(|p| p.way() == crate::portal::Way::Search)
+        {
+            let caps = limits(portal);
+            assert_eq!((caps.per_hour, caps.per_day), (300, 1_500), "{portal:?}");
+            assert!(*caps.pace_ms.start() >= 2_500, "{portal:?}");
+        }
     }
 
     #[test]

@@ -14,6 +14,7 @@ mod answer;
 mod form;
 mod json;
 pub mod prompt;
+mod search_terms;
 mod set;
 
 use std::path::{Path, PathBuf};
@@ -35,6 +36,7 @@ pub use form::{
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
 use json::Json;
+pub use search_terms::{MAX_DEEP_TERMS, deep_search_terms};
 pub use set::{
     Entry as ProfileEntry, INDEX_FILE, MAX_NAME, create, delete, duplicate, file_name, id_of,
     import, is_app_file, list, rename, restore, role, switch,

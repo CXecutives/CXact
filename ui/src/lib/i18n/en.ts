@@ -1090,7 +1090,7 @@ export const en: Catalog = {
       rolesPlaceholder: 'e.g. Interim CFO',
       searchTerms: 'Search terms',
       searchTermsPlaceholder: 'e.g. SAP FI/CO',
-      searchTermsHint: 'CXact searches for matching projects with them.',
+      searchTermsHint: 'CXact searches with these and related terms from your profile.',
       searchTermsProposed: 'Suggested from your target roles and focus areas.',
       competence: 'Skill',
       competencePlaceholder: 'e.g. Project management',

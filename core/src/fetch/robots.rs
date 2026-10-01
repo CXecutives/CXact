@@ -4,6 +4,8 @@
 //! crawler's name); `Allow` and `Disallow` match the path with its query from the start, `*`
 //! stands for any text and `$` for the end; the longest matching rule wins, `Allow` on a tie.
 //! An empty `Disallow` allows everything; a source without a robots.txt allows everything.
+//! A `Crawl-delay` of the group is the least gap between two requests to the source (at most
+//! [`MAX_CRAWL_DELAY`] seconds are believed).
 
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +15,14 @@ use serde::{Deserialize, Serialize};
 pub struct Robots {
     pub allow: Vec<String>,
     pub disallow: Vec<String>,
+    /// The least gap between two requests the group asks for, in seconds.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub crawl_delay: Option<u64>,
 }
+
+/// A longer `Crawl-delay` is taken as this one: a source that wants an hour between requests
+/// would never be searched (it may disallow the paths instead).
+pub const MAX_CRAWL_DELAY: u64 = 60;
 
 impl Robots {
     /// The rules of `User-agent: *` in a robots.txt (several such groups count together).
@@ -47,6 +56,25 @@ impl Robots {
                         &mut robots.disallow
                     };
                     rules.push(value.to_owned());
+                }
+                "crawl-delay" => {
+                    in_rules = true;
+                    if !agents.iter().any(|agent| agent == "*") {
+                        continue;
+                    }
+                    // Whole or fractional seconds; the longest delay of the groups counts.
+                    if let Ok(seconds) = value.parse::<f64>()
+                        && seconds.is_finite()
+                        && seconds > 0.0
+                    {
+                        #[expect(
+                            clippy::cast_possible_truncation,
+                            clippy::cast_sign_loss,
+                            reason = "a positive, finite number of seconds, capped below"
+                        )]
+                        let seconds = (seconds.ceil() as u64).min(MAX_CRAWL_DELAY);
+                        robots.crawl_delay = robots.crawl_delay.max(Some(seconds));
+                    }
                 }
                 _ => {}
             }
@@ -125,6 +153,44 @@ mod tests {
         assert!(gulp.allows("/core/theme.css"));
         assert!(!gulp.allows("/core/theme.css?v=2"));
         assert!(gulp.allows("/projekte/123"));
+    }
+
+    #[test]
+    fn a_crawl_delay_of_the_group_for_every_agent_counts() {
+        let rules = Robots::parse(
+            "User-agent: Bingbot
+Crawl-delay: 30
+
+User-agent: *
+Crawl-delay: 2.5
+Disallow: /x",
+        );
+        assert_eq!(rules.crawl_delay, Some(3));
+        assert!(!rules.allows("/x"));
+        assert_eq!(
+            Robots::parse(
+                "User-agent: *
+Crawl-delay: 9000"
+            )
+            .crawl_delay,
+            Some(60)
+        );
+        assert_eq!(
+            Robots::parse(
+                "User-agent: *
+Crawl-delay: soon"
+            )
+            .crawl_delay,
+            None
+        );
+        assert_eq!(
+            Robots::parse(
+                "User-agent: *
+Disallow:"
+            )
+            .crawl_delay,
+            None
+        );
     }
 
     #[test]

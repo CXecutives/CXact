@@ -58,11 +58,7 @@ impl PortalAdapter for MichaelPage {
         &["michaelpage"]
     }
     fn limits(&self) -> Limits {
-        Limits {
-            pace_ms: 4_000..=8_000,
-            per_hour: 30,
-            per_day: 100,
-        }
+        super::search_limits()
     }
     fn access(&self) -> Access {
         Access::Guest
@@ -144,6 +140,15 @@ impl PortalAdapter for MichaelPage {
                 Url::parse(ORIGIN).ok()?.join(&format!("jobs/{slug}")).ok()
             })
             .collect()
+    }
+
+    /// Its further pages as its own links count them: `page=1` is the second (the first
+    /// page has none).
+    fn search_page_url(&self, first: &Url, page: u32) -> Option<Url> {
+        let mut url = first.clone();
+        url.query_pairs_mut()
+            .append_pair("page", &page.checked_sub(1)?.to_string());
+        Some(url)
     }
 
     fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
@@ -301,6 +306,18 @@ mod tests {
         <div class="job_advert__job-desc-company"><p>Start: ASAP<br>Dauer: 12 Monate+<br>Auslastung: Vollzeit</p></div>
         <div class="job_advert__job-desc-role"><p>Projektcontrolling nach IFRS und POC-Methode für Großprojekte</p></div></div>
     </body></html>"#;
+
+    /// `page=1` is its second page (measured 2026-10-01).
+    #[test]
+    fn the_search_pages_like_its_links() {
+        let first = MichaelPage
+            .search_urls(&["Controlling".to_owned()])
+            .remove(0);
+        assert_eq!(
+            MichaelPage.search_page_url(&first, 2).unwrap().as_str(),
+            "https://www.michaelpage.de/jobs/controlling?page=1"
+        );
+    }
 
     #[test]
     fn the_search_lists_its_current_hits() {

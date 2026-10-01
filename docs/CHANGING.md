@@ -318,9 +318,11 @@ browser is read from the data it loads (`fetch_url()`, GULP).
 ## Add a search source
 
 A source the app searches itself (user decision 2026-10-01): an adapter as above with
-`way()` `Way::Search`, `search_urls(terms)` (one page per term, or one list it filters by
-them) and `search_page(html)` (its hits, or `NoHits` for a check or an unknown page),
-`checks_robots()` `true`, and its limits. A search the source runs as a POST of its query
+`way()` `Way::Search`, `search_urls(terms)` (the first page per term, or one list it filters
+by them), `search_page_url(first, n)` (its further pages as its own links count them; none
+for a source that shows every hit on one page) and `search_page(html)` (its hits, or
+`NoHits` for a check or an unknown page), `checks_robots()` `true`, and `limits()`
+`super::search_limits()` (the deep search's pace and caps). A search the source runs as a POST of its query
 (GULP) gives the JSON body in `search_body(url)`; the term rides in the address's query. First check by hand that its robots.txt allows the
 search and the ads; the app checks it again at run time. Fixtures: a shortened search page
 and ad in the adapter's tests, the real pages under `core/tests/fixtures/private/pages`
