@@ -521,6 +521,8 @@ mod tests {
         // Two degrees go into `ausbildung`, as the skeleton has them.
         let mut form = read.clone();
         form.degrees.push("MBA".into());
+        // Untouched search terms follow the roles and are not written.
+        form.search_terms.clear();
         let mut written = Json::object();
         form::merge(&mut written, &ProfileForm::default(), &form, &[]);
         let mut expected = keys(&skeleton);

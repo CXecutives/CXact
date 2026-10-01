@@ -43,6 +43,7 @@ export type ListKey =
   | 'tools'
   | 'certificates'
   | 'roles'
+  | 'searchTerms'
   | 'regions'
   | 'wishIndustries';
 export type SwitchKey = 'remoteOutside' | 'noAnue' | 'noPermanent';
@@ -131,6 +132,15 @@ export const SECTIONS: readonly Section[] = [
         label: 'roles',
         placeholder: 'rolesPlaceholder',
         testid: 'profile-roles',
+      },
+      {
+        // What the search of the sources looks for: the roles and Schwerpunkte until changed.
+        kind: 'chips',
+        key: 'searchTerms',
+        label: 'searchTerms',
+        hint: 'searchTermsHint',
+        placeholder: 'searchTermsPlaceholder',
+        testid: 'profile-search-terms',
       },
       pair(
         {

@@ -61,6 +61,11 @@ focus: Array<string>,
  */
 roles: Array<string>, 
 /**
+ * `suchbegriffe[]` (`search_terms`): what the app searches the sources for; without
+ * them the target roles and the Schwerpunkte ([`search_terms`]).
+ */
+searchTerms: Array<string>, 
+/**
  * `einsatzpraeferenzen` (`preferences`): wishes, they only nudge the score.
  */
 wishes: ProfileWishes, 

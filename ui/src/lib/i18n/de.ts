@@ -169,6 +169,7 @@ const profileField = (): Record<string, string> => {
     permanentRemoteMin: field.remoteMin,
     focus: 'Schwerpunkte',
     roles: field.roles,
+    searchTerms: field.searchTerms,
     wishDayRate: field.wishRate,
     remote: field.remote,
     regions: field.regions,
@@ -1279,6 +1280,10 @@ export const de = {
       title: 'Rolle',
       roles: 'Wunschrollen',
       rolesPlaceholder: 'z. B. Interim CFO',
+      /** What the search of the sources looks for (the roles and Schwerpunkte until changed). */
+      searchTerms: 'Suchbegriffe',
+      searchTermsPlaceholder: 'z. B. SAP FI/CO',
+      searchTermsHint: 'Damit sucht CXact nach passenden Projekten.',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',

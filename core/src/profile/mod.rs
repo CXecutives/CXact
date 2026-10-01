@@ -768,6 +768,8 @@ Viel Erfolg."
             ],
             focus: texts(&["Controlling", "Restrukturierung"]),
             roles: texts(&["Interim CFO", "Head of Controlling"]),
+            // Untouched: the search terms follow the roles and are not written.
+            search_terms: Vec::new(),
             wishes: ProfileWishes {
                 day_rate: Some(1_100),
                 remote: Some(RemoteWish::Mostly),
@@ -839,7 +841,10 @@ Viel Erfolg."
         );
         assert!(text.contains("\"verfuegbar_ab\": \"01.11.2026\""), "{text}");
         assert!(text.contains("\"niveau\": \"Muttersprache\""), "{text}");
-        assert_eq!(plain(&stored_form(dir.path()).unwrap()), plain(&after));
+        // Unstored, the search terms follow the roles and the Schwerpunkte.
+        let mut expected = after.clone();
+        expected.search_terms = form::search_terms(&[], &after.roles, &after.focus);
+        assert_eq!(plain(&stored_form(dir.path()).unwrap()), plain(&expected));
 
         let value = load(dir.path()).unwrap().unwrap();
         let profile = matching::compile_profile(&value);

@@ -117,6 +117,7 @@ export function normalized(form: ProfileForm): ProfileForm {
     languages,
     focus: cleanList(form.focus),
     roles: cleanList(form.roles),
+    searchTerms: cleanList(form.searchTerms),
     wishes: {
       dayRate: positive(form.wishes.dayRate),
       remote: form.wishes.remote,

@@ -50,6 +50,7 @@ export const EMPTY_FORM: ProfileForm = {
   "languages": [],
   "focus": [],
   "roles": [],
+  "searchTerms": [],
   "wishes": {
     "dayRate": null,
     "remote": null,

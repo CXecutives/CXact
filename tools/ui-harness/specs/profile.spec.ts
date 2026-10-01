@@ -441,6 +441,33 @@ test('the stored profile fills every field', async ({ page }) => {
   await expect(bar(page)).toHaveCount(0);
 });
 
+test('Suchbegriffe: the roles and Schwerpunkte until changed, then as written', async ({
+  page,
+}) => {
+  await profile(page);
+  const terms = page.getByTestId('profile-search-terms');
+  // Under the wished roles, with the sentence what they are for.
+  const y = async (id: string): Promise<number> => (await page.getByTestId(id).boundingBox())!.y;
+  expect(await y('profile-search-terms')).toBeGreaterThan(await y('profile-roles'));
+  await expect(field(page, 'searchTerms')).toContainText(T.profile.field.searchTermsHint);
+  await expect(chips(terms)).toHaveText([
+    'Interim CFO',
+    'Controlling',
+    'Konzernrechnungslegung nach IFRS',
+  ]);
+  // Untouched they are no change; one more is, and it is saved as written.
+  await expect(bar(page)).toHaveCount(0);
+  await terms.locator('input').fill('SAP FI/CO');
+  await terms.locator('input').press('Enter');
+  await save(page).click();
+  expect((await lastSave(page)).after.searchTerms).toEqual([
+    'Interim CFO',
+    'Controlling',
+    'Konzernrechnungslegung nach IFRS',
+    'SAP FI/CO',
+  ]);
+});
+
 test('one name per field: the labels, the few hints, units and neutral examples', async ({
   page,
 }) => {

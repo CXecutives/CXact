@@ -30,6 +30,11 @@ const KEY_CERTIFICATES: &str = "zertifizierungen";
 const KEY_INDUSTRIES: &str = "branchen";
 const KEY_STRENGTHS: &str = "alleinstellungsmerkmale";
 const KEY_KEYWORDS: &str = "keywords";
+/// The search terms of the app's own search (user decision 2026-10-01; the engine does not
+/// read them).
+const KEYS_SEARCH_TERMS: &[&str] = &["suchbegriffe", "search_terms"];
+/// The most search terms the app searches for (each one request per search source).
+pub const MAX_SEARCH_TERMS: usize = 8;
 /// The value of `ausgeschlossene_vertragsarten` the form writes for permanent employment.
 const CONTRACT_PERMANENT: &str = "festanstellung";
 /// A native language in a list under English keys (`level`).
@@ -241,6 +246,9 @@ pub struct ProfileForm {
     pub focus: Vec<String>,
     /// `wunschrollen[]` (`target_roles`): the roles the consultant is looking for.
     pub roles: Vec<String>,
+    /// `suchbegriffe[]` (`search_terms`): what the app searches the sources for; without
+    /// them the target roles and the Schwerpunkte ([`search_terms`]).
+    pub search_terms: Vec<String>,
     /// `einsatzpraeferenzen` (`preferences`): wishes, they only nudge the score.
     pub wishes: ProfileWishes,
     /// `harte_kriterien` (with the `einsatzpraeferenzen` fallbacks).
@@ -632,6 +640,7 @@ impl ProfileForm {
                 .collect(),
             focus: clean(&self.focus),
             roles: clean(&self.roles),
+            search_terms: clean(&self.search_terms),
             wishes: ProfileWishes {
                 day_rate: self.wishes.day_rate.filter(|n| *n > 0),
                 remote: self.wishes.remote,
@@ -646,6 +655,7 @@ impl ProfileForm {
     pub fn has_content(&self) -> bool {
         let empty = ProfileForm {
             roles: self.roles.clone(),
+            search_terms: self.search_terms.clone(),
             wishes: self.wishes.clone(),
             criteria: self.criteria.clone(),
             ..ProfileForm::default()
@@ -730,6 +740,7 @@ pub(crate) fn validate(form: &ProfileForm) -> Result<ProfileForm, InvalidInput> 
     }
     for (items, field) in [
         (&form.roles, "roles"),
+        (&form.search_terms, "searchTerms"),
         (&form.wishes.regions, "regions"),
         (&form.wishes.industries, "wishIndustries"),
     ] {
@@ -1022,11 +1033,37 @@ fn read_criteria(doc: &Json) -> ProfileCriteria {
     c
 }
 
+/// What the app searches the sources for: the stored search terms, else the target roles as
+/// written and then the Schwerpunkte; each term once (case aside), at most
+/// [`MAX_SEARCH_TERMS`].
+pub fn search_terms(stored: &[String], roles: &[String], focus: &[String]) -> Vec<String> {
+    let stored = clean(stored);
+    let source: Vec<String> = if stored.is_empty() {
+        roles.iter().chain(focus).cloned().collect()
+    } else {
+        stored
+    };
+    let mut seen = std::collections::HashSet::new();
+    let mut terms = Vec::new();
+    for term in source.iter().map(|term| term.trim()) {
+        if term.is_empty() || !seen.insert(term.to_lowercase()) {
+            continue;
+        }
+        terms.push(term.to_owned());
+        if terms.len() == MAX_SEARCH_TERMS {
+            break;
+        }
+    }
+    terms
+}
+
 /// The form of a profile document, read the way the engine reads it. Of more than
 /// `MAX_FOCUS` Schwerpunkte the form takes the first ones, as the engine does.
 pub(crate) fn read(doc: &Json) -> ProfileForm {
     let mut focus = read_texts_at(doc, lexicon::KEYS_FOCUS);
     focus.truncate(MAX_FOCUS);
+    let roles = read_texts_at(doc, lexicon::KEYS_TARGET_ROLES);
+    let search_terms = search_terms(&read_texts_at(doc, KEYS_SEARCH_TERMS), &roles, &focus);
     ProfileForm {
         name: text_at(doc, KEY_NAME),
         title: text_at(doc, KEY_TITLE),
@@ -1040,7 +1077,8 @@ pub(crate) fn read(doc: &Json) -> ProfileForm {
         certificates: read_list(doc, KEY_CERTIFICATES),
         languages: read_languages(doc),
         focus,
-        roles: read_texts_at(doc, lexicon::KEYS_TARGET_ROLES),
+        roles,
+        search_terms,
         wishes: read_wishes(doc),
         criteria: read_criteria(doc),
     }
@@ -1079,6 +1117,11 @@ pub(crate) fn merge(
     if after.roles != before.roles {
         let key = key_in(doc, lexicon::KEYS_TARGET_ROLES);
         write_free_list(doc, key, &after.roles);
+    }
+    // Stored only once changed: until then they follow the roles and the Schwerpunkte.
+    if after.search_terms != before.search_terms {
+        let key = key_in(doc, KEYS_SEARCH_TERMS);
+        write_free_list(doc, key, &after.search_terms);
     }
     if after.years != before.years {
         write_number(doc, lexicon::KEYS_TOTAL_YEARS, after.years);
@@ -1833,6 +1876,38 @@ mod tests {
         }))
     }
 
+    /// The search terms follow the roles and the Schwerpunkte until they are stored; stored,
+    /// they stay as written, each once, at most eight.
+    #[test]
+    fn search_terms_follow_the_roles_until_stored() {
+        let mut profile = doc(&json!({
+            "wunschrollen": ["Interim CFO", "interim cfo", "Head of Finance"],
+            "schwerpunkte": ["Controlling"],
+            "kernkompetenzen": [{"kompetenz": "Controlling"}]
+        }));
+        let before = read(&profile);
+        assert_eq!(
+            before.search_terms,
+            ["Interim CFO", "Head of Finance", "Controlling"]
+        );
+        // Another change leaves them unstored: they still follow the roles.
+        let mut after = before.clone();
+        after.years = Some(12);
+        merge(&mut profile, &before, &after, &[]);
+        assert!(profile.get("suchbegriffe").is_none());
+        // Changed, they are stored and stay.
+        let mut changed = read(&profile);
+        changed.search_terms = ["SAP FI/CO", "Interim CFO", "sap fi/co"]
+            .map(String::from)
+            .to_vec();
+        let unchanged = read(&profile);
+        merge(&mut profile, &unchanged, &changed, &[]);
+        let stored = read(&profile);
+        assert_eq!(stored.search_terms, ["SAP FI/CO", "Interim CFO"]);
+        let many: Vec<String> = (1..=12).map(|n| format!("Rolle {n}")).collect();
+        assert_eq!(search_terms(&many, &[], &[]).len(), MAX_SEARCH_TERMS);
+    }
+
     /// A profile under English keys fills the form.
     #[test]
     fn english_keys_fill_the_form() {
@@ -1934,6 +2009,8 @@ mod tests {
                 "available_from": "sofort"
             })
         );
+        // Unstored, the search terms follow the new roles and Schwerpunkte.
+        after.search_terms = search_terms(&[], &after.roles, &after.focus);
         assert_eq!(plain(&read(&profile)), plain(&after));
     }
 

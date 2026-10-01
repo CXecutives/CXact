@@ -11381,6 +11381,11 @@
       "roles": [
         "Interim CFO"
       ],
+      "searchTerms": [
+        "Interim CFO",
+        "Controlling",
+        "Konzernrechnungslegung nach IFRS"
+      ],
       "wishes": {
         "dayRate": 1200,
         "remote": "mostly",
@@ -11779,6 +11784,15 @@
             "SAP FI/CO Berater",
             "SAP S/4HANA Finance Consultant",
             "Teilprojektleiter SAP Finance"
+          ],
+          "searchTerms": [
+            "SAP FI/CO Berater",
+            "SAP S/4HANA Finance Consultant",
+            "Teilprojektleiter SAP Finance",
+            "SAP S/4HANA Finance",
+            "SAP FI",
+            "SAP CO",
+            "Datenmigration"
           ],
           "wishes": {
             "dayRate": 1000,
@@ -12635,6 +12649,16 @@
             "Cloud-Architektin",
             "Senior DevOps Engineer",
             "Platform Engineer"
+          ],
+          "searchTerms": [
+            "Cloud Architect",
+            "Cloud-Architektin",
+            "Senior DevOps Engineer",
+            "Platform Engineer",
+            "Cloud-Architektur",
+            "Kubernetes",
+            "Infrastructure as Code",
+            "Cloud-Migration"
           ],
           "wishes": {
             "dayRate": 950,
@@ -13495,6 +13519,16 @@
             "AI Consultant",
             "Projektleiter KI",
             "Berater Prozessautomatisierung"
+          ],
+          "searchTerms": [
+            "KI-Berater",
+            "AI Consultant",
+            "Projektleiter KI",
+            "Berater Prozessautomatisierung",
+            "KI-Strategie",
+            "Generative KI",
+            "Prozessautomatisierung",
+            "Robotic Process Automation"
           ],
           "wishes": {
             "dayRate": 1100,
