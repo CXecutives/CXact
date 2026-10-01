@@ -12,8 +12,11 @@
 mod etengo;
 mod freelance_de;
 mod freelancermap;
+mod gulp;
 mod hays;
+mod interim_x;
 mod michael_page;
+mod robert_half;
 mod solcom;
 
 pub(crate) use freelancermap::without_archive_mark;
@@ -58,6 +61,12 @@ pub enum Portal {
     Solcom,
     #[serde(rename = "etengo")]
     Etengo,
+    #[serde(rename = "gulp")]
+    Gulp,
+    #[serde(rename = "roberthalf")]
+    RobertHalf,
+    #[serde(rename = "interimx")]
+    InterimX,
     /// A fourth portal that exists in tests only: it proves that the registry is the only
     /// place that knows the portals.
     #[cfg(test)]
@@ -218,6 +227,10 @@ pub trait PortalAdapter: Send + Sync {
     fn checks_robots(&self) -> bool {
         false
     }
+    /// Keys of links without a number: `u` and 12 hex characters of a hash of the address.
+    fn hashed_ids(&self) -> bool {
+        false
+    }
     /// Where the user sets up the source's alert or registers.
     fn setup_url(&self) -> &'static str {
         self.home_url()
@@ -326,13 +339,16 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
     &michael_page::MichaelPage,
     &solcom::Solcom,
     &etengo::Etengo,
+    &gulp::Gulp,
+    &robert_half::RobertHalf,
+    &interim_x::InterimX,
     #[cfg(test)]
     &probe::Probe,
 ];
 
 impl Portal {
     /// The product portals (the test-only probe is not among them).
-    pub const ALL: [Portal; 7] = [
+    pub const ALL: [Portal; 10] = [
         Portal::LinkedIn,
         Portal::FreelanceDe,
         Portal::Freelancermap,
@@ -340,6 +356,9 @@ impl Portal {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Etengo,
+        Portal::Gulp,
+        Portal::RobertHalf,
+        Portal::InterimX,
     ];
 
     /// The adapter of this portal.
@@ -440,7 +459,7 @@ impl TryFrom<RawJobKey> for JobKey {
             && raw.id[1..]
                 .bytes()
                 .all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'));
-        if digits || (hash && raw.portal == Portal::Freelancermap) {
+        if digits || (hash && raw.portal.adapter().hashed_ids()) {
             Ok(JobKey {
                 portal: raw.portal,
                 id: raw.id,
@@ -998,7 +1017,10 @@ mod tests {
                 "hays",
                 "michaelpage",
                 "solcom",
-                "etengo"
+                "etengo",
+                "gulp",
+                "roberthalf",
+                "interimx"
             ]
         );
         assert_eq!(
@@ -1006,6 +1028,9 @@ mod tests {
             [
                 Access::Guest,
                 Access::Session { required: false },
+                Access::Guest,
+                Access::Guest,
+                Access::Guest,
                 Access::Guest,
                 Access::Guest,
                 Access::Guest,
@@ -1022,7 +1047,10 @@ mod tests {
                 "Hays",
                 "Michael Page",
                 "SOLCOM",
-                "Etengo"
+                "Etengo",
+                "GULP",
+                "Robert Half",
+                "interim-x"
             ]
         );
         for p in Portal::ALL {

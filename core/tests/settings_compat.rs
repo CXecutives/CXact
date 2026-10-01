@@ -65,6 +65,9 @@ fn newest() -> Settings {
             (Portal::MichaelPage, switches(false, false)),
             (Portal::Solcom, switches(false, false)),
             (Portal::Etengo, switches(false, false)),
+            (Portal::Gulp, switches(false, false)),
+            (Portal::RobertHalf, switches(false, false)),
+            (Portal::InterimX, switches(false, false)),
         ]),
         fetch_range: FetchRange::Days30,
         export_excel: false,
@@ -128,6 +131,9 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
             (Portal::MichaelPage, switches(false, false)),
             (Portal::Solcom, switches(false, false)),
             (Portal::Etengo, switches(false, false)),
+            (Portal::Gulp, switches(false, false)),
+            (Portal::RobertHalf, switches(false, false)),
+            (Portal::InterimX, switches(false, false)),
         ]),
         ..Settings::default()
     };
@@ -158,6 +164,9 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::MichaelPage, switches(true, false)),
             (Portal::Solcom, switches(true, false)),
             (Portal::Etengo, switches(true, false)),
+            (Portal::Gulp, switches(true, false)),
+            (Portal::RobertHalf, switches(true, false)),
+            (Portal::InterimX, switches(true, false)),
         ]),
         language: Some(Language::En),
         palette: Palette::Dark,
@@ -181,6 +190,9 @@ fn the_file_before_the_search_loads_with_the_new_source_on() {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Etengo,
+        Portal::Gulp,
+        Portal::RobertHalf,
+        Portal::InterimX,
     ] {
         portals.insert(portal, switches(true, false));
     }
@@ -206,6 +218,9 @@ fn a_file_of_a_newer_version_loads_without_damage() {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Etengo,
+        Portal::Gulp,
+        Portal::RobertHalf,
+        Portal::InterimX,
     ] {
         portals.insert(portal, switches(true, false));
     }

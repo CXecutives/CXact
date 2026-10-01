@@ -1524,6 +1524,8 @@ export const de = {
     autoFetchHint: 'Beim Start und alle 4 Stunden.',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
+    /** A source whose alert mails follow a registration (interim-x). */
+    register: 'Registrieren',
     folder: 'Arbeitsordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',

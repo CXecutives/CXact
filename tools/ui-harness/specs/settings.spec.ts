@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import { ALL_PORTALS, failNext, T, tokenPx } from './helpers';
+import { ALERT_PORTALS, ALL_PORTALS, failNext, SEARCHED, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -174,6 +174,9 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'setup-linkedin',
     'setup-freelance',
     'sign-in-freelance',
+    'setup-gulp',
+    'setup-roberthalf',
+    'setup-interimx',
     'folder-change',
     'folder-open',
     'reset',
@@ -406,12 +409,11 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   page,
 }) => {
   await settings(page);
-  const searched = ['hays', 'freelancermap', 'michaelpage', 'solcom', 'etengo'];
   expect(await ids(page, 'portals-search', '[data-testid^="portal-"]')).toEqual(
-    searched.map((portal) => `portal-${portal}`),
+    SEARCHED.map((portal) => `portal-${portal}`),
   );
   expect(await ids(page, 'portals-alerts', '[data-testid^="portal-"]')).toEqual(
-    ALL_PORTALS.filter((portal) => !searched.includes(portal)).map((portal) => `portal-${portal}`),
+    ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
   await expect(page.getByTestId('settings-search').locator('.card')).toHaveCount(1);
   await expect(page.getByTestId('settings-alerts').locator('.card')).toHaveCount(1);
@@ -423,6 +425,9 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
     ['michaelpage', 6],
     ['solcom', 6],
     ['etengo', 6],
+    ['gulp', 0],
+    ['roberthalf', 0],
+    ['interimx', 0],
   ] as const) {
     const quota = page.getByTestId(`quota-${portal}`);
     await expect(quota).toContainText(T.settings.quota(used, 100));
@@ -439,16 +444,22 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
     await expect(page.getByTestId(card)).not.toContainText('Details');
     await expect(page.getByTestId(card)).not.toContainText('Seiten');
   }
-  // Only a source of alert mails offers "Alert anlegen", its page in the browser.
+  // Only a source of alert mails offers "Alert anlegen" (interim-x "Registrieren"), its page
+  // in the browser.
   await expect(page.getByTestId('settings-search').locator('[data-testid^="setup-"]')).toHaveCount(
     0,
   );
   await expect(page.getByTestId('settings-alerts').locator('[data-testid^="setup-"]')).toHaveText([
     T.settings.setUpAlert,
     T.settings.setUpAlert,
+    T.settings.setUpAlert,
+    T.settings.setUpAlert,
+    T.settings.register,
   ]);
   await page.getByTestId('setup-freelance').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
+  await page.getByTestId('setup-interimx').click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'interimx' } });
   // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
     .getByTestId('portal-freelance')

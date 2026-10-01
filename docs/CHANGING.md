@@ -307,6 +307,12 @@ text.
    its switches from `Portal::ALL`.
 4. The stub's demo data may give it jobs; `docs/PLAN.md` says what the portal allows.
 
+A source of alert mails added after 2026-10-01 also sets `checks_robots()` and `setup_url()`
+(Einstellungen and the first-run page offer it as "Alert anlegen"; `REGISTERS` in
+`ui/src/lib/portals.ts` says "Registrieren" instead). Links without a number take a hash key
+(`hashed_ids()`); a page drawn in the browser is read from the data it loads (`fetch_url()`,
+GULP).
+
 ## Add a search source
 
 A source the app searches itself (user decision 2026-10-01): an adapter as above with

@@ -1247,6 +1247,7 @@ export const en: Catalog = {
     autoFetch: 'Fetch automatically',
     autoFetchHint: 'At start and every 4 hours.',
     setUpAlert: 'Set up alert',
+    register: 'Register',
     folder: 'Work folder',
     excel: 'Excel file',
     csv: 'CSV file',

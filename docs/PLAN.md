@@ -1061,4 +1061,7 @@ handle sits between list and reader".
 - [x] 3 Michael Page, SOLCOM, Etengo (interim tiles only: the robots.txt forbids the contract filter)
 - [x] 4 Einstellungen: Suche (with "Automatisch abrufen") and Alert-Mails, monograms, "Alert anlegen"
   (`OpenTarget::PortalSetup`), "Quelle" in the UI texts
-- [ ] 5 GULP, Robert Half, interim-x (once real alert mails are there)
+- [x] 5 GULP, Robert Half, interim-x: link forms, the ad readers against real pages (GULP through the data
+  its page loads, `/gulp2/rest/internal/projects/...`, which its robots.txt allows), setup links ("Registrieren"
+  at interim-x), on in Einstellungen and the first-run page
+- [ ] The first real alert mails of GULP, Robert Half and interim-x read (sender, links, layout; fixtures)

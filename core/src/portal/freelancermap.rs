@@ -60,6 +60,10 @@ impl PortalAdapter for Freelancermap {
         Access::Guest
     }
 
+    fn hashed_ids(&self) -> bool {
+        true
+    }
+
     fn job_link(&self, url: &Url) -> Option<JobLink> {
         let (host, segments) = host_and_segments(url)?;
         let domain = DOMAINS.into_iter().find(|d| host_is(&host, d))?;

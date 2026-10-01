@@ -4,7 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, runFinished, test, visibleCount } from './fixtures';
-import { ALL_PORTALS, chooseWay, failNext, showTab, T, tokenPx } from './helpers';
+import { ALERT_PORTALS, ALL_PORTALS, chooseWay, failNext, showTab, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -48,7 +48,7 @@ test('three steps that tick themselves; the fetch searches before a mailbox', as
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
   // The portals whose alert mails must come here, in the UI's order.
   await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(['linkedin', 'freelance']),
+    T.firstRun.mailboxText(ALERT_PORTALS),
   );
   // Without a mailbox the first fetch searches the sources (Hays and freelancermap are on).
   await expect(page.getByTestId('first-fetch')).not.toHaveAttribute('aria-disabled', 'true');
@@ -81,11 +81,17 @@ test('three steps that tick themselves; the fetch searches before a mailbox', as
     .locator('li')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
   // The sources of alert mails only: the app searches the others itself.
-  expect(portals).toEqual(['first-portal-linkedin', 'first-portal-freelance']);
+  expect(portals).toEqual(ALERT_PORTALS.map((portal) => `first-portal-${portal}`));
   await expect(page.getByTestId('first-mails-linkedin')).toHaveText('20 Alert-Mails');
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText(['Alert anlegen']);
+  // The others offer the page to set up an alert (interim-x its registration).
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText([
+    T.firstRun.createAlert,
+    T.firstRun.createAlert,
+    T.firstRun.createAlert,
+    T.settings.register,
+  ]);
   await page.getByTestId('first-alert-freelance').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'freelance' } });
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
   // Each step is its name and the controls it needs: no sentence explains a step.
   for (const step of ['step-profile', 'step-fetch']) {
     await expect(page.getByTestId(step).locator('.hint')).toHaveCount(0);
@@ -100,7 +106,9 @@ test('a step done before the page opened is simply there', async ({ page }) => {
   await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
   // Connected in an earlier session: nothing counted, every portal offers its page.
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(
+    ALERT_PORTALS.length,
+  );
 });
 
 test('step 1 names the portals that are on; none on leads to Einstellungen', async ({ page }) => {
@@ -110,7 +118,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await page.getByTestId('nav-jobs').click();
   const step = page.getByTestId('step-mailbox');
   await expect(step.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(['freelance']),
+    T.firstRun.mailboxText(ALERT_PORTALS.filter((portal) => portal !== 'linkedin')),
   );
   // The compound never breaks at its hyphen.
   expect(T.firstRun.mailboxText(['freelance'])).toContain('Gmail‑Adresse');
@@ -128,7 +136,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   // In English the same.
   await open(page, `${WIN}&scenario=first-run&lang=en`);
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alert emails from linkedin.com and freelance.de must go to this Gmail address.',
+    'The alert emails from linkedin.com, freelance.de, gulp.de, roberthalf.com and interim-x.com must go to this Gmail address.',
   );
 });
 
@@ -137,7 +145,9 @@ test('no alert mail in 30 days says to set up an alert first', async ({ page }) 
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(
+    ALERT_PORTALS.length,
+  );
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 

@@ -135,6 +135,11 @@ fn url(portal: Portal, id: u64) -> String {
             format!("https://www.solcom.de/fuer-freiberufler/projektliste/{id}-projekt")
         }
         Portal::Etengo => format!("https://www.etengo.de/it-projektsuche/{id}/"),
+        Portal::Gulp => format!("https://www.gulp.de/gulp2/g/projekte/agentur/C{id}"),
+        Portal::RobertHalf => {
+            format!("https://www.roberthalf.com/de/de/job/de/job/60030-{id:0>10}-dede")
+        }
+        Portal::InterimX => format!("https://www.interim-x.com/de/projekt/projekt-{id}"),
         Portal::Probe => format!("https://jobs.probe.example/job/{id}"),
     }
 }

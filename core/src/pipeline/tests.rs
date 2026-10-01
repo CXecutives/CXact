@@ -648,7 +648,8 @@ async fn cancel_after_k_of_n_keeps_exactly_k() {
     }
 }
 
-/// The biggest summary a run can send stays below 8 KB.
+/// The biggest summary a run can send stays below 8 KB as it sends it (`finished_event`), with
+/// every source's counts.
 #[test]
 fn the_largest_summary_is_a_small_event() {
     let now = Timestamp::now();
@@ -689,9 +690,12 @@ fn the_largest_summary_is_a_small_event() {
             gmail_id: Some(format!("{:x}", u64::MAX)),
         })
         .collect();
-    assert_small(&[RunEvent::Finished {
-        summary: Box::new(summary),
-    }]);
+    let event = summary.finished_event();
+    assert_small(std::slice::from_ref(&event));
+    let RunEvent::Finished { summary: sent } = event else {
+        panic!("finished");
+    };
+    assert_eq!(sent.per_portal, summary.per_portal, "every source's counts");
 }
 
 /// Two jobs with a full text (without the mailbox), for export tests.
