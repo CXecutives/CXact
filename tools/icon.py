@@ -27,21 +27,21 @@ whenever it has no stage of the wanted size - then mixes plate colour into the e
 black: no dark fringe on any background.
 
 Geometry on the 1024 grid (Windows layout; macOS scales everything with its smaller plate):
-- Plate 0..1024 (full bleed: the desktop and the taskbar show it exactly as large as the
-  other apps, measured against Claude and Roblox at 48 px) with Apple's continuous corner,
-  the curve UIKit draws for app icons (APPLE_CORNER): it leaves the straight edge 1.53 r
-  before the corner and bends with continuous curvature. r is 22.37 % of the plate, Mike
-  Swanson's fit to Apple's own AppIconMask (34 of 152); Apple publishes no number.
-- The glyph is drawn on the grid of a 16..1008 plate (GRID) and scales with the plate, so it
+- The shapes are those of the icon workshop (.claude/tools/icon-werkstatt.html), which draws
+  them with the same rules (user, 2026-10-01: the icon as it looked there).
+- Plate 0..1024 on Windows (full bleed: the desktop and the taskbar show it exactly as large
+  as the other apps, measured against Claude and Roblox at 48 px) with circular corners of
+  22.37 % of the plate (Mike Swanson's fit to Apple's own AppIconMask, 34 of 152). macOS keeps
+  Apple's continuous corner (APPLE_CORNER, the curve UIKit draws for app icons: it leaves the
+  straight edge 1.53 r before the corner), the convention of that system.
+- The glyph is drawn on the 1024 grid of the plate (GRID 0) and scales with the plate, so it
   keeps its share of the plate and its optical centre.
-- Folder 181..843 wide; tab 226..300 (45 degree slope 425 -> 499), body 300..778. One radius
-  (69) everywhere: the body and tab corners with 60 % corner smoothing (SMOOTHING, as Figma:
-  the curve leaves the straight edge at 1.6 r with zero curvature, the circular middle keeps
-  radius r), the slope with two circular fillets. Its bounding box sits 10 of 1024 above the
-  middle (the classical optical centre); the centroid of the white area (folder minus check)
-  lies about 8 below it. 10 lower than before (user, 2026-09-26: the folder looked slightly
-  too high).
-- Check: one stroke width (83), round caps and join, cut out of the folder (even-odd), so the
+- Folder 125..899 wide (78 % of the workshop's 992); tab 176..263 (45 degree slope 410 -> 497),
+  body 263..821. One radius (81): a 90 degree corner leaves the straight edges 1.6 r before
+  the corner and bends in one cubic whose handles reach 72 % of the way to the corner; the
+  slope meets the tab's edges in one quadratic each, r tan(turn / 2) before and after the
+  corner.
+- Check: one stroke width (78), round caps and join, cut out of the folder (even-odd), so the
   plate shows through. Optically centred in the body: the box is centred and moved
   up by half the distance between box centre and mass centre (the heavy bottom vertex).
 - One flat colour: the app's --brand token (the cxpertise coral), the glyph --brand-glyph
@@ -86,18 +86,20 @@ BACKGROUND = tuple(_COLOURS['bg']['rgb'])
 PAPER = (255, 255, 255)
 LABEL = (0, 0, 0)
 DESKTOPS = [('dark', (32, 32, 32)), ('grey', (128, 128, 128)), ('white', PAPER)]
-# Corner smoothing of the folder's corners (see `smooth_corner`). The plate has Apple's own
-# continuous corner instead (see `apple_corner`), with a radius of 22.37 % of the plate.
-SMOOTHING = 0.6
+# The folder's corners are the workshop's (see `folder`): the curve leaves the edges 1.6 r
+# before a 90 degree corner, its handles reach 72 % of the way to it.
+FOLDER_CUT = 1.6
+FOLDER_HANDLE = 0.72
 
-# 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID;
-# the Windows plate itself runs from PLATE (0: full bleed) to 1024 - PLATE.
-GRID = 16
+# 1024 grid. The glyph's coordinates below are drawn on a plate from GRID to 1024 - GRID (0:
+# the plate itself, as the icon workshop draws them); the Windows plate runs from PLATE (0:
+# full bleed) to 1024 - PLATE.
+GRID = 0
 PLATE = 0
 PLATE_R = 0.2237 * (1024 - 2 * PLATE)
-# The folder 78 % of the plate wide, the check 78 units thick and 78 % of its arms (user,
-# 2026-10-01, set in the icon workshop): the first shape scaled about its centre, the check's
-# arms at 45 degrees, placed like before.
+# The folder 78 % of the workshop's 992 wide, the check 78 units thick and 78 % of its arms
+# (user, 2026-10-01, set in the icon workshop, which lays them out the same way): the first
+# shape scaled about its centre, the check's arms at 45 degrees, placed like before.
 FOLDER_X0, FOLDER_X1 = 125, 899
 TAB_Y, BODY_Y0, BODY_Y1 = 176, 263, 821
 SLOPE_X0, SLOPE_X1 = 410, 497
@@ -219,61 +221,6 @@ def add(p, *terms):
     return (x, y)
 
 
-def smooth_corner(path, v, e, f, r, xi=SMOOTHING):
-    """A 90 degree corner at `v` (incoming direction e, outgoing f, clockwise) with radius r and
-    corner smoothing xi: straight -> cubic (curvature from 0) -> circular arc -> cubic ->
-    straight, symmetric about the diagonal. The path must stand at v - p*e."""
-    p = (1 + xi) * r
-    arc_deg = 90 * (1 - xi)
-    s = math.sin(math.radians(arc_deg / 2)) * r * math.sqrt(2)  # arc chord per axis
-    alpha = (90 - arc_deg) / 2
-    p3p4 = r * math.tan(math.radians(alpha / 2))
-    beta = 45 * xi
-    c = p3p4 * math.cos(math.radians(beta))
-    d = c * math.tan(math.radians(beta))
-    b = (p - s - c - d) / 3
-    a = 2 * b
-    start = add(v, (-p, e))
-    path.cubic(add(start, (a, e)), add(start, (a + b, e)), add(start, (a + b + c, e), (d, f)))
-    center = add(v, (-r, e), (r, f))
-    mid0 = path.pos
-    arc_end = add(mid0, (s, e), (s, f))
-    for q in (mid0, arc_end):
-        assert abs(math.dist(q, center) - r) < 1e-6 * max(r, 1), 'arc points off the circle'
-    a0 = math.atan2(mid0[1] - center[1], mid0[0] - center[0])
-    a1 = math.atan2(arc_end[1] - center[1], arc_end[0] - center[0])
-    if a1 < a0:  # clockwise on screen = increasing angle
-        a1 += 2 * math.pi
-    path.arc(center, r, a0, a1)
-    path.cubic(add(arc_end, (d, e), (c, f)), add(arc_end, (d, e), (b + c, f)),
-               add(arc_end, (d, e), (a + b + c, f)))
-    return p
-
-
-def fillet(path, v, e, f, r):
-    """A circular fillet of radius r at `v` between directions e and f (any angle, either
-    turn). The path must stand at v - t*e with t = fillet_length(e, f, r)."""
-    cross = e[0] * f[1] - e[1] * f[0]
-    phi = math.acos(max(-1, min(1, e[0] * f[0] + e[1] * f[1])))
-    t = r * math.tan(phi / 2)
-    t1 = add(v, (-t, e))
-    n = (-e[1], e[0]) if cross > 0 else (e[1], -e[0])
-    center = add(t1, (r, n))
-    t2 = add(v, (t, f))
-    a0 = math.atan2(t1[1] - center[1], t1[0] - center[0])
-    a1 = math.atan2(t2[1] - center[1], t2[0] - center[0])
-    if cross > 0 and a1 < a0:
-        a1 += 2 * math.pi
-    if cross < 0 and a1 > a0:
-        a1 -= 2 * math.pi
-    path.arc(center, r, a0, a1)
-
-
-def fillet_length(e, f, r):
-    phi = math.acos(max(-1, min(1, e[0] * f[0] + e[1] * f[1])))
-    return r * math.tan(phi / 2)
-
-
 def unit(dx, dy):
     n = math.hypot(dx, dy)
     return (dx / n, dy / n)
@@ -312,25 +259,48 @@ def squircle(x0, y0, x1, y1, r):
     return path
 
 
+def rounded_plate(x0, y0, x1, y1, r):
+    """The Windows plate as the icon workshop draws it: straight sides, circular corners."""
+    path = Path2((x0 + r, y0))
+    for (cx, cy), a0 in [((x1 - r, y0 + r), -math.pi / 2), ((x1 - r, y1 - r), 0.0),
+                         ((x0 + r, y1 - r), math.pi / 2), ((x0 + r, y0 + r), math.pi)]:
+        path.line((cx + r * math.cos(a0), cy + r * math.sin(a0)))
+        path.arc((cx, cy), r, a0, a0 + math.pi / 2)
+    return path
+
+
+def plate(g, mac=False):
+    """The plate of a stage: the workshop's on Windows, Apple's continuous corner on macOS."""
+    return (squircle if mac else rounded_plate)(*g['plate'], g['plate_r'])
+
+
 def folder(g):
-    """Folder outline, clockwise from the tab's top edge."""
+    """Folder outline, clockwise from the tab's top left corner, as the icon workshop draws it
+    (its `roundedPath`): every corner of the six-sided outline is cut back along both edges
+    and bent - a 90 degree corner FOLDER_CUT r before it in one cubic whose handles reach
+    FOLDER_HANDLE of the way to the corner, the slope's corners r tan(turn / 2) before it in
+    one quadratic with the corner as its control point."""
     r = g['folder_r']
     x0, x1, tab_y, y0, y1 = g['x0'], g['x1'], g['tab_y'], g['y0'], g['y1']
     s0, s1 = g['slope_x0'], g['slope_x1']
-    slope = unit(s1 - s0, y0 - tab_y)
-    p = (1 + SMOOTHING) * r
-    path = Path2((x0 + p, tab_y))
-    t_top = fillet_length(RIGHT, slope, r)
-    path.line(add((s0, tab_y), (-t_top, RIGHT)))
-    fillet(path, (s0, tab_y), RIGHT, slope, r)
-    t_bottom = fillet_length(slope, RIGHT, r)
-    path.line(add((s1, y0), (-t_bottom, slope)))
-    fillet(path, (s1, y0), slope, RIGHT, r)
-    for v, e, f in [((x1, y0), RIGHT, DOWN), ((x1, y1), DOWN, LEFT), ((x0, y1), LEFT, UP)]:
-        path.line(add(v, (-p, e)))
-        smooth_corner(path, v, e, f, r)
-    path.line(add((x0, tab_y), (-p, UP)))
-    smooth_corner(path, (x0, tab_y), UP, RIGHT, r)
+    corners = [(x0, tab_y), (s0, tab_y), (s1, y0), (x1, y0), (x1, y1), (x0, y1)]
+    path = None
+    for i, v in enumerate(corners):
+        before, after = corners[i - 1], corners[(i + 1) % len(corners)]
+        e, f = unit(v[0] - before[0], v[1] - before[1]), unit(after[0] - v[0], after[1] - v[1])
+        turn = math.acos(max(-1, min(1, e[0] * f[0] + e[1] * f[1])))
+        right = abs(turn - math.pi / 2) < 0.01
+        cut = FOLDER_CUT * r if right else r * math.tan(turn / 2)
+        a, b = add(v, (-cut, e)), add(v, (cut, f))
+        if path is None:
+            path = Path2(a)
+        else:
+            path.line(a)
+        # The handles: FOLDER_HANDLE of the way to the corner; a quadratic with the corner as
+        # its control point is the cubic with handles at two thirds.
+        k = FOLDER_HANDLE if right else 2 / 3
+        to_v = lambda q: (v[0] - q[0], v[1] - q[1])
+        path.cubic(add(a, (k, to_v(a))), add(b, (k, to_v(b))), b)
     return path
 
 
@@ -525,13 +495,13 @@ def render(s, mac=False):
     alpha = plate + shadow x (1 - plate), colour = plate colour x plate / alpha. The plate itself
     is the same as without the shadow; around it only black shows through."""
     g = layout(s, mac)
-    plate = coverage(s, [(squircle(*g['plate'], g['plate_r']).points(), 1)])
+    covered = coverage(s, [(plate(g, mac).points(), 1)])
     glyph = coverage(s, [(folder(g).points(), 1), (check(g).points(), -1)])
     if not mac:
-        data = [(*glyph_colour(w), level(c)) for c, w in zip(plate, glyph)]
+        data = [(*glyph_colour(w), level(c)) for c, w in zip(covered, glyph)]
     else:
         data = []
-        for c, w, below in zip(plate, glyph, shadow(s, g)):
+        for c, w, below in zip(covered, glyph, shadow(s, g)):
             c = min(max(c, 0.0), 1.0)
             a = c + below * (1 - c)
             rgb = glyph_colour(w)
@@ -771,7 +741,7 @@ def build_svg(out):
     out.write_text(f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="{fmt(x0)} {fmt(y0)} {fmt(x1 - x0)} {fmt(y1 - y0)}" width="{fmt(x1 - x0)}" height="{fmt(y1 - y0)}">
   <!-- Generated by tools/icon.py - do not edit. The app icon as a vector: the same paths as
        icon.ico, icon.icns and icon.png; the check is cut out of the folder (even-odd). -->
-  <path fill="{hex_colour(BRAND)}" d="{squircle(x0, y0, x1, y1, g['plate_r']).svg(fmt)}"/>
+  <path fill="{hex_colour(BRAND)}" d="{plate(g).svg(fmt)}"/>
   <path fill="{hex_colour(GLYPH)}" fill-rule="evenodd" d="{folder(g).svg(fmt)}{check(g).svg(fmt)}"/>
 </svg>
 ''', encoding='utf-8', newline='\n')

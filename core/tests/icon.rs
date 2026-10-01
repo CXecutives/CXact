@@ -576,6 +576,31 @@ fn plate_outline(left: f64, top: f64, right: f64, bottom: f64) -> Vec<(f64, f64)
     out
 }
 
+/// The Windows plate (left, top)..(right, bottom) as a polygon, clockwise on screen: straight
+/// sides and circular corners of the same radius, as the icon workshop draws them (user,
+/// 2026-10-01), each quarter circle flattened into 256 chords.
+fn round_plate_outline(left: f64, top: f64, right: f64, bottom: f64) -> Vec<(f64, f64)> {
+    let radius = PLATE_RADIUS * (right - left);
+    // Each corner's centre and the angle its quarter circle starts at (y down: clockwise).
+    let corners = [
+        ((right - radius, top + radius), -std::f64::consts::FRAC_PI_2),
+        ((right - radius, bottom - radius), 0.0),
+        (
+            (left + radius, bottom - radius),
+            std::f64::consts::FRAC_PI_2,
+        ),
+        ((left + radius, top + radius), std::f64::consts::PI),
+    ];
+    let mut out = Vec::new();
+    for ((x, y), start) in corners {
+        for step in 0..=256 {
+            let angle = start + std::f64::consts::FRAC_PI_2 * f64::from(step) / 256.0;
+            out.push((x + radius * angle.cos(), y + radius * angle.sin()));
+        }
+    }
+    out
+}
+
 /// Exact area coverage (0..1) of a polygon on a size x size grid, top row first: every edge
 /// adds the signed area between itself and the right side of each cell it crosses (the
 /// accumulation of font-rs); a running sum along the row gives each pixel's covered share.
@@ -686,14 +711,18 @@ fn reference_rasterizer_is_exact() {
     );
 }
 
-/// Every ICO stage is the plate filling its square with Apple's corner: each alpha within one
-/// level of the exact coverage, the four mirror images alike, nothing outside the plate.
+/// Every ICO stage is the plate filling its square with the workshop's circular corner: each
+/// alpha within one level of the exact coverage, the four mirror images alike, nothing outside
+/// the plate.
 #[test]
 fn ico_plate_is_exact() {
     let bytes = std::fs::read(repo("src-tauri/icons/icon.ico")).unwrap();
     for stage in read_ico(&bytes) {
         let size = stage.width as usize;
-        let exact = coverage(&plate_outline(0.0, 0.0, size as f64, size as f64), size);
+        let exact = coverage(
+            &round_plate_outline(0.0, 0.0, size as f64, size as f64),
+            size,
+        );
         let alpha = |x: usize, y: usize| i32::from(stage.pixels[y * size + x][3]);
         for y in 0..size {
             for x in 0..size {
