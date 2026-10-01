@@ -37,7 +37,6 @@ async function profile(page: Page, query = ''): Promise<void> {
 /** A new form from the empty state ("Neues Profil", then "Leer anfangen"). */
 async function create(page: Page, scenario = 'no-profile'): Promise<void> {
   await profile(page, `&scenario=${scenario}`);
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-form')).toBeVisible();
 }
@@ -576,7 +575,6 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   await page.setViewportSize({ width: 1360, height: 900 });
   await expect(aliases).not.toHaveAttribute('placeholder', /./);
   await profile(page, '&scenario=no-profile&lang=en');
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'empty');
   // Name and role are fields with their labels: no placeholder repeats them.
   await expect(page.getByTestId('profile-name-field')).not.toHaveAttribute('placeholder', /./);
@@ -1785,7 +1783,6 @@ test('at most five Schwerpunkte: the star says what a click does, a sixth waits'
 
 test('a file with seven Schwerpunkte: the first five are taken, saving works', async ({ page }) => {
   await profile(page, '&scenario=no-profile&file=focus');
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'file');
   await expect.poll(() => marked(page)).toHaveLength(5);
   await expect(page.getByTestId('focus-trimmed')).toHaveText(
@@ -2033,41 +2030,46 @@ test('language names follow the UI language; the profile keeps them in German', 
 
 // ------------------------------------------------------------------ the ways in
 
-test('no profile: one sentence and "Neues Profil", whose dialog holds the three ways', async ({
+test('no profile: the start page, its three ways each with its own button, no dialog', async ({
   page,
 }) => {
   await profile(page, '&scenario=no-profile');
   const empty = page.getByTestId('profile-empty');
-  await expect(empty).toContainText('Noch kein Profil');
+  await expect(page.getByTestId('profile-start-heading')).toHaveText(T.profile.newProfile);
   await expect(empty).toContainText(T.profile.noneText);
-  // One way in, the same as in the menu of the profiles.
-  await expect(empty.getByRole('button')).toHaveText([T.profile.newProfile]);
-  await expect(empty.locator('.btn.primary')).toHaveText(T.profile.newProfile);
-  await empty.getByTestId('profile-create').click();
-  const dialog = page.getByTestId('dialog-new-profile');
-  await expect(dialog.getByRole('heading')).toHaveText(T.profile.newProfile);
-  const ways = dialog.getByTestId('new-profile-ways').getByRole('radio');
+  // The recommended way first, each with what it does and its buttons (none of them the
+  // primary: none is the one way on).
+  const ways = page.getByTestId('new-profile-ways').locator('[data-setting-row]');
   await expect(ways).toHaveCount(3);
   for (const [at, label] of Object.values(T.profile.way).entries()) {
     await expect(ways.nth(at)).toContainText(label);
   }
-  // The recommended way is chosen first, with its two steps; the button names what it does.
-  await expect(ways.first()).toHaveAttribute('aria-checked', 'true');
-  await expect(ways.first()).toContainText(T.profile.wayNote);
-  const steps = dialog.getByTestId('new-profile-steps');
-  await expect(steps).toContainText(T.profile.cvPrompt);
-  await expect(steps).toContainText(T.profile.cvAnswer);
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.profile.pasteAnswer);
-  await ways.nth(1).click();
-  await expect(steps).toHaveCount(0);
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.profile.startEmpty);
-  await ways.nth(2).click();
-  await expect(dialog.getByTestId('dialog-confirm')).toHaveText(T.profile.pickFile);
-  // Esc leaves the empty state as it was.
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-  await expect(empty).toBeVisible();
+  await expect(ways.nth(0)).toContainText(T.profile.cvPrompt);
+  await expect(ways.nth(0).getByRole('button')).toHaveText([
+    T.profile.copyPrompt,
+    T.profile.pasteAnswer,
+  ]);
+  await expect(ways.nth(1).getByRole('button')).toHaveText(T.profile.startEmpty);
+  await expect(ways.nth(2).getByRole('button')).toHaveText(T.profile.pickFile);
+  await expect(empty.locator('.btn.primary')).toHaveCount(0);
+  await expect(page.getByTestId('profile-start-cancel')).toHaveCount(0);
   expect(await calls(page, 'pick_profile')).toHaveLength(0);
+});
+
+test('Neues Profil from the menu: the start page beside the profile, Abbrechen goes back', async ({
+  page,
+}) => {
+  await profile(page);
+  await switcher(page).click();
+  await page.getByTestId('menu-item-new').click();
+  await expect(page.getByTestId('profile-start-heading')).toHaveText(T.profile.newProfile);
+  await page.getByTestId('profile-start-cancel').click();
+  await expect(page.getByTestId('profile-form')).toBeVisible();
+  await switcher(page).click();
+  await page.getByTestId('menu-item-new').click();
+  await chooseWay(page, 'empty');
+  await expect(heading(page)).toHaveText(T.profile.newProfile);
+  await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
 });
 
 test('a new form starts with one row each', async ({ page }) => {
@@ -2228,7 +2230,6 @@ test('a chosen file fills the form for review; discarding keeps what was there',
   page,
 }) => {
   await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'file');
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
   // No sentence asks to review: the save bar is there, the draft is unsaved as it is.
@@ -2242,7 +2243,6 @@ test('a chosen file fills the form for review; discarding keeps what was there',
   await discard(page).click();
   await expect(page.getByTestId('profile-empty')).toBeVisible();
   expect(await saves(page)).toBe(0);
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'file');
   await save(page).click();
   expect((await lastSave(page)).source).toBe('{"name": "Jonas Muster"}');
@@ -2256,7 +2256,6 @@ test('a file over a profile that does not read replaces it; Rückgängig brings 
   page,
 }) => {
   await profile(page, '&scenario=profile-broken');
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'file');
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
   await expect(page.getByTestId('profile-replaces')).toHaveText(T.profile.replacesStored);
@@ -2322,7 +2321,7 @@ test('the last profile deleted leaves the ways in', async ({ page }) => {
     await expect(dialog).toHaveCount(0);
     expect(await page.evaluate(() => window.__harness.form() !== null)).toBe(left > 0);
   }
-  await expect(page.getByTestId('profile-empty')).toContainText(T.profile.none);
+  await expect(page.getByTestId('profile-empty')).toContainText(T.profile.newProfile);
   await expect(switcher(page)).toHaveCount(0);
 });
 
@@ -2538,7 +2537,6 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   });
   // A new form says that saving replaces the file; the switcher stays at hand with the
   // other profiles and the way to a new one.
-  await page.getByTestId('profile-create').click();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-replaces')).toHaveText(
     'Ein neues Profil ersetzt die Datei.',
@@ -2548,13 +2546,12 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
     await expect(page.getByTestId(id)).toBeVisible();
   }
   await page.keyboard.press('Escape');
-  // Untouched, Esc goes back to the three ways in, and "Neues Profil" takes the focus.
+  // Untouched, Esc goes back to the three ways in, and the first one takes the focus.
   await expect(bar(page)).toHaveCount(0);
   await page.getByTestId('profile-name-field').focus();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('profile-create')).toBeFocused();
-  await page.getByTestId('profile-create').click();
+  await expect(page.getByTestId('new-profile-copy')).toBeFocused();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
   await page.getByTestId('profile-name-field').fill('Erika');
@@ -2563,7 +2560,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await page.getByTestId('profile-name-field').fill('');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('profile-create')).toBeFocused();
+  await expect(page.getByTestId('new-profile-copy')).toBeFocused();
 });
 
 // ------------------------------------------------------------------ the prompt for an AI
@@ -2576,10 +2573,9 @@ test('"Aus dem Lebenslauf": the prompt copied, the whole answer pasted back into
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   }
   await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-create').click();
-  const dialog = page.getByTestId('dialog-new-profile');
-  // The prompt: the button says it is copied for a moment (the toasts wait behind the dialog).
-  const copy = dialog.getByTestId('new-profile-copy');
+  const ways = page.getByTestId('new-profile-ways');
+  // The prompt: the button says it is copied for a moment.
+  const copy = ways.getByTestId('new-profile-copy');
   await expect(copy).toHaveText(T.profile.copyPrompt);
   await copy.click();
   await expect(copy).toHaveText(T.profile.copied);
@@ -2590,18 +2586,18 @@ test('"Aus dem Lebenslauf": the prompt copied, the whole answer pasted back into
     );
   }
   await expect(copy).toHaveText(T.profile.copyPrompt);
-  // An answer without a profile is said in the dialog, which stays.
+  // An answer without a profile is said at the end of the card, which stays.
   await page.evaluate(() => (window.__harness.clipboard = 'Das kann ich leider nicht.'));
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog.getByTestId('dialog-error')).toHaveText(T.profile.noAnswer);
+  await ways.getByTestId('new-profile-paste').click();
+  await expect(ways.getByTestId('new-profile-error')).toHaveText(T.profile.noAnswer);
   // The whole answer of the AI: its profile goes into the form for review, nothing is stored.
   await page.evaluate(
     () =>
       (window.__harness.clipboard =
         'Hier ist dein Profil:\n```json\n{"name": "Jonas Muster"}\n```\nViel Erfolg.'),
   );
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog).toHaveCount(0);
+  await ways.getByTestId('new-profile-paste').click();
+  await expect(ways).toHaveCount(0);
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
   await expect(heading(page)).toHaveText(T.profile.newProfile);
   expect(await calls(page, 'read_profile_text')).toHaveLength(2);
@@ -2620,18 +2616,17 @@ test('a clipboard the platform refuses: said for the prompt, a field takes the a
     });
   });
   await profile(page, '&scenario=no-profile');
-  await page.getByTestId('profile-create').click();
-  const dialog = page.getByTestId('dialog-new-profile');
-  await dialog.getByTestId('new-profile-copy').click();
-  await expect(dialog.getByTestId('dialog-error')).toHaveText(T.profile.promptNotCopied);
+  const ways = page.getByTestId('new-profile-ways');
+  await ways.getByTestId('new-profile-copy').click();
+  await expect(ways.getByTestId('new-profile-error')).toHaveText(T.profile.promptNotCopied);
   // Nothing to read from the clipboard: a field takes the pasted answer.
-  await dialog.getByTestId('dialog-confirm').click();
-  const answer = dialog.getByTestId('new-profile-answer');
+  await ways.getByTestId('new-profile-paste').click();
+  const answer = ways.getByTestId('new-profile-answer');
   await expect(answer).toBeVisible();
-  await expect(dialog.getByTestId('dialog-error')).toHaveCount(0);
+  await expect(ways.getByTestId('new-profile-error')).toHaveCount(0);
   await answer.fill('{"name": "Jonas Muster"}');
-  await dialog.getByTestId('dialog-confirm').click();
-  await expect(dialog).toHaveCount(0);
+  await ways.getByTestId('new-profile-paste').click();
+  await expect(ways).toHaveCount(0);
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
 });
 

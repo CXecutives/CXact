@@ -1454,7 +1454,7 @@ test.describe('one list', () => {
     await expect(page.getByTestId('mailbox-connect')).toBeFocused();
   });
 
-  test('without a profile: newest first, one line leads to the empty profile form', async ({
+  test('without a profile: newest first, one line leads to the start of a new profile', async ({
     page,
   }) => {
     await open(page, `${WIN}&scenario=no-profile`);
@@ -1466,7 +1466,7 @@ test.describe('one list', () => {
       query: { sort: 'newest' },
     });
     await notice.getByRole('button', { name: T.list.createProfile }).click();
-    await expect(page.getByTestId('profile-form')).toBeVisible();
+    await expect(page.getByTestId('new-profile-ways')).toBeVisible();
   });
 
   test('a profile the app cannot use, or a thin one: one line on top leads to it', async ({

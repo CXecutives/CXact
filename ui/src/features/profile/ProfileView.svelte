@@ -1,16 +1,15 @@
 <!--
-  Profil (centred 720): the profile itself as a form. Without a profile an empty state with
-  the three ways in (a new form, the recommended one; an existing file, also the one an AI
-  wrote; the prompt that has any AI write that file from a CV); a file that no longer reads
-  says so in the same place, with its folder at hand. With a profile its head (the profile's
+  Profil (centred 720): the profile itself as a form. Without a profile, and for "Neues
+  Profil" of the menu of the profiles, the start page with the three ways in (ProfileStart:
+  from the CV with any AI, the empty form, a file); a file that no longer reads says so in
+  the same place, with its folder at hand. With a profile its head (the profile's
   name as the title with the menu of the profiles and the same ways, a status when there is
   one) and the form, whose save bar shows while it holds a change. A chosen file fills the
   form for review; nothing is stored before "Speichern". A save is answered by a toast once
   the bar has gone, with what its rescore changed (saveEffect.ts). Leaving the view or
   closing the window with unsaved changes asks once ("Änderungen speichern?", the heading
   alone), and so does another profile from the switcher of the head (ProfileSet holds the
-  profiles' own actions and dialogs). With profiles the head stands also over the ways in of
-  a profile that does not read. Saving another file over the profile is answered by a toast
+  profiles' own actions and dialogs). Saving another file over the profile is answered by a toast
   with "Rückgängig" (the backup comes back, core's swap), and an undo that fails says so.
   During setup the toast of the first save offers "Weiter zum ersten Abruf", which starts the
   fetch, or without a mailbox "Weiter zum Postfach", which goes back to the setup page.
@@ -42,7 +41,6 @@
   import ProfileHeader from './ProfileHeader.svelte';
   import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
-  import NewProfileDialog from '../shared/NewProfileDialog.svelte';
   import { pickProfile } from '../shared/profileWays';
   import { activeName } from './profiles';
   import { watchSave } from './saveEffect';
@@ -52,13 +50,12 @@
   const stored = $derived(profile?.form ?? null);
   /** Every profile of the work folder (the switcher; none without a profile). */
   const profiles = $derived(app.state?.profiles ?? []);
-  const hasProfile = $derived(profiles.some((entry) => entry.active));
   /** The profiles' own actions and dialogs; a change of them turns the switcher. */
   let set = $state<ProfileSet | null>(null);
   let switching = $state(false);
   const rescoring = $derived((run.active && run.kind === 'rescore') || (profile?.pending ?? 0) > 0);
 
-  let busy = $state<'pick' | 'save' | null>(null);
+  let busy = $state<'save' | null>(null);
   /** A failure is said when it shows, so it follows a switch of the language. */
   type Words = () => string;
   let note = $state<Words | null>(null);
@@ -177,15 +174,13 @@
 
   /** A chosen file into the form for review; `fresh` (the menu's Aus Datei laden): saved as
    *  a new profile beside the others. */
-  async function pick(fresh = false): Promise<void> {
-    busy = 'pick';
+  async function pick(fresh = false): Promise<boolean> {
     note = null;
     try {
-      await pickProfile(fresh);
+      return await pickProfile(fresh);
     } catch (error) {
       note = () => errorText(error);
-    } finally {
-      busy = null;
+      return false;
     }
   }
 
@@ -196,13 +191,17 @@
     );
   }
 
-  /** The dialog of the three ways to a new profile; `fresh` (from the menu): saved as a new
-   *  profile beside the others. */
-  let ways = $state(false);
-  let waysFresh = false;
-  function openWays(fresh: boolean): void {
-    waysFresh = fresh;
-    ways = true;
+  /** The start page of a new profile beside the active one ("Neues Profil" of the menu): what
+   *  it brings is saved as a new profile beside the others. */
+  let starting = $state(false);
+
+  /** A way of the start page fills the form: the page goes; `true` when it was opened beside
+   *  a profile (what it brings is saved as a new one). A file dialog closed without a file
+   *  keeps the page. */
+  function started(): boolean {
+    const fresh = starting;
+    starting = false;
+    return fresh;
   }
 
   /** A new form on its first tab: the caret goes into the wished roles; `fresh` (the menu's
@@ -314,7 +313,7 @@
     saveNote = null;
     fieldError = null;
     editor.discard(stored);
-    if (editor.origin === null) void caretTo('profile-create');
+    if (editor.origin === null) void caretTo('new-profile-copy');
   }
 
   /** Leaving without saving. */
@@ -424,24 +423,24 @@
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
   {:else}
-    {#if editor.origin !== null || hasProfile}
-      {@render head()}
-    {/if}
-    {#if editor.origin === null}
-      <div class="empty">
-        <ProfileStart
-          heading={profile?.parseError ? t.profile.unreadable : t.profile.none}
-          text={profile?.parseError
-            ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-            : t.profile.noneText}
-          picking={busy === 'pick'}
-          unreadable={profile?.parseError !== null && profile?.parseError !== undefined}
-          note={note?.() ?? null}
-          oncreate={() => openWays(false)}
-          onopenfolder={openFolder}
-        />
-      </div>
+    {#if starting || editor.origin === null}
+      <ProfileStart
+        heading={!starting && profile?.parseError ? t.profile.unreadable : t.profile.newProfile}
+        text={!starting && profile?.parseError
+          ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
+          : t.profile.noneText}
+        unreadable={!starting && (profile?.parseError ?? null) !== null}
+        note={note?.() ?? null}
+        onempty={() => void create(started())}
+        onfile={async () => {
+          if (await pick(starting)) starting = false;
+        }}
+        onanswer={(draft) => editor.take(draft, started())}
+        oncancel={starting ? () => (starting = false) : null}
+        onopenfolder={openFolder}
+      />
     {:else}
+      {@render head()}
       <ProfileEditor
         bind:this={panel}
         {quality}
@@ -472,7 +471,7 @@
     {switching}
     note={editor.origin === null ? null : (note?.() ?? null)}
     onswitch={(id) => set?.switchTo(id)}
-    onnew={() => guard(() => openWays(true))}
+    onnew={() => guard(() => (starting = true))}
     onduplicate={() => set?.duplicate()}
     onrename={(name) => set?.renameTo(name) ?? Promise.resolve(false)}
     onremove={() => set?.askRemove()}
@@ -497,13 +496,6 @@
     </Field>
   </div>
 {/snippet}
-
-<NewProfileDialog
-  bind:open={ways}
-  onempty={() => void create(waysFresh)}
-  onfile={() => pick(waysFresh)}
-  onanswer={(draft) => editor.take(draft, waysFresh)}
-/>
 
 <ProfileSet
   bind:this={set}
@@ -547,26 +539,5 @@
   /* The two quiet fields share the grid of the head's line under the title. */
   .person {
     display: contents;
-  }
-
-  /* The empty state sits at about 38 % of the height (spacers 38 : 62), not dead centre. */
-  .empty {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .empty::before,
-  .empty::after {
-    content: '';
-  }
-
-  .empty::before {
-    flex: 38;
-  }
-
-  .empty::after {
-    flex: 62;
   }
 </style>

@@ -46,7 +46,6 @@
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { editor } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
@@ -137,9 +136,9 @@
     };
   });
 
+  /** Profil: without a profile its start page with the three ways (user decision
+   *  2026-10-01: the same wherever a new profile begins). */
   function toProfile(): void {
-    // No profile yet: straight into the empty form, one click.
-    if (app.state?.profile == null) editor.create();
     navigation.go('profile');
   }
   /** The fetch reads the mailbox and none is connected: no new jobs come (the search needs

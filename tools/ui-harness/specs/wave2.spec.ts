@@ -202,8 +202,6 @@ test('one column: closing shows the open row again, with the focus', async ({ pa
 test('a new form puts the caret where the work starts', async ({ page }) => {
   await open(page, `${WIN}&scenario=no-profile`);
   await page.getByTestId('nav-profile').click();
-  const empty = page.getByTestId('profile-empty');
-  await empty.getByRole('button', { name: 'Neues Profil' }).click();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
 });

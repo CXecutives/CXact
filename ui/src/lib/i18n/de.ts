@@ -1146,8 +1146,7 @@ export const de = {
     },
   },
   profile: {
-    none: 'Noch kein Profil',
-    /** The file does not read (edited by hand): the empty state says so. */
+    /** The file does not read (edited by hand): the start page says so. */
     unreadable: PROFILE_UNREADABLE,
     noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
     /** Under the error of a profile that no longer reads. */
@@ -1163,22 +1162,19 @@ export const de = {
      *  the menu. */
     profiles: 'Profile',
     numbered: (value: number) => `Profil ${n(value)}`,
-    /** In the menu of the profiles, in the empty state and on the first-run page alike: the
-     *  dialog of the three ways to a new profile, stored on "Speichern" (the title says it
-     *  while the form holds it). */
+    /** The start page of a new profile (in the menu of the profiles, without one, from the
+     *  first-run page alike): its title and its three ways, stored on "Speichern" (the title
+     *  says it while the form holds it). */
     newProfile: 'Neues Profil',
-    ways: 'Wege zu einem neuen Profil',
     way: { cv: 'Aus dem Lebenslauf', empty: 'Leer anfangen', file: 'Aus Datei laden' },
-    /** The quiet word after the recommended way. */
-    wayNote: 'mit einer KI',
-    /** The two steps of the way from the CV, one sentence each. */
-    cvPrompt: 'Kopiere den Prompt und gib ihn einer KI zusammen mit deinem Lebenslauf.',
-    cvAnswer: 'Kopiere danach die Antwort der KI.',
+    /** What each way does, one sentence under its name. */
+    cvPrompt: 'Gib den Prompt mit deinem Lebenslauf einer KI und füge ihre Antwort ein.',
+    emptyHint: 'Du füllst die Felder selbst aus.',
+    fileHint: 'Ein Profil, das du schon als Datei hast.',
     copyPrompt: 'Prompt kopieren',
-    /** The button of the prompt for a moment after the copy (the toasts wait behind the
-     *  dialog). */
+    /** The button of the prompt for a moment after the copy. */
     copied: 'Kopiert',
-    /** The dialog's button of each way. */
+    /** The buttons of the ways. */
     pasteAnswer: 'Antwort einfügen',
     startEmpty: 'Anlegen',
     pickFile: 'Datei wählen',

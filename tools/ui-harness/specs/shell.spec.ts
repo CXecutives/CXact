@@ -1671,34 +1671,14 @@ for (const [width, fold] of [
   });
 }
 
-test('empty screens are never dead: an icon, one sentence, one way on, centred', async ({
+test('the start of a new profile asks for no primary; the Jobs view keeps its fetch', async ({
   page,
 }) => {
   await open(page, '?platform=windows&scenario=no-profile');
   await page.getByTestId('nav-profile').click();
-  const empty = page.getByTestId('profile-empty');
-  await expect(empty).toBeVisible();
-  // The next step is the one primary on screen: "Neues Profil" ("Abrufen" lives in the list of
-  // the Jobs view); its dialog holds the ways.
-  await expect(empty.locator('.btn.primary')).toHaveCount(1);
-  await expect(page.getByTestId('fetch')).toHaveCount(0);
-  await expect(empty.getByRole('button')).toHaveCount(1);
-  // Centred across the view's content (a scrolling view keeps its scrollbar's room), at
-  // about 38 % of the height (not dead centre).
-  const place = await empty.evaluate((node) => {
-    const scroller = node.closest('.view')!;
-    const view = scroller.getBoundingClientRect();
-    const box = node.getBoundingClientRect();
-    return {
-      across: Math.abs(box.left + box.width / 2 - (view.left + scroller.clientWidth / 2)),
-      down: (box.top + box.height / 2 - view.top) / view.height,
-    };
-  });
-  expect(place.across).toBeLessThanOrEqual(1);
-  expect(place.down).toBeGreaterThan(0.3);
-  expect(place.down).toBeLessThan(0.46);
-  expect(await page.locator('.btn.primary').count()).toBe(1);
-  // Back in the Jobs view "Abrufen" is the primary again.
+  await expect(page.getByTestId('new-profile-ways')).toBeVisible();
+  // Three ways, none of them the one way on ("Abrufen" lives in the list of the Jobs view).
+  await expect(page.getByTestId('view-profile').locator('.btn.primary')).toHaveCount(0);
   await page.getByTestId('nav-jobs').click();
   await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });

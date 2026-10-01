@@ -1137,6 +1137,6 @@ handle sits between list and reader".
   - [x] Einstellungen by the fetch's two ways: Suche, then Postfach (the connection, then the sources of its
     alert mails), then Daten; no Zeitraum (every fetch reads the mails since the last one, the first one 30
     days)
-  - [ ] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and
+  - [x] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and
     Antwort einfügen in place, Leer anfangen, Aus Datei laden); "Profil anlegen" in Jobs and "Neues Profil"
     in the menu lead there

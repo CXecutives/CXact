@@ -19,9 +19,8 @@
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
-  found none. Step 2 happens in the Profil view: "Neues Profil" opens the same dialog of the
-  three ways as there (from the CV with an AI, the empty form, a file), each going on in the
-  Profil view for review; after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
+  found none. Step 2 happens in the Profil view: "Neues Profil" opens its start page with the
+  three ways (from the CV with an AI, the empty form, a file), each going on there for review; after the first save the Profil view's toast offers the way on. Step 3 says only what is wrong: no
   alert mail came (an alert comes first), or the first fetch failed (the app leaves this page
   only after a completed one), with the fitting action where there is one besides the fetch.
   Every main action is 32 px.
@@ -46,12 +45,9 @@
   import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { editor } from '$lib/state/profile.svelte';
   import { failureAction, isFetch, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import MailboxForm from '../shared/MailboxForm.svelte';
-  import NewProfileDialog from '../shared/NewProfileDialog.svelte';
-  import { pickProfile } from '../shared/profileWays';
   import { STEPS, type StepId } from './steps';
 
   /** Done, per step, as the page shows it now. */
@@ -107,27 +103,9 @@
     before = now;
   });
 
-  /** A new profile opens as a form right away; an existing one opens as it is. */
+  /** The Profil view: a new profile begins on its start page, an existing one opens as it is. */
   function openProfile(): void {
-    if (profile === null && editor.origin === null) editor.create();
     navigation.go('profile');
-  }
-
-  /** The dialog of the three ways to a new profile (the same as in the Profil view). */
-  let ways = $state(false);
-
-  /** A chosen file opens in the Profil view for review (a failure is said in the step). */
-  let picking = $state(false);
-  async function pick(): Promise<void> {
-    openError = null;
-    picking = true;
-    try {
-      if (await pickProfile()) navigation.go('profile');
-    } catch (error) {
-      openError = { step: 'profile', text: () => errorText(error) };
-    } finally {
-      picking = false;
-    }
   }
 
   /** Where the step's link or button failed to open (said in the step). */
@@ -273,9 +251,8 @@
           size="field"
           icon="add"
           label={t.profile.newProfile}
-          loading={picking}
           testid="first-profile"
-          onclick={() => (ways = true)}
+          onclick={openProfile}
         />
       {/if}
     </div>
@@ -369,16 +346,6 @@
     </Card>
   </div>
 </div>
-
-<NewProfileDialog
-  bind:open={ways}
-  onempty={openProfile}
-  onfile={pick}
-  onanswer={(draft) => {
-    editor.take(draft);
-    navigation.go('profile');
-  }}
-/>
 
 <style>
   /* The one inner padding of every content column, so the card lines up with the Profil and

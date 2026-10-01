@@ -1,6 +1,5 @@
-// The ways to a new profile besides the empty form, the same wherever "Neues Profil" is
-// offered (its dialog, from the Profil view's empty state, the menu of its title and the
-// first-run page): "Aus Datei laden" puts a chosen profile file into the form for review;
+// The ways to a new profile besides the empty form, on the start page of a new profile
+// (NewProfileWays; without a profile, from the menu of the profiles and the first-run page): "Aus Datei laden" puts a chosen profile file into the form for review;
 // "Aus dem Lebenslauf" copies the prompt that has any AI write the profile from a CV (core's
 // profile/prompt.rs) and takes the AI's answer back from the clipboard. Nothing is sent
 // anywhere and nothing is stored before "Speichern".

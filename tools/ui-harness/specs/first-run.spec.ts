@@ -161,13 +161,10 @@ test('step 2 offers "Neues Profil" with the dialog of the Profil view', async ({
   await expect(create).toHaveClass(/primary/);
   await expect(create).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
-  // Esc closes its dialog, the page stays.
+  // It leads to the start page of the Profil view; a chosen file opens there for review,
+  // nothing is stored yet.
   await create.click();
-  await expect(page.getByTestId('dialog-new-profile')).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('view-first-run')).toBeVisible();
-  // A chosen file opens in the Profil view for review; nothing is stored yet.
-  await create.click();
+  await expect(page.getByTestId('view-profile')).toBeVisible();
   await chooseWay(page, 'file');
   await expect(page.getByTestId('view-profile')).toBeVisible();
   await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');

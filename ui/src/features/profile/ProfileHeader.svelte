@@ -3,8 +3,8 @@
   (`data-first-row`): the active profile's name as the page's title (26/600 in the heading
   colour, text a user would copy, an ellipsis when long; "Neues Profil" while the form holds
   a new one), right after it a quiet chevron (a small ghost icon button) whose menu lists
-  every profile (a check at the active one), "Neues Profil" (the dialog of the three ways, the
-  same as on the empty state), then Duplizieren, Umbenennen and "Löschen" in red, which asks
+  every profile (a check at the active one), "Neues Profil" (the start page with the three
+  ways, the same as without a profile), then Duplizieren, Umbenennen and "Löschen" in red, which asks
   first naming the profile and waits while the form holds changes ("Erst speichern oder
   verwerfen."); another profile asks first (ProfileView). Umbenennen turns the title into a
   field with the name selected: Enter or leaving it renames, Esc keeps the name. Then a status
