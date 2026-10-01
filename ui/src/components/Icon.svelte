@@ -20,6 +20,7 @@
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
   import Banknote from '@lucide/svelte/icons/banknote';
+  import BookOpen from '@lucide/svelte/icons/book-open';
   import Briefcase from '@lucide/svelte/icons/briefcase';
   import Building2 from '@lucide/svelte/icons/building-2';
   import Calendar from '@lucide/svelte/icons/calendar';
@@ -29,7 +30,6 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
-  import CornerDownLeft from '@lucide/svelte/icons/corner-down-left';
   import CircleCheck from '@lucide/svelte/icons/circle-check';
   import CircleDashed from '@lucide/svelte/icons/circle-dashed';
   import CircleMinus from '@lucide/svelte/icons/circle-minus';
@@ -97,6 +97,7 @@
     award: Award,
     ban: Ban,
     banknote: Banknote,
+    'book-open': BookOpen,
     briefcase: Briefcase,
     'building-2': Building2,
     calendar: Calendar,
@@ -106,7 +107,6 @@
     'chevron-down': ChevronDown,
     'chevron-left': ChevronLeft,
     'chevron-right': ChevronRight,
-    'corner-down-left': CornerDownLeft,
     'circle-check': CircleCheck,
     'circle-dashed': CircleDashed,
     'circle-minus': CircleMinus,

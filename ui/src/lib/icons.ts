@@ -26,8 +26,8 @@ export const ICONS = {
   star: 'star',
 
   // A job and its ad.
-  /** Open a job in the job view (its menu's first entry; user, 2026-09-30). */
-  open: 'corner-down-left',
+  /** Open a job in the job view, to read it (its menu's first entry; user, 2026-10-01). */
+  open: 'book-open',
   /** Opens a page in the browser: the ad, a portal, Google's app passwords. */
   external: 'external-link',
   /** Mail: an alert mail (open it, read the older ones) and the mailbox they come to. */
