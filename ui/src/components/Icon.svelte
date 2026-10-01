@@ -63,6 +63,7 @@
   import LogIn from '@lucide/svelte/icons/log-in';
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
+  import MailOpen from '@lucide/svelte/icons/mail-open';
   import MapPin from '@lucide/svelte/icons/map-pin';
   import PanelLeft from '@lucide/svelte/icons/panel-left';
   import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
@@ -72,12 +73,10 @@
   import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
-  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
-  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import Shield from '@lucide/svelte/icons/shield';
   import Star from '@lucide/svelte/icons/star';
   import TextSelect from '@lucide/svelte/icons/text-select';
@@ -140,6 +139,7 @@
     'log-in': LogIn,
     'log-out': LogOut,
     mail: Mail,
+    'mail-open': MailOpen,
     'map-pin': MapPin,
     'panel-left': PanelLeft,
     'panel-left-close': PanelLeftClose,
@@ -149,12 +149,10 @@
     'panel-right-open': PanelRightOpen,
     pencil: Pencil,
     plus: Plus,
-    'refresh-cw': RefreshCw,
     'rotate-cw': RotateCw,
     scissors: Scissors,
     search: Search,
     settings: Settings,
-    'sliders-horizontal': SlidersHorizontal,
     shield: Shield,
     star: Star,
     'text-select': TextSelect,

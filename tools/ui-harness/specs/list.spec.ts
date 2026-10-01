@@ -222,11 +222,12 @@ test.describe('header', () => {
     expect(T.toolbar.searchNow).toBe('Jobs suchen');
     await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
     await expect(ways).toHaveClass(/secondary/);
-    await expect(ways.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
+    // Its button opens a menu: the chevron of every menu (user 2026-10-01).
+    await expect(ways.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.expand}`));
     await expect(ways).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
     await expect(ways).toHaveAttribute('aria-haspopup', 'menu');
-    // Its menu (user decision 2026-10-01): the search or the mailbox, never both, one
-    // checked; the Zeitraum is in Einstellungen.
+    // Its menu (user decision 2026-10-01): the search or the alert mails, never both, one
+    // checked.
     await ways.click();
     const menu = page.getByTestId('menu');
     await expect(menu).toHaveAttribute('aria-label', T.toolbar.fetchSettings);

@@ -1176,3 +1176,4 @@ handle sits between list and reader".
   - [x] The Suchbegriffe the app proposes are chips like any other (hollow ones read as a fault); the hint
     says they are its proposal
   - [x] Öffnen of a job is the open book; the top bar's icons 15 px like the content's small ones
+  - [x] Alert-Mails lesen takes the open envelope, the button of the fetch's menu the chevron of every menu

@@ -2,16 +2,16 @@
   The header of the list column, the same in the three places. First row: the places as tabs
   (Aktuell, Archiv, Papierkorb, their names only; another place starts without the search,
   like a folder of a mail app) and at its right end the place's one action: in the
-  Aktuell "Alert-Mails lesen", the one primary of the Jobs view, with an outlined icon button
-  beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
-  Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
-  lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, as
-  wide as "Alert-Mails lesen" (the wider of the two sets it), the Zeitraum's button stays
+  Aktuell the fetch of the way its menu chose ("Jobs suchen" with the magnifier, "Alert-Mails
+  lesen" with the open envelope), the one primary of the Jobs view, as wide in both ways, with
+  an outlined chevron button beside it that opens the menu of the two ways (the current one
+  checked; a choice is saved at once, lib/state/app.svelte.ts); "Abbrechen" stands in the
+  fetch's place while a fetch goes (the widest of them sets the slot), the menu's button stays
   beside it, off; in the other places "Abbrechen" stands where it stands in Aktuell, so
   it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
-  while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
-  "Papierkorb leeren" (outlined with the red of every button that deletes, as large as
-  "Alert-Mails lesen"; asks first; "Abbrechen" over it while a
+  while the app scores the jobs anew, and while its way cannot run, saying why. In the
+  Papierkorb "Papierkorb leeren" (outlined with the red of every button that deletes, as
+  large as the fetch; asks first; "Abbrechen" over it while a
   fetch goes), in the Archiv none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
@@ -32,8 +32,7 @@
   list glides). Under them the run's one line (RunLine): its progress while a fetch goes, or
   what went wrong. The bottom hairline shows only once the list below is scrolled. Under the
   rows one sentence says when a job action of the list failed (a move, its undo, the choice
-  of the Zeitraum) or when jobs deleted for good could not leave the Excel file; it goes
-  with the next list or the next action that works.
+  of the way); it goes with the next list or the next action that works.
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -263,7 +262,7 @@
       <Button
         variant="secondary"
         iconOnly
-        icon="range"
+        icon="expand"
         label={t.toolbar.fetchSettings}
         menu
         expanded={inbox && wayOpen}
@@ -446,7 +445,7 @@
     opacity: 1;
   }
 
-  /* "Alert-Mails lesen" (or "Abbrechen") and the Zeitraum's button beside it. */
+  /* The fetch (or "Abbrechen") and the button of its menu beside it. */
   .fetch {
     display: flex;
     gap: var(--space-8);
