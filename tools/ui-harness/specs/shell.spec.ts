@@ -1047,6 +1047,8 @@ test('a switch darkens a step on hover and one more while pressed, off and on', 
   await settings(page);
   const steps = async (id: string): Promise<string[]> => {
     const toggle = page.getByTestId(id);
+    // In view first: the mouse only reaches what the window shows.
+    await toggle.scrollIntoViewIfNeeded();
     const track = toggle.locator('.track');
     const colour = (): Promise<string> =>
       track.evaluate((node) => getComputedStyle(node).backgroundColor);
