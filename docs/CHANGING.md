@@ -306,6 +306,17 @@ text.
    its switches from `Portal::ALL`.
 4. The stub's demo data may give it jobs; `docs/PLAN.md` says what the portal allows.
 
+## Add a search source
+
+A source the app searches itself (user decision 2026-10-01): an adapter as above with
+`way()` `Way::Search`, `search_urls(terms)` (one page per term, or one list it filters by
+them) and `search_page(html)` (its hits, or `NoHits` for a check or an unknown page),
+`checks_robots()` `true`, and its limits. First check by hand that its robots.txt allows the
+search and the ads; the app checks it again at run time. Fixtures: a shortened search page
+and ad in the adapter's tests, the real pages under `core/tests/fixtures/private/pages`
+(ignored tests `the_real_*`); `cargo run -p jobalert-core --example live_search -- <terms>`
+asks the live pages once. Its row lands in the card Suche of Einstellungen by its `way`.
+
 ## Change a threshold or a default
 
 - The match bands: `HIGH_FROM` and `MID_FROM` in `core/src/model.rs`. The store, the

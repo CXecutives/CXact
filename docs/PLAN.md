@@ -1053,7 +1053,7 @@ handle sits between list and reader".
 - The app icon: folder 78 %, check 78 units thick and 78 % of its arms.
 - [x] 0 Icon
 - [x] 1 Profil: tabs, profiles dialog and rename, Suchbegriffe
-- [ ] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
+- [x] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
 - [ ] 3 Michael Page, SOLCOM, Etengo
 - [ ] 4 Einstellungen: Suche and Alert-Mails, monograms, setup links, "Quelle"
 - [ ] 5 GULP, Robert Half, interim-x (once real alert mails are there)

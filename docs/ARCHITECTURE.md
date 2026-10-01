@@ -65,9 +65,12 @@ A decision is written once; everything else reads it or is generated from it.
 mail, store, engine, view, UI:
 
 1. `mail/` reads the alert mails of the portals that are on (IMAP); `portal/` turns them
-   into job links.
+   into job links. Then `fetch/search.rs` searches the sources that have a search
+   (`PortalAdapter::search_urls`, `Way::Search`) with the active profile's Suchbegriffe, after
+   their robots.txt (`fetch/robots.rs`, kept a day in policy.json); the hits are jobs without a
+   mail (`Store::record_found`). Without a mailbox a fetch only searches.
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
-   before every request and stores the page.
+   before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the
    store keeps the assessment. `export/` writes the files at the end of a run (the Excel and
    the CSV file as their switches say; the marks rewrite them a moment later). The text files

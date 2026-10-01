@@ -1,8 +1,9 @@
 # CXact (formerly Job-Alert-Monitor)
 
-Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelancermap,
-freelance.de) from Gmail, fetches the job pages, **scores every job against a consultant profile**, and
-writes an Excel and a CSV file.
+Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de) from
+Gmail, searches the sources that allow it itself (Hays, freelancermap; user decision 2026-10-01), fetches the
+job pages and **scores every job against a consultant profile** (at the start and every 4 hours, and on
+"Jobs abrufen").
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
 **Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
 
@@ -47,8 +48,10 @@ Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is c
   marks, no emoji. Buttons are one verb phrase, notes one short sentence. The UI must not look AI-generated
   (no sparkles, no gradient text, no glow for decoration).
 - The backend never sends prose: notices, errors and status are `{code, params}`; texts live in the UI catalog.
-- Scraping stays conservative: only links from the user's alert mails, every request through `admit` (policy.json),
-  stop on 429/999/403/captcha/login wall, never bypass captchas or 2FA. Every portal can be switched off.
+- Scraping stays conservative: links from the user's alert mails, and the public search of the sources that
+  allow it (`Way::Search`, the profile's Suchbegriffe), never more than their robots.txt allows (read at run time;
+  every request of the sources added 2026-10-01). Every request through `admit` (policy.json), stop on
+  429/999/403/captcha/login wall, never bypass captchas or 2FA. Every source can be switched off.
 - Run events stay below 8 KB (Tauri channel messages above 8 KB bypass the ACL). async-imap logs LOGIN on trace:
   logger levels stay capped.
 
