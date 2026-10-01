@@ -12,7 +12,7 @@
 // no temporary agency work. The page's clock stands at 24.09.2026 09:30.
 
 import type { Locator, Page } from '@playwright/test';
-import { DEMO, demoScore } from './demo';
+import { demoScore } from './demo';
 import { calls, expect, open, runFinished, settle, test } from './fixtures';
 import {
   chooseSort,
@@ -225,148 +225,19 @@ test.describe('the head and the match', () => {
     await expect(stage(page).getByTestId('short-note')).toHaveText('Die Anzeige ist sehr kurz.');
   });
 
-  test('"Warum diese Zahl?": the ring opens what moved the score on hover or a click', async ({
+  test('the ring only shows: no popover of what moved the score (user 2026-10-01)', async ({
     page,
   }) => {
     await openAt(page, 'freelancermap-2801');
     const ring = stage(page).getByTestId('reader-ring');
-    const popover = page.getByTestId('menu');
-    // A button named by its match, without a tooltip: the mouse resting on it opens the
-    // popover and leaves the focus where it is; it stays on the way into the popover, a
-    // press on the ring keeps it, leaving both closes it.
-    await expect(ring).toHaveAttribute('aria-haspopup', 'dialog');
-    await expect(ring).toHaveAttribute('aria-expanded', 'false');
-    await ring.hover();
-    await expect(popover).toBeVisible();
-    await expect(ring).not.toBeFocused();
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
-    const box = (await popover.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 4 });
-    await page.waitForTimeout(300);
-    await expect(popover).toBeVisible();
-    await ring.click();
-    await expect(popover).toBeVisible();
-    await page.mouse.move(5, 5);
-    await expect(popover).toHaveCount(0);
-    await expect(ring).toHaveAttribute('aria-expanded', 'false');
-    // Opened by hover it takes no keys: a lone modifier leaves it, another key closes it and
-    // goes on to the page (the list's arrows, a copy), Esc closes it.
-    for (const key of ['ArrowDown', 'Escape']) {
-      await ring.hover();
-      await expect(popover).toBeVisible();
-      await page.keyboard.press('Control');
-      await expect(popover).toBeVisible();
-      await page.keyboard.press(key);
-      await expect(popover).toHaveCount(0);
-      await page.mouse.move(5, 5);
-    }
-    // A click opens it too (the keys, a touch).
-    await ring.click();
-    await expect(popover).toHaveAttribute('role', 'dialog');
-    await expect(popover).toHaveAccessibleName(T.score.why);
-    await expect(ring).toHaveAttribute('aria-expanded', 'true');
-    // The engine's lines green, then yellow, then red, each colour in reading order: here
-    // the target role and the wishes, the musts and the optional ones, the Schwerpunkte.
-    const factors = DEMO.details['freelancermap:2801']!.match!.factors;
-    const lines = popover.locator('[data-testid^="menu-line-"]');
-    expect(
-      await lines.evaluateAll((all) => all.map((line) => line.getAttribute('data-testid'))),
-    ).toEqual(['targetRole', 'wishes', 'musts', 'nice', 'focus'].map((id) => `menu-line-${id}`));
-    expect(factors.map((factor) => factor.code).sort()).toEqual([
-      'focus',
-      'musts',
-      'nice',
-      'targetRole',
-      'wishes',
-    ]);
-    const musts = factors[0]!.params;
-    await expect(popover.getByTestId('menu-line-musts')).toHaveText(
-      T.score.factor.musts(Number(musts.met), Number(musts.partial), Number(musts.total)),
-    );
-    await expect(popover.getByTestId('menu-line-targetRole')).toHaveText(
-      T.score.factor.role('Interim CFO', true),
-    );
-    const icon = (id: string) => popover.getByTestId(`menu-line-${id}`).locator('.reason > .icon');
-    await expect(icon('targetRole')).toHaveCSS('color', await tokenColour(page, '--verdict-met'));
-    // Wide enough that every line stays one line (no word on a line of its own).
-    const heights = await lines
-      .locator('.label')
-      .evaluateAll((all) =>
-        all.map(
-          (label) =>
-            label.getBoundingClientRect().height / parseFloat(getComputedStyle(label).lineHeight),
-        ),
-      );
-    for (const height of heights) expect(Math.round(height)).toBe(1);
-    // Nothing in it is chosen; Esc closes it.
-    await expect(popover.locator('[role^="menuitem"]')).toHaveCount(0);
-    await page.keyboard.press('Escape');
-    await expect(popover).toHaveCount(0);
-    await expect(ring).toHaveAttribute('aria-expanded', 'false');
-    // From the keyboard: Enter opens it, Esc gives the focus back to the ring.
-    await ring.focus();
-    await page.keyboard.press('Enter');
-    await expect(popover).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(popover).toHaveCount(0);
-    await expect(ring).toBeFocused();
-    // A press outside closes it.
-    await page.keyboard.press('Enter');
-    await expect(popover).toBeVisible();
-    await page.mouse.click(5, 5);
-    await expect(popover).toHaveCount(0);
-  });
-
-  test('a cap and a permanent role say why the number stays low; no number, no button', async ({
-    page,
-  }) => {
-    const line = (id: string) => page.getByTestId('menu').getByTestId(`menu-line-${id}`);
-    // Several musts open: the cap is the last line, in the colour of a verdict not met.
-    await openAt(page, 'freelancermap-2803');
-    await stage(page).getByTestId('reader-ring').click();
-    const cap = DEMO.details['freelancermap:2803']!.match!.factors.at(-1)!;
-    expect(cap.code).toBe('cap');
-    await expect(line('cap')).toHaveText(
-      T.score.factor.cap(T.score.factor.capWhy.severalOpen, Number(cap.params.max)),
-    );
-    await expect(line('cap').locator('.reason > .icon')).toHaveCSS(
-      'color',
-      await tokenColour(page, '--verdict-unmet'),
-    );
-    await page.keyboard.press('Escape');
-    // A permanent role.
-    await openJob(page, 'linkedin-4100200303');
-    await stage(page).getByTestId('reader-ring').click();
-    await expect(line('permanent')).toHaveText(T.score.factor.permanent);
-    await page.keyboard.press('Escape');
-    // A ring without a number is no button.
-    await openJob(page, 'freelancermap-2806');
-    const ring = stage(page).getByTestId('reader-ring');
     await expect(ring).toHaveAttribute('role', 'img');
     await expect(ring).not.toHaveAttribute('aria-haspopup');
-  });
-
-  test('every line of "Warum diese Zahl?" is short, without colons or a full stop', async () => {
-    const f = T.score.factor;
-    const all = [
-      f.musts(4, 2, 6),
-      f.musts(1, 0, 1),
-      f.nice(1, 2),
-      f.focus(0, 3),
-      f.focus(2, 3),
-      f.focus(1, 1),
-      f.role('Interim CFO', true),
-      f.role('Interim CFO', false),
-      f.noRole,
-      f.wishesUp,
-      f.wishesDown,
-      ...Object.values(f.evidence),
-      f.permanent,
-      ...Object.values(f.capWhy).map((why) => f.cap(why, 40)),
-    ];
-    for (const words of all) expect(words, words).toMatch(/^[^:.!]+$/);
-    expect(f.musts(4, 2, 6)).toBe('4 von 6 Pflichtanforderungen erfüllt, 2 teilweise');
-    expect(f.cap(f.capWhy.formal, 40)).toBe('Formale Pflicht offen, deshalb höchstens 40');
+    // Resting on it and clicking it open nothing.
+    await ring.hover();
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId('menu')).toHaveCount(0);
+    await ring.click();
+    await expect(page.getByTestId('menu')).toHaveCount(0);
   });
 
   test('the "×" closes the job at every width; in one column it and Zurück lead back', async ({

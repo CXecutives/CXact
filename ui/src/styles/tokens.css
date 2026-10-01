@@ -281,7 +281,7 @@
   --score-excluded: var(--text-subtle);
   /* The solid track of an excluded ring (one silhouette for every state). */
   --score-excluded-track: var(--score-track);
-  /* The verdict icons (Jobdetails, Anforderungen, "Warum diese Zahl?") take the rings'
+  /* The verdict icons (Jobdetails, Anforderungen) take the rings'
      colours: met the top step, met in part the middle one, not met the lowest. */
   --verdict-met: var(--score-ring-9);
   --verdict-partial: var(--score-ring-5);
@@ -482,8 +482,7 @@
   --menu-inset: var(--space-8);
   --menu-icon: 20px;
   --menu-min: 200px;
-  /* Wide enough for every line of the reader's "Warum diese Zahl?" on one line (the longest,
-     a cap with its reason, is about 400 px): no word stands alone on a line of its own. */
+  /* The widest a menu grows (a long name, a profile's, ends in an ellipsis there). */
   --menu-max: 448px;
   --menu-radius: var(--radius-md);
   --menu-row-radius: var(--radius-xs);
@@ -685,9 +684,6 @@
   /* At most this many list rows animate at the same time; the others are simply there. */
   --stagger-max: 10;
   --delay-tooltip: 400ms;
-  /* A popover that opens on hover (the reader's ring) waits this long, and stays this long
-     after the pointer left it or its anchor (it crosses the gap between them). */
-  --delay-popover: 120ms;
   /* A loading placeholder shows only once a load has taken this long (a quicker load
      never flashes one). */
   --delay-placeholder: 300ms;

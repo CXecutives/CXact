@@ -718,40 +718,6 @@ export const en: Catalog = {
       mid: 'Medium match',
       low: 'Low match',
     } satisfies Record<Band, string>,
-    why: 'Why this score?',
-    factor: {
-      musts: (met: number, partial: number, total: number) => {
-        const line = `${n(met)} of ${count(total, 'must-have', 'must-haves')} met`;
-        return partial > 0 ? `${line}, ${n(partial)} partly` : line;
-      },
-      nice: (met: number, total: number) =>
-        `${n(met)} of ${count(total, 'optional requirement', 'optional requirements')} met`,
-      focus: (hit: number, total: number) => {
-        if (total === 1) return hit > 0 ? 'Your focus area matched' : 'Your focus area missed';
-        return hit > 0
-          ? `${n(hit)} of ${n(total)} focus areas matched`
-          : 'None of your focus areas matched';
-      },
-      role: (role: string, full: boolean) =>
-        full ? `Fits your preferred role ${role}` : `Close to your preferred role ${role}`,
-      noRole: 'No preferred role in the title',
-      wishesUp: 'Your preferences fit, so a little more',
-      wishesDown: 'Your preferences hardly fit, so a little less',
-      evidence: {
-        low: 'Little text, so scored with caution',
-        teaser: 'Only a preview, so scored with caution',
-      },
-      permanent: 'Permanent job, so a little less',
-      cap: (why: string, max: number) => `${why}, so at most ${n(max)}`,
-      capWhy: {
-        formal: 'Formal requirement missing',
-        severalOpen: 'Several must-haves missing',
-        offField: 'No skill must-have met',
-        titleOpen: 'Core of the role missing',
-        noItems: 'No clear requirements',
-        junior: 'Junior role',
-      },
-    },
   },
   reason: {
     weight: {

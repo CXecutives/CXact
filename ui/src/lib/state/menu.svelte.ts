@@ -5,26 +5,14 @@
 // are handled in input.ts, which closes the menu through `closeMenu`.
 
 import type { IconMeaning } from '$lib/icons';
-import { popoverDelay } from '$lib/motion/motion';
-import type { ReasonKind } from '$lib/ipc/types';
 
-/** One entry of a menu: an action, a thin line between groups, a group's small heading
- *  (muted, never active: the arrows and the type-ahead pass over it), or a line that only
- *  tells (a popover of such lines is no menu: the reader's "Warum diese Zahl?"). */
-export type MenuEntry = MenuItem | { kind: 'separator' } | MenuHeading | MenuLine;
+/** One entry of a menu: an action, a thin line between groups, or a group's small heading
+ *  (muted, never active: the arrows and the type-ahead pass over it). */
+export type MenuEntry = MenuItem | { kind: 'separator' } | MenuHeading;
 
 export interface MenuHeading {
   kind: 'heading';
   label: string;
-}
-
-/** A line of words after the icon of its verdict (components/ReasonItem); never active. */
-export interface MenuLine {
-  kind: 'line';
-  /** Stable id (test ids `menu-line-<id>`). */
-  id: string;
-  label: string;
-  verdict: ReasonKind;
 }
 
 export interface MenuItem {
@@ -64,9 +52,6 @@ export interface MenuSpec {
   onclose?: () => void;
   /** The entries anew after a choice that keeps the menu open (`stays`) ran. */
   refresh?: () => readonly MenuEntry[];
-  /** Opened by the pointer resting on this anchor (the reader's ring): the popover takes no
-   *  focus, a press on its anchor keeps it, the pointer leaving both closes it. */
-  hover?: HTMLElement;
 }
 
 interface MenuState {
@@ -80,32 +65,10 @@ export const menuState: MenuState = $state({ open: null, active: -1 });
 let nextId = 1;
 
 export const isItem = (entry: MenuEntry): entry is MenuItem =>
-  entry.kind !== 'separator' && entry.kind !== 'heading' && entry.kind !== 'line';
-
-/** A popover that only tells (its every entry a line): a dialog, not a menu. */
-export const tellsOnly = (entries: readonly MenuEntry[]): boolean =>
-  entries.length > 0 && entries.every((entry) => entry.kind === 'line');
-
-let leaving: ReturnType<typeof setTimeout> | undefined;
-
-/** The pointer left a hover popover or its anchor: it closes unless the pointer is back on
- *  one of them within --delay-popover (crossing the gap between them). */
-export function leaveHover(): void {
-  clearTimeout(leaving);
-  if (menuState.open?.hover === undefined) return;
-  leaving = setTimeout(() => {
-    if (menuState.open?.hover !== undefined) closeMenu(false);
-  }, popoverDelay());
-}
-
-/** The pointer is back on a hover popover or its anchor: it stays. */
-export function stayHover(): void {
-  clearTimeout(leaving);
-}
+  entry.kind !== 'separator' && entry.kind !== 'heading';
 
 /** Open a menu (a menu already open closes first, without giving its focus back). */
 export function openMenu(spec: MenuSpec): void {
-  clearTimeout(leaving);
   const previous = menuState.open;
   const focused = document.activeElement;
   const returnFocus =
@@ -121,7 +84,6 @@ export function openMenu(spec: MenuSpec): void {
 export function closeMenu(restore = true): void {
   const open = menuState.open;
   if (open === null) return;
-  clearTimeout(leaving);
   menuState.open = null;
   menuState.active = -1;
   open.onclose?.();

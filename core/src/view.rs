@@ -461,10 +461,6 @@ pub struct MatchDetail {
     pub highlights: Vec<Highlight>,
     /// The hard criteria strip.
     pub criteria: Vec<Reason>,
-    /// What moved the score, at most five lines in reading order ("Warum diese Zahl?"):
-    /// codes `musts`, `nice`, `focus`, `targetRole`, `wishes`, `evidence`, `permanent`,
-    /// `cap` with their params (`matching::FactorCode`).
-    pub factors: Vec<Notice>,
 }
 
 /// How the reader lays out the ad's text (UTF-16 ranges of `JobDetail::text`).
@@ -699,14 +695,6 @@ pub fn match_detail(assessment: &Assessment, matcher: &LocalMatcher, at: Timesta
             })
             .collect(),
         criteria,
-        factors: assessment
-            .factors
-            .iter()
-            .map(|f| Notice {
-                code: local::code_name(&f.code),
-                params: local::flat_params(&f.params),
-            })
-            .collect(),
     }
 }
 

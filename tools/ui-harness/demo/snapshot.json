@@ -1235,41 +1235,6 @@
             },
             "ranges": []
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 1,
-              "partial": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -5
-            }
-          },
-          {
-            "code": "evidence",
-            "params": {
-              "evidence": "teaser"
-            }
-          }
         ]
       }
     },
@@ -1702,42 +1667,6 @@
                 "end": 486
               }
             ]
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 2,
-              "partial": 0,
-              "total": 4
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -2
-            }
-          },
-          {
-            "code": "cap",
-            "params": {
-              "cap": "severalOpen",
-              "max": 40
-            }
           }
         ]
       }
@@ -2263,42 +2192,6 @@
                 "end": 502
               }
             ]
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 0,
-              "partial": 0,
-              "total": 4
-            }
-          },
-          {
-            "code": "nice",
-            "params": {
-              "met": 0,
-              "total": 1
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -5
-            }
           }
         ]
       }
@@ -2960,43 +2853,6 @@
                 "end": 696
               }
             ]
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 4,
-              "partial": 2,
-              "total": 6
-            }
-          },
-          {
-            "code": "nice",
-            "params": {
-              "met": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "full",
-              "role": "Interim CFO"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": 8
-            }
           }
         ]
       }
@@ -3685,42 +3541,6 @@
               }
             ]
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 3,
-              "partial": 1,
-              "total": 7
-            }
-          },
-          {
-            "code": "nice",
-            "params": {
-              "met": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": 5
-            }
-          }
         ]
       }
     },
@@ -4262,42 +4082,6 @@
               }
             ]
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 1,
-              "partial": 1,
-              "total": 4
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -5
-            }
-          },
-          {
-            "code": "cap",
-            "params": {
-              "cap": "severalOpen",
-              "max": 40
-            }
-          }
         ]
       }
     },
@@ -4650,41 +4434,6 @@
               }
             ]
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 0,
-              "partial": 0,
-              "total": 1
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -2
-            }
-          },
-          {
-            "code": "evidence",
-            "params": {
-              "evidence": "low"
-            }
-          }
         ]
       }
     },
@@ -4872,8 +4621,7 @@
             },
             "ranges": []
           }
-        ],
-        "factors": []
+        ]
       }
     },
     "freelancermap:2806": {
@@ -5058,8 +4806,7 @@
             },
             "ranges": []
           }
-        ],
-        "factors": []
+        ]
       }
     },
     "freelancermap:2807": {
@@ -5479,42 +5226,6 @@
                 "end": 96
               }
             ]
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 2,
-              "partial": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "permanent",
-            "params": {
-              "percent": 90
-            }
-          },
-          {
-            "code": "cap",
-            "params": {
-              "cap": "junior",
-              "max": 40
-            }
           }
         ]
       }
@@ -6189,42 +5900,6 @@
             },
             "ranges": []
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 5,
-              "partial": 1,
-              "total": 7
-            }
-          },
-          {
-            "code": "nice",
-            "params": {
-              "met": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": 8
-            }
-          }
         ]
       }
     },
@@ -6410,8 +6085,7 @@
             },
             "ranges": []
           }
-        ],
-        "factors": []
+        ]
       }
     },
     "linkedin:4100200303": {
@@ -6885,42 +6559,6 @@
             },
             "ranges": []
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 1,
-              "partial": 0,
-              "total": 4
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 1,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "permanent",
-            "params": {
-              "percent": 90
-            }
-          },
-          {
-            "code": "cap",
-            "params": {
-              "cap": "severalOpen",
-              "max": 40
-            }
-          }
         ]
       }
     },
@@ -7339,41 +6977,6 @@
             },
             "ranges": []
           }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 2,
-              "partial": 0,
-              "total": 4
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -3
-            }
-          },
-          {
-            "code": "permanent",
-            "params": {
-              "percent": 90
-            }
-          }
         ]
       }
     },
@@ -7773,41 +7376,6 @@
               "minDays": 3
             },
             "ranges": []
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 1,
-              "partial": 0,
-              "total": 3
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -2
-            }
-          },
-          {
-            "code": "permanent",
-            "params": {
-              "percent": 90
-            }
           }
         ]
       }
@@ -8222,41 +7790,6 @@
                 "end": 502
               }
             ]
-          }
-        ],
-        "factors": [
-          {
-            "code": "musts",
-            "params": {
-              "met": 0,
-              "partial": 0,
-              "total": 4
-            }
-          },
-          {
-            "code": "focus",
-            "params": {
-              "hit": 0,
-              "total": 2
-            }
-          },
-          {
-            "code": "targetRole",
-            "params": {
-              "fit": "none"
-            }
-          },
-          {
-            "code": "wishes",
-            "params": {
-              "points": -2
-            }
-          },
-          {
-            "code": "permanent",
-            "params": {
-              "percent": 90
-            }
           }
         ]
       }
@@ -8760,35 +8293,6 @@
                 "min": 6
               },
               "ranges": []
-            }
-          ],
-          "factors": [
-            {
-              "code": "musts",
-              "params": {
-                "met": 1,
-                "partial": 0,
-                "total": 2
-              }
-            },
-            {
-              "code": "focus",
-              "params": {
-                "hit": 0,
-                "total": 2
-              }
-            },
-            {
-              "code": "targetRole",
-              "params": {
-                "fit": "none"
-              }
-            },
-            {
-              "code": "wishes",
-              "params": {
-                "points": -2
-              }
             }
           ]
         }
@@ -9356,35 +8860,6 @@
                   "end": 486
                 }
               ]
-            }
-          ],
-          "factors": [
-            {
-              "code": "musts",
-              "params": {
-                "met": 0,
-                "partial": 1,
-                "total": 4
-              }
-            },
-            {
-              "code": "focus",
-              "params": {
-                "hit": 1,
-                "total": 2
-              }
-            },
-            {
-              "code": "targetRole",
-              "params": {
-                "fit": "none"
-              }
-            },
-            {
-              "code": "wishes",
-              "params": {
-                "points": -5
-              }
             }
           ]
         }
@@ -9976,42 +9451,6 @@
                 }
               ]
             }
-          ],
-          "factors": [
-            {
-              "code": "musts",
-              "params": {
-                "met": 2,
-                "partial": 1,
-                "total": 6
-              }
-            },
-            {
-              "code": "focus",
-              "params": {
-                "hit": 1,
-                "total": 2
-              }
-            },
-            {
-              "code": "targetRole",
-              "params": {
-                "fit": "none"
-              }
-            },
-            {
-              "code": "wishes",
-              "params": {
-                "points": 2
-              }
-            },
-            {
-              "code": "cap",
-              "params": {
-                "cap": "severalOpen",
-                "max": 40
-              }
-            }
           ]
         }
       }
@@ -10568,42 +10007,6 @@
                   "end": 629
                 }
               ]
-            }
-          ],
-          "factors": [
-            {
-              "code": "musts",
-              "params": {
-                "met": 2,
-                "partial": 0,
-                "total": 3
-              }
-            },
-            {
-              "code": "nice",
-              "params": {
-                "met": 0,
-                "total": 1
-              }
-            },
-            {
-              "code": "focus",
-              "params": {
-                "hit": 1,
-                "total": 2
-              }
-            },
-            {
-              "code": "targetRole",
-              "params": {
-                "fit": "none"
-              }
-            },
-            {
-              "code": "wishes",
-              "params": {
-                "points": -2
-              }
             }
           ]
         }
@@ -11212,43 +10615,6 @@
                   "end": 563
                 }
               ]
-            }
-          ],
-          "factors": [
-            {
-              "code": "musts",
-              "params": {
-                "met": 3,
-                "partial": 2,
-                "total": 5
-              }
-            },
-            {
-              "code": "nice",
-              "params": {
-                "met": 1,
-                "total": 1
-              }
-            },
-            {
-              "code": "focus",
-              "params": {
-                "hit": 0,
-                "total": 2
-              }
-            },
-            {
-              "code": "targetRole",
-              "params": {
-                "fit": "full",
-                "role": "Interim CFO"
-              }
-            },
-            {
-              "code": "wishes",
-              "params": {
-                "points": 6
-              }
             }
           ]
         }

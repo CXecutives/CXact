@@ -813,44 +813,6 @@ export const de = {
       mid: 'Mittlere Übereinstimmung',
       low: 'Geringe Übereinstimmung',
     } satisfies Record<Band, string>,
-    /** The reader's ring opens what moved its score (on hover): the popover's name. */
-    why: 'Warum diese Zahl?',
-    /** The lines of that popover (MatchDetail.factors), one short line each. */
-    factor: {
-      musts: (met: number, partial: number, total: number) => {
-        const line = `${n(met)} von ${count(total, 'Pflichtanforderung', 'Pflichtanforderungen')} erfüllt`;
-        return partial > 0 ? `${line}, ${n(partial)} teilweise` : line;
-      },
-      nice: (met: number, total: number) =>
-        `${n(met)} von ${n(total)} ${total === 1 ? 'optionalen Anforderung' : 'optionalen Anforderungen'} erfüllt`,
-      focus: (hit: number, total: number) => {
-        if (total === 1)
-          return hit > 0 ? 'Deinen Schwerpunkt getroffen' : 'Deinen Schwerpunkt verfehlt';
-        return hit > 0
-          ? `${n(hit)} von ${n(total)} Schwerpunkten getroffen`
-          : 'Keinen deiner Schwerpunkte getroffen';
-      },
-      role: (role: string, full: boolean) =>
-        full ? `Passt zur Wunschrolle ${role}` : `Nah an der Wunschrolle ${role}`,
-      noRole: 'Keine Wunschrolle im Titel',
-      wishesUp: 'Deine Wünsche passen, deshalb etwas mehr',
-      wishesDown: 'Deine Wünsche passen kaum, deshalb etwas weniger',
-      evidence: {
-        low: 'Wenig Text, deshalb vorsichtig bewertet',
-        teaser: 'Nur eine Vorschau, deshalb vorsichtig bewertet',
-      },
-      permanent: 'Festanstellung, deshalb etwas weniger',
-      /** A cap held the score down: why, and the highest score it allows. */
-      cap: (why: string, max: number) => `${why}, deshalb höchstens ${n(max)}`,
-      capWhy: {
-        formal: 'Formale Pflicht offen',
-        severalOpen: 'Mehrere Pflichtanforderungen offen',
-        offField: 'Keine fachliche Pflichtanforderung erfüllt',
-        titleOpen: 'Kern der Rolle offen',
-        noItems: 'Keine klaren Anforderungen',
-        junior: 'Einstiegsrolle',
-      },
-    },
   },
   reason: {
     weight: {

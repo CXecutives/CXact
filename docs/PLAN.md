@@ -1177,3 +1177,6 @@ handle sits between list and reader".
     says they are its proposal
   - [x] Öffnen of a job is the open book; the top bar's icons 15 px like the content's small ones
   - [x] Alert-Mails lesen takes the open envelope, the button of the fetch's menu the chevron of every menu
+  - [x] No "Warum diese Zahl?" any more (user: not needed): the reader's ring only shows; the menu layer's
+    hover popovers and lines that only tell, the popover delay, its texts and `MatchDetail.factors` go
+    (the engine keeps its factors for the AI prompt)

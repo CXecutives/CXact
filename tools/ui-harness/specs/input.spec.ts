@@ -1395,8 +1395,7 @@ test('the click that ends the autoscroll presses nothing; a dragged middle press
 const background = (target: Locator): Promise<string> =>
   target.evaluate((node) => getComputedStyle(node).backgroundColor);
 
-/** A menu of the app is open (a job's, a field's, the filter's, a menu button's, the ring's
- *  "Warum diese Zahl?"). */
+/** A menu of the app is open (a job's, a field's, the filter's, a menu button's). */
 const menuOpen = (page: Page): Locator => page.locator('[data-menu-layer]');
 
 /** Ends a middle press's autoscroll (Windows, over a scroll area): the next press only ends
