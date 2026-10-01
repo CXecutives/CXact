@@ -20,7 +20,7 @@ use jobalert_core::store::Store;
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-2.json";
+const NEWEST: &str = "3.0.0-3.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -61,12 +61,14 @@ fn newest() -> Settings {
             (Portal::LinkedIn, switches(true, false)),
             (Portal::FreelanceDe, switches(true, true)),
             (Portal::Freelancermap, switches(false, false)),
+            (Portal::Hays, switches(false, false)),
         ]),
         fetch_range: FetchRange::Days30,
         export_excel: false,
         export_csv: true,
         language: Some(Language::En),
         palette: Palette::Dark,
+        auto_fetch: false,
     }
 }
 
@@ -119,6 +121,7 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
             (Portal::LinkedIn, switches(true, false)),
             (Portal::FreelanceDe, switches(false, false)),
             (Portal::Freelancermap, switches(true, false)),
+            (Portal::Hays, switches(false, false)),
         ]),
         ..Settings::default()
     };
@@ -145,6 +148,7 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::LinkedIn, switches(false, false)),
             (Portal::FreelanceDe, switches(true, true)),
             (Portal::Freelancermap, switches(false, false)),
+            (Portal::Hays, switches(true, false)),
         ]),
         language: Some(Language::En),
         palette: Palette::Dark,
@@ -157,16 +161,37 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
     assert_eq!(keys(&saved), keys(&default), "saving writes today's form");
 }
 
+/// The file of 3.0.0 before the search (2026-10-01): Hays comes switched on, and so does the
+/// automatic fetch.
+#[test]
+fn the_file_before_the_search_loads_with_the_new_source_on() {
+    let loaded = load(&fixture("3.0.0-2.json"));
+    let mut portals = newest().portals;
+    portals.insert(Portal::Hays, switches(true, false));
+    let expected = Settings {
+        portals,
+        auto_fetch: true,
+        ..newest()
+    };
+    assert_eq!(loaded, expected);
+    assert_eq!(round_trip(&loaded).0, loaded);
+}
+
 #[test]
 fn a_file_of_a_newer_version_loads_without_damage() {
     let loaded = load(&fixture("newer.json"));
     // Unknown fields, an unknown portal and a switch it does not know are skipped; a language,
     // palette or fetch range of a newer version reads as none chosen. Nothing else changes:
     // above all the file is not taken for a damaged one (that would switch every portal off).
+    // Hays and the automatic fetch came after it: at their defaults.
+    let mut portals = newest().portals;
+    portals.insert(Portal::Hays, switches(true, false));
     let expected = Settings {
         language: None,
         palette: Palette::Cxact,
         fetch_range: FetchRange::SinceLast,
+        portals,
+        auto_fetch: true,
         ..newest()
     };
     assert_eq!(loaded, expected);

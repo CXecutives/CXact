@@ -14,6 +14,7 @@ use std::time::Duration;
 use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};
 
+use super::robots::Robots;
 use crate::export::write_atomic;
 use crate::portal::Portal;
 use crate::time;
@@ -61,6 +62,8 @@ const REPEAT_BLOCK_PAUSE: SignedDuration = SignedDuration::from_hours(7 * 24);
 const REPEAT_WINDOW: SignedDuration = SignedDuration::from_hours(7 * 24);
 
 const HOUR: SignedDuration = SignedDuration::from_hours(1);
+/// A source's robots.txt is read again after a day.
+const ROBOTS_FRESH: SignedDuration = SignedDuration::from_hours(24);
 const DAY: SignedDuration = SignedDuration::from_hours(24);
 
 /// Pause reasons of earlier versions, which stored only a German text. Only read to
@@ -130,6 +133,9 @@ pub struct PortalState {
     pub session_confirmed_at: Option<Timestamp>,
     /// freelance.de: sign-in needed (session expired or never signed in).
     pub login_needed: bool,
+    /// The source's robots.txt as last read, and when (read again after a day).
+    pub robots: Option<Robots>,
+    pub robots_at: Option<Timestamp>,
 }
 
 impl PortalState {
@@ -454,6 +460,22 @@ impl Policy {
     }
 
     /// Session confirmed (job page with a sign-out link) or sign-in needed.
+    /// The robots.txt of `portal` read within the last day, if any.
+    pub fn robots(&self, portal: Portal, now: Timestamp) -> Option<Robots> {
+        let state = self.portals.get(&portal)?;
+        let fresh = state
+            .robots_at
+            .is_some_and(|at| at <= now && now.duration_since(at) < ROBOTS_FRESH);
+        fresh.then(|| state.robots.clone()).flatten()
+    }
+
+    /// The robots.txt of `portal` just read (none: it has none, everything allowed).
+    pub fn set_robots(&mut self, portal: Portal, robots: Robots, now: Timestamp) {
+        let state = self.portals.entry(portal).or_default();
+        state.robots = Some(robots);
+        state.robots_at = Some(now);
+    }
+
     pub fn set_session(&mut self, portal: Portal, confirmed: bool, now: Timestamp) {
         let state = self.portals.entry(portal).or_default();
         state.login_needed = !confirmed;

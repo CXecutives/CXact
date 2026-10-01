@@ -13,6 +13,8 @@
 
 pub mod http;
 pub mod policy;
+pub mod robots;
+pub mod search;
 pub mod site;
 
 use std::collections::BTreeMap;
@@ -30,7 +32,7 @@ use jiff::{SignedDuration, Timestamp};
 use tokio_util::sync::CancellationToken;
 
 use crate::model::DescStatus;
-use crate::portal::{Access, Facts, JobKey, JobLink, PORTALS, Portal, PortalAdapter};
+use crate::portal::{Access, Facts, Hit, JobKey, JobLink, PORTALS, Portal, PortalAdapter};
 use crate::store::{JobRow, Store};
 // A poisoned safety state is no reason to abort the run: its counters are valid, and
 // without them there would be no cap at all.
@@ -39,13 +41,15 @@ use crate::time::sleep_cancellable as sleep_for;
 use http::HttpFetcher;
 use policy::{Allowance, NET_RETRY, PauseKind, PauseReason, Policy};
 pub use policy::{MAX_AGE, RETRY_AFTER};
+use robots::Robots;
+use url::Url;
 
 /// From this length on a text counts as complete without further checks.
 const MIN_TEXT_CHARS: usize = 100;
 /// Longer waits are announced beforehand (the interface shows a countdown).
 const WAIT_NOTICE: Duration = Duration::from_secs(1);
 /// So many suspicious pages in a row stop a portal for the run.
-const SUSPICIOUS_STREAK: u32 = 2;
+pub(crate) const SUSPICIOUS_STREAK: u32 = 2;
 
 /// Why a page gave no full text, or why a portal stopped - a code, never prose. Stored as
 /// its [`Display`](fmt::Display) form (`noDescription`, `http429`).
@@ -108,6 +112,10 @@ pub enum Cause {
     Breaker,
     /// A sample answer of the dry run.
     DrySample,
+    /// The source's robots.txt does not allow the page.
+    Robots,
+    /// The path has no search of the source.
+    NoSearch,
 }
 
 impl Cause {
@@ -124,6 +132,8 @@ impl Cause {
                 | Cause::UnexpectedRedirect
                 | Cause::RedirectNotFollowed
                 | Cause::PageTooLarge
+                | Cause::Robots
+                | Cause::NoSearch
                 | Cause::Http(400..=499)
         )
     }
@@ -252,6 +262,78 @@ pub trait PageFetcher {
     fn session(&self) -> bool {
         false
     }
+
+    /// One page of the source's own search, read by its adapter: the hits, or what decided
+    /// instead (a block, a throttle, a wall). The guest client only.
+    fn search(
+        &mut self,
+        portal: Portal,
+        url: &Url,
+        cancel: &CancellationToken,
+    ) -> impl Future<Output = Result<Vec<Hit>, PageOutcome>> + Send {
+        let _ = (portal, url, cancel);
+        async { Err(PageOutcome::Suspicious(Cause::NoSearch)) }
+    }
+
+    /// The source's robots.txt (`None`: it has none, everything is allowed).
+    fn robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> impl Future<Output = Result<Option<String>, PageOutcome>> + Send {
+        let _ = (portal, cancel);
+        async { Ok(None) }
+    }
+}
+
+/// What kept the robots.txt of a source from being read.
+pub(crate) enum Blocker {
+    /// The source may not be asked now (pause, cap).
+    Stop(StopReason),
+    /// The request ended otherwise; the outcome decides like a page's.
+    Page(Box<PageOutcome>),
+}
+
+/// The rules of `portal`'s robots.txt: the copy of the last day, else read now through
+/// `admit`, a request like any other.
+pub(crate) async fn robots_of<F: PageFetcher>(
+    fetcher: &mut F,
+    policy: &Mutex<Policy>,
+    portal: Portal,
+    cancel: &CancellationToken,
+    clock: &impl Fn() -> Timestamp,
+    on_wait: impl FnOnce(Timestamp),
+) -> crate::Result<Result<Robots, Blocker>> {
+    if let Some(robots) = lock(policy).robots(portal, clock()) {
+        return Ok(Ok(robots));
+    }
+    match admit(policy, portal, cancel, clock, on_wait).await? {
+        Admission::Stop(reason) => Ok(Err(Blocker::Stop(reason))),
+        Admission::Cancelled => Ok(Err(Blocker::Page(Box::new(PageOutcome::Cancelled)))),
+        Admission::Go => {
+            let read = fetcher.robots(portal, cancel).await;
+            let mut policy = lock(policy);
+            policy.record_done(portal, clock());
+            let result = match read {
+                Ok(text) => {
+                    let robots = text.as_deref().map(Robots::parse).unwrap_or_default();
+                    policy.set_robots(portal, robots.clone(), clock());
+                    Ok(robots)
+                }
+                Err(outcome) => Err(Blocker::Page(Box::new(outcome))),
+            };
+            policy.save()?;
+            Ok(result)
+        }
+    }
+}
+
+/// A requested address as robots.txt rules read it: the path with its query.
+pub(crate) fn robots_path(url: &Url) -> String {
+    match url.query() {
+        Some(query) => format!("{}?{query}", url.path()),
+        None => url.path().to_owned(),
+    }
 }
 
 /// The fetch path the app builds for a portal: only the one it needs.
@@ -277,6 +359,29 @@ impl<S: PageFetcher + Send> PageFetcher for Fetchers<S> {
 
     fn session(&self) -> bool {
         matches!(self, Fetchers::Session(_))
+    }
+
+    async fn search(
+        &mut self,
+        portal: Portal,
+        url: &Url,
+        cancel: &CancellationToken,
+    ) -> Result<Vec<Hit>, PageOutcome> {
+        match self {
+            Fetchers::Guest(http) => http.search(portal, url, cancel).await,
+            Fetchers::Session(session) => session.search(portal, url, cancel).await,
+        }
+    }
+
+    async fn robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> Result<Option<String>, PageOutcome> {
+        match self {
+            Fetchers::Guest(http) => http.robots(portal, cancel).await,
+            Fetchers::Session(session) => session.robots(portal, cancel).await,
+        }
     }
 }
 
@@ -1205,6 +1310,20 @@ async fn access<F: PageFetcher>(
     let portal = link.key.portal;
     if !on(portal) {
         return Ok(Err(Halt::Off));
+    }
+    // The sources that ask for it: no page their robots.txt does not allow.
+    let adapter = portal.adapter();
+    if adapter.checks_robots() {
+        let robots = robots_of(fetcher, policy, portal, cancel, clock, |until| {
+            note(notes, FetchEvent::Waiting { portal, until });
+        })
+        .await?;
+        match robots {
+            Ok(robots) if robots.allows(&robots_path(&adapter.fetch_url(link))) => {}
+            Ok(_) => return Ok(Ok(PageOutcome::Suspicious(Cause::Robots))),
+            Err(Blocker::Stop(reason)) => return Ok(Err(Halt::Stop(reason))),
+            Err(Blocker::Page(outcome)) => return Ok(Ok(*outcome)),
+        }
     }
     let admission = admit(policy, portal, cancel, clock, |until| {
         note(notes, FetchEvent::Waiting { portal, until });

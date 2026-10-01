@@ -324,11 +324,14 @@ function sampleJobs(): JobView[] {
  *  a quarter of an hour apart. */
 const MANY = ['freelancermap:2806', 'freelancermap:2801', 'freelancermap:2802', 'freelance:900412'];
 
+/** The portals of the many jobs in turn (the alert portals of the first versions). */
+const MANY_PORTALS = ['linkedin', 'freelance', 'freelancermap'] as const;
+
 function manyJobs(count: number): JobView[] {
   const base = MANY.map((key) => DEMO.jobs.find((j) => markKey(j.key) === key)!);
   return Array.from({ length: count }, (_, i) => {
     const from = base[i % base.length]!;
-    const portal = PORTALS[i % PORTALS.length]!;
+    const portal = MANY_PORTALS[i % MANY_PORTALS.length]!;
     const key = { portal, id: String(100000 + i) };
     SOURCE.set(markKey(key), markKey(from.key));
     return {
@@ -609,8 +612,12 @@ function savedForm(form: ProfileForm): ProfileForm {
   };
 }
 
+/** The sources the app searches itself (core's `Way::Search`). */
+const SEARCHED: ReadonlySet<PortalState['portal']> = new Set(['hays', 'freelancermap']);
+
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
   portal: name,
+  way: SEARCHED.has(name) ? 'search' : 'alert',
   enabled: true,
   login: name === 'freelance' ? 'optional' : 'none',
   loginEnabled: false,
@@ -806,7 +813,9 @@ function initial(): void {
       portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 100 } }),
       portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 100 } }),
       portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
+      portal('hays', { quota: { usedHour: 6, capHour: 30, usedDay: 18, capDay: 100 } }),
     ],
+    sources: [],
     setupDone: true,
     fetchRange: 'sinceLast',
     exportExcel: true,
@@ -1537,6 +1546,11 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       gmailId: 'a3',
     },
     { type: 'progress', step: 'scan', portal: null, done: 3, total: 3 },
+    // The sources' own search: a page of each, named while it is asked.
+    { type: 'status', code: 'searching', portal: 'hays', until: null },
+    { type: 'progress', step: 'search', portal: 'hays', done: 1, total: 2 },
+    { type: 'status', code: 'searching', portal: 'freelancermap', until: null },
+    { type: 'progress', step: 'search', portal: 'freelancermap', done: 2, total: 2 },
     ...fresh.map((j): RunEvent => ({
       type: 'jobUpdated',
       job: structuredClone(j),
@@ -1683,7 +1697,9 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
   }
-  if (state.mailbox.user === null && kind !== 'rescore' && kind !== 'details') {
+  // Without a mailbox a fetch searches the sources, if one is on (run_context's read_mail).
+  const searches = state.portals.some((p) => p.enabled && p.way === 'search');
+  if (state.mailbox.user === null && kind !== 'rescore' && kind !== 'details' && !searches) {
     throw fail('mailMissing');
   }
   running = true;
@@ -1926,6 +1942,8 @@ const handlers: Handlers = {
     }
     if (sender !== null) attachPage(sender);
     state.profiles = profileEntries();
+    // The sources at least one job came from (core's Store::sources).
+    state.sources = PORTALS.filter((portal) => jobs.some((job) => job.key.portal === portal));
     return structuredClone(state);
   },
   start_run: ({ request }) => {

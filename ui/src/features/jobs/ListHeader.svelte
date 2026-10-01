@@ -93,12 +93,15 @@
 
   /* ---------------------------------------------------------------------- filter */
 
-  /** The portals of the menu: the enabled ones in the UI's order (lib/portals.ts), and a
-   *  chosen one switched off since (so it can be seen and taken off). */
+  /** The sources of the menu: the enabled ones some job came from, in the UI's order
+   *  (lib/portals.ts), and a chosen one switched off since (so it can be seen and taken
+   *  off). */
   const portals = $derived(
     inPortalOrder(
       (app.state?.portals ?? []).filter(
-        (line) => line.enabled || line.portal === jobs.filterChoice.portal,
+        (line) =>
+          (line.enabled && (app.state?.sources ?? []).includes(line.portal)) ||
+          line.portal === jobs.filterChoice.portal,
       ),
     ).map((line) => line.portal),
   );

@@ -161,6 +161,32 @@ impl PageFetcher for DemoPages {
             facts: crate::portal::Facts::default(),
         }
     }
+
+    /// A search page of Hays holds one project (the app's dry run does not search; tests
+    /// of the run do).
+    async fn search(
+        &mut self,
+        portal: Portal,
+        _url: &url::Url,
+        cancel: &CancellationToken,
+    ) -> Result<Vec<crate::portal::Hit>, PageOutcome> {
+        if pause(Duration::from_millis(300), cancel).await.is_err() {
+            return Err(PageOutcome::Cancelled);
+        }
+        let Some(link) = (portal == Portal::Hays)
+            .then(|| portal.adapter().canonical_url("896260"))
+            .flatten()
+            .and_then(|url| portal.adapter().job_link(&url))
+        else {
+            return Ok(Vec::new());
+        };
+        Ok(vec![crate::portal::Hit {
+            link,
+            title: "Interim CFO".to_owned(),
+            company: String::new(),
+            location: "Hamburg".to_owned(),
+        }])
+    }
 }
 
 /// The sample ad of a job: one fits the profile well, one partly, one hardly, one breaks a

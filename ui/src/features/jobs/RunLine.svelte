@@ -40,6 +40,10 @@
         return progress && progress.total > 0
           ? t.run.line.ads(progress.done, progress.total)
           : t.run.line.adsStart;
+      case 'search':
+        return run.status?.code === 'searching' && run.status.portal !== null
+          ? t.run.line.search(t.portal[run.status.portal])
+          : t.run.line.searchStart;
       case 'score':
         return t.run.line.scoring;
       case 'export':

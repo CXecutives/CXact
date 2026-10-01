@@ -497,10 +497,11 @@ test.describe('filter', () => {
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
       .evaluateAll((all) => all.map((item) => item.getAttribute('data-testid')));
+    // The sources some job came from (Hays has none in the demo).
     expect(portals).toEqual([
-      'menu-item-portal-freelance',
-      'menu-item-portal-linkedin',
       'menu-item-portal-freelancermap',
+      'menu-item-portal-linkedin',
+      'menu-item-portal-freelance',
     ]);
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
     await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
@@ -1439,7 +1440,7 @@ test.describe('one list', () => {
     await expect(page.getByTestId('view-profile')).toBeVisible();
   });
 
-  test('a removed mailbox keeps the jobs: Abrufen waits and the list says how', async ({
+  test('a removed mailbox keeps the jobs: Abrufen searches on and the list says how', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1451,7 +1452,8 @@ test.describe('one list', () => {
       .click();
     await page.getByTestId('nav-jobs').click();
     await expect(rows(page).first()).toBeVisible();
-    await expect(page.getByTestId('fetch')).toHaveAttribute('aria-disabled', 'true');
+    // The sources' search goes on without a mailbox.
+    await expect(page.getByTestId('fetch')).not.toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('no-mailbox').getByRole('button').click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
@@ -2014,6 +2016,9 @@ test.describe('run line', () => {
     if (count.test(await now())) await expect(text).toHaveAttribute('data-kept', 'yes');
     const words = new Set<string>([
       T.run.line.mailbox,
+      T.run.line.searchStart,
+      T.run.line.search(T.portal.hays),
+      T.run.line.search(T.portal.freelancermap),
       T.run.line.adsStart,
       T.run.line.scoring,
       T.run.line.files,

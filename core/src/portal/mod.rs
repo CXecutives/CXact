@@ -11,6 +11,7 @@
 
 mod freelance_de;
 mod freelancermap;
+mod hays;
 
 pub(crate) use freelancermap::without_archive_mark;
 mod linkedin;
@@ -33,9 +34,9 @@ use scraper::Selector;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::fetch::PageOutcome;
 use crate::fetch::policy::Limits;
 use crate::fetch::site::PortalSite;
+use crate::fetch::{Cause, PageOutcome};
 
 /// A portal. The order is the one of the interface and the export.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -46,6 +47,8 @@ pub enum Portal {
     FreelanceDe,
     #[serde(rename = "freelancermap")]
     Freelancermap,
+    #[serde(rename = "hays")]
+    Hays,
     /// A fourth portal that exists in tests only: it proves that the registry is the only
     /// place that knows the portals.
     #[cfg(test)]
@@ -87,6 +90,44 @@ impl Access {
     pub fn can_sign_in(self) -> bool {
         matches!(self, Access::Session { .. })
     }
+}
+
+/// How the app gets a source's jobs (user decision 2026-10-01: one way each).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum Way {
+    /// The app searches the source's public search itself.
+    Search,
+    /// The source's alert mails in the user's mailbox.
+    Alert,
+}
+
+/// What a search page shows instead of its list of hits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoHits {
+    /// A check or a wall: the source stops and rests.
+    Blocked(Cause),
+    /// A page the parser does not know (its layout changed?).
+    Suspicious(Cause),
+}
+
+impl From<NoHits> for PageOutcome {
+    fn from(no_hits: NoHits) -> PageOutcome {
+        match no_hits {
+            NoHits::Blocked(cause) => PageOutcome::Blocked(cause),
+            NoHits::Suspicious(cause) => PageOutcome::Suspicious(cause),
+        }
+    }
+}
+
+/// A job of a source's search page: its link and what the page says about it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Hit {
+    pub link: JobLink,
+    pub title: String,
+    pub company: String,
+    pub location: String,
 }
 
 /// How the guest client treats redirects.
@@ -148,6 +189,35 @@ pub trait PortalAdapter: Send + Sync {
     fn parser_version(&self) -> u32;
     /// The facts a guest page states in structured form (also part of `guest_page`).
     fn parse_facts(&self, html: &str) -> Facts;
+    /// How the app gets the source's jobs.
+    fn way(&self) -> Way {
+        Way::Alert
+    }
+    /// The pages of the source's own search for the profile's terms (none: no search).
+    fn search_urls(&self, terms: &[String]) -> Vec<Url> {
+        let _ = terms;
+        Vec::new()
+    }
+    /// A search page answered with 200: its hits, or what it shows instead (a check, a
+    /// wall, a page the parser does not know).
+    fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
+        let _ = html;
+        Ok(Vec::new())
+    }
+    /// Every request of the source goes by its robots.txt (the sources added 2026-10-01);
+    /// the search goes by it on every source.
+    fn checks_robots(&self) -> bool {
+        false
+    }
+    /// Where the user sets up the source's alert or registers.
+    fn setup_url(&self) -> &'static str {
+        self.home_url()
+    }
+    /// The source lists projects only (freelance, interim, contracting): its jobs count as
+    /// such where the ad does not say otherwise.
+    fn projects_only(&self) -> bool {
+        false
+    }
 }
 
 /// Most skills kept in the facts.
@@ -243,13 +313,19 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
     &linkedin::LinkedIn,
     &freelance_de::FreelanceDe,
     &freelancermap::Freelancermap,
+    &hays::Hays,
     #[cfg(test)]
     &probe::Probe,
 ];
 
 impl Portal {
     /// The product portals (the test-only probe is not among them).
-    pub const ALL: [Portal; 3] = [Portal::LinkedIn, Portal::FreelanceDe, Portal::Freelancermap];
+    pub const ALL: [Portal; 4] = [
+        Portal::LinkedIn,
+        Portal::FreelanceDe,
+        Portal::Freelancermap,
+        Portal::Hays,
+    ];
 
     /// The adapter of this portal.
     pub fn adapter(self) -> &'static dyn PortalAdapter {
@@ -293,6 +369,10 @@ impl Portal {
 
     pub fn access(self) -> Access {
         self.adapter().access()
+    }
+
+    pub fn way(self) -> Way {
+        self.adapter().way()
     }
 
     /// Portal of a sender domain: exact or as a subdomain - `freelancermap.de` is therefore
@@ -858,19 +938,20 @@ mod tests {
     fn keys_labels_access_and_serde() {
         assert_eq!(
             Portal::ALL.map(Portal::key),
-            ["linkedin", "freelance", "freelancermap"]
+            ["linkedin", "freelance", "freelancermap", "hays"]
         );
         assert_eq!(
             Portal::ALL.map(Portal::access),
             [
                 Access::Guest,
                 Access::Session { required: false },
+                Access::Guest,
                 Access::Guest
             ]
         );
         assert_eq!(
             Portal::ALL.map(Portal::file_tag),
-            ["LinkedIn", "Freelance", "Freelancermap"]
+            ["LinkedIn", "Freelance", "Freelancermap", "Hays"]
         );
         for p in Portal::ALL {
             assert_eq!(Portal::from_key(p.key()), Some(p));

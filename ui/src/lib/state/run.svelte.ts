@@ -134,7 +134,7 @@ class RunStore {
    *  when it can (the demo fetches from its made-up mailbox). The backend refuses the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
-    if (!app.hasMailbox) return t.toolbar.needsMailbox;
+    if (!app.hasMailbox && !app.searches) return t.toolbar.needsMailbox;
     if (!app.hasPortal) return t.toolbar.needsPortal;
     return null;
   }
@@ -268,8 +268,9 @@ class RunStore {
       case 'progress': {
         if (!this.active) break;
         this.step = event.step;
-        // The step's progress counts over all portals (the backend sends `portal: null`).
-        if (event.portal === null) {
+        // The step's progress counts over all portals (the backend sends `portal: null`); the
+        // search counts its pages over all sources and names the one it asks.
+        if (event.portal === null || event.step === 'search') {
           this.progress = {
             ...this.progress,
             [event.step]: { done: event.done, total: event.total },

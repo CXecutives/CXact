@@ -125,6 +125,9 @@ fn url(portal: Portal, id: u64) -> String {
         Portal::LinkedIn => format!("https://www.linkedin.com/jobs/view/{id}/"),
         Portal::Freelancermap => format!("https://www.freelancermap.de/nproj/{id}.html"),
         Portal::FreelanceDe => format!("https://www.freelance.de/project/index.php?id={id}"),
+        Portal::Hays => {
+            format!("https://www.hays.de/jobsuche/stellenangebote-jobs-detail-job-{id}/1")
+        }
         Portal::Probe => format!("https://jobs.probe.example/job/{id}"),
     }
 }
@@ -1177,7 +1180,7 @@ async fn portals_run_side_by_side_but_never_overlap_within_one() {
     .await;
     let calls = fake.calls();
     assert_eq!(calls.len(), 9);
-    for portal in Portal::ALL {
+    for portal in [LI, FL, FM] {
         let own: Vec<&Call> = calls.iter().filter(|call| call.portal == portal).collect();
         assert_eq!(own.len(), 3, "{portal}");
         let pace = Duration::from_millis(*limits(portal).pace_ms.start());
@@ -1251,7 +1254,7 @@ async fn limits_pauses_and_the_breaker_hold_in_parallel_and_via_a_session() {
     ));
     let mut stopped: Vec<Portal> = r.stops.iter().map(|(portal, ..)| *portal).collect();
     stopped.sort_unstable();
-    assert_eq!(stopped, Portal::ALL);
+    assert_eq!(stopped, [LI, FL, FM]);
 }
 
 /// A fourth portal runs through the registry alone: its jobs are fetched with its own pace
@@ -1875,4 +1878,36 @@ async fn an_empty_teaser_does_not_reset_the_breaker() {
         r.stops.as_slice(),
         [(FL, StopReason::Breaker { .. }, 0)]
     ));
+}
+
+/// A source that asks for it gets no page its robots.txt does not allow: the job fails with
+/// that reason and no request is made; read once, the rules hold for a day.
+#[tokio::test(start_paused = true)]
+async fn the_robots_txt_of_a_source_decides_its_pages() {
+    let c = clock();
+    let hays = Portal::Hays;
+    let store = store_with(&[(hays, 891_480, 1)]);
+    let mut policy = Policy::in_memory();
+    policy.set_robots(
+        hays,
+        super::robots::Robots::parse(
+            "User-agent: *\nDisallow: /jobsuche/stellenangebote-jobs-detail-",
+        ),
+        c(),
+    );
+    let fake = Fake::default();
+    run(&fake, &store, &mut policy, Selection::Queue(&[hays]), &c).await;
+    assert!(fake.calls().is_empty());
+    let key = JobKey {
+        portal: hays,
+        id: "891480".into(),
+    };
+    let job = store.job(&key).unwrap().unwrap();
+    assert_eq!(job.desc_status, DescStatus::Failed);
+    assert!(policy.state(hays).accesses.is_empty());
+    // Allowed: the page is fetched.
+    policy.set_robots(hays, super::robots::Robots::default(), c());
+    let store = store_with(&[(hays, 891_481, 1)]);
+    run(&fake, &store, &mut policy, Selection::Queue(&[hays]), &c).await;
+    assert_eq!(fake.calls().len(), 1);
 }

@@ -70,6 +70,9 @@ impl PortalAdapter for FreelanceDe {
         }
     }
     /// Without a sign-in a guest still gets the teaser.
+    fn projects_only(&self) -> bool {
+        true
+    }
     fn access(&self) -> Access {
         Access::Session { required: false }
     }

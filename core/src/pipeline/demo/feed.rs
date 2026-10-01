@@ -562,6 +562,9 @@ mod tests {
             fetch_range: FetchRange::SinceLast,
             language: Language::De,
             mailbox: None,
+            read_mail: true,
+            search_portals: Vec::new(),
+            search_terms: Vec::new(),
         }
     }
 

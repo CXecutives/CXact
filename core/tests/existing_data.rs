@@ -149,9 +149,10 @@ fn settings_policy_and_database_of_an_earlier_version_keep_working() {
         Allowance::Go
     );
 
-    // The portal states come from all three without failing.
+    // The portal states come from all sources without failing (a source the old file did
+    // not know, like Hays, starts with its defaults).
     let states = portal_states(&policy, &settings, &[], &[], now());
-    assert_eq!(states.len(), 3);
+    assert_eq!(states.len(), Portal::ALL.len());
     let of = |portal| states.iter().find(|s| s.portal == portal).unwrap();
     assert!(of(Portal::LinkedIn).enabled && of(Portal::FreelanceDe).enabled);
     assert!(!of(Portal::Freelancermap).enabled);

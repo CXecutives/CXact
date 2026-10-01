@@ -10,8 +10,8 @@
 // stays an infinitive ("Postfach verbinden"). A control a sentence names stands in quotes
 // („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
-// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Postfach abrufen (the button; what it does is
-// the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
+// erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs abrufen (the button: the mails and the
+// sources' search; what it does is the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
 // bewerten, Neu, Archiv (In den Eingang: back from there), Papierkorb, Löschen (into the
 // Papierkorb; there Endgültig löschen and Wiederherstellen), Daten (the card of the app's
 // data: its backups, its log, the reset), Aufrufe (what a portal allows a day).
@@ -874,7 +874,7 @@ export const de = {
     closed: 'Beendet',
   },
   toolbar: {
-    fetch: 'Postfach abrufen',
+    fetch: 'Jobs abrufen',
     /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of the icon
      *  button beside it (its name, its heading and its tooltip). */
     range: 'Zeitraum',
@@ -933,6 +933,9 @@ export const de = {
     /** The one line under the list header while a fetch goes: what happens now. */
     line: {
       mailbox: 'Postfach wird gelesen',
+      /** The sources' own search: the source asked now. */
+      search: (portal: string) => `Suche bei ${portal}`,
+      searchStart: 'Portale werden durchsucht',
       ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',

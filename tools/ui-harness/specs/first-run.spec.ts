@@ -14,15 +14,7 @@ async function lastOpened(page: Page): Promise<unknown> {
   return (await calls(page, 'open_target')).at(-1)?.[1];
 }
 
-/** The tooltip of a locked button. */
-async function reason(page: Page, testid: string): Promise<string | null> {
-  const button = page.getByTestId(testid);
-  await expect(button).toHaveAttribute('aria-disabled', 'true');
-  await button.hover();
-  return page.getByRole('tooltip').textContent();
-}
-
-test('three steps that tick themselves, the fetch locked until a mailbox', async ({ page }) => {
+test('three steps that tick themselves; the fetch searches before a mailbox', async ({ page }) => {
   await open(page, `${WIN}&scenario=first-run`);
   const first = page.getByTestId('first-run');
   await expect(first).toBeVisible();
@@ -56,9 +48,10 @@ test('three steps that tick themselves, the fetch locked until a mailbox', async
   expect(await calls(page, 'save_mailbox')).toHaveLength(0);
   // The portals whose alert mails must come here, in the UI's order.
   await expect(page.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(['freelance', 'linkedin', 'freelancermap']),
+    T.firstRun.mailboxText(['linkedin', 'freelance']),
   );
-  expect(await reason(page, 'first-fetch')).toBe('Verbinde erst ein Postfach.');
+  // Without a mailbox the first fetch searches the sources (Hays and freelancermap are on).
+  await expect(page.getByTestId('first-fetch')).not.toHaveAttribute('aria-disabled', 'true');
 
   await page.getByTestId('mailbox-user').fill('alerts.demo');
   await page.getByTestId('mailbox-password').fill('abcdabcdabcdabcd');
@@ -87,11 +80,8 @@ test('three steps that tick themselves, the fetch locked until a mailbox', async
     .getByTestId('first-alerts')
     .locator('li')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
-  expect(portals).toEqual([
-    'first-portal-freelance',
-    'first-portal-linkedin',
-    'first-portal-freelancermap',
-  ]);
+  // The sources of alert mails only: the app searches the others itself.
+  expect(portals).toEqual(['first-portal-linkedin', 'first-portal-freelance']);
   await expect(page.getByTestId('first-mails-linkedin')).toHaveText('20 Alert-Mails');
   await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText(['Alert anlegen']);
   await page.getByTestId('first-alert-freelance').click();
@@ -110,7 +100,7 @@ test('a step done before the page opened is simply there', async ({ page }) => {
   await expect(page.getByTestId('step-profile')).toHaveAttribute('aria-current', 'step');
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
   // Connected in an earlier session: nothing counted, every portal offers its page.
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(3);
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(2);
 });
 
 test('step 1 names the portals that are on; none on leads to Einstellungen', async ({ page }) => {
@@ -120,7 +110,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await page.getByTestId('nav-jobs').click();
   const step = page.getByTestId('step-mailbox');
   await expect(step.getByTestId('first-mailbox-hint')).toHaveText(
-    T.firstRun.mailboxText(['freelance', 'freelancermap']),
+    T.firstRun.mailboxText(['freelance']),
   );
   // The compound never breaks at its hyphen.
   expect(T.firstRun.mailboxText(['freelance'])).toContain('Gmail‑Adresse');
@@ -128,6 +118,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   await page.getByTestId('nav-settings').click();
   await page.getByTestId('toggle-enabled-freelance').click();
   await page.getByTestId('toggle-enabled-freelancermap').click();
+  await page.getByTestId('toggle-enabled-hays').click();
   await page.getByTestId('nav-jobs').click();
   // The words of the locked fetch, not a sentence of its own.
   await expect(page.getByTestId('first-no-portal')).toHaveText(T.toolbar.needsPortal);
@@ -137,7 +128,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   // In English the same.
   await open(page, `${WIN}&scenario=first-run&lang=en`);
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alert emails from freelance.de, linkedin.com and freelancermap.de must go to this Gmail address.',
+    'The alert emails from linkedin.com and freelance.de must go to this Gmail address.',
   );
 });
 
@@ -146,7 +137,7 @@ test('no alert mail in 30 days says to set up an alert first', async ({ page }) 
   await page.getByTestId('mailbox-user').fill('alerts.demo@gmail.com');
   await page.getByTestId('mailbox-password').fill('abcd efgh ijkl mnop');
   await page.getByTestId('mailbox-password').press('Enter');
-  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(3);
+  await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveCount(2);
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 

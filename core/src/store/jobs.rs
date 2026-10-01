@@ -409,6 +409,41 @@ impl Store {
         })
     }
 
+    /// The sources at least one job came from, in the order of `Portal::ALL`.
+    pub fn sources(&self) -> Result<Vec<Portal>> {
+        let conn = self.conn();
+        let mut stmt = conn.prepare_cached("SELECT DISTINCT portal FROM job")?;
+        let keys = stmt
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        Ok(Portal::ALL
+            .into_iter()
+            .filter(|portal| keys.iter().any(|key| key == portal.key()))
+            .collect())
+    }
+
+    /// Jobs the app's own search found (user decision 2026-10-01): rows like an alert mail's,
+    /// without a mail (no subject, date or Gmail link). A known job is only seen again, a job
+    /// deleted for good stays deleted.
+    pub fn record_found(
+        &self,
+        run: i64,
+        postings: &[Posting],
+        now: Timestamp,
+    ) -> Result<Vec<Seen>> {
+        let none = MailRef {
+            subject: "",
+            date: None,
+            gmail_id: None,
+        };
+        self.write(|conn| {
+            postings
+                .iter()
+                .map(|posting| upsert(conn, run, posting, none, now))
+                .collect()
+        })
+    }
+
     /// Alert mails of a run without a single recognised entry (layout guard: grey rows with
     /// a Gmail link).
     pub fn zero_posting_mails(&self, run: i64) -> Result<Vec<AlertMailRow>> {

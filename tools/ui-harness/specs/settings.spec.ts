@@ -210,7 +210,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   // The portals' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
     page.getByTestId('portals').boundingBox(),
-    page.getByTestId('portal-freelance').boundingBox(),
+    page.getByTestId('portal-hays').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
   // Every button of the page is at most 29 px high.
@@ -257,7 +257,7 @@ test('narrow, every meter keeps one width and the path breaks only at a separato
     .evaluateAll((meters) =>
       meters.map((meter) => Math.round(meter.getBoundingClientRect().width)),
     );
-  expect(widths).toHaveLength(3);
+  expect(widths).toHaveLength(4);
   expect(new Set(widths).size).toBe(1);
   // The sign-in goes to a line of its own under the calls.
   const [signIn, quota] = await Promise.all([
@@ -396,20 +396,22 @@ test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
 
 /* ----------------------------------------------------------------- Portale */
 
-test('portals: one card, freelance.de, LinkedIn, freelancermap, each with its calls of today', async ({
+test('portals: one card, Hays, freelancermap, LinkedIn, freelance.de, each with its calls of today', async ({
   page,
 }) => {
   await settings(page);
   expect(await ids(page, 'portals', '[data-testid^="portal-"]')).toEqual([
-    'portal-freelance',
-    'portal-linkedin',
+    'portal-hays',
     'portal-freelancermap',
+    'portal-linkedin',
+    'portal-freelance',
   ]);
   await expect(page.getByTestId('settings-portals').locator('.card')).toHaveCount(1);
   for (const [portal, used] of [
     ['freelance', 11],
     ['linkedin', 23],
     ['freelancermap', 86],
+    ['hays', 18],
   ] as const) {
     const quota = page.getByTestId(`quota-${portal}`);
     await expect(quota).toContainText(T.settings.quota(used, 100));

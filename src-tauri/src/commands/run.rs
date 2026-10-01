@@ -21,7 +21,8 @@ use jobalert_core::pipeline::{
     self, Backends, Matcher, Outcome, RunContext, RunEvent, RunKindName, RunRequest, RunSnapshot,
     RunSummary,
 };
-use jobalert_core::portal::{FetchPath, Portal};
+use jobalert_core::portal::{FetchPath, Portal, Way};
+use jobalert_core::profile;
 use jobalert_core::secrets::Vault;
 use jobalert_core::store::Store;
 use tauri::ipc::Channel;
@@ -189,7 +190,8 @@ fn run_context(
 ) -> CmdResult<(RunContext, Option<Credentials>)> {
     let settings = state.settings()?;
     let scans = request.kind.name().reads_mail();
-    if scans && settings.enabled_portals().is_empty() {
+    let enabled = settings.enabled_portals();
+    if scans && enabled.is_empty() {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
     let credentials = if state.dry_run || state.demo || !scans {
@@ -197,8 +199,27 @@ fn run_context(
     } else {
         Vault::app().load_gmail()?
     };
+    let workspace = settings.workspace_or(&state.default_workspace);
+    // A fetch searches the sources that have a search (not the dry run and the demo: their
+    // made-up mails are all they have), with the active profile's search terms.
+    let search_portals: Vec<Portal> = if scans && !state.dry_run && !state.demo {
+        enabled
+            .iter()
+            .copied()
+            .filter(|portal| portal.way() == Way::Search)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let search_terms = if search_portals.is_empty() {
+        Vec::new()
+    } else {
+        profile::stored_form(&workspace)
+            .map(|form| form.search_terms)
+            .unwrap_or_default()
+    };
     let ctx = RunContext {
-        workspace: settings.workspace_or(&state.default_workspace),
+        workspace,
         dry_run: state.dry_run,
         portals: settings.enabled_portals(),
         fetch_portals: settings.fetch_portals(),
@@ -209,6 +230,11 @@ fn run_context(
         fetch_range: settings.fetch_range,
         language: settings.language_or(state.system_language),
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
+        // Without a mailbox a fetch only searches (with nothing to search the scan says the
+        // mailbox is missing).
+        read_mail: state.dry_run || state.demo || credentials.is_some(),
+        search_portals,
+        search_terms,
     };
     Ok((ctx, credentials))
 }

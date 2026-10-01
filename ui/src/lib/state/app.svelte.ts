@@ -98,6 +98,12 @@ class AppStore {
     return this.state?.portals.some((p) => p.enabled) ?? false;
   }
 
+  /** A source the app searches itself is switched on: "Jobs abrufen" works without a
+   *  mailbox too. */
+  get searches(): boolean {
+    return this.state?.portals.some((p) => p.enabled && p.way === 'search') ?? false;
+  }
+
   get hasProfile(): boolean {
     const profile = this.state?.profile;
     return Boolean(profile && profile.parseError === null && profile.quality !== 'empty');

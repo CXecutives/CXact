@@ -36,6 +36,9 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         fetch_range: FetchRange::SinceLast,
         language: Language::De,
         mailbox: None,
+        read_mail: true,
+        search_portals: Vec::new(),
+        search_terms: Vec::new(),
     }
 }
 
@@ -83,6 +86,53 @@ fn assert_small(events: &[RunEvent]) {
         let size = serde_json::to_vec(event).unwrap().len();
         assert!(size < 8 * 1024, "{size} bytes: {event:?}");
     }
+}
+
+/// Without a mailbox a fetch searches the sources: the hits become jobs of the run, their ads
+/// are read in the same run, and nothing fails for want of a mailbox.
+#[tokio::test(start_paused = true)]
+async fn a_fetch_without_a_mailbox_searches_and_reads_the_hits() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::in_memory().unwrap();
+    let ctx = RunContext {
+        read_mail: false,
+        search_portals: vec![Portal::Hays],
+        search_terms: vec!["Interim CFO".to_owned()],
+        ..ctx(dir.path(), true)
+    };
+    let c = clock();
+    let (summary, events) = go(
+        &mut DemoBackends,
+        &store,
+        &request(),
+        &ctx,
+        &CancellationToken::new(),
+        &c,
+    )
+    .await;
+    assert_eq!(summary.outcome, Outcome::Completed);
+    assert!(summary.scan.is_none());
+    let found = &summary.search.as_ref().unwrap()[&Portal::Hays];
+    assert_eq!((found.pages, found.hits, found.new), (1, 1, 1));
+    assert_eq!(summary.new_jobs.map(|n| n.count), Some(1));
+    let key = JobKey {
+        portal: Portal::Hays,
+        id: "896260".into(),
+    };
+    assert_eq!(
+        store.job(&key).unwrap().unwrap().desc_status,
+        DescStatus::Ok
+    );
+    assert_eq!(store.sources().unwrap(), [Portal::Hays]);
+    assert!(events.iter().any(|e| matches!(
+        e,
+        RunEvent::Progress {
+            step: Step::Search,
+            portal: Some(Portal::Hays),
+            ..
+        }
+    )));
+    assert_small(&events);
 }
 
 #[tokio::test(start_paused = true)]

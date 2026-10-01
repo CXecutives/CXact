@@ -14,7 +14,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  for (const portal of ['linkedin', 'freelance', 'freelancermap']) {
+  for (const portal of ['linkedin', 'freelance', 'freelancermap', 'hays']) {
     await page.getByTestId(`toggle-enabled-${portal}`).click();
     await expect(page.getByTestId(`toggle-enabled-${portal}`)).toHaveAttribute(
       'aria-checked',
@@ -23,7 +23,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   }
   // Saved as chosen: no refusal after the switches moved.
   await expect(page.getByTestId('portal-error')).toHaveCount(0);
-  expect(await calls(page, 'save_settings')).toHaveLength(3);
+  expect(await calls(page, 'save_settings')).toHaveLength(4);
 
   await page.getByTestId('nav-jobs').click();
   const fetch = page.getByTestId('fetch');

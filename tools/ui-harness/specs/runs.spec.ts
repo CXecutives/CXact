@@ -370,9 +370,10 @@ test('Einstellungen shows the portals in the order of the UI', async ({ page }) 
     .locator('[data-testid^="portal-"]')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
   expect(cards.filter((id) => /^portal-[a-z]+$/.test(id ?? ''))).toEqual([
-    'portal-freelance',
-    'portal-linkedin',
+    'portal-hays',
     'portal-freelancermap',
+    'portal-linkedin',
+    'portal-freelance',
   ]);
 });
 

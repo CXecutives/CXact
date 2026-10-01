@@ -25,8 +25,9 @@ export { FILTER_GROUPS, NO_FILTER, SORTS, sortEntryId };
 export const WIN = '?platform=windows';
 export const MAC = '?platform=macos';
 
-/** The portals of the stub in the UI's order (lib/portals.ts): the funnel's menu lists them so. */
-export const PORTALS: readonly Portal[] = PORTAL_ORDER;
+/** The sources the stub's jobs came from, in the UI's order (lib/portals.ts): the funnel's
+ *  menu lists them so (Hays has no job in the demo). */
+export const PORTALS: readonly Portal[] = PORTAL_ORDER.filter((portal) => portal !== 'hays');
 
 /* ---------------------------------------------------------------------- list */
 

@@ -3,11 +3,16 @@ import type { Portal } from "./Portal";
 import type { PortalHealth } from "./PortalHealth";
 import type { PortalLogin } from "./PortalLogin";
 import type { Quota } from "./Quota";
+import type { Way } from "./Way";
 
 /**
  * A portal in the settings.
  */
 export type PortalState = { portal: Portal, 
+/**
+ * How the app gets its jobs: its own search, or alert mails (the cards of Einstellungen).
+ */
+way: Way, 
 /**
  * Its alert mails are read and its ads fetched.
  */

@@ -219,6 +219,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(check.days, 30);
+        // The sample mailbox has no mail of the sources added later (Hays).
         assert_eq!(check.total, 3, "{check:?}");
         assert_eq!(
             check
@@ -226,7 +227,7 @@ mod tests {
                 .iter()
                 .map(|p| (p.portal, p.count))
                 .collect::<Vec<_>>(),
-            Portal::ALL.map(|p| (p, 1))
+            Portal::ALL.map(|p| (p, u32::from(p != Portal::Hays)))
         );
         let only = count_alerts(&mut mail, &[Portal::LinkedIn], Timestamp::now())
             .await

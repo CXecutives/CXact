@@ -29,7 +29,6 @@
   import { invoke } from '$lib/ipc/api';
   import type { PortalState } from '$lib/ipc/types';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
-  import { PORTAL_LOGO } from '$lib/portalLogos';
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -165,12 +164,7 @@
 <!-- A row of the card like a SettingRow (edge to edge, its own padding: `data-setting-row`
      keeps the card's inset for other content off it). -->
 <div class="row" data-setting-row data-testid="portal-{portal.portal}">
-  <IconTile
-    tone="navy"
-    monogram={PORTAL_MONOGRAM[portal.portal]}
-    logo={PORTAL_LOGO[portal.portal]}
-    size="md"
-  />
+  <IconTile tone="navy" monogram={PORTAL_MONOGRAM[portal.portal]} size="md" />
   <div class="text">
     <span class="name" id="{id}-label">{t.portal[portal.portal]}</span>
     {#if quota}

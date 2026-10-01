@@ -17,7 +17,7 @@ use tokio_util::sync::CancellationToken;
 use url::Url;
 
 use super::{Cause, PageFetcher, PageOutcome};
-use crate::portal::{JobLink, Redirects};
+use crate::portal::{Hit, JobLink, Portal, Redirects};
 
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// Bigger is no ad - then something is wrong.
@@ -145,12 +145,81 @@ impl HttpFetcher {
     }
 }
 
+impl HttpFetcher {
+    /// A page of the source's own search: the hits its adapter reads, or what decided first
+    /// (a status, a redirect it did not follow, a check page).
+    async fn search_page(&self, portal: Portal, url: &Url) -> Result<Vec<Hit>, PageOutcome> {
+        let adapter = portal.adapter();
+        let response = self
+            .follow
+            .get(self.target(url.clone()))
+            .send()
+            .await
+            .map_err(|e| net_error(&e))?;
+        let status = response.status();
+        if status.is_redirection() {
+            return Err(adapter.redirect_outcome(&location_path(&response)));
+        }
+        if let Some(outcome) = status_outcome(status, retry_after(&response)) {
+            return Err(outcome);
+        }
+        adapter
+            .search_page(&body(response).await?)
+            .map_err(PageOutcome::from)
+    }
+
+    /// The source's robots.txt beside its start page; `None` where it has none.
+    async fn robots_text(&self, portal: Portal) -> Result<Option<String>, PageOutcome> {
+        let home = Url::parse(portal.adapter().home_url())
+            .map_err(|_| PageOutcome::Suspicious(Cause::PageNotRecognised))?;
+        let url = home
+            .join("/robots.txt")
+            .map_err(|_| PageOutcome::Suspicious(Cause::PageNotRecognised))?;
+        let response = self
+            .follow
+            .get(self.target(url))
+            .send()
+            .await
+            .map_err(|e| net_error(&e))?;
+        match status_outcome(response.status(), retry_after(&response)) {
+            None => Ok(Some(body(response).await?)),
+            Some(PageOutcome::Gone) => Ok(None),
+            Some(outcome) => Err(outcome),
+        }
+    }
+}
+
 impl PageFetcher for HttpFetcher {
     async fn fetch(&mut self, link: &JobLink, cancel: &CancellationToken) -> PageOutcome {
         tokio::select! {
             biased;
             () = cancel.cancelled() => PageOutcome::Cancelled,
             outcome = self.page(link) => outcome,
+        }
+    }
+
+    async fn search(
+        &mut self,
+        portal: Portal,
+        url: &Url,
+        cancel: &CancellationToken,
+    ) -> Result<Vec<Hit>, PageOutcome> {
+        tokio::select! {
+            biased;
+            () = cancel.cancelled() => Err(PageOutcome::Cancelled),
+            hits = self.search_page(portal, url) => hits,
+        }
+    }
+
+    async fn robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> Result<Option<String>, PageOutcome> {
+        tokio::select! {
+            biased;
+            () = cancel.cancelled() => Err(PageOutcome::Cancelled),
+            text = self.robots_text(portal) => text,
         }
     }
 }

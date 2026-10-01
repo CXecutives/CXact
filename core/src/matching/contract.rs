@@ -14,7 +14,6 @@ use serde_json::Value;
 use super::atoms::fold;
 use super::facts::{Finding, JobFacts, Segment, fact, parse_rate, rate_in, wage_in};
 use super::lexicon::engine as lex;
-use crate::portal::Portal;
 
 /// Inferred contract type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -125,7 +124,8 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
         stated_at(&contract_fact) || fact_wage || segments.iter().any(|(_, f)| stated_at(f));
     let hinted = segments.iter().any(|(_, f)| hint_at(f));
     let agency = segments.iter().any(|(_, f)| any(f, lex::AGENCY_CUES));
-    let portal_interim = matches!(job.portal, Portal::Freelancermap | Portal::FreelanceDe);
+    // The sources that list projects only (freelancermap, freelance.de, Hays' contracting).
+    let portal_interim = job.portal.adapter().projects_only();
     let decided_anue = anue.iter().any(|f| f.decided);
     let student = student_role(job.title);
     let management = any(&title, lex::INTERIM_MANAGEMENT_CUES)
@@ -178,6 +178,7 @@ pub(crate) fn infer(job: &JobFacts<'_>, segments: &[Segment], anue: &[Finding]) 
 mod tests {
     use super::*;
     use crate::matching::facts::{anue, segments};
+    use crate::portal::Portal;
 
     fn infer_text(title: &str, text: &str, portal: Portal) -> Contract {
         let job = JobFacts {

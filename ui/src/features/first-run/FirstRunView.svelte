@@ -15,7 +15,7 @@
   open: the marker cross-fades to its check, which draws itself, the line fills downwards,
   the next marker turns dark and the done text rises in. Nothing plays when the page appears.
 
-  Step 1 names the portals that are on, in the UI's order, since their alert mails must go
+  Step 1 names the sources of alert mails that are on, in the UI's order, since their mails must go
   to this address (none on: a warning with "Einstellungen öffnen"); connected, the sentence
   no longer names them, since the list under it does: each of them with the alert mails
   "Verbinden" found in the last 30 days, or "Alert anlegen" (the portal's page) where it
@@ -76,8 +76,11 @@
     profile?.form?.name.trim() || profile?.form?.title.trim() || t.profile.unnamed,
   );
 
-  /** The portals whose alerts are wanted (the ones switched on), in the UI's order. */
-  const portals = $derived(inPortalOrder(app.state?.portals ?? []).filter((p) => p.enabled));
+  /** The sources whose alerts are wanted (switched on, the ones of alert mails; the app
+   *  searches the others itself), in the UI's order. */
+  const portals = $derived(
+    inPortalOrder(app.state?.portals ?? []).filter((p) => p.enabled && p.way === 'alert'),
+  );
   /** What "Verbinden" found per portal in this session (null: not asked in this session). */
   const check = $derived(app.state?.mailbox.check ?? null);
   const mailsOf = (portal: Portal): number | null =>
@@ -226,8 +229,8 @@
     </div>
     <MailboxForm autofocus />
   {/if}
-  {#if portals.length === 0}
-    <!-- Every portal is off: nothing would be read (the words of the locked fetch). -->
+  {#if !app.hasPortal}
+    <!-- Every source is off: nothing would be read (the words of the locked fetch). -->
     {@render problem(t.toolbar.needsPortal, 'first-no-portal')}
     <div class="actions">
       <Button

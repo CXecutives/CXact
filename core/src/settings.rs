@@ -45,6 +45,9 @@ pub struct Settings {
     /// not know (a newer version's) reads as CXact, and so does the earlier name "coast".
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
+    /// "Jobs abrufen" runs by itself at the start and every 4 hours while the app is open
+    /// (user decision 2026-10-01; Einstellungen, Suche).
+    pub auto_fetch: bool,
 }
 
 /// Einstellungen shows Darstellung (the palette and the language); hidden for now.
@@ -197,6 +200,7 @@ impl Default for Settings {
             export_csv: false,
             language: None,
             palette: Palette::Cxact,
+            auto_fetch: true,
         }
     }
 }
@@ -490,7 +494,7 @@ mod tests {
         );
         assert_eq!(
             back.enabled_portals(),
-            [Portal::FreelanceDe, Portal::Freelancermap]
+            [Portal::FreelanceDe, Portal::Freelancermap, Portal::Hays]
         );
         // Missing fields: default per field.
         store
@@ -650,7 +654,7 @@ mod tests {
         s.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
         assert_eq!(
             s.fetch_portals(),
-            [Portal::FreelanceDe, Portal::Freelancermap]
+            [Portal::FreelanceDe, Portal::Freelancermap, Portal::Hays]
         );
         assert_eq!(s.fetch_path(Portal::LinkedIn), None);
         let store = Store::in_memory().unwrap();

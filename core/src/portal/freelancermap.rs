@@ -12,8 +12,8 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use super::{
-    Access, Css, Facts, JobKey, JobLink, Portal, PortalAdapter, all_digits, hex12,
-    host_and_segments, host_is, link, selector,
+    Access, Css, Facts, Hit, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
+    hex12, host_and_segments, host_is, link, selector,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -134,6 +134,72 @@ impl PortalAdapter for Freelancermap {
     fn parse_facts(&self, html: &str) -> Facts {
         parse(html, None).map(|p| p.facts).unwrap_or_default()
     }
+
+    /// The app searches freelancermap itself (user decision 2026-10-01; its robots.txt allows
+    /// everything); alert mails of it still read.
+    fn way(&self) -> Way {
+        Way::Search
+    }
+
+    fn projects_only(&self) -> bool {
+        true
+    }
+
+    /// One page per term, the portal's own order.
+    fn search_urls(&self, terms: &[String]) -> Vec<Url> {
+        terms
+            .iter()
+            .filter_map(|term| {
+                let mut url = Url::parse("https://www.freelancermap.de/projekte").ok()?;
+                url.query_pairs_mut().append_pair("query", term);
+                Some(url)
+            })
+            .collect()
+    }
+
+    /// The hits are in the page's data island (`ProjectSearch`): each with its number, so a
+    /// hit is the same job as the link of an alert mail.
+    fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
+        let doc = Html::parse_document(html);
+        let Some(island) = doc
+            .select(&SEARCH_ISLAND)
+            .next()
+            .and_then(|node| serde_json::from_str::<Value>(&node.text().collect::<String>()).ok())
+        else {
+            if super::has_challenge(&doc, html) {
+                return Err(NoHits::Blocked(Cause::Captcha));
+            }
+            return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+        };
+        let projects = island
+            .pointer("/initialState/result/projects")
+            .and_then(Value::as_array)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        Ok(projects.iter().filter_map(search_hit).collect())
+    }
+}
+
+static SEARCH_ISLAND: Css = LazyLock::new(|| {
+    selector(r#"script[type="application/json"][data-component-name="ProjectSearch"]"#)
+});
+
+/// A project of the search's island: its number, title, company and place.
+fn search_hit(project: &Value) -> Option<Hit> {
+    let id = project.get("id")?.as_u64()?.to_string();
+    let text = |name: &str| {
+        project
+            .get(name)
+            .and_then(Value::as_str)
+            .map(one_line)
+            .unwrap_or_default()
+    };
+    Some(Hit {
+        link: link(Portal::Freelancermap, id)?,
+        title: without_archive_mark(&text("title")).to_owned(),
+        company: text("company"),
+        location: text("city"),
+    })
 }
 
 /// Bump whenever the parser reads pages differently (requeues failed jobs).
@@ -547,6 +613,38 @@ pub(crate) mod tests {
 
     pub(crate) fn page(id: u64, description: &str, archived: bool) -> String {
         html_of(&island(id, description, archived))
+    }
+
+    #[test]
+    fn the_search_island_gives_hits_with_their_numbers() {
+        let html = r#"<script type="application/json" data-component-name="ProjectSearch">{"initialState":{"result":{"projects":[{"id":3054958,"title":"SAP IS-U Consultant","company":"ForTech Consulting GmbH","city":"Deutschland"},{"title":"ohne Nummer"}]}}}</script>"#;
+        let hits = Freelancermap.search_page(html).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].link.key.id, "3054958");
+        assert_eq!(
+            hits[0].link.url.as_str(),
+            "https://www.freelancermap.de/nproj/3054958.html"
+        );
+        assert_eq!(hits[0].title, "SAP IS-U Consultant");
+        assert_eq!(hits[0].company, "ForTech Consulting GmbH");
+        assert_eq!(
+            Freelancermap.search_page("<html></html>"),
+            Err(NoHits::Suspicious(Cause::PageNotRecognised))
+        );
+        assert_eq!(
+            Freelancermap.search_urls(&["SAP FI/CO".to_owned()])[0].as_str(),
+            "https://www.freelancermap.de/projekte?query=SAP+FI%2FCO"
+        );
+    }
+
+    /// The real search page of 2026-10-01 reads (private, not in the repository).
+    #[test]
+    #[ignore = "reads the private pages under core/tests/fixtures/private"]
+    fn the_real_search_reads() {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/private/pages/fm-search.html");
+        let html = std::fs::read_to_string(path).unwrap();
+        assert!(Freelancermap.search_page(&html).unwrap().len() >= 10);
     }
 
     #[test]

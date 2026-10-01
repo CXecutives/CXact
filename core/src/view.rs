@@ -23,7 +23,7 @@ use crate::model::{
     is_usable_title,
 };
 use crate::pipeline::{LocalMatcher, Matcher, RunSnapshot, RunSummary, local};
-use crate::portal::{JobKey, Portal};
+use crate::portal::{JobKey, Portal, Way};
 pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
@@ -1144,6 +1144,8 @@ pub struct Quota {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct PortalState {
     pub portal: Portal,
+    /// How the app gets its jobs: its own search, or alert mails (the cards of Einstellungen).
+    pub way: Way,
     /// Its alert mails are read and its ads fetched.
     pub enabled: bool,
     pub login: PortalLogin,
@@ -1192,6 +1194,7 @@ pub fn portal_states(
             let health = PortalHealth::of(policy, portal, now, switches.login_enabled, empty);
             PortalState {
                 portal,
+                way: portal.way(),
                 enabled: switches.enabled,
                 login,
                 login_enabled: switches.login_enabled,
@@ -1621,6 +1624,9 @@ pub struct AppState {
     /// Every profile of the work folder, the active one marked (empty without one).
     pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
+    /// The sources at least one job of the app came from (the funnel offers these, so ten
+    /// sources do not crowd it).
+    pub sources: Vec<Portal>,
     /// Which alert mails "Postfach abrufen" reads.
     pub fetch_range: FetchRange,
     /// The Excel file is written with every export.

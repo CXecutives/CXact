@@ -773,7 +773,7 @@ export const en: Catalog = {
     closed: 'Closed',
   },
   toolbar: {
-    fetch: 'Check mailbox',
+    fetch: 'Fetch jobs',
     range: 'Time range',
     rangeName: {
       sinceLast: 'Since last fetch',
@@ -816,6 +816,8 @@ export const en: Catalog = {
   run: {
     line: {
       mailbox: 'Reading the mailbox',
+      search: (portal: string) => `Searching ${portal}`,
+      searchStart: 'Searching the sources',
       ads: (done: number, total: number) => `${n(done)} of ${n(total)} ads loaded`,
       adsStart: 'Loading ads',
       scoring: 'Scoring jobs',

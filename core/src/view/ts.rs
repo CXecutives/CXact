@@ -23,7 +23,7 @@ use crate::pipeline::{
     ExportSummary, NewJobs, Outcome, PortalSummary, RunEvent, RunKind, RunKindName, RunRequest,
     RunSnapshot, RunSummary, ScanCounts, ScoreDelta, ScoreSummary, StatusCode, Step,
 };
-use crate::portal::{JobKey, Portal};
+use crate::portal::{JobKey, Portal, Way};
 use crate::settings::{FetchRange, Language, Palette};
 use crate::store::{Backup, BackupKind};
 use crate::view::{
@@ -167,6 +167,7 @@ fn contract() -> BTreeMap<String, String> {
     f.add::<KeyFacts>();
     f.add::<PauseReason>();
     f.add::<PortalHealth>();
+    f.add::<Way>();
     f.add::<WorkMode>();
     f.add::<DetailState>();
     f.add::<JobMatch>();
