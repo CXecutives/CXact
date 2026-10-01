@@ -154,8 +154,8 @@ menu names a key.
   part of the filter: it sets no dot and no chip, and "Filter zurücksetzen" keeps it.
 - **The job's menu**: one table, `jobMenu` in `ui/src/features/jobs/actions.ts`. A right click
   on a row shows both groups (what shows the job: Öffnen, Alert-Mail öffnen, Anzeige öffnen,
-  KI-Prompt kopieren; what changes it: Trotzdem bewerten or Wieder ausschließen, then the moves
-  of its place); the reader's "…" shows the second group (its buttons are the first), and
+  Prompt kopieren; what changes it: Trotzdem bewerten, then the moves of its place); the
+  reader shows its buttons (its archive and delete beside the close button), and
   the row's tools under the pointer are the moves of its place (`rowTools`, icons with their
   label as tooltip; the ones that delete turn red). The moves per place are `OF_PLACE`, their
   icons `ACTIONS`, their toast words `SAID`. No entry names a key.

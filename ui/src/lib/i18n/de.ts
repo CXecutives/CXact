@@ -756,7 +756,7 @@ export const de = {
     open: 'Öffnen',
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
-    prompt: 'KI-Prompt kopieren',
+    prompt: 'Prompt kopieren',
     /** Without a usable profile there is nothing to judge the job by. */
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
@@ -1102,9 +1102,9 @@ export const de = {
     close: 'Schließen',
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
-    prompt: 'KI-Prompt kopieren',
+    prompt: 'Prompt kopieren',
     /** The clipboard refused the prompt. */
-    promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
+    promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     mail: OPEN_MAIL,
     setUpSignIn: 'Anmeldung einrichten',
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
@@ -1166,27 +1166,24 @@ export const de = {
      *  first-run page alike): its title and its three ways, stored on "Speichern" (the title
      *  says it while the form holds it). */
     newProfile: 'Neues Profil',
-    way: { cv: 'Aus dem Lebenslauf', empty: 'Leer anfangen', file: 'Aus Datei laden' },
+    way: { empty: 'Leer anfangen', file: 'Aus Datei laden', cv: 'Aus dem Lebenslauf' },
     /** What each way does, one sentence under its name. */
-    cvPrompt: 'Gib den Prompt mit deinem Lebenslauf einer KI und füge ihre Antwort ein.',
     emptyHint: 'Du füllst die Felder selbst aus.',
     fileHint: 'Ein Profil, das du schon als Datei hast.',
+    /** The prompt has the AI hand over the profile as a file, loaded with "Datei hochladen". */
+    cvPrompt: 'Eine KI macht aus deinem Lebenslauf eine Datei, die du hochlädst.',
     copyPrompt: 'Prompt kopieren',
     /** The button of the prompt for a moment after the copy. */
     copied: 'Kopiert',
     /** The buttons of the ways. */
-    pasteAnswer: 'Antwort einfügen',
     startEmpty: 'Anlegen',
-    pickFile: 'Datei wählen',
-    /** Where the platform refuses the clipboard: the answer pasted into a field. */
-    answerField: 'Antwort der KI',
-    noAnswer: 'In der Antwort steht kein Profil. Kopiere die ganze Antwort der KI.',
+    pickFile: 'Datei hochladen',
     duplicate: 'Duplizieren',
     /** The name a copy starts with (Umbenennen changes it). */
     copyName: (name: string) => `${name} Kopie`,
     rename: 'Umbenennen',
     /** Why the copy of the prompt failed. */
-    promptNotCopied: 'Der KI-Prompt ließ sich nicht kopieren.',
+    promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
     /** After another profile became the active one (its rescore runs in the background). */
     switched: 'Profil gewechselt, Jobs werden neu bewertet.',
     /** The toasts of a new profile (saved) and a copy: the profile active now. */
@@ -1633,7 +1630,7 @@ export const de = {
   toast: {
     rescored: 'Jobs neu bewertet',
     /** The job, or the best matches, as a prompt for any AI chat (no brand named). */
-    prompt: 'KI-Prompt kopiert',
+    prompt: 'Prompt kopiert',
     /** A job action: one short word, however many jobs it took, without their titles. */
     archived: 'Archiviert',
     unarchived: 'Zurückgeholt',

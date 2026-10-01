@@ -29,7 +29,7 @@ export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
  * Alert-Mail öffnen, only for a job an alert mail brought (user, 2026-10-01: a job of the
  * search has none, the button is not there); Anzeige öffnen, which says Offline-Anzeige
  * öffnen for an ad that is gone or takes no applications (the portal's page still opens);
- * KI-Prompt kopieren, off without a profile to judge the job by or without the ad's text (a
+ * Prompt kopieren, off without a profile to judge the job by or without the ad's text (a
  * preview is one).
  */
 export function showActions(job: JobView): Record<ShowId, ShowAction> {

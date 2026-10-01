@@ -19,7 +19,6 @@ purge_jobs        { keys: JobKey[] }                                            
 empty_trash       {}                                                                 -> Deleted
 ai_prompt         { key: JobKey }                                                    -> string
 pick_profile      {}                                                                 -> ProfileDraft | null
-read_profile_text { text: string }                                                   -> ProfileDraft | null
 profile_prompt    {}                                                                 -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
 list_profiles     {}                                                                 -> ProfileEntry[]

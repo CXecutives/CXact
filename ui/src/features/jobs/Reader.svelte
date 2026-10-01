@@ -15,7 +15,7 @@
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
   - actions: Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
-    or closed: the portal's page still opens), Alert-Mail öffnen, KI-Prompt kopieren, all
+    or closed: the portal's page still opens), Alert-Mail öffnen, Prompt kopieren, all
     alike; an excluded job has "Trotzdem bewerten" before them. Moving the job away from one
     of the reader's buttons hands the focus to the same button of the next job. Every result
     and every failure is a toast.

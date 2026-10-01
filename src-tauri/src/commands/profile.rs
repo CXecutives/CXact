@@ -46,14 +46,6 @@ pub async fn pick_profile(
     Ok(Some(profile::draft_from_file(file.path())?.into()))
 }
 
-/// An AI's answer the page pasted (from the clipboard or its field) as a draft for review,
-/// or `None` when it holds no profile. Nothing is stored before Speichern; the text is never
-/// logged.
-#[tauri::command]
-pub fn read_profile_text(text: String) -> Option<ProfileDraft> {
-    profile::draft_from_answer(&text).map(Into::into)
-}
-
 /// The prompt that has any AI write a profile file from a CV (copied by the page), in the
 /// app's language.
 #[tauri::command]

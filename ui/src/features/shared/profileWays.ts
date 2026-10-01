@@ -1,11 +1,10 @@
 // The ways to a new profile besides the empty form, on the start page of a new profile
-// (NewProfileWays; without a profile, from the menu of the profiles and the first-run page): "Aus Datei laden" puts a chosen profile file into the form for review;
-// "Aus dem Lebenslauf" copies the prompt that has any AI write the profile from a CV (core's
-// profile/prompt.rs) and takes the AI's answer back from the clipboard. Nothing is sent
-// anywhere and nothing is stored before "Speichern".
+// (NewProfileWays; without a profile, from the menu of the profiles and the first-run page):
+// "Datei hochladen" puts a chosen profile file into the form for review; "Prompt kopieren"
+// copies the prompt that has any AI write that file from a CV (core's profile/prompt.rs).
+// Nothing is sent anywhere and nothing is stored before "Speichern".
 
 import { invoke } from '$lib/ipc/api';
-import type { ProfileDraft } from '$lib/ipc/types';
 import { editor } from '$lib/state/profile.svelte';
 
 /**
@@ -30,15 +29,4 @@ export async function copyProfilePrompt(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-/** The text on the clipboard, or null where the platform refuses it (or holds none). */
-export async function clipboardText(): Promise<string | null> {
-  const text = await invoke('clipboard_text').catch(() => null);
-  return text === null || text.trim() === '' ? null : text;
-}
-
-/** An AI's answer as a draft of the form, or null when it holds no profile. */
-export function readAnswer(text: string): Promise<ProfileDraft | null> {
-  return invoke('read_profile_text', { text });
 }

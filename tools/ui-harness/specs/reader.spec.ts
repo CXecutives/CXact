@@ -420,7 +420,7 @@ test.describe('the actions', () => {
     await expect(actions.getByTestId('reader-mail')).toHaveText('Alert-Mail öffnen');
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
-    expect(T.actions.prompt).toBe('KI-Prompt kopieren');
+    expect(T.actions.prompt).toBe('Prompt kopieren');
     // One variant and one height for all three.
     const looks = await buttons.evaluateAll((all) =>
       all.map((button) => `${button.className.includes('secondary')} ${button.clientHeight}`),
@@ -509,9 +509,12 @@ test.describe('the actions', () => {
       // Three buttons with short words (user 2026-10-01): at 1000 px all keep them.
       if (size.width === 1000) expect(flags).toEqual([false, false, false]);
     }
-    const prompt = stage(page).getByTestId('reader-prompt');
-    await expect(prompt).toHaveClass(/icon-only/);
-    expect(await tooltipOf(page, prompt)).toEqual([T.actions.prompt, '']);
+    // A button that shows only its icon names itself in its tooltip.
+    for (const id of ['open-ad', 'reader-mail', 'reader-prompt']) {
+      const button = stage(page).getByTestId(id);
+      if (!((await button.getAttribute('class')) ?? '').includes('icon-only')) continue;
+      expect((await tooltipOf(page, button))[0]).not.toBe('');
+    }
   });
 
   test('the moves of the archive and of the trash, deleting for good asks first', async ({
@@ -631,7 +634,7 @@ test.describe('the actions', () => {
     await openAt(page, 'freelancermap-2801');
     await stage(page).getByTestId('reader-prompt').click();
     await expect(page.getByTestId('toast').last()).toContainText(
-      'Der KI-Prompt ließ sich nicht kopieren.',
+      'Der Prompt ließ sich nicht kopieren.',
     );
     await expect(stage(page).getByTestId('reader-error')).toHaveCount(0);
   });

@@ -2017,9 +2017,6 @@ const handlers: Handlers = {
     return promptOf(j);
   },
   pick_profile: () => structuredClone(params.get('file') === 'focus' ? FOCUS_DRAFT : FILE_DRAFT),
-  // A pasted answer reads when it holds a JSON object (the demo's chosen file).
-  read_profile_text: ({ text }: { text: string }) =>
-    /\{[\s\S]*\}/.test(text) ? structuredClone(FILE_DRAFT) : null,
   profile_prompt: () => PROMPT,
   save_profile: ({ save }) => {
     const after = save.after;

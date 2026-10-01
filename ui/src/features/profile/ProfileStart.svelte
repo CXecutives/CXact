@@ -9,7 +9,6 @@
   import Button from '$components/Button.svelte';
   import Notice from '$components/Notice.svelte';
   import { t } from '$lib/i18n/t';
-  import type { ProfileDraft } from '$lib/ipc/types';
   import NewProfileWays from '../shared/NewProfileWays.svelte';
 
   interface Props {
@@ -20,7 +19,6 @@
     note: string | null;
     onempty: () => void;
     onfile: () => Promise<void>;
-    onanswer: (draft: ProfileDraft) => void;
     /** Back to the profile it was opened beside (the menu's "Neues Profil"). */
     oncancel?: (() => void) | null;
     onopenfolder?: () => void;
@@ -33,7 +31,6 @@
     note,
     onempty,
     onfile,
-    onanswer,
     oncancel = null,
     onopenfolder,
   }: Props = $props();
@@ -53,7 +50,7 @@
     {/if}
   </div>
   <p class="text">{text}</p>
-  <NewProfileWays {onempty} {onfile} {onanswer} />
+  <NewProfileWays {onempty} {onfile} />
   {#if unreadable && onopenfolder}
     <div>
       <Button

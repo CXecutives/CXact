@@ -1139,4 +1139,7 @@ handle sits between list and reader".
     days)
   - [x] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and
     Antwort einfügen in place, Leer anfangen, Aus Datei laden); "Profil anlegen" in Jobs and "Neues Profil"
-    in the menu lead there
+    in the menu lead there. Then (user): the order Leer anfangen, Aus Datei laden ("Datei hochladen"),
+    Aus dem Lebenslauf ("Prompt kopieren" only): the prompt has the AI hand over the profile as a file,
+    no "Antwort einfügen" (`read_profile_text` goes); the job's "KI-Prompt kopieren" is "Prompt
+    kopieren"

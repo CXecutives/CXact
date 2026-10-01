@@ -11,7 +11,7 @@ import type { Verdict } from './terms';
  * - head: the title and the close "×" (company, place, portal and day are rows of the
  *   Jobdetails);
  * - match: the ring beside its band, or the ban of an excluded job with why;
- * - actions: Alert-Mail öffnen, Anzeige öffnen, KI-Prompt kopieren and "…";
+ * - actions: Alert-Mail öffnen, Anzeige öffnen, Prompt kopieren and "…";
  * - details: "Jobdetails";
  * - requirements: "Anforderungen", in the groups below;
  * - ad: the note on a text that is not all there, and the ad text.

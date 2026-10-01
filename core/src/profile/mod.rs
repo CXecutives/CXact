@@ -170,14 +170,6 @@ pub fn draft_from_file(path: &Path) -> Result<Draft> {
     Ok(draft_from_text(utf8(&bytes)?)?)
 }
 
-/// An AI's answer pasted into the app (or the profile's JSON itself) for review in the
-/// editor, read like a chosen file ([`read_file`]); `None` when the text holds nothing the
-/// form reads (the page says so and keeps the text).
-pub fn draft_from_answer(text: &str) -> Option<Draft> {
-    let (doc, source) = read_file(text).ok()?;
-    form::read(&doc).has_content().then(|| draft(&doc, &source))
-}
-
 /// The text of a chosen file for review in the editor ([`read_file`]).
 pub(crate) fn draft_from_text(text: &str) -> std::result::Result<Draft, InvalidInput> {
     let (doc, source) = read_file(text)?;
@@ -665,7 +657,7 @@ mod tests {
     /// An answer pasted from an AI reads like a chosen file; a text that holds no profile
     /// the form reads is none.
     #[test]
-    fn a_pasted_answer_reads_like_a_file() {
+    fn an_answer_saved_as_the_file_reads_like_a_file() {
         let json = r#"{"titel": "Interim CFO", "kernkompetenzen": [{"kompetenz": "Controlling", "jahre": 12}]}"#;
         let answer = format!(
             "Hier ist dein Profil:
@@ -674,12 +666,10 @@ mod tests {
 ```
 Viel Erfolg."
         );
-        let draft = draft_from_answer(&answer).expect("the profile in the answer");
+        let draft = draft_from_text(&answer).expect("the profile in the answer");
         assert_eq!(draft.form.title, "Interim CFO");
         assert_eq!(draft.form.competences[0].name, "Controlling");
-        for text in ["", "Das kann ich nicht.", "{}", "[1, 2]", r#"{"zeta": 1}"#] {
-            assert!(draft_from_answer(text).is_none(), "{text}");
-        }
+        assert!(draft_from_text("Das kann ich nicht.").is_err());
     }
 
     /// The keys an AI left empty go, so none is a value the engine cannot read; a profile

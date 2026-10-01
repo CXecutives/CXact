@@ -2037,20 +2037,19 @@ test('no profile: the start page, its three ways each with its own button, no di
   const empty = page.getByTestId('profile-empty');
   await expect(page.getByTestId('profile-start-heading')).toHaveText(T.profile.newProfile);
   await expect(empty).toContainText(T.profile.noneText);
-  // The recommended way first, each with what it does and its buttons (none of them the
-  // primary: none is the one way on).
+  // Each way with what it does and its button (none of them the primary: none is the one
+  // way on).
   const ways = page.getByTestId('new-profile-ways').locator('[data-setting-row]');
   await expect(ways).toHaveCount(3);
   for (const [at, label] of Object.values(T.profile.way).entries()) {
     await expect(ways.nth(at)).toContainText(label);
   }
-  await expect(ways.nth(0)).toContainText(T.profile.cvPrompt);
-  await expect(ways.nth(0).getByRole('button')).toHaveText([
-    T.profile.copyPrompt,
-    T.profile.pasteAnswer,
-  ]);
-  await expect(ways.nth(1).getByRole('button')).toHaveText(T.profile.startEmpty);
-  await expect(ways.nth(2).getByRole('button')).toHaveText(T.profile.pickFile);
+  // Leer anfangen, Aus Datei laden, Aus dem Lebenslauf (user decision 2026-10-01): one button
+  // each; the prompt has the AI hand over the file that "Datei hochladen" loads.
+  await expect(ways.nth(0).getByRole('button')).toHaveText(T.profile.startEmpty);
+  await expect(ways.nth(1).getByRole('button')).toHaveText(T.profile.pickFile);
+  await expect(ways.nth(2)).toContainText(T.profile.cvPrompt);
+  await expect(ways.nth(2).getByRole('button')).toHaveText(T.profile.copyPrompt);
   await expect(empty.locator('.btn.primary')).toHaveCount(0);
   await expect(page.getByTestId('profile-start-cancel')).toHaveCount(0);
   expect(await calls(page, 'pick_profile')).toHaveLength(0);
@@ -2551,7 +2550,7 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await page.getByTestId('profile-name-field').focus();
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('new-profile-copy')).toBeFocused();
+  await expect(page.getByTestId('new-profile-empty')).toBeFocused();
   await chooseWay(page, 'empty');
   await expect(page.getByTestId('profile-roles').locator('input')).toBeFocused();
   await page.getByTestId('profile-name-field').fill('Erika');
@@ -2560,12 +2559,12 @@ test('a profile edited into broken JSON says so and where, with its folder', asy
   await page.getByTestId('profile-name-field').fill('');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('profile-empty')).toBeVisible();
-  await expect(page.getByTestId('new-profile-copy')).toBeFocused();
+  await expect(page.getByTestId('new-profile-empty')).toBeFocused();
 });
 
 // ------------------------------------------------------------------ the prompt for an AI
 
-test('"Aus dem Lebenslauf": the prompt copied, the whole answer pasted back into the form', async ({
+test('"Aus dem Lebenslauf": the prompt copied, which has the AI hand over the file', async ({
   page,
   browserName,
 }) => {
@@ -2574,7 +2573,7 @@ test('"Aus dem Lebenslauf": the prompt copied, the whole answer pasted back into
   }
   await profile(page, '&scenario=no-profile');
   const ways = page.getByTestId('new-profile-ways');
-  // The prompt: the button says it is copied for a moment.
+  // The button says it is copied for a moment.
   const copy = ways.getByTestId('new-profile-copy');
   await expect(copy).toHaveText(T.profile.copyPrompt);
   await copy.click();
@@ -2586,27 +2585,12 @@ test('"Aus dem Lebenslauf": the prompt copied, the whole answer pasted back into
     );
   }
   await expect(copy).toHaveText(T.profile.copyPrompt);
-  // An answer without a profile is said at the end of the card, which stays.
-  await page.evaluate(() => (window.__harness.clipboard = 'Das kann ich leider nicht.'));
-  await ways.getByTestId('new-profile-paste').click();
-  await expect(ways.getByTestId('new-profile-error')).toHaveText(T.profile.noAnswer);
-  // The whole answer of the AI: its profile goes into the form for review, nothing is stored.
-  await page.evaluate(
-    () =>
-      (window.__harness.clipboard =
-        'Hier ist dein Profil:\n```json\n{"name": "Jonas Muster"}\n```\nViel Erfolg.'),
-  );
-  await ways.getByTestId('new-profile-paste').click();
-  await expect(ways).toHaveCount(0);
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
-  await expect(heading(page)).toHaveText(T.profile.newProfile);
-  expect(await calls(page, 'read_profile_text')).toHaveLength(2);
+  // Nothing to paste back: the file comes with "Datei hochladen".
+  await expect(ways.getByTestId('new-profile-paste')).toHaveCount(0);
   expect(await calls(page, 'save_profile')).toHaveLength(0);
 });
 
-test('a clipboard the platform refuses: said for the prompt, a field takes the answer', async ({
-  page,
-}) => {
+test('a clipboard the platform refuses: said at the prompt', async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: {
@@ -2619,15 +2603,6 @@ test('a clipboard the platform refuses: said for the prompt, a field takes the a
   const ways = page.getByTestId('new-profile-ways');
   await ways.getByTestId('new-profile-copy').click();
   await expect(ways.getByTestId('new-profile-error')).toHaveText(T.profile.promptNotCopied);
-  // Nothing to read from the clipboard: a field takes the pasted answer.
-  await ways.getByTestId('new-profile-paste').click();
-  const answer = ways.getByTestId('new-profile-answer');
-  await expect(answer).toBeVisible();
-  await expect(ways.getByTestId('new-profile-error')).toHaveCount(0);
-  await answer.fill('{"name": "Jonas Muster"}');
-  await ways.getByTestId('new-profile-paste').click();
-  await expect(ways).toHaveCount(0);
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
 });
 
 // ------------------------------------------------------------------ values that do not read

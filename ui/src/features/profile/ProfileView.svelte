@@ -1,7 +1,7 @@
 <!--
   Profil (centred 720): the profile itself as a form. Without a profile, and for "Neues
   Profil" of the menu of the profiles, the start page with the three ways in (ProfileStart:
-  from the CV with any AI, the empty form, a file); a file that no longer reads says so in
+  the empty form, a file, the prompt that has any AI write that file from a CV); a file that no longer reads says so in
   the same place, with its folder at hand. With a profile its head (the profile's
   name as the title with the menu of the profiles and the same ways, a status when there is
   one) and the form, whose save bar shows while it holds a change. A chosen file fills the
@@ -313,7 +313,7 @@
     saveNote = null;
     fieldError = null;
     editor.discard(stored);
-    if (editor.origin === null) void caretTo('new-profile-copy');
+    if (editor.origin === null) void caretTo('new-profile-empty');
   }
 
   /** Leaving without saving. */
@@ -435,7 +435,6 @@
         onfile={async () => {
           if (await pick(starting)) starting = false;
         }}
-        onanswer={(draft) => editor.take(draft, started())}
         oncancel={starting ? () => (starting = false) : null}
         onopenfolder={openFolder}
       />

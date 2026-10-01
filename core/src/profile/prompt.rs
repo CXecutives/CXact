@@ -1,8 +1,8 @@
-//! The prompt a user hands to an AI together with a CV ("Prompt kopieren" in the dialog
-//! "Neues Profil"): the AI answers with a profile in exactly the JSON the editor reads, alone
-//! in one code block, which the user copies back with "Antwort einfügen"
-//! ([`super::draft_from_answer`]; [`super::answer`] finds it in the whole answer too, and a
-//! file saved from it loads with "Aus Datei laden"). Like the app's other prompts it addresses the assistant as "du" without
+//! The prompt a user hands to an AI together with a CV ("Prompt kopieren" on the start page
+//! of a new profile): the AI hands over a profile in exactly the JSON the editor reads, as a
+//! file to download (or, where it makes no files, alone in one code block to save as one),
+//! which the user loads with "Datei hochladen" (user decision 2026-10-01; [`super::answer`]
+//! finds the profile in a whole answer saved as the file too). Like the app's other prompts it addresses the assistant as "du" without
 //! naming a product, in the app's language; the JSON keys and the fixed values stay German in
 //! both (they are the profile format).
 //!
@@ -144,7 +144,7 @@ Die Felder unter einsatzpraeferenzen und harte_kriterien füllst du aus meiner A
 - ausschlusswoerter sind Wörter, die eine Anzeige für mich ausschließen, etwa Werkstudent oder Praktikum.";
 
 const ANSWER: &str = "Die Antwort
-Antworte mit dem fertigen Profil als JSON allein in einem einzigen Codeblock. Schreib danach in einem Satz, dass ich die Antwort kopiere und in der App unter Profil mit „Neues Profil“ und „Antwort einfügen“ übernehme, und sonst nichts. Das JSON behält jeden Schlüssel des Aufbaus unten, seine Schreibweise und die Reihenfolge. Ein Objekt in einer Liste zeigt den Aufbau eines Eintrags; wiederhole es für jeden Eintrag. Zahlen stehen ohne Anführungszeichen und ohne Einheit. Das JSON muss gültig sein, mit geraden doppelten Anführungszeichen, ohne Kommentare und ohne Komma vor einer schließenden Klammer.";
+Gib mir das fertige Profil als Datei profil.json zum Herunterladen. Kannst du keine Datei erstellen, schreib das JSON allein in einen einzigen Codeblock, den ich als profil.json speichere. Schreib danach in einem Satz, dass ich die Datei in der App unter Profil mit „Neues Profil“ und „Datei hochladen“ lade, und sonst nichts. Das JSON behält jeden Schlüssel des Aufbaus unten, seine Schreibweise und die Reihenfolge. Ein Objekt in einer Liste zeigt den Aufbau eines Eintrags; wiederhole es für jeden Eintrag. Zahlen stehen ohne Anführungszeichen und ohne Einheit. Das JSON muss gültig sein, mit geraden doppelten Anführungszeichen, ohne Kommentare und ohne Komma vor einer schließenden Klammer.";
 
 const CHECK: &str = "Prüfe vor dem Antworten";
 const CHECKS: [&str; 6] = [
@@ -237,7 +237,7 @@ Fill the fields under einsatzpraeferenzen and harte_kriterien from my answer to 
 - ausschlusswoerter are words that rule an ad out for me, such as Werkstudent or Praktikum.";
 
     pub(super) const ANSWER: &str = "The answer
-Answer with the finished profile as JSON alone in one single code block. Then say in one sentence that I copy the answer and take it over in the app under Profile with “New profile” and “Paste answer”, and nothing else. The JSON keeps every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
+Give me the finished profile as a file profil.json to download. If you cannot create files, write the JSON alone in one single code block that I save as profil.json. Then say in one sentence that I load the file in the app under Profile with “New profile” and “Upload file”, and nothing else. The JSON keeps every key of the structure below, its spelling and the order. An object in a list shows the structure of one entry; repeat it for every entry. Write numbers without quotation marks and without a unit. The JSON must be valid, with straight double quotation marks, no comments and no comma before a closing bracket.";
 
     pub(super) const CHECK: &str = "Check before you answer";
     pub(super) const CHECKS: [&str; 6] = [
@@ -567,7 +567,7 @@ mod tests {
         );
         for text in [
             FILLED.to_owned(),
-            format!("```json\n{FILLED}\n```\nÜbernimm die Antwort mit „Antwort einfügen“."),
+            format!("```json\n{FILLED}\n```\nLade die Datei mit „Datei hochladen“."),
         ] {
             assert_eq!(super::super::draft_from_text(&text).unwrap().source, FILLED);
         }
@@ -661,8 +661,8 @@ mod tests {
         assert!(german.contains("in einer einzigen kurzen Nachricht"));
         assert!(german.contains("Ich kann jede Frage überspringen"));
         assert!(german.contains("Heute ist der 25. September 2026."));
-        assert!(german.contains("als JSON allein in einem einzigen Codeblock"));
-        assert!(german.contains("unter Profil mit „Neues Profil“ und „Antwort einfügen“"));
+        assert!(german.contains("als Datei profil.json zum Herunterladen"));
+        assert!(german.contains("unter Profil mit „Neues Profil“ und „Datei hochladen“"));
         assert!(german.ends_with(&format!("Der Aufbau\n```json\n{}\n```\n", skeleton())));
         let english = text(Language::En, day());
         assert!(english.starts_with(
@@ -672,8 +672,8 @@ mod tests {
         assert!(english.contains("in one single short message"));
         assert!(english.contains("I may skip any question"));
         assert!(english.contains("Today is 25 September 2026."));
-        assert!(english.contains("as JSON alone in one single code block"));
-        assert!(english.contains("under Profile with “New profile” and “Paste answer”"));
+        assert!(english.contains("as a file profil.json to download"));
+        assert!(english.contains("under Profile with “New profile” and “Upload file”"));
         assert!(english.ends_with(&format!("The structure\n```json\n{}\n```\n", skeleton())));
         let march = Date::new(2027, 3, 1).unwrap();
         assert!(text(Language::De, march).contains("Heute ist der 1. März 2027."));
@@ -691,7 +691,7 @@ mod tests {
                 [
                     "profile: 'Profil'",
                     "newProfile: 'Neues Profil'",
-                    "pasteAnswer: 'Antwort einfügen'",
+                    "pickFile: 'Datei hochladen'",
                 ],
             ),
             (
@@ -699,7 +699,7 @@ mod tests {
                 [
                     "profile: 'Profile'",
                     "newProfile: 'New profile'",
-                    "pasteAnswer: 'Paste answer'",
+                    "pickFile: 'Upload file'",
                 ],
             ),
         ];
