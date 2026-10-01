@@ -9,11 +9,8 @@ import { language } from '../i18n/language.svelte';
 import { errorText } from '../i18n/texts';
 import { invoke } from '../ipc/api';
 import { applyPalette } from '../palette';
-import type { AppState, FetchRange, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
+import type { AppState, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
 import { tokenMs } from '../tokens';
-
-/** The ranges of the alert mails a fetch reads, in the order of their choice (Einstellungen). */
-export const FETCH_RANGES: readonly FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
 
 /** What a fetch reads, in the order of its menu: the search or the mailbox, never both
  *  (user decision 2026-10-01; the settings' `fetchSearch` and `fetchMail`). */
@@ -23,7 +20,6 @@ export type FetchWay = (typeof FETCH_WAYS)[number];
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  fetchRange: null,
   exportExcel: null,
   exportCsv: null,
   fetchMail: null,

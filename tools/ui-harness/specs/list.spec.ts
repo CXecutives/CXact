@@ -1432,14 +1432,15 @@ test.describe('one list', () => {
       .getByRole('button', { name: T.common.remove })
       .click();
     await expect(page.getByTestId('mailbox-connect')).toBeVisible();
-    // Einstellungen scrolled down: the way back opens it at the mailbox card anyway. Scrolled
-    // until it stays down (the closing dialog hands its focus back to the card meanwhile).
+    // Einstellungen at its top, the mailbox card below Suche out of sight: the way back opens
+    // it at the mailbox card anyway. Scrolled until it stays up (the closing dialog hands its
+    // focus back to the card meanwhile).
     await expect(async () => {
       await page.getByTestId('view-settings').evaluate((view) => {
         const scroller = [view, ...view.querySelectorAll<HTMLElement>('*')].find(
           (node) => node.scrollHeight > node.clientHeight + 1,
         );
-        scroller?.scrollTo({ top: scroller.scrollHeight });
+        scroller?.scrollTo({ top: 0 });
       });
       await expect(page.getByTestId('settings-mailbox')).not.toBeInViewport({ timeout: 300 });
     }).toPass();

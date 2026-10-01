@@ -27,7 +27,6 @@ import type {
   BackupKind,
   Band,
   ErrorKind,
-  FetchRange,
   InvalidInput,
   JobSort,
   Language,
@@ -1480,16 +1479,6 @@ export const de = {
     mailbox: 'Postfach',
     /** The card of the sources the app searches itself. */
     search: 'Suche',
-    /** The card of the sources whose alert mails the app reads. */
-    alerts: 'Alert-Mails',
-    /** Its first row: which alert mails a fetch reads, the choices short beside each other. */
-    range: 'Zeitraum',
-    rangeName: {
-      sinceLast: 'Seit letztem Abruf',
-      days7: '7 Tage',
-      days30: '30 Tage',
-      all: 'Alle',
-    } satisfies Record<FetchRange, string>,
     export: 'Export',
     /** The card of how the app looks and speaks: its colours and its language. */
     look: 'Darstellung',

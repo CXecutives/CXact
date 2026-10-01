@@ -243,7 +243,6 @@ fn run_context(
             .into_iter()
             .filter(|&p| settings.fetch_path(p) == Some(FetchPath::Session))
             .collect(),
-        fetch_range: settings.fetch_range,
         language: settings.language_or(state.system_language),
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
         // Without a mailbox a fetch only searches (with nothing to search the scan says the

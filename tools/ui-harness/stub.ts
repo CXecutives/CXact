@@ -837,7 +837,6 @@ function initial(): void {
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
     setupDone: true,
-    fetchRange: 'sinceLast',
     exportExcel: true,
     exportCsv: false,
     fetchMail: MAIL_WAY,
@@ -2272,7 +2271,6 @@ const handlers: Handlers = {
       if (change.loginEnabled !== null) p.loginEnabled = change.loginEnabled;
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
-    if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
     if (patch.fetchMail !== null && patch.fetchMail !== undefined) {
       state.fetchMail = patch.fetchMail;
     }

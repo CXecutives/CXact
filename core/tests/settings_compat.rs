@@ -14,13 +14,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use jobalert_core::portal::Portal;
-use jobalert_core::settings::{FetchRange, Language, Palette, PortalSwitches, Settings};
+use jobalert_core::settings::{Language, Palette, PortalSwitches, Settings};
 use jobalert_core::store::Store;
 
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-5.json";
+const NEWEST: &str = "3.0.0-6.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -69,7 +69,6 @@ fn newest() -> Settings {
             (Portal::AmadeusFire, switches(false, false)),
             (Portal::Fratch, switches(false, false)),
         ]),
-        fetch_range: FetchRange::Days30,
         export_excel: false,
         export_csv: true,
         language: Some(Language::En),
@@ -220,12 +219,14 @@ fn the_file_before_the_new_sources_loads_with_them_on() {
     assert_eq!(round_trip(&loaded).0, loaded);
 }
 
-/// The file with the automatic fetch (taken out 2026-10-01, only by hand): its switch goes,
-/// everything else as it was.
+/// The files with the automatic fetch and the fetch range (taken out 2026-10-01: only by hand,
+/// every fetch reads the mails since the last one): their fields go, everything else as it
+/// was.
 #[test]
-fn the_file_with_the_automatic_fetch_loads_without_it() {
+fn the_files_with_the_automatic_fetch_and_the_range_load_without_them() {
     let loaded = load(&fixture("3.0.0-4.json"));
     assert_eq!(loaded, newest());
+    assert_eq!(round_trip(&load(&fixture("3.0.0-5.json"))).0, newest());
     let (back, saved) = round_trip(&loaded);
     assert_eq!(back, loaded);
     assert_eq!(
@@ -256,7 +257,6 @@ fn a_file_of_a_newer_version_loads_without_damage() {
     let expected = Settings {
         language: None,
         palette: Palette::Cxact,
-        fetch_range: FetchRange::SinceLast,
         portals,
         fetch_mail: true,
         fetch_search: true,

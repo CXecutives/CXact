@@ -1,5 +1,5 @@
-// Einstellungen as data: the cards in their order (Postfach, Suche, Alert-Mails, Export,
-// Darstellung, Daten), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// Einstellungen as data: the cards in their order (Suche, Postfach, Export, Darstellung,
+// Daten; by the fetch's two ways, user decision 2026-10-01), each with its heading and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`), so they follow the language.
@@ -12,16 +12,7 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type {
-  AppState,
-  FetchRange,
-  Language,
-  OpenTarget,
-  Palette,
-  SettingsPatch,
-  Way,
-} from '$lib/ipc/types';
-import { FETCH_RANGES } from '$lib/state/app.svelte';
+import type { AppState, Language, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -131,28 +122,26 @@ export interface ActionsRow {
   toggle?: Switch;
 }
 
-export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ChoiceRow<FetchRange> | ActionsRow;
+export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
 
-/** A card: its rows, and for the mailbox and the sources a block of their own (the mailbox
- *  has no rows of its own; the sources stand under the card's rows, those the app searches in
- *  Suche, those of alert mails in Alert-Mails). */
+/** A card: its rows, and for the two ways of the fetch a block of their own: Suche its
+ *  sources, Postfach the connection and under it the sources of its alert mails. */
 export interface CardSpec {
   id: string;
   heading: Text;
-  block?: 'mailbox' | Sources;
+  block?: Sources;
   rows: readonly Row[];
   /** Kept but not shown for now (a card that may come back). */
   hidden?: boolean;
 }
 
 /** The cards of the sources, by how a source brings its jobs (`PortalState.way`). */
-export type Sources = 'search' | 'alerts';
-export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : 'alerts');
+export type Sources = 'search' | 'mailbox';
+export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : 'mailbox');
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  fetchRange: null,
   exportExcel: null,
   exportCsv: null,
   fetchMail: null,
@@ -184,19 +173,6 @@ const language: ChoiceRow<Language> = {
   set: (state, id) => void (state.language = id),
 };
 
-/** Which alert mails "Postfach abrufen" and "Jobs abrufen" read (user decision 2026-10-01:
- *  here instead of a menu beside the button). */
-const range: ChoiceRow<FetchRange> = {
-  kind: 'choice',
-  id: 'fetch-range',
-  label: (t) => t.settings.range,
-  options: FETCH_RANGES,
-  name: (t, id) => t.settings.rangeName[id],
-  value: (state) => state.fetchRange,
-  patch: (id) => ({ fetchRange: id }),
-  set: (state, id) => void (state.fetchRange = id),
-};
-
 /** Cards hidden for now (user, 2026-09-30), their code kept; the backend holds their
  *  choices at the defaults (core settings::LOOK_SHOWN and EXPORT_SHOWN): Darstellung (the
  *  app is CXact and German) and the Excel and CSV switches (no file is written). */
@@ -213,14 +189,8 @@ const folder: ActionsRow = {
 };
 
 export const CARDS: readonly CardSpec[] = [
+  { id: 'search', heading: (t) => t.settings.search, block: 'search', rows: [] },
   { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
-  {
-    id: 'search',
-    heading: (t) => t.settings.search,
-    block: 'search',
-    rows: [],
-  },
-  { id: 'alerts', heading: (t) => t.settings.alerts, block: 'alerts', rows: [range] },
   {
     id: 'export',
     heading: (t) => t.settings.export,

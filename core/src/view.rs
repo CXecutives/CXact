@@ -28,7 +28,7 @@ pub use crate::profile::{
     LanguageLevel, ProfileAvailability, ProfileCompetence, ProfileCriteria, ProfileForm,
     ProfileLanguage, ProfileWishes, RemoteWish, UnreadableField,
 };
-use crate::settings::{FetchRange, Language, Palette, PortalSwitches, Settings};
+use crate::settings::{Language, Palette, PortalSwitches, Settings};
 use crate::store::{AlertMailRow, JobRow, ListFilter, PageQuery, Store};
 use crate::text::split_company_location;
 
@@ -1073,9 +1073,6 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// Which alert mails "Postfach abrufen" reads.
-    #[serde(default)]
-    pub fetch_range: Option<FetchRange>,
     /// Write the Excel file with every export.
     #[serde(default)]
     pub export_excel: Option<bool>,
@@ -1113,9 +1110,6 @@ impl SettingsPatch {
             if let Some(on) = patch.login_enabled {
                 switches.login_enabled = on;
             }
-        }
-        if let Some(range) = self.fetch_range {
-            settings.fetch_range = range;
         }
         if let Some(on) = self.export_excel {
             settings.export_excel = on;
@@ -1645,8 +1639,6 @@ pub struct AppState {
     /// Every profile of the work folder, the active one marked (empty without one).
     pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
-    /// Which alert mails "Postfach abrufen" reads.
-    pub fetch_range: FetchRange,
     /// The Excel file is written with every export.
     pub export_excel: bool,
     /// The CSV file is written with every export.

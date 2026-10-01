@@ -191,7 +191,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             Vec::new()
         }),
         portals: view::portal_states(&policy, &settings, &empty_mails, &last_alerts, now),
-        fetch_range: settings.fetch_range,
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,
         fetch_mail: settings.fetch_mail,

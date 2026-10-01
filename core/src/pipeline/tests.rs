@@ -33,7 +33,6 @@ fn ctx(workspace: &Path, dry_run: bool) -> RunContext {
         portals: Portal::ALL.to_vec(),
         fetch_portals: Portal::ALL.to_vec(),
         sign_in: vec![Portal::FreelanceDe],
-        fetch_range: FetchRange::SinceLast,
         language: Language::De,
         mailbox: None,
         read_mail: true,
@@ -1701,21 +1700,6 @@ async fn the_last_run_is_the_last_fetch() {
     .await;
     assert!(matches!(failed.outcome, Outcome::Failed { .. }));
     assert_eq!(last().run, failed.run, "a failed fetch is the last fetch");
-    // Every alert mail ("Alle Alert-Mails") is a fetch like any other.
-    let every = RunContext {
-        fetch_range: FetchRange::All,
-        ..ctx(dir.path(), false)
-    };
-    let (full, _) = go(
-        &mut DemoBackends,
-        &store,
-        &request(),
-        &every,
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert_eq!((last().run, last().kind), (full.run, RunKindName::Fetch));
 }
 
 /// What the run card counts, from the run itself: its new jobs (first seen in it, a

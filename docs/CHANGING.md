@@ -105,20 +105,17 @@ laid over it. Components never ask which palette is on. The retired CXact palett
 ## Add or change a setting or a first-run step
 
 - Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order (Postfach, Suche, Alert-Mails, Export, Darstellung, Daten), each with its rows (a
-  source lands in Suche or Alert-Mails by its `way()`). A setting is
+  their order (Suche, Postfach, Export, Darstellung, Daten), each with its rows (a source lands
+  in Suche or, under the connection, in Postfach by its `way()`). A setting is
   one row there: its kind (switch, choice, a row of buttons, a value), its texts from the
   catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in
   `core/tests/settings_compat.rs`.
-- The range of the alert mails a fetch reads is the "Zeitraum" row of the Alert-Mails card
-  (`fetchRange`: since the last fetch, 7 days, 30 days, all alert mails; the row `range` in
-  `ui/src/features/settings/cards.ts`, the words in `settings.rangeName`); core turns it
-  into the first day to read (`scan_since` in
-  `core/src/mail/scan.rs`). Another range is a variant of `FetchRange`
-  (`core/src/settings.rs`), its arm in `scan_since` and its word.
+- The alert mails a fetch reads: since the last fetch (a day of overlap), the first one the
+  last 30 days (`Scope::New`, `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`); there is no
+  choice of it (user decision 2026-10-01).
 - The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
   `exportCsv` off by default); the export writes a file only while its switch is on.
   Switched off, its "Öffnen" waits and says to switch it on (`settings.excelOff`,
@@ -334,8 +331,8 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
 
 - The match bands: `HIGH_FROM` and `MID_FROM` in `core/src/model.rs`. The store, the
   prompts and (through `bands.ts`) the UI, the gallery and the stub follow.
-- The defaults of the settings: `Settings::default()` in `core/src/settings.rs` (the range of
-  "Postfach abrufen" `fetchRange` since the last fetch, the Excel file on, the CSV file off);
+- The defaults of the settings: `Settings::default()` in `core/src/settings.rs` (the search
+  as the fetch's way, the Excel file on, the CSV file off);
   the stub's `initial()` mirrors them.
 - A portal's caps: `limits()` of its adapter in `core/src/portal/` (the pause between two
   pages, requests per hour and per day). The hour rolls, the day counts from local midnight

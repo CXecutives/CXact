@@ -35,7 +35,6 @@ async function saved(page: Page): Promise<SettingsPatch[]> {
 /** A whole patch from what changes (the rest unchanged, as the page sends it). */
 const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
-  fetchRange: null,
   exportExcel: null,
   exportCsv: null,
   fetchMail: null,
@@ -109,18 +108,19 @@ test('the cards in their order, the first heading on the first row, the version 
   page,
 }) => {
   await settings(page);
+  // By the fetch's two ways (user decision 2026-10-01): Suche, then Postfach with the
+  // sources of its alert mails; no Zeitraum.
   expect(await ids(page, 'settings', ':scope > section')).toEqual([
-    'settings-mailbox',
     'settings-search',
-    'settings-alerts',
+    'settings-mailbox',
     'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
-    T.settings.mailbox,
     T.settings.search,
-    T.settings.alerts,
+    T.settings.mailbox,
     T.settings.data,
   ]);
+  await expect(page.getByTestId('settings')).not.toContainText('Zeitraum');
   // Every heading stands 12 px above its card, the first one too.
   const gaps = await page
     .getByTestId('settings')
@@ -132,7 +132,7 @@ test('the cards in their order, the first heading on the first row, the version 
         return Math.round(card.top - heading.bottom);
       }),
     );
-  expect(gaps).toEqual([12, 12, 12, 12]);
+  expect(gaps).toEqual([12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
   for (const gone of ['Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
@@ -140,11 +140,11 @@ test('the cards in their order, the first heading on the first row, the version 
   }
   // No version line (user decision 2026-09-27).
   await expect(page.getByTestId('version')).toHaveCount(0);
-  // "Postfach" stands on the first row, as the sidebar's first entry (macOS too).
+  // "Suche" stands on the first row, as the sidebar's first entry (macOS too).
   for (const query of [WIN, MAC]) {
     await settings(page, query);
-    const row = page.getByTestId('settings-mailbox').locator('[data-first-row]');
-    await expect(row).toContainText(T.settings.mailbox);
+    const row = page.getByTestId('settings-search').locator('[data-first-row]');
+    await expect(row).toContainText(T.settings.search);
     const middle = (box: { y: number; height: number } | null): number =>
       box === null ? -1 : box.y + box.height / 2;
     expect(middle(await row.boundingBox())).toBe(
@@ -392,26 +392,28 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   );
 });
 
-test('the period of a fetch is no row of the Postfach card', async ({ page }) => {
+test('Postfach: the connection first, then the sources of its alert mails', async ({ page }) => {
   await settings(page);
-  await expect(page.getByTestId('settings-mailbox').getByTestId('fetch-range')).toHaveCount(0);
-  await expect(page.getByTestId('settings-mailbox').locator('[data-setting-row]')).toHaveCount(1);
+  const rows = page.getByTestId('settings-mailbox').locator('[data-setting-row]');
+  expect(
+    await rows.evaluateAll((all) => all.map((row) => row.getAttribute('data-testid'))),
+  ).toEqual(['mailbox', ...ALERT_PORTALS.map((portal) => `portal-${portal}`)]);
 });
 
-/* ---------------------------------------------------------- Suche, Alert-Mails */
+/* ------------------------------------------------------------ Suche, Postfach */
 
-test('sources: Suche and Alert-Mails, each in the order of the UI, each with its calls of today', async ({
+test('sources: Suche, and in Postfach those of its alert mails, in the order of the UI, with their calls', async ({
   page,
 }) => {
   await settings(page);
   expect(await ids(page, 'portals-search', '[data-testid^="portal-"]')).toEqual(
     SEARCHED.map((portal) => `portal-${portal}`),
   );
-  expect(await ids(page, 'portals-alerts', '[data-testid^="portal-"]')).toEqual(
+  expect(await ids(page, 'portals-mailbox', '[data-testid^="portal-"]')).toEqual(
     ALERT_PORTALS.map((portal) => `portal-${portal}`),
   );
   await expect(page.getByTestId('settings-search').locator('.card')).toHaveCount(1);
-  await expect(page.getByTestId('settings-alerts').locator('.card')).toHaveCount(1);
+  await expect(page.getByTestId('settings-mailbox').locator('.card')).toHaveCount(1);
   for (const [portal, used, cap] of [
     ['freelance', 11, 100],
     ['linkedin', 23, 100],
@@ -438,7 +440,7 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   await expect(page.getByTestId('view-settings').locator('[data-testid^="sign-in-"]')).toHaveCount(
     1,
   );
-  for (const card of ['settings-search', 'settings-alerts']) {
+  for (const card of ['settings-search', 'settings-mailbox']) {
     await expect(page.getByTestId(card)).not.toContainText('Details');
     await expect(page.getByTestId(card)).not.toContainText('Seiten');
   }
@@ -446,7 +448,7 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   await expect(page.getByTestId('settings-search').locator('[data-testid^="setup-"]')).toHaveCount(
     0,
   );
-  await expect(page.getByTestId('settings-alerts').locator('[data-testid^="setup-"]')).toHaveText([
+  await expect(page.getByTestId('settings-mailbox').locator('[data-testid^="setup-"]')).toHaveText([
     T.settings.setUpAlert,
     T.settings.setUpAlert,
   ]);
@@ -739,35 +741,6 @@ test.skip('Darstellung: the language switches everything at once; notes follow i
   await expect(page.getByTestId('export-note')).toHaveText('The database reports an error.');
   await expect(page.getByTestId('portal-freelance')).toContainText('11 of 100 requests today');
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
-});
-
-/* -------------------------------------------------------------- Alert-Mails */
-
-test('Alert-Mails: the Zeitraum of the mails a fetch reads, chosen at once', async ({ page }) => {
-  await settings(page);
-  // Its first row (user decision 2026-10-01: here instead of a menu beside "Jobs abrufen").
-  const card = page.getByTestId('portals-alerts');
-  const row = card.getByTestId('row-fetch-range');
-  await expect(row).toContainText(T.settings.range);
-  const choice = row.getByTestId('fetch-range');
-  await expect(choice.getByRole('radio')).toHaveText([
-    T.settings.rangeName.sinceLast,
-    T.settings.rangeName.days7,
-    T.settings.rangeName.days30,
-    T.settings.rangeName.all,
-  ]);
-  await expect(choice.getByRole('radio', { name: T.settings.rangeName.sinceLast })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await choice.getByRole('radio', { name: T.settings.rangeName.days30 }).click();
-  await expect(choice.getByRole('radio', { name: T.settings.rangeName.days30 })).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await expect
-    .poll(async () => (await saved(page)).at(-1))
-    .toEqual(patch({ fetchRange: 'days30' }));
 });
 
 /* ------------------------------------------------------------------- Daten */

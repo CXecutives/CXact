@@ -24,7 +24,6 @@
 import type {
   Band,
   ErrorKind,
-  FetchRange,
   InvalidInput,
   JobSort,
   Language,
@@ -1214,14 +1213,6 @@ export const en: Catalog = {
   settings: {
     mailbox: 'Mailbox',
     search: 'Search',
-    alerts: 'Alert emails',
-    range: 'Time range',
-    rangeName: {
-      sinceLast: 'Since last fetch',
-      days7: '7 days',
-      days30: '30 days',
-      all: 'All',
-    } satisfies Record<FetchRange, string>,
     export: 'Export',
     look: 'Appearance',
     data: 'Data',

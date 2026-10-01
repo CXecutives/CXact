@@ -3,7 +3,8 @@
   "Entfernen" (the same kind of button; Entfernen is red at rest and asks first), without a
   mailbox the row "Kein Postfach" with "Verbinden". Ändern and Verbinden open the form in a
   dialog named after the button ("Postfach ändern", "Postfach verbinden") whose button is
-  "Verbinden". The card's note follows (`children`).
+  "Verbinden". Its notes follow the address; then the card's rows (`children`: the sources of
+  the alert mails and the card's note).
   The badge is the answer to a saved mailbox ("Verbunden", no note, no toast). It says "Nicht
   erreichbar" or "Abgelehnt" only for a mail error of a fetch that finished after Gmail last
   accepted the mailbox (`mailbox.checkedAt`), with a sentence at the end of the card where it
@@ -34,8 +35,9 @@
     locked: string | null;
     /** The card's note (a failure of a command of the card). */
     children: Snippet;
+    testid?: string | null;
   }
-  let { cfg, locked, children }: Props = $props();
+  let { cfg, locked, children, testid = null }: Props = $props();
 
   /** Fetch failures that are about the mailbox itself (not a cancel, not a missing one). */
   const MAIL_FAILURES: readonly string[] = [
@@ -103,7 +105,7 @@
   }
 </script>
 
-<Card padding="rows">
+<Card padding="rows" {testid}>
   {#if cfg.mailbox.user}
     <SettingRow label={cfg.mailbox.user} copyLabel testid="mailbox">
       {#snippet badges()}
@@ -158,7 +160,6 @@
       />
     </SettingRow>
   {/if}
-  {@render children()}
   {#if mailFailureText}
     <div class="slot">
       <div class="fold" transition:unfold>
@@ -181,6 +182,7 @@
       </div>
     </div>
   {/if}
+  {@render children()}
 </Card>
 
 <Dialog

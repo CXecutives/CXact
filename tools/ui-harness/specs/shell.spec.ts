@@ -1826,7 +1826,6 @@ test.skip('Sprache switches the whole app to English and back at once', async ({
     {
       patch: {
         portals: [],
-        fetchRange: null,
         exportExcel: null,
         exportCsv: null,
         language: 'en',

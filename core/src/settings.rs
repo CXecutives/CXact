@@ -14,7 +14,7 @@ pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`, `autoFetch`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
+/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
 /// silently - serde only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -31,10 +31,6 @@ pub struct Settings {
     /// form still loads (listed = enabled, missing = disabled).
     #[serde(deserialize_with = "portals_any_form")]
     pub portals: BTreeMap<Portal, PortalSwitches>,
-    /// Which alert mails "Postfach abrufen" reads (the "Zeitraum" menu beside that button). A
-    /// range of a newer version reads as the default.
-    #[serde(deserialize_with = "known_range")]
-    pub fetch_range: FetchRange,
     /// The Excel file (`JobAlerts.xlsx`) is written with every export.
     pub export_excel: bool,
     /// The CSV file is written with every export.
@@ -128,20 +124,6 @@ impl Language {
     }
 }
 
-/// Which alert mails "Postfach abrufen" reads (`mail::scan::Scope`): since the last fetch
-/// that covered the time before it, the last 7 or 30 days, or every alert mail. The scan
-/// state per portal advances only when the range covered the gap since it.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(test, derive(ts_rs::TS))]
-pub enum FetchRange {
-    #[default]
-    SinceLast,
-    Days7,
-    Days30,
-    All,
-}
-
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
 /// alert mails are read and its ads fetched; off = no mail read and zero requests to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -201,7 +183,6 @@ impl Default for Settings {
                 .into_iter()
                 .map(|p| (p, PortalSwitches::default()))
                 .collect(),
-            fetch_range: FetchRange::SinceLast,
             export_excel: true,
             export_csv: false,
             language: None,
@@ -366,16 +347,6 @@ fn known_language<'de, D: Deserializer<'de>>(
     Ok(code.and_then(|code| serde_json::from_value(serde_json::Value::String(code)).ok()))
 }
 
-/// A stored range; one this version does not know is the default.
-fn known_range<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<FetchRange, D::Error> {
-    let name = Option::<String>::deserialize(deserializer)?;
-    Ok(name
-        .and_then(|name| serde_json::from_value(serde_json::Value::String(name)).ok())
-        .unwrap_or_default())
-}
-
 /// A stored palette; one this version does not know is CXact.
 fn known_palette<'de, D: Deserializer<'de>>(
     deserializer: D,
@@ -428,7 +399,7 @@ mod tests {
             language: Some(Language::En),
             export_excel: true,
             export_csv: true,
-            fetch_range: FetchRange::Days7,
+            fetch_mail: false,
             ..Settings::default()
         };
         assert_eq!(s.fit_hidden(), !LOOK_SHOWN || !EXPORT_SHOWN);
@@ -438,7 +409,7 @@ mod tests {
         if !EXPORT_SHOWN {
             assert_eq!((s.export_excel, s.export_csv), (false, false));
         }
-        assert_eq!(s.fetch_range, FetchRange::Days7);
+        assert!(!s.fetch_mail);
         assert!(!s.fit_hidden(), "a second fit changes nothing");
     }
 
@@ -509,7 +480,7 @@ mod tests {
                 login_enabled: true,
             },
         );
-        s.fetch_range = FetchRange::Days7;
+        s.fetch_mail = false;
         s.export_excel = false;
         s.save(&store).unwrap();
         let back = Settings::load(&store).unwrap();
@@ -521,10 +492,7 @@ mod tests {
                 login_enabled: false,
             }
         );
-        assert_eq!(
-            (back.fetch_range, back.export_excel),
-            (FetchRange::Days7, false)
-        );
+        assert_eq!((back.fetch_mail, back.export_excel), (false, false));
         assert_eq!(
             back.enabled_portals(),
             [
@@ -548,12 +516,8 @@ mod tests {
         assert!(partial.portal(Portal::FreelanceDe).enabled);
         assert!(partial.portal(Portal::LinkedIn).enabled);
         assert_eq!(
-            (
-                partial.fetch_range,
-                partial.export_excel,
-                partial.export_csv
-            ),
-            (FetchRange::SinceLast, true, false)
+            (partial.fetch_mail, partial.export_excel, partial.export_csv),
+            (true, true, false)
         );
     }
 
@@ -727,30 +691,6 @@ mod tests {
         back.save(&store).unwrap();
         let saved = store.kv_get(KEY).unwrap().unwrap();
         assert!(!saved.contains("fetchDetails"), "{saved}");
-    }
-
-    /// A range of a newer version reads as the default without costing the other settings.
-    #[test]
-    fn the_fetch_range_is_since_the_last_fetch_until_chosen() {
-        let store = Store::in_memory().unwrap();
-        assert_eq!(
-            Settings::load(&store).unwrap().fetch_range,
-            FetchRange::SinceLast
-        );
-        for (range, json) in [
-            (FetchRange::SinceLast, "sinceLast"),
-            (FetchRange::Days7, "days7"),
-            (FetchRange::Days30, "days30"),
-            (FetchRange::All, "all"),
-        ] {
-            assert_eq!(serde_json::to_value(range).unwrap(), json);
-        }
-        store
-            .kv_set(KEY, r#"{"fetchRange":"days90","exportExcel":false}"#)
-            .unwrap();
-        let newer = Settings::load(&store).unwrap();
-        assert_eq!(newer.fetch_range, FetchRange::SinceLast);
-        assert!(!newer.export_excel);
     }
 
     /// freelance.de without the sign-in switch goes as a guest (the public teaser) - never

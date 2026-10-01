@@ -1134,7 +1134,7 @@ handle sits between list and reader".
   - [x] Icons: "Trotzdem bewerten" the plus (user: the plain one), "KI-Prompt kopieren" the copy glyph (as
     "Prompt kopieren")
   - [x] The first tab "Eingang" is "Aktuell" (back from the Archiv: "Zurückholen")
-  - [ ] Einstellungen by the fetch's two ways: Suche, then Postfach (the connection, then the sources of its
+  - [x] Einstellungen by the fetch's two ways: Suche, then Postfach (the connection, then the sources of its
     alert mails), then Daten; no Zeitraum (every fetch reads the mails since the last one, the first one 30
     days)
   - [ ] Neues Profil: no dialog; a start page with three ways (Aus dem Lebenslauf with Prompt kopieren and

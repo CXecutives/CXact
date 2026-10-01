@@ -35,7 +35,7 @@ use crate::fetch::{
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::scan::{ScanError, ScanEvent, ScanSummary, Scope, scan};
 use crate::portal::{FetchPath, JobKey, Portal};
-use crate::settings::{FetchRange, Language};
+use crate::settings::Language;
 use crate::store::{JobRow, Store};
 use crate::text::truncate_chars;
 use crate::time;
@@ -111,8 +111,6 @@ pub struct RunContext {
     /// Of those, the portals read in the session window (sign-in switched on); the others
     /// go as a guest. A run never opens a session window for any other portal.
     pub sign_in: Vec<Portal>,
-    /// Which alert mails a fetch reads (settings).
-    pub fetch_range: FetchRange,
     /// Language of the Excel file (the text files stay German).
     pub language: Language,
     /// The Gmail address the run reads (`None` without a mailbox step or in the dry run):
@@ -531,7 +529,7 @@ impl<'a> Plan<'a> {
                 let search = !ctx.search_portals.is_empty() && !ctx.search_terms.is_empty();
                 Plan {
                     // Without a mailbox a fetch only searches; with neither the scan says why.
-                    scan: (ctx.read_mail || !search).then(|| Scope::from(ctx.fetch_range)),
+                    scan: (ctx.read_mail || !search).then_some(Scope::New),
                     search,
                     fetch: queue,
                 }

@@ -14,7 +14,6 @@ use super::imap::{BATCH, MailError, MailSource};
 use super::{MAIL_PARSER_VERSION, MailKind, classify_mail, is_candidate};
 use crate::model::AlertMail;
 use crate::portal::Portal;
-use crate::settings::FetchRange;
 use crate::store::{Seen, Store};
 use crate::time::local_date;
 
@@ -28,18 +27,6 @@ pub enum Scope {
     Days(u16),
     /// The whole mailbox (All Mail: archived and filtered alerts too), without a date limit.
     All,
-}
-
-impl From<FetchRange> for Scope {
-    /// The scan of "Postfach abrufen" for the range the settings choose.
-    fn from(range: FetchRange) -> Scope {
-        match range {
-            FetchRange::SinceLast => Scope::New,
-            FetchRange::Days7 => Scope::Days(7),
-            FetchRange::Days30 => Scope::Days(30),
-            FetchRange::All => Scope::All,
-        }
-    }
 }
 
 /// Without a previous scan: this far back (a month of alerts: freelance projects are often
@@ -537,26 +524,20 @@ mod tests {
         assert_eq!(store.last_scan(Portal::LinkedIn).unwrap(), Some(late));
     }
 
-    /// Each range of the settings is the scan it names.
+    /// The first scan reads the last 30 days, every next one since the last (a day of
+    /// overlap), whatever the state the last days or everything.
     #[test]
-    fn every_fetch_range_is_its_scan() {
+    fn every_scope_is_its_scan() {
         let store = Store::in_memory().unwrap();
-        let since = |range: FetchRange| {
-            scan_since(&store, Scope::from(range), &[Portal::LinkedIn], now()).unwrap()
-        };
+        let since = |scope: Scope| scan_since(&store, scope, &[Portal::LinkedIn], now()).unwrap();
         let day = |s: &str| Some(s.parse::<Date>().unwrap());
-        assert_eq!(
-            since(FetchRange::SinceLast),
-            day("2026-08-20"),
-            "first scan"
-        );
-        assert_eq!(since(FetchRange::Days7), day("2026-09-12"));
-        assert_eq!(since(FetchRange::Days30), day("2026-08-20"));
-        assert_eq!(since(FetchRange::All), None);
+        assert_eq!(since(Scope::New), day("2026-08-20"), "first scan");
+        assert_eq!(since(Scope::Days(7)), day("2026-09-12"));
+        assert_eq!(since(Scope::All), None);
         store.set_last_scan(Portal::LinkedIn, now()).unwrap();
-        assert_eq!(since(FetchRange::SinceLast), day("2026-09-18"));
+        assert_eq!(since(Scope::New), day("2026-09-18"));
         assert_eq!(
-            since(FetchRange::Days7),
+            since(Scope::Days(7)),
             day("2026-09-12"),
             "whatever the state"
         );

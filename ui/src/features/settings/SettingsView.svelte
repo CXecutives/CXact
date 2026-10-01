@@ -1,7 +1,7 @@
 <!--
-  Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Suche,
-  Alert-Mails, Export, Darstellung, Daten), each a heading 12 px above a card of setting rows
-  (Postfach is a block of its own; Suche and Alert-Mails end on their sources' rows). Every text button of a row is the same outlined button, and every row ends on
+  Einstellungen (centred 720): the cards of cards.ts in their order (Suche, Postfach, Export,
+  Darstellung, Daten), each a heading 12 px above a card of setting rows (Suche its sources,
+  Postfach the connection and under it the sources of its alert mails). Every text button of a row is the same outlined button, and every row ends on
   the card's inner edge (its buttons, switch or choice flush with the rows above and
   below). This file only renders the list and runs its commands; what a row is, says and does
   is one entry in cards.ts.
@@ -337,8 +337,9 @@
           {/if}
         </div>
         {#if card.block === 'mailbox'}
-          <MailboxCard {cfg} locked={mailboxLocked}>
+          <MailboxCard {cfg} locked={mailboxLocked} testid="portals-mailbox">
             {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+            {#each sourcesIn('mailbox') as portal (portal.portal)}<PortalRow {portal} />{/each}
             {#if feedback}{@render noteOf(card.id, feedback)}{/if}
           </MailboxCard>
         {:else}

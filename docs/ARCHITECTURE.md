@@ -56,7 +56,7 @@ A decision is written once; everything else reads it or is generated from it.
 | Portals | `PORTALS` in `core/src/portal/` | settings, UI (`portals.ts`), mail, fetch |
 | The portals' order in the UI (freelance.de, LinkedIn, freelancermap) | `PORTAL_ORDER` in `ui/src/lib/portals.ts` | Einstellungen, first run, filter |
 | A portal's caps (pace, per hour, per day from local midnight) | `limits()` of its adapter in `core/src/portal/` | `fetch/policy.rs`, the settings' quota |
-| Defaults of the settings (`fetchRange`, `exportExcel`, `exportCsv`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
+| Defaults of the settings (`fetchMail`, `fetchSearch`, `exportExcel`, ...) | `Settings::default()` in `core/src/settings.rs` | Einstellungen, the stub |
 | Error codes | `ErrorKind` in `core/src/error.rs` | `ErrorKind.ts`, `t.error` |
 | Engine words | `core/src/matching/lexicon/` | the engine |
 
