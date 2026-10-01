@@ -10,13 +10,15 @@ import { app } from '$lib/state/app.svelte';
 /** What shows the job: its alert mail, its ad, the prompt of it for an AI chat. */
 export type ShowId = 'mail' | 'open-ad' | 'prompt';
 
-/** One way to show the job as it stands: its words, its glyph, and why it cannot be done now
- *  (its tooltip; null: it can). */
+/** One way to show the job as it stands: its words, its glyph, why it cannot be done now
+ *  (its tooltip; null: it can), and whether it is there at all for this job. */
 export interface ShowAction {
   id: ShowId;
   label: string;
   icon: IconName;
   reason: string | null;
+  /** Not offered for this job (no button, no menu entry). */
+  hidden: boolean;
 }
 
 /** Their one order, in the menu and among the reader's buttons: the ad first, then its alert
@@ -24,7 +26,8 @@ export interface ShowAction {
 export const SHOWS: readonly ShowId[] = ['open-ad', 'mail', 'prompt'];
 
 /**
- * Alert-Mail öffnen, off without an alert mail; Anzeige öffnen, which says Offline-Anzeige
+ * Alert-Mail öffnen, only for a job an alert mail brought (user, 2026-10-01: a job of the
+ * search has none, the button is not there); Anzeige öffnen, which says Offline-Anzeige
  * öffnen for an ad that is gone or takes no applications (the portal's page still opens);
  * KI-Prompt kopieren, off without a profile to judge the job by or without the ad's text (a
  * preview is one).
@@ -37,19 +40,22 @@ export function showActions(job: JobView): Record<ShowId, ShowAction> {
       id: 'mail',
       label: t.actions.mail,
       icon: 'alertMail',
-      reason: job.hasMail ? null : t.reader.noMail,
+      reason: null,
+      hidden: !job.hasMail,
     },
     'open-ad': {
       id: 'open-ad',
       label: offline ? t.reader.openOffline : t.actions.openAd,
       icon: 'external',
       reason: null,
+      hidden: false,
     },
     prompt: {
       id: 'prompt',
       label: t.actions.prompt,
       icon: 'prompt',
       reason: !app.hasProfile ? t.actions.promptNoProfile : text ? null : t.reader.promptNoText,
+      hidden: false,
     },
   };
 }

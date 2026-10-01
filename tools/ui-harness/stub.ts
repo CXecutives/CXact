@@ -625,7 +625,9 @@ const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
   'michaelpage',
   'solcom',
   'gulp',
+  'amadeusfire',
   'interimx',
+  'fratch',
 ]);
 
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
@@ -821,16 +823,19 @@ function initial(): void {
     },
     profile: PROFILE,
     profiles: [],
-    // Every portal counts its calls (the backend sends the numbers of each): 100 a day.
+    // Every portal counts its calls (the backend sends the numbers of each): the alert
+    // sources 100 a day, the sources the app searches 1,500 (the deep search).
     portals: [
       portal('linkedin', { quota: { usedHour: 4, capHour: 30, usedDay: 23, capDay: 100 } }),
       portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 100 } }),
-      portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
-      portal('hays', { quota: { usedHour: 6, capHour: 30, usedDay: 18, capDay: 100 } }),
-      portal('michaelpage', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
-      portal('solcom', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
-      portal('gulp', { quota: { usedHour: 0, capHour: 30, usedDay: 0, capDay: 100 } }),
-      portal('interimx', { quota: { usedHour: 0, capHour: 30, usedDay: 0, capDay: 100 } }),
+      portal('freelancermap', { quota: { usedHour: 9, capHour: 300, usedDay: 86, capDay: 1500 } }),
+      portal('hays', { quota: { usedHour: 6, capHour: 300, usedDay: 18, capDay: 1500 } }),
+      portal('michaelpage', { quota: { usedHour: 2, capHour: 300, usedDay: 6, capDay: 1500 } }),
+      portal('solcom', { quota: { usedHour: 2, capHour: 300, usedDay: 6, capDay: 1500 } }),
+      portal('gulp', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
+      portal('amadeusfire', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
+      portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
+      portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
     sources: [],
     setupDone: true,

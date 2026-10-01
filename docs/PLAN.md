@@ -1110,4 +1110,11 @@ handle sits between list and reader".
     a day per search source at 2.5 to 5 s (never below robots.txt's Crawl-delay), the fetch order by a
     title pre-score that knows the target roles. GULP's first page was never read (its pages count from
     0): fixed
-  - [ ] More sources for interim and finance: researched, candidates shown before anything is built
+  - [x] More sources for interim and finance (researched): Amadeus Fire (its job directory on the data
+    host its robots.txt allows, `search_robots_url`; only the interim and project roles), FRATCH (its
+    project list, every freelance project). Michael Page Austria and Switzerland were built and taken out
+    again the same day (user: Germany above all, nothing the app does not use). Rejected: jobs.ch,
+    karriere.at, eFinancialCareers, StepStone (their terms forbid automated access), the interim
+    providers without a public list (Atreus, Bridge IMP, Butterfly Manager, UNITEDINTERIM, ...)
+  - [x] Jobdetails: no row "Eingegangen"; the moment stands in "Gefunden" (and the filter "Eingegangen" is
+    "Gefunden"); "Alert-Mail öffnen" only for a job an alert mail brought (button and menu)

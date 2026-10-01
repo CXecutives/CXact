@@ -2,7 +2,7 @@
 import type { Portal } from "./Portal";
 
 /** Every portal in the app's order (`Portal::ALL`). */
-export const PORTALS: readonly Portal[] = ["linkedin", "freelance", "freelancermap", "hays", "michaelpage", "solcom", "gulp", "interimx"];
+export const PORTALS: readonly Portal[] = ["linkedin", "freelance", "freelancermap", "hays", "michaelpage", "solcom", "gulp", "amadeusfire", "interimx", "fratch"];
 
 /** A portal's name everywhere: its web address (`Portal::label`). */
 export const PORTAL_LABEL: Record<Portal, string> = {
@@ -13,7 +13,9 @@ export const PORTAL_LABEL: Record<Portal, string> = {
   michaelpage: "michaelpage.de",
   solcom: "solcom.de",
   gulp: "gulp.de",
+  amadeusfire: "amadeus-fire.de",
   interimx: "interim-x.com",
+  fratch: "fratch.io",
 };
 
 /** A portal's two-letter mark, brand-neutral (`Portal::monogram`). */
@@ -25,5 +27,7 @@ export const PORTAL_MONOGRAM: Record<Portal, string> = {
   michaelpage: "MP",
   solcom: "so",
   gulp: "gu",
+  amadeusfire: "AF",
   interimx: "ix",
+  fratch: "fr",
 };

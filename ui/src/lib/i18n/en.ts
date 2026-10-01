@@ -812,14 +812,14 @@ export const en: Catalog = {
       onsite: 'On site',
     } satisfies Record<WorkMode, string>,
     unreadOnly: 'New only',
-    receivedHeading: 'Received',
+    receivedHeading: 'Found',
     received: {
       today: 'Today',
       days7: 'Last 7 days',
       days30: 'Last 30 days',
     },
     receivedChip: {
-      today: 'Received today',
+      today: 'Found today',
       days7: 'Last 7 days',
       days30: 'Last 30 days',
     },

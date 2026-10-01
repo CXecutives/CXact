@@ -928,16 +928,16 @@ export const de = {
     } satisfies Record<WorkMode, string>,
     /** A switch of its own behind a line: the jobs not opened yet (hidden for now). */
     unreadOnly: 'Nur neue',
-    /** The days a job came on (the alert mail's date, else its first sighting), and the
+    /** The days a job was found on (the alert mail's date, else its first sighting), and the
      *  chips of the choices. */
-    receivedHeading: 'Eingegangen',
+    receivedHeading: 'Gefunden',
     received: {
       today: 'Heute',
       days7: 'Letzte 7 Tage',
       days30: 'Letzte 30 Tage',
     },
     receivedChip: {
-      today: 'Heute eingegangen',
+      today: 'Heute gefunden',
       days7: 'Letzte 7 Tage',
       days30: 'Letzte 30 Tage',
     },

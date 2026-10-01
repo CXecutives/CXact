@@ -414,19 +414,24 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   );
   await expect(page.getByTestId('settings-search').locator('.card')).toHaveCount(1);
   await expect(page.getByTestId('settings-alerts').locator('.card')).toHaveCount(1);
-  for (const [portal, used] of [
-    ['freelance', 11],
-    ['linkedin', 23],
-    ['freelancermap', 86],
-    ['hays', 18],
-    ['michaelpage', 6],
-    ['solcom', 6],
-    ['gulp', 0],
-    ['interimx', 0],
+  for (const [portal, used, cap] of [
+    ['freelance', 11, 100],
+    ['linkedin', 23, 100],
+    ['freelancermap', 86, 1500],
+    ['hays', 18, 1500],
+    ['michaelpage', 6, 1500],
+    ['solcom', 6, 1500],
+    ['gulp', 0, 1500],
+    ['amadeusfire', 0, 1500],
+    ['interimx', 0, 1500],
+    ['fratch', 0, 1500],
   ] as const) {
     const quota = page.getByTestId(`quota-${portal}`);
-    await expect(quota).toContainText(T.settings.quota(used, 100));
-    await expect(quota.getByRole('progressbar')).toHaveAttribute('aria-valuenow', String(used));
+    await expect(quota).toContainText(T.settings.quota(used, cap));
+    await expect(quota.getByRole('progressbar')).toHaveAttribute(
+      'aria-valuenow',
+      String(Math.round((used * 100) / cap)),
+    );
     const row = page.getByTestId(`portal-${portal}`);
     await expect(row.getByTestId(`open-portal-${portal}`)).toBeVisible();
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);

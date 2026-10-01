@@ -30,7 +30,7 @@ use url::Url;
 use super::policy::{PauseKind, PauseReason, Policy};
 use super::{
     Admission, Blocker, Cause, PageFetcher, PageOutcome, PortalOnFn, SUSPICIOUS_STREAK, StopReason,
-    admit, robots_of, robots_path,
+    admit, robots_path, search_robots_of,
 };
 use crate::model::Posting;
 use crate::portal::Portal;
@@ -243,7 +243,7 @@ async fn search_source<F: PageFetcher, C: Fn() -> Timestamp>(
     };
     let mut counts = SearchCounts::default();
     let planned = urls.len();
-    let robots = robots_of(&mut fetcher, policy, portal, cancel, clock, |until| {
+    let robots = search_robots_of(&mut fetcher, policy, portal, cancel, clock, |until| {
         send(SearchEvent::Waiting { portal, until });
     })
     .await?;
@@ -455,6 +455,8 @@ mod tests {
     #[derive(Default)]
     struct Fake {
         robots: Option<String>,
+        /// The robots.txt of the search pages' other host, where the source has one.
+        search_robots: Option<String>,
         answers: VecDeque<Result<Vec<Hit>, PageOutcome>>,
         /// The addresses asked, kept where the test can read them after the search.
         asked: std::sync::Arc<Mutex<Vec<Url>>>,
@@ -479,6 +481,13 @@ mod tests {
             _cancel: &CancellationToken,
         ) -> Result<Option<String>, PageOutcome> {
             Ok(self.robots.clone())
+        }
+        async fn search_robots(
+            &mut self,
+            _portal: Portal,
+            _cancel: &CancellationToken,
+        ) -> Result<Option<String>, PageOutcome> {
+            Ok(self.search_robots.clone())
         }
     }
 
@@ -869,5 +878,59 @@ mod tests {
         );
         assert_eq!(lock(&policy).state(HAYS).accesses.len(), 4);
         assert_eq!(lock(&policy).state(FM).accesses.len(), 4);
+    }
+
+    /// A source whose search pages lie on another host (Amadeus Fire's directory): that
+    /// host's robots.txt decides about them, not the one beside its ads.
+    #[tokio::test(start_paused = true)]
+    async fn the_search_pages_host_decides_with_its_own_robots() {
+        let on = |_: Portal| true;
+        for (rules, asked) in [
+            (
+                "User-agent: *
+Disallow: /
+Allow: /packages/jobtoolControlling/",
+                1,
+            ),
+            (
+                "User-agent: *
+Disallow: /",
+                0,
+            ),
+        ] {
+            let store = Store::in_memory().unwrap();
+            let policy = Mutex::new(Policy::in_memory());
+            let log = std::sync::Arc::new(Mutex::new(Vec::new()));
+            let mut fakes = BTreeMap::from([(
+                Portal::AmadeusFire,
+                Fake {
+                    // Beside the ads everything is allowed.
+                    robots: Some(
+                        "User-agent: *
+Disallow: /wp-admin/"
+                            .into(),
+                    ),
+                    search_robots: Some(rules.into()),
+                    asked: log.clone(),
+                    ..Fake::default()
+                },
+            )]);
+            let (_, found, _) = search(
+                &mut fakes,
+                &store,
+                &policy,
+                &[Portal::AmadeusFire],
+                &terms(&["Controlling"]),
+                &on,
+            )
+            .await;
+            assert_eq!(lock(&log).len(), asked, "{rules}");
+            assert_eq!(found[&Portal::AmadeusFire].refused, 1 - asked, "{rules}");
+            assert!(
+                lock(&policy)
+                    .search_robots(Portal::AmadeusFire, Timestamp::now())
+                    .is_some()
+            );
+        }
     }
 }

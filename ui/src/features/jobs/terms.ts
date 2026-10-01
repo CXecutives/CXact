@@ -15,7 +15,7 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import { TERM_ROWS, modeWords, startWords, termIcon, type TermKey } from '$lib/facts';
-import { formatDay, formatStamp } from '$lib/i18n/format';
+import { formatDay, formatMoment, formatStamp } from '$lib/i18n/format';
 import type { CriterionKey, TermVerdict } from '$lib/i18n/de';
 import { t } from '$lib/i18n/t';
 import { criterionKey } from '$lib/i18n/texts';
@@ -276,9 +276,9 @@ const TERMS: Record<TermKey, Term> = {
     shows: ({ code }) => code('industryWish') !== undefined,
     read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
   },
-  // How the job came (user decision 2026-10-01: "Gefunden"): the search of its source, its
-  // alert mail, both, then the sources it is also on; quietly after them an ad that is no
-  // longer online (once, here).
+  // How and when the job came (user decision 2026-10-01: "Gefunden"): the search of its
+  // source, its alert mail, both, then the sources it is also on and the moment; quietly
+  // after them an ad that is no longer online (once, here).
   portal: {
     ...NONE,
     read: ({ job, offline, now }) => {
@@ -290,10 +290,14 @@ const TERMS: Record<TermKey, Term> = {
       const also = job.alsoOn
         .filter((portal) => portal !== job.portal)
         .map((portal) => t.portal[portal]);
+      // When it came: the alert mail's moment, else its first sighting ("16:49",
+      // "gestern 08:12"), at the end.
+      const when = formatMoment(job.mailDate ?? job.firstSeenAt, now);
       return {
         value: [
           ...(ways.length > 0 ? ways : [own]),
           ...(also.length > 0 ? [t.job.alsoOn(also.join(', '))] : []),
+          ...(when === '' ? [] : [when]),
         ].join(', '),
         note:
           offline === null ? null : since === '' ? t.reader.offline : t.reader.offlineSince(since),
@@ -301,8 +305,11 @@ const TERMS: Record<TermKey, Term> = {
     },
   },
   // The day of the alert mail in the list row's words ("gestern", "Do 24.09.").
+  // Hidden (user, 2026-10-01: "Eingegangen" says nothing for a job the search found): the
+  // day stands in the row "Gefunden".
   received: {
     ...NONE,
+    shows: () => false,
     read: ({ job, now }) => ({ value: text(formatStamp(job.mailDate ?? job.firstSeenAt, now)) }),
   },
 };

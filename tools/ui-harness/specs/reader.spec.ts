@@ -51,7 +51,6 @@ const ROWS = [
   'Bewerbungsfrist',
   'Kontakt',
   'Gefunden',
-  'Eingegangen',
 ];
 
 /** Start the app and open a job of the one list. */
@@ -161,8 +160,9 @@ test.describe('the head and the match', () => {
     expect(await top('reader-actions')).toBeLessThan(await top('terms'));
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
+    // How and when it came: the alert mail's moment ends the row (no row "Eingegangen").
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com',
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 07:30',
       '',
     ]);
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
@@ -768,12 +768,13 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     // The ad says nothing of its workload, and nothing judges it.
     expect(await cell(page, 'workload')).toEqual([T.reader.missing, '']);
+    // How and when it came: the alert mail's moment ends the row (no row "Eingegangen").
     expect(await cell(page, 'portal')).toEqual([
-      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com',
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com, 07:30',
       '',
     ]);
-    // The day of the alert mail in the list row's words.
-    expect(await cell(page, 'received')).toEqual(['07:30', '']);
+    // No row "Eingegangen" (user, 2026-10-01): the moment stands in "Gefunden".
+    await expect(term(page, 'received')).toHaveCount(0);
     // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
     // wish met), else why its criterion is met.
     await expect(terms(page)).not.toContainText('passt');
@@ -1055,9 +1056,10 @@ test.describe('Jobdetails', () => {
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
-    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Gefunden', 'Eingegangen']);
+    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Gefunden']);
     // Its way and its source: the alert mail of LinkedIn.
-    expect(await cell(page, 'portal')).toEqual(['Alert-Mail von linkedin.com', '']);
+    const [found] = await cell(page, 'portal');
+    expect(found).toMatch(/^Alert-Mail von linkedin\.com, \S/);
     await expect(terms(page)).not.toContainText('/');
     // A preview: no "/" claims the ad says nothing.
     await openJob(page, 'freelance-900411');
@@ -1067,7 +1069,6 @@ test.describe('Jobdetails', () => {
       'Arbeitsmodell',
       'Vertragsart',
       'Gefunden',
-      'Eingegangen',
     ]);
     await expect(terms(page).locator('.value.missing')).toHaveCount(0);
   });

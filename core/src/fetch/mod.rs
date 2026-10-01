@@ -263,6 +263,16 @@ pub trait PageFetcher {
         false
     }
 
+    /// The robots.txt of the host of the source's search pages where that is another host
+    /// (`PortalAdapter::search_robots_url`); its own by default.
+    fn search_robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> impl Future<Output = Result<Option<String>, PageOutcome>> + Send {
+        self.robots(portal, cancel)
+    }
+
     /// One page of the source's own search, read by its adapter: the hits, or what decided
     /// instead (a block, a throttle, a wall). The guest client only.
     fn search(
@@ -304,20 +314,67 @@ pub(crate) async fn robots_of<F: PageFetcher>(
     clock: &impl Fn() -> Timestamp,
     on_wait: impl FnOnce(Timestamp),
 ) -> crate::Result<Result<Robots, Blocker>> {
-    if let Some(robots) = lock(policy).robots(portal, clock()) {
+    robots_at(fetcher, policy, (portal, false), cancel, clock, on_wait).await
+}
+
+/// The robots.txt of the host `portal`'s search pages lie on: its own where they lie beside
+/// its ads, else that host's (`PortalAdapter::search_robots_url`), kept apart for a day.
+pub(crate) async fn search_robots_of<F: PageFetcher>(
+    fetcher: &mut F,
+    policy: &Mutex<Policy>,
+    portal: Portal,
+    cancel: &CancellationToken,
+    clock: &impl Fn() -> Timestamp,
+    on_wait: impl FnOnce(Timestamp),
+) -> crate::Result<Result<Robots, Blocker>> {
+    let other_host = portal.adapter().search_robots_url().is_some();
+    robots_at(
+        fetcher,
+        policy,
+        (portal, other_host),
+        cancel,
+        clock,
+        on_wait,
+    )
+    .await
+}
+
+/// The robots.txt of the source's own host, or (`search`) of its search pages' other host.
+async fn robots_at<F: PageFetcher>(
+    fetcher: &mut F,
+    policy: &Mutex<Policy>,
+    (portal, search): (Portal, bool),
+    cancel: &CancellationToken,
+    clock: &impl Fn() -> Timestamp,
+    on_wait: impl FnOnce(Timestamp),
+) -> crate::Result<Result<Robots, Blocker>> {
+    let known = if search {
+        lock(policy).search_robots(portal, clock())
+    } else {
+        lock(policy).robots(portal, clock())
+    };
+    if let Some(robots) = known {
         return Ok(Ok(robots));
     }
     match admit(policy, portal, cancel, clock, on_wait).await? {
         Admission::Stop(reason) => Ok(Err(Blocker::Stop(reason))),
         Admission::Cancelled => Ok(Err(Blocker::Page(Box::new(PageOutcome::Cancelled)))),
         Admission::Go => {
-            let read = fetcher.robots(portal, cancel).await;
+            let read = if search {
+                fetcher.search_robots(portal, cancel).await
+            } else {
+                fetcher.robots(portal, cancel).await
+            };
             let mut policy = lock(policy);
             policy.record_done(portal, clock());
             let result = match read {
                 Ok(text) => {
                     let robots = text.as_deref().map(Robots::parse).unwrap_or_default();
-                    policy.set_robots(portal, robots.clone(), clock());
+                    if search {
+                        policy.set_search_robots(portal, robots.clone(), clock());
+                    } else {
+                        policy.set_robots(portal, robots.clone(), clock());
+                    }
                     Ok(robots)
                 }
                 Err(outcome) => Err(Blocker::Page(Box::new(outcome))),

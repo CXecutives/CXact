@@ -9,6 +9,8 @@
 //! whole URL (formerly postal codes or norm numbers in a slug became job ids, and so did
 //! digits from the query).
 
+mod amadeus_fire;
+mod fratch;
 mod freelance_de;
 mod freelancermap;
 mod gulp;
@@ -59,8 +61,12 @@ pub enum Portal {
     Solcom,
     #[serde(rename = "gulp")]
     Gulp,
+    #[serde(rename = "amadeusfire")]
+    AmadeusFire,
     #[serde(rename = "interimx")]
     InterimX,
+    #[serde(rename = "fratch")]
+    Fratch,
     /// A fourth portal that exists in tests only: it proves that the registry is the only
     /// place that knows the portals.
     #[cfg(test)]
@@ -229,6 +235,11 @@ pub trait PortalAdapter: Send + Sync {
     fn checks_robots(&self) -> bool {
         false
     }
+    /// The robots.txt of the host its search pages lie on, where that is another host than
+    /// its ads' (Amadeus Fire's directory); `None`: the search pages lie beside the ads.
+    fn search_robots_url(&self) -> Option<&'static str> {
+        None
+    }
     /// A search the source runs as a POST of its query (GULP): the JSON body for this search
     /// address (its query carries the term and is not sent); `None` for a plain page.
     fn search_body(&self, url: &Url) -> Option<String> {
@@ -347,14 +358,16 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
     &michael_page::MichaelPage,
     &solcom::Solcom,
     &gulp::Gulp,
+    &amadeus_fire::AmadeusFire,
     &interim_x::InterimX,
+    &fratch::Fratch,
     #[cfg(test)]
     &probe::Probe,
 ];
 
 impl Portal {
     /// The product portals (the test-only probe is not among them).
-    pub const ALL: [Portal; 8] = [
+    pub const ALL: [Portal; 10] = [
         Portal::LinkedIn,
         Portal::FreelanceDe,
         Portal::Freelancermap,
@@ -362,7 +375,9 @@ impl Portal {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Gulp,
+        Portal::AmadeusFire,
         Portal::InterimX,
+        Portal::Fratch,
     ];
 
     /// The adapter of this portal.
@@ -1043,7 +1058,9 @@ mod tests {
                 "michaelpage",
                 "solcom",
                 "gulp",
-                "interimx"
+                "amadeusfire",
+                "interimx",
+                "fratch"
             ]
         );
         assert_eq!(
@@ -1051,6 +1068,8 @@ mod tests {
             [
                 Access::Guest,
                 Access::Session { required: false },
+                Access::Guest,
+                Access::Guest,
                 Access::Guest,
                 Access::Guest,
                 Access::Guest,
@@ -1069,9 +1088,15 @@ mod tests {
                 "Michael Page",
                 "SOLCOM",
                 "GULP",
-                "interim-x"
+                "Amadeus Fire",
+                "interim-x",
+                "FRATCH"
             ]
         );
+        // Each source its own tile in Einstellungen (the page keys its tiles by them).
+        let monograms: std::collections::HashSet<_> =
+            Portal::ALL.iter().map(|p| p.monogram()).collect();
+        assert_eq!(monograms.len(), Portal::ALL.len());
         for p in Portal::ALL {
             assert_eq!(Portal::from_key(p.key()), Some(p));
             assert_eq!(p.adapter().portal(), p);

@@ -179,13 +179,22 @@ impl HttpFetcher {
             .map_err(PageOutcome::from)
     }
 
-    /// The source's robots.txt beside its start page; `None` where it has none.
-    async fn robots_text(&self, portal: Portal) -> Result<Option<String>, PageOutcome> {
-        let home = Url::parse(portal.adapter().home_url())
-            .map_err(|_| PageOutcome::Suspicious(Cause::PageNotRecognised))?;
-        let url = home
-            .join("/robots.txt")
-            .map_err(|_| PageOutcome::Suspicious(Cause::PageNotRecognised))?;
+    /// The source's robots.txt beside its start page (`search`: the one of its search pages'
+    /// host where that is another); `None` where it has none.
+    async fn robots_text(
+        &self,
+        portal: Portal,
+        search: bool,
+    ) -> Result<Option<String>, PageOutcome> {
+        let adapter = portal.adapter();
+        let unknown = |_| PageOutcome::Suspicious(Cause::PageNotRecognised);
+        let url = match adapter.search_robots_url().filter(|_| search) {
+            Some(url) => Url::parse(url).map_err(unknown)?,
+            None => Url::parse(adapter.home_url())
+                .map_err(unknown)?
+                .join("/robots.txt")
+                .map_err(unknown)?,
+        };
         let response = self
             .follow
             .get(self.target(url))
@@ -230,7 +239,19 @@ impl PageFetcher for HttpFetcher {
         tokio::select! {
             biased;
             () = cancel.cancelled() => Err(PageOutcome::Cancelled),
-            text = self.robots_text(portal) => text,
+            text = self.robots_text(portal, false) => text,
+        }
+    }
+
+    async fn search_robots(
+        &mut self,
+        portal: Portal,
+        cancel: &CancellationToken,
+    ) -> Result<Option<String>, PageOutcome> {
+        tokio::select! {
+            biased;
+            () = cancel.cancelled() => Err(PageOutcome::Cancelled),
+            text = self.robots_text(portal, true) => text,
         }
     }
 }

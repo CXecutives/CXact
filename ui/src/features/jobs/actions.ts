@@ -116,6 +116,7 @@ export function jobMenu(job: JobView, context: JobMenuContext): MenuEntry[] {
   const actions = showActions(job);
   for (const id of SHOWS) {
     const action = actions[id];
+    if (action.hidden) continue;
     show.push({
       id,
       label: action.label,

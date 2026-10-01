@@ -4,7 +4,7 @@
 // (the backend refuses it too, never with a failed fetch).
 
 import { calls, expect, open, test } from './fixtures';
-import { ALL_PORTALS, T } from './helpers';
+import { PORTALS, T } from './helpers';
 
 const WIN = '?platform=windows';
 
@@ -14,7 +14,8 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   await open(page, WIN);
   await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings')).toBeVisible();
-  for (const portal of ALL_PORTALS) {
+  // Every source switched on (the sites outside Germany are off already).
+  for (const portal of PORTALS) {
     await page.getByTestId(`toggle-enabled-${portal}`).click();
     await expect(page.getByTestId(`toggle-enabled-${portal}`)).toHaveAttribute(
       'aria-checked',
@@ -23,7 +24,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   }
   // Saved as chosen: no refusal after the switches moved.
   await expect(page.getByTestId('portal-error')).toHaveCount(0);
-  expect(await calls(page, 'save_settings')).toHaveLength(ALL_PORTALS.length);
+  expect(await calls(page, 'save_settings')).toHaveLength(PORTALS.length);
 
   await page.getByTestId('nav-jobs').click();
   const fetch = page.getByTestId('fetch');

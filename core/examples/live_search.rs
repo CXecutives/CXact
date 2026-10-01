@@ -3,6 +3,7 @@
 //!
 //! `cargo run -p jobalert-core --example live_search -- "Interim CFO" "SAP FI/CO"`
 //! `cargo run -p jobalert-core --example live_search -- --profile path/to/profil.json`
+//! `--sources fratch,amadeusfire` first: only those sources.
 //!
 //! It asks each source's robots.txt and the pages of each term (deeper while they bring new
 //! jobs), at the sources' own pace, side by side, and prints what it found. With `--profile`
@@ -27,7 +28,13 @@ const AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.3
 #[tokio::main]
 async fn main() {
     jobalert_core::install_crypto();
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let only: Option<Vec<Portal>> =
+        (args.first().map(String::as_str) == Some("--sources") && args.len() > 1).then(|| {
+            let list = args[1].split(',').filter_map(Portal::from_key).collect();
+            args.drain(..2);
+            list
+        });
     let terms = match args.as_slice() {
         [flag, path] if flag == "--profile" => {
             let text = std::fs::read_to_string(path).expect("the profile file");
@@ -44,6 +51,7 @@ async fn main() {
     let portals: Vec<Portal> = Portal::ALL
         .into_iter()
         .filter(|portal| portal.way() == Way::Search)
+        .filter(|portal| only.as_ref().is_none_or(|list| list.contains(portal)))
         .collect();
     let on = |_: Portal| true;
     let mut found = BTreeMap::new();

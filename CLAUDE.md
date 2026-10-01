@@ -2,7 +2,7 @@
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
 source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
-Michael Page, SOLCOM, GULP, interim-x; user decisions 2026-10-01), fetches the job pages and **scores every job
+Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x, FRATCH; user decisions 2026-10-01), fetches the job pages and **scores every job
 against a consultant profile**, only when the user presses the fetch: "Jobs suchen" or "Postfach abrufen", the
 menu beside it chooses which (never both).
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).

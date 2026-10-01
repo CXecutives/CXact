@@ -20,7 +20,7 @@ use jobalert_core::store::Store;
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-3.json";
+const NEWEST: &str = "3.0.0-4.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -66,6 +66,8 @@ fn newest() -> Settings {
             (Portal::Solcom, switches(false, false)),
             (Portal::Gulp, switches(false, false)),
             (Portal::InterimX, switches(false, false)),
+            (Portal::AmadeusFire, switches(false, false)),
+            (Portal::Fratch, switches(false, false)),
         ]),
         fetch_range: FetchRange::Days30,
         export_excel: false,
@@ -131,7 +133,9 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
             (Portal::MichaelPage, switches(false, false)),
             (Portal::Solcom, switches(false, false)),
             (Portal::Gulp, switches(false, false)),
+            (Portal::AmadeusFire, switches(false, false)),
             (Portal::InterimX, switches(false, false)),
+            (Portal::Fratch, switches(false, false)),
         ]),
         ..Settings::default()
     };
@@ -162,7 +166,9 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::MichaelPage, switches(true, false)),
             (Portal::Solcom, switches(true, false)),
             (Portal::Gulp, switches(true, false)),
+            (Portal::AmadeusFire, switches(true, false)),
             (Portal::InterimX, switches(true, false)),
+            (Portal::Fratch, switches(true, false)),
         ]),
         language: Some(Language::En),
         palette: Palette::Dark,
@@ -186,7 +192,9 @@ fn the_file_before_the_search_loads_with_the_new_source_on() {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Gulp,
+        Portal::AmadeusFire,
         Portal::InterimX,
+        Portal::Fratch,
     ] {
         portals.insert(portal, switches(true, false));
     }
@@ -197,6 +205,19 @@ fn the_file_before_the_search_loads_with_the_new_source_on() {
         fetch_search: true,
         ..newest()
     };
+    assert_eq!(loaded, expected);
+    assert_eq!(round_trip(&loaded).0, loaded);
+}
+
+/// The file before the sources of 2026-10-01 evening (Amadeus Fire, FRATCH): they come
+/// switched on, everything else as it was.
+#[test]
+fn the_file_before_the_new_sources_loads_with_them_on() {
+    let loaded = load(&fixture("3.0.0-3.json"));
+    let mut expected = newest();
+    for portal in [Portal::AmadeusFire, Portal::Fratch] {
+        expected.portals.insert(portal, switches(true, false));
+    }
     assert_eq!(loaded, expected);
     assert_eq!(round_trip(&loaded).0, loaded);
 }
@@ -214,7 +235,9 @@ fn a_file_of_a_newer_version_loads_without_damage() {
         Portal::MichaelPage,
         Portal::Solcom,
         Portal::Gulp,
+        Portal::AmadeusFire,
         Portal::InterimX,
+        Portal::Fratch,
     ] {
         portals.insert(portal, switches(true, false));
     }

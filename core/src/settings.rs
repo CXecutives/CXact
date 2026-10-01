@@ -551,7 +551,9 @@ mod tests {
                 Portal::MichaelPage,
                 Portal::Solcom,
                 Portal::Gulp,
-                Portal::InterimX
+                Portal::AmadeusFire,
+                Portal::InterimX,
+                Portal::Fratch
             ]
         );
         // Missing fields: default per field.
@@ -719,7 +721,9 @@ mod tests {
                 Portal::MichaelPage,
                 Portal::Solcom,
                 Portal::Gulp,
-                Portal::InterimX
+                Portal::AmadeusFire,
+                Portal::InterimX,
+                Portal::Fratch
             ]
         );
         assert_eq!(s.fetch_path(Portal::LinkedIn), None);

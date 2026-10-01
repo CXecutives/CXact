@@ -363,11 +363,14 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     ['open-ad', 'open-ad'],
     ['prompt', 'reader-prompt'],
   ] as const;
-  /** Each entry's words and whether it is off: in the row's menu, then in the reader. */
+  /** Each entry's words and whether it is off, or `none` where it is not there: in the
+   *  row's menu, then in the reader. */
   const offered = async (key: string): Promise<{ menu: string[]; reader: string[] }> => {
     await rowMenu(page, key);
     const state = async (target: Locator): Promise<string> =>
-      `${await target.locator('.label').innerText()} ${(await target.getAttribute('aria-disabled')) ?? 'on'}`;
+      (await target.count()) === 0
+        ? 'none'
+        : `${await target.locator('.label').innerText()} ${(await target.getAttribute('aria-disabled')) ?? 'on'}`;
     const menu: string[] = [];
     for (const [id] of SHOWN) menu.push(await state(page.getByTestId(`menu-item-${id}`)));
     await page.keyboard.press('Escape');
@@ -376,12 +379,9 @@ test('the row menu and the reader offer the same: no alert mail, no ad text, an 
     for (const [, testid] of SHOWN) reader.push(await state(stage(page).getByTestId(testid)));
     return { menu, reader };
   };
+  // A job without an alert mail offers none (user, 2026-10-01: no button at all).
   const failed = await offered('freelancermap-2805');
-  expect(failed.menu).toEqual([
-    `${T.actions.mail} true`,
-    `${T.actions.openAd} on`,
-    `${T.actions.prompt} true`,
-  ]);
+  expect(failed.menu).toEqual(['none', `${T.actions.openAd} on`, `${T.actions.prompt} true`]);
   expect(failed.reader).toEqual(failed.menu);
   // Both say why the prompt waits, in the reader's words.
   const prompt = stage(page).getByTestId('reader-prompt');

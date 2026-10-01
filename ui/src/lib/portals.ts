@@ -1,6 +1,6 @@
 // The order in which the UI shows the sources (user decision 2026-10-01): the ones the app
-// searches first (Hays, freelancermap, Michael Page, SOLCOM, GULP, interim-x), then the ones
-// of alert mails (LinkedIn, freelance.de).
+// searches first (Hays, freelancermap, Michael Page, SOLCOM, GULP, Amadeus Fire, interim-x,
+// FRATCH), then the ones of alert mails (LinkedIn, freelance.de).
 // A table of the UI, not core's `Portal::ALL` (the order the backend works in): Einstellungen
 // and the first-run page list them in this order.
 
@@ -12,7 +12,9 @@ export const PORTAL_ORDER: readonly Portal[] = [
   'michaelpage',
   'solcom',
   'gulp',
+  'amadeusfire',
   'interimx',
+  'fratch',
   'linkedin',
   'freelance',
 ];

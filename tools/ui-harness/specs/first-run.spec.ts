@@ -4,7 +4,7 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, runFinished, test, visibleCount } from './fixtures';
-import { ALERT_PORTALS, ALL_PORTALS, chooseWay, failNext, showTab, T, tokenPx } from './helpers';
+import { ALERT_PORTALS, chooseWay, failNext, PORTALS, showTab, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -121,7 +121,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   expect(T.firstRun.mailboxText(['freelance'])).toContain('Gmail‑Adresse');
   await expect(page.getByTestId('first-no-portal')).toHaveCount(0);
   await page.getByTestId('nav-settings').click();
-  for (const portal of ALL_PORTALS.filter((portal) => portal !== 'linkedin')) {
+  for (const portal of PORTALS.filter((portal) => portal !== 'linkedin')) {
     await page.getByTestId(`toggle-enabled-${portal}`).click();
   }
   await page.getByTestId('nav-jobs').click();

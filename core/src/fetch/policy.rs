@@ -136,6 +136,12 @@ pub struct PortalState {
     /// The source's robots.txt as last read, and when (read again after a day).
     pub robots: Option<Robots>,
     pub robots_at: Option<Timestamp>,
+    /// The robots.txt of the host of its search pages where that is another host
+    /// (`PortalAdapter::search_robots_url`), and when it was read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_robots: Option<Robots>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub search_robots_at: Option<Timestamp>,
 }
 
 impl PortalState {
@@ -494,6 +500,22 @@ impl Policy {
         let state = self.portals.entry(portal).or_default();
         state.robots = Some(robots);
         state.robots_at = Some(now);
+    }
+
+    /// The robots.txt of the host of `portal`'s search pages read within the last day.
+    pub fn search_robots(&self, portal: Portal, now: Timestamp) -> Option<Robots> {
+        let state = self.portals.get(&portal)?;
+        let fresh = state
+            .search_robots_at
+            .is_some_and(|at| at <= now && now.duration_since(at) < ROBOTS_FRESH);
+        fresh.then(|| state.search_robots.clone()).flatten()
+    }
+
+    /// The robots.txt of the host of `portal`'s search pages just read.
+    pub fn set_search_robots(&mut self, portal: Portal, robots: Robots, now: Timestamp) {
+        let state = self.portals.entry(portal).or_default();
+        state.search_robots = Some(robots);
+        state.search_robots_at = Some(now);
     }
 
     pub fn set_session(&mut self, portal: Portal, confirmed: bool, now: Timestamp) {

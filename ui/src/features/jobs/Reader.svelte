@@ -68,7 +68,7 @@
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
   import { guarded, move, override, purge, rowTools, seen, type MoveId } from './actions';
-  import { showActions, type ShowAction } from './shows';
+  import { SHOWS, showActions, type ShowId } from './shows';
   import {
     READER_SECTIONS,
     REQUIREMENT_CODES,
@@ -302,9 +302,19 @@
    *  Anzeige öffnen, then Alert-Mail öffnen; their tooltips name them). Tried again whenever
    *  the row's width changes (before the frame is painted). */
   let actions = $state<HTMLElement | null>(null);
-  /** How many of the three buttons show only their icon, from the last. */
+  /** The test id of each button that shows the job, and what it does. */
+  const SHOW_TESTIDS: Record<ShowId, string> = {
+    'open-ad': 'open-ad',
+    mail: 'reader-mail',
+    prompt: 'reader-prompt',
+  };
+  const showDoes: Record<ShowId, () => void> = {
+    'open-ad': () => openTarget({ kind: 'jobUrl', key: job.key }),
+    mail: () => openTarget({ kind: 'gmail', key: job.key }),
+    prompt: () => void copyJobPrompt(job.key).then(fail),
+  };
+  /** How many of the buttons show only their icon, from the last. */
   let iconsOnly = $state(0);
-  const SHOWS = 3;
 
   /** The last button starts above the bottom of the first. */
   function oneLine(row: HTMLElement): boolean {
@@ -320,7 +330,7 @@
   let fitting = 0;
   async function fit(row: HTMLElement): Promise<void> {
     const attempt = ++fitting;
-    for (let icons = 0; icons <= SHOWS; icons += 1) {
+    for (let icons = 0; icons <= SHOWS.length; icons += 1) {
       if (attempt !== fitting) return;
       iconsOnly = icons;
       await tick();
@@ -412,24 +422,23 @@
 {/snippet}
 
 {#snippet showButtons()}
-  <!-- Words, glyphs and what is off come from the one table the row's menu reads too. -->
+  <!-- Words, glyphs, what is off and what is not there come from the one table the row's
+       menu reads too. -->
   {@const shows = showActions(job)}
-  {#snippet show(action: ShowAction, testid: string, onclick: () => void, index: number)}
+  {@const shown = SHOWS.filter((id) => !shows[id].hidden)}
+  {#each shown as id, index (id)}
     <Button
       variant="secondary"
       size="field"
-      icon={action.icon}
-      label={action.label}
-      iconOnly={index >= SHOWS - iconsOnly}
-      disabled={action.reason !== null}
-      disabledReason={action.reason}
-      {testid}
-      {onclick}
+      icon={shows[id].icon}
+      label={shows[id].label}
+      iconOnly={index >= shown.length - iconsOnly}
+      disabled={shows[id].reason !== null}
+      disabledReason={shows[id].reason}
+      testid={SHOW_TESTIDS[id]}
+      onclick={() => showDoes[id]()}
     />
-  {/snippet}
-  {@render show(shows['open-ad'], 'open-ad', () => openTarget({ kind: 'jobUrl', key: job.key }), 0)}
-  {@render show(shows.mail, 'reader-mail', () => openTarget({ kind: 'gmail', key: job.key }), 1)}
-  {@render show(shows.prompt, 'reader-prompt', () => void copyJobPrompt(job.key).then(fail), 2)}
+  {/each}
 {/snippet}
 
 {#snippet actionRow()}
