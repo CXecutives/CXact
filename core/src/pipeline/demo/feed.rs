@@ -41,6 +41,8 @@ const FIRST_SPAN: SignedDuration = SignedDuration::from_hours(72);
 const MIN_SPAN: SignedDuration = SignedDuration::from_hours(2);
 /// The order of the ads and the size of each batch: the same at every start.
 const SEED: u64 = 0x5eed_0dea_2026;
+/// The store's number of the current run (`Store::begin_run`).
+const RUN_SEQ: &str = "run_seq";
 /// So many hits a search page shows at most, the newest first.
 const SEARCH_HITS: usize = 20;
 /// How long a portal takes to answer, in milliseconds (the pace between two requests is the
@@ -150,11 +152,14 @@ impl DemoAds {
     }
 }
 
-/// The alert mails one fetch found in the mailbox: the next `count` ads, arrived at `at`.
+/// The alert mails one fetch found in the mailbox: the next `count` ads, arrived at `at`,
+/// handed out in run `run` (`None`: outside a run, the tests of the mailbox).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 struct Batch {
     at: Timestamp,
     count: usize,
+    #[serde(default)]
+    run: Option<i64>,
 }
 
 /// The batches the mailbox received so far; an unreadable entry counts as none.
@@ -171,14 +176,25 @@ fn received(store: &Store) -> crate::Result<Vec<Batch>> {
 
 /// The mailbox receives the next batch of ads (none once every ad came) and remembers it;
 /// returns every batch it holds now.
+///
+/// Once per run: the mailbox as the fetch connects to it, or the search when the fetch reads
+/// no mails (its "Alert-Mails" switched off) - whichever asks first; the other finds the
+/// batch already there.
 fn deliver(store: &Store, ads: &DemoAds, now: Timestamp) -> crate::Result<Vec<Batch>> {
     let mut batches = received(store)?;
+    let run = store
+        .kv_get(RUN_SEQ)?
+        .and_then(|value| value.parse::<i64>().ok());
+    if run.is_some() && batches.last().is_some_and(|batch| batch.run == run) {
+        return Ok(batches);
+    }
     let delivered: usize = batches.iter().map(|batch| batch.count).sum();
     let left = ads.len().saturating_sub(delivered);
     if left > 0 {
         batches.push(Batch {
             at: now,
             count: batch_size(delivered).min(left),
+            run,
         });
         let json =
             serde_json::to_string(&batches).map_err(|e| crate::Error::Corrupt(e.to_string()))?;
@@ -385,6 +401,7 @@ impl Backends for DemoFeed {
         Ok(FeedPages {
             ads: Arc::clone(&self.ads),
             store: Arc::clone(&self.store),
+            clock: Arc::clone(&self.clock),
         })
     }
 
@@ -472,6 +489,8 @@ pub struct FeedPages {
     ads: Arc<DemoAds>,
     /// The batches handed out so far (the search shows their ads).
     store: Arc<Store>,
+    /// When the search hands out this run's batch (the fetch read no mails).
+    clock: Arc<dyn Fn() -> Timestamp + Send + Sync>,
 }
 
 impl PageFetcher for FeedPages {
@@ -520,7 +539,7 @@ impl PageFetcher for FeedPages {
         if !crate::time::sleep_cancellable(answer, cancel).await {
             return Err(PageOutcome::Cancelled);
         }
-        let batches = received(&self.store).unwrap_or_else(|e| {
+        let batches = deliver(&self.store, &self.ads, (self.clock)()).unwrap_or_else(|e| {
             log::warn!("demo: the mailbox is unreadable ({e})");
             Vec::new()
         });
@@ -766,6 +785,33 @@ mod tests {
         let matcher = super::super::matcher();
         assert_eq!(store.match_pending(matcher.rev()).unwrap(), 0, "all scored");
         assert!(dir.path().join(RESULT_DIR).join(XLSX_NAME).is_file());
+    }
+
+    /// A fetch that reads no mails ("Alert-Mails" off) still hands out the batch: the search
+    /// brings its freelancermap ads, and a later fetch with the mails brings the rest.
+    #[tokio::test(start_paused = true)]
+    async fn a_fetch_without_the_mails_still_finds_through_the_search() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Arc::new(Store::in_memory().unwrap());
+        let ads = Arc::new(DemoAds::load(&every_set()).unwrap());
+        let clock = clock();
+        let mut feed = feed(&ads, &store, clock.clone());
+        let search_only = RunContext {
+            read_mail: false,
+            ..ctx(dir.path())
+        };
+        let summary = go(&mut feed, &store, RunKind::Fetch, &search_only, &clock).await;
+        assert_eq!(summary.outcome, Outcome::Completed);
+        assert!(summary.scan.is_none(), "no mails read");
+        let found: usize = summary.search.unwrap().values().map(|c| c.new).sum();
+        assert!(found > 0, "the search found the batch's freelancermap ads");
+        let batches = received(&store).unwrap();
+        assert_eq!(batches.len(), 1, "one batch for the run");
+        let with_mails = go(&mut feed, &store, RunKind::Fetch, &ctx(dir.path()), &clock).await;
+        assert!(
+            with_mails.scan.unwrap().new > 0,
+            "the mails come with a later fetch"
+        );
     }
 
     /// "Anzeige laden": the pages of jobs whose fetch did not get to them come on request.
