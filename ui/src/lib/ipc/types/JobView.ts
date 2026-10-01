@@ -2,6 +2,7 @@
 import type { DetailState } from "./DetailState";
 import type { JobKey } from "./JobKey";
 import type { JobMatch } from "./JobMatch";
+import type { Origin } from "./Origin";
 import type { Place } from "./Place";
 import type { Portal } from "./Portal";
 import type { WorkMode } from "./WorkMode";
@@ -43,4 +44,9 @@ overridden: boolean,
  * Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
  * reader).
  */
-hasMail: boolean, };
+hasMail: boolean, 
+/**
+ * How the job came (the filter "Herkunft"): an alert mail named it, the search found it;
+ * both, or none for a job of an earlier version without either time.
+ */
+origins: Array<Origin>, };

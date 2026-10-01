@@ -134,11 +134,7 @@ fn url(portal: Portal, id: u64) -> String {
         Portal::Solcom => {
             format!("https://www.solcom.de/fuer-freiberufler/projektliste/{id}-projekt")
         }
-        Portal::Etengo => format!("https://www.etengo.de/it-projektsuche/{id}/"),
         Portal::Gulp => format!("https://www.gulp.de/gulp2/g/projekte/agentur/C{id}"),
-        Portal::RobertHalf => {
-            format!("https://www.roberthalf.com/de/de/job/de/job/60030-{id:0>10}-dede")
-        }
         Portal::InterimX => format!("https://www.interim-x.com/de/projekt/projekt-{id}"),
         Portal::Probe => format!("https://jobs.probe.example/job/{id}"),
     }
@@ -1629,6 +1625,7 @@ async fn the_same_job_on_two_portals_is_one_row() {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            origin: None,
             run: None,
             limit: 50,
             offset: 0,

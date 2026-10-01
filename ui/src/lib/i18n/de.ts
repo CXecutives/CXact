@@ -40,6 +40,7 @@ import type {
   RemoteWish,
   TermField,
   WorkMode,
+  Origin,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
@@ -180,6 +181,7 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'Mindestens eine Quelle muss aktiv sein.',
+  noFetchWay: 'Schalte erst Alert-Mails oder Suche ein.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
@@ -884,6 +886,11 @@ export const de = {
       days30: 'Letzte 30 Tage',
       all: 'Alle Alert-Mails',
     } satisfies Record<FetchRange, string>,
+    /** The icon button beside "Jobs abrufen" and its menu: what the fetch reads (its two
+     *  switches) and the Zeitraum of the alert mails. */
+    fetchSettings: 'Abruf einstellen',
+    fetchMail: 'Alert-Mails',
+    fetchSearch: 'Suche',
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
     /** The first group of the funnel's menu: the order of the list. */
@@ -912,6 +919,17 @@ export const de = {
     } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
+    /** How a job came: an alert mail named it, the search found it; as chips beside the
+     *  list without their heading. */
+    originHeading: 'Herkunft',
+    origin: {
+      mail: 'Alert-Mails',
+      search: 'Suche',
+    } satisfies Record<Origin, string>,
+    originChip: {
+      mail: 'Aus Alert-Mails',
+      search: 'Aus der Suche',
+    } satisfies Record<Origin, string>,
     contractHeading: 'Vertragsart',
     /** The work mode as the Jobdetails name it, under its heading and as chips. */
     workHeading: 'Arbeitsmodell',
@@ -928,6 +946,8 @@ export const de = {
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst eine Quelle ein.',
+    /** Neither switch of "Abruf einstellen" is on: nothing to fetch. */
+    needsWay: 'Schalte erst Alert-Mails oder Suche ein.',
   },
   run: {
     /** The one line under the list header while a fetch goes: what happens now. */

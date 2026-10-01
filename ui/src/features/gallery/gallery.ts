@@ -209,6 +209,7 @@ function sample(
     trashedAt: null,
     overridden: false,
     hasMail: true,
+    origins: ['mail'],
     ...extra,
   };
 }

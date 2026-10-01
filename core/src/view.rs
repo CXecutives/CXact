@@ -40,6 +40,16 @@ pub const MAX_PAGE: u32 = 500;
 
 // ---------------------------------------------------------------------- Jobs
 
+/// How a job came to the list (the list's filter "Herkunft"): an alert mail named it, or the
+/// app's own search found it. A job can have both.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(test, derive(ts_rs::TS))]
+pub enum Origin {
+    Mail,
+    Search,
+}
+
 /// How the job is done, as far as the location field says (and the list's filter by it).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -216,6 +226,9 @@ pub struct JobView {
     /// Its alert mail can be opened in Gmail ("Alert-Mail öffnen"; `JobMail.gmailUrl` in the
     /// reader).
     pub has_mail: bool,
+    /// How the job came (the filter "Herkunft"): an alert mail named it, the search found it;
+    /// both, or none for a job of an earlier version without either time.
+    pub origins: Vec<Origin>,
 }
 
 impl From<&JobRow> for JobView {
@@ -250,6 +263,13 @@ impl From<&JobRow> for JobView {
             trashed_at: job.trashed_at,
             overridden: job.override_include,
             has_mail: job.gmail_id.and_then(gmail_url).is_some(),
+            origins: [
+                job.mailed_at.map(|_| Origin::Mail),
+                job.searched_at.map(|_| Origin::Search),
+            ]
+            .into_iter()
+            .flatten()
+            .collect(),
         }
     }
 }
@@ -854,6 +874,10 @@ pub struct JobQuery {
     /// none. `null` = every job.
     #[serde(default)]
     pub work_mode: Option<WorkMode>,
+    /// The filter "Herkunft": only jobs an alert mail named, or only those the search found.
+    /// `null` = every job.
+    #[serde(default)]
+    pub origin: Option<Origin>,
     /// The filter "Aus dem letzten Abruf" (the "Zeigen" of a fetch's toast): only the new
     /// jobs this run brought, the ones its toast counts (`RunSummary.newJobs`: first seen in
     /// it, not excluded). `null` = every job.
@@ -872,6 +896,7 @@ impl JobQuery {
             band: self.band,
             contracts: self.contracts.clone(),
             work_mode: self.work_mode,
+            origin: self.origin,
             run: self.run,
         }
     }
@@ -1076,6 +1101,12 @@ pub struct SettingsPatch {
     /// Fetch by itself at the start and every four hours.
     #[serde(default)]
     pub auto_fetch: Option<bool>,
+    /// "Jobs abrufen" reads the alert mails.
+    #[serde(default)]
+    pub fetch_mail: Option<bool>,
+    /// "Jobs abrufen" searches the sources.
+    #[serde(default)]
+    pub fetch_search: Option<bool>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
     /// The palette the user chose (Einstellungen, Darstellung).
@@ -1113,6 +1144,12 @@ impl SettingsPatch {
         }
         if let Some(on) = self.auto_fetch {
             settings.auto_fetch = on;
+        }
+        if let Some(on) = self.fetch_mail {
+            settings.fetch_mail = on;
+        }
+        if let Some(on) = self.fetch_search {
+            settings.fetch_search = on;
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
@@ -1639,8 +1676,13 @@ pub struct AppState {
     pub export_excel: bool,
     /// The CSV file is written with every export.
     pub export_csv: bool,
-    /// The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`).
+    /// The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`);
+    /// off and not shown for now (`settings::AUTO_SHOWN`).
     pub auto_fetch: bool,
+    /// "Jobs abrufen" reads the alert mails (the menu beside the button).
+    pub fetch_mail: bool,
+    /// "Jobs abrufen" searches the sources (the menu beside the button).
+    pub fetch_search: bool,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
     /// The colours of the page and the window (Excel and the icon keep Light).
@@ -1996,6 +2038,7 @@ mod tests {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            origin: None,
             run: None,
             limit,
             offset,
@@ -2005,6 +2048,55 @@ mod tests {
     /// The filter narrows the list and every count like the search: one portal's jobs, or
     /// only the jobs scored in one band (unscored and excluded ones only without it). A query
     /// without the fields, or with the fields of an earlier version, reads as none.
+    #[test]
+    fn the_origin_says_how_a_job_came_and_filters_by_it() {
+        let store = Store::in_memory().unwrap();
+        let run = store.begin_run().unwrap();
+        let now = Timestamp::now();
+        let both = job_link("https://www.linkedin.com/jobs/view/4000000001/").unwrap();
+        let found = job_link("https://www.hays.de/jobsuche/stellenangebote-jobs-detail-x-896260/1")
+            .unwrap();
+        let posting = |link: &crate::portal::JobLink| {
+            Posting::new(link.key.clone(), link.url.clone(), "T", "", "")
+        };
+        let mail = MailRef {
+            subject: "Neue Jobs",
+            date: None,
+            gmail_id: None,
+        };
+        store
+            .upsert_posting(run, &posting(&both), mail, now)
+            .unwrap();
+        store
+            .record_found(run, &[posting(&both), posting(&found)], now)
+            .unwrap();
+        let page = |origin| {
+            let mut q = query(Place::Inbox, false, JobSort::Newest, 50, 0);
+            q.origin = origin;
+            let page = job_page(&store, &q).unwrap();
+            let mut keys: Vec<(String, Vec<Origin>)> = page
+                .jobs
+                .iter()
+                .map(|job| (job.key.portal.key().to_owned(), job.origins.clone()))
+                .collect();
+            keys.sort_by(|a, b| a.0.cmp(&b.0));
+            keys
+        };
+        assert_eq!(
+            page(None),
+            [
+                ("hays".to_owned(), vec![Origin::Search]),
+                ("linkedin".to_owned(), vec![Origin::Mail, Origin::Search])
+            ]
+        );
+        assert_eq!(page(Some(Origin::Mail)).len(), 1);
+        assert_eq!(
+            page(Some(Origin::Search)).len(),
+            2,
+            "a job of both counts for both"
+        );
+    }
+
     #[test]
     fn the_filter_narrows_list_and_counts() {
         let store = four_jobs();
@@ -2081,6 +2173,7 @@ mod tests {
                 band: Some(Band::Low),
                 contracts: vec!["interim".into(), "anue".into()],
                 work_mode: Some(WorkMode::Onsite),
+                origin: None,
                 run: Some(7),
             }
         );

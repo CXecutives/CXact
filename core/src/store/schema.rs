@@ -12,7 +12,12 @@ use super::marks::{SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS, S
 use super::matches::SCHEMA_3_JOB_COLUMNS;
 use crate::error::{Error, Result};
 
-pub(super) const SCHEMA_VERSION: i64 = 6;
+pub(super) const SCHEMA_VERSION: i64 = 7;
+
+/// The columns of schema 7: when an alert mail last named a job and when the search last
+/// found it (the list's filter "Herkunft"; both can be set).
+pub(super) const SCHEMA_7_JOB_COLUMNS: &[(&str, &str)] =
+    &[("mailed_at", "INTEGER"), ("searched_at", "INTEGER")];
 
 /// Schema 2, the base of every fresh database. Frozen: later changes are migration steps.
 /// The same layout lies in `core/tests/fixtures/schema_v2.sql` for the migration tests.
@@ -119,6 +124,36 @@ fn migrate_5_to_6() -> String {
     format!("{SCHEMA_6_EXTRA}\n")
 }
 
+/// Sources taken out again (user decision 2026-10-01: Robert Half and Etengo brought hardly a
+/// fitting job). Nobody kept data of them (the app was not given out yet): schema 7 drops
+/// their rows, so no stored row names a source the app no longer knows.
+const REMOVED_SOURCES: [&str; 2] = ["etengo", "roberthalf"];
+
+/// From schema 6 to 7: how a job came (the times of [`SCHEMA_7_JOB_COLUMNS`]; the jobs so far
+/// by their mail, a job without one the search found), and the removed sources' rows go.
+fn migrate_6_to_7() -> String {
+    let mut sql = String::new();
+    for (name, sql_type) in SCHEMA_7_JOB_COLUMNS {
+        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
+    }
+    sql.push_str(
+        "UPDATE job SET mailed_at = COALESCE(mail_date, first_seen_at)
+          WHERE mail_subject <> '' OR gmail_id IS NOT NULL;
+         UPDATE job SET searched_at = first_seen_at
+          WHERE mail_subject = '' AND gmail_id IS NULL;\n",
+    );
+    for source in REMOVED_SOURCES {
+        for table in ["job", "alert_mail", "tombstone"] {
+            let _ = writeln!(sql, "DELETE FROM {table} WHERE portal = '{source}';");
+        }
+        let _ = writeln!(
+            sql,
+            "UPDATE job SET dup_of = NULL WHERE dup_of LIKE '{source}:%';"
+        );
+    }
+    sql
+}
+
 /// One step per version: `steps()[v - 1]` leads from `v` to `v + 1`.
 fn steps() -> Vec<String> {
     vec![
@@ -127,6 +162,7 @@ fn steps() -> Vec<String> {
         migrate_3_to_4(),
         migrate_4_to_5(),
         migrate_5_to_6(),
+        migrate_6_to_7(),
     ]
 }
 
@@ -185,6 +221,7 @@ mod tests {
     const FIXTURE_V4: &str = include_str!("../../tests/fixtures/schema_v4.sql");
     /// The frozen schema 5 - the database before the application mark.
     const FIXTURE_V5: &str = include_str!("../../tests/fixtures/schema_v5.sql");
+    const FIXTURE_V6: &str = include_str!("../../tests/fixtures/schema_v6.sql");
 
     fn columns(conn: &Connection, table: &str) -> Vec<(String, String, bool)> {
         let mut stmt = conn
@@ -288,6 +325,69 @@ mod tests {
             assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
         }
         assert_eq!(indexes(&fixture), indexes(&code));
+    }
+
+    /// The frozen schema 6 is what the chain made of schema 5.
+    #[test]
+    fn the_fixture_is_schema_6() {
+        let fixture = Connection::open_in_memory().unwrap();
+        fixture.execute_batch(FIXTURE_V6).unwrap();
+        let code = Connection::open_in_memory().unwrap();
+        code.execute_batch(&format!(
+            "{SCHEMA_2}{}{}{}{}",
+            migrate_2_to_3(),
+            migrate_3_to_4(),
+            migrate_4_to_5(),
+            migrate_5_to_6()
+        ))
+        .unwrap();
+        for table in ["job", "alert_mail", "kv", "tombstone"] {
+            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
+        }
+        assert_eq!(indexes(&fixture), indexes(&code));
+    }
+
+    /// Schema 6 with data: a job knows how it came (its mail, else the search), and the
+    /// removed sources' rows are gone.
+    #[test]
+    fn a_schema_6_database_learns_how_its_jobs_came() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jobs.db");
+        let old = Connection::open(&path).unwrap();
+        old.execute_batch(&format!(
+            "{FIXTURE_V6} PRAGMA user_version = 6;
+             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
+                              gmail_id, first_seen_at, first_seen_run, last_seen_run, search)
+             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
+                     'Mail', '', '', 'Neue Jobs', '18f0', 100, 1, 1, ''),
+                    ('hays', '896260', 'https://www.hays.de/x', 'Gesucht', '', '', '', NULL,
+                     200, 2, 2, ''),
+                    ('etengo', '103313', 'https://www.etengo.de/it-projektsuche/103313/',
+                     'Weg', '', '', '', NULL, 300, 3, 3, '');
+             INSERT INTO tombstone (portal, job_id, deleted_at) VALUES ('roberthalf', '1', 1);"
+        ))
+        .unwrap();
+        drop(old);
+        let store = Store::open(&path).unwrap();
+        let conn = store.conn();
+        let came: Vec<(String, Option<i64>, Option<i64>)> = conn
+            .prepare("SELECT portal, mailed_at, searched_at FROM job ORDER BY portal")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(
+            came,
+            [
+                ("hays".to_owned(), None, Some(200)),
+                ("linkedin".to_owned(), Some(100), None)
+            ]
+        );
+        let tombstones: i64 = conn
+            .query_row("SELECT COUNT(*) FROM tombstone", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(tombstones, 0, "no row names a removed source");
     }
 
     /// Schema 5 with data: the favourite, the places and the deleted jobs stay.
@@ -575,6 +675,7 @@ mod tests {
             .iter()
             .chain(SCHEMA_4_JOB_COLUMNS)
             .chain(SCHEMA_5_JOB_COLUMNS)
+            .chain(SCHEMA_7_JOB_COLUMNS)
         {
             let column = if *column == "hidden_at" {
                 "archived_at"
@@ -589,8 +690,13 @@ mod tests {
                 .any(|name| name == "job_by_date"),
             "the overview's date window has its index"
         );
-        // The same from the frozen schemas 3, 4 and 5.
-        for (version, fixture) in [(3, FIXTURE_V3), (4, FIXTURE_V4), (5, FIXTURE_V5)] {
+        // The same from the frozen schemas 3, 4, 5 and 6.
+        for (version, fixture) in [
+            (3, FIXTURE_V3),
+            (4, FIXTURE_V4),
+            (5, FIXTURE_V5),
+            (6, FIXTURE_V6),
+        ] {
             let path = dir.path().join(format!("v{version}.db"));
             let old = Connection::open(&path).unwrap();
             old.execute_batch(&format!("{fixture} PRAGMA user_version = {version};"))

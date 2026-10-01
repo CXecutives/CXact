@@ -129,12 +129,16 @@ class RunStore {
     return t.error.text('busy', { activity: this.kind });
   }
 
-  /** Why a run that reads the mailbox (Postfach abrufen) cannot start now, in the
-   *  order she would fix it: a run holds the app, no mailbox, no portal switched on; null
-   *  when it can (the demo fetches from its made-up mailbox). The backend refuses the same. */
+  /** Why "Jobs abrufen" cannot start now, in the order she would fix it: a run holds the
+   *  app, neither the alert mails nor the search is switched on in its menu, no mailbox for
+   *  the mails and nothing to search, no portal switched on; null when it can (the demo
+   *  fetches from its made-up mailbox). The backend refuses the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
-    if (!app.hasMailbox && !app.searches) return t.toolbar.needsMailbox;
+    if (!app.readsMail && !(app.state?.fetchSearch ?? true)) return t.toolbar.needsWay;
+    if (!app.searches && !(app.readsMail && app.hasMailbox)) {
+      return app.readsMail ? t.toolbar.needsMailbox : t.toolbar.needsPortal;
+    }
     if (!app.hasPortal) return t.toolbar.needsPortal;
     return null;
   }

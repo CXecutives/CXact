@@ -39,6 +39,8 @@ const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   exportExcel: null,
   exportCsv: null,
   autoFetch: null,
+  fetchMail: null,
+  fetchSearch: null,
   language: null,
   palette: null,
   ...change,
@@ -421,9 +423,7 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
     ['hays', 18],
     ['michaelpage', 6],
     ['solcom', 6],
-    ['etengo', 6],
     ['gulp', 0],
-    ['roberthalf', 0],
     ['interimx', 0],
   ] as const) {
     const quota = page.getByTestId(`quota-${portal}`);
@@ -466,7 +466,19 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
 });
 
-test('Automatisch abrufen: on by default, first in Suche, saved at once', async ({ page }) => {
+test('no Automatisch abrufen: the app fetches only by hand', async ({ page }) => {
+  await settings(page);
+  // Hidden for now (user, 2026-10-01): Suche begins with its sources.
+  await expect(page.getByTestId('auto-fetch')).toHaveCount(0);
+  await expect(page.getByTestId('settings')).not.toContainText(T.settings.autoFetch);
+  await expect(
+    page.getByTestId('portals-search').locator(':scope > [data-setting-row]').first(),
+  ).toHaveAttribute('data-testid', 'portal-hays');
+});
+
+test.skip('Automatisch abrufen: first in Suche, saved at once (while it is shown)', async ({
+  page,
+}) => {
   await settings(page);
   const row = page.getByTestId('settings-search').getByTestId('auto-fetch');
   await expect(row).toContainText(T.settings.autoFetch);

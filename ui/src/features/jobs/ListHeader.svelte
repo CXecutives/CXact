@@ -168,15 +168,16 @@
   /** The fetch's colour: the view's primary once a fetch can bring jobs. */
   const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
 
-  /** The Zeitraum's menu below the fetch and its button, its right edge on the button's. */
+  /** "Abruf einstellen" below the fetch and its button, its right edge on the button's. */
   function openRange(event: MouseEvent): void {
     const control = (event.currentTarget as HTMLElement | null)?.closest('.fetch');
     if (!control || menuState.open !== null) return;
     rangeOpen = true;
     openMenu({
-      label: t.toolbar.range,
+      label: t.toolbar.fetchSettings,
       anchor: { kind: 'below', rect: control.getBoundingClientRect(), align: 'end' },
       entries: rangeEntries(),
+      refresh: rangeEntries,
       fromKeyboard: event.detail === 0,
       onclose: () => (rangeOpen = false),
     });
@@ -260,7 +261,7 @@
         variant="secondary"
         iconOnly
         icon="range"
-        label={t.toolbar.range}
+        label={t.toolbar.fetchSettings}
         menu
         expanded={inbox && rangeOpen}
         disabled={run.fetching}

@@ -194,7 +194,11 @@ fn run_context(
     if scans && enabled.is_empty() {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
-    let credentials = if state.dry_run || state.demo || !scans {
+    // The menu beside "Jobs abrufen": the alert mails, the search, or both.
+    if scans && !settings.fetch_mail && !settings.fetch_search {
+        return Err(ErrorInfo::from(&InvalidInput::NoFetchWay));
+    }
+    let credentials = if state.dry_run || state.demo || !scans || !settings.fetch_mail {
         None
     } else {
         Vault::app().load_gmail()?
@@ -203,7 +207,7 @@ fn run_context(
     // A fetch searches the sources that have a search (not the dry run: its made-up mails are
     // all it has; the demo's search shows its own ads), with the active profile's search
     // terms.
-    let search_portals: Vec<Portal> = if scans && !state.dry_run {
+    let search_portals: Vec<Portal> = if scans && !state.dry_run && settings.fetch_search {
         enabled
             .iter()
             .copied()
@@ -233,7 +237,7 @@ fn run_context(
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
         // Without a mailbox a fetch only searches (with nothing to search the scan says the
         // mailbox is missing).
-        read_mail: state.dry_run || state.demo || credentials.is_some(),
+        read_mail: settings.fetch_mail && (state.dry_run || state.demo || credentials.is_some()),
         search_portals,
         search_terms,
     };

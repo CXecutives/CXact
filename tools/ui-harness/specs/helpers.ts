@@ -33,9 +33,7 @@ export const SEARCHED: readonly Portal[] = [
   'freelancermap',
   'michaelpage',
   'solcom',
-  'etengo',
   'gulp',
-  'roberthalf',
   'interimx',
 ];
 export const ALERT_PORTALS: readonly Portal[] = PORTAL_ORDER.filter(

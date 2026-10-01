@@ -1,6 +1,7 @@
 // The two menus of the list header (ListHeader.svelte) as the list stands now: the funnel's
-// "Sortieren und filtern" and the "Zeitraum" of the icon button beside "Postfach abrufen". Both
-// read the tables (lib/state/filter.ts, FETCH_RANGES) and the catalog; the header opens them.
+// "Sortieren und filtern" and "Abruf einstellen" of the icon button beside "Jobs abrufen"
+// (the alert mails, the search, the Zeitraum). Both read the tables (lib/state/filter.ts,
+// FETCH_RANGES) and the catalog; the header opens them.
 
 import { t } from '$lib/i18n/t';
 import type { Portal } from '$lib/ipc/types';
@@ -69,21 +70,37 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
 }
 
 /**
- * "Zeitraum": which alert mails "Postfach abrufen" reads, the current one checked. A choice is
- * saved at once (lib/state/app.svelte.ts); a save that failed says so under the header.
+ * "Abruf einstellen": what "Jobs abrufen" does (user decision 2026-10-01), two switches that
+ * keep the menu open, the alert mails and the search; then "Zeitraum", which alert mails it
+ * reads, the current one checked. A choice is saved at once (lib/state/app.svelte.ts); a
+ * save that failed says so under the header.
  */
 export function rangeEntries(): MenuEntry[] {
   const current = app.state?.fetchRange ?? null;
+  const said = (error: string | null): void => {
+    if (error !== null) jobs.actionError = error;
+  };
+  const way = (id: string, key: 'fetchMail' | 'fetchSearch', label: string): MenuEntry => {
+    const on = app.state?.[key] ?? true;
+    return {
+      id,
+      label,
+      checked: on,
+      toggle: true,
+      stays: true,
+      run: () => void app.setFetchWay(key, !on).then(said),
+    };
+  };
   return [
+    way('fetch-mail', 'fetchMail', t.toolbar.fetchMail),
+    way('fetch-search', 'fetchSearch', t.toolbar.fetchSearch),
+    { kind: 'separator' },
     { kind: 'heading', label: t.toolbar.range },
     ...FETCH_RANGES.map((range): MenuEntry => ({
       id: `range-${range}`,
       label: t.toolbar.rangeName[range],
       checked: current === range,
-      run: () =>
-        void app.setFetchRange(range).then((error) => {
-          if (error !== null) jobs.actionError = error;
-        }),
+      run: () => void app.setFetchRange(range).then(said),
     })),
   ];
 }

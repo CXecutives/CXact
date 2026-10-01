@@ -34,6 +34,7 @@ export type { MoveBack } from "./MoveBack";
 export type { NewJobs } from "./NewJobs";
 export type { Notice } from "./Notice";
 export type { OpenTarget } from "./OpenTarget";
+export type { Origin } from "./Origin";
 export type { Outcome } from "./Outcome";
 export type { Palette } from "./Palette";
 export type { PauseReason } from "./PauseReason";

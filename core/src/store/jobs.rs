@@ -19,7 +19,7 @@ use crate::model::{
 use crate::portal::{Facts, JobKey, Portal};
 use crate::text::{one_line, page_location, split_company_location, truncate_chars};
 use crate::time::{from_db, to_db};
-use crate::view::WorkMode;
+use crate::view::{Origin, WorkMode};
 
 /// Maximum length of a stored failure reason (in characters).
 const MAX_ERROR_CHARS: usize = 200;
@@ -75,6 +75,10 @@ pub struct JobRow {
     pub trashed_at: Option<Timestamp>,
     /// The user marked the job as fitting although the engine excludes it.
     pub override_include: bool,
+    /// When an alert mail last named the job (`None`: none did).
+    pub mailed_at: Option<Timestamp>,
+    /// When the app's search last found the job (`None`: it never did).
+    pub searched_at: Option<Timestamp>,
 }
 
 impl JobRow {
@@ -111,6 +115,8 @@ pub struct ListFilter {
     /// location's work mode (`view::work_mode`) only where they state none. A job whose mode
     /// is unknown passes none.
     pub work_mode: Option<WorkMode>,
+    /// Only jobs an alert mail named, or only those the search found (`None` = every job).
+    pub origin: Option<Origin>,
 }
 
 impl ListFilter {
@@ -129,6 +135,7 @@ impl ListFilter {
             ),
             text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
             self.run.map_or(Value::Null, Value::Integer),
+            text(self.origin.map(|origin| origin_key(origin).to_owned())),
         ]
     }
 }
@@ -149,6 +156,14 @@ const fn mode_key(mode: WorkMode) -> &'static str {
         WorkMode::Remote => "remote",
         WorkMode::Hybrid => "hybrid",
         WorkMode::Onsite => "onsite",
+    }
+}
+
+/// An origin as [`filter_condition`] names it in SQL (constants of the code, never input).
+const fn origin_key(origin: Origin) -> &'static str {
+    match origin {
+        Origin::Mail => "mail",
+        Origin::Search => "search",
     }
 }
 
@@ -215,15 +230,17 @@ fn page_order(query: &PageQuery, p: &str) -> String {
 }
 
 /// How many values [`filter_condition`] binds ([`ListFilter::values`]).
-pub(super) const FILTER_VALUES: usize = 6;
+pub(super) const FILTER_VALUES: usize = 7;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
 /// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score
 /// of the band and the lowest one above it, a JSON array of contract types, the work mode
-/// and the run (each `NULL` for none). Contract type and remote share come from the key facts
-/// in the match note, the work mode without a share from the location.
+/// the run and the origin (each `NULL` for none). Contract type and remote share come from the
+/// key facts in the match note, the work mode without a share from the location; the origin
+/// from the times an alert mail named the job (`mailed_at`) and the search found it
+/// (`searched_at`).
 pub(super) fn filter_condition(first: usize) -> String {
-    let [portal, from, below, contracts, mode, run] =
+    let [portal, from, below, contracts, mode, run, origin] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
         "({portal} IS NULL OR portal = {portal})
@@ -233,7 +250,9 @@ pub(super) fn filter_condition(first: usize) -> String {
                                      IN (SELECT value FROM json_each({contracts})))
          AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))
          AND ({run} IS NULL OR (first_seen_run = {run}
-                                AND match_status IS NOT 'excluded'))",
+                                AND match_status IS NOT 'excluded'))
+         AND ({origin} IS NULL OR ({origin} = 'mail' AND mailed_at IS NOT NULL)
+                               OR ({origin} = 'search' AND searched_at IS NOT NULL))",
         contract = fact("", "contract"),
         job_mode = job_mode(),
     )
@@ -378,7 +397,11 @@ impl Store {
         mail: MailRef<'_>,
         now: Timestamp,
     ) -> Result<Seen> {
-        self.write(|conn| upsert(conn, run, posting, mail, now))
+        self.write(|conn| {
+            let seen = upsert(conn, run, posting, mail, now)?;
+            came(conn, &posting.key, Origin::Mail, now)?;
+            Ok(seen)
+        })
     }
 
     /// Records a recognised alert mail with its entries - as one change. A mail without
@@ -404,7 +427,11 @@ impl Store {
             alert
                 .postings
                 .iter()
-                .map(|posting| upsert(conn, run, posting, MailRef::from(alert), now))
+                .map(|posting| {
+                    let seen = upsert(conn, run, posting, MailRef::from(alert), now)?;
+                    came(conn, &posting.key, Origin::Mail, now)?;
+                    Ok(seen)
+                })
                 .collect()
         })
     }
@@ -439,7 +466,11 @@ impl Store {
         self.write(|conn| {
             postings
                 .iter()
-                .map(|posting| upsert(conn, run, posting, none, now))
+                .map(|posting| {
+                    let seen = upsert(conn, run, posting, none, now)?;
+                    came(conn, &posting.key, Origin::Search, now)?;
+                    Ok(seen)
+                })
                 .collect()
         })
     }
@@ -912,8 +943,8 @@ pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, locat
     mail_subject, gmail_id, first_seen_at, first_seen_run, desc_status, desc_short, desc_closed,
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
     txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
-    desc_facts, archived_at, trashed_at, override_include";
-pub(super) const JOB_COLUMN_COUNT: usize = 29;
+    desc_facts, archived_at, trashed_at, override_include, mailed_at, searched_at";
+pub(super) const JOB_COLUMN_COUNT: usize = 31;
 
 /// The jobs whose ads the app fetches by itself: the inbox - never the archive, the trash or
 /// a duplicate (its original's row stands for it; a merged guest teaser would cost a
@@ -1003,6 +1034,8 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         archived_at: r.get::<_, Option<i64>>(col(26))?.and_then(from_db),
         trashed_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
         override_include: r.get::<_, Option<i64>>(col(28))?.is_some(),
+        mailed_at: r.get::<_, Option<i64>>(col(29))?.and_then(from_db),
+        searched_at: r.get::<_, Option<i64>>(col(30))?.and_then(from_db),
     }))
 }
 
@@ -1011,6 +1044,20 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
 /// placeholder - never replaced just because another value is longer. A job an older mail
 /// parser read ([`MAIL_PARSER_VERSION`]) and whose page is not read yet takes the current
 /// parser's title and details: that heals what the older one got wrong.
+/// The job came again this way (an alert mail named it, the search found it): the time of
+/// it, for the filter "Herkunft". A job deleted for good has no row: nothing to mark.
+fn came(conn: &Connection, key: &JobKey, origin: Origin, now: Timestamp) -> Result<()> {
+    let column = match origin {
+        Origin::Mail => "mailed_at",
+        Origin::Search => "searched_at",
+    };
+    conn.execute(
+        &format!("UPDATE job SET {column} = ?3 WHERE portal = ?1 AND job_id = ?2"),
+        params![key.portal.key(), key.id, to_db(now)],
+    )?;
+    Ok(())
+}
+
 fn upsert(
     conn: &Connection,
     run: i64,

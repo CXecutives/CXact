@@ -201,7 +201,7 @@ test.describe('header', () => {
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('Postfach abrufen has the Zeitraum beside it: an outlined icon button with its menu', async ({
+  test('Jobs abrufen has Abruf einstellen beside it: an outlined icon button with its menu', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -218,18 +218,25 @@ test.describe('header', () => {
     await expect(fetch).toHaveClass(/primary/);
     await expect(chevron).toHaveClass(/secondary/);
     await expect(chevron.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
-    await expect(chevron).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(chevron).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
     await expect(chevron).toHaveAttribute('aria-haspopup', 'menu');
-    // Its menu: "Zeitraum" and the four ranges, the current one checked.
+    // Its menu: the alert mails and the search, both on, then "Zeitraum" and the four
+    // ranges, the current one checked.
     const ranges: FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
     await chevron.click();
     const menu = page.getByTestId('menu');
-    await expect(menu).toHaveAttribute('aria-label', T.toolbar.range);
+    await expect(menu).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
     await expect(chevron).toHaveAttribute('aria-expanded', 'true');
     await expect(menu.getByTestId('menu-heading')).toHaveText([T.toolbar.range]);
-    await expect(menu.locator('[role^="menuitem"]')).toHaveText(
-      ranges.map((range) => T.toolbar.rangeName[range]),
-    );
+    await expect(menu.locator('[role^="menuitem"]')).toHaveText([
+      T.toolbar.fetchMail,
+      T.toolbar.fetchSearch,
+      ...ranges.map((range) => T.toolbar.rangeName[range]),
+    ]);
+    for (const way of ['fetch-mail', 'fetch-search']) {
+      await expect(menuItem(page, way)).toHaveAttribute('role', 'menuitemcheckbox');
+      await expect(menuItem(page, way)).toHaveAttribute('aria-checked', 'true');
+    }
     await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'true');
     // Right edge on the control's.
     const box = (await menu.boundingBox())!;
@@ -263,6 +270,34 @@ test.describe('header', () => {
     await cancel.click();
     await runFinished(page);
     await expect(chevron).toBeEnabled();
+  });
+
+  test('the alert mails and the search switch on their own; with neither the fetch waits', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    const fetch = page.getByTestId('fetch');
+    await page.getByTestId('fetch-range').click();
+    // A switch keeps the menu open and is saved at once.
+    await menuItem(page, 'fetch-search').click();
+    await expect(menuItem(page, 'fetch-search')).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByTestId('menu')).toBeVisible();
+    await expect
+      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
+      .toMatchObject({ patch: { fetchSearch: false, fetchMail: null } });
+    // Alert mails only: the fetch still works.
+    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await menuItem(page, 'fetch-mail').click();
+    await expect(menuItem(page, 'fetch-mail')).toHaveAttribute('aria-checked', 'false');
+    await page.keyboard.press('Escape');
+    // Neither: the fetch waits and says what to switch on.
+    await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+    await fetch.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsWay);
+    await page.getByTestId('fetch-range').click();
+    await menuItem(page, 'fetch-search').click();
+    await page.keyboard.press('Escape');
+    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -444,6 +479,24 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
+  test('Herkunft: the jobs of the alert mails or of the search, a job of both in both', async ({
+    page,
+  }) => {
+    await open(page, WIN);
+    await chooseFilter(page, 'origin-search');
+    await expect.poll(async () => (await lastQuery(page))?.origin).toBe('search');
+    // The search found freelancermap's jobs (its alert mails brought them too).
+    const searched = await stubList(page, { origin: 'search' });
+    expect(searched.active.length).toBeGreaterThan(0);
+    expect(searched.active.every((key) => key.startsWith('freelancermap-'))).toBe(true);
+    await expect(chip(page, 'origin')).toContainText(T.toolbar.originChip.search);
+    await chooseFilter(page, 'origin-mail');
+    await expect.poll(async () => (await lastQuery(page))?.origin).toBe('mail');
+    await expect(chip(page, 'origin')).toContainText(T.toolbar.originChip.mail);
+    const mailed = await stubList(page, { origin: 'mail' });
+    expect(mailed.active).toEqual(expect.arrayContaining(searched.active));
+  });
+
   test('one menu: Sortierung, Quelle, Übereinstimmung, Vertragsart, Arbeitsmodell, Nur neue, none chosen', async ({
     page,
   }) => {
@@ -455,6 +508,7 @@ test.describe('filter', () => {
     await expect(menu.getByTestId('menu-heading')).toHaveText([
       T.toolbar.sortHeading,
       T.toolbar.portalHeading,
+      T.toolbar.originHeading,
       T.toolbar.bandHeading,
       T.toolbar.contractHeading,
       T.toolbar.workHeading,
@@ -507,11 +561,12 @@ test.describe('filter', () => {
     await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
-    // The whole menu opens below the funnel in the usual window, nothing to scroll.
+    // The whole menu opens below the funnel and stays inside the window; with every group
+    // (and more sources with jobs) it scrolls where the window is too low (2026-10-01).
     const funnelBox = (await funnel(page).boundingBox())!;
     const menuBox = (await menu.boundingBox())!;
     expect(menuBox.y).toBeGreaterThanOrEqual(funnelBox.y + funnelBox.height);
-    expect(await menu.evaluate((node) => node.scrollHeight - node.clientHeight)).toBe(0);
+    expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(page.viewportSize()!.height);
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-expanded', 'false');

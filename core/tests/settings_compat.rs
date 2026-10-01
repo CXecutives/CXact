@@ -64,9 +64,7 @@ fn newest() -> Settings {
             (Portal::Hays, switches(false, false)),
             (Portal::MichaelPage, switches(false, false)),
             (Portal::Solcom, switches(false, false)),
-            (Portal::Etengo, switches(false, false)),
             (Portal::Gulp, switches(false, false)),
-            (Portal::RobertHalf, switches(false, false)),
             (Portal::InterimX, switches(false, false)),
         ]),
         fetch_range: FetchRange::Days30,
@@ -74,7 +72,9 @@ fn newest() -> Settings {
         export_csv: true,
         language: Some(Language::En),
         palette: Palette::Dark,
-        auto_fetch: false,
+        auto_fetch: true,
+        fetch_mail: false,
+        fetch_search: false,
     }
 }
 
@@ -130,9 +130,7 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
             (Portal::Hays, switches(false, false)),
             (Portal::MichaelPage, switches(false, false)),
             (Portal::Solcom, switches(false, false)),
-            (Portal::Etengo, switches(false, false)),
             (Portal::Gulp, switches(false, false)),
-            (Portal::RobertHalf, switches(false, false)),
             (Portal::InterimX, switches(false, false)),
         ]),
         ..Settings::default()
@@ -163,9 +161,7 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::Hays, switches(true, false)),
             (Portal::MichaelPage, switches(true, false)),
             (Portal::Solcom, switches(true, false)),
-            (Portal::Etengo, switches(true, false)),
             (Portal::Gulp, switches(true, false)),
-            (Portal::RobertHalf, switches(true, false)),
             (Portal::InterimX, switches(true, false)),
         ]),
         language: Some(Language::En),
@@ -179,8 +175,8 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
     assert_eq!(keys(&saved), keys(&default), "saving writes today's form");
 }
 
-/// The file of 3.0.0 before the search (2026-10-01): Hays comes switched on, and so does the
-/// automatic fetch.
+/// The file of 3.0.0 before the search (2026-10-01): the sources come switched on, the
+/// automatic fetch off, and "Jobs abrufen" reads the mails and searches.
 #[test]
 fn the_file_before_the_search_loads_with_the_new_source_on() {
     let loaded = load(&fixture("3.0.0-2.json"));
@@ -189,16 +185,16 @@ fn the_file_before_the_search_loads_with_the_new_source_on() {
         Portal::Hays,
         Portal::MichaelPage,
         Portal::Solcom,
-        Portal::Etengo,
         Portal::Gulp,
-        Portal::RobertHalf,
         Portal::InterimX,
     ] {
         portals.insert(portal, switches(true, false));
     }
     let expected = Settings {
         portals,
-        auto_fetch: true,
+        auto_fetch: false,
+        fetch_mail: true,
+        fetch_search: true,
         ..newest()
     };
     assert_eq!(loaded, expected);
@@ -211,15 +207,13 @@ fn a_file_of_a_newer_version_loads_without_damage() {
     // Unknown fields, an unknown portal and a switch it does not know are skipped; a language,
     // palette or fetch range of a newer version reads as none chosen. Nothing else changes:
     // above all the file is not taken for a damaged one (that would switch every portal off).
-    // Hays and the automatic fetch came after it: at their defaults.
+    // The search sources and the fetch's switches came after it: at their defaults.
     let mut portals = newest().portals;
     for portal in [
         Portal::Hays,
         Portal::MichaelPage,
         Portal::Solcom,
-        Portal::Etengo,
         Portal::Gulp,
-        Portal::RobertHalf,
         Portal::InterimX,
     ] {
         portals.insert(portal, switches(true, false));
@@ -229,7 +223,9 @@ fn a_file_of_a_newer_version_loads_without_damage() {
         palette: Palette::Cxact,
         fetch_range: FetchRange::SinceLast,
         portals,
-        auto_fetch: true,
+        auto_fetch: false,
+        fetch_mail: true,
+        fetch_search: true,
         ..newest()
     };
     assert_eq!(loaded, expected);

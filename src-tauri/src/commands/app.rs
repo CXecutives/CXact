@@ -153,6 +153,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            origin: None,
             run: None,
         },
     )?
@@ -201,6 +202,8 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,
         auto_fetch: settings.auto_fetch,
+        fetch_mail: settings.fetch_mail,
+        fetch_search: settings.fetch_search,
         language: settings.language_or(state.system_language),
         palette: settings.palette,
         last_run,

@@ -37,6 +37,7 @@ import type {
   ReasonWeight,
   RemoteWish,
   WorkMode,
+  Origin,
 } from '../ipc/types';
 import { PROFILE_KEY_FIELD, textOf, type Catalog, type ContractKind, type TermVerdict } from './de';
 import { PORTAL_LABEL } from '../ipc/types/portals';
@@ -201,6 +202,7 @@ const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(
 
 const invalid: Record<InvalidInput['reason'], Text> = {
   noPortal: 'At least one source must be active.',
+  noFetchWay: 'Turn on alert emails or the search first.',
   profileNotUtf8: 'The file is not a text file.',
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
   profileNotObject: 'The file does not contain a profile.',
@@ -781,6 +783,9 @@ export const en: Catalog = {
       days30: 'Last 30 days',
       all: 'All alert emails',
     } satisfies Record<FetchRange, string>,
+    fetchSettings: 'Fetch settings',
+    fetchMail: 'Alert emails',
+    fetchSearch: 'Search',
     cancel: 'Cancel',
     progress: 'Fetch progress',
     sortHeading: 'Sort',
@@ -801,6 +806,15 @@ export const en: Catalog = {
     } satisfies Record<Band, string>,
     bandNoProfile: 'Without a profile, there is no match.',
     contractHeading: 'Contract type',
+    originHeading: 'Found by',
+    origin: {
+      mail: 'Alert emails',
+      search: 'Search',
+    } satisfies Record<Origin, string>,
+    originChip: {
+      mail: 'From alert emails',
+      search: 'From the search',
+    } satisfies Record<Origin, string>,
     workHeading: 'Work model',
     work: {
       remote: 'Remote',
@@ -812,6 +826,7 @@ export const en: Catalog = {
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
     needsPortal: 'Turn on a source first.',
+    needsWay: 'Turn on alert emails or the search first.',
   },
   run: {
     line: {

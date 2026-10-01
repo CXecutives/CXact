@@ -2,7 +2,7 @@
 import type { Portal } from "./Portal";
 
 /** Every portal in the app's order (`Portal::ALL`). */
-export const PORTALS: readonly Portal[] = ["linkedin", "freelance", "freelancermap", "hays", "michaelpage", "solcom", "etengo", "gulp", "roberthalf", "interimx"];
+export const PORTALS: readonly Portal[] = ["linkedin", "freelance", "freelancermap", "hays", "michaelpage", "solcom", "gulp", "interimx"];
 
 /** A portal's name everywhere: its web address (`Portal::label`). */
 export const PORTAL_LABEL: Record<Portal, string> = {
@@ -12,9 +12,7 @@ export const PORTAL_LABEL: Record<Portal, string> = {
   hays: "hays.de",
   michaelpage: "michaelpage.de",
   solcom: "solcom.de",
-  etengo: "etengo.de",
   gulp: "gulp.de",
-  roberthalf: "roberthalf.com",
   interimx: "interim-x.com",
 };
 
@@ -26,8 +24,6 @@ export const PORTAL_MONOGRAM: Record<Portal, string> = {
   hays: "Ha",
   michaelpage: "MP",
   solcom: "so",
-  etengo: "et",
   gulp: "gu",
-  roberthalf: "rh",
   interimx: "ix",
 };

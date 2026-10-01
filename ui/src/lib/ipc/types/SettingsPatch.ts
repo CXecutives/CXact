@@ -26,6 +26,14 @@ exportCsv: boolean | null,
  */
 autoFetch: boolean | null, 
 /**
+ * "Jobs abrufen" reads the alert mails.
+ */
+fetchMail: boolean | null, 
+/**
+ * "Jobs abrufen" searches the sources.
+ */
+fetchSearch: boolean | null, 
+/**
  * The language the user chose (from then on the OS language no longer counts).
  */
 language: Language | null, 

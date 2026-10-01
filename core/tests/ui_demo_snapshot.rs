@@ -168,8 +168,8 @@ fn key_of(ad: &Ad) -> JobKey {
     }
 }
 
-/// Records one ad as its alert mail brought it, with its page unless that comes later
-/// (`pending` or `failed`).
+/// Records one ad as its alert mail brought it (and the search, for a source the app
+/// searches), with its page unless that comes later (`pending` or `failed`).
 fn record(store: &Store, run: i64, ad: &Ad, text: Option<&str>, index: u64) -> JobKey {
     let key = key_of(ad);
     let url = key
@@ -195,6 +195,10 @@ fn record(store: &Store, run: i64, ad: &Ad, text: Option<&str>, index: u64) -> J
         )],
     };
     store.record_alert(run, &alert, seen).unwrap();
+    // A source the app searches found it too (freelancermap: its alert mails and its search).
+    if key.portal.way() == jobalert_core::portal::Way::Search {
+        store.record_found(run, &alert.postings, seen).unwrap();
+    }
     match (ad.detail.as_str(), text) {
         ("ok", Some(text)) => store
             .record_text(&key, text, ad.short, ad.closed, seen)
@@ -267,6 +271,7 @@ fn rows(store: &Store) -> BTreeMap<String, JobView> {
             band: None,
             contracts: Vec::new(),
             work_mode: None,
+            origin: None,
             run: None,
             limit: view::MAX_PAGE,
             offset: 0,

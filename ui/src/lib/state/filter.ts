@@ -6,7 +6,8 @@
 // place (Eingang, Archiv, Papierkorb) and kept per user like the order. The order of the list
 // (SORTS) is the first group of the same menu, "Sortierung", but no part of the filter: it
 // sets no dot and no chip, and "Filter zurücksetzen" leaves it. A group lists every value of
-// its dimension or is not there at all (user decision 2026-09-27): Portal, Übereinstimmung
+// its dimension or is not there at all (user decision 2026-09-27): Quelle, Herkunft (the
+// alert mails or the search, user decision 2026-10-01), Übereinstimmung
 // (Hoch, Mittel, Gering), Vertragsart and Arbeitsmodell (Remote, Hybrid, Vor Ort) under a
 // heading, "Nur neue" a switch of its own. None is checked while a group filters nothing: a
 // choice is checked while it is on, another one of its group takes over, a second click
@@ -18,7 +19,7 @@
 // Plain TypeScript with type-only imports: the harness imports it as it is.
 
 import type { Catalog } from '../i18n/de';
-import type { Band, JobQuery, JobSort, JobView, Portal, WorkMode } from '../ipc/types';
+import type { Band, JobQuery, JobSort, JobView, Origin, Portal, WorkMode } from '../ipc/types';
 
 /** The contract types the filter offers (KeyFacts.contract). */
 export const CONTRACTS = ['interim', 'freelance', 'permanent', 'anue'] as const;
@@ -30,10 +31,15 @@ export const BANDS: readonly Band[] = ['high', 'mid', 'low'];
 /** The work modes the filter offers. */
 export const WORK_MODES: readonly WorkMode[] = ['remote', 'hybrid', 'onsite'];
 
+/** How a job came, as the filter offers it (user decision 2026-10-01). */
+export const ORIGINS: readonly Origin[] = ['mail', 'search'];
+
 /** The filter: each group's choice, null = none (`toQuery` hands it to the JobQuery). */
 export interface ListFilter {
   /** Only this portal's jobs. */
   portal: Portal | null;
+  /** Only jobs an alert mail named, or only those the search found (a job can be both). */
+  origin: Origin | null;
   /** Only jobs scored in this band (unscored and excluded jobs never pass). */
   band: Band | null;
   /** Only jobs of this contract type. */
@@ -50,6 +56,7 @@ export interface ListFilter {
 
 export const NO_FILTER: ListFilter = {
   portal: null,
+  origin: null,
   band: null,
   contract: null,
   workMode: null,
@@ -79,6 +86,7 @@ export function toQuery(
   return {
     unread: filter.unread === true,
     portal: filter.portal,
+    origin: filter.origin,
     band: filter.band,
     contracts: filter.contract === null ? [] : [filter.contract],
     workMode: filter.workMode,
@@ -164,6 +172,21 @@ const CONTRACT: FilterGroup<'contract'> = {
   passes: (job, contract) => job.match?.facts.contract === contract,
 };
 
+const ORIGIN: FilterGroup<'origin'> = {
+  key: 'origin',
+  heading: (w) => w.toolbar.originHeading,
+  entries: () =>
+    ORIGINS.map((origin) => ({
+      id: `origin-${origin}`,
+      value: origin,
+      label: (w) => w.toolbar.origin[origin],
+      chip: (w) => w.toolbar.originChip[origin],
+    })),
+  needsProfile: null,
+  valid: (value) => ORIGINS.includes(value as Origin),
+  passes: (job, origin) => job.origins.includes(origin),
+};
+
 const WORK_MODE: FilterGroup<'workMode'> = {
   key: 'workMode',
   heading: (w) => w.toolbar.workHeading,
@@ -188,7 +211,14 @@ const UNREAD: FilterGroup<'unread'> = {
 };
 
 /** The groups of the filter in the menu's order (and the chips'). */
-export const FILTER_GROUPS: readonly FilterGroup[] = [PORTAL, BAND, CONTRACT, WORK_MODE, UNREAD];
+export const FILTER_GROUPS: readonly FilterGroup[] = [
+  PORTAL,
+  ORIGIN,
+  BAND,
+  CONTRACT,
+  WORK_MODE,
+  UNREAD,
+];
 
 /** Some part of the filter is chosen (the run of a fetch's "Zeigen" too). */
 export function isFiltered(filter: ListFilter): boolean {

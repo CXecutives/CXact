@@ -1068,3 +1068,13 @@ handle sits between list and reader".
   `/de/de/jobs/deutschland/<term>` (interim and project roles only), interim-x's project list (every project).
   Their alert mails are still read where they come: the reader needs no code per source (tests with made-up
   layouts in `mail/tests.rs`). A reader for unknown sources stays out: no ad reader, robots.txt or pace per source
+- [x] Only the best sources (user 2026-10-01): Robert Half (almost only permanent posts) and Etengo (IT and SAP
+  only) are out for good, code and data (schema 7 drops their rows; `policy.json` and the settings skip a source
+  they do not know). Eight remain: LinkedIn, freelance.de (alert mails), Hays, freelancermap, SOLCOM, GULP,
+  Michael Page, interim-x (search)
+- [x] Only by hand (user 2026-10-01): no automatic fetch; "Automatisch abrufen" hidden (`AUTO_SHOWN`, its code
+  stays). The icon button beside "Jobs abrufen" is "Abruf einstellen": switches "Alert-Mails" and "Suche" (kept
+  in the settings, `fetchMail`, `fetchSearch`), then the Zeitraum; with neither the fetch waits and says why.
+  The list's filter "Herkunft" (Alert-Mails, Suche; a job can be both, `mailed_at`, `searched_at` of schema 7).
+  The funnel's menu may scroll now where the window is low (eight sources with jobs)
+- The Jobansicht stays as it is (user 2026-10-01)

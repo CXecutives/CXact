@@ -9,14 +9,12 @@
 //! whole URL (formerly postal codes or norm numbers in a slug became job ids, and so did
 //! digits from the query).
 
-mod etengo;
 mod freelance_de;
 mod freelancermap;
 mod gulp;
 mod hays;
 mod interim_x;
 mod michael_page;
-mod robert_half;
 mod solcom;
 
 pub(crate) use freelancermap::without_archive_mark;
@@ -59,12 +57,8 @@ pub enum Portal {
     MichaelPage,
     #[serde(rename = "solcom")]
     Solcom,
-    #[serde(rename = "etengo")]
-    Etengo,
     #[serde(rename = "gulp")]
     Gulp,
-    #[serde(rename = "roberthalf")]
-    RobertHalf,
     #[serde(rename = "interimx")]
     InterimX,
     /// A fourth portal that exists in tests only: it proves that the registry is the only
@@ -344,9 +338,7 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
     &hays::Hays,
     &michael_page::MichaelPage,
     &solcom::Solcom,
-    &etengo::Etengo,
     &gulp::Gulp,
-    &robert_half::RobertHalf,
     &interim_x::InterimX,
     #[cfg(test)]
     &probe::Probe,
@@ -354,16 +346,14 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
 
 impl Portal {
     /// The product portals (the test-only probe is not among them).
-    pub const ALL: [Portal; 10] = [
+    pub const ALL: [Portal; 8] = [
         Portal::LinkedIn,
         Portal::FreelanceDe,
         Portal::Freelancermap,
         Portal::Hays,
         Portal::MichaelPage,
         Portal::Solcom,
-        Portal::Etengo,
         Portal::Gulp,
-        Portal::RobertHalf,
         Portal::InterimX,
     ];
 
@@ -1032,9 +1022,7 @@ mod tests {
                 "hays",
                 "michaelpage",
                 "solcom",
-                "etengo",
                 "gulp",
-                "roberthalf",
                 "interimx"
             ]
         );
@@ -1043,8 +1031,6 @@ mod tests {
             [
                 Access::Guest,
                 Access::Session { required: false },
-                Access::Guest,
-                Access::Guest,
                 Access::Guest,
                 Access::Guest,
                 Access::Guest,
@@ -1062,9 +1048,7 @@ mod tests {
                 "Hays",
                 "Michael Page",
                 "SOLCOM",
-                "Etengo",
                 "GULP",
-                "Robert Half",
                 "interim-x"
             ]
         );

@@ -23,6 +23,8 @@ const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   exportExcel: null,
   exportCsv: null,
   autoFetch: null,
+  fetchMail: null,
+  fetchSearch: null,
   language: null,
   palette: null,
   ...change,
@@ -90,6 +92,23 @@ class AppStore {
     if (item) item.health = health;
   }
 
+  /** The fetch's switch of its menu: the alert mails or the search on or off, the state at
+   *  once and the save after; a failed save says why (null when it worked). */
+  async setFetchWay(way: 'fetchMail' | 'fetchSearch', on: boolean): Promise<string | null> {
+    const state = this.state;
+    if (state === null || state[way] === on) return null;
+    const mine = ++this.#saves;
+    state[way] = on;
+    try {
+      const next = await invoke('save_settings', { patch: patchOf({ [way]: on }) });
+      if (mine === this.#saves) this.set(next);
+      return null;
+    } catch (error) {
+      void this.load();
+      return errorText(error);
+    }
+  }
+
   get hasMailbox(): boolean {
     return Boolean(this.state?.mailbox.user);
   }
@@ -99,10 +118,17 @@ class AppStore {
     return this.state?.portals.some((p) => p.enabled) ?? false;
   }
 
-  /** A source the app searches itself is switched on: "Jobs abrufen" works without a
-   *  mailbox too. */
+  /** "Jobs abrufen" searches: its switch is on and a source the app searches itself is
+   *  switched on (it works without a mailbox then). */
   get searches(): boolean {
-    return this.state?.portals.some((p) => p.enabled && p.way === 'search') ?? false;
+    const state = this.state;
+    if (state === null || !state.fetchSearch) return false;
+    return state.portals.some((p) => p.enabled && p.way === 'search');
+  }
+
+  /** "Jobs abrufen" reads the alert mails (its switch in the menu beside it). */
+  get readsMail(): boolean {
+    return this.state?.fetchMail ?? true;
   }
 
   get hasProfile(): boolean {

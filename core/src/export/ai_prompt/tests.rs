@@ -113,6 +113,7 @@ fn view() -> JobView {
         trashed_at: None,
         overridden: false,
         has_mail: false,
+        origins: Vec::new(),
     }
 }
 

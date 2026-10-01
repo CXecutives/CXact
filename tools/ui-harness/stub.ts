@@ -618,9 +618,7 @@ const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
   'freelancermap',
   'michaelpage',
   'solcom',
-  'etengo',
   'gulp',
-  'roberthalf',
   'interimx',
 ]);
 
@@ -825,9 +823,7 @@ function initial(): void {
       portal('hays', { quota: { usedHour: 6, capHour: 30, usedDay: 18, capDay: 100 } }),
       portal('michaelpage', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
       portal('solcom', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
-      portal('etengo', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
       portal('gulp', { quota: { usedHour: 0, capHour: 30, usedDay: 0, capDay: 100 } }),
-      portal('roberthalf', { quota: { usedHour: 0, capHour: 30, usedDay: 0, capDay: 100 } }),
       portal('interimx', { quota: { usedHour: 0, capHour: 30, usedDay: 0, capDay: 100 } }),
     ],
     sources: [],
@@ -835,7 +831,9 @@ function initial(): void {
     fetchRange: 'sinceLast',
     exportExcel: true,
     exportCsv: false,
-    autoFetch: true,
+    autoFetch: false,
+    fetchMail: true,
+    fetchSearch: true,
     language: LANGUAGE,
     palette: PALETTE,
     lastRun: lastRun(),
@@ -1143,6 +1141,10 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   if (contracts.length > 0 && !contracts.includes(facts?.contract ?? '')) return false;
   if (query.workMode !== null && query.workMode !== undefined) {
     if (workModeOf(j) !== query.workMode) return false;
+  }
+  // How it came (store::filter_condition): an alert mail named it, the search found it.
+  if (query.origin !== null && query.origin !== undefined && !j.origins.includes(query.origin)) {
+    return false;
   }
   if (query.band === null || query.band === undefined) return true;
   return j.match?.status === 'scored' && bandOf(j.match.score) === query.band;
@@ -1713,9 +1715,18 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
   }
+  // The menu beside "Jobs abrufen": the alert mails, the search, or both (run_context).
+  if (isFetch(kind) && !state.fetchMail && !state.fetchSearch) {
+    throw fail('invalid', { reason: 'noFetchWay' });
+  }
   // Without a mailbox a fetch searches the sources, if one is on (run_context's read_mail).
-  const searches = state.portals.some((p) => p.enabled && p.way === 'search');
-  if (state.mailbox.user === null && kind !== 'rescore' && kind !== 'details' && !searches) {
+  const searches = state.fetchSearch && state.portals.some((p) => p.enabled && p.way === 'search');
+  if (
+    (state.mailbox.user === null || !state.fetchMail) &&
+    kind !== 'rescore' &&
+    kind !== 'details' &&
+    !searches
+  ) {
     throw fail('mailMissing');
   }
   running = true;
@@ -2269,6 +2280,12 @@ const handlers: Handlers = {
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
     if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
     if (patch.autoFetch !== null) state.autoFetch = patch.autoFetch;
+    if (patch.fetchMail !== null && patch.fetchMail !== undefined) {
+      state.fetchMail = patch.fetchMail;
+    }
+    if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
+      state.fetchSearch = patch.fetchSearch;
+    }
     if (patch.exportCsv !== null) {
       // Like the Excel file below.
       state.exportCsv = patch.exportCsv;
@@ -2399,6 +2416,7 @@ const harness: Harness = {
         band: null,
         contracts: [],
         workMode: null,
+        origin: null,
         run: null,
         limit: 500,
         offset: 0,

@@ -178,8 +178,20 @@ pub struct Policy {
     /// The demo's short pace ([`Policy::quick`]).
     #[serde(skip)]
     quick: bool,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "known_portals")]
     portals: BTreeMap<Portal, PortalState>,
+}
+
+/// The sources' states of `policy.json`; a source this version does not know (one taken out
+/// again) is left out instead of making the whole file unreadable (which pauses every source).
+fn known_portals<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<BTreeMap<Portal, PortalState>, D::Error> {
+    let all = BTreeMap::<String, PortalState>::deserialize(deserializer)?;
+    Ok(all
+        .into_iter()
+        .filter_map(|(key, state)| Some((Portal::from_key(&key)?, state)))
+        .collect())
 }
 
 impl Policy {
@@ -534,6 +546,27 @@ mod tests {
         policy.record_access(Portal::LinkedIn, at(1));
         policy.save().unwrap();
         assert!(missing_dir.is_dir(), "the stand-in is never saved");
+    }
+
+    /// A source this version no longer knows (one taken out again) is left out: the file
+    /// stays readable and nothing pauses.
+    #[test]
+    fn a_source_taken_out_leaves_the_file_readable() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("policy.json");
+        let mut policy = Policy::load(&path, at(0));
+        policy.record_access(Portal::LinkedIn, at(1));
+        policy.save().unwrap();
+        let mut json: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        json["portals"]["etengo"] = json["portals"]["linkedin"].clone();
+        std::fs::write(&path, serde_json::to_vec(&json).unwrap()).unwrap();
+        let again = Policy::load(&path, at(2));
+        assert!(!matches!(
+            again.allowance(Portal::Hays, at(2)),
+            Allowance::Paused { .. }
+        ));
+        assert_eq!(again.portals.len(), 1, "only the known source");
     }
 
     #[test]

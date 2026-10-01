@@ -2,9 +2,9 @@
 
 Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
 source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
-Michael Page, SOLCOM, Etengo, GULP, Robert Half, interim-x; user decisions 2026-10-01), fetches the
-job pages and **scores every job against a consultant profile** (at the start and every 4 hours, and on
-"Jobs abrufen").
+Michael Page, SOLCOM, GULP, interim-x; user decisions 2026-10-01), fetches the job pages and **scores every job
+against a consultant profile**, only when the user presses "Jobs abrufen" (its menu switches the alert mails and
+the search on or off).
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).
 **Progress, phases and decisions live in `docs/PLAN.md` - read it before any work and tick its boxes.**
 

@@ -18,6 +18,10 @@ pub(crate) const KEY: &str = "settings";
 /// only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent switches of the stored settings, each its own key"
+)]
 pub struct Settings {
     /// Workspace (the Exportordner); `None` = default ([`default_workspace`]:
     /// `Documents\CXact`, or the `Documents\Job-Alert-Monitor` of an earlier version). Only
@@ -46,14 +50,22 @@ pub struct Settings {
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
     /// "Jobs abrufen" runs by itself at the start and every 4 hours while the app is open
-    /// (user decision 2026-10-01; Einstellungen, Suche).
+    /// (user decision 2026-10-01); off and not shown for now ([`AUTO_SHOWN`]).
     pub auto_fetch: bool,
+    /// "Jobs abrufen" reads the alert mails (the menu beside the button, user decision
+    /// 2026-10-01).
+    pub fetch_mail: bool,
+    /// "Jobs abrufen" searches the sources the app searches itself (the same menu).
+    pub fetch_search: bool,
 }
 
 /// Einstellungen shows Darstellung (the palette and the language); hidden for now.
 pub const LOOK_SHOWN: bool = false;
 /// Einstellungen shows the Excel and CSV switches; hidden for now, and no file is written.
 pub const EXPORT_SHOWN: bool = false;
+/// Einstellungen shows "Automatisch abrufen"; hidden for now (user, 2026-10-01: only by
+/// hand), and the app never fetches by itself.
+pub const AUTO_SHOWN: bool = false;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
 /// cream, coral and navy), and Light and Dark, neutral with blue details.
@@ -200,7 +212,9 @@ impl Default for Settings {
             export_csv: false,
             language: None,
             palette: Palette::Cxact,
-            auto_fetch: true,
+            auto_fetch: false,
+            fetch_mail: true,
+            fetch_search: true,
         }
     }
 }
@@ -252,6 +266,9 @@ impl Settings {
         if !EXPORT_SHOWN {
             self.export_excel = false;
             self.export_csv = false;
+        }
+        if !AUTO_SHOWN {
+            self.auto_fetch = false;
         }
         *self != before
     }
@@ -500,9 +517,7 @@ mod tests {
                 Portal::Hays,
                 Portal::MichaelPage,
                 Portal::Solcom,
-                Portal::Etengo,
                 Portal::Gulp,
-                Portal::RobertHalf,
                 Portal::InterimX
             ]
         );
@@ -670,9 +685,7 @@ mod tests {
                 Portal::Hays,
                 Portal::MichaelPage,
                 Portal::Solcom,
-                Portal::Etengo,
                 Portal::Gulp,
-                Portal::RobertHalf,
                 Portal::InterimX
             ]
         );
