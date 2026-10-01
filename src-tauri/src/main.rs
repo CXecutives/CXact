@@ -280,7 +280,8 @@ fn open_store(
         StartMode::DryRun => Store::in_memory(),
         StartMode::Demo => {
             let ads = demo_ads(app).map_err(|e| Failure::other(format!("demo: {e}")))?;
-            let fresh = demo::create_demo_data_with(app_data, ads, Some(demo::PROFILE_JSON))
+            let profile = demo::demo_profile();
+            let fresh = demo::create_demo_data_with(app_data, ads, Some(&profile))
                 .map_err(|e| Failure::other(format!("demo: {e}")))?;
             log::info!("demo: {} ads", fresh.ads.len());
             let store =

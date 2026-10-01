@@ -1,6 +1,8 @@
 //! The demo's mailbox and portals (the `CXact Demo` app, the `--demo` start): at every fetch
 //! the mailbox receives the next batch of alert mails, made from the invented ads the app
-//! bundles, and the portals answer with those ads' texts. Everything else is the real run:
+//! bundles; the batch's ads of a source the app searches (freelancermap) come through that
+//! source's search instead, and the portals answer with those ads' texts. Everything else is
+//! the real run:
 //! the scan reads the mails, the fetch asks for the pages at the real pace, the real engine
 //! scores them with the profile of the demo's work folder and the export writes its files
 //! there. What the mailbox received lives in the demo's database, which the app makes anew
@@ -17,13 +19,14 @@ use jiff::civil::Date;
 use jiff::{SignedDuration, Timestamp};
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
+use url::Url;
 
 use super::{DEMO_ADDRESS, FixtureJob, ad_body, page_facts, pause};
 use crate::fetch::{PageFetcher, PageFields, PageOutcome, Prescore, neutral_prescore};
 use crate::mail::imap::{MailError, MailSource};
 use crate::mail::{RawHead, RawMail, head_part};
 use crate::pipeline::{Backends, LivePaths, LocalMatcher, Matcher, stored_paths};
-use crate::portal::{Facts, FetchPath, JobKey, JobLink, Portal};
+use crate::portal::{Facts, FetchPath, Hit, JobKey, JobLink, Portal, Way};
 use crate::store::Store;
 
 /// The database entry of the demo's mailbox: the batches it received so far ([`Batch`]).
@@ -38,6 +41,8 @@ const FIRST_SPAN: SignedDuration = SignedDuration::from_hours(72);
 const MIN_SPAN: SignedDuration = SignedDuration::from_hours(2);
 /// The order of the ads and the size of each batch: the same at every start.
 const SEED: u64 = 0x5eed_0dea_2026;
+/// So many hits a search page shows at most, the newest first.
+const SEARCH_HITS: usize = 20;
 /// How long a portal takes to answer, in milliseconds (the pace between two requests is the
 /// real one, `fetch::admit`).
 const ANSWER_MS: RangeInclusive<u64> = 300..=900;
@@ -211,7 +216,8 @@ struct Style {
 }
 
 /// The alert mails of the portals the ads come from, like real ones (German like the portals'
-/// mails, external data - do not translate).
+/// mails, external data - do not translate). A source the app searches sends none in the demo
+/// (its ads come through its search, [`FeedPages`]).
 const STYLES: [Style; 3] = [
     Style {
         portal: Portal::LinkedIn,
@@ -252,7 +258,10 @@ fn mailbox(ads: &DemoAds, batches: &[Batch]) -> Vec<Mail> {
         let group = ads.ads.get(from..to).unwrap_or_default();
         from = to;
         let mut letters: Vec<(&Style, Vec<&DemoAd>)> = Vec::new();
-        for style in &STYLES {
+        for style in STYLES
+            .iter()
+            .filter(|style| style.portal.way() == Way::Alert)
+        {
             let theirs: Vec<&DemoAd> = group
                 .iter()
                 .filter(|ad| ad.key.portal == style.portal)
@@ -375,6 +384,7 @@ impl Backends for DemoFeed {
     fn pages(&mut self, _portal: Portal, _path: FetchPath) -> Result<FeedPages, String> {
         Ok(FeedPages {
             ads: Arc::clone(&self.ads),
+            store: Arc::clone(&self.store),
         })
     }
 
@@ -457,9 +467,11 @@ impl MailSource for FeedMail {
 }
 
 /// The portals as the demo's fetch asks them: every ad's page with its text (a freelance.de
-/// teaser as a teaser) and its facts, after a short answer time.
+/// teaser as a teaser) and its facts, and a source's search page, after a short answer time.
 pub struct FeedPages {
     ads: Arc<DemoAds>,
+    /// The batches handed out so far (the search shows their ads).
+    store: Arc<Store>,
 }
 
 impl PageFetcher for FeedPages {
@@ -493,6 +505,42 @@ impl PageFetcher for FeedPages {
                 facts: ad.facts.clone(),
             }
         }
+    }
+
+    /// A search page shows the source's ads of the batches handed out so far (this fetch's
+    /// included), the newest first; a source without ads in the demo finds none. Every term
+    /// finds the same: the run counts a job once.
+    async fn search(
+        &mut self,
+        portal: Portal,
+        _url: &Url,
+        cancel: &CancellationToken,
+    ) -> Result<Vec<Hit>, PageOutcome> {
+        let answer = Duration::from_millis(fastrand::u64(ANSWER_MS));
+        if !crate::time::sleep_cancellable(answer, cancel).await {
+            return Err(PageOutcome::Cancelled);
+        }
+        let batches = received(&self.store).unwrap_or_else(|e| {
+            log::warn!("demo: the mailbox is unreadable ({e})");
+            Vec::new()
+        });
+        let handed: usize = batches.iter().map(|batch| batch.count).sum();
+        let ads = self.ads.ads.get(..handed.min(self.ads.len()));
+        Ok(ads
+            .unwrap_or_default()
+            .iter()
+            .rev()
+            .filter(|ad| ad.key.portal == portal)
+            .take(SEARCH_HITS)
+            .filter_map(|ad| {
+                Some(Hit {
+                    link: crate::portal::job_link(&ad.url)?,
+                    title: ad.title.clone(),
+                    company: ad.company.clone(),
+                    location: place(&ad.location).to_owned(),
+                })
+            })
+            .collect())
     }
 }
 
@@ -563,8 +611,11 @@ mod tests {
             language: Language::De,
             mailbox: None,
             read_mail: true,
-            search_portals: Vec::new(),
-            search_terms: Vec::new(),
+            search_portals: Portal::ALL
+                .into_iter()
+                .filter(|portal| portal.way() == Way::Search)
+                .collect(),
+            search_terms: vec!["Interim CFO".to_owned(), "Controlling".to_owned()],
         }
     }
 
@@ -599,8 +650,9 @@ mod tests {
     }
 
     /// The mailbox receives 5 to 15 ads per fetch until every ad came, then nothing; every
-    /// ad reads back from its alert mail as the ad says it (the real mail reader), each mail
-    /// dated before it arrived, over the days before the first fetch.
+    /// ad of a source of alert mails reads back from its alert mail as the ad says it (the real
+    /// mail reader), each mail dated before it arrived, over the days before the first fetch;
+    /// freelancermap, which the app searches, sends none.
     #[test]
     fn every_ad_reads_back_from_its_alert_mail() {
         let ads = DemoAds::load(&every_set()).unwrap();
@@ -639,12 +691,18 @@ mod tests {
                 assert!(read.insert(posting.key.clone(), posting).is_none());
             }
         }
-        assert_eq!(read.len(), ads.len());
+        let mailed: Vec<&DemoAd> = ads
+            .ads
+            .iter()
+            .filter(|ad| ad.key.portal.way() == Way::Alert)
+            .collect();
+        assert!(mailed.len() < ads.len(), "freelancermap is searched");
+        assert_eq!(read.len(), mailed.len());
         // The mail reader takes a line of five words and more that ends with a period for a
         // sentence ("Sp. z o.o.", "Pvt. Ltd."): those few jobs get company and location
         // from their page ([`FeedPages`]).
         let mut missed = 0;
-        for ad in &ads.ads {
+        for ad in mailed {
             let got = &read[&ad.key];
             assert_eq!(got.title, ad.title);
             let details = (got.company.as_str(), got.location.as_str());
@@ -659,12 +717,12 @@ mod tests {
                 );
             }
         }
-        assert!(missed * 50 < ads.len(), "{missed}");
+        assert!(missed * 50 < read.len(), "{missed}");
     }
 
-    /// Each fetch brings the next batch like a real fetch: the mails read, every new ad's page
-    /// fetched and scored by the real engine, the Excel file written. Once every ad came, a
-    /// fetch completes and finds no new job.
+    /// Each fetch brings the next batch like a real fetch: the mails read and freelancermap
+    /// searched, every new ad's page fetched and scored by the real engine, the Excel file
+    /// written. Once every ad came, a fetch completes and finds no new job.
     #[tokio::test(start_paused = true)]
     async fn every_fetch_brings_the_next_batch_until_all_are_in() {
         let dir = tempfile::tempdir().unwrap();
@@ -677,7 +735,8 @@ mod tests {
         loop {
             let summary = go(&mut feed, &store, RunKind::Fetch, &ctx, &clock).await;
             assert_eq!(summary.outcome, Outcome::Completed);
-            let new = summary.scan.unwrap().new;
+            let searched: usize = summary.search.unwrap().values().map(|c| c.new).sum();
+            let new = summary.scan.unwrap().new + searched;
             if new == 0 {
                 break;
             }

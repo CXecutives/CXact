@@ -27,6 +27,7 @@ use crate::export::write_atomic;
 use crate::matching::{self, ProfileQuality, ProfileSummary};
 use crate::settings::Language;
 
+pub(crate) use form::KEYS_SEARCH_TERMS;
 #[cfg(test)]
 pub(crate) use form::typescript as form_typescript;
 pub use form::{

@@ -32,7 +32,7 @@ const KEY_STRENGTHS: &str = "alleinstellungsmerkmale";
 const KEY_KEYWORDS: &str = "keywords";
 /// The search terms of the app's own search (user decision 2026-10-01; the engine does not
 /// read them).
-const KEYS_SEARCH_TERMS: &[&str] = &["suchbegriffe", "search_terms"];
+pub(crate) const KEYS_SEARCH_TERMS: &[&str] = &["suchbegriffe", "search_terms"];
 /// The most search terms the app searches for (each one request per search source).
 pub const MAX_SEARCH_TERMS: usize = 8;
 /// The value of `ausgeschlossene_vertragsarten` the form writes for permanent employment.

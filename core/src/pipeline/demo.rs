@@ -31,6 +31,22 @@ pub use feed::{DemoAds, DemoFeed};
 pub const PROFILE_JSON: &str = include_str!("../../tests/fixtures/matching/sample_profile.json");
 /// File name the dry run shows for it (a name, German like the profile keys).
 pub const PROFILE_NAME: &str = "beispielprofil.json";
+/// What the demo searches for: the sample profile names no target role, so it gives no search
+/// terms of its own.
+const DEMO_SEARCH_TERMS: [&str; 2] = ["Interim CFO", "Controlling"];
+
+/// The demo's profile: the sample profile with [`DEMO_SEARCH_TERMS`] (the sample stays as the
+/// matching corpus reads it).
+pub fn demo_profile() -> String {
+    let mut value: Value = serde_json::from_str(PROFILE_JSON).unwrap_or_default();
+    if let Some(fields) = value.as_object_mut() {
+        fields.insert(
+            crate::profile::KEYS_SEARCH_TERMS[0].to_owned(),
+            Value::from(DEMO_SEARCH_TERMS.to_vec()),
+        );
+    }
+    serde_json::to_string_pretty(&value).unwrap_or_else(|_| PROFILE_JSON.to_owned())
+}
 
 static MATCHER: LazyLock<Arc<LocalMatcher>> = LazyLock::new(|| {
     let value = serde_json::from_str(PROFILE_JSON).unwrap_or_default();
@@ -679,6 +695,18 @@ mod tests {
         assert_eq!(facts.employment_type.as_deref(), Some("Freiberuflich"));
         assert_eq!(page_facts(&serde_json::json!({"rate": null})), None);
         assert_eq!(ad_body("Titel: A\nOrt: B\n\nDer Text.\n"), "Der Text.");
+    }
+
+    /// The demo searches with its own terms; the sample profile of the corpus has none.
+    #[test]
+    fn the_demo_profile_searches() {
+        let form = crate::profile::form_of(&demo_profile()).unwrap();
+        assert_eq!(form.search_terms, DEMO_SEARCH_TERMS);
+        let sample = crate::profile::form_of(PROFILE_JSON).unwrap();
+        assert!(
+            sample.search_terms.is_empty(),
+            "the corpus profile stays as it is"
+        );
     }
 
     /// The sample ads give every ring the list knows, judged by the real engine.

@@ -200,9 +200,10 @@ fn run_context(
         Vault::app().load_gmail()?
     };
     let workspace = settings.workspace_or(&state.default_workspace);
-    // A fetch searches the sources that have a search (not the dry run and the demo: their
-    // made-up mails are all they have), with the active profile's search terms.
-    let search_portals: Vec<Portal> = if scans && !state.dry_run && !state.demo {
+    // A fetch searches the sources that have a search (not the dry run: its made-up mails are
+    // all it has; the demo's search shows its own ads), with the active profile's search
+    // terms.
+    let search_portals: Vec<Portal> = if scans && !state.dry_run {
         enabled
             .iter()
             .copied()

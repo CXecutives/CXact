@@ -1018,6 +1018,8 @@ handle sits between list and reader".
   abrufen" runs like a real fetch (progress, details, the real engine) and brings 5 to 15 new jobs out of the
   invented ads of all held-out sets (about 500); once all are there a fetch finds no new jobs.
 - [x] Demo fetch in batches (its made-up portals at a quick pace), the "CXact Demo" bundle, a note in docs/CHANGING.md
+- [x] The demo searches too (2026-10-01): a batch's freelancermap ads come through freelancermap's search, not as
+  alert mails; the demo's profile is the sample with two search terms of its own (the corpus sample has none)
 
 ## Final UI pass (user decisions 2026-09-29)
 
