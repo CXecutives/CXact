@@ -10,7 +10,6 @@
 //! its entry below.
 
 mod app;
-mod auto;
 mod files;
 mod jobs;
 mod mailbox;

@@ -23,7 +23,7 @@
 
   const t = text.inputs;
 
-  let autoFetch = $state(true);
+  let switched = $state(true);
   let other = $state(false);
   let facet = $state<'new' | 'all'>('new');
   let view = $state('new');
@@ -86,7 +86,7 @@
   <div class="grid">
     <div class="stack">
       <div class="row">
-        <Toggle checked={autoFetch} label={t.toggle} onchange={(v) => (autoFetch = v)} />
+        <Toggle checked={switched} label={t.toggle} onchange={(v) => (switched = v)} />
         <Toggle checked={other} label={t.toggle} onchange={(v) => (other = v)} />
         <Toggle
           checked={true}
@@ -95,7 +95,7 @@
           disabledReason={t.lockedReason}
           onchange={() => undefined}
         />
-        <Toggle checked={autoFetch} label={t.toggle} showLabel onchange={(v) => (autoFetch = v)} />
+        <Toggle checked={switched} label={t.toggle} showLabel onchange={(v) => (switched = v)} />
         <!-- A save that fails after a while: the switch flips at once and slides back. -->
         <Toggle checked={false} label={t.toggle} onchange={failingSave} testid="toggle-fails" />
       </div>
@@ -242,10 +242,10 @@
     <SettingRow label={t.toggle} hint={t.toggleHint} for="gallery-auto-fetch">
       <Toggle
         id="gallery-auto-fetch"
-        checked={autoFetch}
+        checked={switched}
         label={t.toggle}
         testid="gallery-row-toggle"
-        onchange={(v) => (autoFetch = v)}
+        onchange={(v) => (switched = v)}
       />
     </SettingRow>
     <SettingRow label={t.locked} hint={t.lockedReason}>

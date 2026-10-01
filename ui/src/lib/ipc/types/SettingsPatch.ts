@@ -22,10 +22,6 @@ exportExcel: boolean | null,
  */
 exportCsv: boolean | null, 
 /**
- * Fetch by itself at the start and every four hours.
- */
-autoFetch: boolean | null, 
-/**
  * "Jobs abrufen" reads the alert mails.
  */
 fetchMail: boolean | null, 

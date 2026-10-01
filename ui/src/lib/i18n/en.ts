@@ -1248,8 +1248,6 @@ export const en: Catalog = {
     signInWaiting: 'The sign-in window is open.',
     alertQuiet: (days: number) => `No alert email in ${n(days)} days.`,
     checkAlert: 'Check alert',
-    autoFetch: 'Fetch automatically',
-    autoFetchHint: 'At start and every 4 hours.',
     setUpAlert: 'Set up alert',
     folder: 'Work folder',
     excel: 'Excel file',

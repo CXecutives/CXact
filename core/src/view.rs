@@ -117,8 +117,8 @@ pub enum DetailState {
     Gone,
     /// Given up after several failed attempts at this one ad.
     Unfetchable,
-    /// Not fetched, and the automatic fetch does not reach it (its mail is older than 30
-    /// days, or it lies in the archive or the trash): the ad comes only on request.
+    /// Not fetched, and no fetch reaches it (its mail is older than 30 days, or it lies in
+    /// the archive or the trash): the ad comes only on request.
     OnRequest,
 }
 
@@ -141,9 +141,9 @@ impl DetailState {
         }
     }
 
-    /// The state at `now`: a job the automatic fetch does not reach (its mail is older than
-    /// it looks back, or a place it leaves out, see `store::jobs::FETCHABLE`) is never
-    /// promised for "the next fetch" - it waits for a request.
+    /// The state at `now`: a job a fetch does not reach (its mail is older than it looks
+    /// back, or a place it leaves out, see `store::jobs::FETCHABLE`) is never promised for
+    /// "the next fetch" - it waits for a request.
     pub fn at(job: &JobRow, now: Timestamp) -> DetailState {
         let automatic = job.place() == Place::Inbox
             && job.mail_date.unwrap_or(job.first_seen_at)
@@ -1082,9 +1082,6 @@ pub struct SettingsPatch {
     /// Write the CSV file with every export.
     #[serde(default)]
     pub export_csv: Option<bool>,
-    /// Fetch by itself at the start and every four hours.
-    #[serde(default)]
-    pub auto_fetch: Option<bool>,
     /// "Jobs abrufen" reads the alert mails.
     #[serde(default)]
     pub fetch_mail: Option<bool>,
@@ -1125,9 +1122,6 @@ impl SettingsPatch {
         }
         if let Some(on) = self.export_csv {
             settings.export_csv = on;
-        }
-        if let Some(on) = self.auto_fetch {
-            settings.auto_fetch = on;
         }
         if let Some(on) = self.fetch_mail {
             settings.fetch_mail = on;
@@ -1657,9 +1651,6 @@ pub struct AppState {
     pub export_excel: bool,
     /// The CSV file is written with every export.
     pub export_csv: bool,
-    /// The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`);
-    /// off and not shown for now (`settings::AUTO_SHOWN`).
-    pub auto_fetch: bool,
     /// "Jobs abrufen" reads the alert mails (the menu beside the button).
     pub fetch_mail: bool,
     /// "Jobs abrufen" searches the sources (the menu beside the button).
@@ -1839,7 +1830,7 @@ mod tests {
         assert!(!JobView::from(&store.job(&key).unwrap().unwrap()).closed);
     }
 
-    /// A job older than the automatic fetch reaches is never promised for "the next fetch":
+    /// A job older than a fetch reaches is never promised for "the next fetch":
     /// it waits for a request, and a failed one shows no retry time.
     #[test]
     fn an_old_job_waits_for_a_request() {
@@ -1877,7 +1868,7 @@ mod tests {
         );
     }
 
-    /// The automatic fetch leaves the trash and the archive out: their jobs wait for a
+    /// A fetch leaves the trash and the archive out: their jobs wait for a
     /// request instead of a promise for the next fetch.
     #[test]
     fn a_job_the_queue_leaves_out_waits_for_a_request() {

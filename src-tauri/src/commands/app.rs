@@ -194,7 +194,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         fetch_range: settings.fetch_range,
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,
-        auto_fetch: settings.auto_fetch,
         fetch_mail: settings.fetch_mail,
         fetch_search: settings.fetch_search,
         language: settings.language_or(state.system_language),
@@ -230,15 +229,14 @@ pub async fn app_state(
 }
 
 /// Once per app start, on the first page load: a rescore if jobs wait for a score (new
-/// profile, engine update), in the background, and the loop of the automatic fetch (at the
-/// start and every four hours, user decision 2026-10-01; `auto.rs`).
+/// profile, engine update), in the background. The app never fetches by itself (user
+/// decision 2026-10-01: only by hand).
 fn at_start(app: &AppHandle, state: &AppState) {
     static CHECKED: AtomicBool = AtomicBool::new(false);
     if CHECKED.swap(true, Ordering::SeqCst) {
         return;
     }
     daily_backup(app);
-    super::auto::start(app);
     if state.busy() {
         return;
     }

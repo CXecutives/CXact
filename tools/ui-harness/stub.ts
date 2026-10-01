@@ -9,8 +9,8 @@
 //   window.__harness.calls          [command, args][]
 //   window.__harness.emit(event)    send a RunEvent the way Rust does (the run's channel,
 //                                   else the page's channel from its last app_state)
-//   window.__harness.appRun(kind)   a run the app starts by itself (the auto fetch, a
-//                                   rescore after a profile change): on the page's channel
+//   window.__harness.appRun(kind)   a run the page did not start (a rescore after a profile
+//                                   change, a fetch started elsewhere): on the page's channel
 //   window.__harness.fire(name, p)  an app event, as Rust's `window.emit` sends it
 //   window.__harness.done           true once a started run has finished
 //   window.__harness.detailDelay    ms `job_detail` takes (default 0)
@@ -840,7 +840,6 @@ function initial(): void {
     fetchRange: 'sinceLast',
     exportExcel: true,
     exportCsv: false,
-    autoFetch: false,
     fetchMail: MAIL_WAY,
     fetchSearch: !MAIL_WAY,
     language: LANGUAGE,
@@ -2263,7 +2262,6 @@ const handlers: Handlers = {
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
     if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
-    if (patch.autoFetch !== null) state.autoFetch = patch.autoFetch;
     if (patch.fetchMail !== null && patch.fetchMail !== undefined) {
       state.fetchMail = patch.fetchMail;
     }

@@ -61,11 +61,6 @@ exportExcel: boolean,
  */
 exportCsv: boolean, 
 /**
- * The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`);
- * off and not shown for now (`settings::AUTO_SHOWN`).
- */
-autoFetch: boolean, 
-/**
  * "Jobs abrufen" reads the alert mails (the menu beside the button).
  */
 fetchMail: boolean, 

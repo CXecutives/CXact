@@ -14,8 +14,8 @@ pub(crate) const KEY: &str = "settings";
 
 /// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
 /// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped silently - serde
-/// only refuses unknown fields with `deny_unknown_fields`.
+/// `autoFetchOnStart`, `autoFetch`, `autoArchiveDays`, `autoEmptyTrashDays`) are skipped
+/// silently - serde only refuses unknown fields with `deny_unknown_fields`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 #[expect(
@@ -49,9 +49,6 @@ pub struct Settings {
     /// not know (a newer version's) reads as CXact, and so does the earlier name "coast".
     #[serde(deserialize_with = "known_palette")]
     pub palette: Palette,
-    /// "Jobs abrufen" runs by itself at the start and every 4 hours while the app is open
-    /// (user decision 2026-10-01); off and not shown for now ([`AUTO_SHOWN`]).
-    pub auto_fetch: bool,
     /// The fetch reads the alert mails (the menu beside the button, user decision
     /// 2026-10-01): with `fetch_search` off, see [`Settings::fetches_mail`].
     pub fetch_mail: bool,
@@ -63,12 +60,6 @@ pub struct Settings {
 pub const LOOK_SHOWN: bool = false;
 /// Einstellungen shows the Excel and CSV switches; hidden for now, and no file is written.
 pub const EXPORT_SHOWN: bool = false;
-/// Einstellungen shows "Automatisch abrufen"; hidden for now (user, 2026-10-01: only by
-/// hand), and the app never fetches by itself.
-pub const AUTO_SHOWN: bool = false;
-/// The fetch's ways are shown: the menu beside the fetch chooses the search or the mailbox
-/// (user decisions 2026-10-01).
-pub const WAYS_SHOWN: bool = true;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
 /// cream, coral and navy), and Light and Dark, neutral with blue details.
@@ -215,7 +206,6 @@ impl Default for Settings {
             export_csv: false,
             language: None,
             palette: Palette::Cxact,
-            auto_fetch: false,
             fetch_mail: true,
             fetch_search: true,
         }
@@ -269,13 +259,6 @@ impl Settings {
         if !EXPORT_SHOWN {
             self.export_excel = false;
             self.export_csv = false;
-        }
-        if !AUTO_SHOWN {
-            self.auto_fetch = false;
-        }
-        if !WAYS_SHOWN {
-            self.fetch_mail = true;
-            self.fetch_search = true;
         }
         *self != before
     }

@@ -804,18 +804,6 @@ fn failed(error: ErrorInfo) -> Outcome {
     Outcome::Failed { error }
 }
 
-/// How often "Jobs abrufen" runs by itself while the app is open (user decision 2026-10-01).
-pub const AUTO_EVERY: jiff::SignedDuration = jiff::SignedDuration::from_hours(4);
-
-/// When the next automatic fetch is due: [`AUTO_EVERY`] after the last fetch ended, at once
-/// when there was none (or its time lies ahead: a clock set back).
-pub fn auto_due(last: Option<Timestamp>, now: Timestamp) -> Timestamp {
-    match last {
-        Some(last) if last <= now => last.checked_add(AUTO_EVERY).unwrap_or(now).max(now),
-        _ => now,
-    }
-}
-
 /// Number of the last run with a mailbox scan that read mail (its alert mails without jobs
 /// are the portals' health); 0 = none yet.
 pub fn last_scan_run(store: &Store) -> crate::Result<i64> {

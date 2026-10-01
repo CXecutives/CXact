@@ -20,7 +20,7 @@ use jobalert_core::store::Store;
 /// The key of the settings in the database's key/value table.
 const KEY: &str = "settings";
 /// The file of this version: every field, none at its default.
-const NEWEST: &str = "3.0.0-4.json";
+const NEWEST: &str = "3.0.0-5.json";
 
 fn fixture(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -74,7 +74,6 @@ fn newest() -> Settings {
         export_csv: true,
         language: Some(Language::En),
         palette: Palette::Dark,
-        auto_fetch: true,
         fetch_mail: false,
         fetch_search: false,
     }
@@ -181,8 +180,8 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
     assert_eq!(keys(&saved), keys(&default), "saving writes today's form");
 }
 
-/// The file of 3.0.0 before the search (2026-10-01): the sources come switched on, the
-/// automatic fetch off, and "Jobs abrufen" reads the mails and searches.
+/// The file of 3.0.0 before the search (2026-10-01): the sources come switched on, and
+/// "Jobs abrufen" reads the mails and searches.
 #[test]
 fn the_file_before_the_search_loads_with_the_new_source_on() {
     let loaded = load(&fixture("3.0.0-2.json"));
@@ -200,7 +199,6 @@ fn the_file_before_the_search_loads_with_the_new_source_on() {
     }
     let expected = Settings {
         portals,
-        auto_fetch: false,
         fetch_mail: true,
         fetch_search: true,
         ..newest()
@@ -220,6 +218,20 @@ fn the_file_before_the_new_sources_loads_with_them_on() {
     }
     assert_eq!(loaded, expected);
     assert_eq!(round_trip(&loaded).0, loaded);
+}
+
+/// The file with the automatic fetch (taken out 2026-10-01, only by hand): its switch goes,
+/// everything else as it was.
+#[test]
+fn the_file_with_the_automatic_fetch_loads_without_it() {
+    let loaded = load(&fixture("3.0.0-4.json"));
+    assert_eq!(loaded, newest());
+    let (back, saved) = round_trip(&loaded);
+    assert_eq!(back, loaded);
+    assert_eq!(
+        saved,
+        serde_json::from_str::<serde_json::Value>(&fixture(NEWEST)).unwrap()
+    );
 }
 
 #[test]
@@ -246,7 +258,6 @@ fn a_file_of_a_newer_version_loads_without_damage() {
         palette: Palette::Cxact,
         fetch_range: FetchRange::SinceLast,
         portals,
-        auto_fetch: false,
         fetch_mail: true,
         fetch_search: true,
         ..newest()

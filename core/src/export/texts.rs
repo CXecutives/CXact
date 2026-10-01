@@ -610,7 +610,7 @@ impl Texts {
     }
 
     /// The state of a job's details at `now` (see [`details_label`]): like the list, a job
-    /// whose mail is older than the automatic fetch reaches waits for a request.
+    /// whose mail is older than a fetch reaches waits for a request.
     pub fn details_label(&self, job: &JobRow, now: Timestamp) -> &'static str {
         (self.details)(DetailState::at(job, now), job.desc_closed, job.desc_short)
     }

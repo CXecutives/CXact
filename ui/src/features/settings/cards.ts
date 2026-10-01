@@ -155,7 +155,6 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   fetchRange: null,
   exportExcel: null,
   exportCsv: null,
-  autoFetch: null,
   fetchMail: null,
   fetchSearch: null,
   language: null,
@@ -203,9 +202,6 @@ const range: ChoiceRow<FetchRange> = {
  *  app is CXact and German) and the Excel and CSV switches (no file is written). */
 const LOOK_SHOWN = false;
 const EXPORT_SHOWN = false;
-/** "Automatisch abrufen" hidden for now (user, 2026-10-01: only by hand; core
- *  settings::AUTO_SHOWN holds it off), its row kept. */
-const AUTO_SHOWN = false;
 
 /** The work folder (the profiles, and the overviews while they are written). */
 const folder: ActionsRow = {
@@ -216,31 +212,13 @@ const folder: ActionsRow = {
   actions: ['folderChange', 'folderOpen'],
 };
 
-/** Fetch by itself at the start and every four hours (hidden, `AUTO_SHOWN`). */
-const autoFetch: ActionsRow = {
-  kind: 'actions',
-  id: 'auto-fetch',
-  label: (t) => t.settings.autoFetch,
-  hint: (t) => t.settings.autoFetchHint,
-  actions: [],
-  toggle: {
-    id: 'autoFetch',
-    on: (state) => state.autoFetch,
-    patch: (on) => ({ autoFetch: on }),
-    set: (state, on) => void (state.autoFetch = on),
-  },
-};
-
 export const CARDS: readonly CardSpec[] = [
   { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
   {
     id: 'search',
     heading: (t) => t.settings.search,
     block: 'search',
-    rows: [
-      // At the start and every four hours while the app is open (user decision 2026-10-01).
-      ...(AUTO_SHOWN ? [autoFetch] : []),
-    ],
+    rows: [],
   },
   { id: 'alerts', heading: (t) => t.settings.alerts, block: 'alerts', rows: [range] },
   {

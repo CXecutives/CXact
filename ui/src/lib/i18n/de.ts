@@ -1524,9 +1524,6 @@ export const de = {
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
     checkAlert: 'Alert prüfen',
-    /** The switch of the automatic fetch (Suche), and when it fetches. */
-    autoFetch: 'Automatisch abrufen',
-    autoFetchHint: 'Beim Start und alle 4 Stunden.',
     /** A source of alert mails: its page where the user sets up an alert. */
     setUpAlert: 'Alert anlegen',
     folder: 'Arbeitsordner',

@@ -1124,5 +1124,6 @@ handle sits between list and reader".
     groups Vertragsart, Arbeitsmodell and "Nur neue" (`HIDDEN_GROUPS`, `JobQuery.contracts`, `work_mode`,
     `unread`), the run line's notes (`LINE_NOTES`: what went wrong is a toast), the splitter's tooltip,
     the unused `AppState.sources`, the error `noFetchWay`, the reader's "Ausschließen"
-  - [ ] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `src-tauri/src/auto.rs`)
+  - [x] The automatic fetch (`AUTO_SHOWN`, `auto_fetch`, `commands/auto.rs`, `pipeline::auto_due`); the
+    app fetches only by hand
   - [ ] The Excel and CSV export (`EXPORT_SHOWN`, the export step; the AI prompt stays)

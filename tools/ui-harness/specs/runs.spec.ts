@@ -47,19 +47,6 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
   expect(await calls(page, 'start_run')).toHaveLength(1);
 });
 
-test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
-  await open(page, `${WIN}&way=mail&tick=15`);
-  await page.evaluate(() => {
-    window.__harness.holdAfter = 3;
-    window.__harness.appRun('fetch');
-  });
-  await expect(page.getByTestId('run-line')).toBeVisible();
-  await expect(page.getByTestId('cancel-run')).toBeVisible();
-  await page.evaluate(() => (window.__harness.holdAfter = null));
-  await runFinished(page);
-  await expect(page.getByTestId('toast-text')).toHaveText(DONE);
-});
-
 test('the end toast counts the run: the new jobs that are not excluded', async ({ page }) => {
   await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();

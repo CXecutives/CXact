@@ -1,6 +1,6 @@
 // Einstellungen against the stub: the cards in their order (Postfach, Suche, Alert-Mails,
 // Export, Darstellung, Daten), their rows flush on one edge, the mailbox and its dialog, the
-// sources with their calls and the automatic fetch, the export switches, the palettes and the language, the backups, the
+// sources with their calls, the export switches, the palettes and the language, the backups, the
 // reset and the version.
 
 import type { Page } from '@playwright/test';
@@ -38,7 +38,6 @@ const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   fetchRange: null,
   exportExcel: null,
   exportCsv: null,
-  autoFetch: null,
   fetchMail: null,
   fetchSearch: null,
   language: null,
@@ -136,7 +135,6 @@ test('the cards in their order, the first heading on the first row, the version 
   expect(gaps).toEqual([12, 12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  // "Automatisch abrufen" is back in Suche (user decision 2026-10-01).
   for (const gone of ['Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
     await expect(page.getByTestId('settings')).not.toContainText(gone);
   }
@@ -467,38 +465,6 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
   expect(Math.round(external!.x - (signIn!.x + signIn!.width))).toBe(12);
   await page.getByTestId('open-portal-linkedin').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
-});
-
-test('no Automatisch abrufen: the app fetches only by hand', async ({ page }) => {
-  await settings(page);
-  // Hidden for now (user, 2026-10-01): Suche begins with its sources.
-  await expect(page.getByTestId('auto-fetch')).toHaveCount(0);
-  await expect(page.getByTestId('settings')).not.toContainText(T.settings.autoFetch);
-  await expect(
-    page.getByTestId('portals-search').locator(':scope > [data-setting-row]').first(),
-  ).toHaveAttribute('data-testid', 'portal-hays');
-});
-
-test.skip('Automatisch abrufen: first in Suche, saved at once (while it is shown)', async ({
-  page,
-}) => {
-  await settings(page);
-  const row = page.getByTestId('settings-search').getByTestId('auto-fetch');
-  await expect(row).toContainText(T.settings.autoFetch);
-  await expect(row).toContainText(T.settings.autoFetchHint);
-  // Above the sources.
-  const [auto, first] = await Promise.all([
-    row.boundingBox(),
-    page.getByTestId('portal-hays').boundingBox(),
-  ]);
-  expect(auto!.y).toBeLessThan(first!.y);
-  const toggle = page.getByTestId('toggle-autoFetch');
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await expect(toggle).toHaveAccessibleName(T.settings.autoFetch);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  await expect(page.getByTestId('toast')).toHaveCount(0);
-  expect(await saved(page)).toEqual([patch({ autoFetch: false })]);
 });
 
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
