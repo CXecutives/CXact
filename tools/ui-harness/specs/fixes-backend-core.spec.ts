@@ -30,7 +30,7 @@ test('every portal may be switched off; Abrufen then waits for one and says why'
   await expect(fetch).toHaveAttribute('aria-disabled', 'true');
   await expect(fetch).not.toHaveClass(/primary/);
   await fetch.hover();
-  await expect(page.getByRole('tooltip')).toHaveText('Schalte erst ein Portal ein.');
+  await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsPortal);
   await fetch.click({ force: true });
   expect(await calls(page, 'start_run')).toHaveLength(0);
   // No run began, so no failed fetch and no refusal.

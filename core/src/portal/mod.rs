@@ -374,6 +374,10 @@ impl Portal {
         self.adapter().home_url()
     }
 
+    pub fn setup_url(self) -> &'static str {
+        self.adapter().setup_url()
+    }
+
     pub fn sender_domains(self) -> &'static [&'static str] {
         self.adapter().sender_domains()
     }

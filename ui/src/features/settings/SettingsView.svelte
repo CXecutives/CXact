@@ -1,7 +1,7 @@
 <!--
-  Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Portale,
-  Export, Darstellung, Daten), each a heading 12 px above a card of setting rows (Postfach
-  and Portale are a block of their own). Every text button of a row is the same outlined button, and every row ends on
+  Einstellungen (centred 720): the cards of cards.ts in their order (Postfach, Suche,
+  Alert-Mails, Export, Darstellung, Daten), each a heading 12 px above a card of setting rows
+  (Postfach is a block of its own; Suche and Alert-Mails end on their sources' rows). Every text button of a row is the same outlined button, and every row ends on
   the card's inner edge (its buttons, switch or choice flush with the rows above and
   below). This file only renders the list and runs its commands; what a row is, says and does
   is one entry in cards.ts.
@@ -16,9 +16,9 @@
   inside. The dry run changes nothing, and a run (a fetch, or the rescore after a profile
   change) holds the mailbox, the folder and the files, so what they cannot do is locked with
   the reason of that run instead of failing. The demo keeps to its own folders: mailbox,
-  export folder and reset are locked with its reason. Opened from a job for one portal
-  ("Anmeldung einrichten") the page glides to that portal's row, focuses its sign-in, lets
-  the row light up once and offers "Zurück zum Job".
+  export folder and reset are locked with its reason. Opened from a job for one source
+  ("Anmeldung einrichten") the page glides to that source's row, focuses its sign-in, lets
+  the row light up once and offers "Zurück zum Job" at the heading of its card.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
@@ -47,12 +47,14 @@
     ACTIONS,
     CARDS,
     settingsPatch,
+    sourcesOf,
     type Action,
     type ActionId,
     type ChoiceRow,
     type CommandId,
     type Lock,
     type Row,
+    type Sources,
     type Switch,
   } from './cards';
   import MailboxCard from './MailboxCard.svelte';
@@ -70,6 +72,7 @@
   /** The mailbox is outside the demo's and the dry run's own data, and a run holds it. */
   const mailboxLocked = $derived(lock === null ? null : ACTIONS.folderChange.locked(lock));
   const portals = $derived(cfg === null ? [] : inPortalOrder(cfg.portals));
+  const sourcesIn = (card: Sources) => portals.filter((p) => sourcesOf(p.way) === card);
   let busy = $state<CommandId | null>(null);
   /** The note at the end of each card, by card id. */
   let notes = $state<Record<string, Feedback | null>>({});
@@ -182,6 +185,8 @@
    */
   let root = $state<HTMLElement | null>(null);
   let fromJob = $state(false);
+  /** The card of the source the job asked for (its link back stands at its heading). */
+  let fromCard = $state<Sources | null>(null);
   const backToJob = $derived(fromJob && jobs.selected !== null);
 
   /** Back to the job: the way is spent (a quick return may find this page still fading out,
@@ -199,6 +204,7 @@
     if (portal === null || root === null || cfg === null) return;
     navigation.focusPortal = null;
     fromJob = jobs.selected !== null;
+    fromCard = sourcesOf(cfg.portals.find((p) => p.portal === portal)?.way ?? 'alert');
     const scope = root;
     void tick().then(() => {
       const row = scope.querySelector(`[data-testid="portal-${portal}"]`);
@@ -249,7 +255,7 @@
       {@const toggle = item.toggle ?? null}
       <SettingRow
         label={item.label(t, cfg)}
-        hint={item.path?.(cfg) ?? null}
+        hint={item.path?.(cfg) ?? item.hint?.(t, cfg) ?? null}
         copy={item.path !== undefined}
         for={toggle === null ? null : `switch-${toggle.id}`}
         testid={item.id}
@@ -320,7 +326,7 @@
       <section class="section" data-testid="settings-{card.id}">
         <div class="title" data-first-row={index === 0 ? '' : undefined}>
           <h2 class="heading">{card.heading(t, cfg)}</h2>
-          {#if card.block === 'portals' && backToJob}
+          {#if card.block !== undefined && card.block === fromCard && backToJob}
             <Button
               variant="link"
               size="sm"
@@ -336,11 +342,11 @@
             {#if feedback}{@render noteOf(card.id, feedback)}{/if}
           </MailboxCard>
         {:else}
-          <Card padding="rows" testid={card.block === 'portals' ? 'portals' : null}>
-            {#if card.block === 'portals'}
-              {#each portals as portal (portal.portal)}<PortalRow {portal} />{/each}
-            {/if}
+          <Card padding="rows" testid={card.block ? `portals-${card.block}` : null}>
             {#each card.rows as item (item.id)}{@render row(card.id, item)}{/each}
+            {#if card.block}
+              {#each sourcesIn(card.block) as portal (portal.portal)}<PortalRow {portal} />{/each}
+            {/if}
             {#if feedback}{@render noteOf(card.id, feedback)}{/if}
           </Card>
         {/if}

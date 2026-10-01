@@ -545,6 +545,8 @@ splices; countries in words; product and portal names stay. German → English:
 - Papierkorb → Trash; Löschen → Delete; Endgültig löschen → Delete forever; Wiederherstellen → Restore
 - Ablage (the tabs Eingang, Archiv, Papierkorb; the Excel column) → Folders (the Excel column says Place)
 - Übereinstimmung (Hohe, Mittlere, Geringe) → Match (High, Medium, Low)
+- Quelle (a source the app searches, or one of alert mails; was Portal until 2026-10-01) → Source; Suche → Search;
+  Alert-Mails → Alert emails; Jobs abrufen → Fetch jobs
 - bewerten, neu bewerten → score, rescore
 - Ausgeschlossen → Excluded; Trotzdem bewerten → Score anyway; Wieder ausschließen → Exclude again
 - Anforderungen → Requirements; Pflicht, Pflichtanforderung → Must-have; Optional → Optional
@@ -1055,5 +1057,6 @@ handle sits between list and reader".
 - [x] 1 Profil: tabs, profiles dialog and rename, Suchbegriffe
 - [x] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
 - [x] 3 Michael Page, SOLCOM, Etengo (interim tiles only: the robots.txt forbids the contract filter)
-- [ ] 4 Einstellungen: Suche and Alert-Mails, monograms, setup links, "Quelle"
+- [x] 4 Einstellungen: Suche (with "Automatisch abrufen") and Alert-Mails, monograms, "Alert anlegen"
+  (`OpenTarget::PortalSetup`), "Quelle" in the UI texts
 - [ ] 5 GULP, Robert Half, interim-x (once real alert mails are there)

@@ -71,9 +71,6 @@ impl PortalAdapter for Hays {
     fn projects_only(&self) -> bool {
         true
     }
-    fn setup_url(&self) -> &'static str {
-        "https://www.hays.de/jobsuche/stellenangebote-jobs?joblevel=3"
-    }
 
     /// `/jobsuche/stellenangebote-jobs-detail-<slug>-<id>/<n>`: the id is the last part of the
     /// slug; the link keeps its slug.

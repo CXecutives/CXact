@@ -22,6 +22,10 @@ exportExcel: boolean | null,
  */
 exportCsv: boolean | null, 
 /**
+ * Fetch by itself at the start and every four hours.
+ */
+autoFetch: boolean | null, 
+/**
  * The language the user chose (from then on the OS language no longer counts).
  */
 language: Language | null, 

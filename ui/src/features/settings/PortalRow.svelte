@@ -1,6 +1,7 @@
 <!--
-  One portal in the card Portale, the same row for each: its tile and name, the calls of today
-  ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, then "Anmelden" or
+  One source in the card Suche or Alert-Mails, the same row for each: its tile and name, the
+  calls of today ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, for a
+  source of alert mails "Alert anlegen" (its page in the browser), then "Anmelden" or
   "Abmelden" where the portal offers a sign-in, the portal in the browser (in one column in
   every row) and its switch (the name names the switch but, like every text next to a switch,
   does not switch it). Every meter has one width; at the smallest window the sign-in goes to
@@ -150,13 +151,15 @@
     }
   }
 
-  function open(target: 'home' | { gmailId: string }): void {
+  function open(target: 'home' | 'setup' | { gmailId: string }): void {
     error = null;
     invoke('open_target', {
       target:
         target === 'home'
           ? { kind: 'portalHome', portal: portal.portal }
-          : { kind: 'alertMail', gmailId: target.gmailId },
+          : target === 'setup'
+            ? { kind: 'portalSetup', portal: portal.portal }
+            : { kind: 'alertMail', gmailId: target.gmailId },
     }).catch((failure: unknown) => (error = () => errorText(failure)));
   }
 </script>
@@ -217,32 +220,46 @@
       </div>
     {/if}
   </div>
-  {#if loginShown}
-    <span class="login" transition:fade>
-      {#if signedIn}
+  {#if portal.way === 'alert' || loginShown}
+    <span class="login">
+      {#if portal.way === 'alert'}
         <Button
           variant="secondary"
           size="sm"
-          icon="signOut"
-          label={t.settings.signOut}
-          loading={busy}
-          disabled={loginLocked !== null}
-          disabledReason={loginLocked}
-          testid="sign-out-{portal.portal}"
-          onclick={() => void session(false)}
+          icon="alertMail"
+          label={t.settings.setUpAlert}
+          testid="setup-{portal.portal}"
+          onclick={() => open('setup')}
         />
-      {:else}
-        <Button
-          variant="secondary"
-          size="sm"
-          icon="signIn"
-          label={t.settings.signIn}
-          loading={busy}
-          disabled={loginLocked !== null}
-          disabledReason={loginLocked}
-          testid="sign-in-{portal.portal}"
-          onclick={() => void session(true)}
-        />
+      {/if}
+      {#if loginShown}
+        <span class="sign" transition:fade>
+          {#if signedIn}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="signOut"
+              label={t.settings.signOut}
+              loading={busy}
+              disabled={loginLocked !== null}
+              disabledReason={loginLocked}
+              testid="sign-out-{portal.portal}"
+              onclick={() => void session(false)}
+            />
+          {:else}
+            <Button
+              variant="secondary"
+              size="sm"
+              icon="signIn"
+              label={t.settings.signIn}
+              loading={busy}
+              disabled={loginLocked !== null}
+              disabledReason={loginLocked}
+              testid="sign-in-{portal.portal}"
+              onclick={() => void session(true)}
+            />
+          {/if}
+        </span>
       {/if}
     </span>
   {/if}
@@ -329,8 +346,14 @@
     min-height: var(--tile-md);
   }
 
-  /* Narrow (the smallest window) the sign-in goes to a line of its own at the row's end, as
-     the buttons of a setting row do, so its calls keep the meter of every other row. */
+  /* The sign-in fades in and out on its own, next to "Alert anlegen". */
+  .sign {
+    display: flex;
+  }
+
+  /* Narrow (the smallest window) "Alert anlegen" and the sign-in go to a line of their own at
+     the row's end, as the buttons of a setting row do, so its calls keep the meter of every
+     other row. */
   @container (width < 520px) {
     .login {
       order: 1;

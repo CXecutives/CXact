@@ -22,6 +22,7 @@ const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
   fetchRange: null,
   exportExcel: null,
   exportCsv: null,
+  autoFetch: null,
   language: null,
   palette: null,
   ...change,

@@ -829,6 +829,7 @@ function initial(): void {
     fetchRange: 'sinceLast',
     exportExcel: true,
     exportCsv: false,
+    autoFetch: true,
     language: LANGUAGE,
     palette: PALETTE,
     lastRun: lastRun(),
@@ -2261,6 +2262,7 @@ const handlers: Handlers = {
     }
     // Every portal may be off (the backend saves it); a fetch is then refused, see start_run.
     if (patch.fetchRange !== null) state.fetchRange = patch.fetchRange;
+    if (patch.autoFetch !== null) state.autoFetch = patch.autoFetch;
     if (patch.exportCsv !== null) {
       // Like the Excel file below.
       state.exportCsv = patch.exportCsv;

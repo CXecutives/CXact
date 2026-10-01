@@ -8,7 +8,7 @@
 // "X: Y", no exclamation marks, no text twice. A sentence speaks to the user as "du", and an
 // instruction in a sentence is a du imperative ("Verbinde erst ein Postfach."); a button
 // stays an infinitive ("Postfach verbinden"). A control a sentence names stands in quotes
-// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Portal, Übereinstimmung
+// („Anzeige laden“). Glossary (docs/PLAN.md, one word per thing): Job, Quelle, Übereinstimmung
 // (Hohe, Mittlere, Geringe), Jobdetails, Anforderungen (Erfüllt, Teilweise erfüllt, Nicht
 // erfüllt, Unklar), Profil, Postfach, Alert-Mail, Jobs abrufen (the button: the mails and the
 // sources' search; what it does is the Abruf), Anzeige laden, Excel-Datei, CSV-Datei, Arbeitsordner, Ausgeschlossen, Trotzdem
@@ -179,7 +179,7 @@ const profileField = (): Record<string, string> => {
 const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(value);
 
 const invalid: Record<InvalidInput['reason'], Text> = {
-  noPortal: 'Mindestens ein Portal muss aktiv sein.',
+  noPortal: 'Mindestens eine Quelle muss aktiv sein.',
   profileNotUtf8: 'Die Datei ist keine Textdatei.',
   profileNotJson: (p) => `Die Datei ist beschädigt (Zeile ${str(p.line)}).`,
   profileNotObject: 'Die Datei enthält kein Profil.',
@@ -191,12 +191,12 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
-  throttled: 'das Portal bremst die Aufrufe',
-  blocked: 'das Portal blockiert die Aufrufe',
+  throttled: 'die Quelle bremst die Aufrufe',
+  blocked: 'die Quelle blockiert die Aufrufe',
   layoutChanged: 'die Seiten sehen anders aus als erwartet',
-  stateUnreadable: 'der Stand des Portals ist nicht lesbar',
-  network: 'das Portal ist nicht erreichbar',
-  challenged: 'das Portal verlangt eine Prüfung',
+  stateUnreadable: 'der Stand der Quelle ist nicht lesbar',
+  network: 'die Quelle ist nicht erreichbar',
+  challenged: 'die Quelle verlangt eine Prüfung',
 };
 
 /** Opening the alert mail of a job in Gmail, the same words wherever it is offered. */
@@ -901,7 +901,7 @@ export const de = {
     filter: 'Sortieren und filtern',
     /** The chosen parts of the filter as chips under the toolbar (their group's name). */
     chips: 'Filter',
-    portalHeading: 'Portal',
+    portalHeading: 'Quelle',
     bandHeading: 'Übereinstimmung',
     /** The bands under their heading; as a chip, where the heading is not beside it, each
      *  says the ring's name of its band (`score.band`). */
@@ -927,7 +927,7 @@ export const de = {
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
-    needsPortal: 'Schalte erst ein Portal ein.',
+    needsPortal: 'Schalte erst eine Quelle ein.',
   },
   run: {
     /** The one line under the list header while a fetch goes: what happens now. */
@@ -935,7 +935,7 @@ export const de = {
       mailbox: 'Postfach wird gelesen',
       /** The sources' own search: the source asked now. */
       search: (portal: string) => `Suche bei ${portal}`,
-      searchStart: 'Portale werden durchsucht',
+      searchStart: 'Quellen werden durchsucht',
       ads: (done: number, total: number) => `${n(done)} von ${n(total)} Anzeigen geladen`,
       adsStart: 'Anzeigen werden geladen',
       scoring: 'Jobs werden bewertet',
@@ -1062,7 +1062,7 @@ export const de = {
       deadline: 'Bewerbungsfrist',
       contact: 'Kontakt',
       industry: 'Branche',
-      portal: 'Portal',
+      portal: 'Quelle',
       received: 'Eingegangen',
     },
     /** The pay row of a permanent job or temporary agency work (an annual salary). */
@@ -1144,7 +1144,7 @@ export const de = {
         `Das Limit ist erreicht, der Abruf macht ab ${formatMoment(iso)} von selbst weiter.`,
       emptyMails,
       pages:
-        'Die Seiten des Portals sehen anders aus, der nächste Abruf versucht es von selbst wieder.',
+        'Die Seiten der Quelle sehen anders aus, der nächste Abruf versucht es von selbst wieder.',
       login: 'Die Anmeldung ist abgelaufen, melde dich neu an.',
     },
   },
@@ -1478,7 +1478,10 @@ export const de = {
   },
   settings: {
     mailbox: 'Postfach',
-    portals: 'Portale',
+    /** The card of the sources the app searches itself. */
+    search: 'Suche',
+    /** The card of the sources whose alert mails the app reads. */
+    alerts: 'Alert-Mails',
     export: 'Export',
     /** The card of how the app looks and speaks: its colours and its language. */
     look: 'Darstellung',
@@ -1516,6 +1519,11 @@ export const de = {
      *  out), and the way to its page. */
     alertQuiet: (days: number) => `Seit ${n(days)} Tagen keine Alert-Mail.`,
     checkAlert: 'Alert prüfen',
+    /** The switch of the automatic fetch (Suche), and when it fetches. */
+    autoFetch: 'Automatisch abrufen',
+    autoFetchHint: 'Beim Start und alle 4 Stunden.',
+    /** A source of alert mails: its page where the user sets up an alert. */
+    setUpAlert: 'Alert anlegen',
     folder: 'Arbeitsordner',
     excel: 'Excel-Datei',
     csv: 'CSV-Datei',
@@ -1554,7 +1562,7 @@ export const de = {
       'die Sicherungen',
       'die Profile',
       'das App-Passwort',
-      'die Anmeldungen bei den Portalen',
+      'die Anmeldungen bei den Quellen',
       'die Dateien der App im Arbeitsordner',
     ] as string[],
     resetDone: 'Die App ist zurückgesetzt.',
@@ -1585,7 +1593,7 @@ export const de = {
     mailboxText: (portals: readonly Portal[]) =>
       `Die Alert-Mails von ${joined(portals.map((p) => portalName[p]))} müssen an diese Gmail${NB_HYPHEN}Adresse${NBSP}gehen.`,
     /** Connected: the portals stand in the list under it, so the sentence does not name them. */
-    mailboxDone: 'Die Alert-Mails der Portale müssen an diese Adresse gehen.',
+    mailboxDone: 'Die Alert-Mails der Quellen müssen an diese Adresse gehen.',
     openSettings: 'Einstellungen öffnen',
     /** Per portal after connecting: the alert mails "Verbinden" found, else its page to set
      *  up an alert. */

@@ -1821,6 +1821,7 @@ test.skip('Sprache switches the whole app to English and back at once', async ({
         fetchRange: null,
         exportExcel: null,
         exportCsv: null,
+        autoFetch: null,
         language: 'en',
         palette: null,
       },

@@ -1,6 +1,6 @@
-// Einstellungen against the stub: the cards in their order (Postfach, Portale, Export,
-// Darstellung, Daten), their rows flush on one edge, the mailbox and its dialog, the portals
-// with their calls, the export switches, the palettes and the language, the backups, the
+// Einstellungen against the stub: the cards in their order (Postfach, Suche, Alert-Mails,
+// Export, Darstellung, Daten), their rows flush on one edge, the mailbox and its dialog, the
+// sources with their calls and the automatic fetch, the export switches, the palettes and the language, the backups, the
 // reset and the version.
 
 import type { Page } from '@playwright/test';
@@ -38,6 +38,7 @@ const patch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   fetchRange: null,
   exportExcel: null,
   exportCsv: null,
+  autoFetch: null,
   language: null,
   palette: null,
   ...change,
@@ -109,12 +110,14 @@ test('the cards in their order, the first heading on the first row, the version 
   await settings(page);
   expect(await ids(page, 'settings', ':scope > section')).toEqual([
     'settings-mailbox',
-    'settings-portals',
+    'settings-search',
+    'settings-alerts',
     'settings-data',
   ]);
   await expect(page.getByTestId('settings').locator('h2')).toHaveText([
     T.settings.mailbox,
-    T.settings.portals,
+    T.settings.search,
+    T.settings.alerts,
     T.settings.data,
   ]);
   // Every heading stands 12 px above its card, the first one too.
@@ -128,10 +131,11 @@ test('the cards in their order, the first heading on the first row, the version 
         return Math.round(card.top - heading.bottom);
       }),
     );
-  expect(gaps).toEqual([12, 12, 12]);
+  expect(gaps).toEqual([12, 12, 12, 12]);
   // Nothing here asks for a primary; what went is gone.
   expect(await visibleCount(page, '.btn.primary')).toBe(0);
-  for (const gone of ['Automatisch', 'Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
+  // "Automatisch abrufen" is back in Suche (user decision 2026-10-01).
+  for (const gone of ['Tastenkürzel', 'Bericht', 'Textdateien', 'Standard']) {
     await expect(page.getByTestId('settings')).not.toContainText(gone);
   }
   // No version line (user decision 2026-09-27).
@@ -167,6 +171,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
   expect(kinds.map((kind) => kind.id)).toEqual([
     'mailbox-change',
     'mailbox-remove',
+    'setup-linkedin',
+    'setup-freelance',
     'sign-in-freelance',
     'folder-change',
     'folder-open',
@@ -207,10 +213,10 @@ test('button styles: every text button of a row is outlined, what deletes for go
   // The mailbox, three portals, the work folder and the reset.
   expect(ends.length).toBeGreaterThanOrEqual(6);
   expect(new Set(ends).size).toBe(1);
-  // The portals' rows sit edge to edge like every other row: no inset above the first.
+  // The sources' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
-    page.getByTestId('portals').boundingBox(),
-    page.getByTestId('portal-hays').boundingBox(),
+    page.getByTestId('portals-alerts').boundingBox(),
+    page.getByTestId('portal-linkedin').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
   // Every button of the page is at most 29 px high.
@@ -252,7 +258,7 @@ test('narrow, every meter keeps one width and the path breaks only at a separato
   await page.setViewportSize({ width: 480, height: 800 });
   await settings(page);
   const widths = await page
-    .getByTestId('portals')
+    .locator('[data-testid^="portals-"]')
     .getByRole('progressbar')
     .evaluateAll((meters) =>
       meters.map((meter) => Math.round(meter.getBoundingClientRect().width)),
@@ -394,16 +400,21 @@ test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
   await expect(page.getByTestId('settings-mailbox').locator('[data-setting-row]')).toHaveCount(1);
 });
 
-/* ----------------------------------------------------------------- Portale */
+/* ---------------------------------------------------------- Suche, Alert-Mails */
 
-test('portals: one card, the sources in the order of the UI, each with its calls of today', async ({
+test('sources: Suche and Alert-Mails, each in the order of the UI, each with its calls of today', async ({
   page,
 }) => {
   await settings(page);
-  expect(await ids(page, 'portals', '[data-testid^="portal-"]')).toEqual(
-    ALL_PORTALS.map((portal) => `portal-${portal}`),
+  const searched = ['hays', 'freelancermap', 'michaelpage', 'solcom', 'etengo'];
+  expect(await ids(page, 'portals-search', '[data-testid^="portal-"]')).toEqual(
+    searched.map((portal) => `portal-${portal}`),
   );
-  await expect(page.getByTestId('settings-portals').locator('.card')).toHaveCount(1);
+  expect(await ids(page, 'portals-alerts', '[data-testid^="portal-"]')).toEqual(
+    ALL_PORTALS.filter((portal) => !searched.includes(portal)).map((portal) => `portal-${portal}`),
+  );
+  await expect(page.getByTestId('settings-search').locator('.card')).toHaveCount(1);
+  await expect(page.getByTestId('settings-alerts').locator('.card')).toHaveCount(1);
   for (const [portal, used] of [
     ['freelance', 11],
     ['linkedin', 23],
@@ -421,11 +432,23 @@ test('portals: one card, the sources in the order of the UI, each with its calls
     await expect(row.getByRole('switch')).toHaveAccessibleName(T.portal[portal]);
   }
   // Only freelance.de offers a sign-in; no intro sentence, no "Details holen".
-  await expect(
-    page.getByTestId('settings-portals').locator('[data-testid^="sign-in-"]'),
-  ).toHaveCount(1);
-  await expect(page.getByTestId('settings-portals')).not.toContainText('Details');
-  await expect(page.getByTestId('settings-portals')).not.toContainText('Seiten');
+  await expect(page.getByTestId('view-settings').locator('[data-testid^="sign-in-"]')).toHaveCount(
+    1,
+  );
+  for (const card of ['settings-search', 'settings-alerts']) {
+    await expect(page.getByTestId(card)).not.toContainText('Details');
+    await expect(page.getByTestId(card)).not.toContainText('Seiten');
+  }
+  // Only a source of alert mails offers "Alert anlegen", its page in the browser.
+  await expect(page.getByTestId('settings-search').locator('[data-testid^="setup-"]')).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId('settings-alerts').locator('[data-testid^="setup-"]')).toHaveText([
+    T.settings.setUpAlert,
+    T.settings.setUpAlert,
+  ]);
+  await page.getByTestId('setup-freelance').click();
+  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
   // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
     .getByTestId('portal-freelance')
@@ -439,6 +462,26 @@ test('portals: one card, the sources in the order of the UI, each with its calls
   expect(Math.round(external!.x - (signIn!.x + signIn!.width))).toBe(12);
   await page.getByTestId('open-portal-linkedin').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
+});
+
+test('Automatisch abrufen: on by default, first in Suche, saved at once', async ({ page }) => {
+  await settings(page);
+  const row = page.getByTestId('settings-search').getByTestId('auto-fetch');
+  await expect(row).toContainText(T.settings.autoFetch);
+  await expect(row).toContainText(T.settings.autoFetchHint);
+  // Above the sources.
+  const [auto, first] = await Promise.all([
+    row.boundingBox(),
+    page.getByTestId('portal-hays').boundingBox(),
+  ]);
+  expect(auto!.y).toBeLessThan(first!.y);
+  const toggle = page.getByTestId('toggle-autoFetch');
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await expect(toggle).toHaveAccessibleName(T.settings.autoFetch);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByTestId('toast')).toHaveCount(0);
+  expect(await saved(page)).toEqual([patch({ autoFetch: false })]);
 });
 
 test('portals: the switches save at once; only the switch switches', async ({ page }) => {
@@ -516,7 +559,7 @@ test('portals: a pause or an empty alert mail is one quiet line; the meter stays
   await settings(page, `${WIN}&scenario=paused`);
   const pause = page.getByTestId('health-linkedin');
   await expect(pause).toHaveText(
-    'Das Portal bremst die Aufrufe, der Abruf macht ab 11:05 von selbst weiter.',
+    'Die Quelle bremst die Aufrufe, der Abruf macht ab 11:05 von selbst weiter.',
   );
   await expect(pause).toHaveClass(/info/);
   const mails = page.getByTestId('health-freelance');

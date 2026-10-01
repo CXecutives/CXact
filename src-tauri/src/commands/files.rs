@@ -175,6 +175,7 @@ pub async fn open_target(state: State<'_, AppState>, target: OpenTarget) -> CmdR
         }
         OpenTarget::AlertMail { gmail_id } => mail(u64::from_str_radix(&gmail_id, 16).ok())?,
         OpenTarget::PortalHome { portal } => portal.home_url().into(),
+        OpenTarget::PortalSetup { portal } => portal.setup_url().into(),
         OpenTarget::AppPasswordPage => APP_PASSWORD_URL.into(),
         OpenTarget::TwoStepPage => TWO_STEP_URL.into(),
         OpenTarget::Workspace => workspace_folder(&state)?,

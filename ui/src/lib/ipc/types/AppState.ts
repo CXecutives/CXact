@@ -67,6 +67,10 @@ exportExcel: boolean,
  */
 exportCsv: boolean, 
 /**
+ * The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`).
+ */
+autoFetch: boolean, 
+/**
  * The language of the interface and the exports: the chosen one, else the OS language.
  */
 language: Language, 

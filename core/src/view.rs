@@ -1073,6 +1073,9 @@ pub struct SettingsPatch {
     /// Write the CSV file with every export.
     #[serde(default)]
     pub export_csv: Option<bool>,
+    /// Fetch by itself at the start and every four hours.
+    #[serde(default)]
+    pub auto_fetch: Option<bool>,
     /// The language the user chose (from then on the OS language no longer counts).
     pub language: Option<Language>,
     /// The palette the user chose (Einstellungen, Darstellung).
@@ -1107,6 +1110,9 @@ impl SettingsPatch {
         }
         if let Some(on) = self.export_csv {
             settings.export_csv = on;
+        }
+        if let Some(on) = self.auto_fetch {
+            settings.auto_fetch = on;
         }
         if let Some(language) = self.language {
             settings.language = Some(language);
@@ -1633,6 +1639,8 @@ pub struct AppState {
     pub export_excel: bool,
     /// The CSV file is written with every export.
     pub export_csv: bool,
+    /// The app fetches by itself at the start and every four hours (`pipeline::AUTO_EVERY`).
+    pub auto_fetch: bool,
     /// The language of the interface and the exports: the chosen one, else the OS language.
     pub language: Language,
     /// The colours of the page and the window (Excel and the icon keep Light).
@@ -1675,6 +1683,10 @@ pub enum OpenTarget {
     },
     /// Home page of a portal ("open in your own browser" after a block).
     PortalHome {
+        portal: Portal,
+    },
+    /// The page where the user sets up a source's alert (`setup_url`).
+    PortalSetup {
         portal: Portal,
     },
     /// Google page to create an app password.

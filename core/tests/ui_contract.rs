@@ -1114,7 +1114,11 @@ fn the_catalog_keeps_the_glossary() {
     let mut problems = Vec::new();
     for (n, line) in catalog(&all, "lib/i18n/de.ts").lines() {
         for (old, new) in [
-            ("Quelle", "Portal"),
+            // The sources the app searches and those of alert mails (2026-10-01).
+            ("Portal", "Quelle"),
+            ("Portale", "Quellen"),
+            ("Portals", "der Quelle"),
+            ("Portalen", "Quellen"),
             ("Eintrag", "Job"),
             ("Volltext", "Anzeige"),
             ("Kandidat", "Job"),
@@ -1138,11 +1142,16 @@ fn the_catalog_keeps_the_glossary() {
         }
     }
     for (n, line) in catalog(&all, "lib/i18n/en.ts").lines() {
+        // An import names a file, not a thing the user reads.
+        if line.trim_start().starts_with("import ") {
+            continue;
+        }
         for (old, new) in [
             ("Entry", "Job"),
             ("Entries", "Jobs"),
             ("Candidate", "Job"),
-            ("Source", "Portal"),
+            ("Portal", "Source"),
+            ("Portals", "Sources"),
             ("Full text", "Details"),
             ("Hit", "Match"),
             ("Hits", "Matches"),

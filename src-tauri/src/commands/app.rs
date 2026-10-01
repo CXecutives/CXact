@@ -200,6 +200,7 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         fetch_range: settings.fetch_range,
         export_excel: settings.export_excel,
         export_csv: settings.export_csv,
+        auto_fetch: settings.auto_fetch,
         language: settings.language_or(state.system_language),
         palette: settings.palette,
         last_run,

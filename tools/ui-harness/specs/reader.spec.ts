@@ -50,7 +50,7 @@ const ROWS = [
   'Erfahrung',
   'Bewerbungsfrist',
   'Kontakt',
-  'Portal',
+  'Quelle',
   'Eingegangen',
 ];
 
@@ -1048,7 +1048,7 @@ test.describe('Jobdetails', () => {
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
-    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Portal', 'Eingegangen']);
+    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Quelle', 'Eingegangen']);
     await expect(terms(page)).not.toContainText('/');
     // A preview: no "/" claims the ad says nothing.
     await openJob(page, 'freelance-900411');
@@ -1057,7 +1057,7 @@ test.describe('Jobdetails', () => {
       'Ort',
       'Arbeitsmodell',
       'Vertragsart',
-      'Portal',
+      'Quelle',
       'Eingegangen',
     ]);
     await expect(terms(page).locator('.value.missing')).toHaveCount(0);

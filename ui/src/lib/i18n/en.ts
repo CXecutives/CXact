@@ -7,7 +7,7 @@
 // sentence with a period; headings and labels end without a colon; no dash or em dash as a
 // separator, no "X: Y", no exclamation marks. No German except product and portal names and
 // the name of the German language. Glossary (docs/PLAN.md "Glossary (UI)", one word per
-// thing): Job, Portal, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
+// thing): Job, Source, Match (High, Medium, Low), Job details, Requirements (Met, Partly met,
 // Not met, Unclear), Must-have, Optional, Exclusion, Profile, Mailbox, Alert email, Check
 // mailbox (the button; what it does is a fetch), Load ad, Excel file, CSV file, Work folder,
 // Excluded, Score anyway, Rescore, New, Inbox (the place of the active jobs), Archive (Move to
@@ -200,7 +200,7 @@ const profileField = (): Record<string, string> => {
 const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(value);
 
 const invalid: Record<InvalidInput['reason'], Text> = {
-  noPortal: 'At least one portal must be active.',
+  noPortal: 'At least one source must be active.',
   profileNotUtf8: 'The file is not a text file.',
   profileNotJson: (p) => `The file is damaged (line ${str(p.line)}).`,
   profileNotObject: 'The file does not contain a profile.',
@@ -212,12 +212,12 @@ const invalid: Record<InvalidInput['reason'], Text> = {
 
 /** Why a portal pauses, as the first half of one sentence (`health.advice.paused`). */
 const pause: Record<PauseReason, string> = {
-  throttled: 'the portal is throttling requests',
-  blocked: 'the portal is blocking requests',
+  throttled: 'the source is throttling requests',
+  blocked: 'the source is blocking requests',
   layoutChanged: 'the pages do not look as expected',
-  stateUnreadable: 'the state of the portal cannot be read',
-  network: 'the portal cannot be reached',
-  challenged: 'the portal is asking for verification',
+  stateUnreadable: 'the state of the source cannot be read',
+  network: 'the source cannot be reached',
+  challenged: 'the source is asking for verification',
 };
 
 /** Opening the alert email of a job in Gmail, the same words wherever it is offered. */
@@ -792,7 +792,7 @@ export const en: Catalog = {
     sortNoProfile: 'Without a profile, jobs sort by date only.',
     filter: 'Sort and filter',
     chips: 'Filter',
-    portalHeading: 'Portal',
+    portalHeading: 'Source',
     bandHeading: 'Match',
     band: {
       high: 'High',
@@ -811,7 +811,7 @@ export const en: Catalog = {
     lastFetch: 'From last fetch',
     filterReset: 'Reset filter',
     needsMailbox: 'Connect a mailbox first.',
-    needsPortal: 'Turn on a portal first.',
+    needsPortal: 'Turn on a source first.',
   },
   run: {
     line: {
@@ -910,7 +910,7 @@ export const en: Catalog = {
       deadline: 'Deadline',
       contact: 'Contact',
       industry: 'Industry',
-      portal: 'Portal',
+      portal: 'Source',
       received: 'Received',
     },
     salaryName: 'Salary',
@@ -972,7 +972,7 @@ export const en: Catalog = {
       quota: (iso: string) =>
         `The limit has been reached, so fetching resumes automatically at ${formatMoment(iso)}.`,
       emptyMails,
-      pages: 'The portal’s pages look different, so the next fetch tries again automatically.',
+      pages: 'The source’s pages look different, so the next fetch tries again automatically.',
       login: 'The sign-in has expired, so sign in again.',
     },
   },
@@ -1214,7 +1214,8 @@ export const en: Catalog = {
   },
   settings: {
     mailbox: 'Mailbox',
-    portals: 'Portals',
+    search: 'Search',
+    alerts: 'Alert emails',
     export: 'Export',
     look: 'Appearance',
     data: 'Data',
@@ -1243,6 +1244,9 @@ export const en: Catalog = {
     signInWaiting: 'The sign-in window is open.',
     alertQuiet: (days: number) => `No alert email in ${n(days)} days.`,
     checkAlert: 'Check alert',
+    autoFetch: 'Fetch automatically',
+    autoFetchHint: 'At start and every 4 hours.',
+    setUpAlert: 'Set up alert',
     folder: 'Work folder',
     excel: 'Excel file',
     csv: 'CSV file',
@@ -1272,7 +1276,7 @@ export const en: Catalog = {
       'the backups',
       'the profiles',
       'the app password',
-      'the portal sign-ins',
+      'the source sign-ins',
       'the app’s files in the work folder',
     ],
     resetDone: 'The app has been reset.',
@@ -1297,7 +1301,7 @@ export const en: Catalog = {
     mailbox: 'Mailbox',
     mailboxText: (portals: readonly Portal[]) =>
       `The alert emails from ${joined(portals.map((p) => portalName[p]))} must go to this Gmail${NBSP}address.`,
-    mailboxDone: 'The portals’ alert emails must go to this address.',
+    mailboxDone: 'The sources’ alert emails must go to this address.',
     openSettings: 'Open settings',
     alertMails: (value: number) => count(value, 'alert email', 'alert emails'),
     createAlert: 'Create alert',

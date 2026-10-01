@@ -105,7 +105,8 @@ laid over it. Components never ask which palette is on. The retired CXact palett
 ## Add or change a setting or a first-run step
 
 - Einstellungen is one table, `CARDS` in `ui/src/features/settings/cards.ts`: the cards in
-  their order (Postfach, Portale, Export, Darstellung, Daten), each with its rows. A setting is
+  their order (Postfach, Suche, Alert-Mails, Export, Darstellung, Daten), each with its rows (a
+  source lands in Suche or Alert-Mails by its `way()`). A setting is
   one row there: its kind (switch, choice, a row of buttons, a value), its texts from the
   catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new

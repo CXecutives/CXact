@@ -1,5 +1,5 @@
-// Einstellungen as data: the cards in their order (Postfach, Portale, Export, Darstellung,
-// Daten), each with its heading and its rows, and every button of a row. SettingsView.svelte
+// Einstellungen as data: the cards in their order (Postfach, Suche, Alert-Mails, Export,
+// Darstellung, Daten), each with its heading and its rows, and every button of a row. SettingsView.svelte
 // renders this list and nothing else, so adding, moving or removing a setting is one entry
 // here (docs/CHANGING.md). Texts are read from the catalog where they render
 // (`(t) => t.settings.…`), so they follow the language.
@@ -12,7 +12,7 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, Language, OpenTarget, Palette, SettingsPatch } from '$lib/ipc/types';
+import type { AppState, Language, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -116,22 +116,29 @@ export interface ActionsRow {
   label: Text;
   /** A value under the label to copy (a path). */
   path?: (state: AppState) => string;
+  /** One short sentence under the label (what its switch does). */
+  hint?: Text;
   actions: readonly ActionId[];
   toggle?: Switch;
 }
 
 export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
 
-/** A card: its rows, and for the mailbox and the portals a block of their own (the mailbox
- *  has no rows of its own). */
+/** A card: its rows, and for the mailbox and the sources a block of their own (the mailbox
+ *  has no rows of its own; the sources stand under the card's rows, those the app searches in
+ *  Suche, those of alert mails in Alert-Mails). */
 export interface CardSpec {
   id: string;
   heading: Text;
-  block?: 'mailbox' | 'portals';
+  block?: 'mailbox' | Sources;
   rows: readonly Row[];
   /** Kept but not shown for now (a card that may come back). */
   hidden?: boolean;
 }
+
+/** The cards of the sources, by how a source brings its jobs (`PortalState.way`). */
+export type Sources = 'search' | 'alerts';
+export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : 'alerts');
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
@@ -139,6 +146,7 @@ export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => 
   fetchRange: null,
   exportExcel: null,
   exportCsv: null,
+  autoFetch: null,
   language: null,
   palette: null,
   ...change,
@@ -183,7 +191,28 @@ const folder: ActionsRow = {
 
 export const CARDS: readonly CardSpec[] = [
   { id: 'mailbox', heading: (t) => t.settings.mailbox, block: 'mailbox', rows: [] },
-  { id: 'portals', heading: (t) => t.settings.portals, block: 'portals', rows: [] },
+  {
+    id: 'search',
+    heading: (t) => t.settings.search,
+    block: 'search',
+    rows: [
+      // At the start and every four hours while the app is open (user decision 2026-10-01).
+      {
+        kind: 'actions',
+        id: 'auto-fetch',
+        label: (t) => t.settings.autoFetch,
+        hint: (t) => t.settings.autoFetchHint,
+        actions: [],
+        toggle: {
+          id: 'autoFetch',
+          on: (state) => state.autoFetch,
+          patch: (on) => ({ autoFetch: on }),
+          set: (state, on) => void (state.autoFetch = on),
+        },
+      },
+    ],
+  },
+  { id: 'alerts', heading: (t) => t.settings.alerts, block: 'alerts', rows: [] },
   {
     id: 'export',
     heading: (t) => t.settings.export,
