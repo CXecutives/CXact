@@ -1,9 +1,10 @@
 <!--
   One source in the card Suche or of the Postfach's alert mails, the same compact row for
   each (user, 2026-10-01): its tile and name, under it the calls of today in one quiet line
-  ("Heute 23 von 100 Aufrufen", counted from midnight), for a source of alert mails "Alert
-  anlegen" (its page in the browser), then "Anmelden" or "Abmelden" where the portal offers a
-  sign-in, the portal in the browser (in one column in every row) and its switch (the name
+  ("Heute 23 von 100 Aufrufen", counted from midnight), "Anmelden" or "Abmelden" where the
+  portal offers a sign-in, then for a source of alert mails "Alert anlegen" (its page in the
+  browser; in one column in every row, whether a sign-in stands before it), the portal in the
+  browser (in one column in every row) and its switch (the name
   names the switch but, like every text next to a switch, does not switch it); at the
   smallest window the sign-in goes to a line of its own at the row's end. A
   problem of the portal is one quiet line under the calls (whether the user has to act, the
@@ -216,15 +217,6 @@
   </div>
   {#if portal.way === 'alert' || loginShown}
     <span class="login">
-      {#if portal.way === 'alert'}
-        <Button
-          variant="secondary"
-          icon="alertMail"
-          label={t.settings.setUpAlert}
-          testid="setup-{portal.portal}"
-          onclick={() => open('setup')}
-        />
-      {/if}
       {#if loginShown}
         <span class="sign" transition:fade>
           {#if signedIn}
@@ -251,6 +243,15 @@
             />
           {/if}
         </span>
+      {/if}
+      {#if portal.way === 'alert'}
+        <Button
+          variant="secondary"
+          icon="alertMail"
+          label={t.settings.setUpAlert}
+          testid="setup-{portal.portal}"
+          onclick={() => open('setup')}
+        />
       {/if}
     </span>
   {/if}
@@ -334,7 +335,7 @@
     min-height: var(--tile-sm);
   }
 
-  /* The sign-in fades in and out on its own, next to "Alert anlegen". */
+  /* The sign-in fades in and out on its own, before "Alert anlegen". */
   .sign {
     display: flex;
   }

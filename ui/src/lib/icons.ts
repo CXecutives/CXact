@@ -38,9 +38,9 @@ export const ICONS = {
   jump: 'arrow-down',
 
   // Runs.
-  /** Get the new alert mails (Postfach abrufen). */
+  /** Get the new alert mails (Alert-Mails lesen). */
   fetch: 'refresh-cw',
-  /** The Zeitraum of "Postfach abrufen", the button beside it. */
+  /** The Zeitraum of "Alert-Mails lesen", the button beside it. */
   range: 'sliders-horizontal',
   /** Try again what failed (a load, a run, a file). */
   retry: 'rotate-cw',

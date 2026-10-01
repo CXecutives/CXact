@@ -2,16 +2,16 @@
   The header of the list column, the same in the three places. First row: the places as tabs
   (Aktuell, Archiv, Papierkorb, their names only; another place starts without the search,
   like a folder of a mail app) and at its right end the place's one action: in the
-  Aktuell "Postfach abrufen", the one primary of the Jobs view, with an outlined icon button
+  Aktuell "Alert-Mails lesen", the one primary of the Jobs view, with an outlined icon button
   beside it that opens the menu "Zeitraum" (Seit dem letzten Abruf, Letzte 7 Tage, Letzte 30
   Tage, Alle Alert-Mails, the current one checked; a choice is saved at once,
   lib/state/app.svelte.ts); "Abbrechen" stands in the fetch's place while a fetch goes, as
-  wide as "Postfach abrufen" (the wider of the two sets it), the Zeitraum's button stays
+  wide as "Alert-Mails lesen" (the wider of the two sets it), the Zeitraum's button stays
   beside it, off; in the other places "Abbrechen" stands where it stands in Aktuell, so
   it never moves between the tabs; the two cross-fade, so nothing jumps; the fetch is locked
   while the app scores the jobs anew, and without a mailbox, saying why. In the Papierkorb
   "Papierkorb leeren" (outlined with the red of every button that deletes, as large as
-  "Postfach abrufen"; asks first; "Abbrechen" over it while a
+  "Alert-Mails lesen"; asks first; "Abbrechen" over it while a
   fetch goes), in the Archiv none. A narrow column puts the action under the tabs.
   Second row: the search, whose placeholder names what it searches (its × clears it), and the
   funnel.
@@ -50,6 +50,7 @@
   import { activeFilters, dropFrom, NO_FILTER, type ActiveFilter } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
+  import { FETCH_WAYS } from '$lib/state/app.svelte';
   import { fetchLook, run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
@@ -223,10 +224,17 @@
 </script>
 
 {#snippet fetchButtons(inbox: boolean)}
-  <!-- The fetch and "Abbrechen" share one slot (the wider sets it): nothing moves; the menu's
-       button beside them is off while a fetch goes and holds its room outside Aktuell. -->
+  <!-- The fetch and "Abbrechen" share one slot, as wide as the widest of them and of the
+       fetch's other way (unseen), so the button keeps one size whichever way its menu chose:
+       nothing moves; the menu's button beside them is off while a fetch goes and holds its
+       room outside Aktuell. -->
   <span class="fetch">
     <span class="run">
+      {#each FETCH_WAYS as other (other)}
+        <span class="swap sizer" inert aria-hidden="true"
+          ><Button variant="secondary" {...fetchLook(other)} wide /></span
+        >
+      {/each}
       <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
         <Button
           variant={fetchVariant}
@@ -281,7 +289,7 @@
       <!-- One cell in every place, as wide as the widest of what it holds (the fetch's
            buttons hold its width where they do not show); only the one that fits the place
            and the run shows and takes clicks: "Abbrechen" while a fetch goes, wherever the
-           list is (a fetch that ends at once simply shows "Postfach abrufen" again). -->
+           list is (a fetch that ends at once simply shows "Alert-Mails lesen" again). -->
       <span class="action" data-testid="place-action">
         <span class="slot" class:shown={fetchGroup} inert={!fetchGroup}>
           {@render fetchButtons(place === 'inbox')}
@@ -438,13 +446,13 @@
     opacity: 1;
   }
 
-  /* "Postfach abrufen" (or "Abbrechen") and the Zeitraum's button beside it. */
+  /* "Alert-Mails lesen" (or "Abbrechen") and the Zeitraum's button beside it. */
   .fetch {
     display: flex;
     gap: var(--space-8);
   }
 
-  /* "Postfach abrufen" and "Abbrechen" in one cell, both as wide as the wider. */
+  /* "Alert-Mails lesen" and "Abbrechen" in one cell, both as wide as the wider. */
   .run {
     display: grid;
   }
@@ -462,6 +470,10 @@
 
   .swap.shown {
     opacity: 1;
+  }
+
+  .sizer {
+    visibility: hidden;
   }
 
   .unfold {

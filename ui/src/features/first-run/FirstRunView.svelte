@@ -5,7 +5,7 @@
   fetch. No sentence introduces them: each step is its name and the controls it needs. The
   next open step that is not optional carries the one primary button; the fetch stays locked
   with its reason while it cannot run (run.fetchBlocked) and says the words of its way
-  ("Jobs suchen", "Postfach abrufen"). After "Alles zurücksetzen" the app starts here again: a clean reset says so
+  ("Jobs suchen", "Alert-Mails lesen"). After "Alles zurücksetzen" the app starts here again: a clean reset says so
   once in a toast, one that left something stands as a warning above the steps with the way
   to the log. Compact enough that all three steps are in view at 1280 x 720 on both OS; the
   sidebar works as always, with Jobs current while this page stands for it.
@@ -121,7 +121,7 @@
   }
 
   /** The first fetch that failed (this session, else the last one the app knows): its words
-   *  and the fitting action (none where "Postfach abrufen" is the way on). */
+   *  and the fitting action (none where "Alert-Mails lesen" is the way on). */
   const failed = $derived.by(() => {
     if (run.active) return null;
     const last = run.summary ?? app.state?.lastRun ?? null;

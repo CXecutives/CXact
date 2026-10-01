@@ -871,12 +871,12 @@ export const de = {
   toolbar: {
     /** The fetch when its menu chose only the search, only the mailbox. */
     searchNow: 'Jobs suchen',
-    fetchMailbox: 'Postfach abrufen',
+    fetchMailbox: 'Alert-Mails lesen',
     /** The icon button beside the fetch and its menu: what the fetch reads. */
     fetchSettings: 'Abruf einstellen',
     wayName: {
       search: 'Suche',
-      mail: 'Postfach',
+      mail: 'Alert-Mails',
     },
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',

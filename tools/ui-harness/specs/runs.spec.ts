@@ -42,7 +42,7 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
   await expect(page.getByRole('tooltip')).toHaveText('Die Jobs werden gerade neu bewertet.');
   await page.evaluate(() => (window.__harness.holdAfter = null));
   await runFinished(page);
-  // Afterwards nothing speaks of it, and Postfach abrufen is back.
+  // Afterwards nothing speaks of it, and Alert-Mails lesen is back.
   await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
   expect(await calls(page, 'start_run')).toHaveLength(1);
 });

@@ -1,6 +1,6 @@
 <!--
   "Papierkorb leeren" in the list header's action cell: outlined in the red of every button
-  that deletes and as wide as the fetch as it stands ("Jobs suchen" or "Postfach abrufen";
+  that deletes and as wide as the fetch as it stands ("Jobs suchen" or "Alert-Mails lesen";
   an unseen one sets the width; user, 2026-09-29), at the cell's right edge.
 -->
 <script lang="ts">
@@ -48,7 +48,7 @@
     grid-area: 1 / 1;
   }
 
-  /* Holds the width of "Postfach abrufen", unseen. */
+  /* Holds the width of "Alert-Mails lesen", unseen. */
   .sizer {
     visibility: hidden;
   }

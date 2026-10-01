@@ -190,7 +190,7 @@ test.describe('header', () => {
     await openPlace(page, 'trash');
     const empty = page.getByTestId('empty-trash');
     await expect(empty).toHaveText(T.actions.emptyTrash);
-    // Outlined in the red of every button that deletes, as large as "Postfach abrufen".
+    // Outlined in the red of every button that deletes, as large as "Alert-Mails lesen".
     await expect(empty).toHaveClass(/secondary/);
     await expect(empty).toHaveClass(/warns/);
     await expect(empty).toHaveClass(/wide/);
@@ -244,7 +244,7 @@ test.describe('header', () => {
     // Right edge on the control's.
     const box = (await menu.boundingBox())!;
     expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
-    // Postfach: saved at once, the menu closes, the button says "Postfach abrufen" with the
+    // Postfach: saved at once, the menu closes, the button says "Alert-Mails lesen" with the
     // glyph of every fetch (not the mail's).
     await menuItem(page, 'way-mail').click();
     await expect(menu).toHaveCount(0);
@@ -349,7 +349,7 @@ test.describe('header', () => {
     }
   });
 
-  test('Postfach abrufen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
+  test('Alert-Mails lesen and Abbrechen share one slot; the hairline shows once the list scrolls', async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 600 });
@@ -1398,7 +1398,7 @@ test.describe('one list', () => {
     await expect(empty.locator('.tile svg, svg').first()).toHaveClass(
       new RegExp(`lucide-${ICONS.inbox}`),
     );
-    // No second "Postfach abrufen": the header's stands right above it.
+    // No second "Alert-Mails lesen": the header's stands right above it.
     await expect(empty.getByRole('button')).toHaveCount(0);
     await expect(page.getByTestId('fetch')).toBeVisible();
     expect(await visibleCount(page, '[data-testid^="empty-"]')).toBe(1);

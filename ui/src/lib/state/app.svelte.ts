@@ -112,7 +112,7 @@ class AppStore {
     return this.state?.portals.some((p) => p.enabled && p.way === 'search') ?? false;
   }
 
-  /** A source of alert mails is switched on ("Postfach abrufen" has one to read). */
+  /** A source of alert mails is switched on ("Alert-Mails lesen" has one to read). */
   get alerts(): boolean {
     return this.state?.portals.some((p) => p.enabled && p.way === 'alert') ?? false;
   }

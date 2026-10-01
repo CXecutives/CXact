@@ -1169,4 +1169,10 @@ handle sits between list and reader".
   - [x] The navy of cxpertise.de (#3E5C7E) a step richer (212 50% 36%), and every heading in it instead of a
     near-black navy, so the palette does not look pale beside the coral (the icon keeps #E67A5C)
   - [x] Erste Schritte: the profile first (the search needs it), the mailbox optional (only the alert mails
-    need it, its Verbinden secondary), the first fetch in the words of its way (Jobs suchen, Postfach abrufen)
+    need it, its Verbinden secondary), the first fetch in the words of its way (Jobs suchen, Alert-Mails lesen)
+  - [x] The fetch's two ways named alike: "Jobs suchen" and "Alert-Mails lesen" (its menu: Suche, Alert-Mails);
+    the button keeps one width whichever way is chosen
+  - [x] A source's sign-in stands before "Alert anlegen", so that one stays in one column in every row
+  - [x] The Suchbegriffe the app proposes are chips like any other (hollow ones read as a fault); the hint
+    says they are its proposal
+  - [x] Öffnen of a job is the open book; the top bar's icons 15 px like the content's small ones

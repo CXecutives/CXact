@@ -752,10 +752,10 @@ test('a tooltip shows on keyboard focus after the delay and goes on blur, resize
   // wait, which a busy machine can stretch past the delay).
   await expect(tooltip(page)).toHaveCount(0);
   await expect(tooltip(page)).toHaveText(words);
-  // Blur: the focus moves back to a button that names itself (Anmelden stands before it),
-  // which has none.
+  // Blur: the focus moves back to a button that names itself ("Alert anlegen" stands before
+  // it), which has none.
   await page.keyboard.press('Shift+Tab');
-  await expect(page.getByTestId('sign-in-freelance')).toBeFocused();
+  await expect(page.getByTestId('setup-freelance')).toBeFocused();
   await expect(tooltip(page)).toHaveCount(0);
   await first.focus();
   await expect(tooltip(page)).toHaveText(words);

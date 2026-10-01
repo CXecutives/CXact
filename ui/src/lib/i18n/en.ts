@@ -770,11 +770,11 @@ export const en: Catalog = {
   },
   toolbar: {
     searchNow: 'Search jobs',
-    fetchMailbox: 'Check mailbox',
+    fetchMailbox: 'Read alert emails',
     fetchSettings: 'Fetch settings',
     wayName: {
       search: 'Search',
-      mail: 'Mailbox',
+      mail: 'Alert emails',
     },
     cancel: 'Cancel',
     progress: 'Fetch progress',

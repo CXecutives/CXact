@@ -328,7 +328,7 @@ impl AppState {
         !matches!(*lock(&self.activity), Activity::Idle)
     }
 
-    /// A fetch ("Postfach abrufen") holds the app: closing the window asks first.
+    /// A fetch ("Alert-Mails lesen") holds the app: closing the window asks first.
     pub fn fetching(&self) -> bool {
         matches!(&*lock(&self.activity), Activity::Run(run) if run.snapshot().kind.reads_mail())
     }

@@ -1,6 +1,6 @@
 // What the shell shows: the first-run page while nothing was ever fetched (and no run goes)
 // instead of the Jobs view. A mailbox removed later does not bring it back: the jobs stay
-// in view, "Postfach abrufen" waits for a mailbox and the list says how to connect one.
+// in view, "Alert-Mails lesen" waits for a mailbox and the list says how to connect one.
 // And the frame around the views, like the Claude app's: the sidebar docked or folded away
 // by its button (a narrow window folds it by itself; its button then floats it over the
 // view), and the job view beside the list shown or hidden. Both choices are kept per user

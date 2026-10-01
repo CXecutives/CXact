@@ -1,6 +1,6 @@
 <!--
   The Jobs view on the white sheet of the shell: left the list column with its header (the
-  places, "Postfach abrufen", the search, the order and the filter), the run panel and the
+  places, "Alert-Mails lesen", the search, the order and the filter), the run panel and the
   list; a hairline; right the reader, or with nothing selected its empty state. Nothing floats: no cards, no
   shadows. Both columns start at the same line; the handle between them resizes the list
   (the width is kept) from 320 px up to 60 % of the content, as long as the reader keeps

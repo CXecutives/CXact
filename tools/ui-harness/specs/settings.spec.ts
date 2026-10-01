@@ -186,8 +186,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'mailbox-change',
     'mailbox-remove',
     'setup-linkedin',
-    'setup-freelance',
     'sign-in-freelance',
+    'setup-freelance',
     'folder-change',
     'folder-open',
     'reset',
@@ -471,17 +471,22 @@ test('sources: Suche, and in Postfach those of its alert mails, in the order of 
   ]);
   await (await showTab(page, page.getByTestId('setup-freelance'))).click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
+  // The sign-in before "Alert anlegen", which stands in one column in every row; the buttons
+  // and the tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
     .getByTestId('portal-freelance')
     .locator('.tools')
     .evaluate((node) => getComputedStyle(node).columnGap);
   expect(gap).toBe('12px');
-  const [signIn, external] = await Promise.all([
+  const [signIn, setup, otherSetup, external] = await Promise.all([
     page.getByTestId('sign-in-freelance').boundingBox(),
+    page.getByTestId('setup-freelance').boundingBox(),
+    page.getByTestId('setup-linkedin').boundingBox(),
     page.getByTestId('open-portal-freelance').boundingBox(),
   ]);
-  expect(Math.round(external!.x - (signIn!.x + signIn!.width))).toBe(12);
+  expect(Math.round(setup!.x - (signIn!.x + signIn!.width))).toBe(12);
+  expect(Math.round(external!.x - (setup!.x + setup!.width))).toBe(12);
+  expect(Math.round(setup!.x)).toBe(Math.round(otherSetup!.x));
   await page.getByTestId('open-portal-linkedin').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalHome', portal: 'linkedin' } });
 });

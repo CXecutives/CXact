@@ -115,7 +115,7 @@ const INIT: &str = r#"(() => {
   const ready = () => fetchButton() !== null && fetchButton().getAttribute('aria-disabled') !== 'true';
 
   const scenarios = {
-    // Postfach abrufen -> the run line -> rows with rings -> the line goes, back at rest.
+    // Alert-Mails lesen -> the run line -> rows with rings -> the line goes, back at rest.
     async run() {
       if (!(await until(ready, 5000))) return { ok: false, why: 'no enabled fetch button' };
       start();

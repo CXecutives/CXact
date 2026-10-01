@@ -29,7 +29,7 @@ import type {
   StatusCode,
   Step,
 } from '../ipc/types';
-import { app } from './app.svelte';
+import { app, type FetchWay } from './app.svelte';
 import { NO_FILTER } from './filter';
 import { jobs } from './jobs.svelte';
 import { navigation } from './navigation.svelte';
@@ -111,7 +111,7 @@ class RunStore {
   }
 
   /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" the search,
-   *  "Postfach abrufen" the mailbox), in the order it is fixed: a run holds the app; for the
+   *  "Alert-Mails lesen" the mailbox), in the order it is fixed: a run holds the app; for the
    *  search no source of it switched on or no profile to search with; for the mails no
    *  mailbox or no source of alert mails switched on; null when it can (the demo fetches from
    *  its made-up mailbox). The backend refuses the same. */
@@ -306,7 +306,7 @@ class RunStore {
 
 export interface FailureAction {
   label: string;
-  /** The glyph the action has everywhere (a retry loads again, like Postfach abrufen). */
+  /** The glyph the action has everywhere (a retry loads again, like Alert-Mails lesen). */
   icon?: IconMeaning;
   onclick: () => void;
 }
@@ -314,7 +314,7 @@ export interface FailureAction {
 /**
  * The one fitting action for a failed run, wherever it is said (its toast, the first-run
  * page): the mailbox settings for a mailbox problem, the log for an internal error, else a
- * retry. A failed fetch gets none while "Postfach abrufen" is there to do the same (with a
+ * retry. A failed fetch gets none while "Alert-Mails lesen" is there to do the same (with a
  * mailbox), and no retry is offered while another run goes (it could not start).
  */
 export function failureAction(
@@ -354,10 +354,13 @@ function openLog(): void {
 export const run = new RunStore();
 
 /** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs suchen"
- *  the search, "Postfach abrufen" the mailbox (the glyph of every fetch, not the mail's); the
+ *  the search, "Alert-Mails lesen" the mailbox (the glyph of every fetch, not the mail's); the
  *  list's button, its empty states and the first run's step say the same. */
-export function fetchLook(): { label: string; icon: 'fetch' | 'search' } {
-  return app.fetchWay === 'search'
+export function fetchLook(way: FetchWay = app.fetchWay): {
+  label: string;
+  icon: 'fetch' | 'search';
+} {
+  return way === 'search'
     ? { label: t.toolbar.searchNow, icon: 'search' }
     : { label: t.toolbar.fetchMailbox, icon: 'fetch' };
 }

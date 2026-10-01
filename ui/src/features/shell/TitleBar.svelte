@@ -168,7 +168,7 @@
   }
 
   /* The buttons lie in the zones the Windows caption leaves to the page; they are the bar's
-     own size, their glyphs a notch below the content's (Lucide's line grows with them). */
+     own size, their glyphs the content's small ones. */
   .tools {
     position: relative;
     display: flex;
@@ -180,10 +180,6 @@
 
   .tools :global(.btn) {
     --btn-height: var(--titlebar-tool);
-  }
-
-  .tools :global(.icon.sm) {
-    --icon-size: var(--titlebar-icon);
   }
 
   .start {

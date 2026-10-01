@@ -453,11 +453,15 @@ test('Suchbegriffe: the roles and Schwerpunkte until changed, then as written', 
     'Controlling',
     'Konzernrechnungslegung nach IFRS',
   ]);
-  // None stored: they are the app's proposal, dashed and said so (user 2026-10-01).
+  // None stored: they are the app's proposal, said so under them; the chips look like every
+  // other chip (user 2026-10-01: hollow ones read as a fault).
   await expect(field(page, 'searchTerms')).toContainText(T.profile.field.searchTermsProposed);
-  await expect(terms.locator('.chip').first()).toHaveCSS('outline-style', 'dashed');
+  const roleChip = page.getByTestId('profile-roles').locator('.chip').first();
+  const fill = await roleChip.evaluate((node) => getComputedStyle(node).backgroundColor);
+  await expect(terms.locator('.chip').first()).toHaveCSS('background-color', fill);
+  await expect(terms.locator('.chip').first()).toHaveCSS('outline-style', 'none');
   // Untouched they are no change; one more is, and it is saved as written: the consultant's
-  // own from then on, solid, with the sentence what they are for.
+  // own from then on, with the sentence what they are for.
   await expect(bar(page)).toHaveCount(0);
   await terms.locator('input').fill('SAP FI/CO');
   await terms.locator('input').press('Enter');
