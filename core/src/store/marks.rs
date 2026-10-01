@@ -9,7 +9,7 @@
 use jiff::Timestamp;
 use rusqlite::{Connection, OptionalExtension, params};
 
-use super::{Store, bump};
+use super::Store;
 use crate::error::Result;
 use crate::model::Place;
 use crate::portal::{JobKey, Portal};
@@ -130,9 +130,6 @@ impl Store {
                     restored.push(key.clone());
                 }
             }
-            if !restored.is_empty() {
-                bump(conn)?;
-            }
             Ok(restored)
         })
     }
@@ -165,9 +162,6 @@ impl Store {
                 {
                     moved.push(key.clone());
                 }
-            }
-            if !moved.is_empty() {
-                bump(conn)?;
             }
             Ok(moved)
         })
@@ -245,9 +239,6 @@ impl Store {
                 tomb.execute(params![portal, id, to_db(now)])?;
                 delete.execute(params![portal, id])?;
             }
-            if !doomed.is_empty() {
-                bump(conn)?;
-            }
             let gone = doomed
                 .into_iter()
                 .filter_map(|(portal, id)| Portal::from_key(&portal).map(|portal| JobKey { portal, id }))
@@ -281,15 +272,12 @@ impl Store {
                  WHERE portal = ?1 AND job_id = ?2 AND (override_include IS NULL) = ?3",
                 params![key.portal.key(), key.id, include],
             )? > 0;
-            if changed {
-                if !include {
-                    // The engine's verdict is due again (the caller assesses it right away).
-                    conn.execute(
-                        "UPDATE job SET match_rev = NULL WHERE portal = ?1 AND job_id = ?2",
-                        params![key.portal.key(), key.id],
-                    )?;
-                }
-                bump(conn)?;
+            if changed && !include {
+                // The engine's verdict is due again (the caller assesses it right away).
+                conn.execute(
+                    "UPDATE job SET match_rev = NULL WHERE portal = ?1 AND job_id = ?2",
+                    params![key.portal.key(), key.id],
+                )?;
             }
             Ok(changed)
         })
@@ -427,9 +415,7 @@ mod tests {
             .move_jobs(std::slice::from_ref(&keys[0]), Place::Archive, at)
             .unwrap();
         store.move_jobs(&keys[..2], Place::Trash, at).unwrap();
-        let rev = store.data_rev().unwrap();
         assert_eq!(store.restore_jobs(&keys, later).unwrap(), &keys[..2]);
-        assert_ne!(store.data_rev().unwrap(), rev);
         let archived = store.job(&keys[0]).unwrap().unwrap();
         assert_eq!(archived.place(), Place::Archive);
         assert_eq!(archived.archived_at, Some(at), "it keeps its archive time");
@@ -453,17 +439,12 @@ mod tests {
             .unwrap();
         assert_eq!(store.trashed_keys().unwrap(), [keys[0].clone()]);
         assert_eq!(store.in_trash(&keys).unwrap(), [keys[0].clone()]);
-        let rev = store.data_rev().unwrap();
         let (gone, names) = store
             .delete_jobs(&store.trashed_keys().unwrap(), now())
             .unwrap();
         assert_eq!(
             (gone, names),
             (vec![keys[0].clone()], vec!["a.txt".to_owned()])
-        );
-        assert!(
-            store.data_rev().unwrap() > rev,
-            "the Excel file loses the row"
         );
         assert!(store.job(&keys[0]).unwrap().is_none());
         assert!(store.is_deleted(&keys[0]).unwrap());

@@ -7,8 +7,8 @@ use jiff::Timestamp;
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 
+use super::Store;
 use super::jobs::{JOB_COLUMNS, JobRow, job_row};
-use super::{Store, bump};
 use crate::error::Result;
 use crate::model::{HIGH_FROM, KeyFacts, MatchRecord, MatchStatus, Notice};
 use crate::portal::JobKey;
@@ -70,14 +70,6 @@ impl From<MatchRecord> for Judgement {
         }
     }
 }
-
-/// The Excel sheet: the inbox and the archive, no duplicate.
-const SHEET: &str = "trashed_at IS NULL AND dup_of IS NULL";
-
-/// The list's order by match: the best score first, equal scores by the score before the
-/// caps (`rank` in the note), then the newest mail.
-const BY_MATCH: &str = "match_score DESC, json_extract(match_note, '$.rank') DESC,
-    COALESCE(mail_date, first_seen_at) DESC, portal, job_id";
 
 /// `match_note` as stored.
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -192,8 +184,7 @@ pub(super) fn decode_match(
 }
 
 impl Store {
-    /// Marks a job as read; `true` if it was unread. Reading changes no export - so no new
-    /// change counter.
+    /// Marks a job as read; `true` if it was unread.
     pub fn mark_read(&self, key: &JobKey, now: Timestamp) -> Result<bool> {
         Ok(self.conn().execute(
             "UPDATE job SET read_at = ?3 WHERE portal = ?1 AND job_id = ?2 AND read_at IS NULL",
@@ -264,7 +255,7 @@ impl Store {
                     to_db(now),
                 ])?;
             }
-            bump(conn)
+            Ok(())
         })
     }
 
@@ -298,9 +289,6 @@ impl Store {
                     expected,
                 ],
             )?;
-            if changed > 0 {
-                bump(conn)?;
-            }
             Ok(changed > 0)
         })
     }
@@ -356,9 +344,6 @@ impl Store {
                  WHERE match_status IS NOT NULL OR match_rev IS NOT NULL",
                 [],
             )?;
-            if cleared > 0 {
-                bump(conn)?;
-            }
             Ok(cleared)
         })
     }
@@ -402,29 +387,6 @@ impl Store {
             usize::try_from(count).unwrap_or(0),
             usize::try_from(high).unwrap_or(0),
         ))
-    }
-
-    /// The jobs of the Excel sheet: the inbox and the archive (never the trash), no duplicate
-    /// (its original's row stands for it), in the list's order by match - excluded ones
-    /// after the others, unscored ones after the scored.
-    pub fn sheet_jobs(&self) -> Result<Vec<JobRow>> {
-        let conn = self.conn();
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT {JOB_COLUMNS} FROM job WHERE {SHEET}
-             ORDER BY (match_status IS 'excluded'), (match_score IS NULL), {BY_MATCH}"
-        ))?;
-        let rows = stmt.query_map([], job_row)?;
-        rows.map(|r| r?).collect()
-    }
-
-    /// Number of the rows of the Excel sheet ([`Store::sheet_jobs`]).
-    pub fn sheet_count(&self) -> Result<u64> {
-        let count: i64 = self.conn().query_row(
-            &format!("SELECT COUNT(*) FROM job WHERE {SHEET}"),
-            [],
-            |r| r.get(0),
-        )?;
-        Ok(u64::try_from(count).unwrap_or(0))
     }
 
     /// Revision a job was scored with (tests and checks).
@@ -487,10 +449,8 @@ mod tests {
     #[test]
     fn the_read_mark() {
         let (store, key) = store_with_job();
-        let rev = store.data_rev().unwrap();
         assert!(store.mark_read(&key, now()).unwrap());
         assert!(!store.mark_read(&key, now()).unwrap(), "only once");
-        assert_eq!(store.data_rev().unwrap(), rev, "no change counter");
         assert!(store.job(&key).unwrap().unwrap().read_at.is_some());
     }
 
@@ -641,10 +601,8 @@ mod tests {
         assert_eq!(store.scored_at("r1").unwrap(), Some(at));
         assert_eq!(store.scored_at("r2").unwrap(), None);
         assert!(store.has_matches().unwrap());
-        let rev = store.data_rev().unwrap();
         assert_eq!(store.clear_matches().unwrap(), 1);
         assert!(!store.has_matches().unwrap());
-        assert!(store.data_rev().unwrap() > rev, "the export changes");
         let job = store.job(&key).unwrap().unwrap();
         assert!(job.match_.is_none() && job.match_rev.is_none());
         assert_eq!(store.match_at(&key).unwrap(), None);

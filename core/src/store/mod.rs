@@ -1,5 +1,5 @@
 //! The app's memory: one `SQLite` file, the single source of truth about jobs, mails and job
-//! details. The Excel and the CSV file are generated from it - never the other way round.
+//! details.
 //!
 //! One connection behind a mutex; every method is short and synchronous (the caller never
 //! holds the lock across an `await`).
@@ -171,12 +171,6 @@ impl Store {
     pub fn kv_set(&self, key: &str, value: &str) -> Result<()> {
         kv_set(&self.conn(), key, value)
     }
-
-    /// Change counter of the job table: rises with every change that would be visible in an
-    /// export. Exports are only regenerated when it has risen since the last export.
-    pub fn data_rev(&self) -> Result<i64> {
-        Ok(kv_get_i64(&self.conn(), "data_rev")?.unwrap_or(0))
-    }
 }
 
 // ---------------------------------------------------------------------- Helpers
@@ -207,12 +201,6 @@ fn kv_set(conn: &Connection, key: &str, value: &str) -> Result<()> {
         params![key, value],
     )?;
     Ok(())
-}
-
-/// Raises the change counter (see [`Store::data_rev`]).
-fn bump(conn: &Connection) -> Result<()> {
-    let next = kv_get_i64(conn, "data_rev")?.unwrap_or(0) + 1;
-    kv_set(conn, "data_rev", &next.to_string())
 }
 
 /// Fixtures shared by the tests of `schema` and `jobs`.

@@ -13,9 +13,7 @@
 //! (its undo), then replaces the database's content with `SQLite`'s backup API in one
 //! transaction on the app's own connection: it is the old database or the restored one,
 //! never a mix, and any failure before the end leaves the current one as it was. What
-//! belongs to the app rather than to the jobs stays as it is now: the settings, the stamps of
-//! the files the app wrote in the work folder, and a change counter above both, so the files
-//! follow the restored jobs.
+//! belongs to the app rather than to the jobs stays as it is now: the settings.
 
 use std::path::{Path, PathBuf};
 
@@ -26,7 +24,7 @@ use rusqlite::backup::StepResult;
 use rusqlite::{Connection, OpenFlags, params};
 use serde::Serialize;
 
-use super::{jobs, kv_get_i64, kv_set, schema};
+use super::{jobs, kv_set, schema};
 use crate::error::{Error, Result};
 
 /// The folder of the copies, next to the database.
@@ -241,24 +239,18 @@ fn before_restore(conn: &Connection, db: &Path, now: Timestamp) -> Result<Backup
 }
 
 /// What stays as it is now through a restore, written into the staged copy: the settings
-/// (the app's choices, not the jobs; the work folder and with it the profile stay) and a
-/// change counter above both databases'.
+/// (the app's choices, not the jobs; the work folder and with it the profile stay).
 fn keep_app_state(live: &Connection, staged: &Connection) -> Result<()> {
     let settings = crate::settings::KEY;
     let kept: Vec<(String, String)> = live
         .prepare("SELECT key, value FROM kv WHERE key = ?1")?
         .query_map(params![settings], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
-    let rev = kv_get_i64(live, "data_rev")?
-        .unwrap_or(0)
-        .max(kv_get_i64(staged, "data_rev")?.unwrap_or(0))
-        + 1;
     let tx = staged.unchecked_transaction()?;
     tx.execute("DELETE FROM kv WHERE key = ?1", params![settings])?;
     for (key, value) in &kept {
         kv_set(&tx, key, value)?;
     }
-    kv_set(&tx, "data_rev", &rev.to_string())?;
     tx.commit()?;
     Ok(())
 }
@@ -547,8 +539,8 @@ mod tests {
     }
 
     /// The copy brings its jobs back; the state it replaced is a copy of its own first, and
-    /// restoring that one undoes the restore. The settings stay, the change counter rises
-    /// (the files follow), and the database is restored on disk, not only in the connection.
+    /// restoring that one undoes the restore. The settings stay, and the database is restored
+    /// on disk, not only in the connection.
     #[test]
     fn a_restore_brings_the_old_rows_back_and_can_be_undone() {
         let f = folder();
@@ -560,7 +552,6 @@ mod tests {
             (f.copy.as_str(), BackupKind::Daily)
         );
         assert!(listed[0].bytes > 0);
-        let rev = f.store.data_rev().unwrap();
 
         let before = f
             .store
@@ -572,7 +563,6 @@ mod tests {
             Some(r#"{"language":"en"}"#),
             "the settings stay as they are"
         );
-        assert!(f.store.data_rev().unwrap() > rev);
         assert_eq!(before.id, "jobs.before-restore-20260926-081530-123.db");
         assert_eq!(before.kind, BackupKind::Restore);
         assert_eq!(

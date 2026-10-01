@@ -1128,7 +1128,9 @@ handle sits between list and reader".
     app fetches only by hand
   - [x] The Excel and CSV export (`EXPORT_SHOWN`, the export step and its status, the info sheet and the
     facts it kept, the files following the marks, the Excel colours of the palette, `rust_xlsxwriter`; the AI
-    prompt stays, and so does the cleanup of the files earlier versions wrote)
+    prompt stays, and so does the cleanup of the files earlier versions wrote); then the change counter `data_rev` and the
+    Excel sheet's queries (only the export read them); a delete for good while the work folder is away keeps
+    the old text files waiting (found by the data safety review)
 - Round 7 (user decisions 2026-10-01, night):
   - [x] "Jobs suchen" without a profile searched nothing and fell back to the mailbox ("Es ist kein Postfach
     verbunden"): the search way never reads the mailbox; without search terms the fetch waits and says why

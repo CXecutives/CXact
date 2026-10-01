@@ -4,8 +4,8 @@
 use jiff::Timestamp;
 use rusqlite::{OptionalExtension, params};
 
+use super::Store;
 use super::jobs::FETCHABLE;
-use super::{Store, bump};
 use crate::error::Result;
 use crate::portal::{Facts, JobKey, Portal};
 use crate::time::to_db;
@@ -58,9 +58,6 @@ impl Store {
                 ),
                 params![portal.key(), parser_version, to_db(since)],
             )?;
-            if changed > 0 {
-                bump(conn)?;
-            }
             Ok(changed)
         })
     }

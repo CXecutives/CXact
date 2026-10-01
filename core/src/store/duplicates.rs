@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 use rusqlite::{OptionalExtension, params};
 
-use super::{Store, bump};
+use super::Store;
 use crate::error::Result;
 use crate::portal::{JobKey, Portal};
 
@@ -235,7 +235,7 @@ fn link(conn: &rusqlite::Connection, key: &JobKey, original: &JobKey) -> Result<
          WHERE portal = ?1 AND job_id = ?2",
         params![key.portal.key(), key.id, original.to_string()],
     )?;
-    bump(conn)
+    Ok(())
 }
 
 /// What a row that becomes the original takes over from the row it replaces (a teaser or
@@ -477,8 +477,12 @@ mod tests {
         let keys = |jobs: Vec<crate::store::JobRow>| -> Vec<JobKey> {
             jobs.into_iter().map(|j| j.key).collect()
         };
-        let sheet = keys(store.sheet_jobs().unwrap());
-        assert_eq!(sheet, [first.key], "the original's row stands for it");
+        let listed = crate::store::JobFilter {
+            listed: true,
+            ..crate::store::JobFilter::default()
+        };
+        let rows = keys(store.jobs(&listed).unwrap());
+        assert_eq!(rows, [first.key], "the original's row stands for it");
     }
 
     /// A job the user marked stays a job of its own: linked as a duplicate it would leave

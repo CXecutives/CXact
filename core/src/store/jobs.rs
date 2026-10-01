@@ -7,7 +7,7 @@ use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehav
 use url::Url;
 
 use super::marks::{INBOX, place_condition};
-use super::{Store, bump, kv_get_i64, kv_set};
+use super::{Store, kv_get_i64, kv_set};
 use crate::error::{Error, Result};
 use crate::fetch::policy::MAX_FETCH_ATTEMPTS;
 use crate::mail::MAIL_PARSER_VERSION;
@@ -35,7 +35,7 @@ pub enum Seen {
     DupInRun,
 }
 
-/// A job as the UI and the exports see it (without the full text).
+/// A job as the UI sees it (without the full text).
 #[derive(Debug, Clone, PartialEq)]
 pub struct JobRow {
     pub key: JobKey,
@@ -146,7 +146,7 @@ fn fact(p: &str, name: &str) -> String {
     format!("json_extract({p}match_note, '$.facts.{name}')")
 }
 
-/// SQL for the day rate the ad states in euros, as the list row and the Excel file read it:
+/// SQL for the day rate the ad states in euros, as the list row reads it:
 /// an hourly rate times 8; `NULL` for employment (it pays a salary), for a rate in another
 /// currency and without one (`p`: the prefix of the columns).
 fn day_rate(p: &str) -> String {
@@ -271,15 +271,14 @@ pub struct AlertMailRow {
     pub gmail_id: Option<u64>,
 }
 
-/// Selection for the list and the export.
+/// A selection of jobs (the queue, the tests).
 #[derive(Debug, Clone, Default)]
 pub struct JobFilter {
     /// Only jobs seen for the first time in this run.
     pub first_seen_run: Option<i64>,
     /// Search term in title, company, location and full text (case-insensitive).
     pub search: Option<String>,
-    /// Only the inbox, without another portal's duplicates (the Excel overview shows what
-    /// the app lists as active).
+    /// Only the inbox, without another portal's duplicates (what the app lists as active).
     pub listed: bool,
 }
 
@@ -582,16 +581,6 @@ impl Store {
             .query_row("SELECT COUNT(*) FROM job", [], |r| r.get(0))?)
     }
 
-    /// Number of the jobs the Excel sheet lists (see [`JobFilter::listed`]): the inbox,
-    /// without another portal's duplicates.
-    pub fn listed_count(&self) -> Result<i64> {
-        Ok(self.conn().query_row(
-            &format!("SELECT COUNT(*) FROM job WHERE {INBOX} AND dup_of IS NULL"),
-            [],
-            |r| r.get(0),
-        )?)
-    }
-
     // ------------------------------------------------------------------ Job details
 
     /// Jobs whose full text should be fetched automatically: open or failed (at the earliest
@@ -630,7 +619,6 @@ impl Store {
                  WHERE portal = ?1 AND job_id = ?2",
                 params![key.portal.key(), key.id, text, short, closed, to_db(now)],
             )?;
-            bump(conn)?;
             refresh_search(conn, key)
         })
     }
@@ -648,7 +636,6 @@ impl Store {
                 params![key.portal.key(), key.id, text, to_db(now)],
             )?;
             if changed > 0 {
-                bump(conn)?;
                 refresh_search(conn, key)?;
             }
             Ok(())
@@ -659,14 +646,11 @@ impl Store {
     pub fn record_gone(&self, key: &JobKey, now: Timestamp) -> Result<()> {
         self.write(|conn| {
             // A text fetched earlier stays valid - a success is never downgraded.
-            let changed = conn.execute(
+            conn.execute(
                 "UPDATE job SET desc_status = 'gone', desc_attempted_at = ?3, desc_error = NULL
                  WHERE portal = ?1 AND job_id = ?2 AND desc_status <> 'ok'",
                 params![key.portal.key(), key.id, to_db(now)],
             )?;
-            if changed > 0 {
-                bump(conn)?;
-            }
             Ok(())
         })
     }
@@ -712,10 +696,7 @@ impl Store {
                 )
                 .optional()?;
             match updated {
-                Some(status) => {
-                    bump(conn)?;
-                    Ok(status)
-                }
+                Some(status) => Ok(status),
                 None => Ok(conn.query_row(
                     "SELECT desc_status FROM job WHERE portal = ?1 AND job_id = ?2",
                     params![key.portal.key(), key.id],
@@ -775,7 +756,6 @@ impl Store {
                  WHERE portal = ?1 AND job_id = ?2",
                 params![key.portal.key(), key.id, title, company, location],
             )?;
-            bump(conn)?;
             refresh_search(conn, key)
         })
     }
@@ -815,7 +795,7 @@ impl Store {
     }
 
     /// Old text files of jobs deleted for good that could not be removed (open in another
-    /// program): their rows are gone, so their names live on here until a later export or a
+    /// program): their rows are gone, so their names live on here until a later delete for good or a
     /// reset removes them.
     pub fn txt_leftovers(&self) -> Result<Vec<String>> {
         Ok(self
@@ -1020,10 +1000,8 @@ fn upsert(
                 MAIL_PARSER_VERSION,
             ],
         )?;
-        bump(conn)?;
         return Ok(Seen::New);
     };
-    // The last sighting is invisible to export and UI - hence no bump().
     conn.execute(
         "UPDATE job SET last_seen_run = ?3, mail_version = ?4 WHERE portal = ?1 AND job_id = ?2",
         params![key.portal.key(), key.id, run, MAIL_PARSER_VERSION],
@@ -1063,7 +1041,6 @@ fn upsert(
             ],
         )?;
         refresh_search(conn, key)?;
-        bump(conn)?;
     }
     Ok(if last_run == run {
         Seen::DupInRun
@@ -1809,7 +1786,6 @@ mod tests {
         store
             .record_text(&a.key, "Volltext", false, false, now())
             .unwrap();
-        let rev = store.data_rev().unwrap();
         assert_eq!(
             store.record_failed(&a.key, "leer", now()).unwrap(),
             DescStatus::Ok
@@ -1821,7 +1797,6 @@ mod tests {
             store.description(&a.key).unwrap().as_deref(),
             Some("Volltext")
         );
-        assert_eq!(store.data_rev().unwrap(), rev);
     }
 
     /// The names of the text files earlier versions wrote stay known (for the cleanup), with
@@ -2134,44 +2109,6 @@ mod tests {
             .map(|j| j.title)
             .collect();
         assert_eq!(all, ["B", "A"]);
-    }
-
-    #[test]
-    fn data_rev_changes_only_with_visible_content() {
-        let store = Store::in_memory().unwrap();
-        let v0 = store.data_rev().unwrap();
-        let run = store.begin_run().unwrap();
-        let a = posting(
-            "https://www.linkedin.com/jobs/view/4000000001/",
-            "A",
-            "",
-            "",
-        );
-        store.upsert_posting(run, &a, mail(), now()).unwrap();
-        let v1 = store.data_rev().unwrap();
-        assert!(v1 > v0);
-        // The same mail again: nothing changes, so no new export either.
-        store.upsert_posting(run, &a, mail(), now()).unwrap();
-        assert_eq!(store.data_rev().unwrap(), v1);
-        store
-            .upsert_posting(
-                run,
-                &posting(
-                    "https://www.linkedin.com/jobs/view/4000000001/",
-                    "A",
-                    "Firma",
-                    "",
-                ),
-                mail(),
-                now(),
-            )
-            .unwrap();
-        let v2 = store.data_rev().unwrap();
-        assert!(v2 > v1);
-        store
-            .record_text(&a.key, "Text", false, false, now())
-            .unwrap();
-        assert!(store.data_rev().unwrap() > v2);
     }
 
     /// A mail that linked the title as a bare address left the URL as the title - and it
