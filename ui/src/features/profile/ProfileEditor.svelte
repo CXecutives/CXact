@@ -435,7 +435,9 @@
 </div>
 
 {#snippet lineOf(line: Line)}
-  {#if line.kind === 'pair'}
+  {#if line.kind === 'group'}
+    <h3 class="group" data-testid="group-{line.id}">{t.profile.group[line.id]}</h3>
+  {:else if line.kind === 'pair'}
     <div class="pair">
       {#each line.fields as field, index (index)}{@render control(field)}{/each}
     </div>
@@ -654,6 +656,18 @@
 
   .section + .section > .space {
     padding-top: var(--space-32);
+  }
+
+  /* A group of fields under its heading (the Wünsche); after the first a hairline above it. */
+  .group {
+    color: var(--text-heading);
+    font: var(--type-lg);
+  }
+
+  .group:not(:first-child) {
+    margin-top: var(--space-6);
+    padding-top: var(--space-20);
+    border-top: var(--border-width) solid var(--border);
   }
 
   .pair {

@@ -1,8 +1,9 @@
 <!--
   The languages: over the rows the heads of their columns (Sprache, Niveau, like the
   competences), one row each with the language and its level (a menu of A1 to C2 and
-  Muttersprache: a button in a row of fields, so as high as the field and like a select, in a
-  column as wide as its longest level, so every row lines up), then "Sprache hinzufügen". A
+  Muttersprache: a select in a row of fields, the level in a field as high as the others and
+  the chevron's button beside it, in a column as wide as its longest level, so every row
+  lines up), then "Sprache hinzufügen". A
   row without a level shows B2, the level the engine assumes then (matching's fit), and a
   new row starts at B2. The x of a row needs no tooltip. The language field suggests common languages like the countries field (found by their German and
   English names, taken in the app's language); any other language can be typed. A common
@@ -208,7 +209,7 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The level fills its column: the select's field, its chevron's button stays small. */
+  /* The level fills its column: the select's field, its chevron's button beside it. */
   .level,
   .level > :global(.select) {
     display: flex;

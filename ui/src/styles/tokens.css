@@ -564,8 +564,9 @@
   --row-bar-inset: var(--space-12);
   --dialog-width: 440px;
   --stat-min: 180px;
-  /* The level of a language in the Profil form: its longest word (Muttersprache) fits. */
-  --level-width: 140px;
+  /* The level of a language in the Profil form with its chevron's button beside it: its
+     longest word (Muttersprache) fits. */
+  --level-width: 156px;
   /* Sidebar (collapses to the icon rail below 1100 px) and the toast stack. */
   --sidebar-width: 204px;
   /* The sidebar's handle keeps it between these. */

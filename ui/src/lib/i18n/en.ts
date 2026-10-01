@@ -1036,6 +1036,13 @@ export const en: Catalog = {
       experience: 'Experience',
       exclusions: 'Exclusions',
     },
+    group: {
+      roles: 'Roles and search',
+      rate: 'Day rate',
+      place: 'Location',
+      time: 'Time',
+      industries: 'Industries',
+    },
     section: {
       criteria: 'Conditions',
       competences: 'Skills',

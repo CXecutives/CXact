@@ -1050,7 +1050,8 @@ test('one choice is one Tab stop, the arrows choose, "Egal" clears it; the level
   // assumes B2, so a row without one shows B2).
   const row = (await show(page, page.getByTestId('language-row'))).first();
   const level = row.getByTestId('language-level');
-  // A field with the level; only its chevron is the button (user 2026-10-01).
+  // A field with the level, its chevron's button beside it like the calendar's (user
+  // 2026-10-01).
   const opener = row.getByTestId('language-level-open');
   await expect(opener).toHaveAttribute('aria-haspopup', 'menu');
   // Name, the level, the x: three stops.
@@ -1927,7 +1928,7 @@ test('the language rows line up: the level like a select, one width; the x needs
   expect(Math.round(head!.x)).toBe(Math.round(first!.x));
   // The level is a field in a row of fields: framed and as high as the field, in one column
   // whatever its word, so the fields and the levels of all rows line up; only its chevron
-  // is a button.
+  // is a button, beside the field.
   const rows = page.getByTestId('language-row');
   await expect(rows.nth(0).getByTestId('language-level')).toHaveText('Muttersprache');
   await expect(rows.nth(1).getByTestId('language-level')).toHaveText('B2');
@@ -1951,6 +1952,9 @@ test('the language rows line up: the level like a select, one width; the x needs
   const opener = (await rows.nth(0).getByTestId('language-level-open').boundingBox())!;
   expect(opener.x + opener.width).toBeLessThanOrEqual(levels[0]!.x + levels[0]!.width);
   expect(opener.width).toBeLessThan(levels[0]!.width / 2);
+  const field = (await rows.nth(0).getByTestId('language-level').locator('.value').boundingBox())!;
+  expect(opener.x).toBeGreaterThanOrEqual(field.x + field.width);
+  expect(field.height).toBe(await tokenPx(page, '--control-field'));
   // Narrow, a row keeps its level beside the name.
   await page.setViewportSize({ width: 480, height: 600 });
   const row = page.getByTestId('language-row').first();

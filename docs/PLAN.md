@@ -1162,7 +1162,7 @@ handle sits between list and reader".
   - [x] One green: the ring's for every check and dot, the words ink (the mint and Primer's green go); the
     rings' lime fresher (84 56% 47%) and green a touch clearer (142 50% 41%), so the five steps are
     equally strong
-  - [ ] Profil: the Wünsche in groups with a heading (Rollen und Suche, Tagessatz, Ort, Zeit, Branchen); a
+  - [x] Profil: the Wünsche in groups with a heading (Rollen und Suche, Tagessatz, Ort, Zeit, Branchen); a
     language's level opens from a button beside its field, like the calendar
   - [ ] Einstellungen on tabs like the Profil (Suche, Postfach, Daten): the Postfach's account as a card of its
     own with its tile, under it the card of its alert sources; compact rows, no quota bars

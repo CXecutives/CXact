@@ -1239,6 +1239,14 @@ export const de = {
       experience: 'Erfahrung',
       exclusions: 'Ausschlüsse',
     },
+    /** The groups of the Wünsche, each under its heading. */
+    group: {
+      roles: 'Rollen und Suche',
+      rate: 'Tagessatz',
+      place: 'Ort',
+      time: 'Zeit',
+      industries: 'Branchen',
+    },
     section: {
       criteria: 'Bedingungen',
       competences: 'Kompetenzen',

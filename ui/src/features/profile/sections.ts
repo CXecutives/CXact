@@ -11,8 +11,9 @@
 // testid `section-{id}`; the ones whose effect is easy to get wrong say it in one sentence
 // (`t.profile.sectionHint`). The sections stand on four tabs (user decision 2026-10-01):
 // Suche (the roles and what she looks for, a limit beside its wish), Können, Erfahrung and
-// Ausschlüsse; the first section of a tab goes without a heading (the tab is its name). The
-// person (name and role) stands under the title. Nothing has to be filled in, an empty field
+// Ausschlüsse; the first section of a tab goes without a heading (the tab is its name), and
+// the wishes stand in groups under a heading each (`group`, user 2026-10-01). The person (name
+// and role) stands under the title. Nothing has to be filled in, an empty field
 // is simply not judged.
 
 import type { Catalog } from '$lib/i18n/de';
@@ -95,12 +96,16 @@ export type Control =
   | { kind: 'workload' }
   | { kind: 'remote' };
 
-/** A line of a section: one field, two side by side (one under the other when narrow), or
- *  the switches of a group (one hairline list). */
+/** The heading of a group of fields (`t.profile.group`). */
+export type GroupId = keyof Catalog['profile']['group'];
+
+/** A line of a section: one field, two side by side (one under the other when narrow), the
+ *  switches of a group (one hairline list), or the heading of the fields after it. */
 export type Line =
   | Control
   | { kind: 'pair'; fields: readonly [Control, Control] }
-  | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] };
+  | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] }
+  | { kind: 'group'; id: GroupId };
 
 export type SectionId = 'competences' | 'experience' | 'criteria' | 'permanent' | 'wishes';
 
@@ -126,6 +131,7 @@ export const SECTIONS: readonly Section[] = [
     id: 'wishes',
     tab: 'search',
     lines: [
+      { kind: 'group', id: 'roles' },
       {
         kind: 'chips',
         key: 'roles',
@@ -142,6 +148,7 @@ export const SECTIONS: readonly Section[] = [
         placeholder: 'searchTermsPlaceholder',
         testid: 'profile-search-terms',
       },
+      { kind: 'group', id: 'rate' },
       pair(
         {
           kind: 'number',
@@ -164,6 +171,7 @@ export const SECTIONS: readonly Section[] = [
           testid: 'profile-min-rate',
         },
       ),
+      { kind: 'group', id: 'place' },
       pair(
         {
           kind: 'chips',
@@ -188,6 +196,7 @@ export const SECTIONS: readonly Section[] = [
         ],
       },
       { kind: 'remote' },
+      { kind: 'group', id: 'time' },
       { kind: 'available' },
       // The days a week and the duration are checked, never an exclusion (engine 16).
       pair(
@@ -199,6 +208,7 @@ export const SECTIONS: readonly Section[] = [
           testid: 'profile-min-months',
         },
       ),
+      { kind: 'group', id: 'industries' },
       {
         kind: 'chips',
         key: 'wishIndustries',
@@ -423,7 +433,11 @@ export function unitOf(control: Extract<Control, { kind: 'number' }>): Unit | nu
 /** Every field of some lines, in order (the fields of pairs and switches too). */
 export function controlsOf(lines: readonly Line[]): Control[] {
   return lines.flatMap((line): Control[] =>
-    line.kind === 'pair' || line.kind === 'switches' ? [...line.fields] : [line],
+    line.kind === 'group'
+      ? []
+      : line.kind === 'pair' || line.kind === 'switches'
+        ? [...line.fields]
+        : [line],
   );
 }
 

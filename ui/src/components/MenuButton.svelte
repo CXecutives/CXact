@@ -3,8 +3,9 @@
   choices right below it (the current one checked): the order of the list ("Nach
   Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; among fields it is a
   select (`field`): a field like the text fields beside it (their height, frame and regular
-  text), the choice at the left and at the right edge a small chevron that alone is the
-  button (user, 2026-10-01: no field-wide button); a column may make it as wide as itself. Left click only, like every control; disabled it
+  text) that shows the choice, and beside it the chevron's button, which alone opens the
+  menu, like the calendar beside a day field (user, 2026-10-01); a column may make the two
+  as wide as itself. Left click only, like every control; disabled it
   stays hoverable so the tooltip can say why. While its menu is open the button looks pressed.
   Below the choices, after a line, the menu may hold what can be done with them (`actions`:
   the profile switcher's Neues Profil, Umbenennen ...); a label a user would copy (a
@@ -99,8 +100,8 @@
 </script>
 
 {#if field}
-  <span class="select" class:open={expanded} bind:this={anchor} data-testid={testid}>
-    <span class="value">{current?.label ?? ''}</span>
+  <span class="select" class:open={expanded} data-testid={testid}>
+    <span class="value" bind:this={anchor}>{current?.label ?? ''}</span>
     <Button
       variant="ghost"
       iconOnly
@@ -139,38 +140,35 @@
     max-width: 100%;
   }
 
-  /* A select among fields: the frame of a text field, the choice at the left in its weight,
-     the chevron's button at the right edge (only it reacts to the pointer). */
+  /* A select among fields: the choice in the frame of a text field, the chevron's button
+     beside it as the calendar's beside a day (only the button reacts to the pointer). */
   .select {
     display: flex;
     flex: none;
     align-items: center;
     gap: var(--space-4);
     max-width: 100%;
+  }
+
+  .value {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-width: 0;
     height: var(--control-field);
-    padding: 0 var(--space-2) 0 var(--space-12);
+    padding: 0 var(--space-12);
+    overflow: hidden;
     border: var(--border-width) solid var(--border-strong);
     border-radius: var(--radius-control);
     background-color: var(--surface);
     color: var(--text);
-    font: var(--type-sm);
-  }
-
-  .select.open {
-    border-color: var(--control-hover-edge);
-  }
-
-  /* Its chevron is a part of the field, within its frame (like a button inField). */
-  .select :global(.btn) {
-    --btn-height: var(--control-sm);
-  }
-
-  .value {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
+    font: var(--type-field);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .open .value {
+    border-color: var(--control-hover-edge);
   }
 
   /* A name a user gave (a profile's) may be long: it ends in an ellipsis. */
