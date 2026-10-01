@@ -9,9 +9,12 @@
 //! whole URL (formerly postal codes or norm numbers in a slug became job ids, and so did
 //! digits from the query).
 
+mod etengo;
 mod freelance_de;
 mod freelancermap;
 mod hays;
+mod michael_page;
+mod solcom;
 
 pub(crate) use freelancermap::without_archive_mark;
 mod linkedin;
@@ -49,6 +52,12 @@ pub enum Portal {
     Freelancermap,
     #[serde(rename = "hays")]
     Hays,
+    #[serde(rename = "michaelpage")]
+    MichaelPage,
+    #[serde(rename = "solcom")]
+    Solcom,
+    #[serde(rename = "etengo")]
+    Etengo,
     /// A fourth portal that exists in tests only: it proves that the registry is the only
     /// place that knows the portals.
     #[cfg(test)]
@@ -314,17 +323,23 @@ pub static PORTALS: &[&dyn PortalAdapter] = &[
     &freelance_de::FreelanceDe,
     &freelancermap::Freelancermap,
     &hays::Hays,
+    &michael_page::MichaelPage,
+    &solcom::Solcom,
+    &etengo::Etengo,
     #[cfg(test)]
     &probe::Probe,
 ];
 
 impl Portal {
     /// The product portals (the test-only probe is not among them).
-    pub const ALL: [Portal; 4] = [
+    pub const ALL: [Portal; 7] = [
         Portal::LinkedIn,
         Portal::FreelanceDe,
         Portal::Freelancermap,
         Portal::Hays,
+        Portal::MichaelPage,
+        Portal::Solcom,
+        Portal::Etengo,
     ];
 
     /// The adapter of this portal.
@@ -569,6 +584,40 @@ pub(crate) fn has_challenge(doc: &scraper::Html, html: &str) -> bool {
     doc.select(&CAPTCHA).next().is_some()
         || html.contains("_cf_chl_opt")
         || html.contains("/cdn-cgi/challenge-platform/h/")
+}
+
+/// A title without its gender mark: "SAP Lead (m/w/d)" reads as "SAP Lead".
+pub(crate) fn without_gender_mark(title: &str) -> String {
+    let title = title.trim();
+    for mark in [
+        "(m/w/d)",
+        "(w/m/d)",
+        "(m/f/d)",
+        "(d/m/w)",
+        "(m/w/x)",
+        "(all genders)",
+    ] {
+        if let Some(rest) = title.strip_suffix(mark) {
+            return rest.trim().to_owned();
+        }
+    }
+    title.to_owned()
+}
+
+/// The pairs of a definition list (`dt`, `dd`) of a page, each one line.
+pub(crate) fn definitions(doc: &scraper::Html, list: &Selector) -> Vec<(String, String)> {
+    static TERM: LazyLock<Selector> = LazyLock::new(|| selector("dt"));
+    static VALUE: LazyLock<Selector> = LazyLock::new(|| selector("dd"));
+    let line =
+        |node: scraper::ElementRef<'_>| crate::text::one_line(&node.text().collect::<String>());
+    doc.select(list)
+        .flat_map(|dl| {
+            dl.select(&TERM)
+                .map(line)
+                .zip(dl.select(&VALUE).map(line))
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 /// A lazily built selector.
@@ -938,7 +987,15 @@ mod tests {
     fn keys_labels_access_and_serde() {
         assert_eq!(
             Portal::ALL.map(Portal::key),
-            ["linkedin", "freelance", "freelancermap", "hays"]
+            [
+                "linkedin",
+                "freelance",
+                "freelancermap",
+                "hays",
+                "michaelpage",
+                "solcom",
+                "etengo"
+            ]
         );
         assert_eq!(
             Portal::ALL.map(Portal::access),
@@ -946,12 +1003,23 @@ mod tests {
                 Access::Guest,
                 Access::Session { required: false },
                 Access::Guest,
+                Access::Guest,
+                Access::Guest,
+                Access::Guest,
                 Access::Guest
             ]
         );
         assert_eq!(
             Portal::ALL.map(Portal::file_tag),
-            ["LinkedIn", "Freelance", "Freelancermap", "Hays"]
+            [
+                "LinkedIn",
+                "Freelance",
+                "Freelancermap",
+                "Hays",
+                "Michael Page",
+                "SOLCOM",
+                "Etengo"
+            ]
         );
         for p in Portal::ALL {
             assert_eq!(Portal::from_key(p.key()), Some(p));

@@ -7,7 +7,7 @@ import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
 import type { JobView, RunEvent } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, open, runFinished, settle, test, text } from './fixtures';
-import { chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
+import { ALL_PORTALS, chip, chips, chipWordsOf, lastQuery, stubList, listed, T } from './helpers';
 
 const WIN = '?platform=windows';
 /** The end toast of the demo's fetch: two new jobs (the third is excluded), one of the high
@@ -369,12 +369,9 @@ test('Einstellungen shows the portals in the order of the UI', async ({ page }) 
   const cards = await page
     .locator('[data-testid^="portal-"]')
     .evaluateAll((items) => items.map((item) => item.getAttribute('data-testid')));
-  expect(cards.filter((id) => /^portal-[a-z]+$/.test(id ?? ''))).toEqual([
-    'portal-hays',
-    'portal-freelancermap',
-    'portal-linkedin',
-    'portal-freelance',
-  ]);
+  expect(cards.filter((id) => /^portal-[a-z]+$/.test(id ?? ''))).toEqual(
+    ALL_PORTALS.map((portal) => `portal-${portal}`),
+  );
 });
 
 /** A job as the stub holds it. */

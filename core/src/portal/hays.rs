@@ -15,7 +15,7 @@ use url::Url;
 
 use super::{
     Access, Css, Facts, Hit, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
-    host_and_segments, host_is, selector,
+    host_and_segments, host_is, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -207,17 +207,6 @@ fn hit(result: ElementRef<'_>) -> Option<Hit> {
         company: String::new(),
         location,
     })
-}
-
-/// "SAP Lead (m/w/d)" reads as "SAP Lead".
-fn without_gender_mark(title: &str) -> String {
-    let title = title.trim();
-    for mark in ["(m/w/d)", "(w/m/d)", "(m/f/d)", "(d/m/w)", "(all genders)"] {
-        if let Some(rest) = title.strip_suffix(mark) {
-            return rest.trim().to_owned();
-        }
-    }
-    title.to_owned()
 }
 
 /// The ad: its sections as text, the title and place as fields, the facts.

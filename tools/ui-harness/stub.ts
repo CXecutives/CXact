@@ -613,7 +613,13 @@ function savedForm(form: ProfileForm): ProfileForm {
 }
 
 /** The sources the app searches itself (core's `Way::Search`). */
-const SEARCHED: ReadonlySet<PortalState['portal']> = new Set(['hays', 'freelancermap']);
+const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
+  'hays',
+  'freelancermap',
+  'michaelpage',
+  'solcom',
+  'etengo',
+]);
 
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({
   portal: name,
@@ -814,6 +820,9 @@ function initial(): void {
       portal('freelance', { quota: { usedHour: 2, capHour: 20, usedDay: 11, capDay: 100 } }),
       portal('freelancermap', { quota: { usedHour: 9, capHour: 40, usedDay: 86, capDay: 100 } }),
       portal('hays', { quota: { usedHour: 6, capHour: 30, usedDay: 18, capDay: 100 } }),
+      portal('michaelpage', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
+      portal('solcom', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
+      portal('etengo', { quota: { usedHour: 2, capHour: 30, usedDay: 6, capDay: 100 } }),
     ],
     sources: [],
     setupDone: true,

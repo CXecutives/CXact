@@ -494,7 +494,14 @@ mod tests {
         );
         assert_eq!(
             back.enabled_portals(),
-            [Portal::FreelanceDe, Portal::Freelancermap, Portal::Hays]
+            [
+                Portal::FreelanceDe,
+                Portal::Freelancermap,
+                Portal::Hays,
+                Portal::MichaelPage,
+                Portal::Solcom,
+                Portal::Etengo
+            ]
         );
         // Missing fields: default per field.
         store
@@ -654,7 +661,14 @@ mod tests {
         s.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
         assert_eq!(
             s.fetch_portals(),
-            [Portal::FreelanceDe, Portal::Freelancermap, Portal::Hays]
+            [
+                Portal::FreelanceDe,
+                Portal::Freelancermap,
+                Portal::Hays,
+                Portal::MichaelPage,
+                Portal::Solcom,
+                Portal::Etengo
+            ]
         );
         assert_eq!(s.fetch_path(Portal::LinkedIn), None);
         let store = Store::in_memory().unwrap();

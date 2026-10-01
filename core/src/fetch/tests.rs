@@ -128,6 +128,13 @@ fn url(portal: Portal, id: u64) -> String {
         Portal::Hays => {
             format!("https://www.hays.de/jobsuche/stellenangebote-jobs-detail-job-{id}/1")
         }
+        Portal::MichaelPage => {
+            format!("https://www.michaelpage.de/job-detail/job/ref/jn-092026-{id}")
+        }
+        Portal::Solcom => {
+            format!("https://www.solcom.de/fuer-freiberufler/projektliste/{id}-projekt")
+        }
+        Portal::Etengo => format!("https://www.etengo.de/it-projektsuche/{id}/"),
         Portal::Probe => format!("https://jobs.probe.example/job/{id}"),
     }
 }

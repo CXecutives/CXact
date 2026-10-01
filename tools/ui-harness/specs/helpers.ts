@@ -26,8 +26,12 @@ export const WIN = '?platform=windows';
 export const MAC = '?platform=macos';
 
 /** The sources the stub's jobs came from, in the UI's order (lib/portals.ts): the funnel's
- *  menu lists them so (Hays has no job in the demo). */
-export const PORTALS: readonly Portal[] = PORTAL_ORDER.filter((portal) => portal !== 'hays');
+ *  menu lists them so (the sources added with the search have no job in the demo). */
+/** Every source in the UI's order (lib/portals.ts). */
+export const ALL_PORTALS = PORTAL_ORDER;
+export const PORTALS: readonly Portal[] = PORTAL_ORDER.filter(
+  (portal) => !['hays', 'michaelpage', 'solcom', 'etengo'].includes(portal),
+);
 
 /* ---------------------------------------------------------------------- list */
 

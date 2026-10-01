@@ -6,7 +6,7 @@
 import type { Page } from '@playwright/test';
 import type { SettingsPatch } from '../../../ui/src/lib/ipc/types';
 import { calls, expect, expectShot, nav, open, settle, test, visibleCount } from './fixtures';
-import { failNext, T, tokenPx } from './helpers';
+import { ALL_PORTALS, failNext, T, tokenPx } from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -257,7 +257,7 @@ test('narrow, every meter keeps one width and the path breaks only at a separato
     .evaluateAll((meters) =>
       meters.map((meter) => Math.round(meter.getBoundingClientRect().width)),
     );
-  expect(widths).toHaveLength(4);
+  expect(widths).toHaveLength(ALL_PORTALS.length);
   expect(new Set(widths).size).toBe(1);
   // The sign-in goes to a line of its own under the calls.
   const [signIn, quota] = await Promise.all([
@@ -396,22 +396,22 @@ test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
 
 /* ----------------------------------------------------------------- Portale */
 
-test('portals: one card, Hays, freelancermap, LinkedIn, freelance.de, each with its calls of today', async ({
+test('portals: one card, the sources in the order of the UI, each with its calls of today', async ({
   page,
 }) => {
   await settings(page);
-  expect(await ids(page, 'portals', '[data-testid^="portal-"]')).toEqual([
-    'portal-hays',
-    'portal-freelancermap',
-    'portal-linkedin',
-    'portal-freelance',
-  ]);
+  expect(await ids(page, 'portals', '[data-testid^="portal-"]')).toEqual(
+    ALL_PORTALS.map((portal) => `portal-${portal}`),
+  );
   await expect(page.getByTestId('settings-portals').locator('.card')).toHaveCount(1);
   for (const [portal, used] of [
     ['freelance', 11],
     ['linkedin', 23],
     ['freelancermap', 86],
     ['hays', 18],
+    ['michaelpage', 6],
+    ['solcom', 6],
+    ['etengo', 6],
   ] as const) {
     const quota = page.getByTestId(`quota-${portal}`);
     await expect(quota).toContainText(T.settings.quota(used, 100));

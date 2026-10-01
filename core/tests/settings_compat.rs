@@ -62,6 +62,9 @@ fn newest() -> Settings {
             (Portal::FreelanceDe, switches(true, true)),
             (Portal::Freelancermap, switches(false, false)),
             (Portal::Hays, switches(false, false)),
+            (Portal::MichaelPage, switches(false, false)),
+            (Portal::Solcom, switches(false, false)),
+            (Portal::Etengo, switches(false, false)),
         ]),
         fetch_range: FetchRange::Days30,
         export_excel: false,
@@ -122,6 +125,9 @@ fn a_file_of_an_earlier_version_loads_without_loss_and_round_trips() {
             (Portal::FreelanceDe, switches(false, false)),
             (Portal::Freelancermap, switches(true, false)),
             (Portal::Hays, switches(false, false)),
+            (Portal::MichaelPage, switches(false, false)),
+            (Portal::Solcom, switches(false, false)),
+            (Portal::Etengo, switches(false, false)),
         ]),
         ..Settings::default()
     };
@@ -149,6 +155,9 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
             (Portal::FreelanceDe, switches(true, true)),
             (Portal::Freelancermap, switches(false, false)),
             (Portal::Hays, switches(true, false)),
+            (Portal::MichaelPage, switches(true, false)),
+            (Portal::Solcom, switches(true, false)),
+            (Portal::Etengo, switches(true, false)),
         ]),
         language: Some(Language::En),
         palette: Palette::Dark,
@@ -167,7 +176,14 @@ fn the_file_of_3_0_0_loads_and_keeps_its_promise_of_no_requests() {
 fn the_file_before_the_search_loads_with_the_new_source_on() {
     let loaded = load(&fixture("3.0.0-2.json"));
     let mut portals = newest().portals;
-    portals.insert(Portal::Hays, switches(true, false));
+    for portal in [
+        Portal::Hays,
+        Portal::MichaelPage,
+        Portal::Solcom,
+        Portal::Etengo,
+    ] {
+        portals.insert(portal, switches(true, false));
+    }
     let expected = Settings {
         portals,
         auto_fetch: true,
@@ -185,7 +201,14 @@ fn a_file_of_a_newer_version_loads_without_damage() {
     // above all the file is not taken for a damaged one (that would switch every portal off).
     // Hays and the automatic fetch came after it: at their defaults.
     let mut portals = newest().portals;
-    portals.insert(Portal::Hays, switches(true, false));
+    for portal in [
+        Portal::Hays,
+        Portal::MichaelPage,
+        Portal::Solcom,
+        Portal::Etengo,
+    ] {
+        portals.insert(portal, switches(true, false));
+    }
     let expected = Settings {
         language: None,
         palette: Palette::Cxact,

@@ -3,4 +3,4 @@
 /**
  * A portal key.
  */
-export type Portal = "linkedin" | "freelance" | "freelancermap" | "hays";
+export type Portal = "linkedin" | "freelance" | "freelancermap" | "hays" | "michaelpage" | "solcom" | "etengo";

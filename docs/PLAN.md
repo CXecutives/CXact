@@ -1054,6 +1054,6 @@ handle sits between list and reader".
 - [x] 0 Icon
 - [x] 1 Profil: tabs, profiles dialog and rename, Suchbegriffe
 - [x] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
-- [ ] 3 Michael Page, SOLCOM, Etengo
+- [x] 3 Michael Page, SOLCOM, Etengo (interim tiles only: the robots.txt forbids the contract filter)
 - [ ] 4 Einstellungen: Suche and Alert-Mails, monograms, setup links, "Quelle"
 - [ ] 5 GULP, Robert Half, interim-x (once real alert mails are there)
