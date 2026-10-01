@@ -123,7 +123,7 @@
     display: inline-flex;
     flex: none;
     padding-top: var(--space-2);
-    color: var(--notice-fg);
+    color: var(--notice-sign, var(--notice-fg));
   }
 
   .banner .icon,
@@ -163,14 +163,17 @@
     --notice-line: var(--info-soft);
   }
 
+  /* A success and a warning: the sign in the rings' colour, the words ink. */
   .success {
-    --notice-fg: var(--success-strong);
+    --notice-fg: var(--text);
+    --notice-sign: var(--success);
     --notice-bg: var(--success-soft);
     --notice-line: var(--success-soft);
   }
 
   .warning {
-    --notice-fg: var(--warning-strong);
+    --notice-fg: var(--text);
+    --notice-sign: var(--warning);
     --notice-bg: var(--warning-soft);
     --notice-line: var(--warning-soft);
   }

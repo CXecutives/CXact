@@ -1,20 +1,12 @@
 <!-- A short status word in a pill (12/500). Static: a badge never reacts to the pointer
-     (a hint shows as a tooltip). navy: a data chip (a competence, a chosen value). A
-     neutral pill takes the fill its surroundings give it (--badge-neutral-bg: white on the
-     warm wash of a selected row), else the muted grey. -->
+     (a hint shows as a tooltip). A neutral pill takes the fill its surroundings give it
+     (--badge-neutral-bg: white on the warm wash of a selected row), else the muted grey; a
+     success or a warning has its words in ink and its sign in the rings' colour. -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
 
-  export type BadgeTone = 'neutral' | 'coral' | 'navy' | 'success' | 'warning' | 'danger' | 'info';
-  export const BADGE_TONES: readonly BadgeTone[] = [
-    'neutral',
-    'coral',
-    'navy',
-    'success',
-    'warning',
-    'danger',
-    'info',
-  ];
+  export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger';
+  export const BADGE_TONES: readonly BadgeTone[] = ['neutral', 'success', 'warning', 'danger'];
 </script>
 
 <script lang="ts">
@@ -32,7 +24,7 @@
 </script>
 
 <span class="badge {tone}" use:tooltip={hint}>
-  {#if icon}<Icon name={icon} size="xs" />{/if}
+  {#if icon}<span class="sign"><Icon name={icon} size="xs" /></span>{/if}
   <span class="label">{label}</span>
 </span>
 
@@ -52,38 +44,30 @@
     white-space: nowrap;
   }
 
+  .sign {
+    display: inline-flex;
+    color: var(--badge-sign, var(--badge-fg));
+  }
+
   .neutral {
     --badge-bg: var(--badge-neutral-bg, var(--surface-muted));
     --badge-fg: var(--text-muted);
   }
 
-  .coral {
-    --badge-bg: var(--accent-soft);
-    --badge-fg: var(--accent-text);
-  }
-
-  .navy {
-    --badge-bg: var(--active-surface);
-    --badge-fg: var(--active-text);
-  }
-
   .success {
     --badge-bg: var(--success-soft);
-    --badge-fg: var(--success-strong);
+    --badge-fg: var(--text);
+    --badge-sign: var(--success);
   }
 
   .warning {
     --badge-bg: var(--warning-soft);
-    --badge-fg: var(--warning-strong);
+    --badge-fg: var(--text);
+    --badge-sign: var(--warning);
   }
 
   .danger {
     --badge-bg: var(--danger-soft);
     --badge-fg: var(--danger-strong);
-  }
-
-  .info {
-    --badge-bg: var(--info-soft);
-    --badge-fg: var(--info-strong);
   }
 </style>

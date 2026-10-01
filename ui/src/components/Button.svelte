@@ -29,6 +29,9 @@
   - deletes: a quiet icon button that deletes (a job row's Löschen and Endgültig löschen):
     its glyph red at rest like every delete of the app, on a red wash under the pointer.
   - count: a quiet number after the label (how many lie there), like the place tabs.
+  - hoverIcon: the glyph that says what a click does, in the place of the glyph at rest under
+    the pointer and the keyboard focus (the top bar's panels: panel-left, and
+    panel-left-close while the sidebar is shown).
   The icon sits on its own HTML wrapper: transforms on SVG children run on the main thread.
 -->
 <script lang="ts" module>
@@ -88,6 +91,8 @@
     /** An icon-only button whose glyph says it all: no tooltip of its name. */
     plain?: boolean;
     count?: number | null;
+    /** The glyph under the pointer and the keyboard focus: what a click does. */
+    hoverIcon?: IconName | null;
     testid?: string | null;
     onclick?: (event: MouseEvent) => void;
   }
@@ -116,6 +121,7 @@
     deletes = false,
     plain = false,
     count = null,
+    hoverIcon = null,
     testid = null,
     onclick,
   }: Props = $props();
@@ -151,6 +157,7 @@
   class:default={isDefault}
   class:warns
   class:deletes
+  class:swaps={hoverIcon !== null}
   aria-label={iconOnly ? label : undefined}
   aria-disabled={disabled ? 'true' : undefined}
   aria-busy={loading ? 'true' : undefined}
@@ -173,6 +180,9 @@
     {#if icon}
       <span class="glyph" data-icon={icon} bind:this={glyph}>
         <Icon name={icon} size="sm" filled={pressed === true} />
+        {#if hoverIcon}<span class="swap" data-hover-icon={hoverIcon}
+            ><Icon name={hoverIcon} size="sm" /></span
+          >{/if}
         {#if dot}<span class="dot" aria-hidden="true" data-testid="button-dot"></span>{/if}
       </span>
     {/if}
@@ -240,6 +250,23 @@
     position: relative;
     display: inline-flex;
     transition: transform var(--dur-base) var(--ease-emphasized);
+  }
+
+  /* What a click does stands in for the glyph at rest under the pointer and the keyboard
+     focus, at once: both share their frame, so only the arrow comes and goes. */
+  .swap {
+    position: absolute;
+    inset: 0;
+    display: inline-flex;
+    visibility: hidden;
+  }
+
+  .swaps:not([aria-disabled='true'], .loading):is(:hover, :focus-visible) .swap {
+    visibility: visible;
+  }
+
+  .swaps:not([aria-disabled='true'], .loading):is(:hover, :focus-visible) .glyph > :global(.icon) {
+    visibility: hidden;
   }
 
   /* Something of it is on: a coral dot on the glyph's corner (approved design, 2026-09-26). */

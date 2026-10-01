@@ -137,7 +137,12 @@
     font: var(--type-sm);
   }
 
+  /* A warning's words are ink, its sign the rings' yellow. */
   .note.warning {
-    color: var(--warning-strong);
+    color: var(--text);
+  }
+
+  .note.warning > :global(:first-child) {
+    color: var(--warning);
   }
 </style>

@@ -652,8 +652,8 @@ test('Darstellung: every palette keeps its texts readable (WCAG AA)', async ({ p
         ['--text', '--surface-selected'],
         ['--text-inverse', '--surface-inverse'],
         ['--danger-strong', '--danger-soft'],
-        ['--success-strong', '--success-soft'],
-        ['--warning-strong', '--warning-soft'],
+        ['--text', '--success-soft'],
+        ['--text', '--warning-soft'],
         ['--count-soft-fg', '--count-soft-bg'],
       ];
       return pairs.flatMap(([text, ground]) => {

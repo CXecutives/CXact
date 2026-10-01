@@ -338,7 +338,7 @@
 
   /* Each kind in its status colour (the glyph comes from TOAST_KINDS). */
   .success .icon {
-    color: var(--success-strong);
+    color: var(--success);
   }
 
   .info .icon {
@@ -346,7 +346,7 @@
   }
 
   .warning .icon {
-    color: var(--warning-strong);
+    color: var(--warning);
   }
 
   /* The check draws itself once when the toast appears. */

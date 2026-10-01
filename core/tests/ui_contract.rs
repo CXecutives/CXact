@@ -516,11 +516,7 @@ fn input_listeners_only_in_input_ts() {
 #[test]
 fn every_component_is_in_the_gallery() {
     let all = scanned(MIN_FILES);
-    // The glyph drawings (components/glyphs/, drawn by Icon) show in the gallery's icons.
-    let components: Vec<&Source> = all
-        .iter()
-        .filter(|s| s.under("components/") && !s.under("components/glyphs/"))
-        .collect();
+    let components: Vec<&Source> = all.iter().filter(|s| s.under("components/")).collect();
     assert!(
         components.len() >= MIN_COMPONENTS,
         "only {} components scanned",

@@ -144,7 +144,7 @@
   /* A check that draws itself (the run steps, the toast, the first-run stepper). */
   .drawn {
     display: inline-flex;
-    color: var(--success-strong);
+    color: var(--success);
   }
 
   .drawn :global(path) {
@@ -165,7 +165,7 @@
     z-index: var(--z-below);
     inset: 0;
     border-radius: inherit;
-    background-color: var(--score-high-surface);
+    background-color: var(--success-soft);
     content: '';
     animation: pulse var(--dur-reveal) var(--ease-standard) both;
   }
@@ -236,7 +236,7 @@
   }
 
   .count-value {
-    color: var(--score-high-text);
+    color: var(--success);
     font: var(--type-display);
     font-variant-numeric: var(--numeric);
     letter-spacing: var(--tracking-tight);

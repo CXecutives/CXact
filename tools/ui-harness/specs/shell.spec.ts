@@ -514,6 +514,28 @@ test('icon-only buttons show a styled tooltip after the delay', async ({ page })
   await expect(toggle).not.toHaveAttribute('title');
 });
 
+test('the panel buttons show what a click does under the pointer, the plain panel at rest', async ({
+  page,
+}) => {
+  await open(page, '?platform=windows');
+  const toggle = page.getByTestId('toggle-sidebar');
+  const rest = toggle.locator('[data-icon] > .icon');
+  const hover = toggle.locator('[data-hover-icon]');
+  await page.mouse.move(600, 400);
+  await expect(toggle.locator('[data-icon]')).toHaveAttribute('data-icon', 'sidebar');
+  await expect(rest).toBeVisible();
+  await expect(hover).toBeHidden();
+  await toggle.hover();
+  await expect(hover).toHaveAttribute('data-hover-icon', 'sidebarHide');
+  await expect(hover).toBeVisible();
+  await expect(rest).toBeHidden();
+  // Folded away, the same button opens it.
+  await toggle.click();
+  await expect(hover).toHaveAttribute('data-hover-icon', 'sidebarShow');
+  const reader = page.getByTestId('toggle-reader');
+  await expect(reader.locator('[data-icon]')).toHaveAttribute('data-icon', 'readerPane');
+});
+
 test('baseline: shell on Windows', async ({ page }) => {
   await open(page, '?platform=windows');
   await expectShot(page, 'shell-windows');

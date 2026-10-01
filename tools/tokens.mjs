@@ -66,7 +66,6 @@ const CONTRAST = [
       'nav-active-bg',
     ],
   },
-  { text: ['accent-text'], on: ['surface', 'accent-soft'] },
   {
     text: ['text-on-accent'],
     on: ['primary', 'primary-hover', 'primary-active'],
@@ -76,13 +75,9 @@ const CONTRAST = [
   { text: ['count-soft-fg'], on: ['count-soft-bg', 'count-soft-hover'] },
   { text: ['nav-active-fg'], on: ['nav-active-bg'] },
   { text: ['active-text'], on: ['active-surface', 'active-hover'] },
-  { text: ['success-strong'], on: ['surface', 'success-soft'] },
-  { text: ['warning-strong'], on: ['surface', 'warning-soft'] },
+  { text: ['text'], on: ['success-soft', 'warning-soft'] },
   { text: ['danger-strong'], on: ['surface', 'danger-soft'] },
   { text: ['info', 'info-strong'], on: ['surface', 'info-soft'] },
-  { text: ['score-high-text'], on: ['surface', 'score-high-surface'] },
-  { text: ['score-mid-text'], on: ['surface', 'score-mid-surface'] },
-  { text: ['score-low-text'], on: ['surface', 'score-low-surface'] },
   { text: ['score-digits'], on: ['surface', 'surface-selected'] },
 ];
 /** WCAG AA for body text. */

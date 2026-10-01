@@ -1,9 +1,9 @@
 <!--
   The only importer of @lucide/svelte. It draws an icon by its meaning: lib/icons.ts maps
-  each meaning to one Lucide glyph (the top bar's four to glyphs of the app's own,
-  glyphs/Bar*.svelte), and this file imports exactly those glyphs (one import
+  each meaning to one Lucide glyph, and this file imports exactly those glyphs (one import
   per glyph keeps the bundle small; a glyph without its import is a type error). Size from
-  the tokens, colour inherited from the text. Each glyph is drawn once by its Lucide
+  the tokens, the line Lucide's (2 of its 24 units, so it grows with the icon), colour
+  inherited from the text. Each glyph is drawn once by its Lucide
   component; every Icon shows a copy of that drawing. A Lucide component per icon (props,
   derived attributes, an element per path) made icons the most expensive part of a list row
   and of the reader.
@@ -12,13 +12,10 @@
   import { mount, unmount, type Component } from 'svelte';
   import type { Action } from 'svelte/action';
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
-  import BarBack from './glyphs/BarBack.svelte';
-  import BarForward from './glyphs/BarForward.svelte';
-  import BarReader from './glyphs/BarReader.svelte';
-  import BarSidebar from './glyphs/BarSidebar.svelte';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
   import Ban from '@lucide/svelte/icons/ban';
@@ -67,6 +64,12 @@
   import LogOut from '@lucide/svelte/icons/log-out';
   import Mail from '@lucide/svelte/icons/mail';
   import MapPin from '@lucide/svelte/icons/map-pin';
+  import PanelLeft from '@lucide/svelte/icons/panel-left';
+  import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
+  import PanelLeftOpen from '@lucide/svelte/icons/panel-left-open';
+  import PanelRight from '@lucide/svelte/icons/panel-right';
+  import PanelRightClose from '@lucide/svelte/icons/panel-right-close';
+  import PanelRightOpen from '@lucide/svelte/icons/panel-right-open';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
@@ -86,13 +89,10 @@
 
   /** The Lucide component of each glyph of lib/icons.ts (exactly those). */
   const GLYPHS: Record<Glyph, Component<Record<string, unknown>>> = {
-    'bar-back': BarBack,
-    'bar-forward': BarForward,
-    'bar-reader': BarReader,
-    'bar-sidebar': BarSidebar,
     archive: Archive,
     'archive-restore': ArchiveRestore,
     'arrow-down': ArrowDown,
+    'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,
     ban: Ban,
@@ -141,6 +141,12 @@
     'log-out': LogOut,
     mail: Mail,
     'map-pin': MapPin,
+    'panel-left': PanelLeft,
+    'panel-left-close': PanelLeftClose,
+    'panel-left-open': PanelLeftOpen,
+    'panel-right': PanelRight,
+    'panel-right-close': PanelRightClose,
+    'panel-right-open': PanelRightOpen,
     pencil: Pencil,
     plus: Plus,
     'refresh-cw': RefreshCw,
@@ -226,11 +232,6 @@
     width: 100%;
     height: 100%;
     stroke-width: var(--icon-stroke);
-  }
-
-  /* The line keeps its width in screen pixels at every icon size. */
-  .icon :global(svg *) {
-    vector-effect: non-scaling-stroke;
   }
 
   .filled :global(svg) {

@@ -403,7 +403,7 @@
   .fill {
     position: absolute;
     inset: 0;
-    background-color: var(--success-strong);
+    background-color: var(--success);
     transform: scaleY(0);
     transform-origin: top;
     transition: transform var(--dur-slow) var(--ease-emphasized);
@@ -462,7 +462,7 @@
   .marker.done {
     border-color: var(--success);
     background-color: var(--success-soft);
-    color: var(--success-strong);
+    color: var(--success);
   }
 
   /* The heading's line centred on the 28 px marker; the space below a step keeps the line. */
@@ -508,10 +508,11 @@
     display: flex;
     align-items: flex-start;
     gap: var(--space-6);
-    color: var(--warning-strong);
+    color: var(--text);
   }
 
   .problem > :global(:first-child) {
+    color: var(--warning);
     margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
   }
 

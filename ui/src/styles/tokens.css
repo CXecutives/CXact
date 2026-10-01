@@ -52,9 +52,6 @@
   --p-muted: 30 20% 97%;
   --p-muted-fg: 30 5% 33%;
   --p-line: 30 14% 88%;
-  --p-accent-soft: 16 70% 93%;
-  --p-success: 137.1 62.9% 32.7%;
-  --p-warning: 43.9 66.1% 50.2%;
   --p-danger: 355.8 71.8% 47.3%;
   --p-coral-800: 12 68% 36%;
   --p-coral-25: 16 65% 97%;
@@ -74,10 +71,9 @@
   --p-border-input: 34 8% 60%;
   --p-border-press: 34 8% 50%;
   --p-wash: 28 30% 24%;
-  --p-success-strong: 137 66% 30%;
-  --p-success-soft: 133 80% 92%;
-  --p-warning-strong: 40.1 100% 30.2%;
-  --p-warning-soft: 52.8 100% 88.6%;
+  /* The soft fills of a success and a warning: light tints of the rings' green and yellow. */
+  --p-success-soft: 142 45% 94%;
+  --p-warning-soft: 42 90% 93%;
   --p-danger-strong: 356.2 70.6% 48%;
   --p-danger-soft: 5.5 100% 95.7%;
   --p-danger-700: 350.4 84.3% 34.9%;
@@ -86,17 +82,11 @@
   --p-titlebar-close: 358 75% 59%;
   --p-titlebar-close-press: 358 66% 52%;
   --p-on-accent: 0 0% 100%;
-  --p-score-high: 150 32% 46%;
-  --p-score-high-text: 137 66% 30%;
-  --p-score-high-soft: 133 80% 92%;
-  --p-score-mid: 38 55% 55%;
-  --p-score-low: 30 5% 56%;
-  --p-score-low-text: 30 4% 41%;
   --p-score-red: 358 75% 59%;
   --p-score-orange: 24 87% 56%;
   --p-score-yellow: 40 88% 59%;
-  --p-score-lime: 83 44% 51%;
-  --p-score-green: 139 44% 44%;
+  --p-score-lime: 84 56% 47%;
+  --p-score-green: 142 50% 41%;
   --p-scrim: 212 30% 14%;
   --p-shade-xs: 30 15% 25%;
   --p-shade-pop: 30 15% 18%;
@@ -163,8 +153,6 @@
 
   /* ------------------------------------------------ coral: act or new */
   --accent: hsl(var(--p-coral));
-  --accent-soft: hsl(var(--p-accent-soft));
-  --accent-text: hsl(var(--p-coral-800));
   /* Primary fills in the cxpertise coral; hover and pressed one step deeper each. */
   --primary: hsl(var(--p-coral));
   --primary-hover: hsl(var(--p-coral-variant));
@@ -234,11 +222,11 @@
   --scrollbar-hover: hsl(var(--p-ink) / 0.34);
 
   /* ------------------------------------------------------------------ status */
-  --success: hsl(var(--p-success));
-  --success-strong: hsl(var(--p-success-strong));
+  /* A success and a warning take the rings' green and yellow (user, 2026-10-01: one green, one
+     yellow in the app): their signs and dots in it, their words in ink, their fills a tint. */
+  --success: var(--score-ring-9);
   --success-soft: hsl(var(--p-success-soft));
-  --warning: hsl(var(--p-warning));
-  --warning-strong: hsl(var(--p-warning-strong));
+  --warning: var(--score-ring-5);
   --warning-soft: hsl(var(--p-warning-soft));
   --danger: hsl(var(--p-danger));
   --danger-strong: hsl(var(--p-danger-strong));
@@ -251,13 +239,13 @@
   --danger-fill-active: var(--danger-active);
   /* The words of a search in the list's titles: a soft yellow under the ink, translucent, so
      it reads on a plain, a hovered and a selected row alike. */
-  --mark: hsl(var(--p-warning) / 0.4);
+  --mark: hsl(var(--p-score-yellow) / 0.4);
   /* One blue in the app: info is the navy. */
   --info: hsl(var(--p-navy));
   --info-strong: hsl(var(--p-navy-deep));
   --info-soft: hsl(var(--p-navy-50));
   /* The words of the list's search where they stand (the list, the ad's text). */
-  --mark-search: hsl(var(--p-warning) / 0.45);
+  --mark-search: hsl(var(--p-score-yellow) / 0.45);
 
   /* ------------------------------------------------------------------- score */
   /* The ring of a scored job: five colours from red to green, one per 20 points (user
@@ -286,15 +274,6 @@
   --score-text-8: var(--score-ring-8);
   --score-text-9: var(--score-ring-9);
   --score-digits: hsl(var(--p-ink));
-  --score-high-ring: hsl(var(--p-score-high));
-  --score-high-text: hsl(var(--p-score-high-text));
-  --score-high-surface: hsl(var(--p-score-high-soft));
-  --score-mid-ring: hsl(var(--p-score-mid));
-  --score-mid-text: hsl(var(--p-warning-strong));
-  --score-mid-surface: hsl(var(--p-warning-soft));
-  --score-low-ring: hsl(var(--p-score-low));
-  --score-low-text: hsl(var(--p-score-low-text));
-  --score-low-surface: hsl(var(--p-muted));
   --score-track: hsl(var(--p-line));
   --score-excluded: var(--text-subtle);
   /* The solid track of an excluded ring (one silhouette for every state). */
@@ -427,9 +406,9 @@
   --icon-sm: 15px;
   --icon-md: 19px;
   --icon-lg: 24px;
-  /* One line width for every line icon, whatever its size (user, 2026-09-27; 1.75 since
-     2026-10-01, not too thin): screen pixels (the strokes do not scale with the icon). */
-  --icon-stroke: 1.75;
+  /* Every line icon in Lucide's line, 2 of its 24 units, so the line grows with the icon: a
+     large one as strong as a small one for its size (user, 2026-10-01). */
+  --icon-stroke: 2;
   /* A row's place stays whole up to this width; the company gives way first (user
      2026-10-01). */
   --row-place-max: 160px;
@@ -463,12 +442,10 @@
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
   /* The bar's own buttons: 28 px (three with their gaps fill --titlebar-tools-start), their
-     glyphs of the app's own (glyphs/Bar*.svelte) 14 px in a 1.25 px line, a notch below the
-     content's icons so they sit with the caption buttons (user, 2026-09-30; the line was
-     1.5 px, too heavy, user 2026-10-01). */
+     Lucide glyphs 14 px, a notch below the content's icons so they sit with the caption
+     buttons (user, 2026-09-30). */
   --titlebar-tool: 28px;
   --titlebar-icon: 14px;
-  --titlebar-icon-stroke: 1.25;
   /* The places above the list (Aktuell, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 37px;
@@ -786,7 +763,6 @@
   --p-muted: 60 8% 97%;
   --p-muted-fg: 60 2% 34%;
   --p-line: 60 5% 89%;
-  --p-accent-soft: 60 6% 94%;
   --p-coral-800: 60 3% 12%;
   --p-coral-25: 60 6% 95.5%;
   --p-coral-40: 60 6% 95%;
@@ -846,9 +822,6 @@
   --p-muted: 60 1% 10.5%;
   --p-muted-fg: 60 2% 64%;
   --p-line: 60 1% 17.5%;
-  --p-accent-soft: 60 1% 14.5%;
-  --p-success: 132 59% 33%; /* bgColor-success-emphasis */
-  --p-warning: 40.6 72.1% 47.8%; /* fgColor-attention */
   --p-danger: 2.7 92.6% 62.9%; /* fgColor-danger */
   --p-coral-800: 60 5% 92%;
   /* The selected row and its steps: neutral washes of the light text. */
@@ -867,18 +840,13 @@
   --p-border-strong: 60 1% 24%;
   --p-border-input: 60 1% 35%;
   --p-border-press: 60 2% 52%;
-  --p-success-strong: 128.4 49.2% 48.6%; /* fgColor-success */
   --p-success-soft: 156 36% 11%; /* bgColor-success-muted on the canvas */
-  --p-warning-strong: 40.6 72.1% 47.8%; /* fgColor-attention */
   --p-warning-soft: 43.3 30% 11.8%; /* bgColor-attention-muted on the canvas */
   --p-danger-strong: 2.7 92.6% 62.9%; /* fgColor-danger, also the filled danger button */
   --p-danger-soft: 338.6 23.3% 11.8%; /* bgColor-danger-muted on the canvas */
   --p-danger-700: 3.8 100% 72.4%; /* red-3 */
   --p-danger-750: 5.2 100% 79.8%; /* red-2 */
   --p-on-accent: 60 2% 9%;
-  --p-score-high-text: 128.4 49.2% 48.6%; /* fgColor-success */
-  --p-score-high-soft: 156 36% 11%;
-  --p-score-low-text: 50 2.9% 59.6%;
   --p-scrim: 0 0% 2%;
   --p-shade-xs: 0 0% 2%;
   --p-shade-pop: 0 0% 2%;

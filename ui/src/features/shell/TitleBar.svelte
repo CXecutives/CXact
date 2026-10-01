@@ -39,6 +39,9 @@
       shell.firstRun ||
       (viewport.narrow && jobs.selected === null),
   );
+  /** A click hides the job view: it stands beside the list, or in one column a job stands in
+   *  the list's place. */
+  const readerShown = $derived(viewport.narrow ? jobs.selected !== null : shell.readerOpen);
   /** Hidden, the job view closes its job too (the list shows none chosen); shown again, it
    *  asks for one. In one column it closes the job that stands in place of the list. */
   function toggleReader(): void {
@@ -84,6 +87,7 @@
       variant="ghost"
       iconOnly
       icon="sidebar"
+      hoverIcon={shell.docked ? 'sidebarHide' : 'sidebarShow'}
       label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
       testid="toggle-sidebar"
       onclick={() => shell.toggleSidebar()}
@@ -113,7 +117,8 @@
       variant="ghost"
       iconOnly
       icon="readerPane"
-      label={shell.readerOpen && !viewport.narrow ? t.nav.readerHide : t.nav.readerShow}
+      hoverIcon={readerShown ? 'readerHide' : 'readerShow'}
+      label={readerShown ? t.nav.readerHide : t.nav.readerShow}
       disabled={readerIdle}
       plain={readerIdle}
       testid="toggle-reader"
@@ -163,7 +168,7 @@
   }
 
   /* The buttons lie in the zones the Windows caption leaves to the page; they are the bar's
-     own size, their glyphs the app's own in the bar's line. */
+     own size, their glyphs a notch below the content's (Lucide's line grows with them). */
   .tools {
     position: relative;
     display: flex;
@@ -171,10 +176,9 @@
     align-items: center;
     gap: var(--space-2);
     height: 100%;
-    --icon-stroke: var(--titlebar-icon-stroke);
   }
 
-  .tools :global(.btn.sm) {
+  .tools :global(.btn) {
     --btn-height: var(--titlebar-tool);
   }
 

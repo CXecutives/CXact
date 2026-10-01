@@ -158,10 +158,10 @@
   }
 
   .check.ok {
-    color: var(--success-strong);
+    color: var(--success);
   }
 
   .check.exception {
-    color: var(--warning-strong);
+    color: var(--warning);
   }
 </style>

@@ -180,7 +180,7 @@
   }
 
   .mark.warning {
-    background-color: var(--warning-strong);
+    background-color: var(--warning);
   }
 
   .tab:focus-visible {

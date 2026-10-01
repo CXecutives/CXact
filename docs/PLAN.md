@@ -1151,3 +1151,18 @@ handle sits between list and reader".
     field a notch lower, a part of it; `ButtonSize` goes); every line icon 1.75 px (1.6 looked thin; the
     top bar keeps 1.25); in a narrow list only the company gives way, the place stays whole up to
     `--row-place-max`, the pay always; Name and Rolle on the grid of the card below, edges flush
+- Round 8 (user decisions 2026-10-01, late evening; drafts against today's app):
+  - [x] One yellow: the ring's ("Mittel") for every warning sign, dot and soft fill; the words stay ink (the
+    ochre goes)
+  - [x] Line icons as Lucide draws them: the stroke 2 of the icon's 24 units, so it grows with the icon (the
+    sidebar's larger ones in the same proportion as the rows' small ones), the top bar too
+  - [x] The top bar with Lucide's own icons: panel-left and panel-right at rest; under the pointer or the
+    keyboard focus the one that says what a click does (panel-left-close / panel-left-open,
+    panel-right-close / panel-right-open); arrow-left, arrow-right (the own glyphs go)
+  - [x] One green: the ring's for every check and dot, the words ink (the mint and Primer's green go); the
+    rings' lime fresher (84 56% 47%) and green a touch clearer (142 50% 41%), so the five steps are
+    equally strong
+  - [ ] Profil: the Wünsche in groups with a heading (Rollen und Suche, Tagessatz, Ort, Zeit, Branchen); a
+    language's level opens from a button beside its field, like the calendar
+  - [ ] Einstellungen on tabs like the Profil (Suche, Postfach, Daten): the Postfach's account as a card of its
+    own with its tile, under it the card of its alert sources; compact rows, no quota bars

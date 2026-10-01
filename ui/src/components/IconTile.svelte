@@ -3,16 +3,9 @@
      hairline so a light mark keeps its edge). Data sources (portals, the profile file) take
      the navy tone. -->
 <script lang="ts" module>
-  export type TileTone = 'coral' | 'navy' | 'success' | 'warning' | 'danger' | 'neutral';
+  export type TileTone = 'navy' | 'danger' | 'neutral';
   export type TileSize = 'sm' | 'md' | 'lg';
-  export const TILE_TONES: readonly TileTone[] = [
-    'coral',
-    'navy',
-    'success',
-    'warning',
-    'danger',
-    'neutral',
-  ];
+  export const TILE_TONES: readonly TileTone[] = ['navy', 'danger', 'neutral'];
 </script>
 
 <script lang="ts">
@@ -86,24 +79,9 @@
     letter-spacing: var(--tracking-tight);
   }
 
-  .coral {
-    --tile-bg: var(--accent-soft);
-    --tile-fg: var(--accent-text);
-  }
-
   .navy {
     --tile-bg: var(--active-surface);
     --tile-fg: var(--active-text);
-  }
-
-  .success {
-    --tile-bg: var(--success-soft);
-    --tile-fg: var(--success-strong);
-  }
-
-  .warning {
-    --tile-bg: var(--warning-soft);
-    --tile-fg: var(--warning-strong);
   }
 
   .danger {
