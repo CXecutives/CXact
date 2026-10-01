@@ -33,8 +33,9 @@ pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts,
 pub use matches::Judgement;
 pub use overview::BandCounts;
 
-/// Key of the Gmail address whose mails the last mailbox scan read: the files link the
-/// alert mails in that account (`model::gmail_url_for`). Never a password.
+/// Key of the Gmail address earlier versions stored with the last mailbox scan (the Excel
+/// file's links went into that account); no longer written, and cleared with the scan state
+/// so an old value goes too. Never a password.
 pub(crate) const GMAIL_ACCOUNT: &str = "gmail_account";
 
 pub struct Store {

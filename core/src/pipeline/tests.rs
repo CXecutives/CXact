@@ -1605,6 +1605,23 @@ fn a_text_file_that_stayed_is_removed_later() {
     assert!(store.txt_leftovers().unwrap().is_empty(), "and forgotten");
 }
 
+/// A work folder on a drive that is gone (a stick, a network share) forgets no text file that
+/// stayed: the next delete for good while it is away keeps them waiting.
+#[test]
+fn an_unreachable_work_folder_keeps_the_text_files_waiting() {
+    let dir = tempfile::tempdir().unwrap();
+    let (store, keys) = store_with_texts();
+    let now = Timestamp::now();
+    store.set_txt_leftovers(&["a.txt".to_owned()]).unwrap();
+    let gone = dir.path().join("stick");
+    let one = std::slice::from_ref(&keys[0]);
+    store.move_jobs(one, Place::Trash, now).unwrap();
+    let deleted = delete_jobs(&store, Some(&gone), one, now).unwrap();
+    assert_eq!(deleted.count, 1);
+    assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"], "still waiting");
+    assert!(!gone.exists(), "nothing made on a drive that is gone");
+}
+
 /// An old text file open in another program (Windows: without delete sharing, as Word holds
 /// it) stays when its job is deleted for good; it is remembered, and the next delete for good
 /// removes it.

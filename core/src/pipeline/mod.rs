@@ -1086,7 +1086,10 @@ pub fn delete_jobs(
     let Some(workspace) = workspace.filter(|_| !deleted.keys.is_empty()) else {
         return Ok(deleted);
     };
-    retry_txt_leftovers(store, &workspace.join(RESULT_DIR));
+    // A work folder on a drive that is gone lists nothing: the leftovers wait for it.
+    if workspace.is_dir() {
+        retry_txt_leftovers(store, &workspace.join(RESULT_DIR));
+    }
     remove_deleted_txt(store, workspace, &names);
     Ok(deleted)
 }
