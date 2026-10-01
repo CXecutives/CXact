@@ -42,7 +42,6 @@
     {#if oncancel}
       <Button
         variant="secondary"
-        size="sm"
         label={t.common.cancel}
         testid="profile-start-cancel"
         onclick={oncancel}

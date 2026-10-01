@@ -218,7 +218,6 @@
           {#if active !== null && !renaming}
             <Button
               variant="ghost"
-              size="sm"
               iconOnly
               icon="expand"
               label={t.profile.profiles}
@@ -237,7 +236,6 @@
             <span class="check" transition:fade>
               <Button
                 variant="ghost"
-                size="field"
                 icon="warning"
                 label={t.profile.check(checks)}
                 testid="profile-check"
@@ -332,12 +330,11 @@
 
   /* The quiet fields' text starts on the title's edge: their padding and edge lie outside. */
   /* Name and role as two fields with their labels (user decision 2026-10-01), side by side
-     as wide as the form. */
+     on the grid of the card below: its full width, its columns' gap, the edges flush. */
   .person {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-12);
-    max-width: var(--form-width);
+    gap: var(--space-16);
     margin-top: var(--space-12);
   }
 

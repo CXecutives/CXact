@@ -131,7 +131,6 @@
             <div class="ways">
               <Button
                 variant="link"
-                size="sm"
                 icon="backup"
                 label={t.settings.backupHeading}
                 loading={restoring}
@@ -140,7 +139,6 @@
               />
               <Button
                 variant="link"
-                size="sm"
                 icon="folder"
                 label={t.common.openLog}
                 testid="open-log"
@@ -148,7 +146,6 @@
               />
               <Button
                 variant="link"
-                size="sm"
                 icon="folder"
                 label={t.common.openFolder}
                 testid="open-data"

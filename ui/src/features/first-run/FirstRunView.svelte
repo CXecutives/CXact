@@ -184,7 +184,6 @@
             {:else}
               <Button
                 variant="link"
-                size="sm"
                 icon="external"
                 external
                 label={t.firstRun.createAlert}
@@ -213,7 +212,6 @@
     <div class="actions">
       <Button
         variant="secondary"
-        size="field"
         icon="settings"
         label={t.firstRun.openSettings}
         testid="first-open-settings"
@@ -239,7 +237,6 @@
       {#if profile}
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
-          size="field"
           icon="document"
           label={t.list.openProfile}
           testid="first-profile"
@@ -248,7 +245,6 @@
       {:else}
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
-          size="field"
           icon="add"
           label={t.profile.newProfile}
           testid="first-profile"
@@ -269,7 +265,6 @@
   <div class="actions" bind:this={actions.fetch}>
     <Button
       variant={current === 'fetch' ? 'primary' : 'secondary'}
-      size="field"
       icon="fetch"
       label={t.toolbar.fetch}
       disabled={run.fetchBlocked !== null}
@@ -539,7 +534,7 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-4) var(--space-12);
-    min-height: var(--control-sm);
+    min-height: var(--control-field);
   }
 
   .portal {

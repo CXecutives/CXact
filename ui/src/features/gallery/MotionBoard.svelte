@@ -111,9 +111,9 @@
   </div>
   <div class="micro">
     <Count value={rolled} />
-    <Button size="sm" label={m.more} onclick={() => (rolled += 1)} />
-    <Button size="sm" label={m.less} onclick={() => (rolled = Math.max(0, rolled - 1))} />
-    <Button size="sm" icon="retry" label={m.again} onclick={() => (once += 1)} />
+    <Button label={m.more} onclick={() => (rolled += 1)} />
+    <Button label={m.less} onclick={() => (rolled = Math.max(0, rolled - 1))} />
+    <Button icon="retry" label={m.again} onclick={() => (once += 1)} />
     {#key once}
       <span class="drawn" aria-hidden="true"><Icon name="check" size="md" /></span>
       <span class="passage">{m.passage}</span>
@@ -123,7 +123,7 @@
     <span class="shake-field">
       <TextField bind:this={field} bind:value={word} label={m.password} kind="password" />
     </span>
-    <Button size="sm" label={m.shake} onclick={() => field?.shake()} testid="motion-shake" />
+    <Button label={m.shake} onclick={() => field?.shake()} testid="motion-shake" />
   </div>
 </Section>
 

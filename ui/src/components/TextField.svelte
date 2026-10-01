@@ -264,7 +264,6 @@
     <span class="trail">
       <Button
         variant="ghost"
-        size="sm"
         iconOnly
         icon={revealed ? 'conceal' : 'reveal'}
         label={revealed ? t.field.conceal : t.field.reveal}
@@ -274,15 +273,7 @@
     </span>
   {:else if kind === 'search' && value !== ''}
     <span class="trail" in:pop>
-      <Button
-        variant="ghost"
-        size="sm"
-        iconOnly
-        icon="close"
-        label={t.field.clear}
-        inField
-        onclick={clear}
-      />
+      <Button variant="ghost" iconOnly icon="close" label={t.field.clear} inField onclick={clear} />
     </span>
   {:else if trailing}
     <span class="trail">{@render trailing()}</span>

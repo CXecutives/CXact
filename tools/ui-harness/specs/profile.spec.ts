@@ -188,11 +188,11 @@ test('the head: the name as the title with its menu and a status only when neede
   await expect(heading(page)).toHaveText(role);
   await expect(head.getByRole('heading', { level: 1 })).toHaveText(role);
   await expect(heading(page)).toHaveAttribute('data-copy', '');
-  // A quiet chevron right after the name opens the menu (a small ghost icon button).
+  // A quiet chevron right after the name opens the menu (a ghost icon button, 28 px like all).
   await expect(switcher(page)).toHaveAccessibleName(T.profile.profiles);
   await expect(switcher(page)).toHaveAttribute('aria-haspopup', 'menu');
   await expect(switcher(page)).toHaveClass(/ghost/);
-  await expect(switcher(page)).toHaveCSS('height', `${await tokenPx(page, '--control-sm')}px`);
+  await expect(switcher(page)).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   const name = (await heading(page).boundingBox())!;
   const chevron = (await switcher(page).boundingBox())!;
   expect(chevron.x - (name.x + name.width)).toBeLessThanOrEqual(8);
@@ -635,7 +635,7 @@ test('fields, chip fields and choices one height (as in Einstellungen), labels s
       `${await tokenPx(page, '--control-field')}px`,
     );
   }
-  await expect(switcher(page)).toHaveCSS('height', `${await tokenPx(page, '--control-sm')}px`);
+  await expect(switcher(page)).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   // Every number field has one width; the day of "Datum" too, as high as the choice beside
   // it, the calendar's button beside the field (not inside it, user 2026-10-01).
   const dayField = page.getByTestId('profile-date').locator('xpath=..');

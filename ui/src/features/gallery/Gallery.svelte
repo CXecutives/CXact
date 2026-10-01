@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import BrandMark from '$components/BrandMark.svelte';
-  import Button, { BUTTON_SIZES, BUTTON_VARIANTS } from '$components/Button.svelte';
+  import Button, { BUTTON_VARIANTS } from '$components/Button.svelte';
   import EmptyState from '$components/EmptyState.svelte';
   import Icon, { ICON_NAMES } from '$components/Icon.svelte';
   import IconTile, { TILE_TONES } from '$components/IconTile.svelte';
@@ -75,22 +75,19 @@
     {#each BUTTON_VARIANTS as variant (variant)}
       <div class="matrix">
         <span class="row-label">{variant}</span>
-        {#each BUTTON_SIZES as size (size)}
-          <div class="button-row" data-testid="buttons-{variant}-{size}">
-            <Button {variant} {size} label={text.buttons.fetch} onclick={noop} />
-            <Button {variant} {size} label={text.buttons.save} icon="details" onclick={noop} />
-            <Button {variant} {size} label={text.buttons.pin} icon="star" iconOnly onclick={noop} />
-            <Button {variant} {size} label={text.buttons.fetch} icon="fetch" loading />
-            <Button
-              {variant}
-              {size}
-              label={text.buttons.remove}
-              icon="trash"
-              disabled
-              disabledReason={text.buttons.busy}
-            />
-          </div>
-        {/each}
+        <div class="button-row" data-testid="buttons-{variant}">
+          <Button {variant} label={text.buttons.fetch} onclick={noop} />
+          <Button {variant} label={text.buttons.save} icon="details" onclick={noop} />
+          <Button {variant} label={text.buttons.pin} icon="star" iconOnly onclick={noop} />
+          <Button {variant} label={text.buttons.fetch} icon="fetch" loading />
+          <Button
+            {variant}
+            label={text.buttons.remove}
+            icon="trash"
+            disabled
+            disabledReason={text.buttons.busy}
+          />
+        </div>
       </div>
     {/each}
     <div class="button-row">
@@ -111,15 +108,8 @@
         onclick={noop}
       />
       <!-- A stored value changes; a reset warns on hover before its dialog asks. -->
-      <Button size="sm" label={text.buttons.change} icon="edit" onclick={noop} />
-      <Button
-        size="sm"
-        label={text.buttons.reset}
-        icon="trash"
-        warns
-        testid="button-warns"
-        onclick={noop}
-      />
+      <Button label={text.buttons.change} icon="edit" onclick={noop} />
+      <Button label={text.buttons.reset} icon="trash" warns testid="button-warns" onclick={noop} />
     </div>
   </Section>
 

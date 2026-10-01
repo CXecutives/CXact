@@ -103,7 +103,6 @@
     <span class="value">{current?.label ?? ''}</span>
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="expand"
       label={openLabel}
@@ -119,7 +118,6 @@
   <span class="menu-button" class:copy bind:this={anchor} use:copyable={copy}>
     <Button
       variant="ghost"
-      size="sm"
       label={current?.label ?? ''}
       {icon}
       trailing="expand"
@@ -160,6 +158,11 @@
 
   .select.open {
     border-color: var(--control-hover-edge);
+  }
+
+  /* Its chevron is a part of the field, within its frame (like a button inField). */
+  .select :global(.btn) {
+    --btn-height: var(--control-sm);
   }
 
   .value {

@@ -82,7 +82,6 @@
   <span class="tools start" data-tauri-drag-region>
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="sidebar"
       label={shell.docked ? t.nav.sidebarHide : t.nav.sidebarShow}
@@ -91,7 +90,6 @@
     />
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="historyBack"
       label={t.nav.back}
@@ -101,7 +99,6 @@
     />
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="historyForward"
       label={t.nav.forward}
@@ -114,7 +111,6 @@
   <span class="tools end" data-tauri-drag-region>
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="readerPane"
       label={shell.readerOpen && !viewport.narrow ? t.nav.readerHide : t.nav.readerShow}

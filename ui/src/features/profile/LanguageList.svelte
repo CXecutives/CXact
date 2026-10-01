@@ -157,7 +157,6 @@
       <span class="remove" data-remove>
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="close"
           plain
@@ -174,7 +173,6 @@
   <span data-remove-fallback>
     <Button
       variant="secondary"
-      size="sm"
       icon="add"
       label={words.addLanguage}
       testid="language-add"
@@ -198,7 +196,7 @@
   .head,
   .row {
     display: grid;
-    grid-template-columns: minmax(var(--space-64), 1fr) var(--level-width) var(--control-sm);
+    grid-template-columns: minmax(var(--space-64), 1fr) var(--level-width) var(--control-field);
     align-items: center;
     gap: var(--space-6) var(--space-12);
     width: 100%;

@@ -1620,36 +1620,26 @@ fn icons_by_meaning() {
     );
 }
 
-/// Buttons have two heights, 28 and 32 px (sm, field): no 36 or 40 px button, every glyph
-/// 16 px, one type.
+/// Buttons have one height, 28 px (user 2026-10-01): no size to choose (a button inside a
+/// field is a notch lower, a part of it), every glyph one size, one type.
 #[test]
-fn buttons_are_28_or_32_px() {
+fn buttons_have_one_height() {
     let all = scanned(MIN_FILES);
     let button = source(&all, "components/Button.svelte");
     let mut problems = Vec::new();
-    if !button
-        .code
-        .contains("export type ButtonSize = 'sm' | 'field';")
-    {
-        problems.push("Button.svelte: ButtonSize is not exactly 'sm' | 'field'".to_string());
-    }
-    for token in ["--control-md", "--control-lg", "--type-md"] {
-        if button.code.contains(token) {
-            problems.push(format!(
-                "Button.svelte: {token} (buttons are 28 or 32 px, small type)"
-            ));
+    for gone in ["ButtonSize", "size?:", "--control-md", "--control-lg", "--type-md"] {
+        if button.code.contains(gone) {
+            problems.push(format!("Button.svelte: {gone} (buttons have one height)"));
         }
     }
     for source in all.iter().filter(|s| s.ext == "svelte") {
         for (line, tag) in component_tags(&source.code, "Button") {
-            for size in ["size=\"md\"", "size=\"lg\"", "size={'md'}", "size={'lg'}"] {
-                if tag.contains(size) {
-                    problems.push(format!("{}:{line}: <Button {size}>", source.path));
-                }
+            if tag.contains(" size=") || tag.contains("{size}") {
+                problems.push(format!("{}:{line}: <Button> with a size", source.path));
             }
         }
     }
-    fail(&problems, "buttons are 28 px (sm) or 32 px (field)");
+    fail(&problems, "buttons have one height (28 px)");
 }
 
 /// A toast comes only through the toast API (lib/state/toasts.svelte.ts) and is drawn only

@@ -375,7 +375,6 @@
       {#each tools as tool (tool.id)}
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon={tool.icon}
           label={tool.label}
@@ -389,7 +388,6 @@
       {#if onclose}
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="close"
           label={t.reader.close}
@@ -437,7 +435,6 @@
   {#each shown as id, index (id)}
     <Button
       variant="secondary"
-      size="field"
       icon={shows[id].icon}
       label={shows[id].label}
       iconOnly={index >= shown.length - iconsOnly}
@@ -454,7 +451,6 @@
     {#if includable}
       <Button
         variant="secondary"
-        size="field"
         icon="add"
         label={t.actions.include}
         testid="reader-include"
@@ -498,7 +494,6 @@
                 {#each row.parts as part, index (index)}{#if part === row.mail}<span class="mail"
                       ><Button
                         variant="link"
-                        size="sm"
                         label={part}
                         external
                         testid="contact-mail"
@@ -561,7 +556,6 @@
                     <span class="reason-action">
                       <Button
                         variant="ghost"
-                        size="sm"
                         iconOnly
                         icon="add"
                         label={t.reader.addTo[term.field](term.term)}
@@ -653,7 +647,7 @@
     display: flex;
     flex: none;
     gap: var(--space-2);
-    margin-top: calc((var(--leading-2xl) - var(--control-sm)) / 2);
+    margin-top: calc((var(--leading-2xl) - var(--control-field)) / 2);
     margin-right: calc(-1 * var(--space-6));
   }
 

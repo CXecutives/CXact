@@ -122,7 +122,6 @@
       <div class="buttons">
         <Button
           variant="secondary"
-          size="sm"
           icon="edit"
           label={t.common.change}
           disabled={locked !== null}
@@ -132,7 +131,6 @@
         />
         <Button
           variant="secondary"
-          size="sm"
           icon="trash"
           label={t.common.remove}
           disabled={locked !== null}
@@ -150,7 +148,6 @@
     <SettingRow label={t.settings.notConnected} testid="mailbox">
       <Button
         variant="secondary"
-        size="sm"
         icon="signIn"
         label={t.settings.connect}
         disabled={locked !== null}

@@ -416,14 +416,12 @@
   }
 </script>
 
-<!-- Under an empty state the way on is a field button like the empty state's own; under
-     rows with hits a small one. -->
-{#snippet alsoIn(size: 'sm' | 'field')}
+<!-- The way to the hits in another place, under an empty state or under the rows. -->
+{#snippet alsoIn()}
   <div class="also" data-testid="also-in">
     {#each elsewhere as hit (hit.place)}
       <Button
         variant="secondary"
-        {size}
         icon={PLACE_ICON[hit.place]}
         label={t.place.hitsIn[hit.place]}
         count={hit.count}
@@ -524,7 +522,7 @@
             text={t.list.noHit(jobs.search.trim())}
             testid="empty-search"
           />
-          {#if elsewhere.length > 0}{@render alsoIn('field')}{/if}
+          {#if elsewhere.length > 0}{@render alsoIn()}{/if}
         </div>
       {:else if filterEmptied}
         <EmptyState
@@ -607,7 +605,7 @@
         {/if}
       {/key}
     </div>
-    {#if elsewhere.length > 0 && !more}{@render alsoIn('sm')}{/if}
+    {#if elsewhere.length > 0 && !more}{@render alsoIn()}{/if}
     {#if jobs.pageError}
       <div class="page-error">
         <Notice

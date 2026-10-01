@@ -152,7 +152,6 @@
       <span class="star">
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="star"
           label={starred(row.name) ? words.unstar : words.star}
@@ -197,7 +196,6 @@
       <span class="remove" data-remove>
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="close"
           plain
@@ -214,7 +212,6 @@
   <span class="add" class:indent={rows.length > 0} data-remove-fallback>
     <Button
       variant="secondary"
-      size="sm"
       icon="add"
       label={words.addCompetence}
       testid="competence-add"
@@ -258,8 +255,8 @@
   .row {
     display: grid;
     grid-template-columns:
-      var(--control-sm) minmax(0, 5fr) calc(var(--space-64) + var(--space-8))
-      minmax(0, 4fr) var(--control-sm);
+      var(--control-field) minmax(0, 5fr) calc(var(--space-64) + var(--space-8))
+      minmax(0, 4fr) var(--control-field);
     align-items: start;
     gap: var(--space-8);
   }
@@ -290,7 +287,7 @@
   .add.indent,
   .under,
   .error {
-    margin-left: calc(var(--control-sm) + var(--space-8));
+    margin-left: calc(var(--control-field) + var(--space-8));
   }
 
   .error {
@@ -317,8 +314,8 @@
 
     .row {
       grid-template-columns:
-        var(--control-sm) minmax(0, 1fr) calc(var(--space-64) + var(--space-8))
-        var(--control-sm);
+        var(--control-field) minmax(0, 1fr) calc(var(--space-64) + var(--space-8))
+        var(--control-field);
     }
 
     .aliases {

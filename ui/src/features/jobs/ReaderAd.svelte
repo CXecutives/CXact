@@ -91,7 +91,6 @@
     {#if signInMissing}
       <Button
         variant="secondary"
-        size="field"
         icon="signIn"
         label={t.reader.setUpSignIn}
         testid="set-up-sign-in"
@@ -100,7 +99,6 @@
     {:else if canLoad}
       <Button
         variant="secondary"
-        size="field"
         icon="details"
         label={t.reader.fetchDetails}
         disabled={run.detailsBlocked !== null}

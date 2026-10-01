@@ -155,7 +155,6 @@
   <span class="toggle" data-calendar-button>
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="pickDay"
       label={t.calendar.open}
@@ -175,7 +174,6 @@
       <div class="head">
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="back"
           label={t.calendar.previous}
@@ -187,7 +185,6 @@
         >
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="forward"
           label={t.calendar.next}

@@ -45,7 +45,6 @@
         <span class="action">
           <Button
             variant="link"
-            size="sm"
             icon={action.icon ?? null}
             external={action.icon === 'external'}
             label={action.label}

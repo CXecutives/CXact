@@ -129,7 +129,6 @@
         >
           <Button
             variant="secondary"
-            size="sm"
             icon="add"
             label={term.term}
             count={term.count}

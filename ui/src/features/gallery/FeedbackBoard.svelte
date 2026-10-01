@@ -68,8 +68,8 @@
     {#each COUNT_TONES as tone (tone)}
       <Count value={count} {tone} testid="count-{tone}" />
     {/each}
-    <Button label={t.countMore} size="sm" onclick={() => (count += 1)} testid="count-more" />
-    <Button label={t.countLess} size="sm" onclick={() => (count -= 1)} />
+    <Button label={t.countMore} onclick={() => (count += 1)} testid="count-more" />
+    <Button label={t.countLess} onclick={() => (count -= 1)} />
   </div>
 </Section>
 

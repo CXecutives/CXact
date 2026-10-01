@@ -273,7 +273,6 @@
         <span class="tool" use:untabbed>
           <Button
             variant="ghost"
-            size="sm"
             iconOnly
             icon={tool.icon}
             label={tool.label}
@@ -353,7 +352,7 @@
      fades out while the tools show. */
   .date {
     flex: none;
-    min-width: calc(2 * var(--control-sm) + var(--space-2) + var(--space-6));
+    min-width: calc(2 * var(--control-field) + var(--space-2) + var(--space-6));
     margin-left: auto;
     padding-left: var(--space-6);
     color: var(--text-subtle);
@@ -378,7 +377,8 @@
     transition-duration: var(--dur-hover);
   }
 
-  /* Company and place: one line, each with its icon, cut at the line's end. */
+  /* Company, place and pay: one line, each with its icon; where it is short the company gives
+     way (an ellipsis), the place stays whole up to --row-place-max, the pay always. */
   .meta {
     display: flex;
     align-items: center;
@@ -398,8 +398,9 @@
     min-width: 0;
   }
 
-  .part.company {
-    flex-shrink: 2;
+  .part.place {
+    flex: none;
+    max-width: var(--row-place-max);
   }
 
   /* The pay is short and never cut. */
@@ -424,7 +425,7 @@
   /* The tools over the date, centred on the title line, their right edge on the date's. */
   .tools {
     position: absolute;
-    top: calc(var(--space-12) + (var(--leading-title) - var(--control-sm)) / 2);
+    top: calc(var(--space-12) + (var(--leading-title) - var(--control-field)) / 2);
     right: var(--pane-padding);
     display: flex;
     gap: var(--space-2);

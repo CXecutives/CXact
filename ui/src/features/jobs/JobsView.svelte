@@ -257,7 +257,6 @@
                   <div class="back">
                     <Button
                       variant="ghost"
-                      size="sm"
                       icon="back"
                       label={t.common.back}
                       testid="back"
@@ -438,7 +437,7 @@
       border-right: 0;
       scroll-padding-top: calc(
         var(--list-header-top) + var(--tabs-height) + var(--space-12) + var(--list-toolbar) +
-          var(--space-8) + var(--control-sm) + var(--pane-padding)
+          var(--space-8) + var(--control-field) + var(--pane-padding)
       );
     }
 

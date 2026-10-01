@@ -427,9 +427,12 @@
   --icon-sm: 15px;
   --icon-md: 19px;
   --icon-lg: 24px;
-  /* One line width for every line icon, whatever its size (user, 2026-09-27): screen pixels
-     (the strokes do not scale with the icon). */
-  --icon-stroke: 1.6;
+  /* One line width for every line icon, whatever its size (user, 2026-09-27; 1.75 since
+     2026-10-01, not too thin): screen pixels (the strokes do not scale with the icon). */
+  --icon-stroke: 1.75;
+  /* A row's place stays whole up to this width; the company gives way first (user
+     2026-10-01). */
+  --row-place-max: 160px;
   /* Mail-style rows: the title line and the company line beside the ring (12 + 40 + 12). */
   --row-height: 61px;
   /* The gutter of the unread dot, left of the ring. */

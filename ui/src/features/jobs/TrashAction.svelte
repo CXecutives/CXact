@@ -20,12 +20,11 @@
 
 <span class="cell">
   <span class="sizer" aria-hidden="true" inert>
-    <Button variant="secondary" size="field" {...fetchLook()} />
+    <Button variant="secondary" {...fetchLook()} />
   </span>
   <span class="own">
     <Button
       variant="secondary"
-      size="field"
       icon="trash"
       label={t.actions.emptyTrash}
       {disabled}

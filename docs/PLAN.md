@@ -1143,3 +1143,7 @@ handle sits between list and reader".
     Aus dem Lebenslauf ("Prompt kopieren" only): the prompt has the AI hand over the profile as a file,
     no "Antwort einfügen" (`read_profile_text` goes); the job's "KI-Prompt kopieren" is "Prompt
     kopieren"
+  - [x] One button height for the whole app, 28 px (user: "gleich groß, einheitlich"; a button inside a
+    field a notch lower, a part of it; `ButtonSize` goes); every line icon 1.75 px (1.6 looked thin; the
+    top bar keeps 1.25); in a narrow list only the company gives way, the place stays whole up to
+    `--row-place-max`, the pay always; Name and Rolle on the grid of the card below, edges flush

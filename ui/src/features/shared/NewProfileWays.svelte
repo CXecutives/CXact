@@ -65,7 +65,6 @@
   <SettingRow label={t.profile.way.empty} hint={t.profile.emptyHint} testid="new-profile-way-empty">
     <Button
       variant="secondary"
-      size="sm"
       icon="edit"
       label={t.profile.startEmpty}
       testid="new-profile-empty"
@@ -75,7 +74,6 @@
   <SettingRow label={t.profile.way.file} hint={t.profile.fileHint} testid="new-profile-way-file">
     <Button
       variant="secondary"
-      size="sm"
       icon="pickFile"
       label={t.profile.pickFile}
       loading={picking}
@@ -86,7 +84,6 @@
   <SettingRow label={t.profile.way.cv} hint={t.profile.cvPrompt} testid="new-profile-way-cv">
     <Button
       variant="secondary"
-      size="sm"
       icon={copied ? 'check' : 'copy'}
       label={copied ? t.profile.copied : t.profile.copyPrompt}
       testid="new-profile-copy"

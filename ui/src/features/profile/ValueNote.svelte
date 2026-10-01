@@ -33,7 +33,6 @@
   <span class="action" data-remove>
     <Button
       variant="link"
-      size="sm"
       label={t.profile.field.removeValue}
       testid="value-remove"
       onclick={(event) => removeBy(event.currentTarget, onremove)}

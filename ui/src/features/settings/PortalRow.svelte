@@ -225,7 +225,6 @@
       {#if portal.way === 'alert'}
         <Button
           variant="secondary"
-          size="sm"
           icon="alertMail"
           label={t.settings.setUpAlert}
           testid="setup-{portal.portal}"
@@ -237,7 +236,6 @@
           {#if signedIn}
             <Button
               variant="secondary"
-              size="sm"
               icon="signOut"
               label={t.settings.signOut}
               loading={busy}
@@ -249,7 +247,6 @@
           {:else}
             <Button
               variant="secondary"
-              size="sm"
               icon="signIn"
               label={t.settings.signIn}
               loading={busy}
@@ -266,7 +263,6 @@
   <div class="tools">
     <Button
       variant="ghost"
-      size="sm"
       iconOnly
       icon="external"
       label={t.settings.openPortal}

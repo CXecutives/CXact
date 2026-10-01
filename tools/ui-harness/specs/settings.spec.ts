@@ -157,7 +157,7 @@ test('button styles: every text button of a row is outlined, what deletes for go
   page,
 }) => {
   await settings(page);
-  // Every button with words in a row of a card: the one outlined kind, 26 px.
+  // Every button with words in a row of a card: the one outlined kind, 28 px like all.
   const kinds = await page
     .getByTestId('settings')
     .locator('.card button.btn:not(.icon-only)')
@@ -178,8 +178,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'folder-open',
     'reset',
   ]);
-  const small = await tokenPx(page, '--control-sm');
-  expect(kinds.filter((kind) => !kind.secondary || kind.height !== small)).toEqual([]);
+  const height = await tokenPx(page, '--control-field');
+  expect(kinds.filter((kind) => !kind.secondary || kind.height !== height)).toEqual([]);
   // Only what loses something for good is red, with the one glyph of deleting (icons.ts):
   // Entfernen and Zurücksetzen.
   const danger = await colour(page, '--danger-strong');

@@ -266,7 +266,6 @@
             {@const locked = action.locked?.(lock) ?? null}
             <Button
               variant="secondary"
-              size="sm"
               icon={action.icon}
               label={action.label(t, cfg)}
               loading={busy === id}
@@ -329,7 +328,6 @@
           {#if card.block !== undefined && card.block === fromCard && backToJob}
             <Button
               variant="link"
-              size="sm"
               label={t.settings.backToJob}
               testid="back-to-job"
               onclick={goBackToJob}

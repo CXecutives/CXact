@@ -70,7 +70,6 @@
       {#if action}
         <Button
           variant="secondary"
-          size="sm"
           label={action.label}
           icon={action.icon ?? null}
           testid={action.testid ?? null}
@@ -80,7 +79,6 @@
       {#if dismiss}
         <Button
           variant="ghost"
-          size="sm"
           iconOnly
           icon="close"
           label={dismiss.label}
@@ -137,7 +135,7 @@
      on its way on): the icon and the sentence come down by half the difference. */
   .inline.acts > .icon,
   .inline.acts > .copy {
-    margin-top: calc((var(--control-sm) - var(--leading-sm)) / 2);
+    margin-top: calc((var(--control-field) - var(--leading-sm)) / 2);
   }
 
   .copy {

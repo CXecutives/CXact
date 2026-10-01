@@ -275,7 +275,6 @@
         <span class="action">
           <Button
             variant="ghost"
-            size="sm"
             label={action.label}
             testid="toast-action"
             onclick={() => act(() => toasts.act(toast.id))}
@@ -284,7 +283,6 @@
       {/if}
       <Button
         variant="ghost"
-        size="sm"
         icon="close"
         iconOnly
         label={t.common.hide}

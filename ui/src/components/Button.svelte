@@ -1,11 +1,11 @@
 <!--
-  The button of the app: primary | secondary | ghost | danger | link × sm | field. Native
+  The button of the app: primary | secondary | ghost | danger | link. Native
   in feel, calm on contact: hover-in changes colour in 80 ms and relaxes in 150 ms, every
   icon stays still and behaves alike (no nudges, user 2026-09-25), a press lets the button
   give a little (0.98, 60 ms) and settles back in 150 ms; no stretch, lift, glow or bounce.
-  - Two heights only (core/tests/ui_contract.rs): sm (28 px) for trailing actions inside a
-    row and tools; field (32 px, the default) for everything else: action bars, dialogs,
-    empty states, a button in a row of fields. Both use the small type; every glyph is 16 px.
+  - One height for every button, 28 px (user 2026-10-01, core/tests/ui_contract.rs): in rows,
+    tools, bars, dialogs and empty states alike; the small type, every glyph 15 px. Only a
+    button inside a field (`inField`) is a notch lower, a part of the field.
   - At most one primary per view (checked by core/tests/ui_contract.rs).
   - iconOnly needs its label: it becomes aria-label and tooltip; a glyph that says it all
     (the x that removes a row) goes without the tooltip (`plain`). A button with its words
@@ -33,7 +33,6 @@
 -->
 <script lang="ts" module>
   export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
-  export type ButtonSize = 'sm' | 'field';
   export const BUTTON_VARIANTS: readonly ButtonVariant[] = [
     'primary',
     'secondary',
@@ -41,7 +40,6 @@
     'danger',
     'link',
   ];
-  export const BUTTON_SIZES: readonly ButtonSize[] = ['sm', 'field'];
 </script>
 
 <script lang="ts">
@@ -54,7 +52,6 @@
   interface Props {
     label: string;
     variant?: ButtonVariant;
-    size?: ButtonSize;
     icon?: IconName | null;
     iconOnly?: boolean;
     loading?: boolean;
@@ -98,7 +95,6 @@
   let {
     label,
     variant = 'secondary',
-    size = 'field',
     icon = null,
     iconOnly = false,
     loading = false,
@@ -145,8 +141,9 @@
 
 <button
   {type}
-  class="btn {variant} {size}"
+  class="btn {variant}"
   class:icon-only={iconOnly}
+  class:in-field={inField}
   class:wide={wide && !iconOnly}
   class:loading
   class:turned
@@ -405,7 +402,6 @@
     --btn-fg: var(--link);
     --btn-fg-hover: var(--link-hover);
     --btn-shadow: none;
-    --btn-height: var(--control-sm);
     --btn-pad: 0;
     --btn-press: 1;
 
@@ -444,13 +440,14 @@
   }
 
   /* --------------------------------------------------------------- sizes */
-  /* Two heights, one type (on .btn): 28 px in rows and tools, 32 px everywhere else. */
-  .sm {
-    --btn-height: var(--control-sm);
+  /* One height, one type: 28 px; inside a field a notch lower, within its frame. */
+  .btn {
+    --btn-height: var(--control-field);
   }
 
-  .field {
-    --btn-height: var(--control-field);
+  .in-field,
+  .link {
+    --btn-height: var(--control-sm);
   }
 
   /* A choice reads like the field beside it: 14 px text. */

@@ -150,7 +150,6 @@
   <div class="links">
     <Button
       variant="link"
-      size="sm"
       icon="external"
       external
       label={t.settings.twoStepAction}
@@ -159,7 +158,6 @@
     />
     <Button
       variant="link"
-      size="sm"
       icon="external"
       external
       label={t.settings.createPassword}
@@ -181,7 +179,6 @@
     <div class="actions">
       <Button
         variant="primary"
-        size="field"
         icon="signIn"
         label={t.settings.connect}
         loading={busy}

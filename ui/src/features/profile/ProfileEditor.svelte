@@ -606,7 +606,6 @@
       {#snippet discard()}
         <Button
           variant="secondary"
-          size="field"
           label={t.profile.discard}
           disabled={busy}
           testid="profile-discard"
@@ -616,7 +615,6 @@
       {#if !actionFirst}{@render discard()}{/if}
       <Button
         variant="primary"
-        size="field"
         label={t.profile.save}
         disabled={held}
         disabledReason={t.profile.fixFirst}

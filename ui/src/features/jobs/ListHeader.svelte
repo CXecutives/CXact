@@ -229,7 +229,6 @@
     <span class="run">
       <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
         <Button
-          size="field"
           variant={fetchVariant}
           icon={way.icon}
           label={way.label}
@@ -242,7 +241,6 @@
       </span>
       <span class="swap" class:shown={run.fetching} inert={!run.fetching}>
         <Button
-          size="field"
           variant="secondary"
           icon="cancel"
           label={t.toolbar.cancel}
@@ -255,7 +253,6 @@
     </span>
     <span class="swap" class:shown={inbox} inert={!inbox}>
       <Button
-        size="field"
         variant="secondary"
         iconOnly
         icon="range"
@@ -317,7 +314,6 @@
       <span class="funnel" bind:this={funnelBox}>
         <Button
           variant="secondary"
-          size="field"
           iconOnly
           icon="filter"
           label={t.toolbar.filter}
@@ -337,7 +333,6 @@
           <span class="chip" transition:fade>
             <Button
               variant="secondary"
-              size="sm"
               label={chip.label}
               trailing="close"
               testid="chip-{chip.id}"
