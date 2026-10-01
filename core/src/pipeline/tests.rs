@@ -88,6 +88,18 @@ fn assert_small(events: &[RunEvent]) {
     }
 }
 
+/// The automatic fetch: at once without a fetch, else four hours after the last one ended.
+#[test]
+fn the_automatic_fetch_is_due_four_hours_after_the_last() {
+    let now: Timestamp = "2026-10-01T08:00:00Z".parse().unwrap();
+    assert_eq!(auto_due(None, now), now);
+    let hour = SignedDuration::from_hours(1);
+    assert_eq!(auto_due(Some(now - hour), now), now + 3 * hour);
+    assert_eq!(auto_due(Some(now - 5 * hour), now), now);
+    // A last fetch ahead of the clock (set back) is no reason to wait.
+    assert_eq!(auto_due(Some(now + hour), now), now);
+}
+
 /// Without a mailbox a fetch searches the sources: the hits become jobs of the run, their ads
 /// are read in the same run, and nothing fails for want of a mailbox.
 #[tokio::test(start_paused = true)]

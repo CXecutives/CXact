@@ -39,7 +39,9 @@ impl Scoring {
         *lock(&self.page) = Some(channel);
     }
 
-    fn page(&self) -> Channel<RunEvent> {
+    /// The page's channel for the runs the app starts itself (a rescore, the automatic
+    /// fetch); without a page yet, one that goes nowhere.
+    pub(super) fn page(&self) -> Channel<RunEvent> {
         lock(&self.page)
             .clone()
             .unwrap_or_else(|| Channel::new(|_| Ok(())))

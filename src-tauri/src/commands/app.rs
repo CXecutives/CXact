@@ -233,14 +233,15 @@ pub async fn app_state(
 }
 
 /// Once per app start, on the first page load: a rescore if jobs wait for a score (new
-/// profile, engine update), in the background. The app never fetches by itself at the start
-/// (user decision 2026-09-26): only "Abrufen" and its keys do.
+/// profile, engine update), in the background, and the loop of the automatic fetch (at the
+/// start and every four hours, user decision 2026-10-01; `auto.rs`).
 fn at_start(app: &AppHandle, state: &AppState) {
     static CHECKED: AtomicBool = AtomicBool::new(false);
     if CHECKED.swap(true, Ordering::SeqCst) {
         return;
     }
     daily_backup(app);
+    super::auto::start(app);
     if state.busy() {
         return;
     }

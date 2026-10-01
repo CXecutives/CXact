@@ -1,6 +1,6 @@
 // The runs, built from the run events (api.ts: one channel per command call, all fanned out
 // to `onRun`). Every run begins with `started` and its kind, so the page follows the runs
-// the app starts by itself as what they are: the auto fetch at the start, a rescore after a
+// the app starts by itself as what they are: the automatic fetch (at the start and every four hours), a rescore after a
 // profile or workspace change or an engine update. After a reload the snapshot of
 // `app_state` replays the events that describe the current state.
 //
