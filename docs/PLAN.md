@@ -922,8 +922,7 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   the workload counts once in "Werte prüfen"; the page keeps --page-end under the last section unless the save bar
   is there.
 - [x] Head, choices, day field, drafts for new and loaded profiles, the audit's fixes, specs
-- [ ] The most important fields first, the rest marked optional (after the experience track is merged; Auslastung
-  and Mindestlaufzeit never exclude, so they move from Bedingungen to Wünsche)
+- [x] The most important fields first (2026-10-01: the four tabs, see "Search and sources")
 
 ## Profil and reader say one thing (user decisions 2026-09-27)
 - Experience (option b): "Mindestens verlangte Erfahrung" goes; the years an ad asks for are judged against
@@ -1035,3 +1034,26 @@ handle sits between list and reader".
 - [x] The job prompt in line with the engine, the words of both catalogs, the demo app, size A, the full harness in
   both engines, the smoke probe
 - [ ] The push and CI, the release and demo setups (the user starts them)
+
+## Search and sources (user decisions 2026-10-01, binding)
+
+- Sources, one way each: CXact searches Hays, freelancermap, Michael Page, SOLCOM and Etengo itself (their public
+  search, allowed by robots.txt, which the app checks at run time for every request of a new source); LinkedIn,
+  freelance.de, GULP, Robert Half and interim-x come by alert mail. No offers by mail, no Bundesagentur, no web
+  search API. The hits land in the one job list; "Postfach abrufen" becomes "Jobs abrufen" (mails and search); a
+  search runs at the start and every 4 hours while the app is open (supersedes "the app never fetches by itself",
+  2026-09-26), switchable. The search terms come from the active profile (Suchbegriffe). Einstellungen: two cards
+  Suche and Alert-Mails, monogram tiles (no logos).
+- The Profil on four tabs: Suche (roles, Suchbegriffe, the rates side by side, regions beside the countries, the
+  remote switch, Remote-Anteil, Verfügbar ab, Auslastung and Mindestlaufzeit, Wunschbranchen), Können, Erfahrung,
+  Ausschlüsse (the words, the contracts, Festanstellung). Name and role under the title as quiet fields.
+- Profiles (one consultant, several roles): the menu holds the profiles, Neues Profil, Duplizieren, Umbenennen
+  (in the title), Löschen; "Neues Profil" (menu, empty state, first-run page) opens one dialog with the three
+  ways: Aus dem Lebenslauf (copy the prompt, paste the AI's answer), Leer anfangen, Aus Datei laden.
+- The app icon: folder 78 %, check 78 units thick and 78 % of its arms.
+- [x] 0 Icon
+- [x] 1 Profil: tabs, profiles dialog and rename, Suchbegriffe
+- [ ] 2 Search: the step, robots.txt, freelancermap and Hays, automatic runs, "Jobs abrufen"
+- [ ] 3 Michael Page, SOLCOM, Etengo
+- [ ] 4 Einstellungen: Suche and Alert-Mails, monograms, setup links, "Quelle"
+- [ ] 5 GULP, Robert Half, interim-x (once real alert mails are there)
