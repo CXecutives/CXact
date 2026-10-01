@@ -1,11 +1,12 @@
 <!--
   "Papierkorb leeren" in the list header's action cell: outlined in the red of every button
-  that deletes and as wide as "Postfach abrufen" (an unseen one sets the width; user,
-  2026-09-29), at the cell's right edge.
+  that deletes and as wide as the fetch as it stands ("Jobs suchen" or "Postfach abrufen";
+  an unseen one sets the width; user, 2026-09-29), at the cell's right edge.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import { t } from '$lib/i18n/t';
+  import { fetchLook } from './headerMenus';
 
   interface Props {
     disabled: boolean;
@@ -19,7 +20,7 @@
 
 <span class="cell">
   <span class="sizer" aria-hidden="true" inert>
-    <Button variant="secondary" size="field" icon="fetch" label={t.toolbar.fetch} />
+    <Button variant="secondary" size="field" {...fetchLook()} />
   </span>
   <span class="own">
     <Button

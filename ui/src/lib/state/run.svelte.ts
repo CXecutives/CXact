@@ -129,21 +129,15 @@ class RunStore {
     return t.error.text('busy', { activity: this.kind });
   }
 
-  /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" only the search,
-   *  "Postfach abrufen" only the mailbox, "Jobs abrufen" both), in the order she would fix
-   *  it: a run holds the app, no mailbox for the mails, no source switched on; null when it
-   *  can (the demo fetches from its made-up mailbox). The backend refuses the same. */
+  /** Why the fetch cannot start now (what its menu chose: "Jobs suchen" the search,
+   *  "Postfach abrufen" the mailbox), in the order she would fix it: a run holds the app, no
+   *  mailbox for the mails, no source of that way switched on; null when it can (the demo
+   *  fetches from its made-up mailbox). The backend refuses the same. */
   get fetchBlocked(): string | null {
     if (this.active) return this.busyText;
-    const way = app.fetchWay;
-    if (way === 'search') return app.searches ? null : t.toolbar.needsPortal;
-    if (way === 'mail') {
-      if (!app.hasMailbox) return t.toolbar.needsMailbox;
-      return app.alerts ? null : t.toolbar.needsPortal;
-    }
-    if (!app.hasMailbox && !app.searches) return t.toolbar.needsMailbox;
-    if (!app.hasPortal) return t.toolbar.needsPortal;
-    return null;
+    if (app.fetchWay === 'search') return app.searches ? null : t.toolbar.needsPortal;
+    if (!app.hasMailbox) return t.toolbar.needsMailbox;
+    return app.alerts ? null : t.toolbar.needsPortal;
   }
 
   /** Why a run that fetches the full ads of chosen jobs ("Anzeige laden") cannot start now:

@@ -154,8 +154,8 @@ test.describe('header', () => {
     page,
   }) => {
     await open(page, WIN);
-    // Eingang: "Jobs abrufen" with its menu's button at the end of the tabs' row.
-    await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
+    // Eingang: the fetch with its menu's button at the end of the tabs' row.
+    await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.searchNow);
     // Measured in one frame, once the header has its final layout.
     await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'places')).toBeLessThan(await rightOf(page, 'fetch'));
@@ -201,7 +201,7 @@ test.describe('header', () => {
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('Jobs abrufen has Abruf einstellen beside it: what it reads, its words follow', async ({
+  test('the fetch has Abruf einstellen beside it: the search or the mailbox, its words follow', async ({
     page,
   }) => {
     await open(page, `${WIN}&tick=15`);
@@ -216,50 +216,44 @@ test.describe('header', () => {
     expect(part.width).toBe(part.height);
     expect(Math.round(part.x - (main.x + main.width))).toBe(8);
     await expect(fetch).toHaveClass(/primary/);
-    await expect(fetch).toHaveText(T.toolbar.fetch);
+    // The search by default: "Jobs suchen".
+    await expect(fetch).toHaveText(T.toolbar.searchNow);
+    expect(T.toolbar.searchNow).toBe('Jobs suchen');
+    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
     await expect(ways).toHaveClass(/secondary/);
     await expect(ways.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
     await expect(ways).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
     await expect(ways).toHaveAttribute('aria-haspopup', 'menu');
-    // Its menu (user decision 2026-10-01): the search and the alert mails, only the search,
-    // only the mailbox, one checked; the Zeitraum is in Einstellungen.
+    // Its menu (user decision 2026-10-01): the search or the mailbox, never both, one
+    // checked; the Zeitraum is in Einstellungen.
     await ways.click();
     const menu = page.getByTestId('menu');
     await expect(menu).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
     await expect(ways).toHaveAttribute('aria-expanded', 'true');
     await expect(menu.getByTestId('menu-heading')).toHaveCount(0);
     await expect(menu.locator('[role^="menuitem"]')).toHaveText([
-      T.toolbar.wayName.both,
       T.toolbar.wayName.search,
       T.toolbar.wayName.mail,
     ]);
-    for (const way of ['way-both', 'way-search', 'way-mail']) {
+    for (const way of ['way-search', 'way-mail']) {
       await expect(menuItem(page, way)).toHaveAttribute('role', 'menuitemradio');
     }
-    await expect(menuItem(page, 'way-both')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'way-search')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'way-mail')).toHaveAttribute('aria-checked', 'false');
     // Right edge on the control's.
     const box = (await menu.boundingBox())!;
     expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
-    // Nur Suche: saved at once, the menu closes, the button says "Jobs suchen".
-    await menuItem(page, 'way-search').click();
-    await expect(menu).toHaveCount(0);
-    await expect
-      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchMail: false, fetchSearch: true, portals: [] } });
-    await expect(fetch).toHaveText(T.toolbar.searchNow);
-    expect(T.toolbar.searchNow).toBe('Jobs suchen');
-    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
-    // Nur Postfach: "Postfach abrufen" with the glyph of every fetch (not the mail's).
-    await ways.click();
-    await expect(menuItem(page, 'way-search')).toHaveAttribute('aria-checked', 'true');
+    // Postfach: saved at once, the menu closes, the button says "Postfach abrufen" with the
+    // glyph of every fetch (not the mail's).
     await menuItem(page, 'way-mail').click();
+    await expect(menu).toHaveCount(0);
     await expect(fetch).toHaveText(T.toolbar.fetchMailbox);
     // Its words set the slot's width: measured as it stands now.
     const words = (await fetch.boundingBox())!;
     await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
     await expect
       .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchMail: true, fetchSearch: false } });
+      .toMatchObject({ patch: { fetchMail: true, fetchSearch: false, portals: [] } });
     // The fetch sends no way of its own: the backend reads the saved one.
     await page.evaluate(() => (window.__harness.holdAfter = 3));
     await fetch.click();
@@ -282,11 +276,14 @@ test.describe('header', () => {
     await runFinished(page);
     await page.evaluate(() => (window.__harness.holdAfter = null));
     await expect(ways).toBeEnabled();
-    // Kept: the next start says "Postfach abrufen"; back to both, "Jobs abrufen".
-    await open(page, WIN);
+    // Back to the search: "Jobs suchen" again.
     await ways.click();
-    await menuItem(page, 'way-both').click();
-    await expect(fetch).toHaveText(T.toolbar.fetch);
+    await expect(menuItem(page, 'way-mail')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'way-search').click();
+    await expect(fetch).toHaveText(T.toolbar.searchNow);
+    await expect
+      .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
+      .toMatchObject({ patch: { fetchMail: false, fetchSearch: true } });
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -573,12 +570,9 @@ test.describe('filter', () => {
     const portals = await menu
       .locator('[data-testid^="menu-item-portal-"]')
       .evaluateAll((all) => all.map((item) => item.getAttribute('data-testid')));
-    // The sources some job came from (Hays has none in the demo).
-    expect(portals).toEqual([
-      'menu-item-portal-freelancermap',
-      'menu-item-portal-linkedin',
-      'menu-item-portal-freelance',
-    ]);
+    // Every source switched on, jobs or not yet (Hays has none in the demo; user 2026-10-01).
+    expect(portals).toEqual(PORTALS.map((portal) => `menu-item-portal-${portal}`));
+    expect(portals).toContain('menu-item-portal-hays');
     await expect(menuItem(page, 'portal-freelance')).toHaveText(T.portal.freelance);
     await expect(menuItem(page, 'sort-match')).toHaveAttribute('aria-checked', 'true');
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'false');
@@ -1503,7 +1497,7 @@ test.describe('one list', () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1360, height: 600 });
-    await open(page, `${WIN}&scenario=empty`);
+    await open(page, `${WIN}&way=mail&scenario=empty`);
     await page.getByTestId('nav-settings').click();
     await page.getByTestId('mailbox-remove').click();
     await page
@@ -1562,7 +1556,7 @@ test.describe('one list', () => {
     await expect(page.getByTestId('view-profile')).toBeVisible();
   });
 
-  test('a removed mailbox keeps the jobs: Abrufen searches on and the list says how', async ({
+  test('a removed mailbox keeps the jobs: the search goes on, the mailbox says what it needs', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -1574,19 +1568,24 @@ test.describe('one list', () => {
       .click();
     await page.getByTestId('nav-jobs').click();
     await expect(rows(page).first()).toBeVisible();
-    // The sources' search goes on without a mailbox; Nur Postfach waits for one and says
-    // so, Nur Suche does not.
+    // The sources' search goes on without a mailbox: no note. The mailbox waits for one and
+    // says so, at the fetch and above the list.
     const fetch = page.getByTestId('fetch');
     await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
     await page.getByTestId('fetch-ways').click();
     await menuItem(page, 'way-mail').click();
     await expect(fetch).toHaveAttribute('aria-disabled', 'true');
     await fetch.hover();
     await expect(page.getByRole('tooltip')).toContainText(T.toolbar.needsMailbox);
     await page.mouse.move(0, 0);
+    await expect(page.getByTestId('no-mailbox')).toContainText(T.list.noMailbox);
     await page.getByTestId('fetch-ways').click();
     await menuItem(page, 'way-search').click();
     await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('no-mailbox')).toHaveCount(0);
+    await page.getByTestId('fetch-ways').click();
+    await menuItem(page, 'way-mail').click();
     await page.getByTestId('no-mailbox').getByRole('button').click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
@@ -2112,7 +2111,7 @@ test.describe('run line', () => {
   test('a fetch: a slim bar and one line under the header, then a toast of what it brought', async ({
     page,
   }) => {
-    await open(page, `${WIN}&tick=60`);
+    await open(page, `${WIN}&way=mail&tick=60`);
     // The rows already there stay the same elements while the run brings new ones.
     await rows(page)
       .first()
@@ -2177,7 +2176,7 @@ test.describe('run line', () => {
   });
 
   test('elsewhere the end toast leads to the list', async ({ page }) => {
-    await open(page, `${WIN}&tick=15`);
+    await open(page, `${WIN}&way=mail&tick=15`);
     await page.getByTestId('fetch').click();
     await page.getByTestId('nav-settings').click();
     await runFinished(page);

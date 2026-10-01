@@ -887,9 +887,8 @@ export const de = {
     /** The icon button beside the fetch and its menu: what the fetch reads. */
     fetchSettings: 'Abruf einstellen',
     wayName: {
-      both: 'Suche und Postfach',
-      search: 'Nur Suche',
-      mail: 'Nur Postfach',
+      search: 'Suche',
+      mail: 'Postfach',
     },
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',

@@ -195,16 +195,16 @@ fn run_context(
     if scans && enabled.is_empty() {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
-    // What the menu beside "Jobs abrufen" chose (user decision 2026-10-01): the search and
-    // the alert mails, only the search or only the mailbox; a file with neither (written by
-    // hand) does both, as the menu offers no fourth way. `only` narrows it further (the
-    // sidebar's ways, hidden for now).
-    let both = !settings.fetch_mail && !settings.fetch_search;
-    let reads_mail = (settings.fetch_mail || both) && request.only != Some(Origin::Search);
-    let searches = (settings.fetch_search || both) && request.only != Some(Origin::Mail);
-    if scans && !reads_mail && !searches {
-        return Err(ErrorInfo::from(&InvalidInput::NoFetchWay));
-    }
+    // What the menu beside the fetch chose (user decision 2026-10-01): the search or the
+    // mailbox, never both; `only` (the sidebar's ways, hidden for now) picks one itself. The
+    // dry run has no search: its made-up mails stand in for either.
+    let mail = match request.only {
+        Some(Origin::Mail) => true,
+        Some(Origin::Search) => false,
+        None => settings.fetches_mail(),
+    };
+    let reads_mail = mail || state.dry_run;
+    let searches = !mail;
     let credentials = if state.dry_run || state.demo || !scans || !reads_mail {
         None
     } else {

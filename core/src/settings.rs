@@ -52,10 +52,10 @@ pub struct Settings {
     /// "Jobs abrufen" runs by itself at the start and every 4 hours while the app is open
     /// (user decision 2026-10-01); off and not shown for now ([`AUTO_SHOWN`]).
     pub auto_fetch: bool,
-    /// "Jobs abrufen" reads the alert mails (the menu beside the button, user decision
-    /// 2026-10-01).
+    /// The fetch reads the alert mails (the menu beside the button, user decision
+    /// 2026-10-01): with `fetch_search` off, see [`Settings::fetches_mail`].
     pub fetch_mail: bool,
-    /// "Jobs abrufen" searches the sources the app searches itself (the same menu).
+    /// The fetch searches the sources the app searches itself (the same menu).
     pub fetch_search: bool,
 }
 
@@ -66,8 +66,8 @@ pub const EXPORT_SHOWN: bool = false;
 /// Einstellungen shows "Automatisch abrufen"; hidden for now (user, 2026-10-01: only by
 /// hand), and the app never fetches by itself.
 pub const AUTO_SHOWN: bool = false;
-/// The fetch's ways are shown: the menu beside "Jobs abrufen" chooses the search and the
-/// alert mails, only the search or only the mailbox (user decision 2026-10-01).
+/// The fetch's ways are shown: the menu beside the fetch chooses the search or the mailbox
+/// (user decisions 2026-10-01).
 pub const WAYS_SHOWN: bool = true;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
@@ -296,6 +296,13 @@ impl Settings {
         self
     }
 
+    /// The fetch reads the mailbox instead of searching: one of the two, never both (user
+    /// decision 2026-10-01, "nur Postfach oder Suche"). The mailbox only while its switch alone
+    /// is on; both on (the defaults, a file of an earlier version) or both off search.
+    pub fn fetches_mail(&self) -> bool {
+        self.fetch_mail && !self.fetch_search
+    }
+
     /// The switches of a portal.
     pub fn portal(&self, portal: Portal) -> PortalSwitches {
         self.portals.get(&portal).copied().unwrap_or_default()
@@ -450,6 +457,25 @@ mod tests {
         }
         assert_eq!(s.fetch_range, FetchRange::Days7);
         assert!(!s.fit_hidden(), "a second fit changes nothing");
+    }
+
+    /// The fetch searches or reads the mailbox, never both: the mailbox only while its switch
+    /// alone is on, so the defaults and a file with both switches search.
+    #[test]
+    fn the_fetch_reads_the_mailbox_only_while_its_switch_alone_is_on() {
+        let way = |fetch_mail, fetch_search| {
+            Settings {
+                fetch_mail,
+                fetch_search,
+                ..Settings::default()
+            }
+            .fetches_mail()
+        };
+        assert!(!Settings::default().fetches_mail(), "the search by default");
+        assert!(way(true, false));
+        assert!(!way(false, true));
+        assert!(!way(true, true));
+        assert!(!way(false, false));
     }
 
     use super::*;

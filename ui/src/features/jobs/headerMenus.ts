@@ -79,10 +79,10 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
 }
 
 /**
- * "Abruf einstellen": what the fetch reads (user decision 2026-10-01), the search and the
- * alert mails, only the search or only the mailbox, the current one checked. A choice is
- * saved at once (lib/state/app.svelte.ts) and names the button; a save that failed says so
- * under the header. The Zeitraum of the mails is in Einstellungen.
+ * "Abruf einstellen": what the fetch reads (user decision 2026-10-01), the search or the
+ * mailbox, never both, the current one checked. A choice is saved at once
+ * (lib/state/app.svelte.ts) and names the button; a save that failed says so under the
+ * header. The Zeitraum of the mails is in Einstellungen.
  */
 export function wayEntries(): MenuEntry[] {
   const current = app.fetchWay;
@@ -97,11 +97,10 @@ export function wayEntries(): MenuEntry[] {
   }));
 }
 
-/** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs abrufen"
- *  the search and the alert mails, "Jobs suchen" only the search, "Postfach abrufen" only
- *  the mailbox (the glyph of every fetch, not the mail's). */
+/** The fetch's words and glyph as its menu chose (user decision 2026-10-01): "Jobs suchen"
+ *  the search, "Postfach abrufen" the mailbox (the glyph of every fetch, not the mail's). */
 export function fetchLook(): { label: string; icon: 'fetch' | 'search' } {
-  const way = app.fetchWay;
-  if (way === 'search') return { label: t.toolbar.searchNow, icon: 'search' };
-  return { label: way === 'mail' ? t.toolbar.fetchMailbox : t.toolbar.fetch, icon: 'fetch' };
+  return app.fetchWay === 'search'
+    ? { label: t.toolbar.searchNow, icon: 'search' }
+    : { label: t.toolbar.fetchMailbox, icon: 'fetch' };
 }

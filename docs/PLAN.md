@@ -1081,10 +1081,11 @@ handle sits between list and reader".
   - [x] One list: the sidebar shows only "Jobs" (the ways "Suche" and "Alert-Mails" under it with a chevron
     were built and are hidden again the same day, `Sidebar.svelte` `WAYS_SHOWN`, `JobQuery.origin` and
     `RunRequest.only` stay)
-  - [x] "Abruf einstellen" beside the fetch again, three choices: "Suche und Postfach", "Nur Suche", "Nur
-    Postfach" (the settings' `fetchMail`, `fetchSearch`, `WAYS_SHOWN`); the button says what it does:
-    "Jobs abrufen", "Jobs suchen", "Postfach abrufen" (the glyph of every fetch, not the mail's). The
-    Zeitraum is a row of the card Alert-Mails in Einstellungen; the filter "Herkunft" goes
+  - [x] "Abruf einstellen" beside the fetch again: "Suche" or "Postfach", never both (user, "nur Postfach
+    oder Suche"; the search by default, it needs no mailbox; `Settings::fetches_mail`: the mailbox only
+    while its switch alone is on). The button says what it does: "Jobs suchen" or "Postfach abrufen" (the
+    glyph of every fetch, not the mail's). The Zeitraum is a row of the card Alert-Mails in Einstellungen;
+    the filter "Herkunft" goes
   - [x] The funnel: Sortierung, Quelle and Übereinstimmung (several choices each, any of them passes:
     `JobQuery.portals`, `bands`), Eingegangen (Heute, Letzte 7 Tage, Letzte 30 Tage: `receivedSince`, the
     start of the day in the user's time zone; the alert mail's date, else the first sighting). Vertragsart,

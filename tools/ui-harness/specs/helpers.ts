@@ -39,11 +39,9 @@ export const SEARCHED: readonly Portal[] = [
 export const ALERT_PORTALS: readonly Portal[] = PORTAL_ORDER.filter(
   (portal) => !SEARCHED.includes(portal),
 );
-/** The sources the stub's jobs came from, in the UI's order: the funnel's menu lists them so
- *  (the sources added on 2026-10-01 have no job in the demo). */
-export const PORTALS: readonly Portal[] = PORTAL_ORDER.filter((portal) =>
-  (['linkedin', 'freelance', 'freelancermap'] as const).some((own) => own === portal),
-);
+/** The sources the funnel's menu lists, in the UI's order: every one switched on (all of
+ *  them in the stub), jobs or not yet (user 2026-10-01). */
+export const PORTALS: readonly Portal[] = PORTAL_ORDER;
 
 /* ---------------------------------------------------------------------- list */
 

@@ -3,8 +3,7 @@
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
 // app's language and palette, which the whole page follows at once. What a fetch reads (the
-// menu beside it: the search and the alert mails, only one of them) is saved from here
-// through the settings patch.
+// menu beside it: the search or the mailbox) is saved from here through the settings patch.
 
 import { language } from '../i18n/language.svelte';
 import { errorText } from '../i18n/texts';
@@ -16,9 +15,9 @@ import { tokenMs } from '../tokens';
 /** The ranges of the alert mails a fetch reads, in the order of their choice (Einstellungen). */
 export const FETCH_RANGES: readonly FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
 
-/** What a fetch reads, in the order of its menu: the search and the alert mails, only the
- *  search, only the mailbox (the settings' `fetchSearch` and `fetchMail`). */
-export const FETCH_WAYS = ['both', 'search', 'mail'] as const;
+/** What a fetch reads, in the order of its menu: the search or the mailbox, never both
+ *  (user decision 2026-10-01; the settings' `fetchSearch` and `fetchMail`). */
+export const FETCH_WAYS = ['search', 'mail'] as const;
 export type FetchWay = (typeof FETCH_WAYS)[number];
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
@@ -70,13 +69,11 @@ class AppStore {
   /** Only the answer to the latest save may replace the state (quick choices in a row). */
   #saves = 0;
 
-  /** What a fetch reads (a state with neither does both, like the backend). */
+  /** What a fetch reads: the mailbox only while its switch alone is on, else the search
+   *  (core's `Settings::fetches_mail`). */
   get fetchWay(): FetchWay {
     const state = this.state;
-    if (state === null) return 'both';
-    if (state.fetchSearch && !state.fetchMail) return 'search';
-    if (state.fetchMail && !state.fetchSearch) return 'mail';
-    return 'both';
+    return state !== null && state.fetchMail && !state.fetchSearch ? 'mail' : 'search';
   }
 
   /**
@@ -87,7 +84,7 @@ class AppStore {
     const state = this.state;
     if (state === null || this.fetchWay === way) return null;
     const mine = ++this.#saves;
-    const change = { fetchMail: way !== 'search', fetchSearch: way !== 'mail' };
+    const change = { fetchMail: way === 'mail', fetchSearch: way === 'search' };
     Object.assign(state, change);
     try {
       const next = await invoke('save_settings', { patch: patchOf(change) });

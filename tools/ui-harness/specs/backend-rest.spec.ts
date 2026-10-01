@@ -126,7 +126,7 @@ test('Anmeldung einrichten opens Einstellungen at the portal, its sign-in focuse
 test('the demo starts with an empty Eingang and the sample profile and fetches like the app', async ({
   page,
 }) => {
-  await open(page, `${WIN}&scenario=demo`);
+  await open(page, `${WIN}&way=mail&scenario=demo`);
   await expect(page.getByTestId('empty-all')).toBeVisible();
   await expect(page.getByTestId('job-list').getByTestId('no-profile')).toHaveCount(0);
   const fetch = page.getByTestId('fetch');

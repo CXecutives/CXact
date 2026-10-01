@@ -24,6 +24,9 @@
 //   window.__harness.form()         a copy of the stored profile's form (null: no profile)
 //   window.__harness.list(query)    what `list_jobs` returns for a query (not recorded)
 //
+// `?way=mail`: the fetch reads the mailbox (its menu's "Postfach") instead of searching; a
+// scripted fetch brings the jobs of the way it takes (the search freelancermap's).
+//
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
 // concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
@@ -87,6 +90,7 @@ import type {
   MailboxCheck,
   MoveBack,
   Notice,
+  Origin,
   Palette,
   Place,
   PortalState,
@@ -283,6 +287,8 @@ const DATA_DIR = MAC
   ? '/Users/demo/Library/Application Support/job-alert-monitor'
   : 'C:/Users/demo/AppData/Roaming/job-alert-monitor';
 const TICK = Number(params.get('tick') ?? 40);
+/** `?way=mail`: the fetch reads the mailbox (the menu's "Postfach"); else it searches. */
+const MAIL_WAY = params.get('way') === 'mail';
 const DELAY = scenario === 'slow' ? 900 : 0;
 const EXPORT_LOCKED = params.get('export') === 'locked';
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
@@ -832,8 +838,8 @@ function initial(): void {
     exportExcel: true,
     exportCsv: false,
     autoFetch: false,
-    fetchMail: true,
-    fetchSearch: true,
+    fetchMail: MAIL_WAY,
+    fetchSearch: !MAIL_WAY,
     language: LANGUAGE,
     palette: PALETTE,
     lastRun: lastRun(),
@@ -1531,13 +1537,16 @@ function exported(): RunSummary['export'] {
 let lastRunNumber = 41;
 const seenIn = new Map<string, number>();
 
-function script(kind: RunSummary['kind']): RunEvent[] {
-  const fresh = unknown();
+/** The scripted fetch of one way (run_context: the search or the mailbox, never both): the
+ *  mailbox reads the three alert mails and brings the jobs they name, the search asks Hays
+ *  and freelancermap and brings the jobs it finds (freelancermap's). */
+function script(kind: RunSummary['kind'], mail: boolean): RunEvent[] {
+  const way: Origin = mail ? 'mail' : 'search';
+  const fresh = unknown().filter((j) => j.origins.includes(way));
   const total = fresh.length;
   const number = ++lastRunNumber;
   for (const j of fresh) seenIn.set(markKey(j.key), number);
-  const events: RunEvent[] = [
-    { type: 'started', kind },
+  const reading: RunEvent[] = [
     { type: 'status', code: 'connectingMail', portal: null, until: null },
     { type: 'status', code: 'searchingMail', portal: null, until: null },
     { type: 'progress', step: 'scan', portal: null, done: 0, total: 3 },
@@ -1568,11 +1577,17 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       gmailId: 'a3',
     },
     { type: 'progress', step: 'scan', portal: null, done: 3, total: 3 },
-    // The sources' own search: a page of each, named while it is asked.
+  ];
+  // The sources' own search: a page of each, named while it is asked.
+  const searching: RunEvent[] = [
     { type: 'status', code: 'searching', portal: 'hays', until: null },
     { type: 'progress', step: 'search', portal: 'hays', done: 1, total: 2 },
     { type: 'status', code: 'searching', portal: 'freelancermap', until: null },
     { type: 'progress', step: 'search', portal: 'freelancermap', done: 2, total: 2 },
+  ];
+  const events: RunEvent[] = [
+    { type: 'started', kind },
+    ...(mail ? reading : searching),
     ...fresh.map((j): RunEvent => ({
       type: 'jobUpdated',
       job: structuredClone(j),
@@ -1627,9 +1642,12 @@ function script(kind: RunSummary['kind']): RunEvent[] {
       kind,
       startedAt: at(0.05),
       finishedAt: at(0),
-      // Each portal's mail names one job: new the first time, known after (a known job
-      // loads no page again).
-      perPortal: (['linkedin', 'freelance', 'freelancermap'] as const).map((portal) => {
+      // Each portal's mail names one job, the search finds freelancermap's: new the first
+      // time, known after (a known job loads no page again).
+      perPortal: (mail
+        ? (['linkedin', 'freelance', 'freelancermap'] as const)
+        : (['freelancermap'] as const)
+      ).map((portal) => {
         const now = fresh.filter((j) => j.portal === portal).length;
         return {
           portal,
@@ -1729,14 +1747,10 @@ function startRun(request: RunRequest, sender: Sender | null): void {
     throw fail('invalid', { reason: 'noPortal' });
   }
   if (isFetch(kind) && only === 'mail' && state.mailbox.user === null) throw fail('mailMissing');
-  // Without a mailbox a fetch searches the sources, if one is on (run_context's read_mail).
-  const searches = state.fetchSearch && state.portals.some((p) => p.enabled && p.way === 'search');
-  if (
-    (state.mailbox.user === null || !state.fetchMail) &&
-    kind !== 'rescore' &&
-    kind !== 'details' &&
-    !searches
-  ) {
+  // The search or the mailbox, never both (run_context): the mailbox only while its switch
+  // alone is on; the mailbox's fetch needs one.
+  const mail = only === 'mail' || (only === null && state.fetchMail && !state.fetchSearch);
+  if (mail && state.mailbox.user === null && kind !== 'rescore' && kind !== 'details') {
     throw fail('mailMissing');
   }
   running = true;
@@ -1750,7 +1764,7 @@ function startRun(request: RunRequest, sender: Sender | null): void {
         ? rescoreScript()
         : request.kind === 'details'
           ? detailsScript(request.keys)
-          : script(request.kind);
+          : script(request.kind, mail);
   let index = 0;
   const step = (): void => {
     if (!running) return;

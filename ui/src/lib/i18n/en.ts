@@ -782,9 +782,8 @@ export const en: Catalog = {
     fetchMailbox: 'Check mailbox',
     fetchSettings: 'Fetch settings',
     wayName: {
-      both: 'Search and mailbox',
-      search: 'Search only',
-      mail: 'Mailbox only',
+      search: 'Search',
+      mail: 'Mailbox',
     },
     cancel: 'Cancel',
     progress: 'Fetch progress',

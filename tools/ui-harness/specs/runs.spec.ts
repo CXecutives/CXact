@@ -26,7 +26,7 @@ async function emit(page: Page, ...events: unknown[]): Promise<void> {
 test('a rescore the app starts shows as a rescore: no run line, the fetch waits', async ({
   page,
 }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(page.getByTestId('toast-text')).toHaveText(DONE);
@@ -51,7 +51,7 @@ test('a rescore the app starts shows as a rescore: no run line, the fetch waits'
 });
 
 test('the auto fetch the app starts shows as a fetch', async ({ page }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.evaluate(() => {
     window.__harness.holdAfter = 3;
     window.__harness.appRun('fetch');
@@ -101,7 +101,7 @@ test.skip('a fetch that cannot write the Excel file: the toast counts, the line 
 });
 
 test('the end toast counts the run: the new jobs that are not excluded', async ({ page }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // Three new jobs came in, one of them excluded: two new.
@@ -112,7 +112,7 @@ test('the end toast counts the run: the new jobs that are not excluded', async (
 test('the end toast names the new jobs of the high band; Zeigen lists exactly those, chips to take off', async ({
   page,
 }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   // One word for one, the plural for more, none at 0, the high ones only when there are.
@@ -155,7 +155,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
 test('from another view Zeigen opens the Eingang without its search, filtered to the new jobs', async ({
   page,
 }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('search').fill('Controller');
   await page.getByTestId('fetch').click();
   await page.getByTestId('nav-settings').click();
@@ -174,7 +174,7 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
-  await open(page, `${WIN}&tick=15`);
+  await open(page, `${WIN}&way=mail&tick=15`);
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await page.getByTestId('toast').filter({ hasText: DONE }).getByTestId('toast-action').click();

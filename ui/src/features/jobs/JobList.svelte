@@ -50,6 +50,7 @@
   import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
+  import { fetchLook } from './headerMenus';
   import { glideIntoView } from '$lib/motion/scroll';
   import RowBar from './RowBar.svelte';
 
@@ -141,7 +142,9 @@
     if (app.state?.profile == null) editor.create();
     navigation.go('profile');
   }
-  const mailboxMissing = $derived(app.state !== null && !app.hasMailbox);
+  /** The fetch reads the mailbox and none is connected: no new jobs come (the search needs
+   *  none). */
+  const mailboxMissing = $derived(app.state !== null && !app.hasMailbox && app.fetchWay === 'mail');
 
   /** Einstellungen at the mailbox card, its "Verbinden" focused (the view keeps no other
    *  scroll place for this way). */
@@ -170,11 +173,7 @@
     // Eingang, the same action twice; the path stays for a header without it.
     if (headerFetches) return null;
     if (run.fetchBlocked !== null) return null;
-    return {
-      label: t.toolbar.fetch,
-      icon: 'fetch',
-      onclick: () => void run.start({ kind: 'fetch' }),
-    };
+    return { ...fetchLook(), onclick: () => void run.start({ kind: 'fetch' }) };
   });
   /** The empty Eingang says the list stays empty without a mailbox (not the note too). */
   const emptyInboxShown = $derived(
