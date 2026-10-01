@@ -1,8 +1,8 @@
 # CXact (formerly Job-Alert-Monitor)
 
-Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de, GULP,
-Robert Half, interim-x) from Gmail, searches the sources that allow it itself (Hays, freelancermap, Michael Page,
-SOLCOM, Etengo; user decision 2026-10-01), fetches the
+Desktop app (Tauri 2 + Rust, Windows and macOS) that reads job alert mails (LinkedIn, freelance.de; any
+source's alert mail by its job links) from Gmail, searches the sources that allow it itself (Hays, freelancermap,
+Michael Page, SOLCOM, Etengo, GULP, Robert Half, interim-x; user decisions 2026-10-01), fetches the
 job pages and **scores every job against a consultant profile** (at the start and every 4 hours, and on
 "Jobs abrufen").
 Rebuild of `CXecutives/projektscraper` (read-only reference; its old engine is commit `ca9a2cd^` there).

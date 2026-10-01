@@ -1,6 +1,8 @@
-//! GULP (gulp.de, Randstad): IT, engineering and finance projects. Its projects come by alert
-//! mail (user decision 2026-10-01: its search is not searched); the robots.txt allows the
-//! project pages and the data they load (checked at run time).
+//! GULP (gulp.de, Randstad): IT, engineering and finance projects. The app searches its
+//! project exchange itself as its page does (user decision 2026-10-01: the user gets no alert
+//! mails of it): one POST of the term to `/gulp2/rest/internal/projects/search`, the newest 20
+//! hits. The robots.txt allows the search, the project pages and the data they load (checked
+//! at run time); its alert mails are read where they come.
 //!
 //! A project is `/gulp2/g/projekte/agentur/C<number>` (GULP's own) or
 //! `/gulp2/g/projekte/talentfinder/<24 hex>` (another agency's, through GULP). The page is
@@ -13,8 +15,8 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use super::{
-    Access, Facts, JobKey, JobLink, Portal, PortalAdapter, all_digits, hex12, host_and_segments,
-    host_is, link, without_gender_mark,
+    Access, Facts, Hit, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits, hex12,
+    host_and_segments, host_is, link, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -27,6 +29,10 @@ const ORIGIN: &str = "https://www.gulp.de/";
 const PARSER_VERSION: u32 = 1;
 /// The id of another agency's project (a database id).
 const FOREIGN_ID_LEN: usize = 24;
+/// The project exchange's search (a POST of the term, as its page sends it).
+const SEARCH: &str = "https://www.gulp.de/gulp2/rest/internal/projects/search";
+/// So many hits of a term, the newest first.
+const SEARCH_HITS: u32 = 20;
 
 impl PortalAdapter for Gulp {
     fn portal(&self) -> Portal {
@@ -69,9 +75,59 @@ impl PortalAdapter for Gulp {
     fn hashed_ids(&self) -> bool {
         true
     }
-    /// Its project search, where a search agent is set up.
-    fn setup_url(&self) -> &'static str {
-        "https://www.gulp.de/gulp2/g/projekte"
+    fn way(&self) -> Way {
+        Way::Search
+    }
+
+    /// One search per term; the term rides in the address's query (the POST sends it in its
+    /// body, [`Gulp::search_body`]).
+    fn search_urls(&self, terms: &[String]) -> Vec<Url> {
+        terms
+            .iter()
+            .filter(|term| !term.trim().is_empty())
+            .filter_map(|term| {
+                let mut url = Url::parse(SEARCH).ok()?;
+                url.query_pairs_mut().append_pair("query", term.trim());
+                Some(url)
+            })
+            .collect()
+    }
+
+    /// The query as the page sends it: the term, the newest first, in German.
+    fn search_body(&self, url: &Url) -> Option<String> {
+        let term = url
+            .query_pairs()
+            .find(|(name, _)| name == "query")
+            .map(|(_, value)| value.into_owned())?;
+        Some(
+            serde_json::json!({
+                "query": term,
+                "page": 1,
+                "limit": SEARCH_HITS,
+                "order": "DATE_DESC",
+                "countries": [],
+                "cities": [],
+                "language": "DE",
+                "remote": false,
+                "projectTypes": [],
+            })
+            .to_string(),
+        )
+    }
+
+    fn search_page(&self, body: &str) -> Result<Vec<Hit>, NoHits> {
+        let Ok(data) = serde_json::from_str::<Value>(body) else {
+            let doc = scraper::Html::parse_document(body);
+            if super::has_challenge(&doc, body) {
+                return Err(NoHits::Blocked(Cause::Captcha));
+            }
+            return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+        };
+        let projects = data
+            .get("projects")
+            .and_then(Value::as_array)
+            .ok_or(NoHits::Suspicious(Cause::PageNotRecognised))?;
+        Ok(projects.iter().filter_map(hit).collect())
     }
 
     /// `/gulp2/g/projekte/agentur/C<number>` and `/gulp2/g/projekte/talentfinder/<24 hex>`.
@@ -154,6 +210,30 @@ impl PortalAdapter for Gulp {
             .map(|data| facts(&data))
             .unwrap_or_default()
     }
+}
+
+/// A project of the search: its address (or the one its id and kind make), title, place and,
+/// for another agency's, that agency.
+fn hit(project: &Value) -> Option<Hit> {
+    let own = project.get("type").and_then(Value::as_str) == Some("AGENCY");
+    let address = field(project, "url").or_else(|| {
+        let id = field(project, "id")?;
+        Some(if own {
+            format!("{ORIGIN}gulp2/g/projekte/agentur/{id}")
+        } else {
+            format!("{ORIGIN}gulp2/g/projekte/talentfinder/{id}")
+        })
+    })?;
+    Some(Hit {
+        link: Gulp.job_link(&Url::parse(&address).ok()?)?,
+        title: without_gender_mark(&field(project, "title")?),
+        company: if own {
+            String::new()
+        } else {
+            field(project, "companyName").unwrap_or_default()
+        },
+        location: field(project, "location").unwrap_or_default(),
+    })
 }
 
 fn is_foreign_id(id: &str) -> bool {
@@ -340,6 +420,47 @@ mod tests {
         assert_eq!(facts.employment_type.as_deref(), Some("Freiberuflich"));
         assert_eq!(facts.duration.as_deref(), Some("6 MM++"));
         assert_eq!(facts.remote.as_deref(), Some("Remote"));
+    }
+
+    #[test]
+    fn the_search_posts_its_term_and_reads_the_projects() {
+        let urls = Gulp.search_urls(&["SAP FI/CO".to_owned(), " ".to_owned()]);
+        assert_eq!(urls.len(), 1, "an empty term searches nothing");
+        assert_eq!(
+            urls[0].as_str(),
+            "https://www.gulp.de/gulp2/rest/internal/projects/search?query=SAP+FI%2FCO"
+        );
+        let body: Value = serde_json::from_str(&Gulp.search_body(&urls[0]).unwrap()).unwrap();
+        assert_eq!(body["query"], "SAP FI/CO");
+        assert_eq!(body["order"], "DATE_DESC");
+        let page = r#"{"totalCount":2,"projects":[
+          {"id":"C01329404","type":"AGENCY","title":"SAP S/4HANA O2C Consultant (m/w/d)","location":"Hamburg","companyName":null,"url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404"},
+          {"id":"6abd43a340b5a3a29f35d9c0","type":"TALENT_FINDER","title":"Azure Architekt","location":"Remote","companyName":"SOLCOM GmbH","url":null}]}"#;
+        let hits = Gulp.search_page(page).unwrap();
+        assert_eq!(hits.len(), 2);
+        assert_eq!(hits[0].link.key.id, "01329404");
+        assert_eq!(hits[0].title, "SAP S/4HANA O2C Consultant");
+        assert_eq!(hits[0].company, "");
+        assert_eq!(hits[1].company, "SOLCOM GmbH");
+        assert!(
+            hits[1]
+                .link
+                .url
+                .path()
+                .ends_with("/talentfinder/6abd43a340b5a3a29f35d9c0")
+        );
+        assert_eq!(
+            Gulp.search_page(r#"{"totalCount":0,"projects":[]}"#),
+            Ok(Vec::new())
+        );
+        assert_eq!(
+            Gulp.search_page("<html><body></body></html>"),
+            Err(NoHits::Suspicious(Cause::PageNotRecognised))
+        );
+        assert_eq!(
+            Gulp.search_page(r#"{"status":500}"#),
+            Err(NoHits::Suspicious(Cause::PageNotRecognised))
+        );
     }
 
     #[test]

@@ -43,7 +43,7 @@
   import { invoke } from '$lib/ipc/api';
   import type { OpenTarget, Portal } from '$lib/ipc/types';
   import { rise } from '$lib/motion/transitions';
-  import { inPortalOrder, REGISTERS } from '$lib/portals';
+  import { inPortalOrder } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { editor } from '$lib/state/profile.svelte';
@@ -209,7 +209,7 @@
                 size="sm"
                 icon="external"
                 external
-                label={REGISTERS.has(portal.portal) ? t.settings.register : t.firstRun.createAlert}
+                label={t.firstRun.createAlert}
                 testid="first-alert-{portal.portal}"
                 onclick={() => open('mailbox', { kind: 'portalSetup', portal: portal.portal })}
               />

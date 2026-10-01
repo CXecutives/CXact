@@ -1062,6 +1062,9 @@ handle sits between list and reader".
 - [x] 4 Einstellungen: Suche (with "Automatisch abrufen") and Alert-Mails, monograms, "Alert anlegen"
   (`OpenTarget::PortalSetup`), "Quelle" in the UI texts
 - [x] 5 GULP, Robert Half, interim-x: link forms, the ad readers against real pages (GULP through the data
-  its page loads, `/gulp2/rest/internal/projects/...`, which its robots.txt allows), setup links ("Registrieren"
-  at interim-x), on in Einstellungen and the first-run page
-- [ ] The first real alert mails of GULP, Robert Half and interim-x read (sender, links, layout; fixtures)
+  its page loads, `/gulp2/rest/internal/projects/...`, which its robots.txt allows)
+- [x] GULP, Robert Half and interim-x are searched, not alert sources (user 2026-10-01: no access to their alert
+  mails): GULP's project search (a POST of the term, as its page sends it), Robert Half's
+  `/de/de/jobs/deutschland/<term>` (interim and project roles only), interim-x's project list (every project).
+  Their alert mails are still read where they come: the reader needs no code per source (tests with made-up
+  layouts in `mail/tests.rs`). A reader for unknown sources stays out: no ad reader, robots.txt or pace per source

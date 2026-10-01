@@ -227,6 +227,12 @@ pub trait PortalAdapter: Send + Sync {
     fn checks_robots(&self) -> bool {
         false
     }
+    /// A search the source runs as a POST of its query (GULP): the JSON body for this search
+    /// address (its query carries the term and is not sent); `None` for a plain page.
+    fn search_body(&self, url: &Url) -> Option<String> {
+        let _ = url;
+        None
+    }
     /// Keys of links without a number: `u` and 12 hex characters of a hash of the address.
     fn hashed_ids(&self) -> bool {
         false
@@ -582,6 +588,15 @@ pub(crate) fn hex12(bytes: &[u8]) -> String {
             let _ = write!(s, "{b:02x}");
             s
         })
+}
+
+/// A search term as the keyword of a search address: lower case, words joined by hyphens.
+pub(crate) fn keyword_slug(term: &str) -> String {
+    term.to_lowercase()
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
 }
 
 /// A CSS selector of a page parser (fixed and valid).

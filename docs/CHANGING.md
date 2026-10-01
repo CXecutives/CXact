@@ -307,18 +307,20 @@ text.
    its switches from `Portal::ALL`.
 4. The stub's demo data may give it jobs; `docs/PLAN.md` says what the portal allows.
 
-A source of alert mails added after 2026-10-01 also sets `checks_robots()` and `setup_url()`
-(Einstellungen and the first-run page offer it as "Alert anlegen"; `REGISTERS` in
-`ui/src/lib/portals.ts` says "Registrieren" instead). Links without a number take a hash key
-(`hashed_ids()`); a page drawn in the browser is read from the data it loads (`fetch_url()`,
-GULP).
+A source added after 2026-10-01 also sets `checks_robots()`; one of alert mails its
+`setup_url()` (Einstellungen and the first-run page offer it as "Alert anlegen"). Its alert
+mails need no code of their own: the mail reader takes any layout by the job links its
+`job_link()` knows (also forwarded and collection mails, click trackers that carry the
+address). Links without a number take a hash key (`hashed_ids()`); a page drawn in the
+browser is read from the data it loads (`fetch_url()`, GULP).
 
 ## Add a search source
 
 A source the app searches itself (user decision 2026-10-01): an adapter as above with
 `way()` `Way::Search`, `search_urls(terms)` (one page per term, or one list it filters by
 them) and `search_page(html)` (its hits, or `NoHits` for a check or an unknown page),
-`checks_robots()` `true`, and its limits. First check by hand that its robots.txt allows the
+`checks_robots()` `true`, and its limits. A search the source runs as a POST of its query
+(GULP) gives the JSON body in `search_body(url)`; the term rides in the address's query. First check by hand that its robots.txt allows the
 search and the ads; the app checks it again at run time. Fixtures: a shortened search page
 and ad in the adapter's tests, the real pages under `core/tests/fixtures/private/pages`
 (ignored tests `the_real_*`); `cargo run -p jobalert-core --example live_search -- <terms>`

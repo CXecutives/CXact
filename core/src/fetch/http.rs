@@ -11,7 +11,9 @@
 
 use std::time::Duration;
 
-use reqwest::header::{ACCEPT, ACCEPT_LANGUAGE, HeaderMap, HeaderValue, LOCATION, RETRY_AFTER};
+use reqwest::header::{
+    ACCEPT, ACCEPT_LANGUAGE, CONTENT_TYPE, HeaderMap, HeaderValue, LOCATION, RETRY_AFTER,
+};
 use reqwest::{Client, Response, StatusCode, redirect};
 use tokio_util::sync::CancellationToken;
 use url::Url;
@@ -150,12 +152,21 @@ impl HttpFetcher {
     /// (a status, a redirect it did not follow, a check page).
     async fn search_page(&self, portal: Portal, url: &Url) -> Result<Vec<Hit>, PageOutcome> {
         let adapter = portal.adapter();
-        let response = self
-            .follow
-            .get(self.target(url.clone()))
-            .send()
-            .await
-            .map_err(|e| net_error(&e))?;
+        let target = self.target(url.clone());
+        let request = match adapter.search_body(url) {
+            // A search the source runs as a POST of its query (as its own page does): the
+            // address without the query that carried the term.
+            Some(body) => {
+                let mut target = target;
+                target.set_query(None);
+                self.follow
+                    .post(target)
+                    .header(CONTENT_TYPE, "application/json")
+                    .body(body)
+            }
+            None => self.follow.get(target),
+        };
+        let response = request.send().await.map_err(|e| net_error(&e))?;
         let status = response.status();
         if status.is_redirection() {
             return Err(adapter.redirect_outcome(&location_path(&response)));
@@ -689,6 +700,38 @@ mod tests {
                 None => assert_eq!(seconds, None, "{header}"),
             }
         }
+    }
+
+    /// A search the source runs as a POST (GULP): its query in the body, as JSON, to the
+    /// address without the query; the answer read by the adapter.
+    #[tokio::test]
+    async fn a_posted_search_sends_its_term_in_the_body() {
+        let (server, mut f) = server().await;
+        Mock::given(method("POST"))
+            .and(path("/gulp2/rest/internal/projects/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(
+                r#"{"totalCount":1,"projects":[{"id":"C01329404","type":"AGENCY","title":"Controller","location":"Hamburg","url":"https://www.gulp.de/gulp2/g/projekte/agentur/C01329404"}]}"#,
+            ))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let url = Portal::Gulp
+            .adapter()
+            .search_urls(&["Controlling".to_owned()])[0]
+            .clone();
+        let hits = f
+            .search(Portal::Gulp, &url, &CancellationToken::new())
+            .await
+            .unwrap();
+        assert_eq!(hits.len(), 1);
+        let request = &server.received_requests().await.unwrap()[0];
+        assert_eq!(request.url.query(), None, "the term goes in the body");
+        assert_eq!(
+            request.headers.get("content-type").unwrap(),
+            "application/json"
+        );
+        let body: serde_json::Value = serde_json::from_slice(&request.body).unwrap();
+        assert_eq!(body["query"], "Controlling");
     }
 
     #[tokio::test]

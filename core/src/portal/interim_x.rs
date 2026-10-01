@@ -1,6 +1,8 @@
-//! interim-x (interim-x.com): interim management mandates of a Horváth company. Its projects
-//! come by alert mail to the managers it accredited (user decision 2026-10-01: registered,
-//! not searched); it has no robots.txt (everything allowed, checked at run time).
+//! interim-x (interim-x.com): interim management mandates of a Horváth company. The app reads
+//! its public project list itself (user decision 2026-10-01: the user gets no project mails
+//! of it, they need an accreditation): one page per fetch, every project on it (all interim).
+//! It has no robots.txt (everything allowed, checked at run time); its mails are read where
+//! they come.
 //!
 //! A project is `/de/projekt/<slug>-<id>` (`/en/project/...` in English); a short slug leads
 //! to the full one (301 on the same host). Its page names the role ("Position"), the
@@ -13,8 +15,8 @@ use scraper::{ElementRef, Html, Node};
 use url::Url;
 
 use super::{
-    Access, Css, Facts, JobLink, Portal, PortalAdapter, all_digits, host_and_segments, host_is,
-    link, selector, without_gender_mark,
+    Access, Css, Facts, Hit, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
+    host_and_segments, host_is, link, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -67,9 +69,28 @@ impl PortalAdapter for InterimX {
     fn projects_only(&self) -> bool {
         true
     }
-    /// Its project mails go to the managers it accredited: the registration first.
-    fn setup_url(&self) -> &'static str {
-        "https://app.interim-x.com/de/registrierung/interim-manager/"
+    fn way(&self) -> Way {
+        Way::Search
+    }
+
+    /// The list of its open projects, once (a handful, all interim: the terms pick nothing
+    /// out); none without a term, like every search.
+    fn search_urls(&self, terms: &[String]) -> Vec<Url> {
+        if terms.iter().all(|term| term.trim().is_empty()) {
+            return Vec::new();
+        }
+        Url::parse(self.home_url()).into_iter().collect()
+    }
+
+    fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
+        let doc = Html::parse_document(html);
+        if doc.select(&PROJECT).next().is_none() {
+            if super::has_challenge(&doc, html) {
+                return Err(NoHits::Blocked(Cause::Captcha));
+            }
+            return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+        }
+        Ok(doc.select(&LIST_CARD).filter_map(hit).collect())
     }
 
     /// `/<lang>/projekt/<slug>-<id>` or `/<lang>/project/<slug>-<id>`.
@@ -126,11 +147,35 @@ impl PortalAdapter for InterimX {
 }
 
 static PROJECT: Css = LazyLock::new(|| selector(".tx-imx-projects"));
+static LIST_CARD: Css = LazyLock::new(|| selector(".card.project > a[href]"));
+static LIST_ROLE: Css = LazyLock::new(|| selector(".project-position"));
+static LIST_PLACE: Css = LazyLock::new(|| selector("[title=Einsatzort] .detail-item"));
 static HEADING: Css = LazyLock::new(|| selector("h1.title"));
 static ROLE_LABEL: Css = LazyLock::new(|| selector("#job-basics h3"));
 static BOX_LABEL: Css = LazyLock::new(|| selector(".tx-imx-projects h4"));
 static CARDS: Css =
     LazyLock::new(|| selector("#job-tasks .card-content, #job-requirements .card-content"));
+
+/// A project of the list: its role and place.
+fn hit(anchor: ElementRef<'_>) -> Option<Hit> {
+    let url = Url::parse(ORIGIN)
+        .ok()?
+        .join(anchor.value().attr("href")?)
+        .ok()?;
+    let text = |css: &Css| {
+        anchor
+            .select(css)
+            .next()
+            .map(|node| one_line(&node.text().collect::<String>()))
+            .unwrap_or_default()
+    };
+    Some(Hit {
+        link: InterimX.job_link(&url)?,
+        title: without_gender_mark(&text(&LIST_ROLE)),
+        company: String::new(),
+        location: text(&LIST_PLACE),
+    })
+}
 
 /// The labelled boxes of the page: each label (`h4`) with the rest of its box.
 fn boxes(doc: &Html) -> Vec<(String, String)> {
@@ -288,6 +333,38 @@ mod tests {
     }
 
     #[test]
+    fn the_list_gives_every_project() {
+        assert!(InterimX.search_urls(&[]).is_empty());
+        assert_eq!(
+            InterimX
+                .search_urls(&["Interim CFO".to_owned(), "Controlling".to_owned()])
+                .iter()
+                .map(Url::as_str)
+                .collect::<Vec<_>>(),
+            ["https://www.interim-x.com/de/projekte"]
+        );
+        let list = r#"<div class="tx-imx-projects"><div class="row project-list">
+          <div class="card project" id="current-project-{{ project.id }}">
+          <a title="Klicken" href="/de/projekt/senior_pricing_advisor_mwd_ad_interim-2391"><div class="card-body">
+          <div class="h4 bold project-position">Senior Pricing Advisor (m/w/d)</div>
+          <div class="project-detail" title="Einsatzort"><div class="detail-item"><i></i>
+          Deutschland</div></div></div></a></div></div></div>"#;
+        let hits = InterimX.search_page(list).unwrap();
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].link.key.id, "2391");
+        assert_eq!(hits[0].title, "Senior Pricing Advisor");
+        assert_eq!(hits[0].location, "Deutschland");
+        assert_eq!(
+            InterimX.search_page(r#"<div class="tx-imx-projects"></div>"#),
+            Ok(Vec::new())
+        );
+        assert_eq!(
+            InterimX.search_page("<html></html>"),
+            Err(NoHits::Suspicious(Cause::PageNotRecognised))
+        );
+    }
+
+    #[test]
     fn a_project_gives_its_role_text_and_facts() {
         let PageOutcome::Text {
             text,
@@ -322,5 +399,7 @@ mod tests {
         };
         assert!(text.len() > 500, "{text}");
         assert!(fields.unwrap().title.starts_with("Senior Pricing Advisor"));
+        let list = std::fs::read_to_string(dir.join("ix-list.html")).unwrap();
+        assert!(!InterimX.search_page(&list).unwrap().is_empty());
     }
 }

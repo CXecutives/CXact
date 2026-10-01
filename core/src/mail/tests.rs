@@ -565,3 +565,77 @@ fn a_promo_mail_from_the_alert_sender_is_no_alert() {
     assert_eq!(a.portal, Portal::Freelancermap);
     assert!(a.postings.is_empty());
 }
+
+/// The sources added on 2026-10-01 need no mail code of their own: a table, a flat list, a
+/// click tracker and a forwarded collection all give their jobs by the links alone (layouts
+/// made up, like the portals' own).
+#[test]
+fn the_new_sources_read_by_their_links_whatever_the_layout() {
+    let gulp = r#"<table><tr><td>
+        <a href="https://www.gulp.de/gulp2/g/projekte/agentur/C01329404?utm_source=projektagent">SAP S/4HANA O2C Consultant (m/w/d)</a>
+        <p>Hamburg</p></td></tr>
+      <tr><td>
+        <a href="https://www.gulp.de/gulp2/g/projekte/talentfinder/6abd43a340b5a3a29f35d9c0">Azure Architekt</a>
+        <p>Remote</p></td></tr></table>"#;
+    let a = alert(
+        &mail(
+            "GULP <projektagent@gulp.de>",
+            "2 neue Projekte für Sie",
+            Some(gulp),
+            None,
+        ),
+        ALL,
+    );
+    assert_eq!(a.portal, Portal::Gulp);
+    let keys: Vec<&str> = a.postings.iter().map(|p| p.key.id.as_str()).collect();
+    assert_eq!(keys.len(), 2);
+    assert_eq!(keys[0], "01329404");
+    assert!(
+        keys[1].starts_with('u'),
+        "another agency's project: a hash key"
+    );
+    assert_eq!(a.postings[0].title, "SAP S/4HANA O2C Consultant (m/w/d)");
+
+    let tracked = "https://click.mail.example.com/r?id=7f3a&u=https%3A%2F%2Fwww.roberthalf.com%2Fde%2Fde%2Fjob%2Ffrankfurt-am-main-hessen%2Finterim-cfo-wmd%2F06640-0013512443-dede";
+    let rh = format!(
+        r#"<div><a href="{tracked}">Interim CFO (w/m/d)</a><br>Frankfurt am Main</div>
+           <div><a href="https://www.roberthalf.com/de/de/jobs">Alle Jobs ansehen</a></div>"#
+    );
+    let a = alert(
+        &mail(
+            "Robert Half <jobalerts@roberthalf.de>",
+            "Neue Jobs für Sie",
+            Some(&rh),
+            None,
+        ),
+        ALL,
+    );
+    assert_eq!(a.portal, Portal::RobertHalf);
+    assert_eq!(a.postings.len(), 1, "the search page is no job");
+    assert_eq!(a.postings[0].key.id, "066400013512443");
+    assert_eq!(a.postings[0].title, "Interim CFO (w/m/d)");
+
+    let ix = "Guten Tag,\r\n\r\nein neues Mandat passt zu Ihrem Profil:\r\n\r\n\
+              Interim CFO (m/w/d)\r\n\
+              https://www.interim-x.com/de/projekt/interim_cfo_mwd-2412\r\n";
+    let a = alert(
+        &mail(
+            "interim-x <projekte@interim-x.com>",
+            "Neues Projekt",
+            None,
+            Some(ix),
+        ),
+        ALL,
+    );
+    assert_eq!(a.portal, Portal::InterimX);
+    assert_eq!(a.postings.len(), 1);
+    assert_eq!(a.postings[0].key.id, "2412");
+
+    let collection = format!("{gulp}{rh}");
+    let a = alert(
+        &mail("ich@example.com", "WG: Projekte", Some(&collection), None),
+        ALL,
+    );
+    let portals: Vec<Portal> = a.postings.iter().map(|p| p.key.portal).collect();
+    assert_eq!(portals, [Portal::Gulp, Portal::Gulp, Portal::RobertHalf]);
+}

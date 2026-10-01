@@ -619,6 +619,9 @@ const SEARCHED: ReadonlySet<PortalState['portal']> = new Set([
   'michaelpage',
   'solcom',
   'etengo',
+  'gulp',
+  'roberthalf',
+  'interimx',
 ]);
 
 const portal = (name: PortalState['portal'], extra: Partial<PortalState> = {}): PortalState => ({

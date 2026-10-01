@@ -34,6 +34,9 @@ export const SEARCHED: readonly Portal[] = [
   'michaelpage',
   'solcom',
   'etengo',
+  'gulp',
+  'roberthalf',
+  'interimx',
 ];
 export const ALERT_PORTALS: readonly Portal[] = PORTAL_ORDER.filter(
   (portal) => !SEARCHED.includes(portal),

@@ -17,7 +17,7 @@ use url::Url;
 
 use super::{
     Access, Css, Facts, Hit, JobKey, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
-    definitions, host_and_segments, host_is, selector, without_gender_mark,
+    definitions, host_and_segments, host_is, keyword_slug, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -136,7 +136,7 @@ impl PortalAdapter for MichaelPage {
         terms
             .iter()
             .filter_map(|term| {
-                let slug = slug(term);
+                let slug = keyword_slug(term);
                 if slug.is_empty() {
                     return None;
                 }
@@ -176,15 +176,6 @@ const INTERIM: [&str; 2] = ["interim", "projekt"];
 static TITLE: Css = LazyLock::new(|| selector("h1"));
 static TEXT: Css = LazyLock::new(|| selector("#job-description"));
 static SUMMARY: Css = LazyLock::new(|| selector("dl"));
-
-/// The keyword of the search's address: lower case, words joined by hyphens.
-fn slug(term: &str) -> String {
-    term.to_lowercase()
-        .split(|c: char| !c.is_alphanumeric())
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
-}
 
 /// A hit and the month of its number (`jn-<MMYYYY>-...` as months since year 0).
 fn hit(card: ElementRef<'_>) -> Option<(Hit, u32)> {

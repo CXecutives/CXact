@@ -83,12 +83,9 @@ test('three steps that tick themselves; the fetch searches before a mailbox', as
   // The sources of alert mails only: the app searches the others itself.
   expect(portals).toEqual(ALERT_PORTALS.map((portal) => `first-portal-${portal}`));
   await expect(page.getByTestId('first-mails-linkedin')).toHaveText('20 Alert-Mails');
-  // The others offer the page to set up an alert (interim-x its registration).
+  // The others offer the page to set up an alert.
   await expect(page.getByTestId('first-alerts').getByRole('button')).toHaveText([
     T.firstRun.createAlert,
-    T.firstRun.createAlert,
-    T.firstRun.createAlert,
-    T.settings.register,
   ]);
   await page.getByTestId('first-alert-freelance').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
@@ -136,7 +133,7 @@ test('step 1 names the portals that are on; none on leads to Einstellungen', asy
   // In English the same.
   await open(page, `${WIN}&scenario=first-run&lang=en`);
   await expect(page.getByTestId('step-mailbox')).toContainText(
-    'The alert emails from linkedin.com, freelance.de, gulp.de, roberthalf.com and interim-x.com must go to this Gmail address.',
+    'The alert emails from linkedin.com and freelance.de must go to this Gmail address.',
   );
 });
 

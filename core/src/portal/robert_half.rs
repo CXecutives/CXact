@@ -1,6 +1,9 @@
-//! Robert Half (roberthalf.com/de): finance, IT and interim roles in Germany. Its jobs come by
-//! alert mail (user decision 2026-10-01: its search is not searched); the robots.txt allows
-//! the job pages (checked at run time).
+//! Robert Half (roberthalf.com/de): finance, IT and interim roles in Germany. The app searches
+//! its job pages itself (user decision 2026-10-01: the user gets no alert mails of it): one
+//! page per term, `/de/de/jobs/deutschland/<term>` (the pages its sitemap lists), and keeps
+//! the interim and project roles (most are placements into a permanent post or temporary
+//! work). The robots.txt allows the search and the jobs (checked at run time); its alert mails
+//! are read where they come.
 //!
 //! A job is `/de/de/job/<place>/<slug>/<office>-<number>-dede`: the office (5 digits) and the
 //! number (10 digits) make its key, and any place and slug lead to it. Its page is one
@@ -13,8 +16,8 @@ use scraper::{ElementRef, Html};
 use url::Url;
 
 use super::{
-    Access, Css, Facts, JobLink, Portal, PortalAdapter, all_digits, host_and_segments, host_is,
-    link, selector, without_gender_mark,
+    Access, Css, Facts, Hit, JobLink, NoHits, Portal, PortalAdapter, Way, all_digits,
+    host_and_segments, host_is, keyword_slug, link, selector, without_gender_mark,
 };
 use crate::fetch::policy::Limits;
 use crate::fetch::{Cause, PageFields, PageOutcome, Parsed, judge};
@@ -30,6 +33,9 @@ const OFFICE_DIGITS: usize = 5;
 const NUMBER_DIGITS: usize = 10;
 /// The German site's suffix of a job.
 const LOCALE: &str = "dede";
+/// The kinds of contract the search keeps (`Interim Management`; no `Personalvermittlung`,
+/// no `Zeitarbeit`).
+const PROJECTS: [&str; 3] = ["interim", "projekt", "freiberuf"];
 
 impl PortalAdapter for RobertHalf {
     fn portal(&self) -> Portal {
@@ -69,9 +75,35 @@ impl PortalAdapter for RobertHalf {
     fn checks_robots(&self) -> bool {
         true
     }
-    /// Its job search, where an alert is set up.
-    fn setup_url(&self) -> &'static str {
-        "https://www.roberthalf.com/de/de/jobs"
+    fn way(&self) -> Way {
+        Way::Search
+    }
+
+    /// One page per term, all over Germany.
+    fn search_urls(&self, terms: &[String]) -> Vec<Url> {
+        terms
+            .iter()
+            .map(|term| keyword_slug(term))
+            .filter(|slug| !slug.is_empty())
+            .filter_map(|slug| {
+                Url::parse(ORIGIN)
+                    .ok()?
+                    .join(&format!("de/de/jobs/deutschland/{slug}"))
+                    .ok()
+            })
+            .collect()
+    }
+
+    fn search_page(&self, html: &str) -> Result<Vec<Hit>, NoHits> {
+        let doc = Html::parse_document(html);
+        // The search's own block, also when it found nothing ("0 Jobergebnisse").
+        if doc.select(&RESULTS).next().is_none() {
+            if super::has_challenge(&doc, html) {
+                return Err(NoHits::Blocked(Cause::Captcha));
+            }
+            return Err(NoHits::Suspicious(Cause::PageNotRecognised));
+        }
+        Ok(doc.select(&CARD).filter_map(hit).collect())
     }
 
     /// `/de/de/job/<place>/<slug>/<office>-<number>-dede`.
@@ -139,6 +171,7 @@ impl PortalAdapter for RobertHalf {
     }
 }
 
+static RESULTS: Css = LazyLock::new(|| selector(".jobsearch"));
 static CARD: Css = LazyLock::new(|| selector("rhcl-job-card"));
 static TITLE: Css = LazyLock::new(|| selector("[slot=headline]"));
 static TEXT: Css = LazyLock::new(|| {
@@ -174,9 +207,32 @@ fn parse(doc: &Html) -> Parsed {
     }
 }
 
+/// A job of the search: an interim or project role, with its title and place.
+fn hit(card: ElementRef<'_>) -> Option<Hit> {
+    let kind = info_of(card.select(&INFO), "type")?.to_lowercase();
+    if !PROJECTS.iter().any(|word| kind.contains(word)) {
+        return None;
+    }
+    let anchor = card.select(&TITLE).next()?;
+    let url = Url::parse(ORIGIN)
+        .ok()?
+        .join(anchor.value().attr("href")?)
+        .ok()?;
+    Some(Hit {
+        link: RobertHalf.job_link(&url)?,
+        title: without_gender_mark(&one_line(&anchor.text().collect::<String>())),
+        company: String::new(),
+        location: info_of(card.select(&INFO), "location").unwrap_or_default(),
+    })
+}
+
 /// One fact of the card's list by its name.
 fn info(doc: &Html, name: &str) -> Option<String> {
-    doc.select(&INFO)
+    info_of(doc.select(&INFO), name)
+}
+
+fn info_of<'a>(mut items: impl Iterator<Item = ElementRef<'a>>, name: &str) -> Option<String> {
+    items
         .find(|item| item.value().attr("data-subslot") == Some(name))
         .map(|item: ElementRef<'_>| one_line(&item.text().collect::<String>()))
         .filter(|value| !value.is_empty())
@@ -255,6 +311,42 @@ mod tests {
     }
 
     #[test]
+    fn the_search_keeps_the_interim_roles() {
+        let urls = RobertHalf.search_urls(&["Interim CFO".to_owned(), "–".to_owned()]);
+        assert_eq!(
+            urls.iter().map(Url::as_str).collect::<Vec<_>>(),
+            ["https://www.roberthalf.com/de/de/jobs/deutschland/interim-cfo"]
+        );
+        let card = |id: &str, kind: &str| {
+            format!(
+                r#"<rhcl-job-card job-id="06640-{id}-dede" variant="card">
+                <a href="https://www.roberthalf.com/de/de/job/frankfurt-am-main-hessen/cfo-wmd/06640-{id}-dede" slot="headline">Interim CFO (w/m/d)</a>
+                <ul slot="job-info"><li data-subslot="location">Frankfurt am Main, Hessen</li>
+                <li data-subslot="type">{kind}</li></ul></rhcl-job-card>"#
+            )
+        };
+        let page = format!(
+            r#"<div class="jobsearch aem-GridColumn">{}{}{}</div>"#,
+            card("0013512443", "Interim Management"),
+            card("0013512444", "Personalvermittlung"),
+            card("0013512445", "Zeitarbeit"),
+        );
+        let hits = RobertHalf.search_page(&page).unwrap();
+        assert_eq!(hits.len(), 1, "placements and temporary work stay out");
+        assert_eq!(hits[0].link.key.id, "066400013512443");
+        assert_eq!(hits[0].title, "Interim CFO");
+        assert_eq!(hits[0].location, "Frankfurt am Main, Hessen");
+        assert_eq!(
+            RobertHalf.search_page(r#"<div class="jobsearch"><p>0 Jobergebnisse</p></div>"#),
+            Ok(Vec::new())
+        );
+        assert_eq!(
+            RobertHalf.search_page("<html><body></body></html>"),
+            Err(NoHits::Suspicious(Cause::PageNotRecognised))
+        );
+    }
+
+    #[test]
     fn a_job_gives_its_text_and_facts() {
         let PageOutcome::Text {
             text,
@@ -295,5 +387,10 @@ mod tests {
                 .title
                 .starts_with("Leitung Finanzbuchhaltung")
         );
+        let search = std::fs::read_to_string(dir.join("rh-search-icfo.html")).unwrap();
+        let hits = RobertHalf.search_page(&search).unwrap();
+        assert!(hits.len() <= 25, "{}", hits.len());
+        let empty = std::fs::read_to_string(dir.join("rh-search-empty.html")).unwrap();
+        assert_eq!(RobertHalf.search_page(&empty), Ok(Vec::new()));
     }
 }

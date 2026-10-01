@@ -174,9 +174,6 @@ test('button styles: every text button of a row is outlined, what deletes for go
     'setup-linkedin',
     'setup-freelance',
     'sign-in-freelance',
-    'setup-gulp',
-    'setup-roberthalf',
-    'setup-interimx',
     'folder-change',
     'folder-open',
     'reset',
@@ -444,22 +441,16 @@ test('sources: Suche and Alert-Mails, each in the order of the UI, each with its
     await expect(page.getByTestId(card)).not.toContainText('Details');
     await expect(page.getByTestId(card)).not.toContainText('Seiten');
   }
-  // Only a source of alert mails offers "Alert anlegen" (interim-x "Registrieren"), its page
-  // in the browser.
+  // Only a source of alert mails offers "Alert anlegen", its page in the browser.
   await expect(page.getByTestId('settings-search').locator('[data-testid^="setup-"]')).toHaveCount(
     0,
   );
   await expect(page.getByTestId('settings-alerts').locator('[data-testid^="setup-"]')).toHaveText([
     T.settings.setUpAlert,
     T.settings.setUpAlert,
-    T.settings.setUpAlert,
-    T.settings.setUpAlert,
-    T.settings.register,
   ]);
   await page.getByTestId('setup-freelance').click();
   expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'freelance' } });
-  await page.getByTestId('setup-interimx').click();
-  expect(await lastOpened(page)).toEqual({ target: { kind: 'portalSetup', portal: 'interimx' } });
   // Its sign-in and tools 12 apart, like the buttons and the switch of every other row.
   const gap = await page
     .getByTestId('portal-freelance')

@@ -1,8 +1,7 @@
 <!--
   One source in the card Suche or Alert-Mails, the same row for each: its tile and name, the
   calls of today ("Heute 23 von 100 Aufrufen", counted from midnight) with their meter, for a
-  source of alert mails "Alert anlegen" or "Registrieren" (its page in the browser), then
-  "Anmelden" or
+  source of alert mails "Alert anlegen" (its page in the browser), then "Anmelden" or
   "Abmelden" where the portal offers a sign-in, the portal in the browser (in one column in
   every row) and its switch (the name names the switch but, like every text next to a switch,
   does not switch it). Every meter has one width; at the smallest window the sign-in goes to
@@ -32,7 +31,6 @@
   import type { PortalState } from '$lib/ipc/types';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
-  import { REGISTERS } from '$lib/portals';
   import { app } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
   import { settingsPatch } from './cards';
@@ -54,8 +52,6 @@
   let saves = 0;
 
   const id = $derived(`switch-enabled-${portal.portal}`);
-  /** Its alert mails follow a registration ("Registrieren" instead of "Alert anlegen"). */
-  const registers = $derived(REGISTERS.has(portal.portal));
   /** Alert mails of the portal that came without jobs (a mail problem, not one of the pages). */
   const emptyMails = $derived(
     portal.health.kind === 'layoutSuspect' ? portal.health.emptyMails : 0,
@@ -230,8 +226,8 @@
         <Button
           variant="secondary"
           size="sm"
-          icon={registers ? 'signIn' : 'alertMail'}
-          label={registers ? t.settings.register : t.settings.setUpAlert}
+          icon="alertMail"
+          label={t.settings.setUpAlert}
           testid="setup-{portal.portal}"
           onclick={() => open('setup')}
         />
