@@ -855,14 +855,14 @@ pub struct JobQuery {
     /// By match, or by date: the alert mail's, in the trash the day the job went there.
     pub sort: JobSort,
     pub search: Option<String>,
-    /// The filter (funnel menu): only this portal's jobs; `null` = every portal. Like the
+    /// The filter (funnel menu): only these portals' jobs; empty = every portal. Like the
     /// search it narrows the list and all its counts.
     #[serde(default)]
-    pub portal: Option<Portal>,
-    /// The filter: only jobs scored in this band (`high`, `mid` or `low`); unscored and
-    /// excluded jobs pass only with `null`.
+    pub portals: Vec<Portal>,
+    /// The filter: only jobs scored in these bands (`high`, `mid`, `low`); unscored and
+    /// excluded jobs pass only while it is empty.
     #[serde(default)]
-    pub band: Option<Band>,
+    pub bands: Vec<Band>,
     /// The filter: only jobs of these contract types, as the engine read them
     /// (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
     /// those without a contract type too.
@@ -883,21 +883,29 @@ pub struct JobQuery {
     /// it, not excluded). `null` = every job.
     #[serde(default)]
     pub run: Option<i64>,
+    /// The filter "Eingegangen": only jobs that came at or after this moment (Unix seconds;
+    /// the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
+    /// them). The page names the start of today, of the last 7 or of the last 30 days in
+    /// the user's time zone. `null` = every job.
+    #[serde(default)]
+    pub received_since: Option<i64>,
     /// At most [`MAX_PAGE`]; 0 = counts only.
     pub limit: u32,
     pub offset: u32,
 }
 
 impl JobQuery {
-    /// The filter of the query: portal, band, contract types, work mode and run.
+    /// The filter of the query: portals, bands, contract types, work mode, origin, run and
+    /// the day it came from.
     pub fn filter(&self) -> ListFilter {
         ListFilter {
-            portal: self.portal,
-            band: self.band,
+            portals: self.portals.clone(),
+            bands: self.bands.clone(),
             contracts: self.contracts.clone(),
             work_mode: self.work_mode,
             origin: self.origin,
             run: self.run,
+            received_since: self.received_since,
         }
     }
 }
@@ -2034,11 +2042,12 @@ mod tests {
             unread,
             sort,
             search: None,
-            portal: None,
-            band: None,
+            portals: Vec::new(),
+            bands: Vec::new(),
             contracts: Vec::new(),
             work_mode: None,
             origin: None,
+            received_since: None,
             run: None,
             limit,
             offset,
@@ -2119,10 +2128,10 @@ mod tests {
                 Timestamp::now(),
             )
             .unwrap();
-        let page = |portal, band| {
+        let page = |portal: Option<Portal>, band: Option<Band>| {
             let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
-            q.portal = portal;
-            q.band = band;
+            q.portals = portal.into_iter().collect();
+            q.bands = band.into_iter().collect();
             job_page(&store, &q).unwrap()
         };
         let all = page(None, None);
@@ -2150,6 +2159,26 @@ mod tests {
             ["A"]
         );
         assert!(titles(&page(Some(Portal::LinkedIn), Some(Band::Low))).is_empty());
+        // Several portals and several bands: any of them, the bands need not touch.
+        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        q.portals = vec![Portal::LinkedIn, Portal::Freelancermap];
+        assert_eq!(
+            titles(&job_page(&store, &q).unwrap()),
+            ["D", "B", "A", "E", "C"]
+        );
+        q.bands = vec![Band::High, Band::Low];
+        let both = job_page(&store, &q).unwrap();
+        assert_eq!(titles(&both), ["B", "E"]);
+        assert_eq!((both.counts.inbox, both.counts.excluded), (2, 0));
+        // Eingegangen: only the jobs that came from that moment on (no mail date here: the
+        // first sighting; B, C and D came minutes after A and E).
+        let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
+        q.received_since = Some(crate::time::to_db(
+            Timestamp::now() + jiff::SignedDuration::from_secs(90),
+        ));
+        assert_eq!(titles(&job_page(&store, &q).unwrap()), ["D", "B", "C"]);
+        q.received_since = Some(0);
+        assert_eq!(job_page(&store, &q).unwrap().jobs.len(), 5);
         // The fields may be missing (an older page): no filter.
         let json = r#"{"place":"inbox","unread":false,"sort":"match",
                        "search":null,"limit":10,"offset":0}"#;
@@ -2162,19 +2191,26 @@ mod tests {
                        "limit":10,"offset":0}"#;
         let old: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(old.filter(), ListFilter::default());
+        // One portal and one band of an earlier version filter nothing now.
         let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
-                       "portal":"freelance","band":"low","contracts":["interim","anue"],
-                       "workMode":"onsite","run":7,"limit":10,"offset":0}"#;
+                       "portal":"freelance","band":"low","limit":10,"offset":0}"#;
+        let single: JobQuery = serde_json::from_str(json).unwrap();
+        assert_eq!(single.filter(), ListFilter::default());
+        let json = r#"{"place":"inbox","unread":false,"sort":"match","search":null,
+                       "portals":["freelance","hays"],"bands":["high","low"],
+                       "contracts":["interim","anue"],"workMode":"onsite","run":7,
+                       "receivedSince":1790000000,"limit":10,"offset":0}"#;
         let new: JobQuery = serde_json::from_str(json).unwrap();
         assert_eq!(
             new.filter(),
             ListFilter {
-                portal: Some(Portal::FreelanceDe),
-                band: Some(Band::Low),
+                portals: vec![Portal::FreelanceDe, Portal::Hays],
+                bands: vec![Band::High, Band::Low],
                 contracts: vec!["interim".into(), "anue".into()],
                 work_mode: Some(WorkMode::Onsite),
                 origin: None,
                 run: Some(7),
+                received_since: Some(1_790_000_000),
             }
         );
     }
@@ -2212,10 +2248,10 @@ mod tests {
                 Timestamp::now(),
             )
             .unwrap();
-        let page = |band| {
+        let page = |band: Option<Band>| {
             let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
             q.run = Some(run);
-            q.band = band;
+            q.bands = band.into_iter().collect();
             job_page(&store, &q).unwrap()
         };
         let (count, high) = store.new_jobs(run).unwrap();
@@ -2485,7 +2521,7 @@ mod tests {
         let mut q = query(Place::Inbox, false, JobSort::Match, 50, 0);
         q.contracts = vec!["interim".into()];
         q.work_mode = Some(WorkMode::Remote);
-        q.band = Some(Band::Mid);
+        q.bands = vec![Band::Mid];
         let started = std::time::Instant::now();
         let page = job_page(&store, &q).unwrap();
         let took = started.elapsed();

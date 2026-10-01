@@ -9,8 +9,8 @@
 
 import type { Page } from '@playwright/test';
 import { ICONS } from '../../../ui/src/lib/icons';
-import type { FetchRange, JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
-import { WORK_MODES, workModeOf } from '../../../ui/src/lib/state/filter';
+import type { JobQuery, JobView } from '../../../ui/src/lib/ipc/types';
+import { RECEIVED, WORK_MODES, workModeOf } from '../../../ui/src/lib/state/filter';
 import {
   animationsDone,
   calls,
@@ -154,7 +154,7 @@ test.describe('header', () => {
     page,
   }) => {
     await open(page, WIN);
-    // Eingang: "Postfach abrufen" with the Zeitraum's button at the end of the tabs' row.
+    // Eingang: "Jobs abrufen" with its menu's button at the end of the tabs' row.
     await expect(page.getByTestId('fetch')).toHaveText(T.toolbar.fetch);
     // Measured in one frame, once the header has its final layout.
     await expect.poll(() => middlesApart(page, 'places', 'fetch')).toBeLessThanOrEqual(1);
@@ -164,7 +164,7 @@ test.describe('header', () => {
     // group).
     await expect.poll(() => middlesApart(page, 'search', 'filter')).toBeLessThanOrEqual(1);
     expect(await rightOf(page, 'search')).toBeLessThan(await rightOf(page, 'filter'));
-    const end = await rightOf(page, 'fetch-range');
+    const end = await rightOf(page, 'fetch-ways');
     expect(await rightOf(page, 'filter')).toBe(end);
     await expect(page.getByTestId('sort')).toHaveCount(0);
     await expect(funnel(page)).toHaveAttribute('aria-label', T.toolbar.filter);
@@ -201,103 +201,92 @@ test.describe('header', () => {
     await expect(page.getByTestId('place-count')).toHaveCount(0);
   });
 
-  test('Jobs abrufen has Abruf einstellen beside it: an outlined icon button with its menu', async ({
+  test('Jobs abrufen has Abruf einstellen beside it: what it reads, its words follow', async ({
     page,
   }) => {
-    await open(page, WIN);
+    await open(page, `${WIN}&tick=15`);
     const fetch = page.getByTestId('fetch');
-    const chevron = page.getByTestId('fetch-range');
+    const ways = page.getByTestId('fetch-ways');
     // Beside the action: the same row and height, 8 px apart; the fetch is the view's
-    // primary, the Zeitraum an outlined square with its icon.
+    // primary, its menu's button an outlined square with its icon.
     const main = (await fetch.boundingBox())!;
-    const part = (await chevron.boundingBox())!;
+    const part = (await ways.boundingBox())!;
     expect(part.y).toBe(main.y);
     expect(part.height).toBe(main.height);
     expect(part.width).toBe(part.height);
     expect(Math.round(part.x - (main.x + main.width))).toBe(8);
     await expect(fetch).toHaveClass(/primary/);
-    await expect(chevron).toHaveClass(/secondary/);
-    await expect(chevron.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
-    await expect(chevron).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
-    await expect(chevron).toHaveAttribute('aria-haspopup', 'menu');
-    // Its menu: the alert mails and the search, both on, then "Zeitraum" and the four
-    // ranges, the current one checked.
-    const ranges: FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
-    await chevron.click();
+    await expect(fetch).toHaveText(T.toolbar.fetch);
+    await expect(ways).toHaveClass(/secondary/);
+    await expect(ways.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.range}`));
+    await expect(ways).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
+    await expect(ways).toHaveAttribute('aria-haspopup', 'menu');
+    // Its menu (user decision 2026-10-01): the search and the alert mails, only the search,
+    // only the mailbox, one checked; the Zeitraum is in Einstellungen.
+    await ways.click();
     const menu = page.getByTestId('menu');
     await expect(menu).toHaveAttribute('aria-label', T.toolbar.fetchSettings);
-    await expect(chevron).toHaveAttribute('aria-expanded', 'true');
-    await expect(menu.getByTestId('menu-heading')).toHaveText([T.toolbar.range]);
+    await expect(ways).toHaveAttribute('aria-expanded', 'true');
+    await expect(menu.getByTestId('menu-heading')).toHaveCount(0);
     await expect(menu.locator('[role^="menuitem"]')).toHaveText([
-      T.toolbar.fetchMail,
-      T.toolbar.fetchSearch,
-      ...ranges.map((range) => T.toolbar.rangeName[range]),
+      T.toolbar.wayName.both,
+      T.toolbar.wayName.search,
+      T.toolbar.wayName.mail,
     ]);
-    for (const way of ['fetch-mail', 'fetch-search']) {
-      await expect(menuItem(page, way)).toHaveAttribute('role', 'menuitemcheckbox');
-      await expect(menuItem(page, way)).toHaveAttribute('aria-checked', 'true');
+    for (const way of ['way-both', 'way-search', 'way-mail']) {
+      await expect(menuItem(page, way)).toHaveAttribute('role', 'menuitemradio');
     }
-    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'true');
+    await expect(menuItem(page, 'way-both')).toHaveAttribute('aria-checked', 'true');
     // Right edge on the control's.
     const box = (await menu.boundingBox())!;
     expect(Math.abs(box.x + box.width - (part.x + part.width))).toBeLessThanOrEqual(1);
-    // A choice is saved at once through the settings patch, and the menu closes.
-    await menuItem(page, 'range-days30').click();
+    // Nur Suche: saved at once, the menu closes, the button says "Jobs suchen".
+    await menuItem(page, 'way-search').click();
     await expect(menu).toHaveCount(0);
     await expect
       .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchRange: 'days30', portals: [], exportExcel: null } });
-    await chevron.click();
-    await expect(menuItem(page, 'range-days30')).toHaveAttribute('aria-checked', 'true');
-    await expect(menuItem(page, 'range-sinceLast')).toHaveAttribute('aria-checked', 'false');
-    await page.keyboard.press('Escape');
-    // The fetch itself still starts from the main part. "Abbrechen" takes its slot at its
-    // width (the wider of the two sets it) and the Zeitraum stays beside it, off: nothing
-    // moves.
-    await fetch.click();
-    const cancel = page.getByTestId('cancel-run');
-    await expect(cancel).toBeVisible();
-    const stop = (await cancel.boundingBox())!;
-    expect([stop.x, stop.y, stop.width, stop.height]).toEqual([
-      main.x,
-      main.y,
-      main.width,
-      main.height,
-    ]);
-    await expect(chevron).toBeVisible();
-    await expect(chevron).toBeDisabled();
-    expect((await chevron.boundingBox())!).toEqual(part);
-    await cancel.click();
-    await runFinished(page);
-    await expect(chevron).toBeEnabled();
-  });
-
-  test('the alert mails and the search switch on their own; with neither the fetch waits', async ({
-    page,
-  }) => {
-    await open(page, WIN);
-    const fetch = page.getByTestId('fetch');
-    await page.getByTestId('fetch-range').click();
-    // A switch keeps the menu open and is saved at once.
-    await menuItem(page, 'fetch-search').click();
-    await expect(menuItem(page, 'fetch-search')).toHaveAttribute('aria-checked', 'false');
-    await expect(page.getByTestId('menu')).toBeVisible();
+      .toMatchObject({ patch: { fetchMail: false, fetchSearch: true, portals: [] } });
+    await expect(fetch).toHaveText(T.toolbar.searchNow);
+    expect(T.toolbar.searchNow).toBe('Jobs suchen');
+    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.search}`));
+    // Nur Postfach: "Postfach abrufen" with the glyph of every fetch (not the mail's).
+    await ways.click();
+    await expect(menuItem(page, 'way-search')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'way-mail').click();
+    await expect(fetch).toHaveText(T.toolbar.fetchMailbox);
+    // Its words set the slot's width: measured as it stands now.
+    const words = (await fetch.boundingBox())!;
+    await expect(fetch.locator('svg')).toHaveClass(new RegExp(`lucide-${ICONS.fetch}`));
     await expect
       .poll(async () => (await calls(page, 'save_settings')).at(-1)?.[1])
-      .toMatchObject({ patch: { fetchSearch: false, fetchMail: null } });
-    // Alert mails only: the fetch still works.
-    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
-    await menuItem(page, 'fetch-mail').click();
-    await expect(menuItem(page, 'fetch-mail')).toHaveAttribute('aria-checked', 'false');
-    await page.keyboard.press('Escape');
-    // Neither: the fetch waits and says what to switch on.
-    await expect(fetch).toHaveAttribute('aria-disabled', 'true');
-    await fetch.hover();
-    await expect(page.getByRole('tooltip')).toHaveText(T.toolbar.needsWay);
-    await page.getByTestId('fetch-range').click();
-    await menuItem(page, 'fetch-search').click();
-    await page.keyboard.press('Escape');
-    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+      .toMatchObject({ patch: { fetchMail: true, fetchSearch: false } });
+    // The fetch sends no way of its own: the backend reads the saved one.
+    await page.evaluate(() => (window.__harness.holdAfter = 3));
+    await fetch.click();
+    // "Abbrechen" takes its slot (the widest of the words sets it) and the menu's button
+    // stays beside it, off: nothing moves.
+    const cancel = page.getByTestId('cancel-run');
+    await expect(cancel).toBeVisible();
+    const slot = (await cancel.boundingBox())!;
+    expect([slot.x, slot.y, slot.width, slot.height]).toEqual([
+      words.x,
+      words.y,
+      words.width,
+      words.height,
+    ]);
+    const sent = (await calls(page, 'start_run')).at(-1)?.[1] as { request: object };
+    expect(sent.request).toEqual({ kind: 'fetch' });
+    await expect(ways).toBeDisabled();
+    expect((await ways.boundingBox())!).toEqual(part);
+    await cancel.click();
+    await runFinished(page);
+    await page.evaluate(() => (window.__harness.holdAfter = null));
+    await expect(ways).toBeEnabled();
+    // Kept: the next start says "Postfach abrufen"; back to both, "Jobs abrufen".
+    await open(page, WIN);
+    await ways.click();
+    await menuItem(page, 'way-both').click();
+    await expect(fetch).toHaveText(T.toolbar.fetch);
   });
 
   test('while a fetch goes Abbrechen stands in every place, in the same slot', async ({ page }) => {
@@ -318,8 +307,6 @@ test.describe('header', () => {
       await openPlace(page, place);
       await expect(cancel, place).toBeVisible();
       expect(await slot(), place).toEqual(inbox);
-      // The Zeitraum is the Eingang's: elsewhere it only holds its room.
-      await expect(page.getByTestId('fetch-range'), place).toHaveCount(0);
     }
     // In the Papierkorb it stands over "Papierkorb leeren", which waits for the run.
     await expect(page.getByTestId('empty-trash')).toHaveCount(0);
@@ -479,25 +466,52 @@ test.describe('header', () => {
 /* ======================================================================= filter */
 
 test.describe('filter', () => {
-  test('Herkunft: the jobs of the alert mails or of the search, a job of both in both', async ({
+  // Hidden for now (user decision 2026-10-01: one list, the menu beside the fetch chooses
+  // what it reads); the sidebar's ways keep their code (Sidebar.svelte WAYS_SHOWN).
+  test.skip('in the sidebar Suche and Alert-Mails list the jobs of their way; the chevron folds them', async ({
     page,
   }) => {
     await open(page, WIN);
-    await chooseFilter(page, 'origin-search');
+    const search = page.getByTestId('nav-jobs-search');
+    const mail = page.getByTestId('nav-jobs-mail');
+    await expect(search).toHaveText(T.nav.search);
+    await expect(mail).toHaveText(T.nav.mail);
+    // Suche: the jobs the search found (freelancermap's in the demo, its alert mails brought
+    // them too); a job of both ways stands in both.
+    await search.click();
+    await expect(search).toHaveAttribute('aria-current', 'page');
     await expect.poll(async () => (await lastQuery(page))?.origin).toBe('search');
-    // The search found freelancermap's jobs (its alert mails brought them too).
     const searched = await stubList(page, { origin: 'search' });
     expect(searched.active.length).toBeGreaterThan(0);
     expect(searched.active.every((key) => key.startsWith('freelancermap-'))).toBe(true);
-    await expect(chip(page, 'origin')).toContainText(T.toolbar.originChip.search);
-    await chooseFilter(page, 'origin-mail');
+    await mail.click();
     await expect.poll(async () => (await lastQuery(page))?.origin).toBe('mail');
-    await expect(chip(page, 'origin')).toContainText(T.toolbar.originChip.mail);
     const mailed = await stubList(page, { origin: 'mail' });
     expect(mailed.active).toEqual(expect.arrayContaining(searched.active));
+    // Jobs: every job again.
+    await page.getByTestId('nav-jobs').click();
+    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+    await expect.poll(async () => (await lastQuery(page))?.origin).toBeNull();
+    // Only the chevron folds (the entry itself is chosen like any); folding while a way is
+    // shown shows every job.
+    await search.click();
+    const fold = page.getByTestId('nav-jobs-fold');
+    await expect(fold).toHaveAttribute('aria-expanded', 'true');
+    await expect(fold).toHaveAttribute('aria-label', T.nav.ways);
+    await fold.click();
+    await expect(fold).toHaveAttribute('aria-expanded', 'false');
+    await expect(search).toHaveCount(0);
+    await expect(mail).toHaveCount(0);
+    await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
+    await expect.poll(async () => (await lastQuery(page))?.origin).toBeNull();
+    // Kept: folded after a reload too.
+    await page.reload();
+    await expect(page.getByTestId('nav-jobs-fold')).toHaveAttribute('aria-expanded', 'false');
+    await page.getByTestId('nav-jobs-fold').click();
+    await expect(search).toBeVisible();
   });
 
-  test('one menu: Sortierung, Quelle, Übereinstimmung, Vertragsart, Arbeitsmodell, Nur neue, none chosen', async ({
+  test('one menu: Sortierung, Quelle, Übereinstimmung, Eingegangen, none chosen', async ({
     page,
   }) => {
     await open(page, WIN);
@@ -508,10 +522,8 @@ test.describe('filter', () => {
     await expect(menu.getByTestId('menu-heading')).toHaveText([
       T.toolbar.sortHeading,
       T.toolbar.portalHeading,
-      T.toolbar.originHeading,
       T.toolbar.bandHeading,
-      T.toolbar.contractHeading,
-      T.toolbar.workHeading,
+      T.toolbar.receivedHeading,
     ]);
     await expect(menu.getByTestId('menu-heading')).toHaveText(
       table.flatMap((group) => (group.heading === null ? [] : [group.heading])),
@@ -526,24 +538,34 @@ test.describe('filter', () => {
       group.heading === null && group.entries.length === 1;
     const shared = table.filter((group, at) => at > 0 && lone(group) && lone(table[at - 1]!));
     await expect(menu.getByRole('separator')).toHaveCount(table.length - shared.length);
-    // A group lists every value of its dimension: the three bands and the three work modes,
+    // A group lists every value of its dimension: the three bands and the three day ranges,
     // their words under their heading without repeating it.
     for (const band of ['high', 'mid', 'low'] as const) {
       await expect(menuItem(page, `band-${band}`)).toHaveText(T.toolbar.band[band]);
       expect(T.toolbar.band[band]).not.toContain(T.toolbar.bandHeading);
     }
-    for (const mode of ['remote', 'hybrid', 'onsite'] as const) {
-      await expect(menuItem(page, `mode-${mode}`)).toHaveText(T.toolbar.work[mode]);
+    for (const received of RECEIVED) {
+      await expect(menuItem(page, `received-${received}`)).toHaveText(T.toolbar.received[received]);
     }
-    // The choices of a group are radio items, none checked while the group filters nothing;
-    // Nur neue is a switch of its own. There is no deadline and no pay filter.
-    for (const id of ['portal-linkedin', 'band-mid', 'contract-interim', 'mode-remote']) {
-      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemradio');
+    // Quelle and Übereinstimmung take several choices (check items), Eingegangen one (radio
+    // items); none checked while a group filters nothing. Vertragsart, Arbeitsmodell and Nur
+    // neue are hidden (user decision 2026-10-01); there is no deadline and no pay filter.
+    for (const id of ['portal-linkedin', 'band-mid']) {
+      await expect(menuItem(page, id)).toHaveAttribute('role', 'menuitemcheckbox');
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
     }
-    await expect(menuItem(page, 'unread-only')).toHaveAttribute('role', 'menuitemcheckbox');
-    await expect(menuItem(page, 'unread-only')).toHaveAttribute('aria-checked', 'false');
-    for (const gone of ['deadline-soon', 'pay-min', 'pay-wish', 'remote-only', 'remote-hybrid']) {
+    await expect(menuItem(page, 'received-today')).toHaveAttribute('role', 'menuitemradio');
+    await expect(menuItem(page, 'received-today')).toHaveAttribute('aria-checked', 'false');
+    for (const gone of [
+      'contract-interim',
+      'mode-remote',
+      'unread-only',
+      'deadline-soon',
+      'pay-min',
+      'pay-wish',
+      'remote-only',
+      'remote-hybrid',
+    ]) {
       await expect(menuItem(page, gone)).toHaveCount(0);
     }
     await expect(menu).not.toContainText('Frist');
@@ -589,7 +611,7 @@ test.describe('filter', () => {
     // Both apply at once, the list follows while the menu is open.
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { sort: 'newest', portal: 'linkedin' }));
+      .toEqual(await inbox(page, { sort: 'newest', portals: ['linkedin'] }));
     // The way back at the end turns on once a filter is on; the menu keeps its height.
     const items = menu.locator('[role^="menuitem"]');
     await expect(items.last()).toHaveText(T.toolbar.filterReset);
@@ -616,8 +638,8 @@ test.describe('filter', () => {
     await open(page, WIN);
     expect(await lastQuery(page)).toMatchObject({
       sort: 'newest',
-      portal: 'linkedin',
-      band: 'mid',
+      portals: ['linkedin'],
+      bands: ['mid'],
     });
   });
 
@@ -630,7 +652,7 @@ test.describe('filter', () => {
     await expect(chips(page)).toHaveCount(0);
     await openFilter(page);
     await expect(menuItem(page, 'filter-reset')).toHaveAttribute('aria-disabled', 'true');
-    await menuItem(page, 'contract-interim').click();
+    await menuItem(page, 'received-days30').click();
     await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
     await expect(menuItem(page, 'filter-reset')).not.toHaveAttribute('aria-disabled', 'true');
     await menuItem(page, 'filter-reset').click();
@@ -653,11 +675,13 @@ test.describe('filter', () => {
       await openPlace(page, place);
       await expect(page.getByTestId('sort')).toHaveCount(0);
       await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
-      await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-freelancermap'));
+      await expect(chip(page, 'portal-freelancermap')).toHaveText(
+        filterLabel('portal-freelancermap'),
+      );
       expect(await lastQuery(page)).toMatchObject({
         place,
         sort: 'newest',
-        portal: 'freelancermap',
+        portals: ['freelancermap'],
       });
       const menu = await openFilter(page);
       await expect(menu.getByTestId('menu-heading')).toHaveText(
@@ -669,41 +693,46 @@ test.describe('filter', () => {
     }
   });
 
-  test('the chips follow the menu: the groups in its order', async ({ page }) => {
+  test('the chips follow the menu: the groups in its order, one chip per choice', async ({
+    page,
+  }) => {
     await open(page, WIN);
     const menu = await openFilter(page);
-    // Picked from the last group to the first: the chips still stand in the menu's order.
-    for (const id of ['mode-remote', 'contract-freelance', 'band-mid', 'portal-freelance']) {
+    // Picked from the last group to the first: the chips still stand in the menu's order,
+    // a group's choices in its own.
+    for (const id of ['received-days7', 'band-low', 'band-high', 'portal-freelance']) {
       await menuItem(page, id).click();
     }
     await expect(menu).toBeVisible();
     await page.keyboard.press('Escape');
-    // The band's chip says its heading with it: the ring's name of the band.
-    await expect(chips(page).getByRole('button')).toHaveText([
+    // The band's chip says its heading with it (the ring's name of the band), the day's
+    // chip says what it counts.
+    const words = [
       T.portal.freelance,
-      T.score.band.mid,
-      filterLabel('contract-freelance'),
-      T.toolbar.work.remote,
-    ]);
-    expect(
-      chipWordsOf('mode-remote', 'contract-freelance', 'band-mid', 'portal-freelance'),
-    ).toEqual([
-      T.portal.freelance,
-      T.score.band.mid,
-      filterLabel('contract-freelance'),
-      T.toolbar.work.remote,
-    ]);
+      T.score.band.high,
+      T.score.band.low,
+      T.toolbar.receivedChip.days7,
+    ];
+    await expect(chips(page).getByRole('button')).toHaveText(words);
+    expect(chipWordsOf('received-days7', 'band-low', 'band-high', 'portal-freelance')).toEqual(
+      words,
+    );
     // A second choice takes a part off again, the menu stays.
     await openFilter(page);
-    await expect(menuItem(page, 'mode-remote')).toHaveAttribute('aria-checked', 'true');
-    await menuItem(page, 'mode-remote').click();
-    await expect(menuItem(page, 'mode-remote')).toHaveAttribute('aria-checked', 'false');
-    await menuItem(page, 'band-mid').click();
-    await expect(menuItem(page, 'band-mid')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'received-days7')).toHaveAttribute('aria-checked', 'true');
+    await menuItem(page, 'received-days7').click();
+    await expect(menuItem(page, 'received-days7')).toHaveAttribute('aria-checked', 'false');
+    await menuItem(page, 'band-low').click();
+    await expect(menuItem(page, 'band-low')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'band-high')).toHaveAttribute('aria-checked', 'true');
     await expect(page.getByTestId('menu')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(chip(page, 'workMode')).toHaveCount(0);
-    await expect(chip(page, 'band')).toHaveCount(0);
+    await expect(chip(page, 'received-days7')).toHaveCount(0);
+    await expect(chip(page, 'band-low')).toHaveCount(0);
+    await expect(chips(page).getByRole('button')).toHaveText([
+      T.portal.freelance,
+      T.score.band.high,
+    ]);
   });
 
   test('the menu keeps its height when a first filter is chosen, inside a small window', async ({
@@ -789,33 +818,41 @@ test.describe('filter', () => {
     await expect.poll(active).toBe('menu-item-portal-linkedin');
     // Enter chooses it and the menu stays for the next choice.
     await page.keyboard.press('Enter');
-    await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-linkedin'));
+    await expect(chip(page, 'portal-linkedin')).toHaveText(filterLabel('portal-linkedin'));
     await expect(menuItem(page, 'portal-linkedin')).toHaveAttribute('aria-checked', 'true');
     await expect.poll(active).toBe('menu-item-portal-linkedin');
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('menu')).toHaveCount(0);
   });
 
-  test('the portal and the band narrow the list; each stands as a chip with its ×', async ({
+  test('the portals and the bands narrow the list, any of them; each a chip with its ×', async ({
     page,
   }) => {
     await open(page, WIN);
     const { jobs, active: all } = await stubList(page);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
     await chooseFilter(page, 'portal-linkedin');
-    const linkedin = await inbox(page, { portal: 'linkedin' });
+    const linkedin = await inbox(page, { portals: ['linkedin'] });
     expect(linkedin.every((key) => key.startsWith('linkedin-'))).toBe(true);
     await expect.poll(() => listed(page)).toEqual(linkedin);
-    expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', band: null });
+    expect(await lastQuery(page)).toMatchObject({ portals: ['linkedin'], bands: [] });
     await expect(funnel(page).getByTestId('button-dot')).toHaveCSS(
       'background-color',
       await tokenColour(page, '--unread'),
     );
+    // A second source adds its jobs (user decision 2026-10-01: several at once).
+    await chooseFilter(page, 'portal-freelance');
+    const two = await inbox(page, { portals: ['linkedin', 'freelance'] });
+    expect(two.length).toBeGreaterThan(linkedin.length);
+    expect(two.every((key) => /^(linkedin|freelance)-/.test(key))).toBe(true);
+    await expect.poll(() => listed(page)).toEqual(two);
+    await chip(page, 'portal-freelance').click();
+    await expect.poll(() => listed(page)).toEqual(linkedin);
     await chooseFilter(page, 'band-mid');
-    const mid = await inbox(page, { portal: 'linkedin', band: 'mid' });
+    const mid = await inbox(page, { portals: ['linkedin'], bands: ['mid'] });
     expect(mid.length).toBeGreaterThan(0);
     await expect.poll(() => listed(page)).toEqual(mid);
-    expect(await lastQuery(page)).toMatchObject({ portal: 'linkedin', band: 'mid' });
+    expect(await lastQuery(page)).toMatchObject({ portals: ['linkedin'], bands: ['mid'] });
     // Exactly that band: no job of another band, no unscored and no excluded job.
     const bandOf = (key: string): string | null => {
       const match = jobs.find((job) => keyOf(job) === key)?.match ?? null;
@@ -830,96 +867,122 @@ test.describe('filter', () => {
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-linkedin', 'band-mid'),
     );
-    // Gering takes the band's place: only the low band.
+    // Gering adds the low band: the jobs of both.
     await chooseFilter(page, 'band-low');
-    const low = await inbox(page, { portal: 'linkedin', band: 'low' });
-    expect(low.length).toBeGreaterThan(0);
-    await expect.poll(() => listed(page)).toEqual(low);
-    for (const key of low) expect(bandOf(key)).toBe('low');
+    const both = await inbox(page, { portals: ['linkedin'], bands: ['mid', 'low'] });
+    expect(both.length).toBeGreaterThan(mid.length);
+    await expect.poll(() => listed(page)).toEqual(both);
+    for (const key of both) expect(['mid', 'low']).toContain(bandOf(key));
     await expect(chips(page).getByRole('button')).toHaveText(
-      chipWordsOf('portal-linkedin', 'band-low'),
+      chipWordsOf('portal-linkedin', 'band-mid', 'band-low'),
     );
-    // A chip's × takes its part off; the last one hands the focus to the funnel.
-    await chip(page, 'band').click();
+    // A chip's × takes its choice off; the last one hands the focus to the funnel.
+    await chip(page, 'band-mid').click();
+    await expect
+      .poll(() => listed(page))
+      .toEqual(await inbox(page, { portals: ['linkedin'], bands: ['low'] }));
+    await chip(page, 'band-low').click();
     await expect.poll(() => listed(page)).toEqual(linkedin);
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
-    await chip(page, 'portal').click();
+    await chip(page, 'portal-linkedin').click();
     await expect(chips(page)).toHaveCount(0);
     await expect.poll(() => listed(page)).toEqual(all);
     await expect(funnel(page)).toBeFocused();
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
   });
 
-  test('the work mode and Nur neue narrow the list; each a chip', async ({ page }) => {
+  test('Eingegangen: the jobs of today, of the last 7 or 30 days, one choice at a time', async ({
+    page,
+  }) => {
+    // The demo's day (its alert mails came on 23 and 24 September).
+    await page.clock.setFixedTime(new Date('2026-09-24T09:30:00+02:00'));
+    await open(page, WIN);
+    const all = await inbox(page);
+    const midnight = (back: number): Promise<number> =>
+      page.evaluate((days) => {
+        const now = new Date();
+        const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+        return Math.floor(day.getTime() / 1000);
+      }, back);
+    const sinceOf = async (): Promise<number | null> =>
+      ((await lastQuery(page)) as { receivedSince: number | null }).receivedSince;
+    // Heute: from the start of the day in the user's time zone.
+    await chooseFilter(page, 'received-today');
+    await expect.poll(sinceOf).toBe(await midnight(0));
+    const today = await inbox(page, { receivedSince: await midnight(0) });
+    expect(today.length).toBeGreaterThan(0);
+    expect(today.length).toBeLessThan(all.length);
+    await expect.poll(() => listed(page)).toEqual(today);
+    await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.receivedChip.today]);
+    // Letzte 7 Tage takes its place: today and the six days before it.
+    await chooseFilter(page, 'received-days7');
+    await expect.poll(sinceOf).toBe(await midnight(6));
+    await expect.poll(() => listed(page)).toEqual(all);
+    await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.receivedChip.days7]);
+    await openFilter(page);
+    await expect(menuItem(page, 'received-today')).toHaveAttribute('aria-checked', 'false');
+    await expect(menuItem(page, 'received-days7')).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
+    // Kept like the rest of the filter: the next start counts from its own today.
+    await open(page, WIN);
+    await expect.poll(sinceOf).toBe(await midnight(6));
+    await chip(page, 'received-days7').click();
+    await expect.poll(sinceOf).toBeNull();
+  });
+
+  // Hidden for now (user decision 2026-10-01: Arbeitsmodell and Nur neue out of the funnel);
+  // the groups' code stays (lib/state/filter.ts HIDDEN_GROUPS).
+  test.skip('the work mode and Nur neue narrow the list; each a chip', async ({ page }) => {
     await open(page, WIN);
     const { jobs, active: all } = await stubList(page);
     const jobOf = (key: string): JobView => jobs.find((job) => keyOf(job) === key)!;
-    // Remote, Hybrid, Vor Ort: each takes the place of the one before in the same group and
-    // lists the jobs of its mode as the Jobdetails name it (the stated share first, the
-    // location without one).
     const moded: string[] = [];
     for (const mode of WORK_MODES) {
       await chooseFilter(page, `mode-${mode}`);
       const listedMode = await inbox(page, { workMode: mode });
       expect(listedMode.length).toBeGreaterThan(0);
       await expect.poll(() => listed(page)).toEqual(listedMode);
-      expect(await lastQuery(page)).toMatchObject({ workMode: mode });
-      await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf(`mode-${mode}`));
       for (const key of listedMode) expect(workModeOf(jobOf(key))).toBe(mode);
       moded.push(...listedMode);
     }
-    // A share the ad states wins over a location that says nothing.
-    const stated = all.find((key) => {
-      const job = jobOf(key);
-      return job.workMode === null && (job.match?.facts.remoteFrom ?? null) !== null;
-    });
-    expect(stated).toBeDefined();
-    expect(moded).toContain(stated);
-    // A job whose mode is unknown passes none of the three.
     const unknown = all.filter((key) => !moded.includes(key));
-    expect(unknown.length).toBeGreaterThan(0);
     for (const key of unknown) expect(workModeOf(jobOf(key))).toBeNull();
-    await chip(page, 'workMode').click();
-    // Nur neue: the jobs not opened yet and not excluded, its counts too.
     await chooseFilter(page, 'unread-only');
-    const fresh = await inbox(page, { unread: true });
-    expect(fresh.length).toBeGreaterThan(0);
-    await expect.poll(() => listed(page)).toEqual(fresh);
-    expect(await lastQuery(page)).toMatchObject({ unread: true });
-    for (const key of fresh) {
-      const job = jobs.find((each) => keyOf(each) === key);
-      expect(job?.unread && job.match?.status !== 'excluded', key).toBe(true);
-    }
-    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('unread-only'));
-    // Kept like the rest of the filter; the list asks for no deadline and no pay.
-    await open(page, WIN);
-    const kept = await lastQuery(page);
-    expect(kept).toMatchObject({ unread: true, band: null, workMode: null });
-    for (const gone of ['deadlineSoon', 'minDayRate', 'minSalary', 'minBand', 'remoteOnly']) {
-      expect(kept).not.toHaveProperty(gone);
-    }
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { unread: true }));
   });
 
-  test('a filter kept by an earlier version: its lowest band, work mode and pay floor are none', async ({
+  test('a filter kept by an earlier version: its single choices and hidden groups are none', async ({
     page,
   }) => {
     await page.addInitScript(() =>
       localStorage.setItem(
         'jobs-filter',
-        JSON.stringify({ portal: 'linkedin', minBand: 'mid', remote: 'remote', pay: 'min' }),
+        JSON.stringify({
+          portal: 'linkedin',
+          band: 'high',
+          portals: ['freelance', 'nowhere'],
+          minBand: 'mid',
+          remote: 'remote',
+          workMode: 'remote',
+          unread: true,
+          pay: 'min',
+        }),
       ),
     );
     await open(page, WIN);
+    // One portal and one band of an earlier version, a hidden group and an unknown source
+    // are none; the sources it can hold stay.
     expect(await lastQuery(page)).toMatchObject({
-      portal: 'linkedin',
-      band: null,
+      portals: ['freelance'],
+      bands: [],
       workMode: null,
+      unread: false,
       contracts: [],
     });
-    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-linkedin'));
-    await expect.poll(() => listed(page)).toEqual(await inbox(page, { portal: 'linkedin' }));
+    await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
+    await expect.poll(() => listed(page)).toEqual(await inbox(page, { portals: ['freelance'] }));
     await openFilter(page);
-    for (const id of ['band-mid', 'mode-remote']) {
+    for (const id of ['band-mid', 'band-high', 'portal-linkedin']) {
       await expect(menuItem(page, id)).toHaveAttribute('aria-checked', 'false');
     }
     await page.keyboard.press('Escape');
@@ -966,7 +1029,7 @@ test.describe('filter', () => {
     await animationsDone(page);
     const folding = await page.evaluate(async () => {
       const wrapper = document.querySelector('[data-testid="filter-chips"]')!.parentElement!;
-      document.querySelector<HTMLElement>('[data-testid="chip-portal"]')!.click();
+      document.querySelector<HTMLElement>('[data-testid="chip-portal-linkedin"]')!.click();
       await new Promise((resolve) => requestAnimationFrame(resolve));
       return wrapper.getAnimations().length;
     });
@@ -983,19 +1046,22 @@ test.describe('filter', () => {
     await chooseFilter(page, 'band-mid');
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { portal: 'freelancermap', band: 'mid' }));
+      .toEqual(await inbox(page, { portals: ['freelancermap'], bands: ['mid'] }));
     // The app starts again: the same filter.
     await open(page, WIN);
     await expect(chips(page).getByRole('button')).toHaveText(
       chipWordsOf('portal-freelancermap', 'band-mid'),
     );
-    expect(await lastQuery(page)).toMatchObject({ portal: 'freelancermap', band: 'mid' });
+    expect(await lastQuery(page)).toMatchObject({
+      portals: ['freelancermap'],
+      bands: ['mid'],
+    });
     // The archive lists with it too.
     await openPlace(page, 'archive');
     expect(await lastQuery(page)).toMatchObject({
       place: 'archive',
-      portal: 'freelancermap',
-      band: 'mid',
+      portals: ['freelancermap'],
+      bands: ['mid'],
     });
     await expect(chips(page).getByRole('button')).toHaveCount(2);
     await openPlace(page, 'inbox');
@@ -1009,11 +1075,11 @@ test.describe('filter', () => {
 
   test('without a profile the bands and the match order are off and say why', async ({ page }) => {
     await page.addInitScript(() =>
-      localStorage.setItem('jobs-filter', JSON.stringify({ band: 'high' })),
+      localStorage.setItem('jobs-filter', JSON.stringify({ bands: ['high'] })),
     );
     await open(page, `${WIN}&scenario=no-profile`);
     await expect(funnel(page).getByTestId('button-dot')).toHaveCount(0);
-    expect(await lastQuery(page)).toMatchObject({ sort: 'newest', band: null });
+    expect(await lastQuery(page)).toMatchObject({ sort: 'newest', bands: [] });
     await openFilter(page);
     // By date only: the order is off and says why.
     await expect(menuItem(page, 'sort-newest')).toHaveAttribute('aria-checked', 'true');
@@ -1033,11 +1099,11 @@ test.describe('filter', () => {
     const kept = (): Promise<unknown> =>
       page.evaluate(() => JSON.parse(localStorage.getItem('jobs-filter') ?? 'null') as unknown);
     await menuItem(page, 'portal-freelance').click();
-    expect(await lastQuery(page)).toMatchObject({ portal: 'freelance', band: null });
+    expect(await lastQuery(page)).toMatchObject({ portals: ['freelance'], bands: [] });
     await expect
       .poll(() => listed(page))
-      .toEqual(await inbox(page, { portal: 'freelance', sort: 'newest' }));
-    expect(await kept()).toEqual({ ...NO_FILTER, portal: 'freelance', band: 'high' });
+      .toEqual(await inbox(page, { portals: ['freelance'], sort: 'newest' }));
+    expect(await kept()).toEqual({ ...NO_FILTER, portals: ['freelance'], bands: ['high'] });
     await expect(chips(page).getByRole('button')).toHaveText(chipWordsOf('portal-freelance'));
   });
 
@@ -1046,7 +1112,10 @@ test.describe('filter', () => {
     // A portal whose inbox has no job of the high band.
     let empty: string | null = null;
     for (const portal of ['freelance', 'freelancermap', 'linkedin'] as const) {
-      const { active, excluded: out } = await stubList(page, { portal, band: 'high' });
+      const { active, excluded: out } = await stubList(page, {
+        portals: [portal],
+        bands: ['high'],
+      });
       if (active.length + out.length === 0) empty = `portal-${portal}`;
     }
     expect(empty).not.toBeNull();
@@ -1066,22 +1135,24 @@ test.describe('filter', () => {
     await open(page, WIN);
     await openJob(page, 'freelancermap-2801');
     await chooseFilter(page, 'band-high');
-    const high = await inbox(page, { band: 'high' });
+    const high = await inbox(page, { bands: ['high'] });
     expect(high).toContain('freelancermap-2801');
     await expect.poll(() => listed(page)).toEqual(high);
     await expect(page.getByTestId('reader-title')).toBeVisible();
     await expect(row(page, 'freelancermap-2801')).toHaveAttribute('aria-current', 'true');
     await chooseFilter(page, 'portal-linkedin');
     await expect(page.getByTestId('reader-title')).toHaveCount(0);
-    expect(await listed(page)).toEqual(await inbox(page, { band: 'high', portal: 'linkedin' }));
+    expect(await listed(page)).toEqual(
+      await inbox(page, { bands: ['high'], portals: ['linkedin'] }),
+    );
   });
 
   test('macOS: the same funnel, menu and chips', async ({ page }) => {
     await open(page, MAC);
     await chooseFilter(page, 'portal-linkedin');
-    await expect(rows(page)).toHaveCount((await inbox(page, { portal: 'linkedin' })).length);
+    await expect(rows(page)).toHaveCount((await inbox(page, { portals: ['linkedin'] })).length);
     await expect(funnel(page).getByTestId('button-dot')).toBeVisible();
-    await expect(chip(page, 'portal')).toHaveText(filterLabel('portal-linkedin'));
+    await expect(chip(page, 'portal-linkedin')).toHaveText(filterLabel('portal-linkedin'));
   });
 });
 
@@ -1150,9 +1221,7 @@ test.describe('one list', () => {
     await expect.poll(() => listed(page)).toEqual(all);
   });
 
-  test('new is unread and not excluded: the dot in every place, Nur neue lists those rows', async ({
-    page,
-  }) => {
+  test('new is unread and not excluded: the dot in every place', async ({ page }) => {
     await open(page, WIN);
     const { jobs } = await stubList(page);
     const isNew = (job: JobView): boolean => job.unread && !excluded(job);
@@ -1172,11 +1241,6 @@ test.describe('one list', () => {
     expect(jobs.some((job) => job.unread && excluded(job))).toBe(true);
     await unfoldExcluded(page);
     expect(await dotted()).toEqual(fresh);
-    // "Nur neue" lists exactly the dotted rows, no excluded one behind the fold.
-    await chooseFilter(page, 'unread-only');
-    await expect.poll(async () => (await listed(page)).sort()).toEqual(fresh);
-    await expect(page.getByTestId('excluded-divider')).toHaveCount(0);
-    await chip(page, 'unread').click();
     // A new job moved to the Archiv keeps its dot there, like a mail app's unread mark.
     const moved = fresh[0]!;
     await viaMenu(page, 'archive', moved);
@@ -1447,14 +1511,17 @@ test.describe('one list', () => {
       .getByRole('button', { name: T.common.remove })
       .click();
     await expect(page.getByTestId('mailbox-connect')).toBeVisible();
-    // Einstellungen scrolled down: the way back opens it at the mailbox card anyway.
-    await page.getByTestId('view-settings').evaluate((view) => {
-      const scroller = [view, ...view.querySelectorAll<HTMLElement>('*')].find(
-        (node) => node.scrollHeight > node.clientHeight + 1,
-      );
-      scroller?.scrollTo({ top: scroller.scrollHeight });
-    });
-    await expect(page.getByTestId('settings-mailbox')).not.toBeInViewport();
+    // Einstellungen scrolled down: the way back opens it at the mailbox card anyway. Scrolled
+    // until it stays down (the closing dialog hands its focus back to the card meanwhile).
+    await expect(async () => {
+      await page.getByTestId('view-settings').evaluate((view) => {
+        const scroller = [view, ...view.querySelectorAll<HTMLElement>('*')].find(
+          (node) => node.scrollHeight > node.clientHeight + 1,
+        );
+        scroller?.scrollTo({ top: scroller.scrollHeight });
+      });
+      await expect(page.getByTestId('settings-mailbox')).not.toBeInViewport({ timeout: 300 });
+    }).toPass();
     await page.getByTestId('nav-jobs').click();
     const empty = page.getByTestId('empty-all');
     await expect(empty).toContainText(T.list.noMailbox);
@@ -1507,8 +1574,19 @@ test.describe('one list', () => {
       .click();
     await page.getByTestId('nav-jobs').click();
     await expect(rows(page).first()).toBeVisible();
-    // The sources' search goes on without a mailbox.
-    await expect(page.getByTestId('fetch')).not.toHaveAttribute('aria-disabled', 'true');
+    // The sources' search goes on without a mailbox; Nur Postfach waits for one and says
+    // so, Nur Suche does not.
+    const fetch = page.getByTestId('fetch');
+    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
+    await page.getByTestId('fetch-ways').click();
+    await menuItem(page, 'way-mail').click();
+    await expect(fetch).toHaveAttribute('aria-disabled', 'true');
+    await fetch.hover();
+    await expect(page.getByRole('tooltip')).toContainText(T.toolbar.needsMailbox);
+    await page.mouse.move(0, 0);
+    await page.getByTestId('fetch-ways').click();
+    await menuItem(page, 'way-search').click();
+    await expect(fetch).not.toHaveAttribute('aria-disabled', 'true');
     await page.getByTestId('no-mailbox').getByRole('button').click();
     await expect(page.getByTestId('view-settings')).toBeVisible();
   });
@@ -1972,8 +2050,7 @@ test.describe('moves and undo', () => {
   }) => {
     await open(page, WIN);
     await openJob(page, 'linkedin-4100200301');
-    await page.getByTestId('reader-more').click();
-    await menuItem(page, 'trash').click();
+    await page.getByTestId('reader-trash').click();
     await expect(row(page, 'linkedin-4100200301')).toHaveCount(0);
     await page.getByTestId('toast-action').click();
     await expect(row(page, 'linkedin-4100200301')).toBeVisible();
@@ -2140,7 +2217,7 @@ test.describe('run line', () => {
         .getByTestId('place-action')
         .evaluate((node) => node.querySelector('[inert] [data-testid="fetch"]')),
     ).toBeNull();
-    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-range'));
+    expect(await rightOf(page, 'run-close')).toBe(await rightOf(page, 'fetch-ways'));
     await page.getByTestId('fetch').click();
     expect(await calls(page, 'start_run')).toHaveLength(2);
     await runFinished(page);
@@ -2371,7 +2448,7 @@ test.describe("the open row's bar", () => {
     still(await stopSampling(page));
     // A run lands new jobs above the open one and re-sorts at its end, then another order:
     // the row moves or glides, the bar with it, always on its row.
-    await chip(page, 'portal').click();
+    await chip(page, 'portal-freelancermap').click();
     await row(page, 'freelancermap-2804').click();
     await resting(page);
     await startSampling(page);
@@ -2447,9 +2524,8 @@ test.describe("the open row's bar", () => {
     await row(page, 'freelancermap-2802').click();
     const slot = await resting(page);
     await animationsDone(page);
-    await page.getByTestId('reader-more').click();
     await startSampling(page);
-    await menuItem(page, 'archive').click();
+    await page.getByTestId('reader-archive').click();
     await expect(row(page, 'freelancermap-2803')).toHaveAttribute('aria-current', 'true');
     await page.waitForTimeout(400);
     const samples = await stopSampling(page);
@@ -2485,6 +2561,7 @@ test.describe('sidebar', () => {
     await open(page, `${WIN}&view=start`);
     await expect(page.getByTestId('view-jobs')).toBeVisible();
     const sidebar = page.getByTestId('sidebar');
+    // Only the views: the ways under Jobs are hidden (user decision 2026-10-01).
     await expect(sidebar.locator('nav button')).toHaveText([
       T.nav.jobs,
       T.nav.profile,
@@ -2570,7 +2647,7 @@ test('the list column: never narrower as the window grows; at 480 x 360 the tool
   await page.setViewportSize({ width: 480, height: 360 });
   await open(page, WIN);
   await chooseFilter(page, 'portal-linkedin');
-  for (const id of ['search', 'filter', 'fetch', 'chip-portal']) {
+  for (const id of ['search', 'filter', 'fetch', 'chip-portal-linkedin']) {
     const box = (await page.getByTestId(id).boundingBox())!;
     expect(box.x + box.width, id).toBeLessThanOrEqual(480);
   }

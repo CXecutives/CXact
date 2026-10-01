@@ -113,10 +113,10 @@ laid over it. Components never ask which palette is on. The retired CXact palett
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
   `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in
   `core/tests/settings_compat.rs`.
-- The range of "Postfach abrufen" is the "Zeitraum" menu beside that button
-  (`fetchRange`: since the last fetch, 7 days, 30 days, all alert mails; the menu in
-  `ui/src/features/jobs/headerMenus.ts`, the words in `toolbar.rangeName`, saved through
-  `app.setFetchRange`); core turns it into the first day to read (`scan_since` in
+- The range of the alert mails a fetch reads is the "Zeitraum" row of the Alert-Mails card
+  (`fetchRange`: since the last fetch, 7 days, 30 days, all alert mails; the row `range` in
+  `ui/src/features/settings/cards.ts`, the words in `settings.rangeName`); core turns it
+  into the first day to read (`scan_since` in
   `core/src/mail/scan.rs`). Another range is a variant of `FetchRange`
   (`core/src/settings.rs`), its arm in `scan_since` and its word.
 - The Excel and the CSV file each have a switch of the Export card (`exportExcel` on,
@@ -143,8 +143,9 @@ menu names a key.
 ## Change the job list: its filter, its order, the job's menu
 
 - **The filter**: `FILTER_GROUPS` in `ui/src/lib/state/filter.ts`, the groups in their order
-  (Portal, Übereinstimmung, Vertragsart, Arbeitsort), each with its choices, its words and what
-  lets a job through. The funnel's menu, the chips under the header, the query and the harness
+  (Quelle, Übereinstimmung, Eingegangen; Vertragsart, Arbeitsmodell and Nur neue hidden in
+  `HIDDEN_GROUPS`), each with its choices, its words and what lets a job through, and whether
+  it takes several choices at once (`multi`). The funnel's menu, the chips under the header, the query and the harness
   read it; the filter is the same in every place. Another group is one entry there, its field
   in `ListFilter` (`toQuery` hands it to the `JobQuery`), its words in the catalog, and in the
   backend its field of `JobQuery` (`view.rs`) and its condition in `filter_condition`

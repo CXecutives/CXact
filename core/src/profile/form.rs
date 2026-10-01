@@ -249,6 +249,10 @@ pub struct ProfileForm {
     /// `suchbegriffe[]` (`search_terms`): what the app searches the sources for; without
     /// them the target roles and the Schwerpunkte ([`search_terms`]).
     pub search_terms: Vec<String>,
+    /// The search terms are the app's proposal (none stored): the Profil marks them so; a
+    /// change of them makes them the consultant's own.
+    #[serde(default)]
+    pub search_terms_proposed: bool,
     /// `einsatzpraeferenzen` (`preferences`): wishes, they only nudge the score.
     pub wishes: ProfileWishes,
     /// `harte_kriterien` (with the `einsatzpraeferenzen` fallbacks).
@@ -641,6 +645,7 @@ impl ProfileForm {
             focus: clean(&self.focus),
             roles: clean(&self.roles),
             search_terms: clean(&self.search_terms),
+            search_terms_proposed: self.search_terms_proposed,
             wishes: ProfileWishes {
                 day_rate: self.wishes.day_rate.filter(|n| *n > 0),
                 remote: self.wishes.remote,
@@ -1063,7 +1068,10 @@ pub(crate) fn read(doc: &Json) -> ProfileForm {
     let mut focus = read_texts_at(doc, lexicon::KEYS_FOCUS);
     focus.truncate(MAX_FOCUS);
     let roles = read_texts_at(doc, lexicon::KEYS_TARGET_ROLES);
-    let search_terms = search_terms(&read_texts_at(doc, KEYS_SEARCH_TERMS), &roles, &focus);
+    let stored_terms = read_texts_at(doc, KEYS_SEARCH_TERMS);
+    let search_terms = search_terms(&stored_terms, &roles, &focus);
+    // A proposal only where there is one (an empty profile proposes nothing).
+    let search_terms_proposed = stored_terms.is_empty() && !search_terms.is_empty();
     ProfileForm {
         name: text_at(doc, KEY_NAME),
         title: text_at(doc, KEY_TITLE),
@@ -1079,6 +1087,7 @@ pub(crate) fn read(doc: &Json) -> ProfileForm {
         focus,
         roles,
         search_terms,
+        search_terms_proposed,
         wishes: read_wishes(doc),
         criteria: read_criteria(doc),
     }

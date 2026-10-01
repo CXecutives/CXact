@@ -40,7 +40,6 @@ import type {
   RemoteWish,
   TermField,
   WorkMode,
-  Origin,
 } from '../ipc/types';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
@@ -678,6 +677,11 @@ export const de = {
   nav: {
     label: 'Bereiche',
     jobs: 'Jobs',
+    /** The ways under Jobs: the jobs the search found, those of the alert mails; the
+     *  chevron's name that shows or folds them. */
+    search: 'Suche',
+    mail: 'Alert-Mails',
+    ways: 'Suche und Alert-Mails',
     profile: 'Profil',
     settings: 'Einstellungen',
     /** The quiet line at the foot of the sidebar in the demo (`--demo`): its data are samples. */
@@ -760,7 +764,7 @@ export const de = {
     open: 'Öffnen',
     mail: OPEN_MAIL,
     openAd: 'Anzeige öffnen',
-    prompt: 'KI-Prompt für Bewertung kopieren',
+    prompt: 'KI-Prompt kopieren',
     /** Without a usable profile there is nothing to judge the job by. */
     promptNoProfile: 'Ohne Profil gibt es nichts zu bewerten.',
     /** An excluded job counts with its real match anyway, or is excluded again. */
@@ -877,20 +881,16 @@ export const de = {
   },
   toolbar: {
     fetch: 'Jobs abrufen',
-    /** Which alert mails "Postfach abrufen" reads (`fetchRange`): the menu of the icon
-     *  button beside it (its name, its heading and its tooltip). */
-    range: 'Zeitraum',
-    rangeName: {
-      sinceLast: 'Seit dem letzten Abruf',
-      days7: 'Letzte 7 Tage',
-      days30: 'Letzte 30 Tage',
-      all: 'Alle Alert-Mails',
-    } satisfies Record<FetchRange, string>,
-    /** The icon button beside "Jobs abrufen" and its menu: what the fetch reads (its two
-     *  switches) and the Zeitraum of the alert mails. */
+    /** The fetch when its menu chose only the search, only the mailbox. */
+    searchNow: 'Jobs suchen',
+    fetchMailbox: 'Postfach abrufen',
+    /** The icon button beside the fetch and its menu: what the fetch reads. */
     fetchSettings: 'Abruf einstellen',
-    fetchMail: 'Alert-Mails',
-    fetchSearch: 'Suche',
+    wayName: {
+      both: 'Suche und Postfach',
+      search: 'Nur Suche',
+      mail: 'Nur Postfach',
+    },
     cancel: 'Abbrechen',
     progress: 'Fortschritt des Abrufs',
     /** The first group of the funnel's menu: the order of the list. */
@@ -919,17 +919,6 @@ export const de = {
     } satisfies Record<Band, string>,
     /** Without a usable profile there is no match to filter by. */
     bandNoProfile: 'Ohne Profil gibt es keine Übereinstimmung.',
-    /** How a job came: an alert mail named it, the search found it; as chips beside the
-     *  list without their heading. */
-    originHeading: 'Herkunft',
-    origin: {
-      mail: 'Alert-Mails',
-      search: 'Suche',
-    } satisfies Record<Origin, string>,
-    originChip: {
-      mail: 'Aus Alert-Mails',
-      search: 'Aus der Suche',
-    } satisfies Record<Origin, string>,
     contractHeading: 'Vertragsart',
     /** The work mode as the Jobdetails name it, under its heading and as chips. */
     workHeading: 'Arbeitsmodell',
@@ -938,16 +927,27 @@ export const de = {
       hybrid: 'Hybrid',
       onsite: 'Vor Ort',
     } satisfies Record<WorkMode, string>,
-    /** A switch of its own behind a line: the jobs not opened yet. */
+    /** A switch of its own behind a line: the jobs not opened yet (hidden for now). */
     unreadOnly: 'Nur neue',
+    /** The days a job came on (the alert mail's date, else its first sighting), and the
+     *  chips of the choices. */
+    receivedHeading: 'Eingegangen',
+    received: {
+      today: 'Heute',
+      days7: 'Letzte 7 Tage',
+      days30: 'Letzte 30 Tage',
+    },
+    receivedChip: {
+      today: 'Heute eingegangen',
+      days7: 'Letzte 7 Tage',
+      days30: 'Letzte 30 Tage',
+    },
     /** The chip of a fetch's "Zeigen": only the new jobs of that fetch. */
     lastFetch: 'Aus dem letzten Abruf',
     filterReset: 'Filter zurücksetzen',
     needsMailbox: 'Verbinde erst ein Postfach.',
     /** Every portal is switched off in Einstellungen: nothing to fetch from. */
     needsPortal: 'Schalte erst eine Quelle ein.',
-    /** Neither switch of "Abruf einstellen" is on: nothing to fetch. */
-    needsWay: 'Schalte erst Alert-Mails oder Suche ein.',
   },
   run: {
     /** The one line under the list header while a fetch goes: what happens now. */
@@ -1082,7 +1082,7 @@ export const de = {
       deadline: 'Bewerbungsfrist',
       contact: 'Kontakt',
       industry: 'Branche',
-      portal: 'Quelle',
+      portal: 'Gefunden',
       received: 'Eingegangen',
     },
     /** The pay row of a permanent job or temporary agency work (an annual salary). */
@@ -1121,6 +1121,9 @@ export const de = {
      *  app knows. */
     offline: 'nicht mehr online',
     offlineSince: (day: string) => `nicht mehr online seit ${day}`,
+    /** How the job came, in the row "Gefunden" of the Jobdetails. */
+    foundSearch: (portal: string) => `Suche bei ${portal}`,
+    foundMail: (portal: string) => `Alert-Mail von ${portal}`,
     close: 'Schließen',
     /** The "…" button (its menu is the second group of the job's menu, `actions`). */
     more: 'Weitere Aktionen',
@@ -1280,7 +1283,7 @@ export const de = {
     /** The tabs of the Profil, one shown at a time, and their accessible name. */
     tabs: 'Bereiche des Profils',
     tab: {
-      search: 'Suche',
+      search: 'Wünsche',
       skills: 'Können',
       experience: 'Erfahrung',
       exclusions: 'Ausschlüsse',
@@ -1307,6 +1310,8 @@ export const de = {
       searchTerms: 'Suchbegriffe',
       searchTermsPlaceholder: 'z. B. SAP FI/CO',
       searchTermsHint: 'Damit sucht CXact nach passenden Projekten.',
+      /** The terms are the app's proposal: none stored yet. */
+      searchTermsProposed: 'Vorschlag aus Wunschrollen und Schwerpunkten.',
       competence: 'Kompetenz',
       competencePlaceholder: 'z. B. Projektleitung',
       years: 'Jahre',
@@ -1373,8 +1378,8 @@ export const de = {
       minMonths: 'Mindestlaufzeit',
       exclusionWords: 'Ausschlusswörter',
       exclusionWordsPlaceholder: 'z. B. Werkstudent',
-      /** The option of a single choice that leaves it open (Remote-Anteil, Verfügbar ab). */
-      open: 'Offen',
+      /** The option of the Remote-Anteil that wishes none. */
+      open: 'Egal',
       date: 'Datum',
       datePlaceholder: '01.11.2026',
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
@@ -1502,6 +1507,14 @@ export const de = {
     search: 'Suche',
     /** The card of the sources whose alert mails the app reads. */
     alerts: 'Alert-Mails',
+    /** Its first row: which alert mails a fetch reads, the choices short beside each other. */
+    range: 'Zeitraum',
+    rangeName: {
+      sinceLast: 'Seit letztem Abruf',
+      days7: '7 Tage',
+      days30: '30 Tage',
+      all: 'Alle',
+    } satisfies Record<FetchRange, string>,
     export: 'Export',
     /** The card of how the app looks and speaks: its colours and its language. */
     look: 'Darstellung',

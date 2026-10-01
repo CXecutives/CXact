@@ -449,16 +449,21 @@ test('Suchbegriffe: the roles and Schwerpunkte until changed, then as written', 
   // Under the wished roles, with the sentence what they are for.
   const y = async (id: string): Promise<number> => (await page.getByTestId(id).boundingBox())!.y;
   expect(await y('profile-search-terms')).toBeGreaterThan(await y('profile-roles'));
-  await expect(field(page, 'searchTerms')).toContainText(T.profile.field.searchTermsHint);
   await expect(chips(terms)).toHaveText([
     'Interim CFO',
     'Controlling',
     'Konzernrechnungslegung nach IFRS',
   ]);
-  // Untouched they are no change; one more is, and it is saved as written.
+  // None stored: they are the app's proposal, dashed and said so (user 2026-10-01).
+  await expect(field(page, 'searchTerms')).toContainText(T.profile.field.searchTermsProposed);
+  await expect(terms.locator('.chip').first()).toHaveCSS('outline-style', 'dashed');
+  // Untouched they are no change; one more is, and it is saved as written: the consultant's
+  // own from then on, solid, with the sentence what they are for.
   await expect(bar(page)).toHaveCount(0);
   await terms.locator('input').fill('SAP FI/CO');
   await terms.locator('input').press('Enter');
+  await expect(field(page, 'searchTerms')).toContainText(T.profile.field.searchTermsHint);
+  await expect(terms.locator('.chip').first()).toHaveCSS('outline-style', 'none');
   await save(page).click();
   expect((await lastSave(page)).after.searchTerms).toEqual([
     'Interim CFO',
@@ -527,9 +532,9 @@ test('one name per field: the labels, the few hints, units and neutral examples'
   await expect(page.getByTestId('profile-workload-min')).toHaveAccessibleName('Auslastung von');
   await expect(page.getByTestId('profile-workload-max')).toHaveAccessibleName('Auslastung bis');
   await expect(page.getByTestId('profile-workload')).toContainText('Tage pro Woche');
-  // Verfügbar ab: "Sofort" and "Datum" read on from the label (ab sofort, ab Datum).
+  // Verfügbar ab: "Sofort" and "Datum" read on from the label (ab sofort, ab Datum); no
+  // "Offen" (the engine scores it like "Sofort", user decision 2026-10-01).
   await expect(page.getByTestId('profile-available').getByRole('radio')).toHaveText([
-    T.profile.field.open,
     'Sofort',
     'Datum',
   ]);
@@ -548,8 +553,6 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   const placeholder = (id: string, input = false): Locator =>
     input ? page.getByTestId(id).locator('input') : page.getByTestId(id);
   const expected: [string, boolean, string][] = [
-    ['profile-name-field', false, 'Name'],
-    ['profile-title', false, 'Rolle'],
     ['competence-name', false, 'z. B. Projektleitung'],
     ['profile-keywords', true, 'z. B. Transformation'],
     ['profile-tools', true, 'z. B. Scrum'],
@@ -575,8 +578,9 @@ test('neutral examples that fit any consultant, in both languages', async ({ pag
   await profile(page, '&scenario=no-profile&lang=en');
   await page.getByTestId('profile-create').click();
   await chooseWay(page, 'empty');
-  await expect(page.getByTestId('profile-name-field')).toHaveAttribute('placeholder', 'Name');
-  await expect(page.getByTestId('profile-title')).toHaveAttribute('placeholder', 'Role');
+  // Name and role are fields with their labels: no placeholder repeats them.
+  await expect(page.getByTestId('profile-name-field')).not.toHaveAttribute('placeholder', /./);
+  await expect(page.getByTestId('profile-title')).not.toHaveAttribute('placeholder', /./);
 });
 
 test('fields, chip fields and choices one height (as in Einstellungen), labels small and medium', async ({
@@ -634,10 +638,10 @@ test('fields, chip fields and choices one height (as in Einstellungen), labels s
     );
   }
   await expect(switcher(page)).toHaveCSS('height', `${await tokenPx(page, '--control-sm')}px`);
-  // Every number field has one width; the day of "Datum" too (its field, the calendar's
-  // button inside it at the right end), as high as the choice beside it.
+  // Every number field has one width; the day of "Datum" too, as high as the choice beside
+  // it, the calendar's button beside the field (not inside it, user 2026-10-01).
   const dayField = page.getByTestId('profile-date').locator('xpath=..');
-  await expect(dayField.getByTestId('profile-date-calendar')).toBeVisible();
+  await expect(dayField.getByTestId('profile-date-calendar')).toHaveCount(0);
   const [day, choice, button] = await Promise.all([
     dayField.boundingBox(),
     page.getByTestId('profile-available').boundingBox(),
@@ -645,8 +649,8 @@ test('fields, chip fields and choices one height (as in Einstellungen), labels s
   ]);
   expect(day!.height).toBe(choice!.height);
   expect(middle(day)).toBe(middle(choice));
-  expect(button!.x + button!.width).toBeLessThan(day!.x + day!.width);
-  expect(button!.x).toBeGreaterThan(day!.x + day!.width / 2);
+  expect(button!.x).toBeGreaterThanOrEqual(day!.x + day!.width);
+  expect(Math.abs(middle(button) - middle(day))).toBeLessThanOrEqual(1);
   const widths: number[] = [];
   for (const id of [
     'profile-wish-rate',
@@ -794,8 +798,9 @@ test('the toast of a save says what the rescore changed, only the parts that did
   // Once the save reached the stub, the jobs carry their scores.
   await lastSave(page);
   const { counts } = await page.evaluate(() => window.__harness.list({ place: 'inbox' }));
-  const high = (await page.evaluate(() => window.__harness.list({ place: 'inbox', band: 'high' })))
-    .counts.inbox;
+  const high = (
+    await page.evaluate(() => window.__harness.list({ place: 'inbox', bands: ['high'] }))
+  ).counts.inbox;
   expect(high).toBeGreaterThan(0);
   expect(counts.excluded).toBeGreaterThan(0);
   const said = T.profile.savedEffect(high, counts.excluded);
@@ -1003,7 +1008,7 @@ test('Enter goes through the rows and never saves; on an empty last row it moves
   expect(sent.after.languages.map((row) => row.language)).toContain('Spanisch');
 });
 
-test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the level is a menu', async ({
+test('one choice is one Tab stop, the arrows choose, "Egal" clears it; the level is a menu', async ({
   page,
 }) => {
   await profile(page);
@@ -1018,7 +1023,7 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'true',
   );
   await page.keyboard.press('Home');
-  await expect(remote.getByRole('radio', { name: 'Offen' })).toHaveAttribute(
+  await expect(remote.getByRole('radio', { name: T.profile.field.open })).toHaveAttribute(
     'aria-checked',
     'true',
   );
@@ -1027,19 +1032,19 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
     'aria-checked',
     'true',
   );
-  // "Offen" leaves it open and stays chosen when pressed again.
+  // "Egal" wishes none and stays chosen when pressed again.
   for (let i = 0; i < 2; i++) {
-    await remote.getByRole('radio', { name: 'Offen' }).click();
-    await expect(remote.getByRole('radio', { name: 'Offen' })).toHaveAttribute(
+    await remote.getByRole('radio', { name: T.profile.field.open }).click();
+    await expect(remote.getByRole('radio', { name: T.profile.field.open })).toHaveAttribute(
       'aria-checked',
       'true',
     );
   }
   await expect(remote.locator('[aria-checked="true"]')).toHaveCount(1);
   const available = page.getByTestId('profile-available');
+  await available.getByRole('radio', { name: 'Datum' }).click();
   await available.getByRole('radio', { name: 'Sofort' }).click();
-  await available.getByRole('radio', { name: 'Offen' }).click();
-  await expect(available.getByRole('radio', { name: 'Offen' })).toHaveAttribute(
+  await expect(available.getByRole('radio', { name: 'Sofort' })).toHaveAttribute(
     'aria-checked',
     'true',
   );
@@ -1047,14 +1052,19 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   // assumes B2, so a row without one shows B2).
   const row = (await show(page, page.getByTestId('language-row'))).first();
   const level = row.getByTestId('language-level');
-  await expect(level).toHaveAttribute('aria-haspopup', 'menu');
+  // A field with the level; only its chevron is the button (user 2026-10-01).
+  const opener = row.getByTestId('language-level-open');
+  await expect(opener).toHaveAttribute('aria-haspopup', 'menu');
   // Name, the level, the x: three stops.
   await row.getByTestId('language-name').focus();
   await page.keyboard.press('Tab');
-  await expect(level).toBeFocused();
+  await expect(opener).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(row.getByTestId('language-remove')).toBeFocused();
-  await level.click();
+  // A click on the level's words opens nothing; the chevron does.
+  await level.locator('.value').click();
+  await expect(page.getByTestId('menu')).toHaveCount(0);
+  await opener.click();
   const menu = page.getByTestId('menu');
   await expect(menu.getByRole('menuitemradio')).toHaveText([
     'A1',
@@ -1075,7 +1085,7 @@ test('one choice is one Tab stop, the arrows choose, "Offen" clears it; the leve
   const sent = await lastSave(page);
   expect(sent.after.languages[0]!.level).toBe('c1');
   expect(sent.after.wishes.remote).toBeNull();
-  expect(sent.after.criteria.available).toEqual({ kind: 'unset' });
+  expect(sent.after.criteria.available).toEqual({ kind: 'now' });
 });
 
 /** What has the focus: a field (a caret shows), a button by its accessible name, or none. */
@@ -1918,8 +1928,9 @@ test('the language rows line up: the level like a select, one width; the x needs
     page.getByTestId('language-level').first().boundingBox(),
   ]);
   expect(Math.round(head!.x)).toBe(Math.round(first!.x));
-  // The level is a button in a row of fields: outlined and as high as the field, in one
-  // column whatever its word, so the fields and the levels of all rows line up.
+  // The level is a field in a row of fields: framed and as high as the field, in one column
+  // whatever its word, so the fields and the levels of all rows line up; only its chevron
+  // is a button.
   const rows = page.getByTestId('language-row');
   await expect(rows.nth(0).getByTestId('language-level')).toHaveText('Muttersprache');
   await expect(rows.nth(1).getByTestId('language-level')).toHaveText('B2');
@@ -1939,7 +1950,10 @@ test('the language rows line up: the level like a select, one width; the x needs
   expect(new Set(levels.map((box) => `${box.x} ${box.width} ${box.height}`)).size).toBe(1);
   expect(new Set(names.map((box) => `${box.x} ${box.width}`)).size).toBe(1);
   expect(levels[0]!.height).toBe(await tokenPx(page, '--control-field'));
-  await expect(rows.nth(0).getByTestId('language-level')).toHaveClass(/secondary/);
+  await expect(rows.nth(0).getByTestId('language-level')).toHaveClass(/select/);
+  const opener = (await rows.nth(0).getByTestId('language-level-open').boundingBox())!;
+  expect(opener.x + opener.width).toBeLessThanOrEqual(levels[0]!.x + levels[0]!.width);
+  expect(opener.width).toBeLessThan(levels[0]!.width / 2);
   // Narrow, a row keeps its level beside the name.
   await page.setViewportSize({ width: 480, height: 600 });
   const row = page.getByTestId('language-row').first();
@@ -2195,7 +2209,7 @@ test('create and save: an empty row is not saved; the level comes from its menu'
   await page.getByTestId('competence-add').click();
   await expect(page.getByTestId('competence-name').last()).toBeFocused();
   await (await show(page, page.getByTestId('language-name'))).last().fill('Englisch');
-  await page.getByTestId('language-row').last().getByTestId('language-level').click();
+  await page.getByTestId('language-row').last().getByTestId('language-level-open').click();
   await page.getByTestId('menu-item-c1').click();
   await save(page).click();
   const sent = await lastSave(page);

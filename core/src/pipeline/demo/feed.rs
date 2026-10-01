@@ -646,7 +646,7 @@ mod tests {
         clock: &impl Fn() -> Timestamp,
     ) -> RunSummary {
         let policy = Mutex::new(Policy::in_memory());
-        let request = RunRequest { kind };
+        let request = RunRequest { kind, only: None };
         let cancel = CancellationToken::new();
         run(feed, store, &policy, &request, ctx, &cancel, clock, |_| {}).await
     }

@@ -12,7 +12,16 @@
 
 import type { IconName } from '$components/Icon.svelte';
 import type { Catalog } from '$lib/i18n/de';
-import type { AppState, Language, OpenTarget, Palette, SettingsPatch, Way } from '$lib/ipc/types';
+import type {
+  AppState,
+  FetchRange,
+  Language,
+  OpenTarget,
+  Palette,
+  SettingsPatch,
+  Way,
+} from '$lib/ipc/types';
+import { FETCH_RANGES } from '$lib/state/app.svelte';
 
 /** What a row reads: the catalog of the moment and the app state. */
 export type Text = (t: Catalog, state: AppState) => string;
@@ -122,7 +131,7 @@ export interface ActionsRow {
   toggle?: Switch;
 }
 
-export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ActionsRow;
+export type Row = ChoiceRow<Palette> | ChoiceRow<Language> | ChoiceRow<FetchRange> | ActionsRow;
 
 /** A card: its rows, and for the mailbox and the sources a block of their own (the mailbox
  *  has no rows of its own; the sources stand under the card's rows, those the app searches in
@@ -176,6 +185,19 @@ const language: ChoiceRow<Language> = {
   set: (state, id) => void (state.language = id),
 };
 
+/** Which alert mails "Postfach abrufen" and "Jobs abrufen" read (user decision 2026-10-01:
+ *  here instead of a menu beside the button). */
+const range: ChoiceRow<FetchRange> = {
+  kind: 'choice',
+  id: 'fetch-range',
+  label: (t) => t.settings.range,
+  options: FETCH_RANGES,
+  name: (t, id) => t.settings.rangeName[id],
+  value: (state) => state.fetchRange,
+  patch: (id) => ({ fetchRange: id }),
+  set: (state, id) => void (state.fetchRange = id),
+};
+
 /** Cards hidden for now (user, 2026-09-30), their code kept; the backend holds their
  *  choices at the defaults (core settings::LOOK_SHOWN and EXPORT_SHOWN): Darstellung (the
  *  app is CXact and German) and the Excel and CSV switches (no file is written). */
@@ -220,7 +242,7 @@ export const CARDS: readonly CardSpec[] = [
       ...(AUTO_SHOWN ? [autoFetch] : []),
     ],
   },
-  { id: 'alerts', heading: (t) => t.settings.alerts, block: 'alerts', rows: [] },
+  { id: 'alerts', heading: (t) => t.settings.alerts, block: 'alerts', rows: [range] },
   {
     id: 'export',
     heading: (t) => t.settings.export,

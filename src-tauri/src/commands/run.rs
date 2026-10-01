@@ -25,6 +25,7 @@ use jobalert_core::portal::{FetchPath, Portal, Way};
 use jobalert_core::profile;
 use jobalert_core::secrets::Vault;
 use jobalert_core::store::Store;
+use jobalert_core::view::Origin;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, State};
 use tokio_util::sync::CancellationToken;
@@ -194,11 +195,17 @@ fn run_context(
     if scans && enabled.is_empty() {
         return Err(ErrorInfo::from(&InvalidInput::NoPortal));
     }
-    // The menu beside "Jobs abrufen": the alert mails, the search, or both.
-    if scans && !settings.fetch_mail && !settings.fetch_search {
+    // What the menu beside "Jobs abrufen" chose (user decision 2026-10-01): the search and
+    // the alert mails, only the search or only the mailbox; a file with neither (written by
+    // hand) does both, as the menu offers no fourth way. `only` narrows it further (the
+    // sidebar's ways, hidden for now).
+    let both = !settings.fetch_mail && !settings.fetch_search;
+    let reads_mail = (settings.fetch_mail || both) && request.only != Some(Origin::Search);
+    let searches = (settings.fetch_search || both) && request.only != Some(Origin::Mail);
+    if scans && !reads_mail && !searches {
         return Err(ErrorInfo::from(&InvalidInput::NoFetchWay));
     }
-    let credentials = if state.dry_run || state.demo || !scans || !settings.fetch_mail {
+    let credentials = if state.dry_run || state.demo || !scans || !reads_mail {
         None
     } else {
         Vault::app().load_gmail()?
@@ -207,7 +214,7 @@ fn run_context(
     // A fetch searches the sources that have a search (not the dry run: its made-up mails are
     // all it has; the demo's search shows its own ads), with the active profile's search
     // terms.
-    let search_portals: Vec<Portal> = if scans && !state.dry_run && settings.fetch_search {
+    let search_portals: Vec<Portal> = if scans && !state.dry_run && searches {
         enabled
             .iter()
             .copied()
@@ -237,7 +244,7 @@ fn run_context(
         mailbox: credentials.as_ref().map(|c| c.user.clone()),
         // Without a mailbox a fetch only searches (with nothing to search the scan says the
         // mailbox is missing).
-        read_mail: settings.fetch_mail && (state.dry_run || state.demo || credentials.is_some()),
+        read_mail: reads_mail && (state.dry_run || state.demo || credentials.is_some()),
         search_portals,
         search_terms,
     };

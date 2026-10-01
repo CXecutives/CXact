@@ -460,11 +460,12 @@
   /* The room before the first and after the last button of the bar. */
   --titlebar-tools-inset: 6px;
   /* The bar's own buttons: 28 px (three with their gaps fill --titlebar-tools-start), their
-     glyphs of the app's own (glyphs/Bar*.svelte) 14 px in a 1.5 px line, a notch below the
-     content's icons so they sit with the caption buttons (user, 2026-09-30). */
+     glyphs of the app's own (glyphs/Bar*.svelte) 14 px in a 1.25 px line, a notch below the
+     content's icons so they sit with the caption buttons (user, 2026-09-30; the line was
+     1.5 px, too heavy, user 2026-10-01). */
   --titlebar-tool: 28px;
   --titlebar-icon: 14px;
-  --titlebar-icon-stroke: 1.5;
+  --titlebar-icon-stroke: 1.25;
   /* The places above the list (Eingang, Archiv, Papierkorb): a row of tabs 44 px high with
      15 px labels (one step above the first row and the sidebar's 14 px), a thin line. */
   --tabs-min: 37px;

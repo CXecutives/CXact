@@ -17,6 +17,7 @@
 -->
 <script lang="ts">
   import Dialog from '$components/Dialog.svelte';
+  import Field from '$components/Field.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { errorText, warningText } from '$lib/i18n/texts';
@@ -484,20 +485,16 @@
 {#snippet person()}
   <!-- Enter saves here as in every field of the form; Esc leaves an untouched new one. -->
   <div class="person" use:formKeys={{ save: () => panel?.submit(), cancel: () => panel?.escape() }}>
-    <TextField
-      bind:value={editor.after.name}
-      label={t.profile.field.name}
-      placeholder={t.profile.field.name}
-      quiet
-      testid="profile-name-field"
-    />
-    <TextField
-      bind:value={editor.after.title}
-      label={t.profile.field.title}
-      placeholder={t.profile.field.title}
-      quiet
-      testid="profile-title"
-    />
+    <Field label={t.profile.field.name} for="profile-name-input">
+      <TextField
+        bind:value={editor.after.name}
+        id="profile-name-input"
+        testid="profile-name-field"
+      />
+    </Field>
+    <Field label={t.profile.field.title} for="profile-title-input">
+      <TextField bind:value={editor.after.title} id="profile-title-input" testid="profile-title" />
+    </Field>
   </div>
 {/snippet}
 

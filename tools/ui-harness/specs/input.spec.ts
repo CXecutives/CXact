@@ -1426,7 +1426,7 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   await open(page, WIN);
   const targets = [
     page.getByTestId('place-archive'),
-    page.getByTestId('fetch-range'),
+    page.getByTestId('fetch-ways'),
     page.getByTestId('filter'),
     page.getByTestId('nav-settings'),
   ];
@@ -1438,27 +1438,29 @@ test('a right click on any other control does nothing: no menu, no press, no foc
   }
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByTestId('nav-jobs')).toHaveAttribute('aria-current', 'page');
-  // The reader's "…" (the ring opens on hover: reader.spec.ts).
+  // The reader's tools beside its x (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
-  for (const id of ['reader-more']) {
+  for (const id of ['reader-archive', 'reader-trash']) {
     await page.getByTestId(id).click({ button: 'right' });
     await page.waitForTimeout(100);
     await expect(menuOpen(page), id).toHaveCount(0);
     await expect(page.getByTestId(id)).not.toBeFocused();
   }
+  expect(await calls(page, 'move_jobs')).toHaveLength(0);
 });
 
-test('a middle click activates nothing: tabs, a menu button, the funnel, a row tool, the "…"', async ({
+test("a middle click activates nothing: tabs, the fetch and its menu, the funnel, a row tool, the reader's", async ({
   page,
 }) => {
   await open(page, WIN);
   // In the header (no scroll area there: no autoscroll either).
-  for (const id of ['place-archive', 'fetch-range', 'filter']) {
+  for (const id of ['place-archive', 'fetch-ways', 'filter', 'fetch']) {
     await page.getByTestId(id).click({ button: 'middle' });
     await page.waitForTimeout(100);
     await expect(menuOpen(page), id).toHaveCount(0);
   }
   await expect(page.getByTestId('place-inbox')).toHaveAttribute('aria-selected', 'true');
+  expect(await calls(page, 'start_run')).toHaveLength(0);
   // A row's tool: the job stays where it is.
   const row = rows(page).nth(1);
   await row.hover();
@@ -1466,13 +1468,15 @@ test('a middle click activates nothing: tabs, a menu button, the funnel, a row t
   await endAutoscroll(page);
   expect(await calls(page, 'move_jobs')).toHaveLength(0);
   await expect(page.getByTestId('reader')).toHaveCount(0);
-  // The reader's "…" (the ring opens on hover: reader.spec.ts).
+  // The reader's tools beside its x (the ring opens on hover: reader.spec.ts).
   await rows(page).first().click();
-  for (const id of ['reader-more']) {
+  for (const id of ['reader-archive', 'reader-trash']) {
     await page.getByTestId(id).click({ button: 'middle' });
     await endAutoscroll(page);
     await expect(menuOpen(page), id).toHaveCount(0);
   }
+  expect(await calls(page, 'move_jobs')).toHaveLength(0);
+  await expect(page.getByTestId('reader')).toBeVisible();
 });
 
 test('a middle click activates nothing in the Profil: a choice, a chip x, the calendar, a level', async ({
@@ -1516,9 +1520,9 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
   await expect(name).toBeFocused();
   await expect(menuOpen(page)).toHaveCount(0);
   await end();
-  // A language's level (a menu button) opens no menu.
+  // A language's level (its chevron) opens no menu.
   await (
-    await showTab(page, page.getByTestId('language-level'))
+    await showTab(page, page.getByTestId('language-level-open'))
   )
     .first()
     .click({ button: 'middle' });

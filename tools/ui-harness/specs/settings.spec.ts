@@ -217,8 +217,8 @@ test('button styles: every text button of a row is outlined, what deletes for go
   expect(new Set(ends).size).toBe(1);
   // The sources' rows sit edge to edge like every other row: no inset above the first.
   const [card, first] = await Promise.all([
-    page.getByTestId('portals-alerts').boundingBox(),
-    page.getByTestId('portal-linkedin').boundingBox(),
+    page.getByTestId('portals-search').boundingBox(),
+    page.getByTestId('portal-hays').boundingBox(),
   ]);
   expect(Math.round(first!.y - card!.y)).toBe(1);
   // Every button of the page is at most 29 px high.
@@ -394,11 +394,9 @@ test('mailbox: removing asks first, a failure stays; then "Kein Postfach" connec
   );
 });
 
-test('the period of a fetch is no row of Einstellungen', async ({ page }) => {
+test('the period of a fetch is no row of the Postfach card', async ({ page }) => {
   await settings(page);
-  await expect(
-    page.getByTestId('settings').getByRole('radio', { name: T.toolbar.rangeName.all }),
-  ).toHaveCount(0);
+  await expect(page.getByTestId('settings-mailbox').getByTestId('fetch-range')).toHaveCount(0);
   await expect(page.getByTestId('settings-mailbox').locator('[data-setting-row]')).toHaveCount(1);
 });
 
@@ -770,6 +768,35 @@ test.skip('Darstellung: the language switches everything at once; notes follow i
   await expect(page.getByTestId('export-note')).toHaveText('The database reports an error.');
   await expect(page.getByTestId('portal-freelance')).toContainText('11 of 100 requests today');
   expect((await saved(page)).at(-1)).toEqual(patch({ language: 'en' }));
+});
+
+/* -------------------------------------------------------------- Alert-Mails */
+
+test('Alert-Mails: the Zeitraum of the mails a fetch reads, chosen at once', async ({ page }) => {
+  await settings(page);
+  // Its first row (user decision 2026-10-01: here instead of a menu beside "Jobs abrufen").
+  const card = page.getByTestId('portals-alerts');
+  const row = card.getByTestId('row-fetch-range');
+  await expect(row).toContainText(T.settings.range);
+  const choice = row.getByTestId('fetch-range');
+  await expect(choice.getByRole('radio')).toHaveText([
+    T.settings.rangeName.sinceLast,
+    T.settings.rangeName.days7,
+    T.settings.rangeName.days30,
+    T.settings.rangeName.all,
+  ]);
+  await expect(choice.getByRole('radio', { name: T.settings.rangeName.sinceLast })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await choice.getByRole('radio', { name: T.settings.rangeName.days30 }).click();
+  await expect(choice.getByRole('radio', { name: T.settings.rangeName.days30 })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await expect
+    .poll(async () => (await saved(page)).at(-1))
+    .toEqual(patch({ fetchRange: 'days30' }));
 });
 
 /* ------------------------------------------------------------------- Daten */

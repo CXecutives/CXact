@@ -1,13 +1,14 @@
 <!--
-  Verfügbar ab: one choice of the segments ("Offen", "Sofort", "Datum"; after the label they
-  read "ab sofort", "ab Datum"). The day of "Datum" exists only while it is chosen and gets
+  Verfügbar ab: one choice of the segments ("Sofort", "Datum"; after the label they read "ab
+  sofort", "ab Datum"; user decision 2026-10-01: no "Offen", the engine scores it like
+  "Sofort", and a profile without one shows "Sofort"). The day of "Datum" exists only while it is chosen and gets
   the caret when it is (it slides in beside the choice, as high as the choice and as wide as
   every number field); it is judged when its field is left with text in it or on saving
   (`editor.judged`), never while it is typed, and a day that does not read is said once, at
   the field, in the error line of every field (Field), and holds the save. A value of the
-  file that does not read is said under it with "Wert entfernen". Inside the day's field at
-  its right end a calendar offers one (Calendar), like a native date picker; typing stays
-  the way to write it, and a chosen day is written into the field in its form.
+  file that does not read is said under it with "Wert entfernen". Beside the day's field (not
+  inside it, user 2026-10-01) a calendar offers one (Calendar); typing stays the way to write
+  it, and a chosen day is written into the field in its form.
 -->
 <script lang="ts">
   import Calendar from '$components/Calendar.svelte';
@@ -34,22 +35,18 @@
   const c = $derived(editor.after.criteria);
   let date = $state<HTMLElement | null>(null);
 
-  type Choice = 'open' | 'now' | 'from';
+  type Choice = 'now' | 'from';
   const CHOICES = $derived<{ id: Choice; label: string }[]>([
-    { id: 'open', label: words.open },
     { id: 'now', label: t.profile.availability.now },
     { id: 'from', label: t.profile.availability.from },
   ]);
 
-  /** "Offen" is no availability. "Datum" puts the caret into its day, which is judged
-   *  anew when it is left. */
+  /** "Datum" puts the caret into its day, which is judged anew when it is left. */
   async function choose(kind: Choice): Promise<void> {
     c.available =
       kind === 'from'
         ? { kind, date: isoDate(editor.dateText) ?? editor.dateText.trim() }
-        : kind === 'now'
-          ? { kind }
-          : { kind: 'unset' };
+        : { kind };
     editor.judged = false;
     if (kind !== 'from') return;
     await tick();
@@ -77,7 +74,7 @@
   <div class="choice">
     <Segmented
       options={CHOICES}
-      value={c.available.kind === 'unset' ? 'open' : c.available.kind}
+      value={c.available.kind === 'from' ? 'from' : 'now'}
       label={words.available}
       testid="profile-available"
       onchange={(kind) => void choose(kind)}
@@ -98,15 +95,12 @@
           describedby={said !== null ? `${id}-message` : null}
           testid="profile-date"
           oninput={type}
-        >
-          {#snippet trailing()}
-            <Calendar
-              value={isoDate(editor.dateText)}
-              testid="profile-date-calendar"
-              onpick={(day) => type(shownDate(day))}
-            />
-          {/snippet}
-        </TextField>
+        />
+        <Calendar
+          value={isoDate(editor.dateText)}
+          testid="profile-date-calendar"
+          onpick={(day) => type(shownDate(day))}
+        />
       </span>
     {/if}
   </div>
@@ -150,9 +144,14 @@
     gap: var(--space-12);
   }
 
-  /* The day is as wide as every number field (NumberField), its calendar inside it. */
+  /* The day is as wide as every number field (NumberField), its calendar beside it. */
   .date {
     display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .date > :global(:first-child) {
     width: calc(var(--stat-min) - var(--space-48));
   }
 

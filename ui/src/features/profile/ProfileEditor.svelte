@@ -509,23 +509,26 @@
     </div>
   {:else if c.kind === 'chips'}
     {@const error = errorOf(c.key)}
+    {@const proposed = c.key === 'searchTerms' && form.searchTermsProposed}
     <div data-field={c.key}>
       <Field
         label={words[c.label]}
         for="{id}-{c.key}"
-        hint={c.hint ? words[c.hint] : null}
+        hint={proposed ? words.searchTermsProposed : c.hint ? words[c.hint] : null}
         {error}
         action={removeOf(c.key)}
       >
-        <ChipInput
-          id="{id}-{c.key}"
-          bind:values={() => listOf(form, c.key), (values) => setList(form, c.key, values)}
-          split={c.lines ? 'lines' : 'list'}
-          placeholder={words[c.placeholder]}
-          invalid={error !== null}
-          suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
-          testid={c.testid}
-        />
+        <span class="chips" class:proposed>
+          <ChipInput
+            id="{id}-{c.key}"
+            bind:values={() => listOf(form, c.key), (values) => setList(form, c.key, values)}
+            split={c.lines ? 'lines' : 'list'}
+            placeholder={words[c.placeholder]}
+            invalid={error !== null}
+            suggestions={c.suggest ? vocabulary[c.suggest] : undefined}
+            testid={c.testid}
+          />
+        </span>
       </Field>
       {#each notesOf(c.key, true) as unread (unread.text)}
         <ValueNote text={unread.text} testid="{kebab(c.key)}-unread" onremove={unread.onremove} />
@@ -701,6 +704,25 @@
   }
 
   .switches > .switch:last-child :global([data-setting-row]:last-of-type) {
+    border-bottom: 0;
+  }
+
+  /* The search terms the app proposes (none stored yet): dashed chips without a fill, so
+     they read as offered, not chosen (user decision 2026-10-01). */
+  .chips {
+    display: contents;
+  }
+
+  /* The proposal's chips: dashed and hollow, drawn inside their box (an outline, no
+     border), so the field keeps its height. */
+  .proposed :global(.chip) {
+    outline: var(--border-width) dashed var(--border-navy);
+    outline-offset: calc(-1 * var(--border-width));
+    background-color: transparent;
+  }
+
+  /* At the end of a card the card's edge closes the list: no second line above it. */
+  .switches:last-child {
     border-bottom: 0;
   }
 

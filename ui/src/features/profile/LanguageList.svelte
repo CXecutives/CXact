@@ -210,9 +210,9 @@
     font-weight: var(--weight-medium);
   }
 
+  /* The level fills its column: the select's field, its chevron's button stays small. */
   .level,
-  .level > :global(.menu-button),
-  .level :global(.btn) {
+  .level > :global(.select) {
     display: flex;
     width: 100%;
   }

@@ -197,6 +197,7 @@ impl Host for AppHost<'_> {
     fn launch_rescore(&self) -> Result<(), ErrorKind> {
         let request = RunRequest {
             kind: RunKind::Rescore,
+            only: None,
         };
         super::run::launch(self.app, self.state, request, self.state.scoring.page())
             .map_err(|e| e.kind)

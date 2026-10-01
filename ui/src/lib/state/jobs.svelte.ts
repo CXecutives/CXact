@@ -25,9 +25,9 @@
 //   its own. A move takes the row out of a list it no longer belongs to; deleting for good
 //   (only from the trash) removes it.
 // - Each place is one list in the chosen order, the excluded jobs last. Every place has the
-//   same filter beside the search (the funnel, lib/state/filter.ts: one portal, one band,
-//   one contract type, one work mode, the new jobs; kept like the order). It narrows the
-//   list and its counts like the search. The counts over every job never follow it.
+//   same filter beside the search (the funnel, lib/state/filter.ts: portals, bands and the
+//   days the jobs came; kept like the order). It narrows the list and its counts like the
+//   search. The counts over every job never follow it.
 // - The open job is kept per work folder: the next start opens it again (its place with it),
 //   only while it still lies where it lay and the list stands beside it.
 
@@ -42,6 +42,7 @@ import type {
   JobQuery,
   JobSort,
   JobView,
+  Origin,
   Place,
   RunEvent,
 } from '../ipc/types';
@@ -221,6 +222,9 @@ function keepFilter(filter: ListFilter): void {
 class JobsStore {
   /** The place the list shows (the tabs Eingang, Archiv, Papierkorb). */
   place = $state<Place>('inbox');
+  /** The way of the jobs the list shows (the sidebar: Jobs, its Suche and Alert-Mails);
+   *  null, every job. */
+  area = $state<Origin | null>(null);
   sortChoice = $state<JobSort>(keptSort());
   search = $state('');
   /** The filter as chosen (kept); `filter` is what applies. */
@@ -306,18 +310,16 @@ class JobsStore {
 
   /**
    * The filter actually used, the same in every place: without a profile no band (there is
-   * no match to filter by), only a portal the app knows. Sent with every query of the list.
+   * no match to filter by), only the portals the app knows. Sent with every query of the
+   * list.
    */
   get filter(): ListFilter {
     const chosen = this.filterChoice;
     const portals = app.state?.portals ?? [];
     return {
       ...chosen,
-      portal:
-        chosen.portal !== null && portals.some((line) => line.portal === chosen.portal)
-          ? chosen.portal
-          : null,
-      band: app.hasProfile ? chosen.band : null,
+      portals: chosen.portals.filter((portal) => portals.some((line) => line.portal === portal)),
+      bands: app.hasProfile ? chosen.bands : [],
     };
   }
 
@@ -343,10 +345,7 @@ class JobsStore {
    */
   setFilter(change: Partial<ListFilter>, keep = true): void {
     const next = { ...this.filterChoice, ...change };
-    const now = this.filterChoice;
-    if ((Object.keys(next) as (keyof ListFilter)[]).every((key) => next[key] === now[key])) {
-      return;
-    }
+    if (JSON.stringify(next) === JSON.stringify(this.filterChoice)) return;
     this.filterChoice = next;
     if (keep) keepFilter(next);
     this.quiet();
@@ -480,6 +479,21 @@ class JobsStore {
     void this.load();
   }
 
+  /** Another way of the jobs (the sidebar's Suche, Alert-Mails, or every job): an open job
+   *  that does not belong to it closes, like a mail of another mailbox. */
+  setArea(area: Origin | null): void {
+    if (area === this.area) return;
+    const selected = this.selected;
+    const open =
+      this.detail?.job ??
+      (selected ? this.rows.find((row) => sameKey(row.key, selected)) : undefined) ??
+      null;
+    if (open !== null && area !== null && !open.origins.includes(area)) this.clearSelection();
+    this.area = area;
+    this.quiet();
+    void this.load();
+  }
+
   setSort(sort: JobSort): void {
     this.sortChoice = sort;
     keepSort(sort);
@@ -574,6 +588,7 @@ class JobsStore {
       sort: this.sort,
       search: this.search.trim() === '' ? null : this.search.trim(),
       ...toQuery(filter),
+      origin: this.area,
       limit,
       offset,
     };
@@ -660,6 +675,7 @@ class JobsStore {
           sort: 'newest',
           search: null,
           ...toQuery(NO_FILTER),
+          origin: null,
           limit: 0,
           offset: 0,
         },

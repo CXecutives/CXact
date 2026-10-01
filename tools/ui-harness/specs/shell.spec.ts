@@ -1023,9 +1023,9 @@ test('keyboard focus stays clear of the reader bar', async ({ page }) => {
   // The reader: from its end upward, below the compact bar.
   await page.getByTestId('nav-jobs').click();
   await row(page, 'freelancermap-2801').click();
-  await expect(page.getByTestId('reader-more')).toBeVisible();
+  await expect(page.getByTestId('reader-prompt')).toBeVisible();
   await page.getByTestId('stage').evaluate((node) => (node.scrollTop = node.scrollHeight));
-  await page.getByTestId('reader-more').focus();
+  await page.getByTestId('reader-prompt').focus();
   await page.getByTestId('stage').evaluate((node) => (node.scrollTop = node.scrollHeight));
   for (let stop = 0; stop < 12; stop += 1) {
     await page.keyboard.press('Shift+Tab');

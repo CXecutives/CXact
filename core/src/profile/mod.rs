@@ -771,6 +771,7 @@ Viel Erfolg."
             roles: texts(&["Interim CFO", "Head of Controlling"]),
             // Untouched: the search terms follow the roles and are not written.
             search_terms: Vec::new(),
+            search_terms_proposed: true,
             wishes: ProfileWishes {
                 day_rate: Some(1_100),
                 remote: Some(RemoteWish::Mostly),

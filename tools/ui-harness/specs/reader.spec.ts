@@ -50,7 +50,7 @@ const ROWS = [
   'Erfahrung',
   'Bewerbungsfrist',
   'Kontakt',
-  'Quelle',
+  'Gefunden',
   'Eingegangen',
 ];
 
@@ -90,30 +90,29 @@ async function tooltipOf(page: Page, target: Locator): Promise<[string, string]>
 const tip = async (page: Page, target: Locator): Promise<string> =>
   (await tooltipOf(page, target))[0];
 
-/** Open the "…" menu and name its entries (their ids, their words). */
-async function moreMenu(page: Page): Promise<{ ids: string[]; labels: string[] }> {
-  await stage(page).getByTestId('reader-more').click();
-  const menu = page.getByTestId('menu');
-  await expect(menu).toBeVisible();
-  const items = menu.locator('[data-testid^="menu-item-"]');
-  const ids = await items.evaluateAll((all) =>
-    all.map((item) => (item.getAttribute('data-testid') ?? '').replace('menu-item-', '')),
+/** The moves beside the head's x (their ids, their names), the x not among them. */
+async function headTools(page: Page): Promise<{ ids: string[]; labels: string[] }> {
+  const tools = stage(page)
+    .locator('.head .close .btn')
+    .and(page.locator(':not([data-testid="reader-close"])'));
+  await expect(tools.first()).toBeVisible();
+  const ids = await tools.evaluateAll((all) =>
+    all.map((tool) => (tool.getAttribute('data-testid') ?? '').replace('reader-', '')),
   );
-  const labels = (await items.allInnerTexts()).map(words);
+  const labels = await tools.evaluateAll((all) =>
+    all.map((tool) => tool.getAttribute('aria-label') ?? ''),
+  );
   return { ids, labels };
 }
 
-/** Choose an entry of the open menu. */
-async function choose(page: Page, id: string): Promise<void> {
-  await page.getByTestId(`menu-item-${id}`).click();
+/** The moves of the open job's head (ids). */
+async function moves(page: Page): Promise<string[]> {
+  return (await headTools(page)).ids;
 }
 
-/** "…" of the open job: its entries (ids), then closed again. */
-async function more(page: Page): Promise<string[]> {
-  const { ids } = await moreMenu(page);
-  await page.keyboard.press('Escape');
-  await expect(page.getByTestId('menu')).toHaveCount(0);
-  return ids;
+/** A move of the open job's head. */
+async function choose(page: Page, id: string): Promise<void> {
+  await stage(page).getByTestId(`reader-${id}`).click();
 }
 
 /** The moves the row of `key` shows under the pointer. */
@@ -131,12 +130,13 @@ async function toolsOf(page: Page, key: string): Promise<string[]> {
   return ids;
 }
 
-/** The "…" of a job that just left the list opens nothing. */
-async function moreOpensNothing(page: Page): Promise<void> {
-  await stage(page).getByTestId('reader-more').click();
-  await expect(page.getByTestId('menu')).toHaveCount(0);
-  for (const id of ['archive', 'unarchive', 'trash', 'restore', 'purge']) {
-    await expect(page.getByTestId(`menu-item-${id}`)).toHaveCount(0);
+/** The moves of a job that just left the list are off (they would be the new place's). */
+async function movesOff(page: Page): Promise<void> {
+  const tools = stage(page)
+    .locator('.head .close .btn')
+    .and(page.locator(':not([data-testid="reader-close"])'));
+  for (const tool of await tools.all()) {
+    await expect(tool).toHaveAttribute('aria-disabled', 'true');
   }
 }
 
@@ -161,7 +161,10 @@ test.describe('the head and the match', () => {
     expect(await top('reader-actions')).toBeLessThan(await top('terms'));
     expect(await cell(page, 'company')).toEqual(['Hanseatic Holding GmbH', '']);
     expect(await cell(page, 'place')).toEqual(['Hamburg', 'met']);
-    expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
+    expect(await cell(page, 'portal')).toEqual([
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com',
+      '',
+    ]);
     // Nothing is joined by a dot, no line says where the job lies, no second bar follows.
     const text = await stage(page).getByTestId('reader').innerText();
     expect(text).not.toContain('·');
@@ -403,7 +406,9 @@ test.describe('the head and the match', () => {
 });
 
 test.describe('the actions', () => {
-  test('four buttons alike in one order, the moves of the place in "…"', async ({ page }) => {
+  test('three buttons alike in one order, the moves of the place beside the x', async ({
+    page,
+  }) => {
     // A wide window: every button with its words.
     await page.setViewportSize({ width: 1800, height: 900 });
     await openAt(page, 'freelancermap-2801');
@@ -411,23 +416,36 @@ test.describe('the actions', () => {
     const buttons = actions.locator('.btn');
     expect(
       await buttons.evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
-    ).toEqual(['open-ad', 'reader-mail', 'reader-prompt', 'reader-more']);
+    ).toEqual(['open-ad', 'reader-mail', 'reader-prompt']);
     await expect(actions.getByTestId('reader-mail')).toHaveText('Alert-Mail öffnen');
     await expect(actions.getByTestId('open-ad')).toHaveText('Anzeige öffnen');
     await expect(actions.getByTestId('reader-prompt')).toHaveText(T.actions.prompt);
-    await expect(actions.getByTestId('reader-more')).toHaveAccessibleName('Weitere Aktionen');
-    // One variant and one height for all four.
+    expect(T.actions.prompt).toBe('KI-Prompt kopieren');
+    // One variant and one height for all three.
     const looks = await buttons.evaluateAll((all) =>
       all.map((button) => `${button.className.includes('secondary')} ${button.clientHeight}`),
     );
     expect(new Set(looks).size).toBe(1);
     expect(looks[0]).toMatch(/^true /);
-    // The "…" menu of the inbox, without keys.
-    const menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['archive', 'trash']);
-    expect(menu.labels).toEqual(['Archivieren', 'Löschen']);
-    await expect(page.getByTestId('menu').locator('.keys')).toHaveCount(0);
-    await page.keyboard.press('Escape');
+    // The moves of the Eingang beside the x, quiet like it (no frame, user 2026-10-01), in
+    // one row and one size with it; no "…" menu.
+    const tools = await headTools(page);
+    expect(tools.ids).toEqual(['archive', 'trash']);
+    expect(tools.labels).toEqual(['Archivieren', 'Löschen']);
+    await expect(stage(page).getByTestId('reader-more')).toHaveCount(0);
+    const close = stage(page).getByTestId('reader-close');
+    for (const id of ['reader-archive', 'reader-trash']) {
+      const tool = stage(page).getByTestId(id);
+      await expect(tool).toHaveClass(/ghost/);
+      await expect(tool).toHaveCSS(
+        'border-top-width',
+        await close.evaluate((node) => getComputedStyle(node).borderTopWidth),
+      );
+      const [box, x] = [(await tool.boundingBox())!, (await close.boundingBox())!];
+      expect(box.height).toBe(x.height);
+      expect(box.y).toBe(x.y);
+      expect(box.x).toBeLessThan(x.x);
+    }
     // The alert mail and the ad open outside.
     await actions.getByTestId('reader-mail').click();
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
@@ -437,15 +455,8 @@ test.describe('the actions', () => {
     expect((await calls(page, 'open_target')).at(-1)?.[1]).toEqual({
       target: { kind: 'jobUrl', key: { portal: 'freelancermap', id: '2801' } },
     });
-    // From the keyboard: the first entry is active at once, the focus comes back after it.
-    await actions.getByTestId('reader-more').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
-    await page.keyboard.press('Escape');
-    await expect(actions.getByTestId('reader-more')).toBeFocused();
     // Löschen: the job goes to the trash, the next one opens.
     await page.waitForTimeout(550);
-    await moreMenu(page);
     await choose(page, 'trash');
     expect((await calls(page, 'move_jobs')).at(-1)?.[1]).toEqual({
       keys: [{ portal: 'freelancermap', id: '2801' }],
@@ -495,29 +506,30 @@ test.describe('the actions', () => {
       const first = flags.indexOf(true);
       expect(first === -1 || flags.slice(first).every(Boolean), `${size.width}`).toBe(true);
       if (size.width === 1360) expect(flags).toEqual([false, false, false]);
-      if (size.width === 1000) expect(flags).toEqual([false, false, true]);
+      // Three buttons with short words (user 2026-10-01): at 1000 px all keep them.
+      if (size.width === 1000) expect(flags).toEqual([false, false, false]);
     }
     const prompt = stage(page).getByTestId('reader-prompt');
     await expect(prompt).toHaveClass(/icon-only/);
     expect(await tooltipOf(page, prompt)).toEqual([T.actions.prompt, '']);
   });
 
-  test('the "…" menu of the archive and of the trash, deleting for good asks first', async ({
+  test('the moves of the archive and of the trash, deleting for good asks first', async ({
     page,
   }) => {
     await open(page, WIN);
     await openPlace(page, 'archive');
     await openJob(page, 'linkedin-4100200306');
-    let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['unarchive', 'trash']);
-    expect(menu.labels).toEqual([T.actions.unarchive, T.actions.trash]);
+    let tools = await headTools(page);
+    expect(tools.ids).toEqual(['unarchive', 'trash']);
+    expect(tools.labels).toEqual([T.actions.unarchive, T.actions.trash]);
     await choose(page, 'trash');
     await settleMoves(page);
     await openPlace(page, 'trash');
     await openJob(page, 'linkedin-4100200306');
-    menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['restore', 'purge']);
-    expect(menu.labels).toEqual(['Wiederherstellen', 'Endgültig löschen']);
+    tools = await headTools(page);
+    expect(tools.ids).toEqual(['restore', 'purge']);
+    expect(tools.labels).toEqual(['Wiederherstellen', 'Endgültig löschen']);
     await choose(page, 'purge');
     const dialog = page.getByTestId('dialog-purge');
     await expect(dialog).toBeVisible();
@@ -528,7 +540,7 @@ test.describe('the actions', () => {
     });
   });
 
-  test('the "…" names the moves of the place like the row, per place', async ({ page }) => {
+  test('the head names the moves of the place like the row, per place', async ({ page }) => {
     // Opening a job waits for every animation, the toast's of each move too.
     test.setTimeout(60_000);
     await open(page, WIN);
@@ -538,21 +550,21 @@ test.describe('the actions', () => {
       await settleMoves(page);
     }
     const places = [
-      { place: 'inbox', key: 'freelancermap-2802', moves: ['archive', 'trash'] },
-      { place: 'archive', key: 'linkedin-4100200306', moves: ['unarchive', 'trash'] },
-      { place: 'trash', key: 'freelancermap-2803', moves: ['restore', 'purge'] },
+      { place: 'inbox', key: 'freelancermap-2802', ids: ['archive', 'trash'] },
+      { place: 'archive', key: 'linkedin-4100200306', ids: ['unarchive', 'trash'] },
+      { place: 'trash', key: 'freelancermap-2803', ids: ['restore', 'purge'] },
     ] as const;
-    for (const { place, key, moves } of places) {
+    for (const { place, key, ids } of places) {
       await openPlace(page, place);
       await openJob(page, key);
-      expect(await more(page), place).toEqual([...moves]);
-      expect(await toolsOf(page, key), place).toEqual([...moves]);
+      expect(await moves(page), place).toEqual([...ids]);
+      expect(await toolsOf(page, key), place).toEqual([...ids]);
     }
-    // An excluded job: "Trotzdem bewerten" is its button, "…" holds the rest of the job's menu.
+    // An excluded job: the same moves.
     await openPlace(page, 'inbox');
     const { excluded } = await stubList(page);
     await openJob(page, excluded[0]!);
-    expect(await more(page)).toEqual(['open-ad', 'mail', 'prompt', 'archive', 'trash']);
+    expect(await moves(page)).toEqual(['archive', 'trash']);
   });
 
   test('a job that just moved away offers no moves while the next one loads', async ({ page }) => {
@@ -561,26 +573,24 @@ test.describe('the actions', () => {
     await open(page, WIN);
     const best = 'Interim CFO für Familienunternehmen';
     // Löschen of the open job in the Eingang: while the next one loads the reader shows the
-    // job that went to the Papierkorb, and its "…" never offers the moves of the Papierkorb
-    // here.
+    // job that went to the Papierkorb, and its moves are off (never the Papierkorb's here).
     await openJob(page, 'freelancermap-2801');
     await settleMoves(page);
     await slowDetails(page, 1500);
-    await moreMenu(page);
     await choose(page, 'trash');
     await expect(row(page, 'freelancermap-2801')).toHaveCount(0);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
-    await moreOpensNothing(page);
+    await movesOff(page);
     // The next job of the Eingang: the Eingang's moves.
     await expect(stage(page).getByTestId('reader-title')).not.toHaveText(best, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['archive', 'trash']);
+    expect(await moves(page)).toEqual(['archive', 'trash']);
     // Rückgängig brings it back and opens it again: the Eingang's moves again.
     await page.getByTestId('toast-action').click();
     await expect(stage(page).getByTestId('reader-title')).toHaveText(best);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['archive', 'trash']);
+    expect(await moves(page)).toEqual(['archive', 'trash']);
     // Wiederherstellen of the open job in the Papierkorb: the same while the next one loads.
     await open(page, WIN);
     for (const key of ['freelancermap-2803', 'freelancermap-2804']) {
@@ -591,14 +601,13 @@ test.describe('the actions', () => {
     await openJob(page, 'freelancermap-2803');
     const next = await row(page, 'freelancermap-2804').locator('.title').innerText();
     await slowDetails(page, 1500);
-    await moreMenu(page);
     await choose(page, 'restore');
     await expect(row(page, 'freelancermap-2803')).toHaveCount(0);
-    await moreOpensNothing(page);
+    await movesOff(page);
     await expect(stage(page).getByTestId('reader-title')).toHaveText(next, { timeout: 5000 });
     await slowDetails(page, 0);
     await settleMoves(page);
-    expect(await more(page)).toEqual(['restore', 'purge']);
+    expect(await moves(page)).toEqual(['restore', 'purge']);
   });
 
   test('copying the prompt says so in a toast, a refusing clipboard too', async ({
@@ -643,19 +652,17 @@ test.describe('the actions', () => {
     await expect(stage(page).getByTestId('reader-title')).toBeVisible();
   });
 
-  test('archiving from "…" by the keyboard keeps the focus on "…" of the next job', async ({
+  test('archiving by the keyboard keeps the focus on Archivieren of the next job', async ({
     page,
   }) => {
     await open(page, WIN);
     await rows(page).first().click();
     const first = await page.getByTestId('reader-title').textContent();
     await page.waitForTimeout(550);
-    await page.getByTestId('reader-more').focus();
-    await page.keyboard.press('Enter');
-    await expect(page.getByTestId('menu-item-archive')).toHaveClass(/active/);
+    await page.getByTestId('reader-archive').focus();
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('reader-title')).not.toHaveText(first ?? '');
-    await expect(page.getByTestId('reader-more')).toBeFocused();
+    await expect(page.getByTestId('reader-archive')).toBeFocused();
   });
 });
 
@@ -687,18 +694,17 @@ test.describe('an excluded job', () => {
     // Years never exclude: three years of a field the profile does not name have no verdict.
     expect(await cell(page, 'experience')).toEqual(['3 Jahre', '']);
     await expect(why(page)).not.toContainText('Zeitarbeit');
-    // Trotzdem bewerten: its real match, a toast that takes it back, and the way back in "…".
-    // The same entries in the same order as the row's menu (one table, actions.ts).
-    // Its one button is "Trotzdem bewerten", before "…"; the ways to the mail, the ad and the
-    // prompt are in "…" with the moves.
+    // Trotzdem bewerten: its real match and a toast that takes it back. It stands before the
+    // ad, the alert mail and the prompt; the head has the moves of its place.
     const include = stage(page).getByTestId('reader-include');
     await expect(include).toHaveText(T.actions.include);
-    for (const gone of ['reader-mail', 'open-ad', 'reader-prompt']) {
-      await expect(stage(page).getByTestId(gone)).toHaveCount(0);
-    }
-    let menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['open-ad', 'mail', 'prompt', 'archive', 'trash']);
-    await page.keyboard.press('Escape');
+    expect(
+      await stage(page)
+        .getByTestId('reader-actions')
+        .locator('.btn')
+        .evaluateAll((all) => all.map((button) => button.getAttribute('data-testid'))),
+    ).toEqual(['reader-include', 'open-ad', 'reader-mail', 'reader-prompt']);
+    expect(await moves(page)).toEqual(['archive', 'trash']);
     // From the keyboard: the job counts, the focus moves to its first button.
     await include.focus();
     await page.keyboard.press('Enter');
@@ -714,9 +720,7 @@ test.describe('an excluded job', () => {
     await expect(stage(page).getByTestId('reader-include')).toHaveCount(0);
     await expect(stage(page).getByTestId('open-ad')).toBeFocused();
     // No "Wieder ausschließen" (hidden for now, user 2026-09-29): the moves of its place only.
-    menu = await moreMenu(page);
-    expect(menu.ids).toEqual(['archive', 'trash']);
-    await page.keyboard.press('Escape');
+    expect(await moves(page)).toEqual(['archive', 'trash']);
     // The toast takes it back.
     await toast.getByTestId('toast-action').click();
     expect((await calls(page, 'set_override')).at(-1)?.[1]).toEqual({
@@ -764,7 +768,10 @@ test.describe('Jobdetails', () => {
     expect(await cell(page, 'duration')).toEqual(['6 Monate', 'met']);
     // The ad says nothing of its workload, and nothing judges it.
     expect(await cell(page, 'workload')).toEqual([T.reader.missing, '']);
-    expect(await cell(page, 'portal')).toEqual(['freelancermap.de, linkedin.com', '']);
+    expect(await cell(page, 'portal')).toEqual([
+      'Alert-Mail von freelancermap.de, Suche bei freelancermap.de, auch auf linkedin.com',
+      '',
+    ]);
     // The day of the alert mail in the list row's words.
     expect(await cell(page, 'received')).toEqual(['07:30', '']);
     // Verdicts are icons (no words), why in their tooltip: the reason that decided one (the
@@ -1048,7 +1055,9 @@ test.describe('Jobdetails', () => {
   test('an ad the app never read in full shows only what it knows', async ({ page }) => {
     await openAt(page, 'linkedin-4100200302');
     const names = await terms(page).locator('.term-name').allInnerTexts();
-    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Quelle', 'Eingegangen']);
+    expect(names).toEqual(['Unternehmen', 'Ort', 'Arbeitsmodell', 'Gefunden', 'Eingegangen']);
+    // Its way and its source: the alert mail of LinkedIn.
+    expect(await cell(page, 'portal')).toEqual(['Alert-Mail von linkedin.com', '']);
     await expect(terms(page)).not.toContainText('/');
     // A preview: no "/" claims the ad says nothing.
     await openJob(page, 'freelance-900411');
@@ -1057,7 +1066,7 @@ test.describe('Jobdetails', () => {
       'Ort',
       'Arbeitsmodell',
       'Vertragsart',
-      'Quelle',
+      'Gefunden',
       'Eingegangen',
     ]);
     await expect(terms(page).locator('.value.missing')).toHaveCount(0);
@@ -1297,7 +1306,7 @@ test.describe('the ad', () => {
     // The same height as the reader's other buttons.
     const signIn = stage(page).getByTestId('set-up-sign-in');
     expect((await signIn.boundingBox())!.height).toBe(
-      (await stage(page).getByTestId('reader-more').boundingBox())!.height,
+      (await stage(page).getByTestId('open-ad').boundingBox())!.height,
     );
     await signIn.click();
     await expect(page.getByTestId('view-settings')).toBeVisible();

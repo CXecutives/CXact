@@ -2,9 +2,9 @@
 // run. Loaded once at start and again after anything that changes it (a finished run,
 // settings, profile, mailbox). `slow` turns on skeletons only when loading takes longer
 // than --dur-fast, so a quick start never flashes placeholders. Every state brings the
-// app's language and palette, which the whole page follows at once. The range of "Postfach
-// abrufen" (`fetchRange`, the menu of the icon button beside it) is saved from here through
-// the settings patch.
+// app's language and palette, which the whole page follows at once. What a fetch reads (the
+// menu beside it: the search and the alert mails, only one of them) is saved from here
+// through the settings patch.
 
 import { language } from '../i18n/language.svelte';
 import { errorText } from '../i18n/texts';
@@ -13,8 +13,13 @@ import { applyPalette } from '../palette';
 import type { AppState, FetchRange, Portal, PortalHealth, SettingsPatch } from '../ipc/types';
 import { tokenMs } from '../tokens';
 
-/** The ranges of "Postfach abrufen" in the order of its menu. */
+/** The ranges of the alert mails a fetch reads, in the order of their choice (Einstellungen). */
 export const FETCH_RANGES: readonly FetchRange[] = ['sinceLast', 'days7', 'days30', 'all'];
+
+/** What a fetch reads, in the order of its menu: the search and the alert mails, only the
+ *  search, only the mailbox (the settings' `fetchSearch` and `fetchMail`). */
+export const FETCH_WAYS = ['both', 'search', 'mail'] as const;
+export type FetchWay = (typeof FETCH_WAYS)[number];
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
 const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
@@ -65,17 +70,27 @@ class AppStore {
   /** Only the answer to the latest save may replace the state (quick choices in a row). */
   #saves = 0;
 
-  /**
-   * The range of "Postfach abrufen": the page follows at once, the save after. Resolves with
-   * the error text of a save that failed (the stored state is loaded again), or null.
-   */
-  async setFetchRange(range: FetchRange): Promise<string | null> {
+  /** What a fetch reads (a state with neither does both, like the backend). */
+  get fetchWay(): FetchWay {
     const state = this.state;
-    if (state === null || state.fetchRange === range) return null;
+    if (state === null) return 'both';
+    if (state.fetchSearch && !state.fetchMail) return 'search';
+    if (state.fetchMail && !state.fetchSearch) return 'mail';
+    return 'both';
+  }
+
+  /**
+   * Another way of the fetch: the page follows at once, the save after. Resolves with the
+   * error text of a save that failed (the stored state is loaded again), or null.
+   */
+  async setFetchWay(way: FetchWay): Promise<string | null> {
+    const state = this.state;
+    if (state === null || this.fetchWay === way) return null;
     const mine = ++this.#saves;
-    state.fetchRange = range;
+    const change = { fetchMail: way !== 'search', fetchSearch: way !== 'mail' };
+    Object.assign(state, change);
     try {
-      const next = await invoke('save_settings', { patch: patchOf({ fetchRange: range }) });
+      const next = await invoke('save_settings', { patch: patchOf(change) });
       if (mine === this.#saves) this.set(next);
       return null;
     } catch (error) {
@@ -92,23 +107,6 @@ class AppStore {
     if (item) item.health = health;
   }
 
-  /** The fetch's switch of its menu: the alert mails or the search on or off, the state at
-   *  once and the save after; a failed save says why (null when it worked). */
-  async setFetchWay(way: 'fetchMail' | 'fetchSearch', on: boolean): Promise<string | null> {
-    const state = this.state;
-    if (state === null || state[way] === on) return null;
-    const mine = ++this.#saves;
-    state[way] = on;
-    try {
-      const next = await invoke('save_settings', { patch: patchOf({ [way]: on }) });
-      if (mine === this.#saves) this.set(next);
-      return null;
-    } catch (error) {
-      void this.load();
-      return errorText(error);
-    }
-  }
-
   get hasMailbox(): boolean {
     return Boolean(this.state?.mailbox.user);
   }
@@ -118,17 +116,15 @@ class AppStore {
     return this.state?.portals.some((p) => p.enabled) ?? false;
   }
 
-  /** "Jobs abrufen" searches: its switch is on and a source the app searches itself is
-   *  switched on (it works without a mailbox then). */
+  /** A source the app searches itself is switched on: "Jobs abrufen" works without a
+   *  mailbox too, "Jobs suchen" works at all. */
   get searches(): boolean {
-    const state = this.state;
-    if (state === null || !state.fetchSearch) return false;
-    return state.portals.some((p) => p.enabled && p.way === 'search');
+    return this.state?.portals.some((p) => p.enabled && p.way === 'search') ?? false;
   }
 
-  /** "Jobs abrufen" reads the alert mails (its switch in the menu beside it). */
-  get readsMail(): boolean {
-    return this.state?.fetchMail ?? true;
+  /** A source of alert mails is switched on ("Postfach abrufen" has one to read). */
+  get alerts(): boolean {
+    return this.state?.portals.some((p) => p.enabled && p.way === 'alert') ?? false;
   }
 
   get hasProfile(): boolean {

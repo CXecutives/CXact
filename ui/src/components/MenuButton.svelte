@@ -2,8 +2,9 @@
   A button that names the current choice, with a chevron, and opens the app's own menu of the
   choices right below it (the current one checked): the order of the list ("Nach
   Übereinstimmung" / "Nach Datum"). Quiet (ghost, small) by default; among fields it is a
-  select (`field`): their height, border and regular text, the choice at the left and the
-  chevron at the right edge, like the OS's own (a column may make it as wide as itself). Left click only, like every control; disabled it
+  select (`field`): a field like the text fields beside it (their height, frame and regular
+  text), the choice at the left and at the right edge a small chevron that alone is the
+  button (user, 2026-10-01: no field-wide button); a column may make it as wide as itself. Left click only, like every control; disabled it
   stays hoverable so the tooltip can say why. While its menu is open the button looks pressed.
   Below the choices, after a line, the menu may hold what can be done with them (`actions`:
   the profile switcher's Neues Profil, Umbenennen ...); a label a user would copy (a
@@ -70,6 +71,8 @@
   let anchor = $state<HTMLElement | null>(null);
   let expanded = $state(false);
   const current = $derived(options.find((option) => option.id === value) ?? options[0]);
+  /** The chevron of a select names the menu and the choice it shows. */
+  const openLabel = $derived([menuLabel, current?.label ?? ''].filter(Boolean).join(', '));
 
   /** The menu opens right below the button, its left edge on the button's; a second click
    *  on the open button closes it (the press outside does). */
@@ -95,22 +98,41 @@
   }
 </script>
 
-<span class="menu-button" class:copy class:field bind:this={anchor} use:copyable={copy}>
-  <Button
-    variant={field ? 'secondary' : 'ghost'}
-    size={field ? 'field' : 'sm'}
-    label={current?.label ?? ''}
-    {icon}
-    trailing="expand"
-    menu
-    {expanded}
-    {disabled}
-    {disabledReason}
-    {loading}
-    {testid}
-    onclick={open}
-  />
-</span>
+{#if field}
+  <span class="select" class:open={expanded} bind:this={anchor} data-testid={testid}>
+    <span class="value">{current?.label ?? ''}</span>
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      icon="expand"
+      label={openLabel}
+      menu
+      {expanded}
+      {disabled}
+      {disabledReason}
+      testid={testid ? `${testid}-open` : null}
+      onclick={open}
+    />
+  </span>
+{:else}
+  <span class="menu-button" class:copy bind:this={anchor} use:copyable={copy}>
+    <Button
+      variant="ghost"
+      size="sm"
+      label={current?.label ?? ''}
+      {icon}
+      trailing="expand"
+      menu
+      {expanded}
+      {disabled}
+      {disabledReason}
+      {loading}
+      {testid}
+      onclick={open}
+    />
+  </span>
+{/if}
 
 <style>
   .menu-button {
@@ -119,27 +141,33 @@
     max-width: 100%;
   }
 
-  /* A select among fields: the choice at the left in the fields' weight, the chevron at the
-     right edge, quiet. */
-  .field :global(.btn) {
-    justify-content: flex-start;
+  /* A select among fields: the frame of a text field, the choice at the left in its weight,
+     the chevron's button at the right edge (only it reacts to the pointer). */
+  .select {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-4);
+    max-width: 100%;
+    height: var(--control-field);
+    padding: 0 var(--space-2) 0 var(--space-12);
+    border: var(--border-width) solid var(--border-strong);
+    border-radius: var(--radius-control);
+    background-color: var(--surface);
+    color: var(--text);
+    font: var(--type-sm);
   }
 
-  .field :global(.content) {
+  .select.open {
+    border-color: var(--control-hover-edge);
+  }
+
+  .value {
     flex: 1;
     min-width: 0;
-  }
-
-  .field :global(.label) {
-    flex: 1;
     overflow: hidden;
-    font-weight: var(--weight-regular);
-    text-align: start;
     text-overflow: ellipsis;
-  }
-
-  .field :global(.trailing) {
-    color: var(--text-subtle);
+    white-space: nowrap;
   }
 
   /* A name a user gave (a profile's) may be long: it ends in an ellipsis. */

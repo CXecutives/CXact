@@ -66,6 +66,9 @@ pub const EXPORT_SHOWN: bool = false;
 /// Einstellungen shows "Automatisch abrufen"; hidden for now (user, 2026-10-01: only by
 /// hand), and the app never fetches by itself.
 pub const AUTO_SHOWN: bool = false;
+/// The fetch's ways are shown: the menu beside "Jobs abrufen" chooses the search and the
+/// alert mails, only the search or only the mailbox (user decision 2026-10-01).
+pub const WAYS_SHOWN: bool = true;
 
 /// The app's colour palettes (`ui/src/styles/tokens.css`): CXact by default (the cxpertise
 /// cream, coral and navy), and Light and Dark, neutral with blue details.
@@ -269,6 +272,10 @@ impl Settings {
         }
         if !AUTO_SHOWN {
             self.auto_fetch = false;
+        }
+        if !WAYS_SHOWN {
+            self.fetch_mail = true;
+            self.fetch_search = true;
         }
         *self != before
     }

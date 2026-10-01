@@ -66,6 +66,11 @@ roles: Array<string>,
  */
 searchTerms: Array<string>, 
 /**
+ * The search terms are the app's proposal (none stored): the Profil marks them so; a
+ * change of them makes them the consultant's own.
+ */
+searchTermsProposed: boolean, 
+/**
  * `einsatzpraeferenzen` (`preferences`): wishes, they only nudge the score.
  */
 wishes: ProfileWishes, 

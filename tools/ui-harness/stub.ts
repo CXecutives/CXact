@@ -1133,8 +1133,11 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   if (query.run !== null && query.run !== undefined) {
     if (seenIn.get(markKey(j.key)) !== query.run || j.match?.status === 'excluded') return false;
   }
-  if (query.portal !== null && query.portal !== undefined && j.key.portal !== query.portal) {
-    return false;
+  const portals = query.portals ?? [];
+  if (portals.length > 0 && !portals.includes(j.key.portal)) return false;
+  // The day it came (store::filter_condition): the alert mail's date, else its first sighting.
+  if (query.receivedSince !== null && query.receivedSince !== undefined) {
+    if (Date.parse(j.mailDate ?? j.firstSeenAt) / 1000 < query.receivedSince) return false;
   }
   const facts = j.match?.facts ?? null;
   const contracts = query.contracts ?? [];
@@ -1146,8 +1149,9 @@ function inFilter(j: JobView, query: Partial<JobQuery>): boolean {
   if (query.origin !== null && query.origin !== undefined && !j.origins.includes(query.origin)) {
     return false;
   }
-  if (query.band === null || query.band === undefined) return true;
-  return j.match?.status === 'scored' && bandOf(j.match.score) === query.band;
+  const bands = query.bands ?? [];
+  if (bands.length === 0) return true;
+  return j.match?.status === 'scored' && bands.includes(bandOf(j.match.score));
 }
 
 function refresh(): void {
@@ -1715,10 +1719,16 @@ function startRun(request: RunRequest, sender: Sender | null): void {
   if (isFetch(kind) && state.portals.every((p) => !p.enabled)) {
     throw fail('invalid', { reason: 'noPortal' });
   }
-  // The menu beside "Jobs abrufen": the alert mails, the search, or both (run_context).
-  if (isFetch(kind) && !state.fetchMail && !state.fetchSearch) {
-    throw fail('invalid', { reason: 'noFetchWay' });
+  // The fetch of one way (the sidebar's Suche, Alert-Mails): run_context refuses the same.
+  const only = request.only ?? null;
+  if (
+    isFetch(kind) &&
+    only === 'search' &&
+    !state.portals.some((p) => p.enabled && p.way === 'search')
+  ) {
+    throw fail('invalid', { reason: 'noPortal' });
   }
+  if (isFetch(kind) && only === 'mail' && state.mailbox.user === null) throw fail('mailMissing');
   // Without a mailbox a fetch searches the sources, if one is on (run_context's read_mail).
   const searches = state.fetchSearch && state.portals.some((p) => p.enabled && p.way === 'search');
   if (
@@ -2412,12 +2422,13 @@ const harness: Harness = {
         unread: false,
         sort: 'match',
         search: null,
-        portal: null,
-        band: null,
+        portals: [],
+        bands: [],
         contracts: [],
         workMode: null,
         origin: null,
         run: null,
+        receivedSince: null,
         limit: 500,
         offset: 0,
         ...query,

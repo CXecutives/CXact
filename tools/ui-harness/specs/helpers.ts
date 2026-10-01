@@ -133,7 +133,9 @@ export const funnel = (page: Page): Locator => page.getByTestId('filter');
 export const menuItem = (page: Page, id: string): Locator => page.getByTestId(`menu-item-${id}`);
 /** The chips of the chosen filter under the toolbar. */
 export const chips = (page: Page): Locator => page.getByTestId('filter-chips');
-export const chip = (page: Page, key: keyof ListFilter): Locator => page.getByTestId(`chip-${key}`);
+/** A chip under the list header by the id of its menu entry (`portal-linkedin`,
+ *  `band-mid`), `run` for the one of a fetch's "Zeigen". */
+export const chip = (page: Page, id: string): Locator => page.getByTestId(`chip-${id}`);
 
 /** Open the funnel's menu. */
 export async function openFilter(page: Page): Promise<Locator> {
@@ -206,7 +208,10 @@ export function chipWordsOf(...ids: string[]): string[] {
   const filter: Record<string, unknown> = { ...NO_FILTER };
   for (const group of FILTER_GROUPS) {
     for (const entry of group.entries(PORTALS)) {
-      if (ids.includes(entry.id)) filter[group.key] = entry.value;
+      if (!ids.includes(entry.id)) continue;
+      filter[group.key] = group.multi
+        ? [...(filter[group.key] as unknown[]), entry.value]
+        : entry.value;
     }
   }
   return activeFilters(filter as unknown as ListFilter, PORTALS, T).map((part) => part.label);

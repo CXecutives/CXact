@@ -1,7 +1,11 @@
 <!--
   The reader, unboxed on the sheet (max 720 px). Its sections and their order are data
   (reader-sections.ts); each is rendered below by its key, and nothing stands in two of them:
-  - head: the title (without gender tags) and the close "×" (the same at every width).
+  - head: the title (without gender tags), then the moves of the place as quiet icons like
+    the row's tools (Eingang Archivieren, Löschen; Archiv In den Eingang, Löschen; Papierkorb
+    Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
+    every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
+    offers none while the next one loads.
   - match: the ring (56, hollow; opening a job fills its arc once, the number stands at once)
     beside its band; every ring without a score says "Noch nicht bewertet". A ring with a
     number is a button: "Warum diese Zahl?" opens below it as soon as the pointer rests on it
@@ -11,17 +15,10 @@
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the
     profile's side (its first violation; the row it violates says what the ad states).
   - actions: Anzeige öffnen (Offline-Anzeige öffnen for an ad that is gone
-    or closed: the portal's page still opens), Alert-Mail öffnen, KI-Prompt kopieren and "…", all
-    alike. The
-    "…" menu is the second group of the job's menu (actions.ts jobMenu, the row's right click
-    shows it too, its tools the moves): "Wieder ausschließen" for a job scored by hand, then
-    the moves of the place (Eingang Archivieren, Löschen; Archiv In den Eingang, Löschen;
-    Papierkorb Wiederherstellen, Endgültig löschen). An excluded job has one button,
-    "Trotzdem bewerten" (the one thing to do with it), and "…" holds the whole job menu
-    without it (Anzeige öffnen, Alert-Mail öffnen, KI-Prompt kopieren, then the moves). A job that just
-    moved away offers none while the next one loads. Moving the job away from one of the
-    reader's buttons hands the focus to the same button of the next job. Every result and every
-    failure is a toast.
+    or closed: the portal's page still opens), Alert-Mail öffnen, KI-Prompt kopieren, all
+    alike; an excluded job has "Trotzdem bewerten" before them. Moving the job away from one
+    of the reader's buttons hands the focus to the same button of the next job. Every result
+    and every failure is a toast.
   - details: "Jobdetails", the rows of terms.ts in the order and with the icons of the facts
     table (lib/facts.ts): the ad's value ("–" where it says nothing; for an ad the app never
     read in full only what it knows), a quiet note, and the verdict as an icon whose tooltip
@@ -40,7 +37,7 @@
 -->
 <script lang="ts" module>
   /** A button of the reader had the focus when its job moved away: the same button of the
-   *  next job takes it, so the "…" menu works job after job from the keyboard. */
+   *  next job takes it, so the moves work job after job from the keyboard. */
   let handoff: { testid: string; from: string; until: number } | null = null;
   /** How long the next job may take to open and still take the focus. */
   const HANDOFF_MS = 3000;
@@ -64,19 +61,13 @@
   import { app } from '$lib/state/app.svelte';
   import { clock } from '$lib/state/clock.svelte';
   import { jobs, keyOf } from '$lib/state/jobs.svelte';
-  import {
-    leaveHover,
-    menuState,
-    openMenu,
-    stayHover,
-    type MenuEntry,
-  } from '$lib/state/menu.svelte';
+  import { leaveHover, menuState, openMenu, stayHover } from '$lib/state/menu.svelte';
   import type { ProfileTerm } from '$lib/state/terms';
   import { toasts } from '$lib/state/toasts.svelte';
   import ReaderAd from './ReaderAd.svelte';
   import { addTerm, isAdded } from './addToProfile';
   import { copyJobPrompt } from './prompt';
-  import { guarded, jobMenu, move, override, purge, seen, type MoveId } from './actions';
+  import { guarded, move, override, purge, rowTools, seen, type MoveId } from './actions';
   import { showActions, type ShowAction } from './shows';
   import {
     READER_SECTIONS,
@@ -220,8 +211,8 @@
     invoke('open_target', { target }).catch((error: unknown) => fail(errorText(error)));
   }
 
-  /** A move of the "…" menu. The next job's reader gives the focus back to the button that had
-   *  it (the "…" menu hands it back to its button when it closes). */
+  /** A move of the head's tools. The next job's reader gives the focus back to the button
+   *  that had it. */
   function act(id: MoveId): void {
     if (guarded()) return;
     const focused = document.activeElement;
@@ -297,14 +288,14 @@
     actions?.querySelector<HTMLElement>('button:not([aria-disabled="true"])')?.focus();
   }
 
-  /** The "…" menu, from the one table of the job's menu (the row's right click shows the
-   *  same): what changes the job; for an excluded job everything but "Trotzdem bewerten",
-   *  which is its button. A move hands the focus on. */
-  function moreEntries(): MenuEntry[] {
-    const context = { move: act, purge: askPurge, report: fail };
-    if (!includable) return jobMenu(job, { ...context, changesOnly: true });
-    return jobMenu(job, context).filter((entry) => !('id' in entry) || entry.id !== 'include');
-  }
+  /** The job still lies in the list's place: one that just moved away keeps its reader
+   *  until the next job has loaded, its moves off meanwhile (they would be the new place's). */
+  const inPlace = $derived(job.place === jobs.place);
+  /** The moves of the job's place beside the close button, as icons without a frame like it
+   *  (user decision 2026-10-01: Archivieren and Löschen in the Eingang, the place's own
+   *  elsewhere), from the one table of the job's moves (the row's tools show the same). A
+   *  move hands the focus on. */
+  const tools = $derived(rowTools(job, { move: act, purge: askPurge, report: fail }));
 
   /** The action row stays one line: where the labels do not fit, the buttons turn into icons
    *  one after the other, from the last: the longest and least used first (the prompt, then
@@ -357,39 +348,27 @@
       cancelAnimationFrame(frame);
     };
   });
-
-  /** The "…" button and its menu, right below it (a second click closes it: the press
-   *  outside does). */
-  let moreAnchor = $state<HTMLElement | null>(null);
-  let moreOpen = $state(false);
-
-  /**
-   * The job still lies in the list's place. One that just moved away (Löschen from "…", a
-   * row's tool or its menu) keeps its reader until the next job has loaded; its place is the
-   * new one then, and the "…" would offer that place's moves (Wiederherstellen, Endgültig
-   * löschen in the Eingang): it opens nothing until the next job is there.
-   */
-  const inPlace = $derived(job.place === jobs.place);
-
-  function openMore(event: MouseEvent): void {
-    if (moreAnchor === null || menuState.open !== null || !inPlace) return;
-    moreOpen = true;
-    openMenu({
-      label: t.reader.more,
-      anchor: { kind: 'below', rect: moreAnchor.getBoundingClientRect(), align: 'end' },
-      // Enter or Space on the button: the first entry is active at once, like the OS.
-      fromKeyboard: event.detail === 0,
-      entries: moreEntries(),
-      onclose: () => (moreOpen = false),
-    });
-  }
 </script>
 
 {#snippet head()}
   <header class="head">
     <h1 class="title" data-testid="reader-title" data-copy>{heading}</h1>
-    {#if onclose}
-      <span class="close">
+    <span class="close">
+      {#each tools as tool (tool.id)}
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          icon={tool.icon}
+          label={tool.label}
+          warns={tool.deletes}
+          disabled={tool.disabled || !inPlace}
+          disabledReason={tool.reason}
+          testid="reader-{tool.id}"
+          onclick={tool.run}
+        />
+      {/each}
+      {#if onclose}
         <Button
           variant="ghost"
           size="sm"
@@ -399,8 +378,8 @@
           testid="reader-close"
           onclick={onclose}
         />
-      </span>
-    {/if}
+      {/if}
+    </span>
   </header>
 {/snippet}
 
@@ -464,22 +443,8 @@
         testid="reader-include"
         onclick={(event) => void include(event)}
       />
-    {:else}
-      {@render showButtons()}
     {/if}
-    <span class="more" bind:this={moreAnchor}>
-      <Button
-        variant="secondary"
-        size="field"
-        icon="more"
-        iconOnly
-        label={t.reader.more}
-        menu
-        expanded={moreOpen}
-        testid="reader-more"
-        onclick={openMore}
-      />
-    </span>
+    {@render showButtons()}
   </div>
 {/snippet}
 
@@ -670,6 +635,7 @@
   .close {
     display: flex;
     flex: none;
+    gap: var(--space-2);
     margin-top: calc((var(--leading-2xl) - var(--control-sm)) / 2);
     margin-right: calc(-1 * var(--space-6));
   }
@@ -757,11 +723,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-8);
-  }
-
-  .more {
-    display: inline-flex;
-    flex: none;
   }
 
   /* A heading 12 px above its content. */

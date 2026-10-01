@@ -21,15 +21,15 @@ unread: boolean,
  */
 sort: JobSort, search: string | null, 
 /**
- * The filter (funnel menu): only this portal's jobs; `null` = every portal. Like the
+ * The filter (funnel menu): only these portals' jobs; empty = every portal. Like the
  * search it narrows the list and all its counts.
  */
-portal: Portal | null, 
+portals: Array<Portal>, 
 /**
- * The filter: only jobs scored in this band (`high`, `mid` or `low`); unscored and
- * excluded jobs pass only with `null`.
+ * The filter: only jobs scored in these bands (`high`, `mid`, `low`); unscored and
+ * excluded jobs pass only while it is empty.
  */
-band: Band | null, 
+bands: Array<Band>, 
 /**
  * The filter: only jobs of these contract types, as the engine read them
  * (`KeyFacts.contract`: `interim`, `freelance`, `permanent`, `anue`); empty = every job,
@@ -54,6 +54,13 @@ origin: Origin | null,
  * it, not excluded). `null` = every job.
  */
 run: number | null, 
+/**
+ * The filter "Eingegangen": only jobs that came at or after this moment (Unix seconds;
+ * the alert mail's date, else when the app first saw the job, as "Nach Datum" orders
+ * them). The page names the start of today, of the last 7 or of the last 30 days in
+ * the user's time zone. `null` = every job.
+ */
+receivedSince: number | null, 
 /**
  * At most [`MAX_PAGE`]; 0 = counts only.
  */

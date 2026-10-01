@@ -12,6 +12,8 @@ import { viewport } from './viewport.svelte';
 
 const SIDEBAR = 'sidebar-open';
 const READER = 'reader-open';
+/** The sidebar's Jobs shows its ways (Suche, Alert-Mails): open unless folded. */
+const JOBS_WAYS = 'jobs-ways-open';
 
 function kept(key: string): boolean {
   try {
@@ -37,6 +39,17 @@ class Shell {
 
   /** The user wants the sidebar beside the view (a narrow window folds it anyway). */
   #sidebar = $state(kept(SIDEBAR));
+  #ways = $state(kept(JOBS_WAYS));
+
+  /** The ways under Jobs in the sidebar are shown (kept per user). */
+  get waysOpen(): boolean {
+    return this.#ways;
+  }
+
+  toggleWays(): void {
+    this.#ways = !this.#ways;
+    keep(JOBS_WAYS, this.#ways);
+  }
   /** The sidebar of a narrow window floats over the view. */
   peek = $state(false);
   /** The sidebar's width in px (its handle keeps the user's). */

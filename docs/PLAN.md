@@ -1077,4 +1077,25 @@ handle sits between list and reader".
   in the settings, `fetchMail`, `fetchSearch`), then the Zeitraum; with neither the fetch waits and says why.
   The list's filter "Herkunft" (Alert-Mails, Suche; a job can be both, `mailed_at`, `searched_at` of schema 7).
   The funnel's menu may scroll now where the window is low (eight sources with jobs)
-- The Jobansicht stays as it is (user 2026-10-01)
+- Round 5 (user decisions 2026-10-01, later the same day; they supersede the menu and the filter above):
+  - [x] One list: the sidebar shows only "Jobs" (the ways "Suche" and "Alert-Mails" under it with a chevron
+    were built and are hidden again the same day, `Sidebar.svelte` `WAYS_SHOWN`, `JobQuery.origin` and
+    `RunRequest.only` stay)
+  - [x] "Abruf einstellen" beside the fetch again, three choices: "Suche und Postfach", "Nur Suche", "Nur
+    Postfach" (the settings' `fetchMail`, `fetchSearch`, `WAYS_SHOWN`); the button says what it does:
+    "Jobs abrufen", "Jobs suchen", "Postfach abrufen" (the glyph of every fetch, not the mail's). The
+    Zeitraum is a row of the card Alert-Mails in Einstellungen; the filter "Herkunft" goes
+  - [x] The funnel: Sortierung, Quelle and Übereinstimmung (several choices each, any of them passes:
+    `JobQuery.portals`, `bands`), Eingegangen (Heute, Letzte 7 Tage, Letzte 30 Tage: `receivedSince`, the
+    start of the day in the user's time zone; the alert mail's date, else the first sighting). Vertragsart,
+    Arbeitsmodell and "Nur neue" are hidden (`HIDDEN_GROUPS`, their code stays)
+  - [x] Profil: Name and Rolle as fields with a frame and a label under the title; the tab "Suche" is
+    "Wünsche"; Suchbegriffe the app proposes are dashed chips, "Vorschlag aus Wunschrollen und Schwerpunkten";
+    Verfügbar ab only "Sofort" and "Datum" (the engine scores "Offen" like "Sofort"), the calendar's button
+    beside the day; the Remote-Anteil's "Offen" is "Egal"; a language's level is a field whose chevron alone
+    opens its menu; no line under the last switch of a card
+  - [x] Jobansicht: Archivieren and Löschen as icon buttons beside the close button (no outline, like it),
+    the "…" menu goes (an excluded job shows "Trotzdem bewerten" before the three buttons); "KI-Prompt
+    kopieren"; the row "Gefunden" names the way and the source ("Suche bei hays.de", "Alert-Mail von
+    linkedin.com", "auch auf ...")
+  - [x] The top bar's glyphs in a 1.25 px line (1.5 was too heavy); the job view's button keeps its place

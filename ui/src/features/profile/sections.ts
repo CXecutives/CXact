@@ -393,6 +393,8 @@ export function listOf(form: ProfileForm, key: ListKey): string[] {
 export function setList(form: ProfileForm, key: ListKey, value: string[]): void {
   const [object, name] = holder(form, key);
   object[name] = value;
+  // A change makes the proposed search terms the consultant's own.
+  if (key === 'searchTerms') form.searchTermsProposed = false;
 }
 
 /** A field's value as text, to see when it changes (a refused value stays marked until

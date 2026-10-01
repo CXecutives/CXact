@@ -1,7 +1,10 @@
 <!--
   The calm sidebar on the window's colour below the top bar: no surface of its own, the
-  view's sheet is the divider. It starts with the views: Jobs, Profil, Einstellungen, each
-  with its icon and no count, the first on the first line of every view. The places of the
+  view's sheet is the divider.   It starts with the views: Jobs, Profil, Einstellungen, each
+  with its icon and no count, the first on the first line of every view. Under Jobs its ways
+  can stand (Suche and Alert-Mails, each the list of the jobs that came that way, a chevron
+  at the end of Jobs folding them); hidden for now (user decision 2026-10-01: one list, the
+  menu beside the fetch chooses what it reads), their code kept (WAYS_SHOWN). The places of the
   jobs (Eingang, Archiv, Papierkorb) are tabs above the list. Before the first fetch the
   setup page stands for Jobs; every entry can be chosen, as always. In the demo a quiet line
   "Demo" stands at the foot. A press here never takes the focus (the list keeps its keys).
@@ -13,7 +16,9 @@
   import SideNav, { type SideNavItem } from '$components/SideNav.svelte';
   import { cssVars } from '$lib/actions/cssVars';
   import { t } from '$lib/i18n/t';
+  import type { Origin } from '$lib/ipc/types';
   import { app } from '$lib/state/app.svelte';
+  import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
   import { shell } from '$lib/state/shell.svelte';
   import { VIEWS } from '$lib/views';
@@ -27,19 +32,69 @@
 
   let { floating = false, onchoose }: Props = $props();
 
-  /** The views of lib/views.ts (name, icon). */
-  const items = $derived<SideNavItem<ViewId>[]>(
-    VIEWS.map((view) => ({
-      id: view.id,
-      label: t.nav[view.label],
-      icon: view.icon,
-      testid: `nav-${view.id}`,
-    })),
+  /** An entry: a view, or a way of the jobs under Jobs. */
+  type EntryId = ViewId | 'jobs-search' | 'jobs-mail';
+  const WAYS: readonly {
+    id: EntryId;
+    area: Origin;
+    label: () => string;
+    icon: 'search' | 'alertMail';
+  }[] = [
+    { id: 'jobs-search', area: 'search', label: () => t.nav.search, icon: 'search' },
+    { id: 'jobs-mail', area: 'mail', label: () => t.nav.mail, icon: 'alertMail' },
+  ];
+
+  /** The ways under Jobs are shown (hidden for now, user decision 2026-10-01). */
+  const WAYS_SHOWN = false;
+
+  /** Folds the ways; one of them shown, the list shows every job again. */
+  function toggleWays(): void {
+    if (shell.waysOpen && jobs.area !== null) jobs.setArea(null);
+    shell.toggleWays();
+  }
+
+  /** The views of lib/views.ts (name, icon), the ways under Jobs while they are open. */
+  const items = $derived<SideNavItem<EntryId>[]>(
+    VIEWS.flatMap((view): SideNavItem<EntryId>[] => {
+      const item: SideNavItem<EntryId> = {
+        id: view.id,
+        label: t.nav[view.label],
+        icon: view.icon,
+        testid: `nav-${view.id}`,
+      };
+      if (view.id !== 'jobs' || !WAYS_SHOWN) return [item];
+      const ways = shell.waysOpen
+        ? WAYS.map((way) => ({
+            id: way.id,
+            label: way.label(),
+            icon: way.icon,
+            testid: `nav-${way.id}`,
+            nested: true,
+          }))
+        : [];
+      return [
+        { ...item, fold: { open: shell.waysOpen, label: t.nav.ways, ontoggle: toggleWays } },
+        ...ways,
+      ];
+    }),
   );
 
-  /** The view (an unsaved Profil may keep it and ask). */
-  function choose(id: ViewId): void {
-    navigation.go(id);
+  /** The entry shown: a way of the jobs, or the view. */
+  const active = $derived<EntryId>(
+    navigation.current !== 'jobs'
+      ? navigation.current
+      : (WAYS.find((way) => way.area === jobs.area)?.id ?? 'jobs'),
+  );
+
+  /** The view (an unsaved Profil may keep it and ask), with the way of the jobs. */
+  function choose(id: EntryId): void {
+    const way = WAYS.find((entry) => entry.id === id);
+    if (way !== undefined || id === 'jobs') {
+      const area = way?.area ?? null;
+      navigation.go('jobs', false, () => jobs.setArea(area));
+    } else {
+      navigation.go(id as ViewId);
+    }
     onchoose?.();
   }
 
@@ -59,7 +114,7 @@
        as they are, instead of changing their colours in front of the user. -->
   {#if app.state !== null}
     <div class="nav">
-      <SideNav {items} active={navigation.current} label={t.nav.label} onselect={choose} />
+      <SideNav {items} {active} label={t.nav.label} onselect={choose} />
     </div>
   {/if}
 

@@ -10,8 +10,8 @@
   field with the name selected: Enter or leaving it renames, Esc keeps the name. Then a status
   only when there is one ("n Werte prüfen" while values of the file do not read, a click
   goes to the first one; the rescore a save or a switch started; each fades in and out). Under
-  the title the person the profile is about, her name and role as two quiet fields that read
-  like text (`person`, from the view). Under the row,
+  the title the person the profile is about, her name and role as two fields with their labels
+  (`person`, from the view). Under the row,
   only where it prevents a mistake: keys of the file the app does not read (with the folder
   at hand), that saving a chosen file replaces the profile, and a failure. Narrower than
   480 px the status goes to a line of its own.
@@ -331,12 +331,14 @@
   }
 
   /* The quiet fields' text starts on the title's edge: their padding and edge lie outside. */
+  /* Name and role as two fields with their labels (user decision 2026-10-01), side by side
+     as wide as the form. */
   .person {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--space-8);
+    gap: var(--space-12);
     max-width: var(--form-width);
-    margin: var(--space-4) 0 0 calc(-1 * (var(--space-8) + var(--border-width)));
+    margin-top: var(--space-12);
   }
 
   .quiet {

@@ -23,6 +23,7 @@ fn clock() -> impl Fn() -> Timestamp {
 fn request() -> RunRequest {
     RunRequest {
         kind: RunKind::Fetch,
+        only: None,
     }
 }
 
@@ -523,6 +524,7 @@ async fn details_off_means_no_request_to_the_portal() {
         .key;
     let details = RunRequest {
         kind: RunKind::Details { keys: vec![key] },
+        only: None,
     };
     let (s, _) = go(
         &mut DemoBackends,
@@ -558,6 +560,7 @@ async fn targeted_fetch_only_touches_the_chosen_jobs() {
         kind: RunKind::Details {
             keys: vec![key.clone()],
         },
+        only: None,
     };
     let (s, _) = go(
         &mut DemoBackends,
@@ -585,6 +588,7 @@ async fn rescore_only_exports() {
     let (store, _) = store_with_texts();
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     let (s, events) = go(
         &mut DemoBackends,
@@ -877,6 +881,7 @@ async fn the_info_sheet_keeps_the_last_good_scan() {
     assert!(matches!(failed.outcome, Outcome::Failed { .. }));
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     go(
         &mut DemoBackends,
@@ -961,6 +966,7 @@ async fn the_info_sheet_says_what_the_app_says() {
     let later = move || c() + SignedDuration::from_hours(1);
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     go(&mut DemoBackends, &store, &rescore, &fetch, &cancel, &later).await;
     let rows = info_sheet(dir.path());
@@ -1171,6 +1177,7 @@ async fn scoring_follows_the_matcher() {
     );
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     let (s, _) = go(
         &mut WithPicky("r1"),
@@ -1354,6 +1361,7 @@ async fn a_rescore_says_what_it_changed() {
     store.clear_matches().unwrap();
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     let (s, _) = go(
         &mut DemoBackends,
@@ -1627,7 +1635,7 @@ async fn every_run_starts_with_its_kind() {
         let (s, events) = go(
             &mut DemoBackends,
             &store,
-            &RunRequest { kind },
+            &RunRequest { kind, only: None },
             &ctx(dir.path(), false),
             &CancellationToken::new(),
             &c,
@@ -1649,6 +1657,7 @@ async fn every_run_starts_with_its_kind() {
         &store,
         &RunRequest {
             kind: RunKind::Rescore,
+            only: None,
         },
         &ctx(dir.path(), false),
         &CancellationToken::new(),
@@ -1690,7 +1699,7 @@ async fn the_last_run_is_the_last_fetch() {
         let (s, _) = go(
             &mut DemoBackends,
             &store,
-            &RunRequest { kind },
+            &RunRequest { kind, only: None },
             &ctx(dir.path(), false),
             &CancellationToken::new(),
             &c,
@@ -1798,6 +1807,7 @@ async fn a_fetch_counts_its_new_jobs() {
         &store,
         &RunRequest {
             kind: RunKind::Details { keys: vec![key] },
+            only: None,
         },
         &ctx(dir.path(), false),
         &CancellationToken::new(),
@@ -1815,6 +1825,7 @@ async fn a_fetch_counts_its_new_jobs() {
         &store,
         &RunRequest {
             kind: RunKind::Rescore,
+            only: None,
         },
         &ctx(dir.path(), false),
         &CancellationToken::new(),
@@ -1987,6 +1998,7 @@ async fn a_failed_export_is_reported_as_a_code() {
         &store,
         &RunRequest {
             kind: RunKind::Rescore,
+            only: None,
         },
         &ctx(dir.path(), false),
         &CancellationToken::new(),
@@ -2025,6 +2037,7 @@ async fn an_open_excel_file_is_reported_as_locked() {
     let (store, _) = store_with_texts();
     let rescore = RunRequest {
         kind: RunKind::Rescore,
+        only: None,
     };
     let (first, _) = go(
         &mut DemoBackends,

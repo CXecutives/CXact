@@ -94,19 +94,20 @@ impl JobRow {
     }
 }
 
-/// The list's filter (the funnel menu) beside the search: one portal, one band, contract
-/// types and one work mode; and the new jobs of one run (the "Zeigen" of a fetch's toast).
-/// Like the search it narrows the list and all its counts.
+/// The list's filter (the funnel menu) beside the search: portals, bands, contract types,
+/// one work mode, one origin and the day the jobs came from; and the new jobs of one run
+/// (the "Zeigen" of a fetch's toast). Like the search it narrows the list and all its
+/// counts.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ListFilter {
     /// Only the new jobs a run brought, as [`Store::new_jobs`] counts them: first seen in
     /// this run, not excluded (`None` = every job).
     pub run: Option<i64>,
-    /// Only this portal's jobs (`None` = every portal).
-    pub portal: Option<Portal>,
-    /// Only jobs scored in this band (`model::band` of their score); unscored and excluded
-    /// jobs pass only without it.
-    pub band: Option<Band>,
+    /// Only these portals' jobs (empty = every portal).
+    pub portals: Vec<Portal>,
+    /// Only jobs scored in these bands (`model::band` of their score); unscored and excluded
+    /// jobs pass only while it is empty.
+    pub bands: Vec<Band>,
     /// Only jobs of these contract types (the codes of `KeyFacts.contract`); empty = every
     /// job, those without a contract type too.
     pub contracts: Vec<String>,
@@ -117,36 +118,37 @@ pub struct ListFilter {
     pub work_mode: Option<WorkMode>,
     /// Only jobs an alert mail named, or only those the search found (`None` = every job).
     pub origin: Option<Origin>,
+    /// Only jobs that came at or after this moment, in Unix seconds: the alert mail's date,
+    /// else the first sighting (`None` = every job).
+    pub received_since: Option<i64>,
 }
 
 impl ListFilter {
     /// The values [`filter_condition`] binds, in the order of its placeholders.
     pub(super) fn values(&self) -> [Value; FILTER_VALUES] {
-        let int = |value: Option<u8>| value.map_or(Value::Null, |v| Value::Integer(i64::from(v)));
         let text = |value: Option<String>| value.map_or(Value::Null, Value::Text);
+        // A list as a JSON array, none for an empty one.
+        let list = |keys: Vec<&str>| {
+            text((!keys.is_empty()).then(|| serde_json::to_string(&keys).unwrap_or_default()))
+        };
         [
-            text(self.portal.map(|portal| portal.key().to_owned())),
-            int(self.band.map(Band::lowest)),
-            int(self.band.and_then(above)),
-            // The contract types as a JSON array.
-            text(
-                (!self.contracts.is_empty())
-                    .then(|| serde_json::to_string(&self.contracts).unwrap_or_default()),
-            ),
+            list(self.portals.iter().map(|portal| portal.key()).collect()),
+            list(self.bands.iter().map(|band| band_key(*band)).collect()),
+            list(self.contracts.iter().map(String::as_str).collect()),
             text(self.work_mode.map(|mode| mode_key(mode).to_owned())),
             self.run.map_or(Value::Null, Value::Integer),
             text(self.origin.map(|origin| origin_key(origin).to_owned())),
+            self.received_since.map_or(Value::Null, Value::Integer),
         ]
     }
 }
 
-/// The lowest score above a band (`None` for the high band): a band's scores lie between
-/// its [`Band::lowest`] and this one.
-const fn above(band: Band) -> Option<u8> {
+/// A band as [`filter_condition`] names it in SQL (constants of the code, never input).
+const fn band_key(band: Band) -> &'static str {
     match band {
-        Band::High => None,
-        Band::Mid => Some(HIGH_FROM),
-        Band::Low => Some(MID_FROM),
+        Band::High => "high",
+        Band::Mid => "mid",
+        Band::Low => "low",
     }
 }
 
@@ -233,26 +235,31 @@ fn page_order(query: &PageQuery, p: &str) -> String {
 pub(super) const FILTER_VALUES: usize = 7;
 
 /// The condition of a [`ListFilter`] on the `job` table, its values bound from placeholder
-/// `?{first}` on in the order of [`ListFilter::values`]: the portal's key, the lowest score
-/// of the band and the lowest one above it, a JSON array of contract types, the work mode
-/// the run and the origin (each `NULL` for none). Contract type and remote share come from the
-/// key facts in the match note, the work mode without a share from the location; the origin
-/// from the times an alert mail named the job (`mailed_at`) and the search found it
-/// (`searched_at`).
+/// `?{first}` on in the order of [`ListFilter::values`]: JSON arrays of portal keys, of
+/// bands and of contract types, the work mode, the run, the origin and the first second of
+/// the days it came from (each `NULL` for none). The band of a score as `model::band` draws
+/// it; contract type and remote share come from the key facts in the match note, the work
+/// mode without a share from the location; the origin from the times an alert mail named
+/// the job (`mailed_at`) and the search found it (`searched_at`); the day it came as "Nach
+/// Datum" orders the jobs (the alert mail's date, else the first sighting).
 pub(super) fn filter_condition(first: usize) -> String {
-    let [portal, from, below, contracts, mode, run, origin] =
+    let [portals, bands, contracts, mode, run, origin, since] =
         std::array::from_fn::<String, FILTER_VALUES, _>(|i| format!("?{}", first + i));
     format!(
-        "({portal} IS NULL OR portal = {portal})
-         AND ({from} IS NULL OR (match_status = 'scored' AND match_score >= {from}
-                                 AND ({below} IS NULL OR match_score < {below})))
+        "({portals} IS NULL OR portal IN (SELECT value FROM json_each({portals})))
+         AND ({bands} IS NULL OR (match_status = 'scored'
+                                  AND (CASE WHEN match_score >= {HIGH_FROM} THEN 'high'
+                                            WHEN match_score >= {MID_FROM} THEN 'mid'
+                                            ELSE 'low' END)
+                                      IN (SELECT value FROM json_each({bands}))))
          AND ({contracts} IS NULL OR {contract}
                                      IN (SELECT value FROM json_each({contracts})))
          AND ({mode} IS NULL OR COALESCE({job_mode} = {mode}, 0))
          AND ({run} IS NULL OR (first_seen_run = {run}
                                 AND match_status IS NOT 'excluded'))
          AND ({origin} IS NULL OR ({origin} = 'mail' AND mailed_at IS NOT NULL)
-                               OR ({origin} = 'search' AND searched_at IS NOT NULL))",
+                               OR ({origin} = 'search' AND searched_at IS NOT NULL))
+         AND ({since} IS NULL OR COALESCE(mail_date, first_seen_at) >= {since})",
         contract = fact("", "contract"),
         job_mode = job_mode(),
     )

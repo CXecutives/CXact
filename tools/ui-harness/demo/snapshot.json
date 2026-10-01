@@ -11540,6 +11540,7 @@
         "Controlling",
         "Konzernrechnungslegung nach IFRS"
       ],
+      "searchTermsProposed": true,
       "wishes": {
         "dayRate": 1200,
         "remote": "mostly",
@@ -11948,6 +11949,7 @@
             "SAP CO",
             "Datenmigration"
           ],
+          "searchTermsProposed": true,
           "wishes": {
             "dayRate": 1000,
             "remote": "mostly",
@@ -12814,6 +12816,7 @@
             "Infrastructure as Code",
             "Cloud-Migration"
           ],
+          "searchTermsProposed": true,
           "wishes": {
             "dayRate": 950,
             "remote": "full",
@@ -13684,6 +13687,7 @@
             "Prozessautomatisierung",
             "Robotic Process Automation"
           ],
+          "searchTermsProposed": true,
           "wishes": {
             "dayRate": 1100,
             "remote": "mostly",

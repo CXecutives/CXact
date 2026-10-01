@@ -135,12 +135,12 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
     ...chipWordsOf('band-high'),
   ]);
   const query = (await lastQuery(page))!;
-  expect(query).toMatchObject({ place: 'inbox', unread: false, band: 'high' });
+  expect(query).toMatchObject({ place: 'inbox', unread: false, bands: ['high'] });
   expect(query.run).toEqual(expect.any(Number));
   await expect.poll(() => listed(page)).toEqual(['linkedin-4100200399']);
   // Each chip takes its part off: without the band the two new jobs the toast counts, not
   // the excluded one of the fetch.
-  await chip(page, 'band').click();
+  await chip(page, 'band-high').click();
   await expect(chips(page).getByRole('button')).toHaveText([T.toolbar.lastFetch]);
   const { active } = await stubList(page, { run: query.run });
   expect(active).toHaveLength(2);
@@ -148,7 +148,7 @@ test('the end toast names the new jobs of the high band; Zeigen lists exactly th
   await expect.poll(() => listed(page)).toEqual(active);
   // Never kept: the next start lists the Eingang as before.
   await open(page, `${WIN}&tick=15`);
-  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
+  expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
 });
 
@@ -164,13 +164,13 @@ test('from another view Zeigen opens the Eingang without its search, filtered to
   await expect(page.getByTestId('view-jobs')).toBeVisible();
   await expect(page.getByTestId('search')).toHaveValue('');
   const run = (await lastQuery(page))?.run;
-  expect(await lastQuery(page)).toMatchObject({ search: null, unread: false, band: 'high' });
+  expect(await lastQuery(page)).toMatchObject({ search: null, unread: false, bands: ['high'] });
   expect(run).toEqual(expect.any(Number));
   // The next fetch takes "Aus dem letzten Abruf" off (it would speak of the one before).
   await page.getByTestId('fetch').click();
   await runFinished(page);
   await expect(chip(page, 'run')).toHaveCount(0);
-  expect(await lastQuery(page)).toMatchObject({ run: null, band: 'high' });
+  expect(await lastQuery(page)).toMatchObject({ run: null, bands: ['high'] });
 });
 
 test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async ({ page }) => {
@@ -182,7 +182,7 @@ test('Filter zurücksetzen takes the fetch of Zeigen off with the rest', async (
   await page.getByTestId('filter').click();
   await page.getByTestId('menu-item-filter-reset').click();
   await expect(page.getByTestId('filter-chips')).toHaveCount(0);
-  expect(await lastQuery(page)).toMatchObject({ run: null, band: null });
+  expect(await lastQuery(page)).toMatchObject({ run: null, bands: [] });
 });
 
 // The run's notes are hidden for now (RunLine NOTES, user 2026-09-29); kept for their return.

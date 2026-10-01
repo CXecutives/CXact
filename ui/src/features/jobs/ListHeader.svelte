@@ -47,13 +47,13 @@
   import { fade, unfold } from '$lib/motion/transitions';
   import { app } from '$lib/state/app.svelte';
   import { inPortalOrder } from '$lib/portals';
-  import { activeFilters, NO_FILTER, type ListFilter } from '$lib/state/filter';
+  import { activeFilters, dropFrom, NO_FILTER, type ActiveFilter } from '$lib/state/filter';
   import { jobs } from '$lib/state/jobs.svelte';
   import { menuState, openMenu } from '$lib/state/menu.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { trashEmptied } from './actions';
-  import { funnelEntries, rangeEntries } from './headerMenus';
+  import { fetchLook, funnelEntries, wayEntries } from './headerMenus';
   import RunLine from './RunLine.svelte';
   import TrashAction from './TrashAction.svelte';
 
@@ -101,7 +101,7 @@
       (app.state?.portals ?? []).filter(
         (line) =>
           (line.enabled && (app.state?.sources ?? []).includes(line.portal)) ||
-          line.portal === jobs.filterChoice.portal,
+          jobs.filterChoice.portals.includes(line.portal),
       ),
     ).map((line) => line.portal),
   );
@@ -130,10 +130,10 @@
     await focusFunnel();
   }
 
-  /** A chip's ×: that part of the filter goes; the last one hands the focus to the funnel. */
-  function dropChip(key: keyof ListFilter): void {
+  /** A chip's ×: that choice of the filter goes; the last one hands the focus to the funnel. */
+  function dropChip(chip: ActiveFilter): void {
     const last = chips.length === 1;
-    jobs.setFilter({ [key]: null });
+    jobs.setFilter(dropFrom(jobs.filterChoice, chip.key, chip.value));
     if (last) void focusFunnel();
   }
 
@@ -157,9 +157,9 @@
 
   /* ----------------------------------------------------------------------- fetch */
 
-  /** The Zeitraum's menu is open (its button keeps its hover look). */
-  let rangeOpen = $state(false);
-  /** "Postfach abrufen" shows: in the Eingang while no fetch goes (elsewhere it only holds
+  /** The menu of what a fetch reads is open (its button keeps its hover look). */
+  let wayOpen = $state(false);
+  /** "Jobs abrufen" shows: in the Eingang while no fetch goes (elsewhere it only holds
    *  the cell's width, so "Abbrechen" stands where it stands in the Eingang). */
   const fetchShown = $derived(place === 'inbox' && !run.fetching);
   /** The fetch's buttons show: in the Eingang, and "Abbrechen" in every place while a fetch
@@ -168,18 +168,20 @@
   /** The fetch's colour: the view's primary once a fetch can bring jobs. */
   const fetchVariant = $derived(app.hasMailbox && app.hasPortal ? 'primary' : 'secondary');
 
+  const way = $derived(fetchLook());
+
   /** "Abruf einstellen" below the fetch and its button, its right edge on the button's. */
-  function openRange(event: MouseEvent): void {
+  function openWays(event: MouseEvent): void {
     const control = (event.currentTarget as HTMLElement | null)?.closest('.fetch');
     if (!control || menuState.open !== null) return;
-    rangeOpen = true;
+    wayOpen = true;
     openMenu({
       label: t.toolbar.fetchSettings,
       anchor: { kind: 'below', rect: control.getBoundingClientRect(), align: 'end' },
-      entries: rangeEntries(),
-      refresh: rangeEntries,
+      entries: wayEntries(),
+      refresh: wayEntries,
       fromKeyboard: event.detail === 0,
-      onclose: () => (rangeOpen = false),
+      onclose: () => (wayOpen = false),
     });
   }
 
@@ -223,18 +225,16 @@
 </script>
 
 {#snippet fetchButtons(inbox: boolean)}
-  <!-- "Postfach abrufen" and "Abbrechen" share one slot as wide as the wider of the two, so
-       nothing moves when a fetch starts; the Zeitraum's button stays beside them, off while
-       the fetch goes. Outside the Eingang only "Abbrechen" shows (while a fetch goes), where
-       it stands in the Eingang: the Zeitraum's button holds its room there. -->
+  <!-- The fetch and "Abbrechen" share one slot (the wider sets it): nothing moves; the menu's
+       button beside them is off while a fetch goes and holds its room outside the Eingang. -->
   <span class="fetch">
     <span class="run">
       <span class="swap" class:shown={fetchShown} inert={!fetchShown}>
         <Button
           size="field"
           variant={fetchVariant}
-          icon="fetch"
-          label={t.toolbar.fetch}
+          icon={way.icon}
+          label={way.label}
           disabled={run.fetchBlocked !== null}
           disabledReason={run.fetchBlocked}
           wide
@@ -263,11 +263,11 @@
         icon="range"
         label={t.toolbar.fetchSettings}
         menu
-        expanded={inbox && rangeOpen}
+        expanded={inbox && wayOpen}
         disabled={run.fetching}
         disabledReason={run.busyText}
-        testid={inbox ? 'fetch-range' : null}
-        onclick={openRange}
+        testid={inbox ? 'fetch-ways' : null}
+        onclick={openWays}
       />
     </span>
   </span>
@@ -335,15 +335,15 @@
   {#if chips.length > 0}
     <div class="unfold" transition:unfold>
       <div class="chips" role="group" aria-label={t.toolbar.chips} data-testid="filter-chips">
-        {#each chips as chip (chip.key)}
+        {#each chips as chip (chip.id)}
           <span class="chip" transition:fade>
             <Button
               variant="secondary"
               size="sm"
               label={chip.label}
               trailing="close"
-              testid="chip-{chip.key}"
-              onclick={() => dropChip(chip.key)}
+              testid="chip-{chip.id}"
+              onclick={() => dropChip(chip)}
             />
           </span>
         {/each}

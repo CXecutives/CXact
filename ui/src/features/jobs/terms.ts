@@ -276,15 +276,25 @@ const TERMS: Record<TermKey, Term> = {
     shows: ({ code }) => code('industryWish') !== undefined,
     read: ({ code }) => ({ value: text(code('industryWish')?.params.industry) }),
   },
-  // The portals, and quietly after them an ad that is no longer online (once, here).
+  // How the job came (user decision 2026-10-01: "Gefunden"): the search of its source, its
+  // alert mail, both, then the sources it is also on; quietly after them an ad that is no
+  // longer online (once, here).
   portal: {
     ...NONE,
     read: ({ job, offline, now }) => {
       const since = offline?.since ? formatDay(offline.since, now) : '';
+      const own = t.portal[job.portal];
+      const ways = job.origins.map((origin) =>
+        origin === 'search' ? t.reader.foundSearch(own) : t.reader.foundMail(own),
+      );
+      const also = job.alsoOn
+        .filter((portal) => portal !== job.portal)
+        .map((portal) => t.portal[portal]);
       return {
-        value: [job.portal, ...job.alsoOn.filter((portal) => portal !== job.portal)]
-          .map((portal) => t.portal[portal])
-          .join(', '),
+        value: [
+          ...(ways.length > 0 ? ways : [own]),
+          ...(also.length > 0 ? [t.job.alsoOn(also.join(', '))] : []),
+        ].join(', '),
         note:
           offline === null ? null : since === '' ? t.reader.offline : t.reader.offlineSince(since),
       };
