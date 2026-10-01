@@ -146,7 +146,8 @@ test('a details run shows its line and brings no fetch toast', async ({ page }) 
 });
 
 test('a failed first fetch does not claim the alert mails were empty', async ({ page }) => {
-  await open(page, `${WIN}&scenario=mailbox-only&mail=offline&tick=15`);
+  // The mailbox way: without a profile the search would wait (it needs one).
+  await open(page, `${WIN}&scenario=mailbox-only&way=mail&mail=offline&tick=15`);
   await expect(page.getByTestId('view-first-run')).toBeVisible();
   await page.getByTestId('first-fetch').click();
   await runFinished(page);
