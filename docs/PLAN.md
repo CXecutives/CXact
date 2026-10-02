@@ -821,9 +821,12 @@ The user clicked through the reworked preview; one more round in four tracks.
   delivery tasks of phases 2 and 6, the name of the final round, the export and glossary lines of the cleanup
   round); the Profile round above made the change, this round confirms it.
 - [x] The close question during a fetch, the `offline` code (track B3)
-- [ ] Fetch range at the button, the list filters and the sort by rate
-- [ ] Explanation popover, deadline and contact, verdict colours from the rings
-- [ ] Alert health
+- [x] Fetch range at the button, the list filters and the sort by rate (the filters and the sort by rate are
+  in; the fetch range went for good with the lean round of 2026-10-01)
+- [x] Explanation popover, deadline and contact, verdict colours from the rings (deadline, contact and the
+  colours are in; the popover went for good on 2026-10-01, the user did not need it)
+- [x] Alert health (a source's quiet line in Einstellungen: a pause, alert mails without jobs, a week without
+  an alert mail with Alert prüfen)
 - [x] Every filter group lists all values of its dimension or is gone (user decision 2026-09-27): Übereinstimmung Hoch, Mittel, Gering (`JobQuery.band`), Arbeitsmodell Remote, Hybrid, Vor Ort (`JobQuery.workMode`, the stated share first, else the location); no Tagessatz floor; the row's date is when the job came in, the deadline only in the Jobdetails
 
 ## Top bar round 2026-09-27 (decision of the user, binding)
@@ -842,9 +845,10 @@ lights 16 px from the left; colours only from the design's tokens (the close but
   no buttons on macOS, the same layout below the bar), the smoke check (SMOKE {"caption":...}, the window step);
   checked in the real Windows app: no caption, maximize and restore without gaps, minimize, close, the snap layouts
   under the real pointer, drag, double click, the system menu
-- [ ] macOS: the traffic lights in the 44 px bar on the CI screenshots (SMOKE {"lights":...}: centre 22)
+- [x] macOS: the traffic lights in the 44 px bar on the CI screenshots (SMOKE {"lights":...}: centre 22; the
+  macOS smoke of 2026-10-01 logs centreY 22.0)
 
-- [ ] Alert health, Mac title row
+- [x] Alert health, Mac title row (the health lines are in; the title row became the top bar)
 
 ## Input and reader round 2026-09-27 (decisions of the user, binding)
 - Removing never puts a caret anywhere: a click on an × (a chip, a language row, a competence row, any list row)
@@ -1037,7 +1041,7 @@ handle sits between list and reader".
   saturated navy, a richer coral, a warmer cream), Papierkorb leeren outlined red and as wide as Postfach abrufen.
 - [x] The job prompt in line with the engine, the words of both catalogs, the demo app, size A, the full harness in
   both engines, the smoke probe
-- [ ] The push and CI, the release and demo setups (the user starts them)
+- [ ] The push and CI (done), the release and demo setups (the user starts them)
 
 ## Search and sources (user decisions 2026-10-01, binding)
 
