@@ -41,14 +41,12 @@ export type Commands = {
   pick_profile: { args: Record<string, never>; result: ProfileDraft | null };
   profile_prompt: { args: Record<string, never>; result: string };
   save_profile: { args: { save: ProfileSave }; result: ProfileInfo };
-  list_profiles: { args: Record<string, never>; result: ProfileEntry[] };
   switch_profile: { args: { id: number }; result: ProfileEntry[] };
   create_profile: { args: Record<string, never>; result: ProfileEntry[] };
   duplicate_profile: { args: { id: number; name: string | null }; result: ProfileEntry[] };
   rename_profile: { args: { id: number; name: string }; result: ProfileEntry[] };
   delete_profile: { args: { id: number }; result: boolean };
   restore_profile: { args: { id: number | null }; result: boolean };
-  load_profile: { args: Record<string, never>; result: ProfileEntry[] | null };
   asked_terms: { args: Record<string, never>; result: AskedTerm[] };
   vocabulary: { args: Record<string, never>; result: Vocabulary };
   set_unsaved: { args: { on: boolean }; result: null };

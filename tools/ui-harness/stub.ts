@@ -49,8 +49,8 @@
 // `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
 // Several profiles, one active (core's profile::set): with a profile the work folder holds
 // the scenario's profile (1, active) and two invented test profiles (2 SAP FI/CO, 3 Cloud
-// Architect, tools/test-profiles/); `load_profile` takes a third one (the page's "Aus Datei
-// laden" picks a file into the form instead, `pick_profile`). A deleted active profile gives
+// Architect, tools/test-profiles/); the page's "Aus Datei laden" picks a file into the form
+// (`pick_profile`). A deleted active profile gives
 // the place back to the one active before it, like core. A switch scores the jobs with the new active profile at once: the list rows take the
 // engine's matches of that profile from the snapshot (`DEMO.profiles`); the reader keeps the
 // demo profile's reasons under the new score (the snapshot has one profile's readers).
@@ -748,17 +748,16 @@ let previousId: number | null = null;
 /** Deleted profiles by number (their backup), for the undo. */
 const deletedProfiles = new Map<number, StubProfile>();
 /** The number of the other profiles of the demo (`DEMO.profiles`) the work folder starts
- *  with; the next one is the file "Aus Datei laden" chooses. */
+ *  with. */
 const FOLDER_PROFILES = 2;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
 let backups: Backup[] = [];
 
-/** The demo's copies (store/backup.rs): three days and one from before an update. */
+/** The demo's copies (store/backup.rs): three days. */
 const DEMO_BACKUPS: readonly Backup[] = [
   { id: 'jobs-2026-09-24.db', kind: 'daily', at: '2026-09-24T06:05:00Z', bytes: 13_002_342 },
   { id: 'jobs-2026-09-23.db', kind: 'daily', at: '2026-09-23T06:41:00Z', bytes: 12_845_056 },
   { id: 'jobs-2026-09-22.db', kind: 'daily', at: '2026-09-22T07:12:00Z', bytes: 12_320_768 },
-  { id: 'jobs.pre-v5.db', kind: 'update', at: '2026-09-18T08:20:00Z', bytes: 11_796_480 },
 ];
 /** Copies from before a restore kept, like core. */
 const RESTORE_KEPT = 3;
@@ -811,7 +810,6 @@ function initial(): void {
       portal('interimx', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
       portal('fratch', { quota: { usedHour: 0, capHour: 300, usedDay: 0, capDay: 1500 } }),
     ],
-    setupDone: true,
     fetchMail: MAIL_WAY,
     fetchSearch: !MAIL_WAY,
     lastRun: lastRun(),
@@ -2030,7 +2028,6 @@ const handlers: Handlers = {
     }
     return structuredClone(state.profile);
   },
-  list_profiles: () => profileEntries(),
   switch_profile: ({ id }) => {
     const target = profileOf(id);
     if (id !== activeId) activate(target);
@@ -2083,12 +2080,6 @@ const handlers: Handlers = {
     profiles.sort((a, b) => a.id - b.id);
     activate(back);
     return true;
-  },
-  // The file the stub chooses: the next test profile of the snapshot.
-  load_profile: () => {
-    const file = DEMO.profiles[FOLDER_PROFILES]!;
-    addProfile(structuredClone(file.profile), null, file.matches);
-    return profileEntries();
   },
   asked_terms: () => askedTerms(),
   vocabulary: () => structuredClone(VOCABULARY),
@@ -2355,7 +2346,6 @@ const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
   'rename_profile',
   'delete_profile',
   'restore_profile',
-  'load_profile',
   'save_profile_template',
   'save_mailbox',
   'remove_mailbox',

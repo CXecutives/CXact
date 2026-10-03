@@ -14,7 +14,6 @@
   import { ICONS, type Glyph, type IconMeaning } from '$lib/icons';
   import Archive from '@lucide/svelte/icons/archive';
   import ArchiveRestore from '@lucide/svelte/icons/archive-restore';
-  import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Award from '@lucide/svelte/icons/award';
@@ -43,7 +42,6 @@
   import DatabaseBackup from '@lucide/svelte/icons/database-backup';
   import Delete from '@lucide/svelte/icons/delete';
   import Download from '@lucide/svelte/icons/download';
-  import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Euro from '@lucide/svelte/icons/euro';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Eye from '@lucide/svelte/icons/eye';
@@ -55,7 +53,6 @@
   import Funnel from '@lucide/svelte/icons/funnel';
   import Globe from '@lucide/svelte/icons/globe';
   import FilePenLine from '@lucide/svelte/icons/file-pen-line';
-  import History from '@lucide/svelte/icons/history';
   import Hourglass from '@lucide/svelte/icons/hourglass';
   import House from '@lucide/svelte/icons/house';
   import Inbox from '@lucide/svelte/icons/inbox';
@@ -77,7 +74,6 @@
   import Scissors from '@lucide/svelte/icons/scissors';
   import Search from '@lucide/svelte/icons/search';
   import Settings from '@lucide/svelte/icons/settings';
-  import Shield from '@lucide/svelte/icons/shield';
   import Star from '@lucide/svelte/icons/star';
   import TextSelect from '@lucide/svelte/icons/text-select';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -90,7 +86,6 @@
   const GLYPHS: Record<Glyph, Component<Record<string, unknown>>> = {
     archive: Archive,
     'archive-restore': ArchiveRestore,
-    'arrow-down': ArrowDown,
     'arrow-left': ArrowLeft,
     'arrow-right': ArrowRight,
     award: Award,
@@ -119,7 +114,6 @@
     'database-backup': DatabaseBackup,
     delete: Delete,
     download: Download,
-    ellipsis: Ellipsis,
     euro: Euro,
     'external-link': ExternalLink,
     eye: Eye,
@@ -131,7 +125,6 @@
     funnel: Funnel,
     globe: Globe,
     'file-pen-line': FilePenLine,
-    history: History,
     hourglass: Hourglass,
     house: House,
     inbox: Inbox,
@@ -153,7 +146,6 @@
     scissors: Scissors,
     search: Search,
     settings: Settings,
-    shield: Shield,
     star: Star,
     'text-select': TextSelect,
     'trash-2': Trash2,

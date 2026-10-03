@@ -2440,7 +2440,6 @@ test('Neues Profil, Profil duplizieren, Umbenennen and Aus Datei laden', async (
   await expect(names).toHaveValue('Jonas Muster');
   await expect(heading(page)).toHaveText(T.profile.newProfile);
   await expect(page.getByTestId('profile-replaces')).toHaveCount(0);
-  expect(await calls(page, 'load_profile')).toHaveLength(0);
   await save(page).click();
   await expect(heading(page)).toHaveText(T.profile.numbered(6));
   expect(await calls(page, 'create_profile')).toHaveLength(2);

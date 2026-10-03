@@ -166,7 +166,6 @@ fn build_state(state: &AppState) -> CmdResult<view::AppState> {
         first_run: !state.dry_run
             && !pipeline::has_completed_fetch(&state.store)
             && counts.inbox + counts.archive + counts.trash == 0,
-        setup_done: state.dry_run || pipeline::has_completed_fetch(&state.store),
         running,
         settings: SettingsView {
             workspace_is_default: settings.workspace.is_none(),
@@ -344,7 +343,6 @@ pub async fn reset_all(app: AppHandle, state: State<'_, AppState>) -> CmdResult<
     state.ensure_real()?;
     let plan = ResetPlan {
         workspace: state.workspace()?,
-        txt_names: state.store.txt_names()?,
     };
     reset::request(&state.data_dir, &plan)?;
     log::info!("reset requested, restarting");

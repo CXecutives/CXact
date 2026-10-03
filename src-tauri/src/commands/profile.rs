@@ -73,13 +73,6 @@ pub async fn save_profile(
     Ok(profile_info(&state, &workspace).unwrap_or_else(|| ProfileInfo::of(&info, None)))
 }
 
-/// The profiles of the work folder, the active one marked (the dry run: its sample
-/// profile).
-#[tauri::command]
-pub async fn list_profiles(state: State<'_, AppState>) -> CmdResult<Vec<ProfileEntry>> {
-    profile_entries(&state, &state.workspace()?)
-}
-
 /// Every job is scored again when the active profile is another one than `before` (in the
 /// background, like after a save).
 fn after_change(app: &AppHandle, state: &AppState, workspace: &Path, before: Option<u32>) {
@@ -201,33 +194,6 @@ pub async fn restore_profile(
         scoring::profile_changed(&app, &state);
     }
     Ok(restored)
-}
-
-/// Chooses a profile file and takes it as a new profile, active from now on; `None` if
-/// cancelled. A file that is no profile is refused with its reason.
-#[tauri::command]
-pub async fn load_profile(
-    window: WebviewWindow,
-    app: AppHandle,
-    state: State<'_, AppState>,
-) -> CmdResult<Option<Vec<ProfileEntry>>> {
-    state.ensure_real()?;
-    let workspace = state.workspace()?;
-    let Some(file) = rfd::AsyncFileDialog::new()
-        .set_title(texts::PICK_PROFILE)
-        .add_filter(texts::PROFILE_FILTER, &["json"])
-        .set_directory(&workspace)
-        .set_parent(&window)
-        .pick_file()
-        .await
-    else {
-        return Ok(None);
-    };
-    let before = profile::active_id(&workspace)?;
-    let id = profile::import(&workspace, file.path())?;
-    log::info!("profile {id} loaded from a file");
-    after_change(&app, &state, &workspace, before);
-    Ok(Some(profile_entries(&state, &workspace)?))
 }
 
 /// "Häufig verlangt": the terms the jobs of the last 30 days ask for most that the stored

@@ -15,7 +15,7 @@ export const FETCH_WAYS = ['search', 'mail'] as const;
 export type FetchWay = (typeof FETCH_WAYS)[number];
 
 /** A whole patch of the settings from what changes (everything else `null`: unchanged). */
-const patchOf = (change: Partial<SettingsPatch>): SettingsPatch => ({
+export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
   portals: [],
   fetchMail: null,
   fetchSearch: null,
@@ -73,7 +73,7 @@ class AppStore {
     const change = { fetchMail: way === 'mail', fetchSearch: way === 'search' };
     Object.assign(state, change);
     try {
-      const next = await invoke('save_settings', { patch: patchOf(change) });
+      const next = await invoke('save_settings', { patch: settingsPatch(change) });
       if (mine === this.#saves) this.set(next);
       return null;
     } catch (error) {

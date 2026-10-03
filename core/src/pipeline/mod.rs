@@ -1,8 +1,7 @@
-//! One click: mailbox -> new jobs -> job details -> export.
+//! One click: mailbox or search -> new jobs -> job details -> scores.
 //!
 //! The run kinds pick the steps (`RunKind`); the portals come from the settings, never from
-//! the page. The export always runs at the end - after a cancellation, a portal stop or an
-//! error too (it is purely local). Every run starts with exactly one `Started` (its kind: the
+//! the page. Every run starts with exactly one `Started` (its kind: the
 //! page also follows runs it did not start) and ends with exactly one `Finished`; the summary
 //! of a fetch is also stored as `last_run_summary` - "the last fetch" for the page, which a
 //! rescore or a details run never replaces. Events carry codes
@@ -16,7 +15,7 @@ pub mod score;
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use jiff::Timestamp;
@@ -24,7 +23,6 @@ use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use crate::error::{ErrorInfo, InvalidInput};
-use crate::export::{self, RESULT_DIR};
 use crate::fetch::policy::Policy;
 use crate::fetch::search::{SearchCounts, SearchEvent, search_all};
 use crate::fetch::{
@@ -61,11 +59,11 @@ pub struct RunRequest {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub enum RunKind {
     /// The alert mails of the enabled portals in the range the settings choose
-    /// (`fetchRange`), their job details, export.
+    /// (`fetchRange`), their job details.
     Fetch,
-    /// Job details of exactly these jobs (older ones too), export.
+    /// Job details of exactly these jobs (older ones too).
     Details { keys: Vec<JobKey> },
-    /// Score again with the current profile, export.
+    /// Score again with the current profile.
     Rescore,
 }
 
@@ -491,8 +489,7 @@ impl<'a> Plan<'a> {
     }
 }
 
-/// Runs a run. Database errors end it as `Failed`; the export still runs - unless the run
-/// could not even be created.
+/// Runs a run. Database errors end it as `Failed`.
 #[expect(
     clippy::too_many_arguments,
     clippy::too_many_lines,
@@ -513,7 +510,7 @@ pub async fn run<B: Backends>(
     let mut summary = RunSummary::new(request.kind.name(), ctx.dry_run, started_at);
     emit(RunEvent::Started { kind: summary.kind });
     // Without a run number (database locked or broken) nothing can be assigned: then
-    // neither mailbox nor fetch nor export.
+    // neither mailbox nor fetch.
     let run = match store.begin_run() {
         Ok(run) => run,
         Err(e) => {
@@ -1061,80 +1058,17 @@ fn per_portal(
         .collect()
 }
 
-/// Deletes jobs for good (see [`Store::delete_jobs`]): the text files earlier versions wrote
-/// for them go (and those that stayed at an earlier delete get another try). Without a
-/// workspace (the dry run) nothing on disk changes.
-pub fn delete_jobs(
-    store: &Store,
-    workspace: Option<&Path>,
-    keys: &[JobKey],
-    now: Timestamp,
-) -> crate::Result<Deleted> {
-    // Only the trash is deleted for good.
+/// Deletes jobs for good (see [`Store::delete_jobs`]); only the trash is.
+pub fn delete_jobs(store: &Store, keys: &[JobKey], now: Timestamp) -> crate::Result<Deleted> {
     let keys = store.in_trash(keys)?;
-    let (gone, names) = store.delete_jobs(&keys, now)?;
+    let gone = store.delete_jobs(&keys, now)?;
     // The jobs as the list showed them: a duplicate that stood behind a row goes with it
     // (its key is among `gone` for the page), but the user deleted that row once.
     let rows = keys.iter().filter(|key| gone.contains(key)).count();
-    let deleted = Deleted {
+    Ok(Deleted {
         count: u32::try_from(rows).unwrap_or(u32::MAX),
         keys: gone,
-    };
-    let Some(workspace) = workspace.filter(|_| !deleted.keys.is_empty()) else {
-        return Ok(deleted);
-    };
-    // A work folder on a drive that is gone lists nothing: the leftovers wait for it.
-    if workspace.is_dir() {
-        retry_txt_leftovers(store, &workspace.join(RESULT_DIR));
-    }
-    remove_deleted_txt(store, workspace, &names);
-    Ok(deleted)
-}
-
-/// Removes the text files earlier versions wrote for jobs now deleted for good. A file that
-/// stays (open in another program, or the work folder on a drive that is gone) is remembered,
-/// since its job's row is gone, so the next delete or a reset removes it
-/// ([`Store::txt_leftovers`]); the user needs no word about it.
-fn remove_deleted_txt(store: &Store, workspace: &Path, names: &[String]) {
-    let failed = if workspace.is_dir() {
-        export::clear_txt_files(&workspace.join(RESULT_DIR), names).1
-    } else {
-        names.to_vec()
-    };
-    if failed.is_empty() {
-        return;
-    }
-    log::warn!(
-        "{} text files of deleted jobs not removed (open), removed later",
-        failed.len()
-    );
-    let mut left = store.txt_leftovers().unwrap_or_default();
-    for name in &failed {
-        if !left.contains(name) {
-            left.push(name.clone());
-        }
-    }
-    if let Err(e) = store.set_txt_leftovers(&left) {
-        log::warn!("text files not removed are not remembered: {e}");
-    }
-}
-
-/// Another try at the text files of deleted jobs that stayed earlier; the ones gone meanwhile
-/// (removed now or by the user) are forgotten.
-fn retry_txt_leftovers(store: &Store, result_dir: &Path) {
-    let left = match store.txt_leftovers() {
-        Ok(left) if !left.is_empty() => left,
-        Ok(_) => return,
-        Err(e) => {
-            log::warn!("text files not removed earlier are not readable: {e}");
-            return;
-        }
-    };
-    let (_, failed) = export::clear_txt_files(result_dir, &left);
-    let still: Vec<String> = left.into_iter().filter(|n| failed.contains(n)).collect();
-    if let Err(e) = store.set_txt_leftovers(&still) {
-        log::warn!("text files not removed are not remembered: {e}");
-    }
+    })
 }
 
 /// After a successful mailbox scan: when it started (a failed scan does not overwrite it).

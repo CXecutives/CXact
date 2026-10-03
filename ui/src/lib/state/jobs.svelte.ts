@@ -254,7 +254,7 @@ class JobsStore {
   pageError = $state<string | null>(null);
   /**
    * A job action of the list that failed (a move of a row, its undo, "Trotzdem bewerten",
-   * the choice of the Zeitraum): one sentence in the list header until the next action
+   * the choice of the way): one sentence in the list header until the next action
    * succeeds or another list comes (place, search, order, filter).
    */
   actionError = $state<string | null>(null);

@@ -4,9 +4,9 @@
 //! One connection behind a mutex; every method is short and synchronous (the caller never
 //! holds the lock across an `await`).
 //!
-//! `schema` creates and migrates the tables, `jobs` holds the job, alert mail, job detail
-//! and text file methods, `matches` the match and read columns of schema 3, `marks` the
-//! user's marks: the place (inbox, archive, trash) and "fits anyway".
+//! `schema` creates the tables, `jobs` holds the job, alert mail and job detail methods,
+//! `matches` the match and read columns, `marks` the user's marks: the place (inbox,
+//! archive, trash) and "fits anyway".
 
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, MutexGuard};
@@ -33,6 +33,24 @@ pub use jobs::{AlertMailRow, JobFilter, JobRow, ListFilter, MailRef, PageCounts,
 pub use matches::Judgement;
 pub use overview::BandCounts;
 
+/// A database an earlier version wrote (schema 1 to 7): what the reset that replaces it
+/// reads first.
+pub struct Outdated {
+    pub schema: i64,
+    /// Its settings as stored (JSON), if readable.
+    pub settings: Option<String>,
+}
+
+/// The database at `path` when an earlier version wrote it, read without changing it;
+/// `None` for a missing, current or newer one.
+pub fn outdated(path: &Path) -> Option<Outdated> {
+    let (schema, conn) = schema::outdated(path)?;
+    Some(Outdated {
+        schema,
+        settings: kv_get(&conn, crate::settings::KEY).ok().flatten(),
+    })
+}
+
 /// Key of the Gmail address earlier versions stored with the last mailbox scan (the Excel
 /// file's links went into that account); no longer written, and cleared with the scan state
 /// so an old value goes too. Never a password.
@@ -45,8 +63,8 @@ pub struct Store {
 }
 
 impl Store {
-    /// Opens (or creates) the database and brings the schema up to date; an older schema is
-    /// copied to `backups/` first ([`backup`]).
+    /// Opens (or creates) the database. One of an earlier version is refused: the start
+    /// resets it first ([`outdated`]).
     pub fn open(path: &Path) -> Result<Store> {
         if let Some(dir) = path.parent() {
             std::fs::create_dir_all(dir).map_err(|e| Error::io(dir, e))?;
@@ -57,17 +75,6 @@ impl Store {
         conn.pragma_update_and_check(None, "journal_mode", "WAL", |_| Ok(()))?;
         conn.pragma_update(None, "synchronous", "NORMAL")?;
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        if let Some(version) = schema::pending_migration(&conn)? {
-            // A migration that goes wrong must not cost the user's marks; a copy that
-            // cannot be written (a full disk, say) must not keep the app from starting.
-            match backup::before_migration(&conn, path, version) {
-                Ok(Some(copy)) => {
-                    log::info!("database copied before the migration: {}", copy.display());
-                }
-                Ok(None) => {}
-                Err(e) => log::warn!("database not copied before the migration: {e}"),
-            }
-        }
         Self::init(conn, Some(path.to_path_buf()))
     }
 
@@ -78,7 +85,7 @@ impl Store {
 
     fn init(conn: Connection, path: Option<PathBuf>) -> Result<Store> {
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        schema::migrate(&conn)?;
+        schema::create(&conn)?;
         jobs::refresh_all_searches(&conn)?;
         Ok(Store {
             conn: Mutex::new(conn),

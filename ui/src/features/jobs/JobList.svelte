@@ -18,9 +18,9 @@
   job's row is in view again. A job action that fails says so in the list header. Every
   empty state is one pattern at one place: an icon and one short sentence, centred, at most
   one way out (secondary: the header holds the view's primary). A filter that leaves nothing
-  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell offers "Postfach
-  abrufen" (while a fetch can start), without a mailbox "Postfach verbinden" instead, which
-  opens Einstellungen at the mailbox card. Without a mailbox one slim note at the top says
+  says so and takes itself off ("Filter zurücksetzen"). An empty Aktuell without a mailbox
+  (while the fetch reads the mails) offers "Postfach verbinden", which opens Einstellungen at
+  the mailbox card. Without a mailbox one slim note at the top says
   how to connect one (unless the empty Aktuell says it); without a usable profile one says
   that there is no match without it and leads to the Profil view (the rings stay, empty); a
   thin profile one calm line that the match stays rough. A list that fails to load says only
@@ -46,7 +46,7 @@
   import { NO_FILTER } from '$lib/state/filter';
   import { isExcluded, jobs, keyOf, sameKey } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
-  import { fetchLook, run } from '$lib/state/run.svelte';
+  import { run } from '$lib/state/run.svelte';
   import type { ContextMenu } from '$lib/input/input';
   import { disarm, jobMenu, moving, openAd, purge, rowTools, type JobMenuContext } from './actions';
   import { glideIntoView } from '$lib/motion/scroll';
@@ -163,18 +163,11 @@
     });
   }
 
-  /** The header offers "Alert-Mails lesen" (ListHeader: in Aktuell while no fetch goes). */
-  const headerFetches = $derived(jobs.place === 'inbox' && !run.fetching);
-  /** The way on from an empty Aktuell (secondary: the header holds the view's primary):
-   *  without a mailbox to connect one, else to fetch while a fetch can start. */
-  const emptyAction = $derived.by((): EmptyAction | null => {
-    if (mailboxMissing) return { label: t.list.connectMailbox, onclick: toMailbox };
-    // Hidden (UI sweep 2026-09-29): the header offers "Alert-Mails lesen" right above it in the
-    // Aktuell, the same action twice; the path stays for a header without it.
-    if (headerFetches) return null;
-    if (run.fetchBlocked !== null) return null;
-    return { ...fetchLook(), onclick: () => void run.start({ kind: 'fetch' }) };
-  });
+  /** The way on from an empty Aktuell (secondary: the header holds the view's primary, the
+   *  fetch): without a mailbox to connect one. */
+  const emptyAction = $derived<EmptyAction | null>(
+    mailboxMissing ? { label: t.list.connectMailbox, onclick: toMailbox } : null,
+  );
   /** The empty Aktuell says the list stays empty without a mailbox (not the note too). */
   const emptyInboxShown = $derived(
     jobs.place === 'inbox' &&
@@ -403,7 +396,7 @@
     };
   }
 
-  /** The job's menu on a right click (jobMenu of actions.ts, the reader's "…" too). */
+  /** The job's menu on a right click (jobMenu of actions.ts). */
   function menuOf(job: JobView): ContextMenu {
     return { label: t.menu.job, entries: jobMenu(job, contextOf(job)) };
   }

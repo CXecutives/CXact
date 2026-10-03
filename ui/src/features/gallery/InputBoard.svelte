@@ -1,9 +1,8 @@
-<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, a calendar, a radio list,
-     disclosure and setting rows. -->
+<!-- Gallery: toggles, segmented controls, tabs, fields, chip fields, a calendar, a radio list
+     and setting rows. -->
 <script lang="ts">
   import Calendar from '$components/Calendar.svelte';
   import ChipInput from '$components/ChipInput.svelte';
-  import Disclosure from '$components/Disclosure.svelte';
   import ListDivider from '$components/ListDivider.svelte';
   import Field from '$components/Field.svelte';
   import MenuButton from '$components/MenuButton.svelte';
@@ -12,7 +11,6 @@
   import SettingRow from '$components/SettingRow.svelte';
   import { vocabularyOf } from '$components/Suggestions.svelte';
   import Tabs from '$components/Tabs.svelte';
-  import TextArea from '$components/TextArea.svelte';
   import TextField from '$components/TextField.svelte';
   import Toggle from '$components/Toggle.svelte';
   import Section from './Section.svelte';
@@ -49,24 +47,22 @@
   let password = $state('abcd efgh');
   let search = $state('Controlling');
   let empty = $state('');
-  let open = $state(true);
   let folded = $state(true);
   let tools = $state([...t.chipValues]);
   let industries = $state<string[]>([]);
   let focus = $state([...t.chipsShownValues]);
-  let answer = $state('');
   /** A day as typed in its field; the calendar inside it writes one in the field's form. */
   let dayText = $state(shownDate('2026-11-01'));
   /** A field that suggests the chips' sample words while typing. */
   const sampleWords = vocabularyOf([...t.chipValues, ...t.chipsShownValues]);
   let term = $state('');
-  /** The copies of "Sicherung wiederherstellen": a day, the day before, one before an update. */
+  /** The copies of "Sicherung wiederherstellen": a day, the day before, one before a restore. */
   const copies = $derived(
     (
       [
         ['today', 0, 'daily', 13_002_342],
         ['yesterday', 24, 'daily', 12_845_056],
-        ['update', 140, 'update', 11_796_480],
+        ['restore', 140, 'restore', 11_796_480],
       ] as const
     ).map(([id, hours, kind, bytes]) => ({
       id,
@@ -223,9 +219,6 @@
         />
       </Field>
       <ChipInput label={t.chipsShown} bind:values={focus} entry={false} />
-      <Field label={t.area} for="gallery-area">
-        <TextArea id="gallery-area" bind:value={answer} rows={4} />
-      </Field>
       <!-- One of a few rows, like native radio buttons: the arrows choose. -->
       <RadioList
         options={copies}
@@ -257,9 +250,6 @@
         onchange={() => undefined}
       />
     </SettingRow>
-    <Disclosure label={t.disclosure} bind:open testid="disclosure">
-      <p class="copy">{t.disclosureText}</p>
-    </Disclosure>
     <div>
       <ListDivider label={t.dividerThin} thin />
       <ListDivider
@@ -305,10 +295,5 @@
     --row-inset: var(--space-24);
     border: var(--border-width) solid var(--border);
     border-radius: var(--radius-card);
-  }
-
-  .copy {
-    color: var(--text-muted);
-    font: var(--type-body);
   }
 </style>

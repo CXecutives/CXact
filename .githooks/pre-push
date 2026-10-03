@@ -13,8 +13,6 @@ case "$url" in
   # The public repo's former names (GitHub forwards them to CXact).
   https://github.com/CXecutives/Project|https://github.com/CXecutives/Project.git|https://github.com/CXecutives/Project/) ;;
   git@github.com:CXecutives/Project.git|ssh://git@github.com/CXecutives/Project.git) ;;
-  https://github.com/CXecutives/testt|https://github.com/CXecutives/testt.git|https://github.com/CXecutives/testt/) ;;
-  git@github.com:CXecutives/testt.git|ssh://git@github.com/CXecutives/testt.git) ;;
   *)
     echo "BLOCKED: pushing is allowed only to CXecutives/CXact, not to '$url'." >&2
     exit 1 ;;
@@ -26,7 +24,7 @@ OLD_PYTHON=9d3b5434dee0f89a47915aa5c5dcc00c57e02168
 OLD_TEST=07345a331d7342d3296d41247d61f34adf674569
 ZERO=0000000000000000000000000000000000000000
 public=0
-case "$url" in *CXact*|*Project*|*testt*) public=1 ;; esac
+case "$url" in *CXact*|*Project*) public=1 ;; esac
 
 # "|| [ -n ... ]": a last line without a trailing newline is checked too.
 while read -r local_ref local_sha remote_ref remote_sha || [ -n "$local_ref" ]; do

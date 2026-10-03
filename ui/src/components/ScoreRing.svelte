@@ -1,5 +1,5 @@
 <!--
-  The match of a job as a ring: sm 40 (list rows), md 56 (reader), lg 96. Hollow at every
+  The match of a job as a ring: sm 34 (list rows), md 48 (reader), lg 96. Hollow at every
   size: the solid track, the arc and the number, nothing tinted behind them.
   scored: the ring shows its value (r = 15.9155, circumference 100, no pathLength). It fills
   (360 ms, ease-out) only when that means something: when a score arrives while the ring is
@@ -337,7 +337,7 @@
     --ring-type: var(--type-2xl);
   }
 
-  /* Three digits would touch the 4 px stroke of the 40 px ring. */
+  /* Three digits would touch the 4 px stroke of the 34 px ring. */
   .sm.full {
     --ring-type: var(--weight-semibold) var(--font-xs) / var(--leading-xs) var(--font-sans);
   }

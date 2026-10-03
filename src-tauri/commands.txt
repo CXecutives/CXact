@@ -21,14 +21,12 @@ ai_prompt         { key: JobKey }                                               
 pick_profile      {}                                                                 -> ProfileDraft | null
 profile_prompt    {}                                                                 -> string
 save_profile      { save: ProfileSave }                                              -> ProfileInfo
-list_profiles     {}                                                                 -> ProfileEntry[]
 switch_profile    { id: number }                                                     -> ProfileEntry[]
 create_profile    {}                                                                 -> ProfileEntry[]
 duplicate_profile { id: number; name: string | null }                                -> ProfileEntry[]
 rename_profile    { id: number; name: string }                                       -> ProfileEntry[]
 delete_profile    { id: number }                                                     -> boolean
 restore_profile   { id: number | null }                                              -> boolean
-load_profile      {}                                                                 -> ProfileEntry[] | null
 asked_terms       {}                                                                 -> AskedTerm[]
 vocabulary        {}                                                                 -> Vocabulary
 set_unsaved       { on: boolean }                                                    -> null

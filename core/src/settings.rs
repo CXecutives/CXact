@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::error::Result;
 use crate::portal::{FetchPath, Portal};
@@ -12,21 +12,16 @@ use crate::store::Store;
 /// Key of the settings in the database (a restore of a backup keeps them, `store/backup.rs`).
 pub(crate) const KEY: &str = "settings";
 
-/// `#[serde(default)]` per field: an older file without today's fields keeps loading, and
-/// fields of earlier versions (`format`, `scope`, `firstRunSeen`, `sessionPortals`,
-/// `autoFetchOnStart`, `autoFetch`, `fetchRange`, `exportExcel`, `exportCsv`,
-/// `autoArchiveDays`, `autoEmptyTrashDays`, `language`, `palette`) are skipped silently - serde
-/// only refuses unknown fields with `deny_unknown_fields`.
+/// `#[serde(default)]` per field: a missing field takes its default, and an unknown one is
+/// skipped silently (serde only refuses unknown fields with `deny_unknown_fields`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     /// Workspace (the Arbeitsordner, the profiles'); `None` = default ([`default_workspace`]:
-    /// `Documents\CXact`, or the `Documents\Job-Alert-Monitor` of an earlier version). Only
-    /// changeable through the folder dialog - never a path sent by the frontend.
+    /// `Documents\CXact`). Only changeable through the folder dialog - never a path sent by
+    /// the frontend.
     pub workspace: Option<PathBuf>,
-    /// Switches per portal. Earlier versions stored the list of enabled portals here; that
-    /// form still loads (listed = enabled, missing = disabled).
-    #[serde(deserialize_with = "portals_any_form")]
+    /// Switches per portal.
     pub portals: BTreeMap<Portal, PortalSwitches>,
     /// The fetch reads the alert mails (the menu beside the button, user decision
     /// 2026-10-01): with `fetch_search` off, see [`Settings::fetches_mail`].
@@ -38,7 +33,7 @@ pub struct Settings {
 /// The switches of one portal. Safe defaults: active, never signed in. An enabled portal's
 /// alert mails are read and its ads fetched; off = no mail read and zero requests to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", from = "StoredSwitches")]
+#[serde(rename_all = "camelCase", default)]
 pub struct PortalSwitches {
     /// Alert mails of the portal are read and its ads fetched.
     pub enabled: bool,
@@ -51,37 +46,6 @@ impl Default for PortalSwitches {
         PortalSwitches {
             enabled: true,
             login_enabled: false,
-        }
-    }
-}
-
-/// The switches as a file of any version holds them. Earlier versions had a switch of their
-/// own for the ads (`fetchDetails`): off, the portal got zero requests. That promise stands,
-/// so such a portal comes back switched off until the user switches it on again.
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", default)]
-struct StoredSwitches {
-    enabled: bool,
-    fetch_details: bool,
-    login_enabled: bool,
-}
-
-impl Default for StoredSwitches {
-    fn default() -> StoredSwitches {
-        let switches = PortalSwitches::default();
-        StoredSwitches {
-            enabled: switches.enabled,
-            fetch_details: true,
-            login_enabled: switches.login_enabled,
-        }
-    }
-}
-
-impl From<StoredSwitches> for PortalSwitches {
-    fn from(stored: StoredSwitches) -> PortalSwitches {
-        PortalSwitches {
-            enabled: stored.enabled && stored.fetch_details,
-            login_enabled: stored.login_enabled,
         }
     }
 }
@@ -198,62 +162,10 @@ impl Settings {
     }
 }
 
-/// The default workspace's folder in the documents folder.
-const WORKSPACE_NAME: &str = "CXact";
-/// The default workspace of the versions named Job-Alert-Monitor.
-const OLD_WORKSPACE_NAME: &str = "Job-Alert-Monitor";
-
-/// The default workspace in `documents`: `CXact`, unless the `Job-Alert-Monitor` folder of an
-/// earlier version holds the app's files (its profiles or its result folder) and `CXact` does
-/// not; then that one stays in use, so nothing moves and nothing is left behind. A workspace
-/// chosen in the settings wins over both ([`Settings::workspace_or`]).
+/// The default workspace in `documents`: `CXact`. A workspace chosen in the settings wins
+/// ([`Settings::workspace_or`]).
 pub fn default_workspace(documents: &Path) -> PathBuf {
-    let current = documents.join(WORKSPACE_NAME);
-    let old = documents.join(OLD_WORKSPACE_NAME);
-    if !holds_app_files(&current) && holds_app_files(&old) {
-        old
-    } else {
-        current
-    }
-}
-
-/// The folder holds the app's own folders: the profiles (`profil/`) or the result files
-/// (`auswertung/`).
-fn holds_app_files(folder: &Path) -> bool {
-    folder.join(crate::profile::PROFILE_DIR).is_dir()
-        || folder.join(crate::export::RESULT_DIR).is_dir()
-}
-
-/// Reads the portal switches in today's map form or the list form of earlier versions.
-/// Unknown portal keys are skipped.
-fn portals_any_form<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> std::result::Result<BTreeMap<Portal, PortalSwitches>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum AnyForm {
-        List(Vec<String>),
-        Map(BTreeMap<String, PortalSwitches>),
-    }
-    Ok(match AnyForm::deserialize(deserializer)? {
-        AnyForm::List(keys) => Portal::ALL
-            .into_iter()
-            .map(|p| {
-                let enabled = keys.iter().any(|k| k == p.key());
-                (
-                    p,
-                    PortalSwitches {
-                        enabled,
-                        ..PortalSwitches::default()
-                    },
-                )
-            })
-            .collect(),
-        AnyForm::Map(map) => map
-            .into_iter()
-            .filter_map(|(key, switches)| Some((Portal::from_key(&key)?, switches)))
-            .collect(),
-    })
+    documents.join("CXact")
 }
 
 #[cfg(test)]
@@ -278,40 +190,6 @@ mod tests {
     }
 
     use super::*;
-
-    /// A new install exports into `Documents\CXact`; the `Job-Alert-Monitor` folder of an
-    /// earlier version stays in use while it holds the app's files and `CXact` does not.
-    #[test]
-    fn the_default_workspace_keeps_an_old_folder_with_the_apps_files() {
-        let documents = tempfile::tempdir().unwrap();
-        let (current, old) = (
-            documents.path().join("CXact"),
-            documents.path().join("Job-Alert-Monitor"),
-        );
-        assert_eq!(
-            default_workspace(documents.path()),
-            current,
-            "a fresh install"
-        );
-        std::fs::create_dir(&old).unwrap();
-        assert_eq!(
-            default_workspace(documents.path()),
-            current,
-            "an empty old folder is none of the app's"
-        );
-        for own in [crate::profile::PROFILE_DIR, crate::export::RESULT_DIR] {
-            std::fs::create_dir(old.join(own)).unwrap();
-            assert_eq!(default_workspace(documents.path()), old, "{own}");
-            std::fs::remove_dir(old.join(own)).unwrap();
-        }
-        std::fs::create_dir_all(old.join(crate::profile::PROFILE_DIR)).unwrap();
-        std::fs::create_dir_all(current.join(crate::export::RESULT_DIR)).unwrap();
-        assert_eq!(
-            default_workspace(documents.path()),
-            current,
-            "the new folder is in use already"
-        );
-    }
 
     #[test]
     fn defaults_round_trip_and_repair() {
@@ -387,36 +265,9 @@ mod tests {
         assert!(Portal::ALL.iter().all(|&p| paths(p).is_none()));
     }
 
-    /// A file of an earlier version carries fields that no longer exist and the list form of
-    /// the portal choice: it loads, and the choice survives as the `enabled` switch. The
-    /// switch of the fetch at the start (gone: the app fetches only when asked) and the
-    /// automatic archive are skipped, and saving drops them.
+    /// An enabled portal always fetches its ads; switched off it gets zero requests.
     #[test]
-    fn settings_of_an_older_version_still_load() {
-        let store = Store::in_memory().unwrap();
-        store
-            .kv_set(
-                KEY,
-                r#"{"workspace":null,"format":"xlsx","scope":"week","portals":["linkedin"],"sessionPortals":["freelance"],"firstRunSeen":true,"autoFetchOnStart":true,"autoArchiveDays":7}"#,
-            )
-            .unwrap();
-        let back = Settings::load(&store).unwrap();
-        assert_eq!(back.enabled_portals(), [Portal::LinkedIn]);
-        assert_eq!(back.fetch_portals(), [Portal::LinkedIn]);
-        assert_eq!(back.workspace, None);
-        back.save(&store).unwrap();
-        let saved = store.kv_get(KEY).unwrap().unwrap();
-        assert!(!saved.contains("autoFetchOnStart"), "{saved}");
-        assert!(!saved.contains("autoArchiveDays"), "{saved}");
-        store.kv_set(KEY, r#"{"portals":[]}"#).unwrap();
-        assert!(Settings::load(&store).unwrap().enabled_portals().is_empty());
-    }
-
-    /// An enabled portal always fetches its ads; switched off it gets zero requests. A file
-    /// of an earlier version whose details switch was off brings the portal back switched
-    /// off (that switch promised zero requests), and saving drops the switch.
-    #[test]
-    fn a_portal_off_gets_no_request_and_the_old_details_switch_keeps_its_promise() {
+    fn a_portal_off_gets_no_request() {
         let mut s = Settings::default();
         assert_eq!(s.fetch_portals(), Portal::ALL);
         s.portals.get_mut(&Portal::LinkedIn).unwrap().enabled = false;
@@ -435,23 +286,6 @@ mod tests {
             ]
         );
         assert_eq!(s.fetch_path(Portal::LinkedIn), None);
-        let store = Store::in_memory().unwrap();
-        store
-            .kv_set(
-                KEY,
-                r#"{"portals":{"linkedin":{"enabled":true,"fetchDetails":false},"freelance":{"enabled":true,"fetchDetails":true,"loginEnabled":true}}}"#,
-            )
-            .unwrap();
-        let back = Settings::load(&store).unwrap();
-        assert!(!back.portal(Portal::LinkedIn).enabled);
-        assert_eq!(back.fetch_path(Portal::LinkedIn), None);
-        assert_eq!(
-            back.fetch_path(Portal::FreelanceDe),
-            Some(FetchPath::Session)
-        );
-        back.save(&store).unwrap();
-        let saved = store.kv_get(KEY).unwrap().unwrap();
-        assert!(!saved.contains("fetchDetails"), "{saved}");
     }
 
     /// freelance.de without the sign-in switch goes as a guest (the public teaser) - never

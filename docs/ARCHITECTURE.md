@@ -10,7 +10,7 @@ Each layer uses only the ones below it.
 - **`core/`** (`jobalert-core`): everything the app knows and does, without UI and without
   prose. `mail/` reads the alert mails, `portal/` knows the portals (one registry), `fetch/`
   fetches pages through the policy, `matching/` is the pure integer engine, `store/` the
-  SQLite database (a chain of schema steps), `pipeline/` runs scan or search, fetch and score,
+  SQLite database (one schema; an older one is reset at the start, `reset.rs`), `pipeline/` runs scan or search, fetch and score,
   `export/` writes the AI prompts, `view.rs` shapes what the UI sees.
 - **`src-tauri/`**: the shell. Thin commands in `src/commands/`, each one line in
   `commands.txt`; they call core and return its view types. Per-OS code only in
@@ -75,8 +75,7 @@ mail, store, engine, view, UI:
 2. `store/` keeps jobs, pages and the user's marks; `fetch/` asks `admit` (policy.json)
    before every request (search pages and robots.txt too) and stores the page.
 3. `matching/` scores every job against the profile (pure, integers, `ENGINE_VERSION`); the
-   store keeps the assessment. The app writes no files of jobs; deleting a job for good and
-   "reset everything" still remove the ones earlier versions wrote.
+   store keeps the assessment. The app writes no files of jobs.
 4. `view.rs` shapes the view types (`AppState`, `JobView`, `JobPage`, ...); commands
    return them, runs report `RunEvent`s over a channel (each under 8 KB).
 5. The UI calls `invoke(name, args)` of `api.ts`, typed by `commands.ts`; a store of
@@ -133,9 +132,7 @@ the rule and the fix.
 | Per-OS code only in `lib/platform.ts` and `src-tauri/src/platform.rs` | `ui_contract.rs`, `core/tests/architecture.rs` |
 | Commands declared once | `core/tests/contract.rs` |
 | Generated files current | see above |
-| Settings of every version load without loss | `core/tests/settings_compat.rs` |
-| Database of every version migrates (schema chain, backup first) | `core/src/store/schema.rs` tests, `core/tests/existing_data.rs` |
-| A run writes no text files and no `top_matches.json`; old ones stay until "reset everything" | `a_run_writes_no_text_files_and_no_top_matches` (`core/src/pipeline/tests.rs`) |
+| A database of an earlier schema is reset at the start, never migrated or opened as it is | `core/src/store/schema.rs` and `core/src/reset.rs` tests |
 | Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there); no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
 | One word per thing (the glossary of the catalogs) | `ui_contract.rs` (`the_catalog_keeps_the_glossary`) |
 | At most one primary button per view | `ui_contract.rs` |

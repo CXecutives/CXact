@@ -34,7 +34,7 @@
   import { glideIntoView } from '$lib/motion/scroll';
   import { unfold } from '$lib/motion/transitions';
   import { inPortalOrder } from '$lib/portals';
-  import { app } from '$lib/state/app.svelte';
+  import { app, settingsPatch } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation } from '$lib/state/navigation.svelte';
   import { run } from '$lib/state/run.svelte';
@@ -44,7 +44,6 @@
   import {
     ACTIONS,
     CARDS,
-    settingsPatch,
     sourcesOf,
     type Action,
     type ActionId,

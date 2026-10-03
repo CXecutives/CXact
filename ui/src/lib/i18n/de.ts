@@ -1529,7 +1529,6 @@ export const de = {
     /** After a copy's day and time: why it is there (the copy of a day says nothing). */
     backupKind: {
       daily: null,
-      update: 'vor einem Update',
       restore: 'vor dem Wiederherstellen',
     } satisfies Record<BackupKind, string | null>,
     backupText: 'Der jetzige Stand wird vorher gesichert.',

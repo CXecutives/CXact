@@ -6,7 +6,7 @@ mod session;
 #[cfg(debug_assertions)]
 mod smoke;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -201,28 +201,14 @@ fn install_log(data_dir: &Path) {
 #[used]
 static THIRD_PARTY: &str = include_str!("../resources/THIRD-PARTY.txt");
 
-/// The database of a start and the work folder it falls back to: the real database or one
-/// in memory (dry run).
-fn open_store(
-    app: &tauri::App,
-    mode: StartMode,
-    data_dir: &Path,
-) -> Result<(Store, PathBuf), Failure> {
+/// The database of a start: the real database or one in memory (dry run).
+fn open_store(mode: StartMode, data_dir: &Path) -> Result<Store, Failure> {
     let database = data_dir.join(jobalert_core::DB_FILE);
-    let opened = match mode {
+    match mode {
         StartMode::Normal => Store::open(&database),
         StartMode::DryRun => Store::in_memory(),
-    };
-    // `Documents\CXact`, or the folder of an earlier version that holds the app's files.
-    let workspace = jobalert_core::settings::default_workspace(
-        &app.path()
-            .document_dir()
-            .map_err(|e| Failure::other(format!("documents folder: {e}")))?,
-    );
-    Ok((
-        opened.map_err(|e| Failure::database(&database, &e))?,
-        workspace,
-    ))
+    }
+    .map_err(|e| Failure::database(&database, &e))
 }
 
 /// Startup: log -> panic hook -> crypto -> pending reset -> database -> window.
@@ -236,12 +222,24 @@ fn setup(app: &mut tauri::App, mode: StartMode) -> Result<(), Failure> {
     jobalert_core::install_crypto();
     // Dates in the files follow the OS's zone, like the page's.
     jobalert_core::time::follow_system_zone();
-    // A requested reset runs before anything else - nothing holds a file open yet. The dry
-    // run never deletes anything.
+    // `Documents\CXact`.
+    let default_workspace = jobalert_core::settings::default_workspace(
+        &app.path()
+            .document_dir()
+            .map_err(|e| Failure::other(format!("documents folder: {e}")))?,
+    );
+    // A requested reset runs before anything else - nothing holds a file open yet - and so
+    // does the reset of a database an earlier version wrote. The dry run never deletes
+    // anything.
     let reset_report = (mode == StartMode::Normal)
-        .then(|| jobalert_core::reset::perform_pending(&data_dir, &Vault::app()))
+        .then(|| {
+            let vault = Vault::app();
+            jobalert_core::reset::perform_pending(&data_dir, &vault).or_else(|| {
+                jobalert_core::reset::reset_outdated(&data_dir, &default_workspace, &vault)
+            })
+        })
         .flatten();
-    let (store, default_workspace) = open_store(app, mode, &data_dir)?;
+    let store = open_store(mode, &data_dir)?;
     let store = Arc::new(store);
     // The sessions' storage outside the data folder (macOS data stores) goes too.
     if reset_report.is_some() {

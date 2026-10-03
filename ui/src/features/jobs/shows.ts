@@ -1,6 +1,6 @@
 // What shows a job (its alert mail, its ad, the prompt of it for an AI chat) as one table:
 // the words, the glyph and what is off, decided once for the job's menu (actions.ts jobMenu:
-// a right click on its row, the reader's "…" of an excluded job) and the reader's buttons.
+// a right click on its row) and the reader's buttons.
 
 import type { IconName } from '$components/Icon.svelte';
 import { t } from '$lib/i18n/t';

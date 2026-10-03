@@ -119,9 +119,10 @@ pre-assessment to any AI chat for a deeper check.
   view. Menus open from a chevron button. Motion stays at 180 ms or less, ease-out, no bounce.
 - **Texts:** the rules in `CLAUDE.md`. German only (`de.ts`), no English UI. The fetch's
   words are "Jobs suchen" and "Alert-Mails lesen"; the first place is "Aktuell".
-- **Data:** SQLite in the OS app data folder (schema 7, a chain of migrations); the settings file stays
-  readable across versions (`core/tests/settings_compat.rs`). No real users yet: old local data may be
-  dropped with a new version. The app writes no files of jobs; its work folder holds the profiles.
+- **Data:** SQLite in the OS app data folder (schema 8, no migrations). A database of schema 1 to 7 is
+  reset at the start like "Alle Daten zurücksetzen" (`reset::reset_outdated`): the old profiles are set
+  aside as `profil.alt`, `policy.json` stays, and the reset notice shows. The app writes no files of jobs;
+  its work folder holds the profiles.
 - **IPC:** the types come from Rust (ts-rs, `core/src/view.rs`), the commands from `src-tauri/commands.txt`;
   the backend sends codes and params, never prose; run events stay under 8 KB.
 

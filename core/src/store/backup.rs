@@ -1,16 +1,15 @@
 //! Copies of the database in `backups/` next to it - in the data folder, never in the work
 //! folder: the marks, tombstones, overrides and old texts it holds come back from no fetch.
-//! One copy before every migration (`jobs.pre-v4.db`: the database as schema 4 left it), one
-//! a day (`jobs-2026-09-25.db`, local date) and one before every restore
+//! One copy a day (`jobs-2026-09-25.db`, local date) and one before every restore
 //! (`jobs.before-restore-20260926-081530-123.db`, UTC to the millisecond, so the names sort
 //! across a change of the clocks), a few of each kept. `VACUUM INTO` writes a consistent,
 //! compact copy while the app keeps working; it goes to a temporary name first, so a copy
 //! that was cut off never looks like one. The dry run (in memory) has none, and the reset
 //! of everything deletes the folder (`reset.rs`).
 //!
-//! A restore ("Sicherung wiederherstellen") reads the chosen copy into memory, checks it and
-//! brings it to the current schema there, copies the database as it is now into the folder
-//! (its undo), then replaces the database's content with `SQLite`'s backup API in one
+//! A restore ("Sicherung wiederherstellen") reads the chosen copy into memory, checks it
+//! there (a copy of an earlier schema is refused), copies the database as it is now into the
+//! folder (its undo), then replaces the database's content with `SQLite`'s backup API in one
 //! transaction on the app's own connection: it is the old database or the restored one,
 //! never a mix, and any failure before the end leaves the current one as it was. What
 //! belongs to the app rather than to the jobs stays as it is now: the settings.
@@ -31,13 +30,10 @@ use crate::error::{Error, Result};
 pub const BACKUP_DIR: &str = "backups";
 /// Daily copies kept.
 const DAILY_KEPT: usize = 3;
-/// Copies from before a migration kept.
-const MIGRATION_KEPT: usize = 3;
 /// Copies from before a restore kept.
 const RESTORE_KEPT: usize = 3;
 /// Name parts of the copies.
 const DAILY_PREFIX: &str = "jobs-";
-const MIGRATION_PREFIX: &str = "jobs.pre-v";
 const RESTORE_PREFIX: &str = "jobs.before-restore-";
 const SUFFIX: &str = ".db";
 /// A copy while it is written.
@@ -65,8 +61,6 @@ pub struct Backup {
 pub enum BackupKind {
     /// The copy of a day.
     Daily,
-    /// Before an update of the app changed the database's layout.
-    Update,
     /// The state a restore replaced (restoring it undoes that restore).
     Restore,
 }
@@ -74,24 +68,6 @@ pub enum BackupKind {
 /// The folder of the copies of the database at `db`.
 pub fn backup_dir(db: &Path) -> PathBuf {
     db.parent().unwrap_or(Path::new(".")).join(BACKUP_DIR)
-}
-
-/// Before a migration from `version`: a copy of the database as that schema left it. A copy
-/// from an earlier attempt at the same step stays (it is the same schema). `None` if there
-/// was one already.
-pub(super) fn before_migration(
-    conn: &Connection,
-    db: &Path,
-    version: i64,
-) -> Result<Option<PathBuf>> {
-    let dir = backup_dir(db);
-    let target = dir.join(format!("{MIGRATION_PREFIX}{version}{SUFFIX}"));
-    if target.exists() {
-        return Ok(None);
-    }
-    copy(conn, &target)?;
-    prune(&dir, MIGRATION_KEPT, migration_version);
-    Ok(Some(target))
 }
 
 /// The copy of the day `today` (local), unless there is one: through a connection of its
@@ -143,13 +119,11 @@ fn described(path: &Path) -> Option<Backup> {
     })
 }
 
-/// What a copy's name says it is; `None` for any other name (never a path: the three
+/// What a copy's name says it is; `None` for any other name (never a path: the two
 /// patterns take no separator).
 fn kind_of(name: &str) -> Option<BackupKind> {
     if daily_date(name).is_some() {
         Some(BackupKind::Daily)
-    } else if migration_version(name).is_some() {
-        Some(BackupKind::Update)
     } else if restore_stamp(name).is_some() {
         Some(BackupKind::Restore)
     } else {
@@ -159,9 +133,9 @@ fn kind_of(name: &str) -> Option<BackupKind> {
 
 /// Replaces the content of the database at `db` (the app's connection `conn`) with its copy
 /// `id`; returns the copy of the state it replaced, written first. The chosen copy is checked
-/// and brought to the current schema in memory before anything changes: one that is gone is
-/// `BackupMissing`, one that is no readable database of this app `BackupCorrupt`, one of a
-/// newer app `NewerSchema`, and the database stays as it was.
+/// in memory before anything changes: one that is gone is `BackupMissing`, one that is no
+/// readable database of this app (or of an earlier schema) `BackupCorrupt`, one of a newer
+/// app `NewerSchema`, and the database stays as it was.
 pub(super) fn restore(
     conn: &mut Connection,
     db: &Path,
@@ -175,7 +149,7 @@ pub(super) fn restore(
     Ok(before)
 }
 
-/// The copy `id` in memory, checked and at the current schema.
+/// The copy `id` in memory, checked: the current schema only.
 fn stage(db: &Path, id: &str) -> Result<Connection> {
     let missing = || Error::BackupMissing(id.to_owned());
     if kind_of(id).is_none() {
@@ -213,7 +187,7 @@ fn stage(db: &Path, id: &str) -> Result<Connection> {
     let mut staged = Connection::open_in_memory()?;
     replace(&source, &mut staged).map_err(|e| corrupt(e.to_string()))?;
     drop(source);
-    schema::migrate(&staged).map_err(|e| match e {
+    schema::create(&staged).map_err(|e| match e {
         Error::NewerSchema(_) => e,
         other => corrupt(other.to_string()),
     })?;
@@ -304,8 +278,8 @@ fn copy(conn: &Connection, target: &Path) -> Result<()> {
 
 /// Keeps the `kept` newest copies of one kind in `dir` (newest by `order`, a name that is no
 /// copy of this kind has none), deletes the older ones and the copies of this kind that were
-/// cut off before (the app ended while it wrote one; only a copy of the same day or schema
-/// would replace it). A failure only goes to the log.
+/// cut off before (the app ended while it wrote one; only a copy of the same day would
+/// replace it). A failure only goes to the log.
 fn prune<K: Ord>(dir: &Path, kept: usize, order: impl Fn(&str) -> Option<K>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -335,14 +309,6 @@ fn prune<K: Ord>(dir: &Path, kept: usize, order: impl Fn(&str) -> Option<K>) {
 /// The day of a daily copy's name.
 fn daily_date(name: &str) -> Option<Date> {
     name.strip_prefix(DAILY_PREFIX)?
-        .strip_suffix(SUFFIX)?
-        .parse()
-        .ok()
-}
-
-/// The schema of a migration copy's name.
-fn migration_version(name: &str) -> Option<i64> {
-    name.strip_prefix(MIGRATION_PREFIX)?
         .strip_suffix(SUFFIX)?
         .parse()
         .ok()
@@ -460,10 +426,6 @@ mod tests {
     fn copy_names_are_read_back() {
         assert_eq!(daily_date("jobs-2026-09-20.db"), Some(day("2026-09-20")));
         assert_eq!(daily_date("jobs-2026-09-20.db.partial"), None);
-        assert_eq!(daily_date("jobs.pre-v4.db"), None);
-        assert_eq!(migration_version("jobs.pre-v4.db"), Some(4));
-        assert_eq!(migration_version("jobs.pre-v12.db"), Some(12));
-        assert_eq!(migration_version("jobs-2026-09-20.db"), None);
         let stamp: Timestamp = "2026-09-26T08:15:30.123Z".parse().unwrap();
         assert_eq!(
             restore_name(stamp),
@@ -478,11 +440,11 @@ mod tests {
             "jobs.before-restore-20260926-081530-12a.db",
             "jobs.before-restore-../../jobs.db",
             "jobs.db",
+            "jobs.pre-v4.db",
         ] {
             assert_eq!(kind_of(name), None, "{name}");
         }
         assert_eq!(kind_of("jobs-2026-09-20.db"), Some(BackupKind::Daily));
-        assert_eq!(kind_of("jobs.pre-v4.db"), Some(BackupKind::Update));
     }
 
     // ------------------------------------------------------------------ Restore

@@ -34,8 +34,6 @@ export const ICONS = {
   alertMail: 'mail',
   /** Load the whole ad (Anzeige laden). */
   details: 'download',
-  /** A reason that leads to its passage in the ad. */
-  jump: 'arrow-down',
 
   // Runs.
   /** Read the new alert mails (Alert-Mails lesen): the open envelope (user, 2026-10-01). */
@@ -44,8 +42,6 @@ export const ICONS = {
   retry: 'rotate-cw',
   /** Stop a run. */
   cancel: 'circle-stop',
-  /** The last run (the run status at the foot of the sidebar). */
-  lastRun: 'history',
 
   // Files and folders.
   /** A document the app reads: the profile file. */
@@ -72,8 +68,6 @@ export const ICONS = {
   selectAll: 'text-select',
   reveal: 'eye',
   conceal: 'eye-off',
-  /** More actions (the … menu). */
-  more: 'ellipsis',
   /** Fold open or shut (a disclosure, a divider, a menu button). */
   expand: 'chevron-down',
   /** Back (Zurück); in the calendar the month before. */
@@ -114,7 +108,6 @@ export const ICONS = {
   unstated: 'circle-dashed',
   /** The ad is unclear: to check. */
   unclear: 'circle-question-mark',
-  privacy: 'shield',
 
   // The facts of a job (lib/facts.ts).
   contract: 'file-pen-line',

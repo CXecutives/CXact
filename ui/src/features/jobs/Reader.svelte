@@ -6,7 +6,7 @@
     Wiederherstellen, Endgültig löschen; actions.ts rowTools) and the close "×" (the same at
     every width; user 2026-10-01: no "…" menu, no outline). A job that just moved away
     offers none while the next one loads.
-  - match: the ring (56, hollow; opening a job fills its arc once, the number stands at once)
+  - match: the ring (48, hollow; opening a job fills its arc once, the number stands at once)
     beside its band; every ring without a score says "Noch nicht bewertet". The ring only
     shows (user, 2026-10-01: no popover of what moved the score). An excluded job
     shows the ban at the ring's size instead, "Ausgeschlossen" and one sentence why from the

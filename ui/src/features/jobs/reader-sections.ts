@@ -1,6 +1,6 @@
 // The reader's structure as data (Reader.svelte renders each entry by its key). Moving an entry
 // moves its section or group; removing it hides it. The rows of "Jobdetails" are the table of
-// lib/facts.ts (read by terms.ts), the "…" menu is the table in Reader.svelte.
+// lib/facts.ts (read by terms.ts).
 
 import type { Reason, ReasonKind, TermField } from '$lib/ipc/types';
 import type { ProfileTerm } from '$lib/state/terms';
@@ -11,7 +11,8 @@ import type { Verdict } from './terms';
  * - head: the title and the close "×" (company, place, portal and day are rows of the
  *   Jobdetails);
  * - match: the ring beside its band, or the ban of an excluded job with why;
- * - actions: Alert-Mail öffnen, Anzeige öffnen, Prompt kopieren and "…";
+ * - actions: Anzeige öffnen, Alert-Mail öffnen, Prompt kopieren ("Trotzdem bewerten" of an
+ *   excluded job before them);
  * - details: "Jobdetails";
  * - requirements: "Anforderungen", in the groups below;
  * - ad: the note on a text that is not all there, and the ad text.

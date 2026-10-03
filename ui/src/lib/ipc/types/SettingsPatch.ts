@@ -7,10 +7,10 @@ import type { PortalPatch } from "./PortalPatch";
  */
 export type SettingsPatch = { portals: Array<PortalPatch>, 
 /**
- * "Jobs abrufen" reads the alert mails.
+ * The fetch reads the alert mails.
  */
 fetchMail: boolean | null, 
 /**
- * "Jobs abrufen" searches the sources.
+ * The fetch searches the sources.
  */
 fetchSearch: boolean | null, };

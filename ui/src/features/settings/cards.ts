@@ -104,14 +104,6 @@ export interface CardSpec {
 export type Sources = 'search' | 'mailbox';
 export const sourcesOf = (way: Way): Sources => (way === 'search' ? 'search' : 'mailbox');
 
-/** A whole patch of the settings from what changes (everything else `null`: unchanged). */
-export const settingsPatch = (change: Partial<SettingsPatch>): SettingsPatch => ({
-  portals: [],
-  fetchMail: null,
-  fetchSearch: null,
-  ...change,
-});
-
 /** The work folder (the profiles). */
 const folder: Row = {
   id: 'folder',

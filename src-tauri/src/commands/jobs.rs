@@ -122,14 +122,8 @@ fn forget(app: &AppHandle, state: &AppState, keys: Option<&[JobKey]>) -> CmdResu
         Some(keys) => keys.to_vec(),
         None => state.store.trashed_keys()?,
     };
-    let workspace = if state.dry_run {
-        None
-    } else {
-        Some(state.workspace()?)
-    };
     Ok(pipeline::delete_jobs(
         &state.store,
-        workspace.as_deref(),
         &keys,
         Timestamp::now(),
     )?)

@@ -489,7 +489,6 @@ mod tests {
         std::fs::create_dir_all(&data).unwrap();
         let plan = crate::reset::ResetPlan {
             workspace: dir.path().to_path_buf(),
-            txt_names: Vec::new(),
         };
         crate::reset::request(&data, &plan).unwrap();
         let vault = crate::secrets::Vault::for_tests("profile-remove-reset");

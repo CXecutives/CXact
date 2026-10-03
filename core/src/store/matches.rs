@@ -1,7 +1,4 @@
-//! Schema 3: match results and the per-job state around them (read).
-//!
-//! Every column is nullable, so the migration (in `schema`) is one
-//! `ALTER TABLE job ADD COLUMN` per entry of [`SCHEMA_3_JOB_COLUMNS`].
+//! Match results and the per-job state around them (read).
 
 use jiff::Timestamp;
 use rusqlite::{OptionalExtension, params};
@@ -14,34 +11,6 @@ use crate::model::{HIGH_FROM, KeyFacts, MatchRecord, MatchStatus, Notice};
 use crate::portal::JobKey;
 use crate::text::truncate_chars;
 use crate::time::{from_db, to_db};
-
-/// The nullable columns schema 3 adds to the `job` table, as `(name, sql_type)` pairs.
-/// Timestamps are Unix seconds, like every other time column.
-///
-/// - `match_score`: score 0-100.
-/// - `match_status`: `scored`, `excluded` or `unscorable`.
-/// - `match_note`: JSON `{code, params, mustMet, mustTotal, top[<=2], open[<=2],
-///   terms[<=8], facts, rank}`, at most 1024 bytes.
-/// - `match_at`: when the job was scored.
-/// - `match_rev`: revision of engine, profile and model that produced the score; `NULL`
-///   after a change of title or text (the job is scored again).
-/// - `read_at`: when the user read the job; `NULL` means unread.
-/// - `desc_facts`: facts taken from the job page.
-/// - `dup_of`: `portal:id` of the job this one duplicates.
-/// - `parser_version`: version of the page parser that produced the full text.
-/// - `pinned_at`: when the user pinned the job; unused since schema 5 (see `marks`).
-pub const SCHEMA_3_JOB_COLUMNS: &[(&str, &str)] = &[
-    ("match_score", "INTEGER"),
-    ("match_status", "TEXT"),
-    ("match_note", "TEXT"),
-    ("match_at", "INTEGER"),
-    ("match_rev", "TEXT"),
-    ("read_at", "INTEGER"),
-    ("desc_facts", "TEXT"),
-    ("dup_of", "TEXT"),
-    ("parser_version", "INTEGER"),
-    ("pinned_at", "INTEGER"),
-];
 
 /// Most bytes a stored note takes.
 const MAX_NOTE_BYTES: usize = 1024;

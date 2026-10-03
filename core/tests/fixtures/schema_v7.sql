@@ -1,7 +1,5 @@
--- Frozen schema 5: places like mail (archive, trash), the favourite, "fits anyway" and
--- deleted jobs, before the application mark and the indexes of the overview
--- (user_version 5). Never change this file together with the code - otherwise the
--- migration tests would check their own present instead of the way there.
+-- Frozen schema 7 (user_version 7), the last layout of an earlier version: the database the
+-- start resets (reset.rs, `reset_outdated`). Never change it with the code.
 CREATE TABLE job (
     portal            TEXT    NOT NULL,
     job_id            TEXT    NOT NULL,
@@ -44,6 +42,8 @@ CREATE TABLE job (
     mail_version      INTEGER,
     trashed_at        INTEGER,
     inbox_at          INTEGER,
+    mailed_at         INTEGER,
+    searched_at       INTEGER,
     PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;
 CREATE INDEX job_by_run ON job (first_seen_run);
@@ -66,3 +66,5 @@ CREATE TABLE tombstone (
     deleted_at  INTEGER NOT NULL,
     PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;
+CREATE INDEX job_by_date ON job (COALESCE(mail_date, first_seen_at));
+CREATE INDEX alert_by_portal ON alert_mail (portal, mail_date);

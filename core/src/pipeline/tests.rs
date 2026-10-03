@@ -9,7 +9,6 @@ use tokio::time::Instant;
 use super::dry_run::{DryRunBackends, DryRunMail, DryRunPages};
 use super::*;
 use crate::error::ErrorKind;
-use crate::export::TXT_DIR;
 use crate::fetch::policy::PauseReason;
 use crate::model::{DescStatus, Place};
 use crate::store::{JobFilter, JobRow};
@@ -49,10 +48,6 @@ fn scan_only(workspace: &Path) -> RunContext {
 }
 
 /// The files in the folder of the text files earlier versions wrote.
-fn txt_files(workspace: &Path) -> usize {
-    std::fs::read_dir(workspace.join(RESULT_DIR).join(TXT_DIR)).map_or(0, Iterator::count)
-}
-
 async fn go<B: Backends>(
     backends: &mut B,
     store: &Store,
@@ -212,7 +207,6 @@ async fn one_click_run_writes_everything_and_finishes_once() {
             ..
         }
     )));
-    assert_eq!(txt_files(dir.path()), 0, "no text files any more");
     assert_eq!(finished(&events), 1);
     assert_small(&events);
     assert!(last_run(&store).unwrap().is_some_and(|l| l.run == s.run));
@@ -283,7 +277,6 @@ async fn one_click_run_writes_everything_and_finishes_once() {
     )
     .await;
     assert_eq!(s.scan.as_ref().unwrap().new, 0);
-    assert_eq!(txt_files(dir.path()), 0);
 }
 
 #[tokio::test(start_paused = true)]
@@ -1036,57 +1029,6 @@ fn run_requests_are_flat_json() {
     }
 }
 
-/// A run writes no text files and no `top_matches.json` any more (the external matching skill
-/// is gone); what earlier versions wrote stays untouched until "reset everything", which
-/// still knows it.
-#[tokio::test(start_paused = true)]
-async fn a_run_writes_no_text_files_and_no_top_matches() {
-    let c = clock();
-    let dir = tempfile::tempdir().unwrap();
-    let store = Store::in_memory().unwrap();
-    let result_dir = dir.path().join(RESULT_DIR);
-    let (s, _) = go(
-        &mut DryRunBackends,
-        &store,
-        &request(),
-        &ctx(dir.path(), false),
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert_eq!(s.outcome, Outcome::Completed);
-    assert!(!result_dir.join(TXT_DIR).exists());
-    assert!(!result_dir.join("top_matches.json").exists());
-    assert!(
-        store
-            .jobs(&JobFilter::default())
-            .unwrap()
-            .iter()
-            .all(|job| job.txt_name.is_none())
-    );
-    // The files of an earlier version stay as they are through the next run.
-    let old = result_dir.join("top_matches.json");
-    std::fs::create_dir_all(&result_dir).unwrap();
-    std::fs::write(&old, b"{}").unwrap();
-    std::fs::create_dir_all(result_dir.join(TXT_DIR)).unwrap();
-    std::fs::write(result_dir.join(TXT_DIR).join("old.txt"), b"alt").unwrap();
-    go(
-        &mut DryRunBackends,
-        &store,
-        &request(),
-        &ctx(dir.path(), false),
-        &CancellationToken::new(),
-        &c,
-    )
-    .await;
-    assert_eq!(std::fs::read(&old).unwrap(), b"{}");
-    assert_eq!(txt_files(dir.path()), 1);
-    assert!(
-        export::app_files(&result_dir, &[]).contains(&old),
-        "a reset takes it"
-    );
-}
-
 /// Records which fetch path the run builds per portal (mails and pages from the dry run).
 #[derive(Default)]
 struct Paths(Vec<(Portal, FetchPath)>);
@@ -1441,10 +1383,9 @@ fn an_older_stored_summary_still_reads() {
     assert_eq!(last_run(&store).unwrap(), Some(summary));
 }
 
-/// A job deleted for good takes the text file an earlier version wrote for it along, and the
-/// next run never brings it back from the old alert mail.
+/// A job deleted for good: the next run never brings it back from the old alert mail.
 #[tokio::test(start_paused = true)]
-async fn a_deleted_job_leaves_its_files_and_stays_gone() {
+async fn a_deleted_job_stays_gone() {
     let c = clock();
     let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
@@ -1473,24 +1414,15 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
         .into_iter()
         .find(|job| job.desc_status == DescStatus::Ok && job.place() == Place::Inbox)
         .unwrap();
-    // An earlier version wrote a text file for it.
-    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
-    std::fs::create_dir_all(&txt_dir).unwrap();
-    let file = txt_dir.join("20260901_LinkedIn_Rolle_1.txt");
-    std::fs::write(&file, b"alt").unwrap();
-    store.mark_old_txt(&victim.key, "20260901_LinkedIn_Rolle_1.txt", c());
     let one = std::slice::from_ref(&victim.key);
     // Only the trash is deleted for good.
-    let kept = delete_jobs(&store, Some(dir.path()), one, c()).unwrap();
+    let kept = delete_jobs(&store, one, c()).unwrap();
     assert_eq!(kept.count, 0);
-    assert!(file.exists());
     store.move_jobs(one, Place::Trash, c()).unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), one, c()).unwrap();
+    let deleted = delete_jobs(&store, one, c()).unwrap();
     assert_eq!(deleted.count, 1, "the one row the user deleted");
     let gone = i64::try_from(deleted.keys.len()).unwrap();
-    assert!(!file.exists());
     assert_eq!(store.job_count().unwrap(), total - gone);
-    let files = txt_files(dir.path());
     // The next run reads the same alert mails: the job stays deleted.
     let (s, _) = go(
         &mut DryRunBackends,
@@ -1504,8 +1436,6 @@ async fn a_deleted_job_leaves_its_files_and_stays_gone() {
     assert_eq!(s.scan.as_ref().unwrap().new, 0);
     assert!(store.job(&victim.key).unwrap().is_none());
     assert_eq!(store.job_count().unwrap(), total - gone);
-    assert_eq!(txt_files(dir.path()), files);
-    assert!(!file.exists());
 }
 
 /// One job two portals announced, as the list shows it: the freelancermap row with the
@@ -1549,111 +1479,22 @@ fn job_on_two_portals(store: &Store) -> (JobKey, JobKey) {
 /// row goes with it (its key comes back for the page) but is no job of its own.
 #[test]
 fn a_purge_counts_the_rows_it_deleted() {
-    let dir = tempfile::tempdir().unwrap();
     let store = Store::in_memory().unwrap();
     let (original, duplicate) = job_on_two_portals(&store);
     let now = Timestamp::now();
     let one = std::slice::from_ref(&original);
     store.move_jobs(one, Place::Trash, now).unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), one, now).unwrap();
+    let deleted = delete_jobs(&store, one, now).unwrap();
     assert_eq!(deleted.count, 1, "one row");
     assert_eq!(deleted.keys.len(), 2);
     assert!(
         deleted.keys.contains(&duplicate),
         "the page drops both keys"
     );
-    assert!(store.txt_leftovers().unwrap().is_empty());
     // Emptying the whole trash counts the same way.
     let (store, keys) = store_with_texts();
     store.move_jobs(&keys, Place::Trash, now).unwrap();
     let all = store.trashed_keys().unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), &all, now).unwrap();
+    let deleted = delete_jobs(&store, &all, now).unwrap();
     assert_eq!(deleted.count, 2);
-}
-
-/// The text file of a job deleted for good that could not be removed is not forgotten with
-/// its row: a reset still finds it, and the next delete for good removes it.
-#[test]
-fn a_text_file_that_stayed_is_removed_later() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let now = Timestamp::now();
-    let result_dir = dir.path().join(RESULT_DIR);
-    let txt_dir = result_dir.join(TXT_DIR);
-    std::fs::create_dir_all(&txt_dir).unwrap();
-    let (stayed, gone) = (
-        "20260901_LinkedIn_Rolle_4000000007.txt".to_string(),
-        "20260901_LinkedIn_Rolle_4000000008.txt".to_string(),
-    );
-    std::fs::write(txt_dir.join(&stayed), b"alt").unwrap();
-    store
-        .set_txt_leftovers(&[stayed.clone(), gone.clone()])
-        .unwrap();
-    assert!(store.txt_names().unwrap().contains(&stayed), "still known");
-    assert_eq!(
-        export::txt_files(&result_dir, &store.txt_names().unwrap()).len(),
-        1
-    );
-    let next = std::slice::from_ref(&keys[1]);
-    store.move_jobs(next, Place::Trash, now).unwrap();
-    delete_jobs(&store, Some(dir.path()), next, now).unwrap();
-    assert!(
-        !txt_dir.join(&stayed).exists(),
-        "removed with the next delete"
-    );
-    assert!(store.txt_leftovers().unwrap().is_empty(), "and forgotten");
-}
-
-/// A work folder on a drive that is gone (a stick, a network share) forgets no text file that
-/// stayed: the next delete for good while it is away keeps them waiting.
-#[test]
-fn an_unreachable_work_folder_keeps_the_text_files_waiting() {
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let now = Timestamp::now();
-    store.set_txt_leftovers(&["a.txt".to_owned()]).unwrap();
-    let gone = dir.path().join("stick");
-    let one = std::slice::from_ref(&keys[0]);
-    store.move_jobs(one, Place::Trash, now).unwrap();
-    let deleted = delete_jobs(&store, Some(&gone), one, now).unwrap();
-    assert_eq!(deleted.count, 1);
-    assert_eq!(store.txt_leftovers().unwrap(), ["a.txt"], "still waiting");
-    assert!(!gone.exists(), "nothing made on a drive that is gone");
-}
-
-/// An old text file open in another program (Windows: without delete sharing, as Word holds
-/// it) stays when its job is deleted for good; it is remembered, and the next delete for good
-/// removes it.
-#[cfg(windows)]
-#[test]
-fn an_open_text_file_of_a_deleted_job_is_remembered_and_removed_later() {
-    use std::os::windows::fs::OpenOptionsExt;
-    let dir = tempfile::tempdir().unwrap();
-    let (store, keys) = store_with_texts();
-    let now = Timestamp::now();
-    // The text file an earlier version wrote for the job.
-    let name = "20260901_LinkedIn_Rolle_4000000001.txt".to_owned();
-    let txt_dir = dir.path().join(RESULT_DIR).join(TXT_DIR);
-    std::fs::create_dir_all(&txt_dir).unwrap();
-    let file = txt_dir.join(&name);
-    std::fs::write(&file, b"alt").unwrap();
-    store.mark_old_txt(&keys[0], &name, now);
-    let one = std::slice::from_ref(&keys[0]);
-    store.move_jobs(one, Place::Trash, now).unwrap();
-    let lock = std::fs::OpenOptions::new()
-        .read(true)
-        .share_mode(0)
-        .open(&file)
-        .unwrap();
-    let deleted = delete_jobs(&store, Some(dir.path()), one, now).unwrap();
-    assert_eq!(deleted.count, 1);
-    assert!(file.exists());
-    assert_eq!(store.txt_leftovers().unwrap(), std::slice::from_ref(&name));
-    assert!(store.txt_names().unwrap().contains(&name));
-    drop(lock);
-    let next = std::slice::from_ref(&keys[1]);
-    store.move_jobs(next, Place::Trash, now).unwrap();
-    delete_jobs(&store, Some(dir.path()), next, now).unwrap();
-    assert!(!file.exists());
-    assert!(store.txt_leftovers().unwrap().is_empty());
 }

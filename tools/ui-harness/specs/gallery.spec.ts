@@ -131,7 +131,7 @@ test('under reduced motion the rings jump to their value', async ({ page }) => {
   await expect(mid).toHaveText('64', { timeout: 200 });
 });
 
-test('controls: toggle, segmented, password reveal, search clear, disclosure', async ({ page }) => {
+test('controls: toggle, segmented, password reveal, search clear', async ({ page }) => {
   await open(page, '?gallery');
   const section = page.getByTestId('gallery-inputs');
   const toggle = section.getByRole('switch').first();
@@ -153,11 +153,6 @@ test('controls: toggle, segmented, password reveal, search clear, disclosure', a
   await expect(search).toHaveValue('Controlling');
   await section.getByRole('button', { name: 'Suche leeren' }).click();
   await expect(search).toHaveValue('');
-
-  const disclosure = page.getByTestId('disclosure').getByRole('button');
-  await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
-  await disclosure.click();
-  await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
 });
 
 test('dialog: Esc cancels, a press that ends on the scrim keeps it open', async ({ page }) => {
@@ -341,34 +336,30 @@ test('the column handle: left drag resizes within its live limits, double click 
   await expect.poll(width).toBe(first);
 });
 
-test('the nav: the one pill covers the active entry, also in the rail', async ({ page }) => {
+test('the nav: the one pill covers the active entry', async ({ page }) => {
   await open(page, '?gallery&platform=windows');
   const section = page.getByTestId('gallery-navigation');
   await section.scrollIntoViewIfNeeded();
-  const full = page.getByTestId('gnav-full').locator('nav');
-  const rail = page.getByTestId('gnav-rail').locator('nav');
-  for (const nav of [full, rail]) {
-    for (const id of ['gnav-2', 'gnav-1', 'gnav-0']) {
-      await nav.getByTestId(id).click();
-      await expect(nav.getByTestId(id)).toHaveAttribute('aria-current', 'page');
-      // The pill has slid onto the entry.
-      await expect
-        .poll(async () => {
-          const pill = (await nav.locator('.indicator').boundingBox())!;
-          const entry = (await nav.getByTestId(id).boundingBox())!;
-          return [
-            pill.x - entry.x,
-            pill.y - entry.y,
-            pill.width - entry.width,
-            pill.height - entry.height,
-          ].map((value) => Math.round(value));
-        })
-        .toEqual([0, 0, 0, 0]);
-    }
+  const nav = page.getByTestId('gnav-full').locator('nav');
+  for (const id of ['gnav-2', 'gnav-1', 'gnav-0']) {
+    await nav.getByTestId(id).click();
+    await expect(nav.getByTestId(id)).toHaveAttribute('aria-current', 'page');
+    // The pill has slid onto the entry.
+    await expect
+      .poll(async () => {
+        const pill = (await nav.locator('.indicator').boundingBox())!;
+        const entry = (await nav.getByTestId(id).boundingBox())!;
+        return [
+          pill.x - entry.x,
+          pill.y - entry.y,
+          pill.width - entry.width,
+          pill.height - entry.height,
+        ].map((value) => Math.round(value));
+      })
+      .toEqual([0, 0, 0, 0]);
   }
-  // Collapsed, an entry is its icon with its name as the accessible name (and tooltip).
-  await expect(rail.getByTestId('gnav-1')).toHaveAttribute('aria-label', 'Profil');
-  await expect(full.getByTestId('gnav-1')).not.toHaveAttribute('aria-label');
+  // Its name stands beside the icon: no tooltip, no accessible name of its own.
+  await expect(nav.getByTestId('gnav-1')).not.toHaveAttribute('aria-label');
 });
 
 test("a menu button opens the app's menu of choices below it; a choice applies", async ({

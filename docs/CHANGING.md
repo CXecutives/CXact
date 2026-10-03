@@ -81,15 +81,13 @@ Commit them together with tokens.css.
   switch or a value, its texts from the catalog and what it saves (`patch`). A button is one entry in `ACTIONS` (it opens a checked
   target, or names a command of `SettingsView.svelte`), with `locked` for why it waits. A new
   stored value also needs its field in `Settings` (`core/src/settings.rs`, its default in
-  `Settings::default()`) and `SettingsPatch` (`view.rs`), and a file of the new version in
-  `core/tests/settings_compat.rs`.
+  `Settings::default()`) and `SettingsPatch` (`view.rs`).
 - The alert mails a fetch reads: since the last fetch (a day of overlap), the first one the
   last 30 days (`Scope::New`, `FIRST_SCAN_DAYS` in `core/src/mail/scan.rs`); there is no
   choice of it.
 - The app writes no files of jobs; its work folder holds the profiles.
-- The export folder of a new install is `Documents\CXact` (`default_workspace` in
-  `core/src/settings.rs`); the `Job-Alert-Monitor` folder of an earlier version stays in use
-  while it holds the app's files. "Öffnen" makes a missing folder first.
+- The work folder of a new install is `Documents\CXact` (`default_workspace` in
+  `core/src/settings.rs`). "Öffnen" makes a missing folder first.
 - A first-run step is one entry in `ui/src/features/first-run/steps.ts` (order, name, when it
   is done) and its snippet of the same id in `FirstRunView.svelte`.
 
@@ -148,7 +146,7 @@ Each role of the UI has one pattern, decided in one place; the components only r
   a button that loses something for good is `warns` (red at rest).
 - **Tooltips**: only where something is missing: a button that shows only its glyph, text
   that is cut off, the reason a control waits; never the words that stand there (the sidebar
-  names its entries only as a rail of icons). No "·" as a separator: an icon, a comma or a
+  always names its entries). No "·" as a separator: an icon, a comma or a
   line of its own. Both are rules of `ui_contract.rs`.
 - **Motion**: only through `ui/src/lib/motion/` (<= 180 ms each): a view switch fades out,
   then in; a row that leaves folds its height; what comes under the list header unfolds;
@@ -298,7 +296,7 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
   refuses above them; `profile.ts` carries them to the stub and the editor).
 - After each: `cargo test -p jobalert-core ipc_types`, commit the rewritten files.
 - The copies of the database live in `backups/` next to `jobs.db` in the data folder
-  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `MIGRATION_KEPT`, `RESTORE_KEPT`);
+  (`core/src/store/backup.rs`: their names, `DAILY_KEPT`, `RESTORE_KEPT`);
   a start whose data cannot load lists and restores them (`list_backups`, `restore_backup`,
   `BackupDialog.svelte` from `App.svelte`).
 - Not generated yet: the 30 days the first mailbox scan reads (`FIRST_SCAN_DAYS` in
@@ -361,10 +359,14 @@ and profiles: an external contract, never translated):
 1. **Bump**: `version` in the root `Cargo.toml` (the app, the installer, the macOS About
    window and the log read it) and in `package.json`; the lock files follow (`cargo check`,
    `npm install --package-lock-only`). The harness stub keeps its own demo version.
-2. **Data of the old version**: a new field of `Settings` came with its file of the new
-   version (`core/tests/settings_compat.rs` says how); a new database layout is one more step
-   of the schema chain (`core/src/store/schema.rs`, with its `schema_vN.sql` fixture). The
-   store copies the database to `backups/` before it migrates.
+2. **Data of the old version**: there are no migrations. A new database layout raises
+   `SCHEMA_VERSION` (`core/src/store/schema.rs`, the one `SCHEMA`); at the start a database of
+   an earlier schema is reset like "Alle Daten zurücksetzen" (`reset::reset_outdated`: the
+   database, `backups/`, the sessions and the Gmail entry go, the profiles are set aside as
+   `profil.alt`, `policy.json` stays) and the reset notice shows. Its range is
+   `1..SCHEMA_VERSION`; the test with the frozen layout of the last version
+   (`core/tests/fixtures/schema_v7.sql`) gets a fixture of the old layout when it changes.
+   A new field of `Settings` loads with its default from an older file (`#[serde(default)]`).
 3. **Gates**: `npm run check`, `cargo fmt --all --check`, clippy, `cargo test --workspace`,
    and the full harness in both engines once.
 4. **Build**: `npx tauri build` writes
@@ -374,12 +376,12 @@ and profiles: an external contract, never translated):
    sandbox redirects AppData, so its install is not the real one). The setup replaces the
    program only: the data folder (`%LOCALAPPDATA%\de.cxecutives.job-alert-monitor\`, on macOS
    `~/Library/Application Support/de.cxecutives.job-alert-monitor/`: the database with the
-   settings, `backups/`, the log), the work folder and the keychain entry stay. It removes an
-   install of the old name Job-Alert-Monitor silently (`src-tauri/windows/hooks.nsh`,
-   `core/tests/installer_hooks.rs`). The identifier `de.cxecutives.job-alert-monitor` never
+   settings, `backups/`, the log), the work folder and the keychain entry stay (unless the
+   schema changed, step 2). The identifier `de.cxecutives.job-alert-monitor` never
    changes: it names the data folder and the keychain entry.
 6. **Check**: the new version in the installed apps of Windows (on macOS in the About
-   window), the jobs and the profile still there, a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
+   window), the jobs and the profile still there (after a schema change: the reset notice and
+   `profil.alt`), a fetch runs. On macOS the keychain asks once more (the build is only ad-hoc signed).
 
 ## Where a new rule goes
 
@@ -396,7 +398,7 @@ the fix; its exceptions stand in it with a reason. Then one row in the guardrail
 - **Across files, or a promise no linter sees** (the gallery shows every component, texts
   only from the catalog, per-OS markup): `core/tests/ui_contract.rs`, which runs without Node.
 - **The backend and its data**: a Rust test in `core/tests/` (`contract.rs` for commands,
-  `settings_compat.rs` and `existing_data.rs` for stored data, `architecture.rs` for the
-  shell).
+  `architecture.rs` for the shell; stored data in the tests of `core/src/store/` and
+  `core/src/reset.rs`).
 - **Behaviour in a browser**: a harness spec in `tools/ui-harness/specs/`, reading its texts
   from the catalog through the shared helpers.

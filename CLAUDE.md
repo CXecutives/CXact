@@ -61,9 +61,9 @@ baseline of `tools/eval/legacy_baseline.py`).
 - `docs/ARCHITECTURE.md`: layers, one source per decision, data flow, errors, state, generated files and the guardrails.
 - `core/` (`jobalert-core`, `#![forbid(unsafe_code)]`, no UI prose): `mail/` IMAP scan · `portal/` adapters + registry ·
   `fetch/` queue, HTTP, policy, health · `matching/` pure integer scoring engine · `profile/` profile form, JSON merge
-  with one backup, CV prompt, country codes · `store/` SQLite (schema chain) · `pipeline/` runs (scan or search → fetch →
-  score) · `export/` AI prompts, the generated colours of the window and the icon (and the cleanup of the files
-  earlier versions wrote) · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
+  with one backup, CV prompt, country codes · `store/` SQLite (one schema; an older database is reset at the start) · `pipeline/` runs
+  (scan or search → fetch → score) · `export/` AI prompts, the generated colours of the window and the icon,
+  atomic writes · `reset.rs` "reset everything" · `text/` HTML to text, company and location · `secrets.rs` keychain · `settings.rs` · `view.rs` IPC DTOs (ts-rs, `view/ts.rs`).
 - `src-tauri/`: `main.rs` start, `platform.rs` (only place with per-OS code), `session.rs` (freelance.de webview),
   `commands/` (IPC), `smoke.rs` (debug-only smoke probe). Commands are declared once in `src-tauri/commands.txt`
   (build.rs writes the manifest and `capabilities/main.json`, contract.rs the TS map and checks `generate_handler!`).

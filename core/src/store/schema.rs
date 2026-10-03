@@ -1,27 +1,34 @@
-//! Table layout and the migration chain. Opening a database brings it up to date one step
-//! at a time (`BEGIN IMMEDIATE; step; user_version; COMMIT` per step, never a jump to the
-//! latest version); a database from a newer version is refused and left untouched. A fresh
-//! database is created as schema 2 and walks the same chain, so fresh and migrated
-//! databases cannot drift apart.
+//! Table layout. An empty database gets the tables of [`SCHEMA_VERSION`]; a database from a
+//! newer version is refused and left untouched. A database of an earlier version (schema 1
+//! to 7) is never migrated: the start resets everything before it opens one
+//! (`reset::reset_outdated`), so here it is refused like a damaged one.
 
-use std::fmt::Write as _;
+use std::path::Path;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 
-use super::marks::{SCHEMA_4_JOB_COLUMNS, SCHEMA_5_EXTRA, SCHEMA_5_JOB_COLUMNS, SCHEMA_6_EXTRA};
-use super::matches::SCHEMA_3_JOB_COLUMNS;
 use crate::error::{Error, Result};
 
-pub(super) const SCHEMA_VERSION: i64 = 7;
+pub(super) const SCHEMA_VERSION: i64 = 8;
 
-/// The columns of schema 7: when an alert mail last named a job and when the search last
-/// found it (the list's filter "Herkunft"; both can be set).
-pub(super) const SCHEMA_7_JOB_COLUMNS: &[(&str, &str)] =
-    &[("mailed_at", "INTEGER"), ("searched_at", "INTEGER")];
-
-/// Schema 2, the base of every fresh database. Frozen: later changes are migration steps.
-/// The same layout lies in `core/tests/fixtures/schema_v2.sql` for the migration tests.
-const SCHEMA_2: &str = "
+/// The tables of schema 8. Timestamps are Unix seconds. The columns of `job` beyond the
+/// mail's and the page's:
+///
+/// - `match_score` (0-100), `match_status` (`scored`, `excluded`, `unscorable`),
+///   `match_note` (JSON `{code, params, mustMet, mustTotal, top[<=2], open[<=2], terms[<=8],
+///   facts, rank}`, at most 1024 bytes), `match_at`, `match_rev` (engine, profile and model
+///   that scored it; `NULL` after a change of title or text: scored again);
+/// - `read_at` (`NULL` = unread), `desc_facts` (the facts of the job page), `dup_of`
+///   (`portal:id` of the job this one duplicates), `parser_version` (the page parser of the
+///   full text), `mail_version` (the mail parser of title, company and location);
+/// - the user's marks: `archived_at`, `trashed_at` (it wins over the archive), `inbox_at`
+///   (when the user last moved it into the inbox), `override_include` (`1` = fits anyway);
+/// - how it came: `mailed_at` (an alert mail last named it), `searched_at` (the search last
+///   found it); both can be set.
+///
+/// `tombstone` keeps the keys of jobs deleted for good, so a later scan of an old alert mail
+/// never brings them back.
+const SCHEMA: &str = "
 CREATE TABLE job (
     portal            TEXT    NOT NULL,
     job_id            TEXT    NOT NULL,
@@ -43,12 +50,27 @@ CREATE TABLE job (
     desc_attempted_at INTEGER,
     desc_attempts     INTEGER NOT NULL DEFAULT 0,
     desc_error        TEXT,
-    txt_name          TEXT,
-    txt_written_at    INTEGER,
     search            TEXT    NOT NULL,
+    match_score       INTEGER,
+    match_status      TEXT,
+    match_note        TEXT,
+    match_at          INTEGER,
+    match_rev         TEXT,
+    read_at           INTEGER,
+    desc_facts        TEXT,
+    dup_of            TEXT,
+    parser_version    INTEGER,
+    archived_at       INTEGER,
+    override_include  INTEGER,
+    mail_version      INTEGER,
+    trashed_at        INTEGER,
+    inbox_at          INTEGER,
+    mailed_at         INTEGER,
+    searched_at       INTEGER,
     PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;
 CREATE INDEX job_by_run ON job (first_seen_run);
+CREATE INDEX job_by_date ON job (COALESCE(mail_date, first_seen_at));
 CREATE TABLE alert_mail (
     mail_key       TEXT    PRIMARY KEY,
     portal         TEXT    NOT NULL,
@@ -58,149 +80,54 @@ CREATE TABLE alert_mail (
     n_postings     INTEGER NOT NULL,
     last_seen_run  INTEGER NOT NULL
 ) WITHOUT ROWID;
+CREATE INDEX alert_by_portal ON alert_mail (portal, mail_date);
 CREATE TABLE kv (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 ) WITHOUT ROWID;
-";
-
-/// From schema 1 to 2: `alert_mail` lost two columns that were never used. The table only
-/// remembers "mail without recognised entries" and rebuilds itself on the next scan - so
-/// recreating it is enough, no copying needed.
-const MIGRATE_1_TO_2: &str = "
-DROP TABLE alert_mail;
-CREATE TABLE alert_mail (
-    mail_key       TEXT    PRIMARY KEY,
-    portal         TEXT    NOT NULL,
-    subject        TEXT    NOT NULL,
-    mail_date      INTEGER,
-    gmail_id       TEXT,
-    n_postings     INTEGER NOT NULL,
-    last_seen_run  INTEGER NOT NULL
+CREATE TABLE tombstone (
+    portal      TEXT    NOT NULL,
+    job_id      TEXT    NOT NULL,
+    deleted_at  INTEGER NOT NULL,
+    PRIMARY KEY (portal, job_id)
 ) WITHOUT ROWID;
 ";
 
-/// From schema 2 to 3: the nullable match, read and pin columns. Every job first seen
-/// before the last mailbox run counts as read (the user has seen those lists); the jobs of
-/// the last run stay new.
-fn migrate_2_to_3() -> String {
-    let mut sql = String::new();
-    for (name, sql_type) in SCHEMA_3_JOB_COLUMNS {
-        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
-    }
-    sql.push_str(
-        "UPDATE job SET read_at = first_seen_at
-         WHERE first_seen_run < COALESCE(
-             (SELECT CAST(value AS INTEGER) FROM kv WHERE key = 'last_scan_run'), 0);\n",
-    );
-    sql
-}
-
-/// From schema 3 to 4: the nullable columns of the user's marks (application status, note,
-/// hidden). Nothing else changes: every job starts without a status, note or "hidden".
-fn migrate_3_to_4() -> String {
-    let mut sql = String::new();
-    for (name, sql_type) in SCHEMA_4_JOB_COLUMNS {
-        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
-    }
-    sql
-}
-
-/// From schema 4 to 5: follow-up day and "fits anyway", "hidden" becomes "archived", a
-/// pinned job becomes "saved" (the first stage; `pinned_at` stays unused) and deleted jobs
-/// leave a tombstone.
-fn migrate_4_to_5() -> String {
-    let mut sql = String::new();
-    for (name, sql_type) in SCHEMA_5_JOB_COLUMNS {
-        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
-    }
-    sql.push_str(SCHEMA_5_EXTRA);
-    sql.push('\n');
-    sql
-}
-
-/// From schema 5 to 6: the indexes of the overview.
-fn migrate_5_to_6() -> String {
-    format!("{SCHEMA_6_EXTRA}\n")
-}
-
-/// Sources taken out again (user decision 2026-10-01: Robert Half and Etengo brought hardly a
-/// fitting job). Nobody kept data of them (the app was not given out yet): schema 7 drops
-/// their rows, so no stored row names a source the app no longer knows.
-const REMOVED_SOURCES: [&str; 2] = ["etengo", "roberthalf"];
-
-/// From schema 6 to 7: how a job came (the times of [`SCHEMA_7_JOB_COLUMNS`]; the jobs so far
-/// by their mail, a job without one the search found), and the removed sources' rows go.
-fn migrate_6_to_7() -> String {
-    let mut sql = String::new();
-    for (name, sql_type) in SCHEMA_7_JOB_COLUMNS {
-        let _ = writeln!(sql, "ALTER TABLE job ADD COLUMN {name} {sql_type};");
-    }
-    sql.push_str(
-        "UPDATE job SET mailed_at = COALESCE(mail_date, first_seen_at)
-          WHERE mail_subject <> '' OR gmail_id IS NOT NULL;
-         UPDATE job SET searched_at = first_seen_at
-          WHERE mail_subject = '' AND gmail_id IS NULL;\n",
-    );
-    for source in REMOVED_SOURCES {
-        for table in ["job", "alert_mail", "tombstone"] {
-            let _ = writeln!(sql, "DELETE FROM {table} WHERE portal = '{source}';");
-        }
-        let _ = writeln!(
-            sql,
-            "UPDATE job SET dup_of = NULL WHERE dup_of LIKE '{source}:%';"
-        );
-    }
-    sql
-}
-
-/// One step per version: `steps()[v - 1]` leads from `v` to `v + 1`.
-fn steps() -> Vec<String> {
-    vec![
-        MIGRATE_1_TO_2.to_string(),
-        migrate_2_to_3(),
-        migrate_3_to_4(),
-        migrate_4_to_5(),
-        migrate_5_to_6(),
-        migrate_6_to_7(),
-    ]
-}
-
-/// The schema an existing database is about to be migrated from: `None` for a new, empty one
-/// (it is created), a current one and a newer one (refused by [`migrate`]).
-pub(super) fn pending_migration(conn: &Connection) -> Result<Option<i64>> {
+/// Creates the tables in an empty database, accepts a current one and refuses a newer one
+/// (`NewerSchema`) and one of an earlier version (`Corrupt`).
+pub(super) fn create(conn: &Connection) -> Result<()> {
     let version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    Ok((version > 0 && version < SCHEMA_VERSION).then_some(version))
+    match version {
+        0 => {
+            // Tables and version number in one transaction: a crash in between would
+            // otherwise leave tables with version 0, and every later start would fail.
+            conn.execute_batch(&format!(
+                "BEGIN IMMEDIATE; {SCHEMA} PRAGMA user_version = {SCHEMA_VERSION}; COMMIT;"
+            ))?;
+            Ok(())
+        }
+        SCHEMA_VERSION => Ok(()),
+        newer if newer > SCHEMA_VERSION => Err(Error::NewerSchema(newer)),
+        older => Err(Error::Corrupt(format!(
+            "schema {older} of an earlier version"
+        ))),
+    }
 }
 
-/// Brings a freshly opened connection to the current schema: creates the tables in an empty
-/// database, migrates an older one step by step and refuses a newer one.
-pub(super) fn migrate(conn: &Connection) -> Result<()> {
-    let mut version: i64 = conn.pragma_query_value(None, "user_version", |r| r.get(0))?;
-    if version > SCHEMA_VERSION {
-        return Err(Error::NewerSchema(version));
+/// The schema of the database at `path` when an earlier version wrote it (1 to 7), with a
+/// connection that only reads it: `None` for a missing, empty, current or newer one, and for
+/// a file that is no readable database (opening it says so).
+pub(super) fn outdated(path: &Path) -> Option<(i64, Connection)> {
+    if !path.is_file() {
+        return None;
     }
-    if version == 0 {
-        // Schema and version number in one transaction: a crash in between would otherwise
-        // leave tables with version 0, and every later start would fail.
-        conn.execute_batch(&format!(
-            "BEGIN IMMEDIATE; {SCHEMA_2} PRAGMA user_version = 2; COMMIT;"
-        ))?;
-        version = 2;
-    }
-    let steps = steps();
-    while version < SCHEMA_VERSION {
-        let step = usize::try_from(version - 1)
-            .ok()
-            .and_then(|i| steps.get(i))
-            .ok_or_else(|| Error::Corrupt(format!("no migration from schema {version}")))?;
-        conn.execute_batch(&format!(
-            "BEGIN IMMEDIATE; {step} PRAGMA user_version = {}; COMMIT;",
-            version + 1
-        ))?;
-        version += 1;
-    }
-    Ok(())
+    let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY).ok()?;
+    let version: i64 = conn
+        .pragma_query_value(None, "user_version", |r| r.get(0))
+        .ok()?;
+    (1..SCHEMA_VERSION)
+        .contains(&version)
+        .then_some((version, conn))
 }
 
 #[cfg(test)]
@@ -208,333 +135,12 @@ mod tests {
     use rusqlite::Connection;
 
     use super::*;
-    use crate::model::AlertMail;
-    use crate::portal::Portal;
     use crate::store::Store;
     use crate::store::test_support::{mail, now, posting};
-
-    /// The frozen schema 2 - the "old" database of the migration tests.
-    const FIXTURE_V2: &str = include_str!("../../tests/fixtures/schema_v2.sql");
-    /// The frozen schema 3 - the database before the user's marks.
-    const FIXTURE_V3: &str = include_str!("../../tests/fixtures/schema_v3.sql");
-    /// The frozen schema 4 - the database before stages, archive and deleted jobs.
-    const FIXTURE_V4: &str = include_str!("../../tests/fixtures/schema_v4.sql");
-    /// The frozen schema 5 - the database before the application mark.
-    const FIXTURE_V5: &str = include_str!("../../tests/fixtures/schema_v5.sql");
-    const FIXTURE_V6: &str = include_str!("../../tests/fixtures/schema_v6.sql");
-
-    fn columns(conn: &Connection, table: &str) -> Vec<(String, String, bool)> {
-        let mut stmt = conn
-            .prepare(&format!("PRAGMA table_info({table})"))
-            .unwrap();
-        stmt.query_map([], |r| Ok((r.get(1)?, r.get(2)?, r.get(3)?)))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap()
-    }
-
-    fn indexes(conn: &Connection) -> Vec<String> {
-        let mut stmt = conn
-            .prepare("SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name")
-            .unwrap();
-        stmt.query_map([], |r| r.get(0))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap()
-    }
 
     fn version(conn: &Connection) -> i64 {
         conn.pragma_query_value(None, "user_version", |r| r.get(0))
             .unwrap()
-    }
-
-    /// When a job became a favourite (`app_status_at` of a set `app_status`): the migrations
-    /// keep the mark of earlier versions, which the app no longer reads.
-    fn favourite_at(store: &Store, key: &crate::portal::JobKey) -> Option<jiff::Timestamp> {
-        store
-            .conn()
-            .query_row(
-                "SELECT app_status_at FROM job
-                 WHERE portal = ?1 AND job_id = ?2 AND app_status IS NOT NULL",
-                rusqlite::params![key.portal.key(), key.id],
-                |r| r.get::<_, Option<i64>>(0),
-            )
-            .ok()
-            .flatten()
-            .and_then(crate::time::from_db)
-    }
-
-    #[test]
-    fn the_fixture_is_schema_2() {
-        let fixture = Connection::open_in_memory().unwrap();
-        fixture.execute_batch(FIXTURE_V2).unwrap();
-        let code = Connection::open_in_memory().unwrap();
-        code.execute_batch(SCHEMA_2).unwrap();
-        for table in ["job", "alert_mail", "kv"] {
-            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
-        }
-    }
-
-    /// The frozen schema 3 is what the chain made of schema 2 (the same columns in the same
-    /// order), so the migration tests start from a real schema 3 database.
-    #[test]
-    fn the_fixture_is_schema_3() {
-        let fixture = Connection::open_in_memory().unwrap();
-        fixture.execute_batch(FIXTURE_V3).unwrap();
-        let code = Connection::open_in_memory().unwrap();
-        code.execute_batch(&format!("{SCHEMA_2}{}", migrate_2_to_3()))
-            .unwrap();
-        for table in ["job", "alert_mail", "kv"] {
-            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
-        }
-        assert_eq!(indexes(&fixture), indexes(&code));
-    }
-
-    /// The frozen schema 4 is what the chain made of schema 3.
-    #[test]
-    fn the_fixture_is_schema_4() {
-        let fixture = Connection::open_in_memory().unwrap();
-        fixture.execute_batch(FIXTURE_V4).unwrap();
-        let code = Connection::open_in_memory().unwrap();
-        code.execute_batch(&format!(
-            "{SCHEMA_2}{}{}",
-            migrate_2_to_3(),
-            migrate_3_to_4()
-        ))
-        .unwrap();
-        for table in ["job", "alert_mail", "kv"] {
-            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
-        }
-        assert_eq!(indexes(&fixture), indexes(&code));
-    }
-
-    /// The frozen schema 5 is what the chain made of schema 4.
-    #[test]
-    fn the_fixture_is_schema_5() {
-        let fixture = Connection::open_in_memory().unwrap();
-        fixture.execute_batch(FIXTURE_V5).unwrap();
-        let code = Connection::open_in_memory().unwrap();
-        code.execute_batch(&format!(
-            "{SCHEMA_2}{}{}{}",
-            migrate_2_to_3(),
-            migrate_3_to_4(),
-            migrate_4_to_5()
-        ))
-        .unwrap();
-        for table in ["job", "alert_mail", "kv", "tombstone"] {
-            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
-        }
-        assert_eq!(indexes(&fixture), indexes(&code));
-    }
-
-    /// The frozen schema 6 is what the chain made of schema 5.
-    #[test]
-    fn the_fixture_is_schema_6() {
-        let fixture = Connection::open_in_memory().unwrap();
-        fixture.execute_batch(FIXTURE_V6).unwrap();
-        let code = Connection::open_in_memory().unwrap();
-        code.execute_batch(&format!(
-            "{SCHEMA_2}{}{}{}{}",
-            migrate_2_to_3(),
-            migrate_3_to_4(),
-            migrate_4_to_5(),
-            migrate_5_to_6()
-        ))
-        .unwrap();
-        for table in ["job", "alert_mail", "kv", "tombstone"] {
-            assert_eq!(columns(&fixture, table), columns(&code, table), "{table}");
-        }
-        assert_eq!(indexes(&fixture), indexes(&code));
-    }
-
-    /// Schema 6 with data: a job knows how it came (its mail, else the search), and the
-    /// removed sources' rows are gone.
-    #[test]
-    fn a_schema_6_database_learns_how_its_jobs_came() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V6} PRAGMA user_version = 6;
-             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
-                              gmail_id, first_seen_at, first_seen_run, last_seen_run, search)
-             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
-                     'Mail', '', '', 'Neue Jobs', '18f0', 100, 1, 1, ''),
-                    ('hays', '896260', 'https://www.hays.de/x', 'Gesucht', '', '', '', NULL,
-                     200, 2, 2, ''),
-                    ('etengo', '103313', 'https://www.etengo.de/it-projektsuche/103313/',
-                     'Weg', '', '', '', NULL, 300, 3, 3, '');
-             INSERT INTO tombstone (portal, job_id, deleted_at) VALUES ('roberthalf', '1', 1);"
-        ))
-        .unwrap();
-        drop(old);
-        let store = Store::open(&path).unwrap();
-        let conn = store.conn();
-        let came: Vec<(String, Option<i64>, Option<i64>)> = conn
-            .prepare("SELECT portal, mailed_at, searched_at FROM job ORDER BY portal")
-            .unwrap()
-            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        assert_eq!(
-            came,
-            [
-                ("hays".to_owned(), None, Some(200)),
-                ("linkedin".to_owned(), Some(100), None)
-            ]
-        );
-        let tombstones: i64 = conn
-            .query_row("SELECT COUNT(*) FROM tombstone", [], |r| r.get(0))
-            .unwrap();
-        assert_eq!(tombstones, 0, "no row names a removed source");
-    }
-
-    /// Schema 5 with data: the favourite, the places and the deleted jobs stay.
-    #[test]
-    fn a_schema_5_database_is_migrated_and_keeps_its_marks() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V5}
-             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
-                              first_seen_at, first_seen_run, last_seen_run, search,
-                              app_status, app_status_at, note, archived_at, trashed_at)
-             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
-                     'A', '', '', 'x', 100, 1, 1, 'a', 'saved', 160, 'Rückruf Montag', NULL,
-                     NULL),
-                    ('linkedin', '4000000002', 'https://www.linkedin.com/jobs/view/4000000002/',
-                     'B', '', '', 'x', 100, 1, 1, 'b', NULL, NULL, NULL, 170, 180);
-             INSERT INTO tombstone (portal, job_id, deleted_at)
-             VALUES ('linkedin', '4000000009', 190);
-             PRAGMA user_version = 5;"
-        ))
-        .unwrap();
-        drop(old);
-        let store = Store::open(&path).unwrap();
-        assert_eq!(version(&store.conn()), SCHEMA_VERSION);
-        let copy = dir.path().join("backups").join("jobs.pre-v5.db");
-        assert_eq!(version(&Connection::open(&copy).unwrap()), 5);
-        let key = |id: &str| {
-            crate::portal::job_link(&format!("https://www.linkedin.com/jobs/view/{id}/"))
-                .unwrap()
-                .key
-        };
-        assert_eq!(
-            favourite_at(&store, &key("4000000001")),
-            crate::time::from_db(160)
-        );
-        let b = store.job(&key("4000000002")).unwrap().unwrap();
-        assert_eq!(b.place(), crate::model::Place::Trash);
-        assert!(store.is_deleted(&key("4000000009")).unwrap());
-    }
-
-    /// Schema 4 with data: "hidden" is "archived", a pinned job and an application status
-    /// (here "interview") are favourites, and deleted jobs leave a tombstone.
-    #[test]
-    fn a_schema_4_database_is_migrated_and_keeps_its_marks() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V4}
-             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
-                              first_seen_at, first_seen_run, last_seen_run, search,
-                              pinned_at, app_status, app_status_at, note, hidden_at)
-             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
-                     'A', '', '', 'x', 100, 1, 1, 'a', 160, NULL, NULL, 'Notiz', 170),
-                    ('linkedin', '4000000002', 'https://www.linkedin.com/jobs/view/4000000002/',
-                     'B', '', '', 'x', 100, 1, 1, 'b', 160, 'interview', 180, NULL, NULL);
-             PRAGMA user_version = 4;"
-        ))
-        .unwrap();
-        drop(old);
-        let store = Store::open(&path).unwrap();
-        assert_eq!(version(&store.conn()), SCHEMA_VERSION);
-        // The database as schema 4 left it, next to it in backups/, and only once.
-        let copy = dir.path().join("backups").join("jobs.pre-v4.db");
-        let before = Connection::open(&copy).unwrap();
-        assert_eq!(version(&before), 4);
-        let rows: i64 = before
-            .query_row("SELECT COUNT(*) FROM job WHERE hidden_at = 170", [], |r| {
-                r.get(0)
-            })
-            .unwrap();
-        assert_eq!(rows, 1, "the old columns with their marks");
-        drop(before);
-        drop(Store::open(&path).unwrap());
-        let copies = std::fs::read_dir(dir.path().join("backups"))
-            .unwrap()
-            .count();
-        assert_eq!(copies, 1, "a current database is not copied again");
-        let key = |id: &str| {
-            crate::portal::job_link(&format!("https://www.linkedin.com/jobs/view/{id}/"))
-                .unwrap()
-                .key
-        };
-        let a = store.job(&key("4000000001")).unwrap().unwrap();
-        assert_eq!(
-            (favourite_at(&store, &a.key), a.archived_at, a.trashed_at),
-            (crate::time::from_db(160), crate::time::from_db(170), None)
-        );
-        assert_eq!(a.place(), crate::model::Place::Archive);
-        assert!(!a.override_include);
-        let b = store.job(&key("4000000002")).unwrap().unwrap();
-        assert_eq!(
-            (favourite_at(&store, &b.key), b.place()),
-            (crate::time::from_db(180), crate::model::Place::Inbox)
-        );
-        assert_eq!(
-            store
-                .delete_jobs(std::slice::from_ref(&a.key), now())
-                .unwrap()
-                .0,
-            std::slice::from_ref(&a.key)
-        );
-        assert!(store.is_deleted(&a.key).unwrap());
-    }
-
-    /// Schema 3 with data: the jobs, their scores and marks stay as they were; the new
-    /// columns start empty.
-    #[test]
-    fn a_schema_3_database_is_migrated_and_keeps_its_jobs() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V3}
-             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
-                              first_seen_at, first_seen_run, last_seen_run, search,
-                              match_score, match_status, read_at, pinned_at)
-             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
-                     'Interim CFO', '', '', 'x', 100, 1, 1, 'interim cfo', 84, 'scored', 150,
-                     160);
-             INSERT INTO kv (key, value) VALUES ('last_scan_run', '1'), ('run_seq', '1');
-             PRAGMA user_version = 3;"
-        ))
-        .unwrap();
-        drop(old);
-        let store = Store::open(&path).unwrap();
-        assert_eq!(version(&store.conn()), SCHEMA_VERSION);
-        let key = crate::portal::job_link("https://www.linkedin.com/jobs/view/4000000001/")
-            .unwrap()
-            .key;
-        let job = store.job(&key).unwrap().unwrap();
-        assert_eq!(job.title, "Interim CFO");
-        assert_eq!(job.match_.as_ref().map(|m| m.score), Some(84));
-        assert!(job.read_at.is_some());
-        // The pinned job is a favourite now, since it was pinned.
-        assert_eq!(favourite_at(&store, &key), crate::time::from_db(160));
-        assert_eq!(job.place(), crate::model::Place::Inbox);
-        // The new marks work on the migrated database.
-        let trash = crate::model::Place::Trash;
-        assert_eq!(
-            store
-                .move_jobs(std::slice::from_ref(&key), trash, now())
-                .unwrap(),
-            std::slice::from_ref(&key)
-        );
     }
 
     #[test]
@@ -563,157 +169,6 @@ mod tests {
         assert_eq!(again.begin_run().unwrap(), 2);
     }
 
-    /// A database from schema 1 (with the two never-used columns) walks 1 -> 2 -> 3; without
-    /// that every mailbox scan failed on "NOT NULL `alert_mail.sender`".
-    #[test]
-    fn a_schema_1_database_is_migrated_on_open() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V2}
-             DROP TABLE alert_mail;
-             CREATE TABLE alert_mail (
-                 mail_key       TEXT    PRIMARY KEY,
-                 portal         TEXT    NOT NULL,
-                 subject        TEXT    NOT NULL,
-                 sender         TEXT    NOT NULL,
-                 mail_date      INTEGER,
-                 gmail_id       TEXT,
-                 n_postings     INTEGER NOT NULL,
-                 first_seen_run INTEGER NOT NULL,
-                 last_seen_run  INTEGER NOT NULL
-             ) WITHOUT ROWID;
-             PRAGMA user_version = 1;"
-        ))
-        .unwrap();
-        drop(old);
-
-        let store = Store::open(&path).unwrap();
-        assert_eq!(version(&store.conn()), SCHEMA_VERSION);
-        let run = store.begin_run().unwrap();
-        // Exactly the step that used to fail: remembering a mail without recognised entries.
-        let alert = AlertMail {
-            key: "m1".into(),
-            portal: Portal::LinkedIn,
-            subject: "Keine Treffer".into(),
-            sender: "LinkedIn".into(),
-            date: None,
-            gmail_id: Some(1),
-            postings: Vec::new(),
-        };
-        store.record_alert(run, &alert, now()).unwrap();
-        assert_eq!(store.zero_posting_mails(run).unwrap().len(), 1);
-    }
-
-    /// Schema 2 with data: every job before the last mailbox run counts as read, the jobs of
-    /// that run stay new; nothing else changes.
-    #[test]
-    fn a_schema_2_database_is_migrated_and_old_jobs_are_read() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!(
-            "{FIXTURE_V2}
-             INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
-                              first_seen_at, first_seen_run, last_seen_run, search)
-             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
-                     'Alt', '', '', 'x', 100, 1, 1, 'alt'),
-                    ('linkedin', '4000000002', 'https://www.linkedin.com/jobs/view/4000000002/',
-                     'Neu', '', '', 'x', 200, 2, 2, 'neu');
-             INSERT INTO kv (key, value) VALUES ('last_scan_run', '2'), ('run_seq', '2');
-             PRAGMA user_version = 2;"
-        ))
-        .unwrap();
-        drop(old);
-        let store = Store::open(&path).unwrap();
-        let conn = store.conn();
-        assert_eq!(version(&conn), SCHEMA_VERSION);
-        let read: Vec<(String, Option<i64>)> = conn
-            .prepare("SELECT title, read_at FROM job ORDER BY job_id")
-            .unwrap()
-            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
-            .unwrap()
-            .collect::<rusqlite::Result<_>>()
-            .unwrap();
-        assert_eq!(
-            read,
-            [("Alt".to_string(), Some(100)), ("Neu".to_string(), None)]
-        );
-    }
-
-    /// A fresh database and a migrated one have the same tables, columns and indexes.
-    #[test]
-    fn a_migrated_database_equals_a_fresh_one() {
-        let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("jobs.db");
-        let old = Connection::open(&path).unwrap();
-        old.execute_batch(&format!("{FIXTURE_V2} PRAGMA user_version = 2;"))
-            .unwrap();
-        drop(old);
-        let migrated = Store::open(&path).unwrap();
-        let fresh = Store::in_memory().unwrap();
-        for table in ["job", "alert_mail", "kv", "tombstone"] {
-            assert_eq!(
-                columns(&migrated.conn(), table),
-                columns(&fresh.conn(), table),
-                "{table}"
-            );
-        }
-        assert_eq!(indexes(&migrated.conn()), indexes(&fresh.conn()));
-        assert_eq!(
-            columns(&fresh.conn(), "tombstone").len(),
-            3,
-            "deleted jobs are remembered"
-        );
-        let names: Vec<String> = columns(&fresh.conn(), "job")
-            .into_iter()
-            .map(|(name, ..)| name)
-            .collect();
-        // `hidden_at` is `archived_at` since schema 5.
-        for (column, _) in SCHEMA_3_JOB_COLUMNS
-            .iter()
-            .chain(SCHEMA_4_JOB_COLUMNS)
-            .chain(SCHEMA_5_JOB_COLUMNS)
-            .chain(SCHEMA_7_JOB_COLUMNS)
-        {
-            let column = if *column == "hidden_at" {
-                "archived_at"
-            } else {
-                column
-            };
-            assert!(names.iter().any(|n| n == column), "{column}");
-        }
-        assert!(
-            indexes(&fresh.conn())
-                .iter()
-                .any(|name| name == "job_by_date"),
-            "the overview's date window has its index"
-        );
-        // The same from the frozen schemas 3, 4, 5 and 6.
-        for (version, fixture) in [
-            (3, FIXTURE_V3),
-            (4, FIXTURE_V4),
-            (5, FIXTURE_V5),
-            (6, FIXTURE_V6),
-        ] {
-            let path = dir.path().join(format!("v{version}.db"));
-            let old = Connection::open(&path).unwrap();
-            old.execute_batch(&format!("{fixture} PRAGMA user_version = {version};"))
-                .unwrap();
-            drop(old);
-            let migrated = Store::open(&path).unwrap();
-            for table in ["job", "alert_mail", "kv", "tombstone"] {
-                assert_eq!(
-                    columns(&migrated.conn(), table),
-                    columns(&fresh.conn(), table),
-                    "{table} from schema {version}"
-                );
-            }
-            assert_eq!(indexes(&migrated.conn()), indexes(&fresh.conn()));
-        }
-    }
-
     #[test]
     fn newer_schema_is_refused() {
         let dir = tempfile::tempdir().unwrap();
@@ -724,6 +179,25 @@ mod tests {
             .unwrap();
         // Not "corrupt" - otherwise someone would set a healthy database aside.
         assert!(matches!(Store::open(&path), Err(Error::NewerSchema(99))));
+        assert_eq!(outdated(&path).map(|(v, _)| v), None);
+    }
+
+    /// A database of an earlier version is named by [`outdated`] (the start resets it) and
+    /// never opened as it is.
+    #[test]
+    fn an_earlier_schema_is_named_and_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("jobs.db");
+        assert_eq!(outdated(&path).map(|(v, _)| v), None, "no database");
+        Connection::open(&path)
+            .unwrap()
+            .pragma_update(None, "user_version", 7)
+            .unwrap();
+        assert_eq!(outdated(&path).map(|(v, _)| v), Some(7));
+        assert!(matches!(Store::open(&path), Err(Error::Corrupt(_))));
+        std::fs::remove_file(&path).unwrap();
+        drop(Store::open(&path).unwrap());
+        assert_eq!(outdated(&path).map(|(v, _)| v), None, "a current one");
     }
 
     /// A file database runs in WAL mode.

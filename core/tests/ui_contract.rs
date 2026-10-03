@@ -1664,39 +1664,14 @@ fn tooltips_only_where_something_is_missing() {
         }
     }
     assert!(buttons >= 30, "only {buttons} <Button> tags found");
+    // The sidebar's entries always show their names: none is a tooltip.
     let nav = source(&all, "components/SideNav.svelte");
-    let mut labelled = 0;
-    for (at, _) in nav.code.match_indices("use:tooltip={") {
-        let rest = &nav.code[at..];
-        let mut depth = 0usize;
-        let mut end = rest.len();
-        for (i, c) in rest.char_indices() {
-            match c {
-                '{' => depth += 1,
-                '}' => {
-                    depth -= 1;
-                    if depth == 0 {
-                        end = i;
-                        break;
-                    }
-                }
-                _ => {}
-            }
-        }
-        let expression = &rest[..end];
-        if expression.contains("item.label") {
-            labelled += 1;
-            if !expression.contains("collapsed") {
-                problems.push(format!(
-                    "components/SideNav.svelte: an entry's name is its tooltip only in the rail: {expression}"
-                ));
-            }
-        }
+    if nav.code.contains("use:tooltip") {
+        problems.push(
+            "components/SideNav.svelte: an entry's name stands beside its icon, never in a tooltip"
+                .to_owned(),
+        );
     }
-    assert!(
-        labelled >= 1,
-        "SideNav names no entry in a tooltip - did the rail move?"
-    );
     fail(
         &problems,
         "a tooltip only where something is missing, never the words that stand there",

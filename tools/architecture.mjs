@@ -38,7 +38,6 @@ const MAX_LINES = 500;
 const LARGE = {
   'ui/src/lib/i18n/de.ts': [null, 'the catalog: every text of the UI in one table'],
   'ui/src/lib/input/input.ts': [1800, 'the one place of all input handling (CLAUDE.md)'],
-  'ui/src/features/gallery/gallery.ts': [600, 'the samples of the gallery, one table'],
   // Known large files: split along their parts when next touched.
   'ui/src/features/jobs/Reader.svelte': [1000, 'known large: its sections become files'],
   'ui/src/features/profile/ProfileEditor.svelte': [1200, 'known large: one file per section'],

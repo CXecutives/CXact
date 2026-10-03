@@ -55,7 +55,6 @@ pub struct JobRow {
     pub desc_fetched_at: Option<Timestamp>,
     pub desc_attempts: i64,
     pub desc_error: Option<String>,
-    pub txt_name: Option<String>,
     /// Last fetch attempt (success or failure).
     pub desc_attempted_at: Option<Timestamp>,
     /// `None` = unread.
@@ -759,74 +758,16 @@ impl Store {
             refresh_search(conn, key)
         })
     }
-
-    // ------------------------------------------------------------------ Text files
-
-    /// Test: the text file an earlier version of the app wrote for a job (the app writes
-    /// none any more; the names it knows stay for the cleanup).
-    #[cfg(test)]
-    pub(crate) fn mark_old_txt(&self, key: &JobKey, file_name: &str, now: Timestamp) {
-        self.conn()
-            .execute(
-                "UPDATE job SET txt_name = ?3, txt_written_at = ?4
-                 WHERE portal = ?1 AND job_id = ?2",
-                params![key.portal.key(), key.id, file_name, to_db(now)],
-            )
-            .expect("the name is stored");
-    }
-
-    /// Names of all text files earlier versions of the app wrote (for deleting jobs for good
-    /// and "reset everything"), with the ones of deleted jobs that are still on disk
-    /// ([`Store::txt_leftovers`]).
-    pub fn txt_names(&self) -> Result<Vec<String>> {
-        let mut names: Vec<String> = {
-            let conn = self.conn();
-            let mut stmt =
-                conn.prepare_cached("SELECT txt_name FROM job WHERE txt_name IS NOT NULL")?;
-            let names = stmt.query_map([], |r| r.get(0))?;
-            names.collect::<rusqlite::Result<_>>()?
-        };
-        for name in self.txt_leftovers()? {
-            if !names.contains(&name) {
-                names.push(name);
-            }
-        }
-        Ok(names)
-    }
-
-    /// Old text files of jobs deleted for good that could not be removed (open in another
-    /// program): their rows are gone, so their names live on here until a later delete for good or a
-    /// reset removes them.
-    pub fn txt_leftovers(&self) -> Result<Vec<String>> {
-        Ok(self
-            .kv_get(TXT_LEFTOVERS)?
-            .and_then(|json| serde_json::from_str(&json).ok())
-            .unwrap_or_default())
-    }
-
-    /// Replaces the list of [`Store::txt_leftovers`] (empty: forgets it).
-    pub fn set_txt_leftovers(&self, names: &[String]) -> Result<()> {
-        if names.is_empty() {
-            self.conn()
-                .execute("DELETE FROM kv WHERE key = ?1", [TXT_LEFTOVERS])?;
-            return Ok(());
-        }
-        let json = serde_json::to_string(names).expect("names are always serialisable");
-        self.kv_set(TXT_LEFTOVERS, &json)
-    }
 }
-
-/// Key of [`Store::txt_leftovers`].
-const TXT_LEFTOVERS: &str = "txt_leftovers";
 
 // ---------------------------------------------------------------------- Helpers
 
 pub(super) const JOB_COLUMNS: &str = "portal, job_id, url, title, company, location, mail_date,
     mail_subject, gmail_id, first_seen_at, first_seen_run, desc_status, desc_short, desc_closed,
     COALESCE(LENGTH(desc_text), 0) AS desc_len, desc_fetched_at, desc_attempts, desc_error,
-    txt_name, desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
+    desc_attempted_at, read_at, match_status, match_score, match_note, match_rev,
     desc_facts, archived_at, trashed_at, override_include, mailed_at, searched_at";
-pub(super) const JOB_COLUMN_COUNT: usize = 31;
+pub(super) const JOB_COLUMN_COUNT: usize = 30;
 
 /// The jobs whose ads the app fetches by itself: the inbox - never the archive, the trash or
 /// a duplicate (its original's row stands for it; a merged guest teaser would cost a
@@ -876,9 +817,9 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         ))));
     };
     let (match_, match_open) = match super::matches::decode_match(
-        r.get::<_, Option<String>>(col(21))?.as_deref(),
-        r.get(col(22))?,
-        r.get::<_, Option<String>>(col(23))?.as_deref(),
+        r.get::<_, Option<String>>(col(20))?.as_deref(),
+        r.get(col(21))?,
+        r.get::<_, Option<String>>(col(22))?.as_deref(),
     ) {
         Some((record, open)) => (Some(record), open),
         None => (None, Vec::new()),
@@ -904,20 +845,19 @@ fn job_row_at(r: &Row<'_>, at: usize) -> rusqlite::Result<Result<JobRow>> {
         desc_fetched_at: r.get::<_, Option<i64>>(col(15))?.and_then(from_db),
         desc_attempts: r.get(col(16))?,
         desc_error: r.get(col(17))?,
-        txt_name: r.get(col(18))?,
-        desc_attempted_at: r.get::<_, Option<i64>>(col(19))?.and_then(from_db),
-        read_at: r.get::<_, Option<i64>>(col(20))?.and_then(from_db),
+        desc_attempted_at: r.get::<_, Option<i64>>(col(18))?.and_then(from_db),
+        read_at: r.get::<_, Option<i64>>(col(19))?.and_then(from_db),
         match_,
         match_open,
-        match_rev: r.get(col(24))?,
+        match_rev: r.get(col(23))?,
         facts: r
-            .get::<_, Option<String>>(col(25))?
+            .get::<_, Option<String>>(col(24))?
             .and_then(|json| serde_json::from_str(&json).ok()),
-        archived_at: r.get::<_, Option<i64>>(col(26))?.and_then(from_db),
-        trashed_at: r.get::<_, Option<i64>>(col(27))?.and_then(from_db),
-        override_include: r.get::<_, Option<i64>>(col(28))?.is_some(),
-        mailed_at: r.get::<_, Option<i64>>(col(29))?.and_then(from_db),
-        searched_at: r.get::<_, Option<i64>>(col(30))?.and_then(from_db),
+        archived_at: r.get::<_, Option<i64>>(col(25))?.and_then(from_db),
+        trashed_at: r.get::<_, Option<i64>>(col(26))?.and_then(from_db),
+        override_include: r.get::<_, Option<i64>>(col(27))?.is_some(),
+        mailed_at: r.get::<_, Option<i64>>(col(28))?.and_then(from_db),
+        searched_at: r.get::<_, Option<i64>>(col(29))?.and_then(from_db),
     }))
 }
 
@@ -1797,30 +1737,6 @@ mod tests {
             store.description(&a.key).unwrap().as_deref(),
             Some("Volltext")
         );
-    }
-
-    /// The names of the text files earlier versions wrote stay known (for the cleanup), with
-    /// the ones of deleted jobs that stayed on disk.
-    #[test]
-    fn old_text_file_names_stay_known() {
-        let store = Store::in_memory().unwrap();
-        let run = store.begin_run().unwrap();
-        let a = posting(
-            "https://www.linkedin.com/jobs/view/4000000001/",
-            "A",
-            "",
-            "",
-        );
-        store.upsert_posting(run, &a, mail(), now()).unwrap();
-        assert!(store.txt_names().unwrap().is_empty());
-        store.mark_old_txt(&a.key, "20260918_LinkedIn_A_4000000001.txt", now());
-        store.set_txt_leftovers(&["gone.txt".to_owned()]).unwrap();
-        assert_eq!(
-            store.txt_names().unwrap(),
-            ["20260918_LinkedIn_A_4000000001.txt", "gone.txt"]
-        );
-        store.set_txt_leftovers(&[]).unwrap();
-        assert!(store.txt_leftovers().unwrap().is_empty());
     }
 
     /// Failure reasons often come from the page (redirect target, script error): one short

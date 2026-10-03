@@ -1,10 +1,6 @@
 //! What the user keeps about a job: its place - the inbox ("Eingang"), the archive or the
 //! trash ("Papierkorb"), like a mail - and "fits anyway"; plus deleting for good from the
-//! trash (a tombstone stays). Runs never touch these columns. The favourite of earlier
-//! versions (`app_status`) is neither read nor written any more; its columns stay.
-//!
-//! Every column is nullable, so the migrations (in `schema`) add them with
-//! `ALTER TABLE job ADD COLUMN`: schema 4 the first marks, schema 5 the rest.
+//! trash (a tombstone stays). Runs never touch these columns.
 
 use jiff::Timestamp;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -14,58 +10,6 @@ use crate::error::Result;
 use crate::model::Place;
 use crate::portal::{JobKey, Portal};
 use crate::time::to_db;
-
-/// The nullable columns schema 4 added to the `job` table, as `(name, sql_type)` pairs.
-/// Frozen: schema 5 renamed `hidden_at` to `archived_at`.
-///
-/// - `app_status`: `saved` = the favourite from schema 5 on (schema 4 also stored
-///   `applied`, `interview`, `offer` and `rejected`, which schema 5 turns into favourites);
-///   `NULL` = none. Unused since the favourites went (neither read nor written).
-/// - `app_status_at`: when the favourite was set (Unix seconds). Unused likewise.
-/// - `note`: unused since schema 5 (neither read nor written).
-/// - `hidden_at`, now `archived_at`: when the job went to the archive (by the user or by
-///   age); `NULL` = not archived.
-pub const SCHEMA_4_JOB_COLUMNS: &[(&str, &str)] = &[
-    ("app_status", "TEXT"),
-    ("app_status_at", "INTEGER"),
-    ("note", "TEXT"),
-    ("hidden_at", "INTEGER"),
-];
-
-/// The nullable columns schema 5 adds to the `job` table.
-///
-/// - `override_include`: `1` = the user marked an excluded job as fitting anyway; the
-///   engine's exclusion is then stored as "scored" (with the fit score) on every rescore.
-/// - `mail_version`: the mail parser that read title, company and location
-///   (`mail::MAIL_PARSER_VERSION`); `NULL` = one before the versions.
-/// - `trashed_at`: when the job went to the trash; it wins over `archived_at`.
-/// - `inbox_at`: when the user last moved the job into the inbox (the automatic archive of
-///   earlier versions counted a job's age from then).
-pub const SCHEMA_5_JOB_COLUMNS: &[(&str, &str)] = &[
-    ("override_include", "INTEGER"),
-    ("mail_version", "INTEGER"),
-    ("trashed_at", "INTEGER"),
-    ("inbox_at", "INTEGER"),
-];
-
-/// What the migration to schema 5 does beyond the new columns: "hidden" is "archived" now,
-/// every other mark of schema 4 (an application status, the pin) becomes the favourite, and
-/// the table of deleted job keys (a later scan of an old alert mail never brings them back).
-pub const SCHEMA_5_EXTRA: &str = "ALTER TABLE job RENAME COLUMN hidden_at TO archived_at;
-UPDATE job SET app_status = 'saved', app_status_at = COALESCE(app_status_at, pinned_at)
- WHERE app_status IS NOT NULL OR pinned_at IS NOT NULL;
-CREATE TABLE tombstone (
-    portal      TEXT    NOT NULL,
-    job_id      TEXT    NOT NULL,
-    deleted_at  INTEGER NOT NULL,
-    PRIMARY KEY (portal, job_id)
-) WITHOUT ROWID;";
-
-/// What the migration to schema 6 does: the indexes of the overview's queries (a date window
-/// over the jobs, the last alert mail per portal).
-pub const SCHEMA_6_EXTRA: &str =
-    "CREATE INDEX job_by_date ON job (COALESCE(mail_date, first_seen_at));
-CREATE INDEX alert_by_portal ON alert_mail (portal, mail_date);";
 
 /// The note code of a job the user marked as fitting although the engine excludes it.
 pub const USER_OVERRIDE: &str = "userOverride";
@@ -194,13 +138,9 @@ impl Store {
 
     /// Deletes jobs for good (with the duplicates that stand for them): their rows go, only a
     /// tombstone of each key stays, so a scan never imports them again from an old alert
-    /// mail. Returns the keys of the rows that went and the names of their text files (the
-    /// caller removes the files). The commands delete only from the trash ([`Store::in_trash`]).
-    pub fn delete_jobs(
-        &self,
-        keys: &[JobKey],
-        now: Timestamp,
-    ) -> Result<(Vec<JobKey>, Vec<String>)> {
+    /// mail. Returns the keys of the rows that went. The commands delete only from the trash
+    /// ([`Store::in_trash`]).
+    pub fn delete_jobs(&self, keys: &[JobKey], now: Timestamp) -> Result<Vec<JobKey>> {
         self.write(|conn| {
             let mut doomed: Vec<(String, String)> = Vec::new();
             {
@@ -220,22 +160,12 @@ impl Store {
                     }
                 }
             }
-            let mut names = Vec::new();
-            let mut name = conn.prepare_cached(
-                "SELECT txt_name FROM job WHERE portal = ?1 AND job_id = ?2 AND txt_name IS NOT NULL",
-            )?;
             let mut tomb = conn.prepare_cached(
                 "INSERT OR REPLACE INTO tombstone (portal, job_id, deleted_at) VALUES (?1, ?2, ?3)",
             )?;
             let mut delete =
                 conn.prepare_cached("DELETE FROM job WHERE portal = ?1 AND job_id = ?2")?;
             for (portal, id) in &doomed {
-                if let Some(file) = name
-                    .query_row(params![portal, id], |r| r.get::<_, String>(0))
-                    .optional()?
-                {
-                    names.push(file);
-                }
                 tomb.execute(params![portal, id, to_db(now)])?;
                 delete.execute(params![portal, id])?;
             }
@@ -243,7 +173,7 @@ impl Store {
                 .into_iter()
                 .filter_map(|(portal, id)| Portal::from_key(&portal).map(|portal| JobKey { portal, id }))
                 .collect();
-            Ok((gone, names))
+            Ok(gone)
         })
     }
 
@@ -426,26 +356,22 @@ mod tests {
         );
     }
 
-    /// Only the trash is deleted for good; a deleted job leaves only its tombstone: the row,
-    /// its duplicate and its text file name go, and the same link in an old alert mail never
+    /// Only the trash is deleted for good; a deleted job leaves only its tombstone: the row
+    /// and its duplicate go, and the same link in an old alert mail never
     /// brings it back.
     #[test]
     fn a_deleted_job_never_comes_back() {
         let (store, keys) = store_with_jobs(2);
         let link = "https://www.linkedin.com/jobs/view/4000000001/";
-        store.mark_old_txt(&keys[0], "a.txt", now());
         store
             .move_jobs(std::slice::from_ref(&keys[0]), Place::Trash, now())
             .unwrap();
         assert_eq!(store.trashed_keys().unwrap(), [keys[0].clone()]);
         assert_eq!(store.in_trash(&keys).unwrap(), [keys[0].clone()]);
-        let (gone, names) = store
+        let gone = store
             .delete_jobs(&store.trashed_keys().unwrap(), now())
             .unwrap();
-        assert_eq!(
-            (gone, names),
-            (vec![keys[0].clone()], vec!["a.txt".to_owned()])
-        );
+        assert_eq!(gone, [keys[0].clone()]);
         assert!(store.job(&keys[0]).unwrap().is_none());
         assert!(store.is_deleted(&keys[0]).unwrap());
         assert!(store.job(&keys[1]).unwrap().is_some());
@@ -463,7 +389,7 @@ mod tests {
             store
                 .delete_jobs(std::slice::from_ref(&keys[0]), now())
                 .unwrap(),
-            (Vec::new(), Vec::new())
+            Vec::<JobKey>::new()
         );
     }
 

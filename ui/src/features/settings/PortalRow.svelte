@@ -30,9 +30,8 @@
   import type { PortalState } from '$lib/ipc/types';
   import { PORTAL_MONOGRAM } from '$lib/ipc/types/portals';
   import { fade, unfold } from '$lib/motion/transitions';
-  import { app } from '$lib/state/app.svelte';
+  import { app, settingsPatch } from '$lib/state/app.svelte';
   import { run } from '$lib/state/run.svelte';
-  import { settingsPatch } from './cards';
 
   interface Props {
     portal: PortalState;

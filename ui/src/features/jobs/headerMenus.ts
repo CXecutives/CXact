@@ -82,7 +82,7 @@ export function funnelEntries(portals: readonly Portal[]): MenuEntry[] {
  * "Abruf einstellen": what the fetch reads (user decision 2026-10-01), the search or the
  * mailbox, never both, the current one checked. A choice is saved at once
  * (lib/state/app.svelte.ts) and names the button; a save that failed says so under the
- * header. The Zeitraum of the mails is in Einstellungen.
+ * header.
  */
 export function wayEntries(): MenuEntry[] {
   const current = app.fetchWay;

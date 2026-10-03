@@ -15,18 +15,13 @@ import type { SettingsView } from "./SettingsView";
  */
 export type AppState = { platform: Platform, 
 /**
- * The app's version (`3.0.0`), shown in Einstellungen under Wartung.
+ * The app's version (`3.0.0`).
  */
 version: string, dryRun: boolean, 
 /**
  * No run has finished yet and no job is known.
  */
 firstRun: boolean, 
-/**
- * A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
- * first-run page stays until then, also after a first fetch that failed.
- */
-setupDone: boolean, 
 /**
  * The run in progress (after a reload the interface picks up from here).
  */
@@ -40,11 +35,11 @@ profile: ProfileInfo | null,
  */
 profiles: Array<ProfileEntry>, portals: Array<PortalState>, 
 /**
- * "Jobs abrufen" reads the alert mails (the menu beside the button).
+ * The fetch reads the alert mails (the menu beside the button).
  */
 fetchMail: boolean, 
 /**
- * "Jobs abrufen" searches the sources (the menu beside the button).
+ * The fetch searches the sources (the menu beside the button).
  */
 fetchSearch: boolean, 
 /**

@@ -3,9 +3,8 @@
   are new).
   The active entry sits on one white pill that slides to it (180 ms, emphasized; the
   sibling of the segmented thumb), its label ink and its icon in the accent. An idle entry
-  takes a much fainter wash on hover and keeps its icon, so the two never look alike. Collapsed (icon rail) the labels move into tooltips
-  right of the icons (never over the next entry); with its label in view an entry has no
-  tooltip. While the window is inactive the active label turns ink.
+  takes a much fainter wash on hover and keeps its icon, so the two never look alike. While
+  the window is inactive the active label turns ink.
 -->
 <script lang="ts" module>
   import type { IconName } from './Icon.svelte';
@@ -19,10 +18,8 @@
 </script>
 
 <script lang="ts" generics="Id extends string">
-  import { tooltip } from '$lib/actions/tooltip';
   import { cssVars } from '$lib/actions/cssVars';
   import { settled } from '$lib/motion/settled.svelte';
-  import { fade } from '$lib/motion/transitions';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -30,10 +27,9 @@
     /** `null`: no entry is current (a page that is none of the views, e.g. the setup). */
     active: Id | null;
     label: string;
-    collapsed?: boolean;
     onselect: (id: Id) => void;
   }
-  let { items, active, label, collapsed = false, onselect }: Props = $props();
+  let { items, active, label, onselect }: Props = $props();
 
   const index = $derived(items.findIndex((item) => item.id === active));
   /** Where the pill stands: the index of the current entry. */
@@ -41,27 +37,20 @@
   const motion = settled();
 </script>
 
-<nav class="nav" class:collapsed class:ready={motion.ready} aria-label={label} use:cssVars={pill}>
-  <!-- Re-created when the rail flips, so it is placed without sliding. -->
-  {#key collapsed}
-    <span class="indicator" class:none={index < 0} aria-hidden="true"></span>
-  {/key}
+<nav class="nav" class:ready={motion.ready} aria-label={label} use:cssVars={pill}>
+  <span class="indicator" class:none={index < 0} aria-hidden="true"></span>
   {#each items as item (item.id)}
     <button
       type="button"
       class="item"
       aria-current={item.id === active ? 'page' : undefined}
-      aria-label={collapsed ? item.label : undefined}
       data-testid={item.testid}
-      use:tooltip={collapsed ? { text: item.label, placement: 'right' } : null}
       onclick={() => onselect(item.id)}
     >
       <span class="glyph">
         <Icon name={item.icon} size="md" />
       </span>
-      {#if !collapsed}
-        <span class="label" in:fade>{item.label}</span>
-      {/if}
+      <span class="label">{item.label}</span>
     </button>
   {/each}
 </nav>
@@ -98,14 +87,6 @@
 
   .indicator.none {
     opacity: 0;
-  }
-
-  /* In the rail it steps over the square icons. */
-  .collapsed .indicator {
-    right: auto;
-    width: var(--control-lg);
-    height: var(--control-lg);
-    transform: translateY(calc(var(--index) * var(--nav-step-rail)));
   }
 
   .item {
@@ -146,13 +127,6 @@
 
   .item:focus-visible {
     box-shadow: var(--focus-ring);
-  }
-
-  .collapsed .item {
-    justify-content: center;
-    width: var(--control-lg);
-    height: var(--control-lg);
-    padding: 0;
   }
 
   .glyph {

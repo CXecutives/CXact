@@ -117,8 +117,6 @@ export const text = {
     passwordError: 'Das App-Passwort hat 16 Zeichen.',
     createPassword: 'App-Passwort erstellen',
     search: 'Jobs durchsuchen',
-    disclosure: 'Mehr zu diesem Portal',
-    disclosureText: 'Die App liest nur Links aus den eigenen Alert-Mails.',
     divider: 'Ausgeschlossen',
     dividerThin: 'Seit dem letzten Abruf',
     chips: 'Werkzeuge und Methoden',
@@ -128,7 +126,6 @@ export const text = {
     chipsPlaceholder: 'Maschinenbau',
     chipsShown: 'Schwerpunkte',
     chipsShownValues: ['Controlling', 'Konzernrechnungslegung nach IFRS'],
-    area: 'Antwort von Claude einfügen',
   },
   feedback: {
     rings: 'Passung',

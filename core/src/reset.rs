@@ -4,18 +4,21 @@
 //!
 //! Only things of the app are deleted: the database (jobs, settings, scan state) with its
 //! journal, WAL and shared-memory files and its copies (`backups/`), the profiles of the
-//! session windows (freelance.de
-//! sign-in; on macOS the app removes their `WKWebView` data stores right after the start,
-//! which needs the running app), the Gmail access in the keychain and, in the workspace, the
-//! app's files including every profile in `profil/`. `policy.json` stays - a block pause
-//! must not be clickable away. Foreign files stay untouched.
+//! session windows (freelance.de sign-in; on macOS the app removes their `WKWebView` data
+//! stores right after the start, which needs the running app), the Gmail access in the
+//! keychain and, in the workspace, every profile in `profil/`. `policy.json` stays - a block
+//! pause must not be clickable away. Foreign files stay untouched.
+//!
+//! A database an earlier version wrote (schema 1 to 7) is reset the same way at the start,
+//! without an order ([`reset_outdated`]); its profiles are set aside (`profil.alt`), not
+//! deleted.
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::export::{RESULT_DIR, app_files, files_in, is_tmp};
+use crate::export::{files_in, is_tmp};
 use crate::fetch::policy::Policy;
 use crate::portal::Portal;
 use crate::profile::{PROFILE_DIR, is_app_file};
@@ -38,10 +41,19 @@ const PAUSE: Duration = Duration::from_millis(300);
 #[serde(rename_all = "camelCase")]
 pub struct ResetPlan {
     pub workspace: PathBuf,
-    /// Names of the text files earlier versions wrote (from the database, before it is
-    /// gone).
-    pub txt_names: Vec<String>,
 }
+
+/// What happens to the profiles in the workspace.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Profiles {
+    /// Deleted ("reset everything").
+    Delete,
+    /// The folder set aside as `profil.alt` (the reset of a database of an earlier version).
+    SetAside,
+}
+
+/// The name of the profiles' folder once set aside.
+const SET_ASIDE: &str = "alt";
 
 /// Result after the restart.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -86,10 +98,43 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
         report.failed.push("order unreadable".into());
         return Some(report);
     };
+    Some(perform(data_dir, &plan, vault, Profiles::Delete))
+}
 
+/// Call at the start, after [`perform_pending`] and before the database is opened: a database
+/// an earlier version wrote (schema 1 to 7) is never migrated; everything is reset as by
+/// "reset everything", and the start opens a new one. The plan comes from the old database
+/// while it is still readable (the work folder its settings name, else `default_workspace`);
+/// the profiles are set aside, not deleted. `None`: no such database.
+pub fn reset_outdated(
+    data_dir: &Path,
+    default_workspace: &Path,
+    vault: &Vault,
+) -> Option<ResetReport> {
+    let old = crate::store::outdated(&data_dir.join(DB_FILE))?;
+    let workspace = old
+        .settings
+        .as_deref()
+        .and_then(|json| serde_json::from_str::<serde_json::Value>(json).ok())
+        .and_then(|settings| settings.get("workspace")?.as_str().map(PathBuf::from))
+        .unwrap_or_else(|| default_workspace.to_path_buf());
+    log::info!(
+        "reset: database of schema {} from an earlier version, everything is reset",
+        old.schema
+    );
+    Some(perform(
+        data_dir,
+        &ResetPlan { workspace },
+        vault,
+        Profiles::SetAside,
+    ))
+}
+
+/// Deletes what `plan` names (see the module).
+fn perform(data_dir: &Path, plan: &ResetPlan, vault: &Vault, profiles: Profiles) -> ResetReport {
+    let mut report = ResetReport::default();
     let db = data_dir.join(DB_FILE);
     let profile_dir = plan.workspace.join(PROFILE_DIR);
-    let result_dir = plan.workspace.join(RESULT_DIR);
     let sessions: Vec<String> = Portal::ALL.into_iter().map(session_dir).collect();
     let sidecars: Vec<String> = SIDECARS.iter().map(|s| format!("{DB_FILE}{s}")).collect();
     let mut targets = vec![db, data_dir.join(BACKUP_DIR)];
@@ -104,14 +149,15 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
             || sessions.iter().any(|dir| dir == base)
     };
     targets.extend(leftovers(data_dir, names_in_data));
-    // Every profile, its backup, the index of the profiles and remains of an interrupted
-    // write - a profile may carry name and contact data. Foreign files in the folder stay.
-    targets.extend(files_in(&profile_dir, |name| {
-        is_app_file(name) || is_tmp(name)
-    }));
-    // Overviews, what earlier versions wrote (the report, the best matches, the text
-    // files), temporary files and their leftovers in the result folder.
-    targets.extend(app_files(&result_dir, &plan.txt_names));
+    match profiles {
+        // Every profile, its backup, the index of the profiles and remains of an interrupted
+        // write - a profile may carry name and contact data. Foreign files in the folder
+        // stay.
+        Profiles::Delete => targets.extend(files_in(&profile_dir, |name| {
+            is_app_file(name) || is_tmp(name)
+        })),
+        Profiles::SetAside => set_aside(&profile_dir, &mut report),
+    }
     for target in targets {
         match remove(&target) {
             Ok(true) => report.removed += 1,
@@ -122,14 +168,8 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
             }
         }
     }
-    // Clean up app folders that became empty (never with content).
-    for dir in [
-        result_dir.join(crate::export::TXT_DIR),
-        result_dir,
-        profile_dir,
-    ] {
-        let _ = std::fs::remove_dir(dir);
-    }
+    // The profiles' folder goes if that made it empty (never with content).
+    let _ = std::fs::remove_dir(profile_dir);
     if let Err(e) = vault.delete_gmail() {
         log::warn!("reset: Gmail access in the keychain not deleted: {e}");
         report
@@ -152,7 +192,31 @@ pub fn perform_pending(data_dir: &Path, vault: &Vault) -> Option<ResetReport> {
         report.removed,
         report.failed.len()
     );
-    Some(report)
+    report
+}
+
+/// Moves the profiles' folder aside to `profil.alt` (or, when that is taken,
+/// `profil.alt-<time>`); nothing in it is deleted.
+fn set_aside(profile_dir: &Path, report: &mut ResetReport) {
+    if !profile_dir.is_dir() {
+        return;
+    }
+    let mut target = profile_dir.with_extension(SET_ASIDE);
+    if target.exists() {
+        target = profile_dir.with_extension(format!(
+            "{SET_ASIDE}-{}",
+            jiff::Timestamp::now().as_millisecond()
+        ));
+    }
+    match std::fs::rename(profile_dir, &target) {
+        Ok(()) => log::info!("reset: profiles set aside as {}", target.display()),
+        Err(e) => {
+            log::warn!("reset: profiles not set aside: {e}");
+            report
+                .failed
+                .push(format!("{} not set aside ({e})", profile_dir.display()));
+        }
+    }
 }
 
 /// Renamed leftovers of earlier attempts (`<name>.delete-<time>`) in `dir` whose name fits
@@ -225,13 +289,10 @@ fn doomed_name(path: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::export::{TXT_DIR, XLSX_NAME};
 
     fn setup(root: &Path) -> (PathBuf, ResetPlan) {
         let data = root.join("data");
         let workspace = root.join("ws");
-        let txt = workspace.join(RESULT_DIR).join(TXT_DIR);
-        std::fs::create_dir_all(&txt).unwrap();
         std::fs::create_dir_all(data.join("session-freelance/Default")).unwrap();
         std::fs::write(data.join("jobs.db"), b"db").unwrap();
         std::fs::write(data.join("jobs.db-wal"), b"wal").unwrap();
@@ -240,10 +301,6 @@ mod tests {
         std::fs::write(data.join("session-freelance/Default/Cookies"), b"c").unwrap();
         std::fs::create_dir_all(data.join("backups")).unwrap();
         std::fs::write(data.join("backups/jobs-2026-09-19.db"), b"copy").unwrap();
-        std::fs::write(workspace.join(RESULT_DIR).join(XLSX_NAME), b"x").unwrap();
-        std::fs::write(txt.join("20260919_LinkedIn_A_1.txt"), b"t").unwrap();
-        std::fs::write(txt.join("fremd.txt"), b"f").unwrap();
-        std::fs::write(txt.join(".jam-x1y2z3.tmp"), b"halb").unwrap();
         // Every profile, the backups (one of a deleted profile) and the index.
         std::fs::create_dir_all(workspace.join("profil")).unwrap();
         for name in [
@@ -257,14 +314,7 @@ mod tests {
         }
         std::fs::write(workspace.join("profil").join(".jam-p1q2r3.tmp"), b"halb").unwrap();
         std::fs::write(workspace.join("Profil_Erika.json"), b"{}").unwrap();
-        let plan = ResetPlan {
-            workspace,
-            txt_names: vec![
-                "20260919_LinkedIn_A_1.txt".into(),
-                r"..\..\data\policy.json".into(),
-            ],
-        };
-        (data, plan)
+        (data, ResetPlan { workspace })
     }
 
     #[test]
@@ -286,20 +336,114 @@ mod tests {
             !plan.workspace.join("profil").exists(),
             "profile, its backup and a half-written file go, and the folder with them"
         );
-        let txt = plan.workspace.join(RESULT_DIR).join(TXT_DIR);
-        assert!(
-            !txt.join(".jam-x1y2z3.tmp").exists(),
-            "remains of an interrupted write"
-        );
-        // Stays: safety state, foreign files (other tools, own profile), manipulated name.
+        // Stays: safety state, foreign files (own profile).
         assert!(data.join("policy.json").exists());
-        assert!(txt.join("fremd.txt").exists());
         assert!(plan.workspace.join("Profil_Erika.json").exists());
         assert!(!data.join(MARKER).exists());
         assert!(
             perform_pending(&data, &Vault::for_tests("reset")).is_none(),
             "only once"
         );
+    }
+
+    /// A database of schema 7 (an earlier version) is reset at the start like "reset
+    /// everything": the plan comes from the old database (its work folder), the sign-in and
+    /// the Gmail access go, the profiles are set aside, and the start opens a new database.
+    #[test]
+    fn a_database_of_an_earlier_version_is_reset_and_opens_new() {
+        let root = tempfile::tempdir().unwrap();
+        let (data, plan) = setup(root.path());
+        for file in [DB_FILE, "jobs.db-wal", "jobs.db-shm"] {
+            std::fs::remove_file(data.join(file)).unwrap();
+        }
+        let old = rusqlite::Connection::open(data.join(DB_FILE)).unwrap();
+        old.execute_batch(include_str!("../tests/fixtures/schema_v7.sql"))
+            .unwrap();
+        old.execute(
+            "INSERT INTO kv (key, value) VALUES (?1, ?2)",
+            [
+                crate::settings::KEY.to_owned(),
+                serde_json::json!({ "workspace": plan.workspace }).to_string(),
+            ],
+        )
+        .unwrap();
+        old.execute_batch(
+            "INSERT INTO job (portal, job_id, url, title, company, location, mail_subject,
+                              first_seen_at, first_seen_run, last_seen_run, search)
+             VALUES ('linkedin', '4000000001', 'https://www.linkedin.com/jobs/view/4000000001/',
+                     'Interim CFO', '', '', 'x', 100, 1, 1, 'interim cfo');
+             PRAGMA user_version = 7;",
+        )
+        .unwrap();
+        drop(old);
+        let vault = Vault::for_tests("outdated");
+        // The real keychain with a test service and dummy values, like the vault's own test.
+        #[cfg(windows)]
+        vault
+            .save_gmail(&crate::mail::imap::Credentials::new(
+                "test@example.org",
+                "abcd efgh ijkl mnop",
+            ))
+            .unwrap();
+        let elsewhere = root.path().join("default");
+
+        let report = reset_outdated(&data, &elsewhere, &vault).unwrap();
+        assert!(report.failed.is_empty(), "{report:?}");
+        assert!(!data.join(DB_FILE).exists());
+        assert!(!data.join("backups").exists());
+        assert!(!data.join("session-freelance").exists(), "the sign-in goes");
+        #[cfg(windows)]
+        assert!(
+            vault.load_gmail().unwrap().is_none(),
+            "the Gmail access goes"
+        );
+        assert!(data.join("policy.json").exists());
+        // The work folder of the old settings: its profiles set aside, not deleted.
+        let ws = &plan.workspace;
+        assert!(!ws.join("profil").exists());
+        for name in [
+            "beraterprofil.json",
+            "beraterprofil-2.json",
+            "profilliste.json",
+        ] {
+            assert!(ws.join("profil.alt").join(name).exists(), "{name}");
+        }
+        assert!(ws.join("Profil_Erika.json").exists());
+        assert!(!elsewhere.exists());
+        assert!(
+            reset_outdated(&data, &elsewhere, &vault).is_none(),
+            "only once"
+        );
+        // A new database, not "newer" or "corrupt".
+        let store = crate::store::Store::open(&data.join(DB_FILE)).unwrap();
+        assert_eq!(store.job_count().unwrap(), 0);
+        assert!(crate::store::outdated(&data.join(DB_FILE)).is_none());
+    }
+
+    /// Profiles set aside earlier stay: the next ones get a name of their own.
+    #[test]
+    fn profiles_set_aside_before_stay() {
+        let root = tempfile::tempdir().unwrap();
+        let (_, plan) = setup(root.path());
+        let aside = plan.workspace.join("profil.alt");
+        std::fs::create_dir_all(&aside).unwrap();
+        std::fs::write(aside.join("beraterprofil.json"), b"first").unwrap();
+        let mut report = ResetReport::default();
+        set_aside(&plan.workspace.join(PROFILE_DIR), &mut report);
+        assert!(report.failed.is_empty(), "{report:?}");
+        assert_eq!(
+            std::fs::read(aside.join("beraterprofil.json")).unwrap(),
+            b"first"
+        );
+        let names: Vec<String> = std::fs::read_dir(&plan.workspace)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        assert!(
+            names.iter().any(|n| n.starts_with("profil.alt-")),
+            "{names:?}"
+        );
+        assert!(!plan.workspace.join(PROFILE_DIR).exists());
     }
 
     /// A locked file: the rest is deleted, the report names it - and the order never runs a
@@ -314,7 +458,7 @@ mod tests {
         let lock = std::fs::OpenOptions::new()
             .read(true)
             .share_mode(0)
-            .open(plan.workspace.join(RESULT_DIR).join(XLSX_NAME))
+            .open(plan.workspace.join("profil").join("beraterprofil.json"))
             .unwrap();
         let report = perform_pending(&data, &Vault::for_tests("reset")).unwrap();
         drop(lock);
@@ -333,28 +477,21 @@ mod tests {
     fn leftovers_of_earlier_attempts_are_swept() {
         let root = tempfile::tempdir().unwrap();
         let (data, plan) = setup(root.path());
-        let txt = plan.workspace.join(RESULT_DIR).join(TXT_DIR);
         let rests = [
             data.join("jobs.db.delete-111"),
             data.join("session-freelance.delete-222"),
-            plan.workspace
-                .join(RESULT_DIR)
-                .join("JobAlerts.xlsx.delete-333"),
-            txt.join("20260919_LinkedIn_A_1.txt.delete-444"),
             plan.workspace
                 .join("profil")
                 .join("beraterprofil.json.delete-555"),
             data.join("jobs.db-wal.delete-666"),
         ];
-        for rest in &rests[..4] {
-            std::fs::write(rest, b"rest").unwrap();
-        }
-        std::fs::remove_file(&rests[1]).unwrap();
+        std::fs::write(&rests[0], b"rest").unwrap();
         std::fs::create_dir_all(rests[1].join("Default")).unwrap();
         std::fs::write(rests[1].join("Default").join("Cookies"), b"c").unwrap();
-        std::fs::write(&rests[4], b"rest").unwrap();
-        std::fs::write(&rests[5], b"rest").unwrap();
-        std::fs::write(txt.join("fremd.txt.delete-1"), b"fremd").unwrap();
+        std::fs::write(&rests[2], b"rest").unwrap();
+        std::fs::write(&rests[3], b"rest").unwrap();
+        let foreign = data.join("notes.txt.delete-1");
+        std::fs::write(&foreign, b"fremd").unwrap();
 
         request(&data, &plan).unwrap();
         let report = perform_pending(&data, &Vault::for_tests("reset")).unwrap();
@@ -362,7 +499,7 @@ mod tests {
         for rest in &rests {
             assert!(!rest.exists(), "{rest:?}");
         }
-        assert!(txt.join("fremd.txt.delete-1").exists());
+        assert!(foreign.exists());
     }
 
     /// If deleting fails, the error names the leftover by its actual name.

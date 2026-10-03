@@ -211,7 +211,6 @@ fn read_db(conn: &Connection) -> Res<(Vec<DbJob>, usize)> {
                 desc_fetched_at: r.get::<_, Option<i64>>(12)?.and_then(from_db),
                 desc_attempts: 0,
                 desc_error: None,
-                txt_name: None,
                 desc_attempted_at: None,
                 read_at: None,
                 match_: None,

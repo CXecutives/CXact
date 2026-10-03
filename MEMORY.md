@@ -36,6 +36,8 @@ and current: replace what changes, drop what no longer holds.
 
 - `main` is green on CI (Windows and macOS, both harness engines). The portable build of 2026-10-02 is
   `target/portable/CXact.exe`.
+- Schema 8 (Block 0): the first start of a newer build resets the user's real data of schema 7 (jobs,
+  backups, sessions, the Gmail entry; profiles set aside as `profil.alt`). Tell the user before a build.
 - The search already pages deeply. Up to 24 terms come from the profile (`profile::deep_search_terms`).
   Each term is paged while new jobs come, up to 10 pages on Hays, freelancermap, Michael Page and GULP. A
   cut-short paging resumes at the next fetch within 7 days. A title pre-score orders the fetch. Caps are

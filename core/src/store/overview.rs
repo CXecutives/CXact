@@ -1,6 +1,6 @@
-//! Queries over all jobs: the last alert mail per portal (index `alert_by_portal` of schema
-//! 6), the open terms of the jobs of a date window (index `job_by_date` of schema 6) and the
-//! counts a rescore compares before and after.
+//! Queries over all jobs: the last alert mail per portal (index `alert_by_portal`), the
+//! open terms of the jobs of a date window (index `job_by_date`) and the counts a rescore
+//! compares before and after.
 
 use jiff::Timestamp;
 use rusqlite::params;

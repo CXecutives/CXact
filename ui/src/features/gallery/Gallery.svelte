@@ -39,12 +39,6 @@
   /** How many toasts the gallery showed (each says its number). */
   let toastCount = 0;
   const noop = (): void => undefined;
-
-  /** The sidebar full and as the rail (below 1100 px). */
-  const navDemos = [
-    { key: 'full', rail: false },
-    { key: 'rail', rail: true },
-  ] as const;
 </script>
 
 <div class="gallery" data-testid="gallery">
@@ -115,18 +109,14 @@
 
   <Section heading={text.sections.navigation} id="navigation">
     <div class="navs">
-      {#each navDemos as demo (demo.key)}
-        {@const rail = demo.rail}
-        <div class="side" class:rail data-testid="gnav-{demo.key}">
-          <SideNav
-            items={tabs}
-            active={activeTab}
-            label={text.sections.navigation}
-            collapsed={rail}
-            onselect={(id) => (activeTab = id)}
-          />
-        </div>
-      {/each}
+      <div class="side" data-testid="gnav-full">
+        <SideNav
+          items={tabs}
+          active={activeTab}
+          label={text.sections.navigation}
+          onselect={(id) => (activeTab = id)}
+        />
+      </div>
     </div>
     <div class="bar">
       <Button
@@ -275,11 +265,6 @@
     border-radius: var(--radius-md);
     border: var(--border-width) solid var(--border);
     background-color: var(--bg);
-  }
-
-  .side.rail {
-    align-items: center;
-    width: var(--rail-width);
   }
 
   .bar {

@@ -242,20 +242,17 @@ fn link(conn: &rusqlite::Connection, key: &JobKey, original: &JobKey) -> Result<
 /// a slug row the user may have read): read stays read (the earlier time), the job counts
 /// from its first sighting - so "Neu", the run card's new jobs and the age that archives it
 /// treat it as the job the user already saw - a move back into the inbox keeps counting from
-/// then (the later one), and a text file the other row got stays the job's one file (the new
-/// original gets none of its own).
+/// then (the later one).
 fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) -> Result<()> {
     struct Kept {
         read_at: Option<i64>,
         first_seen_at: i64,
         first_seen_run: i64,
-        txt_name: Option<String>,
-        txt_written_at: Option<i64>,
         inbox_at: Option<i64>,
     }
     let kept = |key: &JobKey| {
         conn.query_row(
-            "SELECT read_at, first_seen_at, first_seen_run, txt_name, txt_written_at, inbox_at
+            "SELECT read_at, first_seen_at, first_seen_run, inbox_at
              FROM job WHERE portal = ?1 AND job_id = ?2",
             params![key.portal.key(), key.id],
             |r| {
@@ -263,9 +260,7 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
                     read_at: r.get(0)?,
                     first_seen_at: r.get(1)?,
                     first_seen_run: r.get(2)?,
-                    txt_name: r.get(3)?,
-                    txt_written_at: r.get(4)?,
-                    inbox_at: r.get(5)?,
+                    inbox_at: r.get(3)?,
                 })
             },
         )
@@ -279,15 +274,9 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
         (Some(a), Some(b)) => Some(a.max(b)),
         (a, b) => a.or(b),
     };
-    let hand_over = new.txt_name.is_none() && old.txt_name.is_some();
-    let (txt_name, txt_written_at) = if hand_over {
-        (old.txt_name, old.txt_written_at)
-    } else {
-        (new.txt_name, new.txt_written_at)
-    };
     conn.execute(
         "UPDATE job SET read_at = ?3, first_seen_at = ?4, first_seen_run = ?5,
-                        txt_name = ?6, txt_written_at = ?7, inbox_at = ?8
+                        inbox_at = ?6
          WHERE portal = ?1 AND job_id = ?2",
         params![
             original.portal.key(),
@@ -295,18 +284,9 @@ fn inherit(conn: &rusqlite::Connection, original: &JobKey, replaced: &JobKey) ->
             read_at,
             new.first_seen_at.min(old.first_seen_at),
             new.first_seen_run.min(old.first_seen_run),
-            txt_name,
-            txt_written_at,
             inbox_at,
         ],
     )?;
-    if hand_over {
-        conn.execute(
-            "UPDATE job SET txt_name = NULL, txt_written_at = NULL
-             WHERE portal = ?1 AND job_id = ?2",
-            params![replaced.portal.key(), replaced.id],
-        )?;
-    }
     Ok(())
 }
 
@@ -744,26 +724,11 @@ mod tests {
                 (add("https://www.freelancermap.de/nproj/2971857.html"), slug)
             };
             assert!(!slug.has_portal_id());
-            // An earlier version wrote a text file for the slug row.
-            let name = "20260918_Freelancermap_SAP_FI_CO_Berater.txt";
-            if !id_first {
-                store.mark_old_txt(&slug, name, now());
-            }
             let later = if id_first { &slug } else { &id };
             assert_eq!(store.link_duplicate(later).unwrap(), Some(id.clone()));
             assert_eq!(store.dup_of(&slug).unwrap(), Some(id.clone()), "{id_first}");
             assert_eq!(store.dup_of(&id).unwrap(), None);
             assert!(store.also_on(&[&id]).unwrap().is_empty(), "no other portal");
-            if !id_first {
-                // That file stays the job's one file (the cleanup knows it): the id row
-                // takes it over.
-                assert_eq!(
-                    store.job(&id).unwrap().unwrap().txt_name.as_deref(),
-                    Some(name)
-                );
-                assert_eq!(store.job(&slug).unwrap().unwrap().txt_name, None);
-                assert_eq!(store.txt_names().unwrap(), [name]);
-            }
         }
         // Two projects of the portal, both with an id: never merged, however alike.
         let store = Store::in_memory().unwrap();

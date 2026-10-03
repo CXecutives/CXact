@@ -1053,10 +1053,10 @@ pub enum WorkspaceProfile {
 #[cfg_attr(test, derive(ts_rs::TS))]
 pub struct SettingsPatch {
     pub portals: Vec<PortalPatch>,
-    /// "Jobs abrufen" reads the alert mails.
+    /// The fetch reads the alert mails.
     #[serde(default)]
     pub fetch_mail: Option<bool>,
-    /// "Jobs abrufen" searches the sources.
+    /// The fetch searches the sources.
     #[serde(default)]
     pub fetch_search: Option<bool>,
 }
@@ -1576,14 +1576,11 @@ pub struct ResetSummary {
 )]
 pub struct AppState {
     pub platform: Platform,
-    /// The app's version (`3.0.0`), shown in Einstellungen under Wartung.
+    /// The app's version (`3.0.0`).
     pub version: String,
     pub dry_run: bool,
     /// No run has finished yet and no job is known.
     pub first_run: bool,
-    /// A fetch has completed its mailbox step (`pipeline::has_completed_fetch`): the
-    /// first-run page stays until then, also after a first fetch that failed.
-    pub setup_done: bool,
     /// The run in progress (after a reload the interface picks up from here).
     pub running: Option<RunSnapshot>,
     pub settings: SettingsView,
@@ -1593,9 +1590,9 @@ pub struct AppState {
     /// Every profile of the work folder, the active one marked (empty without one).
     pub profiles: Vec<ProfileEntry>,
     pub portals: Vec<PortalState>,
-    /// "Jobs abrufen" reads the alert mails (the menu beside the button).
+    /// The fetch reads the alert mails (the menu beside the button).
     pub fetch_mail: bool,
-    /// "Jobs abrufen" searches the sources (the menu beside the button).
+    /// The fetch searches the sources (the menu beside the button).
     pub fetch_search: bool,
     /// The last fetch - a rescore or a details run is none.
     pub last_run: Option<RunSummary>,
