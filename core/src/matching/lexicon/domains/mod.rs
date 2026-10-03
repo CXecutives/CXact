@@ -11,12 +11,15 @@
 //! are one concept. A key in two packs names the same concept in both.
 
 mod consulting;
+mod customer_service;
 mod data;
 mod energy;
 mod finance;
 mod hr;
 mod it_project;
+mod it_service;
 mod legal;
+mod marketing;
 mod operations;
 mod pharma;
 mod procurement;
@@ -54,6 +57,9 @@ pub(crate) const DOMAINS: &[&Domain] = &[
     &restructuring::DOMAIN,
     &consulting::DOMAIN,
     &energy::DOMAIN,
+    &customer_service::DOMAIN,
+    &it_service::DOMAIN,
+    &marketing::DOMAIN,
 ];
 
 /// Helpers for the pack tests: atoms and fits under the packs a profile switches on.
