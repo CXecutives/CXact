@@ -44,39 +44,13 @@ test('the search matches every word in any field and the portal name', async ({ 
   expect(keys.every((key) => key.startsWith('job-row-linkedin-'))).toBe(true);
 });
 
-test('a value over its limit keeps the waiting permanent rules open; Speichern waits', async ({
-  page,
-}) => {
-  await open(page, WIN);
-  await page.getByTestId('nav-profile').click();
-  const field = await showTab(page, page.getByTestId('profile-remote-min'));
-  await field.fill('150');
-  await page.getByTestId('profile-no-permanent').click();
-  // The block stays with the marked field and its limit, so it can be put right.
-  await expect(page.getByTestId('section-permanent')).toBeVisible();
-  await expect(field).toHaveAttribute('aria-invalid', 'true');
-  await expect(page.locator('[data-field="permanentRemoteMin"]')).toContainText('Höchstens 100.');
-  const save = page.getByTestId('profile-save');
-  await expect(save).toHaveAttribute('aria-disabled', 'true');
-  await field.fill('50');
-  await expect(save).not.toHaveAttribute('aria-disabled', 'true');
-  // Put right, it stays until the form is saved or discarded (nothing vanishes while typing).
-  await expect(page.getByTestId('section-permanent')).toBeVisible();
-  await (await showTab(page, page.getByTestId('profile-min-rate'))).fill('200000');
-  const rate = page.locator('[data-field="minDayRate"]');
-  // Under its own label the limit does not name the field again.
-  await expect(rate).toContainText('Höchstens 100.000.');
-  await expect(rate).not.toContainText('Der Wert bei');
-  await expect(save).toHaveAttribute('aria-disabled', 'true');
-});
-
 test('a decimal number is cut to a whole one, never joined', async ({ page }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
   const years = await showTab(page, page.getByTestId('profile-years'));
   await years.fill('7,5');
   await expect(page.getByTestId('profile-years-rounded')).toHaveCount(0);
-  await page.getByTestId('profile-name-field').focus();
+  await page.getByTestId('profile-min-rate').focus();
   await expect(years).toHaveValue('7');
   await expect(page.getByTestId('profile-years-rounded')).toHaveText(
     'Auf eine ganze Zahl abgerundet.',
@@ -222,14 +196,6 @@ test('at 480 px the countries field keeps the width of the other fields', async 
   const roles = await page.getByTestId('profile-roles').boundingBox();
   expect(Math.abs(field!.width - roles!.width)).toBeLessThan(2);
   await expect(page.getByTestId('profile-dach')).toHaveCount(0);
-});
-
-test('an unreadable country is said at its field like any other value', async ({ page }) => {
-  await open(page, `${WIN}&scenario=profile-unreadable`);
-  await page.getByTestId('nav-profile').click();
-  const scope = page.locator('[data-field="countries"]');
-  await expect(scope.locator('input')).toHaveAttribute('aria-invalid', 'true');
-  await expect(scope.getByTestId('value-remove')).toBeVisible();
 });
 
 test('undoing moves in another order puts the rows back where they stood', async ({ page }) => {

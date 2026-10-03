@@ -8,13 +8,7 @@
 
 import { IpcError } from '../ipc/api';
 import type { Notice, PortalHealth, Reason } from '../ipc/types';
-import {
-  textOf,
-  type CriterionKey,
-  type MatchNote,
-  type ProfileWarning,
-  type ReasonCode,
-} from './de';
+import { textOf, type CriterionKey, type MatchNote, type ReasonCode } from './de';
 import { t } from './t';
 
 const has = <T extends object>(table: T, key: string): key is Extract<keyof T, string> =>
@@ -71,12 +65,6 @@ export function noteText(note: Notice | null): string | null {
   }
   const key = criterionKey(note.code);
   return key ? t.reader.criterion[key].exclusion : null;
-}
-
-export function warningText(notice: Notice): string | null {
-  return has(t.profile.warning, notice.code)
-    ? textOf(t.profile.warning[notice.code as ProfileWarning], notice.params)
-    : null;
 }
 
 /**

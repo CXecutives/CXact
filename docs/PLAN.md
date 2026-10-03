@@ -71,14 +71,23 @@ pre-assessment to any AI chat for a deeper check.
       erfüllt; a missing term goes into the profile with a plus) and the ad's text.
   - Moves have an undo toast. Delete for good stays in the Papierkorb.
 - **Profil:**
-  - Several profiles, one active. The title's menu holds the profiles, Neues Profil, Duplizieren,
-    Umbenennen (in the title) and Löschen. A new profile starts on a page with three ways: Leer anfangen,
-    Datei hochladen, Prompt kopieren (the prompt has any AI hand back the profile as a file).
-  - Name and Rolle under the title. The tabs:
-    - Wünsche in groups with headings: Rollen und Suche, Tagessatz, Ort, Zeit, Branchen.
-    - Können: Kompetenzen with Schwerpunkte as stars, Werkzeuge, Stichworte, Stärken.
-    - Erfahrung: years, Branchen, Sprachen, Abschlüsse, Zertifikate.
-    - Ausschlüsse: words, Zeitarbeit, Festanstellung and its rules.
+  - One profile. Without one, a page with two ways: Aus Lebenslauf ausfüllen (an AI evaluates the CV,
+    the profile is saved at once) and Selbst ausfüllen (the empty form).
+  - The head: "Profil" with "Aus Lebenslauf ausfüllen", then "Noch n Angaben offen" with "Zum ersten"
+    (the required fields core names in `ProfileInfo.missing`) and, after a CV, "aus dem Lebenslauf" for
+    the small dot at every field it filled (`aiFilled`, until the next save).
+  - Jump links to three sections on one page (`sections.ts`), they stay in view unless the window is low:
+    - Was du suchst: Wunschrollen, Vertragsart (Projekt und Interim always, Festanstellung and Zeitarbeit
+      as check buttons), Wunsch- and Mindesttagessatz, Mindestjahresgehalt (with Festanstellung or
+      Zeitarbeit), Arbeitsmodell, Länder (DE, AT, CH first) and Regionen, Verfügbar ab, Auslastung and
+      Mindestlaufzeit.
+    - Was du mitbringst: Kompetenzen with years and up to five stars, Tools und Methoden,
+      Berufserfahrung, Branchen with a star for the preferred ones, Sprachen with their level,
+      Abschlüsse and Zertifikate.
+    - Was nicht passt: Ausschlusswörter.
+  - Info symbols (one sentence each) only at Wunschrollen, Vertragsart, Tagessatz, Arbeitsmodell, Länder,
+    the stars of Kompetenzen and Branchen, Ausschlusswörter, the app password, "CXact sucht nach" and the
+    match in the job view; a field has a hint or an info symbol, never both.
   - Under some fields, "Häufig verlangt": the terms the recent jobs ask for that the profile lacks, one click
     adds them.
   - Save bar with Speichern and Verwerfen; leaving with changes asks. Saving merges into the profile's
@@ -93,7 +102,7 @@ pre-assessment to any AI chat for a deeper check.
   mails need it), 3 the first fetch in the words of its way.
 - **Shell:**
   - The top bar, the sidebar and Zurück and Vor as `CLAUDE.md` says. The sidebar has Jobs, Profil and
-    Einstellungen. Zurück and Vor also walk the tabs of Profil and Einstellungen.
+    Einstellungen. Zurück and Vor also walk the tabs of Einstellungen.
   - The app's own menus, toasts (at most three, bottom right) and tooltips.
   - A start whose data cannot load offers to restore a daily copy of the database.
 - **Dry run:** `--dry-run` changes nothing outside its own data.

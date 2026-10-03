@@ -1,58 +1,40 @@
 <!--
-  Profil (centred 720): the profile itself as a form. Without a profile, and for "Neues
-  Profil" of the menu of the profiles, the start page with the three ways in (ProfileStart:
-  the empty form, a file, the prompt that has any AI write that file from a CV); a file that no longer reads says so in
-  the same place, with its folder at hand. With a profile its head (the profile's
-  name as the title with the menu of the profiles and the same ways, a status when there is
-  one) and the form, whose save bar shows while it holds a change. A chosen file fills the
-  form for review; nothing is stored before "Speichern". A save is answered by a toast once
-  the bar has gone, with what its rescore changed (saveEffect.ts). Leaving the view or
-  closing the window with unsaved changes asks once ("Änderungen speichern?", the heading
-  alone), and so does another profile from the switcher of the head (ProfileSet holds the
-  profiles' own actions and dialogs). Saving another file over the profile is answered by a toast
-  with "Rückgängig" (the backup comes back, core's swap), and an undo that fails says so.
-  During setup the toast of the first save offers "Weiter zum ersten Abruf", which starts the
-  fetch, or without a mailbox "Weiter zum Postfach", which goes back to the setup page.
+  Profil (centred 720): the one profile of the app as a form on one page. Without a profile
+  the start page with the two ways in (ProfileStart: "Aus Lebenslauf ausfüllen", "Selbst
+  ausfüllen"); a file that no longer reads says so in the same place, with its folder at hand.
+  With a profile its head ("Profil", "Aus Lebenslauf ausfüllen", the lines of what is still
+  open), the jump links to the three sections (they stay in view while the page scrolls,
+  unless the window is low) and the form, whose save bar shows while it holds a change. A save
+  is answered by a toast once the bar has gone, with what its rescore changed (saveEffect.ts).
+  Leaving the view or closing the window with unsaved changes asks once ("Änderungen
+  speichern?", the heading alone). During setup the toast of the first save offers "Weiter
+  zum ersten Abruf", which starts the fetch, or without a mailbox "Weiter zum Postfach", which
+  goes back to the setup page.
 -->
 <script lang="ts">
+  import Button from '$components/Button.svelte';
   import Dialog from '$components/Dialog.svelte';
-  import Field from '$components/Field.svelte';
-  import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
-  import { errorText, warningText } from '$lib/i18n/texts';
-  import { formKeys } from '$lib/input/input';
+  import { errorText } from '$lib/i18n/texts';
   import { IpcError, invoke, onCloseRequested } from '$lib/ipc/api';
-  import type { Notice } from '$lib/ipc/types';
+  import type { ProfileForm } from '$lib/ipc/types';
   import { crossfadeDuration, duration } from '$lib/motion/motion';
   import { app } from '$lib/state/app.svelte';
   import { jobs } from '$lib/state/jobs.svelte';
   import { navigation, type ViewId } from '$lib/state/navigation.svelte';
-  import {
-    editor,
-    fieldProblems,
-    localQuality,
-    sameForm,
-    type FieldError,
-  } from '$lib/state/profile.svelte';
+  import { editor, sameForm } from '$lib/state/profile.svelte';
   import { run } from '$lib/state/run.svelte';
   import { toasts } from '$lib/state/toasts.svelte';
   import { onMount, tick, untrack } from 'svelte';
-  import ProfileEditor from './ProfileEditor.svelte';
+  import { fromCv } from '../shared/fromCv.svelte';
+  import ProfileEditor, { type FieldError } from './ProfileEditor.svelte';
   import ProfileHeader from './ProfileHeader.svelte';
-  import ProfileSet from './ProfileSet.svelte';
   import ProfileStart from './ProfileStart.svelte';
-  import { pickProfile } from '../shared/profileWays';
-  import { activeName } from './profiles';
   import { watchSave } from './saveEffect';
-  import { valueText } from './sections';
+  import { FIELD_ORDER, SECTIONS, blank } from './sections';
 
   const profile = $derived(app.state?.profile ?? null);
   const stored = $derived(profile?.form ?? null);
-  /** Every profile of the work folder (the switcher; none without a profile). */
-  const profiles = $derived(app.state?.profiles ?? []);
-  /** The profiles' own actions and dialogs; a change of them turns the switcher. */
-  let set = $state<ProfileSet | null>(null);
-  let switching = $state(false);
   const rescoring = $derived((run.active && run.kind === 'rescore') || (profile?.pending ?? 0) > 0);
 
   let busy = $state<'save' | null>(null);
@@ -64,6 +46,8 @@
   let fieldError = $state<FieldError | null>(null);
   /** The refused field's value then, as text. */
   let refusedValue: string | null = null;
+  const valueText = (form: ProfileForm, field: string): string =>
+    JSON.stringify((form as Record<string, unknown>)[field] ?? null);
   // A refused value stays with its error until that value changes.
   $effect(() => {
     const error = fieldError;
@@ -107,15 +91,8 @@
     navigation.go('jobs');
     if (app.hasMailbox && run.fetchBlocked === null) await run.start({ kind: 'fetch' });
   }
-  /** Where the user wanted to go with unsaved changes: a view, closing the window, or
-   *  another profile (what then runs). */
-  let leaving = $state<ViewId | 'close' | { then: () => void } | null>(null);
-
-  /** Another profile into the form: with unsaved changes it asks first, then runs. */
-  function guard(then: () => void): void {
-    if (editor.dirty) leaving = { then };
-    else then();
-  }
+  /** Where the user wanted to go with unsaved changes: a view, or closing the window. */
+  let leaving = $state<ViewId | 'close' | null>(null);
 
   // The stored profile fills the form while nothing unsaved is in it (also after a save).
   $effect(() => {
@@ -158,6 +135,7 @@
     return () => {
       release();
       stopClose();
+      fromCv.clear();
       void invoke('set_unsaved', { on: false }).catch(() => undefined);
       // An untouched new form starts over next time.
       if (!editor.dirty && editor.origin !== 'stored') editor.close();
@@ -172,18 +150,6 @@
     return loaded !== null;
   }
 
-  /** A chosen file into the form for review; `fresh` (the menu's Aus Datei laden): saved as
-   *  a new profile beside the others. */
-  async function pick(fresh = false): Promise<boolean> {
-    note = null;
-    try {
-      return await pickProfile(fresh);
-    } catch (error) {
-      note = () => errorText(error);
-      return false;
-    }
-  }
-
   function openFolder(): void {
     note = null;
     invoke('open_target', { target: { kind: 'profileDir' } }).catch(
@@ -191,24 +157,22 @@
     );
   }
 
-  /** The start page of a new profile beside the active one ("Neues Profil" of the menu): what
-   *  it brings is saved as a new profile beside the others. */
-  let starting = $state(false);
-
-  /** A way of the start page fills the form: the page goes; `true` when it was opened beside
-   *  a profile (what it brings is saved as a new one). A file dialog closed without a file
-   *  keeps the page. */
-  function started(): boolean {
-    const fresh = starting;
-    starting = false;
-    return fresh;
+  /** "Selbst ausfüllen": the new form, the caret in the wished roles. */
+  async function create(): Promise<void> {
+    fromCv.clear();
+    editor.create();
+    await caretTo('profile-roles');
   }
 
-  /** A new form on its first tab: the caret goes into the wished roles; `fresh` (the menu's
-   *  Neues Profil): saved as a new profile beside the others. */
-  async function create(fresh = false): Promise<void> {
-    editor.create(fresh);
-    await caretTo('profile-roles');
+  /** The CV filled the profile: the form shows it as stored. */
+  function filled(form: ProfileForm | null): void {
+    editor.typed.clear();
+    if (form !== null) editor.edit(form);
+  }
+
+  async function fillFromCv(): Promise<void> {
+    const info = await fromCv.run();
+    if (info !== null) filled(info.form);
   }
 
   /** The caret into a field that has just appeared (the input of a chip field). */
@@ -222,8 +186,6 @@
   let panel = $state<{
     ready: () => boolean;
     focusField: (field: string) => Promise<boolean>;
-    submit: () => void;
-    escape: () => void;
   } | null>(null);
 
   /** A value out of range: the field (and row) it names, and the limit where one is. */
@@ -241,21 +203,14 @@
       : null;
   }
 
-  /** `true` when the profile is saved. Another file saved over the profile replaces it: a
-   *  toast offers the old one back. A fresh draft becomes a new profile first, which goes
-   *  again when its save fails (the one active before is active again). */
+  /** `true` when the profile is saved. */
   async function save(): Promise<boolean> {
     busy = 'save';
     saveNote = null;
     fieldError = null;
     refusedValue = null;
-    const replaced = replacing;
-    const fresh = editor.fresh;
-    let created: number | null = null;
     const effect = watchSave();
     try {
-      // The new profile, active from now on: the draft is saved into it.
-      if (fresh) created = (await invoke('create_profile')).find((each) => each.active)?.id ?? null;
       const info = await editor.save();
       // The saved profile is the answer of the save: a state that could not be loaded
       // again never puts the old values back.
@@ -263,41 +218,20 @@
       const form = info.form ?? app.state?.profile?.form;
       if (form) editor.edit(form);
       else editor.close();
-      whenBarGone(() => {
-        const name = activeName(app.state?.profiles);
-        if (fresh && name !== null) {
-          effect.stop();
-          return savedToast(t.profile.created(name));
-        }
-        if (!replaced) return void effect.said().then(savedToast);
-        effect.stop();
-        toasts.show(t.profile.replaced, 'success', {
-          label: t.common.undo,
-          onclick: () => void set?.restore(null),
-        });
-      });
+      whenBarGone(() => void effect.said().then(savedToast));
       return true;
     } catch (error) {
       effect.stop();
-      if (created !== null) {
-        await invoke('delete_profile', { id: created }).catch(() => undefined);
-        await reload();
-      }
       const at = refused(error);
       if (at === null) {
         saveNote = () => errorText(error);
       } else {
         // Said at its field without its name again; the save bar says it where the field
-        // is not on the page. The second day of the workload below the first has no limit.
+        // is not on the page.
         fieldError = {
           field: at.field,
           row: at.row,
-          text: () =>
-            at.max !== null
-              ? t.profile.field.atMost(at.max)
-              : at.field === 'workloadMaxDays'
-                ? t.profile.field.workloadOrder
-                : t.profile.field.refused,
+          text: () => (at.max !== null ? t.profile.field.atMost(at.max) : t.profile.field.refused),
         };
         if (!(await panel?.focusField(at.field))) saveNote = () => errorText(error);
       }
@@ -307,13 +241,13 @@
     }
   }
 
-  /** Back to the stored profile, or (a new form, a draft) to the ways in, whose first one
-   *  takes the focus of the gone form. */
+  /** Back to the stored profile, or (a new form) to the ways in, whose first one takes the
+   *  focus of the gone form. */
   function discard(): void {
     saveNote = null;
     fieldError = null;
     editor.discard(stored);
-    if (editor.origin === null) void caretTo('new-profile-empty');
+    if (editor.origin === null) void caretTo('new-profile-cv');
   }
 
   /** Leaving without saving. */
@@ -322,7 +256,6 @@
     leaving = null;
     editor.discard(stored);
     if (next === 'close') closeWindow();
-    else if (typeof next === 'object' && next !== null) next.then();
     else if (next !== null) navigation.go(next, true);
   }
 
@@ -337,172 +270,77 @@
     leaving = null;
     if (!done || next === null) return;
     if (next === 'close') closeWindow();
-    else if (typeof next === 'object') next.then();
     else navigation.go(next, true);
   }
 
-  // ------------------------------------------------------------ what the form says
+  // ------------------------------------------------------------ what is still open
 
-  /** What the engine reads: a chosen file's own, else the stored profile's; a new form has
-   *  none yet. */
-  const understood = $derived(
-    editor.origin === 'file'
-      ? editor.understood
-      : editor.origin === 'new'
-        ? null
-        : (profile?.understood ?? null),
+  /** The required fields still empty, in the order of the page: core names them for the
+   *  stored profile (`missing`), the form drops those filled since. */
+  const missing = $derived(
+    FIELD_ORDER.filter(
+      (field) => (profile?.missing ?? []).includes(field) && blank(editor.after, field),
+    ),
   );
-  const warnings = $derived<readonly Notice[]>(understood?.warnings ?? []);
-  const problems = $derived(
-    editor.origin === null
-      ? []
-      : fieldProblems(warnings, editor.before, editor.after, editor.cleared),
-  );
-  /** The quality of the form as it is: the engine's for what it read, followed while the
-   *  form changes; a new form says nothing before it has something. */
-  const local = $derived(
-    editor.origin === null
-      ? null
-      : localQuality(understood?.competenceCount ?? 0, editor.before, editor.after),
-  );
-  const quality = $derived.by(() => {
-    if (local === null) return null;
-    // Unchanged, the engine's own word counts.
-    const unchanged = sameForm(editor.before, editor.after);
-    if (editor.origin === 'new' && unchanged) return null;
-    if (editor.origin === 'stored' && unchanged) return profile?.quality ?? local.quality;
-    if (editor.origin === 'file' && unchanged) {
-      return editor.quality ?? local.quality;
-    }
-    return local.quality;
-  });
-  /** The workload's two days: one field with one message and one "Wert entfernen". */
-  const WORKLOAD_DAYS = new Set(['workloadMinDays', 'workloadMaxDays']);
-  /** What "n Werte prüfen" counts: each value of the file that does not read, by the field
-   *  it is said at, as many as the form says (the workload once for both days). */
-  const checkList = $derived.by(() => {
-    const fields = problems
-      .flatMap((problem) =>
-        problem.entry || warningText(problem.notice) !== null ? [problem.field as string] : [],
-      )
-      .map((field) => (WORKLOAD_DAYS.has(field) ? 'workload' : field));
-    const workload = fields.indexOf('workload');
-    return fields.filter((field, index) => field !== 'workload' || index === workload);
-  });
+  /** The fields the CV filled, while the form shows the stored profile. */
+  const aiFilled = $derived(editor.origin === 'stored' ? (profile?.aiFilled ?? []) : []);
 
-  /** "n Werte prüfen": the caret to the first of them, in the order of the form. */
-  function checkFirst(): void {
-    const fields = new Set(checkList);
-    const first = [...document.querySelectorAll<HTMLElement>('[data-field]')].find((node) =>
-      fields.has(node.dataset.field ?? ''),
-    );
-    const field = first?.dataset.field ?? checkList[0];
-    if (field !== undefined) void panel?.focusField(field);
+  /** A jump link: its section's heading at the top, under the links, with the focus. */
+  function jump(id: string): void {
+    const heading = document.getElementById(`profile-section-${id}-heading`);
+    document.getElementById(`profile-section-${id}`)?.scrollIntoView({ block: 'start' });
+    heading?.focus({ preventScroll: true });
   }
-  /** Said in the head: what the form cannot change (keys of the file the app does not read). */
-  const HEAD = new Set(['ignoredKeys']);
-  /** Said elsewhere or not at all: the quality (the sections say "Noch leer"), empty
-   *  criteria at their section, a value at its field, a region rule at the remote share, the
-   *  Schwerpunkte taken over at the Schwerpunkte. */
-  const ELSEWHERE = new Set([
-    'fewCompetences',
-    'noCompetences',
-    'noCriteria',
-    'criterionNotUnderstood',
-    'availabilityNotUnderstood',
-    'regionWithoutPlaces',
-    'focusTrimmed',
-  ]);
-  const headWarnings = $derived(warnings.filter((w) => HEAD.has(w.code) || !ELSEWHERE.has(w.code)));
-  /** Another file over the stored profile: saving replaces it (a fresh one is a new
-   *  profile). */
-  const replacing = $derived(editor.origin === 'file' && profile !== null && !editor.fresh);
 </script>
 
 <div class="page" data-testid="profile">
   {#if app.state === null}
     <!-- The shell shows nothing until the state is known. -->
+  {:else if editor.origin === null}
+    <ProfileStart
+      heading={profile?.parseError ? t.profile.unreadable : t.profile.title}
+      text={profile?.parseError
+        ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
+        : t.profile.noneText}
+      unreadable={(profile?.parseError ?? null) !== null}
+      note={note?.() ?? null}
+      onfilled={(info) => filled(info.form)}
+      onempty={() => void create()}
+      onopenfolder={openFolder}
+    />
   {:else}
-    {#if starting || editor.origin === null}
-      <ProfileStart
-        heading={!starting && profile?.parseError ? t.profile.unreadable : t.profile.newProfile}
-        text={!starting && profile?.parseError
-          ? `${t.error.text(profile.parseError.kind, profile.parseError.params)} ${t.profile.replaces}`
-          : t.profile.noneText}
-        unreadable={!starting && (profile?.parseError ?? null) !== null}
-        note={note?.() ?? null}
-        onempty={() => void create(started())}
-        onfile={async () => {
-          if (await pick(starting)) starting = false;
-        }}
-        oncancel={starting ? () => (starting = false) : null}
-        onopenfolder={openFolder}
-      />
-    {:else}
-      {@render head()}
-      <ProfileEditor
-        bind:this={panel}
-        {quality}
-        {problems}
-        {warnings}
-        {fieldError}
-        busy={busy === 'save'}
-        note={saveNote?.() ?? null}
-        onsave={() => void save()}
-        ondiscard={discard}
-        onbargone={barGone}
-      />
-    {/if}
+    <ProfileHeader
+      open={missing.length}
+      filled={aiFilled.length > 0}
+      {rescoring}
+      pending={profile?.pending ?? 0}
+      dirty={editor.dirty}
+      note={note?.() ?? null}
+      onfirst={() => void panel?.focusField(missing[0] ?? '')}
+      oncv={() => void fillFromCv()}
+    />
+    <nav class="jumps" aria-label={t.profile.sections} data-testid="profile-jumps">
+      {#each SECTIONS as section (section.id)}
+        <Button
+          variant="ghost"
+          label={t.profile.section[section.id]}
+          testid="profile-jump-{section.id}"
+          onclick={() => jump(section.id)}
+        />
+      {/each}
+    </nav>
+    <ProfileEditor
+      bind:this={panel}
+      {fieldError}
+      {aiFilled}
+      busy={busy === 'save'}
+      note={saveNote?.() ?? null}
+      onsave={() => void save()}
+      ondiscard={discard}
+      onbargone={barGone}
+    />
   {/if}
 </div>
-
-{#snippet head()}
-  <ProfileHeader
-    origin={editor.origin}
-    {profile}
-    {profiles}
-    fresh={editor.fresh}
-    checks={editor.origin === null ? 0 : checkList.length}
-    warnings={editor.origin === null ? [] : headWarnings}
-    {rescoring}
-    dirty={editor.dirty}
-    {replacing}
-    {switching}
-    note={editor.origin === null ? null : (note?.() ?? null)}
-    onswitch={(id) => set?.switchTo(id)}
-    onnew={() => guard(() => (starting = true))}
-    onduplicate={() => set?.duplicate()}
-    onrename={(name) => set?.renameTo(name) ?? Promise.resolve(false)}
-    onremove={() => set?.askRemove()}
-    onopenfolder={openFolder}
-    oncheck={checkFirst}
-    person={editor.origin === null ? null : person}
-  />
-{/snippet}
-
-{#snippet person()}
-  <!-- Enter saves here as in every field of the form; Esc leaves an untouched new one. -->
-  <div class="person" use:formKeys={{ save: () => panel?.submit(), cancel: () => panel?.escape() }}>
-    <Field label={t.profile.field.name} for="profile-name-input">
-      <TextField
-        bind:value={editor.after.name}
-        id="profile-name-input"
-        testid="profile-name-field"
-      />
-    </Field>
-    <Field label={t.profile.field.title} for="profile-title-input">
-      <TextField bind:value={editor.after.title} id="profile-title-input" testid="profile-title" />
-    </Field>
-  </div>
-{/snippet}
-
-<ProfileSet
-  bind:this={set}
-  onbusy={(on) => (switching = on)}
-  {guard}
-  {reload}
-  onnote={(words) => (note = words)}
-/>
 
 <!-- The heading says it all: the dialog does not repeat it. -->
 <Dialog
@@ -535,8 +373,23 @@
     padding-bottom: 0;
   }
 
-  /* The two quiet fields share the grid of the head's line under the title. */
-  .person {
-    display: contents;
+  /* The jump links stay at the top of the view while the page scrolls; in a low window
+     they scroll away with the head. The ghost buttons' words start on the column's edge. */
+  .jumps {
+    position: sticky;
+    z-index: var(--z-sticky);
+    top: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin: calc(-1 * var(--space-16)) 0 calc(-1 * var(--space-16)) calc(-1 * var(--ghost-inset));
+    padding: var(--space-8) 0;
+    background-color: var(--surface);
+  }
+
+  @media (height < 560px) {
+    .jumps {
+      position: static;
+    }
   }
 </style>

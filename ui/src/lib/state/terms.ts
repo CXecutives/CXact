@@ -14,22 +14,25 @@ export interface ProfileTerm {
 /** The fields that are lists of words, by the key of their list in the form. */
 const LISTS = {
   tool: 'tools',
-  industry: 'industries',
   certificate: 'certificates',
   degree: 'degrees',
-} as const satisfies Record<Exclude<TermField, 'competence' | 'language'>, keyof ProfileForm>;
+} as const satisfies Record<
+  Exclude<TermField, 'competence' | 'industry' | 'language'>,
+  keyof ProfileForm
+>;
 
 const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-/** The names of one field of the form (a competence with its synonyms, a language). */
+/** The names of one field of the form (a competence, an industry, a language). */
 function namesIn(form: ProfileForm, field: TermField): string[] {
-  if (field === 'competence') return form.competences.flatMap((row) => [row.name, ...row.aliases]);
+  if (field === 'competence') return form.competences.map((row) => row.name);
+  if (field === 'industry') return form.industries.map((row) => row.name);
   if (field === 'language') return form.languages.map((row) => row.language);
   return form[LISTS[field]];
 }
 
-/** Every term the form names, in any field (the keywords and the wished industries too): a
- *  term of the ads it names is none the profile lacks (core `view::named_terms`). */
+/** Every term the form names, in any field: a term of the ads it names is none the profile
+ *  lacks (core `view::named_terms`). */
 export function termsOf(form: ProfileForm): string[] {
   const fields: TermField[] = [
     'competence',
@@ -39,25 +42,24 @@ export function termsOf(form: ProfileForm): string[] {
     'certificate',
     'degree',
   ];
-  return [
-    ...fields.flatMap((field) => namesIn(form, field)),
-    ...form.keywords,
-    ...form.wishes.industries,
-  ];
+  return fields.flatMap((field) => namesIn(form, field));
 }
 
-/** Puts the term at the end of its field of `form` (a competence row, a language row without
- *  a level, an entry of a list); `false` when the field names it already. */
+/** The level a language the ads ask for goes in with (core matching's assumed level). */
+const ASSUMED_LEVEL = 'B2';
+
+/** Puts the term at the end of its field of `form` (a competence row, an industry without a
+ *  star, a language at the assumed level, an entry of a list); `false` when the field names it
+ *  already. */
 export function putTerm(form: ProfileForm, { term, field }: ProfileTerm): boolean {
   const text = term.trim();
   if (text === '' || namesIn(form, field).some((name) => same(name, text))) return false;
   if (field === 'competence') {
-    form.competences = [
-      ...form.competences,
-      { name: text, years: null, aliases: [], origin: null },
-    ];
+    form.competences = [...form.competences, { name: text, years: null, focus: false }];
+  } else if (field === 'industry') {
+    form.industries = [...form.industries, { name: text, preferred: false }];
   } else if (field === 'language') {
-    form.languages = [...form.languages, { language: text, level: null, origin: null }];
+    form.languages = [...form.languages, { language: text, level: ASSUMED_LEVEL }];
   } else {
     form[LISTS[field]] = [...form[LISTS[field]], text];
   }
@@ -69,6 +71,8 @@ export function takeTerm(form: ProfileForm, { term, field }: ProfileTerm): void 
   const other = (name: string): boolean => !same(name, term);
   if (field === 'competence') {
     form.competences = form.competences.filter((row) => other(row.name));
+  } else if (field === 'industry') {
+    form.industries = form.industries.filter((row) => other(row.name));
   } else if (field === 'language') {
     form.languages = form.languages.filter((row) => other(row.language));
   } else {

@@ -1,34 +1,25 @@
 <!--
   The languages: over the rows the heads of their columns (Sprache, Niveau, like the
-  competences), one row each with the language and its level (a menu of A1 to C2 and
-  Muttersprache: a select in a row of fields, the level in a field as high as the others and
-  the chevron's button beside it, in a column as wide as its longest level, so every row
-  lines up), then "Sprache hinzufügen". A
-  row without a level shows B2, the level the engine assumes then (matching's fit), and a
-  new row starts at B2. The x of a row needs no tooltip. The language field suggests common languages like the countries field (found by their German and
-  English names); any other language can be typed. A common language shows and is kept
-  under its German name, as the engine reads it (core matching::lexicon LANGUAGES); while
-  the field has the focus it shows what was typed. Enter moves
-  through the rows like in the competences (rows.ts) unless it takes a suggestion; it never
-  saves. Removing a row puts no caret anywhere (input.ts removeBy): after a click the focus is
-  dropped, from the keyboard it goes to the next row's x (the previous one after the last,
-  "Sprache hinzufügen" once none is left). A value the backend refused marks its row.
+  competences), one row each with the language and its level, both selects in a row of fields
+  (the common languages by their German names, as the engine reads them; the levels in plain
+  words with their CEFR level), then "Sprache hinzufügen", whose menu lists the common
+  languages not chosen yet; a new row starts at B2, the level the engine assumes. A language
+  of the profile that is no common one (from the CV) stays as it is. The x of a row needs no
+  tooltip; removing a row puts no caret anywhere (input.ts removeBy). A value the backend
+  refused is said under the rows.
 -->
 <script lang="ts">
   import Button from '$components/Button.svelte';
   import MenuButton from '$components/MenuButton.svelte';
-  import { folded } from '$components/Suggestions.svelte';
-  import TextField from '$components/TextField.svelte';
   import { de } from '$lib/i18n/de';
   import { t } from '$lib/i18n/t';
-  import { formKeys, removeBy } from '$lib/input/input';
-  import type { LanguageLevel, ProfileLanguage } from '$lib/ipc/types';
-  import { tick } from 'svelte';
-  import { enterRow, focusRow } from './rows';
+  import { removeBy } from '$lib/input/input';
+  import { menuState, openMenu } from '$lib/state/menu.svelte';
+  import type { Language, LanguageLevel } from '$lib/state/profile.svelte';
 
   interface Props {
-    rows: ProfileLanguage[];
-    /** A row the backend refused (its place among the rows with a language) and why. */
+    rows: Language[];
+    /** A value the backend refused and why. */
     error?: { row: number | null; text: string } | null;
   }
 
@@ -36,85 +27,54 @@
 
   const words = $derived(t.profile.field);
   const id = $props.id();
-  /** The level the engine assumes for a language without one (core matching's fit): a row
-   *  without a level shows it, and a new row starts at it. */
-  const ASSUMED: LanguageLevel = 'b2';
+  /** The level a new language starts at (the one the engine assumes without one). */
+  const ASSUMED: LanguageLevel = 'B2';
   const LEVELS = $derived(
     (Object.keys(t.profile.level) as LanguageLevel[]).map((level) => ({
       id: level,
       label: t.profile.level[level],
     })),
   );
-  let list = $state<HTMLElement | null>(null);
+  /** The common languages by their German names. */
+  const COMMON: readonly string[] = Object.values(de.profile.languageName);
 
-  type LanguageCode = keyof typeof de.profile.languageName;
-  const CODES = Object.keys(de.profile.languageName) as LanguageCode[];
-  /** Common languages, named in German and found by both names. */
-  const LANGUAGES = CODES.map((code) => ({
-    id: code,
-    label: de.profile.languageName[code],
-    terms: [de.profile.languageName[code], de.profile.languageEnglish[code]],
-  }));
+  const same = (a: string, b: string): boolean => a.trim().toLowerCase() === b.trim().toLowerCase();
+  const chosen = (name: string): boolean => rows.some((row) => same(row.language, name));
 
-  /** The common language a name stands for (German or English, any case, with or without
-   *  accents), else null. */
-  function codeOf(name: string): LanguageCode | null {
-    const key = folded(name);
-    if (key === '') return null;
-    return (
-      CODES.find(
-        (code) =>
-          folded(de.profile.languageName[code]) === key ||
-          folded(de.profile.languageEnglish[code]) === key,
-      ) ?? null
-    );
-  }
+  /** The choices of a row: its own language first if it is no common one. */
+  const optionsOf = (row: Language): { id: string; label: string }[] => [
+    ...(COMMON.some((name) => same(name, row.language))
+      ? []
+      : [{ id: row.language, label: row.language }]),
+    ...COMMON.filter((name) => same(name, row.language) || !chosen(name)).map((name) => ({
+      id: name,
+      label: name,
+    })),
+  ];
 
-  /** A language as the field shows it and the profile keeps it: a common one by its German
-   *  name. */
-  function kept(typed: string): string {
-    const code = codeOf(typed);
-    return code === null ? typed : de.profile.languageName[code];
-  }
-
-  /** What was typed into the focused language field (it shows as typed until it is left). */
-  let typing = $state.raw<{ row: ProfileLanguage; text: string } | null>(null);
-
-  function type(row: ProfileLanguage, text: string): void {
-    typing = { row, text };
-    row.language = kept(text);
-  }
-
-  const refused = $derived.by((): ProfileLanguage | null => {
-    if (error === null || error.row === null) return null;
-    return rows.filter((row) => row.language.trim() !== '')[error.row] ?? null;
-  });
-
-  const append = (): void => {
-    rows = [...rows, { language: '', level: ASSUMED, origin: null }];
-  };
-  const remove = (row: ProfileLanguage): void => {
+  const remove = (row: Language): void => {
     rows = rows.filter((other) => other !== row);
   };
 
-  async function add(): Promise<void> {
-    append();
-    await tick();
-    focusRow(list, rows.length - 1);
-  }
+  let adder = $state<HTMLElement | null>(null);
 
-  const enter = (row: ProfileLanguage): void =>
-    void enterRow({
-      list,
-      rows,
-      row,
-      blank: (r) => r.language.trim() === '',
-      add: append,
-      remove,
+  /** "Sprache hinzufügen": the common languages not chosen yet, a new row at B2. */
+  function openAdd(event: MouseEvent): void {
+    if (adder === null || menuState.open !== null) return;
+    openMenu({
+      label: words.addLanguage,
+      anchor: { kind: 'below', rect: adder.getBoundingClientRect(), align: 'start' },
+      fromKeyboard: event.detail === 0,
+      entries: COMMON.filter((name) => !chosen(name)).map((name) => ({
+        id: `language-${name}`,
+        label: name,
+        run: () => (rows = [...rows, { language: name, level: ASSUMED }]),
+      })),
     });
+  }
 </script>
 
-<div class="list" bind:this={list} data-testid="languages" data-field="languages" data-removes>
+<div class="list" data-testid="languages" data-removes>
   {#if rows.length > 0}
     <div class="head" aria-hidden="true">
       <span>{words.language}</span>
@@ -123,23 +83,21 @@
     </div>
   {/if}
   {#each rows as row (row)}
-    <div class="row" data-row data-testid="language-row" use:formKeys={{ save: () => enter(row) }}>
-      <span class="name" onfocusout={() => (typing = null)}>
-        <TextField
-          value={typing?.row === row ? typing.text : kept(row.language)}
-          label={words.language}
-          options={LANGUAGES}
-          placeholder={rows.length === 1 ? words.languagePlaceholder : null}
-          invalid={row === refused}
-          describedby={row === refused ? `${id}-error` : null}
+    <div class="row" data-row data-testid="language-row">
+      <span class="select">
+        <MenuButton
+          options={optionsOf(row)}
+          value={row.language}
+          menuLabel={words.language}
+          field
           testid="language-name"
-          oninput={(text) => type(row, text)}
+          onchange={(next) => (row.language = next)}
         />
       </span>
-      <span class="level">
+      <span class="select">
         <MenuButton
           options={LEVELS}
-          value={row.level ?? ASSUMED}
+          value={row.level}
           menuLabel={words.level}
           field
           testid="language-level"
@@ -152,7 +110,7 @@
           iconOnly
           icon="close"
           plain
-          label={words.removeLanguage(kept(row.language).trim())}
+          label={words.removeLanguage(row.language)}
           testid="language-remove"
           onclick={(event) => removeBy(event.currentTarget, () => remove(row))}
         />
@@ -162,13 +120,14 @@
   {#if error}
     <p class="error" id="{id}-error" role="alert" data-testid="language-error">{error.text}</p>
   {/if}
-  <span data-remove-fallback>
+  <span bind:this={adder} data-remove-fallback>
     <Button
       variant="secondary"
       icon="add"
       label={words.addLanguage}
+      menu
       testid="language-add"
-      onclick={() => void add()}
+      onclick={openAdd}
     />
   </span>
 </div>
@@ -179,16 +138,13 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-8);
-    container-type: inline-size;
   }
 
-  /* language | level | remove: the level in one width in every row (its longest word fits),
-     the button filling it; the language takes the rest. The heads stand over their columns
-     like the competences' (13/500). */
+  /* language | level | remove: both selects as wide as their column in every row. */
   .head,
   .row {
     display: grid;
-    grid-template-columns: minmax(var(--space-64), 1fr) var(--level-width) var(--control-field);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--control-field);
     align-items: center;
     gap: var(--space-6) var(--space-12);
     width: 100%;
@@ -200,11 +156,11 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The level fills its column: the select's field, its chevron's button beside it. */
-  .level,
-  .level > :global(.select) {
+  .select,
+  .select > :global(.select) {
     display: flex;
     width: 100%;
+    min-width: 0;
   }
 
   .remove {

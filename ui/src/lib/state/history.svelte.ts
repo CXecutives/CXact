@@ -1,5 +1,5 @@
 // Zurück and Vor of the top bar, like a browser's: through the views, the places of the jobs
-// and the jobs opened and the tabs of Profil and Einstellungen, in the order they were shown. A step back shows the one before as it
+// and the jobs opened and the tabs of Einstellungen, in the order they were shown. A step back shows the one before as it
 // was (its view, its place, its job); a new step after a way back drops the ones ahead.
 // Showing or hiding the job view is no step. The mouse's back button goes back too (App).
 // In one column a job without a step before it goes back to the list.
@@ -8,7 +8,6 @@ import { tick, untrack } from 'svelte';
 import type { JobKey, Place } from '../ipc/types';
 import { jobs, sameKey } from './jobs.svelte';
 import { navigation, type ViewId } from './navigation.svelte';
-import { profileTab, type ProfileTab } from './profile.svelte';
 import { settingsTab, type SettingsTab } from './settings.svelte';
 import { shell } from './shell.svelte';
 
@@ -16,7 +15,6 @@ interface Step {
   view: ViewId;
   place: Place;
   job: JobKey | null;
-  tab: ProfileTab;
   settings: SettingsTab;
 }
 
@@ -25,11 +23,7 @@ const KEPT = 100;
 
 function same(a: Step, b: Step): boolean {
   return (
-    a.view === b.view &&
-    a.place === b.place &&
-    sameKey(a.job, b.job) &&
-    a.tab === b.tab &&
-    a.settings === b.settings
+    a.view === b.view && a.place === b.place && sameKey(a.job, b.job) && a.settings === b.settings
   );
 }
 
@@ -55,7 +49,6 @@ class History {
           view: navigation.current,
           place: jobs.place,
           job: jobs.selected,
-          tab: profileTab.value,
           settings: settingsTab.value,
         };
         untrack(() => this.#record(step));
@@ -92,7 +85,6 @@ class History {
       this.#showing = true;
       this.#at = to;
       if (step.place !== jobs.place) jobs.setPlace(step.place);
-      profileTab.value = step.tab;
       settingsTab.value = step.settings;
       if (step.job === null) jobs.clearSelection();
       else if (!sameKey(jobs.selected, step.job)) jobs.openKey(step.job);

@@ -71,11 +71,8 @@
         ? t.profile.unreadable
         : t.firstRun.profileEmpty,
   );
-  /** Who the profile is about: the name, else the role, else what the Profil view calls a
-   *  profile without a name. */
-  const profileName = $derived(
-    profile?.form?.name.trim() || profile?.form?.title.trim() || t.profile.unnamed,
-  );
+  /** What the profile looks for: its first wished role, else the view's title. */
+  const profileName = $derived(profile?.form?.roles[0]?.trim() || t.profile.title);
 
   /** The sources whose alerts are wanted (switched on, the ones of alert mails; the app
    *  searches the others itself), in the UI's order. */
@@ -256,7 +253,7 @@
         <Button
           variant={current === 'profile' ? 'primary' : 'secondary'}
           icon="add"
-          label={t.profile.newProfile}
+          label={t.list.createProfile}
           testid="first-profile"
           onclick={openProfile}
         />

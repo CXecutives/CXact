@@ -5,7 +5,8 @@
 // Documented exceptions:
 //   - tokens.css: the value source itself.
 //   - motion.css: the only place with @keyframes.
-//   - `@media (width < 900px)`: px in width media features (custom properties do not work there).
+//   - `@media (width < 900px)`, `(height < 560px)`: px in size media features (custom
+//     properties do not work there).
 
 const ANIMATABLE = [
   'opacity',
@@ -143,7 +144,7 @@ export default {
     ],
     'unit-disallowed-list': [
       ['px', 'rem', 'em', 'ms', 's'],
-      { ignoreMediaFeatureNames: { px: ['width', 'min-width', 'max-width'] } },
+      { ignoreMediaFeatureNames: { px: ['width', 'min-width', 'max-width', 'height'] } },
     ],
     'declaration-no-important': true,
     'at-rule-disallowed-list': ['keyframes', 'starting-style', 'view-transition', 'import'],

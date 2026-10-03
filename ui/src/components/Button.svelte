@@ -36,13 +36,6 @@
 -->
 <script lang="ts" module>
   export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
-  export const BUTTON_VARIANTS: readonly ButtonVariant[] = [
-    'primary',
-    'secondary',
-    'ghost',
-    'danger',
-    'link',
-  ];
 </script>
 
 <script lang="ts">

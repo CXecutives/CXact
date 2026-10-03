@@ -57,8 +57,6 @@ Commit them together with tokens.css.
 - `cargo test -p jobalert-core --test palette --test icon --test ui_contract`: the generated
   files say what tokens.css says, no colour is written anywhere else, every icon file carries
   `--brand`. CI runs these with `cargo test`.
-- Contrast by eye: the gallery's colour board (`tools/ui-preview.cmd`, then add `&gallery` to
-  the address) measures the text roles against white and the cream.
 - Look at the page (`tools/ui-preview.cmd`) and, after `npx tauri build` and installing, the top bar, the window before the page
   paints, and the icon in the taskbar, the Dock and Finder.
 
@@ -143,13 +141,18 @@ Each role of the UI has one pattern, decided in one place; the components only r
   at rest).
 - **Tooltips**: only where something is missing: a button that shows only its glyph, text
   that is cut off, the reason a control waits; never the words that stand there (the sidebar
-  always names its entries). No "·" as a separator: an icon, a comma or a
+  always names its entries).
+- **Info symbols**: `components/InfoTip.svelte` through `Field`'s `info` (its bubble is the one
+  tooltip layer, on hover, keyboard focus and click), at most one sentence (`profile.info` in
+  the catalog), only at the places `docs/PLAN.md` names; a field shows a hint or an info symbol,
+  never both. No "·" as a separator: an icon, a comma or a
   line of its own. Both are rules of `ui_contract.rs`.
 - **Motion**: only through `ui/src/lib/motion/`: a view switch fades out,
   then in; a row that leaves folds its height; what comes under the list header unfolds;
   bars, notices, dialogs, menus and toasts have their entrances there.
 - **Check**: `cargo test -p jobalert-core --test ui_contract`, `npm run check`, and
-  `tools/ui-harness/specs/shell.spec.ts`, `input.spec.ts` and `gallery.spec.ts` in Chromium.
+  `tools/ui-harness/specs/shell.spec.ts` and `input.spec.ts` in Chromium (the components are
+  checked on the real screens).
 
 ## What the backend generates for the UI
 
@@ -195,10 +198,9 @@ A number or a list of words under `harte_kriterien`:
 3. `cargo test -p jobalert-core ipc_types` rewrites `ProfileCriteria.ts`,
    `UnreadableField.ts` and `profile.ts`.
 4. The UI: one entry in `ui/src/features/profile/sections.ts` where it belongs in the form
-   (`{ kind: 'number', key, label, testid }` or `{ kind: 'chips', ... }`; its unit and limit
-   come from core) and its label (and hint, placeholder) in the catalog (`profile.field`).
-   `ProfileEditor.svelte`, `ui/src/lib/state/profile.svelte.ts` and the stub's validation
-   need nothing.
+   (`{ kind: 'number', key, label, unit, testid }`, `{ kind: 'chips', ... }`, a `segments` or a
+   `select`; a number's limit comes from core, `NUMBER_LIMITS`) and its label (and placeholder,
+   info sentence) in the catalog (`profile.field`, `profile.info`).
 5. The AI prompt for a new profile (`core/src/profile/prompt.rs`): its key in the skeleton's
    `harte_kriterien`, in the order of `CRITERIA`, and one rule line
    (and, if the CV cannot say it, one question of "Der Ablauf"); a test fails while the
@@ -211,15 +213,18 @@ the section's switches, anything else a control kind of `sections.ts` with its c
 
 ## Change the Profil form
 
-Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the sections in
-their order and each one's lines of fields. Moving, adding or removing a field or a section is
-one entry there (a new section also needs its heading and sentence in `profile.section` and
-`profile.sectionHint`); a quiet hint where values contradict each other is the field's
-`advice`, a field that waits for another its `off`.
+Its layout is one table, `SECTIONS` in `ui/src/features/profile/sections.ts`: the three
+sections in their order (also the order of the jump links) and each one's lines of fields,
+one field or a pair side by side. Moving, adding or removing a field is one entry there (a new
+section also needs its heading in `profile.section`); a quiet hint where values contradict each
+other is the field's `advice`, a field that shows only with another its `shown`, an info symbol
+its `info` (a sentence of `profile.info`). Which fields are required is core's
+(`ProfileInfo.missing`); the page only lists them in its order.
 
-While typing, the competence, its synonyms, the tools and the search terms suggest the
-engine's skills, both industry fields its industries (`suggest` of a chips entry in
-`sections.ts`; `components/Suggestions.svelte`). The words are the lexicon's keys as a person
+While typing, the wished roles, the competence and the tools suggest the engine's skills, the
+industries its industries and the regions those of Germany, Austria and Switzerland
+(`profile.regionNames`; `suggest` of a chips entry in `sections.ts`,
+`ui/src/features/profile/vocabulary.svelte.ts`, `components/Suggestions.svelte`). The words are the lexicon's keys as a person
 writes them (`core/src/matching/vocabulary.rs`: `UMLAUTS`, `SPELLED`, `ACRONYMS`, and
 `HIDDEN` for a key that is no term to write); a new key of the lexicon shows by itself, and
 `cargo test -p jobalert-core vocabulary` rewrites the harness's copy
@@ -277,7 +282,7 @@ asks the live pages once. Its row lands in the card Suche of Einstellungen by it
 ## Change a threshold or a default
 
 - The match bands: `HIGH_FROM` and `MID_FROM` in `core/src/model.rs`. The store, the
-  prompts and (through `bands.ts`) the UI, the gallery and the stub follow.
+  prompts and (through `bands.ts`) the UI and the stub follow.
 - The defaults of the settings: `Settings::default()` in `core/src/settings.rs` (the search
   as the fetch's way);
   the stub's `initial()` mirrors them.
@@ -392,8 +397,8 @@ the fix; its exceptions stand in it with a reason. Then one row in the guardrail
 - **The import graph, file size, dead code**: `tools/architecture.mjs` (`LIB_UI_HELPERS`,
   `FEATURE_PUBLIC`, `LARGE`, `ENTRIES`). A finding accepted for a while goes to `TEMPORARY`
   with a TODO; the check fails once the finding is gone, so the entry goes too.
-- **Across files, or a promise no linter sees** (the gallery shows every component, texts
-  only from the catalog, per-OS markup): `core/tests/ui_contract.rs`, which runs without Node.
+- **Across files, or a promise no linter sees** (texts only from the catalog, per-OS
+  markup): `core/tests/ui_contract.rs`, which runs without Node.
 - **The backend and its data**: a Rust test in `core/tests/` (`contract.rs` for commands,
   `architecture.rs` for the shell; stored data in the tests of `core/src/store/` and
   `core/src/reset.rs`).

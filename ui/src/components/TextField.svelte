@@ -25,7 +25,7 @@
   import { describedBy } from '$lib/state/described';
   import { pop } from '$lib/motion/transitions';
   import Button from './Button.svelte';
-  import { suggested, type ChipOption } from './ChipInput.svelte';
+  import { suggested, type ChipOption } from './Suggestions.svelte';
   import Icon from './Icon.svelte';
   import Suggestions, { folded, suggest, type Vocabulary } from './Suggestions.svelte';
 

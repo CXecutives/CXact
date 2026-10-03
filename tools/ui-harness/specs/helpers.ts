@@ -287,14 +287,6 @@ export async function tokenPx(page: Page, token: string): Promise<number> {
   }, token);
 }
 
-/** The raw value of a token of tokens.css (a weight, a number). */
-export async function tokenValue(page: Page, token: string): Promise<string> {
-  return page.evaluate(
-    (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-    token,
-  );
-}
-
 export async function tokenColour(page: Page, token: string): Promise<string> {
   return page.evaluate((name) => {
     const probe = document.createElement('span');
@@ -334,9 +326,20 @@ export async function expectMailboxState(
   );
 }
 
-/** On the start page of a new profile: the button of a way (the empty form, a file). */
-export async function chooseWay(page: Page, way: 'empty' | 'file'): Promise<void> {
+/** On the start page of the profile: the button of a way (the CV, the empty form). */
+export async function chooseWay(page: Page, way: 'empty' | 'cv'): Promise<void> {
   const ways = page.getByTestId('new-profile-ways');
   await expect(ways).toBeVisible();
   await ways.getByTestId(`new-profile-${way}`).click();
+}
+
+/** Fills what a usable profile needs into the form (Deutschland is there already): a wished
+ *  role, a competence, a language. */
+export async function fillRequired(page: Page): Promise<void> {
+  const roles = page.getByTestId('profile-roles').locator('input');
+  await roles.fill('Interim CFO');
+  await roles.press('Enter');
+  await page.getByTestId('competence-name').first().fill('Controlling');
+  await page.getByTestId('language-add').click();
+  await page.getByTestId('menu-item-language-Deutsch').click();
 }

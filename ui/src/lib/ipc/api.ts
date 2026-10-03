@@ -11,16 +11,31 @@
 // the second run (the run finished in the backend, the UI never heard of it).
 //
 // Types: `Commands` is generated from the command table src-tauri/commands.txt
-// (types/commands.ts).
+// (types/commands.ts); `NextCommands` holds what the interface needs before the backend has
+// it (the stub answers both).
 
 import { Channel, invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import type { Commands, ErrorInfo, ErrorKind, RunEvent } from './types';
+import type { Commands, ErrorInfo, ErrorKind, ProfileInfo, RunEvent } from './types';
 
-export type CommandName = keyof Commands;
+/**
+ * Commands the interface needs that the backend adds next, in the shape of `Commands`; each
+ * moves into src-tauri/commands.txt (and out of here) once the backend has it.
+ * - `profile_from_cv`: "Aus Lebenslauf ausfüllen". The backend asks for the CV with its own
+ *   file dialog (the CV formats), reads it, has it evaluated and merges the answer into the
+ *   one profile (or makes it), saved at once. The stored profile (its `aiFilled` names what
+ *   the CV filled), or null when the dialog was closed. Fails with `{kind: 'cv', params:
+ *   {reason}}` (`CvFailure`).
+ */
+export type NextCommands = {
+  profile_from_cv: { args: Record<string, never>; result: ProfileInfo | null };
+};
+type AllCommands = Commands & NextCommands;
+
+export type CommandName = keyof AllCommands;
 /** Arguments as the UI passes them: everything but the run channel. */
-export type CommandArgs<K extends CommandName> = Omit<Commands[K]['args'], 'channel'>;
-export type CommandResult<K extends CommandName> = Commands[K]['result'];
+export type CommandArgs<K extends CommandName> = Omit<AllCommands[K]['args'], 'channel'>;
+export type CommandResult<K extends CommandName> = AllCommands[K]['result'];
 type Params = ErrorInfo['params'];
 
 /** Commands that receive the run channel as `channel` argument. */
@@ -54,6 +69,51 @@ function toIpcError(error: unknown): IpcError {
   if (error instanceof IpcError) return error;
   if (isErrorInfo(error)) return new IpcError(error.kind, error.params ?? {});
   return new IpcError('unknown', { detail: String(error).slice(0, 200) });
+}
+
+/** Why "Aus Lebenslauf ausfüllen" failed: the CV evaluation's codes. */
+export const CV_FAILURES = [
+  'limit',
+  'paused',
+  'timeout',
+  'outdated',
+  'unreadable',
+  'tooLarge',
+  'offline',
+  'refused',
+] as const;
+export type CvFailure = (typeof CV_FAILURES)[number];
+
+/** A failed "Aus Lebenslauf ausfüllen", by its code. */
+export class CvError extends Error {
+  readonly reason: CvFailure;
+
+  constructor(reason: CvFailure) {
+    super(reason);
+    this.name = 'CvError';
+    this.reason = reason;
+  }
+}
+
+const isCvFailure = (value: unknown): value is CvFailure =>
+  (CV_FAILURES as readonly unknown[]).includes(value);
+
+/**
+ * "Aus Lebenslauf ausfüllen" (`profile_from_cv`): the stored profile, or null when the file
+ * dialog was closed. Rejects with a CvError (no network counts as `offline`), anything else
+ * with an IpcError.
+ */
+export async function fillFromCv(): Promise<ProfileInfo | null> {
+  try {
+    return await invoke('profile_from_cv');
+  } catch (error) {
+    if (!(error instanceof IpcError)) throw error;
+    if (error.kind === 'offline') throw new CvError('offline');
+    if ((error.kind as string) === 'cv' && isCvFailure(error.params.reason)) {
+      throw new CvError(error.params.reason);
+    }
+    throw error;
+  }
 }
 
 type RunHandler = (event: RunEvent) => void;

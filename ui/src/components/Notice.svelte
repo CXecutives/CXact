@@ -10,7 +10,6 @@
 -->
 <script lang="ts" module>
   export type NoticeTone = 'info' | 'success' | 'warning' | 'danger';
-  export const NOTICE_TONES: readonly NoticeTone[] = ['info', 'success', 'warning', 'danger'];
 </script>
 
 <script lang="ts">

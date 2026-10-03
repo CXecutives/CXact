@@ -30,13 +30,12 @@ import type {
   PauseReason,
   Place,
   Portal,
-  LanguageLevel,
-  ProfileAvailability,
+  ProfileForm,
   ReasonWeight,
-  RemoteWish,
   TermField,
   WorkMode,
 } from '../ipc/types';
+import type { CvFailure } from '../ipc/api';
 import { PORTAL_LABEL } from '../ipc/types/portals';
 import {
   NBSP,
@@ -131,43 +130,31 @@ const errors: Record<ErrorKind | 'unknown', Text> = {
 };
 
 /** Fields of the profile form, named in an error or a warning about their value: the label
- *  of the field without its unit, read from the form's own words (`profile.field`, the
- *  sections for a list), so each field has one name. Only the contract types and the
- *  Schwerpunkte have no label of their own. */
+ *  of its field (`profile.field`), so each field has one name. */
 const profileField = (): Record<string, string> => {
-  const { field, section } = de.profile;
+  const { field } = de.profile;
   return {
-    name: field.name,
-    title: field.title,
-    competences: section.competences,
-    strengths: field.strengths,
-    keywords: field.keywords,
-    years: field.totalYears,
-    degrees: field.degrees,
-    industries: field.industries,
-    tools: field.tools,
-    certificates: field.certificates,
-    languages: section.languages,
-    minDayRate: field.minDayRate,
-    countries: field.countries,
-    contracts: 'Zeitarbeit und Festanstellung',
-    remoteOutside: field.remoteOutside,
-    available: field.available,
-    // The two days of one field (von, bis).
-    workloadMinDays: field.workload,
-    workloadMaxDays: field.workload,
-    minMonths: field.minMonths,
-    exclusionWords: field.exclusionWords,
-    minSalary: field.minSalary,
-    permanentPlaces: field.places,
-    permanentRemoteMin: field.remoteMin,
-    focus: 'Schwerpunkte',
     roles: field.roles,
-    searchTerms: field.searchTerms,
-    wishDayRate: field.wishRate,
-    remote: field.remote,
+    contracts: field.contracts,
+    permanent: field.contracts,
+    temporary: field.contracts,
+    dayRateWish: field.dayRateWish,
+    dayRateMin: field.dayRateMin,
+    minSalary: field.minSalary,
+    workMode: field.workMode,
+    countries: field.countries,
     regions: field.regions,
-    wishIndustries: field.wishIndustries,
+    available: field.available,
+    workload: field.workload,
+    minMonths: field.minMonths,
+    competences: field.competences,
+    tools: field.tools,
+    years: field.totalYears,
+    industries: field.industries,
+    languages: field.languages,
+    degrees: field.degrees,
+    certificates: field.certificates,
+    exclusionWords: field.exclusionWords,
   };
 };
 const fieldName = (value: unknown): string => profileField()[str(value)] ?? str(value);
@@ -204,6 +191,11 @@ const emptyMails = (mails: number): string =>
 
 /** A profile file the app cannot read (the list and the Profil view). */
 const PROFILE_UNREADABLE = 'Profil nicht lesbar';
+/** The CV could not be evaluated: no connection, or a file that does not read. */
+const NO_CONNECTION = 'Keine Verbindung.';
+const CV_UNREADABLE = 'Die Datei lässt sich nicht lesen.';
+/** The choice of the profile that wishes nothing. */
+const ANY = 'Egal';
 
 const ANUE = 'Die Anzeige nennt Zeitarbeit.';
 const LOW_TEXT = 'Die Anzeige nennt wenige klare Anforderungen.';
@@ -583,51 +575,29 @@ const note = {
 } satisfies Record<string, Text>;
 export type MatchNote = keyof typeof note;
 
-/** The keys of the profile file the app speaks about (the keys themselves are an external
- *  contract): the criteria, wishes, Schwerpunkte and target roles, German and English, each
- *  by the field it belongs to, which every catalog names by the label of its form field
- *  (`fieldName`). */
+/** The keys of the profile file the app speaks about (Profil-JSON v19, an external
+ *  contract), each by the field it belongs to, which every catalog names by the label of its
+ *  form field (`fieldName`). */
 export const PROFILE_KEY_FIELD: Readonly<Record<string, string>> = {
-  min_tagessatz: 'minDayRate',
-  min_day_rate: 'minDayRate',
-  tagessatz_ab: 'minDayRate',
-  laender: 'countries',
-  countries: 'countries',
-  ausgeschlossene_vertragsarten: 'contracts',
-  excluded_contract_types: 'contracts',
-  remote_ausserhalb_erlaubt: 'remoteOutside',
-  remote_outside_allowed: 'remoteOutside',
-  verfuegbar_ab: 'available',
-  available_from: 'available',
-  min_jahresgehalt: 'minSalary',
-  min_annual_salary: 'minSalary',
-  min_salary: 'minSalary',
-  festanstellung_orte: 'permanentPlaces',
-  permanent_locations: 'permanentPlaces',
-  permanent_places: 'permanentPlaces',
-  festanstellung_remote_min: 'permanentRemoteMin',
-  permanent_remote_min: 'permanentRemoteMin',
-  auslastung_min_tage: 'workloadMinDays',
-  workload_min_days: 'workloadMinDays',
-  auslastung_max_tage: 'workloadMaxDays',
-  workload_max_days: 'workloadMaxDays',
-  min_laufzeit_monate: 'minMonths',
-  min_duration_months: 'minMonths',
-  ausschlusswoerter: 'exclusionWords',
-  ausschlusswörter: 'exclusionWords',
-  exclusion_words: 'exclusionWords',
-  schwerpunkte: 'focus',
-  focus_areas: 'focus',
   wunschrollen: 'roles',
-  target_roles: 'roles',
-  tagessatz_wunsch: 'wishDayRate',
-  desired_day_rate: 'wishDayRate',
-  remote: 'remote',
+  vertragsarten: 'contracts',
+  tagessatz_wunsch: 'dayRateWish',
+  tagessatz_min: 'dayRateMin',
+  mindestgehalt: 'minSalary',
+  arbeitsmodell: 'workMode',
+  laender: 'countries',
   regionen: 'regions',
-  regions: 'regions',
-  // `branchen` of the wishes (the engine reports no other one).
-  branchen: 'wishIndustries',
-  industries: 'wishIndustries',
+  verfuegbar_ab: 'available',
+  auslastung: 'workload',
+  mindestlaufzeit_monate: 'minMonths',
+  kernkompetenzen: 'competences',
+  methoden_tools: 'tools',
+  berufserfahrung_jahre: 'years',
+  branchen: 'industries',
+  sprachen: 'languages',
+  abschluesse: 'degrees',
+  zertifizierungen: 'certificates',
+  ausschlusswoerter: 'exclusionWords',
 };
 const keyLabel = (key: string): string =>
   key in PROFILE_KEY_FIELD ? fieldName(PROFILE_KEY_FIELD[key]) : key;
@@ -662,7 +632,6 @@ const warning = {
   regionWithoutPlaces: 'Der Mindest-Remote-Anteil wirkt nur zusammen mit Orten.',
   focusTrimmed: (p) => `Nur die ersten ${n(num(p.max))} Schwerpunkte zählen.`,
 } satisfies Record<string, Text>;
-export type ProfileWarning = keyof typeof warning;
 
 export const de = {
   app: {
@@ -703,12 +672,12 @@ export const de = {
     undo: 'Rückgängig',
     openFolder: 'Ordner öffnen',
     openLog: 'Protokoll öffnen',
+    /** The accessible name of an info symbol beside a label. */
+    infoAbout: (label: string) => `Mehr zu ${label}`,
   },
   portal: portalName,
   chips: {
     remove: (value: string) => `${value} entfernen`,
-    /** The chips a one-line field does not show (their values in its tooltip). */
-    more: (value: number) => `+${n(value)}`,
   },
   splitter: {
     label: 'Breite der Liste',
@@ -918,7 +887,7 @@ export const de = {
     /** No usable profile: said once, at the top of the list. */
     noProfile: 'Ohne Profil keine Übereinstimmung.',
     profileUnreadable: PROFILE_UNREADABLE,
-    profileEmpty: 'Profil ohne Kompetenzen',
+    profileEmpty: 'Profil unvollständig',
     profileBrokenText: 'Die Jobs zeigen deshalb keine Übereinstimmung.',
     /** A profile the app understands little of: one calm line on top of the list. */
     thinProfile: 'Wenig Inhalt im Profil, die Übereinstimmung bleibt grob.',
@@ -1084,58 +1053,45 @@ export const de = {
     },
   },
   profile: {
+    /** The title of the view: the app has one profile. */
+    title: 'Profil',
     /** The file does not read (edited by hand): the start page says so. */
     unreadable: PROFILE_UNREADABLE,
     noneText: 'Mit einem Profil zeigt jeder Job seine Übereinstimmung.',
     /** Under the error of a profile that no longer reads. */
     replaces: 'Ein neues Profil ersetzt die Datei.',
-    /** Another file over the stored profile, and the toast after saving it (Rückgängig). */
-    replacesStored: 'Speichern ersetzt dein Profil.',
-    replaced: 'Profil ersetzt.',
-    /** Rückgängig of a removal or a replacement that did not work. */
-    restoreFailed: 'Das alte Profil ließ sich nicht zurückholen.',
-    /** The switcher at the left of the head: the active profile's name opens the menu of
-     *  every profile (a check at the active one) and what can be done with them. Without a
-     *  name of its own a profile goes by its role, else by its number. The accessible name of
-     *  the menu. */
-    profiles: 'Profile',
-    numbered: (value: number) => `Profil ${n(value)}`,
-    /** The start page of a new profile (in the menu of the profiles, without one, from the
-     *  first-run page alike): its title and its three ways, stored on "Speichern" (the title
-     *  says it while the form holds it). */
-    newProfile: 'Neues Profil',
-    way: { empty: 'Leer anfangen', file: 'Aus Datei laden', cv: 'Aus dem Lebenslauf' },
-    /** What each way does, one sentence under its name. */
-    emptyHint: 'Du füllst die Felder selbst aus.',
-    fileHint: 'Ein Profil, das du schon als Datei hast.',
-    /** The prompt has the AI hand over the profile as a file, loaded with "Datei hochladen". */
-    cvPrompt: 'Eine KI macht aus deinem Lebenslauf eine Datei, die du hochlädst.',
-    copyPrompt: 'Prompt kopieren',
-    /** The button of the prompt for a moment after the copy. */
-    copied: 'Kopiert',
-    /** The buttons of the ways. */
+    /** The two ways to the profile, one wording everywhere (the start page, the head of the
+     *  Profil), each with one sentence what it does. */
+    fromCv: 'Aus Lebenslauf ausfüllen',
+    fromCvHint: 'Wird von einer KI ausgewertet.',
+    byHand: 'Selbst ausfüllen',
+    byHandHint: 'Du füllst die Felder selbst aus.',
+    /** The buttons of the two ways on the start page. */
+    pickCv: 'Lebenslauf wählen',
     startEmpty: 'Anlegen',
-    pickFile: 'Datei hochladen',
-    duplicate: 'Duplizieren',
-    /** The name a copy starts with (Umbenennen changes it). */
-    copyName: (name: string) => `${name} Kopie`,
-    rename: 'Umbenennen',
-    /** Why the copy of the prompt failed. */
-    promptNotCopied: 'Der Prompt ließ sich nicht kopieren.',
-    /** After another profile became the active one (its rescore runs in the background). */
-    switched: 'Profil gewechselt, Jobs werden neu bewertet.',
-    /** The toasts of a new profile (saved) and a copy: the profile active now. */
-    created: (name: string) => `Profil angelegt, aktiv ist jetzt „${name}“.`,
-    duplicated: (name: string) => `Kopie angelegt, aktiv ist jetzt „${name}“.`,
-    /** In the switcher's menu, red; it asks first, naming the profile, and the toast offers
-     *  Rückgängig. */
-    remove: 'Löschen',
-    removeHeading: (name: string) => `„${name}“ löschen?`,
-    removeConfirm: 'Löschen',
-    removed: 'Profil gelöscht.',
-    /** The same toast when another profile is active now (the one active before). */
-    removedNow: (name: string) => `Profil gelöscht, aktiv ist jetzt „${name}“.`,
-    /** The toast of a save (during the setup with the way on). */
+    /** Why "Aus Lebenslauf ausfüllen" waits while the form holds changes. */
+    saveFirst: 'Erst speichern oder verwerfen.',
+    /** The toast once the CV filled the profile (saved at once). */
+    filled: 'Profil aus dem Lebenslauf ausgefüllt',
+    /** Why the CV filled nothing, one sentence each; the way on is a button beside it. */
+    cvError: {
+      limit: 'Heute ist keine Auswertung mehr möglich.',
+      paused: 'Die Auswertung ist gerade nicht verfügbar.',
+      timeout: NO_CONNECTION,
+      offline: NO_CONNECTION,
+      outdated: 'Diese Version ist zu alt für die Auswertung.',
+      unreadable: CV_UNREADABLE,
+      tooLarge: CV_UNREADABLE,
+      refused: CV_UNREADABLE,
+    } satisfies Record<CvFailure, string>,
+    otherFile: 'Andere Datei wählen',
+    /** The required fields still empty, and the way to the first of them. */
+    open: (value: number) => `Noch ${count(value, 'Angabe', 'Angaben')} offen`,
+    toFirst: 'Zum ersten',
+    /** The small dot at a field the CV filled (until the next save), and the one line in the
+     *  head that says what it means. */
+    aiFilled: 'aus dem Lebenslauf',
+    /** The toast of a save. */
     saved: 'Profil gespeichert',
     /** The same toast with what the rescore of the save changed in Aktuell: the jobs
      *  now (or no longer) in the high band and the ones now (or no longer) excluded, only
@@ -1152,11 +1108,7 @@ export const de = {
       ].filter((part) => part !== null);
       return parts.length === 0 ? 'Profil gespeichert' : `Profil gespeichert, ${parts.join(', ')}`;
     },
-    unnamed: 'Profil ohne Namen',
     rescoring: (value: number) => `${count(value, 'Job wird', 'Jobs werden')} neu bewertet.`,
-    /** Values of the file that do not read and a rule that stays off: a click goes to the
-     *  first one. */
-    check: (value: number) => count(value, 'Wert prüfen', 'Werte prüfen'),
     next: 'Weiter zum ersten Abruf',
     /** The same place without a mailbox: back to the setup page. */
     nextMailbox: 'Weiter zum Postfach',
@@ -1164,147 +1116,87 @@ export const de = {
     save: 'Speichern',
     discard: 'Verwerfen',
     leaveHeading: 'Änderungen speichern?',
-    /** Why a deletion waits while the form holds changes. */
-    saveFirst: 'Erst speichern oder verwerfen.',
     /** Why Speichern waits while a value is marked. */
     fixFirst: 'Korrigiere erst den markierten Wert.',
-    empty: 'Noch leer',
     optional: 'Optional',
-    /** Under the competences: the terms the jobs of the last 30 days ask for most that the
-     *  profile does not name, each with the field it belongs to and its number of jobs;
-     *  "Hinzufügen" puts it into that field (an unsaved change like any other). */
+    /** Under a field: the terms the jobs of the last 30 days ask for most that the profile
+     *  does not name, each with its number of jobs; "Hinzufügen" puts it into that field (an
+     *  unsaved change like any other). */
     asked: 'Häufig verlangt',
     askedAdd: 'Hinzufügen',
     askedIn: (value: number) => `in ${count(value, 'Job', 'Jobs')}`,
     /** The field of the profile a term belongs to, quietly beside it. */
     askedField: {
       competence: 'Kompetenz',
-      tool: 'Werkzeug',
+      tool: 'Tool',
       industry: 'Branche',
       language: 'Sprache',
       certificate: 'Zertifikat',
       degree: 'Abschluss',
     } satisfies Record<TermField, string>,
-    /** The tabs of the Profil, one shown at a time, and their accessible name. */
-    tabs: 'Bereiche des Profils',
-    tab: {
-      search: 'Wünsche',
-      skills: 'Können',
-      experience: 'Erfahrung',
-      exclusions: 'Ausschlüsse',
-    },
-    /** The groups of the Wünsche, each under its heading. */
-    group: {
-      roles: 'Rollen und Suche',
-      rate: 'Tagessatz',
-      place: 'Ort',
-      time: 'Zeit',
-      industries: 'Branchen',
-    },
+    /** The three sections on one page, their jump links and the links' accessible name. */
+    sections: 'Bereiche des Profils',
     section: {
-      criteria: 'Bedingungen',
-      competences: 'Kompetenzen',
-      experience: 'Erfahrung und Qualifikation',
-      languages: 'Sprachen',
-      wishes: 'Wünsche',
-      permanent: 'Festanstellung',
+      search: 'Was du suchst',
+      skills: 'Was du mitbringst',
+      exclusions: 'Was nicht passt',
     },
-    /** The blocks whose effect is easy to get wrong say it in one sentence. */
-    sectionHint: {
-      criteria: 'Was hier nicht passt, schließt einen Job aus.',
-      permanent: 'Was hier nicht passt, schließt eine Festanstellung aus.',
-    } as Partial<Record<string, string>>,
     field: {
-      name: 'Name',
-      title: 'Rolle',
       roles: 'Wunschrollen',
       rolesPlaceholder: 'z. B. Interim CFO',
-      /** What the search of the sources looks for (the roles and Schwerpunkte until changed). */
-      searchTerms: 'Suchbegriffe',
-      searchTermsPlaceholder: 'z. B. SAP FI/CO',
-      searchTermsHint: 'CXact sucht damit und mit verwandten Begriffen aus deinem Profil.',
-      /** The terms are the app's proposal: none stored yet. */
-      searchTermsProposed: 'Vorschlag aus Wunschrollen und Schwerpunkten.',
-      competence: 'Kompetenz',
-      competencePlaceholder: 'z. B. Projektleitung',
-      years: 'Jahre',
-      aliases: 'Synonyme',
-      addCompetence: 'Kompetenz hinzufügen',
-      removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
-      star: 'Als Schwerpunkt markieren',
-      /** The star of a Schwerpunkt, and of a row without a competence yet. */
-      unstar: 'Schwerpunkt entfernen',
-      starEmpty: 'Trag erst eine Kompetenz ein.',
-      /** The Schwerpunkte over the column of their marks (`2/5`). */
-      focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
-      focusHint: 'Markierte Kompetenzen zählen doppelt, höchstens fünf.',
-      focusFull: 'Höchstens fünf Schwerpunkte.',
-      /** More Schwerpunkte in a file than count. */
-      focusTrimmed: 'Übernommen sind die ersten fünf Schwerpunkte.',
-      strengths: 'Besondere Stärken',
-      strengthsPlaceholder: 'z. B. Teams durch Veränderungen führen',
-      keywords: 'Stichworte',
-      keywordsPlaceholder: 'z. B. Transformation',
-      totalYears: 'Berufserfahrung',
-      degrees: 'Abschlüsse',
-      degreesPlaceholder: 'z. B. Master',
-      industries: 'Branchen',
-      industriesPlaceholder: 'z. B. Handel',
-      tools: 'Werkzeuge und Methoden',
-      toolsPlaceholder: 'z. B. Scrum',
-      certificates: 'Zertifikate',
-      certificatesPlaceholder: 'z. B. PMP',
-      language: 'Sprache',
-      languagePlaceholder: 'z. B. Englisch',
-      level: 'Niveau',
-      addLanguage: 'Sprache hinzufügen',
-      removeLanguage: (name: string) => `${name || 'Sprache'} entfernen`,
-      wishRate: 'Wunschtagessatz',
-      /** Quiet hints where two values contradict each other. */
-      belowMinRate: 'Liegt unter dem Mindesttagessatz.',
-      remote: 'Remote-Anteil',
-      regions: 'Wunschregionen',
-      regionsPlaceholder: 'z. B. München',
-      wishIndustries: 'Wunschbranchen',
-      wishIndustriesPlaceholder: 'z. B. Energie',
-      minDayRate: 'Mindesttagessatz',
-      /** Under the minimum beside the wished rate: the one of the two that excludes. */
-      minRateHint: 'Darunter fällt ein Job raus.',
-      countries: 'Einsatzländer',
+      contracts: 'Vertragsart',
+      dayRateWish: 'Wunschtagessatz',
+      dayRateMin: 'Mindesttagessatz',
+      minSalary: 'Mindestjahresgehalt',
+      workMode: 'Arbeitsmodell',
+      countries: 'Länder',
       countriesPlaceholder: 'Land suchen',
       /** Typed text that names no country the app knows. */
       countryNone: 'Kein Land mit diesem Namen.',
-      remoteOutside: 'Remote-Jobs im Ausland ausschließen',
-      remoteOutsideOff: 'Wähle erst die Einsatzländer.',
-      noAnue: 'Zeitarbeit ausschließen',
-      noPermanent: 'Festanstellung ausschließen',
+      regions: 'Regionen',
+      regionsPlaceholder: 'z. B. Hamburg',
       available: 'Verfügbar ab',
-      /** Days per week, from and to (either may stay empty): "von 3 bis 5 Tage pro Woche". */
-      workload: 'Auslastung',
-      workloadFrom: 'von',
-      workloadTo: 'bis',
-      /** The names of the two day fields for a screen reader. */
-      workloadMin: 'Auslastung von',
-      workloadMax: 'Auslastung bis',
-      /** The second day lies below the first (the backend refuses it). */
-      workloadOrder: 'Der zweite Wert liegt unter dem ersten.',
-      minMonths: 'Mindestlaufzeit',
-      exclusionWords: 'Ausschlusswörter',
-      exclusionWordsPlaceholder: 'z. B. Werkstudent',
-      /** The option of the Remote-Anteil that wishes none. */
-      open: 'Egal',
       date: 'Datum',
       datePlaceholder: '01.11.2026',
       dateInvalid: 'Gib das Datum im Format 01.11.2026 ein.',
       /** A day in the right format that the calendar does not have (31.02.2026). */
       dateImpossible: 'Diesen Tag gibt es nicht.',
-      minSalary: 'Mindestjahresgehalt',
-      places: 'Orte für Festanstellung',
-      placesPlaceholder: 'z. B. München',
-      remoteMin: 'Mindest-Remote-Anteil',
-      remoteMinHint: 'Gilt für Jobs außerhalb dieser Orte.',
-      /** The remote share waits for the places it counts outside of. */
-      placesFirst: 'Trag erst Orte ein.',
+      workload: 'Auslastung',
+      minMonths: 'Mindestlaufzeit',
+      competences: 'Kompetenzen',
+      competence: 'Kompetenz',
+      competencePlaceholder: 'z. B. Projektleitung',
+      years: 'Jahre',
+      addCompetence: 'Kompetenz hinzufügen',
+      removeCompetence: (name: string) => `${name || 'Kompetenz'} entfernen`,
+      /** The star of a Schwerpunkt says what a click does; a sixth waits. */
+      star: 'Als Schwerpunkt markieren',
+      unstar: 'Schwerpunkt entfernen',
+      starEmpty: 'Trag erst eine Kompetenz ein.',
+      focusFull: 'Höchstens fünf Schwerpunkte.',
+      /** The Schwerpunkte over the column of their stars (`2/5`). */
+      focusCount: (value: number, max: number) => `${n(value)}/${n(max)}`,
+      tools: 'Tools und Methoden',
+      toolsPlaceholder: 'z. B. Scrum',
+      totalYears: 'Berufserfahrung',
+      industries: 'Branchen',
+      industriesPlaceholder: 'z. B. Handel',
+      /** The star of an industry chip says what a click does. */
+      prefer: (name: string) => `${name} bevorzugen`,
+      unprefer: (name: string) => `${name} nicht mehr bevorzugen`,
+      languages: 'Sprachen',
+      language: 'Sprache',
+      level: 'Niveau',
+      addLanguage: 'Sprache hinzufügen',
+      removeLanguage: (name: string) => `${name} entfernen`,
+      degrees: 'Abschlüsse',
+      degreesPlaceholder: 'z. B. Master BWL',
+      certificates: 'Zertifikate',
+      certificatesPlaceholder: 'z. B. PMP',
+      exclusionWords: 'Ausschlusswörter',
+      exclusionWordsPlaceholder: 'z. B. Werkstudent',
+      /** Quiet hint where two values contradict each other. */
+      belowMinRate: 'Liegt unter dem Mindesttagessatz.',
       /** A euro amount with cents: the app counts whole euros. */
       rounded: 'Auf ganze Euro abgerundet.',
       /** Another number with a decimal part: the app counts whole ones. */
@@ -1312,46 +1204,110 @@ export const de = {
       /** A value the backend refused, said at its field: the limit where one is. */
       refused: 'Dieser Wert passt nicht.',
       atMost: (max: number) => `Höchstens ${n(max)}.`,
-      /** A 0 where it would mean nothing (a day rate, a duration, days a week). */
+      /** A 0 where it would mean nothing (a day rate). */
       atLeast: (min: number) => `Mindestens ${n(min)}.`,
-      /** A value in the file that the app could not read, shown at its field. */
-      unreadableNumber: (value: string) => `In der Datei stand „${value}“, das ist keine Zahl.`,
-      unreadableDate: (value: string) => `In der Datei stand „${value}“, das ist kein Datum.`,
-      unreadableValue: (value: string) =>
-        `In der Datei stand „${value}“, das kann die App nicht lesen.`,
-      unreadableFocus: (value: string) => `„${value}“ steht nicht bei den Kompetenzen.`,
-      unreadableRole: (value: string) => `„${value}“ nennt kein Fachgebiet.`,
-      removeValue: 'Wert entfernen',
+    },
+    /** The info symbols beside a label, one sentence each (only these places, docs/PLAN.md). */
+    info: {
+      roles: 'Danach sucht CXact nach Jobs.',
+      contracts: 'Projekt und Interim sucht CXact immer, die anderen nur mit Haken.',
+      dayRate: 'Unter dem Minimum fällt ein Job raus, der Wunsch hebt passende Jobs.',
+      workMode: 'Ein Wunsch, er hebt passende Jobs und schließt keinen aus.',
+      countries: 'Jobs in anderen Ländern fallen raus, Remote-Jobs zählen überall.',
+      competences: 'Mit Stern zählt eine Kompetenz doppelt, höchstens fünf.',
+      industries: 'Mit Stern bevorzugst du eine Branche.',
+      exclusionWords: 'Steht eines dieser Wörter in der Anzeige, fällt der Job raus.',
     },
     /** The unit right of a number field. */
     unit: {
       euro: '€',
       years: 'Jahre',
-      percent: '%',
-      days: 'Tage pro Woche',
-      months: 'Monate',
     },
+    /** The contract types: Projekt und Interim always, the others with a tick. */
+    contract: {
+      project: 'Projekt und Interim',
+      permanent: 'Festanstellung',
+      temporary: 'Zeitarbeit',
+    },
+    contractFixed: 'Ist immer dabei.',
+    workMode: {
+      any: ANY,
+      remote: 'Remote',
+      hybrid: 'Hybrid',
+      onsite: 'Vor Ort',
+    } satisfies Record<ProfileForm['workMode'], string>,
+    workload: {
+      any: ANY,
+      fulltime: 'Vollzeit',
+      parttime: 'Teilzeit',
+    } satisfies Record<ProfileForm['workload'], string>,
+    minMonths: {
+      0: ANY,
+      3: 'Ab 3 Monaten',
+      6: 'Ab 6 Monaten',
+      12: 'Ab 12 Monaten',
+    } satisfies Record<ProfileForm['minMonths'], string>,
+    /** The level of a language in plain words, its CEFR level after them. */
     level: {
-      a1: 'A1',
-      a2: 'A2',
-      b1: 'B1',
-      b2: 'B2',
-      c1: 'C1',
-      c2: 'C2',
+      A1: 'Anfänger A1',
+      A2: 'Grundkenntnisse A2',
+      B1: 'Gute Kenntnisse B1',
+      B2: 'Sehr gute Kenntnisse B2',
+      C1: 'Fließend C1',
+      C2: 'Verhandlungssicher C2',
       native: 'Muttersprache',
-    } satisfies Record<LanguageLevel, string>,
-    /** The remote wish in the words of the jobs (the reader's work mode). */
-    remoteWish: {
-      full: 'Voll remote',
-      mostly: 'Überwiegend remote',
-      partly: 'Hybrid',
-      onSite: 'Vor Ort',
-    } satisfies Record<RemoteWish, string>,
-    /** Nothing chosen means no availability (pressing the chosen one again clears it). */
+    } satisfies Record<ProfileForm['languages'][number]['level'], string>,
     availability: {
       now: 'Sofort',
       from: 'Datum',
-    } satisfies Record<Exclude<ProfileAvailability['kind'], 'unset'>, string>,
+    } satisfies Record<ProfileForm['available']['kind'], string>,
+    /** Regions of Germany, Austria and Switzerland, suggested in Regionen (any other can be
+     *  typed). */
+    regionNames: [
+      'Baden-Württemberg',
+      'Bayern',
+      'Berlin',
+      'Brandenburg',
+      'Bremen',
+      'Hamburg',
+      'Hessen',
+      'Mecklenburg-Vorpommern',
+      'Niedersachsen',
+      'Nordrhein-Westfalen',
+      'Rheinland-Pfalz',
+      'Saarland',
+      'Sachsen',
+      'Sachsen-Anhalt',
+      'Schleswig-Holstein',
+      'Thüringen',
+      'Rhein-Main',
+      'Ruhrgebiet',
+      'Düsseldorf',
+      'Frankfurt am Main',
+      'Hannover',
+      'Köln',
+      'Leipzig',
+      'München',
+      'Nürnberg',
+      'Stuttgart',
+      'Burgenland',
+      'Kärnten',
+      'Niederösterreich',
+      'Oberösterreich',
+      'Salzburg',
+      'Steiermark',
+      'Tirol',
+      'Vorarlberg',
+      'Wien',
+      'Basel',
+      'Bern',
+      'Genf',
+      'Lausanne',
+      'Luzern',
+      'St. Gallen',
+      'Zug',
+      'Zürich',
+    ] as string[],
     /** Every country the engine can tell apart in a job ad (ISO codes of `laender`, the
      *  list of core `profile::country_codes`, checked by core/tests/countries.rs). */
     country: {
@@ -1410,8 +1366,8 @@ export const de = {
       SK: 'Slovakia',
       US: 'USA',
     } as Record<string, string>,
-    /** Common languages, suggested in the language of a row (found by their German and
-     *  English names; any other language can be typed). */
+    /** Common languages, the choices of a language row (a language of the profile that is
+     *  none of them stays as it is). */
     languageName: {
       ar: 'Arabisch',
       bg: 'Bulgarisch',
@@ -1441,37 +1397,6 @@ export const de = {
       tr: 'Türkisch',
       uk: 'Ukrainisch',
       hu: 'Ungarisch',
-    },
-    /** The English names of the common languages: the field finds a language by them too. */
-    languageEnglish: {
-      ar: 'Arabic',
-      bg: 'Bulgarian',
-      zh: 'Chinese',
-      da: 'Danish',
-      de: 'German',
-      en: 'English',
-      fi: 'Finnish',
-      fr: 'French',
-      el: 'Greek',
-      hi: 'Hindi',
-      it: 'Italian',
-      ja: 'Japanese',
-      ko: 'Korean',
-      hr: 'Croatian',
-      nl: 'Dutch',
-      no: 'Norwegian',
-      pl: 'Polish',
-      pt: 'Portuguese',
-      ro: 'Romanian',
-      ru: 'Russian',
-      sv: 'Swedish',
-      sk: 'Slovak',
-      sl: 'Slovenian',
-      es: 'Spanish',
-      cs: 'Czech',
-      tr: 'Turkish',
-      uk: 'Ukrainian',
-      hu: 'Hungarian',
     },
   },
   settings: {
@@ -1572,8 +1497,8 @@ export const de = {
     /** "Verbinden" found no alert mail of any portal: a fetch would find nothing. */
     noAlerts: 'In den letzten 30 Tagen kam keine Alert-Mail an, leg erst einen Alert an.',
     profile: 'Profil',
-    /** A profile without competences: the step stays open. */
-    profileEmpty: 'Ohne Kompetenzen wird nichts bewertet.',
+    /** A profile that still needs required fields: the step stays open. */
+    profileEmpty: 'Im Profil fehlen noch Angaben.',
     fetch: 'Erster Abruf',
   },
   shell: {

@@ -5,7 +5,6 @@
 <script lang="ts" module>
   export type TileTone = 'navy' | 'danger' | 'neutral';
   export type TileSize = 'sm' | 'md' | 'lg';
-  export const TILE_TONES: readonly TileTone[] = ['navy', 'danger', 'neutral'];
 </script>
 
 <script lang="ts">

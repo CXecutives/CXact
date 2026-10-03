@@ -41,9 +41,9 @@ The app speaks German.
 
 ## The profile
 
-The Profil view edits the profile as a form, on the tabs Wünsche, Können, Erfahrung and Ausschlüsse.
-Several profiles can live side by side in the work folder's `profil/`; the title's menu chooses the active
-one, and every job is scored again with it.
+The Profil view edits the one profile as a form on one page with three sections: Was du suchst, Was du
+mitbringst, Was nicht passt. "Aus Lebenslauf ausfüllen" has a CV evaluated by an AI and fills the
+profile from it; "Selbst ausfüllen" starts with the empty form.
 
 Saving writes only the changed fields into the JSON file. It keeps every other key as it is and leaves the
 previous version beside it. The keys are German; English keys are read too. A competence can carry an

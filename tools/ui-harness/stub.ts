@@ -30,15 +30,14 @@
 // Scenarios (`?scenario=`): default · first-run · mailbox-only · no-profile · empty ·
 // many (2000 jobs) · offline · paused · running · slow · list-error · profile-broken ·
 // concept (five jobs for design reviews: high, medium, low, not scored, excluded) ·
-// profile-thin · profile-unreadable (a value of every criterion and wish does not read, a key
-// is not read at all) · profile-remote-unread (the demo profile with one value that does not
-// read: the minimum remote share of permanent roles) · reset (the state after
-// "reset everything": first run, no mailbox, no profile, the report) · first-run-empty-profile
+// profile-thin (complete, few terms) · profile-incomplete (no wished role and no language:
+// two required fields open) · reset (the state after "reset everything": first run, no
+// mailbox, no profile, the report) · first-run-empty-profile (no competence, no language)
 // · session-left (freelance.de still signed in while the fetch does not use the sign-in)
 // · first-fetch-failed (the setup page after a first fetch that could not reach Gmail: step 3
 // says why; "Abrufen" then completes and ends the setup)
-// · no-minimum (a profile without a minimum day rate and a start: the reader's strip shows
-// the ad's rate and start as plain facts)
+// · no-minimum (a profile without a minimum day rate: the reader's strip shows the ad's rate
+// as a plain fact)
 // · dry-run (a Probelauf mailbox, every command that writes outside the database refuses
 // with `dryRun` like `ensure_real`)
 // · load-failed (the first `app_state` fails with `db`, like a start whose database cannot
@@ -46,19 +45,15 @@
 // before the last fetch).
 // `save_mailbox` refuses the app password `falschfalschfals` with `mailAuth` (Gmail said no);
 // with `?alerts=none` its check finds no alert mail. `?reset=clean`: the reset left nothing.
-// `?file=focus` lets `pick_profile` choose a file with seven Schwerpunkte (the form takes five).
-// Several profiles, one active (core's profile::set): with a profile the work folder holds
-// the scenario's profile (1, active) and two invented test profiles (2 SAP FI/CO, 3 Cloud
-// Architect, tools/test-profiles/); the page's "Aus Datei laden" picks a file into the form
-// (`pick_profile`). A deleted active profile gives
-// the place back to the one active before it, like core. A switch scores the jobs with the new active profile at once: the list rows take the
-// engine's matches of that profile from the snapshot (`DEMO.profiles`); the reader keeps the
-// demo profile's reasons under the new score (the snapshot has one profile's readers).
-// `save_profile` refuses a minimum day rate above 100.000, a minimum remote share above 100,
-// a competence with more than 70 years (with its row), more than five days a week, a second
-// day below the first and a minimum duration above 120 months, like core's validation; a
-// saved profile starts the rescore like core (with jobs, while no run goes), whose summary
-// says what the save changed in Aktuell (`ScoreDelta`).
+// One profile (core's profile::set): `save_profile` makes it or saves it, refuses a day rate
+// above 100.000, a salary above 10.000.000 and a competence with more than 70 years (with its
+// row) like core's validation, and names what a usable profile still needs (`missing`, like
+// core's missing_required); a saved profile starts the rescore like core (with jobs, while no
+// run goes), whose summary says what the save changed in Aktuell (`ScoreDelta`).
+// "Aus Lebenslauf ausfüllen" (`profile_from_cv`) answers after a few seconds with the demo
+// profile filled from a CV (merged into a stored one, the CV's fields in `aiFilled`);
+// `?cv=limit|offline|timeout|unreadable|tooBig|unavailable|outdated` fails like the CV
+// evaluation, `?cv=slow` takes as long as a real one, `?cv=none` closes the file dialog.
 // Engine 16 in the demo: the profile works three to five days a week for at least six months
 // and excludes "Werkstudent" and "Praktikum"; 900413 asks for two days (a check), 2804 for three
 // (fits), 2802 lasts three months (a check), 2807 is excluded by its title.
@@ -83,12 +78,9 @@ import type {
   JobView,
   MailboxCheck,
   MoveBack,
-  Notice,
   Origin,
   Place,
   PortalState,
-  ProfileDraft,
-  ProfileEntry,
   ProfileForm,
   ProfileInfo,
   ProfileUnderstanding,
@@ -104,14 +96,10 @@ import { PORTAL_LABEL, PORTALS } from '../../ui/src/lib/ipc/types/portals';
 import {
   EMPTY_FORM,
   MAX_FOCUS,
-  MAX_ITEMS,
-  MAX_TEXT,
   MAX_YEARS,
-  NUMBER_CRITERIA,
-  WORD_CRITERIA,
-  type NumberCriterion,
-  type WordCriterion,
+  NUMBER_LIMITS,
 } from '../../ui/src/lib/ipc/types/profile';
+import type { CvFailure, NextCommands } from '../../ui/src/lib/ipc/api';
 import snapshot from './demo/snapshot.json';
 // The engine's words of the suggestions (written by core's matching::vocabulary test).
 import VOCABULARY from './demo/vocabulary.json';
@@ -282,6 +270,19 @@ const TICK = Number(params.get('tick') ?? 40);
 /** `?way=mail`: the fetch reads the mailbox (the menu's "Postfach"); else it searches. */
 const MAIL_WAY = params.get('way') === 'mail';
 const DELAY = scenario === 'slow' ? 900 : 0;
+/** How long the CV evaluation takes in the preview and the specs (`?cv=slow`: like a real
+ *  one). */
+const CV_WAIT = 1500;
+/** `?cv=` as the failure of the evaluation it plays. */
+const CV_FAILURE: Readonly<Record<string, CvFailure>> = {
+  limit: 'limit',
+  offline: 'offline',
+  timeout: 'timeout',
+  unreadable: 'unreadable',
+  tooBig: 'tooLarge',
+  unavailable: 'paused',
+  outdated: 'outdated',
+};
 const MAIL_OFFLINE = scenario === 'offline' || params.get('mail') === 'offline';
 /** `mail=no-internet`: every fetch finds no network at all (`offline`, not `mailConnect`). */
 const NO_INTERNET = params.get('mail') === 'no-internet';
@@ -339,268 +340,211 @@ function manyJobs(count: number): JobView[] {
   });
 }
 
-/** A competence row of a form (a chosen file's, a scenario's). */
-const row = (name: string, years: number | null, aliases: string[], origin: number) => ({
-  name,
-  years,
-  aliases,
-  origin,
-});
-/** The sample profile (demo/profile.json) with what the engine understood of it. */
-const PROFILE: ProfileInfo = DEMO.profile;
-const PROFILE_FORM: ProfileForm = PROFILE.form!;
+/** The demo profile (demo/profile.json) in the form of Profil-JSON v19. The snapshot holds
+ *  what the engine understood of it; its form follows once core writes v19 forms. */
+const DEMO_FORM: ProfileForm = {
+  roles: ['Interim CFO'],
+  permanent: true,
+  temporary: false,
+  dayRateWish: 1200,
+  dayRateMin: 1100,
+  minSalary: null,
+  workMode: 'remote',
+  countries: ['DE', 'AT'],
+  regions: ['Hamburg'],
+  available: { kind: 'from', date: '01.09.2026' },
+  workload: 'any',
+  minMonths: 6,
+  competences: [
+    { name: 'Interim Management', years: 12, focus: false },
+    { name: 'Controlling', years: 18, focus: true },
+    { name: 'Konzernrechnungslegung nach IFRS', years: 14, focus: true },
+    { name: 'Konsolidierung', years: 11, focus: false },
+    { name: 'Liquiditätsplanung', years: 10, focus: false },
+    { name: 'Restrukturierung', years: 8, focus: false },
+  ],
+  tools: ['SAP S/4HANA', 'LucaNet', 'Power BI', 'IFRS', 'HGB', 'Konzernabschluss'],
+  years: 20,
+  industries: [
+    { name: 'Maschinenbau', preferred: false },
+    { name: 'Automotive', preferred: false },
+    { name: 'Chemie', preferred: false },
+  ],
+  languages: [
+    { language: 'Deutsch', level: 'native' },
+    { language: 'Englisch', level: 'B2' },
+  ],
+  degrees: ['Diplom-Kauffrau (Univ.)'],
+  certificates: ['Certified Interim Manager (DDIM)'],
+  exclusionWords: ['Werkstudent', 'Praktikum'],
+};
 
-/** The profile's criteria as the engine reads them (`ProfileUnderstanding.criteria`, the
- *  params flat like core's view: a list is one text). */
-function criteriaOf(c: ProfileForm['criteria']): Notice[] {
-  const minDays = c.workloadMinDays ?? null;
-  const maxDays = c.workloadMaxDays ?? null;
-  const words = c.exclusionWords ?? [];
+/** What a usable profile still needs, like core's `missing_required`: a wished role, a
+ *  country, a competence and a language. */
+function missingOf(form: ProfileForm): string[] {
   return [
-    { code: 'minDayRate', params: { set: c.minDayRate !== null, min: c.minDayRate } },
-    {
-      code: 'countries',
-      params: { set: c.countries.length > 0, countries: c.countries.join(', ') },
-    },
-    { code: 'noAnue', params: { set: c.noAnue } },
-    { code: 'noPermanent', params: { set: c.noPermanent } },
-    {
-      code: 'availability',
-      params: {
-        set: c.available.kind !== 'unset',
-        from:
-          c.available.kind === 'from'
-            ? c.available.date
-            : c.available.kind === 'now'
-              ? 'now'
-              : null,
-      },
-    },
-    { code: 'minSalary', params: { set: c.minSalary !== null, min: c.minSalary } },
-    { code: 'permanentRegion', params: { set: c.permanentPlaces.length > 0, places: null } },
-    { code: 'workload', params: { set: minDays !== null || maxDays !== null, minDays, maxDays } },
-    { code: 'duration', params: { set: (c.minMonths ?? null) !== null, min: c.minMonths ?? null } },
-    { code: 'exclusionWords', params: { set: words.length > 0, words: words.join(', ') } },
-  ];
+    form.roles.length === 0 ? 'roles' : null,
+    form.countries.length === 0 ? 'countries' : null,
+    form.competences.every((row) => row.name.trim() === '') ? 'competences' : null,
+    form.languages.length === 0 ? 'languages' : null,
+  ].filter((field) => field !== null);
 }
 
 /** What the engine understands of a form (a rough stand-in: the form's own terms). */
-function understoodOf(form: ProfileForm, warnings: Notice[]): ProfileUnderstanding {
-  const names = form.competences.map((r) => r.name);
-  const terms = [...names, ...form.tools, ...form.keywords];
+function understoodOf(form: ProfileForm): ProfileUnderstanding {
+  const terms = [...form.competences.map((row) => row.name), ...form.tools];
   return {
+    ...DEMO.profile.understood!,
     competenceCount: terms.length,
     competences: terms,
-    sources: [
-      { path: 'kernkompetenzen[].kompetenz', count: names.length },
-      { path: 'methoden_tools[].name', count: form.tools.length },
-      { path: 'keywords[]', count: form.keywords.length },
-    ].filter((s) => s.count > 0),
-    criteria: criteriaOf(form.criteria),
-    warnings,
+    sources: [],
+    warnings: [],
     packs: packsOf(form),
     years: form.years,
     degrees: form.degrees,
-    focus: form.focus,
+    focus: form.competences.filter((row) => row.focus).map((row) => row.name),
     roles: form.roles,
-    wishes: form.wishes,
   };
 }
 
-/** The IT sample of the fixtures (sample_profile_it.json) as a chosen file: a value of it
- *  does not read (the minimum day rate). */
-const FILE_FORM: ProfileForm = {
-  ...structuredClone(PROFILE_FORM),
-  name: 'Jonas Muster',
-  title: '',
-  competences: [
-    row('SAP-Projektleitung', 12, [], 0),
-    row('SAP S/4HANA Migration', 6, [], 1),
-    row('Programmmanagement', 8, [], 2),
-  ],
-  strengths: [],
-  keywords: [],
-  degrees: [],
-  industries: [],
-  tools: [],
-  certificates: [],
-  languages: [],
-  focus: [],
-  roles: [],
-  wishes: { dayRate: null, remote: 'partly', regions: [], industries: [] },
-  criteria: { ...structuredClone(PROFILE_FORM.criteria), minDayRate: null },
-};
-const FILE_DRAFT: ProfileDraft = {
-  form: FILE_FORM,
-  source: '{"name": "Jonas Muster"}',
-  quality: 'thin',
-  understood: understoodOf(FILE_FORM, [
-    { code: 'fewCompetences', params: { count: 3 } },
-    {
-      code: 'criterionNotUnderstood',
-      params: { key: 'min_tagessatz', value: '"ab 900"', field: 'minDayRate' },
-    },
-  ]),
-};
+/** The stored profile of a form, as core answers a save. */
+function infoOf(form: ProfileForm, aiFilled: string[] = []): ProfileInfo {
+  const count = form.competences.length + form.tools.length;
+  return {
+    ...DEMO.profile,
+    fileName: 'beraterprofil.json',
+    bytes: JSON.stringify(form).length,
+    savedAt: at(0),
+    quality: count === 0 ? 'empty' : count < 5 ? 'thin' : 'good',
+    understood: understoodOf(form),
+    pending: 0,
+    parseError: null,
+    form,
+    missing: missingOf(form),
+    aiFilled,
+  };
+}
 
-/** A chosen file with seven Schwerpunkte: the form takes the first five (core's form::read),
- *  the engine says how many the file named. */
-const FOCUS_FORM: ProfileForm = {
-  ...structuredClone(PROFILE_FORM),
-  name: 'Jonas Muster',
-  competences: ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((n, index) =>
-    row(`Kompetenz ${n}`, null, [], index),
-  ),
-  focus: ['A', 'B', 'C', 'D', 'E'].map((n) => `Kompetenz ${n}`),
-};
-const FOCUS_DRAFT: ProfileDraft = {
-  form: FOCUS_FORM,
-  source: '{"name": "Jonas Muster"}',
-  quality: 'good',
-  understood: understoodOf(FOCUS_FORM, [{ code: 'focusTrimmed', params: { count: 7, max: 5 } }]),
-};
+/** The demo profile with what the engine understood of it. */
+const PROFILE: ProfileInfo = { ...DEMO.profile, form: DEMO_FORM, missing: [], aiFilled: [] };
 
-/** A value that does not read, as the engine reports it (the field it belongs to added by
- *  core's view::profile_warning). */
-const unread = (key: string, value: string, field: string | null): Notice => ({
-  code: 'criterionNotUnderstood',
-  params: field === null ? { key, value } : { key, value, field },
-});
+/** The fields a CV fills (core's AI schema): never the contract types, rates, countries, the
+ *  work mode, the day, the workload or the exclusion words. */
+const CV_FIELDS = [
+  'roles',
+  'competences',
+  'tools',
+  'years',
+  'industries',
+  'languages',
+  'degrees',
+  'certificates',
+] as const satisfies readonly (keyof ProfileForm)[];
 
-/** A profile whose criteria and wishes do not read: each field says so, a Schwerpunkt that is
- *  no competence and a target role without a field too, and a key of the criteria the app
- *  does not read at all. */
-const UNREADABLE_PROFILE: ProfileInfo = {
-  ...PROFILE,
-  understood: {
-    ...PROFILE.understood!,
-    warnings: [
-      { code: 'availabilityNotUnderstood', params: { value: 'bald' } },
-      unread('min_tagessatz', '"teuer"', 'minDayRate'),
-      unread('laender', '"Atlantis"', 'countries'),
-      unread('ausgeschlossene_vertragsarten', '5', 'contracts'),
-      unread('remote_ausserhalb_erlaubt', '"vielleicht"', 'remoteOutside'),
-      unread('min_jahresgehalt', '"hoch"', 'minSalary'),
-      unread('festanstellung_orte', '[]', 'permanentPlaces'),
-      unread('festanstellung_remote_min', '"viel"', 'permanentRemoteMin'),
-      unread('schwerpunkte', 'Treasury', 'focus'),
-      unread('wunschrollen', 'Head of', 'roles'),
-      unread('tagessatz_wunsch', '"hoch"', 'wishDayRate'),
-      unread('remote', '"egal"', 'remote'),
-      unread('regionen', '5', 'regions'),
-      unread('branchen', '{}', 'wishIndustries'),
-      // Engine 16: a word for a day, a day beyond the week, a word for months, a number for
-      // words.
-      unread('auslastung_min_tage', '"viel"', 'workloadMinDays'),
-      unread('auslastung_max_tage', '9', 'workloadMaxDays'),
-      unread('min_laufzeit_monate', '"lang"', 'minMonths'),
-      unread('ausschlusswoerter', '5', 'exclusionWords'),
-      { code: 'ignoredKeys', params: { keys: 'tagessatz_max' } },
+/** A CV merged into a stored profile like core: by normalized names, nothing overwritten
+ *  (stars, levels and years stay), new stars only up to five. */
+function mergeCv(stored: ProfileForm | null): ProfileForm {
+  const base = stored ?? structuredClone(EMPTY_FORM);
+  const cv = DEMO_FORM;
+  const has = (list: string[], name: string): boolean =>
+    list.some((item) => item.toLowerCase() === name.toLowerCase());
+  const add = (list: string[], more: string[]): string[] => [
+    ...list,
+    ...more.filter((item) => !has(list, item)),
+  ];
+  const competences = [...base.competences];
+  for (const row of cv.competences) {
+    if (
+      has(
+        competences.map((c) => c.name),
+        row.name,
+      )
+    )
+      continue;
+    const stars = competences.filter((c) => c.focus).length;
+    competences.push({ ...row, focus: row.focus && stars < MAX_FOCUS });
+  }
+  return {
+    ...base,
+    roles: add(base.roles, cv.roles),
+    competences,
+    tools: add(base.tools, cv.tools),
+    years: base.years ?? cv.years,
+    industries: [
+      ...base.industries,
+      ...cv.industries.filter(
+        (row) =>
+          !has(
+            base.industries.map((i) => i.name),
+            row.name,
+          ),
+      ),
     ],
-  },
-  form: {
-    ...structuredClone(PROFILE_FORM),
-    focus: ['Controlling', 'Treasury'],
-    roles: ['Interim CFO', 'Head of'],
-    wishes: { dayRate: null, remote: null, regions: [], industries: [] },
-    criteria: {
-      minDayRate: null,
-      countries: [],
-      noAnue: false,
-      noPermanent: false,
-      available: { kind: 'unset' },
-      remoteOutside: true,
-      minSalary: null,
-      permanentPlaces: [],
-      permanentRemoteMin: null,
-      workloadMinDays: null,
-      workloadMaxDays: null,
-      minMonths: null,
-      exclusionWords: [],
-    },
-  },
-};
-
-/** The demo profile with one value of the file that does not read: its minimum remote share
- *  of permanent roles says "viel" (the field stays empty, core names the key and the field). */
-const REMOTE_UNREAD_PROFILE: ProfileInfo = {
-  ...PROFILE,
-  understood: {
-    ...PROFILE.understood!,
-    warnings: [unread('festanstellung_remote_min', '"viel"', 'permanentRemoteMin')],
-  },
-  form: {
-    ...structuredClone(PROFILE_FORM),
-    criteria: { ...structuredClone(PROFILE_FORM.criteria), permanentRemoteMin: null },
-  },
-};
-
-/** The prompt that has an AI write a profile file from a CV (the real text lives in
- *  core/src/profile/prompt.rs). */
-const PROMPT =
-  'Du unterstützt mich als KI-Assistent bei meinem Beraterprofil. Du kennst meine Job-Alert-App nicht.';
+    languages: [
+      ...base.languages,
+      ...cv.languages.filter(
+        (row) =>
+          !has(
+            base.languages.map((l) => l.language),
+            row.language,
+          ),
+      ),
+    ],
+    degrees: add(base.degrees, cv.degrees),
+    certificates: add(base.certificates, cv.certificates),
+  };
+}
 
 /** The domain packs the engine would switch on for a form (a rough stand-in: words of the
- *  competences, keywords and tools). */
+ *  competences and tools). */
 function packsOf(form: ProfileForm): string[] {
-  const words = [...form.competences.map((row) => row.name), ...form.keywords, ...form.tools].join(
-    ' ',
-  );
+  const words = [...form.competences.map((row) => row.name), ...form.tools].join(' ');
   return [
     ...(/controlling|ifrs|hgb|finanz|konsolid|treasury|buchhalt/i.test(words) ? ['finance'] : []),
     ...(/(^|[^a-z])sap([^a-z]|$)/i.test(words) ? ['sap'] : []),
   ];
 }
 
-/** A saved form: trimmed, empty rows gone, origins as the backend reads them back. */
 /**
- * The keywords a save makes of `before` (the copy the view showed) as `after`, applied to the
- * stored list `now`, like core's `profile::form::rebase`: the terms of `after` in its order
- * and spelling, without a term the store dropped meanwhile (an untouched term keeps the
- * stored spelling); a term the store gained meanwhile stays after the term it follows there.
+ * A list a save makes of `before` (the copy the view showed) as `after`, applied to the
+ * stored list `now`, like core's rebase: the entries of `after` in its order and spelling,
+ * without one the store dropped meanwhile (an untouched entry keeps the stored one); an entry
+ * the store gained meanwhile stays after the entry it follows there. `name` tells entries
+ * apart (case-insensitive).
  */
-function mergeKeywords(now: string[], before: string[], after: string[]): string[] {
-  const find = (list: string[], text: string): number => {
-    const key = text.toLowerCase();
-    return list.findIndex((item) => item.toLowerCase() === key);
+function rebase<T>(now: T[], before: T[], after: T[], name: (item: T) => string): T[] {
+  const find = (list: T[], item: T): number => {
+    const key = name(item).toLowerCase();
+    return list.findIndex((other) => name(other).toLowerCase() === key);
   };
-  const out: string[] = [];
-  for (const text of after) {
-    const old = find(before, text);
-    const current = find(now, text);
+  const same = (a: T, b: T): boolean => JSON.stringify(a) === JSON.stringify(b);
+  const out: T[] = [];
+  for (const item of after) {
+    const old = find(before, item);
+    const current = find(now, item);
     if (old >= 0 && current < 0) continue;
-    out.push(old >= 0 && before[old] === text ? now[current]! : text);
+    out.push(old >= 0 && same(before[old]!, item) ? now[current]! : item);
   }
   let at = 0;
-  for (const text of now) {
-    const found = find(out, text);
+  for (const item of now) {
+    const found = find(out, item);
     if (found >= 0) at = found + 1;
-    else if (find(before, text) < 0) out.splice(at++, 0, text);
+    else if (find(before, item) < 0) out.splice(at++, 0, item);
   }
   return out;
 }
 
-function savedForm(form: ProfileForm): ProfileForm {
-  const clean = (items: string[]): string[] => items.map((t) => t.trim()).filter((t) => t !== '');
+/** The lists the reader's "+" writes into, rebased on the stored profile when saved. */
+function rebased(stored: ProfileForm, before: ProfileForm, after: ProfileForm): ProfileForm {
+  const text = (item: string): string => item;
   return {
-    ...structuredClone(form),
-    name: form.name.trim(),
-    title: form.title.trim(),
-    competences: form.competences
-      .filter((r) => r.name.trim() !== '')
-      .map((r, index) => ({ ...r, name: r.name.trim(), aliases: clean(r.aliases), origin: index })),
-    languages: form.languages
-      .filter((r) => r.language.trim() !== '')
-      .map((r, index) => ({ ...r, language: r.language.trim(), origin: index })),
-    focus: clean(form.focus),
-    // Every field of engine 16 is there once saved (core's form always has them).
-    criteria: {
-      ...structuredClone(form.criteria),
-      workloadMinDays: form.criteria.workloadMinDays ?? null,
-      workloadMaxDays: form.criteria.workloadMaxDays ?? null,
-      minMonths: form.criteria.minMonths ?? null,
-      exclusionWords: clean(form.criteria.exclusionWords ?? []),
-    },
+    ...after,
+    competences: rebase(stored.competences, before.competences, after.competences, (r) => r.name),
+    tools: rebase(stored.tools, before.tools, after.tools, text),
+    industries: rebase(stored.industries, before.industries, after.industries, (r) => r.name),
+    languages: rebase(stored.languages, before.languages, after.languages, (r) => r.language),
+    degrees: rebase(stored.degrees, before.degrees, after.degrees, text),
+    certificates: rebase(stored.certificates, before.certificates, after.certificates, text),
   };
 }
 
@@ -727,29 +671,6 @@ function lastRun(outcome: RunSummary['outcome'] = { kind: 'completed' }): RunSum
 
 let jobs: JobView[] = [];
 let state: AppState;
-/** Core's one backup of the active profile: the previous one of every save;
- *  `restore_profile` without a number swaps it with the profile. */
-let backupProfile: ProfileInfo | null = null;
-
-/** A profile of the work folder (core's profile::set): its number, the name the user gave
- *  it, what the app shows of it while another one is active (the active one is
- *  `state.profile`) and the engine's matches of the demo's jobs with it (`portal:id`; null:
- *  the demo profile's). */
-interface StubProfile {
-  id: number;
-  name: string | null;
-  info: ProfileInfo | null;
-  matches: Record<string, Match | null> | null;
-}
-let profiles: StubProfile[] = [];
-let activeId: number | null = null;
-/** The profile active before the active one (core's index `previous`). */
-let previousId: number | null = null;
-/** Deleted profiles by number (their backup), for the undo. */
-const deletedProfiles = new Map<number, StubProfile>();
-/** The number of the other profiles of the demo (`DEMO.profiles`) the work folder starts
- *  with. */
-const FOLDER_PROFILES = 2;
 /** The copies of the database in the data folder, newest first (`list_backups`). */
 let backups: Backup[] = [];
 
@@ -844,13 +765,10 @@ function initial(): void {
       jobs = [];
       state.firstRun = true;
       state.lastRun = null;
-      state.profile = { ...PROFILE, quality: 'empty' };
+      state.profile = infoOf({ ...DEMO_FORM, competences: [], languages: [] });
       break;
     case 'no-minimum':
-      state.profile = {
-        ...PROFILE,
-        form: { ...PROFILE_FORM, criteria: { ...PROFILE_FORM.criteria, minDayRate: null } },
-      };
+      state.profile = { ...PROFILE, form: { ...DEMO_FORM, dayRateMin: null } };
       break;
     case 'no-profile':
       state.profile = null;
@@ -923,39 +841,30 @@ function initial(): void {
       for (const job of jobs) job.match = null;
       break;
     case 'profile-thin':
-      state.profile = {
-        ...PROFILE,
-        quality: 'thin',
-        understood: {
-          ...PROFILE.understood!,
-          competenceCount: 3,
-          competences: ['Controlling', 'Treasury', 'IFRS'],
-          packs: ['finance'],
-          focus: [],
-          roles: [],
-          warnings: [{ code: 'fewCompetences', params: { count: 3 } }],
-        },
-        form: {
-          ...structuredClone(PROFILE_FORM),
-          competences: [row('Controlling', 18, [], 0), row('Treasury', null, [], 1)],
-          focus: [],
-          roles: [],
-          keywords: ['IFRS'],
-          years: null,
-          degrees: [],
-          industries: [],
-          tools: [],
-          certificates: [],
-          languages: [],
-          wishes: { dayRate: null, remote: null, regions: [], industries: [] },
-        },
-      };
+      // A complete profile that names few terms: the match stays rough.
+      state.profile = infoOf({
+        ...structuredClone(DEMO_FORM),
+        competences: [
+          { name: 'Controlling', years: 18, focus: false },
+          { name: 'Treasury', years: null, focus: false },
+        ],
+        tools: ['IFRS'],
+        industries: [],
+        degrees: [],
+        certificates: [],
+      });
       break;
-    case 'profile-unreadable':
-      state.profile = UNREADABLE_PROFILE;
-      break;
-    case 'profile-remote-unread':
-      state.profile = REMOTE_UNREAD_PROFILE;
+    case 'profile-incomplete':
+      // A profile without a wished role and a language: two required fields are open.
+      state.profile = infoOf({
+        ...structuredClone(DEMO_FORM),
+        roles: [],
+        competences: [
+          { name: 'Controlling', years: 18, focus: false },
+          { name: 'Treasury', years: null, focus: false },
+        ],
+        languages: [],
+      });
       break;
     case 'running':
       state.running = {
@@ -981,21 +890,6 @@ function initial(): void {
       break;
   }
   for (const p of state.portals) p.lastAlert ??= lastAlertOf(p.portal);
-  deletedProfiles.clear();
-  activeId = state.profile === null ? null : 1;
-  profiles =
-    state.profile === null
-      ? []
-      : [
-          { id: 1, name: null, info: null, matches: null },
-          // The dry run lists its sample profile only.
-          ...(state.dryRun ? [] : DEMO.profiles.slice(0, FOLDER_PROFILES)).map((other, index) => ({
-            id: index + 2,
-            name: null,
-            info: structuredClone(other.profile),
-            matches: other.matches,
-          })),
-        ];
   refresh();
 }
 
@@ -1234,13 +1128,11 @@ function askedTerms(): AskedTerm[] {
       .join(' ');
   const known = new Set(
     [
-      ...form.competences.flatMap((c) => [c.name, ...c.aliases]),
-      ...form.keywords,
+      ...form.competences.map((c) => c.name),
       ...form.tools,
       ...form.certificates,
       ...form.degrees,
-      ...form.industries,
-      ...form.wishes.industries,
+      ...form.industries.map((i) => i.name),
       ...form.languages.map((l) => l.language),
     ].map(key),
   );
@@ -1649,7 +1541,7 @@ function startRun(request: RunRequest, sender: Sender | null): void {
       throw fail('invalid', { reason: 'noPortal' });
     }
     const profile = state.profile;
-    if (profile === null || profile.parseError !== null || profile.quality === 'empty') {
+    if (profile === null || profile.parseError !== null || profile.missing.length > 0) {
       throw fail('invalid', { reason: 'noSearchTerms' });
     }
   }
@@ -1777,102 +1669,22 @@ function cancelRun(): void {
   }, TICK);
 }
 
-/* ----------------------------------------------------------------- profiles */
-
-/** The role a profile goes by without a name of its own (core's profile::role). */
-function roleOf(info: ProfileInfo | null): string | null {
-  const form = info?.form ?? null;
-  if (form === null) return null;
-  return form.title.trim() || form.roles.map((role) => role.trim()).find((r) => r !== '') || null;
-}
-
-/** The switcher's list (core's view::profile_entries). */
-function profileEntries(): ProfileEntry[] {
-  return profiles.map((p) => ({
-    id: p.id,
-    name: p.name,
-    role: roleOf(p.id === activeId ? state.profile : p.info),
-    active: p.id === activeId,
-  }));
-}
-
-/** The number a new profile takes: after the highest of the folder, a deleted one's too. */
-function nextProfileId(): number {
-  return Math.max(0, ...profiles.map((p) => p.id), ...deletedProfiles.keys()) + 1;
-}
-
-/** One line, trimmed, at most 80 characters; empty: none (core's set_name). */
-function profileName(name: string | null): string | null {
-  const clean = (name ?? '').split(/\s+/).filter(Boolean).join(' ').slice(0, 80).trimEnd();
-  return clean === '' ? null : clean;
-}
-
-/** A new empty profile (`{}`) as the app shows it: nothing in it, so nothing scores. */
-function emptyProfile(id: number): ProfileInfo {
-  const form = structuredClone(EMPTY_FORM);
-  return {
-    ...structuredClone(PROFILE),
-    fileName: `beraterprofil-${id}.json`,
-    bytes: 2,
-    savedAt: at(0),
-    quality: 'empty',
-    understood: understoodOf(form, [{ code: 'noCompetences', params: {} }]),
-    scoredAt: null,
-    pending: 0,
-    parseError: null,
-    form,
-  };
-}
-
-/**
- * The engine's match of a job with the active profile (the stub never scores itself): the
- * demo profile's, another profile's from its own matches in the snapshot (by the demo job it
- * stands for); a job the snapshot scored for the demo profile only (the scripted fetch's)
- * keeps that one. Without a usable profile no job has a match; a job counted anyway stays
- * counted.
- */
-function matchWithActive(j: JobView): Match | null {
-  const info = state.profile;
-  if (info === null || info.form === null || info.quality === 'empty') return null;
-  const own = profiles.find((p) => p.id === activeId)?.matches ?? null;
-  const key = sourceOf(j.key);
-  const found = own !== null && key in own ? structuredClone(own[key] ?? null) : demoMatch(j);
-  if (found === null || !j.overridden) return found;
-  overridden.set(markKey(j.key), found);
-  return { ...found, status: 'scored', note: { code: 'userOverride', params: {} } };
-}
-
-/** Another profile becomes the active one (none: no profile left): every job is scored with
- *  it at once, like the rescore the backend starts. */
-function activate(target: StubProfile | null): void {
-  const from = profiles.find((p) => p.id === activeId);
-  if (from !== undefined) from.info = state.profile;
-  if (activeId !== null && target !== null && target.id !== activeId) previousId = activeId;
-  activeId = target?.id ?? null;
-  state.profile = target === null ? null : structuredClone(target.info);
-  backupProfile = null;
-  for (const j of jobs) j.match = matchWithActive(j);
-  refresh();
-}
-
-/** A new profile of `info`, active from now on. */
-function addProfile(info: ProfileInfo, name: string | null, matches: StubProfile['matches']): void {
-  const added: StubProfile = { id: nextProfileId(), name, info, matches };
-  profiles.push(added);
-  activate(added);
-}
-
-const profileOf = (id: number): StubProfile => {
-  const found = profiles.find((p) => p.id === id);
-  if (found === undefined) throw fail('notFound', { what: 'profile' });
-  return found;
-};
-
 /* ----------------------------------------------------------------- handlers */
 
-type Args<K extends keyof Commands> = Omit<Commands[K]['args'], 'channel'>;
+/** Commands of the table the interface no longer calls (the backend drops them). */
+type Retired =
+  | 'pick_profile'
+  | 'profile_prompt'
+  | 'switch_profile'
+  | 'create_profile'
+  | 'duplicate_profile'
+  | 'rename_profile'
+  | 'delete_profile'
+  | 'restore_profile';
+type Answered = Omit<Commands, Retired> & NextCommands;
+type Args<K extends keyof Answered> = Omit<Answered[K]['args'], 'channel'>;
 type Handlers = {
-  [K in keyof Commands]: (args: Args<K>) => Commands[K]['result'] | Promise<Commands[K]['result']>;
+  [K in keyof Answered]: (args: Args<K>) => Answered[K]['result'] | Promise<Answered[K]['result']>;
 };
 
 const find = (key: { portal: string; id: string }): JobView | undefined =>
@@ -1891,7 +1703,6 @@ const handlers: Handlers = {
       throw fail('db');
     }
     if (sender !== null) attachPage(sender);
-    state.profiles = profileEntries();
     return structuredClone(state);
   },
   start_run: ({ request }) => {
@@ -1944,8 +1755,6 @@ const handlers: Handlers = {
     if (state.profile === null) throw fail('notFound', { what: 'profile' });
     return promptOf(j);
   },
-  pick_profile: () => structuredClone(params.get('file') === 'focus' ? FOCUS_DRAFT : FILE_DRAFT),
-  profile_prompt: () => PROMPT,
   save_profile: ({ save }) => {
     const after = save.after;
     const refuse = (field: string, max: number | null, row: number | null = null): never => {
@@ -1953,61 +1762,18 @@ const handlers: Handlers = {
     };
     const tooLong = after.competences.findIndex((r) => (r.years ?? 0) > MAX_YEARS);
     if (tooLong >= 0) refuse('competences', MAX_YEARS, tooLong);
-    if (after.focus.length > MAX_FOCUS) refuse('focus', MAX_FOCUS);
-    // Like core (form::validate_criteria, the limits of types/profile.ts), hidden or not:
-    // every number up to its limit, words within what a profile holds, the second day of the
-    // workload not below the first.
-    const c = after.criteria;
-    for (const key of Object.keys(NUMBER_CRITERIA) as NumberCriterion[]) {
-      const { max } = NUMBER_CRITERIA[key];
-      if ((c[key] ?? 0) > max) refuse(key, max);
+    if (after.competences.filter((r) => r.focus).length > MAX_FOCUS)
+      refuse('competences', MAX_FOCUS);
+    // Like core (form::validate, the limits of types/profile.ts), shown or not.
+    for (const [key, max] of Object.entries(NUMBER_LIMITS) as [
+      keyof typeof NUMBER_LIMITS,
+      number,
+    ][]) {
+      if ((after[key] ?? 0) > max) refuse(key, max);
     }
-    for (const key of Object.keys(WORD_CRITERIA) as WordCriterion[]) {
-      const words = c[key];
-      if (words.length > MAX_ITEMS || words.some((w) => w.length > MAX_TEXT)) refuse(key, null);
-    }
-    const [minDays, maxDays] = [c.workloadMinDays, c.workloadMaxDays];
-    if (minDays !== null && maxDays !== null && maxDays < minDays) refuse('workloadMaxDays', null);
-    const form = savedForm(after);
-    // The keywords like core's merge: an unchanged list keeps the stored one, a changed one
-    // is applied to it (a term added from the reader and its undo, each on its own copy).
-    const stored = save.source === null ? (state.profile?.form ?? null) : null;
-    if (stored !== null) {
-      const { keywords } = save.before;
-      form.keywords =
-        keywords.length === after.keywords.length &&
-        keywords.every((term, index) => term === after.keywords[index])
-          ? [...stored.keywords]
-          : mergeKeywords(stored.keywords, keywords, form.keywords);
-    }
-    const count = form.competences.length + form.tools.length + form.keywords.length;
-    const quality = count === 0 ? 'empty' : count < 5 ? 'thin' : 'good';
-    // Without any profile the save makes the first one of the folder.
-    if (activeId === null) {
-      activeId = nextProfileId();
-      profiles.push({ id: activeId, name: null, info: null, matches: null });
-    }
-    if (state.profile !== null) backupProfile = state.profile;
-    state.profile = {
-      ...PROFILE,
-      fileName: 'beraterprofil.json',
-      bytes: JSON.stringify(form).length,
-      savedAt: at(0),
-      quality,
-      understood: {
-        ...PROFILE.understood!,
-        competenceCount: count,
-        competences: form.competences.map((r) => r.name),
-        // Like the engine: a domain only from what the profile names (no fixed sample packs).
-        packs: packsOf(form),
-        criteria: criteriaOf(form.criteria),
-        warnings: [],
-        focus: form.focus,
-        roles: form.roles,
-        wishes: form.wishes,
-      },
-      form,
-    };
+    const stored = state.profile?.form ?? null;
+    const form = stored === null ? structuredClone(after) : rebased(stored, save.before, after);
+    state.profile = infoOf(form);
     // Scored with the profile: the engine's scores of the demo.
     const bandsBefore = bandsOf(jobs);
     if (jobs.every((j) => j.match === null)) {
@@ -2028,58 +1794,22 @@ const handlers: Handlers = {
     }
     return structuredClone(state.profile);
   },
-  switch_profile: ({ id }) => {
-    const target = profileOf(id);
-    if (id !== activeId) activate(target);
-    return profileEntries();
-  },
-  create_profile: () => {
-    const id = nextProfileId();
-    addProfile(emptyProfile(id), null, null);
-    return profileEntries();
-  },
-  // Like core: the file byte for byte, so its matches too.
-  duplicate_profile: ({ id, name }) => {
-    const source = profileOf(id);
-    const info = id === activeId ? state.profile : source.info;
-    addProfile(structuredClone(info!), profileName(name), source.matches);
-    return profileEntries();
-  },
-  rename_profile: ({ id, name }) => {
-    profileOf(id).name = profileName(name);
-    return profileEntries();
-  },
-  // Like core: the file becomes its backup; the one active before is active again, without
-  // it the next profile in order (else the one before), the last one leaves none.
-  delete_profile: ({ id }) => {
-    const index = profiles.findIndex((p) => p.id === id);
-    if (index < 0) return false;
-    const [gone] = profiles.splice(index, 1);
-    if (id === activeId) {
-      gone!.info = state.profile;
-      const back = profiles.find((p) => p.id === previousId);
-      activeId = null;
-      activate(back ?? profiles[index] ?? profiles[index - 1] ?? null);
-      previousId = null;
+  // "Aus Lebenslauf ausfüllen": the CV merged into the one profile (or made into it), saved
+  // at once, after the time an evaluation takes; `?cv=` fails like the evaluation.
+  profile_from_cv: async () => {
+    const cv = params.get('cv');
+    await new Promise((resolve) => setTimeout(resolve, cv === 'slow' ? 10_000 : CV_WAIT));
+    if (cv === 'none') return null;
+    const failure = cv === null || cv === 'slow' ? null : (CV_FAILURE[cv] ?? null);
+    if (failure === 'offline') throw fail('offline');
+    if (failure !== null) throw fail('cv' as ErrorInfo['kind'], { reason: failure });
+    const form = mergeCv(state.profile?.form ?? null);
+    state.profile = infoOf(form, [...CV_FIELDS]);
+    if (jobs.every((j) => j.match === null)) {
+      for (const j of jobs) j.match = demoMatch(j);
     }
-    deletedProfiles.set(id, gone!);
-    return true;
-  },
-  // Like core: a number brings a deleted profile back (active again); none swaps the active
-  // profile with its backup (the undo of another file saved over it).
-  restore_profile: ({ id }) => {
-    if (id === null) {
-      if (backupProfile === null) return false;
-      [state.profile, backupProfile] = [backupProfile, state.profile];
-      return true;
-    }
-    const back = deletedProfiles.get(id);
-    if (back === undefined) return false;
-    deletedProfiles.delete(id);
-    profiles.push(back);
-    profiles.sort((a, b) => a.id - b.id);
-    activate(back);
-    return true;
+    refresh();
+    return structuredClone(state.profile);
   },
   asked_terms: () => askedTerms(),
   vocabulary: () => structuredClone(VOCABULARY),
@@ -2183,7 +1913,6 @@ const handlers: Handlers = {
     if (patch.fetchSearch !== null && patch.fetchSearch !== undefined) {
       state.fetchSearch = patch.fetchSearch;
     }
-    state.profiles = profileEntries();
     return structuredClone(state);
   },
   reset_all: () => null,
@@ -2339,14 +2068,7 @@ function checking(): Promise<void> {
 
 /** Commands that refuse in the dry run (`ensure_real` in src-tauri): they write outside it. */
 const DRY_RUN_REFUSED: ReadonlySet<string> = new Set([
-  'pick_profile',
-  'switch_profile',
-  'create_profile',
-  'duplicate_profile',
-  'rename_profile',
-  'delete_profile',
-  'restore_profile',
-  'save_profile_template',
+  'profile_from_cv',
   'save_mailbox',
   'remove_mailbox',
   'portal_login',
@@ -2369,7 +2091,7 @@ function nextTask(): Promise<void> {
 
 export async function invoke<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
   harness.calls.push([command, args]);
-  const handler = handlers[command as keyof Commands] as ((a: unknown) => unknown) | undefined;
+  const handler = handlers[command as keyof Answered] as ((a: unknown) => unknown) | undefined;
   if (handler === undefined) throw fail('internal', { command });
   if (state.dryRun && DRY_RUN_REFUSED.has(command)) throw fail('dryRun');
   const delay = command === 'job_detail' ? DELAY + harness.detailDelay : DELAY;

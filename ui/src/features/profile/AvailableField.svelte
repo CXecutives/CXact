@@ -1,38 +1,30 @@
 <!--
   Verfügbar ab: one choice of the segments ("Sofort", "Datum"; after the label they read "ab
-  sofort", "ab Datum"; user decision 2026-10-01: no "Offen", the engine scores it like
-  "Sofort", and a profile without one shows "Sofort"). The day of "Datum" exists only while it is chosen and gets
-  the caret when it is (it slides in beside the choice, as high as the choice and as wide as
-  every number field); it is judged when its field is left with text in it or on saving
-  (`editor.judged`), never while it is typed, and a day that does not read is said once, at
-  the field, in the error line of every field (Field), and holds the save. A value of the
-  file that does not read is said under it with "Wert entfernen". Beside the day's field (not
-  inside it, user 2026-10-01) a calendar offers one (Calendar); typing stays the way to write
-  it, and a chosen day is written into the field in its form.
+  sofort", "ab Datum"). The day of "Datum" exists only while it is chosen and gets the caret
+  when it is (it slides in beside the choice, as high as the choice and as wide as every
+  number field); it is judged when its field is left with text in it or on saving
+  (`editor.judged`), never while it is typed, and a day that does not read is said by its
+  Field and holds the save. Beside the day's field a calendar offers one (Calendar); typing
+  stays the way to write it, and a chosen day is written into the field in its form.
 -->
 <script lang="ts">
   import Calendar from '$components/Calendar.svelte';
-  import Icon from '$components/Icon.svelte';
   import Segmented from '$components/Segmented.svelte';
   import TextField from '$components/TextField.svelte';
   import { t } from '$lib/i18n/t';
   import { slideIn } from '$lib/motion/transitions';
-  import { dayShaped, editor, isoDate, shownDate } from '$lib/state/profile.svelte';
+  import { editor, isoDate, keptDate, shownDate } from '$lib/state/profile.svelte';
   import { tick } from 'svelte';
-  import ValueNote from './ValueNote.svelte';
 
   interface Props {
-    /** A day the backend refused on the last save, in words. */
-    refused: string | null;
-    /** Values of the file that do not read. */
-    notes: readonly { text: string; onremove: () => void }[];
+    /** The day is said to be wrong (its Field says why). */
+    invalid: boolean;
   }
 
-  let { refused, notes }: Props = $props();
+  let { invalid }: Props = $props();
 
-  const id = $props.id();
   const words = $derived(t.profile.field);
-  const c = $derived(editor.after.criteria);
+  const form = $derived(editor.after);
   let date = $state<HTMLElement | null>(null);
 
   type Choice = 'now' | 'from';
@@ -43,10 +35,7 @@
 
   /** "Datum" puts the caret into its day, which is judged anew when it is left. */
   async function choose(kind: Choice): Promise<void> {
-    c.available =
-      kind === 'from'
-        ? { kind, date: isoDate(editor.dateText) ?? editor.dateText.trim() }
-        : { kind };
+    form.available = kind === 'from' ? { kind, date: keptDate(editor.dateText) } : { kind };
     editor.judged = false;
     if (kind !== 'from') return;
     await tick();
@@ -55,88 +44,45 @@
 
   function type(text: string): void {
     editor.dateText = text;
-    c.available = { kind: 'from', date: isoDate(text) ?? text.trim() };
+    form.available = { kind: 'from', date: keptDate(text) };
     editor.judged = false;
   }
-
-  const wrong = $derived(
-    editor.judged && editor.dateInvalid
-      ? dayShaped(editor.dateText)
-        ? words.dateImpossible
-        : words.dateInvalid
-      : null,
-  );
-  const said = $derived(wrong ?? refused);
 </script>
 
-<div class="block" data-field="available">
-  <span class="label">{words.available}</span>
-  <div class="choice">
-    <Segmented
-      options={CHOICES}
-      value={c.available.kind === 'from' ? 'from' : 'now'}
-      label={words.available}
-      testid="profile-available"
-      onchange={(kind) => void choose(kind)}
-    />
-    {#if c.available.kind === 'from'}
-      <span
-        class="date"
-        role="presentation"
-        in:slideIn
-        bind:this={date}
-        onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
-      >
-        <TextField
-          value={editor.dateText}
-          label={words.date}
-          placeholder={words.datePlaceholder}
-          invalid={said !== null}
-          describedby={said !== null ? `${id}-message` : null}
-          testid="profile-date"
-          oninput={type}
-        />
-        <Calendar
-          value={isoDate(editor.dateText)}
-          testid="profile-date-calendar"
-          onpick={(day) => type(shownDate(day))}
-        />
-      </span>
-    {/if}
-  </div>
-  {#if said !== null}
-    <div class="help">
-      <p
-        class="error"
-        id="{id}-message"
-        role="alert"
-        data-testid={wrong !== null ? 'profile-date-error' : undefined}
-      >
-        <Icon name="warning" size="sm" />
-        <span>{said}</span>
-      </p>
-    </div>
+<div class="choice">
+  <Segmented
+    options={CHOICES}
+    value={form.available.kind}
+    label={words.available}
+    testid="profile-available"
+    onchange={(kind) => void choose(kind)}
+  />
+  {#if form.available.kind === 'from'}
+    <span
+      class="date"
+      role="presentation"
+      in:slideIn
+      bind:this={date}
+      onfocusout={() => (editor.judged = editor.dateText.trim() !== '')}
+    >
+      <TextField
+        value={editor.dateText}
+        label={words.date}
+        placeholder={words.datePlaceholder}
+        {invalid}
+        testid="profile-date"
+        oninput={type}
+      />
+      <Calendar
+        value={isoDate(editor.dateText)}
+        testid="profile-date-calendar"
+        onpick={(day) => type(shownDate(day))}
+      />
+    </span>
   {/if}
-  {#each notes as note (note.text)}
-    <ValueNote text={note.text} testid="available-unread" onremove={note.onremove} />
-  {/each}
 </div>
 
 <style>
-  .block {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    min-width: 0;
-  }
-
-  /* The label of a choice, like every control label of the form (13/500). */
-  .label {
-    color: var(--text);
-    font: var(--type-sm);
-    font-weight: var(--weight-medium);
-  }
-
   .choice {
     display: flex;
     flex-wrap: wrap;
@@ -153,26 +99,5 @@
 
   .date > :global(:first-child) {
     width: calc(var(--stat-min) - var(--space-48));
-  }
-
-  /* The error line of every field (Field): as high as a link, the glyph on its first line, 6
-     from the words. */
-  .help {
-    display: flex;
-    align-items: center;
-    min-height: var(--control-sm);
-  }
-
-  .error {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-6);
-    color: var(--danger-strong);
-    font: var(--type-sm);
-  }
-
-  .error > :global(:first-child) {
-    flex: none;
-    margin-top: calc((var(--leading-sm) - var(--icon-sm)) / 2);
   }
 </style>

@@ -8,7 +8,7 @@
 
 import type { Locator, Page } from '@playwright/test';
 import { NOW, calls, expect, open, settle, test } from './fixtures';
-import { showTab, T, tokenColour } from './helpers';
+import { failNext, showTab, T, tokenColour } from './helpers';
 
 /** The entries of the open menu as the user reads them: "Text" or "Text (aus)". */
 async function menuEntries(page: Page): Promise<string[]> {
@@ -110,8 +110,6 @@ async function wheelOver(page: Page, target: Locator, pane: string, dy = 240): P
   await expect.poll(() => scrollTop(page, pane)).not.toBe(before);
   return (await scrollTop(page, pane)) - before;
 }
-
-const GALLERY = '?gallery&platform=windows';
 
 /** What a pressed look changes: the colours and the scale of the control and its track. */
 async function look(target: Locator): Promise<string> {
@@ -660,39 +658,42 @@ test('the list search clears on Esc; a click on its magnifier lands in the field
 });
 
 test('the password eye and the search clear keep the caret in the field', async ({ page }) => {
-  await open(page, '?gallery&platform=windows');
-  const section = page.getByTestId('gallery-inputs');
-  const password = page.locator('#gallery-password');
-  await password.click();
+  // The app password of the first-run page, the search of the list.
+  await open(page, `${WIN}&scenario=first-run`);
+  const password = page.getByTestId('mailbox-password');
+  await password.fill('abcd efgh');
   await page.keyboard.press('End');
-  const eye = section.getByRole('button', { name: 'Passwort zeigen' });
+  const eye = page.getByRole('button', { name: T.field.reveal });
   await expect(eye).toHaveAttribute('tabindex', '-1');
   await eye.click();
   await expect(password).toHaveAttribute('type', 'text');
   await expect(password).toBeFocused();
   await page.keyboard.type('x');
   await expect(password).toHaveValue('abcd efghx');
-  // Tab skips the eye: from the password field it leaves the field.
-  await page.keyboard.press('Tab');
-  await expect(section.getByRole('button', { name: 'Passwort verbergen' })).not.toBeFocused();
-  const search = section.getByRole('textbox', { name: 'Jobs durchsuchen' }).first();
-  await search.click();
-  const clear = section.getByRole('button', { name: 'Suche leeren' });
+  await open(page, WIN);
+  const search = page.getByTestId('search');
+  await search.fill('Controlling');
+  const clear = page.getByRole('button', { name: T.field.clear });
   await expect(clear).toHaveAttribute('tabindex', '-1');
   await clear.click();
   await expect(search).toHaveValue('');
   await expect(search).toBeFocused();
 });
 
+/** Einstellungen > Daten with the danger dialog of "Zurücksetzen"; its opener. */
+async function resetDialog(page: Page): Promise<{ opener: Locator; dialog: Locator }> {
+  await open(page, `${WIN}&view=settings`);
+  const opener = await showTab(page, page.getByTestId('reset'));
+  return { opener, dialog: page.getByTestId('dialog-reset') };
+}
+
 test('a dialog holds the focus: Tab cycles, a click on its text keeps Esc working', async ({
   page,
 }) => {
-  await open(page, '?gallery&platform=windows');
+  const { opener, dialog } = await resetDialog(page);
   // Opened from the keyboard: Enter presses the focused button.
-  const opener = page.getByTestId('open-danger');
   await opener.focus();
   await page.keyboard.press('Enter');
-  const dialog = page.getByTestId('dialog-danger');
   await expect(dialog).toBeVisible();
   const inside = (): Promise<boolean> =>
     dialog.evaluate((node) => node.contains(document.activeElement));
@@ -718,10 +719,9 @@ test('a dialog holds the focus: Tab cycles, a click on its text keeps Esc workin
 test('a dialog starts on its default button, ringed only once the keyboard moves', async ({
   page,
 }) => {
-  await open(page, '?gallery&platform=windows');
+  const { opener, dialog } = await resetDialog(page);
   // Opened with the mouse: the focus is on the default button, without a ring.
-  await page.getByTestId('open-danger').click();
-  const dialog = page.getByTestId('dialog-danger');
+  await opener.click();
   const cancel = dialog.getByTestId('dialog-cancel');
   const confirm = dialog.getByTestId('dialog-confirm');
   await expect(cancel).toBeFocused();
@@ -738,26 +738,16 @@ test('a dialog starts on its default button, ringed only once the keyboard moves
   await expect(dialog).toHaveCount(0);
 });
 
-test('a dialog shows the failure of its action inside and stays open', async ({ page }) => {
-  await open(page, '?gallery&platform=windows');
-  await page.getByTestId('open-danger').click();
-  const dialog = page.getByTestId('dialog-danger');
-  await dialog.getByTestId('dialog-confirm').focus();
-  await page.keyboard.press('Enter');
-  await expect(dialog.getByTestId('dialog-error')).toBeVisible();
-  await expect(dialog).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-});
-
 test('a switch flips at once and slides back when its save fails', async ({ page }) => {
-  await open(page, '?gallery&platform=windows');
-  const toggle = page.getByTestId('toggle-fails');
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  // Every answer of the stub takes 900 ms here, the save then fails.
+  await open(page, `${WIN}&scenario=slow&view=settings`);
+  const toggle = await showTab(page, page.getByTestId('toggle-enabled-linkedin'));
+  const before = await toggle.getAttribute('aria-checked');
+  const flipped = before === 'true' ? 'false' : 'true';
+  await failNext(page, 'save_settings');
   await toggle.click();
-  // At once, before the save answers (it takes 400 ms, then fails).
-  await expect(toggle).toHaveAttribute('aria-checked', 'true', { timeout: 100 });
-  await expect(toggle).toHaveAttribute('aria-checked', 'false', { timeout: 2000 });
+  await expect(toggle).toHaveAttribute('aria-checked', flipped, { timeout: 300 });
+  await expect(toggle).toHaveAttribute('aria-checked', before!, { timeout: 3000 });
 });
 
 test('the ad text, title and facts select and copy; the rest does not select', async ({
@@ -887,9 +877,10 @@ test('behind a modal dialog nothing scrolls', async ({ page }) => {
   // The Profil: the tabs of Einstellungen that have a dialog do not scroll at all.
   await open(page, `${WIN}&view=profile`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
-  await page.getByTestId('profile-switcher').click();
-  await page.getByTestId('menu-item-remove').click();
-  const dialog = page.getByTestId('dialog-remove-profile');
+  // Leaving with a change asks in a dialog over the view.
+  await page.getByTestId('profile-wish-rate').fill('1.300');
+  await page.getByTestId('nav-jobs').click();
+  const dialog = page.getByTestId('dialog-leave-profile');
   await expect(dialog).toBeVisible();
   await settle(page);
   // The view behind could go either way from here.
@@ -1142,19 +1133,18 @@ test('a switch held with the right button looks at rest and keeps its state', as
 });
 
 test('a click beside a focused field ends its focus', async ({ page }) => {
-  await open(page, GALLERY);
-  const field = page.locator('#gallery-address');
+  await open(page, `${WIN}&view=profile`);
+  const field = page.getByTestId('profile-years');
   await field.scrollIntoViewIfNeeded();
   const box = (await field.boundingBox())!;
-  const label = page.locator('label[for="gallery-address"]');
+  const label = page.locator(`label[for="${await field.getAttribute('id')}"]`);
   const labelBox = (await label.boundingBox())!;
   const beside: [string, () => Promise<void>][] = [
     [
       'the empty part of the label line',
       () => page.mouse.click(box.x + box.width - 4, labelBox.y + labelBox.height / 2),
     ],
-    ['the hint below', () => page.locator('#gallery-address-message').click()],
-    ['the heading', () => page.getByTestId('gallery-inputs').getByRole('heading').first().click()],
+    ['the heading', () => page.getByTestId('section-skills').getByRole('heading').first().click()],
     [
       'the empty area to the right',
       () => page.mouse.click(box.x + box.width + 24, box.y + box.height / 2),
@@ -1171,11 +1161,12 @@ test('a click beside a focused field ends its focus', async ({ page }) => {
   await page.mouse.click(labelBox.x + 4, labelBox.y + labelBox.height / 2);
   await expect(field).toBeFocused();
   // The chips and the empty part of a chip field keep its caret.
-  const chips = page.locator('#gallery-chips');
-  await chips.click();
-  const chipBox = (await page.getByTestId('gallery-chips').boundingBox())!;
+  const tools = page.getByTestId('profile-tools');
+  const input = tools.locator('input');
+  await input.click();
+  const chipBox = (await tools.boundingBox())!;
   await page.mouse.click(chipBox.x + chipBox.width - 6, chipBox.y + chipBox.height / 2);
-  await expect(chips).toBeFocused();
+  await expect(input).toBeFocused();
 });
 
 test('a press on the top bar (a drag region) ends the focus of a field', async ({ page }) => {
@@ -1218,8 +1209,8 @@ test('Enter presses buttons only; Space toggles a switch', async ({ page }) => {
 });
 
 test('a radio group is one Tab stop and the arrows choose', async ({ page }) => {
-  await open(page, '?gallery&platform=windows');
-  const group = page.getByTestId('segmented-facet');
+  await open(page, `${WIN}&view=profile`);
+  const group = page.getByTestId('profile-work-mode');
   await group.scrollIntoViewIfNeeded();
   const radios = group.getByRole('radio');
   const count = await radios.count();
@@ -1245,9 +1236,8 @@ test('a radio group is one Tab stop and the arrows choose', async ({ page }) => 
 });
 
 test('the middle button stays out of dialogs and fields', async ({ page }) => {
-  await open(page, GALLERY);
-  await page.getByTestId('open-danger').click();
-  const dialog = page.getByTestId('dialog-danger');
+  const { opener, dialog } = await resetDialog(page);
+  await opener.click();
   await expect(dialog).toBeVisible();
   const prevented = await page.evaluate(() => {
     const scrim = document.querySelector('[aria-modal="true"]')!.parentElement!;
@@ -1256,14 +1246,14 @@ test('the middle button stays out of dialogs and fields', async ({ page }) => {
     return event.defaultPrevented;
   });
   expect(prevented).toBe(true);
-  // A real middle click on the backdrop: Enter then still answers the dialog.
+  // A real middle click on the backdrop: Esc then still answers the dialog.
   await page.mouse.click(8, 200, { button: 'middle' });
   await expect(dialog).toBeVisible();
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   // A middle click on a field in a scrolling view does not focus it.
-  await page.mouse.click(4, 4);
-  const field = page.locator('#gallery-address');
+  await open(page, `${WIN}&view=profile`);
+  const field = page.getByTestId('profile-years');
   await field.scrollIntoViewIfNeeded();
   await field.click({ button: 'middle' });
   await page.waitForTimeout(100);
@@ -1505,7 +1495,7 @@ test('a middle click activates nothing in the Profil: a choice, a chip x, the ca
     await view.getByTestId('profile-heading').click();
   };
   // A choice (a radio group): the chosen option stays chosen.
-  const group = page.getByTestId('profile-remote');
+  const group = page.getByTestId('profile-work-mode');
   const chosen = await group.locator('[aria-checked="true"]').allTextContents();
   await group.getByRole('radio').last().click({ button: 'middle' });
   await end();

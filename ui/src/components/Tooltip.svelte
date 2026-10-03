@@ -1,5 +1,5 @@
 <!--
-  The tooltip layer: mounted once (App, Gallery), fed by the `tooltip` action. Placed below
+  The tooltip layer: mounted once (App), fed by the `tooltip` action. Placed below
   its anchor (above if there is no room), or to its right (the icon rail, the column handle:
   centred on the anchor, to the left if there is no room), kept inside
   the window, whole-pixel positions. The deep navy bubble pops toward its anchor (100 ms)

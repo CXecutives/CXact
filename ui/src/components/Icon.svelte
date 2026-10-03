@@ -158,8 +158,6 @@
   /** What an icon says (lib/icons.ts): the name every component and view passes. */
   export type IconName = IconMeaning;
   export type IconSize = 'xs' | 'sm' | 'md' | 'lg';
-  export const ICON_NAMES = Object.keys(ICONS) as IconName[];
-
   /** The drawing of each glyph used so far (the SVG its Lucide component renders). */
   const drawn: Partial<Record<Glyph, SVGSVGElement>> = {};
 

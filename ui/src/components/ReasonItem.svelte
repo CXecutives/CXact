@@ -13,14 +13,6 @@
   import type { ReasonKind } from '$lib/ipc/types';
   import type { IconName } from './Icon.svelte';
 
-  export const REASON_KINDS: readonly ReasonKind[] = [
-    'met',
-    'partial',
-    'open',
-    'violation',
-    'check',
-  ];
-
   const ICON: Record<ReasonKind, IconName> = {
     met: 'success',
     partial: 'partial',

@@ -131,14 +131,6 @@ export function formatDayTime(iso: string, now: Date = new Date()): string {
   return capitalised(`${day} ${clock.format(date)}`.replace(/ /g, NBSP));
 }
 
-/** `18 KB`, `1,2 MB`: the size of a backup. */
-export function formatBytes(bytes: number): string {
-  const { integer, oneDecimal } = formats();
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${integer.format(Math.max(1, Math.round(kb)))}${NARROW_NBSP}KB`;
-  return `${oneDecimal.format(kb / 1024)}${NARROW_NBSP}MB`;
-}
-
 /** `1.200 €` */
 export function formatEuro(value: number | string | boolean | null | undefined): string {
   const number = typeof value === 'number' ? value : Number(value);

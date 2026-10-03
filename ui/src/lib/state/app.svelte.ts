@@ -110,9 +110,10 @@ class AppStore {
     return this.state?.portals.some((p) => p.enabled && p.way === 'alert') ?? false;
   }
 
+  /** A usable profile: it reads and names everything core needs (`missing_required`). */
   get hasProfile(): boolean {
     const profile = this.state?.profile;
-    return Boolean(profile && profile.parseError === null && profile.quality !== 'empty');
+    return Boolean(profile && profile.parseError === null && profile.missing.length === 0);
   }
 }
 

@@ -1,7 +1,5 @@
 // Entry point. Order matters: styles, platform, motion (reads the tokens), input policy, error
-// reporting - then mount. `?gallery` mounts the component gallery instead; it exists
-// only in development and harness builds (`__GALLERY__` is false in the release build, so
-// the dynamic import and its chunk are removed).
+// reporting - then mount.
 
 import './styles/tokens.css';
 import './styles/base.css';
@@ -24,9 +22,4 @@ if (target === null) throw new Error('#app is missing in index.html');
 
 // `intro: false`: nothing animates at start (Svelte 5 would play every intro of the first
 // frame, the view entry included).
-if (__GALLERY__ && new URLSearchParams(location.search).has('gallery')) {
-  const { default: Gallery } = await import('./features/gallery/Gallery.svelte');
-  mount(Gallery, { target, intro: false });
-} else {
-  mount(App, { target, intro: false });
-}
+mount(App, { target, intro: false });

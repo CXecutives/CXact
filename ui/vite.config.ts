@@ -1,10 +1,10 @@
 // Build configuration of the UI. Vite root is `ui/`; the release build lands in `ui/dist`.
 //
 // Modes:
-//   development  `npm run dev` - dev server for `tauri dev`, gallery available via `?gallery`.
-//   production   `npm run build` - what the app ships; the gallery is compiled out.
+//   development  `npm run dev` - dev server for `tauri dev`.
+//   production   `npm run build` - what the app ships.
 //   harness      `vite build --mode harness` - Playwright harness: `@tauri-apps/api` is replaced by a
-//                typed stub, the gallery is included, output goes to .harness/ of this checkout (never shared through a node_modules junction).
+//                typed stub, output goes to .harness/ of this checkout (never shared through a node_modules junction).
 //
 // `vite preview` always sends the production Content-Security-Policy of the app (read from
 // src-tauri/tauri.conf.json), so the harness sees exactly the policy the WebView enforces.
@@ -39,10 +39,6 @@ export default defineConfig(({ mode }) => {
     base: '/',
     publicDir: false,
     plugins: [svelte()],
-    define: {
-      // Dead-code eliminated in the release build: the gallery chunk is never emitted there.
-      __GALLERY__: JSON.stringify(mode !== 'production'),
-    },
     resolve: {
       alias: [
         { find: '$lib', replacement: here('src/lib') },

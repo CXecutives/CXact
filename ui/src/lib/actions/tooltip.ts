@@ -8,6 +8,8 @@
 // `{ text, hint }` adds a second, smaller line under the title, like the tooltips of native
 // apps name a key: "Suchen" over "Strg+F". The hint rides on the anchor as
 // `data-tooltip-hint`, where the tooltip layer (components/Tooltip.svelte) reads it.
+// `{ text, toggle: true }` (the info symbol, components/InfoTip.svelte): a click shows the
+// bubble at once and a second click hides it; a press does not hide it.
 
 import type { Action } from 'svelte/action';
 import { tooltipDelay } from '../motion/motion';
@@ -26,6 +28,8 @@ export type TooltipParam =
       measure?: string;
       /** A second, smaller line (a key, a hint). */
       hint?: string | null;
+      /** A click shows and hides it (the info symbol). */
+      toggle?: boolean;
     };
 
 interface Options {
@@ -34,6 +38,7 @@ interface Options {
   truncated: boolean;
   measure: string | null;
   hint: string | null;
+  toggle: boolean;
 }
 
 /** The attribute that carries the second line to the tooltip layer. */
@@ -44,7 +49,14 @@ function normalize(param: TooltipParam): Options | null {
   if (typeof param === 'string') {
     return param === ''
       ? null
-      : { text: param, placement: 'bottom', truncated: false, measure: null, hint: null };
+      : {
+          text: param,
+          placement: 'bottom',
+          truncated: false,
+          measure: null,
+          hint: null,
+          toggle: false,
+        };
   }
   if (!param.text) return null;
   return {
@@ -53,6 +65,7 @@ function normalize(param: TooltipParam): Options | null {
     truncated: param.truncated ?? false,
     measure: param.measure ?? null,
     hint: param.hint || null,
+    toggle: param.toggle ?? false,
   };
 }
 
@@ -88,6 +101,16 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
     cancel();
     tooltipState.hide(node);
   };
+  /** A press hides the bubble, except on an anchor a click shows and hides. */
+  const press = (): void => {
+    if (!options?.toggle) leave();
+  };
+  const click = (): void => {
+    if (!options?.toggle) return;
+    cancel();
+    if (tooltipState.anchor === node) tooltipState.hide(node);
+    else show();
+  };
   /** The keyboard brought the focus here (or into it: a wrapped control): the same delay
    *  as hovering, never at once (Tab through a row of buttons would flash every tooltip). */
   const focus = (event: FocusEvent): void => {
@@ -108,7 +131,8 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
   mark();
   node.addEventListener('pointerenter', enter);
   node.addEventListener('pointerleave', leave);
-  node.addEventListener('pointerdown', leave);
+  node.addEventListener('pointerdown', press);
+  node.addEventListener('click', click);
   node.addEventListener('focusin', focus);
   node.addEventListener('focusout', blur);
 
@@ -124,7 +148,8 @@ export const tooltip: Action<HTMLElement, TooltipParam> = (node, param) => {
       delete node.dataset[TOOLTIP_HINT];
       node.removeEventListener('pointerenter', enter);
       node.removeEventListener('pointerleave', leave);
-      node.removeEventListener('pointerdown', leave);
+      node.removeEventListener('pointerdown', press);
+      node.removeEventListener('click', click);
       node.removeEventListener('focusin', focus);
       node.removeEventListener('focusout', blur);
     },

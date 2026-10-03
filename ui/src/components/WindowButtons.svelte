@@ -11,7 +11,7 @@
   (src-tauri/src/platform.rs: only an answer of the window procedure opens the snap layouts
   of Windows 11 over Maximieren): it performs the click itself and reports which button the
   pointer is over and which one is pressed (`onCaption`); the buttons show that state as if
-  the pointer were over the page, tooltip included. In a browser (the harness, the gallery)
+  the pointer were over the page, tooltip included. In a browser (the harness)
   they answer the pointer themselves and click through `window_button`.
 -->
 <script lang="ts">

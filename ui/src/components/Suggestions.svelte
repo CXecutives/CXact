@@ -10,6 +10,33 @@
   them.
 -->
 <script lang="ts" module>
+  /** A value a field with options can take: its id, its name, other names to find it by. */
+  export interface ChipOption {
+    id: string;
+    label: string;
+    terms?: readonly string[];
+  }
+
+  /** The options whose names start with `text` (a whole name first, then a word of one),
+   *  by name; none for no text. Shared with the suggestions of a TextField. */
+  export function suggested(options: readonly ChipOption[], text: string): ChipOption[] {
+    const query = folded(text);
+    if (query === '') return [];
+    const rank = (option: ChipOption): number => {
+      const names = [option.label, option.id, ...(option.terms ?? [])].map(folded);
+      if (names.some((name) => name.startsWith(query))) return 0;
+      if (names.some((name) => name.split(/[\s-]+/).some((word) => word.startsWith(query)))) {
+        return 1;
+      }
+      return 2;
+    };
+    return options
+      .map((option) => ({ option, rank: rank(option) }))
+      .filter((entry) => entry.rank < 2)
+      .sort((a, b) => a.rank - b.rank || a.option.label.localeCompare(b.option.label))
+      .map((entry) => entry.option);
+  }
+
   /** Terms prepared once for quick finding: their folded forms and their words. */
   export interface Vocabulary {
     terms: readonly string[];

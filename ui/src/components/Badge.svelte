@@ -6,7 +6,6 @@
   import type { IconName } from './Icon.svelte';
 
   export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger';
-  export const BADGE_TONES: readonly BadgeTone[] = ['neutral', 'success', 'warning', 'danger'];
 </script>
 
 <script lang="ts">

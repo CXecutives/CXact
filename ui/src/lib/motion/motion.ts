@@ -38,7 +38,6 @@ const MOVES: readonly Move[] = ['xs', 'sm', 'md', 'lg'];
 
 let values: Values | null = null;
 let reduced = false;
-const listeners = new Set<(reduced: boolean) => void>();
 
 /** Cubic Bézier easing as used by CSS (`cubic-bezier(x1, y1, x2, y2)`). */
 export function cubicBezier(x1: number, y1: number, x2: number, y2: number): EasingFn {
@@ -111,7 +110,6 @@ function current(): Values {
 function apply(next: boolean): void {
   reduced = next;
   document.documentElement.dataset.motion = next ? 'reduce' : 'full';
-  for (const listener of listeners) listener(next);
 }
 
 /** Call once in main.ts, after the stylesheets are in place and before mounting. */
@@ -126,12 +124,6 @@ export function installMotion(): void {
 
 export function isReducedMotion(): boolean {
   return reduced;
-}
-
-/** Notified whenever the reduced-motion preference changes. Returns an unsubscribe function. */
-export function onMotionChange(listener: (reduced: boolean) => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
 }
 
 /** Duration in ms; 0 under reduced motion. */

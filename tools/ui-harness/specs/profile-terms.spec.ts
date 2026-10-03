@@ -14,7 +14,7 @@ const terms = (page: Page): Promise<string[]> =>
     return [
       ...form.competences.map((row) => row.name),
       ...form.tools,
-      ...form.industries,
+      ...form.industries.map((row) => row.name),
       ...form.certificates,
       ...form.degrees,
       ...form.languages.map((row) => row.language),

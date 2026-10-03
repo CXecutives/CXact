@@ -4,7 +4,16 @@
 
 import type { Page } from '@playwright/test';
 import { calls, expect, open, runFinished, test, visibleCount } from './fixtures';
-import { ALERT_PORTALS, chooseWay, failNext, PORTALS, showTab, T, tokenPx } from './helpers';
+import {
+  ALERT_PORTALS,
+  chooseWay,
+  failNext,
+  fillRequired,
+  PORTALS,
+  showTab,
+  T,
+  tokenPx,
+} from './helpers';
 
 const WIN = '?platform=windows';
 const MAC = '?platform=macos';
@@ -162,37 +171,30 @@ test('no alert mail in 30 days says to set up an alert first, for the mailbox', 
   await expect(page.getByTestId('first-no-alerts')).toHaveText(T.firstRun.noAlerts);
 });
 
-test('the profile step offers "Neues Profil", the start page of the Profil view', async ({
+test('the profile step offers "Profil anlegen", the start page of the Profil view', async ({
   page,
 }) => {
   await open(page, `${WIN}&scenario=mailbox-only`);
   const step = page.getByTestId('step-profile');
-  // The same button as on the Profil view's empty state: 29 px with its glyph, the primary.
-  await expect(step.getByRole('button')).toHaveText([T.profile.newProfile]);
+  // The same button as on the list's empty state: 29 px with its glyph, the primary.
+  await expect(step.getByRole('button')).toHaveText([T.list.createProfile]);
   const create = step.getByTestId('first-profile');
   await expect(create).toHaveClass(/primary/);
   await expect(create).toHaveCSS('height', `${await tokenPx(page, '--control-field')}px`);
   await expect(create.locator('[data-icon]')).toHaveAttribute('data-icon', 'add');
-  // It leads to the start page of the Profil view; a chosen file opens there for review,
-  // nothing is stored yet.
+  // It leads to the start page of the Profil view; the empty form stores nothing yet.
   await create.click();
   await expect(page.getByTestId('view-profile')).toBeVisible();
-  await chooseWay(page, 'file');
-  await expect(page.getByTestId('view-profile')).toBeVisible();
-  await expect(page.getByTestId('profile-name-field')).toHaveValue('Jonas Muster');
-  expect(await calls(page, 'save_profile')).toHaveLength(0);
-  await page.getByTestId('profile-discard').click();
-  await page.getByTestId('nav-jobs').click();
-  await create.click();
   await chooseWay(page, 'empty');
-  await (await showTab(page, page.getByTestId('competence-name'))).fill('Controlling');
+  await fillRequired(page);
+  expect(await calls(page, 'save_profile')).toHaveLength(0);
   await page.getByTestId('profile-save').click();
   // Saved during the setup: the toast leads on to the first fetch.
   const toast = page.getByTestId('toast').filter({ hasText: T.profile.saved });
   await expect(toast.getByTestId('toast-action')).toHaveText(T.profile.next);
   await page.getByTestId('nav-jobs').click();
   await expect(step).toHaveAttribute('data-done', 'true');
-  await expect(step.locator('.done-text')).toHaveText(T.profile.unnamed);
+  await expect(step.locator('.done-text')).toHaveText('Interim CFO');
 });
 
 test('a profile that does not count keeps step 2 open and says why', async ({ page }) => {

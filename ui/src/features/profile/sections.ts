@@ -1,124 +1,72 @@
-// The Profil form as data: its sections in their order, each with its lines of fields.
-// ProfileEditor.svelte renders this table and nothing else, so adding, moving or removing a
-// field or a section is one entry here (docs/CHANGING.md "Add a profile criterion"). A field
-// names the value of the form it edits (a criterion by its key: its limit and unit come from
-// core, `types/profile.ts`), its control, and its words by their key in the catalog
-// (`t.profile.field`). Controls with more to them than a field
-// (the competences table, the languages, the countries, the day, the workload, the remote
-// choice, the switches) are components the table names by their kind.
-//
-// Every section has its heading under its id in the catalog (`t.profile.section`) and the
-// testid `section-{id}`; the ones whose effect is easy to get wrong say it in one sentence
-// (`t.profile.sectionHint`). The sections stand on four tabs (user decision 2026-10-01):
-// Suche (the roles and what she looks for, a limit beside its wish), Können, Erfahrung and
-// Ausschlüsse; the first section of a tab goes without a heading (the tab is its name), and
-// the wishes stand in groups under a heading each (`group`, user 2026-10-01). The person (name
-// and role) stands under the title. Nothing has to be filled in, an empty field
-// is simply not judged.
+// The Profil form as data: three sections on one page (user decision 2026-10-03, variant 3),
+// each with its lines of fields. ProfileEditor.svelte renders this table and nothing else, so
+// adding, moving or removing a field is one entry here (docs/CHANGING.md "Add a profile
+// field"). A field names the value of the form it edits, its control, its words by their key
+// in the catalog (`t.profile.field`) and, at the few places docs/PLAN.md names, its info
+// symbol (`t.profile.info`). Controls with more to them than a field (the contract types, the
+// competences, the industries, the languages, the countries, the day) are components the
+// table names by their kind. The order of the sections is the order of the jump links.
 
 import type { Catalog } from '$lib/i18n/de';
-import type { ProfileForm, TermField, UnreadableField } from '$lib/ipc/types';
-import type { ProfileTab } from '$lib/state/profile.svelte';
-import {
-  NUMBER_CRITERIA,
-  WORD_CRITERIA,
-  type NumberCriterion,
-  type WordCriterion,
-} from '$lib/ipc/types/profile';
+import type { ProfileForm, TermField } from '$lib/ipc/types';
 
 type Words = Catalog['profile']['field'];
 /** A text of the form in the catalog (`t.profile.field`), by its key. */
 export type Word = { [K in keyof Words]: Words[K] extends string ? K : never }[keyof Words];
 /** The unit beside a number (`t.profile.unit`). */
 export type Unit = keyof Catalog['profile']['unit'];
+/** An info symbol's sentence (`t.profile.info`). */
+export type Info = keyof Catalog['profile']['info'];
 
-/** A number of the form: a criterion, or the experience and the wished day rate. */
-export type NumberKey = NumberCriterion | 'years' | 'wishDayRate';
+/** A number of the form. */
+export type NumberKey = 'dayRateWish' | 'dayRateMin' | 'minSalary' | 'years';
 /** A list of words of the form. */
-export type ListKey =
-  | WordCriterion
-  | 'strengths'
-  | 'keywords'
-  | 'degrees'
-  | 'industries'
-  | 'tools'
-  | 'certificates'
-  | 'roles'
-  | 'searchTerms'
-  | 'regions'
-  | 'wishIndustries';
-export type SwitchKey = 'remoteOutside' | 'noAnue' | 'noPermanent';
+export type ListKey = 'roles' | 'regions' | 'tools' | 'degrees' | 'certificates' | 'exclusionWords';
+/** The words a chip field suggests while typing (vocabulary.svelte.ts). */
+export type Suggest = 'roles' | 'skills' | 'industries' | 'regions';
 
-/** A field of the form. `hint` is its quiet line; `advice` a quiet line in its place while
- *  the values of the form say something about it; `off` holds a field back (with its
- *  advice as the reason) while it has nothing to do; `hidden` keeps it out of the form
- *  until the values it depends on are there. */
+/** A field of the form. `shown` keeps it out of the form while the values it depends on say
+ *  it has nothing to do; `advice` is a quiet line while the values contradict each other. */
 export type Control =
   | {
       kind: 'number';
       key: NumberKey;
       label: Word;
-      hint?: Word;
-      /** The unit of a number that is no criterion (a criterion's comes from core). */
-      unit?: Unit;
+      unit: Unit;
+      info?: Info;
       advice?: (form: ProfileForm) => Word | null;
-      off?: (form: ProfileForm) => boolean;
-      hidden?: (form: ProfileForm) => boolean;
+      shown?: (form: ProfileForm) => boolean;
       testid: string;
     }
   | {
       kind: 'chips';
       key: ListKey;
       label: Word;
-      hint?: Word;
       placeholder: Word;
-      /** Entries are sentences: only a line break splits a pasted list. */
+      info?: Info;
+      /** Entries are names that may hold commas: only a line break splits a pasted list. */
       lines?: true;
-      /** The engine's words it suggests while typing (vocabulary.svelte.ts). */
-      suggest?: 'skills' | 'industries';
+      suggest?: Suggest;
       /** The terms of this field the jobs ask for, under it ("Häufig verlangt"). */
       asked?: TermField;
       testid: string;
     }
-  | {
-      kind: 'switch';
-      key: SwitchKey;
-      label: Word;
-      hint?: Word;
-      /** Why the switch has nothing to do now (disabled), or null. */
-      off?: (form: ProfileForm) => Word | null;
-      testid: string;
-    }
-  | { kind: 'competences' }
-  | { kind: 'languages' }
-  | { kind: 'countries' }
+  | { kind: 'segments'; key: 'workMode'; label: Word; info?: Info; testid: string }
+  | { kind: 'select'; key: 'workload' | 'minMonths'; label: Word; testid: string }
+  | { kind: 'contracts'; info: Info }
+  | { kind: 'countries'; info: Info }
   | { kind: 'available' }
-  | { kind: 'workload' }
-  | { kind: 'remote' };
+  | { kind: 'competences'; info: Info }
+  | { kind: 'industries'; info: Info }
+  | { kind: 'languages' };
 
-/** The heading of a group of fields (`t.profile.group`). */
-export type GroupId = keyof Catalog['profile']['group'];
+/** A line of a section: one field, or two side by side (one under the other when narrow). */
+export type Line = Control | { kind: 'pair'; fields: readonly [Control, Control] };
 
-/** A line of a section: one field, two side by side (one under the other when narrow), the
- *  switches of a group (one hairline list), or the heading of the fields after it. */
-export type Line =
-  | Control
-  | { kind: 'pair'; fields: readonly [Control, Control] }
-  | { kind: 'switches'; fields: readonly Extract<Control, { kind: 'switch' }>[] }
-  | { kind: 'group'; id: GroupId };
-
-export type SectionId = 'competences' | 'experience' | 'criteria' | 'permanent' | 'wishes';
+export type SectionId = keyof Catalog['profile']['section'];
 
 export interface Section {
   id: SectionId;
-  tab: ProfileTab;
-  /** The one block the profile needs: its "Noch leer" is amber. */
-  required?: true;
-  /** Only refines the match: the heading says "optional". */
-  optional?: true;
-  /** The section waits while the form says so (the rules of permanent roles while those are
-   *  excluded). */
-  hidden?: (form: ProfileForm) => boolean;
   lines: readonly Line[];
 }
 
@@ -126,105 +74,79 @@ const pair = (a: Control, b: Control): Line => ({ kind: 'pair', fields: [a, b] }
 
 export const SECTIONS: readonly Section[] = [
   {
-    // What she looks for: the wishes (they exclude nothing) with the limits that belong to
-    // them beside them (the minimum rate, the countries, the day she is free).
-    id: 'wishes',
-    tab: 'search',
+    id: 'search',
     lines: [
-      { kind: 'group', id: 'roles' },
       {
         kind: 'chips',
         key: 'roles',
         label: 'roles',
         placeholder: 'rolesPlaceholder',
+        info: 'roles',
+        suggest: 'roles',
         testid: 'profile-roles',
       },
-      {
-        // What the search of the sources looks for: the roles and Schwerpunkte until changed.
-        kind: 'chips',
-        key: 'searchTerms',
-        label: 'searchTerms',
-        hint: 'searchTermsHint',
-        placeholder: 'searchTermsPlaceholder',
-        testid: 'profile-search-terms',
-      },
-      { kind: 'group', id: 'rate' },
+      { kind: 'contracts', info: 'contracts' },
       pair(
         {
           kind: 'number',
-          key: 'wishDayRate',
-          label: 'wishRate',
+          key: 'dayRateWish',
+          label: 'dayRateWish',
           unit: 'euro',
+          info: 'dayRate',
           advice: (form) =>
-            form.wishes.dayRate !== null &&
-            form.criteria.minDayRate !== null &&
-            form.wishes.dayRate < form.criteria.minDayRate
+            form.dayRateWish !== null &&
+            form.dayRateMin !== null &&
+            form.dayRateWish < form.dayRateMin
               ? 'belowMinRate'
               : null,
           testid: 'profile-wish-rate',
         },
         {
           kind: 'number',
-          key: 'minDayRate',
-          label: 'minDayRate',
-          hint: 'minRateHint',
+          key: 'dayRateMin',
+          label: 'dayRateMin',
+          unit: 'euro',
           testid: 'profile-min-rate',
         },
       ),
-      { kind: 'group', id: 'place' },
+      {
+        // The salary counts for Festanstellung and Zeitarbeit only.
+        kind: 'number',
+        key: 'minSalary',
+        label: 'minSalary',
+        unit: 'euro',
+        shown: (form) => form.permanent || form.temporary,
+        testid: 'profile-min-salary',
+      },
+      {
+        kind: 'segments',
+        key: 'workMode',
+        label: 'workMode',
+        info: 'workMode',
+        testid: 'profile-work-mode',
+      },
       pair(
+        { kind: 'countries', info: 'countries' },
         {
           kind: 'chips',
           key: 'regions',
           label: 'regions',
           placeholder: 'regionsPlaceholder',
+          suggest: 'regions',
           testid: 'profile-regions',
         },
-        { kind: 'countries' },
       ),
-      {
-        kind: 'switches',
-        fields: [
-          // On excludes: the file's "allowed" is the switch turned off.
-          {
-            kind: 'switch',
-            key: 'remoteOutside',
-            label: 'remoteOutside',
-            off: (form) => (form.criteria.countries.length === 0 ? 'remoteOutsideOff' : null),
-            testid: 'profile-remote-outside',
-          },
-        ],
-      },
-      { kind: 'remote' },
-      { kind: 'group', id: 'time' },
       { kind: 'available' },
-      // The days a week and the duration are checked, never an exclusion (engine 16).
       pair(
-        { kind: 'workload' },
-        {
-          kind: 'number',
-          key: 'minMonths',
-          label: 'minMonths',
-          testid: 'profile-min-months',
-        },
+        { kind: 'select', key: 'workload', label: 'workload', testid: 'profile-workload' },
+        { kind: 'select', key: 'minMonths', label: 'minMonths', testid: 'profile-min-months' },
       ),
-      { kind: 'group', id: 'industries' },
-      {
-        kind: 'chips',
-        key: 'wishIndustries',
-        label: 'wishIndustries',
-        placeholder: 'wishIndustriesPlaceholder',
-        suggest: 'industries',
-        testid: 'profile-wish-industries',
-      },
     ],
   },
   {
-    id: 'competences',
-    tab: 'skills',
-    required: true,
+    id: 'skills',
     lines: [
-      { kind: 'competences' },
+      { kind: 'competences', info: 'competences' },
       {
         kind: 'chips',
         key: 'tools',
@@ -235,263 +157,90 @@ export const SECTIONS: readonly Section[] = [
         testid: 'profile-tools',
       },
       {
-        kind: 'chips',
-        key: 'keywords',
-        label: 'keywords',
-        placeholder: 'keywordsPlaceholder',
-        suggest: 'skills',
-        testid: 'profile-keywords',
-      },
-      {
-        kind: 'chips',
-        key: 'strengths',
-        label: 'strengths',
-        placeholder: 'strengthsPlaceholder',
-        lines: true,
-        testid: 'profile-strengths',
-      },
-    ],
-  },
-  {
-    id: 'experience',
-    tab: 'experience',
-    lines: [
-      {
         kind: 'number',
         key: 'years',
         label: 'totalYears',
         unit: 'years',
         testid: 'profile-years',
       },
-      {
-        kind: 'chips',
-        key: 'industries',
-        label: 'industries',
-        placeholder: 'industriesPlaceholder',
-        suggest: 'industries',
-        asked: 'industry',
-        testid: 'profile-industries',
-      },
-      // The languages are a qualification too (user, 2026-09-29).
+      { kind: 'industries', info: 'industries' },
       { kind: 'languages' },
-      {
-        kind: 'chips',
-        key: 'degrees',
-        label: 'degrees',
-        placeholder: 'degreesPlaceholder',
-        lines: true,
-        asked: 'degree',
-        testid: 'profile-degrees',
-      },
-      {
-        kind: 'chips',
-        key: 'certificates',
-        label: 'certificates',
-        placeholder: 'certificatesPlaceholder',
-        lines: true,
-        asked: 'certificate',
-        testid: 'profile-certificates',
-      },
+      pair(
+        {
+          kind: 'chips',
+          key: 'degrees',
+          label: 'degrees',
+          placeholder: 'degreesPlaceholder',
+          lines: true,
+          asked: 'degree',
+          testid: 'profile-degrees',
+        },
+        {
+          kind: 'chips',
+          key: 'certificates',
+          label: 'certificates',
+          placeholder: 'certificatesPlaceholder',
+          lines: true,
+          asked: 'certificate',
+          testid: 'profile-certificates',
+        },
+      ),
     ],
   },
   {
-    // What excludes a job besides the limits of the search: the words and the contracts.
-    id: 'criteria',
-    tab: 'exclusions',
+    id: 'exclusions',
     lines: [
       {
         kind: 'chips',
         key: 'exclusionWords',
         label: 'exclusionWords',
         placeholder: 'exclusionWordsPlaceholder',
+        info: 'exclusionWords',
         testid: 'profile-exclusion-words',
       },
-      {
-        kind: 'switches',
-        fields: [
-          { kind: 'switch', key: 'noAnue', label: 'noAnue', testid: 'profile-no-anue' },
-          {
-            kind: 'switch',
-            key: 'noPermanent',
-            label: 'noPermanent',
-            testid: 'profile-no-permanent',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    // The rules of permanent roles: they wait while those are excluded.
-    id: 'permanent',
-    tab: 'exclusions',
-    optional: true,
-    hidden: (form) => form.criteria.noPermanent,
-    lines: [
-      {
-        kind: 'chips',
-        key: 'permanentPlaces',
-        label: 'places',
-        placeholder: 'placesPlaceholder',
-        testid: 'profile-places',
-      },
-      pair(
-        {
-          kind: 'number',
-          key: 'minSalary',
-          label: 'minSalary',
-          testid: 'profile-min-salary',
-        },
-        {
-          // The share counts only outside the places: it comes with them (user, 2026-09-29).
-          // A share stored without places stays in view and says what it waits for.
-          kind: 'number',
-          key: 'permanentRemoteMin',
-          label: 'remoteMin',
-          hint: 'remoteMinHint',
-          advice: (form) => (form.criteria.permanentPlaces.length === 0 ? 'placesFirst' : null),
-          hidden: (form) =>
-            form.criteria.permanentPlaces.length === 0 && form.criteria.permanentRemoteMin === null,
-          testid: 'profile-remote-min',
-        },
-      ),
     ],
   },
 ];
 
-/** The tab a field of the form is on (for the caret of a value to put right), or null. */
-export function tabOf(field: string): ProfileTab | null {
-  const section = SECTIONS.find((each) => controlsOf(each.lines).flatMap(fieldsOf).includes(field));
-  return section?.tab ?? null;
-}
-
-// ------------------------------------------------------------------ the values of the form
-
-/** Values of the wishes, by the key the form's fields use for them. */
-const WISHES = {
-  wishDayRate: 'dayRate',
-  regions: 'regions',
-  wishIndustries: 'industries',
-} as const;
-
-/** The object that holds a value and its key there: a criterion (core's description) in
- *  `criteria`, a wish in `wishes`, the rest in the form itself. */
-function holder(form: ProfileForm, key: string): [Record<string, unknown>, string] {
-  if (key in WISHES) {
-    return [form.wishes as Record<string, unknown>, WISHES[key as keyof typeof WISHES]];
-  }
-  if (key in NUMBER_CRITERIA || key in WORD_CRITERIA) {
-    return [form.criteria as unknown as Record<string, unknown>, key];
-  }
-  return [form as unknown as Record<string, unknown>, key];
-}
-
-export function numberOf(form: ProfileForm, key: NumberKey): number | null {
-  const [object, name] = holder(form, key);
-  return (object[name] as number | null | undefined) ?? null;
-}
-
-export function setNumber(form: ProfileForm, key: NumberKey, value: number | null): void {
-  const [object, name] = holder(form, key);
-  object[name] = value;
-}
-
-export function listOf(form: ProfileForm, key: ListKey): string[] {
-  const [object, name] = holder(form, key);
-  return (object[name] as string[] | undefined) ?? [];
-}
-
-export function setList(form: ProfileForm, key: ListKey, value: string[]): void {
-  const [object, name] = holder(form, key);
-  object[name] = value;
-  // A change makes the proposed search terms the consultant's own.
-  if (key === 'searchTerms') form.searchTermsProposed = false;
-}
-
-/** A field's value as text, to see when it changes (a refused value stays marked until
- *  then): a wish, a criterion, or a value of the form itself. */
-export function valueText(form: ProfileForm, field: string): string {
-  if (field === 'remote') return JSON.stringify(form.wishes.remote);
-  const key = field in WISHES ? WISHES[field as keyof typeof WISHES] : field;
-  const object: Record<string, unknown> =
-    field in WISHES
-      ? (form.wishes as Record<string, unknown>)
-      : field in form.criteria
-        ? (form.criteria as unknown as Record<string, unknown>)
-        : (form as unknown as Record<string, unknown>);
-  return JSON.stringify(object[key] ?? null);
-}
-
-/** The unit of a number: a criterion's from core, else the table's. */
-export function unitOf(control: Extract<Control, { kind: 'number' }>): Unit | null {
-  return control.key in NUMBER_CRITERIA
-    ? NUMBER_CRITERIA[control.key as NumberCriterion].unit
-    : (control.unit ?? null);
-}
-
-// ------------------------------------------------------------------ what a section holds
-
-/** Every field of some lines, in order (the fields of pairs and switches too). */
-export function controlsOf(lines: readonly Line[]): Control[] {
-  return lines.flatMap((line): Control[] =>
-    line.kind === 'group'
-      ? []
-      : line.kind === 'pair' || line.kind === 'switches'
-        ? [...line.fields]
-        : [line],
-  );
-}
-
-/** The value of the file behind a switch (both contract types are one key of the file). */
-export const switchField = (key: SwitchKey): UnreadableField =>
-  key === 'remoteOutside' ? 'remoteOutside' : 'contracts';
-
-/** The fields a value that does not read (or a refused one) can name for a control. */
-export function fieldsOf(control: Control): string[] {
+/** The values of the form a control edits (the fields `ProfileInfo.missing` and
+ *  `aiFilled` name). */
+export function fieldsOf(control: Control): (keyof ProfileForm)[] {
   switch (control.kind) {
     case 'number':
     case 'chips':
+    case 'segments':
+    case 'select':
       return [control.key];
-    case 'switch':
-      return [switchField(control.key)];
-    case 'competences':
-      return ['competences', 'focus'];
-    case 'languages':
-      return ['languages'];
-    case 'countries':
-      return ['countries'];
-    case 'available':
-      return ['available'];
-    case 'workload':
-      return ['workloadMinDays', 'workloadMaxDays'];
-    case 'remote':
-      return ['remote'];
+    case 'contracts':
+      return ['permanent', 'temporary'];
+    default:
+      return [control.kind];
   }
 }
 
-const noRows = (rows: readonly { name?: string; language?: string }[]): boolean =>
-  rows.every((row) => (row.name ?? row.language ?? '').trim() === '');
+/** Every field of some lines, in order (the fields of pairs too). */
+export function controlsOf(lines: readonly Line[]): Control[] {
+  return lines.flatMap((line): Control[] => (line.kind === 'pair' ? [...line.fields] : [line]));
+}
 
-/** The control holds nothing (for "Noch leer"); the remote switch is set either way. */
-export function blank(form: ProfileForm, control: Control): boolean {
-  const c = form.criteria;
-  switch (control.kind) {
-    case 'number':
-      return numberOf(form, control.key) === null;
-    case 'chips':
-      return listOf(form, control.key).length === 0;
-    case 'switch':
-      return control.key === 'remoteOutside' || !c[control.key];
-    case 'competences':
-      return noRows(form.competences);
-    case 'languages':
-      return noRows(form.languages);
-    case 'countries':
-      return c.countries.length === 0;
-    case 'available':
-      return c.available.kind === 'unset';
-    case 'workload':
-      return c.workloadMinDays === null && c.workloadMaxDays === null;
-    case 'remote':
-      return form.wishes.remote === null;
+/** Every value of the form in the order of the page (for "Zum ersten"). */
+export const FIELD_ORDER: readonly (keyof ProfileForm)[] = SECTIONS.flatMap((section) =>
+  controlsOf(section.lines).flatMap(fieldsOf),
+);
+
+/** The value of a field holds nothing (a required field still to fill). */
+export function blank(form: ProfileForm, field: string): boolean {
+  const value = (form as Record<string, unknown>)[field];
+  if (Array.isArray(value)) {
+    return value.every((entry: unknown) =>
+      typeof entry === 'string'
+        ? entry.trim() === ''
+        : typeof entry === 'object' && entry !== null && 'name' in entry
+          ? String(entry.name).trim() === ''
+          : typeof entry === 'object' && entry !== null && 'language' in entry
+            ? String(entry.language).trim() === ''
+            : false,
+    );
   }
+  return value === null || value === undefined;
 }

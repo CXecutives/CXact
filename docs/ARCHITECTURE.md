@@ -21,7 +21,7 @@ Each layer uses only the ones below it.
   - `components/`: the design system. The only raw controls, the only Lucide import
     (`Icon.svelte`); it knows no feature and gets its data as props.
   - `features/<name>/`: one screen each (`jobs`, `profile`, `settings`,
-    `first-run`, `shell`, `gallery`) and `features/shared/`. A feature uses another only
+    `first-run`, `shell`) and `features/shared/`. A feature uses another only
     through `features/shared/` and the public modules named in `FEATURE_PUBLIC` of
     `tools/architecture.mjs`.
   - `lib/`: no components, no features. `lib/state/` the app's state, `lib/ipc/api.ts` the
@@ -133,7 +133,7 @@ the rule and the fix.
 | Commands declared once | `core/tests/contract.rs` |
 | Generated files current | see above |
 | A database of an earlier schema is reset at the start, never migrated or opened as it is | `core/src/store/schema.rs` and `core/src/reset.rs` tests |
-| Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there); no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
+| Icons by meaning, one glyph per meaning; no keys of the app's own; toasts only through the toast API; one tooltip, only where something is missing (never the words that stand there) or as the bubble of an info symbol; no "·" as a separator; two button heights; one answer per surface kind | `ui_contract.rs` |
 | One word per thing (the glossary of the catalogs) | `ui_contract.rs` (`the_catalog_keeps_the_glossary`) |
 | At most one primary button per view | `ui_contract.rs` |
 | A flaky test fails the run | CI: `--fail-on-flaky-tests` |

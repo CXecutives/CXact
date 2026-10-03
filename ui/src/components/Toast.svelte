@@ -1,5 +1,5 @@
 <!--
-  The toast stack, bottom right (mounted once in App and the gallery), the only place that
+  The toast stack, bottom right (mounted once in App), the only place that
   draws a toast: short confirmations that rise in (150 ms) and slide out sideways (100 ms),
   at most three, the stack moving up as one leaves. Each kind's glyph and each toast's time
   come from the tables of lib/state/toasts.svelte.ts (TOAST_KINDS, TOAST_LIFE): a plain

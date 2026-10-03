@@ -2,7 +2,7 @@
 // and its views (one table, lib/views.ts), the switch between views, the window sizes it
 // survives, the press that follows the pointer, reduced motion, the tooltips, the toasts and
 // dialogs, the run status, the card of the keys and a start whose data cannot load. The keys
-// themselves are input.spec.ts; the components one by one are gallery.spec.ts. Texts come
+// themselves are input.spec.ts; the components are checked on the real screens. Texts come
 // from the catalog where a test names a label (text()).
 
 import type { Locator, Page } from '@playwright/test';
@@ -668,8 +668,8 @@ test('an unsaved profile keeps the view until the question is answered', async (
   await expect(page.getByTestId('search')).toHaveAttribute('placeholder', 'Archiv durchsuchen');
   await page.getByTestId('place-inbox').click();
   await page.getByTestId('nav-profile').click();
-  const field = page.getByTestId('view-profile').getByRole('textbox').first();
-  await field.fill('Erika Muster');
+  const field = page.getByTestId('profile-wish-rate');
+  await field.fill('1.300');
   await page.getByTestId('nav-jobs').click();
   const dialog = page.getByTestId('dialog-leave-profile');
   await expect(dialog).toBeVisible();
@@ -677,7 +677,7 @@ test('an unsaved profile keeps the view until the question is answered', async (
   // Still the Profil, and the Jobs view is where it was (the inbox, not the archive).
   await expect(page.getByTestId('view-profile')).toBeVisible();
   await expect(page.getByTestId('nav-profile')).toHaveAttribute('aria-current', 'page');
-  await expect(field).toHaveValue('Erika Muster');
+  await expect(field).toHaveValue('1.300');
   // Asked again and left without saving: the Jobs view it was asked for, on its inbox.
   await page.getByTestId('nav-jobs').click();
   await dialog.getByRole('button', { name: 'Verwerfen' }).click();
@@ -847,7 +847,7 @@ test('a toast lies above the save bar of Profil; its Zeigen opens the finished f
   await open(page, `${WIN}&view=profile&tick=5`);
   await expect(page.getByTestId('profile-form')).toBeVisible();
   // The save bar shows while the form holds a change.
-  await page.getByTestId('profile-title').fill('Interim CFO');
+  await page.getByTestId('profile-wish-rate').fill('1.300');
   await page.evaluate(() => window.__harness.appRun('fetch'));
   await runFinished(page);
   const toast = page.getByTestId('toast');
@@ -1325,7 +1325,7 @@ test('a chip value copies; a double click still edits it; its x has no tooltip',
 }) => {
   await open(page, WIN);
   await page.getByTestId('nav-profile').click();
-  const keywords = await showTab(page, page.getByTestId('profile-keywords'));
+  const keywords = await showTab(page, page.getByTestId('profile-tools'));
   const chip = keywords.locator('[data-chip]').first();
   const text = chip.locator('.text');
   await text.scrollIntoViewIfNeeded();
@@ -1433,12 +1433,14 @@ test('reduced motion: no movement, instant tokens, the new view is in place at o
 });
 
 test('switching reduced motion at runtime is followed', async ({ page }) => {
-  await open(page, '?gallery');
-  await expect(page.getByTestId('motion-state')).toHaveText('Volle Bewegung ist an.');
+  await open(page, WIN);
+  const motion = (): Promise<string | undefined> =>
+    page.evaluate(() => document.documentElement.dataset.motion);
+  expect(await motion()).toBe('full');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.getByTestId('motion-state')).toHaveText('Reduzierte Bewegung ist an.');
-  await page.getByTestId('motion-play').click();
-  await expect(page.getByTestId('motion-count')).toContainText('87');
+  await expect.poll(motion).toBe('reduce');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect.poll(motion).toBe('full');
 });
 
 test('nothing animates at start, and a view that comes back does not replay', async ({ page }) => {
@@ -1513,32 +1515,15 @@ test('the reader ring fills from empty the first time a job opens, once', async 
   expect(await fills()).toEqual(['100', '100']);
 });
 
-test('a count rolls when it changes on screen, not when it first shows', async ({ page }) => {
-  await open(page, '?gallery');
-  const count = page.getByTestId('count-soft');
-  await count.scrollIntoViewIfNeeded();
-  expect(await count.evaluate((node) => node.getAnimations({ subtree: true }).length)).toBe(0);
-  // Click and look in the same frame (the roll lasts 150 ms).
-  const rolling = await page.evaluate(async () => {
-    document.querySelector<HTMLElement>('[data-testid="count-more"]')!.click();
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    return document
-      .querySelector('[data-testid="count-soft"]')!
-      .getAnimations({ subtree: true })
-      .filter((a) => !(a instanceof CSSTransition)).length;
-  });
-  expect(rolling).toBeGreaterThan(0);
-  await expect(count).toHaveText('13');
-});
-
 test("a ghost toggle's star pops once when switched on, never when off", async ({ page }) => {
-  await open(page, '?gallery');
-  const pin = page.getByTestId('motion-pin');
-  await pin.scrollIntoViewIfNeeded();
+  await open(page, `${WIN}&view=profile`);
+  const star = page.getByTestId('competence-star').first();
+  await star.scrollIntoViewIfNeeded();
+  await expect(star).toHaveAttribute('aria-pressed', 'false');
   // Pops are Web Animations on the glyph (hover nudges are CSS transitions).
   const clickAndCount = (): Promise<number> =>
     page.evaluate(() => {
-      const button = document.querySelector<HTMLElement>('[data-testid="motion-pin"]')!;
+      const button = document.querySelector<HTMLElement>('[data-testid="competence-star"]')!;
       button.click();
       return button
         .querySelector('.glyph')!
@@ -1546,15 +1531,15 @@ test("a ghost toggle's star pops once when switched on, never when off", async (
         .filter((a) => !(a instanceof CSSTransition)).length;
     });
   expect(await clickAndCount()).toBe(1);
-  await expect(pin).toHaveAttribute('aria-pressed', 'true');
+  await expect(star).toHaveAttribute('aria-pressed', 'true');
   await page.waitForTimeout(400);
   expect(await clickAndCount()).toBe(0);
-  await expect(pin).toHaveAttribute('aria-pressed', 'false');
+  await expect(star).toHaveAttribute('aria-pressed', 'false');
 });
 
-test('under reduced motion nothing scales, pops or shakes', async ({ page }) => {
+test('under reduced motion nothing scales or pops', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await open(page, '?gallery');
+  await open(page, `${WIN}&view=profile`);
   const tokens = await page.evaluate(() => {
     const style = getComputedStyle(document.documentElement);
     return ['--scale-press', '--scale-pop', '--move-xs', '--dur-hover'].map((name) =>
@@ -1562,12 +1547,17 @@ test('under reduced motion nothing scales, pops or shakes', async ({ page }) => 
     );
   });
   expect(tokens).toEqual([1, 1, 0, 0]);
-  const pin = page.getByTestId('motion-pin');
-  await pin.scrollIntoViewIfNeeded();
-  await pin.click();
-  await page.getByTestId('motion-shake').click();
+  // Clicked without the pointer over it (no tooltip comes).
+  await page.evaluate(() =>
+    document.querySelector<HTMLElement>('[data-testid="competence-star"]')!.click(),
+  );
   const scripted = await page.evaluate(
-    () => document.getAnimations().filter((a) => !(a instanceof CSSAnimation)).length,
+    // A transition that runs in no time (the save bar comes) moves nothing.
+    () =>
+      document
+        .getAnimations()
+        .filter((a) => !(a instanceof CSSAnimation))
+        .filter((a) => Number((a.effect as KeyframeEffect).getTiming().duration) > 0).length,
   );
   expect(scripted).toBe(0);
 });
@@ -1626,7 +1616,7 @@ test('hover rests while a list scrolls', async ({ page }) => {
 // (1280 × 720, 1536 × 864) and common desktops.
 
 for (const size of SIZES) {
-  for (const query of ['?platform=windows', '?platform=macos', '?gallery']) {
+  for (const query of ['?platform=windows', '?platform=macos']) {
     test(`no horizontal scroll, nothing clipped at ${size.width}x${size.height} ${query}`, async ({
       page,
     }) => {
@@ -1634,10 +1624,7 @@ for (const size of SIZES) {
       await open(page, query);
       const problems = await page.evaluate(() => {
         const out: string[] = [];
-        for (const node of [
-          document.documentElement,
-          ...document.querySelectorAll('.view, [data-testid="gallery"]'),
-        ]) {
+        for (const node of [document.documentElement, ...document.querySelectorAll('.view')]) {
           if (node.scrollWidth > node.clientWidth) {
             out.push(
               `${node.tagName}.${node.className}: ${node.scrollWidth} > ${node.clientWidth}`,
@@ -1708,17 +1695,22 @@ test('the start of a new profile asks for no primary; the Jobs view keeps its fe
   await expect(page.getByTestId('fetch')).toHaveClass(/primary/);
 });
 
-test('toasts: at most three, they stay while hovered and leave on their own', async ({ page }) => {
+test('toasts stay while hovered and leave on their own', async ({ page }) => {
   // Ten seconds of it are the toasts' own life: a busy machine needs more than the usual 30 s.
   test.slow();
-  // Plain toasts (4 s) from the gallery: Einstellungen answers every action in place.
-  await open(page, '?gallery&platform=windows');
+  await open(page, `${WIN}&view=settings`);
   // The window in the back holds their time, so a slow machine still sees all of them.
   await page.evaluate(() => window.__harness.fire('tauri://blur', null));
-  for (let i = 0; i < 4; i += 1) {
-    await page.getByRole('button', { name: 'Toast zeigen' }).click();
-  }
   const toasts = page.getByTestId('toast');
+  // Three plain toasts: a rescore in Einstellungen, the CV, a save of the profile.
+  await page.evaluate(() => window.__harness.appRun('rescore'));
+  await expect(toasts).toHaveCount(1);
+  await page.getByTestId('nav-profile').click();
+  await page.getByTestId('profile-from-cv').click();
+  await expect(toasts).toHaveCount(2);
+  // Enter saves (the toasts stand over the save bar).
+  await page.getByTestId('profile-wish-rate').fill('1.300');
+  await page.getByTestId('profile-wish-rate').press('Enter');
   await expect(toasts).toHaveCount(3);
   await toasts.first().hover();
   await page.evaluate(() => window.__harness.fire('tauri://focus', null));

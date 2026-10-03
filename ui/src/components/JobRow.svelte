@@ -136,7 +136,7 @@
     pending?: boolean;
     /** A usable profile is there (without one the ring is an empty placeholder: no match). */
     ring?: boolean;
-    /** Fixed "now" for the stamp (gallery and tests). */
+    /** Fixed "now" for the stamp (tests). */
     now?: Date;
     /** The words of the search the list shows (marked in the title). */
     marks?: readonly string[];

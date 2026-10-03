@@ -10,7 +10,6 @@
 -->
 <script lang="ts" module>
   export type CountTone = 'soft' | 'plain';
-  export const COUNT_TONES: readonly CountTone[] = ['soft', 'plain'];
 </script>
 
 <script lang="ts">

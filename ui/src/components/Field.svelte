@@ -5,31 +5,64 @@
   field, and it always ends the helper line: the message beside it shrinks and wraps, so it
   stands in the same place in a half-width field as in a full-width one. The message's id is
   shared with the control inside (its `aria-describedby`) only while a message shows.
+  Beside the label an info symbol (`info`, InfoTip: only where docs/PLAN.md places one, and
+  never with a hint) and a small navy dot (`mark`, its words for a screen reader: a value the
+  CV import filled). Without `for` the field holds a group of controls (rows, choices) that
+  its label names.
 -->
 <script lang="ts">
   import { describe } from '$lib/state/described';
   import type { Snippet } from 'svelte';
   import Button from './Button.svelte';
   import Icon, { type IconName } from './Icon.svelte';
+  import InfoTip from './InfoTip.svelte';
+  import { t } from '$lib/i18n/t';
 
   interface Props {
     label: string;
-    /** id of the control inside, for the label. */
-    for: string;
+    /** id of the control inside, for the label; none: a group of controls. */
+    for?: string | null;
     hint?: string | null;
+    /** The one sentence of the info symbol beside the label (never with a hint). */
+    info?: string | null;
+    /** A small dot after the label, these words for a screen reader. */
+    mark?: string | null;
     /** A way on that belongs to the hint (opens a page), at the end of the helper line. */
     action?: { label: string; icon?: IconName; testid?: string; onclick: () => void } | null;
     error?: string | null;
     children: Snippet;
   }
 
-  let { label, for: control, hint = null, action = null, error = null, children }: Props = $props();
+  let {
+    label,
+    for: target = null,
+    hint = null,
+    info = null,
+    mark = null,
+    action = null,
+    error = null,
+    children,
+  }: Props = $props();
 
+  const own = $props.id();
+  const control = $derived(target ?? own);
   describe(() => (error || hint ? `${control}-message` : null));
 </script>
 
-<div class="field">
-  <label class="label" for={control}>{label}</label>
+<div
+  class="field"
+  role={target === null ? 'group' : undefined}
+  aria-labelledby={target === null ? `${own}-label` : undefined}
+>
+  <div class="top">
+    {#if target === null}
+      <span class="label" id="{own}-label">{label}</span>
+    {:else}
+      <label class="label" for={target}>{label}</label>
+    {/if}
+    {#if mark}<span class="mark" role="img" aria-label={mark} data-testid="field-mark"></span>{/if}
+    {#if info && !hint}<InfoTip text={info} label={t.common.infoAbout(label)} />{/if}
+  </div>
   {@render children()}
   {#if error || hint || action}
     <div class="help" class:acts={action !== null}>
@@ -63,6 +96,21 @@
     flex-direction: column;
     gap: var(--space-6);
     min-width: 0;
+  }
+
+  .top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-6);
+    min-width: 0;
+  }
+
+  .mark {
+    flex: none;
+    width: var(--dot-unread);
+    height: var(--dot-unread);
+    border-radius: var(--radius-full);
+    background-color: var(--active-text);
   }
 
   /* As wide as its text: a click beside the label is a click beside the field, and that ends

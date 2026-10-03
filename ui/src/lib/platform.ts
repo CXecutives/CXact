@@ -26,7 +26,7 @@ function isPlatform(value: string | null | undefined): value is Platform {
   return value === 'windows' || value === 'macos';
 }
 
-/** `?platform=macos|windows` (harness and gallery) wins over the user agent. */
+/** `?platform=macos|windows` (harness) wins over the user agent. */
 function detect(): Platform {
   const requested = new URLSearchParams(location.search).get('platform');
   if (isPlatform(requested)) return requested;

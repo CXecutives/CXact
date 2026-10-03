@@ -1035,7 +1035,6 @@ test.describe('Anforderungen', () => {
     await page.getByTestId('nav-profile').click();
     await expect(page.getByTestId('profile-industries')).toContainText('Energie');
     await expect(page.getByTestId('profile-industries')).not.toContainText('Branchenerfahrung');
-    await expect(page.getByTestId('profile-keywords')).not.toContainText('Energie');
     await expect(page.getByTestId('profile-save-bar')).toHaveCount(0);
     // The toast takes it back.
     await page.getByTestId('nav-jobs').click();
@@ -1058,7 +1057,6 @@ test.describe('Anforderungen', () => {
     );
     await page.getByTestId('nav-profile').click();
     await expect(page.getByTestId('profile-tools')).toContainText('Anaplan');
-    await expect(page.getByTestId('profile-keywords')).not.toContainText('Anaplan');
     // A requirement the ad words as a sentence cannot go into the profile.
     await page.getByTestId('nav-jobs').click();
     await openJob(page, 'freelancermap-2804');
